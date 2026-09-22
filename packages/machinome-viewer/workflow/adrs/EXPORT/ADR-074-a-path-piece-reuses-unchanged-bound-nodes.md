@@ -50,3 +50,28 @@ whole binding-expanded path graph for unsupported structure before evaluating
 any child. A red-first bound with `(feed ? 90 : missing())` now completes
 through generic fallback without touching `missing()`. This preflight adds
 no sample or arithmetic operation to a supported path.
+
+## Successful Bound-search amendment — 22 September 2026
+
+`cache-standing-bound-bind` narrows the original “no cross-step cache” decision
+for determined Bound searches. A `Run` may retain one successful finite
+`ExpressionPath` per constraint, only while expression generation and the
+actual moving-name set match. The next search still compares each referenced
+input's own-property presence and `Object.is` value, evaluates changed
+standing dependents in the original postorder, and forces the whole moving
+cone at its first prescribed sample even if the moving leaf's endpoint value
+is unchanged. Subsequent samples still use `at`. A failed or unsupported
+search cannot seed the cache; restore/reset clears it, and paths with a
+standing `Math.random` call are ineligible. Nonfinite search scope uses a fresh
+path. Generic fallback and untraced prefix replay remain unchanged. This is
+Run-local reuse of bound values, not a global cache or a new document/API
+field.
+
+The pinned pre-joint production Curta export's first 48 default-timestep
+crank ticks took 20.0603 versus 17.1970 process-CPU seconds on reserved CPU
+15, with 4,027,665 fewer node resolutions. All 6,240 ordered Bound samples
+and the complete 213-coordinate bank matched bitwise. The actual standalone
+export auto-mounted with the changed bundle; a canvas pointer gesture moved
+digit 1 from zero to two and completed. This remains a partial throughput
+improvement, not a claim that a two-second crank request finishes in two
+seconds of wall time; the originating evidence records its scope and limits.

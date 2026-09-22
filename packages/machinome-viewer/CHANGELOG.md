@@ -3,6 +3,17 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased
+
+- Viewer API 24 and document versions 1–11 are unchanged.
+- A determined running Bound may reuse exact standing expression values from
+  the previous successful search on the same run when its numeric inputs and
+  moving-name set are unchanged. Moving values still run at the first and
+  every later prescribed sample. OperatingCurta's pinned first 48 default
+  crank ticks used 14.3% less process CPU with bit-identical Bound samples
+  and complete bank; a full revolution is not yet interactive at its
+  declared two-second duration.
+
 ## 0.7.0 — 22 September 2026
 
 The first published release of Machinome Viewer, released with Machinome

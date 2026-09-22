@@ -22,7 +22,7 @@
 // every segment has succeeded.
 
 import { toNative } from '../drivers';
-import { ExpressionPath, UnsupportedPathNode, withExpressions } from '../expressions';
+import { ExpressionPath, UnsupportedPathNode, expressionGeneration, withExpressions } from '../expressions';
 import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
@@ -171,6 +171,13 @@ export class Run {
   private readonly bankKeys: Set<string>;
   private readonly spans: [string, ProgramBound, ProgramBound][];
   private readonly initial: RunState;
+  /** One successful finite search path per declared constraint, never shared
+   * across runs or retained through restore. */
+  private readonly boundPaths = new Map<Constraint, {
+    path: ExpressionPath;
+    moving: ReadonlySet<string>;
+    generation: number;
+  }>();
 
   constructor(readonly program: LoadedProgram, readonly dt: number,
               record: number | null = null) {
@@ -742,11 +749,16 @@ export class Run {
     // read only nodes depending on an actually moving path. A constant Motion
     // can still have opposite signed-zero cached endpoints: comparing its
     // start/end with Object.is keeps that read in the moving cone.
-    const boundPath = determined
-      ? new ExpressionPath(constraint.expression,
-                           movingConstraintReads(constraint.reads, paths, held, deltas),
-                           this.program.bindings.roots)
-      : null;
+    const moving = determined
+      ? movingConstraintReads(constraint.reads, paths, held, deltas) : null;
+    const prior = this.boundPaths.get(constraint);
+    const reusable = moving !== null && prior !== undefined
+      && prior.generation === expressionGeneration()
+      && prior.moving.size === moving.size
+      && [...moving].every((name) => prior.moving.has(name));
+    if (!determined || !reusable) this.boundPaths.delete(constraint);
+    let boundPath: ExpressionPath | null = null;
+    let cacheable = false;
     let pathBound = false;
     let pathDisabled = false;
     const level = (t: number): number => {
@@ -754,40 +766,67 @@ export class Run {
       const at = (key: string) => paths.get(key)?.at(t) ?? held[key] + (deltas[key] ?? 0) * t;
       const scope: Record<string, number> = { [constraint.identifier]: own };
       for (const read of constraint.reads) scope[read] = at(read);
+      let finite = Number.isFinite(own);
+      for (const read of constraint.reads) {
+        if (!Number.isFinite(scope[read])) finite = false;
+      }
+      if (pathBound && !finite) cacheable = false;
       let bound: number;
       if (pathDisabled) {
         bound = evaluateExpression(this.program, constraint.expression, scope);
       } else {
         try {
-          bound = Number(pathBound ? boundPath!.at(scope) : boundPath!.bind(scope));
+          if (!pathBound) {
+            cacheable = finite;
+            if (!cacheable) this.boundPaths.delete(constraint);
+            boundPath = reusable && cacheable ? prior!.path
+              : new ExpressionPath(constraint.expression, moving!,
+                                   this.program.bindings.roots);
+          }
+          bound = Number(pathBound ? boundPath!.at(scope)
+            : boundPath!.bind(scope, reusable && cacheable));
           pathBound = true;
         } catch (error) {
           if (!(error instanceof UnsupportedPathNode)) throw error;
           pathDisabled = true;
+          this.boundPaths.delete(constraint);
           bound = evaluateExpression(this.program, constraint.expression, scope);
         }
       }
       const value = at(constraint.identifier);
       return constraint.side === 'high' ? value - bound : bound - value;
     };
-    const start = level(0);
-    const outward = (here: number): boolean => here > 0 && here > start;
-    const subdivisions = this.program.limits.subdivisions;
-    for (let step = 1; step <= subdivisions; step += 1) {
-      const where = step / subdivisions;
-      if (!outward(level(where))) continue;
-      let low = (step - 1) / subdivisions;
-      let high = where;
-      for (let round = 0; round < this.program.limits.bisectionRounds;
-        round += 1) {
-        if (high - low <= this.program.limits.crossingTolerance) break;
-        const middle = (low + high) / 2;
-        if (outward(level(middle))) high = middle;
-        else low = middle;
+    const finish = (contact: ConstraintContact | null): ConstraintContact | null => {
+      if (cacheable && pathBound && !pathDisabled && boundPath?.reusableStanding()) {
+        this.boundPaths.set(constraint, {
+          path: boundPath, moving: moving!, generation: expressionGeneration(),
+        });
       }
-      return { inside: low, outside: high };
+      return contact;
+    };
+    try {
+      const start = level(0);
+      const outward = (here: number): boolean => here > 0 && here > start;
+      const subdivisions = this.program.limits.subdivisions;
+      for (let step = 1; step <= subdivisions; step += 1) {
+        const where = step / subdivisions;
+        if (!outward(level(where))) continue;
+        let low = (step - 1) / subdivisions;
+        let high = where;
+        for (let round = 0; round < this.program.limits.bisectionRounds;
+          round += 1) {
+          if (high - low <= this.program.limits.crossingTolerance) break;
+          const middle = (low + high) / 2;
+          if (outward(level(middle))) high = middle;
+          else low = middle;
+        }
+        return finish({ inside: low, outside: high });
+      }
+      return finish(null);
+    } catch (error) {
+      this.boundPaths.delete(constraint);
+      throw error;
     }
-    return null;
   }
 
   /** The CONSTRAINT LEVEL at the fraction `t` of the stretch: outside is
@@ -1314,6 +1353,7 @@ export class Run {
     }
     for (const command of this.active.values()) command.status = 'cancelled';
     this.active.clear();
+    this.boundPaths.clear();
     for (const record of state.commands) {
       const declaration = this.program.drivers[record.input];
       const command = new Command(

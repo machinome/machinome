@@ -771,6 +771,45 @@ describe('PathValue (D1-D9)', () => {
     expect(expressionMetrics().resolutions - before).toBe(0);
   });
 
+  it('re-evaluates moving nodes at a new search first sample without redoing standing nodes', () => {
+    const id = prepare('((moving + standing) * (fixed + 2))');
+    const path = new PathValue(id, new Set(['moving']));
+    expect(path.bind({ moving: 1, standing: 3, fixed: 5 })).toBe(28);
+    path.at({ moving: 9, standing: 3, fixed: 5 });
+    resetExpressionMetrics();
+    const first = path.bind({ moving: 1, standing: 3, fixed: 5 }, true);
+    expect(expressionMetrics().resolutions).toBe(path.movingNodes());
+    expect(first).toBe(valueOf(id, { time: 0, drivers: {
+      moving: 1, standing: 3, fixed: 5,
+    } } as never));
+  });
+
+  it('checks standing presence and signed-zero bits before a forced search rebind', () => {
+    const id = prepare('((1 / standing) + (moving * 0))');
+    const path = new PathValue(id, new Set(['moving']));
+    expect(path.bind({ standing: +0, moving: 1 })).toBe(Infinity);
+    resetExpressionMetrics();
+    expect(path.bind({ standing: -0, moving: 1 }, true)).toBe(-Infinity);
+    expect(expressionMetrics().resolutions).toBeGreaterThan(path.movingNodes());
+    expect(Number.isNaN(path.bind({ moving: 1 }, true))).toBe(true);
+  });
+
+  it('keeps the first domain error when standing and moving binding reads both change', () => {
+    const id = prepare('(_standing.foo + _moving.bar)');
+    const bindings = new Map([
+      ['_standing', prepare('s')], ['_moving', prepare('m')],
+    ]);
+    const path = new PathValue(id, new Set(['m']), bindings);
+    expect(Number.isNaN(path.bind({ s: 0, m: 0 }))).toBe(true);
+    const full = new PathValue(id, new Set(['m']), bindings);
+    let expected: unknown;
+    try { full.bind({ s: 1, m: 1 }); } catch (error) { expected = error; }
+    let actual: unknown;
+    try { path.bind({ s: 1, m: 1 }, true); } catch (error) { actual = error; }
+    expect(actual).toBeInstanceOf(TypeError);
+    expect((actual as Error).message).toBe((expected as Error).message);
+  });
+
   it('rebinding a changed branch resolves only its dependent cone', () => {
     const id = prepare('((a + b) * (c + d))');
     const path = new PathValue(id, new Set(['a']));

@@ -19,7 +19,10 @@ import type { LoadedProgram, RunDocument } from './program';
 import { nextAfter } from './jumps';
 import { Motion, propagations } from './motion';
 import corpus from '../running-corpus.json';
-import { ExpressionPath, expressionMetrics, UnsupportedPathNode } from '../expressions';
+import {
+  ExpressionPath, expressionGeneration, expressionMetrics,
+  releaseExpressions, retainExpressions, UnsupportedPathNode,
+} from '../expressions';
 
 /** The next representable float below `value`. */
 const nextDown = (value: number): number => nextAfter(value, -Infinity);
@@ -740,6 +743,166 @@ describe('the Gate: a plug that turns only when its pins clear', () => {
     expect(repeated.admitted).toBe(handle.admitted);
     expect(run.state()).toEqual(bank);
     expect(run.stops().at(-1)).toEqual(stop);
+  });
+
+  it('reuses a successful finite Bound path across tick searches in one run', () => {
+    const standing = Array.from({ length: 48 }, (_, index) =>
+      `abs(plug.turn + ${index + 1})`).join(' + ');
+    const upper = `((90 * (feed >= 0)) + (0 * (${standing})))`;
+    const program = bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: upper } } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    });
+    const run = new Run(program, 0.1, 8);
+    const initial = run.snapshot();
+    const bind = vi.spyOn(ExpressionPath.prototype, 'bind');
+    try {
+      run.move('feed', { by: -2, duration: 0.2 });
+      run.advance();
+      const afterFirst = run.state();
+      run.advance();
+      const calls = bind.mock.contexts.filter((path) =>
+        (path as unknown as { expression: string }).expression === upper);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).toBe(calls[0]);
+      expect(afterFirst.feed).toBe(19);
+      expect(run.state().feed).toBe(18);
+      expect((run as unknown as { boundPaths: Map<unknown, unknown> }).boundPaths.size)
+        .toBe(1);
+      run.restore(initial);
+      expect((run as unknown as { boundPaths: Map<unknown, unknown> }).boundPaths.size)
+        .toBe(0);
+      run.move('feed', { by: -1, duration: 0.1 });
+      run.advance();
+      const replay = bind.mock.contexts.filter((path) =>
+        (path as unknown as { expression: string }).expression === upper);
+      expect(replay[2]).not.toBe(replay[1]);
+      const other = new Run(program, 0.1, 8);
+      other.move('feed', { by: -1, duration: 0.1 });
+      other.advance();
+      const independent = bind.mock.contexts.filter((path) =>
+        (path as unknown as { expression: string }).expression === upper);
+      expect(independent[3]).not.toBe(replay[2]);
+    } finally {
+      bind.mockRestore();
+    }
+  });
+
+  it('does not retain a Bound path with a nondeterministic standing call', () => {
+    const upper = '(90 + random() + (0 * feed))';
+    const run = new Run(bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: upper } } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    }), 0.1, 8);
+    const bind = vi.spyOn(ExpressionPath.prototype, 'bind');
+    try {
+      run.move('feed', { by: -2, duration: 0.2 });
+      run.advance();
+      run.advance();
+      const calls = bind.mock.contexts.filter((path) =>
+        (path as unknown as { expression: string }).expression === upper);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).not.toBe(calls[0]);
+      expect((run as unknown as { boundPaths: Map<unknown, unknown> }).boundPaths.size)
+        .toBe(0);
+    } finally {
+      bind.mockRestore();
+    }
+  });
+
+  it('replaces a retained Bound path when a different read moves', () => {
+    const upper = '(90 + (0 * feed) + (0 * other))';
+    const run = new Run(bench({
+      coordinates: { feed: input(20), other: input(20),
+        'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: upper } } },
+      sources: { feed: ['feed'], other: ['other'], 'plug.turn': [] },
+    }), 0.1, 8);
+    const bind = vi.spyOn(ExpressionPath.prototype, 'bind');
+    try {
+      run.move('feed', { by: -1, duration: 0.1 });
+      run.advance();
+      run.move('other', { by: -1, duration: 0.1 });
+      run.advance();
+      const calls = bind.mock.contexts.filter((path) =>
+        (path as unknown as { expression: string }).expression === upper);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).not.toBe(calls[0]);
+    } finally {
+      bind.mockRestore();
+    }
+  });
+
+  it('does not keep a Bound path after a nonfinite search scope', () => {
+    const upper = '(90 + (0 * feed))';
+    const run = new Run(bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: upper } } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    }), 0.1, 8);
+    run.move('feed', { by: -1, duration: 0.1 });
+    run.advance();
+    const cache = (run as unknown as { boundPaths: Map<unknown, unknown> }).boundPaths;
+    expect(cache.size).toBe(1);
+    (run as unknown as { bank: Record<string, number> }).bank['plug.turn'] = Infinity;
+    run.move('feed', { by: -1, duration: 0.1 });
+    run.advance();
+    expect(cache.size).toBe(0);
+  });
+
+  it('rebuilds a Bound path after the expression generation changes', () => {
+    const upper = '(90 + (0 * feed))';
+    const run = new Run(bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: upper } } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    }), 0.1, 8);
+    const bind = vi.spyOn(ExpressionPath.prototype, 'bind');
+    try {
+      run.move('feed', { by: -2, duration: 0.2 });
+      run.advance();
+      const before = expressionGeneration();
+      retainExpressions();
+      releaseExpressions();
+      expect(expressionGeneration()).toBeGreaterThan(before);
+      run.advance();
+      const calls = bind.mock.contexts.filter((path) =>
+        (path as unknown as { expression: string }).expression === upper);
+      expect(calls).toHaveLength(2);
+      expect(calls[1]).not.toBe(calls[0]);
+      expect(run.state().feed).toBe(18);
+    } finally {
+      bind.mockRestore();
+    }
+  });
+
+  it('evicts a reused Bound path when a later prescribed sample errors', () => {
+    const run = new Run(bench({
+      coordinates: { feed: input(20), 'plug.turn': coordinate(30) },
+      edges: [],
+      spans: { 'plug.turn': { high: { expression: '(90 + (0 * feed))' } } },
+      sources: { feed: ['feed'], 'plug.turn': [] },
+    }), 0.1, 8);
+    run.move('feed', { by: -2, duration: 0.2 });
+    run.advance();
+    const cache = (run as unknown as { boundPaths: Map<unknown, unknown> }).boundPaths;
+    expect(cache.size).toBe(1);
+    const failure = new Error('sample failed');
+    const at = vi.spyOn(ExpressionPath.prototype, 'at').mockImplementation(
+      () => { throw failure; });
+    try {
+      expect(() => run.advance()).toThrow(failure);
+      expect(cache.size).toBe(0);
+    } finally {
+      at.mockRestore();
+    }
   });
 
   it('falls back to generic evaluation for a ternary searched bound', () => {

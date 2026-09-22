@@ -8,6 +8,7 @@ The published OperatingCurta runs correctly in the browser but a declared two-se
 - Preserve first-sample evaluation of every moving node, all later search samples, search order and limits, float operations, error behavior, committed bank, snapshot/restore and replay.
 - Keep the cache finite and owned by the run; do not add a public API, document field, timestep option or dependency.
 - Reject the optimization if the paired JavaScript benchmark does not show a material benefit with exact Curta parity.
+- Record the source-only correction in the reader-facing Unreleased changelog, explicitly keeping API 24 and document versions 1–11 unchanged; leave the 0.7.0 release entry intact.
 
 ## Capabilities
 
@@ -17,8 +18,8 @@ The published OperatingCurta runs correctly in the browser but a declared two-se
 
 ### Modified Capabilities
 
-None.
+- `user-documentation`: Keep the post-release source correction separate from the released manual's version claims in the changelog.
 
 ## Impact
 
-Viewer-owned TypeScript expression-path and running-search internals, focused tests, and OperatingCurta performance/parity evidence. The originating project and framework are unchanged. The bundle and public API/document versions remain unchanged.
+Viewer-owned TypeScript expression-path and running-search internals, focused tests, a changelog note, and OperatingCurta performance/parity evidence. The originating project and framework are unchanged. The bundle and public API/document versions remain unchanged.

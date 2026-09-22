@@ -16,7 +16,9 @@ install the package from the index through the framework's `viewer` extra, keep
 the source build as the contributor's path, and link to the framework's modeling
 documentation at the pages that manual currently has. Its pages SHALL contain
 user guidance, not development workflow records, decision records or the names
-of the projects that motivated a behaviour.
+of the projects that motivated a behaviour. Post-release source corrections
+SHALL appear in an Unreleased changelog section that names the viewer API and
+does not retroactively attribute them to the last published release.
 
 #### Scenario: A maker arrives at the manual
 - **WHEN** a maker opens the manual's home page
@@ -27,6 +29,11 @@ of the projects that motivated a behaviour.
 - **WHEN** a maker reads the home, installation or compatibility page
 - **THEN** each names version 0.7.0, released with Machinome 0.7.0, and none
   describes the package as unreleased
+
+#### Scenario: A reader checks a post-release source correction
+- **WHEN** the changelog records a source correction after version 0.7.0
+- **THEN** its Unreleased section states the applicable viewer API and keeps
+  the historical 0.7.0 release section unchanged
 
 ### Requirement: Hosts have a complete public interface reference
 
@@ -58,4 +65,3 @@ build failures. Source distributions SHALL carry the documentation sources.
 - **WHEN** the manual is opened on a mobile-width viewport
 - **THEN** its navigation, text and reference content remain usable without
   page-wide horizontal overflow
-

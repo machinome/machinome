@@ -1021,12 +1021,12 @@ export class ExpressionPath {
     return this.path!;
   }
 
-  bind(values: Record<string, number>): unknown {
+  bind(values: Record<string, number>, firstSampleOfSearch = false): unknown {
     return withExpressions(() => {
       // Binding a new piece does not need to reconstruct the old one.
       this.standing = undefined;
       const path = this.current();
-      const result = path.bind(values);
+      const result = path.bind(values, firstSampleOfSearch);
       this.standing = path.boundInputs();
       return result;
     });
@@ -1035,12 +1035,19 @@ export class ExpressionPath {
   at(values: Record<string, number>): unknown {
     return withExpressions(() => this.current().at(values));
   }
+
+  /** A Bound search may retain this path across searches only when no
+   * standing call can produce a new value without changed numeric inputs. */
+  reusableStanding(): boolean {
+    return this.path?.reusableStanding() ?? false;
+  }
 }
 
 export class PathValue {
   /** The moving cone, in the WHOLE graph's postorder, decided the first
    * time this quantity is bound (D2). `null` until then. */
   private order: NodeId[] | null = null;
+  private movingOrderSet: ReadonlySet<NodeId> = new Set();
 
   /** Every node's value at the last bind. `at` never changes this map. */
   private readonly bound = new Map<NodeId, unknown>();
@@ -1056,6 +1063,7 @@ export class PathValue {
   private readonly children = new Map<NodeId, readonly NodeId[]>();
   private readonly inputs: NodeId[] = [];
   private readonly inputValues = new Map<NodeId, { present: boolean; value: unknown }>();
+  private readonly calls: NodeId[] = [];
 
   constructor(private readonly root: NodeId,
               private readonly moving: ReadonlySet<string>,
@@ -1211,7 +1219,7 @@ export class PathValue {
   /** A new piece: decide the moving cone on the first bind, then retain
    * unaffected values across later pieces. `at` samples are scratch and
    * cannot contaminate this bound snapshot. */
-  bind(values: Record<string, number>): unknown {
+  bind(values: Record<string, number>, firstSampleOfSearch = false): unknown {
     const deciding = this.order === null;
     this.computed.clear();
     if (deciding) {
@@ -1246,6 +1254,7 @@ export class PathValue {
         const node = nodes[id];
         const children = this.childrenOf(id);
         this.children.set(id, children);
+        if (node.kind === 'call') this.calls.push(id);
         if (node.kind === 'name' && children.length === 0
             && node.parts[0] !== TIME_ID) {
           this.inputs.push(id);
@@ -1261,6 +1270,7 @@ export class PathValue {
         if (nodeMoves) order.push(id);
       }
       this.order = order;
+      this.movingOrderSet = new Set(order);
       return this.bound.get(this.root);
     }
 
@@ -1274,9 +1284,20 @@ export class PathValue {
         this.inputValues.set(id, next);
       }
     }
-    if (dirty.size === 0) return this.bound.get(this.root);
+    if (dirty.size === 0 && !firstSampleOfSearch) return this.bound.get(this.root);
+    if (firstSampleOfSearch && [...dirty].every((id) => this.movingOrderSet.has(id))) {
+      // An unchanged standing graph needs no whole-postorder scan. The
+      // moving order is that postorder's stable subsequence, and every
+      // changed leaf is already inside it.
+      for (const id of this.order!) {
+        const value = this.valueAt(id, values);
+        resolutions += 1;
+        this.bound.set(id, value);
+      }
+      return this.bound.get(this.root);
+    }
     for (const id of this.walked) {
-      if (!dirty.has(id)
+      if (!dirty.has(id) && !(firstSampleOfSearch && this.movingOrderSet.has(id))
           && !this.children.get(id)!.some((child) => dirty.has(child))) continue;
       const value = this.valueAt(id, values);
       resolutions += 1;
@@ -1312,6 +1333,11 @@ export class PathValue {
 
   /** The whole graph's node count (test-only, D8's census). */
   totalNodes(): number { return this.walked.length; }
+
+  reusableStanding(): boolean {
+    return this.order !== null && this.calls.every((id) =>
+      this.bound.get((nodes[id] as CallNode).callee) !== Math.random);
+  }
 }
 
 /** The names a tick's path MOVES (D5): a source whose increment over the
