@@ -3,50 +3,11 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
-## Unreleased
-
-- Retain exact motion for coordinates read by running bounds, including
-  Curta's self-read anti-reversal pawl. On the pinned export, its first
-  18-degree tick took 1.084 rather than 2.133 process-CPU seconds, with
-  the same 213-coordinate bank; the active-stop search kept all 134
-  sampled values and the stop bit-identical. A full browser revolution
-  remains unverified and slow.
-- Reuse a search-local moving cone when sampling a determined constraint
-  bound. The pinned OperatingCurta's first 48 crank ticks took 28.082 s
-  versus 48.218 s on the post-cap viewer in no-WebGL runs, with
-  identical 213-coordinate banks; the complete browser turn remains
-  unverified and slow. (ADR-074.)
-- Keep a fitting operating machine's expression graph across ticks by
-  raising the finite reclaim trigger from 50,000 to 125,000 nodes. On a
-  pinned OperatingCurta export the first 48 crank ticks took 37.440 s
-  rather than 65.670 s on the reserved core, with the same 213-coordinate
-  bank. The complete browser turn is still much slower than its declared
-  two-second drawing duration. (ADR-043.)
-- Retain only the names a followed expression reads for generation-reset
-  reconstruction, avoiding a full-bank copy on every path piece. On the
-  pinned OperatingCurta export this saves 9.6% of the first 48 crank ticks
-  versus the preceding cache build; a full turn remains unverified and slow.
-- Reuse unchanged expression nodes across adjacent running path pieces. The
-  OperatingCurta's first 48 crank ticks improve by 14.6% without WebGL, but a
-  complete browser revolution remains much slower than its two-second
-  declaration; follow-up performance work is still required. (ADR-074.)
-- Draw a clocked handle gesture at the tempo of the first `by` instruction
-  naming its input, scaled to admitted travel. Use the existing 0.2-second
-  duration when no instruction declares a travel. Pressed instructions keep
-  their declared duration. (ADR-073; integrated from the earlier Curta cycle.)
-- Preserve source-motion timing through running chains and selected blocks,
-  fixing Curta carry loss when later result stations join the graph. Range
-  and moving-contact probes use the same path as the committed bank.
-- Declare API 24 and document versions 1–11. Re-export running models with the
-  paired corrected producer; old viewers reject v11 before operation.
-- Refuse distribution builds through symlinked `node_modules` before an
-  install can modify another checkout's dependencies.
-
-## 0.7.0 — 21 September 2026
+## 0.7.0 — 22 September 2026
 
 The first published release of Machinome Viewer, released with Machinome
-0.7.0 and numbered with it. It declares viewer API 23 and reads document
-versions 1 through 10. Install both with `pip install "machinome[viewer]"`.
+0.7.0 and numbered with it. It declares viewer API 24 and reads document
+versions 1 through 11. Install both with `pip install "machinome[viewer]"`.
 
 ### What a maker gets
 
@@ -65,13 +26,17 @@ versions 1 through 10. Install both with `pip install "machinome[viewer]"`.
   travel admitted, refused or cancelled. Snapshot, restore and bounded
   recording. The engine executes what Machinome publishes: laws that read the
   coordinate they drive, blocks whose order a part's position selects, bounds
-  that read other coordinates, `Play` clearance laws and explicit time drives
-  (document versions 5 to 7, 9 and 10), reproducing the framework's
-  conformance corpus bit for bit.
+  that read other coordinates, `Play` clearance laws, explicit time drives
+  and source-timed motion (document versions 5 to 7 and 9 to 11),
+  reproducing the framework's conformance corpus bit for bit. A determined
+  source keeps its stroke, dwell and landing through the chains and
+  selected blocks that read it, so a calculator's carry does not change
+  when later result stations join the graph.
 - **Clocked machines** (document version 8). One request per gesture, solved
   at once: stops clip the request, events commit in path order, states are
   read-only readouts. A pressed instruction is drawn over its declared
-  duration, a handle gesture over a fifth of a second. A declared elapsed
+  duration, a handle gesture at the tempo of the instruction naming its
+  input, or over a fifth of a second when none does. A declared elapsed
   clock gets play, step and speed.
 - **Touching the parts.** A model that declares `Button`, `Turn` or `Slide`
   controls makes those parts pressable and draggable, one request per
@@ -96,6 +61,41 @@ versions 1 through 10. Install both with `pip install "machinome[viewer]"`.
   still load.
 
 ### Corrections carried into the release
+
+- Source timing. An endpoint-era executor handed each downstream block only
+  its predecessor's net increment, a straight line that re-timed the Curta's
+  carry gate. Determined sources now retain their motion path (ADR-071).
+  Because an older viewer reads the corrected payload and silently executes
+  the wrong carry, the viewer declares API 24 and document versions 1 to 11;
+  new running exports declare version 11, and their identity carries the
+  source-timing generation, so endpoint-era snapshots refuse to restore into
+  a re-exported program. Legacy running documents load and run with the
+  corrected physics. Re-export is the migration (ADR-072).
+- A clocked handle gesture is drawn at the tempo of the first `by`
+  instruction naming its input, scaled to admitted travel; the 0.2-second
+  duration remains when no instruction declares a travel, and pressed
+  instructions keep their declared duration (ADR-073).
+- `websockets` is a runtime dependency, so a fresh
+  `pip install "machinome[viewer]"` gives a `machinome develop` page whose
+  live reload connects. The test environment installs `setuptools`, which
+  Python 3.12 no longer provides.
+- A distribution build refuses to run through a symlinked `node_modules`
+  before an install can modify another checkout's dependencies.
+
+### Running a calculator-sized machine
+
+Six measured cycles on the pinned OperatingCurta export, each accepted only
+with an identical 213-coordinate bank: expression references survive cache
+pressure; unchanged expression nodes are reused across adjacent path pieces
+and only the names a followed expression reads are retained for reset; the
+finite reclaim trigger rises from 50,000 to 125,000 nodes so a fitting
+machine keeps its graph across ticks; a determined constraint bound is
+sampled through a search-local moving cone (ADR-074); and coordinates read
+by running bounds, including the Curta's self-read anti-reversal pawl,
+retain exact motion. The first 48 crank ticks fell from 65.7 to 28.1 seconds
+without WebGL, and the first 18-degree tick from 2.13 to 1.08 process-CPU
+seconds. A complete browser revolution remains far slower than its declared
+two-second drawing duration; that work continues.
 
 - Moving-contact stops act at their first located contact, so a long request
   stops at the first obstruction rather than a later free window; a landing

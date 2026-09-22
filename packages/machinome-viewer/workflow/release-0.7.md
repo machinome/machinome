@@ -1,14 +1,14 @@
 # Machinome Viewer 0.7.0 release preparation
 
-Companion to Machinome 0.7.0, released 21 September 2026. The pilot decided
+Companion to Machinome 0.7.0, released 22 September 2026. The pilot decided
 the viewer releases as 0.7.0, the framework's number, replacing the unreleased
 0.2.0 development state (OpenSpec change `release-the-viewer-as-0-7`). This
 document records the prepared state; uploading to PyPI, tagging and pushing are
 the maintainer's separate actions.
 
 The Python distribution and bundled widget are both version 0.7.0. The widget
-reports API 23 and reads document schemas 1–10, including running `Play`
-contact laws and explicit time drives. It retains legacy solid-node document
+reports API 24 and reads document schemas 1–11, including running `Play`
+contact laws, explicit time drives and source-timed motion. It retains legacy solid-node document
 reading and uses the Machinome command, entry point, browser global and asset
 names.
 
@@ -24,8 +24,8 @@ index.
 
 To reproduce packaging: `python -m build`, then
 `python -m twine check --strict dist/*`. Install the wheel in a fresh environment
-outside the repository and run `machinome-viewer describe`; expect API 23,
-version 0.7.0 and document versions 1 through 10. The sdist carries the bundle
+outside the repository and run `machinome-viewer describe`; expect API 24,
+version 0.7.0 and document versions 1 through 11. The sdist carries the bundle
 and source; verify it independently as well. Never run `scripts/check-dist`,
 `npm ci` or `npm install` in a worktree whose `node_modules` is a link to the
 primary checkout.

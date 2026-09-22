@@ -45,7 +45,7 @@ def test_the_manual_states_the_release():
         assert 'API 24' in release_sections[0]
         release_sections = release_sections[1:]
     current = ' '.join(release_sections[0].split())
-    assert current.startswith('0.7.0 — 21 September 2026'), current[:40]
+    assert current.startswith('0.7.0 — 22 September 2026'), current[:40]
     assert 'unreleased' not in current.lower()
     assert 'Machinome 0.7.0' in current
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
