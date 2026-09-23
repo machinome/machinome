@@ -30,6 +30,15 @@ class _IntegrationCache:
         self.placements = OrderedDict()
 
 
+class _CachedPlaced(tuple):
+    """One successful placed value and its optional attempt-local search tree."""
+
+    def __new__(cls, polygons):
+        value = super().__new__(cls, polygons)
+        value.box_tree = None
+        return value
+
+
 @contextmanager
 def _profile_integration_cache():
     """Reuse successful pure contact work only for this integration attempt."""
@@ -71,8 +80,51 @@ def _cached_placed(cache, pending, profile, angle, xy, key):
         return cache.placements[key]
     placed = _placed(profile, angle, xy)
     if key is not None:
+        placed = _CachedPlaced(placed)
         pending[key] = placed
     return placed
+
+
+def _boxes_disjoint(left, right):
+    return (left[2] < right[0] or right[2] < left[0] or
+            left[3] < right[1] or right[3] < left[1])
+
+
+def _tree_bounds(indices, placed):
+    low_x, low_y, high_x, high_y = placed[indices[0]][2]
+    for index in indices[1:]:
+        box = placed[index][2]
+        if box[0] < low_x: low_x = box[0]
+        if box[1] < low_y: low_y = box[1]
+        if box[2] > high_x: high_x = box[2]
+        if box[3] > high_y: high_y = box[3]
+    return (low_x, low_y, high_x, high_y)
+
+
+def _box_tree(indices, placed, depth=0):
+    """Comparison-only conservative hierarchy over validated placed boxes."""
+    bounds = _tree_bounds(indices, placed)
+    if len(indices) <= 4:
+        return (bounds, tuple(indices), None, None)
+    axis = depth % 2
+    indices.sort(key=lambda index: (placed[index][2][axis], index))
+    middle = len(indices) // 2
+    return (bounds, None,
+            _box_tree(indices[:middle], placed, depth + 1),
+            _box_tree(indices[middle:], placed, depth + 1))
+
+
+def _box_candidates(tree, box, placed, candidates):
+    bounds, indices, left, right = tree
+    if _boxes_disjoint(box, bounds):
+        return
+    if indices is not None:
+        for index in indices:
+            if not _boxes_disjoint(box, placed[index][2]):
+                candidates.append(index)
+    else:
+        _box_candidates(left, box, placed, candidates)
+        _box_candidates(right, box, placed, candidates)
 
 
 def _finite(value, what):
@@ -286,6 +338,7 @@ def profile_overlap(left, right, left_angle, right_angle, *,
         right_placed = _placed(right, right_angle, right_xy)
         pair_key = None
         pending = None
+        right_reused = False
     else:
         left_key = _placement_key(left, left_angle, left_xy)
         right_key = _placement_key(right, right_angle, right_xy)
@@ -295,6 +348,7 @@ def profile_overlap(left, right, left_angle, right_angle, *,
             # other side; preserve the unmodified evaluator's work and error
             # order for custom conversion and indexing objects.
             pair_key = None
+            right_reused = False
             left_placed = _placed(left, left_angle, left_xy)
             right_placed = _placed(right, right_angle, right_xy)
         else:
@@ -302,12 +356,29 @@ def profile_overlap(left, right, left_angle, right_angle, *,
             if pair_key in cache.pairs:
                 cache.pairs.move_to_end(pair_key)
                 return cache.pairs[pair_key]
+            right_reused = right_key in cache.placements
             # Publish neither new placement if either operand or SAT fails.
             left_placed = _cached_placed(cache, pending, left, left_angle, left_xy, left_key)
             right_placed = _cached_placed(cache, pending, right, right_angle, right_xy, right_key)
+    tree = None
+    new_tree = None
+    if (right_reused and len(left_placed) >= 32 and len(right_placed) >= 16
+            and len(left_placed) * len(right_placed) >= 512):
+        tree = right_placed.box_tree
+        if tree is None:
+            # This candidate stays local until the entire predicate succeeds.
+            new_tree = _box_tree(list(range(len(right_placed))), right_placed)
+            tree = new_tree
     result = 0.0
     for a_points, a_axes, a_box in left_placed:
-        for b_points, b_axes, b_box in right_placed:
+        if tree is None:
+            candidates = right_placed
+        else:
+            indices = []
+            _box_candidates(tree, a_box, right_placed, indices)
+            indices.sort()
+            candidates = (right_placed[index] for index in indices)
+        for b_points, b_axes, b_box in candidates:
             if (a_box[2] < b_box[0] or b_box[2] < a_box[0] or
                     a_box[3] < b_box[1] or b_box[3] < a_box[1]):
                 continue
@@ -326,6 +397,8 @@ def profile_overlap(left, right, left_angle, right_angle, *,
             _remember(cache.placements, key, value, _PLACEMENT_LIMIT)
         if pair_key is not None:
             _remember(cache.pairs, pair_key, result, _PAIR_LIMIT)
+        if new_tree is not None:
+            right_placed.box_tree = new_tree
     return result
 
 

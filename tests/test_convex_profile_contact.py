@@ -56,6 +56,21 @@ class ConvexProfileContactTest(unittest.TestCase):
         self.assertEqual(profile_overlap(square, square, 0.0, 0.0,
                                          right_xy=(one_ulp_out, 1.0)), 0.0)
 
+    def test_large_direct_contact_keeps_strict_unsigned_result(self):
+        def loops(count, offset):
+            return tuple(((x, 0.0), (x + 1.0, 0.0),
+                          (x + 1.0, 1.0), (x, 1.0))
+                         for x in (float(offset + 3 * i) for i in range(count)))
+
+        left = ConvexProfile(loops(32, 0))
+        right = ConvexProfile(loops(15, 1000) + loops(1, 94))
+        self.assertEqual(struct.pack('!d', profile_overlap(
+            left, right, -0.0, 0.0)), struct.pack('!d', 1.0))
+        one_ulp_clear = math.nextafter(94.0, math.inf) - 94.0
+        self.assertEqual(struct.pack('!d', profile_overlap(
+            left, right, -0.0, 0.0, right_xy=(one_ulp_clear, 0.0))),
+            struct.pack('!d', 0.0))
+
     def test_repeated_vertex_zero_edge_and_crossing_refuse(self):
         pentagram = ((0.0, 3.0), (1.8, -2.4), (-2.9, 0.9),
                      (2.9, 0.9), (-1.8, -2.4))
