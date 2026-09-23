@@ -52,6 +52,7 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 EXPECTED_EXPORTS = {
     'Driver': 'machinome.simulation.driver',
     'Play': 'machinome.simulation.play',
+    'Follow': 'machinome.simulation.follow',
     'RampProgram': 'machinome.simulation.driver',
     # The state declaration and its two enumeration faces, added with
     # the clocked discipline (OpenSpec change ``declare-the-state``).

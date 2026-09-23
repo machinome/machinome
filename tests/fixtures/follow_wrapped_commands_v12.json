@@ -1,0 +1,26 @@
+{
+  "document": "follow_wrapped_v12.json",
+  "dt": 1.0,
+  "initial": {
+    "ball.slide": 0.0,
+    "high": 3.0,
+    "low": 0.0
+  },
+  "steps": [
+    {
+      "move": {"input": "low", "to": 3.0},
+      "status": "completed",
+      "bank": {"ball.slide": 2.0, "high": 3.0, "low": 3.0}
+    },
+    {
+      "move": {"input": "low", "to": 0.0},
+      "status": "completed",
+      "bank": {"ball.slide": 2.0, "high": 3.0, "low": 0.0}
+    },
+    {
+      "move": {"input": "high", "to": 1.0},
+      "status": "completed",
+      "bank": {"ball.slide": 1.0, "high": 1.0, "low": 0.0}
+    }
+  ]
+}

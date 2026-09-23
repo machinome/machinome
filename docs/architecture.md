@@ -1088,6 +1088,20 @@ stop localization replays from the original driver through the complete play
 prefix and any downstream observer. Publication carries a `kind: "play"`
 edge with its ordered endpoints and offsets, selecting document version 9.
 
+The Curta's radial positioning ball needs a second, narrower explicit
+clearance law (ADR-141). `Follow(lower=, upper=)` has two independent
+source coordinates and one banked retained output, with structurally
+matching dynamic lower and upper Bounds. It projects the retained value
+through certified piecewise-affine boundary paths and visits both one-sided
+values at every authored cut. The source path must be an exact ordinary
+affine line; the follower is terminal among program edges. Incompatible
+surface excursions add certified cut-side candidates to the existing Bound
+search, without changing its uniform samples or bisection. Absolute
+landings keep the ball where a retreating surface left it. Unsupported
+source paths or envelope shapes refuse atomically; self-read switch laws
+and `Play` are unchanged. Publication selects document version 12 and
+includes the producer's nullable jump plans for both surfaces.
+
 A quantity a tick follows along ONE path with ONE branch reading is
 evaluated as that path, not as an expression (ADR-124): `_PathValue`
 decides, in the same postorder walk `GraphValue.evaluate` would have

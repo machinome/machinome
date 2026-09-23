@@ -1,0 +1,40 @@
+{
+  "version": 12,
+  "bindings": [
+    {"name": "_b0", "expression": "(low / 2)"},
+    {"name": "_b1", "expression": "floor(_b0)"},
+    {"name": "_b2", "expression": "(2 * _b1)"},
+    {"name": "_b3", "expression": "(low - _b2)"}
+  ],
+  "drivers": {
+    "high": {"default": 3.0, "dtype": null, "range": null, "scale": null, "unit": null},
+    "low": {"default": 0.0, "dtype": null, "range": null, "scale": null, "unit": null}
+  },
+  "program": {
+    "clock": "time",
+    "coordinates": {
+      "ball.slide": {"domain": "translational", "initial": 0.0, "kind": "coordinate", "unit": "mm"},
+      "high": {"domain": null, "initial": 3.0, "kind": "input"},
+      "low": {"domain": null, "initial": 0.0, "kind": "input"}
+    },
+    "edges": [{
+      "description": "(low, high, ball.slide) drives ball.slide",
+      "gives": ["ball.slide"],
+      "kind": "follow",
+      "lower": "_b3",
+      "lower_plan": {
+        "jumps": [{"affine": true, "level": "_b0", "name": "_j0", "primitive": "floor"}],
+        "skeleton": "(low - (2 * _j0))"
+      },
+      "needs": ["low", "high", "ball.slide"],
+      "stated_by": "WrappedEnvelope",
+      "upper": "high",
+      "upper_plan": null
+    }],
+    "identity": "c71c83e2d41185f73caa13bee6536dba3294d14e885d18c17a3203e3549996dc",
+    "intermediates": [],
+    "limits": {"agreement": 1e-09, "bisection_rounds": 64, "crossing_tolerance": 1e-12, "max_crossings": 1000, "subdivisions": 64},
+    "sources": {"ball.slide": ["high", "low"], "high": ["high"], "low": ["low"]},
+    "spans": {"ball.slide": {"high": {"expression": "high"}, "low": {"expression": "_b3"}}}
+  }
+}

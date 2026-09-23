@@ -321,19 +321,31 @@ class Run:
         # The program graph already belongs to this run; no cache outlives it.
         self._constraint_bind_cache = {}
         for edge in self.program.edges:
-            if edge.kind != 'play':
-                continue
-            source, retained = edge.needs
-            x, y = self.bank[self.program.nodes[source].name], \
-                self.bank[self.program.nodes[retained].name]
-            lower, upper = x - edge.high, x - edge.low
-            if not lower <= y <= upper:
-                raise UnsupportedLaw(
-                    f'{edge.description}, stated by {edge.stated_by}: '
-                    f'initial source {x!r} and retained value {y!r} put the '
-                    f'retained coordinate outside its admissible interval '
-                    f'[{lower!r}, {upper!r}]. Play never teleports an '
-                    f'invalid rest state.')
+            if edge.kind == 'play':
+                source, retained = edge.needs
+                x, y = self.bank[self.program.nodes[source].name], \
+                    self.bank[self.program.nodes[retained].name]
+                lower, upper = x - edge.high, x - edge.low
+                if not lower <= y <= upper:
+                    raise UnsupportedLaw(
+                        f'{edge.description}, stated by {edge.stated_by}: '
+                        f'initial source {x!r} and retained value {y!r} put the '
+                        f'retained coordinate outside its admissible interval '
+                        f'[{lower!r}, {upper!r}]. Play never teleports an '
+                        f'invalid rest state.')
+            elif edge.kind == 'follow':
+                names = [self.program.nodes[key].name for key in edge.needs]
+                source_values = {name: self.bank[name] for name in names[:2]}
+                lower = edge.lower_graph.evaluate(source_values)
+                upper = edge.upper_graph.evaluate(source_values)
+                retained = self.bank[names[2]]
+                if (not all(math.isfinite(value)
+                            for value in (lower, upper, retained))
+                        or not lower <= retained <= upper):
+                    raise UnsupportedLaw(
+                        f'{edge.description}, stated by {edge.stated_by}: '
+                        f'Follow rest value {retained!r} must lie in a '
+                        f'finite ordered interval [{lower!r}, {upper!r}].')
         self.keys = {identifier: ('input', identifier) for identifier in inputs}
         for identifier, (node, name) in coordinates.items():
             self.keys[identifier] = ('slot', id(get_coordinate(node, name)))
@@ -790,7 +802,12 @@ class Run:
             for side, bound in (('low', low), ('high', high)):
                 if not isinstance(bound, Constraint):
                     continue
-                if all(committed[read] == held[read] for read in bound.reads):
+                follow_path = (deltas is not None and
+                               self.keys[identifier] in
+                               getattr(deltas, 'follow_cuts', {}))
+                if (not follow_path and
+                        all(committed[read] == held[read]
+                            for read in bound.reads)):
                     # Nothing the bound READS moves over this stretch, so
                     # the bound is a NUMBER for it -- its expression at
                     # the tick's committed own value and the reads'
@@ -845,7 +862,11 @@ class Run:
         further.
         """
         keys = (constraint.identifier,) + constraint.reads
-        if all(committed[key] == held[key] for key in keys):
+        follow_path = (deltas is not None and
+                       self.keys[constraint.identifier] in
+                       getattr(deltas, 'follow_cuts', {}))
+        if (not follow_path and
+                all(committed[key] == held[key] for key in keys)):
             return None
         return self._searched_constraint(constraint, held, values,
                                          admissions, deltas)
@@ -925,21 +946,58 @@ class Run:
         def outward(here):
             return here > 0.0 and here > start
 
-        for step in range(1, _SUBDIVISIONS + 1):
-            where = step / _SUBDIVISIONS
-            if not outward(level(where)):
-                continue
-            low, high = (step - 1) / _SUBDIVISIONS, where
-            for _round in range(_BISECTION_ROUNDS):
-                if high - low <= _CROSSING_TOLERANCE:
+        own_key = keys[constraint.identifier]
+        follow_cuts = getattr(deltas, 'follow_cuts', {}).get(own_key)
+        if follow_cuts is not None:
+            # A certified Follow path can invert and become feasible again
+            # between two uniform samples. Its affine piece extrema are at
+            # one-sided cuts; keep EVERY old probe and add both cut sides.
+            samples = sorted({*(step / _SUBDIVISIONS
+                                for step in range(1, _SUBDIVISIONS + 1)),
+                              *(cut for cut in follow_cuts if cut > 0.0),
+                              *(math.nextafter(cut, -math.inf)
+                                for cut in follow_cuts if cut > 0.0)})
+            closures = {
+                where: ((held_low - own_value) if constraint.side == 'low'
+                        else (own_value - held_high))
+                for where, own_value, held_low, held_high in
+                deltas.follow_closures[own_key]
+            }
+            previous = 0.0
+            for where in samples:
+                here = level(where)
+                if where in closures and outward(closures[where]):
+                    before = math.nextafter(where, -math.inf)
+                    if not outward(here) and not outward(level(before)):
+                        raise UnsupportedLaw(
+                            f'{constraint.identifier} Follow envelope has '
+                            f'a positive one-sided {constraint.side} Bound '
+                            f'level at {where!r}, but no representable '
+                            f'neighbor brackets that contact. The tick '
+                            f'was not committed.')
+                if outward(here):
+                    low, high = previous, where
                     break
-                middle = (low + high) / 2.0
-                if outward(level(middle)):
-                    high = middle
-                else:
-                    low = middle
-            return _ConstraintContact(low, high)
-        return None
+                previous = where
+            else:
+                return None
+        else:
+            for step in range(1, _SUBDIVISIONS + 1):
+                where = step / _SUBDIVISIONS
+                if outward(level(where)):
+                    low, high = (step - 1) / _SUBDIVISIONS, where
+                    break
+            else:
+                return None
+        for _round in range(_BISECTION_ROUNDS):
+            if high - low <= _CROSSING_TOLERANCE:
+                break
+            middle = (low + high) / 2.0
+            if outward(level(middle)):
+                high = middle
+            else:
+                low = middle
+        return _ConstraintContact(low, high)
 
     def _constraint_level(self, constraint, held, values, admissions, t,
                           own):
@@ -971,7 +1029,9 @@ class Run:
         bound = constraint.graph.evaluate(arguments)
         own_key = self.keys[constraint.identifier]
         value = (landings[own_key]
-                 if self._has_play_ancestor(own_key)
+                 if (self._has_play_ancestor(own_key)
+                     or self.program.determiner.get(own_key, None) is not None
+                     and self.program.determiner[own_key].kind == 'follow')
                  and own_key in landings
                  else held[constraint.identifier] + deltas[own_key])
         return value - bound if constraint.side == 'high' else bound - value

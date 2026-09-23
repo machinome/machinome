@@ -164,6 +164,9 @@ TIME_DRIVE_DOCUMENT_VERSION = 10
 #: gate covers every new running export without a speculative need detector.
 SOURCE_TIMING_DOCUMENT_VERSION = 11
 
+#: A running program with a certified two-envelope retained follower.
+FOLLOW_DOCUMENT_VERSION = 12
+
 
 _MISSING = object()
 
@@ -547,6 +550,8 @@ def document_version(root, bindings=(), program=None, clocked=None):
     would animate wrongly. Every newly exported running program now selects
     version 11: source-timed execution supersedes the endpoint-era versions
     5, 6, 7, 9 and 10, without changing their fields or expression syntax.
+    Only a program with the explicit two-envelope Follow edge raises this
+    ladder to version 12.
 
     ``clocked``, when given, always wins and is the other step read off
     the ROOT'S DECLARATION rather than the content: a clocked document
@@ -559,6 +564,11 @@ def document_version(root, bindings=(), program=None, clocked=None):
     if clocked is not None:
         return CLOCKED_DOCUMENT_VERSION
     if program is not None:
+        edges = (program.get('edges', ()) if isinstance(program, dict)
+                 else program.edges)
+        if any((edge.get('kind') if isinstance(edge, dict) else edge.kind)
+               == 'follow' for edge in edges):
+            return FOLLOW_DOCUMENT_VERSION
         return SOURCE_TIMING_DOCUMENT_VERSION
     if bindings:
         return BINDINGS_DOCUMENT_VERSION
@@ -666,6 +676,16 @@ def _collect_program_slots(program, slots):
     for edge in program['edges']:
         for index in range(len(edge.get('expressions', ()))):
             slots.append(_Slot(edge['expressions'], index))
+        if edge['kind'] == 'follow':
+            slots.append(_Slot(edge, 'lower'))
+            slots.append(_Slot(edge, 'upper'))
+            for key in ('lower_plan', 'upper_plan'):
+                plan = edge[key]
+                if plan is None:
+                    continue
+                slots.append(_Slot(plan, 'skeleton'))
+                for jump in plan['jumps']:
+                    slots.append(_Slot(jump, 'level'))
         for plan in edge.get('plans', ()):
             if plan is None:
                 continue

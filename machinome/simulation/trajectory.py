@@ -11,13 +11,15 @@ path never spreads a landed coordinate's travel across its later dwell.
 
 from bisect import bisect_right
 from copy import copy
+import math
 
 from . import program as p
 
 
 class Motion:
-    def __init__(self, start, end, pieces, affine=True):
+    def __init__(self, start, end, pieces, affine=True, line_delta=None):
         self.start, self.end = start, end
+        self.line_delta = line_delta
         self.pieces = tuple(pieces)
         self.ends = tuple(piece[1] for piece in self.pieces)
         self.affine = affine
@@ -32,7 +34,8 @@ class Motion:
     @classmethod
     def line(cls, start, delta):
         return cls(start, start + delta,
-                   [(0.0, 1.0, lambda t: start + delta * t)])
+                   [(0.0, 1.0, lambda t: start + delta * t)],
+                   line_delta=delta)
 
     def at(self, t):
         if t in self.cache:
@@ -62,6 +65,8 @@ class Propagation(dict):
         self.motions = {}
         self.demanded = frozenset(demanded)
         self.untraced = set()
+        self.follow_cuts = {}
+        self.follow_closures = {}
 
     def motion(self, key, values):
         return self.motions.get(key) or Motion.line(values[key], self[key])
@@ -98,13 +103,17 @@ def _cuts(motions):
     return result
 
 
-def _sources(motions, left, right):
+def _sources(motions, left, right, exact_lines=False):
     selected = {name: motion.restrict(left, right)
                 for name, motion in motions.items()}
     start = {name: motion.start for name, motion in selected.items()}
     if all(motion.affine for motion in selected.values()):
-        delta = {name: motion.end - motion.start
-                 for name, motion in selected.items()}
+        delta = {
+            name: (motions[name].line_delta
+                   if exact_lines and left == 0.0 and right == 1.0
+                   and motions[name].line_delta is not None
+                   else motion.end - motion.start)
+            for name, motion in selected.items()}
     else:
         delta = Sources(selected)
     return start, delta
@@ -120,7 +129,7 @@ def _piece(a, b, evaluate, affine):
 
 
 def law_motion(edge, index, motions, initial, crossings, tick, forced=None,
-               closed=False):
+               closed=False, exact_source_lines=False):
     if all(motion.constant for motion in motions.values()):
         return Motion.line(initial, 0.0), False
     plan = edge.plans[index] if edge.plans else None
@@ -139,7 +148,8 @@ def law_motion(edge, index, motions, initial, crossings, tick, forced=None,
     pieces, current, landed, all_affine = [], initial, False, True
     cuts = _cuts(motions)
     for left, right in zip(cuts, cuts[1:]):
-        start, delta = _sources(motions, left, right)
+        start, delta = _sources(motions, left, right,
+                                exact_lines=exact_source_lines)
         found = [] if crossings is not None else None
         local = []
         if reading is not None:
@@ -305,7 +315,120 @@ def propagate(edge, values, deltas, crossings, tick, landings):
     return result
 
 
+def follow_increments(edge, values, deltas, landings, tick):
+    """Project one retained coordinate through certified envelope pieces."""
+    from .program import UnsupportedLaw
+
+    own = edge.gives[0]
+    source_keys = edge.needs[:2]
+    source_names = edge.names[:2]
+    sources = {}
+    for name, key in zip(source_names, source_keys):
+        motion = (getattr(deltas, 'motions', {}).get(key)
+                  or Motion.line(values[key], deltas.get(key, 0.0)))
+        if (not motion.affine or len(motion.pieces) != 1
+                or motion.line_delta is None):
+            raise UnsupportedLaw(
+                f'{edge.description}: Follow source {name} does not have '
+                f'one certified exact linear path in this stretch.')
+        sources[name] = motion
+
+    if all(motion.constant and
+           (motion.start != 0.0 or
+            math.copysign(1.0, motion.start) ==
+            math.copysign(1.0, motion.end))
+           for motion in sources.values()):
+        # An unrelated tick does not reproject a free ball or change the
+        # retained value's signed zero. Rest and restore already validate
+        # the standing interval; no within-stretch source path exists.
+        return [(own, 0.0)]
+
+    initial = {name: motion.start for name, motion in sources.items()}
+    lower_start = edge.lower_graph.evaluate(initial)
+    upper_start = edge.upper_graph.evaluate(initial)
+    lower, _ = law_motion(edge.lower_path, 0, sources, lower_start,
+                          None, tick, exact_source_lines=True)
+    upper, _ = law_motion(edge.upper_path, 0, sources, upper_start,
+                          None, tick, exact_source_lines=True)
+    if not lower.affine or not upper.affine:
+        raise UnsupportedLaw(
+            f'{edge.description}: Follow envelopes must be certified '
+            f'piecewise affine over this stretch.')
+
+    cuts = tuple(sorted({0.0, 1.0, *lower.ends, *upper.ends}))
+    current = values[own]
+    closures = []
+
+    def project(low, high):
+        nonlocal current
+        if not all(math.isfinite(value) for value in (low, high, current)):
+            raise UnsupportedLaw(
+                f'{edge.description}: Follow encountered a non-finite '
+                f'envelope or retained value; the tick was not committed.')
+        current = max(low, min(current, high))
+
+    def direct(t):
+        arguments = {name: motion.at(t) for name, motion in sources.items()}
+        return (edge.lower_graph.evaluate(arguments),
+                edge.upper_graph.evaluate(arguments))
+
+    def closure_values(at):
+        # Source `Motion.at(1)` uses its absolute endpoint cache. A source
+        # piece's one-sided closure can differ by a last bit, so keep its
+        # own evaluator at the piece closure as well.
+        return {name: motion.pieces[0][2](at)
+                for name, motion in sources.items()}
+
+    def absolute_piece(path, graph, t):
+        """Evaluate an authored branch, never an increment-integrated path.
+
+        ``law_motion`` supplies the certified partition and affine shape,
+        but its piece callable carries cumulative increments across cuts.
+        The envelope is an *absolute* physical clearance. Freeze the jump
+        branches at the piece midpoint and evaluate its original skeleton
+        with actual source values at either one-sided closure.
+        """
+        plan = path.plans[0] if path.plans else None
+        if plan is None:
+            return lambda at: graph.evaluate(closure_values(at))
+        at_middle = {name: motion.at(t) for name, motion in sources.items()}
+        no_change = {name: (-0.0 if value == 0.0 and
+                            math.copysign(1.0, value) < 0.0 else 0.0)
+                     for name, value in at_middle.items()}
+        branches = plan._branches(at_middle, no_change, 0.0,
+                                  len(plan.jumps),
+                                  path.description, path.driven[0])
+        return lambda at: plan.skeleton.evaluate({**closure_values(at),
+                                                   **branches})
+
+    project(*direct(0.0))
+    for left, right in zip(cuts, cuts[1:]):
+        middle = (left + right) / 2.0
+        low_piece = lower.pieces[min(bisect_right(lower.ends, middle),
+                                     len(lower.pieces) - 1)]
+        high_piece = upper.pieces[min(bisect_right(upper.ends, middle),
+                                      len(upper.pieces) - 1)]
+        low_at = absolute_piece(edge.lower_path, edge.lower_graph, middle)
+        high_at = absolute_piece(edge.upper_path, edge.upper_graph, middle)
+        project(low_at(left), high_at(left))
+        low_close, high_close = low_at(right), high_at(right)
+        project(low_close, high_close)
+        closures.append((right, current, low_close, high_close))
+        project(*direct(right))
+
+    if landings is not None:
+        landings[own] = current
+    if hasattr(deltas, 'follow_cuts') and not all(
+            motion.constant for motion in sources.values()):
+        deltas.follow_cuts[own] = cuts
+        deltas.follow_closures[own] = tuple(closures)
+    return [(own, current - values[own])]
+
+
 def _propagate(edge, values, deltas, crossings, tick, landings):
+    if edge.kind == 'follow':
+        deltas.untraced.update(edge.gives)
+        return follow_increments(edge, values, deltas, landings, tick)
     if edge.kind == 'play' or any(key in deltas.untraced for key in edge.needs):
         # Play owns a clearance-aware prefix replay. A net displacement
         # from it is not a certified affine path, even through an affine

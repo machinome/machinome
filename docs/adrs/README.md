@@ -112,6 +112,7 @@ that way.
 - [ADR-137](NODE/ADR-137-determined-sources-retain-their-motion-path.md) — Determined sources retain timing through ordinary chains and selected blocks — **Accepted**, amends 122/123, preserves 107/121/124/136
 - [ADR-139](NODE/ADR-139-a-running-bound-reuses-proven-standing-bind-values.md) — A running Bound reuses proven standing bind values across ticks in one bounded, Run-owned snapshot — **Accepted**, narrowly amends 124, preserves 113/137
 - [ADR-140](NODE/ADR-140-a-path-reuses-only-its-own-identical-successful-bind.md) — A path reuses only its own identical successful first-point bind, with finite IEEE inputs and eager fallback — **Accepted**, narrowly amends 124, extends 139
+- [ADR-141](NODE/ADR-141-a-retained-coordinate-follows-two-certified-clearance-surfaces.md) — A retained coordinate follows two certified clearance surfaces — **Accepted**, preserves 121/131 and existing Bounds
 
 ### BUILD — loading, watching, CLI
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**

@@ -1610,6 +1610,11 @@ class Relation:
         (design.md sections 3 and 5)."""
         from machinome.parameters import evaluate
 
+        if (getattr(self.callable_law, '_machinome_follow', False)
+                and _is_broadcast(self.driven)):
+            raise ValueError(
+                f'{self.described()}: Follow requires exactly one scalar '
+                f'retained coordinate, not a broadcast or group.')
         if (getattr(self.callable_law, '_machinome_play', False)
                 and _is_broadcast(self.driven)):
             raise ValueError(
@@ -1663,7 +1668,29 @@ class Relation:
             return records
         driven_ends = _resolve_ends(self.driven, instance)
         if self.callable_law is not None:
-            if getattr(self.callable_law, '_machinome_play', False):
+            if getattr(self.callable_law, '_machinome_follow', False):
+                def same_end(left, right):
+                    if left.is_driver or right.is_driver:
+                        return (left.is_driver and right.is_driver
+                                and left.node is right.node
+                                and left.declared is right.declared)
+                    return left.slot is right.slot
+
+                valid = (len(driver_ends) == 3
+                         and len(driven_ends) == 1
+                         and same_end(driver_ends[2], driven_ends[0])
+                         and not same_end(driver_ends[0], driver_ends[1])
+                         and all(not same_end(end, driven_ends[0])
+                                 for end in driver_ends[:2]))
+                if not valid:
+                    raise ValueError(
+                        f'{self.described()}: Follow requires exactly '
+                        f'(lower_source & upper_source & retained).'
+                        f'drives(retained, law=Follow(...)), with two '
+                        f'distinct scalar sources followed by the same '
+                        f'retained scalar coordinate.')
+                law = self.callable_law
+            elif getattr(self.callable_law, '_machinome_play', False):
                 valid = (len(driver_ends) == 2
                          and len(driven_ends) == 1
                          and driver_ends[1].slot is driven_ends[0].slot

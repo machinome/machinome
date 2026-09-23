@@ -2311,11 +2311,14 @@ class Edge:
     __slots__ = ('kind', 'needs', 'gives', 'graphs', 'plans', 'driven',
                  'names', 'factors', 'constant', 'slot_key', 'description',
                  'stated_by', 'shapes', 'kinks', 'affine', 'retained',
-                 'block', 'low', 'high')
+                 'block', 'low', 'high', 'lower_graph', 'upper_graph',
+                 'lower_path', 'upper_path')
 
     def __init__(self, kind, needs, gives, description, stated_by,
                  graphs=(), plans=(), driven=(), names=(), factors=(),
-                 constant=0.0, slot_key=None, block=None, low=None, high=None):
+                 constant=0.0, slot_key=None, block=None, low=None, high=None,
+                 lower_graph=None, upper_graph=None, lower_path=None,
+                 upper_path=None):
         self.kind = kind
         # The `_Block` reading for a compound BLOCK edge, and `None` for
         # every other kind: a block is ONE entry of the program, so
@@ -2324,6 +2327,10 @@ class Edge:
         self.block = block
         self.low = low
         self.high = high
+        self.lower_graph = lower_graph
+        self.upper_graph = upper_graph
+        self.lower_path = lower_path
+        self.upper_path = upper_path
         self.needs = tuple(needs)
         self.gives = tuple(gives)
         self.graphs = tuple(graphs)
@@ -2392,7 +2399,7 @@ class Edge:
                 yield _KinkCuts(self.graphs[index])
 
     def _end_shapes(self):
-        if self.kind == 'play':
+        if self.kind in ('play', 'follow'):
             return [None]
         if self.kind == 'block':
             # A block's value is piecewise in the SELECTOR partition and
@@ -2469,6 +2476,9 @@ class Edge:
         if hasattr(deltas, 'motions'):
             from .trajectory import propagate
             return propagate(self, values, deltas, crossings, tick, landings)
+        if self.kind == 'follow':
+            from .trajectory import follow_increments
+            return follow_increments(self, values, deltas, landings, tick)
         if self.kind == 'play':
             source, retained = self.needs
             old = values[retained]
@@ -2781,7 +2791,9 @@ class Program:
         """
         lines = [f'root {self.root_class.__module__}.'
                  f'{self.root_class.__qualname__}',
-                 'source-timing version=11']
+                 ('follow version=12' if any(edge.kind == 'follow'
+                                             for edge in self.edges)
+                  else 'source-timing version=11')]
         for identifier, declaration in self.inputs:
             lines.append(f'input {identifier} dtype={declaration.dtype!r} '
                          f'scale={declaration.scale!r}')
@@ -2808,6 +2820,8 @@ class Program:
                                      else str(graph) for graph in one.graphs)
                 elif one.kind == 'play':
                     how = f'{one.low!r} to {one.high!r}'
+                elif one.kind == 'follow':
+                    how = f'{one.lower_graph} to {one.upper_graph}'
                 elif one.kind == 'wiring':
                     how = f'identity * {one.factors[0]!r}'
                 else:
@@ -3100,8 +3114,13 @@ class Program:
         found = []
         for edge in self.listed():
             per_edge = []
-            for index in range(len(edge.gives)):
-                plan = edge.plans[index] if edge.plans else None
+            plans = ((edge.lower_path.plans[0] if edge.lower_path.plans
+                      else None,
+                      edge.upper_path.plans[0] if edge.upper_path.plans
+                      else None) if edge.kind == 'follow' else
+                     tuple(edge.plans[index] if edge.plans else None
+                           for index in range(len(edge.gives))))
+            for plan in plans:
                 mapping = {}
                 if plan is not None:
                     for jump in plan.jumps:
@@ -3129,6 +3148,15 @@ class Program:
         elif edge.kind == 'play':
             entry['low'] = edge.low
             entry['high'] = edge.high
+        elif edge.kind == 'follow':
+            entry['lower'] = edge.lower_graph
+            entry['upper'] = edge.upper_graph
+            entry['lower_plan'] = _published_plan(
+                edge.lower_path.plans[0] if edge.lower_path.plans else None,
+                placeholders[0])
+            entry['upper_plan'] = _published_plan(
+                edge.upper_path.plans[0] if edge.upper_path.plans else None,
+                placeholders[1])
         elif edge.kind == 'wiring':
             entry['factor'] = edge.factors[0]
         else:
@@ -3281,6 +3309,7 @@ def compile_program(root, inputs, coordinates, controls=None,
     program = Program(root, sorted(inputs.items()), sorted(coordinates),
                       nodes, ordered, spans,
                       _declared_coordinates(coordinates), bound_reads)
+    _validate_follow_graph(program)
     if controls:
         program.controls = _compiled_controls(
             root, program, coordinates, controls, instructions or {})
@@ -3326,6 +3355,68 @@ def _validate_play_graph(edges, nodes):
                 f'({", ".join(edge.description for edge in outgoing)}). '
                 f'Play edges form a linear driver-rooted chain; fan-out is '
                 f'refused by relation identity.')
+
+
+def _validate_follow_graph(program):
+    """Follow only certified affine sources and the same two physical Bounds."""
+    following = [edge for edge in program.edges if edge.kind == 'follow']
+    if not following:
+        return
+    writers = {}
+    for edge in program.edges:
+        for key in edge.gives:
+            writers.setdefault(key, []).append(edge)
+
+    def affine_source(key, seen):
+        if key in seen:
+            return False
+        node = program.nodes[key]
+        if node.kind == 'input':
+            return True
+        incoming = writers.get(key, ())
+        if not incoming:
+            return node.kind == 'bank'
+        if len(incoming) != 1:
+            return False
+        edge = incoming[0]
+        if (edge.kind != 'law'
+                or len(edge.gives) != 1 or edge.plans
+                or edge.shapes[0] not in ('constant', 'affine')
+                or edge.retained):
+            return False
+        return all(affine_source(need, seen | {key})
+                   for need in edge.needs)
+
+    for edge in following:
+        own = edge.gives[0]
+        name = program.nodes[own].name
+        if len(writers.get(own, ())) != 1:
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: Follow '
+                f'retained coordinate {name} must have one writer.')
+        if any(another is not edge and own in another.needs
+               for another in program.edges):
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: Follow '
+                f'retained coordinate {name} must be terminal; a downstream '
+                f'edge would need its swept path, not its endpoint delta.')
+        if not all(affine_source(key, set()) for key in edge.needs[:2]):
+            raise UnsupportedLaw(
+                f'{edge.description}, stated by {edge.stated_by}: Follow '
+                f'sources must have unbranched affine laws rooted in '
+                f'run inputs or held banked coordinates; a wiring or '
+                f'formula endpoint chord is not a certified source path.')
+        for side, graph in (('low', edge.lower_graph),
+                            ('high', edge.upper_graph)):
+            bound = program.constraints.get((name, side))
+            used = free_names(as_node(graph))
+            if (bound is None or set(bound.reads) != used
+                    or str(bound.graph) != str(graph)):
+                raise UnsupportedLaw(
+                    f'{edge.description}, stated by {edge.stated_by}: '
+                    f'Follow {side} envelope must have a structurally '
+                    f'matching dynamic {side} Bound with exactly its '
+                    f'used source reads.')
 
 
 ##############################################
@@ -4036,6 +4127,57 @@ def _relation_edge(root, assembly, record, nodes, bank_keys):
     source_nodes = [_register(nodes, root, end, ('clock', id(record)))
                     for end in sources]
     target_nodes = [_register(nodes, root, end) for end in targets]
+
+    if getattr(record.law, '_machinome_follow', False):
+        valid = (record.direction == 'forward'
+                 and len(source_nodes) == 3
+                 and len(target_nodes) == 1
+                 and source_nodes[2].key == target_nodes[0].key
+                 and target_nodes[0].key in bank_keys
+                 and len({node.key for node in source_nodes}) == 3)
+        if not valid:
+            raise UnsupportedLaw(
+                f'{record.described()}, stated by {type(assembly).__name__}: '
+                f'Follow requires two distinct scalar sources followed by '
+                f'one banked scalar retained coordinate, with that same '
+                f'coordinate driven.')
+        names = [node.name for node in source_nodes[:2]]
+        tokens = [symbol(name) for name in names]
+
+        def boundary(function, side):
+            def refuse(detail):
+                raise UnsupportedLaw(
+                    f'{record.described()}, stated by '
+                    f'{type(assembly).__name__}: Follow {side} envelope '
+                    f'{detail}')
+            try:
+                expression = function(*tokens)
+            except Exception as failure:
+                refuse(f'cannot be applied to source symbols '
+                       f'({type(failure).__name__}: {failure}).')
+            graph, plan = _graph_of(expression, refuse)
+            if graph is None:
+                refuse('must be an expression over its declared sources, '
+                       'not a constant; use a held source coordinate.')
+            if not free_names(as_node(graph)) <= set(names):
+                refuse('reads an undeclared coordinate.')
+            path = Edge('law', [node.key for node in source_nodes[:2]],
+                        [('follow-boundary', id(graph))],
+                        f'{record.described()} {side} boundary',
+                        type(assembly).__name__, graphs=(graph,),
+                        plans=(plan,) if plan is not None else (),
+                        driven=(target_nodes[0].name,), names=names)
+            return graph, path
+
+        lower_graph, lower_path = boundary(record.law.lower, 'lower')
+        upper_graph, upper_path = boundary(record.law.upper, 'upper')
+        return Edge('follow', [node.key for node in source_nodes],
+                    [target_nodes[0].key], record.described(),
+                    type(assembly).__name__,
+                    driven=[target_nodes[0].name],
+                    names=[node.name for node in source_nodes],
+                    lower_graph=lower_graph, upper_graph=upper_graph,
+                    lower_path=lower_path, upper_path=upper_path)
 
     if getattr(record.law, '_machinome_play', False):
         valid = (record.direction == 'forward'
