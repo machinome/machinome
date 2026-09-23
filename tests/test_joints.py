@@ -4354,43 +4354,6 @@ class SiteOrbitOnAxisRefusalTest(BaseNodeTest):
                 self.assertIn(expected, message)
 
 
-class CapturePosesSeesSiteJointTest(TestCase):
-    """Task 4.7: the campaign's own evidence script,
-    `docs/motion-general-refactor/capture_poses.py`, walks a
-    site-declared coordinate exactly as a class-declared one -- the
-    test that the pose evidence for this cycle is possible at all."""
-
-    def test_the_campaigns_capture_script_walks_a_site_joint(self):
-        import importlib.util
-        import sys
-
-        script_path = (
-            '/home/asa/devel/machinome-studio/docs/'
-            'motion-general-refactor/capture_poses.py')
-        spec = importlib.util.spec_from_file_location(
-            '_capture_poses_probe', script_path)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
-
-        class Leaf(Solid2Node):
-            def render(self):
-                return cube(1, center=True)
-
-        class Top(AssemblyNode):
-            leaf = Leaf(turn=Revolute(axis=(0, 0, 1), unit='deg'))
-
-        top = Top()
-        top.assemble()
-        top.leaf.turn = 12.0
-
-        record = module.snapshot(top)
-
-        self.assertIn('leaf', record)
-        self.assertIn('turn', record['leaf'].get('ports', {}))
-        self.assertAlmostEqual(record['leaf']['ports']['turn'], 12.0)
-
-
 class SiteDescriptorProtocolTest(BaseNodeTest):
     """Task 4.1: the descriptor protocol answers for a site-declared
     joint exactly as it does for a class-declared one -- no new

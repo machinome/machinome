@@ -269,7 +269,9 @@ class WidgetlessExportTest(SphinxExtBaseTest):
         ))
         bundle, index = self.fake_widget()
 
-        with patch('machinome.sphinx.viewer_bundle.bundle_path',
+        with patch('machinome.sphinx.viewer_bundle.has_bundle',
+                   return_value=True), \
+             patch('machinome.sphinx.viewer_bundle.bundle_path',
                    return_value=bundle), \
              patch('machinome.sphinx.viewer_bundle.index_path',
                    return_value=index):

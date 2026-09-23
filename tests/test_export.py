@@ -585,10 +585,20 @@ class ExportWidgetTest(ExportBaseTest):
         self.fake_bundle = os.path.join(self.build_dir, 'machinome-viewer.js')
         with open(self.fake_bundle, 'w') as fh:
             fh.write(self.BUNDLE_CONTENT)
-        bundle = patch('machinome.core.export.viewer_bundle.bundle_path',
-                       return_value=Path(self.fake_bundle))
-        bundle.start()
-        self.addCleanup(bundle.stop)
+        self.fake_index = os.path.join(self.build_dir, 'index.html')
+        with open(self.fake_index, 'w') as fh:
+            fh.write('<script src="machinome-viewer.js"></script>'
+                     '<a href="manifest.json"></a>')
+        # The test is about what an export copies, not about whether the
+        # separate viewer package is installed where the test runs.
+        for target, value in (
+                ('has_bundle', True),
+                ('bundle_path', Path(self.fake_bundle)),
+                ('index_path', Path(self.fake_index))):
+            faked = patch(f'machinome.core.export.viewer_bundle.{target}',
+                          return_value=value)
+            faked.start()
+            self.addCleanup(faked.stop)
 
     def test_widget_files_are_copied(self):
         self.export(flat_project.SimpleCylinder(), widget=True)
