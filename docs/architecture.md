@@ -938,7 +938,13 @@ relation's end is written, required to pose the part or an ancestor
 of it in the same tree and never to reach sideways (ADR-117). A
 control moves nothing itself and changes nothing the run computes:
 `Program.described()`, and therefore the program identity, never
-learns that one exists.
+learns that one exists. An explicit subclass `controls` table replaces
+the inherited table. If that table preserves an ancestor control object
+under its original name, the control follows a same-path, subclass-compatible
+child replacement into the effective tree; a newly written or foreign
+same-name reference does not. Effective part, selected joint, domain,
+ancestry, bank ownership and input reachability still govern the compiled
+gesture (ADR-146).
 
 `Sim` is the fixed-`dt` loop: instants become integer tick counts the
 moment they are stated (rejected if not whole — the ADR-050 reasoning

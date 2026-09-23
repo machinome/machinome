@@ -3677,7 +3677,12 @@ def _compiled_controls(root, program, coordinates, controls, instructions):
     found = []
     for name in sorted(controls):
         declaring, path, control = controls[name]
-        part_node = control.part._walk(declaring)
+        try:
+            part_node = control.part._walk(declaring)
+        except CouplingError as failure:
+            raise ControlError(
+                f"the control '{name}' names a part that does not resolve "
+                f"on the effective tree: {failure}") from failure
         try:
             part_path = instance_path(part_node, root)
         except DriverIdError:
@@ -3778,7 +3783,12 @@ def _selected_joint(part_node, root, owners, name, control, declaring):
             f"Revolute, a Prismatic, or another declaration that poses a "
             f"body -- and a derived coordinate, computed from the ones "
             f"that do, poses nothing.")
-    node = control.selected_node(declaring)
+    try:
+        node = control.selected_node(declaring)
+    except CouplingError as failure:
+        raise ControlError(
+            f"the control '{name}' selects a joint that does not resolve "
+            f"on the effective tree: {failure}") from failure
     current = part_node
     while current is not node:
         parent = getattr(current, '_parent', None)

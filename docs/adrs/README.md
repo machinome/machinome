@@ -114,6 +114,7 @@ that way.
 - [ADR-140](NODE/ADR-140-a-path-reuses-only-its-own-identical-successful-bind.md) — A path reuses only its own identical successful first-point bind, with finite IEEE inputs and eager fallback — **Accepted**, narrowly amends 124, extends 139
 - [ADR-141](NODE/ADR-141-a-retained-coordinate-follows-two-certified-clearance-surfaces.md) — A retained coordinate follows two certified clearance surfaces — **Accepted**, preserves 121/131 and existing Bounds
 - [ADR-144](NODE/ADR-144-finite-profile-contact-is-a-bound-term.md) — Finite pointwise profile contact is a numeric term in an existing Bound, published as compact v13 data — **Accepted**, preserves the Bound solver
+- [ADR-146](NODE/ADR-146-an-inherited-control-follows-a-compatible-child-replacement.md) — An explicitly preserved inherited control follows a compatible same-path child replacement; foreign same-name references remain refused — **Accepted**, narrowly amends 117
 
 ### BUILD — loading, watching, CLI
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**

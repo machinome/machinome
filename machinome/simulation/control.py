@@ -138,7 +138,9 @@ class Control:
                 f"cannot be a control's part. Hold the "
                 f"{self.part.root.node_class.__name__} on its own "
                 f"attribute, or state the control inside it.")
-        if declared_children(owner).get(first) is not self.part.root:
+        if (declared_children(owner).get(first) is not self.part.root
+                and not _inherited_replaced_child(owner, name, self,
+                                                  self.part.root)):
             declares = ', '.join(declared_children(owner)) or 'none'
             raise TypeError(
                 f"{owner.__name__}: '{first}', the first segment of "
@@ -164,7 +166,9 @@ class Control:
             return
         if isinstance(self.coordinate, PathRef):
             first = self.coordinate.root._name
-            if declared_children(owner).get(first) is self.coordinate.root:
+            if (declared_children(owner).get(first) is self.coordinate.root
+                    or _inherited_replaced_child(owner, name, self,
+                                                 self.coordinate.root)):
                 return
             declares = ', '.join(declared_children(owner)) or 'none'
             raise TypeError(
@@ -331,6 +335,28 @@ class Slide(Drag):
 
     control_kind = 'slide'
     required_domain = 'translational'
+
+
+def _inherited_replaced_child(owner, name, control, root):
+    """Permit only an ancestor's unchanged control across a child override.
+
+    A matching spelling is not provenance: a reference borrowed from another
+    class must still fail the ordinary declaration check. The ancestor table
+    proves where the control was validated, and a subtype replacement keeps
+    its named child path meaningful on the effective tree.
+    """
+    first = root._name
+    effective = declared_children(owner).get(first)
+    if effective is None or not issubclass(effective.node_class,
+                                           root.node_class):
+        return False
+    for ancestor in owner.__mro__[1:]:
+        table = ancestor.__dict__.get('controls')
+        if (ancestor.__dict__.get('_declares_controls') is True
+                and isinstance(table, dict) and table.get(name) is control
+                and declared_children(ancestor).get(first) is root):
+            return True
+    return False
 
 
 def _part_ref(value, kind):
