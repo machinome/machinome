@@ -370,7 +370,7 @@ class JumpPlan:
     # The increment
 
     def increment(self, start, delta, described, coordinate,
-                  crossings=None, tick=0, forced=None):
+                  crossings=None, tick=0, forced=None, law_edge=None):
         """The CONTINUOUS part of this law's change over one tick.
 
         `forced` is the one thing a BLOCK adds: a map from a SELECTOR's
@@ -394,14 +394,19 @@ class JumpPlan:
             branches = self._branches(start, delta, (left + right) / 2.0,
                                       len(self.jumps), described, coordinate,
                                       forced, paths)
-            total += (self._substituted(start, delta, right, branches)
-                      - self._substituted(start, delta, left, branches))
+            total += (self._substituted(start, delta, right, branches,
+                                        law_edge, coordinate)
+                      - self._substituted(start, delta, left, branches,
+                                          law_edge, coordinate))
         return total
 
-    def _substituted(self, start, delta, t, branches):
+    def _substituted(self, start, delta, t, branches, law_edge=None,
+                     coordinate=None):
         values = _along(start, delta, t)
         values.update(branches)
-        return self.skeleton.evaluate(values)
+        if law_edge is None:
+            return self.skeleton.evaluate(values)
+        return _law_call(law_edge, coordinate, self.skeleton.evaluate, values)
 
     def _branches(self, start, delta, t, count, described, coordinate,
                   forced=None, paths=None):
@@ -1286,20 +1291,23 @@ class _Retained:
                 f'{len(self.outer.jumps)} independent>')
 
     def increment(self, start, delta, described, coordinate,
-                  crossings=None, tick=0, forced=None):
+                  crossings=None, tick=0, forced=None, law_edge=None):
         """`(increment, landing)`: what this end MOVES BY over the tick,
         and the ABSOLUTE value it holds at the tick's end where at least
         one cut placed it -- None where none did."""
-        walk = _Walk(self, start, delta, described, coordinate, forced)
+        walk = _Walk(self, start, delta, described, coordinate, forced,
+                     law_edge)
         increment, landing, _cuts = walk.run(crossings, tick)
         return increment, landing
 
-    def cuts(self, start, delta, described, coordinate, forced=None):
+    def cuts(self, start, delta, described, coordinate, forced=None,
+             law_edge=None):
         """The breakpoints the two layers together put on the path, the
         SKELETON's own kinks included: between two of them the driven
         coordinate's value is affine in `t`, which is what lets a stop on
         it be solved piece by piece rather than searched."""
-        walk = _Walk(self, start, delta, described, coordinate, forced)
+        walk = _Walk(self, start, delta, described, coordinate, forced,
+                     law_edge)
         return walk.run(None, 0, cutting=True)[2]
 
 
@@ -1307,12 +1315,12 @@ class _Walk:
     """One driven end's piece-by-piece walk over one tick."""
 
     __slots__ = ('reading', 'plan', 'own', 'start', 'delta', 'described',
-                 'coordinate', 'taken', 'forced', '_skeleton_path',
+                 'coordinate', 'taken', 'forced', 'law_edge', '_skeleton_path',
                  '_skeleton_bound', '_level_paths', '_level_bound',
                  '_outer_paths', '_live_branches', '_closed_right')
 
     def __init__(self, reading, start, delta, described, coordinate,
-                 forced=None):
+                 forced=None, law_edge=None):
         self.reading = reading
         self.plan = reading.plan
         self.own = reading.own
@@ -1331,6 +1339,7 @@ class _Walk:
         # INDEPENDENT one in `_Retained`'s split, and forcing reaches the
         # whole walk through layer one alone.
         self.forced = forced
+        self.law_edge = law_edge
         self.taken = 0
         # Only what moves along this WALK's path is evaluated
         # (design.md section 3.3): the skeleton and each dependent jump's
@@ -1802,8 +1811,12 @@ class _Walk:
         key = id(branches)
         if self._skeleton_bound != key:
             self._skeleton_bound = key
-            return self._skeleton_path.bind(values)
-        return self._skeleton_path.at(values)
+            evaluate = self._skeleton_path.bind
+        else:
+            evaluate = self._skeleton_path.at
+        if self.law_edge is None:
+            return evaluate(values)
+        return _law_call(self.law_edge, self.coordinate, evaluate, values)
 
     def _level(self, jump, t, own_value, branches):
         """The same mechanism for a DEPENDENT jump's level: the driven
@@ -2348,14 +2361,16 @@ def _integrated(member, start, delta, crossings, tick, forced):
     if plan is None:
         graph = member.graphs[0]
         end = {name: start[name] + delta[name] for name in start}
-        return (_evaluated(graph, end) - _evaluated(graph, start)), None
+        return (_evaluated_law(member, member.driven[0], graph, end)
+                - _evaluated_law(member, member.driven[0], graph, start)), None
     reading = member.retained[0] if member.retained else None
     if reading is None:
         return plan.increment(start, delta, member.description,
                               member.driven[0], crossings, tick,
-                              forced), None
+                              forced, member), None
     return reading.increment(start, delta, member.description,
-                             member.driven[0], crossings, tick, forced)
+                             member.driven[0], crossings, tick, forced,
+                             member)
 
 
 ##############################################
@@ -2512,8 +2527,9 @@ class Edge:
         """What this edge's targets hold at the committed state."""
         if self.kind == 'law':
             inputs = self._inputs(values)
-            return [(key, _evaluated(graph, inputs))
-                    for key, graph in zip(self.gives, self.graphs)]
+            return [(key, _evaluated_law(self, driven, graph, inputs))
+                    for key, driven, graph in zip(self.gives, self.driven,
+                                                  self.graphs)]
         if self.kind == 'wiring':
             factor = self.factors[0]
             return [(self.gives[0], values[self.needs[0]] * factor)]
@@ -2562,8 +2578,10 @@ class Edge:
             if not self.plans:
                 end = self._inputs(values, deltas)
                 return [(key,
-                         _evaluated(graph, end) - _evaluated(graph, start))
-                        for key, graph in zip(self.gives, self.graphs)]
+                         _evaluated_law(self, driven, graph, end)
+                         - _evaluated_law(self, driven, graph, start))
+                        for key, driven, graph in zip(self.gives, self.driven,
+                                                      self.graphs)]
             delta = {name: deltas[key]
                      for name, key in zip(self.names, self.needs)}
             end = self._inputs(values, deltas)
@@ -2573,18 +2591,21 @@ class Edge:
                 plan = self.plans[index]
                 if plan is None:
                     graph = self.graphs[index]
-                    found.append((key, _evaluated(graph, end)
-                                  - _evaluated(graph, start)))
+                    found.append((key,
+                                  _evaluated_law(self, self.driven[index],
+                                                 graph, end)
+                                  - _evaluated_law(self, self.driven[index],
+                                                   graph, start)))
                     continue
                 reading = retained[index] if retained else None
                 if reading is None:
                     found.append((key, plan.increment(
                         start, delta, self.description, self.driven[index],
-                        crossings, tick)))
+                        crossings, tick, law_edge=self)))
                     continue
                 increment, landing = reading.increment(
                     start, delta, self.description, self.driven[index],
-                    crossings, tick)
+                    crossings, tick, law_edge=self)
                 if landing is not None and landings is not None:
                     landings[key] = landing
                 found.append((key, increment))
@@ -2628,7 +2649,7 @@ class Edge:
             # The walk unions the skeleton's kinks into its own cuts, in
             # the pieces its branch readings hold over.
             return reading.cuts(start, delta, self.description,
-                                self.driven[index])
+                                self.driven[index], law_edge=self)
         cuts = plan.cuts(start, delta, self.description, self.driven[index])
         if self.shapes[index] != 'kinked':
             return cuts
@@ -2706,6 +2727,37 @@ def _evaluated(graph, inputs):
         # statement.
         return 0.0
     return graph.evaluate(inputs)
+
+
+def _evaluated_law(edge, driven, graph, inputs):
+    """One already-requested compiled law value, with its own refusal context.
+
+    Do not wrap unrelated integration, Bound or final-pose failures: only a
+    numeric domain failure while walking this law's graph is classified here.
+    """
+    if graph is None:
+        return 0.0
+    return _law_call(edge, driven, lambda values: _evaluated(graph, values),
+                     inputs)
+
+
+def _law_call(edge, driven, evaluate, inputs):
+    """Classify only a compiled law evaluation, never a Bound or pose."""
+    try:
+        value = evaluate(inputs)
+    except UnsupportedLaw:
+        raise
+    except ValueError as error:
+        raise UnsupportedLaw(
+            f'{edge.description}, stated by {edge.stated_by}: law for '
+            f'{driven} cannot be evaluated: {error}. The tick committed '
+            'nothing.') from error
+    if isinstance(value, float) and not math.isfinite(value):
+        raise UnsupportedLaw(
+            f'{edge.description}, stated by {edge.stated_by}: law for '
+            f'{driven} returned {value!r}, not a finite number. The tick '
+            'committed nothing.')
+    return value
 
 
 class Program:

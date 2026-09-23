@@ -172,7 +172,7 @@ def law_motion(edge, index, motions, initial, crossings, tick, forced=None,
         if reading is not None:
             start[reading.own] = current
             walk = p._Walk(reading, start, delta, edge.description,
-                           edge.driven[index], forced)
+                           edge.driven[index], forced, edge)
             increment, landing, _ = walk.run(found, tick, trajectory=local,
                                              closed=closed or right < 1.0)
             if not local:
@@ -192,7 +192,8 @@ def law_motion(edge, index, motions, initial, crossings, tick, forced=None,
                 def evaluate(t, start=start, delta=delta, branches=branches):
                     values = p._along(start, delta, t)
                     values.update(branches)
-                    return p._evaluated(graph, values)
+                    return p._evaluated_law(edge, edge.driven[index], graph,
+                                            values)
 
                 base = evaluate(low)
                 def at(t, evaluate=evaluate, base=base, current=current):
@@ -500,9 +501,10 @@ def _propagate(edge, values, deltas, crossings, tick, landings):
                           and key in landings else values[key]+deltas[key])
                    for name, key in zip(edge.names, edge.needs)}
             result = []
-            for key, graph in zip(edge.gives, edge.graphs):
-                after = p._evaluated(graph, end)
-                before = p._evaluated(graph, start)
+            for key, driven, graph in zip(edge.gives, edge.driven,
+                                          edge.graphs):
+                after = p._evaluated_law(edge, driven, graph, end)
+                before = p._evaluated_law(edge, driven, graph, start)
                 increment = after-before
                 initial = values[key]
                 aligned = (struct.pack('!d', initial) ==
@@ -531,8 +533,9 @@ def _propagate(edge, values, deltas, crossings, tick, landings):
                                      tick, landings)
             for index, (key, increment) in enumerate(result):
                 graph = edge.graphs[index]
-                before = p._evaluated(graph, at_start)
-                after = p._evaluated(graph, at_end)
+                driven = edge.driven[index]
+                before = p._evaluated_law(edge, driven, graph, at_start)
+                after = p._evaluated_law(edge, driven, graph, at_end)
                 initial = values[key]
                 aligned = (struct.pack('!d', initial) ==
                            struct.pack('!d', before))
@@ -582,7 +585,8 @@ def _propagate(edge, values, deltas, crossings, tick, landings):
                     # read; all nonzero paths retain their integration.
                     exact_end = {name: source.end
                                  for name, source in sources.items()}
-                    authored_exact = p._evaluated(edge.graphs[index], exact_end)
+                    authored_exact = p._evaluated_law(
+                        edge, edge.driven[index], edge.graphs[index], exact_end)
                     if (authored_exact == 0.0 and
                             struct.pack('!d', terminal) !=
                             struct.pack('!d', authored_exact)):
