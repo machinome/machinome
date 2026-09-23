@@ -221,13 +221,13 @@ describe('assertRenderable on a flexible document', () => {
     // `execute-running-play`: version 9 carries PLAY, so it moves to 10.
     // `execute-running-time-drives`: version 10 is executed; 11 is refused.
     const manifest = document({
-      version: 13 as unknown as Manifest['version'],
+      version: 14 as unknown as Manifest['version'],
       root: node('root', []),
     });
 
-    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b13\b/);
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/\b14\b/);
     expect(() => assertRenderable(manifest, '/m.json'))
-      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12/);
+      .toThrow(/1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13/);
     expect(() => assertRenderable(manifest, '/m.json')).toThrow(/m\.json/);
   });
 
@@ -507,8 +507,8 @@ function withProgram(overrides: Record<string, unknown> = {},
 }
 
 describe('assertRenderable on a document carrying a program', () => {
-  it('renders versions 1 through 12 and says so in its list', () => {
-    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  it('renders versions 1 through 13 and says so in its list', () => {
+    expect(RENDERED_VERSIONS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
   });
 
   it('accepts a version 6 document -- one whose program carries a law '
@@ -543,6 +543,14 @@ describe('assertRenderable on a document carrying a program', () => {
     const manifest = withProgram(
       { version: 12 as unknown as Manifest['version'] });
     expect(assertRenderable(manifest, '/m.json').program).not.toBeNull();
+  });
+
+  it('refuses a version 13 profile call in pose operations outside a running Bound', () => {
+    const manifest = withProgram(
+      { version: 13 as Manifest['version'],
+        root: node('root', [['r', 'profileOverlap(0, 0, 0, 0, 0, 0, 0, 0)', [0, 0, 1]]]) },
+      { profiles: [{ points: [[0, 0], [1, 0], [0, 1]], polygons: [[0, 1, 2]] }] });
+    expect(() => assertRenderable(manifest, '/m.json')).toThrow(/outside a numeric Bound/i);
   });
 
   it('refuses a document carrying BOTH a program and a clocked machine',

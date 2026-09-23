@@ -77,7 +77,7 @@ class SourceTimingBrowserTest(TestCase):
                               });
                             }''')
                             self.assertEqual(page.evaluate('run.runsInWorker'), not fallback)
-                            self.assertEqual(page.evaluate('viewer.apiVersion'), 25)
+                            self.assertEqual(page.evaluate('viewer.apiVersion'), 26)
                             for index, row in enumerate(entry['rows']):
                                 if index == len(entry['rows'])-1:
                                     page.evaluate('async () => { window.saved = await run.snapshot(); }')

@@ -8,8 +8,8 @@ Three version numbers
 The current source declares:
 
 * **Package |package-version|** — the Python distribution and its bundled
-  widget, released with Machinome 0.7.0 and numbered with it. The widget is
-  not published on npm; it ships inside the Python distribution.
+  widget, recorded alongside Machinome 0.7.0 and numbered with it. The widget
+  is not a separate npm package; it ships inside the Python distribution.
 * **Viewer API |viewer-api|** — the browser-host interface/capabilities.
 * **Document versions |document-versions|** — model schemas this bundle reads.
 
@@ -57,6 +57,16 @@ Document capabilities
      - Source-timed running motion through ordinary chains and selected blocks.
    * - 12
      - Retained ``Follow`` between two certified moving clearance envelopes.
+   * - 13
+     - A finite, producer-declared convex-profile table and a pointwise
+       inclusive-contact flag inside an ordinary numeric running Bound.
+
+The recorded 0.7.0/API-|baseline-viewer-api| baseline reads versions
+|baseline-document-versions|. Current source advertises API |viewer-api|
+and reads |document-versions|; these numbers describe a source build, not
+an additional published package. A profile-contact call requires its
+producer-supplied version-13 table and returns a numeric contact flag. It
+does not add a browser-host operation or certify an entire swept motion.
 
 These are producer-selected schemas, not modes you change by editing a JSON
 version field. The viewer accepts current ``machinome-export`` and legacy
@@ -94,6 +104,8 @@ source timing, including dwell and landing, through running dependencies.
 API 25, the 0.7.0 release, adds version-12 two-envelope ``Follow``
 execution. A host that needs a feature can check the declared API before
 using it. Do not assume an old pinned bundle implements the current manual.
+Current source API 26 additionally reads version-13 pointwise profile
+contact inside numeric running bounds.
 
 Source-timing migration
 =======================

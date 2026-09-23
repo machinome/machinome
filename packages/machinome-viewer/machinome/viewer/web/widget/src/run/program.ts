@@ -27,7 +27,7 @@
 import { BindingTable, bindingTable } from '../bindings';
 import { freeVariables } from '../evaluator';
 import {
-  retainedKinkLevels, NodeId, prepare, shapeOf, structureOf,
+  inspectProfileExpression, retainedKinkLevels, NodeId, prepare, shapeOf, structureOf,
   valueOf, withExpressions,
 } from '../expressions';
 import type { KinkLevel, PathShape } from '../expressions';
@@ -35,6 +35,7 @@ import {
   Manifest, ManifestBinding, ManifestDriver, ManifestInstruction,
 } from '../types';
 import { assertNestable, nest } from './scope';
+import { ConvexProfile, loadProfiles } from './profiles';
 
 /** A law cannot be compiled into the running program, or cannot be
  * integrated over a tick: its level quantity meets a division by zero
@@ -323,12 +324,14 @@ export interface Constraint {
 export interface PathHost {
   limits: ProgramLimits;
   bindings: BindingTable;
+  profiles?: readonly ConvexProfile[];
   /** One interned root per published expression, re-prepared when the
    * shared store's generation moves (design D12). */
   nodeOf(expression: string): NodeId;
 }
 
 export interface LoadedProgram extends PathHost {
+  profiles?: readonly ConvexProfile[];
   identity: string;
   clock: string;
   timeDrives: readonly string[];
@@ -421,6 +424,7 @@ export function evaluateExpression(
       time: 0,
       drivers: nest(values),
       bindings: program.bindings.roots(),
+      profiles: program.profiles,
     });
     return typeof value === 'number' ? value : Number(value);
   });
@@ -774,6 +778,20 @@ function loadProgramScoped(
   }
   const identity = raw.identity;
   const clock = raw.clock;
+  let profiles: readonly ConvexProfile[] | undefined;
+  if (raw.profiles !== undefined) {
+    if (document.version !== 13) {
+      return refuse('its finite profile table requires document version 13.');
+    }
+    try {
+      profiles = loadProfiles(raw.profiles);
+    } catch (error) {
+      return refuse((error as Error).message);
+    }
+  }
+  if (document.version === 13 && profiles === undefined) {
+    return refuse('its version-13 program carries no finite profile table.');
+  }
 
   // 12. The five constants the algorithm is defined by.
   if (!isObject(raw.limits)) {
@@ -897,8 +915,8 @@ function loadProgramScoped(
   }
   const timeByEdge = new Map<number, string>();
   if (document.version === 10 || raw.time_drives !== undefined) {
-    if (document.version !== 10 && document.version !== 11 && document.version !== 12) {
-      return refuse('its time_drives require document version 10, 11 or 12.');
+    if (document.version < 10 || document.version > 13) {
+      return refuse('its time_drives require document version 10, 11, 12 or 13.');
     }
     if (clock !== 'time') return refuse('its time-drive clock must be named "time".');
     if (!Array.isArray(raw.time_drives) || raw.time_drives.length === 0) {
@@ -986,7 +1004,7 @@ function loadProgramScoped(
     };
 
     if (kind === 'follow') {
-      if (document.version !== 12) {
+      if (document.version < 12 || document.version > 13) {
         return refuse(`${where} (${description}) declares Follow before document version 12.`);
       }
       if (needs.length !== 3 || gives.length !== 1 || gives[0] !== needs[2]
@@ -1332,6 +1350,88 @@ function loadProgramScoped(
     withExpressions(() => prepare(expression));
 
   const table = bindings ?? bindingTable(document as Manifest, sourceUrl);
+
+  // The reserved operation is a scalar only for numeric Bounds. Inspect the
+  // interned graph, including aliases, before any run or frame can evaluate
+  // it. The producer's first two arguments are literal table indices, never
+  // expressions whose current numeric value happens to be an index.
+  if (profiles !== undefined) {
+    if (known.has('profileOverlap') || clock === 'profileOverlap'
+        || table.roots()?.has('profileOverlap')) {
+      return refuse('profileOverlap collides with a declared name or binding.');
+    }
+  }
+  const inspectProfile = (expression: string, allowed: boolean, where: string): boolean => {
+    try {
+      const found = inspectProfileExpression(nodeOf(expression), table.roots(), profiles?.length);
+      if (found && !allowed) refuse(`${where} uses profileOverlap outside a numeric Bound.`);
+      if (found && profiles === undefined) refuse(`${where} uses profileOverlap without a finite profile table.`);
+      return found;
+    } catch (error) {
+      return refuse(`${where}: ${(error as Error).message}.`);
+    }
+  };
+  const bindingExpressions = new Map((document.bindings ?? []).map(
+    (entry) => [entry.name, entry.expression]));
+  const boundAliases = new Set<string>();
+  const markBoundAliases = (expression: string): void => {
+    const pending = [expression];
+    while (pending.length > 0) {
+      const names = [...freeVariables(pending.pop()!)];
+      // A LIFO stack visits the first name's aliases before the next name,
+      // as the original recursive depth-first walk did.
+      for (let i = names.length - 1; i >= 0; i--) {
+        const name = names[i];
+        const aliased = bindingExpressions.get(name);
+        if (aliased === undefined || boundAliases.has(name)) continue;
+        boundAliases.add(name);
+        pending.push(aliased);
+      }
+    }
+  };
+  for (const [id, span] of Object.entries(spans)) {
+    for (const side of ['low', 'high'] as const) {
+      const bound = span[side];
+      if (bound === null || typeof bound !== 'object') continue;
+      markBoundAliases(bound.expression);
+      inspectProfile(bound.expression, true, `${side} Bound on ${id}`);
+    }
+  }
+  // Bindings are published earlier-before-later. Inspect each local graph
+  // once, then carry its profile-call bit through the already validated
+  // aliases; rescanning every prior root would be quadratic for a long chain.
+  const bindingHasProfile = new Map<string, boolean>();
+  for (const [name, expression] of bindingExpressions) {
+    let found: boolean;
+    try {
+      found = inspectProfileExpression(nodeOf(expression), undefined, profiles?.length);
+      for (const referenced of freeVariables(expression)) {
+        if (bindingHasProfile.get(referenced)) found = true;
+      }
+    } catch (error) {
+      return refuse(`binding ${name}: ${(error as Error).message}.`);
+    }
+    bindingHasProfile.set(name, found);
+    if (found && !boundAliases.has(name)) {
+      refuse(`binding ${name} uses profileOverlap outside a numeric Bound.`);
+    }
+    if (found && profiles === undefined) {
+      refuse(`binding ${name} uses profileOverlap without a finite profile table.`);
+    }
+  }
+  for (const edge of edges) {
+    for (const expression of edge.expressions) {
+      if (expression !== null) inspectProfile(expression, false, `${edge.description} law`);
+    }
+    for (const expression of [edge.lower, edge.upper]) {
+      if (expression !== null) inspectProfile(expression, false, `${edge.description} envelope`);
+    }
+    for (const plan of [...edge.plans, edge.lowerPlan, edge.upperPlan]) {
+      if (plan === null) continue;
+      inspectProfile(plan.skeleton, false, `${edge.description} plan`);
+      for (const jump of plan.jumps) inspectProfile(jump.level, false, `${edge.description} jump`);
+    }
+  }
 
   // 10. Every expression's free names, closed over the bindings table
   // and minus the placeholders that are legal where it stands. A law
@@ -1918,6 +2018,7 @@ function loadProgramScoped(
   const declaredNames = new Set<string>([clock, ...bank, ...intermediates]);
 
   return {
+    profiles,
     identity,
     clock,
     timeDrives,

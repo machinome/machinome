@@ -1,7 +1,7 @@
 {
   "name": "@machinome/viewer",
   "version": "0.7.0",
-  "machinomeViewerApi": 25,
+  "machinomeViewerApi": 26,
   "machinomeDocumentVersions": [
     1,
     2,
@@ -14,7 +14,8 @@
     9,
     10,
     11,
-    12
+    12,
+    13
   ],
   "private": true,
   "license": "AGPL-3.0-only",

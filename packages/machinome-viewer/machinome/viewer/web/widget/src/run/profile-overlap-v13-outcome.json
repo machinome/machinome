@@ -1,0 +1,9 @@
+{
+  "request": {"input": "crank", "by": 5.0, "duration": 0.1, "dt": 0.1},
+  "expected": {
+    "status": "blocked",
+    "admitted_bits": "3fdfffffffff4000",
+    "bank_bits": {"crank": "3fdfffffffff4000", "wheel.turn": "3fdfffffffff4000"},
+    "stop": {"tick": 1, "coordinate": "wheel.turn", "bound": "high", "value_bits": "3fe0000000000000", "t_bits": "3fb9999999990000", "inputs": ["crank"], "time_drives": []}
+  }
+}

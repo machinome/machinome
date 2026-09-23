@@ -3,6 +3,15 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased
+
+- Viewer API 26 reads document version 13's finite convex-profile contact
+  flag inside an ordinary numeric running Bound. The flag tests pointwise
+  inclusive contact for producer-supplied finite planar polygons; it does
+  not certify continuous motion, installed geometry or collision volume.
+  Invalid profiles and unrepresentable placements refuse by name. Existing
+  host controls, stop sampling and document versions 1–12 are unchanged.
+
 ## 0.7.0 — 23 September 2026
 
 The first published release of Machinome Viewer, released with Machinome

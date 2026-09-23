@@ -93,3 +93,22 @@ def test_describe_example_matches_package_versions():
     assert example['version'] == project['version'] == widget['version']
     assert example['apiVersion'] == widget['machinomeViewerApi']
     assert example['documentVersions'] == widget['machinomeDocumentVersions']
+
+
+def test_profile_contact_source_capability_does_not_rewrite_070_baseline():
+    widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
+    assert widget['machinomeViewerApi'] == 26
+    assert widget['machinomeDocumentVersions'][-1] == 13
+    home = (ROOT / 'docs/index.rst').read_text()
+    compatibility = (ROOT / 'docs/compatibility.rst').read_text()
+    running = (ROOT / 'docs/reference/running.rst').read_text()
+    changelog = (ROOT / 'CHANGELOG.md').read_text()
+    assert '|baseline-viewer-api|' in home
+    assert '|baseline-document-versions|' in home
+    assert 'profile' in compatibility.lower()
+    assert 'pointwise' in running.lower()
+    assert 'continuous' in running.lower()
+    assert '## Unreleased' in changelog
+    assert 'API 26' in changelog.split('## 0.7.0')[0]
+    assert 'document version 13' in changelog.split('## 0.7.0')[0]
+    assert '## 0.7.0 — 23 September 2026' in changelog

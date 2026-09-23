@@ -3,7 +3,7 @@ Running machines
 ================
 
 ``viewer.run()`` returns a ``RunHandle`` when the document carries a running
-program (versions 5–7 or 9–12). It returns null for posed and clocked models.
+program (versions 5–7 or 9–13). It returns null for posed and clocked models.
 The run retains a coordinate bank and advances in fixed ticks, normally in
 a worker. Use the handle as an interface; do not import its internal engine.
 
@@ -165,6 +165,17 @@ to represent are refused rather than approximated. Follow does not give the
 host a new movement method: use the declared inputs, inspect the same
 ``blocked`` outcomes and save the same coordinate bank. It is not a general
 collision solver for the rest of the assembly.
+
+A version 13 document can carry finite convex planar profiles and a
+``profileOverlap`` value used inside an existing numeric running Bound.
+The producer supplies the immutable polygons and their rigid XY placements;
+the browser returns numeric 1 when any placed pair overlaps **or touches**,
+and 0 only for a strict pointwise gap. The author still chooses the absolute
+coordinate limit that this flag selects. Malformed profiles or numerically
+unrepresentable placements refuse rather than imply clearance. This is not
+a continuous swept-contact certificate, collision volume, installation-fit
+proof, or a new host movement method; ordinary Bounds retain their sampling,
+outcomes and snapshot behavior.
 
 A version 10 document can declare **time drives**: relations the running
 clock advances on its own, with no ``rate()`` command from the host.

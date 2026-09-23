@@ -57,16 +57,15 @@ class BundleLookupTest(TestCase):
         # its transition drawn over the declared duration, where a build
         # at 18 lists the same button and refuses it (OpenSpec
         # `play-the-instruction`) -- is the one after that.
-        self.assertEqual(bundle.api_version(), 25)
+        self.assertEqual(bundle.api_version(), 26)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
 
     def test_the_released_floor_does_not_move_with_the_build(self):
         # `RELEASED_DOCUMENT_VERSIONS` is what a viewer that PREDATES
-        # the declaration is entitled to be assumed to read, and the
-        # only released viewer is 0.1.0, which read [1, 2, 3, 4]. It is
+        # the declaration is entitled to be assumed to read. It is
         # a floor for builds without the key, not a mirror of this one.
         self.assertEqual(bundle.RELEASED_DOCUMENT_VERSIONS, [1, 2, 3, 4])
         self.assertNotEqual(bundle.RELEASED_DOCUMENT_VERSIONS,
@@ -80,7 +79,7 @@ class BundleLookupTest(TestCase):
         self.assertEqual(described['documentVersions'],
                          bundle.document_versions())
         self.assertEqual(described['documentVersions'],
-                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
         self.assertEqual(described['apiVersion'], bundle.api_version())
 
     def test_paths_and_remedy_share_one_source(self):

@@ -51,6 +51,7 @@ import type {
   MemberExpression, ObjectExpression, TernaryExpression, UnaryExpression,
   VariableExpression,
 } from 'jokenizer';
+import { ConvexProfile, profileOverlap } from './run/profiles';
 
 // ---------------------------------------------------------------------
 // Parsing: the exponent-literal rewrite (moved here from evaluator.ts,
@@ -122,6 +123,8 @@ export interface EvalScope {
    * name is one node id for the whole page, so two documents' tables
    * must never be allowed to share its memoized value. */
   bindings?: ReadonlyMap<string, NodeId>;
+  /** Loaded-program-owned finite profiles, never a page-global registry. */
+  profiles?: readonly ConvexProfile[];
 }
 
 // ---------------------------------------------------------------------
@@ -595,6 +598,9 @@ function resolveName(parts: readonly string[], scope: EvalScope): unknown {
   let value: unknown;
   if (first === TIME_ID) {
     value = scope.time;
+  } else if (first === 'profileOverlap' && scope.profiles !== undefined) {
+    value = (...args: number[]) => profileOverlap(scope.profiles!, ...args as [number, number,
+      number, number, number, number, number, number]);
   } else if (scope.bindings !== undefined && scope.bindings.has(first)) {
     // A binding resolves BEFORE a driver id (D1, the framework's own
     // rule): a name that is both is a binding, never reported as an
@@ -722,6 +728,7 @@ export function bindingRootsEqual(a?: ReadonlyMap<string, NodeId>,
 
 function scopesEqual(a: EvalScope, b: EvalScope): boolean {
   return Object.is(a.time, b.time)
+    && a.profiles === b.profiles
     && mapsEqual(a.drivers ?? {}, b.drivers ?? {})
     && bindingRootsEqual(a.bindings, b.bindings);
 }
@@ -806,6 +813,75 @@ export function valueOf(id: NodeId, scope: EvalScope): unknown {
   nodeStamp[id] = passCounter;
   resolutions += 1;
   return result;
+}
+
+/** Inspect a document expression, including binding aliases, before execution.
+ * Returns whether the reserved profile call occurs. This is structural: a
+ * profile index must be a literal leaf, never a computed scalar. */
+export function inspectProfileExpression(
+  root: NodeId, bindings?: ReadonlyMap<string, NodeId>, profileCount?: number,
+): boolean {
+  let found = false;
+  const seen = new Set<NodeId>();
+  const pending: { id: NodeId; calleeOfProfile: boolean }[] =
+    [{ id: root, calleeOfProfile: false }];
+  const push = (id: NodeId, calleeOfProfile = false): void => {
+    pending.push({ id, calleeOfProfile });
+  };
+  while (pending.length > 0) {
+    const { id, calleeOfProfile } = pending.pop()!;
+    const node = nodes[id];
+    if (node.kind === 'name' && node.name === 'profileOverlap') {
+      if (!calleeOfProfile) throw new Error('profileOverlap must be called directly');
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    switch (node.kind) {
+      case 'name': {
+        const binding = bindings?.get(node.parts[0]);
+        if (binding !== undefined) push(binding);
+        break;
+      }
+      case 'call': {
+        const callee = nodes[node.callee];
+        let directProfile = false;
+        if (callee.kind === 'name' && callee.name === 'profileOverlap') {
+          found = true;
+          directProfile = true;
+          if (node.args.length !== 8) {
+            throw new Error('profileOverlap requires exactly eight arguments');
+          }
+          for (const index of node.args.slice(0, 2)) {
+            const literal = nodes[index];
+            if (literal.kind !== 'const' || typeof literal.value !== 'number'
+                || !Number.isSafeInteger(literal.value) || literal.value < 0) {
+              throw new Error('profileOverlap profile indices must be literal nonnegative integers');
+            }
+            if (profileCount !== undefined && literal.value >= profileCount) {
+              throw new Error('profileOverlap profile index is outside the table');
+            }
+          }
+        }
+        for (let i = node.args.length - 1; i >= 0; i--) push(node.args[i]);
+        push(node.callee, directProfile);
+        break;
+      }
+      case 'unary': push(node.target); break;
+      case 'binary': push(node.right); push(node.left); break;
+      case 'member': push(node.owner); break;
+      case 'index': push(node.key); push(node.owner); break;
+      case 'ternary': push(node.whenFalse); push(node.whenTrue); push(node.predicate); break;
+      case 'array':
+        for (let i = node.items.length - 1; i >= 0; i--) push(node.items[i]);
+        break;
+      case 'object':
+        for (let i = node.values.length - 1; i >= 0; i--) push(node.values[i]);
+        break;
+      default: break;
+    }
+  }
+  return found;
 }
 
 // ---------------------------------------------------------------------
@@ -1230,6 +1306,12 @@ export class PathValue {
       // back would change generic valueOf's observable error semantics.
       for (const id of walk) {
         const node = nodes[id];
+        if (node.kind === 'call') {
+          const callee = nodes[node.callee];
+          if (callee.kind === 'name' && callee.name === 'profileOverlap') {
+            throw new UnsupportedPathNode('PathValue: profileOverlap uses program-scoped data');
+          }
+        }
         if (node.kind === 'binary' && (node.op === '&&' || node.op === '||')) {
           throw new UnsupportedPathNode(`PathValue: a short-circuit "${node.op}"`);
         }

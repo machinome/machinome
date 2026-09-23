@@ -39,6 +39,7 @@ import {
   UnsupportedLaw,
 } from './program';
 import type { LoadedProgram } from './program';
+import { withProfileIntegrationCache } from './profiles';
 
 /** One declared bound reached inside one tick.
  *
@@ -423,7 +424,12 @@ export class Run {
   }
 
   integrate(tick: number, advance: boolean, only: Command | null = null): void {
-    withExpressions(() => this.integrateScoped(tick, advance, only));
+    if (this.program.profiles === undefined) {
+      withExpressions(() => this.integrateScoped(tick, advance, only));
+    } else {
+      withProfileIntegrationCache(this.program.profiles,
+        () => withExpressions(() => this.integrateScoped(tick, advance, only)));
+    }
   }
 
   private integrateScoped(tick: number, advance: boolean, only: Command | null): void {
