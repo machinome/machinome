@@ -165,6 +165,7 @@ that way.
 - [ADR-092](TEST-FRAMEWORK/ADR-092-face-boxes-decide-an-enclosed-pair-without-a-boolean.md) — Face boxes decide an enclosed pair without a boolean — **Accepted**, extends 029, 091
 - [ADR-118](TEST-FRAMEWORK/ADR-118-an-unexpected-success-fails-the-run.md) — An unexpected success fails the run: `solid test` honours `skipTest`/`unittest.skip` and `@unittest.expectedFailure`, and a stale expected-failure marking that starts passing fails the run — **Accepted**
 - [ADR-142](TEST-FRAMEWORK/ADR-142-a-shared-interior-witness-refuses-an-empty-exact-common.md) — A strict shared-interior witness refuses a contradictory empty exact common without inventing an overlap volume — **Accepted**
+- [ADR-143](TEST-FRAMEWORK/ADR-143-exact-booleans-preserve-their-reusable-inputs.md) — Native Common, Fuse and witness Section preserve reusable caller-owned input B-reps — **Accepted**
 
 ### VIEWER-WEB — web viewer
 - [ADR-012](VIEWER-WEB/ADR-012-threejs-for-3d-rendering.md) — Three.js rendering — **Accepted** — *Relocated* to solid-node-viewer (ADR-068)

@@ -2008,6 +2008,13 @@ never an existing positive common. This is a one-way witness search, not a proof
 all unwitnessed empty commons are true empties. Ordinary face/edge
 contacts and nonempty native commons retain their existing semantics
 (ADR-142).
+Framework-owned native Common and Fuse, and the empty-common witness's
+Section, receive call-local deep copies of both operands before using OCCT's
+default operation mode. The caller-owned source and placed input B-reps remain
+reusable by subsequent exact comparisons; the copies do not enter the retained
+shape caches (ADR-143). OCCT's nominal non-destructive mode is not used: it
+made a valid Curta fresh-input common invalid. Copy failure remains a named
+refusal, never a shared-input, mesh, or fuzzy fallback.
 
 Verdicts are memoized within a run (ADR-070, amended by ADR-090). The
 identity of an intersection question is `(both geometry identities,
@@ -2946,7 +2953,7 @@ The short list that changes must not silently break:
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
-| Test framework | `machinome/test.py`, `machinome/exact.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142 |
+| Test framework | `machinome/test.py`, `machinome/exact.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

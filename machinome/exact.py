@@ -345,14 +345,19 @@ def _boolean(operation, first, second, first_name, second_name):
         'intersection': BRepAlgoAPI_Common,
         'fusion': BRepAlgoAPI_Fuse,
     }[operation]()
-    arguments = TopTools_ListOfShape()
-    arguments.Append(first.wrapped)
-    tools = TopTools_ListOfShape()
-    tools.Append(second.wrapped)
-    algorithm.SetArguments(arguments)
-    algorithm.SetTools(tools)
-    algorithm.SetRunParallel(True)
     try:
+        # OCCT's default Boolean can amend its argument subshapes in place.
+        # Keep that result mode: its protected mode gave an invalid common on
+        # a real Curta pose where the default result is valid. Instead give
+        # the default kernel private exact copies of both reusable operands.
+        left, right = first.copy(), second.copy()
+        arguments = TopTools_ListOfShape()
+        arguments.Append(left.wrapped)
+        tools = TopTools_ListOfShape()
+        tools.Append(right.wrapped)
+        algorithm.SetArguments(arguments)
+        algorithm.SetTools(tools)
+        algorithm.SetRunParallel(True)
         algorithm.Build()
         if not algorithm.IsDone():
             raise RuntimeError('kernel reported not-done')
@@ -434,7 +439,10 @@ def _false_empty_witness(first, second):
     solids1, solids2 = first.Solids(), second.Solids()
     if not solids1 or not solids2:
         return None
-    section = BRepAlgoAPI_Section(first.wrapped, second.wrapped, False)
+    # The independent witness must not amend either caller-owned input.
+    # Keep the same default Section mode as the primary Boolean.
+    left, right = first.copy(), second.copy()
+    section = BRepAlgoAPI_Section(left.wrapped, right.wrapped, False)
     section.Build()
     if not section.IsDone():
         raise RuntimeError('OCCT section reported not-done')
