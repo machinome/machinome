@@ -231,6 +231,15 @@ describe('version-12 two-envelope Follow', () => {
     expect(run.state().ball).toBe(1);
   });
 
+  it('carries an absolute terminal input to a retained Follow without curving its source', () => {
+    const run = new Run(followBench(0, 10), 1, 8);
+    expect(run.move('low', { to: -4.9425 }).status).toBe('completed');
+    expect(run.state().ball).toBe(0);
+    expect(run.move('low', { to: 3.9075 }).status).toBe('completed');
+    expect(run.state().low).toBe(3.9075);
+    expect(run.state().ball).toBe(3.9075);
+  });
+
   it('retains the producer modulo left-closure excursion', () => {
     const program = followBench(0, 3, '_b3', {
       skeleton: '(low - (2 * _j0))',
@@ -457,6 +466,460 @@ describe('one pass over the edges in program order', () => {
 });
 
 describe('a declared bound is a physical stop', () => {
+  it('lands absolute requests exactly at both Curta-derived endpoints', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+      spans: { slide: { low: null, high: 3.9075 } },
+    });
+    const run = new Run(program, 1, 8);
+    const reverse = run.move('feed', { to: -4.9425 });
+    expect(reverse.status).toBe('completed');
+    expect(run.state()).toEqual({ feed: -4.9425, slide: -4.9425 });
+    const forward = run.move('feed', { to: 3.9075 });
+    expect(forward.status).toBe('completed');
+    expect(run.state()).toEqual({ feed: 3.9075, slide: 3.9075 });
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('does not mistake the adjacent starting float for an outward stop', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+      spans: { slide: { low: null, high: 3.9075 } },
+    });
+    const run = new Run(program, 1, 8);
+    const adjacent = nextAfter(-4.9425, Infinity);
+    expect(run.move('feed', { to: adjacent }).status).toBe('completed');
+    expect(run.state().feed).toBe(adjacent);
+    const forward = run.move('feed', { to: 3.9075 });
+    expect(forward.status).toBe('completed');
+    expect(run.state()).toEqual({ feed: 3.9075, slide: 3.9075 });
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('leaves relative and rate requests on their existing delta arithmetic', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+    });
+    const relative = new Run(program, 1, 8);
+    relative.move('feed', { to: -4.9425 });
+    const delta = 3.9075 - relative.state().feed;
+    relative.move('feed', { by: delta });
+    expect(relative.state().feed).toBe(-4.9425 + delta);
+    expect(relative.state().feed).not.toBe(3.9075);
+    const rated = new Run(program, 1, 8);
+    rated.move('feed', { to: -4.9425 });
+    rated.rate('feed', delta);
+    rated.advance();
+    expect(rated.state().feed).toBe(-4.9425 + delta);
+  });
+
+  it('keeps timed interior samples and a retained descendant offset', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(2) },
+      edges: [law(['feed'], ['slide'], 'feed', 'offset carriage')],
+    });
+    const run = new Run(program, 1, 8);
+    const command = run.move('feed', { to: -4.9425, duration: 2 });
+    run.advance();
+    const middle = run.state();
+    expect(middle.feed).toBe(-2.47125);
+    expect(middle.slide).toBe(2 + middle.feed);
+    expect(command.status).toBe('active');
+    const taken = run.snapshot();
+    run.advance();
+    const landed = run.state();
+    expect(landed.feed).toBe(-4.9425);
+    expect(landed.slide).toBe(2 + -4.9425);
+    run.restore(taken);
+    run.advance();
+    expect(run.state()).toEqual(landed);
+  });
+
+  it('restores a legacy active move record without endpoint metadata', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+    });
+    const run = new Run(program, 1, 8);
+    run.move('feed', { to: -4.9425, duration: 2 });
+    run.advance();
+    const legacy = run.snapshot();
+    delete legacy.commands[0].target;
+    run.restore(legacy);
+    run.advance();
+    expect(run.commands()).toHaveLength(0);
+    expect(Number.isFinite(run.state().feed)).toBe(true);
+  });
+
+  it('carries terminal landings through wiring and formula without discarding offsets', () => {
+    const program = bench({
+      coordinates: { feed: input(0), wired: coordinate(2), derived: coordinate(5) },
+      edges: [
+        { kind: 'wiring', needs: ['feed'], gives: ['wired'],
+          description: 'feed wires output', stated_by: 'Bench', factor: 1 },
+        { kind: 'formula', needs: ['wired'], gives: ['derived'],
+          description: 'wired derives output', stated_by: 'Bench',
+          factors: [1], constant: 0, slot: 'derived' },
+      ],
+    });
+    const run = new Run(program, 1, 8);
+    run.move('feed', { to: -4.9425 });
+    expect(run.state()).toEqual({ feed: -4.9425, wired: 2 - 4.9425, derived: 5 - 4.9425 });
+    const held = run.state();
+    run.move('feed', { to: 3.9075 });
+    const wireDelta = 3.9075 - held.feed;
+    const wireEnd = held.wired + wireDelta;
+    expect(run.state()).toEqual({
+      feed: 3.9075,
+      wired: wireEnd,
+      derived: held.derived + (wireEnd - held.wired),
+    });
+  });
+
+  it('refuses malformed absolute targets before mutating a live run', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+    });
+    const run = new Run(program, 1, 8);
+    run.move('feed', { to: 3.9075, duration: 2 });
+    run.advance();
+    const before = run.snapshot();
+    const live = run.commands()[0];
+    for (const target of [Infinity, '3.9075', null]) {
+      const malformed = structuredClone(before) as typeof before;
+      (malformed.commands[0] as unknown as Record<string, unknown>).target = target;
+      expect(() => run.restore(malformed)).toThrow();
+      expect(run.snapshot()).toEqual(before);
+      expect(live.status).toBe('active');
+    }
+    const unknown = structuredClone(before);
+    unknown.commands[0].input = 'unregistered';
+    expect(() => run.restore(unknown)).toThrow();
+    expect(run.snapshot()).toEqual(before);
+    expect(live.status).toBe('active');
+    const misclassified = structuredClone(before);
+    misclassified.commands[0].kind = 'rate';
+    expect(() => run.restore(misclassified)).toThrow();
+    expect(run.snapshot()).toEqual(before);
+    expect(live.status).toBe('active');
+  });
+
+  it('refuses a fractional native target in an integer-driver snapshot', () => {
+    const program = loadProgram({
+      format: 'machinome-export', version: 5,
+      drivers: { feed: { default: 0, range: null, unit: null, dtype: 'int', scale: null } },
+      instructions: {},
+      program: {
+        identity: 'integer-target-restore', clock: 'time',
+        coordinates: { feed: input(0), slide: coordinate(0) },
+        intermediates: [], edges: [law(['feed'], ['slide'], 'feed', 'integer slide')],
+        spans: {}, sources: { feed: ['feed'], slide: ['feed'] }, limits: LIMITS,
+      },
+    } as unknown as RunDocument, 'bench://integer-target-restore');
+    const run = new Run(program, 1, 8);
+    run.move('feed', { to: 4, duration: 2 });
+    run.advance();
+    const before = run.snapshot();
+    const malformed = structuredClone(before);
+    malformed.commands[0].target = 4.5;
+    expect(() => run.restore(malformed)).toThrow(/invalid native target/);
+    expect(run.snapshot()).toEqual(before);
+  });
+
+  it('never applies the full target after a genuine earlier physical stop', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+      spans: { slide: { high: 1 } },
+    });
+    const run = new Run(program, 1, 8);
+    run.move('feed', { to: -4.9425 });
+    const command = run.move('feed', { to: 3.9075 });
+    expect(command.status).toBe('blocked');
+    expect(run.state()).toEqual({ feed: 1, slide: 1 });
+    expect(run.stops()).toHaveLength(1);
+  });
+
+  it('finishes an independent exact target after another command stops mid-tick', () => {
+    const program = bench({
+      coordinates: {
+        brake: input(0), feed: input(-4.9425),
+        brakeSlide: coordinate(0), feedSlide: coordinate(-4.9425),
+      },
+      edges: [
+        law(['brake'], ['brakeSlide'], 'brake', 'brake drives its slide'),
+        law(['feed'], ['feedSlide'], 'feed', 'feed drives its slide'),
+      ],
+      spans: { brakeSlide: { high: 1 }, feedSlide: { high: 3.9075 } },
+    });
+    const run = new Run(program, 1, 8);
+    const blocked = run.move('brake', { to: 2, duration: 1 });
+    const completed = run.move('feed', { to: 3.9075, duration: 1 });
+    run.advance();
+    expect(blocked.status).toBe('blocked');
+    expect(completed.status).toBe('completed');
+    expect(run.state()).toEqual({ brake: 1, feed: 3.9075,
+      brakeSlide: 1, feedSlide: 3.9075 });
+    expect(run.stops()).toHaveLength(1);
+  });
+
+  it('preserves the sign of an exact zero terminal target', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], 'feed', 'direct carriage')],
+    });
+    const run = new Run(program, 1, 8);
+    expect(run.move('feed', { to: -0 }).status).toBe('completed');
+    expect(Object.is(run.state().feed, -0)).toBe(true);
+    expect(Object.is(run.state().slide, -0)).toBe(true);
+  });
+
+  it('carries an exact target through a retained Play and its descendant', () => {
+    const program = bench({
+      coordinates: { feed: input(0), follower: coordinate(0), slide: coordinate(0) },
+      edges: [
+        play('feed', 'follower', -1, 1),
+        law(['follower'], ['slide'], 'follower', 'follower drives slide'),
+      ],
+      spans: { slide: { low: null, high: 2.9075 } },
+    });
+    const run = new Run(program, 1, 8);
+    expect(run.move('feed', { to: -4.9425 }).status).toBe('completed');
+    expect(run.move('feed', { to: 3.9075 }).status).toBe('completed');
+    expect(run.state()).toEqual({ feed: 3.9075, follower: 2.9075, slide: 2.9075 });
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('retains every affine descendant interior probe of the legacy BY path', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], '(3 * feed)', 'geared slide')],
+    });
+    const probes = [1 / 64, 7 / 64, 1 / 2, 63 / 64];
+    const sampled = (absolute: boolean): number[] => {
+      const run = new Run(program, 1, 8);
+      run.move('feed', { to: -4.9425 });
+      const target = 3.9075;
+      const delta = target - run.state().feed;
+      const probe = run as unknown as { pass: (...args: unknown[]) => Record<string, number> };
+      const original = probe.pass.bind(run);
+      const seen: number[] = [];
+      const spy = vi.spyOn(probe, 'pass').mockImplementation((...args) => {
+        const result = original(...args);
+        const path = propagations.get(args[1] as Record<string, number>)?.motions.get('slide');
+        if (path) seen.push(...probes.map(t => path.at(t)));
+        return result;
+      });
+      run.move('feed', absolute ? { to: target } : { by: delta });
+      spy.mockRestore();
+      return seen;
+    };
+    expect(sampled(true)).toEqual(sampled(false));
+  });
+
+  it('does not evaluate a rounded, invalid endpoint before the authored one', () => {
+    const program = bench({
+      coordinates: { feed: input(-0.2), slide: coordinate(Math.sqrt(0.3)) },
+      edges: [law(['feed'], ['slide'], 'sqrt(0.1 - feed)', 'square-root carriage', false)],
+    });
+    const run = new Run(program, 1, 8);
+    expect(run.move('feed', { to: 0.1 }).status).toBe('completed');
+    expect(run.state().feed).toBe(0.1);
+    expect(Number.isFinite(run.state().slide)).toBe(true);
+  });
+
+  it('does not evaluate a rounded invalid endpoint after a retained Play', () => {
+    const program = bench({
+      coordinates: {
+        feed: input(-0.2), ball: coordinate(-1.2), slide: coordinate(Math.sqrt(1.3)),
+      },
+      edges: [play('feed', 'ball', -1, 1), law(['ball'], ['slide'],
+        'sqrt(0.10000000000000009 - ball)', 'curved follower carriage', false)],
+    });
+    const run = new Run(program, 1, 8);
+    expect(run.move('feed', { to: 1.1 }).status).toBe('completed');
+    expect(run.state()).toEqual({ feed: 1.1, ball: 0.10000000000000009, slide: 0 });
+  });
+
+  it('keeps a planned curved law finite at an exact terminal domain edge', () => {
+    const program = bench({
+      coordinates: { feed: input(-0.2), slide: coordinate(0) },
+      edges: [{ kind: 'law', needs: ['feed'], gives: ['slide'],
+        description: 'gated square-root slide', stated_by: 'Bench',
+        expressions: ['(sqrt(0.1 - feed) * (feed > 0))'], affine: [false],
+        plans: [{ skeleton: '(sqrt(0.1 - feed) * _j0)', jumps: [
+          { name: '_j0', primitive: '>', level: 'feed', affine: true },
+        ] }] }],
+    });
+    const run = new Run(program, 1, 8);
+    expect(run.move('feed', { to: 0.1 }).status).toBe('completed');
+    expect(run.state().feed).toBe(0.1);
+    // The positive branch changes by its endpoint difference from the
+    // crossing, so this is a retained integrated value, not static pose 0.
+    expect(Number.isFinite(run.state().slide)).toBe(true);
+    expect(run.state().slide).toBeLessThan(0);
+  });
+
+  it('does not reread a stateful call or its binding alias to correct a descendant', async () => {
+    for (const viaBinding of [false, true]) {
+      vi.resetModules();
+      const random = vi.spyOn(Math, 'random')
+        .mockReturnValueOnce(0.1).mockReturnValueOnce(0.2).mockReturnValueOnce(0.3);
+      try {
+        const [{ Run: FreshRun }, { loadProgram: freshLoad }] = await Promise.all([
+          import('./run'), import('./program'),
+        ]);
+        const program = freshLoad({
+          format: 'machinome-export', version: 5,
+          bindings: viaBinding ? [{ name: 'noise', expression: 'random(1)' }] : [],
+          drivers: { feed: { default: -4.9425, range: null, unit: null, dtype: null, scale: null } },
+          instructions: {},
+          program: {
+            identity: 'stateful-terminal', clock: 'time',
+            coordinates: { feed: input(-4.9425), slide: coordinate(-4.9425) },
+            intermediates: [],
+            edges: [law(['feed'], ['slide'], viaBinding
+              ? '(feed + noise)' : '(feed + random(1))', 'stateful slide')],
+            spans: {}, sources: { feed: ['feed'], slide: ['feed'] }, limits: LIMITS,
+          },
+        } as unknown as RunDocument, 'bench://stateful-terminal');
+        const run = new FreshRun(program, 1, 8);
+        const before = random.mock.calls.length;
+        expect(run.move('feed', { to: 3.9075 }).status).toBe('completed');
+        expect(random.mock.calls.length - before).toBe(2);
+        expect(run.state().feed).toBe(3.9075);
+        expect(run.state().slide).toBe(3.8075);
+      } finally {
+        random.mockRestore();
+      }
+    }
+  });
+
+  it('keeps a pre-import live math wrapper on its demanded legacy path', async () => {
+    vi.resetModules();
+    let calls = 0;
+    const sin = vi.spyOn(Math, 'sin').mockImplementation(() => ++calls / 10);
+    try {
+      const [{ Run: FreshRun }, { loadProgram: freshLoad }] = await Promise.all([
+        import('./run'), import('./program'),
+      ]);
+      const program = freshLoad({
+        format: 'machinome-export', version: 5,
+        drivers: { feed: { default: -4.9425, range: null, unit: null, dtype: null, scale: null } },
+        instructions: {},
+        program: {
+          identity: 'live-wrapper-terminal', clock: 'time',
+          coordinates: { feed: input(-4.9425), slide: coordinate(-4.9425) },
+          intermediates: [],
+          edges: [law(['feed'], ['slide'], '(feed + sin(1))', 'live wrapper slide')],
+          spans: { slide: { high: { expression: '(100000 + feed)' } } },
+          sources: { feed: ['feed'], slide: ['feed'] }, limits: LIMITS,
+        },
+      } as unknown as RunDocument, 'bench://live-wrapper-terminal');
+      const relative = new FreshRun(program, 1, 8);
+      relative.move('feed', { by: 3.9075 - -4.9425 });
+      const relativeCalls = calls;
+      const relativeSlide = relative.state().slide;
+      calls = 0;
+      const absolute = new FreshRun(program, 1, 8);
+      expect(absolute.move('feed', { to: 3.9075 }).status).toBe('completed');
+      expect(calls).toBe(relativeCalls);
+      expect(absolute.state().slide).toBe(relativeSlide);
+      expect(absolute.state().feed).toBe(3.9075);
+    } finally {
+      sin.mockRestore();
+    }
+  });
+
+  it('still refuses a genuinely invalid authored source state atomically', () => {
+    const program = bench({
+      coordinates: { feed: input(0.2), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], '(feed > 0.1 ? missing() : feed)', 'invalid-start carriage', false)],
+    });
+    const run = new Run(program, 1, 8);
+    const before = run.snapshot();
+    expect(() => run.move('feed', { to: 0.1 })).toThrow();
+    expect(run.state()).toEqual(before.bank);
+    expect(run.tick()).toBe(before.tick);
+  });
+
+  it('keeps the ordered moving-Bound interior scopes of the legacy BY request', () => {
+    const program = bench({
+      coordinates: { feed: input(0), slide: coordinate(0) },
+      edges: [law(['feed'], ['slide'], '(3 * feed)', 'geared slide')],
+      spans: { slide: { high: { expression: '(2 * feed)' } } },
+    });
+    const sampled = (absolute: boolean): number[] => {
+      const run = new Run(program, 1, 8);
+      run.move('feed', { to: -4.9425 });
+      const delta = 3.9075 - run.state().feed;
+      const seen: number[] = [];
+      const binding = ExpressionPath.prototype.bind;
+      const probing = ExpressionPath.prototype.at;
+      const first = vi.spyOn(ExpressionPath.prototype, 'bind').mockImplementation(function (values, initial) {
+        if ('feed' in values) seen.push(values.feed);
+        return binding.call(this, values, initial);
+      });
+      const later = vi.spyOn(ExpressionPath.prototype, 'at').mockImplementation(function (values) {
+        if ('feed' in values) seen.push(values.feed);
+        return probing.call(this, values);
+      });
+      try {
+        run.move('feed', absolute ? { to: 3.9075 } : { by: delta });
+      } finally {
+        first.mockRestore();
+        later.mockRestore();
+      }
+      return seen;
+    };
+    const absolute = sampled(true);
+    const relative = sampled(false);
+    expect(absolute.length).toBeGreaterThan(4);
+    expect(absolute).toEqual(relative);
+  });
+
+  it('keeps jump crossings and replay while landing the input exactly', () => {
+    const program = bench({
+      coordinates: { feed: input(0), dial: coordinate(0) },
+      edges: [{
+        kind: 'law', needs: ['feed'], gives: ['dial'],
+        description: 'periodic dial', stated_by: 'Bench',
+        expressions: ['(feed - floor(feed))'], affine: [true],
+        plans: [{ skeleton: '(feed - _j0)', jumps: [
+          { name: '_j0', primitive: 'floor', level: 'feed', affine: true },
+        ] }],
+      }],
+    });
+    const run = new Run(program, 1, 16);
+    run.move('feed', { to: -4.9425 });
+    const before = run.snapshot();
+    const earlierCrossings = run.crossings().length;
+    const probe = run as unknown as { pass: (...args: unknown[]) => Record<string, number> };
+    const original = probe.pass.bind(run);
+    let exactDialEnd: number | undefined;
+    const spy = vi.spyOn(probe, 'pass').mockImplementation((...args) => {
+      const result = original(...args);
+      exactDialEnd = propagations.get(args[1] as Record<string, number>)?.motions.get('dial')?.end;
+      return result;
+    });
+    expect(run.move('feed', { to: 3.9075 }).status).toBe('completed');
+    spy.mockRestore();
+    expect(run.state().feed).toBe(3.9075);
+    expect(Number.isFinite(run.state().dial)).toBe(true);
+    expect(run.state().dial).toBe(exactDialEnd);
+    const landed = run.snapshot();
+    const crossingCount = run.crossings().length;
+    expect(crossingCount).toBeGreaterThan(0);
+    run.restore(before);
+    run.move('feed', { to: 3.9075 });
+    expect(run.snapshot()).toEqual(landed);
+    expect(run.crossings()).toHaveLength(crossingCount - earlierCrossings);
+  });
+
   it('locates a downstream play stop from the original input prefix', () => {
     const program = bench({
       coordinates: { x: input(0), y: coordinate(0), z: coordinate(0) },
@@ -2009,6 +2472,88 @@ function corpusRun(name: string, dt: number,
 }
 
 describe('a block in the run (design D4, D6, tasks 8-9)', () => {
+  it('commits exact terminal paths through the published cyclic block', () => {
+    const run = corpusRun('ShiftedCarry', 1, { shift: 0 });
+    run.move('crank', { to: -4.9425 });
+    const probe = run as unknown as { pass: (...args: unknown[]) => Record<string, number> };
+    const original = probe.pass.bind(run);
+    let ends = new Map<string, number>();
+    const spy = vi.spyOn(probe, 'pass').mockImplementation((...args) => {
+      const result = original(...args);
+      ends = new Map([...propagations.get(args[1] as Record<string, number>)!.motions]
+        .map(([key, motion]) => [key, motion.end]));
+      return result;
+    });
+    expect(run.move('crank', { to: 3.9075 }).status).toBe('completed');
+    spy.mockRestore();
+    for (const key of ['lower.turn', 'higher.turn', 'carry.travel']) {
+      if (ends.has(key)) expect(run.state()[key]).toBe(ends.get(key));
+    }
+  });
+
+  it('commits a terminal endpoint from a minimal selected cyclic block', () => {
+    const program = bench({
+      coordinates: { feed: input(0), shift: input(0), a: coordinate(0), b: coordinate(0) },
+      edges: [
+        { kind: 'law', needs: ['feed', 'shift', 'b'], gives: ['a'],
+          description: 'feed drives a', stated_by: 'Bench',
+          expressions: ['(feed + (b * (shift > 0)))'], affine: [true],
+          plans: [{ skeleton: '(feed + (b * _j0))', jumps: [
+            { name: '_j0', primitive: '>', level: 'shift', affine: true },
+          ] }] },
+        law(['a'], ['b'], 'a', 'a drives b'),
+      ],
+    });
+    expect(program.edges.some(edge => edge.kind === 'block')).toBe(true);
+    const run = new Run(program, 1, 8);
+    run.move('feed', { to: -4.9425 });
+    const probe = run as unknown as { pass: (...args: unknown[]) => Record<string, number> };
+    const original = probe.pass.bind(run);
+    let ends = new Map<string, number>();
+    const spy = vi.spyOn(probe, 'pass').mockImplementation((...args) => {
+      const result = original(...args);
+      ends = new Map([...propagations.get(args[1] as Record<string, number>)!.motions]
+        .map(([key, motion]) => [key, motion.end]));
+      return result;
+    });
+    expect(run.move('feed', { to: 3.9075 }).status).toBe('completed');
+    spy.mockRestore();
+    expect(run.state().a).toBe(ends.get('a'));
+    expect(run.state().b).toBe(ends.get('b'));
+  });
+
+  it('does not terminal-snap a block output through an inactive source branch', () => {
+    const program = bench({
+      coordinates: {
+        feed: input(-4.9425), other: input(-4.9425), shift: input(0),
+        a: coordinate(-4.9425), b: coordinate(-4.9425),
+      },
+      edges: [
+        { kind: 'law', needs: ['feed', 'other', 'shift', 'b'], gives: ['a'],
+          description: 'selected other drives a', stated_by: 'Bench',
+          expressions: ['(other + ((feed + b) * (shift > 0)))'], affine: [true],
+          plans: [{ skeleton: '(other + ((feed + b) * _j0))', jumps: [
+            { name: '_j0', primitive: '>', level: 'shift', affine: true },
+          ] }] },
+        law(['a'], ['b'], 'a', 'a drives b'),
+      ],
+    });
+    expect(program.edges.some(edge => edge.kind === 'block')).toBe(true);
+    const run = (absolute: boolean): Record<string, number> => {
+      const engine = new Run(program, 1, 8);
+      const delta = 3.9075 - -4.9425;
+      engine.move('feed', absolute ? { to: 3.9075, duration: 1 }
+        : { by: delta, duration: 1 });
+      engine.move('other', { by: delta, duration: 1 });
+      engine.advance();
+      return engine.state();
+    };
+    const absolute = run(true);
+    const relative = run(false);
+    expect(absolute.feed).toBe(3.9075);
+    expect(absolute.a).toBe(relative.a);
+    expect(absolute.b).toBe(relative.b);
+  });
   it('9.2 the selected machine equals its FROZEN TWIN: `ShiftedCarry` '
      + 'cranked by 2.0 over 12 ticks of dt = 1/12', () => {
     // The producer's own numbers for THIS document, measured at

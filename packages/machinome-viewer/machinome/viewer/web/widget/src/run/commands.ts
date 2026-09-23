@@ -32,6 +32,8 @@ export interface CommandRecord {
   started: number;
   admitted: number;
   status: CommandStatus;
+  /** Exact converted native endpoint of an absolute move, when present. */
+  target?: number;
 }
 
 /** `native` driver state back in the DESIGN units a caller states a move
@@ -69,6 +71,7 @@ class Ramp {
 
 export interface CommandSpec {
   native?: number | null;
+  target?: number;
   nativeRate?: number | null;
   ticks?: number | null;
   value?: number;
@@ -79,6 +82,7 @@ export class Command {
   admittedNative = 0;
   readonly native: number | null;
   readonly nativeRate: number | null;
+  readonly targetNative: number | undefined;
   readonly ticks: number | null;
   private readonly ramp: Ramp | null;
 
@@ -90,6 +94,7 @@ export class Command {
     spec: CommandSpec = {},
   ) {
     this.native = spec.native ?? null;
+    this.targetNative = spec.target;
     this.nativeRate = spec.nativeRate ?? null;
     this.ticks = spec.ticks ?? null;
     this.ramp = kind === 'move' && this.ticks
@@ -174,6 +179,7 @@ export class Command {
       started: this.started,
       admitted: this.admittedNative,
       status: this.status,
+      ...(this.targetNative !== undefined ? { target: this.targetNative } : {}),
     };
   }
 }

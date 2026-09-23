@@ -11,10 +11,12 @@ export class Motion {
   private readonly cache = new Map<number, number>();
 
   constructor(readonly start: number, readonly end: number,
-              public pieces: Piece[], readonly affine = true) {
+              public pieces: Piece[], readonly affine = true,
+              readonly exactTerminal = false) {
     this.cache.set(0, start);
     this.cache.set(1, end);
     this.constant = affine && start === end
+      && (!exactTerminal || Object.is(start, end))
       && pieces.every(([a, b, at]) => at(a) === start && at(b) === start);
     if (this.constant) this.pieces = [[0, 1, () => start]];
   }
@@ -47,12 +49,15 @@ export class Motion {
     const edges = [left, ...this.cuts(left, right), right];
     return new Motion(this.at(left), this.at(right), edges.slice(0, -1).map(
       (a, i) => [(a - left) / width, (edges[i + 1] - left) / width,
-        t => this.at(left + width * t)]), this.affine);
+        t => this.at(left + width * t)]), this.affine,
+      this.exactTerminal && right === 1);
   }
 }
 
 export interface Propagation {
   motions: Map<string, Motion>;
+  /** Absolute endpoints of the rare full-terminal absolute request. */
+  terminals?: Map<string, number>;
   demanded: ReadonlySet<string>;
   untraced: Set<string>;
   followCuts?: Map<string, number[]>;
