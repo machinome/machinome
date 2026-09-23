@@ -40,6 +40,7 @@ from types import MappingProxyType
 from machinome.motion.ports import RunBinder, get_coordinate
 
 from .driver import RampProgram
+from .profile import _profile_integration_cache
 from .program import (CLOCK_NAME, Constraint, compile_program,
                       LandingInvariantError, qualified_coordinates, Stop,
                       TooManyCrossings, UnsupportedLaw, _BISECTION_ROUNDS,
@@ -461,7 +462,8 @@ class Run:
             # A zero-duration move settles at the CURRENT tick, without
             # advancing the clock -- the rule ADR-083 states for a
             # zero-duration instruction.
-            self.integrate(self.sim.tick, advance=False, only=command)
+            with _profile_integration_cache():
+                self.integrate(self.sim.tick, advance=False, only=command)
         return command
 
     def rate(self, input_id, rate):
@@ -545,7 +547,7 @@ class Run:
 
     def advance(self):
         """One tick, and the clock with it."""
-        with _folded_tick_cache():
+        with _folded_tick_cache(), _profile_integration_cache():
             self.integrate(self.sim.tick + 1, advance=True)
 
     def integrate(self, tick, advance, only=None):

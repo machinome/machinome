@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "profile": [[[0, 0], [1, 0], [1, 1], [0, 1]]],
+  "cases": [
+    {"name": "shared-edge", "left_angle": 0, "right_angle": 0, "left_xy": [0, 0], "right_xy": [1, 0], "result": 1},
+    {"name": "shared-vertex", "left_angle": 0, "right_angle": 0, "left_xy": [0, 0], "right_xy": [1, 1], "result": 1},
+    {"name": "strict-gap", "left_angle": 0, "right_angle": 0, "left_xy": [0, 0], "right_xy": [1.0000000000000002, 1], "result": 0},
+    {"name": "positive-zero", "left_angle": -0.0, "right_angle": 0, "left_xy": [0, 0], "right_xy": [2, 0], "result": 0},
+    {"name": "huge-finite-angle", "left_angle": 1e308, "right_angle": 0, "left_xy": [0, 0], "right_xy": [100, 0], "result": 0},
+    {"name": "distant-collapse-refuses", "left_angle": 0, "right_angle": 0, "left_xy": [1e300, 0], "right_xy": [-1e300, 0], "error": "collapsed"}
+  ],
+  "invalid_polygons": [
+    {"name": "repeated-vertex", "points": [[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]},
+    {"name": "zero-edge", "points": [[0, 0], [0, 0], [1, 0], [1, 1], [0, 1]]},
+    {"name": "pentagram", "points": [[0, 3], [1.8, -2.4], [-2.9, 0.9], [2.9, 0.9], [-1.8, -2.4]]}
+  ],
+  "valid_collinear": [[0, 0], [0.5, 0], [1, 0], [1, 1], [0, 1]]
+}

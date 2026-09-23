@@ -16,6 +16,7 @@ class ExpressionNode:
     op: str = ''
     children: tuple = ()
     text: str = ''
+    value: object = None
 
     def __repr__(self):
         detail = self.text if self.kind in ('name', 'num', 'raw') else self.op

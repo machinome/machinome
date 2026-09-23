@@ -2,6 +2,16 @@
 History
 =======
 
+Current-source work after the 0.7 record (unreleased)
+------------------------------------------------------
+
+* A finite, pointwise convex-profile contact predicate can be used as a
+  numeric 0/1 term in an existing running Bound. Its compact data table
+  is carried only by version-13 documents. The bounded Curta reverser
+  trial motivates the capability, but installed-print and axial-band
+  coverage remain independent project obligations. This source change
+  records no package upload or remote push.
+
 Machinome 0.7.0 (2026-09-23)
 ----------------------------
 

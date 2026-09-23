@@ -3,6 +3,18 @@
 Changelog
 =========
 
+Unreleased (current source)
+---------------------------
+
+* **Finite profile contact:** ``ConvexProfile`` and ``profile_overlap``
+  keep authored planar convex polygons as data and evaluate pointwise
+  inclusive contact without expanding polygon-pair formulas into a
+  symbolic graph. A running ``Bound`` can use the numeric 0/1 result
+  inside its existing absolute limit expression; its stop sampling and
+  attribution do not change. Exports using the predicate declare document
+  version 13 and require a matching viewer. The operation does not certify
+  contact between sampled instants or an installed part's profile cover.
+
 Machinome 0.7.0
 ---------------
 

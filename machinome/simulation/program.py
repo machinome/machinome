@@ -829,6 +829,8 @@ def _path_node_value(node, values, computed, standing=None):
     dispatch, so the float is the one the whole-graph walk gives."""
     if node.kind == 'num':
         return float(node.text)
+    if node.kind == 'profile':
+        return node.value
     if node.kind == 'name':
         if node.text not in values:
             raise ValueError(f'Unresolved motion input {node.text[:80]!r}')
@@ -849,6 +851,9 @@ def _path_node_value(node, values, computed, standing=None):
         if node.op == 'max':
             return max(*args) if len(args) == 2 else motion_math.max(*args)
         return getattr(motion_math, node.op)(*args)
+    if node.kind == 'call' and node.op == 'profileOverlap':
+        from machinome.simulation.profile import _profile_call
+        return _profile_call(*args)
     raise ValueError(f'Cannot numerically resolve {node!r}')
 
 
@@ -1007,6 +1012,10 @@ class _PathValue:
                     instructions.append((0, node.text, children))
                 elif node.kind == 'name':
                     instructions.append((1, node.text, children))
+                elif node.kind == 'profile':
+                    # Profile leaves are standing by construction; this is
+                    # only reachable if a malformed graph marks one moving.
+                    raise ValueError('A profile value cannot move')
                 elif node.kind == 'binop':
                     instructions.append((2, _PATH_OPERATORS[node.op], children))
                 elif node.kind == 'unary':
@@ -1020,6 +1029,9 @@ class _PathValue:
                     else:
                         operation = getattr(motion_math, node.op)
                     instructions.append((2, operation, children))
+                elif node.kind == 'call' and node.op == 'profileOverlap':
+                    from machinome.simulation.profile import _profile_call
+                    instructions.append((2, _profile_call, children))
                 else:
                     raise ValueError(f'Cannot numerically resolve {node!r}')
             instructions = tuple(instructions)
@@ -2740,6 +2752,23 @@ class Program:
         # bound a number, `None`, or a compiled graph over the
         # coordinate's own id.
         self.spans = tuple(spans)
+        # Contact data is owned by this program, never by a process registry.
+        # First occurrence in stable span/postorder determines wire indices.
+        profiles = []
+        indices = {}
+        for _identifier, low, high, _unit in self.spans:
+            for bound in (low, high):
+                if not isinstance(bound, GraphValue):
+                    continue
+                for item in postorder([as_node(bound)]):
+                    if item.kind != 'profile':
+                        continue
+                    content = item.value._content_bytes()
+                    if content not in indices:
+                        indices[content] = len(profiles)
+                        profiles.append(item.value)
+        self.profiles = tuple(profiles)
+        self.profile_indices = indices
         self.sources = _reaching_inputs(self.nodes, self.edges,
                                        self.time_drives)
         # The bank's own ids, both ways. `Run` kept these; they moved
@@ -2843,7 +2872,8 @@ class Program:
         """
         lines = [f'root {self.root_class.__module__}.'
                  f'{self.root_class.__qualname__}',
-                 ('follow version=12' if any(edge.kind == 'follow'
+                 ('profile-contact version=13' if self.profiles else
+                  'follow version=12' if any(edge.kind == 'follow'
                                              for edge in self.edges)
                   else 'source-timing version=11')]
         for identifier, declaration in self.inputs:
@@ -2854,8 +2884,11 @@ class Program:
         for identifier, low, high, unit in self.spans:
             # A changed range changes the identity, so a snapshot cannot
             # be restored into a machine whose stops have moved.
-            lines.append(f'span {identifier} {_written(low)} to '
-                         f'{_written(high)} {unit or "units"}')
+            lines.append(f'span {identifier} {_written(low, self.profile_indices)} to '
+                         f'{_written(high, self.profile_indices)} {unit or "units"}')
+        for index, profile in enumerate(self.profiles):
+            lines.append(f'profile {index} '
+                         f'{hashlib.sha256(profile._content_bytes()).hexdigest()}')
         for edge in self.edges:
             if edge.kind == 'block':
                 lines.append(
@@ -3089,8 +3122,8 @@ class Program:
                 if node.kind == 'intermediate'),
             'edges': [self._published_edge(edge, placeholders[index])
                       for index, edge in enumerate(self.listed())],
-            'spans': {identifier: {'low': _published_bound(low),
-                                   'high': _published_bound(high)}
+            'spans': {identifier: {'low': _published_bound(low, self.profile_indices),
+                                   'high': _published_bound(high, self.profile_indices)}
                       for identifier, low, high, _unit in self.spans},
             'sources': {self.nodes[key].name: sorted(names)
                         for key, names in sorted(
@@ -3105,6 +3138,9 @@ class Program:
                 'agreement': _agreement(),
             },
         }
+        if self.profiles:
+            document['profiles'] = [profile._published()
+                                    for profile in self.profiles]
         if self.time_drives:
             document['time_drives'] = [
                 {'id': identifier, 'edge': index}
@@ -3222,11 +3258,30 @@ class Program:
                 f'{len(self.nodes)} coordinates, {len(self.edges)} edges>')
 
 
-def _written(bound):
+def _profile_indices_graph(graph, indices):
+    """Replace private profile leaves with literal wire-table indices."""
+    root = as_node(graph)
+    rewritten = {}
+    for node in postorder([root]):
+        if node.kind == 'profile':
+            rewritten[node] = ExpressionNode(
+                'num', text=str(indices[node.value._content_bytes()]))
+        elif node.children:
+            children = tuple(rewritten.get(child, child) for child in node.children)
+            if children != node.children:
+                rewritten[node] = ExpressionNode(node.kind, node.op,
+                                                 children, node.text)
+    return GraphValue(rewritten.get(root, root))
+
+
+def _written(bound, profile_indices=None):
     """One bound as the identity prints it."""
     if bound is None:
         return 'unbounded'
     if isinstance(bound, GraphValue):
+        if profile_indices and any(item.kind == 'profile' for item in
+                                   postorder([as_node(bound)])):
+            return str(_profile_indices_graph(bound, profile_indices))
         return str(bound)
     return repr(bound)
 
@@ -3984,6 +4039,39 @@ def _qualified_reads(root, bank, bound, node, joint, side, identifier,
     return tuple(found)
 
 
+def _checked_bound_graph(root, refuse):
+    """The ordinary vocabulary plus the one Bound-only contact operation."""
+    from machinome.simulation.profile import ConvexProfile
+    ordered = tuple(postorder([root]))
+    parents = {}
+    for item in ordered:
+        for position, child in enumerate(item.children):
+            parents.setdefault(child, []).append((item, position))
+        if item.kind == 'raw':
+            refuse(f'carries the text {item.text!r}, which the framework '
+                   f'cannot evaluate.')
+        if item.kind == 'call' and item.op == 'profileOverlap':
+            if (len(item.children) != 8 or
+                    any(child.kind != 'profile' or
+                        not isinstance(child.value, ConvexProfile)
+                        for child in item.children[:2])):
+                refuse('calls profileOverlap without two valid profile '
+                       'values and six scalar placement operands.')
+            if any(child.kind == 'profile' for child in item.children[2:]):
+                refuse('calls profileOverlap with a profile in a scalar operand.')
+        elif item.kind == 'call' and item.op not in SYMBOLIC_BUILTINS:
+            refuse(f'calls {item.op!r}, which is outside the symbolic '
+                   f'vocabulary the run can evaluate.')
+    for item in ordered:
+        if item.kind == 'profile' and (not parents.get(item) or any(
+                parent.kind != 'call' or parent.op != 'profileOverlap' or
+                position not in (0, 1)
+                for parent, position in parents[item])):
+            refuse('carries a profile value outside the first two '
+                   'profileOverlap operands, which only a running Bound '
+                   'can evaluate.')
+
+
 def _compiled_bound(bound, identifier, node, joint, side, read_ids=None):
     """One declared bound as the run reads it: `None`, a float, or an
     expression graph over `identifier` and whatever it reads."""
@@ -4024,13 +4112,7 @@ def _compiled_bound(bound, identifier, node, joint, side, read_ids=None):
         refuse(f'returned {returned!r}, which is neither a number nor an '
                f"expression over the joint's own coordinate.")
     root = as_node(returned)
-    for item in postorder([root]):
-        if item.kind == 'raw':
-            refuse(f'carries the text {item.text!r}, which the framework '
-                   f'cannot evaluate.')
-        if item.kind == 'call' and item.op not in SYMBOLIC_BUILTINS:
-            refuse(f'calls {item.op!r}, which is outside the symbolic '
-                   f'vocabulary the run can evaluate.')
+    _checked_bound_graph(root, refuse)
     names = free_names(root)
     if not names <= {identifier}:
         others = ', '.join(sorted(names - {identifier}))
@@ -4082,13 +4164,7 @@ def _compiled_reading_bound(bound, identifier, read_ids, refuse):
         refuse(f'returned {returned!r}, which is neither a number nor an '
                f'expression over the coordinates it was given.')
     root = as_node(returned)
-    for item in postorder([root]):
-        if item.kind == 'raw':
-            refuse(f'carries the text {item.text!r}, which the framework '
-                   f'cannot evaluate.')
-        if item.kind == 'call' and item.op not in SYMBOLIC_BUILTINS:
-            refuse(f'calls {item.op!r}, which is outside the symbolic '
-                   f'vocabulary the run can evaluate.')
+    _checked_bound_graph(root, refuse)
     names = free_names(root)
     allowed = {identifier} | set(read_ids)
     if not names <= allowed:
@@ -4447,6 +4523,9 @@ def checked_expression(value, refuse, kind='a running law'):
     root = as_node(value)
     jumps = []
     for item in postorder([root]):
+        if item.kind == 'profile':
+            refuse('its expression carries a profile value, which is '
+                   'symbolic only inside a running Bound.')
         if item.kind == 'raw':
             refuse(f'its expression carries the text {item.text!r}, which '
                    f'the framework cannot evaluate: {kind} is an '
@@ -4978,9 +5057,12 @@ def _published_plan(plan, placeholders):
     }
 
 
-def _published_bound(bound):
+def _published_bound(bound, profile_indices=None):
     if bound is None or isinstance(bound, float):
         return bound
+    if profile_indices and any(item.kind == 'profile' for item in
+                               postorder([as_node(bound)])):
+        bound = _profile_indices_graph(bound, profile_indices)
     return {'expression': bound}
 
 

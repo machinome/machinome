@@ -167,6 +167,9 @@ SOURCE_TIMING_DOCUMENT_VERSION = 11
 #: A running program with a certified two-envelope retained follower.
 FOLLOW_DOCUMENT_VERSION = 12
 
+# A running Bound whose numeric expression uses finite convex profile data.
+PROFILE_CONTACT_DOCUMENT_VERSION = 13
+
 
 _MISSING = object()
 
@@ -550,8 +553,8 @@ def document_version(root, bindings=(), program=None, clocked=None):
     would animate wrongly. Every newly exported running program now selects
     version 11: source-timed execution supersedes the endpoint-era versions
     5, 6, 7, 9 and 10, without changing their fields or expression syntax.
-    Only a program with the explicit two-envelope Follow edge raises this
-    ladder to version 12.
+    A program with the explicit two-envelope Follow edge raises this ladder
+    to version 12; profile contact inside a numeric Bound raises it to 13.
 
     ``clocked``, when given, always wins and is the other step read off
     the ROOT'S DECLARATION rather than the content: a clocked document
@@ -564,6 +567,10 @@ def document_version(root, bindings=(), program=None, clocked=None):
     if clocked is not None:
         return CLOCKED_DOCUMENT_VERSION
     if program is not None:
+        if isinstance(program, dict) and program.get('profiles'):
+            return PROFILE_CONTACT_DOCUMENT_VERSION
+        if not isinstance(program, dict) and getattr(program, 'profiles', ()):
+            return PROFILE_CONTACT_DOCUMENT_VERSION
         edges = (program.get('edges', ()) if isinstance(program, dict)
                  else program.edges)
         if any((edge.get('kind') if isinstance(edge, dict) else edge.kind)

@@ -38,6 +38,10 @@ class GraphValue(OpenSCADConstant):
 
     def __str__(self):
         from machinome.core.expressions import scad_expression
+        from machinome.expression_graph import postorder
+        if any(node.kind == 'profile' for node in
+               postorder([self._expression_node])):
+            raise ValueError('profileOverlap is symbolic only in a running Bound')
         return scad_expression(self._expression_node)
 
     def __repr__(self):
@@ -76,6 +80,8 @@ class GraphValue(OpenSCADConstant):
             args = [values[child] for child in children]
             if node.kind == 'num':
                 value = float(node.text)
+            elif node.kind == 'profile':
+                value = node.value
             elif node.kind == 'name':
                 if node.text not in inputs:
                     raise ValueError(f'Unresolved motion input {node.text[:80]!r}')
@@ -95,6 +101,9 @@ class GraphValue(OpenSCADConstant):
                              else degree_math.max(*args))
                 else:
                     value = getattr(degree_math, node.op)(*args)
+            elif node.kind == 'call' and node.op == 'profileOverlap':
+                from machinome.simulation.profile import _profile_call
+                value = _profile_call(*args)
             else:
                 raise ValueError(f'Cannot numerically resolve {node!r}')
             values[index] = value

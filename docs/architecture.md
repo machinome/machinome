@@ -1102,6 +1102,18 @@ source paths or envelope shapes refuse atomically; self-read switch laws
 and `Play` are unchanged. Publication selects document version 12 and
 includes the producer's nullable jump plans for both surfaces.
 
+The Curta reverser's angular-cover finding adds a different, pointwise
+operation (ADR-144), not another relation or stop kind. An immutable
+`ConvexProfile` holds independent authored finite convex planar loops;
+`profile_overlap` places two of them in rigid XY and returns numeric 0/1
+under inclusive AABB/SAT contact. A symbolic call is admitted only as a
+term inside an existing running Bound's absolute limit expression. That
+Bound's own sample/bisection path and attribution stay the authority;
+the predicate is not continuous collision detection and proves no installed
+geometry cover. A private per-integration 1,024-pair/256-placement cache may
+reuse successful exact finite repeated work, but never persists into the
+next tick, run or replay or answers an uncertain/custom input.
+
 A quantity a tick follows along ONE path with ONE branch reading is
 evaluated as that path, not as an expression (ADR-124): `_PathValue`
 decides, in the same postorder walk `GraphValue.evaluate` would have
@@ -2537,10 +2549,17 @@ trivial program is still a machine a version 4 consumer would animate
 wrongly, and the bump is not additive. Earlier running rungs selected 5, 6, 7,
 9 or 10 from their content. ADR-138 supersedes that selection: every newly
 exported running program declares **version 11**, or **version 12** when it
-carries a `Follow` edge (ADR-141), and carries a source-timing
+carries a `Follow` edge (ADR-141), or **version 13** when a running Bound
+uses finite profile contact (ADR-144, whether or not it also carries
+`Follow`), and carries a source-timing
 semantic generation in its canonical identity. This protects both portable
 exports from old consumers and corrected runs from endpoint-era snapshots.
-No payload field changes. With explicit time drives (ADR-133),
+Version 13 alone adds `program.profiles`: ordered immutable point/loop tables
+deduplicated by exact content, referenced by literal indices in small
+`profileOverlap(...)` calls inside existing span expressions. Complete table
+content participates in program identity, so a changed cover refuses a stale
+snapshot; no-profile programs retain their prior bytes and identity. With
+explicit time drives (ADR-133),
 `program.time_drives` maps each `@time:<edge-index>` ID to its flattened
 published edge index in ascending order. The edge reads `time` in `needs`,
 never `gives`; source candidates carry its admission ID beside driver IDs.
