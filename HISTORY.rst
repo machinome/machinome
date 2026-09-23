@@ -21,9 +21,10 @@ map are in ``docs/changelog.rst``, ``docs/releases/release-0.7.rst`` and
 Release preparation completes the independent mechanics extraction:
 ``machinome[mechanics]`` installs ``machinome-mechanics`` 0.1.0 and
 projects import its twelve helpers from ``machinome_mechanics``.
-Viewer 0.7.0 reports API 26 and reads schemas 1–13, including running
+Viewer 0.7.0 reports API 27 and reads schemas 1–13, including running
 ``Play`` clearance pickup, explicit time drives, source-timed motion,
-the two-surface ``Follow`` and finite profile contact.
+the two-surface ``Follow``, finite profile contact and two ``Turn``
+controls on one visible part that select different declared joints.
 Fresh installations bound ``ocp-gordon`` below 0.3 to preserve the
 shared OCP 7.8 CAD runtime.
 
@@ -51,6 +52,28 @@ shared OCP 7.8 CAD runtime.
   the viewer's API 25 reads it. Change
   ``follow-two-clearance-surfaces``; ratified by the pilot's decision
   to release 0.7.0 with it.
+* **An inherited control FOLLOWS a compatible child replacement
+  (ADR-146).** The Curta Type I's ``LoopOperatingTrial`` replaces its
+  inherited ``carriage`` with a specialized subclass and declares
+  ``controls = {**OperatingCurta.controls, 'deploy loop': Turn(...)}``,
+  keeping 25 hand controls and adding one. Class definition refused
+  ``shift carriage`` because the copied control still referred to the
+  ancestor's ``carriage`` declaration, not to the child at that path.
+  A control that is the same object under the same name in an ancestor's
+  validated table, whose first named child the subclass replaces at the
+  same path with a subclass-compatible declaration, now resolves its
+  part and selected joint on the effective tree at compilation, where
+  the existing ownership, ancestry, banked-coordinate, domain, driver
+  and input-reachability checks still decide it. Every other control
+  still requires exact declaration identity: a new control borrowing an
+  ancestor's or a foreign same-name child, an incompatible replacement
+  and a missing nested path refuse by control name, and an explicit
+  ``controls`` table remains a replacement, never a merge. No syntax, no
+  document field (still **version 13**) and no producer wire change;
+  the trial's second ``Turn`` on the clearing ring's leaf is read by the
+  viewer's API 27. Amends ADR-117 for this case only. Change
+  ``inherit-controls-through-replaced-child``; ratified by the pilot's
+  decision to release 0.7.0 with it.
 * **A running move LANDS where it was sent, and a broken law REFUSES.**
   The Curta Type I's installed reverser trial reported a zero-duration
   ``move(to=3.9075)`` blocked at a bound equal to its target: the

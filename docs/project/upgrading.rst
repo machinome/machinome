@@ -129,7 +129,7 @@ requires schema 8; newly exported running models require schema 11 and a
 viewer supporting source-timed motion (introduced by API 24); one
 carrying a ``Follow`` relation requires schema 12 (introduced by API 25),
 and one whose running ``Bound`` uses finite profile contact requires
-schema 13 (API 26). Re-export running models;
+schema 13 (introduced by API 26). Re-export running models;
 endpoint-era snapshots refuse restore into the new semantic identity, so
 restart from the initial model state and replay intended commands.
 Hosts must update their bundle and the renamed

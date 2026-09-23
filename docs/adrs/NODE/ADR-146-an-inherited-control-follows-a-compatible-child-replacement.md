@@ -4,6 +4,7 @@
 **Date:** 2026-09-23
 **Amends:** [ADR-117](ADR-117-a-control-may-name-the-freedom-it-means.md) only for an explicitly preserved inherited control across a child replacement
 **OpenSpec change:** `inherit-controls-through-replaced-child`
+**Ratified:** 23 September 2026. The pilot ratified it by deciding that Machinome 0.7.0 releases with it, document version 13 unchanged and viewer API 27 included.
 
 ## Context
 

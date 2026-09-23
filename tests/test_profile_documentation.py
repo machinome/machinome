@@ -32,9 +32,12 @@ class ProfileDocumentationTest(unittest.TestCase):
         released = changelog.split('machinome 0.7.0')[1]
         self.assertIn('finite profile contact', released)
         self.assertIn('schema 13', released)
-        self.assertIn('api 26 and schemas 1–13', released)
+        self.assertIn('api 27 and schemas 1–13', released)
+        self.assertIn('two turn controls', released)
+        self.assertIn('compatible child replacement', released)
         self.assertIn('adr-144', history.split('0.6.0 (')[0])
-        self.assertIn("viewer_api = '26'", conf)
+        self.assertIn('adr-146', history.split('0.6.0 (')[0])
+        self.assertIn("viewer_api = '27'", conf)
         self.assertIn("document_versions = '1 to 13'", conf)
 
 

@@ -101,6 +101,13 @@ does not reach the coordinate, naming the inputs that do) and at
 publication (a drag that moves the part by nothing at rest). A control
 under a root that does not declare ``Time.running()`` is refused.
 
+A subclass that declares its own ``controls`` table replaces the
+inherited one; to keep the base's controls, spread them into it:
+``controls = {**Base.controls, 'new': Turn(...)}``. A kept control still works when the subclass replaces the child
+it names with a compatible declaration at the same path: its part and
+``coordinate=`` are found on the replacement at compile, under the same
+checks. A new control that borrows another class's child is refused.
+
 Driving retained motion from time
 ---------------------------------
 

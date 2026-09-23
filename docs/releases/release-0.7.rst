@@ -66,12 +66,13 @@ Explore and share
 The independent Machinome Viewer executes the published model in the
 browser: direct input controls, running transport, or clocked requests
 and state readouts as the machine requires. A static export carries that
-experience to a web page. The matching viewer 0.7.0 reports API 26 and
+experience to a web page. The matching viewer 0.7.0 reports API 27 and
 reads schemas 1–13, including explicit running clearance pickup through
 ``Play``, motion the running clock drives, source-timed motion that
 keeps a determined source's stroke and dwell through the chains that
 read it, a follower held between two moving surfaces through
-``Follow``, and finite profile contact inside a running ``Bound``.
+``Follow``, finite profile contact inside a running ``Bound``, and two
+``Turn`` controls on one part that select different joints.
 
 The manual teaches one machine from a part to a machine with memory, a
 hand-cranked tally counter, then keeps how-to guides and concept pages

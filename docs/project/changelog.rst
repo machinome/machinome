@@ -57,9 +57,11 @@ one description that can be built, operated and tested.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
   AGPL-3.0-only package. Interactive ``develop`` requires it;
   ``--no-web`` remains available. The matching viewer release 0.7.0,
-  numbered with the framework, implements API 26 and schemas 1–13,
+  numbered with the framework, implements API 27 and schemas 1–13,
   including running, clocked, time-driven and source-timed machines, a
-  follower held between two moving surfaces and finite profile contact.
+  follower held between two moving surfaces, finite profile contact, and
+  two Turn controls on one visible part that select different declared
+  joints, each with its own named handle.
 * **Retained clearance pickup:** explicit running ``Play`` relations
   collect and release a follower through clearance; document schema 9
   carries that contact law to the viewer.
@@ -117,6 +119,18 @@ one description that can be built, operated and tested.
   unchanged. The operation does not certify contact between sampled
   instants or that a profile covers an installed part. Born of the
   Curta Type I's reverser.
+* **Inherited controls survive a compatible child replacement:** a
+  subclass that keeps an ancestor's controls under the same names, for
+  example ``controls = {**Base.controls, 'deploy loop': Turn(...)}``,
+  may replace the child those controls name with a subclass-compatible
+  declaration at the same path; each such control resolves its part and
+  selected joint on the replacement when the machine is compiled, and
+  every existing gesture check still applies. An explicit ``controls``
+  table still replaces the inherited one rather than merging with it. A
+  new control that borrows another class's child, an incompatible
+  replacement and a path missing from the effective tree are refused by
+  control name. No syntax, document or viewer change. Born of the Curta
+  Type I's loop operating trial.
 * **Running performance:** repeated expression evaluation reuses each
   immutable graph's order and operations, running bounds and traced
   constraint searches read determined motion paths instead of replaying
