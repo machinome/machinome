@@ -3756,11 +3756,13 @@ already on record and is tracked there, not here.
   hand-derived law: the kinematics helpers (ADR-076), the `Follow` law,
   the hexapod's hand-inverted `R_roll · R_pitch · R_yaw · T_height`, and
   the deferred openflexure four-bar decomposition (Deferred item 11 above).
-  **Deferred, and an architecture decision for the pilot:** the viewer
-  evaluates closed-form expressions at frame rate, so a solver either runs
-  in Python and publishes a table or fitted law, runs in the viewer as
-  WebAssembly, or is replaced by a growing helper library. Open solvers
-  exist (SolveSpace, FreeCAD's planegcs and Assembly solver). Comes back
+  **Deferred.** Pilot direction (2026-09-23): the solve happens at
+  compile time, never in the viewer; the build publishes a closed form
+  where one exists, or a sampled law the viewer interpolates, and judges
+  the branch, dead points and closing range once. The viewer receives the
+  mates to represent them, and solves nothing (note §5.3, §5.5). Open
+  solvers exist (SolveSpace, FreeCAD's planegcs and Assembly solver) for
+  the build-time side. Comes back
   with a linkage machine that wants its loop closed rather than derived —
   a second flexure stage, or a Foundry machine built around a linkage — and
   is a natural neighbour of 0.9 dynamics on `workflow/docs/roadmap.md`.

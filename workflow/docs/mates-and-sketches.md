@@ -7,7 +7,10 @@ asked for after reading about MakerCAD
 parts and assemblies — constrained sketches, mate connectors, joints between
 them, skeleton layouts — could come into machinome, and whether it should.
 It does *not* claim that any spelling below exists, that the layering is
-settled, or that any project has been migrated. Where it disagrees with a
+settled, or that any project has been migrated. One point is the pilot's
+settled direction (2026-09-23), not a proposal: every solve happens at
+compile time and the viewer solves nothing, while still receiving the mates
+so it can represent them (§5.3, §5.5). Where it disagrees with a
 baseline spec or an accepted ADR, the spec and the ADR are right and this
 note is stale. Under the evidence rule, no cycle is cut from it until a named
 project needs that cycle now (§6).
@@ -119,8 +122,10 @@ In a tree-shaped assembly — most machines — "put `link.hole` on
 algebra: the child's rest placement is the parent frame composed with the
 inverse of the child frame, and the leftover freedom is an existing joint
 whose axis and `at` are that frame's. A mate therefore **compiles into rest
-placement plus an ADR-093/094/095 joint**, symbolically. The document, the
-viewer, contracts and the running and clocked machinery see nothing new.
+placement plus an ADR-093/094/095 joint**, symbolically. Contracts and the
+running and clocked machinery see nothing new, and what the viewer
+evaluates is unchanged; the document only gains the mate declarations, for
+representation (§5.5).
 A candidate spelling, for discussion only:
 
 ```python
@@ -143,26 +148,45 @@ except the hand-closed loops, and is expected to carry most of the value.
 Questions a proposal would have to settle: whether a mate may coexist with
 a hand-written `translate` on the same child (probably refused, so a
 placement is stated once); what a rigid mate is called (`Fixed`?); how a
-mate states a site-level conditional placement like Inmoov's; how a frame on
-a `.repeat()` copy is addressed; and whether frames are published in the
-document so the viewer can draw and pick them.
+mate states a site-level conditional placement like Inmoov's; and how a
+frame on a `.repeat()` copy is addressed. Frames and mates are published in
+the document (§5.5); what they compile to is what the viewer evaluates.
 
 ### 5.3 A solver for closed loops
 
 A skeleton or a set of mates that closes a loop — a four-bar, a
-slider-crank, a delta, a Peaucellier — needs a solver. This is an
-architecture decision, because the viewer evaluates closed-form expressions
-at frame rate in the browser and a run-time numeric solve breaks that
-unless something else changes. Options, none chosen:
+slider-crank, a delta, a Peaucellier — needs a solver.
 
-- solve numerically in Python and publish a table or a fitted law;
-- run a solver compiled to WebAssembly in the viewer (a viewer change, in
-  its own repository);
-- keep growing the closed-form helper library loop shape by loop shape.
+**Pilot direction, 2026-09-23: every solve happens at compile time, never
+in the viewer.** Solving is expensive; the viewer receives an optimal
+application — closed-form laws it evaluates at frame rate, as it does
+today — and no solver ships to the browser. The viewer does receive the
+mates themselves, as declarations, so it can represent them (§5.5); it
+never solves them. A run-time solver in the viewer, WebAssembly or
+otherwise, is rejected.
+
+What compiling a loop means, to be worked out when a cycle is cut:
+
+- **Symbolic closure where it exists.** Many planar loops have closed forms
+  (a four-bar's output angle is an `atan2`/`sqrt` expression of its input;
+  a slider-crank likewise). The compiler derives that expression from the
+  declared lengths and publishes it as an ordinary law — the one law every
+  consumer evaluates, the Python run included, so the viewer and a test
+  cannot disagree.
+- **A sampled law where it does not.** Solve numerically over the driver's
+  range at build time and publish a table or a fitted curve the viewer
+  interpolates. The cost grows with the number of inputs a loop has, so a
+  multi-input loop (a delta's three carriages) wants its closed form, or its
+  inverse kinematics, rather than a table.
+- **Compile-time judgement of the loop itself.** The branch (a four-bar's
+  assembly mode) is chosen once, from the rest pose; dead points, lock-up
+  and the range over which the loop closes at all are found at build time
+  and reported, or published as the joint's range — never discovered by a
+  viewer that cannot close the loop.
 
 Open solvers exist (SolveSpace's, FreeCAD's planegcs, FreeCAD's Assembly
-solver), so the mathematics need not be invented. The pilot's call; a
-natural neighbour of 0.9 dynamics on the roadmap.
+solver) and are candidates for the build-time side only, so the mathematics
+need not be invented. A natural neighbour of 0.9 dynamics on the roadmap.
 
 ### 5.4 Constrained part sketches
 
@@ -170,6 +194,17 @@ Left to the backends. A machinome sketch solver feeding build123d is
 possible but duplicates backend work, and machinome's distinct job is the
 machine, not the part. Revisit only if a project's parts genuinely suffer
 from it.
+
+### 5.5 The viewer knows the mates, and solves nothing
+
+Pilot direction, 2026-09-23. The published document carries each frame and
+each mate — which two frames, what kind, which freedom it leaves — beside
+the compiled placement and laws, so the viewer can represent them: draw a
+connector, show what a part is mated to, highlight the freedom a drag will
+move. The mates are information for representation; the compiled laws are
+what moves the model. That is a new document version and a viewer change,
+one change in each repository, cut alongside whichever of §5.2 or §5.3
+first publishes a mate.
 
 ## 6. What would start a cycle
 
