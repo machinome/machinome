@@ -5,6 +5,7 @@
 """Exact B-rep geometry shared by nodes and geometric assertions."""
 
 from collections import OrderedDict
+from itertools import product
 import math
 import os
 import struct
@@ -15,10 +16,12 @@ import cadquery as cq
 import numpy as np
 import trimesh
 from OCP.Bnd import Bnd_Box
-from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Fuse
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Fuse, BRepAlgoAPI_Section
+from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.BRepBndLib import BRepBndLib
 from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
-from OCP.gp import gp_Trsf
+from OCP.gp import gp_Pnt, gp_Trsf
+from OCP.TopAbs import TopAbs_IN, TopAbs_UNKNOWN
 from OCP.TopTools import TopTools_ListOfShape
 
 from machinome import currency
@@ -361,7 +364,102 @@ def _boolean(operation, first, second, first_name, second_name):
 
 
 def intersect_shapes(first, second, first_name, second_name):
-    return _boolean('intersection', first, second, first_name, second_name)
+    """Intersect native shapes; refuse a witnessed false-empty OCCT common.
+
+    This is the shape-level entry point for exact project diagnostics as well
+    as managed assertions.  A finite native section/interior search catches
+    *demonstrated* contradictory empties; no witness is not a universal
+    certificate that every OCCT Boolean is correct.  No faceted fallback,
+    fuzzy tolerance or replacement volume is used.
+    """
+    common = _boolean('intersection', first, second, first_name, second_name)
+    if common.Solids():
+        return common
+    try:
+        witness = _false_empty_witness(first, second)
+    except Exception as error:
+        raise ExactCommonVerificationError(
+            f'Exact common of {first_name} and {second_name} was empty, '
+            f'but its independent native-interior check failed: {error}') from error
+    if witness is not None:
+        raise ExactCommonInconsistency(
+            f'Exact common of {first_name} and {second_name} was empty '
+            f'despite a point strictly inside both native solids: '
+            f'{witness}. No overlap volume was inferred.')
+    return common
+
+
+class ExactCommonInconsistency(RuntimeError):
+    """An empty OCCT common contradicts a strict shared-interior point."""
+
+
+class ExactCommonVerificationError(RuntimeError):
+    """An empty OCCT common could not be independently checked."""
+
+
+def _false_empty_witness(first, second):
+    """Return one strict shared-interior point, or None after bounded probes.
+
+    The section locates *candidate* boundary crossings, not material.  A
+    positive witness needs one offset point classified TopAbs_IN in a solid
+    on EACH side at zero tolerance.  A 3-D stencil avoids assuming a sphere
+    normal, and its finite budget is deliberately not a completeness claim.
+    """
+    solids1, solids2 = first.Solids(), second.Solids()
+    if not solids1 or not solids2:
+        return None
+    section = BRepAlgoAPI_Section(first.wrapped, second.wrapped, False)
+    section.Build()
+    if not section.IsDone():
+        raise RuntimeError('OCCT section reported not-done')
+    edges = cq.Shape.cast(section.Shape()).Edges()
+    if not edges:
+        return None
+    spans = [bound for shape in (first, second)
+             for bound in (shape.BoundingBox().xlen,
+                           shape.BoundingBox().ylen,
+                           shape.BoundingBox().zlen)
+             if bound > 0 and math.isfinite(bound)]
+    if not spans:
+        return None
+    scale = min(spans)
+    steps = (scale * 1e-4, scale * 1e-3, scale * 1e-2)
+    directions = [tuple(value / math.sqrt(sum(one * one for one in direction))
+                        for value in direction)
+                  for direction in product((-1, 0, 1), repeat=3)
+                  if any(direction)]
+    classifiers1 = [BRepClass3d_SolidClassifier(solid.wrapped)
+                    for solid in solids1]
+    classifiers2 = [BRepClass3d_SolidClassifier(solid.wrapped)
+                    for solid in solids2]
+
+    def inside(classifiers, point):
+        for classifier in classifiers:
+            classifier.Perform(point, 0.0)
+            # OCCT's Rejected() is a successful outside-by-rejection result,
+            # not a failed classification. UNKNOWN is genuinely undecided.
+            if classifier.Rejected():
+                continue
+            state = classifier.State()
+            if state == TopAbs_UNKNOWN:
+                raise RuntimeError('OCCT solid classifier returned UNKNOWN')
+            if state == TopAbs_IN:
+                return True
+        return False
+
+    for edge in edges[:8]:
+        if edge.Length() <= 0:
+            continue
+        for fraction in (.25, .5, .75):
+            at = edge.positionAt(fraction)
+            for step in steps:
+                for direction in directions:
+                    coords = tuple(at.toTuple()[i] + step * direction[i]
+                                   for i in range(3))
+                    point = gp_Pnt(*coords)
+                    if inside(classifiers1, point) and inside(classifiers2, point):
+                        return coords
+    return None
 
 
 def fuse_shapes(first, second, first_name, second_name):

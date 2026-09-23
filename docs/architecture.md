@@ -1997,6 +1997,15 @@ flush contact still reaches the kernel because touching face boxes count
 as meeting, and interpret "contains no solid" as empty there; kernel
 failure raises and never falls back. `volume_epsilon` is
 ignored with a warning when every comparison in a call was exact.
+After an OCCT common reports no solids, the shared exact path makes one
+bounded, independent native section/classifier check. A zero-tolerance
+point strictly inside both solids contradicts that empty Boolean and
+raises an inconsistency instead of returning clearance or inferring a
+volume; a failed section or indeterminate classification likewise refuses
+the clearance verdict. This is a one-way witness search, not a proof that
+all unwitnessed empty commons are true empties. Ordinary face/edge
+contacts and nonempty native commons retain their existing semantics
+(ADR-142).
 
 Verdicts are memoized within a run (ADR-070, amended by ADR-090). The
 identity of an intersection question is `(both geometry identities,
@@ -2935,7 +2944,7 @@ The short list that changes must not silently break:
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
-| Test framework | `machinome/test.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073 |
+| Test framework | `machinome/test.py`, `machinome/exact.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

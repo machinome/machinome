@@ -32,6 +32,16 @@ Pairs of parts
 
 The intersection questions are answered on the exact kernel when both
 parts are exact and on meshes otherwise (:doc:`/howto/fast-tests`).
+For a direct comparison of two already-placed exact CadQuery shapes,
+``machinome.exact.intersect_shapes(first, second)`` returns their native
+common. If OCCT reports an empty common but an independent native section
+and zero-tolerance solid classification find a point strictly inside both
+shapes, it raises ``ExactCommonInconsistency`` rather than claiming
+clearance or inventing a volume. If that independent check cannot complete,
+it raises ``ExactCommonVerificationError``. Exact intersection assertions
+use the same path. The bounded witness search does not certify every empty
+common: no witness leaves the ordinary Boolean verdict in place. Face and
+edge contact remain subject to the existing zero-volume policy.
 ``assertInside``, ``assertClose`` and ``assertFar`` always sample
 ``node2``'s vertices against a mesh surface; they do not inspect points
 along edges or faces, so their verdict depends on mesh density, and by
