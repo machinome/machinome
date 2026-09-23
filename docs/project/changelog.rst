@@ -3,18 +3,6 @@
 Changelog
 =========
 
-Unreleased (current source)
----------------------------
-
-* **Finite profile contact:** ``ConvexProfile`` and ``profile_overlap``
-  keep authored planar convex polygons as data and evaluate pointwise
-  inclusive contact without expanding polygon-pair formulas into a
-  symbolic graph. A running ``Bound`` can use the numeric 0/1 result
-  inside its existing absolute limit expression; its stop sampling and
-  attribution do not change. Exports using the predicate declare document
-  version 13 and require a matching viewer. The operation does not certify
-  contact between sampled instants or an installed part's profile cover.
-
 Machinome 0.7.0
 ---------------
 
@@ -69,9 +57,9 @@ one description that can be built, operated and tested.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
   AGPL-3.0-only package. Interactive ``develop`` requires it;
   ``--no-web`` remains available. The matching viewer release 0.7.0,
-  numbered with the framework, implements API 25 and schemas 1–12,
-  including running, clocked, time-driven and source-timed machines and
-  a follower held between two moving surfaces.
+  numbered with the framework, implements API 26 and schemas 1–13,
+  including running, clocked, time-driven and source-timed machines, a
+  follower held between two moving surfaces and finite profile contact.
 * **Retained clearance pickup:** explicit running ``Play`` relations
   collect and release a follower through clearance; document schema 9
   carries that contact law to the viewer.
@@ -118,6 +106,17 @@ one description that can be built, operated and tested.
   running export carrying one declares document schema 12; exports
   without it are unchanged. Born of the Curta Type I's radial
   positioning ball.
+* **Finite profile contact:** ``ConvexProfile`` and ``profile_overlap``,
+  imported from ``machinome.simulation.profile``, keep authored planar
+  convex polygons as data and evaluate pointwise inclusive contact
+  without expanding polygon-pair formulas into a symbolic graph. A
+  running ``Bound`` can use the numeric 0/1 result inside its existing
+  absolute limit expression; its stop sampling and attribution do not
+  change, and any other symbolic use is refused. A running export using
+  the predicate declares document schema 13; exports without it are
+  unchanged. The operation does not certify contact between sampled
+  instants or that a profile covers an installed part. Born of the
+  Curta Type I's reverser.
 * **Running performance:** repeated expression evaluation reuses each
   immutable graph's order and operations, running bounds and traced
   constraint searches read determined motion paths instead of replaying
@@ -130,8 +129,12 @@ one description that can be built, operated and tested.
   proven standing values of its previous successful bind on the same
   run, a path reuses its own identical successful first-point bind, the
   two bounds that replay one ``Follow`` prefix share it within a stretch,
-  and identical successful law folds are reused within a tick. A full
-  crank revolution is still not interactive.
+  and identical successful law folds are reused within a tick. Numeric
+  graph evaluation skips needless argument lists for scalar leaves and
+  binary operations, and repeated profile contacts prune provably
+  disjoint polygon pairs through a per-attempt index of each placed
+  profile, both with bit-identical results. A full crank revolution is
+  still not interactive.
 * **Installation:** bound ``ocp-gordon`` below 0.3 so build123d 0.10
   remains compatible with the shared OCP 7.8 runtime in a fresh install.
 * **Documentation:** the manual is reorganised by reader intent around

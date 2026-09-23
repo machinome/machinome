@@ -30,8 +30,8 @@ html_title = 'Machinome — Source code for machines'
 
 release_date = '23 September 2026'
 viewer_version = '0.7.0'        # the matching machinome-viewer package
-viewer_api = '25'               # source-timed motion and two-surface Follow
-document_versions = '1 to 12'    # supported by the paired viewer
+viewer_api = '26'               # source-timed motion, Follow and profile contact
+document_versions = '1 to 13'    # supported by the paired viewer
 mechanics_version = '0.1.0'     # the matching machinome-mechanics package
 
 rst_prolog = f'''

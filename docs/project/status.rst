@@ -46,22 +46,12 @@ interactive development requires it. Machinome Mechanics
 ``mechanics`` extra. Both release with the framework.
 
 Running documents this release exports declare schema 11, source-timed
-motion, or schema 12 when they carry a ``Follow`` relation, and need the
+motion, schema 12 when they carry a ``Follow`` relation, or schema 13
+when a running ``Bound`` uses finite profile contact, and need the
 matching viewer |viewer_version|, API |viewer_api|,
 reading document versions |document_versions|. Check the installed viewer's
 report with ``machinome viewer`` rather than inferring capability from a
 package name. See :doc:`changelog` and :doc:`upgrading`.
-
-Current source after the 0.7 release record
--------------------------------------------
-
-The current source adds finite, pointwise profile contact as a numeric
-term inside a running ``Bound``. An export using it declares document
-version 13 and requires a viewer that explicitly accepts that version;
-older viewers refuse it. This is not continuous collision detection,
-and it does not certify that a model's profile covers its installed
-parts. The current-source change does not itself record a package-index
-upload, remote push or release of this capability.
 
 Machinome Studio, the agent harness the framework is developed with,
 remains experimental and unpublished; the reserved ``studio`` extra is not

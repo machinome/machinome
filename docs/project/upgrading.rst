@@ -126,8 +126,10 @@ The matching viewer is |viewer_version|, API |viewer_api|, reading
 document schemas |document_versions|. Check ``machinome viewer`` for the
 installed package, API and ``documentVersions``. A clocked machine
 requires schema 8; newly exported running models require schema 11 and a
-viewer supporting source-timed motion (API 24), and one carrying a
-``Follow`` relation requires schema 12 (API 25). Re-export running models;
+viewer supporting source-timed motion (introduced by API 24); one
+carrying a ``Follow`` relation requires schema 12 (introduced by API 25),
+and one whose running ``Bound`` uses finite profile contact requires
+schema 13 (API 26). Re-export running models;
 endpoint-era snapshots refuse restore into the new semantic identity, so
 restart from the initial model state and replay intended commands.
 Hosts must update their bundle and the renamed
