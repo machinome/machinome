@@ -418,7 +418,8 @@ name, computed by the framework through the same serialization, so a
 class that forwarded everything keeps its key and no keyword can be
 forgotten; repeated identical units share one key and one artifact
 (ADR-063). A **piece** id
-(12-hex sha256 of the built STL's bytes) identifies one thing to print,
+(12-hex sha256 of the built STL's canonical oriented-triangle content,
+not its raw bytes, ADR-145) identifies one thing to print,
 so solids factored into different classes but building identical geometry
 are one piece, while handed variants are two (ADR-043). Each answers a
 different question — rebuild needed, addressed how, same thing to print —

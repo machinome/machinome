@@ -3690,3 +3690,43 @@ below are what the review left open.
   (`refuse-false-empty-exact-common` and `cache-follow-prefix-probes`)
   and were reconciled by the merge `23857e9`; the result is coherent, but
   it is not one agent at a time.
+
+# Piece identity split by OpenSCAD facet order (2026-09-23, CI)
+
+Found by the framework's own suite on GitHub Actions, the first two runs
+of the `test` job (35836399670, 35849922652): `tests/test_pieces.py::
+PublishedPiecesInventoryTest::test_identical_classes_merge_into_one_piece_naming_both_sources`
+failed with `AssertionError: 2 != 1` on the runner and passed on the
+maintainer's machine, same Ubuntu 24.04 and same
+`openscad=2021.01-6build4`.
+
+- **OpenSCAD 2021.01 writes one triangle set in a run-dependent facet
+  order, and piece identity hashed the raw bytes.** BushingA and BushingB
+  render the same SCAD text; the two STLs had identical oriented triangle
+  sets but different bytes, so ADR-043's raw-byte sha256 made them two
+  pieces. Evidence: locally, rendering `bushing.scad` from 40 directories
+  of increasing path length gave two byte streams (`85a25e7b22e1` for 6,
+  `0e78e481b129` for 34), stable for a given path and unaffected by
+  environment size, `MALLOC_PERTURB_` or `setarch -R`. In an
+  `ubuntu:24.04` container with the apt package, one command line run 30
+  times with fresh output names gave both streams 15/15; decoded, they
+  differ only in the order of facets 112-123, in which vertex each of
+  those facets starts from, and in the sign of a zero normal component.
+  The specification already said a piece id "SHALL NOT depend ... on the
+  run that produced it", so this was a conformance bug, not a new
+  requirement. Why only the runner hit it for the two bushings (whose
+  paths have equal length) was not isolated; the container shows the
+  order is not a function of the command line either.
+  **Fixed in this cycle** (branch `piece-identity-ci`, ADR-145): the
+  full piece digest is of the canonical oriented-triangle multiset
+  (`machinome/core/pieces.py`, `_canonical_content`), header, normals,
+  attribute words, facet order and first vertex being encoding; winding
+  and exact coordinates remain content. The fact record moves to version
+  2 so raw-byte records are recomputed. The 30 container renders all give
+  one canonical digest. Red first: the captured pair in
+  `tests/pieces_project/openscad_facet_order/` and a synthetic
+  re-encoding of a box, both in `tests/test_pieces.py`.
+- **Committed documentation exports carry the old ids.** The
+  `docs/_exports/counter-*/manifest.json` piece ids were digested from
+  raw bytes; nothing reads them for identity, and they change the next
+  time those exports are regenerated. **Left as is** in this cycle.

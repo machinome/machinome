@@ -18,7 +18,9 @@ from machinome._artifact import ArtifactSnapshot
 logger = logging.getLogger('core.pieces')
 
 _HASH_LEN = 12
-_FACT_VERSION = 1
+# Version 2: `sha256` digests the canonical oriented-triangle content
+# (ADR-145), no longer the raw artifact bytes.
+_FACT_VERSION = 2
 _FACT_SUFFIX = '.piece-facts.json'
 
 
@@ -86,9 +88,95 @@ def _geometry_facts(path):
         return _geometry_facts_from_bytes(path, snapshot.read_bytes())
 
 
+_CANONICAL_TRIANGLES = b'machinome-oriented-triangles-v1\0'
+_UNREAD_BYTES = b'machinome-artifact-bytes-v1\0'
+
+
+def _stl_triangles(data):
+    """The oriented triangles of an STL as an (n, 3, 3) float array.
+
+    Binary STL is recognised by its exact length (80-byte header, count,
+    50 bytes per facet); anything else is read as ASCII ``vertex`` lines.
+    Returns None for bytes that are neither, which then keep their raw
+    identity.
+    """
+    import numpy as np
+
+    if len(data) >= 84:
+        count = int.from_bytes(data[80:84], 'little')
+        if len(data) == 84 + 50 * count:
+            record = np.dtype([('normal', '<f4', (3,)),
+                               ('vertices', '<f4', (3, 3)),
+                               ('attribute', '<u2')])
+            return np.frombuffer(data, dtype=record, offset=84,
+                                 count=count)['vertices']
+    try:
+        text = data.decode('ascii')
+    except UnicodeDecodeError:
+        return None
+    if not text.lstrip().startswith('solid'):
+        return None
+    try:
+        values = [
+            [float(value) for value in line.split()[1:4]]
+            for line in text.splitlines()
+            if line.strip().startswith('vertex')]
+        triangles = np.asarray(values, dtype='<f8')
+    except ValueError:
+        return None
+    if triangles.ndim != 2 or triangles.shape[1:] != (3,) \
+            or len(triangles) % 3:
+        return None
+    return triangles.reshape(-1, 3, 3)
+
+
+def _canonical_content(data):
+    """A canonical encoding of the artifact's oriented triangle multiset.
+
+    Two artifacts carrying the same oriented triangles encode the same,
+    whatever order the facets were written in, which vertex each facet
+    starts from, what the header says and which normals or attribute
+    words were stored (ADR-145). Winding is kept -- a facet is only
+    rotated, never reflected -- so an inside-out solid or a mirror image
+    stays a different piece. Coordinates are the artifact's own values,
+    unquantised; only the sign of a zero is folded.
+    """
+    import numpy as np
+
+    triangles = _stl_triangles(data)
+    if triangles is None:
+        return _UNREAD_BYTES + data
+    triangles = np.ascontiguousarray(triangles) + 0.0  # -0.0 -> 0.0
+    table, ids = np.unique(triangles.reshape(-1, 3), axis=0,
+                           return_inverse=True)
+    ids = ids.reshape(-1, 3).astype('<i8')
+    # Rotate every facet to its lexicographically least vertex cycle.
+    best = ids
+    for turn in (1, 2):
+        rotated = np.roll(ids, -turn, axis=1)
+        less = ((rotated[:, 0] < best[:, 0])
+                | ((rotated[:, 0] == best[:, 0])
+                   & ((rotated[:, 1] < best[:, 1])
+                      | ((rotated[:, 1] == best[:, 1])
+                         & (rotated[:, 2] < best[:, 2])))))
+        best = np.where(less[:, None], rotated, best)
+    order = np.lexsort((best[:, 2], best[:, 1], best[:, 0]))
+    best = np.ascontiguousarray(best[order])
+    return b''.join((
+        _CANONICAL_TRIANGLES,
+        table.dtype.str.encode(), b'\0',
+        len(table).to_bytes(8, 'little'), table.tobytes(),
+        len(best).to_bytes(8, 'little'), best.tobytes()))
+
+
 def _digest_bytes(data):
-    """Patchable counter seam for full artifact hashing."""
-    return hashlib.sha256(data).hexdigest()
+    """Patchable counter seam for full artifact hashing.
+
+    The digest is of the artifact's canonical content, not of its raw
+    bytes: OpenSCAD 2021.01 writes one triangle set in a run-dependent
+    facet order, so raw bytes split one printed piece in two.
+    """
+    return hashlib.sha256(_canonical_content(data)).hexdigest()
 
 
 def fingerprint_artifact(path):

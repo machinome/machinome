@@ -626,6 +626,11 @@ shared OCP 7.8 CAD runtime.
   placement and are swept before the next run. A ``render()`` that
   reads a driver keeps working and warns once per class. ``omit()`` in
   ``simulate()`` raises. The ``render()`` rename is dropped.
+* Piece identity digests the canonical oriented-triangle content of an
+  artifact instead of its raw bytes (ADR-145): OpenSCAD 2021.01 writes one
+  triangle set in a run-dependent facet order, which split two identical
+  bushings into two pieces on the CI runner. Piece ids change once; fact
+  records move to version 2.
 
 0.6.0 (2026-09-01)
 ------------------

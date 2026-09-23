@@ -142,6 +142,10 @@ one description that can be built, operated and tested.
   to a machine with memory, with how-to guides, concept pages and one
   worked example per execution model: Metamaquina 2, the Pascaline
   module and the Curta Type I.
+* **Printed pieces:** a piece id digests the artifact's oriented
+  triangles, not its raw STL bytes, so one solid that OpenSCAD 2021.01
+  writes in a different facet order is still one piece. Every piece id
+  changes once and cached piece facts are recomputed.
 
 See :doc:`upgrading` before changing versions. In addition to the rename,
 ports moved to ``machinome.motion.ports``, joint frames changed during

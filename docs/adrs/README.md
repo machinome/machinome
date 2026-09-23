@@ -182,14 +182,15 @@ that way.
 - [ADR-034](EXPORT/ADR-034-shared-node-tree-document-schema.md) — Shared node-tree document schema across export and build snapshots — **Accepted**, amended by 051
 - [ADR-035](EXPORT/ADR-035-reusable-viewer-core-and-declared-api.md) — Reusable viewer core and declared API version — **Accepted** — *Relocated* to solid-node-viewer (ADR-068)
 - [ADR-042](EXPORT/ADR-042-host-controlled-viewer-assembly-navigation.md) — Host-controlled viewer assembly navigation — **Accepted** — *Relocated* to solid-node-viewer (ADR-068)
-- [ADR-043](EXPORT/ADR-043-content-derived-printed-piece-identity.md) — Content-derived printed-piece identity — **Accepted**, amended by 085
+- [ADR-043](EXPORT/ADR-043-content-derived-printed-piece-identity.md) — Content-derived printed-piece identity — **Accepted**, amended by 085/145
 - [ADR-051](EXPORT/ADR-051-producer-owned-animation-time-in-node-documents.md) — Producer-owned animation time in node-tree documents — **Accepted**
 - [ADR-080](EXPORT/ADR-080-a-shared-subexpression-is-named-once.md) — A shared subexpression is named once: the document's `bindings` table — **Accepted**, eager construction and flat SCAD decisions superseded in part by 101; extends 034, depends on 022/051
-- [ADR-085](EXPORT/ADR-085-persistent-piece-facts-behind-a-verified-artifact-snapshot.md) — Persistent piece facts behind a verified artifact snapshot — **Accepted**, amends 043/028
+- [ADR-085](EXPORT/ADR-085-persistent-piece-facts-behind-a-verified-artifact-snapshot.md) — Persistent piece facts behind a verified artifact snapshot — **Accepted**, amends 043/028, fact record version amended by 145
 - [ADR-110](EXPORT/ADR-110-the-compiled-program-is-published-in-the-document.md) — The compiled program is published in the document, under a version an old consumer refuses: a running root's document declares version 5, carries the program compile time decided, and poses its geometry from a committed bank — **Accepted**, extends 034/080, depends on 104–109, cites 051/068
 - [ADR-111](EXPORT/ADR-111-a-conformance-corpus-is-the-contract-between-the-two-runtimes.md) — A conformance corpus is the contract between the two runtimes: a producer-generated fixture replayed by both, exact for discrete state and at the run's own agreement tolerance for floats, with a coverage guard that refuses to regenerate a narrower one — **Accepted**, depends on 110, cites 022/068
 
 - [ADR-138](EXPORT/ADR-138-source-timing-is-a-semantic-version-gate.md) — Running v11 and semantic snapshot identity protect corrected source timing — **Accepted**, amends 110/121/122/133
+- [ADR-145](EXPORT/ADR-145-piece-identity-digests-canonical-triangle-content.md) — Piece identity digests canonical oriented-triangle content, not raw STL bytes — **Accepted**, amends 043/085
 
 ADR-019 (the solid-builder agent system) predates the shop and lives
 with the agent tooling's own history, not in this framework log.

@@ -30,6 +30,13 @@ parameters, or different source files. Rigid nodes whose artifacts differ in
 content SHALL be reported as different pieces, including mirrored or otherwise
 handed variants of the same shape.
 
+An artifact's **content** is the multiset of its oriented triangles, with
+their coordinates exactly as the artifact records them. How the artifact
+encodes them SHALL NOT affect piece identity: the order its facets are written
+in, which vertex of a facet is written first, its header, its stored normals
+and its attribute words are encoding, not content (ADR-145). Winding is
+content, so a facet is only ever rotated, never reflected.
+
 Placement operations are applied outside the built artifact, so they SHALL NOT
 affect piece identity: the same solid positioned differently, or animated by
 `$t`, remains one piece.
@@ -47,6 +54,12 @@ affect piece identity: the same solid positioned differently, or animated by
   identical content
 - **THEN** both are reported as a single piece whose contributing sources and
   model references include both
+
+#### Scenario: One triangle set written in another order is one piece
+
+- **WHEN** a CAD backend writes the same oriented triangles of two identical
+  solids in different facet orders, as OpenSCAD 2021.01 does from run to run
+- **THEN** both are reported as a single piece
 
 #### Scenario: Handed variants stay distinct
 
@@ -121,7 +134,7 @@ consumer reading only previously published fields is unaffected.
 
 A **marking** published on a rigid node under the `markings` capability SHALL
 NOT enter this inventory and SHALL NOT carry a piece id. A piece is one thing
-to print, identified by the bytes of a built solid; a marking's artifact is a
+to print, identified by the content of a built solid; a marking's artifact is a
 surface the maker applies, paints or co-prints, and reporting it as a piece
 would put a part in the bill of materials that no maker handles — which is the
 exact failure that modelling each glyph as its own leaf commits. A part's
