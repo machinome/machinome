@@ -55,6 +55,8 @@ export interface Propagation {
   motions: Map<string, Motion>;
   demanded: ReadonlySet<string>;
   untraced: Set<string>;
+  followCuts?: Map<string, number[]>;
+  followClosures?: Map<string, [number, number, number, number][]>;
 }
 // Metadata cannot become a bank key or survive a serialized snapshot.
 export const propagations = new WeakMap<Record<string, number>, Propagation>();

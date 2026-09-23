@@ -107,10 +107,10 @@ export type JumpPrimitive = typeof JUMP_PRIMITIVES[number];
  * declaring `kind: "block"` is refused as an unknown kind exactly as it
  * always was, because `EDGE_KINDS` -- which validates the PUBLISHED kind
  * -- does not carry it (design D1.3). */
-export type EdgeKind = 'law' | 'wiring' | 'formula' | 'check' | 'play' | 'block';
+export type EdgeKind = 'law' | 'wiring' | 'formula' | 'check' | 'play' | 'follow' | 'block';
 
 const EDGE_KINDS: readonly EdgeKind[] =
-  ['law', 'wiring', 'formula', 'check', 'play'];
+  ['law', 'wiring', 'formula', 'check', 'play', 'follow'];
 
 export interface ProgramCoordinate {
   kind: 'input' | 'coordinate';
@@ -228,6 +228,11 @@ export interface ProgramEdge {
   /** A play edge's two source-minus-follower contact offsets. */
   low: number | null;
   high: number | null;
+  /** The producer-authored absolute envelope graphs and jump partitions. */
+  lower: string | null;
+  upper: string | null;
+  lowerPlan: ProgramPlan | null;
+  upperPlan: ProgramPlan | null;
 }
 
 /** One member of a block: an ordinary law edge, its SELECTORS, and what
@@ -892,8 +897,8 @@ function loadProgramScoped(
   }
   const timeByEdge = new Map<number, string>();
   if (document.version === 10 || raw.time_drives !== undefined) {
-    if (document.version !== 10 && document.version !== 11) {
-      return refuse('its time_drives require document version 10 or 11.');
+    if (document.version !== 10 && document.version !== 11 && document.version !== 12) {
+      return refuse('its time_drives require document version 10, 11 or 12.');
     }
     if (clock !== 'time') return refuse('its time-drive clock must be named "time".');
     if (!Array.isArray(raw.time_drives) || raw.time_drives.length === 0) {
@@ -974,9 +979,60 @@ function loadProgramScoped(
       block: null,
       low: null,
       high: null,
+      lower: null,
+      upper: null,
+      lowerPlan: null,
+      upperPlan: null,
     };
 
-    if (kind === 'play') {
+    if (kind === 'follow') {
+      if (document.version !== 12) {
+        return refuse(`${where} (${description}) declares Follow before document version 12.`);
+      }
+      if (needs.length !== 3 || gives.length !== 1 || gives[0] !== needs[2]
+          || new Set(needs).size !== 3 || !needs.every((id) => bank.has(id as string))) {
+        return refuse(`${where} (${description}) must have three distinct bank needs ` +
+          '[lower source, upper source, retained] and give only retained.');
+      }
+      if (typeof entry.lower !== 'string' || typeof entry.upper !== 'string') {
+        return refuse(`${where} (${description}) requires lower and upper expression strings.`);
+      }
+      edge.lower = entry.lower;
+      edge.upper = entry.upper;
+      if (!(entry.lower_plan === null || isObject(entry.lower_plan))
+          || !(entry.upper_plan === null || isObject(entry.upper_plan))) {
+        return refuse(`${where} (${description}) requires nullable lower_plan and upper_plan.`);
+      }
+      const followPlan = (rawPlan: Record<string, unknown> | null,
+                          side: string): ProgramPlan | null => {
+        if (rawPlan === null) return null;
+        if (typeof rawPlan.skeleton !== 'string' || !Array.isArray(rawPlan.jumps)) {
+          return refuse(`${where} (${description}) ${side}_plan is not a {skeleton, jumps} plan.`);
+        }
+        const jumps: ProgramJump[] = rawPlan.jumps.map((jump: unknown) => {
+          if (!isObject(jump) || typeof jump.name !== 'string'
+              || typeof jump.level !== 'string'
+              || typeof jump.affine !== 'boolean'
+              || typeof jump.primitive !== 'string'
+              || !(JUMP_PRIMITIVES as readonly string[]).includes(jump.primitive)) {
+            return refuse(`${where} (${description}) ${side}_plan has a malformed jump.`);
+          }
+          return { name: jump.name, level: jump.level,
+            primitive: jump.primitive as JumpPrimitive, affine: jump.affine,
+            shape: null, kinks: null };
+        });
+        const plan: ProgramPlan = { skeleton: rawPlan.skeleton, jumps, shape: null, kinks: null };
+        for (const jump of jumps) {
+          if (placeholders.has(jump.name)) {
+            return refuse(`${where} (${description}) duplicates jump placeholder "${jump.name}".`);
+          }
+          placeholders.set(jump.name, plan);
+        }
+        return plan;
+      };
+      edge.lowerPlan = followPlan(entry.lower_plan as Record<string, unknown> | null, 'lower');
+      edge.upperPlan = followPlan(entry.upper_plan as Record<string, unknown> | null, 'upper');
+    } else if (kind === 'play') {
       if (needs.length !== 2 || gives.length !== 1
           || gives[0] !== needs[1] || needs[0] === needs[1]) {
         return refuse(
@@ -1296,6 +1352,22 @@ function loadProgramScoped(
   };
 
   for (const edge of edges) {
+    if (edge.kind === 'follow') {
+      const allowed = new Set(edge.needs.slice(0, 2));
+      for (const [side, expression, plan] of [
+        ['lower', edge.lower, edge.lowerPlan], ['upper', edge.upper, edge.upperPlan],
+      ] as const) {
+        check(expression!, allowed, `${edge.description}'s ${side} envelope`);
+        if (plan !== null) {
+          const inside = new Set([...allowed, ...plan.jumps.map(jump => jump.name)]);
+          check(plan.skeleton, inside, `${edge.description}'s ${side} skeleton`);
+          for (const jump of plan.jumps) {
+            check(jump.level, inside, `${edge.description}'s ${side} jump level`);
+          }
+        }
+      }
+      continue;
+    }
     if (edge.kind !== 'law') continue;
     const allowed = new Set(edge.needs);
     edge.expressions.forEach((expression, index) => {
@@ -1337,6 +1409,21 @@ function loadProgramScoped(
     };
   };
   for (const edge of edges) {
+    if (edge.kind === 'follow') {
+      for (const plan of [edge.lowerPlan, edge.upperPlan]) {
+        if (plan === null) continue;
+        const names = new Set(plan.jumps.map(jump => jump.name));
+        const skeleton = classify(plan.skeleton, names);
+        plan.shape = skeleton.shape;
+        plan.kinks = skeleton.kinks;
+        for (const jump of plan.jumps) {
+          const level = classify(jump.level, names);
+          jump.shape = level.shape;
+          jump.kinks = level.kinks;
+        }
+      }
+      continue;
+    }
     if (edge.kind !== 'law') continue;
     edge.gives.forEach((_key, index) => {
       const plan = edge.plans[index];
@@ -1647,6 +1734,10 @@ function loadProgramScoped(
       block,
       low: null,
       high: null,
+      lower: null,
+      upper: null,
+      lowerPlan: null,
+      upperPlan: null,
     };
   };
 
@@ -1774,6 +1865,53 @@ function loadProgramScoped(
         edges: subProgram(keys),
         candidates,
       });
+    }
+  }
+
+  // Follow is a terminal retained bank output. Its two source paths must
+  // be actual affine determiner paths, and its contact surfaces are the
+  // same authored dynamic Bounds used by the stop machinery.
+  const followEdges = executed.filter(edge => edge.kind === 'follow');
+  const affineSource = (key: string, seen: Set<string>): boolean => {
+    if (seen.has(key)) return false;
+    if (inputs.includes(key)) return true;
+    const writers = executed.filter(edge => edge.gives.includes(key));
+    if (writers.length === 0) return bank.has(key);
+    if (writers.length !== 1) return false;
+    const edge = writers[0];
+    if (edge.kind !== 'law' || edge.gives.length !== 1
+        || edge.plans.some(Boolean) || edge.retained.length > 0
+        || !['constant', 'affine'].includes(edge.shapes[0] ?? '')) return false;
+    const next = new Set(seen);
+    next.add(key);
+    return edge.needs.every(need => affineSource(need, next));
+  };
+  for (const edge of followEdges) {
+    const own = edge.gives[0];
+    if (executed.filter(candidate => candidate.gives.includes(own)).length !== 1) {
+      refuse(`${edge.description} Follow follower "${own}" must have one writer.`);
+    }
+    if (executed.some(candidate => candidate !== edge && candidate.needs.includes(own))) {
+      refuse(`${edge.description} Follow follower "${own}" must be terminal.`);
+    }
+    if (!edge.needs.slice(0, 2).every(source => affineSource(source, new Set()))) {
+      refuse(`${edge.description} Follow sources require unbranched affine laws.`);
+    }
+    for (const [side, expression] of [
+      ['low', edge.lower], ['high', edge.upper],
+    ] as const) {
+      const bound = constraints.get(`${own}:${side}`);
+      const reads = [...namesOf(expression!)].sort();
+      if (bound === undefined || bound.expression !== expression
+          || JSON.stringify(bound.reads) !== JSON.stringify(reads)) {
+        refuse(`${edge.description} Follow ${side} envelope needs a structurally matching dynamic ${side} Bound.`);
+      }
+    }
+    const low = evaluateExpression({ nodeOf, bindings: table, limits }, edge.lower!, initial);
+    const high = evaluateExpression({ nodeOf, bindings: table, limits }, edge.upper!, initial);
+    if (!Number.isFinite(low) || !Number.isFinite(high)
+        || initial[own] < low || initial[own] > high) {
+      refuse(`${edge.description} Follow follower "${own}" starts outside its finite feasible interval.`);
     }
   }
 

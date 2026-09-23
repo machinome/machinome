@@ -81,3 +81,4 @@ both repositories. Consequences:
 - [ADR-072](EXPORT/ADR-072-source-timing-is-declared-as-api24-and-v11.md) — API 24 and v11 declare corrected source timing — **Accepted**, extends 035/047
 - [ADR-073](EXPORT/ADR-073-a-gesture-is-drawn-at-the-declared-tempo.md) — A gesture is drawn at the tempo its input's declared instruction states — **Accepted**, amends 065, extends 064
 - [ADR-074](EXPORT/ADR-074-a-path-piece-reuses-unchanged-bound-nodes.md) — A path piece reuses unchanged bound nodes — **Accepted**, amends 060
+- [ADR-075](EXPORT/ADR-075-two-moving-envelopes-retain-a-free-follower.md) — Two moving envelopes retain a free follower — **Accepted**, extends 067, builds on 054/061

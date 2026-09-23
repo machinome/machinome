@@ -42,7 +42,7 @@ def test_the_manual_states_the_release():
     # Keep its historical entry intact below an explicitly pending section.
     release_sections = sections[1:]
     if release_sections[0].startswith('Unreleased\n'):
-        assert 'API 24' in release_sections[0]
+        assert 'API 25' in release_sections[0]
         release_sections = release_sections[1:]
     current = ' '.join(release_sections[0].split())
     assert current.startswith('0.7.0 — 22 September 2026'), current[:40]

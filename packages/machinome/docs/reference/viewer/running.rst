@@ -3,7 +3,7 @@ Running machines
 ================
 
 ``viewer.run()`` returns a ``RunHandle`` when the document carries a running
-program (versions 5, 6, 7, 9 or 10). It returns null for posed and clocked models.
+program (versions 5–7 or 9–12). It returns null for posed and clocked models.
 The run retains a coordinate bank and advances in fixed ticks, normally in
 a worker. Use the handle as an interface; do not import its internal engine.
 
@@ -153,6 +153,18 @@ the whole request would have ended in a later free window, and unrelated or
 relieving motion continues. The search samples the tick at a finite number
 of points and bisects; it is not a continuous collision solver, and a
 forbidden interval narrower than its sampling can be missed.
+
+A version 12 running document can declare a **Follow** relation: a retained
+coordinate rests freely between two independently moving, authored
+boundaries, and either boundary pushes it only on contact. The producer
+certifies piecewise-affine boundary paths, including their cut sides; the
+viewer checks those certified cuts as well as its ordinary stop samples,
+so a narrow incompatibility between the two Follow surfaces is not lost
+between uniform probes. Unsupported boundary paths and contacts too narrow
+to represent are refused rather than approximated. Follow does not give the
+host a new movement method: use the declared inputs, inspect the same
+``blocked`` outcomes and save the same coordinate bank. It is not a general
+collision solver for the rest of the assembly.
 
 A version 10 document can declare **time drives**: relations the running
 clock advances on its own, with no ``rate()`` command from the host.

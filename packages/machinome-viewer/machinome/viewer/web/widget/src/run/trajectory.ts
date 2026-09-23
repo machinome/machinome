@@ -5,8 +5,8 @@
  */
 import { withExpressions } from '../expressions';
 import { activeShape } from './active-shape';
-import { evaluateExpression, kinkLevel } from './program';
-import type { LoadedProgram, ProgramBlock, ProgramEdge } from './program';
+import { evaluateExpression, kinkLevel, UnsupportedLaw } from './program';
+import type { LoadedProgram, ProgramBlock, ProgramEdge, ProgramPlan } from './program';
 import { along, blockOrder, branchesAt, deduplicated, kinkBreaks, merged, partition, tooMany, Walk } from './jumps';
 import type { CrossingRecord, WalkPiece } from './jumps';
 import { Motion, propagations, sourceDeltas } from './motion';
@@ -193,6 +193,109 @@ function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
   return block.gives.map(key => [key, current[key] - values[key]]);
 }
 
+/** Certified boundary cut locations, using the producer's original source
+ * delta rather than a reconstructed (end - start) chord. */
+function followBoundaryCuts(program: LoadedProgram, edge: ProgramEdge,
+                            expression: string, plan: ProgramPlan | null,
+                            start: Bank, delta: Bank, tick: number): number[] {
+  const skeleton = plan?.skeleton ?? expression;
+  const parts = plan ? partition(program, plan, start, delta,
+    edge.description, edge.gives[0], null, tick) : [0, 1];
+  const cuts = [...parts];
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    const left = parts[i];
+    const right = parts[i + 1];
+    const branches = plan ? branchesAt(program, plan, start, delta,
+      (left + right) / 2, plan.jumps.length, edge.description, edge.gives[0]) : {};
+    const shape = withExpressions(() => activeShape(program.nodeOf(skeleton),
+      branches, program.bindings.roots()));
+    if (shape.shape === null) {
+      throw new UnsupportedLaw(`${edge.description}: Follow envelope is not certified piecewise affine.`);
+    }
+    if (shape.shape === 'kinked') {
+      cuts.push(...kinkBreaks(shape.kinks, (kink, t) => kinkLevel(program, kink,
+        { ...along(start, delta, t), ...branches }), left, right,
+      program.limits.crossingTolerance));
+    }
+  }
+  return [...new Set(cuts)].sort((a, b) => a - b);
+}
+
+/** The absolute retained projection, including both numeric sides of a cut. */
+export function followIncrements(program: LoadedProgram, edge: ProgramEdge, values: Bank,
+                                 deltas: Bank, tick: number, landings: Bank | null): [string, number][] {
+  const trace = propagations.get(deltas);
+  const own = edge.gives[0];
+  const names = edge.needs.slice(0, 2);
+  const sources = new Map(names.map(name => [name,
+    trace?.motions.get(name) ?? Motion.line(values[name], deltas[name] ?? 0)]));
+  for (const [name, motion] of sources) {
+    if (!motion.affine || motion.pieces.length !== 1) {
+      throw new UnsupportedLaw(`${edge.description}: Follow source ${name} lacks one certified affine path.`);
+    }
+  }
+  if ([...sources.values()].every(motion => motion.constant
+      && (motion.start !== 0 || Object.is(motion.start, motion.end)))) return [[own, 0]];
+  const start = Object.fromEntries(names.map(name => [name, sources.get(name)!.start]));
+  const delta = Object.fromEntries(names.map(name => [name, deltas[name] ?? 0]));
+  const lower = edge.lower!;
+  const upper = edge.upper!;
+  const cuts = [...new Set([
+    ...followBoundaryCuts(program, edge, lower, edge.lowerPlan, start, delta, tick),
+    ...followBoundaryCuts(program, edge, upper, edge.upperPlan, start, delta, tick),
+  ])].sort((a, b) => a - b);
+  const scopeAt = (t: number, closure: boolean): Bank => Object.fromEntries(names.map(name => {
+    const motion = sources.get(name)!;
+    return [name, closure ? motion.pieces[0][2](t) : motion.at(t)];
+  }));
+  const direct = (t: number): [number, number] => {
+    const scope = scopeAt(t, false);
+    return [evaluateExpression(program, lower, scope), evaluateExpression(program, upper, scope)];
+  };
+  const absolute = (expression: string, plan: ProgramPlan | null, middle: number):
+  ((t: number) => number) => {
+    if (plan === null) return t => evaluateExpression(program, expression, scopeAt(t, true));
+    const middleScope = scopeAt(middle, false);
+    const zero = Object.fromEntries(names.map(name => [name,
+      Object.is(middleScope[name], -0) ? -0 : 0]));
+    const branches = branchesAt(program, plan, middleScope, zero, 0,
+      plan.jumps.length, edge.description, own);
+    return t => evaluateExpression(program, plan.skeleton,
+      { ...scopeAt(t, true), ...branches });
+  };
+  let current = values[own];
+  const project = (low: number, high: number): void => {
+    if (![low, high, current].every(Number.isFinite)) {
+      throw new UnsupportedLaw(`${edge.description}: Follow encountered a non-finite envelope or retained value.`);
+    }
+    // Python's max(low, min(current, high)) selects its first operand at
+    // equality. Math.min/Math.max select signed zero by a different rule.
+    const inner = current <= high ? current : high;
+    current = low >= inner ? low : inner;
+  };
+  const closures: [number, number, number, number][] = [];
+  project(...direct(0));
+  for (let i = 0; i < cuts.length - 1; i += 1) {
+    const left = cuts[i];
+    const right = cuts[i + 1];
+    const middle = (left + right) / 2;
+    const lowAt = absolute(lower, edge.lowerPlan, middle);
+    const highAt = absolute(upper, edge.upperPlan, middle);
+    project(lowAt(left), highAt(left));
+    const lowClose = lowAt(right);
+    const highClose = highAt(right);
+    project(lowClose, highClose);
+    closures.push([right, current, lowClose, highClose]);
+    project(...direct(right));
+  }
+  if (landings !== null) landings[own] = current;
+  if (trace && ![...sources.values()].every(motion => motion.constant)) {
+    (trace.followCuts ??= new Map()).set(own, cuts);
+    (trace.followClosures ??= new Map()).set(own, closures);
+  }
+  return [[own, current - values[own]]];
+}
+
 export function propagate(program: LoadedProgram, edge: ProgramEdge, values: Bank,
                           deltas: Bank, crossings: CrossingRecord[] | null, tick: number,
                           landings: Bank | null): [string, number][] {
@@ -221,6 +324,10 @@ function propagated(program: LoadedProgram, edge: ProgramEdge, values: Bank,
                     landings: Bank | null): [string, number][] {
   const trace = propagations.get(deltas)!;
   const legacy = () => edgeIncrements(program, edge, values, { ...deltas }, crossings, tick, landings);
+  if (edge.kind === 'follow') {
+    edge.gives.forEach(key => trace.untraced.add(key));
+    return followIncrements(program, edge, values, deltas, tick, landings);
+  }
   if (edge.kind === 'play' || edge.needs.some(key => trace.untraced.has(key))) {
     edge.gives.forEach(key => trace.untraced.add(key));
     return legacy();

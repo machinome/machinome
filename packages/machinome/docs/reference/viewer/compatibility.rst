@@ -55,6 +55,8 @@ Document capabilities
      - Explicit running time drives with independently admitted motion.
    * - 11
      - Source-timed running motion through ordinary chains and selected blocks.
+   * - 12
+     - Retained ``Follow`` between two certified moving clearance envelopes.
 
 These are producer-selected schemas, not modes you change by editing a JSON
 version field. The viewer accepts current ``machinome-export`` and legacy
@@ -89,9 +91,10 @@ provided. Reading a legacy model document does not restore old host names.
 API 21 added :js:meth:`ViewerHandle.setView`; API 22 added running ``Play``
 execution; API 23 adds explicit running time drives; API 24 preserves determined
 source timing, including dwell and landing, through running dependencies.
-A host that needs a
-feature can check the declared API before
-using it. Do not assume an old pinned bundle implements the current manual.
+Current source API 25 adds version-12 two-envelope ``Follow`` execution;
+the released 0.7.0 bundle remains API 24. A host that needs a feature can
+check the declared API before using it. Do not assume an old pinned bundle
+implements the current manual.
 
 Source-timing migration
 =======================

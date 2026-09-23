@@ -26,7 +26,7 @@ import { ExpressionPath, UnsupportedPathNode, expressionGeneration, withExpressi
 import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
-import { CrossingRecord } from './jumps';
+import { CrossingRecord, nextAfter } from './jumps';
 import { propagations } from './motion';
 import type { Motion } from './motion';
 import {
@@ -670,7 +670,8 @@ export class Run {
         [['low', low], ['high', high]] as [('low' | 'high'),
                                            number | Constraint | null][]) {
         if (!isConstraint(bound)) continue;
-        if (bound.reads.every((read) => committed[read] === held[read])) {
+        const followPath = propagations.get(deltas)?.followCuts?.has(identifier) ?? false;
+        if (!followPath && bound.reads.every((read) => committed[read] === held[read])) {
           // Nothing the bound READS moves over this stretch, so the
           // bound is a NUMBER for it -- its expression at the tick's
           // committed own value and the reads' standing values -- and
@@ -722,7 +723,8 @@ export class Run {
                             admissions: Record<string, number>,
                             deltas: Record<string, number>): ConstraintContact | null {
     const keys = [constraint.identifier, ...constraint.reads];
-    if (keys.every((key) => committed[key] === held[key])) return null;
+    const followPath = propagations.get(deltas)?.followCuts?.has(constraint.identifier) ?? false;
+    if (!followPath && keys.every((key) => committed[key] === held[key])) return null;
     return this.searchedConstraint(constraint, held, values, admissions, deltas);
   }
 
@@ -808,10 +810,34 @@ export class Run {
       const start = level(0);
       const outward = (here: number): boolean => here > 0 && here > start;
       const subdivisions = this.program.limits.subdivisions;
-      for (let step = 1; step <= subdivisions; step += 1) {
-        const where = step / subdivisions;
-        if (!outward(level(where))) continue;
-        let low = (step - 1) / subdivisions;
+      const trace = propagations.get(deltas);
+      const followCuts = trace?.followCuts?.get(constraint.identifier);
+      const closureRows = trace?.followClosures?.get(constraint.identifier) ?? [];
+      const closures = new Map(closureRows.map(([where, value, low, high]) =>
+        [where, constraint.side === 'low' ? low - value : value - high]));
+      const samples = followCuts === undefined
+        ? Array.from({ length: subdivisions }, (_unused, index) => (index + 1) / subdivisions)
+        : [...new Set([
+          ...Array.from({ length: subdivisions }, (_unused, index) => (index + 1) / subdivisions),
+          ...followCuts.filter(cut => cut > 0),
+          ...followCuts.filter(cut => cut > 0).map(cut => nextAfter(cut, -Infinity)),
+        ])].sort((a, b) => a - b);
+      let previous = 0;
+      for (const where of samples) {
+        const here = level(where);
+        if (closures.has(where) && outward(closures.get(where)!)) {
+          const before = nextAfter(where, -Infinity);
+          if (!outward(here) && !outward(level(before))) {
+            throw new UnsupportedLaw(`${constraint.identifier} Follow envelope has a positive ` +
+              `one-sided ${constraint.side} Bound level at ${where}, but no representable ` +
+              'neighbor brackets that contact. The tick was not committed.');
+          }
+        }
+        if (!outward(here)) {
+          previous = where;
+          continue;
+        }
+        let low = previous;
         let high = where;
         for (let round = 0; round < this.program.limits.bisectionRounds;
           round += 1) {
@@ -848,7 +874,7 @@ export class Run {
       scaled[inputId] = admissions[inputId] * t;
     }
     const deltas = this.deltasOf(scaled);
-    const carriesPlay = constraint.edges.some((edge) => edge.kind === 'play');
+    const carriesPlay = constraint.edges.some((edge) => edge.kind === 'play' || edge.kind === 'follow');
     const landings: Record<string, number> | null = carriesPlay ? {} : null;
     for (const edge of constraint.edges) {
       for (const [key, increment] of edgeIncrements(

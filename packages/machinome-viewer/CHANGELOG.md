@@ -5,7 +5,12 @@ it carries release together and share one version.
 
 ## Unreleased
 
-- Viewer API 24 and document versions 1–11 are unchanged.
+- Viewer API 25 reads document versions 1–12 in current source. Version 12
+  executes a retained running `Follow` between two certified moving clearance
+  envelopes, preserving a free follower on retreat and stopping at the first
+  incompatible interval through its paired dynamic bounds. Older documents
+  keep their existing law and `Play` behavior; this source capability has not
+  been released with a new package version.
 - A determined running Bound may reuse exact standing expression values from
   the previous successful search on the same run when its numeric inputs and
   moving-name set are unchanged. Moving values still run at the first and

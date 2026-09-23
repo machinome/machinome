@@ -465,7 +465,7 @@ class CarriageInABrowserTest(TestCase):
         self.assertIsNotNone(mounted, 'the handle reported no run')
         self.assertEqual(mounted['identity'],
                          self.document['program']['identity'])
-        self.assertEqual(result['apiVersion'], 24)
+        self.assertEqual(result['apiVersion'], 25)
         self.assertAlmostEqual(mounted['dt'], DT, places=12)
         self.assertEqual(mounted['tick'], 0)
         for name in (*DIALS, *LEVERS, 'seat', 'hoist'):

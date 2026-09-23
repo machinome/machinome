@@ -417,7 +417,7 @@ class CurtaDrawingTest(TestCase):
         # And the machine stands at the transition's end throughout: the
         # bank is FINAL from the press.
         self.assertEqual(clocked['bank']['crank_rotation'], 360)
-        self.assertEqual(clocked['apiVersion'], 24)
+        self.assertEqual(clocked['apiVersion'], 25)
         # The canvas was not blank: a frame rate measured over an empty
         # scene would flatter this cycle, so the painted size is
         # recorded beside the numbers.
@@ -596,6 +596,6 @@ class CurtaGestureTest(TestCase):
         self.assertLess(frozen['crank'], 360)
         self.assertEqual(frozen['bank'], 360)
         self.assertEqual(landed['crank'], 360)
-        self.assertEqual(result['apiVersion'], 24)
+        self.assertEqual(result['apiVersion'], 25)
         self.assertTrue((SHOTS / 'curta-nudge-drawing.png').is_file())
         self.assertTrue((SHOTS / 'curta-nudge-landed.png').is_file())

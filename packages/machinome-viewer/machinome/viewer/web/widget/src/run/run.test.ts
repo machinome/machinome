@@ -19,6 +19,8 @@ import type { LoadedProgram, RunDocument } from './program';
 import { nextAfter } from './jumps';
 import { Motion, propagations } from './motion';
 import corpus from '../running-corpus.json';
+import wrappedV12 from './follow-wrapped-v12.json';
+import wrappedCommandsV12 from './follow-wrapped-commands-v12.json';
 import {
   ExpressionPath, expressionGeneration, expressionMetrics,
   releaseExpressions, retainExpressions, UnsupportedPathNode,
@@ -43,13 +45,16 @@ function bench(spec: {
   intermediates?: string[];
   sources?: Record<string, string[]>;
   instructions?: Record<string, unknown>;
+  version?: number;
+  bindings?: { name: string; expression: string }[];
 }): LoadedProgram {
   const ids = Object.keys(spec.coordinates);
   const inputs = ids.filter(
     (id) => (spec.coordinates[id] as { kind: string }).kind === 'input');
   return loadProgram({
     format: 'machinome-export',
-    version: 5,
+    version: spec.version ?? 5,
+    bindings: spec.bindings,
     drivers: Object.fromEntries(inputs.map((id) => [id, {
       default: 0, range: null, unit: null, dtype: null, scale: null,
     }])),
@@ -77,6 +82,153 @@ const law = (needs: string[], gives: string[], expression: string,
 const play = (source: string, retained: string, low: number, high: number) => ({
   kind: 'play', needs: [source, retained], gives: [retained],
   description: `${source} plays ${retained}`, stated_by: 'Bench', low, high,
+});
+
+const follow = (lower = 'low', upper = 'high', lowerPlan: unknown = null) => ({
+  kind: 'follow', needs: ['low', 'high', 'ball'], gives: ['ball'],
+  description: 'two surfaces follow ball', stated_by: 'Bench',
+  lower, upper, lower_plan: lowerPlan, upper_plan: null,
+});
+
+function followBench(low = 0, high = 3, expression = 'low',
+                     plan: unknown = null, bindings: { name: string; expression: string }[] = []): LoadedProgram {
+  return bench({ version: 12, bindings,
+    coordinates: { low: input(low), high: input(high), ball: coordinate(0) },
+    edges: [follow(expression, 'high', plan)],
+    spans: { ball: { low: { expression }, high: { expression: 'high' } } },
+  });
+}
+
+describe('version-12 two-envelope Follow', () => {
+  it('matches the frozen producer command corpus in order, status and full bank', () => {
+    const program = loadProgram(wrappedV12 as unknown as RunDocument, 'producer://follow_wrapped_v12.json');
+    const run = new Run(program, wrappedCommandsV12.dt, null);
+    expect(run.state()).toEqual(wrappedCommandsV12.initial);
+    for (const step of wrappedCommandsV12.steps) {
+      const command = run.move(step.move.input, { to: step.move.to });
+      expect(command.status).toBe(step.status);
+      expect(run.state()).toEqual(step.bank);
+    }
+  });
+
+  it('executes the exact producer-serialized v12 wrapped fragment', () => {
+    const program = loadProgram(wrappedV12 as unknown as RunDocument, 'producer://follow_wrapped_v12.json');
+    const run = new Run(program, 1, null);
+    run.move('low', { to: 3, duration: 1 });
+    run.advance();
+    expect(run.state()['ball.slide']).toBe(2);
+  });
+
+  it('pushes, retains on retreat, and accepts an inward upper push', () => {
+    const run = new Run(followBench(), 1, null);
+    run.move('low', { to: 2, duration: 1 });
+    run.advance();
+    expect(run.state().ball).toBe(2);
+    run.move('low', { to: 0, duration: 1 });
+    run.advance();
+    expect(run.state().ball).toBe(2);
+    run.move('high', { to: 1, duration: 1 });
+    run.advance();
+    expect(run.state().ball).toBe(1);
+  });
+
+  it('retains the producer modulo left-closure excursion', () => {
+    const program = followBench(0, 3, '_b3', {
+      skeleton: '(low - (2 * _j0))',
+      jumps: [{ name: '_j0', primitive: 'floor', level: '_b0', affine: true }],
+    }, [
+      { name: '_b0', expression: '(low / 2)' },
+      { name: '_b1', expression: 'floor(_b0)' },
+      { name: '_b2', expression: '(2 * _b1)' },
+      { name: '_b3', expression: '(low - _b2)' },
+    ]);
+    const run = new Run(program, 1, null);
+    run.move('low', { to: 3, duration: 1 });
+    run.advance();
+    expect(run.state().low).toBe(3);
+    expect(run.state().ball).toBe(2);
+  });
+
+  it('stops opposing surfaces at their first compatible contact and replays', () => {
+    const run = new Run(followBench(), 1, null);
+    const before = run.snapshot();
+    const firstLow = run.move('low', { to: 2, duration: 1 });
+    const firstHigh = run.move('high', { to: 1, duration: 1 });
+    run.advance();
+    expect([firstLow.status, firstHigh.status]).toEqual(['blocked', 'blocked']);
+    const stopped = run.snapshot();
+    expect(run.state().low).toBeCloseTo(1.5, 9);
+    expect(run.state().high).toBeCloseTo(1.5, 9);
+    expect(run.state().ball).toBeCloseTo(1.5, 9);
+    run.restore(before);
+    run.move('low', { to: 2, duration: 1 });
+    run.move('high', { to: 1, duration: 1 });
+    run.advance();
+    expect(run.snapshot()).toEqual(stopped);
+  });
+
+  it('preserves a retained positive zero at opposite-zero boundary ties', () => {
+    const program = bench({ version: 12,
+      coordinates: { low: input(-0), high: input(0), spare: input(0), ball: coordinate(0) },
+      edges: [follow()],
+      spans: { ball: { low: { expression: 'low' }, high: { expression: 'high' } } },
+    });
+    const run = new Run(program, 1, null);
+    run.move('spare', { to: 1, duration: 1 });
+    run.advance();
+    expect(Object.is(run.state().ball, 0)).toBe(true);
+  });
+
+  it('finds periodic contact even when every old uniform probe is at home', () => {
+    const program = followBench(0, 1.5, '_b3', {
+      skeleton: '(low - (2 * _j0))',
+      jumps: [{ name: '_j0', primitive: 'floor', level: '_b0', affine: true }],
+    }, [
+      { name: '_b0', expression: '(low / 2)' },
+      { name: '_b1', expression: 'floor(_b0)' },
+      { name: '_b2', expression: '(2 * _b1)' },
+      { name: '_b3', expression: '(low - _b2)' },
+    ]);
+    const run = new Run(program, 1, null);
+    const command = run.move('low', { to: 128, duration: 1 });
+    run.advance();
+    expect(command.status).toBe('blocked');
+    expect(run.state().low).toBeGreaterThan(1.4);
+    expect(run.state().low).toBeLessThan(1.6);
+    expect(run.state().ball).toBeLessThanOrEqual(run.state().high);
+  });
+
+  it('finds a narrow incompatible interval between uniform probes', () => {
+    const pulse = 'max(0, (1 - (abs((low - 0.133)) / 0.002)))';
+    const run = new Run(followBench(0, 0.5, pulse), 1, null);
+    run.move('low', { to: 1, duration: 1 });
+    run.advance();
+    expect(run.state().low).toBeGreaterThan(0.131);
+    expect(run.state().low).toBeLessThan(0.133);
+    expect(run.state().ball).toBeLessThanOrEqual(0.5);
+  });
+
+  it('refuses a curved envelope without committing any bank state', () => {
+    const run = new Run(followBench(0, 3, 'sin(low)'), 1, null);
+    const before = run.snapshot();
+    run.move('low', { to: 1, duration: 1 });
+    expect(() => run.advance()).toThrow(/piecewise affine/);
+    expect(run.snapshot()).toEqual(before);
+  });
+
+  it('refuses positive one-sided contact without a representable positive neighbor', () => {
+    const expression = '(((2 * low) + 2.220446049250313e-16) * (low > 0) * (low < 0.5))';
+    const plan = { skeleton: '(((2 * low) + 2.220446049250313e-16) * _j0 * _j1)',
+      jumps: [
+        { name: '_j0', primitive: '>', level: 'low', affine: true },
+        { name: '_j1', primitive: '<', level: '(low - 0.5)', affine: true },
+      ] };
+    const run = new Run(followBench(0, 1, expression, plan), 1, null);
+    const before = run.snapshot();
+    run.move('low', { to: 1, duration: 1 });
+    expect(() => run.advance()).toThrow(/positive one-sided/);
+    expect(run.snapshot()).toEqual(before);
+  });
 });
 
 describe('one pass over the edges in program order', () => {

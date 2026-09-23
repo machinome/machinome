@@ -14,6 +14,7 @@ import { nest } from './scope';
 import { loadProgram } from './program';
 import type { LoadedProgram, RunDocument } from './program';
 import { edgeCuts, edgeIncrements, edgeValues, linearOf, predictsOf } from './edges';
+import wrappedV12 from './follow-wrapped-v12.json';
 
 const LIMITS = {
   crossing_tolerance: 1e-12, subdivisions: 64, bisection_rounds: 64,
@@ -60,6 +61,15 @@ const input = (initial: number) =>
   ({ kind: 'input', initial, domain: null });
 const coordinate = (initial: number) =>
   ({ kind: 'coordinate', initial, unit: null, domain: null });
+
+it('evaluates a v12 Follow edge directly without propagation metadata', () => {
+  const program = loadProgram(wrappedV12 as unknown as RunDocument, 'producer://follow_wrapped_v12.json');
+  const landing: Record<string, number> = {};
+  const result = edgeIncrements(program, program.edges[0], { ...program.initial },
+    { low: 3, high: 0, 'ball.slide': 0 }, null, 0, landing);
+  expect(result).toEqual([['ball.slide', 2]]);
+  expect(landing['ball.slide']).toBe(2);
+});
 
 describe('a law', () => {
   const program = bench({

@@ -2540,7 +2540,7 @@ function visibleBounds(root: THREE.Object3D): THREE.Box3 {
 // the bundle and `bundle.py` both read (`machinomeDocumentVersions` in
 // package.json): the number this viewer reports and the versions it
 // refuses by must not be able to drift apart.
-export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+export const RENDERED_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const DOCUMENT_FORMAT = 'machinome-export';
 const LEGACY_DOCUMENT_FORMAT = 'solid-node-export';
 

@@ -1,6 +1,6 @@
 ## Context
 
-The viewer executes running documents independently of the Python framework and must not infer contact behavior from an old self-read law. OperatingCurta's trial has two independent measured boundaries: `bell_limit(turn)` is a modulo-jump, kinked graph over an affine bell source; `collar_limit(lift)` is kinked over an affine lift source. The producer has shown the bell 0→−90 path can be partitioned into 30 affine pieces, the collar 0→6 into 21, and the actual Curta follower pushes out to 2.213142830078919, retains that value on return, and blocks the raised-carriage crank at .36119713971311285. Its generated `tests/fixtures/follow_wrapped_v12.json` now pins the wire and a left-closure interior excursion. Broad producer validation and a final paired consumer corpus remain gates, not accepted facts of this viewer implementation.
+The viewer executes running documents independently of the Python framework and must not infer contact behavior from an old self-read law. OperatingCurta's trial has two independent measured boundaries: `bell_limit(turn)` is a modulo-jump, kinked graph over an affine bell source; `collar_limit(lift)` is kinked over an affine lift source. The producer has shown the bell 0→−90 path can be partitioned into 30 affine pieces, the collar 0→6 into 21, and the actual Curta follower pushes out to 2.213142830078919, retains that value on return, and blocks the raised-carriage crank at .36119713971311285. Its generated `tests/fixtures/follow_wrapped_v12.json` now pins the wire and a left-closure interior excursion. The producer archived and integrated the contract at `f4c48f6` with its broad suite green; this viewer's paired corpus and no-mesh actual Curta parity are recorded separately in `evidence.md`.
 
 ## Goals / Non-Goals
 
@@ -27,11 +27,10 @@ The viewer executes running documents independently of the Python framework and 
 
 ## Migration Plan
 
-There is no migration of old documents or snapshots. An old viewer refuses version 12 by declaration; a new viewer reads versions 1–11 as before. The producer re-exports the Curta only after both runtimes validate the new edge. Rollback is the prior viewer bundle, which refuses version 12 rather than simulating it incorrectly.
+There is no migration of old documents or snapshots. An old viewer refuses version 12 by declaration; a new viewer reads versions 1–11 as before. The producer's read-only Curta Follow trial was exported only after both runtimes validated the new edge; production project adoption remains a separate mechanical gate. Rollback is the prior viewer bundle, which refuses version 12 rather than simulating it incorrectly.
 
-## Open Questions
+## Validation closure
 
-- The generated serializer fixture pins the stated wire and lower modulo plan; obtain the producer's accepted complete corpus and final unchanged-project export before integration.
-- Producer proof of exact one-sided semantics at Curta's measured one-ULP bell cut (or a corrected project chart), opposing-source attribution, and actual raised-carriage stop, relief and replay. A broad epsilon is not a certificate.
-- Producer's exact representable cut-probe/atomic-refusal rule, and whether it augments only Follow-associated dynamic Bounds or the generic constraint search; Python/JS IEEE nextDown parity is required.
-- Exact producer ordering/rounding for contact fractions and absolute landing; mirror the accepted corpus, not this sketch, if they differ.
+- The accepted producer at f4c48f6 pins the v12 wire, complete synthetic command corpus and cut-side/nextDown/unsupported-precision behavior. The viewer consumes those exact fixtures and augments only Follow-associated dynamic Bounds.
+- The producer's actual Curta trial and the viewer match every value of the 214-coordinate bank at eight stop/relief/replay/return stages, including the one-ULP authored bell join and exact blocked angle. The same mesh-enabled trial passed hosted Chromium full-bank parity and a real auto-mounted standalone pointer gesture with inspected screenshots; see evidence.md for hashes and negative attempts.
+- No epsilon or endpoint-only approximation was introduced. The project's production positioning-ball adoption remains open because of a separate ball/thrust-ring fit, not this viewer document contract.

@@ -88,7 +88,60 @@ function refusal(doc: RunDocument): string {
   throw new Error('expected loadProgram to refuse this document');
 }
 
+function followDocument(): RunDocument {
+  return document({
+    coordinates: {
+      low: { kind: 'input', initial: 0, domain: null },
+      high: { kind: 'input', initial: 3, domain: null },
+      'ball.slide': { kind: 'coordinate', initial: 0, domain: 'translational' },
+    },
+    edges: [{ kind: 'follow', needs: ['low', 'high', 'ball.slide'],
+      gives: ['ball.slide'], description: 'two surfaces follow ball',
+      stated_by: 'Bench', lower: 'low', upper: 'high',
+      lower_plan: null, upper_plan: null }],
+    spans: { 'ball.slide': {
+      low: { expression: 'low' }, high: { expression: 'high' },
+    } },
+    sources: { low: ['low'], high: ['high'], 'ball.slide': ['low', 'high'] },
+  }, { version: 12, drivers: {
+    low: { default: 0, range: null, unit: null, dtype: null, scale: null },
+    high: { default: 3, range: null, unit: null, dtype: null, scale: null },
+  } });
+}
+
 describe('loadProgram refuses what it cannot execute (design §4)', () => {
+  it('loads the producer v12 two-envelope Follow wire', () => {
+    expect(loadProgram(followDocument(), SOURCE).edges[0].kind).toBe('follow');
+  });
+
+  it('refuses Follow before v12, a missing paired Bound, and nonterminal output', () => {
+    const old = followDocument();
+    old.version = 11;
+    expect(refusal(old)).toContain('before document version 12');
+    const unmatched = followDocument();
+    (unmatched.program as Overrides).spans = {};
+    expect(refusal(unmatched)).toContain('matching dynamic low Bound');
+    const downstream = followDocument();
+    ((downstream.program as Overrides).coordinates as Overrides).witness =
+      { kind: 'coordinate', initial: 0, domain: 'translational' };
+    ((downstream.program as Overrides).sources as Overrides).witness = ['low', 'high'];
+    ((downstream.program as Overrides).edges as unknown[]).push({
+      kind: 'law', needs: ['ball.slide'], gives: ['witness'],
+      description: 'reads follower', stated_by: 'Bench',
+      expressions: ['ball.slide'], affine: [true], plans: [null],
+    });
+    expect(refusal(downstream)).toContain('must be terminal');
+  });
+
+  it('refuses a malformed plan and an infeasible retained rest', () => {
+    const malformed = followDocument();
+    (((malformed.program as Overrides).edges as Overrides[])[0]).lower_plan =
+      { skeleton: 'low', jumps: [{ name: '_j0', primitive: 'future', level: 'low', affine: true }] };
+    expect(refusal(malformed)).toContain('malformed jump');
+    const impossible = followDocument();
+    (((impossible.program as Overrides).coordinates as Overrides)['ball.slide'] as Overrides).initial = 4;
+    expect(refusal(impossible)).toContain('outside its finite feasible interval');
+  });
   it('loads the exact version-9 play edge', () => {
     const doc = document({
       edges: [{

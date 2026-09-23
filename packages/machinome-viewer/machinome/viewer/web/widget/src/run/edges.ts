@@ -16,7 +16,7 @@
 import { evaluateExpression, ProgramEdge } from './program';
 import type { LoadedProgram } from './program';
 import { propagations } from './motion';
-import { propagate } from './trajectory';
+import { followIncrements, propagate } from './trajectory';
 import {
   blockCuts, blockIncrements, CrossingRecord, kinkedEndCuts, planCuts,
   planIncrement, retainedCuts, retainedIncrement,
@@ -103,7 +103,7 @@ export function edgeValues(program: LoadedProgram, edge: ProgramEdge,
     return edge.gives.map((key, index) =>
       [key, evaluated(program, edge.expressions[index], inputs)]);
   }
-  if (edge.kind === 'play') return [];
+  if (edge.kind === 'play' || edge.kind === 'follow') return [];
   // A BLOCK computes nothing outside the bank -- every one of its gives
   // is a coordinate the run banks (design D1.7's third refusal) -- and
   // `Run.valuesOf` skips an edge all of whose gives are bank keys, so it
@@ -140,6 +140,7 @@ export function edgeIncrements(
   if (propagations.has(deltas)) return propagate(program, edge, values, deltas, crossings, tick, landings);
   values = timed(program, edge, values);
   deltas = timed(program, edge, deltas);
+  if (edge.kind === 'follow') return followIncrements(program, edge, values, deltas, tick, landings);
   if (edge.kind === 'play') {
     const source = edge.needs[0];
     const retained = edge.needs[1];
