@@ -21,6 +21,7 @@ import { Motion, propagations } from './motion';
 import corpus from '../running-corpus.json';
 import wrappedV12 from './follow-wrapped-v12.json';
 import wrappedCommandsV12 from './follow-wrapped-commands-v12.json';
+import producerLawV11 from '../../../../tests/fixtures/nonfinite-running-law-v11.json';
 import {
   ExpressionPath, expressionGeneration, expressionMetrics,
   releaseExpressions, retainExpressions, UnsupportedPathNode,
@@ -88,6 +89,145 @@ const follow = (lower = 'low', upper = 'high', lowerPlan: unknown = null) => ({
   kind: 'follow', needs: ['low', 'high', 'ball'], gives: ['ball'],
   description: 'two surfaces follow ball', stated_by: 'Bench',
   lower, upper, lower_plan: lowerPlan, upper_plan: null,
+});
+
+describe('non-finite running law refusal', () => {
+  const sqrtBench = (feed: number, slide: number) => bench({
+    coordinates: { feed: input(feed), slide: coordinate(slide) },
+    edges: [law(['feed'], ['slide'], 'sqrt(0.1 - feed)',
+      'square-root carriage', false)],
+  });
+
+  it('loads the producer-exported v11 document and refuses its domain-invalid move', () => {
+    // Captured from framework 34b3de127165ec7c2ff9429e24fc01ab39416e5f:
+    // document(bound(SquareRootMachine())) in tests/test_running_nonfinite_law.py.
+    const program = loadProgram(producerLawV11 as RunDocument,
+      'producer://nonfinite-running-law-v11.json');
+    const run = new Run(program, 0.1, 8);
+    const before = run.snapshot();
+    let error: unknown;
+    try { run.move('feed', { to: 0.2 }); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(String(error)).toContain('SquareRootMachine');
+    expect(String(error)).toContain('shaft.turn');
+    expect(run.snapshot()).toEqual(before);
+    expect(run.commands()).toEqual([]);
+    expect(run.trajectory()).toEqual([]);
+
+    const finite = new Run(loadProgram(producerLawV11 as RunDocument,
+      'producer://nonfinite-running-law-v11.json'), 0.1, 8);
+    expect(finite.move('feed', { to: 0.1 }).status).toBe('completed');
+    expect(finite.state()).toEqual({ feed: 0.1, 'shaft.turn': 0 });
+  });
+
+  it('refuses an immediate valid-start request whose law endpoint is NaN', () => {
+    const run = new Run(sqrtBench(0, Math.sqrt(0.1)), 1, 8);
+    const before = run.snapshot();
+    let error: unknown;
+    try { run.move('feed', { to: 0.2 }); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(String(error)).toContain('square-root carriage');
+    expect(String(error)).toContain('Bench');
+    expect(String(error)).toContain('slide');
+    expect(run.snapshot()).toEqual(before);
+    expect(run.state()).toEqual({ feed: 0, slide: Math.sqrt(0.1) });
+    expect(run.tick()).toBe(0);
+    expect(run.commands()).toEqual([]);
+    expect(run.trajectory()).toEqual([]);
+    expect(run.crossings()).toEqual([]);
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('refuses an accepted non-finite authored start before a finite endpoint', () => {
+    const run = new Run(sqrtBench(0.2, 0), 1, 8);
+    const before = run.snapshot();
+    let error: unknown;
+    try { run.move('feed', { to: 0.1 }); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(run.snapshot()).toEqual(before);
+    expect(run.state()).toEqual({ feed: 0.2, slide: 0 });
+    expect(run.commands()).toEqual([]);
+    expect(run.trajectory()).toEqual([]);
+  });
+
+  it.each([1, -1])('refuses an evaluated %i infinity', sign => {
+    const expression = sign === 1 ? '1 / (feed - 0.1)' : '-1 / (feed - 0.1)';
+    const run = new Run(bench({
+      coordinates: { feed: input(0), slide: coordinate(-10 * sign) },
+      edges: [law(['feed'], ['slide'], expression, 'reciprocal carriage', false)],
+    }), 1, 8);
+    const before = run.snapshot();
+    let error: unknown;
+    try { run.move('feed', { to: 0.1 }); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(String(error)).toContain('reciprocal carriage');
+    expect(run.snapshot()).toEqual(before);
+    expect(run.commands()).toEqual([]);
+  });
+
+  it('retains the first successful tick and admitted travel when the second fails', () => {
+    const run = new Run(sqrtBench(0, Math.sqrt(0.1)), 0.1, 8);
+    const command = run.move('feed', { to: 0.2, duration: 0.2 });
+    run.advance();
+    const before = run.snapshot();
+    expect(before.tick).toBe(1);
+    expect(before.bank.feed).toBe(0.1);
+    expect(command.admitted).toBe(0.1);
+    let error: unknown;
+    try { run.advance(); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(command.status).toBe('refused');
+    expect(command.admitted).toBe(0.1);
+    expect(run.tick()).toBe(1);
+    expect(run.state()).toEqual({ feed: 0.1, slide: 0 });
+    expect(run.trajectory()).toEqual([{ tick: 1, bank: { feed: 0.1, slide: 0 } }]);
+    expect(run.crossings()).toEqual([]);
+    expect(run.stops()).toEqual([]);
+  });
+
+  it('refuses a law result at an existing interior bound-path sample', () => {
+    const expression = 'sqrt(((feed - 0.1) * (feed - 0.1)) - 0.0025)';
+    const run = new Run(bench({
+      coordinates: { feed: input(0), slide: coordinate(Math.sqrt(0.0075)) },
+      edges: [law(['feed'], ['slide'], expression, 'arched carriage', false)],
+      spans: { feed: { low: null, high: { expression: '(slide + 1)' } } },
+    }), 1, 8);
+    const before = run.snapshot();
+    let error: unknown;
+    try { run.move('feed', { to: 0.3 }); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(String(error)).toContain('arched carriage');
+    expect(run.snapshot()).toEqual(before);
+  });
+
+  it('admits the finite square-root boundary from a representable exact landing', () => {
+    const run = new Run(sqrtBench(0, Math.sqrt(0.1)), 1, 8);
+    const command = run.move('feed', { to: 0.1 });
+    expect(command.status).toBe('completed');
+    expect(command.admitted).toBe(0.1);
+    expect(run.state()).toEqual({ feed: 0.1, slide: 0 });
+  });
+
+  it('admits the finite square-root boundary after endpoint integration', () => {
+    const run = new Run(sqrtBench(-0.2, Math.sqrt(0.1 - (-0.2))), 1, 8);
+    const command = run.move('feed', { to: 0.1 });
+    expect(command.status).toBe('completed');
+    expect(command.admitted).toBeCloseTo(0.3, 12);
+    expect(run.state()).toEqual({ feed: 0.1, slide: 0 });
+  });
+
+  it('refuses an exact terminal target just outside the law domain', () => {
+    const start = -0.234;
+    const target = 0.10000000000000002;
+    expect(start + (target - start)).toBe(0.1);
+    const run = new Run(sqrtBench(start, Math.sqrt(0.1 - start)), 1, 8);
+    const before = run.snapshot();
+    let error: unknown;
+    try { run.move('feed', { to: target }); } catch (caught) { error = caught; }
+    expect(refusalKind(error)).toBe('law');
+    expect(run.snapshot()).toEqual(before);
+    expect(run.commands()).toEqual([]);
+  });
 });
 
 function followBench(low = 0, high = 3, expression = 'low',

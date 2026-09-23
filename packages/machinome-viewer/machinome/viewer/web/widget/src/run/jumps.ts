@@ -21,7 +21,7 @@
 // epsilon, no one-sided limit rule, no direction test anywhere.
 
 import {
-  evaluateExpression, JumpPrimitive, LandingInvariantError, ProgramJump,
+  checkedLawNumber, checkedLawValue, evaluateExpression, JumpPrimitive, LandingInvariantError, ProgramJump,
   ProgramLimits, ProgramPlan, TooManyCrossings, UnsupportedLaw,
 } from './program';
 import type {
@@ -559,14 +559,16 @@ export function branchesAt(program: PathHost, plan: ProgramPlan,
 function substituted(program: PathHost, plan: ProgramPlan,
                      start: Record<string, number>,
                      delta: Record<string, number>, t: number,
-                     branches: Record<string, number>): number {
+                     branches: Record<string, number>, described: string,
+                     coordinate: string, statedBy: string): number {
   const values = along(start, delta, t);
   for (const name in branches) {
     if (Object.prototype.hasOwnProperty.call(branches, name)) {
       values[name] = branches[name];
     }
   }
-  return evaluateExpression(program, plan.skeleton, values);
+  return checkedLawNumber(described, statedBy, coordinate,
+                          evaluateExpression(program, plan.skeleton, values));
 }
 
 function crossingsOf(
@@ -756,6 +758,7 @@ export function planIncrement(
   program: LoadedProgram, plan: ProgramPlan, start: Record<string, number>,
   delta: Record<string, number>, described: string, coordinate: string,
   crossings: CrossingRecord[] | null, tick: number, forced: Forced = null,
+  statedBy = '',
 ): number {
   if (!Object.values(delta).some((value) => value !== 0)) {
     // A zero-length path contributes zero without evaluating anything --
@@ -773,8 +776,10 @@ export function planIncrement(
     const branches = branchesAt(program, plan, start, delta,
                                 (left + right) / 2, plan.jumps.length,
                                 described, coordinate, forced, paths);
-    total += substituted(program, plan, start, delta, right, branches)
-      - substituted(program, plan, start, delta, left, branches);
+    total += substituted(program, plan, start, delta, right, branches,
+                         described, coordinate, statedBy)
+      - substituted(program, plan, start, delta, left, branches,
+                    described, coordinate, statedBy);
   }
   return total;
 }
@@ -928,7 +933,8 @@ export class Walk {
               // node is always an INDEPENDENT one in ADR-057's split,
               // and forcing reaches the whole walk through layer one
               // alone (design D3).
-              private readonly forced: Forced = null) {
+              private readonly forced: Forced = null,
+              private readonly statedBy = '') {
     this.delta = copyHolding(delta, this.reading.own);
     // The driven coordinate's own source moves by NOTHING along the
     // path: what it holds on a piece is what the pieces before it
@@ -1490,21 +1496,22 @@ export class Walk {
       }
     }
     if (this.skeletonDisabled) {
-      return evaluateExpression(this.program, this.reading.outer.skeleton,
-                                values);
+      return checkedLawNumber(this.described, this.statedBy, this.coordinate,
+        evaluateExpression(this.program, this.reading.outer.skeleton, values));
     }
     // Design D6/D7: a new BRANCHES object is a new piece -- re-bound
     // whenever the reference changes, and taken at a point otherwise.
     const bind = this.skeletonBound !== branches;
     if (bind) this.skeletonBound = branches;
     try {
-      return Number(bind ? this.skeletonPath.bind(values)
-                          : this.skeletonPath.at(values));
+      return checkedLawNumber(this.described, this.statedBy, this.coordinate,
+        Number(bind ? this.skeletonPath.bind(values)
+                    : this.skeletonPath.at(values)));
     } catch (error) {
       if (!(error instanceof UnsupportedPathNode)) throw error;
       this.skeletonDisabled = true;
-      return evaluateExpression(this.program, this.reading.outer.skeleton,
-                                values);
+      return checkedLawNumber(this.described, this.statedBy, this.coordinate,
+        evaluateExpression(this.program, this.reading.outer.skeleton, values));
     }
   }
 
@@ -1553,9 +1560,10 @@ export function retainedIncrement(
   start: Record<string, number>, delta: Record<string, number>,
   described: string, coordinate: string,
   crossings: CrossingRecord[] | null, tick: number, forced: Forced = null,
+  statedBy = '',
 ): { increment: number; landing: number | null } {
   const walk = new Walk(program, reading, start, delta, described, coordinate,
-                        forced);
+                        forced, statedBy);
   const { increment, landing } = walk.run(crossings, tick);
   return { increment, landing };
 }
@@ -1566,9 +1574,10 @@ export function retainedCuts(
   program: LoadedProgram, reading: RetainedReading,
   start: Record<string, number>, delta: Record<string, number>,
   described: string, coordinate: string, forced: Forced = null,
+  statedBy = '',
 ): number[] {
   const walk = new Walk(program, reading, start, delta, described, coordinate,
-                        forced);
+                        forced, statedBy);
   return walk.run(null, 0, true).cuts;
 }
 
@@ -1794,8 +1803,10 @@ function memberIncrement(program: LoadedProgram, member: BlockMember,
       }
     }
     return {
-      increment: evaluateExpression(program, expression, end)
-        - evaluateExpression(program, expression, start),
+      increment: checkedLawValue(edge, member.own,
+        evaluateExpression(program, expression, end))
+        - checkedLawValue(edge, member.own,
+          evaluateExpression(program, expression, start)),
       landing: null,
     };
   }
@@ -1803,12 +1814,12 @@ function memberIncrement(program: LoadedProgram, member: BlockMember,
   if (reading === null) {
     return {
       increment: planIncrement(program, plan, start, delta, edge.description,
-                               member.own, crossings, tick, forced),
+                               member.own, crossings, tick, forced, edge.statedBy),
       landing: null,
     };
   }
   return retainedIncrement(program, reading, start, delta, edge.description,
-                           member.own, crossings, tick, forced);
+                           member.own, crossings, tick, forced, edge.statedBy);
 }
 
 /** The block's contribution to each of its coordinates over one stretch:

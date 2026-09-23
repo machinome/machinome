@@ -6,7 +6,7 @@
 import { calleeName, structureOf, withExpressions } from '../expressions';
 import type { NodeId } from '../expressions';
 import { activeShape } from './active-shape';
-import { evaluateExpression, UnsupportedLaw } from './program';
+import { checkedLawValue, evaluateExpression, UnsupportedLaw } from './program';
 import type { LoadedProgram, ProgramBlock, ProgramEdge, ProgramPlan } from './program';
 import { along, blockOrder, branchesAt, deduplicated, expressionKinkBreaks, merged, partition, tooMany, Walk } from './jumps';
 import type { CrossingRecord, WalkPiece } from './jumps';
@@ -159,7 +159,7 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
       if (reading) {
         start[reading.own] = current;
         const result = new Walk(program, reading, start, delta, edge.description,
-          edge.gives[index], forced).run(found, tick, false, local, closed || right < 1);
+          edge.gives[index], forced, edge.statedBy).run(found, tick, false, local, closed || right < 1);
         if (!local.length) {
           const held = current;
           local.push([0, 1, () => held, null]);
@@ -174,7 +174,8 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
           const high = partitions[part + 1];
           const branches = plan ? branchesAt(program, plan, start, delta, (low + high) / 2,
             plan.jumps.length, edge.description, edge.gives[index], forced) : {};
-          const evaluate = (t: number) => evaluateExpression(program, expression, { ...along(start, delta, t), ...branches });
+          const evaluate = (t: number) => checkedLawValue(edge, edge.gives[index],
+            evaluateExpression(program, expression, { ...along(start, delta, t), ...branches }));
           const base = evaluate(low);
           const from = current;
           const value = (t: number) => from + (evaluate(t) - base);
@@ -466,8 +467,10 @@ function propagated(program: LoadedProgram, edge: ProgramEdge, values: Bank,
     const result = terminalLaw ? edge.gives.map((key, index): [string, number] => {
       const expression = edge.expressions[index];
       if (expression === null) return [key, 0];
-      const after = evaluateExpression(program, expression, end!);
-      const before = evaluateExpression(program, expression, start!);
+      const after = checkedLawValue(edge, key,
+        evaluateExpression(program, expression, end!));
+      const before = checkedLawValue(edge, key,
+        evaluateExpression(program, expression, start!));
       readings.set(key, [before, after]);
       return [key, after - before];
     }) : legacy();
@@ -520,8 +523,10 @@ function propagated(program: LoadedProgram, edge: ProgramEdge, values: Bank,
       for (const [key, increment] of result) {
         const expression = edge.expressions[edge.gives.indexOf(key)];
         if (expression === null) continue;
-        const before = evaluateExpression(program, expression, start);
-        const after = evaluateExpression(program, expression, end);
+        const before = checkedLawValue(edge, key,
+          evaluateExpression(program, expression, start));
+        const after = checkedLawValue(edge, key,
+          evaluateExpression(program, expression, end));
         const endpoint = Object.is(values[key], before) ? after : values[key] + (after - before);
         trace.terminals!.set(key, endpoint);
         if (landings) landings[key] = endpoint;
@@ -545,8 +550,10 @@ function propagated(program: LoadedProgram, edge: ProgramEdge, values: Bank,
           && edge.expressions[index] !== null) {
         const start = Object.fromEntries([...sources].map(([name, path]) => [name, path.start]));
         const end = Object.fromEntries([...sources].map(([name, path]) => [name, path.end]));
-        const before = evaluateExpression(program, edge.expressions[index]!, start);
-        const after = evaluateExpression(program, edge.expressions[index]!, end);
+        const before = checkedLawValue(edge, key,
+          evaluateExpression(program, edge.expressions[index]!, start));
+        const after = checkedLawValue(edge, key,
+          evaluateExpression(program, edge.expressions[index]!, end));
         const exact = Object.is(values[key], before) ? after : values[key] + (after - before);
         motion = new Motion(values[key], exact, motion.pieces, false, true);
         landed = true;

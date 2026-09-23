@@ -45,6 +45,22 @@ export class UnsupportedLaw extends Error {
   readonly kind = 'law';
 }
 
+/** Refuse only a value an executing running LAW actually evaluated. */
+export function checkedLawNumber(description: string, statedBy: string,
+                                 coordinate: string, value: number): number {
+  if (!Number.isFinite(value)) {
+    throw new UnsupportedLaw(
+      `${description}, stated by ${statedBy}: law result for ` +
+      `${coordinate} is ${value}, not a finite number. The tick committed nothing.`);
+  }
+  return value;
+}
+
+export function checkedLawValue(edge: ProgramEdge, coordinate: string,
+                                value: number): number {
+  return checkedLawNumber(edge.description, edge.statedBy, coordinate, value);
+}
+
 /** One tick would cut a law's path more times than the run admits. The
  * tick committed nothing. */
 export class TooManyCrossings extends Error {

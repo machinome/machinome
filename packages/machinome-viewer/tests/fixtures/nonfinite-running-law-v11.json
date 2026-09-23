@@ -1,0 +1,101 @@
+{
+  "format": "machinome-export",
+  "version": 11,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "feed": {
+      "default": 0,
+      "range": null,
+      "unit": null,
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "program": {
+    "identity": "bb4b5fed2f73c3b0e7d5da07c599049afa3d1a5c40802f689c2a6e608a9e4f6b",
+    "clock": "time",
+    "coordinates": {
+      "feed": {
+        "kind": "input",
+        "initial": 0,
+        "domain": null
+      },
+      "shaft.turn": {
+        "kind": "coordinate",
+        "initial": 0.31622776601683794,
+        "unit": "deg",
+        "domain": "rotational"
+      }
+    },
+    "intermediates": [],
+    "edges": [
+      {
+        "kind": "law",
+        "needs": [
+          "feed"
+        ],
+        "gives": [
+          "shaft.turn"
+        ],
+        "description": "feed drives shaft.turn",
+        "stated_by": "SquareRootMachine",
+        "expressions": [
+          "sqrt((0.1 - feed))"
+        ],
+        "affine": [
+          false
+        ],
+        "plans": [
+          null
+        ]
+      }
+    ],
+    "spans": {},
+    "sources": {
+      "feed": [
+        "feed"
+      ],
+      "shaft.turn": [
+        "feed"
+      ]
+    },
+    "limits": {
+      "crossing_tolerance": 1e-12,
+      "subdivisions": 64,
+      "bisection_rounds": 64,
+      "max_crossings": 1000,
+      "agreement": 1e-9
+    }
+  },
+  "root": {
+    "name": "SquareRootMachine",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1790168360.436431,
+    "operations": [],
+    "children": [
+      {
+        "name": "shaft",
+        "type": "LeafNode",
+        "color": null,
+        "mtime": 1790168360.436431,
+        "operations": [
+          [
+            "r",
+            "shaft.turn",
+            [
+              0,
+              0,
+              1
+            ]
+          ]
+        ],
+        "model": "shaft"
+      }
+    ]
+  }
+}

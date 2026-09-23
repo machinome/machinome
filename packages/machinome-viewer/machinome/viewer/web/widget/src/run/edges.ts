@@ -13,7 +13,7 @@
 // `1e-9` relative, and a re-associated sum is exactly how a runtime
 // drifts into that window and then out of it.
 
-import { evaluateExpression, ProgramEdge } from './program';
+import { checkedLawValue, evaluateExpression, ProgramEdge } from './program';
 import type { LoadedProgram } from './program';
 import { propagations } from './motion';
 import { followIncrements, propagate } from './trajectory';
@@ -43,12 +43,14 @@ function timed(program: LoadedProgram, edge: ProgramEdge,
     : { ...values, [program.clock]: values[edge.timeDrive] ?? 0 };
 }
 
-function evaluated(program: LoadedProgram, expression: string | null,
+function evaluated(program: LoadedProgram, edge: ProgramEdge, index: number,
                    inputs: Record<string, number>): number {
   // A law whose expression has no free coordinate -- a constant -- has
   // zero slope everywhere, so it contributes nothing.
+  const expression = edge.expressions[index];
   if (expression === null) return 0;
-  return evaluateExpression(program, expression, inputs);
+  return checkedLawValue(edge, edge.gives[index],
+                         evaluateExpression(program, expression, inputs));
 }
 
 /** The linear combination this formula edge states, in the direction the
@@ -101,7 +103,7 @@ export function edgeValues(program: LoadedProgram, edge: ProgramEdge,
   if (edge.kind === 'law') {
     const inputs = inputsOf(edge, values);
     return edge.gives.map((key, index) =>
-      [key, evaluated(program, edge.expressions[index], inputs)]);
+      [key, evaluated(program, edge, index, inputs)]);
   }
   if (edge.kind === 'play' || edge.kind === 'follow') return [];
   // A BLOCK computes nothing outside the bank -- every one of its gives
@@ -163,8 +165,8 @@ export function edgeIncrements(
       const end = inputsOf(edge, values, deltas);
       return edge.gives.map((key, index) => [
         key,
-        evaluated(program, edge.expressions[index], end)
-          - evaluated(program, edge.expressions[index], start),
+        evaluated(program, edge, index, end)
+          - evaluated(program, edge, index, start),
       ]);
     }
     const delta: Record<string, number> = {};
@@ -175,18 +177,18 @@ export function edgeIncrements(
       const plan = edge.plans[index];
       if (plan === null) {
         return [key,
-                evaluated(program, edge.expressions[index], end)
-                  - evaluated(program, edge.expressions[index], start)];
+                evaluated(program, edge, index, end)
+                  - evaluated(program, edge, index, start)];
       }
       const reading = retained.length > 0 ? retained[index] : null;
       if (reading === null) {
         return [key, planIncrement(program, plan, start, delta,
                                    edge.description, edge.gives[index],
-                                   crossings, tick)];
+                                   crossings, tick, null, edge.statedBy)];
       }
       const { increment, landing } = retainedIncrement(
         program, reading, start, delta, edge.description, edge.gives[index],
-        crossings, tick);
+        crossings, tick, null, edge.statedBy);
       if (landing !== null && landings !== null) landings[key] = landing;
       return [key, increment];
     });
@@ -232,7 +234,7 @@ export function edgeCuts(program: LoadedProgram, edge: ProgramEdge,
   const reading = edge.retained.length > 0 ? edge.retained[index] : null;
   if (reading !== null) {
     return retainedCuts(program, reading, start, delta, edge.description,
-                        edge.gives[index]);
+                        edge.gives[index], null, edge.statedBy);
   }
   return planCuts(program, plan, start, delta, edge.description,
                   edge.gives[index]);
