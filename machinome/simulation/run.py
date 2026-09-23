@@ -32,8 +32,10 @@ coordinate remembers is where it stands.
 """
 
 import math
+import struct
 from collections import deque
 from dataclasses import dataclass, field, replace
+from types import MappingProxyType
 
 from machinome.motion.ports import RunBinder, get_coordinate
 
@@ -796,6 +798,11 @@ class Run:
         divides by nothing.
         """
         found = []
+        # One stretch has fixed held values, admissions and source values.
+        # The paired Bounds of a terminal Follow often ask its identical
+        # deterministic prefix at the same fraction. Never carry this cache
+        # into another stretch, tick, restore, or Run.
+        prefix_cache = {}
         for identifier, low, high, _unit in bounds:
             value = committed[identifier]
             was = held[identifier]
@@ -827,7 +834,8 @@ class Run:
                         found.append((identifier, 'high', number, None))
                     continue
                 located = self._constraint_reached(
-                    bound, held, committed, values, admissions, deltas)
+                    bound, held, committed, values, admissions, deltas,
+                    prefix_cache)
                 if located is not None:
                     found.append((identifier, side, bound, located))
             if isinstance(low, Constraint) or isinstance(high, Constraint):
@@ -843,7 +851,7 @@ class Run:
     # A bound that reads other coordinates: the CONSTRAINT
 
     def _constraint_reached(self, constraint, held, committed, values,
-                            admissions, deltas=None):
+                            admissions, deltas=None, prefix_cache=None):
         """The bracket of the stretch at which `constraint` is first
         carried outward, or `None`.
 
@@ -869,10 +877,10 @@ class Run:
                 all(committed[key] == held[key] for key in keys)):
             return None
         return self._searched_constraint(constraint, held, values,
-                                         admissions, deltas)
+                                         admissions, deltas, prefix_cache)
 
     def _searched_constraint(self, constraint, held, values, admissions,
-                             deltas=None):
+                             deltas=None, prefix_cache=None):
         """The level sampled at `_SUBDIVISIONS` fractions of the stretch,
         stopped at the FIRST sample carried outward, and the crossing
         bisected to `_CROSSING_TOLERANCE`.
@@ -938,8 +946,14 @@ class Run:
                 value = at(constraint.identifier)
                 return (value-bound if constraint.side == 'high'
                         else bound-value)
+            if prefix_cache is None:
+                # Keep standalone/internal callers of the original prefix
+                # evaluator signature untouched; only `_reached` owns a
+                # search-local memo.
+                return self._constraint_level(constraint, held, values,
+                                              admissions, t, own)
             return self._constraint_level(constraint, held, values,
-                                          admissions, t, own)
+                                          admissions, t, own, prefix_cache)
 
         start = level(0.0)
 
@@ -1000,7 +1014,7 @@ class Run:
         return _ConstraintContact(low, high)
 
     def _constraint_level(self, constraint, held, values, admissions, t,
-                          own):
+                          own, prefix_cache=None):
         """The CONSTRAINT LEVEL at the fraction `t` of the stretch:
         outside is positive.
 
@@ -1012,13 +1026,30 @@ class Run:
         it started the tick on; every read takes the value it has along
         the path.
         """
-        deltas = self._deltas({input_id: delta * t
-                               for input_id, delta in admissions.items()})
-        landings = {}
-        for edge in constraint.edges:
-            for key, increment in edge.increments(values, deltas,
-                                                   landings=landings):
-                deltas[key] = increment
+        # Reuse only a *successful* prefix of the supported pure shape. Edge
+        # objects have identity equality; the tuple keeps them alive for this
+        # `_reached` and cannot alias another compiled subprogram. A bit key
+        # keeps a cut and its adjacent representable side distinct.
+        eligible = (prefix_cache is not None and constraint.edges and
+                    constraint.edges[-1].kind == 'follow' and
+                    all(edge.kind == 'law' for edge in constraint.edges[:-1])
+                    and type(t) is float and math.isfinite(t))
+        cache_key = (tuple(constraint.edges), struct.pack('!d', t)) if eligible else None
+        saved = prefix_cache.get(cache_key) if eligible else None
+        if saved is None:
+            deltas = self._deltas({input_id: delta * t
+                                   for input_id, delta in admissions.items()})
+            landings = {}
+            for edge in constraint.edges:
+                for key, increment in edge.increments(values, deltas,
+                                                       landings=landings):
+                    deltas[key] = increment
+            if eligible:
+                saved = (MappingProxyType(dict(deltas)),
+                         MappingProxyType(dict(landings)))
+                prefix_cache[cache_key] = saved
+        else:
+            deltas, landings = saved
         arguments = {constraint.identifier: own}
         for read in constraint.reads:
             read_key = self.keys[read]
