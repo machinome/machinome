@@ -145,8 +145,10 @@ describe('API_VERSION', () => {
   // no version, and a version 8 document published after it is byte for
   // byte the one published before. 13 stays SKIPPED: the in-flight
   // cycle `slide-and-turn-parts` claims it.
-  it('declares version-13 finite profile contact as API 26', () => {
-    expect(API_VERSION).toBe(26);
+  // API 27 distinguishes two selected Turn joints on one part through
+  // named handles. The v13 document wire and version list do not move.
+  it('declares selected-joint handles as API 27', () => {
+    expect(API_VERSION).toBe(27);
   });
 });
 

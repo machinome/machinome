@@ -156,8 +156,10 @@ export function readControls(
   const drivers = Object.keys(document.drivers ?? {});
   const coordinates = Object.keys(program.coordinates ?? {});
   const loaded: LoadedControl[] = [];
-  // What part each kind has already been declared on, so two of one
-  // kind on one part is refused rather than silently resolved (D3).
+  // What each kind has already claimed. Two Turns may share a part only
+  // when they select different validated joints: the named handles can
+  // then distinguish them without guessing a body drag. Buttons and
+  // Slides retain the one-per-kind-and-part rule.
   const claimed = new Map<string, string>();
 
   for (const name of Object.keys(table)) {
@@ -299,10 +301,15 @@ export function readControls(
              + `${placement === null ? 'no leading rotation' : shown(placement)}`);
     }
 
-    const key = `${kind} ${part.join(' ')}`;
+    // JSON preserves path boundaries even if a node name contains a
+    // separator. The selected joint, not an input or display name, is
+    // the physical freedom a Turn handle owns.
+    const key = JSON.stringify(kind === 'turn'
+      ? [kind, part, joint] : [kind, part]);
     const already = claimed.get(key);
     if (already !== undefined) {
-      refuse(`on the part ${pathOf(part)}, which "${already}" already `
+      refuse(`on the part ${pathOf(part)}${kind === 'turn'
+        ? ` and selected joint ${pathOf(joint)}` : ''}, which "${already}" already `
              + `declares a ${shown(kind)} on; one gesture would have two `
              + 'meanings and the viewer would have to choose');
     }

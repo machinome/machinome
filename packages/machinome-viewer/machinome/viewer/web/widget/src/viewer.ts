@@ -2364,6 +2364,20 @@ export function partSurfaceWith(host: PartSurfaceHost): PartSurface {
 
   const onPointerMove = (event: PointerEvent): void => {
     if (gesture === null) {
+      // A selected handle is overlay chrome, not a window through to
+      // another part. A scene raycast at its screen point can hit the
+      // crank behind a clearing-ring handle and replace both handles
+      // before the following pointerdown. Only a current, visible owned
+      // handle keeps the selection; every other move resumes the usual
+      // nearest-visible-part hover.
+      const element = event.target instanceof Element
+        ? event.target.closest<HTMLButtonElement>('.part-gesture-handle') : null;
+      if (element !== null && !element.hidden
+          && handles.get(element.dataset.control ?? '') === element) {
+        hoverAt = null;
+        hoverDue = false;
+        return;
+      }
       hoverAt = { x: event.clientX, y: event.clientY };
       hoverDue = true;
       return;

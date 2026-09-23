@@ -3,6 +3,15 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased — current source
+
+Viewer API 27 retains document versions 1–13. Two declared `Turn` controls
+may now name one visible part when they select different joints: each gets
+its own named drag handle. An undecided body drag chooses neither, while
+duplicate turns selecting the same joint still refuse at load. The v13
+controls wire and public mount/handle operations are unchanged. This source
+capability is not attributed to the recorded 0.7.0/API-26 release.
+
 ## 0.7.0 — 23 September 2026
 
 The first published release of Machinome Viewer, released with Machinome

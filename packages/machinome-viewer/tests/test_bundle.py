@@ -57,7 +57,7 @@ class BundleLookupTest(TestCase):
         # its transition drawn over the declared duration, where a build
         # at 18 lists the same button and refuses it (OpenSpec
         # `play-the-instruction`) -- is the one after that.
-        self.assertEqual(bundle.api_version(), 26)
+        self.assertEqual(bundle.api_version(), 27)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),

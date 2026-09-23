@@ -2581,11 +2581,21 @@ document is refused when:
   the producer's joint placement publishes: the rotation alone, or a
   translation, the rotation and the translation back for a joint placed off
   its node's origin — the reading the gesture's geometry depends on;
-- two controls of the same kind name the same part, so that one gesture
-  would have two meanings and the viewer would have to choose;
+- two controls of the same kind name the same part and do not have distinct
+  selected turn joints, so a gesture without a named handle would have two
+  meanings and the viewer would have to choose; in particular two turns on
+  the same part selecting the same joint SHALL be refused even if their
+  names, inputs or coordinates differ;
 - the document carries a controls table and no program, which every
   document below the running version is, since a control has nothing to
   submit a request to.
+
+Two valid turns naming one visible part but distinct selected joint paths
+SHALL both load. Their separate named handles SHALL each submit only their
+own declared input and measure about their own declared joint. A drag on
+the shared body without selecting a handle SHALL submit neither turn.
+This allowance SHALL NOT weaken any path, operation-span, coordinate,
+domain or instruction validation above.
 
 A document that carries no controls table SHALL load, pose, run and drive
 exactly as it did before the viewer could read one.
@@ -2625,6 +2635,29 @@ exactly as it did before the viewer could read one.
 - **THEN** mounting succeeds, and a drag on the part is measured about the
   line through the world image of `origin` along the world image of `axis`
   — the same line the joint's own placement turns the part about
+
+#### Scenario: Distinct selected turn joints have distinct handles
+
+- **WHEN** two valid turn controls name one part and select different joint
+  paths, one of them an ancestor of the other
+- **THEN** mounting succeeds and both named handles are reachable; a drag
+  on either handle requests only its declared input about its own selected
+  joint, while a drag on the undecided body requests neither
+
+#### Scenario: Crossing the selected handle does not choose the part behind it
+
+- **WHEN** a maker moves the pointer from a two-turn part onto either of
+  its named handles while another controlled part lies behind the handle
+- **THEN** that handle remains present and selected through pointerdown,
+  and its gesture requests only its declared input; moving back to the
+  canvas restores ordinary nearest-visible-part hover
+
+#### Scenario: Same selected turn joint remains ambiguous
+
+- **WHEN** two turn controls name one part and select the same joint, even
+  with different display names, inputs, coordinates or operation spans
+- **THEN** mounting fails naming both declarations and their shared part
+  and joint; it does not silently choose one
 
 #### Scenario: A control without a run is refused
 

@@ -175,6 +175,93 @@ beforeEach(() => {
 describe('a hand chooses one physical freedom', () => {
   const SLIDE: LoadedControl = { ...TURN, name: 'lift crank', kind: 'slide',
     input: 'lift', perUnit: 1, coordinate: 'units.input.lift' };
+  const OTHER_TURN: LoadedControl = { ...TURN, name: 'deploy dial',
+    input: 'loop_deployment', joint: ['units', 'input', 'dial'],
+    coordinate: 'units.dial.swivel', axis: [0, 0, -1] };
+
+  it('uses separate named handles for two turns on one body without guessing its drag', () => {
+    const bench = stubs({ delta: -40 });
+    bench.host.point = () => ({ x: 100, y: 100 });
+    bench.surface.refresh([TURN, OTHER_TURN], true);
+    bench.show([TURN, OTHER_TURN]);
+    bench.canvas.dispatchEvent(pointer('pointerdown'));
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 100 }));
+    bench.canvas.dispatchEvent(pointer('pointerup', { clientX: 100 }));
+    expect(bench.moves).toEqual([]);
+    const handles = Array.from(bench.container.querySelectorAll<HTMLButtonElement>(
+      '.part-gesture-handle'));
+    expect(handles.map(one => [one.dataset.control, one.getAttribute('aria-label')]))
+      .toEqual([['turn units', 'turn units'], ['deploy dial', 'deploy dial']]);
+    expect(bench.surface.gesturePoint(TURN)).not.toBeNull();
+    expect(bench.surface.gesturePoint(OTHER_TURN)).not.toBeNull();
+    for (const handle of handles) {
+      handle.dispatchEvent(pointer('pointerdown'));
+      bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 100 }));
+      bench.canvas.dispatchEvent(pointer('pointerup', { clientX: 100 }));
+    }
+    expect(bench.moves.map(one => one.input))
+      .toEqual(['units_entry', 'loop_deployment']);
+  });
+
+  it('keeps selected handles when hover crosses an underlying other part', () => {
+    const bench = stubs({ delta: -40 });
+    bench.host.point = () => ({ x: 100, y: 100 });
+    const behind: LoadedControl = { ...SLIDE, name: 'turn background crank',
+      part: ['background', 'crank'], joint: ['background', 'crank'] };
+    bench.surface.refresh([TURN, OTHER_TURN, behind], true);
+    bench.show([TURN, OTHER_TURN]);
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 100 }));
+    bench.surface.pollHover();
+    const handle = bench.container.querySelector<HTMLButtonElement>(
+      '.part-gesture-handle[data-control="turn units"]')!;
+    expect(handle).not.toBeNull();
+    expect(bench.surface.gesturePoint(TURN)).not.toBeNull();
+
+    // The real clearing handle overlays the crank. A raycast through the
+    // handle sees the crank, not the clearing ring, but pointerdown must
+    // still reach the explicitly selected clearing freedom.
+    bench.show([behind]);
+    handle.dispatchEvent(pointer('pointermove', { clientX: 100, clientY: 72 }));
+    bench.surface.pollHover();
+    expect(handle.isConnected).toBe(true);
+    expect(bench.surface.gesturePoint(TURN)).not.toBeNull();
+    handle.dispatchEvent(pointer('pointerdown', { clientX: 100, clientY: 72 }));
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 160, clientY: 72 }));
+    bench.canvas.dispatchEvent(pointer('pointerup', { clientX: 160, clientY: 72 }));
+    expect(bench.moves.map(one => one.input)).toEqual(['units_entry']);
+
+    // Away from the owned overlay, nearest-visible-part hover resumes.
+    bench.canvas.dispatchEvent(pointer('pointermove', { clientX: 10, clientY: 10 }));
+    bench.surface.pollHover();
+    expect(bench.surface.gesturePoint(TURN)).toBeNull();
+  });
+
+  it('does not protect a hidden or foreign handle from scene hover', () => {
+    for (const kind of ['hidden', 'foreign']) {
+      const bench = stubs();
+      bench.host.point = () => ({ x: 100, y: 100 });
+      const behind: LoadedControl = { ...SLIDE, name: 'background control',
+        part: ['background'], joint: ['background'] };
+      bench.surface.refresh([TURN, OTHER_TURN, behind], true);
+      bench.show([TURN, OTHER_TURN]);
+      bench.canvas.dispatchEvent(pointer('pointermove'));
+      bench.surface.pollHover();
+      const real = bench.container.querySelector<HTMLButtonElement>(
+        '.part-gesture-handle[data-control="turn units"]')!;
+      const target = kind === 'hidden' ? real : document.createElement('button');
+      if (kind === 'hidden') real.hidden = true;
+      else {
+        target.className = 'part-gesture-handle';
+        target.dataset.control = TURN.name;
+        bench.container.append(target);
+      }
+      bench.show([behind]);
+      target.dispatchEvent(pointer('pointermove'));
+      bench.surface.pollHover();
+      expect(bench.surface.gesturePoint(TURN)).toBeNull();
+      expect(bench.picks.length).toBe(2);
+    }
+  });
 
   it('drags an ordinary sliding part directly', () => {
     const bench = stubs({ delta: 2 });

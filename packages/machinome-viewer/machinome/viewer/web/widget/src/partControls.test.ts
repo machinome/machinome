@@ -271,6 +271,61 @@ describe('readControls refuses a table it cannot resolve (D1)', () => {
     expect(message).toContain('units/input/dial');
   });
 
+  it('still refuses two turns selecting one joint even when their inputs differ', () => {
+    const manifest = document({ 'turn units': TURN,
+      'turn from other input': { ...TURN, input: 'other_entry' } });
+    manifest.drivers = { ...manifest.drivers, other_entry: ENTRY };
+    let message = '';
+    try {
+      readControls(manifest, '/same-joint.json', PROGRAM as never);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain('turn units');
+    expect(message).toContain('turn from other input');
+    expect(message).toContain('units/input/dial');
+    expect(message).toContain('selected joint units/input');
+  });
+
+  it('still refuses two buttons on one part', () => {
+    const message = refusal({
+      'add one': BUTTON,
+      'add one again': { ...BUTTON },
+    });
+    expect(message).toContain('add one again');
+    expect(message).toContain('add one');
+    expect(message).toContain('units/input/dial');
+  });
+
+  it('still refuses two slides on one part', () => {
+    const tree = node('root', [], [node('units', [], [
+      node('input', [['t', ['units.input.lift', '0', '0']]], [
+        node('dial', []),
+      ]),
+    ])]);
+    const slide = { kind: 'slide', part: ['units', 'input', 'dial'],
+      input: 'units_entry', per_unit: 1, joint: ['units', 'input'],
+      coordinate: 'units.input.lift', axis: [1, 0, 0], origin: [0, 0, 0],
+      operation_span: [0, 1] };
+    const manifest = document({
+      'slide units': slide, 'slide units again': { ...slide },
+    }, tree);
+    const program = { coordinates: { ...PROGRAM.coordinates,
+      'units.input.lift': {
+        kind: 'coordinate', initial: 0, unit: 'mm', domain: 'translational',
+      },
+    } };
+    let message = '';
+    try {
+      readControls(manifest, '/two-slides.json', program);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toContain('slide units');
+    expect(message).toContain('slide units again');
+    expect(message).toContain('units/input/dial');
+  });
+
   it('refuses a controls table on a document that carries no program', () => {
     const message = refusal(one(), TREE, null);
     expect(message).toContain('/m.json');
@@ -280,6 +335,33 @@ describe('readControls refuses a table it cannot resolve (D1)', () => {
 });
 
 describe('readControls accepts what the producer publishes (D1, D6)', () => {
+  it('accepts two turns on one visible part when they select distinct joints', () => {
+    const tree = node('root', [], [node('units', [], [
+      node('input', [['r', 'units.input.turn', [1, 0, 0]]], [
+        node('dial', [['r', 'units.dial.swivel', [0, 0, -1]]]),
+      ]),
+    ])]);
+    const controls = {
+      'turn units': { ...TURN, operation_span: [0, 1] },
+      'deploy dial': { ...TURN, input: 'loop_deployment',
+        joint: ['units', 'input', 'dial'],
+        coordinate: 'units.dial.swivel', axis: [0, 0, -1],
+        operation_span: [0, 1] },
+    };
+    const manifest = document(controls, tree);
+    manifest.drivers = { ...manifest.drivers, loop_deployment: ENTRY };
+    const program = { coordinates: { ...PROGRAM.coordinates,
+      'units.dial.swivel': {
+        kind: 'coordinate', initial: 0, unit: 'deg', domain: 'rotational',
+      },
+    } };
+    const loaded = readControls(manifest, '/two-joints.json', program);
+    expect(loaded.map(one => [one.name, one.input, one.joint])).toEqual([
+      ['turn units', 'units_entry', ['units', 'input']],
+      ['deploy dial', 'loop_deployment', ['units', 'input', 'dial']],
+    ]);
+  });
+
   it('answers [] for a document carrying no controls key', () => {
     const manifest = document(undefined);
     delete (manifest as { controls?: unknown }).controls;
@@ -301,6 +383,29 @@ describe('readControls accepts what the producer publishes (D1, D6)', () => {
     expect(loaded[1].kind).toBe('turn');
     expect(loaded[1].input).toBe('units_entry');
     expect(loaded[1].perUnit).toBe(-36);
+  });
+
+  it('keeps a turn and a slide on one part as distinct kinds', () => {
+    const tree = node('root', [], [node('units', [], [
+      node('input', [
+        ['t', ['units.input.lift', '0', '0']],
+        ['r', 'units.input.turn', [1, 0, 0]],
+      ], [node('dial', [])]),
+    ])]);
+    const manifest = document({
+      'turn units': { ...TURN, operation_span: [1, 2] },
+      'slide units': { kind: 'slide', part: TURN.part,
+        input: 'units_entry', per_unit: 1, joint: TURN.joint,
+        coordinate: 'units.input.lift', axis: [1, 0, 0], origin: [0, 0, 0],
+        operation_span: [0, 1] },
+    }, tree);
+    const program = { coordinates: { ...PROGRAM.coordinates,
+      'units.input.lift': {
+        kind: 'coordinate', initial: 0, unit: 'mm', domain: 'translational',
+      },
+    } };
+    expect(readControls(manifest, '/turn-slide.json', program).map(one => one.kind))
+      .toEqual(['turn', 'slide']);
   });
 
   it('accepts a joint placed off its node\'s origin: t(-a), r, t(a)', () => {

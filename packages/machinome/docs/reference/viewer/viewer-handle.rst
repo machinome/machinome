@@ -207,3 +207,9 @@ Operating handles and part controls
    are **viewport CSS pixels**, matching browser pointer coordinates, not
    model units or pixels relative to the canvas. Read them again after camera,
    layout or machine movement. Treat the returned data as read-only.
+
+   With viewer API 27, two ``Turn`` controls may name one part when they
+   select different joints. Each has its own named drag handle and
+   ``gesturePoint``. Dragging the undecided body requests neither turn;
+   select the handle for the intended joint. Two turns selecting the same
+   joint still refuse at load.
