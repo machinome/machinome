@@ -5,19 +5,17 @@ Versions and compatibility
 Three version numbers
 =====================
 
-The recorded 0.7.0 release declares:
+This release declares:
 
 * **Package** |package-version| — the Python distribution and its bundled
   widget, released with Machinome 0.7.0 and numbered with it. The widget is
   not published on npm; it ships inside the Python distribution.
-* **Viewer API** |released-viewer-api| — the browser-host interface/capabilities.
+* **Viewer API** |viewer-api| — the browser-host interface/capabilities.
 * **Document versions** |document-versions| — model schemas this bundle reads.
 
-Current source declares viewer API |viewer-api| while retaining document
-versions |document-versions|. API 27 adds separately named handles for two
-``Turn`` controls on one visible part when they select different declared
-joints. API 26 refuses that pair at load. A host requiring the two-joint
-gesture must check the API, not only the document version.
+A host requiring separately named handles for two ``Turn`` controls on one
+part must check the viewer API, not only the document version: the document
+schema is unchanged, and an API 26 bundle refuses that pair at load.
 
 Ask the installation rather than inferring compatibility from a package name:
 
@@ -104,12 +102,13 @@ provided. Reading a legacy model document does not restore old host names.
 API 21 added :js:meth:`ViewerHandle.setView`; API 22 added running ``Play``
 execution; API 23 adds explicit running time drives; API 24 preserves determined
 source timing, including dwell and landing, through running dependencies.
-API 25 adds version-12 two-envelope ``Follow`` execution. API 26, the
-0.7.0 release, reads version-13 finite convex-profile contact inside a
-numeric running Bound. API 27 adds selected-joint handles for two turns on
-one part without changing the document schema or the ``controls()`` shape.
-A host that needs a feature can check the declared
-API before using it. Do not assume an old pinned bundle implements the
+API 25 adds version-12 two-envelope ``Follow`` execution. API 26 reads
+version-13 finite convex-profile contact inside a numeric running Bound.
+API 27, the 0.7.0 release, adds separately named handles for two ``Turn``
+controls on one part selecting different joints, without changing the
+document schema or the ``controls()`` shape. API 26 refuses that pair at
+load. A host that needs a feature can check the declared API before using
+it. Do not assume an old pinned bundle implements the
 current manual.
 
 Source-timing migration

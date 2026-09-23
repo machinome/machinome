@@ -7,11 +7,14 @@ document records the prepared state; uploading to PyPI, tagging and pushing are
 the maintainer's separate actions.
 
 The Python distribution and bundled widget are both version 0.7.0. The widget
-reports API 26 and reads document schemas 1–13, including running `Play`
+reports API 27 and reads document schemas 1–13, including running `Play`
 contact laws, explicit time drives, source-timed motion, the two-surface
 `Follow` (ADR-075) and finite convex-profile contact inside a numeric running
 bound, both folded into the release on 23 September after the 22 September
-fold. It retains legacy solid-node document
+fold. API 27, folded the same day, adds separately named handles for two
+`Turn` controls on one part selecting different joints, with no document
+change; bounded exact reuse of a constant cyclic block's motion was folded
+with it as an internal performance change. It retains legacy solid-node document
 reading and uses the Machinome command, entry point, browser global and asset
 names.
 
@@ -27,7 +30,7 @@ index.
 
 To reproduce packaging: `python -m build`, then
 `python -m twine check --strict dist/*`. Install the wheel in a fresh environment
-outside the repository and run `machinome-viewer describe`; expect API 26,
+outside the repository and run `machinome-viewer describe`; expect API 27,
 version 0.7.0 and document versions 1 through 13. The sdist carries the bundle
 and source; verify it independently as well. Never run `scripts/check-dist`,
 `npm ci` or `npm install` in a worktree whose `node_modules` is a link to the

@@ -3,19 +3,10 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
-## Unreleased — current source
-
-Viewer API 27 retains document versions 1–13. Two declared `Turn` controls
-may now name one visible part when they select different joints: each gets
-its own named drag handle. An undecided body drag chooses neither, while
-duplicate turns selecting the same joint still refuse at load. The v13
-controls wire and public mount/handle operations are unchanged. This source
-capability is not attributed to the recorded 0.7.0/API-26 release.
-
 ## 0.7.0 — 23 September 2026
 
 The first published release of Machinome Viewer, released with Machinome
-0.7.0 and numbered with it. It declares viewer API 26 and reads document
+0.7.0 and numbered with it. It declares viewer API 27 and reads document
 versions 1 through 13. Install both with `pip install "machinome[viewer]"`.
 
 ### What a maker gets
@@ -60,7 +51,11 @@ versions 1 through 13. Install both with `pip install "machinome[viewer]"`.
   clock gets play, step and speed.
 - **Touching the parts.** A model that declares `Button`, `Turn` or `Slide`
   controls makes those parts pressable and draggable, one request per
-  gesture, the part following what the machine commits.
+  gesture, the part following what the machine commits. Two `Turn` controls
+  may name one part when they select different joints: each gets its own
+  named drag handle, and a drag on the undecided body requests neither. Two
+  turns selecting the same joint still refuse at load. This is API 27; the
+  document and its controls are unchanged.
 - **Markings.** Digits and other markings a part carries are drawn on its
   surface, so a calculator's dials can be read.
 
@@ -133,7 +128,12 @@ default crank ticks); two bounds that replay one `Follow` prefix share it
 at the same sample fraction within a stretch; and certified numeric
 kink-cut expressions reuse equal-fraction probes within one search (16.4%
 less over five ordinary ticks), with all 768 ordered bound levels and the
-214-coordinate bank unchanged. A complete browser revolution remains far
+214-coordinate bank unchanged. A fourth reuses a cyclic block's previous
+successful motion within one running engine when every source holds still
+and every numeric input matches bit for bit, rebuilding fresh constant paths
+rather than sharing them: each 48-tick reversing-lever gesture fell from
+3.2–3.6 to 1.7–2.1 process-CPU seconds, with every bank, admission, crossing
+and stop identical. A complete browser revolution remains far
 slower than its declared two-second drawing duration; that work continues.
 
 - Moving-contact stops act at their first located contact, so a long request

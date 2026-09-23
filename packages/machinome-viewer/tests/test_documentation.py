@@ -38,18 +38,18 @@ def test_the_manual_states_the_release():
         assert 'not yet published' not in text.lower(), page
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     sections = re.split(r'^## ', changelog, flags=re.M)
-    source = ' '.join(sections[1].split())
-    released = ' '.join(sections[2].split())
-    assert source.startswith('Unreleased — current source'), source[:40]
-    assert released.startswith('0.7.0 — 23 September 2026'), released[:40]
-    assert 'unreleased' not in released.lower()
-    assert 'Machinome 0.7.0' in released
+    # 0.7.0 ships the current source: no pending section sits above it.
+    release_sections = sections[1:]
+    assert not release_sections[0].startswith('Unreleased'), release_sections[0][:40]
+    current = ' '.join(release_sections[0].split())
+    assert current.startswith('0.7.0 — 23 September 2026'), current[:40]
+    assert 'unreleased' not in current.lower()
+    assert 'Machinome 0.7.0' in current
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     versions = widget['machinomeDocumentVersions']
-    assert f"Viewer API {widget['machinomeViewerApi']}" in source
-    assert 'viewer API 26' in released
-    assert f'document versions {versions[0]} through {versions[-1]}' in released
-    assert '|released-viewer-api| replace:: 26' in (ROOT / 'docs/conf.py').read_text()
+    assert f"viewer API {widget['machinomeViewerApi']}" in current
+    assert f'document versions {versions[0]} through {versions[-1]}' in current
+    assert 'released-viewer-api' not in (ROOT / 'docs/conf.py').read_text()
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
     assert project['version'] == '0.7.0'
     assert (ROOT / 'README.md').read_text().count('0.7.0') >= 1
@@ -105,12 +105,13 @@ def test_profile_contact_is_documented_as_part_of_the_release():
     running = (ROOT / 'docs/reference/running.rst').read_text()
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     assert 'baseline' not in (ROOT / 'docs/conf.py').read_text()
-    assert 'API 26, the\n0.7.0 release' in compatibility
-    assert 'Current source declares viewer API |viewer-api|' in compatibility
-    assert 'API 27 adds selected-joint handles' in compatibility
+    assert 'API 27, the 0.7.0 release' in compatibility
+    assert 'API 26 reads\nversion-13 finite convex-profile contact' in compatibility
+    assert 'released-viewer-api' not in compatibility
     assert 'pointwise' in running.lower()
     assert 'continuous' in running.lower()
-    assert '## Unreleased — current source' in changelog
+    assert '## Unreleased' not in changelog
     release = changelog.split('## 0.7.0 — 23 September 2026')[1].split('\n## ')[0]
     assert 'profileOverlap' in release
     assert 'API 26 and\n  version 13 by finite profile contact' in release
+    assert 'It declares viewer API 27' in ' '.join(release.split())
