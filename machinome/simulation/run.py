@@ -43,7 +43,8 @@ from .driver import RampProgram
 from .program import (CLOCK_NAME, Constraint, compile_program,
                       LandingInvariantError, qualified_coordinates, Stop,
                       TooManyCrossings, UnsupportedLaw, _BISECTION_ROUNDS,
-                      _CROSSING_TOLERANCE, _PathValue, _SUBDIVISIONS)
+                      _CROSSING_TOLERANCE, _folded_tick_cache, _PathValue,
+                      _SUBDIVISIONS)
 
 
 # Two increments agree when they are within this of each other,
@@ -544,7 +545,8 @@ class Run:
 
     def advance(self):
         """One tick, and the clock with it."""
-        self.integrate(self.sim.tick + 1, advance=True)
+        with _folded_tick_cache():
+            self.integrate(self.sim.tick + 1, advance=True)
 
     def integrate(self, tick, advance, only=None):
         """One tick, in SEGMENTS.

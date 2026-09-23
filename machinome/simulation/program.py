@@ -53,6 +53,9 @@ import math
 import operator
 import re
 import struct
+from collections import OrderedDict
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 
 from solid2.core.object_base import OpenSCADConstant
@@ -1936,7 +1939,56 @@ def _no_level(jump, described, coordinate, reason=None):
 _FOLDABLE = ('floor', 'ceil', '%') + tuple(_COMPARISONS)
 
 
+_FOLDED_TICK_CACHE = ContextVar('folded_tick_cache', default=None)
+_FOLDED_CACHE_LIMIT = 256
+
+
+@contextmanager
+def _folded_tick_cache():
+    """Keep successful structural folds only for this running tick."""
+    token = _FOLDED_TICK_CACHE.set(OrderedDict())
+    try:
+        yield
+    finally:
+        _FOLDED_TICK_CACHE.reset(token)
+
+
+def _fold_key(root, substitution):
+    """Prove an exact finite builtin-numeric substitution without coercing
+    author objects. None leaves the original fold responsible for errors."""
+    if type(root) is not ExpressionNode or type(substitution) is not dict:
+        return None
+    try:
+        if any(type(name) is not str or type(value) not in
+               (bool, int, float) for name, value in substitution.items()):
+            return None
+        values = tuple(sorted((name, struct.pack('!d', float(value)))
+                              for name, value in substitution.items()))
+        if any(not math.isfinite(struct.unpack('!d', bits)[0])
+               for _, bits in values):
+            return None
+        return root, values
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return None
+
+
 def _folded(root, substitution):
+    cache = _FOLDED_TICK_CACHE.get()
+    key = _fold_key(root, substitution) if cache is not None else None
+    if key is not None:
+        hit = cache.get(key)
+        if hit is not None:
+            cache.move_to_end(key)
+            return hit
+    result = _folded_uncached(root, substitution)
+    if key is not None:
+        cache[key] = result
+        if len(cache) > _FOLDED_CACHE_LIMIT:
+            cache.popitem(last=False)
+    return result
+
+
+def _folded_uncached(root, substitution):
     """`root` with every placeholder in `substitution` replaced by the
     number it stands for, and the arithmetic then folded:
     `x*0 -> 0`, `0*x -> 0`, `0/x -> 0`, `0+y -> y`, `y+0 -> y`,
