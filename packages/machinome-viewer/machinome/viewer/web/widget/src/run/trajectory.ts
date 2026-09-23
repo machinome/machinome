@@ -3,7 +3,8 @@
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { withExpressions } from '../expressions';
+import { calleeName, structureOf, withExpressions } from '../expressions';
+import type { NodeId } from '../expressions';
 import { activeShape } from './active-shape';
 import { evaluateExpression, UnsupportedLaw } from './program';
 import type { LoadedProgram, ProgramBlock, ProgramEdge, ProgramPlan } from './program';
@@ -16,6 +17,91 @@ import { edgeIncrements, linearOf } from './edges';
 type Motions = Map<string, Motion>;
 type Bank = Record<string, number>;
 
+// Terminal correction may evaluate a relation at its authored endpoint.
+// Only a closed numeric graph may be read again: `random`, a shadowed
+// function, or a coercing object must keep the original evaluation cadence.
+const CLOSED_CALLS = new Set([
+  'abs', 'acosh', 'asinh', 'atanh', 'cbrt', 'ceil', 'cosh', 'exp',
+  'expm1', 'floor', 'fround', 'hypot', 'ln', 'log1p', 'log2',
+  'log10', 'max', 'min', 'mod', 'pow', 'round', 'sign', 'sinh',
+  'sqrt', 'tanh', 'trunc',
+]);
+const CLOSED_CONSTANTS = new Set([
+  'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'PI', 'SQRT1_2', 'SQRT2',
+]);
+// Unlike context.sin/cos/tan/asin/acos/atan/atan2/log, the listed Math
+// callees are captured when the expression evaluator loads. Reject obvious
+// pre-import replacements, but this is not proof against a Proxy disguising
+// itself as native; standard Math at module import is the platform precondition.
+// The live-delegating wrappers are deliberately not in CLOSED_CALLS.
+const CAPTURED_MATH = new Map<string, boolean>([...CLOSED_CALLS]
+  .filter(name => name !== 'mod' && name !== 'sign')
+  .map(name => {
+    const method = name === 'ln' ? 'log' : name;
+    try {
+      const fn = (Math as unknown as Record<string, unknown>)[method];
+      return [name, typeof fn === 'function'
+        && Function.prototype.toString.call(fn).includes('[native code]')];
+    } catch {
+      return [name, false];
+    }
+  }));
+
+function closedTerminalLaw(program: LoadedProgram, edge: ProgramEdge, values: Bank): boolean {
+  try {
+    return withExpressions(() => {
+      const bindings = program.bindings.roots();
+      const available = new Set(Object.keys(values));
+      const safe = new Set<NodeId>();
+      const visiting = new Set<NodeId>();
+      const check = (root: NodeId): boolean => {
+        const stack: [NodeId, boolean][] = [[root, false]];
+        while (stack.length) {
+          const [id, done] = stack.pop()!;
+          if (safe.has(id)) continue;
+          if (done) {
+            visiting.delete(id);
+            safe.add(id);
+            continue;
+          }
+          if (visiting.has(id)) return false;
+          visiting.add(id);
+          const node = structureOf(id);
+          let children = node.children;
+          if (node.kind === 'const') {
+            if (!(typeof node.value === 'boolean'
+              || (typeof node.value === 'number' && Number.isFinite(node.value)))) return false;
+          } else if (node.kind === 'name' && node.name !== null) {
+            const head = node.name.split('.')[0];
+            const binding = bindings?.get(head);
+            if (binding !== undefined) {
+              if (head !== node.name) return false;
+              children = [binding];
+            } else if (!(available.has(node.name) && Number.isFinite(values[node.name]))
+                && !CLOSED_CONSTANTS.has(node.name)) return false;
+          } else if (node.kind === 'call') {
+            const name = calleeName(id);
+            if (name === null || !CLOSED_CALLS.has(name)
+                || bindings?.has(name) || available.has(name)) return false;
+            if (CAPTURED_MATH.get(name) === false) return false;
+          } else if (node.kind !== 'unary' && node.kind !== 'binary'
+                     && node.kind !== 'ternary') return false;
+          stack.push([id, true]);
+          for (let index = children.length - 1; index >= 0; index -= 1) {
+            stack.push([children[index], false]);
+          }
+        }
+        return true;
+      };
+      return edge.expressions.every(expression =>
+        expression === null || check(program.nodeOf(expression)));
+    });
+  } catch {
+    // The scheduled evaluator, not this preflight, owns the first error.
+    return false;
+  }
+}
+
 function cutsOf(program: LoadedProgram, motions: Motions): number[] {
   let cuts = [0, 1];
   for (const motion of motions.values()) cuts = merged(cuts, motion.cuts(), program.limits.crossingTolerance);
@@ -25,7 +111,7 @@ function cutsOf(program: LoadedProgram, motions: Motions): number[] {
 function sourcesAt(motions: Motions, left: number, right: number): [Bank, Bank] {
   const selected = new Map([...motions].map(([name, motion]) => [name, motion.restrict(left, right)]));
   const start = Object.fromEntries([...selected].map(([name, motion]) => [name, motion.start]));
-  const delta = [...selected.values()].every(motion => motion.affine)
+  const delta = [...selected.values()].every(motion => motion.affine && !motion.exactTerminal)
     ? Object.fromEntries([...selected].map(([name, motion]) => [name, motion.end - motion.start]))
     : sourceDeltas(selected);
   return [start, delta];
@@ -53,7 +139,8 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
     const classify = (branches: Bank) => activeShape(program.nodeOf(expression),
       { ...standing, ...branches }, program.bindings.roots());
     const whole = classify({});
-    const affine = whole.shape !== null && [...motions.values()].every(m => m.affine);
+    const terminalSources = [...motions.values()].some(motion => motion.exactTerminal);
+    const affine = whole.shape !== null && [...motions.values()].every(m => m.affine && !m.exactTerminal);
     if (reading && affine && reading.shape !== whole.shape) {
       reading = { ...reading, shape: whole.shape,
         kinks: whole.shape === 'kinked' ? whole.kinks : null };
@@ -101,16 +188,18 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
         const shape = branches === null ? null : classify(branches);
         const pieceAffine = shape === null || (shape.shape !== null
           && [...motions].every(([name, m]) => !shape.names.has(name) || m.affine));
+        const terminalPiece = terminalSources && shape !== null && [...motions].some(([name, m]) =>
+          shape.names.has(name) && m.exactTerminal);
         const breaks = pieceAffine && shape?.shape === 'kinked'
           ? expressionKinkBreaks(program, shape.kinks, start, delta, branches ?? {},
             a, b, program.limits.crossingTolerance) : [];
-        allAffine &&= pieceAffine;
+        allAffine &&= pieceAffine && !terminalPiece;
         const edges = [a, ...breaks, b];
         for (let part = 0; part < edges.length - 1; part += 1) {
           const low = edges[part];
           const high = edges[part + 1];
           let fn = evaluate;
-          if (pieceAffine) {
+          if (pieceAffine && !terminalPiece) {
             const lowValue = evaluate(low);
             const slope = (evaluate(high) - lowValue) / (high - low);
             fn = t => lowValue + slope * (t - low);
@@ -127,11 +216,14 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
 
 function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
                      deltas: Bank, trace: Propagation, crossings: CrossingRecord[] | null,
-                     tick: number, landings: Bank | null): [string, number][] {
+                     tick: number, landings: Bank | null,
+                     terminalAllowed = true): [string, number][] {
   const first = crossings?.length ?? 0;
   const sourceMaps = block.members.map(member => new Map(member.edge.needs.map(key =>
     [key, block.gives.includes(key) ? Motion.line(values[key], 0)
-      : motionOf(sourceKey(program, member.edge, key), values, deltas, trace)])));
+      : !terminalAllowed && trace.terminals?.has(sourceKey(program, member.edge, key))
+        ? Motion.line(values[key], deltas[key])
+        : motionOf(sourceKey(program, member.edge, key), values, deltas, trace)])));
   let cuts = [0, 1];
   block.members.forEach((member, index) => {
     const plan = member.selectorPlan;
@@ -156,6 +248,7 @@ function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
   const pieces = new Map(block.gives.map(key => [key, [] as Piece[]]));
   const affine = new Map(block.gives.map(key => [key, true]));
   const landed = new Set<string>();
+  const terminalOutputs = new Set<string>();
   for (let part = 0; part < cuts.length - 1; part += 1) {
     const left = cuts[part];
     const right = cuts[part + 1];
@@ -178,6 +271,23 @@ function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
       current[own] = motion.end;
       affine.set(own, affine.get(own)! && motion.affine);
       if (didLand) landed.add(own);
+      if (terminalAllowed && trace.terminals !== undefined && member.edge.needs.some(key =>
+        trace.terminals!.has(sourceKey(program, member.edge, key)) || terminalOutputs.has(key))) {
+        // The selected branch can fold a named source away. Inspect only
+        // after the ordinary member walk succeeded, and never let this
+        // metadata check replace its first error or activate a dead read.
+        const expression = member.plan?.skeleton ?? member.edge.expressions[0];
+        if (expression !== null) {
+          try {
+            const names = withExpressions(() => activeShape(program.nodeOf(expression),
+              forced[index], program.bindings.roots()).names);
+            if ([...names].some(name => trace.terminals!.has(sourceKey(program, member.edge, name))
+                || terminalOutputs.has(name))) terminalOutputs.add(own);
+          } catch {
+            // An unsupported inspection leaves the original path intact.
+          }
+        }
+      }
       const width = right - left;
       pieces.get(own)!.push(...motion.pieces.map(([a, b, fn]): Piece =>
         [left + width * a, left + width * b, t => fn((t - left) / width)]));
@@ -185,8 +295,11 @@ function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
     }
   }
   for (const key of block.gives) {
-    trace.motions.set(key, new Motion(values[key], current[key], pieces.get(key)!, affine.get(key)!));
-    if (landings && landed.has(key)) landings[key] = current[key];
+    const terminal = terminalOutputs.has(key)
+      && !Object.is(values[key] + (current[key] - values[key]), current[key]);
+    trace.motions.set(key, new Motion(values[key], current[key], pieces.get(key)!, affine.get(key)!, terminal));
+    if (terminal) trace.terminals!.set(key, current[key]);
+    if (landings && (landed.has(key) || terminal)) landings[key] = current[key];
   }
   if (crossings) crossings.splice(first, crossings.length - first,
     ...crossings.slice(first).sort((a, b) => a.t - b.t));
@@ -325,41 +438,157 @@ function propagated(program: LoadedProgram, edge: ProgramEdge, values: Bank,
   const legacy = () => edgeIncrements(program, edge, values, { ...deltas }, crossings, tick, landings);
   if (edge.kind === 'follow') {
     edge.gives.forEach(key => trace.untraced.add(key));
-    return followIncrements(program, edge, values, deltas, tick, landings);
+    const result = followIncrements(program, edge, values, deltas, tick, landings);
+    if (trace.terminals !== undefined
+        && edge.needs.slice(0, 2).some(key => trace.terminals!.has(key)) && landings) {
+      const key = edge.gives[0];
+      if (!Object.is(values[key] + result[0][1], landings[key])) {
+        trace.terminals.set(key, landings[key]);
+      }
+    }
+    return result;
   }
   if (edge.kind === 'play' || edge.needs.some(key => trace.untraced.has(key))) {
     edge.gives.forEach(key => trace.untraced.add(key));
-    return legacy();
+    const terminalLaw = edge.kind === 'law' && trace.terminals !== undefined
+      && edge.needs.some(key => trace.terminals!.has(sourceKey(program, edge, key)))
+      && !edge.plans.some(Boolean) && closedTerminalLaw(program, edge, values);
+    // The old untraced law evaluates its rounded end first, then its
+    // start. Substitute only the exact end scope in that same two-read
+    // sequence; do not first invoke the old endpoint (which may lie just
+    // outside the authored domain).
+    const start = terminalLaw
+      ? Object.fromEntries(edge.needs.map(key => [key, values[key]])) : null;
+    const end = terminalLaw
+      ? Object.fromEntries(edge.needs.map(key =>
+        [key, trace.terminals!.get(sourceKey(program, edge, key)) ?? values[key] + deltas[key]])) : null;
+    const readings = new Map<string, [number, number]>();
+    const result = terminalLaw ? edge.gives.map((key, index): [string, number] => {
+      const expression = edge.expressions[index];
+      if (expression === null) return [key, 0];
+      const after = evaluateExpression(program, expression, end!);
+      const before = evaluateExpression(program, expression, start!);
+      readings.set(key, [before, after]);
+      return [key, after - before];
+    }) : legacy();
+    if (edge.kind === 'play' && trace.terminals?.has(edge.needs[0]) && landings) {
+      const key = edge.gives[0];
+      if (!Object.is(values[key] + result[0][1], landings[key])) {
+        trace.terminals.set(key, landings[key]);
+      }
+    }
+    if (terminalLaw) {
+      for (const [key, increment] of result) {
+        const index = edge.gives.indexOf(key);
+        const expression = edge.expressions[index];
+        if (expression === null) continue;
+        const [before, after] = readings.get(key)!;
+        const endpoint = Object.is(values[key], before) ? after : values[key] + (after - before);
+        trace.terminals!.set(key, endpoint);
+        if (landings) landings[key] = endpoint;
+        trace.motions.set(key, new Motion(values[key], endpoint,
+          [[0, 1, t => values[key] + increment * t]], true, true));
+      }
+    }
+    return result;
   }
-  if (edge.kind === 'block') return blockMotion(program, edge.block!, values, deltas, trace, crossings, tick, landings);
+  if (edge.kind === 'block') {
+    const terminalAllowed = trace.terminals === undefined || edge.block!.members.every(member =>
+      closedTerminalLaw(program, member.edge, values));
+    return blockMotion(program, edge.block!, values, deltas, trace, crossings, tick,
+      landings, terminalAllowed);
+  }
   if (edge.kind === 'law') {
-    const sources = new Map(edge.needs.map(key => [key,
-      motionOf(sourceKey(program, edge, key), values, deltas, trace)]));
+    const hasTerminal = trace.terminals !== undefined
+      && edge.needs.some(key => trace.terminals!.has(sourceKey(program, edge, key)));
+    const terminal = hasTerminal && closedTerminalLaw(program, edge, values);
+    // A stateful or uncertain relation stays on its original traced path.
+    // Marking it untraced would turn each Bound sample into a fresh prefix
+    // replay and multiply random/custom calls.
+    const sources = new Map(edge.needs.map(key => {
+      const source = sourceKey(program, edge, key);
+      return [key, hasTerminal && !terminal && trace.terminals!.has(source)
+        ? Motion.line(values[key], deltas[key])
+        : motionOf(source, values, deltas, trace)];
+    }));
     const linear = [...sources.values()].every(m => m.affine && !m.cuts().length);
-    if (linear && !edge.plans.some(Boolean) && edge.shapes.every(shape => shape === 'constant' || shape === 'affine')) {
+    if (terminal && !edge.plans.some(Boolean)
+        && edge.shapes.every(shape => shape === 'constant' || shape === 'affine')) {
+      const result = legacy();
+      const start = Object.fromEntries([...sources].map(([name, path]) => [name, path.start]));
+      const end = Object.fromEntries([...sources].map(([name, path]) => [name, path.end]));
+      for (const [key, increment] of result) {
+        const expression = edge.expressions[edge.gives.indexOf(key)];
+        if (expression === null) continue;
+        const before = evaluateExpression(program, expression, start);
+        const after = evaluateExpression(program, expression, end);
+        const endpoint = Object.is(values[key], before) ? after : values[key] + (after - before);
+        trace.terminals!.set(key, endpoint);
+        if (landings) landings[key] = endpoint;
+        trace.motions.set(key, new Motion(values[key], endpoint,
+          [[0, 1, t => values[key] + increment * t]], true, true));
+      }
+      return result;
+    }
+    if (!terminal && linear && !edge.plans.some(Boolean) && edge.shapes.every(shape => shape === 'constant' || shape === 'affine')) {
       const result = legacy();
       for (const [key, increment] of result) trace.motions.set(key, Motion.line(values[key], increment));
       return result;
     }
-    if (linear && !edge.gives.some(key => trace.demanded.has(key))) return legacy();
+    if (!terminal && linear && !edge.gives.some(key => trace.demanded.has(key))) return legacy();
     return edge.gives.map((key, index) => {
-      const [motion, landed] = lawMotion(program, edge, index, sources, values[key], crossings, tick);
+      let [motion, landed] = lawMotion(program, edge, index, sources, values[key], crossings, tick);
+      // A continuous endpoint may have an exact authored landing even when
+      // held + (end - start) rounds beside it. Only a full terminal target
+      // reaches this branch; retained offsets keep their integrated delta.
+      if (terminal && edge.plans[index] === null && edge.retained[index] == null
+          && edge.expressions[index] !== null) {
+        const start = Object.fromEntries([...sources].map(([name, path]) => [name, path.start]));
+        const end = Object.fromEntries([...sources].map(([name, path]) => [name, path.end]));
+        const before = evaluateExpression(program, edge.expressions[index]!, start);
+        const after = evaluateExpression(program, edge.expressions[index]!, end);
+        const exact = Object.is(values[key], before) ? after : values[key] + (after - before);
+        motion = new Motion(values[key], exact, motion.pieces, false, true);
+        landed = true;
+      }
       trace.motions.set(key, motion);
-      if (landed && landings) landings[key] = motion.end;
+      if (terminal) {
+        trace.terminals ??= new Map();
+        trace.terminals.set(key, motion.end);
+      }
+      if ((landed || terminal) && landings) landings[key] = motion.end;
       return [key, motion.end - values[key]];
     });
   }
   const result = legacy();
   if (edge.kind === 'wiring' || edge.kind === 'formula') {
     const sources = new Map(edge.needs.map(key => [key, motionOf(key, values, deltas, trace)]));
+    const terminal = trace.terminals !== undefined
+      && edge.needs.some(key => trace.terminals!.has(key));
     const cuts = cutsOf(program, sources);
     for (const [key, increment] of result) {
       const at = (t: number) => {
         const local = Object.fromEntries([...sources].map(([need, source]) => [need, source.at(t) - values[need]]));
         return values[key] + (edge.kind === 'wiring' ? local[edge.needs[0]] * edge.factor : linearOf(edge, local, 0));
       };
-      trace.motions.set(key, new Motion(values[key], values[key] + increment,
-        cuts.slice(0, -1).map((a, i) => [a, cuts[i + 1], at]), [...sources.values()].every(m => m.affine)));
+      let endpoint = values[key] + increment;
+      if (terminal) {
+        const before = edge.kind === 'wiring'
+          ? sources.get(edge.needs[0])!.start * edge.factor
+          : linearOf(edge, Object.fromEntries([...sources].map(([name, path]) => [name, path.start])));
+        const after = edge.kind === 'wiring'
+          ? sources.get(edge.needs[0])!.end * edge.factor
+          : linearOf(edge, Object.fromEntries([...sources].map(([name, path]) => [name, path.end])));
+        endpoint = Object.is(values[key], before) ? after : values[key] + (after - before);
+      }
+      trace.motions.set(key, new Motion(values[key], endpoint,
+        cuts.slice(0, -1).map((a, i) => [a, cuts[i + 1], at]),
+        [...sources.values()].every(m => m.affine), terminal));
+      if (terminal) {
+        trace.terminals ??= new Map();
+        trace.terminals.set(key, endpoint);
+        if (landings) landings[key] = endpoint;
+      }
     }
   }
   return result;

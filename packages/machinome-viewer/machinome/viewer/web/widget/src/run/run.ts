@@ -31,8 +31,7 @@ import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
 import { CrossingRecord, nextAfter } from './jumps';
-import { propagations } from './motion';
-import type { Motion } from './motion';
+import { Motion, propagations } from './motion';
 import {
   Constraint, evaluateExpression, LandingInvariantError, ProgramBound,
   ProgramEdge, RunConflict, StopInvariantError, TooManyCrossings,
@@ -320,14 +319,16 @@ export class Run {
         `by=${by} and to=${to}.`);
     }
     const value = this.bank[inputId];
-    const native = to !== undefined && to !== null
-      ? toNative(to, declaration) - value
+    const target = to !== undefined && to !== null
+      ? toNative(to, declaration) : undefined;
+    const native = target !== undefined
+      ? target - value
       : toNative(by as number, declaration);
     const ticks = this.ticksFor(duration ?? 0,
                                 `duration of the move on '${inputId}'`);
     this.claim(inputId);
     const command = new Command(inputId, 'move', declaration, this.ticks,
-                                { native, ticks, value });
+                                { native, target, ticks, value });
     this.active.set(inputId, command);
     if (!ticks) {
       // A zero-duration move settles at the CURRENT tick, without
@@ -472,6 +473,23 @@ export class Run {
         let deltas = this.deltasOf(scaled);
         let found: CrossingRecord[] | null = crossings === null ? null : [];
         let landings: Record<string, number> = {};
+        // Keep the old delta/ramp for every interior fraction. The explicit
+        // target is visible only at the full terminal endpoint, before any
+        // bound is tested; a later stopped segment is replayed without it.
+        const trace = propagations.get(deltas)!;
+        for (const [inputId, command] of this.active) {
+          const target = command.targetNative;
+          if (target === undefined || stopped.has(inputId) || !command.finished(tick)
+              || (only !== null && command !== only)) continue;
+          if (Object.is(staged[inputId] + (scaled[inputId] ?? 0), target)) continue;
+          trace.terminals ??= new Map();
+          trace.terminals.set(inputId, target);
+          const startValue = values[inputId];
+          const delta = scaled[inputId] ?? 0;
+          trace.motions.set(inputId, new Motion(startValue, target,
+            [[0, 1, t => startValue + delta * t]], true, true));
+          landings[inputId] = target;
+        }
         this.pass(values, deltas, found, tick, landings);
         let committed: Record<string, number> = {};
         for (const id of Object.keys(staged)) {
@@ -1473,6 +1491,19 @@ export class Run {
         `dt=${this.dt}. A command admits its travel per tick, so a bank ` +
         'restored across two step sizes would replay a different movement.');
     }
+    for (const record of state.commands) {
+      if (!Object.prototype.hasOwnProperty.call(record, 'target')) continue;
+      const target = record.target;
+      const declaration = this.program.drivers[record.input];
+      if (declaration === undefined || record.kind !== 'move' || record.status !== 'active'
+          || typeof target !== 'number'
+          || !Number.isFinite(target)
+          || (declaration?.dtype === 'int' && !Number.isInteger(target))) {
+        throw new Error(
+          `restore() has an invalid native target for '${record.input}'. ` +
+          'An absolute move target must be a finite number in native units.');
+      }
+    }
     for (const command of this.active.values()) command.status = 'cancelled';
     this.active.clear();
     this.boundPaths.clear();
@@ -1481,6 +1512,7 @@ export class Run {
       const command = new Command(
         record.input, record.kind, declaration, record.started, {
           native: record.native,
+          target: record.target,
           nativeRate: record.nativeRate,
           ticks: record.ticks,
           value: state.bank[record.input] - record.admitted,
