@@ -146,6 +146,14 @@ one description that can be built, operated and tested.
   triangles, not its raw STL bytes, so one solid that OpenSCAD 2021.01
   writes in a different facet order is still one piece. Every piece id
   changes once and cached piece facts are recomputed.
+* **Running corrections from the Curta's reverser trial:** a running
+  ``move(to=...)`` lands on its exact converted endpoint instead of a
+  reconstructed sum one binary64 step past it, so a request to an
+  inclusive bound completes rather than reporting a false stop; and a
+  running law that fails its numeric domain or evaluates to a non-finite
+  value refuses the tick by name, retiring the command and leaving the
+  bank, records and pose as they were before it. The viewer carries the
+  same two corrections. No document field or version changes.
 
 See :doc:`upgrading` before changing versions. In addition to the rename,
 ports moved to ``machinome.motion.ports``, joint frames changed during

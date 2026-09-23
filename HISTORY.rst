@@ -51,6 +51,24 @@ shared OCP 7.8 CAD runtime.
   the viewer's API 25 reads it. Change
   ``follow-two-clearance-surfaces``; ratified by the pilot's decision
   to release 0.7.0 with it.
+* **A running move LANDS where it was sent, and a broken law REFUSES.**
+  The Curta Type I's installed reverser trial reported a zero-duration
+  ``move(to=3.9075)`` blocked at a bound equal to its target: the
+  request's travel rounded and ``current + travel`` landed one binary64
+  step past the stated endpoint. A ``move(to=...)`` now keeps its
+  converted native endpoint apart from its travel and commits that
+  endpoint at its terminal admission, judging the bounds against the
+  state that is committed; relative moves, rates, intermediate samples
+  and genuine stops are unchanged. On the same machine a square-root
+  law taken outside its domain raised ``math domain error`` while the
+  failed command stayed active, and a finite-input product could bank
+  infinity: both now become the existing ``UnsupportedLaw`` refusal of
+  the tick, with bank, tick, records and pose left as before it and
+  earlier successful ticks preserved. Changes
+  ``exact-absolute-bound-landing`` and
+  ``refuse-running-domain-law-error``; the viewer's
+  ``running-target-endpoint`` and ``refuse-nonfinite-running-law-start``
+  are the paired reader corrections.
 * **A finite profile contact is a term in a running Bound (ADR-144).**
   The Curta Type I reverser trial selects its axial stopping planes with
   numeric running Bounds but lacked the angular input: whether the
