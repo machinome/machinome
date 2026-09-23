@@ -13,7 +13,11 @@
 //
 // The floors asserted are deliberately an order of magnitude below the
 // numbers measured on the bench, so this catches a tenfold regression
-// and never a slow machine. The measurement itself is printed.
+// and never a slow machine. The measurement itself is printed. GitHub's
+// shared runners measured 2.7 to 3.8 times slower than the bench on
+// 23 September 2026 and failed three floors that had been left within
+// four times of their bench numbers; a floor is set at a tenth of the
+// bench number recorded beside it, never closer.
 
 import { describe, expect, it } from 'vitest';
 import corpus from '../running-corpus.json';
@@ -213,7 +217,7 @@ describe('the cost of a tick', () => {
     // self-read walk's moving cone is walked per point now, measured on
     // this bench at 5919 -> 14042 ticks/s.
     expect(ticksPerSecond('Clearing, a solved self-read', engine, 20000))
-      .toBeGreaterThan(4000);
+      .toBeGreaterThan(1400);
   }, 120_000);
 
   it('SOLVES six self-read dials through a `clamp01` window', () => {
@@ -230,7 +234,7 @@ describe('the cost of a tick', () => {
     // Raised (openspec `solve-at-the-kink`, ADR-061): 342 -> 1312
     // ticks/s on this bench, and 32 004 -> 2 724 evaluations/tick.
     expect(ticksPerSecond('the Curta fixture at dt = 1/240', engine, 2400))
-      .toBeGreaterThan(900);
+      .toBeGreaterThan(130);
   }, 240_000);
 
   // -------------------------------------------------------------------
@@ -274,9 +278,9 @@ describe('the cost of a tick', () => {
                 + "(the producer measured 1.6x and 2.0x)");
     // Raised (ADR-060): quiet 4320 -> 9859, crossing 2189 -> 4746 ticks/s
     // on this bench.
-    expect(quiet).toBeGreaterThan(3000);
+    expect(quiet).toBeGreaterThan(980);
     expect(twin).toBeGreaterThan(quiet);
-    expect(crossing).toBeGreaterThan(1500);
+    expect(crossing).toBeGreaterThan(470);
   }, 240_000);
 
   it('runs the Curta carriage: ONE BLOCK OF SEVEN', () => {
@@ -287,7 +291,7 @@ describe('the cost of a tick', () => {
     engine.move('crank', { by: 36000, duration: 0.02 * 2000 });
     // Raised (ADR-060): 292 -> 738 ticks/s on this bench.
     expect(ticksPerSecond('the Curta carriage at dt = 0.02', engine, 2000))
-      .toBeGreaterThan(200);
+      .toBeGreaterThan(70);
   }, 240_000);
 
   it('SEARCHES a stop on a block coordinate -- the expensive case', () => {
