@@ -22,7 +22,11 @@
 // every segment has succeeded.
 
 import { toNative } from '../drivers';
-import { ExpressionPath, UnsupportedPathNode, expressionGeneration, withExpressions } from '../expressions';
+import {
+  ExpressionPath, UnsupportedPathNode, calleeName, expressionGeneration,
+  structureOf, withExpressions,
+} from '../expressions';
+import type { NodeId } from '../expressions';
 import { ManifestDriver, ManifestInstruction } from '../types';
 import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
@@ -105,6 +109,51 @@ type Located = [number, string, 'low' | 'high', number | Constraint, ConstraintC
 
 type Bounds = [string, number | Constraint | null,
                number | Constraint | null][];
+
+/** Successful prefix propagations only for one reached-Bounds stretch. */
+type PrefixReplays = {
+  edges: readonly ProgramEdge[];
+  deterministic: boolean | undefined;
+  samples: Map<number, { deltas: Record<string, number>; landings: Record<string, number> }>;
+}[];
+
+/** A Follow's source certificate permits affine constant calls, so a
+ * constant-shaped `random(1)` still needs an explicit stateful-call guard. */
+function deterministicFollowPrefix(program: LoadedProgram,
+                                   edges: readonly ProgramEdge[]): boolean {
+  // The producer's first Follow contract admits affine ordinary-law
+  // ancestry and one terminal retained output; leave all other shapes
+  // on the original replay path, even if they happen to share edges.
+  if (edges.length === 0 || edges[edges.length - 1].kind !== 'follow'
+      || !edges.slice(0, -1).every(edge => edge.kind === 'law')) return false;
+  const bindings = program.bindings.roots() ?? new Map<string, NodeId>();
+  const seen = new Set<NodeId>();
+  const safe = (id: NodeId): boolean => {
+    if (seen.has(id)) return true;
+    seen.add(id);
+    const node = structureOf(id);
+    if (node.kind === 'call') {
+      const name = calleeName(id);
+      if (name === null || name === 'random' || bindings.has(name)) return false;
+    }
+    if (node.kind === 'name' && node.name !== null) {
+      const head = node.name.split('.')[0];
+      const binding = bindings.get(head);
+      if (binding !== undefined) {
+        if (head !== node.name || !safe(binding)) return false;
+      }
+    }
+    return node.children.every(safe);
+  };
+  const safeText = (expression: string | null): boolean =>
+    expression === null || safe(program.nodeOf(expression));
+  const safePlan = (plan: ProgramEdge['lowerPlan']): boolean =>
+    plan === null || (safeText(plan.skeleton)
+      && plan.jumps.every(jump => safeText(jump.level)));
+  return edges.every(edge => edge.expressions.every(safeText) && edge.plans.every(safePlan)
+    && safeText(edge.lower) && safeText(edge.upper)
+    && safePlan(edge.lowerPlan) && safePlan(edge.upperPlan));
+}
 
 function isConstraint(bound: number | Constraint | null):
 bound is Constraint {
@@ -663,6 +712,7 @@ export class Run {
                         admissions: Record<string, number>,
                         deltas: Record<string, number>): Reached[] {
     const found: Reached[] = [];
+    const prefixReplays: PrefixReplays = [];
     for (const [identifier, low, high] of bounds) {
       const value = committed[identifier];
       const was = held[identifier];
@@ -688,7 +738,7 @@ export class Run {
           continue;
         }
         const located = this.constraintReached(
-          bound, held, committed, values, admissions, deltas);
+          bound, held, committed, values, admissions, deltas, prefixReplays);
         if (located !== null) found.push([identifier, side, bound, located]);
       }
       const plainLow = isConstraint(low) ? null : low;
@@ -721,11 +771,13 @@ export class Run {
                             committed: Record<string, number>,
                             values: Record<string, number>,
                             admissions: Record<string, number>,
-                            deltas: Record<string, number>): ConstraintContact | null {
+                            deltas: Record<string, number>,
+                            prefixReplays?: PrefixReplays): ConstraintContact | null {
     const keys = [constraint.identifier, ...constraint.reads];
     const followPath = propagations.get(deltas)?.followCuts?.has(constraint.identifier) ?? false;
     if (!followPath && keys.every((key) => committed[key] === held[key])) return null;
-    return this.searchedConstraint(constraint, held, values, admissions, deltas);
+    return this.searchedConstraint(constraint, held, values, admissions, deltas,
+                                   prefixReplays);
   }
 
   /** The level sampled at `subdivisions` fractions of the stretch,
@@ -741,7 +793,8 @@ export class Run {
                              held: Record<string, number>,
                              values: Record<string, number>,
                              admissions: Record<string, number>,
-                             deltas: Record<string, number>):
+                             deltas: Record<string, number>,
+                             prefixReplays?: PrefixReplays):
   ConstraintContact | null {
     const own = this.bank[constraint.identifier];
     const paths = propagations.get(deltas)?.motions;
@@ -764,7 +817,8 @@ export class Run {
     let pathBound = false;
     let pathDisabled = false;
     const level = (t: number): number => {
-      if (!determined) return this.constraintLevel(constraint, held, values, admissions, t, own);
+      if (!determined) return this.constraintLevel(constraint, held, values, admissions,
+                                                   t, own, prefixReplays);
       const at = (key: string) => paths.get(key)?.at(t) ?? held[key] + (deltas[key] ?? 0) * t;
       const scope: Record<string, number> = { [constraint.identifier]: own };
       for (const read of constraint.reads) scope[read] = at(read);
@@ -868,18 +922,54 @@ export class Run {
                           held: Record<string, number>,
                           values: Record<string, number>,
                           admissions: Record<string, number>,
-                          t: number, own: number): number {
-    const scaled: Record<string, number> = {};
-    for (const inputId of Object.keys(admissions)) {
-      scaled[inputId] = admissions[inputId] * t;
+                          t: number, own: number,
+                          prefixReplays?: PrefixReplays): number {
+    const carriesFollow = constraint.edges.some((edge) => edge.kind === 'follow');
+    const reusable = prefixReplays !== undefined && carriesFollow
+      && Number.isFinite(t) && t !== 0;
+    let group = reusable ? prefixReplays.find(entry =>
+      entry.edges.length === constraint.edges.length
+      && entry.edges.every((edge, index) => edge === constraint.edges[index])) : undefined;
+    if (reusable && group === undefined) {
+      group = {
+        edges: constraint.edges,
+        deterministic: undefined,
+        samples: new Map(),
+      };
+      prefixReplays!.push(group);
     }
-    const deltas = this.deltasOf(scaled);
-    const carriesPlay = constraint.edges.some((edge) => edge.kind === 'play' || edge.kind === 'follow');
-    const landings: Record<string, number> | null = carriesPlay ? {} : null;
-    for (const edge of constraint.edges) {
-      for (const [key, increment] of edgeIncrements(
-        this.program, edge, values, deltas, null, 0, landings)) {
-        deltas[key] = increment;
+    const prior = group?.deterministic ? group.samples.get(t) : undefined;
+    let deltas: Record<string, number>;
+    let landings: Record<string, number> | null;
+    if (prior !== undefined) {
+      ({ deltas, landings } = prior);
+    } else {
+      const scaled: Record<string, number> = {};
+      for (const inputId of Object.keys(admissions)) {
+        scaled[inputId] = admissions[inputId] * t;
+      }
+      deltas = this.deltasOf(scaled);
+      const carriesPlay = carriesFollow || constraint.edges.some((edge) => edge.kind === 'play');
+      landings = carriesPlay ? {} : null;
+      for (const edge of constraint.edges) {
+        for (const [key, increment] of edgeIncrements(
+          this.program, edge, values, deltas, null, 0, landings)) {
+          deltas[key] = increment;
+        }
+      }
+      if (group !== undefined && group.deterministic === undefined) {
+        // The ordinary prefix gets first chance to fail. Structural
+        // eligibility is only an optional optimization, so a failure in
+        // that extra inspection falls back to the original evaluator.
+        try {
+          group.deterministic = deterministicFollowPrefix(this.program,
+                                                          constraint.edges);
+        } catch {
+          group.deterministic = false;
+        }
+      }
+      if (group?.deterministic) {
+        group.samples.set(t, { deltas, landings: landings! });
       }
     }
     const scope: Record<string, number> = { [constraint.identifier]: own };

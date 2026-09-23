@@ -100,6 +100,105 @@ function followBench(low = 0, high = 3, expression = 'low',
 }
 
 describe('version-12 two-envelope Follow', () => {
+  it('shares successful same-fraction prefix work across paired Bounds, not their levels', () => {
+    const run = new Run(followBench(), 1, null);
+    const probe = run as unknown as {
+      constraintLevel: (...args: unknown[]) => number;
+      deltasOf: (...args: unknown[]) => Record<string, number>;
+    };
+    const levels = vi.spyOn(probe, 'constraintLevel');
+    const derivations = vi.spyOn(probe, 'deltasOf');
+    run.move('low', { to: 2, duration: 1 });
+    run.advance();
+    expect(run.state()).toEqual({ low: 2, high: 3, ball: 2 });
+    expect(levels.mock.calls.length).toBeGreaterThan(100);
+    // One initial stretch derivation is outside constraintLevel. The old
+    // executor derives each duplicated Follow prefix afresh.
+    expect(derivations.mock.calls.length).toBeLessThan(levels.mock.calls.length);
+  });
+
+  it('does not reuse a Follow prefix containing a constant-shaped random call', () => {
+    const program = bench({ version: 12,
+      coordinates: { low: input(0), high: input(3), source: coordinate(0), ball: coordinate(0) },
+      edges: [law(['low'], ['source'], '(low + random(1))', 'random source'),
+        { kind: 'follow', needs: ['source', 'high', 'ball'], gives: ['ball'],
+          description: 'random source follower', stated_by: 'Bench',
+          lower: 'source', upper: 'high', lower_plan: null, upper_plan: null }],
+      spans: { ball: { low: { expression: 'source' }, high: { expression: 'high' } } },
+    });
+    const run = new Run(program, 1, null);
+    const probe = run as unknown as {
+      constraintLevel: (...args: unknown[]) => number;
+      deltasOf: (...args: unknown[]) => Record<string, number>;
+    };
+    const levels = vi.spyOn(probe, 'constraintLevel');
+    const derivations = vi.spyOn(probe, 'deltasOf');
+    run.move('low', { to: 1, duration: 1 });
+    run.advance();
+    expect(levels.mock.calls.length).toBeGreaterThan(100);
+    expect(derivations.mock.calls.length).toBeGreaterThanOrEqual(levels.mock.calls.length);
+  });
+
+  it('keeps distinct Follow prefixes separate and starts fresh after restore', () => {
+    const other = { kind: 'follow', needs: ['low2', 'high2', 'ball2'], gives: ['ball2'],
+      description: 'other two surfaces', stated_by: 'Bench',
+      lower: 'low2', upper: 'high2', lower_plan: null, upper_plan: null };
+    const program = bench({ version: 12,
+      coordinates: { low: input(0), high: input(3), ball: coordinate(0),
+        low2: input(0), high2: input(3), ball2: coordinate(0) },
+      edges: [follow(), other],
+      spans: {
+        ball: { low: { expression: 'low' }, high: { expression: 'high' } },
+        ball2: { low: { expression: 'low2' }, high: { expression: 'high2' } },
+      },
+    });
+    const run = new Run(program, 1, null);
+    const before = run.snapshot();
+    const probe = run as unknown as {
+      constraintLevel: (...args: unknown[]) => number;
+      deltasOf: (...args: unknown[]) => Record<string, number>;
+    };
+    const levels = vi.spyOn(probe, 'constraintLevel');
+    const derivations = vi.spyOn(probe, 'deltasOf');
+    const issue = () => {
+      run.move('low', { to: 2, duration: 1 });
+      run.move('low2', { to: 2, duration: 1 });
+      run.advance();
+    };
+    issue();
+    const first = run.snapshot();
+    // Each pair shares its own prefix, but the two different edge
+    // sequences cannot share one propagated result at the same fraction.
+    expect(levels.mock.calls.length).toBeGreaterThan(250);
+    expect(derivations.mock.calls.length).toBeGreaterThan(120);
+    expect(derivations.mock.calls.length).toBeLessThan(levels.mock.calls.length);
+    const firstDerivations = derivations.mock.calls.length;
+    run.restore(before);
+    issue();
+    expect(run.snapshot()).toEqual(first);
+    expect(derivations.mock.calls.length).toBe(firstDerivations * 2);
+  });
+
+  it('does not publish a failed prefix or commit its partial tick', () => {
+    const run = new Run(followBench(), 1, null);
+    const probe = run as unknown as { deltasOf: (...args: unknown[]) => Record<string, number> };
+    const original = probe.deltasOf.bind(run);
+    let calls = 0;
+    const injected = vi.spyOn(probe, 'deltasOf').mockImplementation((...args) => {
+      calls += 1;
+      if (calls === 3) throw new Error('injected prefix failure');
+      return original(...args);
+    });
+    run.move('low', { to: 2, duration: 1 });
+    const before = run.snapshot();
+    expect(() => run.advance()).toThrow('injected prefix failure');
+    expect(run.snapshot()).toEqual(before);
+    injected.mockRestore();
+    run.restore(before);
+    run.advance();
+    expect(run.state()).toEqual({ low: 2, high: 3, ball: 2 });
+  });
+
   it('matches the frozen producer command corpus in order, status and full bank', () => {
     const program = loadProgram(wrappedV12 as unknown as RunDocument, 'producer://follow_wrapped_v12.json');
     const run = new Run(program, wrappedCommandsV12.dt, null);
@@ -226,7 +325,15 @@ describe('version-12 two-envelope Follow', () => {
     const run = new Run(followBench(0, 1, expression, plan), 1, null);
     const before = run.snapshot();
     run.move('low', { to: 1, duration: 1 });
-    expect(() => run.advance()).toThrow(/positive one-sided/);
+    let first = '';
+    try { run.advance(); } catch (error) { first = String(error); }
+    expect(first).toMatch(/positive one-sided/);
+    expect(run.snapshot()).toEqual(before);
+    run.restore(before);
+    run.move('low', { to: 1, duration: 1 });
+    let replay = '';
+    try { run.advance(); } catch (error) { replay = String(error); }
+    expect(replay).toBe(first);
     expect(run.snapshot()).toEqual(before);
   });
 });
