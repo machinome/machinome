@@ -35,10 +35,13 @@ parts are exact and on meshes otherwise (:doc:`/howto/fast-tests`).
 For a direct comparison of two already-placed exact CadQuery shapes,
 ``machinome.exact.intersect_shapes(first, second)`` returns their native
 common. If OCCT reports an empty common but an independent native section
-and zero-tolerance solid classification find a point strictly inside both
-shapes, it raises ``ExactCommonInconsistency`` rather than claiming
+and zero-tolerance solid classification find a point inside both shapes,
+resolved farther from every boundary face than that face's native tolerance,
+it raises ``ExactCommonInconsistency`` rather than claiming
 clearance or inventing a volume. If that independent check cannot complete,
-it raises ``ExactCommonVerificationError``. Exact intersection assertions
+it raises ``ExactCommonVerificationError``. Native face tolerance here
+qualifies the witness only; it never waives a positive intersection volume.
+Exact intersection assertions
 use the same path. The bounded witness search does not certify every empty
 common: no witness leaves the ordinary Boolean verdict in place. Face and
 edge contact remain subject to the existing zero-volume policy.

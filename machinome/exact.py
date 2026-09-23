@@ -16,6 +16,7 @@ import cadquery as cq
 import numpy as np
 import trimesh
 from OCP.Bnd import Bnd_Box
+from OCP.BRep import BRep_Tool
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Fuse, BRepAlgoAPI_Section
 from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.BRepBndLib import BRepBndLib
@@ -368,7 +369,8 @@ def intersect_shapes(first, second, first_name, second_name):
 
     This is the shape-level entry point for exact project diagnostics as well
     as managed assertions.  A finite native section/interior search catches
-    *demonstrated* contradictory empties; no witness is not a universal
+    *demonstrated* contradictory empties only when the witness is resolved
+    beyond native face tolerances; no witness is not a universal
     certificate that every OCCT Boolean is correct.  No faceted fallback,
     fuzzy tolerance or replacement volume is used.
     """
@@ -397,12 +399,36 @@ class ExactCommonVerificationError(RuntimeError):
     """An empty OCCT common could not be independently checked."""
 
 
+def _resolved_interior(solid, point):
+    """Require separation beyond each boundary face's native tolerance.
+
+    A zero-tolerance classifier can report IN for a rounded point actually
+    on a contact face.  The tolerance belongs to the B-rep's uncertainty,
+    not to an overlap verdict: this only decides whether a candidate is
+    reliable enough to contradict an empty Boolean.
+    """
+    faces = solid.Faces()
+    if not faces:
+        raise RuntimeError('classified solid has no boundary faces')
+    vertex = cq.Vertex.makeVertex(point.X(), point.Y(), point.Z())
+    for face in faces:
+        tolerance = BRep_Tool.Tolerance_s(face.wrapped)
+        distance = face.distance(vertex)
+        if not (math.isfinite(tolerance) and tolerance >= 0 and
+                math.isfinite(distance) and distance >= 0):
+            raise RuntimeError('invalid native face tolerance or distance')
+        if distance <= tolerance:
+            return False
+    return True
+
+
 def _false_empty_witness(first, second):
     """Return one strict shared-interior point, or None after bounded probes.
 
     The section locates *candidate* boundary crossings, not material.  A
     positive witness needs one offset point classified TopAbs_IN in a solid
-    on EACH side at zero tolerance.  A 3-D stencil avoids assuming a sphere
+    on EACH side at zero tolerance and separated beyond each native face
+    tolerance.  A 3-D stencil avoids assuming a sphere
     normal, and its finite budget is deliberately not a completeness claim.
     """
     solids1, solids2 = first.Solids(), second.Solids()
@@ -433,8 +459,9 @@ def _false_empty_witness(first, second):
     classifiers2 = [BRepClass3d_SolidClassifier(solid.wrapped)
                     for solid in solids2]
 
-    def inside(classifiers, point):
-        for classifier in classifiers:
+    def inside(classifiers, solids, point):
+        found = []
+        for classifier, solid in zip(classifiers, solids):
             classifier.Perform(point, 0.0)
             # OCCT's Rejected() is a successful outside-by-rejection result,
             # not a failed classification. UNKNOWN is genuinely undecided.
@@ -444,8 +471,8 @@ def _false_empty_witness(first, second):
             if state == TopAbs_UNKNOWN:
                 raise RuntimeError('OCCT solid classifier returned UNKNOWN')
             if state == TopAbs_IN:
-                return True
-        return False
+                found.append(solid)
+        return found
 
     for edge in edges[:8]:
         if edge.Length() <= 0:
@@ -457,7 +484,15 @@ def _false_empty_witness(first, second):
                     coords = tuple(at.toTuple()[i] + step * direction[i]
                                    for i in range(3))
                     point = gp_Pnt(*coords)
-                    if inside(classifiers1, point) and inside(classifiers2, point):
+                    candidates1 = inside(classifiers1, solids1, point)
+                    if not candidates1:
+                        continue
+                    candidates2 = inside(classifiers2, solids2, point)
+                    if (candidates2 and
+                            any(_resolved_interior(solid, point)
+                                for solid in candidates1) and
+                            any(_resolved_interior(solid, point)
+                                for solid in candidates2)):
                         return coords
     return None
 

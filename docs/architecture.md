@@ -1999,10 +1999,12 @@ failure raises and never falls back. `volume_epsilon` is
 ignored with a warning when every comparison in a call was exact.
 After an OCCT common reports no solids, the shared exact path makes one
 bounded, independent native section/classifier check. A zero-tolerance
-point strictly inside both solids contradicts that empty Boolean and
+point classified inside both solids and separated from every boundary face
+by more than that face's native tolerance contradicts that empty Boolean and
 raises an inconsistency instead of returning clearance or inferring a
 volume; a failed section or indeterminate classification likewise refuses
-the clearance verdict. This is a one-way witness search, not a proof that
+the clearance verdict. Native face tolerance qualifies only the witness,
+never an existing positive common. This is a one-way witness search, not a proof that
 all unwitnessed empty commons are true empties. Ordinary face/edge
 contacts and nonempty native commons retain their existing semantics
 (ADR-142).
