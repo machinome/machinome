@@ -85,6 +85,14 @@ versions 1 through 13. Install both with `pip install "machinome[viewer]"`.
   source-timing generation, so endpoint-era snapshots refuse to restore into
   a re-exported program. Legacy running documents load and run with the
   corrected physics. Re-export is the migration (ADR-072).
+- A running `move(to=...)` lands on its exact converted endpoint instead of
+  a reconstructed `start + travel` one ULP past it, so a request to an
+  inclusive bound completes instead of recording a false stop, and bounds
+  are judged against the state that is committed. A running step whose
+  already-evaluated law result is non-finite, including a valid start with
+  an invalid endpoint, refuses through the existing `law` refusal and banks
+  nothing; earlier successful steps of the command stand. Both pair with
+  the framework producer's corrections; no document field or API changes.
 - A clocked handle gesture is drawn at the tempo of the first `by`
   instruction naming its input, scaled to admitted travel; the 0.2-second
   duration remains when no instruction declares a travel, and pressed
