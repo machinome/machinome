@@ -22,7 +22,7 @@ During a request, the viewer partitions both certified source paths using their 
 
 Separate dynamic Bounds still own admission and attribution. The Follow-associated search preserves the old uniform probes and adds certified boundary cut-side candidates, so a narrow between-sample inversion is not silently passed. A positive analytic closure that no representable probe can witness is refused atomically as unsupported precision. Curved, ambiguous, mismatched or unsupported paths are refused rather than approximated; the first Follow target cannot feed another compiled edge.
 
-The viewer's source capability is API 25 and document versions 1–12. That was not a package release when written; on 23 September 2026 the pilot folded it into the 0.7.0 release record (`workflow/release-0.7.md`, `CHANGELOG.md`), so 0.7.0 ships API 25 and versions 1–12.
+The viewer's source capability is API 25 and document versions 1–12. That was not a package release when written; on 23 September 2026 the pilot folded it into the 0.7.0 release record (`workflow/release-0.7.md`, `CHANGELOG.md`), so 0.7.0 ships API 25 and versions 1–12. Later the same day the pilot also folded finite convex-profile contact (OpenSpec change `finite-convex-profile-contact`) into 0.7.0, which therefore ships API 26 and versions 1–13.
 
 ## Consequences
 

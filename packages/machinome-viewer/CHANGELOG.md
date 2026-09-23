@@ -3,20 +3,11 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
-## Unreleased
-
-- Viewer API 26 reads document version 13's finite convex-profile contact
-  flag inside an ordinary numeric running Bound. The flag tests pointwise
-  inclusive contact for producer-supplied finite planar polygons; it does
-  not certify continuous motion, installed geometry or collision volume.
-  Invalid profiles and unrepresentable placements refuse by name. Existing
-  host controls, stop sampling and document versions 1–12 are unchanged.
-
 ## 0.7.0 — 23 September 2026
 
 The first published release of Machinome Viewer, released with Machinome
-0.7.0 and numbered with it. It declares viewer API 25 and reads document
-versions 1 through 12. Install both with `pip install "machinome[viewer]"`.
+0.7.0 and numbered with it. It declares viewer API 26 and reads document
+versions 1 through 13. Install both with `pip install "machinome[viewer]"`.
 
 ### What a maker gets
 
@@ -36,8 +27,9 @@ versions 1 through 12. Install both with `pip install "machinome[viewer]"`.
   recording. The engine executes what Machinome publishes: laws that read the
   coordinate they drive, blocks whose order a part's position selects, bounds
   that read other coordinates, `Play` clearance laws, explicit time drives,
-  source-timed motion and a `Follow` retained between two moving clearance
-  surfaces (document versions 5 to 7 and 9 to 12), reproducing the
+  source-timed motion, a `Follow` retained between two moving clearance
+  surfaces and finite convex-profile contact inside a numeric bound
+  (document versions 5 to 7 and 9 to 13), reproducing the
   framework's conformance corpus bit for bit. A determined source keeps its
   stroke, dwell and landing through the chains and selected blocks that
   read it, so a calculator's carry does not change when later result
@@ -46,7 +38,11 @@ versions 1 through 12. Install both with `pip install "machinome[viewer]"`.
   interval through its paired dynamic bounds, checking the producer's
   certified cuts as well as the uniform samples; unsupported boundary paths
   and contacts too narrow to represent are refused rather than approximated
-  (ADR-075).
+  (ADR-075). A version 13 document's `profileOverlap` flag, read inside an
+  ordinary numeric running Bound, tests pointwise inclusive contact between
+  producer-supplied finite convex planar polygons; it does not certify
+  continuous motion, installed geometry or collision volume. Invalid
+  profiles and unrepresentable placements refuse by name.
 - **Clocked machines** (document version 8). One request per gesture, solved
   at once: stops clip the request, events commit in path order, states are
   read-only readouts. A pressed instruction is drawn over its declared
@@ -82,8 +78,10 @@ versions 1 through 12. Install both with `pip install "machinome[viewer]"`.
   carry gate. Determined sources now retain their motion path (ADR-071).
   Because an older viewer reads the corrected payload and silently executes
   the wrong carry, the viewer declared API 24 and document versions 1 to 11,
-  raised to API 25 and versions 1 to 12 by `Follow`; new running exports
-  declare version 11, or 12 with a `Follow`, and their identity carries the
+  raised to API 25 and versions 1 to 12 by `Follow` and to API 26 and
+  version 13 by finite profile contact; new running exports declare
+  version 11, or 12 with a `Follow`, or 13 with profile contact, and their
+  identity carries the
   source-timing generation, so endpoint-era snapshots refuse to restore into
   a re-exported program. Legacy running documents load and run with the
   corrected physics. Re-export is the migration (ADR-072).

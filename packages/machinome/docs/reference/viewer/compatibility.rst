@@ -5,11 +5,11 @@ Versions and compatibility
 Three version numbers
 =====================
 
-The current source declares:
+This release declares:
 
 * **Package |package-version|** — the Python distribution and its bundled
-  widget, recorded alongside Machinome 0.7.0 and numbered with it. The widget
-  is not a separate npm package; it ships inside the Python distribution.
+  widget, released with Machinome 0.7.0 and numbered with it. The widget is
+  not published on npm; it ships inside the Python distribution.
 * **Viewer API |viewer-api|** — the browser-host interface/capabilities.
 * **Document versions |document-versions|** — model schemas this bundle reads.
 
@@ -61,12 +61,9 @@ Document capabilities
      - A finite, producer-declared convex-profile table and a pointwise
        inclusive-contact flag inside an ordinary numeric running Bound.
 
-The recorded 0.7.0/API-|baseline-viewer-api| baseline reads versions
-|baseline-document-versions|. Current source advertises API |viewer-api|
-and reads |document-versions|; these numbers describe a source build, not
-an additional published package. A profile-contact call requires its
-producer-supplied version-13 table and returns a numeric contact flag. It
-does not add a browser-host operation or certify an entire swept motion.
+A profile-contact call requires its producer-supplied version-13 table
+and returns a numeric contact flag. It does not add a browser-host operation
+or certify an entire swept motion.
 
 These are producer-selected schemas, not modes you change by editing a JSON
 version field. The viewer accepts current ``machinome-export`` and legacy
@@ -101,19 +98,20 @@ provided. Reading a legacy model document does not restore old host names.
 API 21 added :js:meth:`ViewerHandle.setView`; API 22 added running ``Play``
 execution; API 23 adds explicit running time drives; API 24 preserves determined
 source timing, including dwell and landing, through running dependencies.
-API 25, the 0.7.0 release, adds version-12 two-envelope ``Follow``
-execution. A host that needs a feature can check the declared API before
-using it. Do not assume an old pinned bundle implements the current manual.
-Current source API 26 additionally reads version-13 pointwise profile
-contact inside numeric running bounds.
+API 25 adds version-12 two-envelope ``Follow`` execution. API 26, the
+0.7.0 release, reads version-13 finite convex-profile contact inside a
+numeric running Bound. A host that needs a feature can check the declared
+API before using it. Do not assume an old pinned bundle implements the
+current manual.
 
 Source-timing migration
 =======================
 
 Re-export running models with the corrected producer and use a viewer of
 API 24 or later. New running exports declare document version 11 even when an
-individual model has only affine motion, and version 12 when they carry a
-``Follow`` relation. An old viewer refuses that version before operation.
+individual model has only affine motion, version 12 when they carry a
+``Follow`` relation and version 13 when a running bound reads profile
+contact. An old viewer refuses that version before operation.
 Do not lower the version by hand: the payload shape is unchanged, but the
 execution semantics are not. Posed, looping and clocked version selection is
 unchanged.
