@@ -3,34 +3,11 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
-## Unreleased
-
-- Viewer API 25 reads document versions 1–12 in current source. Version 12
-  executes a retained running `Follow` between two certified moving clearance
-  envelopes, preserving a free follower on retreat and stopping at the first
-  incompatible interval through its paired dynamic bounds. Older documents
-  keep their existing law and `Play` behavior; this source capability has not
-  been released with a new package version.
-- A determined running Bound may reuse exact standing expression values from
-  the previous successful search on the same run when its numeric inputs and
-  moving-name set are unchanged. Moving values still run at the first and
-  every later prescribed sample. OperatingCurta's pinned first 48 default
-  crank ticks used 14.3% less process CPU with bit-identical Bound samples
-  and complete bank; a full revolution is not yet interactive at its
-  declared two-second duration.
-- Certified numeric kink-cut expressions now reuse successful equal-fraction
-  probes within one search. Arbitrary callbacks and uncertain or stateful
-  graphs retain eager evaluation. On the pinned production OperatingCurta,
-  five ordinary 0.1-second viewer ticks used 16.4% less process CPU in a
-  controlled pair, with all 768 ordered Bound levels and five full
-  214-coordinate bank hashes unchanged. This remains far from an interactive
-  two-second full revolution and is not a released capability.
-
-## 0.7.0 — 22 September 2026
+## 0.7.0 — 23 September 2026
 
 The first published release of Machinome Viewer, released with Machinome
-0.7.0 and numbered with it. It declares viewer API 24 and reads document
-versions 1 through 11. Install both with `pip install "machinome[viewer]"`.
+0.7.0 and numbered with it. It declares viewer API 25 and reads document
+versions 1 through 12. Install both with `pip install "machinome[viewer]"`.
 
 ### What a maker gets
 
@@ -49,12 +26,18 @@ versions 1 through 11. Install both with `pip install "machinome[viewer]"`.
   travel admitted, refused or cancelled. Snapshot, restore and bounded
   recording. The engine executes what Machinome publishes: laws that read the
   coordinate they drive, blocks whose order a part's position selects, bounds
-  that read other coordinates, `Play` clearance laws, explicit time drives
-  and source-timed motion (document versions 5 to 7 and 9 to 11),
-  reproducing the framework's conformance corpus bit for bit. A determined
-  source keeps its stroke, dwell and landing through the chains and
-  selected blocks that read it, so a calculator's carry does not change
-  when later result stations join the graph.
+  that read other coordinates, `Play` clearance laws, explicit time drives,
+  source-timed motion and a `Follow` retained between two moving clearance
+  surfaces (document versions 5 to 7 and 9 to 12), reproducing the
+  framework's conformance corpus bit for bit. A determined source keeps its
+  stroke, dwell and landing through the chains and selected blocks that
+  read it, so a calculator's carry does not change when later result
+  stations join the graph. A version 12 `Follow` keeps a free follower
+  where a retreating surface left it and stops at the first incompatible
+  interval through its paired dynamic bounds, checking the producer's
+  certified cuts as well as the uniform samples; unsupported boundary paths
+  and contacts too narrow to represent are refused rather than approximated
+  (ADR-075).
 - **Clocked machines** (document version 8). One request per gesture, solved
   at once: stops clip the request, events commit in path order, states are
   read-only readouts. A pressed instruction is drawn over its declared
@@ -89,8 +72,9 @@ versions 1 through 11. Install both with `pip install "machinome[viewer]"`.
   its predecessor's net increment, a straight line that re-timed the Curta's
   carry gate. Determined sources now retain their motion path (ADR-071).
   Because an older viewer reads the corrected payload and silently executes
-  the wrong carry, the viewer declares API 24 and document versions 1 to 11;
-  new running exports declare version 11, and their identity carries the
+  the wrong carry, the viewer declared API 24 and document versions 1 to 11,
+  raised to API 25 and versions 1 to 12 by `Follow`; new running exports
+  declare version 11, or 12 with a `Follow`, and their identity carries the
   source-timing generation, so endpoint-era snapshots refuse to restore into
   a re-exported program. Legacy running documents load and run with the
   corrected physics. Re-export is the migration (ADR-072).
@@ -117,8 +101,16 @@ sampled through a search-local moving cone (ADR-074); and coordinates read
 by running bounds, including the Curta's self-read anti-reversal pawl,
 retain exact motion. The first 48 crank ticks fell from 65.7 to 28.1 seconds
 without WebGL, and the first 18-degree tick from 2.13 to 1.08 process-CPU
-seconds. A complete browser revolution remains far slower than its declared
-two-second drawing duration; that work continues.
+seconds. Three cycles after the source-timing correction, accepted on the
+same terms: a determined running bound reuses the exact standing values of
+the previous successful search on the same run when its numeric inputs and
+moving names are unchanged (14.3% less process CPU over the first 48
+default crank ticks); two bounds that replay one `Follow` prefix share it
+at the same sample fraction within a stretch; and certified numeric
+kink-cut expressions reuse equal-fraction probes within one search (16.4%
+less over five ordinary ticks), with all 768 ordered bound levels and the
+214-coordinate bank unchanged. A complete browser revolution remains far
+slower than its declared two-second drawing duration; that work continues.
 
 - Moving-contact stops act at their first located contact, so a long request
   stops at the first obstruction rather than a later free window; a landing

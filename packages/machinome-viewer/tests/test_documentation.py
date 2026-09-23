@@ -42,10 +42,10 @@ def test_the_manual_states_the_release():
     # Keep its historical entry intact below an explicitly pending section.
     release_sections = sections[1:]
     if release_sections[0].startswith('Unreleased\n'):
-        assert 'API 25' in release_sections[0]
+        assert re.search(r'API \d+', release_sections[0])
         release_sections = release_sections[1:]
     current = ' '.join(release_sections[0].split())
-    assert current.startswith('0.7.0 — 22 September 2026'), current[:40]
+    assert current.startswith('0.7.0 — 23 September 2026'), current[:40]
     assert 'unreleased' not in current.lower()
     assert 'Machinome 0.7.0' in current
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']

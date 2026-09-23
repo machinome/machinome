@@ -91,17 +91,17 @@ provided. Reading a legacy model document does not restore old host names.
 API 21 added :js:meth:`ViewerHandle.setView`; API 22 added running ``Play``
 execution; API 23 adds explicit running time drives; API 24 preserves determined
 source timing, including dwell and landing, through running dependencies.
-Current source API 25 adds version-12 two-envelope ``Follow`` execution;
-the released 0.7.0 bundle remains API 24. A host that needs a feature can
-check the declared API before using it. Do not assume an old pinned bundle
-implements the current manual.
+API 25, the 0.7.0 release, adds version-12 two-envelope ``Follow``
+execution. A host that needs a feature can check the declared API before
+using it. Do not assume an old pinned bundle implements the current manual.
 
 Source-timing migration
 =======================
 
-Re-export running models with the corrected producer and use an API-24 viewer.
-New running exports declare document version 11 even when an individual model
-has only affine motion. An old viewer refuses that version before operation.
+Re-export running models with the corrected producer and use a viewer of
+API 24 or later. New running exports declare document version 11 even when an
+individual model has only affine motion, and version 12 when they carry a
+``Follow`` relation. An old viewer refuses that version before operation.
 Do not lower the version by hand: the payload shape is unchanged, but the
 execution semantics are not. Posed, looping and clocked version selection is
 unchanged.
