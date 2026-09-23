@@ -38,16 +38,17 @@ def test_the_manual_states_the_release():
         assert 'not yet published' not in text.lower(), page
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     sections = re.split(r'^## ', changelog, flags=re.M)
-    # A new correction must not be silently attributed to the prior release.
-    # Keep its historical entry intact below an explicitly pending section.
+    # 0.7.0 ships the current source: no pending section sits above it.
     release_sections = sections[1:]
-    if release_sections[0].startswith('Unreleased\n'):
-        assert re.search(r'API \d+', release_sections[0])
-        release_sections = release_sections[1:]
+    assert not release_sections[0].startswith('Unreleased'), release_sections[0][:40]
     current = ' '.join(release_sections[0].split())
     assert current.startswith('0.7.0 — 23 September 2026'), current[:40]
     assert 'unreleased' not in current.lower()
     assert 'Machinome 0.7.0' in current
+    widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
+    versions = widget['machinomeDocumentVersions']
+    assert f"viewer API {widget['machinomeViewerApi']}" in current
+    assert f'document versions {versions[0]} through {versions[-1]}' in current
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
     assert project['version'] == '0.7.0'
     assert (ROOT / 'README.md').read_text().count('0.7.0') >= 1
@@ -95,20 +96,18 @@ def test_describe_example_matches_package_versions():
     assert example['documentVersions'] == widget['machinomeDocumentVersions']
 
 
-def test_profile_contact_source_capability_does_not_rewrite_070_baseline():
+def test_profile_contact_is_documented_as_part_of_the_release():
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     assert widget['machinomeViewerApi'] == 26
     assert widget['machinomeDocumentVersions'][-1] == 13
-    home = (ROOT / 'docs/index.rst').read_text()
     compatibility = (ROOT / 'docs/compatibility.rst').read_text()
     running = (ROOT / 'docs/reference/running.rst').read_text()
     changelog = (ROOT / 'CHANGELOG.md').read_text()
-    assert '|baseline-viewer-api|' in home
-    assert '|baseline-document-versions|' in home
-    assert 'profile' in compatibility.lower()
+    assert 'baseline' not in (ROOT / 'docs/conf.py').read_text()
+    assert 'API 26, the\n0.7.0 release' in compatibility
     assert 'pointwise' in running.lower()
     assert 'continuous' in running.lower()
-    assert '## Unreleased' in changelog
-    assert 'API 26' in changelog.split('## 0.7.0')[0]
-    assert 'document version 13' in changelog.split('## 0.7.0')[0]
-    assert '## 0.7.0 — 23 September 2026' in changelog
+    assert '## Unreleased' not in changelog
+    release = changelog.split('## 0.7.0 — 23 September 2026')[1].split('\n## ')[0]
+    assert 'profileOverlap' in release
+    assert 'API 26 and\n  version 13 by finite profile contact' in release
