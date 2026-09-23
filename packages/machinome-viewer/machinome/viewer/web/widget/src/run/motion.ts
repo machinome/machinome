@@ -6,6 +6,18 @@
 
 /** Physical paths, scoped to one propagation. No sampled approximation. */
 export type Piece = [number, number, (t: number) => number];
+/** Immutable scalar result of one committed, effect-free cyclic block. */
+export interface ConstantBlockEntry {
+  readonly key: readonly (string | number | boolean)[];
+  readonly generation: number;
+  readonly outputs: readonly { readonly name: string; readonly start: number;
+    readonly end: number; readonly exactTerminal: boolean; readonly increment: number }[];
+}
+
+export interface ConstantBlockReuse {
+  readonly stored: ReadonlyMap<object, ConstantBlockEntry>;
+  readonly pending: Map<object, ConstantBlockEntry>;
+}
 export class Motion {
   readonly constant: boolean;
   private readonly cache = new Map<number, number>();
@@ -56,6 +68,8 @@ export class Motion {
 
 export interface Propagation {
   motions: Map<string, Motion>;
+  /** Present only during a Run's primary integration pass, never prefix replay. */
+  blockReuse?: ConstantBlockReuse;
   /** Absolute endpoints of the rare full-terminal absolute request. */
   terminals?: Map<string, number>;
   demanded: ReadonlySet<string>;

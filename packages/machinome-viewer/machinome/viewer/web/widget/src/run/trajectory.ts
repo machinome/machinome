@@ -3,7 +3,7 @@
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { calleeName, structureOf, withExpressions } from '../expressions';
+import { calleeName, expressionGeneration, structureOf, withExpressions } from '../expressions';
 import type { NodeId } from '../expressions';
 import { activeShape } from './active-shape';
 import { checkedLawValue, evaluateExpression, UnsupportedLaw } from './program';
@@ -11,7 +11,7 @@ import type { LoadedProgram, ProgramBlock, ProgramEdge, ProgramPlan } from './pr
 import { along, blockOrder, branchesAt, deduplicated, expressionKinkBreaks, merged, partition, tooMany, Walk } from './jumps';
 import type { CrossingRecord, WalkPiece } from './jumps';
 import { Motion, propagations, sourceDeltas } from './motion';
-import type { Piece, Propagation } from './motion';
+import type { ConstantBlockEntry, Piece, Propagation } from './motion';
 import { edgeIncrements, linearOf } from './edges';
 
 type Motions = Map<string, Motion>;
@@ -47,11 +47,14 @@ const CAPTURED_MATH = new Map<string, boolean>([...CLOSED_CALLS]
     }
   }));
 
-function closedTerminalLaw(program: LoadedProgram, edge: ProgramEdge, values: Bank): boolean {
+function closedTerminalLaw(program: LoadedProgram, edge: ProgramEdge, values: Bank,
+                           includePlans = false): boolean {
   try {
     return withExpressions(() => {
       const bindings = program.bindings.roots();
       const available = new Set(Object.keys(values));
+      const placeholders = new Set(includePlans ? edge.plans.flatMap(plan =>
+        plan === null ? [] : plan.jumps.map(jump => jump.name)) : []);
       const safe = new Set<NodeId>();
       const visiting = new Set<NodeId>();
       const check = (root: NodeId): boolean => {
@@ -77,7 +80,8 @@ function closedTerminalLaw(program: LoadedProgram, edge: ProgramEdge, values: Ba
             if (binding !== undefined) {
               if (head !== node.name) return false;
               children = [binding];
-            } else if (!(available.has(node.name) && Number.isFinite(values[node.name]))
+            } else if (!placeholders.has(node.name)
+                && !(available.has(node.name) && Number.isFinite(values[node.name]))
                 && !CLOSED_CONSTANTS.has(node.name)) return false;
           } else if (node.kind === 'call') {
             const name = calleeName(id);
@@ -93,7 +97,10 @@ function closedTerminalLaw(program: LoadedProgram, edge: ProgramEdge, values: Ba
         }
         return true;
       };
-      return edge.expressions.every(expression =>
+      const expressions = includePlans ? [...edge.expressions,
+        ...edge.plans.flatMap(plan => plan === null ? []
+          : [plan.skeleton, ...plan.jumps.map(jump => jump.level)])] : edge.expressions;
+      return expressions.every(expression =>
         expression === null || check(program.nodeOf(expression)));
     });
   } catch {
@@ -215,6 +222,44 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
   });
 }
 
+/** No expression is evaluated by this preflight. Uncertainty retains the walk. */
+function constantBlockKey(program: LoadedProgram, block: ProgramBlock, values: Bank,
+                          trace: Propagation, sourceMaps: readonly Motions[]):
+  (string | number | boolean)[] | null {
+  if (trace.blockReuse === undefined || trace.terminals !== undefined) return null;
+  try {
+    if (block.members.some(member => member.edge.timeDrive !== undefined
+        || !closedTerminalLaw(program, member.edge, values, true))) return null;
+    const names = new Set(block.gives);
+    for (const member of block.members) {
+      for (const name of member.edge.needs) names.add(name);
+    }
+    const key: (string | number | boolean)[] = [];
+    for (const name of [...names].sort()) {
+      if (!Object.prototype.hasOwnProperty.call(values, name)
+          || typeof values[name] !== 'number' || !Number.isFinite(values[name])) return null;
+      key.push(name, values[name]);
+    }
+    for (const sources of sourceMaps) {
+      for (const [name, motion] of sources) {
+        if (!motion.constant || !motion.affine || !Number.isFinite(motion.start)
+            || !Number.isFinite(motion.end) || !Object.is(motion.start, motion.end)
+            || motion.pieces.length !== 1 || motion.pieces[0][0] !== 0
+            || motion.pieces[0][1] !== 1 || motion.cuts().length !== 0) return null;
+        key.push(name, motion.start, motion.end, motion.exactTerminal);
+      }
+    }
+    return key;
+  } catch {
+    return null;
+  }
+}
+
+function sameBlockKey(left: readonly (string | number | boolean)[],
+                      right: readonly (string | number | boolean)[]): boolean {
+  return left.length === right.length && left.every((value, index) => Object.is(value, right[index]));
+}
+
 function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
                      deltas: Bank, trace: Propagation, crossings: CrossingRecord[] | null,
                      tick: number, landings: Bank | null,
@@ -225,6 +270,19 @@ function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
       : !terminalAllowed && trace.terminals?.has(sourceKey(program, member.edge, key))
         ? Motion.line(values[key], deltas[key])
         : motionOf(sourceKey(program, member.edge, key), values, deltas, trace)])));
+  const reuseKey = constantBlockKey(program, block, values, trace, sourceMaps);
+  const cached = reuseKey === null ? undefined : trace.blockReuse?.stored.get(block);
+  if (cached !== undefined && cached.generation === expressionGeneration()
+      && sameBlockKey(cached.key, reuseKey!)) {
+    const result: [string, number][] = [];
+    for (const output of cached.outputs) {
+      trace.motions.set(output.name, new Motion(output.start, output.end,
+        [[0, 1, () => output.start]], true, output.exactTerminal));
+      result.push([output.name, output.increment]);
+    }
+    return result;
+  }
+  const earlierLandings = landings === null ? null : { ...landings };
   let cuts = [0, 1];
   block.members.forEach((member, index) => {
     const plan = member.selectorPlan;
@@ -304,7 +362,31 @@ function blockMotion(program: LoadedProgram, block: ProgramBlock, values: Bank,
   }
   if (crossings) crossings.splice(first, crossings.length - first,
     ...crossings.slice(first).sort((a, b) => a.t - b.t));
-  return block.gives.map(key => [key, current[key] - values[key]]);
+  const result: [string, number][] = block.gives.map(key => [key, current[key] - values[key]]);
+  if (reuseKey !== null && (crossings === null || crossings.length === first)
+      && landed.size === 0 && terminalOutputs.size === 0
+      && (landings === null || (Object.keys(landings).length === Object.keys(earlierLandings!).length
+        && Object.keys(landings).every(key => Object.is(landings[key], earlierLandings![key]))))) {
+    const outputs = result.map(([name, increment]) => {
+      const motion = trace.motions.get(name)!;
+      return { name, start: motion.start, end: motion.end,
+        exactTerminal: motion.exactTerminal, increment, motion };
+    });
+    if (outputs.every(({ start, end, increment, motion }) => Number.isFinite(start)
+        && Number.isFinite(end) && Object.is(start, end) && Object.is(increment, 0)
+        && motion.constant && motion.affine && motion.pieces.length === 1
+        && motion.pieces[0][0] === 0 && motion.pieces[0][1] === 1
+        && motion.cuts().length === 0)) {
+      const entry: ConstantBlockEntry = {
+        key: reuseKey,
+        generation: expressionGeneration(),
+        outputs: outputs.map(({ name, start, end, exactTerminal, increment }) =>
+          ({ name, start, end, exactTerminal, increment })),
+      };
+      trace.blockReuse!.pending.set(block, entry);
+    }
+  }
+  return result;
 }
 
 /** Certified boundary cut locations, using the producer's original source

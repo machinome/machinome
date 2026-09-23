@@ -32,6 +32,7 @@ import { Command, CommandRecord } from './commands';
 import { edgeCuts, edgeIncrements, edgeValues, predictsOf } from './edges';
 import { CrossingRecord, nextAfter } from './jumps';
 import { Motion, propagations } from './motion';
+import type { ConstantBlockEntry, ConstantBlockReuse } from './motion';
 import {
   Constraint, evaluateExpression, LandingInvariantError, ProgramBound,
   ProgramEdge, RunConflict, StopInvariantError, TooManyCrossings,
@@ -227,6 +228,8 @@ export class Run {
     moving: ReadonlySet<string>;
     generation: number;
   }>();
+  /** One scalar descriptor per compiled block, never a shared Motion. */
+  private readonly blockReuse = new Map<object, ConstantBlockEntry>();
 
   constructor(readonly program: LoadedProgram, readonly dt: number,
               record: number | null = null) {
@@ -434,6 +437,7 @@ export class Run {
   }
 
   private integrateScoped(tick: number, advance: boolean, only: Command | null): void {
+    const acceptedReuse = new Map<object, ConstantBlockEntry>();
     const admissions: Record<string, number> = {};
     for (const [inputId, command] of this.active) {
       admissions[inputId] = (only !== null && command !== only)
@@ -490,7 +494,9 @@ export class Run {
             [[0, 1, t => startValue + delta * t]], true, true));
           landings[inputId] = target;
         }
-        this.pass(values, deltas, found, tick, landings);
+        const attemptedReuse = new Map<object, ConstantBlockEntry>();
+        this.pass(values, deltas, found, tick, landings,
+          { stored: this.blockReuse, pending: attemptedReuse });
         let committed: Record<string, number> = {};
         for (const id of Object.keys(staged)) {
           committed[id] = staged[id] + (deltas[id] ?? 0);
@@ -499,6 +505,7 @@ export class Run {
         const reached = this.reachedBounds(staged, committed, bounds,
                                            values, scaled, deltas);
         if (reached.length === 0) {
+          for (const [block, entry] of attemptedReuse) acceptedReuse.set(block, entry);
           record(crossings, found, start, 1);
           staged = committed;
           for (const inputId of Object.keys(scaled)) {
@@ -522,7 +529,9 @@ export class Run {
         deltas = this.deltasOf(segment);
         found = crossings === null ? null : [];
         landings = {};
-        this.pass(values, deltas, found, tick, landings);
+        const segmentReuse = new Map<object, ConstantBlockEntry>();
+        this.pass(values, deltas, found, tick, landings,
+          { stored: this.blockReuse, pending: segmentReuse });
         committed = {};
         for (const id of Object.keys(staged)) {
           committed[id] = staged[id] + (deltas[id] ?? 0);
@@ -571,6 +580,7 @@ export class Run {
         }
 
         record(crossings, found, start, boundary);
+        for (const [block, entry] of segmentReuse) acceptedReuse.set(block, entry);
         staged = committed;
         for (const inputId of Object.keys(segment)) {
           admitted[inputId] += segment[inputId];
@@ -615,6 +625,7 @@ export class Run {
       this.crossingRing!.extend(crossings!);
       this.stopRing!.extend(stops!);
     }
+    for (const [block, entry] of acceptedReuse) this.blockReuse.set(block, entry);
   }
 
   /** A coordinate whose own law READ it and whose walk took at least one
@@ -640,8 +651,10 @@ export class Run {
                deltas: Record<string, number>,
                found: CrossingRecord[] | null,
                tick: number,
-               landings: Record<string, number> | null = null):
+               landings: Record<string, number> | null = null,
+               blockReuse: ConstantBlockReuse | null = null):
   Record<string, number> {
+    if (blockReuse !== null) propagations.get(deltas)!.blockReuse = blockReuse;
     const determined = new Set<string>();
     for (const edge of this.program.edges) {
       if (edge.kind === 'check') {
@@ -1507,6 +1520,7 @@ export class Run {
     for (const command of this.active.values()) command.status = 'cancelled';
     this.active.clear();
     this.boundPaths.clear();
+    this.blockReuse.clear();
     for (const record of state.commands) {
       const declaration = this.program.drivers[record.input];
       const command = new Command(
