@@ -3730,3 +3730,37 @@ maintainer's machine, same Ubuntu 24.04 and same
   `docs/_exports/counter-*/manifest.json` piece ids were digested from
   raw bytes; nothing reads them for identity, and they change the next
   time those exports are regenerated. **Left as is** in this cycle.
+
+# Interface gaps: constrained sketches and closed loops (2026-09-23, pilot)
+
+Not a project finding: two gaps in how a maker states a design, recorded at
+the pilot's request so they are not lost. The assessment behind them is
+`workflow/docs/mates-and-sketches.md` (§2, ideas 1 and 3; §5.3 and §5.4).
+Its idea 2, mates between named frames, is the part with project evidence
+already on record and is tracked there, not here.
+
+- **No constrained sketches.** Mainstream CAD builds a part from a rough 2D
+  profile the author relates — horizontal, equal, tangent, coincident, a
+  distance from an edge — and a solver computes the coordinates; features
+  are built from the solved sketch. machinome states design intent only as
+  one-way parameter formulas, and a part's profile is whatever its backend
+  draws (CadQuery's experimental constrained `Sketch` is the one backend
+  that has a solver). **Deferred:** no project has asked. Comes back when a
+  project's parts genuinely suffer from hand-computed profile coordinates;
+  the note's lean is to leave it to the backends, since machinome's job is
+  the machine, not the part.
+- **No closed-loop solving (skeleton sketches).** A mechanism drawn as a
+  stick figure — links, pivots, lengths — keeps its loops closed as it is
+  dragged, so a four-bar, a slider-crank, a delta or a Peaucellier never
+  has its law derived by hand. machinome closes every loop with a
+  hand-derived law: the kinematics helpers (ADR-076), the `Follow` law,
+  the hexapod's hand-inverted `R_roll · R_pitch · R_yaw · T_height`, and
+  the deferred openflexure four-bar decomposition (Deferred item 11 above).
+  **Deferred, and an architecture decision for the pilot:** the viewer
+  evaluates closed-form expressions at frame rate, so a solver either runs
+  in Python and publishes a table or fitted law, runs in the viewer as
+  WebAssembly, or is replaced by a growing helper library. Open solvers
+  exist (SolveSpace, FreeCAD's planegcs and Assembly solver). Comes back
+  with a linkage machine that wants its loop closed rather than derived —
+  a second flexure stage, or a Foundry machine built around a linkage — and
+  is a natural neighbour of 0.9 dynamics on `workflow/docs/roadmap.md`.
