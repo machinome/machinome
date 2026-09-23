@@ -77,7 +77,6 @@ class GraphValue(OpenSCADConstant):
                 for node in ordered)
         values = [None] * len(self._evaluation_order)
         for index, (node, children) in enumerate(self._evaluation_order):
-            args = [values[child] for child in children]
             if node.kind == 'num':
                 value = float(node.text)
             elif node.kind == 'profile':
@@ -87,10 +86,19 @@ class GraphValue(OpenSCADConstant):
                     raise ValueError(f'Unresolved motion input {node.text[:80]!r}')
                 value = float(inputs[node.text])
             elif node.kind == 'binop':
-                value = operators[node.op](*args)
+                if len(children) == 2:
+                    value = operators[node.op](values[children[0]],
+                                               values[children[1]])
+                else:
+                    # Retain Python's original arity error for malformed
+                    # graphs; supported binary nodes need no temporary list.
+                    args = [values[child] for child in children]
+                    value = operators[node.op](*args)
             elif node.kind == 'unary':
+                args = [values[child] for child in children]
                 value = -args[0] if node.op == '-' else +args[0]
             elif node.kind == 'call' and node.op in degree_math.SYMBOLIC_BUILTINS:
+                args = [values[child] for child in children]
                 # Every child is numeric. These are precisely the built-ins
                 # used by the numeric faces of degree_math.min/max.
                 if node.op == 'min':
@@ -103,6 +111,7 @@ class GraphValue(OpenSCADConstant):
                     value = getattr(degree_math, node.op)(*args)
             elif node.kind == 'call' and node.op == 'profileOverlap':
                 from machinome.simulation.profile import _profile_call
+                args = [values[child] for child in children]
                 value = _profile_call(*args)
             else:
                 raise ValueError(f'Cannot numerically resolve {node!r}')
