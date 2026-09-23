@@ -32,6 +32,7 @@ coordinate remembers is where it stands.
 """
 
 import math
+import numbers
 import struct
 from collections import deque
 from dataclasses import dataclass, field, replace
@@ -93,6 +94,13 @@ def _design(declaration, native):
     return native * declaration.scale
 
 
+def _same_native_bits(left, right):
+    """Compare binary64 endpoints, while whole-native drivers stay integers."""
+    if type(left) is int and type(right) is int:
+        return left == right
+    return struct.pack('!d', left) == struct.pack('!d', right)
+
+
 @dataclass(frozen=True)
 class _ConstraintContact:
     """Two sides of a located contact, in the original stretch's fractions.
@@ -125,10 +133,11 @@ class Command:
 
     __slots__ = ('input', 'kind', 'status', 'declaration', 'native',
                  'native_rate', 'ticks', 'started', 'admitted_native',
-                 '_program', '_run')
+                 'target_native', '_program', '_run')
 
     def __init__(self, input_id, kind, declaration, started,
-                 native=None, native_rate=None, ticks=None, value=None):
+                 native=None, native_rate=None, ticks=None, value=None,
+                 target_native=None):
         self.input = input_id
         self.kind = kind
         self.declaration = declaration
@@ -138,6 +147,7 @@ class Command:
         self.ticks = ticks
         self.started = started
         self.admitted_native = 0
+        self.target_native = target_native
         self._program = (
             RampProgram(value, value + native, ticks, declaration.dtype)
             if kind == 'move' and ticks else None)
@@ -255,6 +265,7 @@ class RunSnapshot:
     tick: int
     bank: tuple = field(default=())
     commands: tuple = field(default=())
+    targets: tuple = field(default=())
 
     def __repr__(self):
         return (f'<run snapshot at tick {self.tick}, '
@@ -443,8 +454,10 @@ class Run:
                 f'far to travel) and to= (where to land), both in design '
                 f'units; got by={by!r} and to={to!r}.')
         value = self.bank[input_id]
+        target_native = None
         if to is not None:
-            native = declaration.native(to) - value
+            target_native = declaration.native(to)
+            native = target_native - value
         else:
             native = declaration.native(by)
         # A REVERSE request -- a negative `by`, a `to` below the
@@ -455,7 +468,8 @@ class Run:
             f"duration of the move on '{input_id}'")
         self._claim(input_id)
         command = Command(input_id, 'move', declaration, self.sim.tick,
-                          native=native, ticks=ticks, value=value)
+                          native=native, ticks=ticks, value=value,
+                          target_native=target_native)
         command._run = self
         self.active[input_id] = command
         if not ticks:
@@ -612,11 +626,18 @@ class Run:
                 deltas = self._deltas(scaled)
                 found = None if crossings is None else []
                 landings = {}
-                self._pass(values, deltas, found, tick, landings)
+                targets = {
+                    self.keys[input_id]: command.target_native
+                    for input_id, command in self.active.items()
+                    if (input_id not in stopped and
+                        (only is None or command is only) and
+                        command.target_native is not None and
+                        command.finished(tick))}
+                self._pass(values, deltas, found, tick, landings, targets)
                 committed = {
                     identifier: value + deltas.get(self.keys[identifier], 0.0)
                     for identifier, value in staged.items()}
-                self._landed(committed, landings)
+                self._landed(committed, landings, deltas.terminal_keys)
                 reached = self._reached(staged, committed, bounds,
                                         values, scaled, deltas)
                 if not reached:
@@ -642,7 +663,7 @@ class Run:
                 committed = {
                     identifier: value + deltas.get(self.keys[identifier], 0.0)
                     for identifier, value in staged.items()}
-                self._landed(committed, landings)
+                self._landed(committed, landings, deltas.terminal_keys)
 
                 blocked = set()
                 for _where, identifier, side, bound, contact in event:
@@ -718,7 +739,7 @@ class Run:
             self.crossing_ring.extend(crossings)
             self.stop_ring.extend(stops)
 
-    def _landed(self, committed, landings):
+    def _landed(self, committed, landings, terminal_keys=()):
         """A coordinate whose own law READ it and whose walk took at
         least one cut is committed at the value that walk LEFT it at.
 
@@ -733,9 +754,16 @@ class Run:
         itself.
         """
         for key, value in landings.items():
+            identifier = self.identifiers.get(key)
+            if identifier is None and key in terminal_keys:
+                # A propagated internal relation can feed later edges but
+                # has no bank coordinate to commit. Existing non-terminal
+                # landings still retain their invariant check below.
+                continue
             committed[self.identifiers[key]] = value
 
-    def _pass(self, values, deltas, found, tick, landings=None):
+    def _pass(self, values, deltas, found, tick, landings=None,
+              targets=None):
         """ONE propagation over the compiled program: the whole of cycles
         1 and 2's tick, unchanged, over whatever stretch `deltas`
         describes.
@@ -744,6 +772,20 @@ class Run:
         anything: what a failed segment does to the tick is the caller's
         business, because a segment is not a tick.
         """
+        if targets:
+            from .trajectory import Motion
+            for key, target in targets.items():
+                start = values[key]
+                delta = deltas.get(key, 0.0)
+                if not _same_native_bits(start + delta, target):
+                    deltas.motions[key] = Motion(
+                        start, target,
+                        [(0.0, 1.0, lambda t, start=start, delta=delta:
+                          start + delta*t)], affine=True,
+                        line_delta=delta)
+                    deltas.terminal_keys.add(key)
+                    if landings is not None:
+                        landings[key] = target
         determined = set()
         for edge in self.program.edges:
             if edge.kind == 'check':
@@ -1521,7 +1563,10 @@ class Run:
         return RunSnapshot(
             self.program.identity, self.dt, self.sim.tick,
             tuple(sorted(self.bank.items())),
-            tuple(command.record() for command in self.active.values()))
+            tuple(command.record() for command in self.active.values()),
+            tuple(sorted((command.input, command.target_native)
+                         for command in self.active.values()
+                         if command.target_native is not None)))
 
     def restore(self, snapshot):
         if not isinstance(snapshot, RunSnapshot):
@@ -1541,6 +1586,32 @@ class Run:
                 f'simulation steps at dt={self.dt}. A command admits its '
                 f'travel per tick, so a bank restored across two step '
                 f'sizes would replay a different movement.')
+        # Validate the optional sidecar before retiring an active command.
+        # Earlier snapshots have no target sidecar and retain their legacy
+        # additive landing semantics.
+        target_map = {}
+        for entry in snapshot.targets:
+            if (not isinstance(entry, tuple) or len(entry) != 2 or
+                    not isinstance(entry[0], str) or
+                    entry[0] in target_map or
+                    not isinstance(entry[1], numbers.Real) or
+                    (type(entry[1]) is not int and
+                     not math.isfinite(entry[1]))):
+                raise ValueError(f'invalid absolute move target {entry!r}.')
+            target_map[entry[0]] = entry[1]
+        target_commands = {
+            record[0]: record for record in snapshot.commands
+            if (isinstance(record, tuple) and len(record) == 8 and
+                record[0] in target_map)}
+        for input_id, target in target_map.items():
+            record = target_commands.get(input_id)
+            state = self.sim.drivers.get(input_id)
+            if (record is None or record[1] != 'move' or
+                    record[7] != 'active' or state is None or
+                    (state.declaration.dtype is int and type(target) is not int)):
+                raise ValueError(
+                    f'absolute move target for {input_id!r} has no '
+                    f'compatible active move command.')
         for command in list(self.active.values()):
             self._retire(command, 'cancelled')
         for record in snapshot.commands:
@@ -1550,7 +1621,8 @@ class Run:
             command = Command(
                 input_id, kind, declaration, started, native=native,
                 native_rate=native_rate, ticks=ticks,
-                value=dict(snapshot.bank)[input_id] - admitted)
+                value=dict(snapshot.bank)[input_id] - admitted,
+                target_native=target_map.get(input_id))
             command.admitted_native = admitted
             command.status = status
             command._run = self

@@ -12,6 +12,7 @@ path never spreads a landed coordinate's travel across its later dwell.
 from bisect import bisect_right
 from copy import copy
 import math
+import struct
 
 from . import program as p
 
@@ -67,6 +68,9 @@ class Propagation(dict):
         self.untraced = set()
         self.follow_cuts = {}
         self.follow_closures = {}
+        # Set only for a full move(to=) terminal whose additive end loses
+        # the stated target's IEEE-754 bit. Interior deltas are unchanged.
+        self.terminal_keys = set()
 
     def motion(self, key, values):
         return self.motions.get(key) or Motion.line(values[key], self[key])
@@ -103,10 +107,21 @@ def _cuts(motions):
     return result
 
 
-def _sources(motions, left, right, exact_lines=False):
+def _sources(motions, left, right, exact_lines=False,
+             terminal_at_end=False):
     selected = {name: motion.restrict(left, right)
                 for name, motion in motions.items()}
     start = {name: motion.start for name, motion in selected.items()}
+    if terminal_at_end and right == 1.0:
+        # Keep authored source-line deltas for jump partitioning, but let
+        # an evaluation at the full terminal fraction read Motion.at(1),
+        # whose cache holds the exact `to` target. Interior fractions use
+        # the original piece evaluator.
+        curved = Sources(selected)
+        curved.update((name, motion.line_delta)
+                      for name, motion in motions.items()
+                      if motion.line_delta is not None)
+        return start, curved
     if all(motion.affine for motion in selected.values()):
         delta = {
             name: (motions[name].line_delta
@@ -129,7 +144,8 @@ def _piece(a, b, evaluate, affine):
 
 
 def law_motion(edge, index, motions, initial, crossings, tick, forced=None,
-               closed=False, exact_source_lines=False):
+               closed=False, exact_source_lines=False,
+               terminal_at_end=False):
     if all(motion.constant for motion in motions.values()):
         return Motion.line(initial, 0.0), False
     plan = edge.plans[index] if edge.plans else None
@@ -149,7 +165,8 @@ def law_motion(edge, index, motions, initial, crossings, tick, forced=None,
     cuts = _cuts(motions)
     for left, right in zip(cuts, cuts[1:]):
         start, delta = _sources(motions, left, right,
-                                exact_lines=exact_source_lines)
+                                exact_lines=exact_source_lines,
+                                terminal_at_end=terminal_at_end)
         found = [] if crossings is not None else None
         local = []
         if reading is not None:
@@ -236,7 +253,10 @@ def block_motion(block, values, deltas, crossings, tick, landings):
                        if name in reads})
         cuts = p._merged(cuts, outer[1:-1])
         for left, right in zip(outer, outer[1:]):
-            start, delta = _sources(sources, left, right)
+            start, delta = _sources(
+                sources, left, right,
+                terminal_at_end=any(key in deltas.terminal_keys
+                                    for key in member.needs))
             found = [] if crossings is not None else None
             local = plan._partition(start, delta, member.description,
                                     member.driven[0], found, tick,
@@ -250,16 +270,30 @@ def block_motion(block, values, deltas, crossings, tick, landings):
     pieces = {key: [] for key in block.gives}
     affine = {key: True for key in block.gives}
     landed = set()
+    terminal_sensitive = set()
     for left, right in zip(cuts, cuts[1:]):
         forced = []
         for member, plan, sources in zip(block.members, block.plans, source_maps):
-            start, delta = _sources(sources, left, right)
+            start, delta = _sources(
+                sources, left, right,
+                terminal_at_end=any(key in deltas.terminal_keys
+                                    for key in member.needs))
             forced.append(plan._branches(start, delta, .5, len(plan.jumps),
                                           member.description, member.driven[0])
                           if plan else {})
         determined = {}
+        selected_terminal = set()
         for index in block._order(forced, left, right):
             member, own = block.members[index], block.gives[index]
+            if deltas.terminal_keys or selected_terminal:
+                member_plan = member.plans[0] if member.plans else None
+                active_names = (p._reads_under(member_plan, forced[index])
+                                if member_plan else
+                                p.free_names(p.as_node(member.graphs[0])))
+                if any(name in active_names and
+                       (key in deltas.terminal_keys or key in selected_terminal)
+                       for name, key in zip(member.names, member.needs)):
+                    selected_terminal.add(own)
             sources = {}
             for name, key in zip(member.names, member.needs):
                 sources[name] = (determined.get(key) or Motion.line(current[key], 0)
@@ -268,7 +302,8 @@ def block_motion(block, values, deltas, crossings, tick, landings):
             found = [] if crossings is not None else None
             motion, did_land = law_motion(member, 0, sources, current[own],
                                           found, tick, forced[index],
-                                          closed=right < 1.0)
+                                          closed=right < 1.0,
+                                          terminal_at_end=own in selected_terminal)
             determined[own] = motion
             current[own] = motion.end
             affine[own] &= motion.affine
@@ -281,9 +316,15 @@ def block_motion(block, values, deltas, crossings, tick, landings):
                               for a, b, fn in motion.pieces)
             if found:
                 located.extend(p.replace(entry, t=left+width*entry.t) for entry in found)
+        terminal_sensitive.update(selected_terminal)
     for key in block.gives:
         deltas.motions[key] = Motion(values[key], current[key], pieces[key], affine[key])
-        if landings is not None and key in landed:
+        needs_terminal_landing = (key in terminal_sensitive and
+            struct.pack('!d', values[key] + (current[key]-values[key])) !=
+            struct.pack('!d', current[key]))
+        if needs_terminal_landing:
+            deltas.terminal_keys.add(key)
+        if landings is not None and (key in landed or needs_terminal_landing):
             landings[key] = current[key]
     if located:
         crossings.extend(located)
@@ -428,18 +469,83 @@ def follow_increments(edge, values, deltas, landings, tick):
 def _propagate(edge, values, deltas, crossings, tick, landings):
     if edge.kind == 'follow':
         deltas.untraced.update(edge.gives)
-        return follow_increments(edge, values, deltas, landings, tick)
-    if edge.kind == 'play' or any(key in deltas.untraced for key in edge.needs):
+        result = follow_increments(edge, values, deltas, landings, tick)
+        incoming_terminal = any(key in deltas.terminal_keys for key in edge.needs)
+        for key, increment in result:
+            if (incoming_terminal and landings is not None and key in landings and
+                    struct.pack('!d', values[key]+increment) !=
+                    struct.pack('!d', landings[key])):
+                deltas.terminal_keys.add(key)
+        return result
+    if edge.kind == 'play':
+        deltas.untraced.update(edge.gives)
+        result = edge.increments(values, dict(deltas), crossings, tick, landings)
+        incoming_terminal = any(key in deltas.terminal_keys for key in edge.needs)
+        for key, increment in result:
+            if (incoming_terminal and landings is not None and key in landings and
+                    struct.pack('!d', values[key]+increment) !=
+                    struct.pack('!d', landings[key])):
+                deltas.terminal_keys.add(key)
+        return result
+    if any(key in deltas.untraced for key in edge.needs):
         # Play owns a clearance-aware prefix replay. A net displacement
         # from it is not a certified affine path, even through an affine
         # observer. Preserve that executor until it supplies a real path.
         deltas.untraced.update(edge.gives)
+        if (edge.kind == 'law' and not edge.plans and not edge.retained and
+                landings is not None and
+                any(key in deltas.terminal_keys for key in edge.needs)):
+            start = edge._inputs(values)
+            end = {name: (landings[key] if key in deltas.terminal_keys
+                          and key in landings else values[key]+deltas[key])
+                   for name, key in zip(edge.names, edge.needs)}
+            result = []
+            for key, graph in zip(edge.gives, edge.graphs):
+                after = p._evaluated(graph, end)
+                before = p._evaluated(graph, start)
+                increment = after-before
+                initial = values[key]
+                aligned = (struct.pack('!d', initial) ==
+                           struct.pack('!d', before))
+                terminal = after if aligned else initial+increment
+                if struct.pack('!d', initial+increment) != struct.pack('!d', terminal):
+                    deltas.terminal_keys.add(key)
+                    landings[key] = terminal
+                result.append((key, increment))
+            return result
         return edge.increments(values, dict(deltas), crossings, tick, landings)
     if edge.kind == 'block':
         return block_motion(edge.block, values, deltas, crossings, tick, landings)
     if edge.kind == 'law':
         sources = {name: deltas.motion(key, values)
                    for name, key in zip(edge.names, edge.needs)}
+        if (not edge.plans and not edge.retained and
+                all(shape in p._AFFINE for shape in edge.shapes) and
+                any(key in deltas.terminal_keys for key in edge.needs)):
+            # Preserve the old increment and its arithmetic at every
+            # interior fraction. Only the fully admitted terminal value
+            # uses the stated target through the relation graph.
+            at_start = {name: motion.start for name, motion in sources.items()}
+            at_end = {name: motion.end for name, motion in sources.items()}
+            result = edge.increments(values, dict(deltas), crossings,
+                                     tick, landings)
+            for index, (key, increment) in enumerate(result):
+                graph = edge.graphs[index]
+                before = p._evaluated(graph, at_start)
+                after = p._evaluated(graph, at_end)
+                initial = values[key]
+                aligned = (struct.pack('!d', initial) ==
+                           struct.pack('!d', before))
+                terminal = after if aligned else initial + (after-before)
+                deltas.motions[key] = Motion(
+                    initial, terminal,
+                    [(0.0, 1.0, lambda t, initial=initial,
+                      increment=increment: initial + increment*t)],
+                    affine=True, line_delta=increment)
+                deltas.terminal_keys.add(key)
+                if landings is not None:
+                    landings[key] = terminal
+            return result
         incoming_linear = all(m.affine and not m.cuts() for m in sources.values())
         if (not edge.plans and all(shape in p._AFFINE for shape in edge.shapes)
                 and incoming_linear):
@@ -449,12 +555,54 @@ def _propagate(edge, values, deltas, crossings, tick, landings):
             for key, increment in result:
                 deltas.motions[key] = Motion.line(values[key], increment)
             return result
-        if incoming_linear and not any(key in deltas.demanded for key in edge.gives):
+        if (incoming_linear and not any(key in deltas.demanded for key in edge.gives)
+                and not any(key in deltas.terminal_keys for key in edge.needs)):
             return edge.increments(values, dict(deltas), crossings, tick, landings)
+        incoming_terminal = any(need in deltas.terminal_keys
+                                for need in edge.needs)
         result = []
         for index, key in enumerate(edge.gives):
             motion, landed = law_motion(edge, index, sources, values[key],
-                                        crossings, tick)
+                                        crossings, tick,
+                                        exact_source_lines=bool(edge.plans) and
+                                        incoming_terminal,
+                                        terminal_at_end=incoming_terminal)
+            if (edge.plans and
+                    (not edge.retained or not edge.retained[index]) and
+                    incoming_terminal):
+                # The jump walk used the original source line and cuts,
+                # but evaluated the authored exact source at its terminal
+                # end. Keep that integrated result (which may carry whole
+                # turns of history); never evaluate the rounded legacy end,
+                # which can even lie outside an authored domain.
+                terminal = motion.end
+                if terminal == 0.0:
+                    # The integrated zero can lose a stated negative-zero
+                    # sign. Only this case needs another authored endpoint
+                    # read; all nonzero paths retain their integration.
+                    exact_end = {name: source.end
+                                 for name, source in sources.items()}
+                    authored_exact = p._evaluated(edge.graphs[index], exact_end)
+                    if (authored_exact == 0.0 and
+                            struct.pack('!d', terminal) !=
+                            struct.pack('!d', authored_exact)):
+                        terminal = authored_exact
+                        motion = Motion(values[key], terminal, motion.pieces,
+                                        affine=motion.affine,
+                                        line_delta=motion.line_delta)
+                if (struct.pack('!d', values[key] +
+                                 (terminal-values[key])) !=
+                        struct.pack('!d', terminal)):
+                    deltas.terminal_keys.add(key)
+                    landed = True
+            if (not edge.plans and incoming_terminal and
+                    struct.pack('!d', values[key] +
+                                (motion.end-values[key])) !=
+                    struct.pack('!d', motion.end)):
+                # A curved law can have an exact authored end even though
+                # its bank increment cannot reconstruct that bit.
+                deltas.terminal_keys.add(key)
+                landed = True
             deltas.motions[key] = motion
             if landed and landings is not None:
                 landings[key] = motion.end
@@ -474,4 +622,28 @@ def _propagate(edge, values, deltas, crossings, tick, landings):
             deltas.motions[key] = Motion(values[key], values[key]+increment,
                 [(a, b, at) for a, b in zip(cuts, cuts[1:])],
                 all(m.affine for m in sources.values()))
+            if any(need in deltas.terminal_keys for need in edge.needs):
+                if edge.kind == 'wiring':
+                    before = values[edge.needs[0]] * edge.factors[0]
+                    after = sources[edge.needs[0]].end * edge.factors[0]
+                else:
+                    before = edge._linear(values)
+                    after = edge._linear({need: source.end
+                                          for need, source in sources.items()})
+                initial = values[key]
+                # A driven coordinate may have retained history. In that
+                # case only the relation's exact terminal change is added;
+                # a coordinate aligned with the relation may land exactly.
+                aligned = (struct.pack('!d', initial) ==
+                           struct.pack('!d', before))
+                terminal = after if aligned else initial + (after-before)
+                old_motion = deltas.motions[key]
+                deltas.motions[key] = Motion(
+                    initial, terminal, old_motion.pieces,
+                    affine=old_motion.affine,
+                    line_delta=(increment if old_motion.affine and
+                                not old_motion.cuts() else None))
+                deltas.terminal_keys.add(key)
+                if landings is not None:
+                    landings[key] = terminal
     return result
