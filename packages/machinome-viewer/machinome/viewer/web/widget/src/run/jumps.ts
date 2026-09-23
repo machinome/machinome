@@ -27,8 +27,11 @@ import {
 import type {
   BlockMember, LoadedProgram, PathHost, ProgramBlock, RetainedReading,
 } from './program';
-import { ExpressionPath, movingNames, UnsupportedPathNode, withExpressions } from '../expressions';
-import type { KinkLevel } from '../expressions';
+import {
+  calleeName, ExpressionPath, movingNames, structureOf, UnsupportedPathNode,
+  withExpressions,
+} from '../expressions';
+import type { KinkLevel, NodeId } from '../expressions';
 import { kinkLevel } from './program';
 import { constantContact, hasMovingSource } from './contact-proof';
 import { alongSources, copyHolding, curved } from './motion';
@@ -315,6 +318,111 @@ export function kinkBreaks(kinks: readonly KinkLevel[],
     if (found.length > 0) cuts = merged(cuts, found, tolerance, right);
   }
   return cuts.slice(1, -1);
+}
+
+// Only the closed numeric context functions used by published expression
+// paths are eligible. In particular Math.random and a caller-provided
+// function are not pure just because activeShape calls the path affine.
+const PURE_KINK_CALLEES = new Set([
+  'abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atan2', 'atanh',
+  'cbrt', 'ceil', 'cos', 'cosh', 'exp', 'expm1', 'floor', 'fround',
+  'hypot', 'ln', 'log', 'log1p', 'log2', 'log10', 'max', 'min',
+  'mod', 'pow', 'round', 'sign', 'sin', 'sinh', 'sqrt', 'tan',
+  'tanh', 'trunc',
+]);
+const PURE_KINK_CONSTANTS = new Set([
+  'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'PI', 'SQRT1_2', 'SQRT2',
+]);
+const KINK_PROBE_LIMIT = 2048;
+
+/** An internal opt-in, never a promise made by generic `kinkBreaks`.
+ * Provenance is checked before a callback is touched, and any uncertain
+ * inspection falls back to the original eager walk. */
+export function expressionKinkBreaks(
+  program: PathHost, kinks: readonly KinkLevel[],
+  start: Record<string, number>, delta: Record<string, number>,
+  branches: Record<string, number>,
+  left: number, right: number, tolerance: number,
+): number[] {
+  // With one or two kinks, the graph proof and Map cost can exceed the few
+  // evaluations saved. The actual Curta boundary searches have 25–116.
+  // This fast fallback is the original callback and the original walk.
+  const level = (kink: KinkLevel, t: number): number => kinkLevel(program, kink,
+    { ...along(start, delta, t), ...branches });
+  if (kinks.length < 3) return kinkBreaks(kinks, level, left, right, tolerance);
+  return withExpressions(() => {
+    // This is the only callback this opt-in accepts: the actual published
+    // expression at an affine source fraction and fixed branch selection.
+    // A generic caller cannot supply a stateful level function here.
+    const resolved = new Map<KinkLevel, KinkLevel>();
+    let eligible = false;
+    try {
+      const bindings = program.bindings.roots();
+      const available = new Set<string>();
+      for (const scope of [start, delta, branches]) {
+        for (const [name, value] of Object.entries(scope)) {
+          if (typeof value !== 'number' || !Number.isFinite(value)) {
+            throw new Error('Uncertified kink scope');
+          }
+          available.add(name);
+        }
+      }
+      const visiting = new Set<NodeId>();
+      const safe = new Set<NodeId>();
+      const check = (id: NodeId): boolean => {
+        if (safe.has(id)) return true;
+        if (visiting.has(id)) return false;
+        visiting.add(id);
+        const node = structureOf(id);
+        let good = false;
+        if (node.kind === 'const') {
+          good = typeof node.value === 'number' || typeof node.value === 'boolean';
+        } else if (node.kind === 'name' && node.name !== null) {
+          const head = node.name.split('.')[0];
+          const binding = bindings?.get(head);
+          good = binding !== undefined ? head === node.name && check(binding)
+            : available.has(node.name) || PURE_KINK_CONSTANTS.has(node.name);
+        } else if (node.kind === 'call') {
+          const name = calleeName(id);
+          good = name !== null && PURE_KINK_CALLEES.has(name)
+            && !bindings?.has(name) && !available.has(name)
+            && node.children.every(check);
+        } else if (node.kind === 'unary' || node.kind === 'binary'
+                   || node.kind === 'ternary') {
+          good = node.children.every(check);
+        }
+        visiting.delete(id);
+        if (good) safe.add(id);
+        return good;
+      };
+      eligible = kinks.every(kink => {
+        const current = kink.current?.() ?? kink;
+        resolved.set(kink, current);
+        return check(current.a) && (current.b === null || check(current.b));
+      });
+    } catch {
+      // Graph generation, custom bindings or malformed operands must not
+      // introduce an earlier error; the scheduled level call owns it.
+      eligible = false;
+    }
+    if (!eligible) return kinkBreaks(kinks, level, left, right, tolerance);
+    const memo = new Map<KinkLevel, Map<number, number>>();
+    let entries = 0;
+    return kinkBreaks(kinks, (kink, t) => {
+      if (!Number.isFinite(t) || Object.is(t, -0)) return level(kink, t);
+      const identity = resolved.get(kink)!;
+      const existing = memo.get(identity)?.get(t);
+      if (existing !== undefined) return existing;
+      const result = level(kink, t);
+      if (Number.isFinite(result) && entries < KINK_PROBE_LIMIT) {
+        const points = memo.get(identity) ?? new Map<number, number>();
+        points.set(t, result);
+        memo.set(identity, points);
+        entries += 1;
+      }
+      return result;
+    }, left, right, tolerance);
+  });
 }
 
 /** One caller's own LEVEL path values (design D7, ADR-060; ADR-124's

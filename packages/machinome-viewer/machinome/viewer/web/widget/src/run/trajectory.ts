@@ -5,9 +5,9 @@
  */
 import { withExpressions } from '../expressions';
 import { activeShape } from './active-shape';
-import { evaluateExpression, kinkLevel, UnsupportedLaw } from './program';
+import { evaluateExpression, UnsupportedLaw } from './program';
 import type { LoadedProgram, ProgramBlock, ProgramEdge, ProgramPlan } from './program';
-import { along, blockOrder, branchesAt, deduplicated, kinkBreaks, merged, partition, tooMany, Walk } from './jumps';
+import { along, blockOrder, branchesAt, deduplicated, expressionKinkBreaks, merged, partition, tooMany, Walk } from './jumps';
 import type { CrossingRecord, WalkPiece } from './jumps';
 import { Motion, propagations, sourceDeltas } from './motion';
 import type { Piece, Propagation } from './motion';
@@ -102,8 +102,8 @@ function lawMotion(program: LoadedProgram, edge: ProgramEdge, index: number,
         const pieceAffine = shape === null || (shape.shape !== null
           && [...motions].every(([name, m]) => !shape.names.has(name) || m.affine));
         const breaks = pieceAffine && shape?.shape === 'kinked'
-          ? kinkBreaks(shape.kinks, (kink, t) => kinkLevel(program, kink,
-            { ...along(start, delta, t), ...branches }), a, b, program.limits.crossingTolerance) : [];
+          ? expressionKinkBreaks(program, shape.kinks, start, delta, branches ?? {},
+            a, b, program.limits.crossingTolerance) : [];
         allAffine &&= pieceAffine;
         const edges = [a, ...breaks, b];
         for (let part = 0; part < edges.length - 1; part += 1) {
@@ -213,9 +213,8 @@ function followBoundaryCuts(program: LoadedProgram, edge: ProgramEdge,
       throw new UnsupportedLaw(`${edge.description}: Follow envelope is not certified piecewise affine.`);
     }
     if (shape.shape === 'kinked') {
-      cuts.push(...kinkBreaks(shape.kinks, (kink, t) => kinkLevel(program, kink,
-        { ...along(start, delta, t), ...branches }), left, right,
-      program.limits.crossingTolerance));
+      cuts.push(...expressionKinkBreaks(program, shape.kinks, start, delta, branches,
+        left, right, program.limits.crossingTolerance));
     }
   }
   return [...new Set(cuts)].sort((a, b) => a - b);

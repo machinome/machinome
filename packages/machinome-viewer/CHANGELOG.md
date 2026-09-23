@@ -18,6 +18,13 @@ it carries release together and share one version.
   crank ticks used 14.3% less process CPU with bit-identical Bound samples
   and complete bank; a full revolution is not yet interactive at its
   declared two-second duration.
+- Certified numeric kink-cut expressions now reuse successful equal-fraction
+  probes within one search. Arbitrary callbacks and uncertain or stateful
+  graphs retain eager evaluation. On the pinned production OperatingCurta,
+  five ordinary 0.1-second viewer ticks used 16.4% less process CPU in a
+  controlled pair, with all 768 ordered Bound levels and five full
+  214-coordinate bank hashes unchanged. This remains far from an interactive
+  two-second full revolution and is not a released capability.
 
 ## 0.7.0 — 22 September 2026
 
