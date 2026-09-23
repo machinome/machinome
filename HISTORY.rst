@@ -2,16 +2,6 @@
 History
 =======
 
-Current-source work after the 0.7 record (unreleased)
-------------------------------------------------------
-
-* A finite, pointwise convex-profile contact predicate can be used as a
-  numeric 0/1 term in an existing running Bound. Its compact data table
-  is carried only by version-13 documents. The bounded Curta reverser
-  trial motivates the capability, but installed-print and axial-band
-  coverage remain independent project obligations. This source change
-  records no package upload or remote push.
-
 Machinome 0.7.0 (2026-09-23)
 ----------------------------
 
@@ -31,9 +21,9 @@ map are in ``docs/changelog.rst``, ``docs/releases/release-0.7.rst`` and
 Release preparation completes the independent mechanics extraction:
 ``machinome[mechanics]`` installs ``machinome-mechanics`` 0.1.0 and
 projects import its twelve helpers from ``machinome_mechanics``.
-Viewer 0.7.0 reports API 25 and reads schemas 1–12, including running
-``Play`` clearance pickup, explicit time drives, source-timed motion and
-the two-surface ``Follow``.
+Viewer 0.7.0 reports API 26 and reads schemas 1–13, including running
+``Play`` clearance pickup, explicit time drives, source-timed motion,
+the two-surface ``Follow`` and finite profile contact.
 Fresh installations bound ``ocp-gordon`` below 0.3 to preserve the
 shared OCP 7.8 CAD runtime.
 
@@ -61,6 +51,31 @@ shared OCP 7.8 CAD runtime.
   the viewer's API 25 reads it. Change
   ``follow-two-clearance-surfaces``; ratified by the pilot's decision
   to release 0.7.0 with it.
+* **A finite profile contact is a term in a running Bound (ADR-144).**
+  The Curta Type I reverser trial selects its axial stopping planes with
+  numeric running Bounds but lacked the angular input: whether the
+  pinion's and drum's finite planar covers touch. Expanding every convex
+  polygon pair into scalar expression nodes would have needed 633,552
+  pairs for one pinion against a nine-tooth drum. An immutable
+  ``ConvexProfile`` now holds independently authored finite convex CCW
+  loops, validated exactly and never repaired, and ``profile_overlap``
+  places two of them in rigid XY and returns positive 1.0 on inclusive
+  AABB/SAT contact, otherwise positive 0.0. A symbolic call is admitted
+  only as a term in a running Bound's absolute limit expression, whose
+  64-sample/bisection search, held-own rule and attribution are
+  unchanged; other symbolic uses refuse it by name. The program
+  deduplicates the profile data and only a document using it declares
+  **version 13**, publishing ``program.profiles`` once with small
+  ``profileOverlap(...)`` calls in the bound expressions; full profile
+  content joins the program identity, and the viewer's API 26 reads it.
+  One integration attempt may reuse successful placements and pair
+  decisions in private 256-placement/1,024-pair scopes, and
+  ``index-placed-profile-aabbs`` lets repeated large contacts prune
+  provably disjoint polygon pairs through a per-attempt AABB tree
+  (1.00–1.64 CPU seconds saved on the reverser tick). The predicate is
+  pointwise, not continuous collision detection, and proves no installed
+  geometry cover. Change ``convex-profile-contact-predicate``; ratified
+  by the pilot's decision to release 0.7.0 with it.
 * **Running bounds reuse what they already proved (ADR-139, ADR-140).**
   At the viewer's default cadence the Curta's crank Bound eagerly bound 126,032
   expression nodes each tick while 1,479 depended on the moving bell.
@@ -75,7 +90,10 @@ shared OCP 7.8 CAD runtime.
   (``cache-folded-law-graphs``). Every cycle was accepted only on
   bit-identical ordered bound samples and banks; laws, tolerances,
   timestep and sample counts are unchanged, and the machine is still
-  not interactive.
+  not interactive. ``streamline-graph-numeric-evaluation`` then stopped
+  the numeric graph evaluator building child-argument lists for scalar
+  leaves and binary operations, with identical ordered results and bank
+  (a median 4% of the reverser trial's tick).
 * **An exact comparison FAILS CLOSED (ADR-142, ADR-143).** The Curta's
   positioning sphere, shifted 0.2 mm into its frame, shares positive
   interior with it, and OCCT's common returned a valid empty shape. After
@@ -608,6 +626,11 @@ shared OCP 7.8 CAD runtime.
   placement and are swept before the next run. A ``render()`` that
   reads a driver keeps working and warns once per class. ``omit()`` in
   ``simulate()`` raises. The ``render()`` rename is dropped.
+* Piece identity digests the canonical oriented-triangle content of an
+  artifact instead of its raw bytes (ADR-145): OpenSCAD 2021.01 writes one
+  triangle set in a run-dependent facet order, which split two identical
+  bushings into two pieces on the CI runner. Piece ids change once; fact
+  records move to version 2.
 
 0.6.0 (2026-09-01)
 ------------------

@@ -7,6 +7,7 @@
 **Change:** `printed-piece-identity`
 
 **Amended by:** [ADR-085: Persistent Piece Facts Behind a Verified Artifact Snapshot](ADR-085-persistent-piece-facts-behind-a-verified-artifact-snapshot.md) — reusable content identity and facts require one strongly observed artifact snapshot
+**Amended by:** [ADR-145: Piece identity digests canonical triangle content, not raw bytes](ADR-145-piece-identity-digests-canonical-triangle-content.md) — option 4 adopted once OpenSCAD's run-dependent facet order split one piece in two
 
 **Depends on:**
 - [ADR-026: Node Identity — Parameter-Hashed Artifact Keys vs. Tree-Addressing Names](../NODE/ADR-026-node-identity-parameter-hashed-artifact-keys-vs-tree-names.md)

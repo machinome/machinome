@@ -162,6 +162,11 @@ The framework SHALL evaluate a shared expression against each supplied input map
 - **WHEN** an expression has a failing input or arithmetic node before an unsupported operation in its evaluation order
 - **THEN** evaluation reports the earlier failure first, including on repeated calls
 
+#### Scenario: Repeated binary evaluation retains IEEE operand order
+
+- **WHEN** a shared binary expression is evaluated repeatedly with changing finite, signed-zero or nonfinite numeric inputs
+- **THEN** each numeric result or error retains the original Python operation and operand order, without replacing a later evaluation with an earlier result
+
 ### Requirement: Rebinding an expression path uses current piece values
 
 The framework SHALL evaluate an expression path at each new piece using that piece's current inputs and branch values, preserving the graph's arithmetic order and error behavior. Repeated binding SHALL NOT reuse numeric results from earlier pieces or retain a discarded machine graph through process-wide bookkeeping. Repeated samples within one piece SHALL reuse the path's immutable evaluation structure without hashing expression-node keys for each sample. A running constraint whose read paths are determined SHALL follow its bound expression as one search-local path, preserving each sampled level and its order; a constraint without those paths SHALL retain prefix replay.

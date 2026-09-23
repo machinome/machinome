@@ -27,6 +27,11 @@ from machinome import test as test_module
 from tests.test_export import Cube
 
 
+def content_sha256(data):
+    """The full piece digest: of canonical triangle content (ADR-145)."""
+    return hashlib.sha256(pieces._canonical_content(data)).hexdigest()
+
+
 def box_bytes(extents):
     return trimesh.creation.box(extents).export(file_type='stl')
 
@@ -166,7 +171,7 @@ with pieces.PieceInventory() as inventory:
             identity, _ = self.register()
         self.assertEqual(hashed, [self.first])
         self.assertEqual(decoded, [self.first])
-        self.assertEqual(identity, hashlib.sha256(self.first).hexdigest()[:12])
+        self.assertEqual(identity, content_sha256(self.first)[:12])
 
     def test_same_size_restored_mtime_replacement_recomputes(self):
         first_id, first = self.register()
@@ -182,7 +187,7 @@ with pieces.PieceInventory() as inventory:
         self.assertEqual(first[0]['size'], [1.0, 2.0, 3.0])
         self.assertEqual(second[0]['size'], [4.0, 5.0, 6.0])
         record = json.loads(Path(pieces.fact_sidecar(self.artifact)).read_text())
-        self.assertEqual(record['sha256'], hashlib.sha256(self.second).hexdigest())
+        self.assertEqual(record['sha256'], content_sha256(self.second))
 
     def test_fresh_process_rejects_replaced_artifact_record(self):
         self.register()
@@ -209,7 +214,7 @@ with pieces.PieceInventory() as inventory:
             capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         identity, size = json.loads(result.stdout)
-        self.assertEqual(identity, hashlib.sha256(self.second).hexdigest()[:12])
+        self.assertEqual(identity, content_sha256(self.second)[:12])
         self.assertEqual(size, [4.0, 5.0, 6.0])
 
     def test_missing_malformed_unknown_and_incomplete_records_recompute(self):
@@ -220,6 +225,8 @@ with pieces.PieceInventory() as inventory:
             None,
             b'{not-json',
             json.dumps({**valid, 'version': 999}).encode(),
+            # A version-1 record digested raw bytes (ADR-145): stale.
+            json.dumps({**valid, 'version': 1}).encode(),
             json.dumps({**valid, 'version': True}).encode(),
             json.dumps({**valid, 'artifact': {}}).encode(),
             json.dumps({**valid, 'size': [-1, 2, 3]}).encode(),
@@ -239,7 +246,7 @@ with pieces.PieceInventory() as inventory:
                             calls.append(path), real(path, data))[1]):
                     self.register()
                 self.assertEqual(calls, [str(self.artifact)])
-                self.assertEqual(json.loads(record_path.read_text())['version'], 1)
+                self.assertEqual(json.loads(record_path.read_text())['version'], 2)
 
     def test_unclosed_mesh_facts_are_persisted_honestly(self):
         mesh = trimesh.creation.box((1, 2, 3))
@@ -257,7 +264,7 @@ with pieces.PieceInventory() as inventory:
         record = Path(pieces.fact_sidecar(self.artifact))
         with patch.object(pieces.os, 'replace', side_effect=OSError('stop')):
             identity, published = self.register()
-        self.assertEqual(identity, hashlib.sha256(self.first).hexdigest()[:12])
+        self.assertEqual(identity, content_sha256(self.first)[:12])
         self.assertEqual(published[0]['size'], [1.0, 2.0, 3.0])
         self.assertFalse(record.exists())
         leftovers = list(self.root.glob(f'.{record.name}.*.tmp'))
@@ -276,9 +283,9 @@ with pieces.PieceInventory() as inventory:
         def inspect_then_replace(source, target):
             if target == str(record):
                 candidate = json.loads(Path(source).read_text())
-                self.assertEqual(candidate['version'], 1)
+                self.assertEqual(candidate['version'], 2)
                 self.assertEqual(candidate['sha256'],
-                                 hashlib.sha256(self.first).hexdigest())
+                                 content_sha256(self.first))
                 self.assertEqual(candidate['size'], [1.0, 2.0, 3.0])
                 replaced.append(True)
             return real_replace(source, target)
@@ -286,7 +293,7 @@ with pieces.PieceInventory() as inventory:
         with patch.object(pieces.os, 'replace', inspect_then_replace):
             self.register()
         self.assertEqual(replaced, [True])
-        self.assertEqual(json.loads(record.read_text())['version'], 1)
+        self.assertEqual(json.loads(record.read_text())['version'], 2)
 
     def test_public_prefix_collision_is_rejected_deterministically(self):
         other = self.root / 'other.stl'
@@ -296,8 +303,8 @@ with pieces.PieceInventory() as inventory:
                 inventory.register(self.node, 'one.stl')
                 with self.assertRaises(pieces.PieceIdCollisionError) as raised:
                     inventory.register(CurrentNode(other), 'two.stl')
-        digests = sorted((hashlib.sha256(self.first).hexdigest(),
-                          hashlib.sha256(self.second).hexdigest()))
+        digests = sorted((content_sha256(self.first),
+                          content_sha256(self.second)))
         self.assertIn(digests[0], str(raised.exception))
         self.assertIn(digests[1], str(raised.exception))
 
@@ -462,7 +469,7 @@ class CoherentExportTest(TestCase):
         exported = (output / manifest['root']['model']).read_bytes()
         self.assertEqual(exported, new)
         self.assertEqual(manifest['root']['piece'],
-                         hashlib.sha256(new).hexdigest()[:12])
+                         content_sha256(new)[:12])
 
 
 class PieceFactSweepTest(TestCase):

@@ -3690,3 +3690,79 @@ below are what the review left open.
   (`refuse-false-empty-exact-common` and `cache-follow-prefix-probes`)
   and were reconciled by the merge `23857e9`; the result is coherent, but
   it is not one agent at a time.
+
+# Piece identity split by OpenSCAD facet order (2026-09-23, CI)
+
+Found by the framework's own suite on GitHub Actions, the first two runs
+of the `test` job (35836399670, 35849922652): `tests/test_pieces.py::
+PublishedPiecesInventoryTest::test_identical_classes_merge_into_one_piece_naming_both_sources`
+failed with `AssertionError: 2 != 1` on the runner and passed on the
+maintainer's machine, same Ubuntu 24.04 and same
+`openscad=2021.01-6build4`.
+
+- **OpenSCAD 2021.01 writes one triangle set in a run-dependent facet
+  order, and piece identity hashed the raw bytes.** BushingA and BushingB
+  render the same SCAD text; the two STLs had identical oriented triangle
+  sets but different bytes, so ADR-043's raw-byte sha256 made them two
+  pieces. Evidence: locally, rendering `bushing.scad` from 40 directories
+  of increasing path length gave two byte streams (`85a25e7b22e1` for 6,
+  `0e78e481b129` for 34), stable for a given path and unaffected by
+  environment size, `MALLOC_PERTURB_` or `setarch -R`. In an
+  `ubuntu:24.04` container with the apt package, one command line run 30
+  times with fresh output names gave both streams 15/15; decoded, they
+  differ only in the order of facets 112-123, in which vertex each of
+  those facets starts from, and in the sign of a zero normal component.
+  The specification already said a piece id "SHALL NOT depend ... on the
+  run that produced it", so this was a conformance bug, not a new
+  requirement. Why only the runner hit it for the two bushings (whose
+  paths have equal length) was not isolated; the container shows the
+  order is not a function of the command line either.
+  **Fixed in this cycle** (branch `piece-identity-ci`, ADR-145): the
+  full piece digest is of the canonical oriented-triangle multiset
+  (`machinome/core/pieces.py`, `_canonical_content`), header, normals,
+  attribute words, facet order and first vertex being encoding; winding
+  and exact coordinates remain content. The fact record moves to version
+  2 so raw-byte records are recomputed. The 30 container renders all give
+  one canonical digest. Red first: the captured pair in
+  `tests/pieces_project/openscad_facet_order/` and a synthetic
+  re-encoding of a box, both in `tests/test_pieces.py`.
+- **Committed documentation exports carry the old ids.** The
+  `docs/_exports/counter-*/manifest.json` piece ids were digested from
+  raw bytes; nothing reads them for identity, and they change the next
+  time those exports are regenerated. **Left as is** in this cycle.
+
+# Interface gaps: constrained sketches and closed loops (2026-09-23, pilot)
+
+Not a project finding: two gaps in how a maker states a design, recorded at
+the pilot's request so they are not lost. The assessment behind them is
+`workflow/docs/mates-and-sketches.md` (§2, ideas 1 and 3; §5.3 and §5.4).
+Its idea 2, mates between named frames, is the part with project evidence
+already on record and is tracked there, not here.
+
+- **No constrained sketches.** Mainstream CAD builds a part from a rough 2D
+  profile the author relates — horizontal, equal, tangent, coincident, a
+  distance from an edge — and a solver computes the coordinates; features
+  are built from the solved sketch. machinome states design intent only as
+  one-way parameter formulas, and a part's profile is whatever its backend
+  draws (CadQuery's experimental constrained `Sketch` is the one backend
+  that has a solver). **Deferred:** no project has asked. Comes back when a
+  project's parts genuinely suffer from hand-computed profile coordinates;
+  the note's lean is to leave it to the backends, since machinome's job is
+  the machine, not the part.
+- **No closed-loop solving (skeleton sketches).** A mechanism drawn as a
+  stick figure — links, pivots, lengths — keeps its loops closed as it is
+  dragged, so a four-bar, a slider-crank, a delta or a Peaucellier never
+  has its law derived by hand. machinome closes every loop with a
+  hand-derived law: the kinematics helpers (ADR-076), the `Follow` law,
+  the hexapod's hand-inverted `R_roll · R_pitch · R_yaw · T_height`, and
+  the deferred openflexure four-bar decomposition (Deferred item 11 above).
+  **Deferred.** Pilot direction (2026-09-23): the solve happens at
+  compile time, never in the viewer; the build publishes a closed form
+  where one exists, or a sampled law the viewer interpolates, and judges
+  the branch, dead points and closing range once. The viewer receives the
+  mates to represent them, and solves nothing (note §5.3, §5.5). Open
+  solvers exist (SolveSpace, FreeCAD's planegcs and Assembly solver) for
+  the build-time side. Comes back
+  with a linkage machine that wants its loop closed rather than derived —
+  a second flexure stage, or a Foundry machine built around a linkage — and
+  is a natural neighbour of 0.9 dynamics on `workflow/docs/roadmap.md`.

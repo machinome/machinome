@@ -154,7 +154,8 @@ in ``simulate()`` is a second binding and is refused; name ``time``
 explicitly in the relation. Time supplies seconds, not gravity, torque or
 an escapement frequency; those remain the model's own laws. A program
 with a time drive publishes document version 11, as does every new
-running export that carries no ``Follow`` relation.
+running export that carries neither a ``Follow`` relation nor profile
+contact.
 
 One law, two readings
 ---------------------
@@ -264,8 +265,9 @@ cannot be ordered refuses the tick naming the piece, the branches and
 the relations on the cycle. Determined sources retain their actual stroke,
 dwell and landing timing through the block and through ordinary chains;
 additional selector cuts do not replace that motion by endpoint ramps.
-New running documents, including blocks, declare version 11, or 12
-when they carry a ``Follow`` relation.
+New running documents, including blocks, declare version 11, 12
+when they carry a ``Follow`` relation, or 13 when a ``Bound`` uses
+profile contact.
 
 **Retained clearance.** ``Play(low, high)`` is the narrow running law for
 a follower separated from its source by backlash or clearance: it holds
@@ -287,6 +289,18 @@ certified cuts as well as the uniform samples. Other ancestry, a curved
 boundary or a contact too narrow to represent is refused, not
 approximated; the follower feeds no other relation. A document carrying
 one is version 12.
+
+**Finite profile contact.** ``ConvexProfile``, imported with
+``profile_overlap`` from ``machinome.simulation.profile``, holds authored
+finite convex planar loops. ``profile_overlap`` rotates and translates
+two profiles in XY and returns 1.0 when they touch, inclusively, and 0.0
+otherwise, so a running ``Bound`` can use it as a term in its limit
+expression: an axial stop that applies only while a pinion's profile
+meets a drum's. The ``Bound`` samples and attributes the stop exactly as
+it does any other constraint; anywhere else a symbolic call is refused.
+The answer is pointwise: contact between two samples is not detected,
+and nothing checks that the loops cover the installed parts, which is
+the model's own proof. A document using it is version 13.
 
 A range is a physical stop
 --------------------------
@@ -389,8 +403,10 @@ separate ``time_drives`` tuple, the blocked time-drive relations.
 What it publishes
 -----------------
 
-A running root's document declares version 11, or 12 when its program
-carries a ``Follow`` edge, and carries a ``program``
+A running root's document declares version 11, 12 when its program
+carries a ``Follow`` edge, or 13 when a ``Bound`` uses profile contact
+(the profile data then travels once as ``program.profiles``), and
+carries a ``program``
 beside the geometry: the coordinate table with each bank id's kind, rest
 value, unit and domain, the compiled edges in program order with their
 expressions and jump plans, the candidate table of which inputs reach

@@ -6,6 +6,8 @@
 
 **Change:** [convex-profile-contact-predicate](../../../openspec/changes/archive/2026-09-23-convex-profile-contact-predicate/)
 
+**Ratified:** 23 September 2026. The pilot ratified it by deciding that Machinome 0.7.0 releases with it, document version 13 and viewer API 26 included.
+
 **Depends on:** ADR-108, ADR-109, ADR-113, ADR-124, ADR-138 and ADR-141.
 Preserves their running Bound, path sampling and Follow meanings.
 

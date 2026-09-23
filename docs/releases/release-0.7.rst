@@ -38,7 +38,10 @@ or operated as a sequence of requests that retain state at events.
 ``Time.running()`` supplies running mechanics, including crossings,
 jumps and mechanical stops. ``State`` and committing relations give
 a clocked machine memory; ``Time.elapsed()`` adds a clock when its
-events need one.
+events need one. A running stop can also ask whether two authored
+convex planar profiles touch: ``profile_overlap`` is a pointwise 0/1
+term inside a ``Bound``, not continuous collision detection, and it
+does not prove that the profiles cover the installed parts.
 
 These are kinematic and state models, not a general physics solver.
 Tests check the geometric and behavioural contracts the author states.
@@ -63,12 +66,12 @@ Explore and share
 The independent Machinome Viewer executes the published model in the
 browser: direct input controls, running transport, or clocked requests
 and state readouts as the machine requires. A static export carries that
-experience to a web page. The matching viewer 0.7.0 reports API 25 and
-reads schemas 1–12, including explicit running clearance pickup through
+experience to a web page. The matching viewer 0.7.0 reports API 26 and
+reads schemas 1–13, including explicit running clearance pickup through
 ``Play``, motion the running clock drives, source-timed motion that
 keeps a determined source's stroke and dwell through the chains that
-read it, and a follower held between two moving surfaces through
-``Follow``.
+read it, a follower held between two moving surfaces through
+``Follow``, and finite profile contact inside a running ``Bound``.
 
 The manual teaches one machine from a part to a machine with memory, a
 hand-cranked tally counter, then keeps how-to guides and concept pages

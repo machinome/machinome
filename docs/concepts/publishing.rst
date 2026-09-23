@@ -79,9 +79,12 @@ emits the lowest its content needs:
      - Source-timed running dependencies, preserving dwell and landing timing.
    * - 12
      - A retained ``Follow`` between two moving clearance surfaces.
+   * - 13
+     - A running ``Bound`` whose limit uses finite convex profile contact.
 
 A posed model is 2 to 4. A root declaring ``Time.running()`` now publishes 11,
-or 12 when its program carries a ``Follow`` relation; older running exports
+12 when its program carries a ``Follow`` relation, or 13 when a running
+``Bound`` uses finite profile contact; older running exports
 used 5, 6, 7, 9 or 10 according to their laws.
 A tree declaring a ``State``
 publishes 8 whatever else it holds. Markings and controls are additive within their

@@ -418,7 +418,8 @@ name, computed by the framework through the same serialization, so a
 class that forwarded everything keeps its key and no keyword can be
 forgotten; repeated identical units share one key and one artifact
 (ADR-063). A **piece** id
-(12-hex sha256 of the built STL's bytes) identifies one thing to print,
+(12-hex sha256 of the built STL's canonical oriented-triangle content,
+not its raw bytes, ADR-145) identifies one thing to print,
 so solids factored into different classes but building identical geometry
 are one piece, while handed variants are two (ADR-043). Each answers a
 different question — rebuild needed, addressed how, same thing to print —
@@ -2601,7 +2602,7 @@ the independent viewer must reproduce it before parity is claimed.
 originally published `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
 ticks covering no-command motion, gates, winding/exhaustion, independent and
 connected stops, mixed commands, curved stop paths and replay/reset. The
-independent viewer (API 23 at the time, API 25 now) reads version 10 and executes these
+independent viewer (API 23 at the time, API 26 in 0.7.0) reads version 10 and executes these
 scenarios in its own repository; that is the viewer's evidence, not
 producer parity claimed here. Source-timing fixtures from
 `tools/generate_source_timing_fixtures.py` additionally pin compact and unchanged
