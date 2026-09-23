@@ -3608,3 +3608,76 @@ See [ADR-136](../docs/adrs/NODE/ADR-136-moving-contacts-use-relative-crossings.m
 and [cycle evidence](../openspec/changes/archive/2026-09-21-mixed-threshold-landing/evidence.md).
 This is not a physical-print defect, adoption of provisional T07 geometry,
 or completion of the operating-Curta roadmap. No external issue was opened.
+
+# Review of the cycles landed after the 0.7.0 fold (2026-09-23)
+
+**Status: review findings, recorded for the pilot; nothing here is triaged.**
+Between the fold commit `a659cc7` (22 September, 22:24) and `26cbd63`
+(23 September, 08:07) main took seventeen commits: eight complete OpenSpec
+cycles and one merge, every record citing the pilot's standing autonomous
+framework-fix mandate. Four cycles speed the Curta (ADR-139, ADR-140, the
+Follow prefix reuse, the tick-local fold cache), one adds the `Follow` law
+(ADR-141, document version 12), three correct the exact kernel (ADR-142 and
+its amendment, ADR-143). All eight new test files pass together (60 tests,
+22 subtests); no correctness defect was found in the diffs. The findings
+below are what the review left open.
+
+- **The 0.7.0 release record is stale.** `pyproject.toml` still says
+  0.7.0 and `HISTORY.rst` has no entry after the 0.7.0 heading, yet main
+  now writes document version 12 for a program carrying `Follow`, exports
+  `machinome.simulation.Follow`, and raises two new public exceptions from
+  `machinome.exact`. `docs/concepts/running.rst` still says every new
+  running export declares version 11, and no manual page mentions `Follow`.
+  The viewer kept an `Unreleased` changelog section (API 25, versions 1–12);
+  the framework did not. **Held for the pilot:** either the 0.7.0 tag is
+  cut at `a659cc7` and these cycles open the next release record, or the
+  release moves with them. Whichever is chosen, the manual and
+  `HISTORY.rst` need the Follow entry before anything is uploaded.
+- **ADR-141 was accepted without a ratification record.** The cache
+  cycles cite the autonomous mandate and say their designs were not
+  separately ratified, which is honest and within the mandate. The Follow
+  proposal cites no authority at all, yet its ADR is marked Accepted and
+  the couplings, simulation and export baseline specs were synced. A new
+  public declaration and a document version are product decisions, not
+  performance repairs. **Held for the pilot:** confirm the ratification, or
+  the ADR should say it is provisional until he does.
+- **`Follow` is deliberately narrow, and the narrowing is recorded only in
+  the archived change.** The retained coordinate must be terminal among
+  program edges (a downstream reader would need the swept path, not the
+  endpoint delta); the two sources must be run inputs, held bank
+  coordinates, or unbranched affine ordinary-law chains carried as exact
+  `Motion.line` values, so wiring and formula ancestry are refused rather
+  than approximated by an endpoint chord; the matching lower and upper
+  Bounds are recognised by graph text (`str(graph)`) and the same read set,
+  so an equivalent expression written differently is refused. The Curta's
+  bell-turn and lift sources sit inside every one of these boundaries.
+  **Open as a shape, not a defect:** lift each limit when a project writes
+  the machine that needs it, and record here which one.
+- **The Follow prefix cache stores mapping proxies where a propagation
+  used to flow.** `Run._constraint_level` in `machinome/simulation/run.py`
+  memoises a successful law-to-Follow prefix as
+  `(MappingProxyType(dict(deltas)), MappingProxyType(dict(landings)))`.
+  On a hit the rest of the method receives a plain read-only mapping, not
+  the `Propagation` object the first walk produced, so `motions`,
+  `untraced`, `follow_cuts` and `follow_closures` are absent. Today only
+  item access follows the prefix, so it is correct; the first later change
+  that reads a path attribute after the prefix will work on a miss and fail
+  on a hit, and the focused tests would not necessarily catch it.
+  **Deferred:** when that method is next touched, either snapshot the
+  propagation itself (frozen) or assert the shape at the hit.
+- **The exact-kernel corrections cost time that was measured only on the
+  Curta.** ADR-143 deep-copies both operands of every native Common, Fuse
+  and witness Section; ADR-142 adds a section plus up to 1,872
+  zero-tolerance classifications after every empty near-contact common,
+  and `_false_empty_witness` computes six bounding boxes per call, which
+  one profile showed to be most of the guard's cost. The full framework
+  suite went from about 393–405 s in the earlier cycles to 460 s in the
+  last one, with host load uncontrolled. No other project's exact tests
+  were timed. **Deferred:** time the exact suites of two or three
+  catalogue projects on the fold commit and on main before the next
+  release, and record the numbers here.
+- **Housekeeping.** Twelve cycle worktrees were left under `WTs/` (26 in
+  all), none torn down after integration. Two cycles ran concurrently
+  (`refuse-false-empty-exact-common` and `cache-follow-prefix-probes`)
+  and were reconciled by the merge `23857e9`; the result is coherent, but
+  it is not one agent at a time.
