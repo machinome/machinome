@@ -28,10 +28,10 @@ html_title = 'Machinome — Source code for machines'
 # substitutions below (|release| and |version| are Sphinx's own) so a
 # release edits this block and the status page and nothing else.
 
-release_date = '22 September 2026'
+release_date = '23 September 2026'
 viewer_version = '0.7.0'        # the matching machinome-viewer package
-viewer_api = '24'               # required source-timed consumer capability
-document_versions = '1 to 11'    # supported by the paired corrected viewer
+viewer_api = '25'               # source-timed motion and two-surface Follow
+document_versions = '1 to 12'    # supported by the paired viewer
 mechanics_version = '0.1.0'     # the matching machinome-mechanics package
 
 rst_prolog = f'''

@@ -2536,7 +2536,8 @@ DECLARATION rather than the content, because a running root with a
 trivial program is still a machine a version 4 consumer would animate
 wrongly, and the bump is not additive. Earlier running rungs selected 5, 6, 7,
 9 or 10 from their content. ADR-138 supersedes that selection: every newly
-exported running program declares **version 11** and carries a source-timing
+exported running program declares **version 11**, or **version 12** when it
+carries a `Follow` edge (ADR-141), and carries a source-timing
 semantic generation in its canonical identity. This protects both portable
 exports from old consumers and corrected runs from endpoint-era snapshots.
 No payload field changes. With explicit time drives (ADR-133),
@@ -2581,12 +2582,12 @@ the independent viewer must reproduce it before parity is claimed.
 originally published `tests/time-drive-corpus.json`: seven version-10 scenarios with 54
 ticks covering no-command motion, gates, winding/exhaustion, independent and
 connected stops, mixed commands, curved stop paths and replay/reset. The
-independent viewer (API 23 at the time, API 24 now) reads version 10 and executes these
+independent viewer (API 23 at the time, API 25 now) reads version 10 and executes these
 scenarios in its own repository; that is the viewer's evidence, not
 producer parity claimed here. Source-timing fixtures from
 `tools/generate_source_timing_fixtures.py` additionally pin compact and unchanged
 Curta carry requests with content hashes, full banks and records. The paired
-API-24 viewer passes these in its own repository and rejects malformed v11
+viewer (API 24 and later) passes these in its own repository and rejects malformed v11
 programs; the old API-23 bundle refuses v11 before operation. Existing legacy
 corpus bytes remain controls, not regenerated physics expectations.
 

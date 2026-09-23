@@ -77,9 +77,12 @@ emits the lowest its content needs:
      - Running relations driven by the root's clock (``time.drives``).
    * - 11
      - Source-timed running dependencies, preserving dwell and landing timing.
+   * - 12
+     - A retained ``Follow`` between two moving clearance surfaces.
 
-A posed model is 2 to 4. A root declaring ``Time.running()`` now publishes 11;
-older running exports used 5, 6, 7, 9 or 10 according to their laws.
+A posed model is 2 to 4. A root declaring ``Time.running()`` now publishes 11,
+or 12 when its program carries a ``Follow`` relation; older running exports
+used 5, 6, 7, 9 or 10 according to their laws.
 A tree declaring a ``State``
 publishes 8 whatever else it holds. Markings and controls are additive within their
 version. The bumps from 5 upward are **not** additive: a consumer that

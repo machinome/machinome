@@ -46,7 +46,8 @@ interactive development requires it. Machinome Mechanics
 ``mechanics`` extra. Both release with the framework.
 
 Running documents this release exports declare schema 11, source-timed
-motion, and need the matching viewer |viewer_version|, API |viewer_api|,
+motion, or schema 12 when they carry a ``Follow`` relation, and need the
+matching viewer |viewer_version|, API |viewer_api|,
 reading document versions |document_versions|. Check the installed viewer's
 report with ``machinome viewer`` rather than inferring capability from a
 package name. See :doc:`changelog` and :doc:`upgrading`.

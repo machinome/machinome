@@ -15,7 +15,7 @@
   ],
   "excludeFiles": [],
   "rules": [
-    "Machinome 0.7.0 (released 2026-09-22) continues solid-node 0.6.0. Use the machinome distribution, machinome Python imports and command, [tool.machinome] configuration and MACHINOME_* replacements for former SOLID_NODE_* settings. No old command or import aliases are installed. See docs/project/upgrading.rst for retained SOLID_BUILD_DIR and SOLID_TEST_* settings.",
+    "Machinome 0.7.0 (released 2026-09-23) continues solid-node 0.6.0. Use the machinome distribution, machinome Python imports and command, [tool.machinome] configuration and MACHINOME_* replacements for former SOLID_NODE_* settings. No old command or import aliases are installed. See docs/project/upgrading.rst for retained SOLID_BUILD_DIR and SOLID_TEST_* settings.",
     "A project declares its default model or named models in [tool.machinome] in pyproject.toml. Node commands accept a model name, package.module:Class, or file reference. Each named model has its own build directory; machinome models lists them.",
     "Declare typed build parameters in machinome.parameters and child nodes in the class body. render() builds and places the structure at rest; simulate() expresses runtime pose. Constructor-based nodes remain supported.",
     "Import ports and Time from machinome.motion.ports, joints from machinome.motion.joints, and Driver, State, Instruction and Sim from machinome.simulation.",
@@ -26,7 +26,8 @@
     "Build freshness tracks each node's contributing source, including project-local imports. Several node classes may share a file without automatically invalidating unrelated sibling geometry.",
     "Place whole-assembly integrity assertions at the root when that is the contract: assertNoSolidInterference and assertNoDisconnectedSolids already descend their subtrees. assertNoPairwiseIntersections is deprecated.",
     "The optional machinome-viewer package owns browser rendering. machinome develop requires it; --no-web builds and watches without it. Check machinome viewer for the installed API and supported documentVersions.",
-    "The matching viewer is 0.7.0, API 24, reading document schemas 1-11; running documents are 5-7 or 9-11 (new running exports declare 11, source-timed motion) and clocked documents are 8. Check the installed package with machinome viewer.",
+    "The matching viewer is 0.7.0, API 25, reading document schemas 1-12; running documents are 5-7 or 9-12 (new running exports declare 11, source-timed motion, or 12 when they carry a Follow relation) and clocked documents are 8. Check the installed package with machinome viewer.",
+    "Running-only clearance laws: Play(low, high) retains a follower through backlash from one source; Follow(lower=, upper=) retains a coordinate between two independently moving authored surfaces and needs matching lower and upper Bound relations on that coordinate. Unsupported source ancestry is refused, not approximated.",
     "Keep geometry and operating claims tied to runnable examples and tests. Simulated motion is not a claim of physical manufacturing validation.",
     "The manual is organised by reader intent: start pages, a ten-chapter tutorial building a tally counter under docs/tutorial/, how-to guides under docs/howto/, concept pages under docs/concepts/, examples, reference and project pages."
   ],

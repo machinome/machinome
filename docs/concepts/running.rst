@@ -153,7 +153,8 @@ for an ordinary absolute transform, but assigning it to a run-owned joint
 in ``simulate()`` is a second binding and is refused; name ``time``
 explicitly in the relation. Time supplies seconds, not gravity, torque or
 an escapement frequency; those remain the model's own laws. A program
-with a time drive publishes document version 11, as do all new running exports.
+with a time drive publishes document version 11, as does every new
+running export that carries no ``Follow`` relation.
 
 One law, two readings
 ---------------------
@@ -263,7 +264,8 @@ cannot be ordered refuses the tick naming the piece, the branches and
 the relations on the cycle. Determined sources retain their actual stroke,
 dwell and landing timing through the block and through ordinary chains;
 additional selector cuts do not replace that motion by endpoint ramps.
-New running documents, including blocks, declare version 11.
+New running documents, including blocks, declare version 11, or 12
+when they carry a ``Follow`` relation.
 
 **Retained clearance.** ``Play(low, high)`` is the narrow running law for
 a follower separated from its source by backlash or clearance: it holds
@@ -271,6 +273,20 @@ inside the interval, is collected at either flank, and is released when
 the source reverses. Each play source is a run-owned driver or the output
 of another play edge in one linear chain; anything else is refused. A
 new document carrying one is version 11.
+
+**Two moving surfaces.** ``Follow(lower=, upper=)`` is the narrower law
+for a retained coordinate that rests freely between two independently
+moving, authored boundaries, a ball between a bell and a collar: either
+surface pushes it only on contact, and it stays where a retreating
+surface left it, ``max(lower, min(retained, upper))`` at every certified
+piece of the tick. Its two sources are inputs, held bank coordinates or
+unbranched affine chains; the lower and upper ``Bound`` relations on the
+same coordinate must state the same two surfaces, and they locate the
+first contact at which the surfaces become incompatible, checking the
+certified cuts as well as the uniform samples. Other ancestry, a curved
+boundary or a contact too narrow to represent is refused, not
+approximated; the follower feeds no other relation. A document carrying
+one is version 12.
 
 A range is a physical stop
 --------------------------
@@ -373,7 +389,8 @@ separate ``time_drives`` tuple, the blocked time-drive relations.
 What it publishes
 -----------------
 
-A running root's document declares version 11 and carries a ``program``
+A running root's document declares version 11, or 12 when its program
+carries a ``Follow`` edge, and carries a ``program``
 beside the geometry: the coordinate table with each bank id's kind, rest
 value, unit and domain, the compiled edges in program order with their
 expressions and jump plans, the candidate table of which inputs reach
@@ -388,6 +405,6 @@ program with time-driven relations lists them as ``program.time_drives``,
 each naming the edge that reads ``time``. Source-timing semantics participate
 in the program identity: endpoint-era snapshots refuse restore into newly
 compiled programs before changing state. Re-export with the corrected
-producer and use a viewer supporting version 11; do not lower the document
+producer and use a viewer supporting its version; do not lower the document
 version manually. Posed, looping and clocked version selection is unchanged.
 :doc:`publishing` has the version table.

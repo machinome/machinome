@@ -6,6 +6,8 @@
 
 **Change:** [follow-two-clearance-surfaces](../../../openspec/changes/archive/2026-09-23-follow-two-clearance-surfaces/)
 
+**Ratified:** 23 September 2026. The proposal cited no ratification when the change was applied (recorded in `workflow/warts.md`, review of 23 September); the pilot ratified it by deciding that Machinome 0.7.0 releases with it, document version 12 and viewer API 25 included.
+
 **Depends on:** ADR-105, ADR-108, ADR-113, ADR-121, ADR-123, ADR-124, ADR-131 and ADR-137. Preserves their ordinary law, Play and Bound meanings.
 
 ## Context

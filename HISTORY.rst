@@ -2,7 +2,7 @@
 History
 =======
 
-Machinome 0.7.0 (2026-09-22)
+Machinome 0.7.0 (2026-09-23)
 ----------------------------
 
 **Source code for machines.** Machinome continues solid-node 0.6.0 with
@@ -21,10 +21,65 @@ map are in ``docs/changelog.rst``, ``docs/releases/release-0.7.rst`` and
 Release preparation completes the independent mechanics extraction:
 ``machinome[mechanics]`` installs ``machinome-mechanics`` 0.1.0 and
 projects import its twelve helpers from ``machinome_mechanics``.
-Viewer 0.7.0 reports API 24 and reads schemas 1–11, including running
-``Play`` clearance pickup, explicit time drives and source-timed motion.
+Viewer 0.7.0 reports API 25 and reads schemas 1–12, including running
+``Play`` clearance pickup, explicit time drives, source-timed motion and
+the two-surface ``Follow``.
 Fresh installations bound ``ocp-gordon`` below 0.3 to preserve the
 shared OCP 7.8 CAD runtime.
+
+* **A retained coordinate FOLLOWS two certified clearance surfaces
+  (ADR-141).** The Curta Type I's radial positioning ball is free
+  between a bell surface and an independently moving carriage collar:
+  a self-read switch law pushed it outward but pulled it back when the
+  bell retreated, and ``Play`` has one source and fixed offsets. Under
+  a running root ``Follow(lower=, upper=)`` projects one banked scalar
+  coordinate through the two authored surfaces, ``max(lower,
+  min(retained, upper))``, at every certified affine piece of the tick,
+  visiting both one-sided closures and the exact value at each cut and
+  never snapping a numeric seam by a tolerance. The lower and upper
+  dynamic ``Bound`` relations on that coordinate must structurally
+  match the two surface graphs; they locate the first admissible
+  contact from their original samples plus the certified cuts and
+  cut-side candidates, and a strictly positive closure with no
+  representable positive neighbour refuses the tick rather than passing
+  an undetectable contact. Sources are inputs, held bank values or
+  unbranched ordinary affine chains carried as exact ``Motion.line``
+  paths; other ancestry is refused rather than approximated by a chord,
+  and the follower is terminal among program edges. The producer
+  publishes a ``kind: "follow"`` edge with both graphs and nullable
+  jump plans, and only a document carrying one declares **version 12**;
+  the viewer's API 25 reads it. Change
+  ``follow-two-clearance-surfaces``; ratified by the pilot's decision
+  to release 0.7.0 with it.
+* **Running bounds reuse what they already proved (ADR-139, ADR-140).**
+  At the viewer's default cadence the Curta's crank Bound eagerly bound 126,032
+  expression nodes each tick while 1,479 depended on the moving bell.
+  A ``Run`` now keeps one successful standing-bind snapshot per
+  compiled constraint and reuses it when the graph, the moving-name set
+  and every referenced standing input are bit-identical finite numbers;
+  a path keeps its own last successful first-point bind on the same
+  terms. Two later cycles share a successful ``Follow`` prefix
+  propagation between the bounds that replay it at the same fraction
+  within one stretch (``cache-follow-prefix-probes``) and reuse
+  identical successful law folds within one tick
+  (``cache-folded-law-graphs``). Every cycle was accepted only on
+  bit-identical ordered bound samples and banks; laws, tolerances,
+  timestep and sample counts are unchanged, and the machine is still
+  not interactive.
+* **An exact comparison FAILS CLOSED (ADR-142, ADR-143).** The Curta's
+  positioning sphere, shifted 0.2 mm into its frame, shares positive
+  interior with it, and OCCT's common returned a valid empty shape. After
+  an empty exact common the kernel now sections the pair and classifies
+  candidate points against each solid at zero tolerance; a point
+  strictly inside both, farther from every face than that face's own
+  native tolerance, raises ``ExactCommonInconsistency`` rather than
+  passing as clearance, and a check that cannot complete raises
+  ``ExactCommonVerificationError``. The reverser-tooth survey then
+  showed OCCT's destructive Common altering a reused drum's tolerances
+  until its fortieth comparison was grossly wrong: native Common, Fuse
+  and the witness Section now receive private copies of both operands.
+  ``intersect_shapes`` and the exact assertions share the rules; no
+  mesh verdict, overlap epsilon or universal Boolean repair is claimed.
 
 * **A determined source RETAINS its motion path (ADR-137, ADR-138).**
   The Curta's unchanged crank request carried correctly with six result

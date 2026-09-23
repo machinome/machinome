@@ -3633,6 +3633,13 @@ below are what the review left open.
   cut at `a659cc7` and these cycles open the next release record, or the
   release moves with them. Whichever is chosen, the manual and
   `HISTORY.rst` need the Follow entry before anything is uploaded.
+  **Triaged 23 September:** the pilot chose the second: 0.7.0 releases
+  with these cycles, unbumped. The release record was refolded the same
+  day: changelog, `HISTORY.rst`, release note, status, upgrading, running
+  and publishing pages, `context7.json`, the architecture page and the
+  release facts in `docs/conf.py` now state API 25, schemas 1 to 12,
+  the `Follow` law, the four caches and the two exact-kernel rules, dated
+  23 September 2026.
 - **ADR-141 was accepted without a ratification record.** The cache
   cycles cite the autonomous mandate and say their designs were not
   separately ratified, which is honest and within the mandate. The Follow
@@ -3641,6 +3648,8 @@ below are what the review left open.
   public declaration and a document version are product decisions, not
   performance repairs. **Held for the pilot:** confirm the ratification, or
   the ADR should say it is provisional until he does.
+  **Triaged 23 September:** ratified by the release decision above; the
+  ADR now records it.
 - **`Follow` is deliberately narrow, and the narrowing is recorded only in
   the archived change.** The retained coordinate must be terminal among
   program edges (a downstream reader would need the swept path, not the

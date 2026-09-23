@@ -6,7 +6,7 @@ Changelog
 Machinome 0.7.0
 ---------------
 
-Released on 22/Sep/2026
+Released on 23/Sep/2026
 
 **Source code for machines.** This release continues solid-node 0.6.0
 under a new framework name and GitHub organisation. A machine's source
@@ -44,11 +44,22 @@ one description that can be built, operated and tested.
 * **Tests:** selectable exact/faceted comparisons, faster interference
   checks, strict simulation-time validation, and correct skip and
   expected-failure accounting, including failure on unexpected success.
+* **Exact comparisons fail closed:** an exact common that OCCT reports
+  empty while an independent section and zero-tolerance classification
+  find a point strictly inside both parts, resolved farther from every
+  face than its native tolerance, raises ``ExactCommonInconsistency``
+  instead of passing as clearance; a check that cannot complete raises
+  ``ExactCommonVerificationError``. Native Common, Fuse and that witness
+  Section receive private copies of their operands, so a part compared
+  many times is never altered by an earlier comparison.
+  ``machinome.exact.intersect_shapes`` shares both rules. No mesh
+  verdict or overlap tolerance is introduced.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
   AGPL-3.0-only package. Interactive ``develop`` requires it;
   ``--no-web`` remains available. The matching viewer release 0.7.0,
-  numbered with the framework, implements API 24 and schemas 1–11,
-  including running, clocked, time-driven and source-timed machines.
+  numbered with the framework, implements API 25 and schemas 1–12,
+  including running, clocked, time-driven and source-timed machines and
+  a follower held between two moving surfaces.
 * **Retained clearance pickup:** explicit running ``Play`` relations
   collect and release a follower through clearance; document schema 9
   carries that contact law to the viewer.
@@ -82,6 +93,19 @@ one description that can be built, operated and tested.
   running models for the matching viewer, and restart endpoint-era
   snapshots from the initial state. Posed, looping and clocked schema
   selection is unchanged.
+* **A follower between two moving surfaces:** ``Follow(lower=, upper=)``
+  is the running law for a retained coordinate that rests freely between
+  two independently moving, authored boundaries and is pushed by either
+  only on contact, staying where a retreating surface left it. Its
+  sources are inputs, held bank coordinates or unbranched affine chains;
+  the matching lower and upper ``Bound`` relations on that coordinate
+  locate the first contact at which the surfaces become incompatible,
+  checking the certified cuts as well as the uniform samples, so a
+  narrow inversion between samples is not passed. Unsupported ancestry
+  or a contact too narrow to represent is refused, not approximated. A
+  running export carrying one declares document schema 12; exports
+  without it are unchanged. Born of the Curta Type I's radial
+  positioning ball.
 * **Running performance:** repeated expression evaluation reuses each
   immutable graph's order and operations, running bounds and traced
   constraint searches read determined motion paths instead of replaying
@@ -89,7 +113,13 @@ one description that can be built, operated and tested.
   OpenSCAD presentation has been assembled. On the Curta Type I an
   ordinary two-second crank turn fell from 72.6 to 27.9 CPU seconds with
   an identical result bank; laws, tolerances and sample counts are
-  unchanged.
+  unchanged. Four further cycles on the same machine, each accepted only
+  on bit-identical bound samples and banks: a running bound reuses the
+  proven standing values of its previous successful bind on the same
+  run, a path reuses its own identical successful first-point bind, the
+  two bounds that replay one ``Follow`` prefix share it within a stretch,
+  and identical successful law folds are reused within a tick. A full
+  crank revolution is still not interactive.
 * **Installation:** bound ``ocp-gordon`` below 0.3 so build123d 0.10
   remains compatible with the shared OCP 7.8 runtime in a fresh install.
 * **Documentation:** the manual is reorganised by reader intent around
