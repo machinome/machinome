@@ -3,14 +3,14 @@
 - [x] 0.1 Settled 2026-09-24 (delegated review, repository precedent 27499a5): fold into the 0.7.0 record; the local tag is left for the pilot. The pilot settles design D11: fold into the 0.7.0 record (the
       default, and the tag move is the pilot's), or add an `Unreleased`
       section and amend `user-documentation` and `tests/test_documentation.py`.
-- [ ] 0.2 Check desktop Safari's unprefixed Fullscreen API support against
+- [x] 0.2 Check desktop Safari's unprefixed Fullscreen API support against
       MDN browser-compat-data (design D5). Record the answer in
       `evidence.md`, and add `webkit` fallbacks only if a current desktop
       Safari needs them.
 
 ## 1. Prove the failure
 
-- [ ] 1.1 `src/fullscreen.test.ts`: the pure decisions, red against a
+- [x] 1.1 `src/fullscreen.test.ts`: the pure decisions, red against a
       missing module:
       - `togglesFullscreen`: `f` and `F` toggle; Ctrl, Alt or Meta, repeat,
         `defaultPrevented`, and `input`, `textarea`, `select` or
@@ -21,7 +21,7 @@
       - `fullscreenAvailable`: `fullscreenEnabled` and continuous render
         mode;
       - `fullscreenBackground`: first opaque colour, else white.
-- [ ] 1.2 `src/fullscreen.test.ts` (jsdom, stubbed `requestFullscreen` and
+- [x] 1.2 `src/fullscreen.test.ts` (jsdom, stubbed `requestFullscreen` and
       `exitFullscreen`), covering the controller:
       - no button and no key listener when unavailable;
       - label and title swap on `fullscreenchange`;
@@ -29,10 +29,10 @@
       - Escape is never prevented;
       - with two controllers in one document a body `f` does nothing;
       - dispose exits when the root is full screen.
-- [ ] 1.3 `src/inspector.test.ts`: `mountInspectorWith` registers its
+- [x] 1.3 `src/inspector.test.ts`: `mountInspectorWith` registers its
       viewer pane with the layout root as the full-screen root before
       calling `mount`.
-- [ ] 1.4 `tests/support.py`: export-shaped staging for the touched
+- [x] 1.4 `tests/support.py`: export-shaped staging for the touched
       (running) and calculator (clocked) fixtures beside the existing
       spinner and marked helpers. `tests/test_widget_e2e.py`, a new
       `FullscreenE2ETest`:
@@ -53,65 +53,65 @@
       - `f` in a clocked value field and Ctrl+F do not enter;
       - a harness page iframing the export without `allowfullscreen` shows
         no button and ignores `f`, and one with it shows the button.
-- [ ] 1.5 `tests/test_capture.py`: the staged capture mount page shows no
+- [x] 1.5 `tests/test_capture.py`: the staged capture mount page shows no
       visible `.machinome-fullscreen`, and a capture of the marked fixture
       (no timeline, so a corner button) has a transparent bottom-right
       corner. This goes red only once the button exists, so run it red
       after 2.3 and before 2.5.
-- [ ] 1.6 Run 1.1 to 1.4 and see them fail for the stated reasons.
+- [x] 1.6 Run 1.1 to 1.4 and see them fail for the stated reasons.
 
 ## 2. Implement
 
-- [ ] 2.1 `src/fullscreen.ts`: the pure decisions, the root registry
+- [x] 2.1 `src/fullscreen.ts`: the pure decisions, the root registry
       (`WeakMap`, module-private apart from the register and resolve
       functions the inspector and viewer import), the per-document
       controller set, and the controller (button with SVG glyphs, `place`,
       key listener, `fullscreenchange`, background, dispose).
-- [ ] 2.2 `src/inspector.ts`: register `viewerPane -> root` before
+- [x] 2.2 `src/inspector.ts`: register `viewerPane -> root` before
       `mountFn`.
-- [ ] 2.3 `src/viewer.ts`: create the controller after the container is
+- [x] 2.3 `src/viewer.ts`: create the controller after the container is
       resolved; call `place(...)` after `refreshControls`,
       `rebuildRunChrome` and `rebuildClockedChrome` with the bars just
       built; dispose it first in `dispose()`.
-- [ ] 2.4 Run 1.1 to 1.4 green. Run 1.5 red.
-- [ ] 2.5 `machinome_viewer/capture.py`: the hiding rule on the mount page.
+- [x] 2.4 Run 1.1 to 1.4 green. Run 1.5 red.
+- [x] 2.5 `machinome_viewer/capture.py`: the hiding rule on the mount page.
       Run 1.5 green.
-- [ ] 2.6 `npm run build` in `machinome_viewer/widget` (never `npm ci` or
+- [x] 2.6 `npm run build` in `machinome_viewer/widget` (never `npm ci` or
       `npm install`, and not `scripts/check-dist`). Open the spinner and
       marked exports headed at 1440×900, enter and leave full screen by
       button, `f` and Esc, and keep screenshots in `evidence.md`.
 
 ## 3. Document
 
-- [ ] 3.1 `docs/using-the-viewer.rst`: the full-screen button (bar or
+- [x] 3.1 `docs/using-the-viewer.rst`: the full-screen button (bar or
       corner), `f`, Esc, and that the button is absent where the browser or
       the embedding page does not permit full screen. Folded into the page's
       existing sections, not a section named after the change.
-- [ ] 3.2 `docs/embedding.rst`: add `allowfullscreen` to the iframe
+- [x] 3.2 `docs/embedding.rst`: add `allowfullscreen` to the iframe
       example and state that without it (or `allow="fullscreen"`) the button
       is hidden.
-- [ ] 3.3 `docs/reference/layouts.rst`: the stable class
+- [x] 3.3 `docs/reference/layouts.rst`: the stable class
       `machinome-fullscreen`, and that a host may hide it with CSS.
-- [ ] 3.4 `CHANGELOG.md`: per D11 as settled in 0.1. By default a bullet
+- [x] 3.4 `CHANGELOG.md`: per D11 as settled in 0.1. By default a bullet
       under 0.7.0 "What a maker gets", with no API or version number
       changed.
-- [ ] 3.5 `tests/test_documentation.py`: pin that the manual names the
+- [x] 3.5 `tests/test_documentation.py`: pin that the manual names the
       `f` key and `allowfullscreen`, and that the changelog records full
       screen in the section D11 chose.
 
 ## 4. Validate
 
-- [ ] 4.1 `npx tsc --noEmit` and `npx vitest run` in
+- [x] 4.1 `npx tsc --noEmit` and `npx vitest run` in
       `machinome_viewer/widget`.
-- [ ] 4.2 `pytest` from the worktree root (never two suites at once), and
+- [x] 4.2 `pytest` from the worktree root (never two suites at once), and
       report the browser tests it skips, if any.
-- [ ] 4.3 Build the manual (`make -C docs html`) warning-free.
-- [ ] 4.4 `openspec validate go-fullscreen --strict`.
+- [x] 4.3 Build the manual (`make -C docs html`) warning-free.
+- [x] 4.4 `openspec validate go-fullscreen --strict`.
 
 ## 5. Record
 
-- [ ] 5.1 `evidence.md`: the red and green runs, the Esc finding, the
+- [x] 5.1 `evidence.md`: the red and green runs, the Esc finding, the
       Safari finding and the screenshots.
-- [ ] 5.2 Sync the delta specs, archive the change, and commit the
+- [x] 5.2 Sync the delta specs, archive the change, and commit the
       completed implementation record. Nothing is pushed, tagged or
       uploaded.

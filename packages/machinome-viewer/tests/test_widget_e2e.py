@@ -21,14 +21,15 @@ from unittest import TestCase
 from machinome_viewer.bundle import api_version
 
 from .support import (
-    CHROME, HAS_PIL, HAS_PLAYWRIGHT, export_marked, export_with_widget,
-    needs_bundle, needs_chrome, needs_pil, needs_playwright, serve_directory,
-    strip_markings,
+    CHROME, HAS_PIL, HAS_PLAYWRIGHT, export_calculator, export_marked,
+    export_touched, export_with_widget, needs_bundle, needs_chrome, needs_pil,
+    needs_playwright, serve_directory, strip_markings,
 )
 
 if HAS_PIL:
     from PIL import Image, ImageChops, ImageFilter
 if HAS_PLAYWRIGHT:
+    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
     from playwright.sync_api import sync_playwright
 
 
@@ -90,6 +91,22 @@ class WidgetE2ETest(TestCase):
         changed = self.count_pixels(difference, lambda r, g, b: r + g + b > 30)
         self.assertLess(changed, 500, 't=0 and t=1 should render the same pose')
 
+
+SMALL_HOST_PAGE = """<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      html, body { margin: 0; }
+      #host { width: 200px; height: 150px; position: relative; }
+    </style>
+  </head>
+  <body>
+    <div id="host"></div>
+    <script src="machinome-viewer.js"></script>
+  </body>
+</html>
+"""
 
 HARNESS_PAGE = """<!doctype html>
 <html>
@@ -983,6 +1000,18 @@ MARKED_HARNESS = """<!doctype html>
          answer both of them everywhere. */
       html, body { margin: 0; background: #08183f; }
       #host { width: 640px; height: 480px; position: relative; }
+      /* This bench is drivers-only (no `$t`), so the full-screen control
+         is drawn as a permanent corner overlay (OpenSpec `go-fullscreen`,
+         design D2), squarely inside the clipped canvas shot below. Hidden
+         here for the same reason `WidgetE2ETest.screenshot` crops the
+         control bar off its own shots: this bench's pixel assertions are
+         about the MODEL, and the class is documented as a host's CSS hook
+         for exactly this (`docs/reference/layouts.rst`). Measured NOT to
+         be the cause of this bench's own pre-existing four-pixel
+         near-white reading on the unmarked twin -- that reading is
+         unchanged with or without this rule -- and is left for the pilot
+         rather than adjusted by this change. */
+      .machinome-fullscreen { display: none; }
     </style>
   </head>
   <body>
@@ -1230,3 +1259,259 @@ class MarkedDocumentPixelsTest(TestCase):
         self.assertGreater(travelled, 50,
                            f'the digits did not turn with the dial: {before} '
                            f'-> {after}')
+
+
+@needs_bundle
+@needs_playwright
+class FullscreenE2ETest(TestCase):
+    """The full-screen control (OpenSpec `go-fullscreen`): placement on
+    the control surface each export actually draws (design D2), the `f`
+    key and Escape (design D4), the plain-mount root (design D1), and an
+    iframe's own fullscreen permission (design D5)."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        root = Path(self.tempdir.name) / 'root'
+        spinner = export_with_widget(root / 'spinner')
+        export_marked(root / 'marked')
+        export_touched(root / 'touched')
+        export_calculator(root / 'calculator')
+        # Beside the bundle and the document each mounts (their own
+        # script tags and this test's sourceUrl are all relative).
+        (spinner / 'harness.html').write_text(HARNESS_PAGE)
+        (spinner / 'small.html').write_text(SMALL_HOST_PAGE)
+        server = serve_directory(root)
+        self.base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+
+        # A genuinely CROSS-ORIGIN embed. Confirmed empirically against
+        # this Chromium (evidence.md): a SAME-origin iframe inherits the
+        # Fullscreen API's permission whether or not it carries
+        # `allowfullscreen` at all -- the default permissions-policy
+        # allowlist is `'self'` -- so exercising what the attribute does
+        # needs a different loopback PORT, which is a different origin.
+        outer = Path(self.tempdir.name) / 'outer'
+        outer.mkdir()
+        (outer / 'closed.html').write_text(
+            '<!doctype html><html><body>'
+            f'<iframe src="{self.base}/spinner/index.html" '
+            'style="width:800px;height:600px;border:0"></iframe>'
+            '</body></html>')
+        (outer / 'open.html').write_text(
+            '<!doctype html><html><body>'
+            f'<iframe src="{self.base}/spinner/index.html" allowfullscreen '
+            'style="width:800px;height:600px;border:0"></iframe>'
+            '</body></html>')
+        outer_server = serve_directory(outer)
+        self.outer_base = outer_server.__enter__()
+        self.addCleanup(outer_server.__exit__, None, None, None)
+
+    @contextmanager
+    def open_page(self, url, viewport=None):
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport=viewport or {'width': 800, 'height': 600})
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(url)
+                yield page, errors
+            finally:
+                browser.close()
+
+    # -- placement: the bar a model has, or the corner -----------------
+
+    def test_the_button_is_last_on_the_animation_bar(self):
+        with self.open_page(f'{self.base}/spinner/index.html') as (page, errors):
+            page.wait_for_selector('.machinome-fullscreen')
+            self.assertEqual(page.locator('.machinome-fullscreen').count(), 1)
+            last = page.eval_on_selector(
+                '.animation-controls', 'el => el.lastElementChild.className')
+            self.assertEqual(last, 'machinome-fullscreen')
+            self.assertEqual(errors, [])
+
+    def test_the_button_is_last_on_the_run_transport(self):
+        with self.open_page(f'{self.base}/touched/index.html') as (page, errors):
+            page.wait_for_selector('.machinome-fullscreen')
+            self.assertEqual(page.locator('.machinome-fullscreen').count(), 1)
+            last = page.eval_on_selector(
+                '.run-transport', 'el => el.lastElementChild.className')
+            self.assertEqual(last, 'machinome-fullscreen')
+            self.assertEqual(errors, [])
+
+    def test_the_button_is_in_the_corner_on_a_drivers_only_model(self):
+        with self.open_page(f'{self.base}/marked/index.html') as (page, errors):
+            page.wait_for_selector('.machinome-fullscreen')
+            self.assertEqual(page.locator('.animation-controls').count(), 0)
+            self.assertEqual(page.locator('.run-transport').count(), 0)
+            self.assertEqual(
+                page.locator('.machinome-inspector-viewer > .machinome-fullscreen').count(), 1)
+            self.assertEqual(errors, [])
+
+    def test_the_button_is_in_the_corner_on_a_clocked_machine(self):
+        with self.open_page(f'{self.base}/calculator/index.html') as (page, errors):
+            page.wait_for_selector('.machinome-fullscreen')
+            self.assertEqual(page.locator('.animation-controls').count(), 0)
+            self.assertEqual(page.locator('.run-transport').count(), 0)
+            self.assertEqual(
+                page.locator('.machinome-inspector-viewer > .machinome-fullscreen').count(), 1)
+            self.assertEqual(errors, [])
+
+    # -- entering and leaving -------------------------------------------
+
+    def test_f_enters_full_screen_on_the_inspector_root_and_the_canvas_fills_the_screen(self):
+        with self.open_page(f'{self.base}/spinner/index.html') as (page, errors):
+            page.wait_for_selector('canvas')
+            before_width = page.locator('canvas').bounding_box()['width']
+
+            page.locator('canvas').click()
+            page.keyboard.press('f')
+            page.wait_for_function('document.fullscreenElement !== null', timeout=5_000)
+            self.assertEqual(
+                page.evaluate('document.fullscreenElement.className'),
+                'machinome-inspector')
+            # The ROOT is the full-screen element and fills the viewport
+            # (design D1). The standalone export page already sizes its
+            # host to the whole viewport outside full screen too, so no
+            # GROWTH is observable here; that proof is
+            # `test_a_plain_mount_goes_full_screen_and_the_canvas_grows_to_the_viewport`,
+            # against a host that starts smaller than the viewport. The
+            # CANVAS shares its pane with the always-DOM rail
+            # (inspector.ts design D5), so it fills the viewport's HEIGHT
+            # rather than matching its width to the pixel.
+            fits = page.evaluate("""() => {
+                const root = document.fullscreenElement.getBoundingClientRect();
+                const canvas = document.querySelector('canvas').getBoundingClientRect();
+                return Math.abs(root.width - window.innerWidth) < 2
+                    && Math.abs(root.height - window.innerHeight) < 2
+                    && Math.abs(canvas.height - window.innerHeight) < 2;
+            }""")
+            self.assertTrue(fits, 'the full-screen root did not fill the viewport')
+            self.assertAlmostEqual(
+                page.locator('canvas').bounding_box()['width'], before_width, delta=2,
+                msg='the canvas width unexpectedly changed')
+            self.assertEqual(
+                page.locator('.machinome-fullscreen').get_attribute('aria-label'),
+                'Exit full screen')
+            self.assertEqual(errors, [])
+
+    def test_exiting_restores_the_canvas_size_and_the_label(self):
+        with self.open_page(f'{self.base}/spinner/index.html') as (page, errors):
+            page.wait_for_selector('canvas')
+            before = page.locator('canvas').bounding_box()
+
+            page.locator('canvas').click()
+            page.keyboard.press('f')
+            page.wait_for_function('document.fullscreenElement !== null', timeout=5_000)
+
+            # Whether headless Chromium honours a synthetic Escape as a
+            # native full-screen exit is not established up front
+            # (design, Risks; recorded in evidence.md). Both branches
+            # below prove the same thing the spec asks for: the viewer
+            # never intercepts Escape -- it installs no listener for it
+            # at all -- and the button follows whatever exit path
+            # actually happened.
+            page.keyboard.press('Escape')
+            try:
+                page.wait_for_function('document.fullscreenElement === null', timeout=1_500)
+            except PlaywrightTimeoutError:
+                page.evaluate('document.exitFullscreen()')
+                page.wait_for_function('document.fullscreenElement === null', timeout=5_000)
+
+            restored = ("(before) => {"
+                        "const rect = document.querySelector('canvas').getBoundingClientRect();"
+                        "return Math.abs(rect.width - before.width) <= 2"
+                        "    && Math.abs(rect.height - before.height) <= 2;"
+                        "}")
+            page.wait_for_function(restored, arg=before, timeout=5_000)
+            self.assertEqual(
+                page.locator('.machinome-fullscreen').get_attribute('aria-label'),
+                'Full screen')
+            self.assertEqual(errors, [])
+
+    def test_the_sidebar_toggle_is_reachable_in_full_screen_and_narrows_the_canvas(self):
+        with self.open_page(f'{self.base}/spinner/index.html') as (page, errors):
+            page.wait_for_selector('canvas')
+            page.locator('canvas').click()
+            page.keyboard.press('f')
+            page.wait_for_function('document.fullscreenElement !== null', timeout=5_000)
+            page.wait_for_selector('.machinome-inspector-toggle')
+
+            before = page.locator('canvas').bounding_box()['width']
+            page.locator('.machinome-inspector-toggle').click()
+            narrowed = ("(before) => document.querySelector('canvas')"
+                        ".getBoundingClientRect().width < before")
+            page.wait_for_function(narrowed, arg=before, timeout=5_000)
+            self.assertEqual(errors, [])
+
+    def test_a_plain_mount_goes_full_screen_and_the_canvas_grows_to_the_viewport(self):
+        # A host SMALLER than the viewport (200x150 of 800x600), so
+        # entering full screen is an observable GROWTH, unlike the
+        # standalone export page above, which already fills the viewport
+        # before `f` is ever pressed.
+        with self.open_page(f'{self.base}/spinner/small.html') as (page, errors):
+            page.wait_for_function('typeof MachinomeViewer !== "undefined"')
+            page.evaluate(
+                "MachinomeViewer.mount(document.getElementById('host'), "
+                "'manifest.json', {})")
+            page.wait_for_selector('#host canvas')
+            before = page.locator('#host canvas').bounding_box()
+
+            page.locator('#host canvas').click()
+            page.keyboard.press('f')
+            page.wait_for_function('document.fullscreenElement !== null', timeout=5_000)
+            self.assertTrue(page.evaluate(
+                "document.fullscreenElement === document.getElementById('host')"))
+            grew = page.evaluate("""() => {
+                const rect = document.getElementById('host').getBoundingClientRect();
+                return Math.abs(rect.width - window.innerWidth) < 2
+                    && Math.abs(rect.height - window.innerHeight) < 2;
+            }""")
+            self.assertTrue(grew, 'the host element did not grow to fill the viewport')
+            after = page.locator('#host canvas').bounding_box()
+            self.assertGreater(after['width'], before['width'] * 2,
+                               'the canvas did not follow the host into full screen')
+            self.assertEqual(errors, [])
+
+    # -- the key rule ----------------------------------------------------
+
+    def test_f_in_a_clocked_value_field_does_not_enter_full_screen(self):
+        with self.open_page(f'{self.base}/calculator/index.html') as (page, errors):
+            page.wait_for_selector('.clocked-value')
+            page.locator('.clocked-value').first.click()
+            page.keyboard.press('f')
+            self.assertIsNone(page.evaluate('document.fullscreenElement'))
+            self.assertEqual(errors, [])
+
+    def test_ctrl_f_does_not_enter_full_screen(self):
+        with self.open_page(f'{self.base}/spinner/index.html') as (page, errors):
+            page.wait_for_selector('canvas')
+            page.locator('canvas').click()
+            page.keyboard.press('Control+f')
+            self.assertIsNone(page.evaluate('document.fullscreenElement'))
+            self.assertEqual(errors, [])
+
+    # -- the embedding permission -----------------------------------------
+
+    def test_an_iframe_without_allowfullscreen_hides_the_button_and_ignores_f(self):
+        with self.open_page(f'{self.outer_base}/closed.html') as (page, errors):
+            page.wait_for_selector('iframe')
+            frame = page.frames[1]
+            frame.wait_for_selector('canvas')
+            self.assertEqual(frame.locator('.machinome-fullscreen').count(), 0)
+            frame.locator('canvas').click()
+            page.keyboard.press('f')
+            self.assertIsNone(frame.evaluate('document.fullscreenElement'))
+            self.assertEqual(errors, [])
+
+    def test_an_iframe_with_allowfullscreen_shows_the_button(self):
+        with self.open_page(f'{self.outer_base}/open.html') as (page, errors):
+            page.wait_for_selector('iframe')
+            frame = page.frames[1]
+            frame.wait_for_selector('canvas')
+            frame.wait_for_selector('.machinome-fullscreen')
+            self.assertEqual(frame.locator('.machinome-fullscreen').count(), 1)
+            self.assertEqual(errors, [])

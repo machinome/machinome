@@ -146,6 +146,9 @@ class RealTimePlaybackTest(TestCase):
         }""")
         self.assertFalse(result['select'])
         self.assertFalse(result['readout'])
-        self.assertEqual(result['bar'], 2)
+        # Play, the slider, and the full-screen button the bar now also
+        # carries (OpenSpec `go-fullscreen`, design D2) -- the bar itself
+        # is unchanged by a loop or its absence.
+        self.assertEqual(result['bar'], 3)
         # Accepted and stored, with nothing to apply it to.
         self.assertEqual(result['speed'], 720)

@@ -434,3 +434,53 @@ class MarkedStagedDocumentTest(TestCase):
         self.assertLess(without, 100,
                         'the same staging with its markings removed was '
                         'photographed with one anyway')
+
+
+@needs_bundle
+@needs_playwright
+@needs_pil
+class FullscreenCaptureTest(TestCase):
+    """A capture never carries the full-screen control (OpenSpec
+    `go-fullscreen`, `snapshot-capture` spec). The MARKED fixture declares
+    no `$t` and no program, so its only placement is the bottom-right
+    corner overlay (design D2) -- exactly the pixels a transparent
+    photograph promises are not there, and exactly where the control
+    would otherwise stand."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        self.staging = published_marked(Path(self.tempdir.name) / 'staging')
+        self.capture = Capture(str(self.staging))
+
+    def test_the_mount_page_shows_no_visible_fullscreen_control(self):
+        self.capture.add_viewer(mount_options())
+        with self.capture.serve() as base, sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 320, 'height': 240})
+                page.goto(f'{base}/index.html')
+                page.wait_for_function(
+                    'document.body.dataset.ready || document.body.dataset.error')
+                self.assertIsNone(page.locator('body').get_attribute('data-error'))
+                # Hidden by the mount page's own rule, not absent: proves
+                # the CSS actually reaches the element it names, whether
+                # or not this headless browser offers full screen at all.
+                self.assertEqual(
+                    page.locator('.machinome-fullscreen:visible').count(), 0)
+            finally:
+                browser.close()
+
+    def test_the_photograph_has_a_transparent_bottom_right_corner(self):
+        output = os.path.join(self.tempdir.name, 'shot.png')
+        self.capture.render(output, (320, 240), mount_options())
+        image = Image.open(output).convert('RGBA')
+        # 36px is the corner control's own square (fullscreen.ts,
+        # CORNER_BUTTON_STYLE); comfortably inside it without also
+        # covering the whole canvas.
+        size = 36
+        corner = image.crop(
+            (image.width - size, image.height - size, image.width, image.height))
+        self.assertEqual(set(corner.getchannel('A').getdata()), {0})

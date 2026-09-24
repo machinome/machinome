@@ -97,6 +97,26 @@ def test_describe_example_matches_package_versions():
     assert example['documentVersions'] == widget['machinomeDocumentVersions']
 
 
+def test_full_screen_is_documented():
+    """OpenSpec `go-fullscreen`: the manual names the key and the iframe
+    permission, and the changelog records the capability in the section
+    D11 chose -- the 0.7.0 record, while it is at released state but not
+    uploaded (see `test_the_manual_states_the_release`)."""
+    manual = (ROOT / 'docs/using-the-viewer.rst').read_text()
+    assert 'full screen' in manual.lower()
+    assert '**f**' in manual
+    assert 'Escape' in manual
+    embedding = (ROOT / 'docs/embedding.rst').read_text()
+    assert 'allowfullscreen' in embedding
+    layouts = (ROOT / 'docs/reference/layouts.rst').read_text()
+    assert 'machinome-fullscreen' in layouts
+    changelog = (ROOT / 'CHANGELOG.md').read_text()
+    release = changelog.split('## 0.7.0 — 23 September 2026')[1].split('\n## ')[0]
+    assert 'Full screen' in release
+    assert '`f` key' in release or '`f`' in release
+    assert 'allowfullscreen' in release
+
+
 def test_profile_contact_is_documented_as_part_of_the_release():
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     assert widget['machinomeViewerApi'] == 27

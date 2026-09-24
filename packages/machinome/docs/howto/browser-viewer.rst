@@ -32,6 +32,14 @@ page starts with it open. Narrow containers may need the sidebar closed to
 leave room for the 3D model; the operating panel scrolls when its controls
 do not fit.
 
+Press **f** to watch the model full screen, or use the full-screen button;
+press **Escape**, or the button again, to return. The button sits at the end
+of a running machine's transport bar or the animation timeline when the
+model has one, and otherwise as a small permanent control in the viewer's
+bottom-right corner. Where the browser or the embedding page does not
+permit full screen, such as an iframe without the permission, the button is
+not shown and **f** does nothing.
+
 Three kinds of motion
 =====================
 

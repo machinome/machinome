@@ -13,11 +13,15 @@ Embed a complete export
 
    <iframe src="export/index.html?autoplay=0"
            title="Interactive model of my machine"
+           allowfullscreen
            style="width: 100%; height: 500px; border: 0;"></iframe>
 
 Keep the export's page, bundle, manifest and model directory together. Host
 them over HTTP/HTTPS and give the iframe a useful title and nonzero height.
-Query parameters are described in :doc:`sharing`.
+Query parameters are described in :doc:`sharing`. The ``allowfullscreen``
+attribute (or ``allow="fullscreen"``) lets a reader watch the model full
+screen; without it the viewer hides its full-screen button and the **f** key
+does nothing.
 
 Mount in your own page
 ==========================

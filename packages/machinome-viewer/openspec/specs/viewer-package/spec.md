@@ -339,7 +339,9 @@ no controls, or externally driven time with no controls. When `frames > 1`,
 both zero and one SHALL be reachable timeline values and adjacent positions
 SHALL be separated by `1 / (frames - 1)`; a single frame SHALL expose only
 zero. The host SHALL set initial time and
-autoplay. Scrubbing pauses playback. Static models SHALL present no controls.
+autoplay. Scrubbing pauses playback. Static models SHALL present no animation
+controls. The full-screen control is not an animation control; where it
+appears is stated by "A maker watches the model full screen".
 
 For a document whose `animation` object carries no `loop`, playback SHALL
 cycle every `frames / fps` seconds, exactly as before, and the bar SHALL
@@ -375,7 +377,7 @@ no effect on playback.
 #### Scenario: A host drives time itself
 
 - **WHEN** a host uses externally driven presentation and sets time
-- **THEN** the viewer renders that pose with no controls
+- **THEN** the viewer renders that pose with no animation controls
 
 #### Scenario: A static model
 
@@ -4829,3 +4831,92 @@ When executing a running step, the viewer SHALL refuse a law evaluation it perfo
 
 - **WHEN** a running law `slide = sqrt(0.1 - feed)` starts at `feed=-0.2` and a request reaches the valid boundary `feed=0.1`
 - **THEN** the request retains its existing admitted travel and finite bank result, without a new refusal
+
+### Requirement: A maker watches the model full screen
+
+A viewer mounted with continuous rendering in a document where the browser
+permits full screen SHALL present one full-screen control. The control
+SHALL be a keyboard-focusable button whose accessible name says whether it
+enters or exits full screen, whose title names the `f` key, and whose icon
+is drawn by the package itself rather than taken from a font or a
+dependency. It SHALL be placed on the control surface the viewer draws:
+
+- at the end of the running machine's transport bar, when one is drawn;
+- otherwise at the end of the inline animation timeline bar, when one is
+  drawn;
+- otherwise as a permanently visible overlay in the bottom-right corner of
+  the viewer, for a static model, a model posed only by drivers, a clocked
+  machine, and an animation presented toggled, externally or not at all.
+
+Activating the control SHALL put the viewer's full-screen root into full
+screen, or take it out when it is already full screen. The full-screen root
+SHALL be the element the host gave the viewer, or the whole composed layout
+when the viewer is part of a layout the package mounted, so the model, its
+on-screen chrome and the control all remain on screen. The canvas SHALL
+follow the full-screen size on entering and return to the container's size
+on leaving. While in full screen the root SHALL be painted with the page
+background it was seen on (white when none is set), not the browser's
+black backdrop.
+
+The `f` key, lower or upper case, SHALL toggle full screen when it is pressed
+inside the viewer's full-screen root, or when nothing on the page has focus
+and this is the only viewer in that document able to go full screen. It
+SHALL NOT toggle while the target is a text field, a select, a textarea or
+editable content, while Ctrl, Alt or Meta is held, on key repeat, or when
+another handler has already consumed the key. The viewer SHALL NOT
+intercept Escape. Leaving full screen by Escape or by any other means SHALL
+leave the control showing the true state.
+
+Where the browser does not permit full screen for the document, such as an
+iframe without the full-screen permission or a browser without element full
+screen, the viewer SHALL present no full-screen control, the `f` key SHALL
+do nothing, and nothing SHALL imitate full screen. A viewer in on-demand
+render mode SHALL present no full-screen control. Disposing a viewer whose
+root is full screen SHALL leave full screen first. The control SHALL carry
+the stable class `machinome-fullscreen`, so a host can style or hide it.
+
+#### Scenario: A timeline carries the button
+
+- **WHEN** a model that reads `$t` is mounted with inline animation
+- **THEN** the full-screen button is the last control on its timeline bar
+  and no corner button is drawn
+
+#### Scenario: A running machine carries it on its transport
+
+- **WHEN** a document carrying a program is mounted
+- **THEN** the full-screen button is the last control on the run transport
+  bar
+
+#### Scenario: A model without a timeline carries it in the corner
+
+- **WHEN** a static model, a drivers-only posed model or a clocked machine
+  is mounted
+- **THEN** the full-screen button stands in the bottom-right corner of the
+  viewer, outside any bar, and stays there
+
+#### Scenario: The f key goes full screen and Escape comes back
+
+- **WHEN** the maker clicks the model and presses `f`
+- **THEN** the full-screen root is the document's full-screen element, the
+  canvas fills the screen and the button reads "Exit full screen"
+- **AND WHEN** the maker then presses Escape
+- **THEN** the browser leaves full screen, the canvas returns to its
+  container's size and the button reads "Full screen" again
+
+#### Scenario: Typing is not a shortcut
+
+- **WHEN** the maker types `f` into a value field of the viewer's panel, or
+  presses Ctrl+F
+- **THEN** the viewer does not change full-screen state
+
+#### Scenario: An iframe that does not permit full screen
+
+- **WHEN** an export is embedded in an iframe without `allowfullscreen`
+- **THEN** no full-screen button is drawn and `f` does nothing
+
+#### Scenario: Two viewers on one page
+
+- **WHEN** a page mounts two viewers and nothing has focus
+- **THEN** `f` puts neither in full screen, and `f` pressed on a control
+  inside one of them toggles only that one
+

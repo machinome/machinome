@@ -18,6 +18,7 @@
 import {
   afterEach, beforeEach, describe, expect, it, vi,
 } from 'vitest';
+import { fullscreenRootFor } from './fullscreen';
 import {
   InspectorHandle, mountInspectorWith,
 } from './inspector';
@@ -179,6 +180,29 @@ describe('mounting', () => {
   it("an explicit navigator.styles wins over the layout's own", async () => {
     const { navigatorCalls } = await mount({ styles: 'none', navigator: { styles: 'inject' } });
     expect(navigatorCalls[0].options?.styles).toBe('inject');
+  });
+
+  it('registers the viewer pane with the layout root as the full-screen root before mounting the viewer (OpenSpec go-fullscreen, design D1)', async () => {
+    const collaborators = stubs();
+    let observedRootAtMountTime: HTMLElement | null = null;
+    collaborators.mountFn.mockImplementationOnce(async (target) => {
+      // Read at the moment the viewer itself mounts, so this proves the
+      // ORDER (design D1: "registers ... before it calls mountFn"), not
+      // merely that the registration eventually exists.
+      observedRootAtMountTime = fullscreenRootFor(target as HTMLElement);
+      return collaborators.viewerHandle;
+    });
+
+    const handle = await mountInspectorWith(
+      collaborators.mountFn, collaborators.mountNavigatorFn, container, 'viewer.json',
+    );
+    handles.push(handle);
+
+    const root = container.querySelector('.machinome-inspector');
+    expect(root).not.toBeNull();
+    expect(observedRootAtMountTime).toBe(root);
+    const viewerPane = container.querySelector('.machinome-inspector-viewer');
+    expect(fullscreenRootFor(viewerPane as HTMLElement)).toBe(root);
   });
 });
 

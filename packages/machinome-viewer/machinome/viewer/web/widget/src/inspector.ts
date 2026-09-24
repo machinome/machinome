@@ -14,6 +14,7 @@
 // its own test stubs (design D15). `mountInspector` is the only thing
 // `widget.ts` sees; the seam is not re-exported from there.
 
+import { registerFullscreenRoot } from './fullscreen';
 import { mountNavigator, NavigatorHandle, NavigatorOptions } from './navigator';
 import { mount, ViewerHandle, ViewerOptions } from './viewer';
 
@@ -202,6 +203,13 @@ export async function mountInspectorWith(
   }
 
   toggle.addEventListener('click', () => setSidebar(!open));
+
+  // Registered BEFORE the viewer mounts (OpenSpec `go-fullscreen`, design
+  // D1): the viewer's own full-screen controller resolves its root through
+  // this registry while it builds, so the whole composed layout -- rail,
+  // sidebar and viewer pane together -- goes full screen as one, not only
+  // the pane.
+  registerFullscreenRoot(viewerPane, root);
 
   let viewer: ViewerHandle;
   try {

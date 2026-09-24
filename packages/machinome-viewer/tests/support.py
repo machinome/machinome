@@ -183,6 +183,33 @@ def published_marked(target):
     return Path(target)
 
 
+def export_touched(target):
+    """Copy the TOUCHED (running) fixture into ``target`` and complete it
+    with the installed widget files, exactly as `machinome export` would
+    have -- :func:`export_with_widget`'s shape, over the running touched
+    fixture. The fixture ships published (``viewer.json``); an EXPORT
+    names its document ``manifest.json``, as the shipped ``index.html``
+    expects (OpenSpec `go-fullscreen`)."""
+    shutil.copytree(TOUCHED, target)
+    (Path(target) / 'viewer.json').rename(Path(target) / 'manifest.json')
+    shutil.copy2(bundle_path(), Path(target) / 'machinome-viewer.js')
+    shutil.copy2(index_path(), Path(target) / 'index.html')
+    return Path(target)
+
+
+def export_calculator(target):
+    """Copy the CALCULATOR (clocked) fixture into ``target`` and complete
+    it with the installed widget files, exactly as `machinome export`
+    would have -- :func:`export_with_widget`'s shape, over the clocked
+    calculator fixture. Renamed to ``manifest.json`` for the same reason
+    as :func:`export_touched` (OpenSpec `go-fullscreen`)."""
+    shutil.copytree(CALCULATOR, target)
+    (Path(target) / 'viewer.json').rename(Path(target) / 'manifest.json')
+    shutil.copy2(bundle_path(), Path(target) / 'machinome-viewer.js')
+    shutil.copy2(index_path(), Path(target) / 'index.html')
+    return Path(target)
+
+
 def strip_markings(document_path, target_path=None):
     """Write ``document_path`` again with every `markings` key removed.
 

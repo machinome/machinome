@@ -245,3 +245,15 @@ Prefix variable suffixes with ``--machinome-inspector-``:
 When using ``styles: 'none'``, supply structural layout rules as well as colors;
 variables alone are not a stylesheet. Keep the sidebar's ``hidden`` behavior
 and visible focus states. Private renderer DOM is not a stable styling API.
+
+Full-screen class
+-----------------
+
+The full-screen control carries the stable class ``machinome-fullscreen``,
+wherever it is placed: on a running machine's transport bar, on the inline
+animation timeline, or as the permanent corner overlay. A host may style it
+or hide it with CSS, for example to suppress it in a kiosk display:
+
+.. code-block:: css
+
+   .machinome-fullscreen { display: none; }

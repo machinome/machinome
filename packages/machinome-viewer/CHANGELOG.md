@@ -58,6 +58,14 @@ versions 1 through 13. Install both with `pip install "machinome[viewer]"`.
   document and its controls are unchanged.
 - **Markings.** Digits and other markings a part carries are drawn on its
   surface, so a calculator's dials can be read.
+- **Full screen.** A full-screen button, and the `f` key, on a running
+  machine's transport bar, on the inline animation timeline, or, for a
+  static model, a drivers-only posed model or a clocked machine, as a
+  permanent corner overlay. The whole composed layout goes full screen, with
+  the model's own page background instead of the browser's black backdrop.
+  Escape leaves it, as does the button; absent where the browser or the
+  embedding page does not permit full screen, such as an iframe without
+  `allowfullscreen`. Never drawn in a headless capture.
 
 ### What a host gets
 

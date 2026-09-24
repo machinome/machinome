@@ -218,6 +218,7 @@ class Capture:
 html,body,#host{{margin:0;width:100%;height:100%;overflow:hidden;
 background:transparent}}
 canvas{{background:transparent}}
+.machinome-fullscreen{{display:none!important}}
 </style></head><body><div id="host"></div>
 <script src="{BUNDLE_NAME}"></script><script>
 MachinomeViewer.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{

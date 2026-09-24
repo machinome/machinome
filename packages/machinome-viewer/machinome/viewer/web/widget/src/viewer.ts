@@ -78,6 +78,10 @@ import type {
   LoadedControl, Ray, SweepMode, Vec3, WorldLine,
 } from './partControls';
 import { API_VERSION } from './version';
+import {
+  createFullscreenController, fullscreenRootFor,
+} from './fullscreen';
+import type { FullscreenController } from './fullscreen';
 
 export type AnimationMode = 'inline' | 'toggle' | 'none' | 'external';
 // Whether the widget presents the driver chrome itself. A host building
@@ -317,6 +321,28 @@ export async function mount(
   const container = resolveContainer(target);
   const resolved = resolveOptions(options);
   const baseUrl = resolveBaseUrl(sourceUrl, resolved.baseUrl ?? undefined);
+  // Full-screen viewing (OpenSpec `go-fullscreen`, design D1). The root is
+  // the whole composed layout when `inspector.ts` registered one for this
+  // container, or the container itself for a plain mount; the corner
+  // button is anchored on the container either way (design D2). The
+  // controller decides for itself whether full screen is available
+  // (design D5) -- every call site below treats it uniformly.
+  const fullscreenRoot = fullscreenRootFor(container);
+  const fullscreen: FullscreenController = createFullscreenController(
+    fullscreenRoot, container, resolved.renderMode);
+  // The `.run-transport` and inline-styled `.animation-controls` bars this
+  // mount currently has, kept so a rebuild of one chrome does not lose
+  // track of what the other last built (design D2). Only an inline,
+  // STYLED animation bar counts -- a toggled or externally driven one is
+  // not "permanent" (design D2).
+  let animationBarElement: HTMLElement | undefined;
+  let runTransportElement: HTMLElement | undefined;
+  function placeFullscreenControl(): void {
+    fullscreen.place({
+      runTransport: runTransportElement,
+      animationBar: animationBarElement,
+    });
+  }
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 1.2));
   const sun = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -1346,10 +1372,20 @@ export async function mount(
       : 0;
     clockedChrome?.remove();
     clockedChrome = undefined;
-    if (machine === undefined || loadedMachine === null) return;
+    if (machine === undefined || loadedMachine === null) {
+      // The clocked panel never contributes to full-screen placement --
+      // it lives in the side rail, not a bottom bar (design D2) -- but a
+      // rebuild is still the moment to re-assert wherever the button
+      // currently belongs.
+      placeFullscreenControl();
+      return;
+    }
     // The same switch as the posed chrome's, gating the PIXELS only: a
     // host that suppresses them keeps the whole machine API.
-    if (!showsRunControls(resolved.driverControls, true)) return;
+    if (!showsRunControls(resolved.driverControls, true)) {
+      placeFullscreenControl();
+      return;
+    }
     const layer = clockedControlLayer({
       machine: loadedMachine,
       // What the panel reads is what the model is SHOWING: while a
@@ -1436,6 +1472,7 @@ export async function mount(
       focus: focusOn,
     });
     clockedChrome.element.scrollTop = scrollTop;
+    placeFullscreenControl();
   }
 
   const replaceTree = async (view: View | null) => {
@@ -1493,6 +1530,7 @@ export async function mount(
     cycleSeconds = cycleSecondsFor(animation, speed);
     speedControl = undefined;
     readout = undefined;
+    animationBarElement = undefined;
     if (plan.bar) {
       const built = buildControls(
         container,
@@ -1511,6 +1549,12 @@ export async function mount(
       slider.value = String(timelinePosition(time, animation.frames));
       if (readout && animation.loop !== undefined) {
         readout.textContent = formatMachineTime(time * animation.loop, animation.loop);
+      }
+      // Only the inline, STYLED bar is a "permanent" control surface
+      // (design D2): a toggled bar starts hidden, and a control inside it
+      // would not be.
+      if (plan.styled) {
+        animationBarElement = built.bar;
       }
     }
     // After the store and the navigation have reconciled, so the chrome
@@ -1622,13 +1666,16 @@ export async function mount(
   function rebuildRunChrome(): void {
     runChrome?.remove();
     runChrome = undefined;
+    runTransportElement = undefined;
     const started = runtime;
     if (loadedProgram === null || started === undefined) {
+      placeFullscreenControl();
       return;
     }
     // The same switch as the posed chrome's, gating the pixels only: a
     // host that suppresses them keeps the whole run API.
     if (!showsRunControls(resolved.driverControls, true)) {
+      placeFullscreenControl();
       return;
     }
     const unit = (id: string): string | null =>
@@ -1684,8 +1731,10 @@ export async function mount(
       setSpeed,
       focus: focusOn,
     });
+    runTransportElement = runChrome.transportElement;
     runChrome.notice(republishNotice);
     refreshTransport();
+    placeFullscreenControl();
   }
 
   // The initial load: retains the shared expression table (D8)
@@ -1767,6 +1816,10 @@ export async function mount(
         return;
       }
       disposed = true;
+      // First (task `go-fullscreen` 2.3, design D9): leaves full screen
+      // before anything else about the mount is torn down, so a disposed
+      // mount is never left full screen and empty.
+      fullscreen.dispose();
       renderer.setAnimationLoop(null);
       clockedDrawing = null;
       drawnBank = null;
@@ -3289,6 +3342,7 @@ function buildControls(
   speedControl?: HTMLSelectElement;
   readout?: HTMLElement;
   elements: HTMLElement[];
+  bar: HTMLElement;
 } {
   const frames = animation.frames;
   const bar = document.createElement('div');
@@ -3376,7 +3430,9 @@ function buildControls(
     elements.unshift(toggle);
   }
   container.append(bar);
-  return { slider, speedControl, readout, elements };
+  return {
+    slider, speedControl, readout, elements, bar,
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -3422,6 +3478,9 @@ interface RunChrome {
   notice(message: string | null): void;
   clearOutcomes(): void;
   remove(): void;
+  /** The `.run-transport` bar (design D2, `go-fullscreen`): where the
+   * full-screen button belongs when a program is running. */
+  transportElement: HTMLElement;
 }
 
 // All three kinds share one bounded side rail. Dense running rows wrap
@@ -3949,6 +4008,7 @@ function buildRunChrome(
       panel.remove();
       bar.element.remove();
     },
+    transportElement: bar.element,
   };
 }
 
