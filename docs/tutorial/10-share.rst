@@ -34,9 +34,12 @@ The simplest host is an iframe of the exported page:
 
 .. code-block:: html
 
-    <iframe src="export/index.html"
+    <iframe src="export/index.html" allowfullscreen
             style="width: 100%; height: 480px; border: 0;">
     </iframe>
+
+``allowfullscreen`` lets the reader watch the model full screen; without
+it the viewer hides its full-screen button.
 
 A page that wants its own controls loads the bundle and mounts the viewer
 through its browser API; the `viewer manual

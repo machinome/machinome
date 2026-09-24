@@ -182,7 +182,7 @@ def visit_machinome_iframe(self, node):
     self.body.append(
         f'<iframe src="{html.escape(src)}" '
         f'style="width: 100%; height: {node["height"]}; border: 0;" '
-        'loading="lazy"></iframe>\n'
+        'loading="lazy" allowfullscreen></iframe>\n'
     )
     raise nodes.SkipNode
 

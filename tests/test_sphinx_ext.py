@@ -122,6 +122,9 @@ class DirectiveTest(SphinxExtBaseTest):
         self.assertIn('<iframe', html)
         self.assertIn('src="_machinome/spinner_export/index.html"',
                       html)
+        # the viewer shows its full-screen control only where the frame
+        # permits full screen (allow-embedded-fullscreen)
+        self.assertIn('allowfullscreen', html)
 
         copied = os.path.join(self.outdir, '_machinome',
                               'spinner_export')

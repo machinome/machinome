@@ -24,7 +24,8 @@ Then, in any document:
 The argument is the path to an export directory, relative to the current
 document, or to the documentation source directory with a leading ``/``.
 The directory is copied into the HTML output and embedded as an
-``<iframe>``.
+``<iframe>`` that allows full screen, so the reader can watch the model
+full screen with the viewer's button or the ``f`` key.
 
 Options:
 
