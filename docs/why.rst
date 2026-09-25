@@ -84,7 +84,7 @@ Exports carry the model to a static web page; readers inspect its parts
 and operate its inputs without installing a CAD stack.
 
 The framework is Apache-2.0. The independent browser viewer is
-AGPL-3.0-only, and example designs retain their own licences. Publishing
+AGPL-3.0-or-later, and example designs retain their own licences. Publishing
 a design's source keeps its dimensions, relationships and tests available
 to the next person who needs to repair or adapt it.
 

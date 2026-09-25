@@ -2175,7 +2175,7 @@ their own origins. Collision remains world-framed and time-dependent.
 ### Viewers (VIEWER-WEB · specs `viewer-distribution`, `cli`)
 
 The browser viewer is not in this repository. It is `machinome-viewer`, an
-independent AGPL-3.0-only package installed through the `viewer` extra
+independent AGPL-3.0-or-later package installed through the `viewer` extra
 (ADR-068/103); the framework is Apache-2.0 and complete for non-interactive
 use without it. The OpenSCAD CLI remains the default fixed-pose snapshot
 renderer, not an interactive viewer.

@@ -33,6 +33,10 @@ CAVEATS = re.compile(
 
 ALLOWED_CAVEATS = ('project/status.rst', 'releases/')
 
+# The viewer grants AGPL-3.0-or-later (25 September 2026). Nothing the manual
+# describes is licensed version-3-only, so the spelling is a stale fact.
+STALE_GRANT = 'AGPL-3.0-only'
+
 # The real machines are shown on machinome.org; the examples page sends the
 # reader there and the manual pins no example repository.
 SITE_FOUNDRY = 'https://machinome.org/foundry/'
@@ -82,6 +86,15 @@ class NavigationTest(unittest.TestCase):
                         'releases/development-0.7.rst'):
             with self.subTest(retired=retired):
                 self.assertFalse((DOCS / retired).exists(), retired)
+
+
+class LicenceWordingTest(unittest.TestCase):
+
+    def test_no_page_names_the_old_viewer_grant(self):
+        pages = list(documents()) + [('README.rst', (REPO / 'README.rst').read_text())]
+        for relative, text in pages:
+            with self.subTest(document=relative):
+                self.assertNotIn(STALE_GRANT, text)
 
 
 class ReleaseFactsTest(unittest.TestCase):

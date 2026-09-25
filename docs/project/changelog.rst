@@ -55,7 +55,7 @@ one description that can be built, operated and tested.
   ``machinome.exact.intersect_shapes`` shares both rules. No mesh
   verdict or overlap tolerance is introduced.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
-  AGPL-3.0-only package. Interactive ``develop`` requires it;
+  AGPL-3.0-or-later package. Interactive ``develop`` requires it;
   ``--no-web`` remains available. The matching viewer release 0.7.0,
   numbered with the framework, implements API 27 and schemas 1–13,
   including running, clocked, time-driven and source-timed machines, a

@@ -89,7 +89,7 @@ source and licence.
 
 The framework is **Apache-2.0**. The optional
 `Machinome Viewer <https://github.com/machinome/machinome-viewer>`_
-is **AGPL-3.0-only**, installed through ``viewer``.
+is **AGPL-3.0-or-later**, installed through ``viewer``.
 Ordinary ``machinome develop`` requires it. Without it, the framework
 builds, tests, exports with ``--no-widget``, watches with
 ``develop --no-web``, and takes fixed-pose OpenSCAD snapshots.

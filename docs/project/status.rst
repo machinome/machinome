@@ -40,7 +40,7 @@ Packages
 --------
 
 Machinome is Apache-2.0. Machinome Viewer is an optional, independent
-AGPL-3.0-only package, installed
+AGPL-3.0-or-later package, installed
 through the ``viewer`` extra. The framework builds and tests without it;
 interactive development requires it. Machinome Mechanics
 |mechanics_version| is the optional helper package behind the

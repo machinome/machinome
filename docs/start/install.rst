@@ -33,7 +33,7 @@ Two packages, two licences
 
 The framework is one package, ``machinome``, licensed Apache-2.0. The
 browser viewer is a separate package, `machinome-viewer
-<https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-only,
+<https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``
 extra installs it. Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes

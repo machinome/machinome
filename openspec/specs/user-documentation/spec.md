@@ -343,7 +343,7 @@ as the import path for the port kinds and the time base.
 
 Every documentation page that installs, opens, embeds or photographs through
 the browser viewer SHALL state that the viewer is the separate
-`machinome-viewer` package, licensed AGPL-3.0-only, installed with
+`machinome-viewer` package, licensed AGPL-3.0-or-later, installed with
 `pip install "machinome[viewer]"`. It SHALL state that interactive
 `machinome develop` requires that package, while a plain framework installation
 can build, test, export without the widget, run `machinome develop --no-web`, and

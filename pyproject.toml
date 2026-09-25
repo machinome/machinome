@@ -76,7 +76,7 @@ docs = [
     "sphinx",
     "sphinx_rtd_theme",
 ]
-# The browser viewer is a separate, AGPL-3.0-only package. The framework is
+# The browser viewer is a separate AGPL-3.0-or-later package. The framework is
 # complete for non-interactive use without it; interactive development needs
 # this extra. OpenSCAD remains the default fixed-pose snapshot renderer.
 viewer = [

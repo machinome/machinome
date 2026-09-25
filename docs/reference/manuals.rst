@@ -10,8 +10,8 @@ subject; this one links rather than restates.
     posed, running and clocked machines, publishing exports and
     snapshots, the complete embedding API with a working host page, and
     compatibility with document versions. The package is
-    ``machinome-viewer`` |viewer_version|, AGPL-3.0-only, installed
-    through the framework's ``viewer`` extra.
+    ``machinome-viewer`` |viewer_version|, AGPL-3.0-or-later,
+    installed through the framework's ``viewer`` extra.
 
 `Machinome Mechanics <https://machinome-mechanics.readthedocs.io/en/latest/>`_
     Twenty-four formulas for gears, lead screws, slider-cranks, cams,

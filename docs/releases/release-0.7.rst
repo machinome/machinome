@@ -87,10 +87,11 @@ commands, project tables, environment settings and browser integration
 together. No old import or command alias is installed. Constructor-based
 models remain supported, so declarations can be adopted incrementally.
 
-The framework remains Apache-2.0. The viewer is a separate AGPL-3.0-only
-package selected by ``machinome[viewer]``; non-interactive builds and
-tests work without it. The independent mechanics helpers have their own
-extra. Machinome Studio remains experimental and unpublished.
+The framework remains Apache-2.0. The viewer is a separate
+AGPL-3.0-or-later package selected by ``machinome[viewer]``;
+non-interactive builds and tests work without it. The independent
+mechanics helpers have their own extra. Machinome Studio remains
+experimental and unpublished.
 
 See :doc:`/start/install` for installation and :doc:`/project/changelog`
 for the capability summary and historical release notes.

@@ -116,8 +116,8 @@ and their limits.
 Install a matching viewer
 --------------------------
 
-The independent AGPL-3.0-only viewer is installed through the ``viewer``
-extra. It is required by ordinary ``machinome develop``.
+The independent AGPL-3.0-or-later viewer is installed through the
+``viewer`` extra. It is required by ordinary ``machinome develop``.
 ``--no-web`` retains the watch-and-build loop. OpenSCAD remains a
 modelling backend and snapshot renderer; ``develop --openscad`` is no
 longer an interactive-viewer option.

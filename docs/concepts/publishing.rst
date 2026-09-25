@@ -95,8 +95,9 @@ than rendering part of a machine it does not understand.
 The viewer
 ----------
 
-The viewer is the separate ``machinome-viewer`` package, AGPL-3.0-only,
-installed through the ``viewer`` extra, and reached only as a separate
+The viewer is the separate ``machinome-viewer`` package,
+AGPL-3.0-or-later, installed through the ``viewer`` extra, and reached
+only as a separate
 process: ``machinome develop`` starts its server on the build directory,
 ``machinome export`` copies its page and bundle, ``machinome snapshot
 --renderer web`` hands it the model for a headless capture. ``machinome
