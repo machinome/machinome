@@ -205,16 +205,21 @@ function isSoleController(doc: Document, token: object): boolean {
   return set !== undefined && set.size === 1 && set.has(token);
 }
 
+// Neither style sets `display`. The button keeps the browser's own, and
+// the icon is a block filling the padding box, so the host's documented
+// rule `.machinome-fullscreen { display: none }` (docs/reference/
+// layouts.rst) wins: an inline `display` would beat it, and did until
+// 25 September 2026, when the marked pixel bench photographed the corner
+// button's icon.
 const BAR_BUTTON_STYLE =
   'background:none;border:none;color:inherit;cursor:pointer;'
-  + 'padding:2px 4px;line-height:1;display:inline-flex;'
-  + 'align-items:center;justify-content:center;flex:0 0 auto;';
+  + 'padding:2px 4px;line-height:1;flex:0 0 auto;';
 
 const CORNER_BUTTON_STYLE =
   'position:absolute;right:8px;bottom:8px;width:36px;height:36px;'
-  + 'display:flex;align-items:center;justify-content:center;'
+  + 'box-sizing:border-box;padding:9px;'
   + 'background:rgba(30,33,38,0.65);color:#fff;border:none;'
-  + 'border-radius:4px;cursor:pointer;padding:0;z-index:2;';
+  + 'border-radius:4px;cursor:pointer;z-index:2;';
 
 // Drawn by the package itself, never a font glyph (design D3): the run
 // transport already avoids transport glyphs for the same reason -- a
@@ -222,11 +227,13 @@ const CORNER_BUTTON_STYLE =
 // standing at the box's own corners, arms pointing inward; "exit" is the
 // same four brackets pulled in toward the centre, arms pointing outward.
 const ENTER_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" '
+  + 'style="display:block" '
   + 'aria-hidden="true" focusable="false"><path d="M4 9V4h5M15 4h5v5'
   + 'M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" '
   + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const EXIT_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" '
+  + 'style="display:block" '
   + 'aria-hidden="true" focusable="false"><path d="M9 4V9H4M15 4V9H20'
   + 'M15 20V15H20M9 20V15H4" fill="none" stroke="currentColor" '
   + 'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';

@@ -235,6 +235,24 @@ describe('createFullscreenController, available', () => {
     controller.dispose();
   });
 
+  it("sets no inline display, so a host's `.machinome-fullscreen { display: none }` rule hides it in every placement", () => {
+    // The manual's own example (docs/reference/layouts.rst). An inline
+    // `display` beats any host stylesheet rule, and did until 25 September
+    // 2026, when the marked pixel bench photographed the corner button.
+    stubFullscreenApi();
+    const controller = createFullscreenController(container, container, 'continuous');
+    const runTransport = document.createElement('div');
+    const animationBar = document.createElement('div');
+    container.append(runTransport, animationBar);
+    for (const bars of [{ runTransport, animationBar }, { animationBar }, {}]) {
+      controller.place(bars);
+      const button = document.querySelector<HTMLButtonElement>('.machinome-fullscreen')!;
+      expect(button.style.display).toBe('');
+      expect(button.style.cssText).not.toMatch(/(^|;)\s*display\s*:/);
+    }
+    controller.dispose();
+  });
+
   it('places the button on the run transport, else the animation bar, else the corner', () => {
     stubFullscreenApi();
     const controller = createFullscreenController(container, container, 'continuous');

@@ -44,3 +44,13 @@ version 3 or any later version rather than version 3 only, in every header,
 both manifests, the bundle banner and the manual (change
 `relicense-to-agpl-or-later`); the `v0.7.0` tag is re-cut on the integrated
 head.
+
+25 September 2026, CI red at 0761145 (run 36125015897) for two test
+reasons, both fixed before the tag is re-cut: the new licence test scanned
+its own source, and the marked pixel bench photographed the corner
+full-screen button, whose inline `display` beat the manual's own hide rule
+`.machinome-fullscreen { display: none }`. The button now sets no inline
+`display` (the icon is a block filling its padding box), a unit test holds
+that, and the bench proves the documented rule in a real browser. The
+"pre-existing environmental flake" the `go-fullscreen` record describes was
+this button: its hide rule never applied.

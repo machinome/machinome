@@ -1005,12 +1005,12 @@ MARKED_HARNESS = """<!doctype html>
          design D2), squarely inside the clipped canvas shot below. Hidden
          here for the same reason `WidgetE2ETest.screenshot` crops the
          control bar off its own shots: this bench's pixel assertions are
-         about the MODEL, and the class is documented as a host's CSS hook
-         for exactly this (`docs/reference/layouts.rst`). Measured NOT to
-         be the cause of this bench's own pre-existing four-pixel
-         near-white reading on the unmarked twin -- that reading is
-         unchanged with or without this rule -- and is left for the pilot
-         rather than adjusted by this change. */
+         about the MODEL. The rule is the manual's own example of the
+         host's CSS hook (`docs/reference/layouts.rst`), written exactly
+         as documented, so this bench also proves the hook works: while
+         the button carried an inline `display`, the rule lost to it and
+         the unmarked twin photographed the four corners of the button's
+         icon as four near-white pixels (CI run 36125018574). */
       .machinome-fullscreen { display: none; }
     </style>
   </head>
