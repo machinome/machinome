@@ -48,8 +48,9 @@ rst_prolog = f'''
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',
               'machinome.sphinx']
 
-# Heavy runtime dependencies are mocked so autodoc can import machinome
-# on Read the Docs without installing the full CAD stack
+# The runtime dependencies are mocked so autodoc can import machinome from
+# the source tree with Sphinx, the theme and the viewer installed and
+# nothing else: the documentation build runs no CAD stack.
 autodoc_mock_imports = [
     'trimesh',
     'numpy',
@@ -61,11 +62,12 @@ autodoc_mock_imports = [
     'molejo',
     'scipy',
     'rtree',
+    'OCP',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'examples/**', 'tutorial/counter/**',
-                    'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'tutorial/counter/**', 'Thumbs.db',
+                    '.DS_Store']
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

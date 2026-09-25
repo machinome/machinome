@@ -2825,8 +2825,12 @@ The short list that changes must not silently break:
 - **Create React App is deprecated** (ADR-013, now in machinome-viewer):
   the development shell's toolchain carries migration debt (Vite or similar),
   owed by the viewer repository.
-- **The viewer is installed from Git in CI and on Read the Docs** until
-  machinome-viewer is published on PyPI.
+- **The manual's build installs the viewer from PyPI**
+  (`docs/requirements.txt`, on Read the Docs and in the CI docs job; the
+  build produces nothing else, since the example machines moved to
+  machinome.org), so it builds only once machinome-viewer is uploaded;
+  the CI browser-snapshot job still installs the viewer from Git until
+  then.
 - **Sequential STL rendering**: `build_stls` renders one STL at a
   time; cold builds could parallelize `openscad` jobs
   (`docs/performance-improvement.md` §4–5, unscheduled).

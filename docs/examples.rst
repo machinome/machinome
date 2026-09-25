@@ -4,45 +4,36 @@
 Examples
 ========
 
-Three real machines, one for each way a machine runs. Each has its own
-page and one live model, and each comes from the **Machinome Foundry**,
-the GitHub organisation at `github.com/machinome-foundry
-<https://github.com/machinome-foundry>`_ where simulations of open-source
-machines built with Machinome are kept: printers, calculators, clocks,
-robot arms and hands, actuators, lab equipment and more, each beside the
-design it simulates, each stating the design's own licence and the
-simulation's. Browse it for a machine like the one you are building.
-The three here are machines to explore after the tutorial, not code to
-copy into a first project.
+Real machines built with Machinome are shown on `machinome.org
+<https://machinome.org/>`_. Its `Foundry <https://machinome.org/foundry/>`_
+keeps a simulation of an open-source machine beside the design it
+simulates, shows it live in the browser, and states the design's own
+licence and the simulation's: printers, calculators, clocks, robot arms
+and hands, actuators, lab equipment and more. Browse it for a machine
+like the one you are building. They are machines to explore after the
+tutorial, not code to copy into a first project.
 
-.. toctree::
-   :maxdepth: 1
+Look for one of each way a machine runs:
 
-   example-metamaquina2
-   example-pascaline
-   example-curta
+A **posed** machine
+   A RepRap 3D printer whose original OpenSCAD design is read in place:
+   three axis drivers, machine-level instructions, and belts, springs and
+   filament as flexible parts. Ask for an axis position and the printer
+   stands there.
 
-:doc:`example-metamaquina2`
-   A **posed** machine. An open-hardware RepRap 3D printer whose original
-   OpenSCAD design is read in place; three axis drivers, machine-level
-   instructions, and belts, springs and filament as flexible parts.
+A **running** machine
+   A calculator built from decimal columns, whose simulation owns every
+   dial and arbor and moves them by increments: a dial asked to add a
+   digit twice leaves its register at two digits, a carry accumulates in
+   the column above, each input arbor has a ratchet stop, and every dial
+   is itself a control a reader turns by hand.
 
-:doc:`example-pascaline`
-   A **running** machine. Three decimal columns of a modular Pascaline
-   with a corrected carry; the simulation owns every dial and arbor,
-   each input arbor has a ratchet stop, and every dial is itself a
-   control a reader turns by hand.
+A **clocked** machine
+   A hand-held calculator whose setting levers, crank, carriage and
+   clearing ring make requests, whose registers are retained states
+   written at events, and whose interlocks are bounds that hold one part
+   while another is off rest.
 
-:doc:`example-curta`
-   A **clocked** machine. A 3x-scale Curta Type I whose setting levers,
-   crank, carriage and clearing ring make requests, whose registers are
-   retained states written at events, and whose interlocks are bounds
-   that hold one part while another is off rest.
-
-The framework tracks the three Foundry repositories as Git submodules and
-builds their exports when this manual is built; it does not copy their
-design source. Each page names the pinned revision it shows and the
-licences that apply, as the Foundry's licensing policy records them: the
-simulation software the Foundry writes is under the GNU Affero General
-Public License, version 3 or later, wherever the design's own terms permit
-it, and a design keeps its own licence.
+The source of every simulation, with its tests and its records, is kept
+in the `Machinome Foundry <https://github.com/machinome-foundry>`_
+organisation on GitHub.

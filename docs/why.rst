@@ -53,8 +53,8 @@ Keep useful design source. CadQuery and build123d provide exact solids;
 OpenSCAD, SolidPython and JSCAD supply their own geometry. Import a
 vendor's STEP part or an existing STL, derive a sheet part and its DXF
 from one profile, or use a molejo shape for a flexible spring, belt or
-cable. :doc:`Metamaquina 2 <example-metamaquina2>` reads the printer's
-original OpenSCAD parts in place.
+cable. A RepRap printer on machinome.org's Foundry reads its original
+OpenSCAD parts in place.
 
 A project may use one of these throughout or combine several. Machinome
 adds the shared structure, relationships and operating behaviour around
@@ -88,7 +88,7 @@ AGPL-3.0-only, and example designs retain their own licences. Publishing
 a design's source keeps its dimensions, relationships and tests available
 to the next person who needs to repair or adapt it.
 
-Start with :doc:`start/install`, open the :doc:`examples`, or browse the
-`Machinome Foundry <https://github.com/machinome-foundry>`_, the GitHub
-organisation where simulations of open-source machines built this way
-are kept.
+Start with :doc:`start/install`, or browse the Foundry on
+`machinome.org <https://machinome.org/foundry/>`_, where simulations of
+open-source machines built this way are shown live beside their source;
+the :doc:`examples` page says what to look for there.

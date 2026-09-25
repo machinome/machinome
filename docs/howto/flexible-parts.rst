@@ -114,6 +114,6 @@ the values its parent binds, and nothing else.
 
 molejo is an ordinary dependency of Machinome, installed with it and
 pinned by minor version, because a molejo minor carries the shape
-specification version the documents name. The :doc:`Metamaquina 2
-example </example-metamaquina2>` has belts, springs and a filament path
-modelled this way.
+specification version the documents name. A RepRap printer on
+machinome.org's Foundry (see :doc:`/examples`) has belts, springs and a
+filament path modelled this way.

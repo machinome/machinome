@@ -26,8 +26,8 @@ This is the manual for Machinome |release|, released on |release_date|.
 Read :doc:`why` for the idea in one page, :doc:`install <start/install>`
 to set up, then build a machine that counts in the
 :doc:`tutorial <tutorial/01-part>`. The machines the framework grew on
-are in the `Machinome Foundry <https://github.com/machinome-foundry>`_
-on GitHub; three of them are the :doc:`examples`.
+are shown live on `machinome.org <https://machinome.org/>`_, each beside
+its source; the :doc:`examples` page says what to look for there.
 
 .. toctree::
    :maxdepth: 1

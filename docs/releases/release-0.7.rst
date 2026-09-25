@@ -76,9 +76,8 @@ read it, a follower held between two moving surfaces through
 
 The manual teaches one machine from a part to a machine with memory, a
 hand-cranked tally counter, then keeps how-to guides and concept pages
-for the rules. Three examples, Metamaquina 2, the Pascaline module and
-the Curta Type I, offer a posed, a running and a clocked machine to
-inspect alongside their own source.
+for the rules. The real machines the framework grew on, posed, running
+and clocked, are shown live on machinome.org beside their own source.
 
 Adopting 0.7
 -------------

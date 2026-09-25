@@ -153,9 +153,9 @@ one description that can be built, operated and tested.
   remains compatible with the shared OCP 7.8 runtime in a fresh install.
 * **Documentation:** the manual is reorganised by reader intent around
   one tutorial machine, a hand-cranked tally counter built from a part
-  to a machine with memory, with how-to guides, concept pages and one
-  worked example per execution model: Metamaquina 2, the Pascaline
-  module and the Curta Type I.
+  to a machine with memory, with how-to guides and concept pages; the
+  real machines, posed, running and clocked, are shown on machinome.org,
+  and the manual builds from Sphinx and the viewer package alone.
 * **Printed pieces:** a piece id digests the artifact's oriented
   triangles, not its raw STL bytes, so one solid that OpenSCAD 2021.01
   writes in a different facet order is still one piece. Every piece id

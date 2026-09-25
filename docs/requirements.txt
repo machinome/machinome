@@ -1,4 +1,5 @@
 sphinx
 sphinx_rtd_theme
-# External example exports include flexible parts evaluated through molejo.
-molejo[brep]
+# The committed exports under docs/_exports/ carry no widget; the published
+# viewer completes them at build time.
+machinome-viewer

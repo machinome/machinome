@@ -127,5 +127,5 @@ change at events and everything else is a function of them; it costs one
 pose per request, whatever the stroke, and locates every event exactly.
 The tutorial's counter is written all three ways
 (:doc:`/tutorial/07-scenario`, :doc:`/tutorial/08-running`,
-:doc:`/tutorial/09-clocked`), and the three :doc:`examples </examples>`
-are one of each.
+:doc:`/tutorial/09-clocked`), and the :doc:`examples </examples>` page
+points at a real machine of each kind.

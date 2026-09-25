@@ -33,14 +33,15 @@ CAVEATS = re.compile(
 
 ALLOWED_CAVEATS = ('project/status.rst', 'releases/')
 
-# Every example is a Foundry repository, pinned as a submodule.
-FOUNDRY = 'https://github.com/machinome-foundry'
+# The real machines are shown on machinome.org; the examples page sends the
+# reader there and the manual pins no example repository.
+SITE_FOUNDRY = 'https://machinome.org/foundry/'
 
 
 def documents():
     for rst in sorted(DOCS.rglob('*.rst')):
         relative = rst.relative_to(DOCS).as_posix()
-        if relative.startswith(('_build', 'examples/')):
+        if relative.startswith('_build'):
             continue
         yield relative, rst.read_text()
 
@@ -63,16 +64,18 @@ class NavigationTest(unittest.TestCase):
             'one module per chapter that builds a machine; chapter ten '
             'shares the ninth')
 
-    def test_the_examples_come_from_the_foundry(self):
-        modules = (REPO / '.gitmodules').read_text()
-        for url in re.findall(r'url = (\S+)', modules):
-            with self.subTest(url=url):
-                self.assertTrue(url.startswith(FOUNDRY + '/'), url)
-        for page in ('example-metamaquina2.rst', 'example-pascaline.rst',
-                     'example-curta.rst'):
-            with self.subTest(page=page):
-                self.assertIn(FOUNDRY, (DOCS / page).read_text())
-        self.assertIn(FOUNDRY, (DOCS / 'examples.rst').read_text())
+    def test_the_examples_are_on_the_site(self):
+        page = (DOCS / 'examples.rst').read_text()
+        self.assertIn(SITE_FOUNDRY, page)
+        for kind in ('posed', 'running', 'clocked'):
+            with self.subTest(kind=kind):
+                self.assertIn(kind, page)
+        self.assertNotIn('.. machinome::', page,
+                         'the examples page embeds a model')
+        self.assertEqual(sorted(p.name for p in DOCS.glob('example-*.rst')),
+                         [], 'an example page exists')
+        self.assertFalse((REPO / '.gitmodules').exists(),
+                         'the manual pins a submodule')
 
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',

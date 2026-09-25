@@ -21,11 +21,14 @@ subject; this one links rather than restates.
     |mechanics_version|, Apache-2.0, installed through the ``mechanics``
     extra and imported from ``machinome_mechanics``.
 
-`Machinome Foundry <https://github.com/machinome-foundry>`_
-    The GitHub organisation holding simulations of open-source machines
-    built with Machinome, the three :doc:`examples </examples>` among
-    them. Each repository sits beside the design it simulates and states
-    the design's licence and the simulation's.
+`machinome.org <https://machinome.org/>`_
+    The site of the whole ecosystem. Its Foundry shows simulations of
+    open-source machines built with Machinome live in the browser, each
+    beside the design it simulates, stating the design's licence and the
+    simulation's; the :doc:`examples </examples>` page says what to look
+    for there. The source of every simulation is kept in the `Machinome
+    Foundry <https://github.com/machinome-foundry>`_ organisation on
+    GitHub.
 
 `molejo <https://molejo.readthedocs.io>`_
     The analytic representation of flexible parts, springs, belts,

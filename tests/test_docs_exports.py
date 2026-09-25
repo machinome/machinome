@@ -2,34 +2,30 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-"""Every export the documentation embeds must be produced by something.
+"""The documentation build produces nothing.
 
-A ``.. machinome::`` directive names a directory that `machinome export`
-produced, and the Sphinx extension fails the build if it is not there.
-Those directories arrive two different ways:
+Every ``.. machinome::`` directive names a directory that `machinome export`
+produced, and the Sphinx extension fails the build if it is not there. Those
+directories are committed under ``docs/_exports/``: the tutorial's models,
+exported with ``--no-widget`` so the extension completes them from the
+installed ``machinome-viewer`` package. Nothing is exported while the manual
+builds, and the build installs ``docs/requirements.txt`` and nothing else.
 
-* the small tutorial models are committed under ``docs/_exports/``;
-* the external example machines are built during the documentation build,
-  into the example submodules, by a step written twice -- once in
-  ``.readthedocs.yaml`` and once in the GitHub Actions ``docs`` job.
+It used to be otherwise. Three example machines were exported from Foundry
+submodules by a step written twice, once in ``.readthedocs.yaml`` and once
+in the GitHub Actions ``docs`` job, with OpenSCAD, Node and the mechanics
+package installed for them. The Read the Docs build of the 0.7.0 tag ran
+into the service's 900-second limit inside the third export (24 September
+2026), and the machines moved to machinome.org.
 
-Nothing links those three files, so an example can be embedded and
-taught to Read the Docs while the Actions job is never told to build it.
-It then fails on the export it does not have, because Sphinx runs there
-with ``-W``. That is exactly how the Metamaquina 2 example landed: the
-directive, the submodule and the Read the Docs steps were added
-together, and the workflow was missed.
-
-These tests close the loop, so the failure surfaces in the suite rather
-than in a documentation build. They also hold the built machines one to
-a page: each directive is an <iframe> running a viewer, so a page
-carrying two of them opens two.
+These tests hold the rule so it cannot creep back: every embedded export is
+committed, and neither build configuration exports, installs from a
+repository, names a system package, a Node tool or a submodule.
 """
 
 import os
 import re
 import unittest
-from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -39,28 +35,30 @@ REPO = Path(__file__).resolve().parent.parent
 DOCS = REPO / 'docs'
 WORKFLOW = REPO / '.github' / 'workflows' / 'python-app.yml'
 READTHEDOCS = REPO / '.readthedocs.yaml'
+REQUIREMENTS = 'docs/requirements.txt'
 
-# Committed exports live here; anything else a directive names is built
-# during the documentation build.
+# Every export a page embeds lives here, committed.
 COMMITTED = 'docs/_exports/'
 
-# Only a directive at column 0 asks for an export. embedding.rst indents
-# one inside a literal block to show the syntax and changelog.rst names
-# it in prose; neither is a request to build anything.
+# Only a directive at column 0 asks for an export. reference/sphinx.rst
+# indents one inside a literal block to show the syntax; that is not a
+# request to embed anything.
 DIRECTIVE = re.compile(r'^\.\. +machinome:: +(\S+)', re.MULTILINE)
 
-# The output directory of a `machinome export` command, however the command
-# is spelled -- both build configurations drive the CLI through
-# `python -c "from machinome.cli import manage; manage()"`.
-EXPORT_OUTPUT = re.compile(r'\bexport\s+-o\s+(\S+)')
+# What a build step must not do: run an export, install from a repository,
+# or reach for a submodule.
+FORBIDDEN = {
+    'export': re.compile(r'\bexport\s+-o\b'),
+    'repository install': re.compile(r'git\+|@\s*git|\.git\b'),
+    'submodule': re.compile(r'submodule', re.IGNORECASE),
+}
 
-# `cd <dir> && ...`, which is how .readthedocs.yaml chooses the
-# directory a command runs in; the workflow uses `working-directory`.
-LEADING_CD = re.compile(r'\s*cd\s+(\S+)\s*&&')
+# A requirement the build may name: a distribution, optionally with extras,
+# never a URL, a path or a VCS reference.
+REQUIREMENT = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*(\[[^\]]+\])?$')
 
-# Mirrors exclude_patterns in docs/conf.py: _build is output and the
-# examples are separate repositories with their own documentation.
-NOT_OUR_DOCS = ('_build', 'examples')
+# Mirrors exclude_patterns in docs/conf.py: _build is output.
+NOT_OUR_DOCS = ('_build',)
 
 
 def embedded_exports():
@@ -83,42 +81,26 @@ def embedded_exports():
     return found
 
 
-def _outputs(workdir, command):
-    """Export directories `command` writes, relative to the repository."""
-    return {
-        Path(os.path.normpath(Path(workdir) / output)).as_posix()
-        for output in EXPORT_OUTPUT.findall(command)
-    }
+def docs_job():
+    return yaml.safe_load(WORKFLOW.read_text())['jobs']['docs']
 
 
-def actions_exports():
-    """Export directories the GitHub Actions docs job generates."""
-    workflow = yaml.safe_load(WORKFLOW.read_text())
-    generated = set()
-    for step in workflow['jobs']['docs']['steps']:
-        generated |= _outputs(step.get('working-directory', '.'),
-                              step.get('run', ''))
-    return generated
+def readthedocs():
+    return yaml.safe_load(READTHEDOCS.read_text())
 
 
-def readthedocs_exports():
-    """Export directories the Read the Docs build generates."""
-    jobs = yaml.safe_load(READTHEDOCS.read_text())['build']['jobs']
-    generated = set()
-    for command in jobs.get('pre_build', []):
-        cd = LEADING_CD.match(command)
-        generated |= _outputs(cd.group(1) if cd else '.', command)
-    return generated
+def requirements():
+    """The distributions docs/requirements.txt names, comments dropped."""
+    lines = (REPO / REQUIREMENTS).read_text().splitlines()
+    return [line.strip() for line in lines
+            if line.strip() and not line.lstrip().startswith('#')]
 
 
-class DocumentationExportsTest(unittest.TestCase):
-    """The documentation and both build configurations must agree on
-    which exports exist and who makes them."""
+class EmbeddedExportsAreCommittedTest(unittest.TestCase):
+    """Every model a page shows is a committed export."""
 
     def setUp(self):
         self.embedded = embedded_exports()
-        self.actions = actions_exports()
-        self.readthedocs = readthedocs_exports()
 
     def test_directives_are_found(self):
         """Guards the other tests from passing on an empty scan."""
@@ -129,12 +111,18 @@ class DocumentationExportsTest(unittest.TestCase):
             'longer matches how they are written.',
         )
 
-    def test_committed_exports_exist(self):
-        """An export under docs/_exports/ is committed, so it is there."""
+    def test_every_embedded_export_is_committed(self):
+        """A directive names a directory under docs/_exports/, and it is
+        there with its manifest: nothing is exported at build time."""
         for document, export in self.embedded:
-            if not export.startswith(COMMITTED):
-                continue
             with self.subTest(document=document, export=export):
+                self.assertTrue(
+                    export.startswith(COMMITTED),
+                    f'docs/{document} embeds {export}, which is not under '
+                    f'{COMMITTED}. The documentation build produces '
+                    'nothing: export the model with `machinome export '
+                    '--no-widget` and commit it there.',
+                )
                 path = REPO / export
                 self.assertTrue(
                     path.is_dir(),
@@ -149,111 +137,95 @@ class DocumentationExportsTest(unittest.TestCase):
                     'the directive can read.',
                 )
 
-    def test_generated_exports_are_built_by_both_configurations(self):
-        """An export built at documentation-build time has to be built by
-        every configuration that builds the documentation."""
-        for document, export in self.embedded:
-            if export.startswith(COMMITTED):
-                continue
-            with self.subTest(document=document, export=export):
-                self.assertIn(
-                    export, self.actions,
-                    f'docs/{document} embeds {export}, which is not '
-                    'committed and which no step of the docs job in '
-                    f'{WORKFLOW.relative_to(REPO)} generates. Sphinx runs '
-                    'there with -W, so that job fails on the missing '
-                    'export. Add a step that exports it to that path.',
-                )
-                self.assertIn(
-                    export, self.readthedocs,
-                    f'docs/{document} embeds {export}, which is not '
-                    'committed and which no pre_build command in '
-                    f'{READTHEDOCS.relative_to(REPO)} generates, so the '
-                    'published documentation is missing it. Add a command '
-                    'that exports it to that path.',
-                )
-
-    def test_build_configurations_agree(self):
-        """Catches a step added to one configuration only, before any
-        directive depends on it."""
+    def test_no_example_is_pinned(self):
+        """The manual pins no external repository: the real machines are
+        on machinome.org, not built here."""
+        self.assertFalse((REPO / '.gitmodules').exists(),
+                         '.gitmodules exists; the manual pins no submodule')
         self.assertEqual(
-            self.actions, self.readthedocs,
-            f'{WORKFLOW.relative_to(REPO)} and '
-            f'{READTHEDOCS.relative_to(REPO)} build different sets of '
-            'exports. Both build the same documentation, so they have to '
-            'produce the same directories.',
+            sorted(p.name for p in DOCS.glob('example-*.rst')), [],
+            'an example page exists; the examples page sends readers to '
+            'machinome.org instead')
+
+
+class ReadTheDocsBuildsNothingTest(unittest.TestCase):
+    """.readthedocs.yaml installs docs/requirements.txt and runs Sphinx."""
+
+    def setUp(self):
+        self.config = readthedocs()
+
+    def test_no_build_jobs(self):
+        build = self.config['build']
+        self.assertNotIn('jobs', build, build.get('jobs'))
+        self.assertNotIn('apt_packages', build, build.get('apt_packages'))
+        self.assertNotIn('commands', build, build.get('commands'))
+
+    def test_python_is_the_only_tool(self):
+        self.assertEqual(list(self.config['build']['tools']), ['python'])
+
+    def test_no_submodules(self):
+        self.assertNotIn('submodules', self.config)
+
+    def test_installs_the_requirements_alone(self):
+        self.assertEqual(
+            self.config['python']['install'],
+            [{'requirements': REQUIREMENTS}],
         )
 
-    def test_the_examples_are_one_per_execution_model(self):
-        """The examples index lists one machine per execution model, each
-        on its own page embedding the one export built for it."""
-        index = (DOCS / 'examples.rst').read_text()
-        expected = {
-            'example-metamaquina2.rst':
-                'docs/examples/metamaquina2/docs/_exports/metamaquina2',
-            'example-pascaline.rst':
-                'docs/examples/pascaline/docs/_exports/pascaline',
-            'example-curta.rst':
-                'docs/examples/curta/docs/_exports/curta',
-        }
-        for page, export in expected.items():
-            with self.subTest(page=page):
-                self.assertIn('   ' + page.removesuffix('.rst'), index)
-                self.assertIn((page, export), self.embedded)
-        self.assertEqual(
-            [export for document, export in self.embedded
-             if document == 'examples.rst'], [],
-            'the examples index embeds no model of its own')
-        for retired in ('example-v8-engine.rst', 'example-clock-01.rst'):
-            with self.subTest(retired=retired):
-                self.assertFalse((DOCS / retired).exists(), retired)
 
-    def test_the_tutorial_embeds_only_committed_exports(self):
-        """The tutorial's models are committed exports of its own chapter
-        modules, so the documentation build needs no CAD stack."""
-        tutorial = [(document, export) for document, export in self.embedded
-                    if document.startswith('tutorial/')]
-        self.assertTrue(tutorial, 'the tutorial embeds no model')
-        for document, export in tutorial:
-            with self.subTest(document=document):
-                self.assertTrue(export.startswith(COMMITTED), export)
+class ActionsDocsJobBuildsNothingTest(unittest.TestCase):
+    """The CI docs job does what Read the Docs does, and fails on
+    warnings."""
 
-    def test_generated_exports_get_a_page_each(self):
-        """A machine built for the docs is the whole point of its page.
+    def setUp(self):
+        self.steps = docs_job()['steps']
 
-        Every directive is an <iframe> running a viewer, and the three
-        example machines are the largest models published here. Two of
-        them on one page start two viewers and animate both at once,
-        which is how the examples page used to open.
-        """
-        embedded = [(document, export) for document, export in self.embedded
-                    if not export.startswith(COMMITTED)]
-        pages = Counter(document for document, _ in self.embedded)
+    def test_no_forbidden_step(self):
+        for step in self.steps:
+            text = '\n'.join(str(v) for v in step.values())
+            name = step.get('name') or step.get('uses') or text[:40]
+            with self.subTest(step=name):
+                for what, pattern in FORBIDDEN.items():
+                    self.assertIsNone(
+                        pattern.search(text),
+                        f'the docs job step {name!r} has a {what}; the '
+                        'documentation build produces nothing')
+                self.assertNotIn(
+                    'submodules', step.get('with') or {},
+                    'the docs job checks out submodules')
+                uses = step.get('uses', '')
+                self.assertFalse(uses.startswith('actions/setup-node'),
+                                 'the docs job installs Node')
+                self.assertNotIn('apt', uses, 'the docs job installs an '
+                                 'apt package')
 
-        for document, export in embedded:
-            with self.subTest(document=document, export=export):
-                self.assertEqual(
-                    pages[document], 1,
-                    f'docs/{document} embeds {export}, a machine built '
-                    'during the documentation build, alongside '
-                    f'{pages[document] - 1} other model(s). Each one '
-                    'starts its own viewer, so give the machine a page '
-                    'of its own and leave the page it came from linking '
-                    'to it.',
-                )
+    def test_installs_the_requirements_alone(self):
+        installs = []
+        for step in self.steps:
+            installs += re.findall(r'pip install\s+(.+)', step.get('run', ''))
+        self.assertEqual(installs, [f'-r {REQUIREMENTS}'])
 
-        for export, count in Counter(e for _, e in embedded).items():
-            with self.subTest(export=export):
-                self.assertEqual(
-                    count, 1,
-                    f'{export} is embedded by {count} documents. It is '
-                    'built once, for one page; a second page embedding '
-                    'it means a reader can load it twice over.',
-                )
+    def test_builds_with_warnings_as_errors(self):
+        runs = [step.get('run', '') for step in self.steps]
+        self.assertTrue(
+            any(re.search(r'sphinx\b.*\s-W\b', run) for run in runs),
+            'the docs job does not build the manual with -W')
 
 
-if __name__ == '__main__':
-    unittest.main()
+class DocsRequirementsTest(unittest.TestCase):
+    """docs/requirements.txt is the whole of what the build installs."""
+
+    def test_names_published_distributions_only(self):
+        for line in requirements():
+            with self.subTest(requirement=line):
+                self.assertRegex(line, REQUIREMENT)
+
+    def test_names_the_viewer(self):
+        """The committed exports carry no widget; the published viewer
+        completes them at build time."""
+        names = [re.split(r'[\[=<>!~ ]', line, 1)[0]
+                 for line in requirements()]
+        self.assertIn('machinome-viewer', names)
 
 
 class EmbeddedExportVersionWarningTest(unittest.TestCase):
@@ -305,3 +277,7 @@ class EmbeddedExportVersionWarningTest(unittest.TestCase):
                  if name.startswith('machinome.')
                  and not name.startswith('machinome.viewers')}
         self.assertEqual(heavy, set(), heavy)
+
+
+if __name__ == '__main__':
+    unittest.main()

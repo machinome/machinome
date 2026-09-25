@@ -106,71 +106,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      # Metamaquina2's leaves read the original OpenSCAD design through
-      # solid2's import_scad, so its export needs the openscad binary.
-      # Kept in step with .readthedocs.yaml, which installs it for the
-      # same reason.
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: openscad
-          version: 1.0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
-          cache-dependency-path: |
-            docs/requirements.txt
-            requirements.txt
+          cache-dependency-path: docs/requirements.txt
 
-      # The example exports ship the browser viewer, which is the separate
-      # machinome-viewer package. Until it is on PyPI it is installed from
-      # its repository; its source distribution builds the widget itself,
-      # so node is needed here for that build and nothing else.
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install runtime, viewer and docs requirements
-        run: |
-          pip install -r requirements.txt -r docs/requirements.txt
-          pip install -e .
-          pip install "machinome-viewer @ git+https://github.com/machinome/machinome-viewer.git"
-          pip install "machinome-mechanics @ git+https://github.com/machinome/machinome-mechanics.git"
-
-      - name: Generate Metamaquina 2 example export
-        working-directory: docs/examples/metamaquina2
-        run: >-
-          PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from machinome.cli import manage; manage()"
-          export -o docs/_exports/metamaquina2 --fps 30 --frames 360
-
-      # The Pascaline reads José Campos's meshes, which its repository does
-      # not commit: its own scripts download the pinned Printables files
-      # (no login) and extract the 3MF objects before the export.
-      - name: Fetch the Pascaline's source meshes
-        working-directory: docs/examples/pascaline
-        run: |
-          python scripts/download_sources.py
-          python scripts/prepare_sources.py
-
-      - name: Generate Pascaline example export
-        working-directory: docs/examples/pascaline
-        run: >-
-          PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from machinome.cli import manage; manage()"
-          export -o docs/_exports/pascaline
-
-      - name: Generate Curta example export
-        working-directory: docs/examples/curta
-        run: >-
-          PYTHONPATH="$GITHUB_WORKSPACE" python -c
-          "from machinome.cli import manage; manage()"
-          export -o docs/_exports/curta clocked_curta
+      # The manual builds from docs/requirements.txt alone: Sphinx, its
+      # theme and the published machinome-viewer, whose widget completes
+      # the committed tutorial exports. Nothing is exported here; the real
+      # machines are shown on machinome.org. Kept in step with
+      # .readthedocs.yaml, and pinned by tests/test_docs_exports.py.
+      - name: Install docs requirements
+        run: pip install -r docs/requirements.txt
 
       - name: Build docs (fail on warnings)
         run: python -m sphinx -b html -W docs docs/_build

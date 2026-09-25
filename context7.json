@@ -7,7 +7,6 @@
     "docs/_exports",
     "docs/_build",
     "docs/_static",
-    "docs/examples",
     "docs/releases",
     "openspec",
     "tests",

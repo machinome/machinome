@@ -79,13 +79,9 @@ an input moving a body through a joint, shared dimensions, relations and
 laws, buttons, fit tests proved red first, a stepped scenario, a running
 machine with a ratchet, and retained digits written at events.
 
-Explore the three examples, one per execution model:
-`Metamaquina 2 <https://machinome.readthedocs.io/en/latest/example-metamaquina2.html>`_
-(posed), the
-`Pascaline module <https://machinome.readthedocs.io/en/latest/example-pascaline.html>`_
-(running) and the
-`Curta Type I <https://machinome.readthedocs.io/en/latest/example-curta.html>`_
-(clocked). Each keeps its design source and licence in its own repository.
+Real machines built with Machinome, posed, running and clocked, are shown
+live on `machinome.org <https://machinome.org/>`_, each beside its design
+source and licence.
 
 * `User manual <https://machinome.readthedocs.io/en/latest/>`_
 * `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
@@ -132,13 +128,13 @@ assertions are decided by the OCCT kernel and run without it — useful on a
 platform with no compiled wheel, such as WebAssembly. A path that needs it
 and cannot import it says so by name.
 
-Clone with submodules (the docs embed three separately maintained
-example machines, and the tutorial's machine under ``docs/tutorial/`` is
-built and tested by the suite):
+Clone the repository (the tutorial's machine under ``docs/tutorial/`` is
+built and tested by the suite; the real machines the manual points to are
+on machinome.org, not in this repository):
 
 .. code-block:: bash
 
-    $ git clone --recurse-submodules https://github.com/machinome/machinome.git
+    $ git clone https://github.com/machinome/machinome.git
     $ cd machinome
 
 Create a virtualenv and install the package in editable mode with the dev

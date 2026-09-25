@@ -67,9 +67,8 @@ ids, ports and `connect()`, joints and relations, instruction declarations,
 controls on parts, the fixed-`dt` simulation loop, running and clocked
 simulations, and scenario tests that run under both plain pytest and
 `machinome test`. Every name exported by `machinome.simulation` SHALL appear in
-at least one published page. Pages that embed a model outside the examples
-section SHALL use committed exports so the docs build stays free of the CAD
-stack.
+at least one published page. Every page that embeds a model SHALL use a
+committed export, so the documentation build runs no CAD stack.
 
 #### Scenario: Setting a driver from Python
 
@@ -150,50 +149,73 @@ existing user would look for it.
 - **THEN** they find the instruction to reinstall the environment and the
   reason the in-place upgrade fails
 
-### Requirement: Worked examples demonstrate the released capabilities
+### Requirement: The examples page sends readers to machinome.org
 
-The documentation SHALL present worked example projects whose pinned sources
-actually contain what the documentation claims of them, one for each
-execution model: a posed machine with declared drivers, machine-level
-instructions and flexible parts; a running machine with retained history,
-stops and controls on parts; and a clocked machine with retained states and
-committing relations.
-
-Each worked example SHALL live on its own page, reached from an examples
-index page that embeds no model of its own, so that opening one example
-loads one live model rather than every example at once. Each example page
-SHALL name the design's origin and licence.
-
-#### Scenario: An example's description matches its pinned source
-
-- **WHEN** a reader follows an example's source link at the documented
-  pinned revision
-- **THEN** every capability the example's page attributes to it is present
-  in that revision's source
-
-#### Scenario: A machine example exists
-
-- **WHEN** a reader looks for a full-machine example
-- **THEN** the documentation offers one whose root assembly declares drivers
-  and instructions and whose parts include flexible leaves
-
-#### Scenario: Every execution model has an example
-
-- **WHEN** a reader looks for a full machine of the kind they are building
-- **THEN** the examples index offers a posed, a running and a clocked
-  machine, and says which is which
-
-#### Scenario: Opening one example loads one model
-
-- **WHEN** a reader opens the page of a worked example
-- **THEN** that page embeds exactly one live model, and no other worked
-  example's model is loaded by it
+The manual's examples section SHALL be one page that embeds no model, builds
+no machine and pins no external repository. It SHALL send the reader to the
+Foundry on machinome.org, where the simulated machines are shown live beside
+their designs, and SHALL say what a reader finds there by kind of machine and
+by execution model — a posed, a running and a clocked machine — rather than
+by embedding or naming a project. The manual SHALL carry no example page of
+its own and no Git submodule; a page that mentions a full machine the
+tutorial does not build SHALL point at the site, not at a page of this
+manual.
 
 #### Scenario: Reaching the examples
 
-- **WHEN** a reader opens the examples index
-- **THEN** it links to every worked example's page and embeds no live model
-  itself
+- **WHEN** a reader opens the examples page
+- **THEN** it links to the Foundry on machinome.org, embeds no live model,
+  and names a posed, a running and a clocked machine as kinds the reader
+  finds there
+
+#### Scenario: A page that used to point at an example
+
+- **WHEN** a how-to or concept page refers to a full machine the tutorial
+  does not build
+- **THEN** it points at the Foundry on machinome.org and not at a page of
+  this manual
+
+#### Scenario: No example is pinned
+
+- **WHEN** the repository is cloned
+- **THEN** it has no `.gitmodules` and no `docs/example-*.rst` page
+
+### Requirement: The documentation build produces nothing
+
+Building the manual SHALL require only what `docs/requirements.txt` lists:
+Sphinx, its theme and the published `machinome-viewer` package, which
+completes the committed exports with its widget. The Read the Docs
+configuration and the CI docs job SHALL both install that file and run
+Sphinx, and neither SHALL run `machinome export`, install a system package,
+a Node tool or a package from a repository URL, or check out a submodule.
+Every export a page embeds SHALL be committed under `docs/_exports/`.
+
+#### Scenario: Read the Docs builds the manual
+
+- **WHEN** Read the Docs builds any version of the manual
+- **THEN** its configuration names no build job, no apt package and no Node
+  tool, installs `docs/requirements.txt` alone, and the build takes the
+  time Sphinx alone takes
+
+#### Scenario: A page embeds an export nobody committed
+
+- **WHEN** a `.. machinome::` directive names a directory outside
+  `docs/_exports/`
+- **THEN** the suite fails naming the page, before any documentation build
+
+#### Scenario: A build configuration grows a build step
+
+- **WHEN** the Read the Docs configuration or the CI docs job gains an
+  export command, a repository install, an apt package, a Node tool or a
+  submodule checkout
+- **THEN** the suite fails naming the file and the step
+
+#### Scenario: The manual builds from the requirements alone
+
+- **WHEN** a fresh environment installs `docs/requirements.txt` and builds
+  the manual with warnings as errors
+- **THEN** the build succeeds and every tutorial page shows its committed
+  export with the viewer's widget
 
 ### Requirement: The release is recorded where readers are sent
 

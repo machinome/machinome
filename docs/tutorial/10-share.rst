@@ -85,5 +85,6 @@ are the jobs a project meets next: importing a vendor's STEP file,
 cutting parts from sheet, springs and belts, fusing parts into one piece,
 repeating a unit, several machines in one project, running the tests
 fast. The **how it works** pages state the rules the tutorial used, each
-with the reason the framework has it. The **examples** are three real
-machines, one posed, one running and one clocked, with their source.
+with the reason the framework has it. The **examples** page sends you to
+machinome.org, where real machines, posed, running and clocked, are shown
+live beside their source.

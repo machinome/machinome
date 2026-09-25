@@ -32,8 +32,9 @@ machines live in the `Machinome Foundry
 <https://github.com/machinome-foundry>`_, the GitHub organisation that
 keeps simulations of open-source machines built with the framework, each
 beside the design it simulates and each stating the design's licence and
-the simulation's. The three :doc:`examples </examples>` come from there;
-browse the rest for a machine like yours.
+the simulation's, and are shown live on `machinome.org
+<https://machinome.org/foundry/>`_; the :doc:`examples </examples>` page
+says what to look for there.
 
 Packages
 --------

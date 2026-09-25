@@ -5,9 +5,9 @@ Most machines worth simulating already have source: an OpenSCAD design,
 a folder of STLs, a vendor STEP, a build123d project. Machinome does not
 ask for a rewrite. It adds a thin layer beside the design that reads it
 as it is, gives it a control surface, and proves what the design claims.
-:doc:`Metamaquina 2 </example-metamaquina2>` is the worked case: a
-printer authored in OpenSCAD, simulated without changing one ``.scad``
-file.
+The worked case is a RepRap printer authored in OpenSCAD, simulated
+without changing one ``.scad`` file and shown on machinome.org's Foundry
+(see :doc:`/examples`).
 
 The shape of the layer
 ----------------------
@@ -17,15 +17,15 @@ package beside it:
 
 .. code-block:: text
 
-    Metamaquina2/
-        Metamaquina2.scad        the design, as published
+    Printer/
+        Printer.scad             the design, as published
         ...
-        metamaquina2/            the simulation layer
+        printer/                 the simulation layer
             __init__.py
             parts.py             leaves reading the design
             machine.py           the assembly, drivers, instructions
             test_machine.py      the contracts
-        pyproject.toml           [tool.machinome] model = "metamaquina2.machine:Metamaquina2"
+        pyproject.toml           [tool.machinome] model = "printer.machine:Printer"
 
 Read the parts as they are
 --------------------------
