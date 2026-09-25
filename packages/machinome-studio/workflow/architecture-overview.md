@@ -551,7 +551,7 @@ required catalogue directory is an external runtime input and may be unrelated
 to the shop installation. In this repository's development workspace, the
 framework checkout belongs under `machinome/`; framework worktrees belong
 under `machinome/WTs/`; the browser viewer's independent repository belongs
-under `machinome-viewer/` (the framework's `viewer` extra, AGPL-3.0-only,
+under `machinome-viewer/` (the framework's `viewer` extra, AGPL-3.0-or-later,
 with its own OpenSpec and decision records); shop worktrees belong under
 `WTs/`. Runtime agents use
 only their session's verified project root plus their selected profile contract.
