@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-only
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 import { build } from 'esbuild';
@@ -19,7 +19,7 @@ const banner = `/*!
  * machinome-viewer.js - the browser viewer for machinome models
  * machinome-viewer ${pkg.version} - viewer API ${pkg.machinomeViewerApi}
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-only
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  * Source: https://github.com/machinome/machinome-viewer
  *
  * Bundles three.js - Copyright 2010-2023 three.js authors

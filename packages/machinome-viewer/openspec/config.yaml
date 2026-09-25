@@ -14,7 +14,7 @@ context: |
   `machinome-viewer describe|serve|capture` console script, always as a
   separate process. This package never imports machinome; machinome
   never imports this package. That is the licensing boundary: the
-  framework is Apache-2.0, this viewer is AGPL-3.0-only.
+  framework is Apache-2.0, this viewer is AGPL-3.0-or-later.
 
   Conventions:
   - TDD: red-first, one commit per increment.

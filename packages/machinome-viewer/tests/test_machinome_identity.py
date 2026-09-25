@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for Machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Executable contract for the unreleased viewer's final identity."""
 
 from pathlib import Path

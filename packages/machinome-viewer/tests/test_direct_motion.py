@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Real pointer input on the reviewed producer's verbatim documents."""
 import json
 import shutil

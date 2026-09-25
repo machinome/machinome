@@ -19,7 +19,7 @@ reading and uses the Machinome command, entry point, browser global and asset
 names.
 
 Release set: machinome 0.7.0 (Apache-2.0), machinome-viewer 0.7.0
-(AGPL-3.0-only), machinome-mechanics 0.1.0 (Apache-2.0). The framework and
+(AGPL-3.0-or-later), machinome-mechanics 0.1.0 (Apache-2.0). The framework and
 mechanics keep their own numbers; the viewer's now follows the framework's.
 The widget npm package is private and ships inside the Python package; no npm
 publication is planned.
@@ -38,3 +38,9 @@ primary checkout.
 
 Validation evidence for this state is in
 `openspec/changes/archive/2026-09-21-release-the-viewer-as-0-7/evidence.md`.
+
+25 September 2026, before publication: the grant is AGPL-3.0-or-later,
+version 3 or any later version rather than version 3 only, in every header,
+both manifests, the bundle banner and the manual (change
+`relicense-to-agpl-or-later`); the `v0.7.0` tag is re-cut on the integrated
+head.

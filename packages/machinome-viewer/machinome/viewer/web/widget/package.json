@@ -18,7 +18,7 @@
     13
   ],
   "private": true,
-  "license": "AGPL-3.0-only",
+  "license": "AGPL-3.0-or-later",
   "description": "Embeddable static viewer for `machinome export` output",
   "scripts": {
     "build": "node build.mjs",

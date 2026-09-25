@@ -1,5 +1,5 @@
 /* Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-only */
+ * SPDX-License-Identifier: AGPL-3.0-or-later */
 import { describe, expect, it } from 'vitest';
 import compact from '../../../../tests/fixtures/source-timing/compact.json';
 import timed from '../time-drive-corpus.json';

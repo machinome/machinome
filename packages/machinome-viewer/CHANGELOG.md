@@ -156,7 +156,7 @@ slower than its declared two-second drawing duration; that work continues.
 ### Identity and licensing
 
 - Package `machinome-viewer`, import `machinome_viewer`, entry point
-  `machinome.viewer`, licensed AGPL-3.0-only. The framework, Apache-2.0,
+  `machinome.viewer`, licensed AGPL-3.0-or-later. The framework, Apache-2.0,
   reaches it only through that entry point and separate processes; neither
   package imports the other. The widget ships inside the Python
   distribution and is not published on npm.

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-only */
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as controls from './partControls';

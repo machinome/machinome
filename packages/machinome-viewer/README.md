@@ -53,7 +53,7 @@ framework; serving and capture are separate processes.
 
 ## License and development
 
-This package and its browser bundle are **AGPL-3.0-only**; the framework is
+This package and its browser bundle are **AGPL-3.0-or-later**; the framework is
 Apache-2.0. Keep the bundle's source/license and dependency notices intact.
 See [LICENSE](LICENSE) and [CHANGELOG.md](CHANGELOG.md).
 
