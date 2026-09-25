@@ -31,6 +31,10 @@ SPDX = re.compile(r'SPDX-License-Identifier: (\S+)')
 # Records of what was decided when; they keep the grant that held then.
 HISTORY = ('workflow/archive/', 'workflow/adrs/', 'openspec/changes/')
 
+# This file names the stale grant in order to refuse it, and spells the
+# SPDX pattern it scans for; it is not a header to check.
+SELF = 'tests/test_licence.py'
+
 # Pages a reader lands on, each of which states the grant.
 READER_FACING = ('README.md', 'docs/index.rst', 'docs/sharing.rst',
                  'context7.json')
@@ -65,7 +69,8 @@ class LicenceTest(unittest.TestCase):
     def test_every_header_grants_or_later(self):
         headers = 0
         for relative in tracked_files():
-            if relative.as_posix().startswith(HISTORY):
+            if relative.as_posix().startswith(HISTORY) \
+               or relative.as_posix() == SELF:
                 continue
             text = text_of(relative)
             if text is None:
@@ -78,7 +83,8 @@ class LicenceTest(unittest.TestCase):
 
     def test_nothing_current_says_only(self):
         for relative in tracked_files():
-            if relative.as_posix().startswith(HISTORY):
+            if relative.as_posix().startswith(HISTORY) \
+               or relative.as_posix() == SELF:
                 continue
             text = text_of(relative)
             if text is None:
