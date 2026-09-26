@@ -16,6 +16,13 @@ Unreleased
   no longer written by hand. ``Revolute`` may leave out its ``axis`` only
   as a mate's freedom. Revolute mates only; documents are unchanged
   (ADR-147).
+* **A mate's freedom may state its own line.** A design's connectors are
+  attachment frames, and the line a part turns about need not be the
+  connector's ``z``: ``Revolute(axis=(0, 0, 1), at=(0, 0, 0))`` as a
+  mate's freedom turns the part about that line, stated in numbers in
+  the moving part's own frame, while the frames still fix where it rests.
+  Each of ``axis`` and ``at`` left out is the moving frame's, so a mate
+  that states no line is unchanged (ADR-148).
 
 Machinome 0.7.0
 ---------------

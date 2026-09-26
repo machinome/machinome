@@ -132,6 +132,13 @@ reads here as proposal, and the change's `design.md` §9 says what the rigid
 mate would add. Where this note and the change disagree, the change is
 right.
 
+**A freedom's own line was cut, 2026-09-26,** into the framework OpenSpec
+change `state-the-mate-line` (ADR-148, amending ADR-147), from Thor's
+verbatim connectors: a design's connectors are attachment frames, and the
+line a part turns about need not be the connector's `z`. The two
+corrections it makes below are marked *(corrected 2026-09-26,
+state-the-mate-line)*.
+
 ### 5.1 Named frames on parts
 
 A part declares its connectors once, in its own frame, as class-body
@@ -155,8 +162,11 @@ class Bolt(StepNode):                                # catalogue hardware
     shank = Frame(z=(1, 0, 0))
 ```
 
-- **Signature.** `Frame(at=(0, 0, 0), z=(0, 0, 1), x=None)`. `z` is the
-  line a revolute turns about or a prismatic slides along. *(corrected
+- **Signature.** `Frame(at=(0, 0, 0), z=(0, 0, 1), x=None)`. `z` is, BY
+  DEFAULT, the line a revolute turns about or a prismatic slides along
+  *(corrected 2026-09-26, state-the-mate-line: a mate's freedom may state
+  its own line, and the frames then fix only the rest placement and the
+  zero)*. *(corrected
   2026-09-26)* `x` matters to EVERY mate, not only to a rigid one: the
   moving child is placed whole triad onto whole triad, so `x` fixes the
   rest attitude about `z` and therefore the zero of a revolute mate's
@@ -233,7 +243,12 @@ parent's `render()`, after this assembly's. The first cycle also has no
 rigid mate: `on()` with no freedom is refused naming the deferral.
 
 **The freedom** is a joint written with no `axis` and no `at`, because the
-two frames supply both: `Revolute(range=, unit=)`,
+two frames supply both *(corrected 2026-09-26, state-the-mate-line: by
+default; a `Revolute` freedom may state `axis` and `at`, three numbers
+each, read in the moving child's own rest frame -- ADR-097's class form,
+the frame the installed joint resolves in -- each one left out taking
+the moving frame's `z` or origin, and a written `at=(0, 0, 0)` meaning
+the child's origin, not the frame's)*: `Revolute(range=, unit=)`,
 `Prismatic(range=, unit=)`, `Free(angle_unit=, length_unit=)`. `Orbit` is
 not a mate freedom: its geometry needs a third point, and every `Orbit` in
 the catalogue that a mate would replace — YouCanBuildDog's twenty `carry`
@@ -414,8 +429,10 @@ above.
 
 - **§5.1 + §5.2, one change.** *(Cut 2026-09-26 as `place-parts-by-mate`,
   originating project **Thor**, whose root chain states each of five links
-  twice; revolute mates only. What follows is the pre-cut reading, kept for
-  the parts the cycle left out.)* Originating project: **Inmoov-sim** is the
+  twice; revolute mates only. A revolute freedom's own line followed the
+  same day as `state-the-mate-line`, from the same project's verbatim
+  connectors. What follows is the pre-cut reading, kept for the parts the
+  cycles left out.)* Originating project: **Inmoov-sim** is the
   clean candidate. Its frames already exist as project code — `Frame`,
   `FRAMES`, `STATIONS`, `WRIST` and `PRESENTATION`, each placed by
   `rotation()` plus a `translate`, and the wrist axle's `_presented`

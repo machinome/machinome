@@ -21,8 +21,15 @@ they meet -- and so does a mate::
 The frame that speaks MOVES. The moving end is a frame declared by a
 child the assembly declares directly; the fixed end is a frame of the
 assembly itself, written by its bare name, or of another directly
-declared child that does not move. The freedom is a `Revolute` written
-with neither axis nor anchor, because the frames supply both.
+declared child that does not move. The freedom is a `Revolute`; by
+default the moving frame's `z` is the line it turns about and the
+frame's origin its anchor. A design's connectors are ATTACHMENT frames,
+though, and the line a part turns about need not be the connector's `z`
+nor pass through its origin, so the freedom may state its own line,
+`Revolute(axis=(x, y, z), at=(x, y, z))`, in three numbers each, read in
+the moving child's own frame; each it leaves out, the frame supplies.
+The frames still fix where the child rests, and so the zero of its
+coordinate; the freedom fixes only the line (ADR-148).
 
 A mate compiles, at realization, to three things the framework already
 has and invents no fourth (ADR-147):
@@ -32,7 +39,8 @@ has and invents no fourth (ADR-147):
    operations appended after the author's `render()` returns
    (`apply_mates`, called from `machinome.node.assembly._rest`);
 2. a revolute JOINT of the moving child's class, whose axis and anchor
-   are the moving frame's `z` and `at` as DECLARED, installed by
+   are the ones the freedom states, else the moving frame's `z` and `at`
+   as DECLARED, installed by
    `_specialize` -- ADR-098's mechanism -- under the mate's name, so it
    takes a slot after every joint the child's own class declares;
 3. a rotational COORDINATE of the assembly under the mate's name --
@@ -355,9 +363,9 @@ def _check_still_declared(cls, name, mate):
 
 
 def _check_freedom(name, mate):
-    """The freedom a mate accepts in this version: a fresh `Revolute`,
-    written with neither axis nor anchor, whose range is independent of
-    any declarer."""
+    """The freedom a mate accepts in this version: a fresh `Revolute`
+    whose stated line, if any, is three numbers with a direction, and
+    whose range is independent of any declarer."""
     from machinome.motion.joints import Bound, Revolute
 
     freedom = mate.freedom
@@ -383,17 +391,10 @@ def _check_freedom(name, mate):
             f"mate's freedom becomes a joint of the child it moves, so it "
             f"is written fresh in the statement: "
             f"...on(<fixed>, Revolute(range=(lo, hi))).")
-    restated = []
     if freedom.axis is not None:
-        restated.append(f'axis={freedom.axis!r}')
+        _check_stated(where, 'axis', freedom.axis)
     if freedom.anchor_written:
-        restated.append(f'at={freedom.at!r}')
-    if restated:
-        raise TypeError(
-            f"{where}: its freedom states {' and '.join(restated)}, and the "
-            f"two frames supply the axis and the anchor -- the moving "
-            f"frame's z is the line, its origin the anchor. Drop "
-            f"{' and '.join(item.partition('=')[0] for item in restated)}.")
+        _check_stated(where, 'at', freedom.at)
     declared = freedom.range
     if declared is None:
         return
@@ -429,6 +430,57 @@ def _check_freedom(name, mate):
 
 def _is_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _check_stated(where, argument, value):
+    """A line a freedom states: three numbers, and an axis with a
+    direction (state-the-mate-line, design decision 5).
+
+    The installed joint resolves its arguments against the moving CHILD,
+    and a parameter token resolves by NAME, so a token or formula
+    written in the assembly would silently read the child's parameter of
+    the same name, and a callable would be called with the child. The
+    values are numbers, so a zero-length axis -- below the joint's own
+    `1e-9` threshold -- is known here, where the refusal can name the
+    mate, rather than at realization.
+    """
+    reason = None
+    if hasattr(value, 'dimension'):
+        reason = ('is a parameter token or a formula, which would resolve '
+                  "against the moving child's parameters of the same name")
+    elif callable(value):
+        reason = ('is a callable of the node, which would be called with '
+                  'the moving child')
+    elif isinstance(value, (str, bytes)) or not hasattr(value, '__len__'):
+        reason = 'is not a sequence of three numbers'
+    elif len(value) != 3:
+        reason = f'has {len(value)} components, not three'
+    else:
+        for component in value:
+            if _is_number(component):
+                continue
+            if isinstance(component, bool):
+                reason = f'holds {component!r}, a bool, not a number'
+            elif hasattr(component, 'dimension'):
+                reason = (f'holds {component!r}, a parameter token or a '
+                          f'formula, which would resolve against the moving '
+                          f"child's parameter of the same name")
+            else:
+                reason = f'holds {component!r}, which is not a number'
+            break
+    if reason is not None:
+        raise TypeError(
+            f"{where}: its freedom's {argument} {value!r} {reason}. A line "
+            f"a mate's freedom states is written in the assembly and read "
+            f"in the moving child's frame, so it is three numbers: "
+            f"{argument}=(x, y, z).")
+    if argument == 'axis' and math.sqrt(
+            sum(component ** 2 for component in value)) < _SNAP:
+        raise TypeError(
+            f"{where}: its freedom's axis {value!r} has zero length, and an "
+            f"axis of zero length states no line to turn about. State the "
+            f"direction of the line, or leave axis out to turn about the "
+            f"moving frame's z.")
 
 
 def _check_end_shape(name, mate, end, role):
@@ -590,11 +642,17 @@ def _install(cls, name, mate):
     """Give the moving child's declaration the mate's joint and the
     wiring that binds it (design decisions 5 and 6).
 
-    The joint is a `Revolute` whose axis and anchor are the moving
-    frame's `z` and `at` exactly as DECLARED -- a tuple, tokens, formulas
-    or a callable of the node -- so it resolves against the child in
-    `resolve_declared_joints` like any class-declared joint, in the
-    child's own rest frame, with nothing carried or inverted (ADR-097).
+    The joint is a `Revolute` whose axis is the freedom's stated `axis`,
+    else the moving frame's `z`, and whose anchor is the freedom's
+    written `at`, else the moving frame's `at` -- each passed straight
+    through, the frame's exactly as DECLARED (a tuple, tokens, formulas
+    or a callable of the node), the freedom's as the three numbers
+    `_check_stated` admitted. Both are in the child's own rest frame, so
+    the joint resolves against the child in `resolve_declared_joints`
+    like any class-declared joint, with nothing carried or inverted
+    (ADR-097). A left-out `at` is told from a written `(0, 0, 0)` by
+    identity (`Revolute.anchor_written`): the written one is the CHILD's
+    origin, not the frame's.
     It goes on the child by `_specialize`, ADR-098's mechanism: the
     child keeps its name, identity and artifacts, and the joint -- new
     on the child -- takes the slot after every joint the child's class
@@ -608,8 +666,10 @@ def _install(cls, name, mate):
 
     frame = mate.moving.frame
     freedom = mate.freedom
-    joint = Revolute(axis=frame.z, at=frame.at, range=freedom.range,
-                     unit=freedom.unit)
+    joint = Revolute(
+        axis=freedom.axis if freedom.axis is not None else frame.z,
+        at=freedom.at if freedom.anchor_written else frame.at,
+        range=freedom.range, unit=freedom.unit)
     joint.installed_by = mate
     declaration = mate.moving.root
     declaration.node_class = _specialize(declaration.node_class,

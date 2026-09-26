@@ -835,9 +835,10 @@ places: as a CLASS ATTRIBUTE of the node it moves — an assembly or a leaf
 — or at a DECLARATION SITE, passed as a keyword where a parent declares
 that node as a child, see "A joint declared where a child is placed". A
 `Revolute` SHALL additionally be accepted as the FREEDOM of a mate, where
-it is written with neither `axis` nor `at` and the mate's two frames
-supply both, as the `mates` capability specifies; the joint the mate then
-gives the moving child is a joint of that child's class like any other. In
+its `axis` and its `at` MAY each be left out, the moving frame's `z` and
+origin then supplying what was left out, as the `mates` capability
+specifies; the joint the mate then gives the moving child is a joint of
+that child's class like any other. In
 every case it SHALL be stateless declaration metadata shared by every
 node the declaration realizes, exactly as a port declaration is; a site
 declaration is shared by every child that site realizes, including every

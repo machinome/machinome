@@ -346,19 +346,79 @@ class RefusalTest(BaseNodeTest):
                 self.assertRefused(build, 'Sliding', 'slide', 'Revolute',
                                    type(freedom()).__name__)
 
-    def test_a_freedom_does_not_restate_the_line(self):
+    # state-the-mate-line 2.1: the refusal of a stated line is gone.
+    def test_a_freedom_may_state_its_line(self):
         for label, freedom in (
-                ('axis', lambda: Revolute(axis=(0, 0, 1))),
-                ('at', lambda: Revolute(at=(0, 0, 0)))):
-            def build():
-                class Restated(AssemblyNode):
+                ('axis', lambda: Revolute(axis=(0, 0, 1), unit='deg')),
+                ('at', lambda: Revolute(at=(0, 0, 0), unit='deg')),
+                ('both', lambda: Revolute(axis=(0, 0, 1), at=(0, 0, 0),
+                                          unit='deg'))):
+            with self.subTest(label=label):
+                class Stated(AssemblyNode):
                     pin = Frame()
                     part = Pin()
                     swing = part.hinge.on(pin, freedom())
 
-            with self.subTest(label=label):
-                self.assertRefused(build, 'Restated', 'swing', label,
-                                   'two frames supply')
+                self.assertEqual(
+                    list(mates_module().declared_mates(Stated)), ['swing'])
+
+    # state-the-mate-line 2.2: a stated line is three numbers.
+    STATED_IN_THE_ASSEMBLY = ('written in the assembly and read in the '
+                              "moving child's frame")
+
+    def test_a_stated_line_is_numbers(self):
+        def token():
+            class Lifted(AssemblyNode):
+                lift = Length(5)
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(pin, Revolute(at=(0, 0, lift)))
+
+        def formula():
+            class Lifted(AssemblyNode):
+                lift = Length(5)
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(pin, Revolute(at=(0, 0, lift * 2)))
+
+        def callable_axis():
+            class Lifted(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(
+                    pin, Revolute(axis=lambda node: (0, 0, 1)))
+
+        def two_components():
+            class Lifted(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(pin, Revolute(axis=(0, 1)))
+
+        def a_bool():
+            class Lifted(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(pin, Revolute(axis=(0, 0, True)))
+
+        for build, argument in ((token, 'at'), (formula, 'at'),
+                                (callable_axis, 'axis'),
+                                (two_components, 'axis'), (a_bool, 'axis')):
+            with self.subTest(case=build.__name__):
+                message = self.assertRefused(
+                    build, 'Lifted', 'swing', f"freedom's {argument}",
+                    self.STATED_IN_THE_ASSEMBLY)
+                self.assertNotIn('two frames supply', message)
+
+    # state-the-mate-line 2.3: a stated axis has a direction.
+    def test_a_stated_axis_has_a_direction(self):
+        def build():
+            class Flat(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(pin, Revolute(axis=(0, 0, 0)))
+
+        self.assertRefused(build, 'Flat', 'swing', "freedom's axis",
+                           'an axis of zero length states no line')
 
     def test_a_freedom_range_that_depends_on_a_declarer(self):
         def token():
@@ -1014,6 +1074,232 @@ class DocumentTest(BaseNodeTest):
 
 
 ##############################################
+# state-the-mate-line: a freedom may state its own line
+#
+# A design's connectors are ATTACHMENT frames, and the line a part turns
+# about need not be the moving frame's `z` nor pass through its origin.
+# The fixtures are Thor's connectors verbatim (`mate_project/verbatim.py`)
+# and the mates that state each line (`mate_project/line.py`), every one
+# held to a hand-placed twin.
+
+def line_fixtures():
+    from .mate_project import line
+
+    return line
+
+
+def verbatim_fixtures():
+    from .mate_project import verbatim
+
+    return verbatim
+
+
+BINDINGS = (-90, -30, 0, 30, 90, None)
+
+
+def leaves_of(node, above=None, path=''):
+    """Each leaf under `node` with the world matrix its operations and
+    every ancestor's compose to, as `(path, matrix)`, the path relative
+    to `node`."""
+    import numpy as np
+
+    from machinome.node.declarative import declared_children
+
+    matrix = (np.eye(4) if above is None else above) @ matrix_of(
+        serialized(node))
+    names = (list(declared_children(type(node)))
+             if isinstance(node, AssemblyNode) else [])
+    if not names:
+        yield path, matrix
+        return
+    for name in names:
+        yield from leaves_of(getattr(node, name), matrix, f'{path}/{name}')
+
+
+class StatedLineTest(BaseNodeTest):
+    """2.4 to 2.8: the joint a freedom that states its line installs."""
+
+    def assertSameOperations(self, mated, hand, delta=1e-9):
+        self.assertEqual([operation[0] for operation in mated],
+                         [operation[0] for operation in hand])
+        for ours, theirs in zip(mated, hand):
+            if ours[0] == 'r':
+                self.assertAlmostEqual(float(ours[1]), float(theirs[1]),
+                                       delta=delta)
+                for mine, written in zip(ours[2], theirs[2]):
+                    self.assertAlmostEqual(float(mine), float(written),
+                                           delta=delta)
+            else:
+                for mine, written in zip(numbers(ours), numbers(theirs)):
+                    self.assertAlmostEqual(mine, written, delta=delta)
+
+    def posed(self, cls, child, joint, value, mate=None):
+        """`cls` rendered with `joint` of `child` bound to `value` -- or,
+        for a mated assembly, the mate's coordinate `mate`."""
+        node = cls()
+        if value is not None:
+            if mate is not None:
+                setattr(node, mate, value)
+            else:
+                setattr(getattr(node, child), joint, value)
+        node.render()
+        return node
+
+    def test_the_joint_turns_about_the_stated_line(self):
+        shoulder = line_fixtures().VerbatimShoulder
+        housing = shoulder()
+
+        joints = declared_joints(type(housing.art2))
+        self.assertEqual(list(joints), ['shoulder'])
+        axis, anchor, _span = joints['shoulder'].arguments(housing.art2)
+        self.assertEqual(axis, (0, 0, 1))
+        self.assertEqual(anchor, (0.0, 0.0, 0.0))
+
+        # The stated values reach the joint untouched: nothing carried.
+        mate = mates_module().declared_mates(shoulder)['shoulder']
+        self.assertIs(mate.joint.axis, mate.freedom.axis)
+        self.assertIs(mate.joint.at, mate.freedom.at)
+
+        housing.shoulder = 30
+        housing.render()
+        operations = serialized(housing.art2)
+        self.assertEqual([operation[0] for operation in operations],
+                         ['r', 'r', 't'])
+        self.assertEqual(operations[0], ['r', '30', [0, 0, 1]])
+
+    def test_an_anchor_at_the_childs_origin_drops_the_centring_pair(self):
+        by_frame = fixtures().MatedHousing()
+        by_frame.shoulder = 30
+        by_frame.render()
+        stated = line_fixtures().AnchoredHousing()
+        stated.shoulder = 30
+        stated.render()
+
+        framed = serialized(by_frame.art2)
+        self.assertEqual([operation[0] for operation in framed],
+                         ['t', 'r', 't', 'r', 't'])
+        self.assertEqual(numbers(framed[0]), [0.0, 0.0, -68.0])
+        self.assertEqual(framed[1], ['r', '30', [0, 0, 1]])
+        self.assertEqual(numbers(framed[2]), [0.0, 0.0, 68.0])
+
+        anchored = serialized(stated.art2)
+        self.assertEqual([operation[0] for operation in anchored],
+                         ['r', 'r', 't'])
+        self.assertEqual(anchored[0], ['r', '30', [0, 0, 1]])
+        self.assertEqual(anchored[1:], framed[3:])
+
+        self.assertTrue(
+            (abs(matrix_of(anchored) - matrix_of(framed)) < 1e-12).all())
+
+    def test_thors_across_and_reversed_shapes_reproduce_their_twins(self):
+        line = line_fixtures()
+        verbatim = verbatim_fixtures()
+        for mated_cls, hand_cls, child, joint in (
+                (line.VerbatimShoulder, verbatim.HandShoulder, 'art2',
+                 'shoulder'),
+                (line.VerbatimWrist, verbatim.HandWrist, 'art56', 'wrist'),
+                (line.VerbatimYaw, verbatim.HandYaw, 'art4', 'yaw')):
+            for value in BINDINGS:
+                with self.subTest(mate=joint, value=value):
+                    mated = self.posed(mated_cls, child, joint, value,
+                                       mate=joint)
+                    hand = self.posed(hand_cls, child, joint, value)
+                    self.assertSameOperations(
+                        serialized(getattr(mated, child)),
+                        serialized(getattr(hand, child)))
+                    ours = dict(leaves_of(mated))
+                    theirs = dict(leaves_of(hand))
+                    self.assertEqual(sorted(ours), [f'/{child}/plate'])
+                    self.assertEqual(sorted(theirs), [f'/{child}/plate'])
+                    for path in ours:
+                        self.assertTrue(
+                            (abs(ours[path] - theirs[path]) < 1e-9).all(),
+                            path)
+
+        shoulder = rest_of(self.posed(line.VerbatimShoulder, 'art2',
+                                      'shoulder', None).art2)
+        self.assertEqual(shoulder[0][1], '180')
+        root = math.sqrt(0.5)
+        for component, expected in zip(shoulder[0][2], (0, root, root)):
+            self.assertAlmostEqual(float(component), expected, delta=1e-9)
+        for component, expected in zip(numbers(shoulder[1]), (0, -68, 123)):
+            self.assertAlmostEqual(component, expected, delta=1e-9)
+
+        wrist = rest_of(self.posed(line.VerbatimWrist, 'art56', 'wrist',
+                                   None).art56)
+        self.assertEqual(wrist[0], ['r', '90', [0, 0, 1]])
+
+    def test_a_stated_axis_keeps_the_sign_a_reversed_frame_would_flip(self):
+        stated = self.posed(line_fixtures().VerbatimYaw, 'art4', 'yaw', 30,
+                            mate='yaw')
+        by_frame = self.posed(verbatim_fixtures().ReversedYawByFrame,
+                              'art4', 'yaw', 30, mate='yaw')
+
+        self.assertEqual(serialized(stated.art4)[0], ['r', '30', [0, 0, 1]])
+        self.assertEqual(serialized(by_frame.art4)[0],
+                         ['r', '30', [0, 0, -1]])
+
+    def test_a_freedom_stating_no_line_takes_the_frames(self):
+        for owner, name, frame in (
+                (fixtures().MatedArm, 'elbow', fixtures().MatedForearm.hinge),
+                (fixtures().MatedHousing, 'shoulder', fixtures().MatedArm.bore),
+                (verbatim_fixtures().ReversedYawByFrame, 'yaw',
+                 verbatim_fixtures().Art4.bore)):
+            with self.subTest(mate=name):
+                joint = mates_module().declared_mates(owner)[name].joint
+                self.assertIs(joint.axis, frame.z)
+                self.assertIs(joint.at, frame.at)
+
+
+class StatedLineDocumentTest(BaseNodeTest):
+    """2.9: a mate stating no line publishes the bytes it published
+    before; one that states its line publishes it as operations."""
+
+    def test_a_mate_that_states_no_line_is_unchanged_in_every_byte(self):
+        arm = fixtures()
+        for filename, cls in (
+                ('mated_elbow_machine.json', arm.MatedElbowMachine),
+                ('mated_shoulder_machine.json', arm.MatedShoulderMachine)):
+            with self.subTest(document=filename):
+                with open(os.path.join(BASE_DOCUMENTS, filename)) as base:
+                    expected = base.read()
+                self.assertEqual(
+                    json.dumps(published(cls()), indent=2) + '\n', expected)
+
+    def test_a_stated_line_needs_no_newer_consumer(self):
+        mated = published(line_fixtures().VerbatimShoulderMachine())
+        hand = published(verbatim_fixtures().HandShoulderMachine())
+
+        self.assertEqual(mated['version'], hand['version'])
+        self.assertEqual(set(mated), set(hand))
+        self.assertEqual(mated['drivers'], hand['drivers'])
+
+        ours = entry_of(mated, 'housing', 'art2')['operations']
+        theirs = entry_of(hand, 'housing', 'art2')['operations']
+        self.assertEqual([operation[0] for operation in ours],
+                         [operation[0] for operation in theirs])
+        for mine, written in zip(ours, theirs):
+            if mine[0] == 'r':
+                if mine[1] == 'angle':
+                    self.assertEqual(written[1], 'angle')
+                else:
+                    self.assertAlmostEqual(float(mine[1]), float(written[1]),
+                                           delta=1e-9)
+                for component, other in zip(mine[2], written[2]):
+                    self.assertAlmostEqual(float(component), float(other),
+                                           delta=1e-9)
+            else:
+                for component, other in zip(mine[1], written[1]):
+                    self.assertAlmostEqual(float(component), float(other),
+                                           delta=1e-9)
+
+        fields = {frozenset(entry) for entry in walk(hand['root'])}
+        for entry in walk(mated['root']):
+            with self.subTest(node=entry['name']):
+                self.assertIn(frozenset(entry), fields)
+
+
+##############################################
 # 8.1 The manual teaches the mate on the public contract
 
 DOCS = os.path.join(os.path.dirname(os.path.dirname(
@@ -1078,6 +1364,32 @@ class ManualTest(BaseNodeTest):
         self.assertEqual(
             list(mates_module().declared_mates(namespace['UpperArm'])),
             ['elbow'])
+
+    def test_the_joints_page_states_a_line_across_a_connector(self):
+        """state-the-mate-line 4.1: the second example, a connector whose
+        `z` stands across the joint line, runs and turns about the line
+        its freedom states."""
+        section = _section(self.page('concepts', 'joints.rst'),
+                           'Frames and mates')
+        example = _code_blocks(section)[1]
+        namespace = {'__name__': __name__}
+        exec(compile(example, 'joints.rst', 'exec'), namespace)
+
+        shoulder = namespace['Shoulder']()
+        joint = declared_joints(type(shoulder.link))['shoulder']
+        axis, anchor, _span = joint.arguments(shoulder.link)
+        self.assertEqual(axis, (0, 0, 1))
+        self.assertEqual(anchor, (0, 0, 0))
+
+        shoulder.shoulder = 30
+        shoulder.render()
+        operations = serialized(shoulder.link)
+        self.assertEqual(operations[0], ['r', '30', [0, 0, 1]])
+        self.assertEqual(operations[1][1], '180')
+        for component, expected in zip(numbers(operations[2]),
+                                       (0, -68, 123)):
+            self.assertAlmostEqual(component, expected, delta=1e-9)
+        self.assertIn('(0, -68, 123)', section)
 
     def test_the_reference_lists_frames_and_mates(self):
         api = self.page('reference', 'api.rst')

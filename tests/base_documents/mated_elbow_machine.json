@@ -1,0 +1,96 @@
+{
+  "format": "machinome-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "angle": {
+      "default": 0.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "root": {
+    "name": "MatedElbowMachine",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": null,
+    "operations": [],
+    "children": [
+      {
+        "name": "arm",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": null,
+        "operations": [],
+        "children": [
+          {
+            "name": "forearm",
+            "type": "AssemblyNode",
+            "color": null,
+            "mtime": null,
+            "operations": [
+              [
+                "t",
+                [
+                  "-0.0",
+                  "-0.0",
+                  "-81.5"
+                ]
+              ],
+              [
+                "r",
+                "angle",
+                [
+                  0,
+                  1,
+                  0
+                ]
+              ],
+              [
+                "t",
+                [
+                  "0.0",
+                  "0.0",
+                  "81.5"
+                ]
+              ],
+              [
+                "r",
+                "90",
+                [
+                  1,
+                  0,
+                  0
+                ]
+              ],
+              [
+                "t",
+                [
+                  "0.0",
+                  "241.5",
+                  "68.0"
+                ]
+              ]
+            ],
+            "children": [
+              {
+                "name": "link",
+                "type": "LeafNode",
+                "color": null,
+                "mtime": null,
+                "operations": [],
+                "model": "link"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

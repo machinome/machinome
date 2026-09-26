@@ -129,9 +129,10 @@ were worked out together. An assembly CAD design states it once: a
 connector on each part, and how the two meet. So can a machine.
 
 A **frame** is a connector a part declares on itself, in its own rest
-frame: an origin ``at`` and a right-handed triad whose ``z`` is the line
-a revolute turns about. A **mate** is one sentence in the assembly that
-holds both parts, written from the frame that moves:
+frame: an origin ``at`` and a right-handed triad whose ``z`` is, by
+default, the line a revolute mate turns about. A **mate** is one
+sentence in the assembly that holds both parts, written from the frame
+that moves:
 
 .. code-block:: python
 
@@ -165,7 +166,8 @@ when the arm is built, to three things this page already describes:
   ``translate`` to ``(0, 241.5, 68)``, applied after ``render()``, exactly
   as if written there;
 - a **joint on the forearm**, a ``Revolute`` about the moving frame's
-  ``z`` through its ``at``, in the forearm's own frame, carrying the
+  ``z`` through its ``at`` unless the freedom states its own line (see
+  below), in the forearm's own frame, carrying the
   freedom's range and unit. It is a joint of the forearm's class like any
   other, placed after the joints the class declares itself, and the
   forearm keeps its name and its build identity;
@@ -185,6 +187,52 @@ out, ``x`` is the next principal axis after a principal ``z`` (``+X`` for
 ``+Z``, ``+Y`` for ``+X``, ``+Z`` for ``+Y``, negated for a negated
 ``z``); a ``z`` along no principal axis must state its ``x``.
 
+A connector need not be a joint frame. An assembly CAD design's
+connectors say where one part is attached to another, and their ``z``
+often stands across the line the part turns about, or points down it
+the other way. The freedom may then state that line itself, in the
+moving part's own frame, the frame a joint its class declared would be
+written in. Here is a robot arm's shoulder whose connector's ``z`` lies
+across the joint line, the line being the link's own ``z``:
+
+.. code-block:: python
+
+    from machinome.motion.joints import Revolute
+    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.frames import Frame
+    from solid2 import cube
+
+    class Link(Solid2Node):
+        bore = Frame(at=(0, 0, 68), z=(0, 1, 0), x=(-1, 0, 0))
+
+        def render(self):
+            return cube([30, 30, 200])
+
+    class Shoulder(AssemblyNode):
+        shoulder_pin = Frame(at=(0, 0, 123))
+
+        link = Link()
+
+        shoulder = link.bore.on(
+            shoulder_pin,
+            Revolute(axis=(0, 0, 1), at=(0, 0, 0), range=(-90, 90),
+                     unit='deg'))
+
+The frames still place the link, connector onto connector: it rests
+turned 180 degrees about ``(0, 0.7071, 0.7071)`` and translated to
+``(0, -68, 123)``, and that rest is the zero of ``shoulder``. The
+freedom fixes only the line the link turns about from there: the link's
+own ``z`` through the link's own origin. ``axis`` and ``at`` are each
+optional, and each one left out is the moving frame's, so a freedom may
+state the axis alone, the anchor alone, both or neither. ``at=(0, 0, 0)``
+written is the moving part's origin, not the frame's: left out, the
+anchor here would be ``(0, 0, 68)``, a point on the same line, turning
+the link the same way. Nothing checks a stated line against the frames;
+an anchor is any point on its line. A stated line is three numbers,
+because it is written in the assembly and read in the moving part's
+frame, where a parameter or a callable would resolve against the wrong
+node.
+
 A frame's arguments follow the joint rule below, resolve to numbers when
 the part is built, and are neither identity nor geometry: adding one
 changes no artifact. A frame may be declared on any node, an assembly
@@ -197,17 +245,19 @@ name, or ``<child>.<frame>`` of another child the assembly declares, which
 then must not move: the mated part rests against that child's rest
 placement, and siblings do not carry each other. The **moving end** is a
 frame of a child the assembly declares directly. The **freedom** is a
-``Revolute`` written with neither ``axis`` nor ``at``, the one place a
-``Revolute`` may leave out its axis; its range is numbers, ``None`` or
-functions of the coordinate's own value.
+``Revolute``, the one place a ``Revolute`` may leave out its axis; the
+line it states, if any, is three numbers for each of ``axis`` and
+``at``, and its range is numbers, ``None`` or functions of the
+coordinate's own value.
 
 Refused when the class is created, naming the mate: a mate on a node
 that is not an assembly; a moving end that is the assembly's own frame;
 either end reached through more than one child, a list or a
 ``repeat()``; a fixed end on a child that can move; a second mate on one
 child; a mate never assigned to a name; a freedom that is not a fresh
-``Revolute``, or that states an ``axis`` or ``at``, or whose range reads
-other coordinates or the node; a mate with no freedom at all; and a mate
+``Revolute``, or whose stated ``axis`` or ``at`` is not three numbers,
+or whose stated ``axis`` has no length, or whose range reads other
+coordinates or the node; a mate with no freedom at all; and a mate
 name the moving child already answers to. Refused when the arm renders:
 a ``render()`` that also places a mated child. A mate publishes nothing
 new: the document carries its rest placement as operations and its

@@ -143,7 +143,9 @@ class _DefaultAnchor(tuple):
     """The anchor a `Revolute` gets when `at` is not written: the
     body's own origin, `(0, 0, 0)`, in every respect a tuple -- and ONE
     object, so a mate's freedom can tell "left out" from an explicit
-    `at=(0, 0, 0)` by identity (design decision 7). A literal the author
+    `at=(0, 0, 0)` by identity. Left out, a mate's anchor is the moving
+    frame's origin; written, even as `(0, 0, 0)`, it is the moving
+    child's own origin (`machinome.motion.mates`). A literal the author
     writes can never be this object."""
 
     __slots__ = ()
@@ -798,9 +800,11 @@ class Revolute(Joint):
     placed origin, which is the case of a wheel on its own bearing.
 
     `axis` may be left out in exactly one place: as the FREEDOM of a
-    mate, `hinge.on(pin, Revolute(range=...))`, where the two frames
-    supply the axis and the anchor (`machinome.motion.mates`). Anywhere
-    else an axis-less `Revolute` is refused when the class is defined.
+    mate, `hinge.on(pin, Revolute(range=...))`, where the moving frame
+    supplies it by default, its `z` the axis and its origin the anchor
+    (`machinome.motion.mates`); a freedom may instead state either, in
+    numbers, in the moving child's own frame. Anywhere else an axis-less
+    `Revolute` is refused when the class is defined.
     """
 
     coordinate_kind = RotationalPort
@@ -1348,7 +1352,7 @@ def axisless_refusal(owner, name, site=None):
     return (
         f"{where} is a Revolute without an axis. An axis may be left out "
         f"only in a mate's freedom -- moving.on(fixed, Revolute(...)) -- "
-        f"where the two frames supply the axis and the anchor; everywhere "
+        f"where the moving frame supplies it; everywhere "
         f"else a joint states the line it turns about: "
         f"Revolute(axis=(x, y, z), ...).")
 

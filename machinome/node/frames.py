@@ -134,8 +134,10 @@ class Frame:
     """A connector on a part: `Frame(at=(0, 0, 0), z=(0, 0, 1),
     x=None)`, in the declarer's own rest frame.
 
-    `z` is the line a revolute mate turns about; `x` fixes the attitude
-    around it, and therefore the zero of a revolute mate's coordinate.
+    `z` is the line a revolute mate turns about unless the mate's
+    freedom states one; `x` fixes the attitude around it, and therefore
+    the zero of a revolute mate's coordinate -- the frames fix where the
+    child rests whatever line the freedom states.
     Neither need be a unit vector. Left out, `x` is the next principal
     axis after a principal `z`; a `z` along no principal axis must state
     its `x`, because a derived one would be a zero nobody can read off

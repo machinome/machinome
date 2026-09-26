@@ -1,0 +1,155 @@
+{
+  "format": "machinome-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {
+    "elbow_angle": {
+      "default": 25.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    },
+    "shoulder_angle": {
+      "default": 15.0,
+      "range": null,
+      "unit": "deg",
+      "dtype": null,
+      "scale": null
+    }
+  },
+  "instructions": {},
+  "root": {
+    "name": "MatedShoulderMachine",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": null,
+    "operations": [],
+    "children": [
+      {
+        "name": "housing",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": null,
+        "operations": [],
+        "children": [
+          {
+            "name": "art2",
+            "type": "AssemblyNode",
+            "color": null,
+            "mtime": null,
+            "operations": [
+              [
+                "t",
+                [
+                  "-0.0",
+                  "-0.0",
+                  "-68.0"
+                ]
+              ],
+              [
+                "r",
+                "shoulder_angle",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ],
+              [
+                "t",
+                [
+                  "0.0",
+                  "0.0",
+                  "68.0"
+                ]
+              ],
+              [
+                "r",
+                "180",
+                [
+                  0,
+                  0.7071067811865476,
+                  0.7071067811865476
+                ]
+              ],
+              [
+                "t",
+                [
+                  "0.0",
+                  "-68.0",
+                  "123.0"
+                ]
+              ]
+            ],
+            "children": [
+              {
+                "name": "forearm",
+                "type": "AssemblyNode",
+                "color": null,
+                "mtime": null,
+                "operations": [
+                  [
+                    "t",
+                    [
+                      "-0.0",
+                      "-0.0",
+                      "-81.5"
+                    ]
+                  ],
+                  [
+                    "r",
+                    "elbow_angle",
+                    [
+                      0,
+                      1,
+                      0
+                    ]
+                  ],
+                  [
+                    "t",
+                    [
+                      "0.0",
+                      "0.0",
+                      "81.5"
+                    ]
+                  ],
+                  [
+                    "r",
+                    "90",
+                    [
+                      1,
+                      0,
+                      0
+                    ]
+                  ],
+                  [
+                    "t",
+                    [
+                      "0.0",
+                      "241.5",
+                      "68.0"
+                    ]
+                  ]
+                ],
+                "children": [
+                  {
+                    "name": "link",
+                    "type": "LeafNode",
+                    "color": null,
+                    "mtime": null,
+                    "operations": [],
+                    "model": "link"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

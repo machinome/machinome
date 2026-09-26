@@ -3794,7 +3794,15 @@ pilot triages it.
   `axis=` in the frame's own terms), which would let a design's
   connectors be declared verbatim; comes back with a second design read
   through its connectors, or with the rigid mate, which is the shape those
-  three attachments actually have.
+  three attachments actually have. **Reopened and fixed, 2026-09-26, by
+  the framework change `state-the-mate-line` (ADR-148)** with Thor as the
+  originating project: a mate's freedom may state `axis` and `at` in
+  numbers, read in the moving child's own frame (not the frame's own
+  terms, which the change's design rejects), each defaulting to the moving
+  frame's, so the design's connectors can be declared verbatim. Pending
+  Thor's follow-up in its own repository (the change's tasks §6): verbatim
+  connectors, the emitter's turn deleted, pose comparison at maximum
+  deviation 0.
 - **The frame's origin becomes the joint's anchor.** The moving frame's
   `at` is copied as the installed joint's `at`, so a frame whose origin is
   off the child's own origin but on the joint line (Thor's shoulder,
@@ -3802,7 +3810,12 @@ pilot triages it.
   origin did not, and the composed poses differ by up to `1.42e-14` mm
   under the comparison tool's `1e-9` rounding. Known at proposal time
   (design.md, risks). **Left as is:** the pose is the same; the centring
-  pair is the honest reading of the declared origin.
+  pair is the honest reading of the declared origin. **Reopened and
+  fixed, 2026-09-26, by `state-the-mate-line` (ADR-148):** a freedom may
+  write `at=(0, 0, 0)`, the moving child's own origin, and the installed
+  joint then publishes the turn alone; left out, the anchor is still the
+  frame's origin. Pending Thor's follow-up (tasks §6), which is expected
+  to measure the shoulder's `1.42e-14` mm residue vanish.
 - **A mated machine's document is not byte-identical to its hand-placed
   twin.** Version, nodes, drivers, bindings and artifact keys are
   unchanged, but the mate-built rotations serialize their snapped values

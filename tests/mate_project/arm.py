@@ -198,3 +198,17 @@ class MatedElbowMachine(AssemblyNode):
     arm = MatedArm()
 
     angle.drives(arm.elbow)
+
+
+class MatedShoulderMachine(AssemblyNode):
+    """A root over `MatedHousing`, driving both of its mates: the
+    shoulder, whose moving frame sits 68 up its line (so its installed
+    joint carries a centring pair), and the upper arm's elbow."""
+
+    shoulder_angle = Driver(default=15.0, unit='deg')
+    elbow_angle = Driver(default=25.0, unit='deg')
+
+    housing = MatedHousing()
+
+    shoulder_angle.drives(housing.shoulder)
+    elbow_angle.drives(housing.art2.elbow)

@@ -9,14 +9,14 @@ that turns it green; record each red run in `evidence.md`.
 
 ## 0. Opening evidence
 
-- [ ] 0.1 Confirm `python -c "import machinome; print(machinome.__file__)"`
+- [x] 0.1 Confirm `python -c "import machinome; print(machinome.__file__)"`
   prints this worktree's path, and record the base commit (`d791eaa`).
-- [ ] 0.2 Run the full suite at the base and record the counts in
+- [x] 0.2 Run the full suite at the base and record the counts in
   `evidence.md`.
-- [ ] 0.3 Record the pilot's answers to the three scope questions in
+- [x] 0.3 Record the pilot's answers to the three scope questions in
   `proposal.md`. If any differs from the recommendation, STOP and update
   the planning artifacts before writing a test.
-- [ ] 0.4 Before any code change, capture the published documents of two
+- [x] 0.4 Before any code change, capture the published documents of two
   mated fixtures whose freedoms state no line — `MatedElbowMachine` and
   a root over `MatedHousing` (add the root to `tests/mate_project/` if
   none exists; a fixture file added here is not implementation) — with
@@ -26,7 +26,7 @@ that turns it green; record each red run in `evidence.md`.
 
 ## 1. Planning record
 
-- [ ] 1.1 `openspec validate state-the-mate-line --strict` passes; the
+- [x] 1.1 `openspec validate state-the-mate-line --strict` passes; the
   planning commit holds the change folder and its `evidence/`, nothing
   else. No ADR here (task 4.4).
 
@@ -50,12 +50,12 @@ placement and whose child class declares the hand-written joint:
   `rotate(180, (0, 1, 0))`, `translate(0, 0, -1)`,
   `Revolute(axis=(0, 0, 1))`.
 
-- [ ] 2.1 **The refusal is gone.** Replace
+- [x] 2.1 **The refusal is gone.** Replace
   `RefusalTest.test_a_freedom_does_not_restate_the_line` by
   `test_a_freedom_may_state_its_line`: `Revolute(axis=(0, 0, 1))`,
   `Revolute(at=(0, 0, 0))` and both together create the class and
   report the mate. Red at the base with the restatement refusal.
-- [ ] 2.2 **A stated line is numbers.** Refused at class creation, naming
+- [x] 2.2 **A stated line is numbers.** Refused at class creation, naming
   the class, the mate and the argument (`axis` or `at`): an `at` holding
   an assembly `Length` token; an `at` holding a formula over one; an
   `axis` that is a callable; an `axis` of two components; an `axis` with
@@ -63,23 +63,23 @@ placement and whose child class declares the hand-written joint:
   assembly and read in the moving child's frame. Red at the base (the
   restatement refusal fires instead, without the argument's reason —
   assert the reason's fragment).
-- [ ] 2.3 **A stated axis has a direction.** `Revolute(axis=(0, 0, 0))`
+- [x] 2.3 **A stated axis has a direction.** `Revolute(axis=(0, 0, 0))`
   refused at class creation naming the class, the mate and `axis`, and
   saying an axis of zero length states no line (assert that fragment:
   at the base the restatement refusal also names `axis`, so only the
   reason makes the test red).
-- [ ] 2.4 **The joint turns about the stated line.** Verbatim shoulder:
+- [x] 2.4 **The joint turns about the stated line.** Verbatim shoulder:
   `declared_joints` of the child's realized class reports `shoulder`
   with resolved axis `(0, 0, 1)` and anchor `(0.0, 0.0, 0.0)`; bound at
   30 its operations are `['r', '30', [0, 0, 1]]` then the rest rotation
   and translation, with NO centring translation.
-- [ ] 2.5 **The anchor pair.** `MatedHousing`'s on-line bore
+- [x] 2.5 **The anchor pair.** `MatedHousing`'s on-line bore
   (`at=(0, 0, 68)`, `z=(0, 0, 1)`) mated once with `Revolute()` and once
   with `Revolute(at=(0, 0, 0))`, each bound at 30: the first carries the
   centring pair `∓(0, 0, 68)` (today's behaviour, a green guard), the
   second the turn alone; the two composed child matrices agree within
   `1e-12`.
-- [ ] 2.6 **Thor's across and reversed shapes reproduce their twins.**
+- [x] 2.6 **Thor's across and reversed shapes reproduce their twins.**
   For the verbatim shoulder, the verbatim wrist and the reversed yaw, at
   bindings `-90, -30, 0, 30, 90` and unbound: the mated child's
   operations equal the twin child's in kind and order, rotations equal
@@ -88,17 +88,17 @@ placement and whose child class declares the hand-written joint:
   (the capture tool's rounding: deviation 0). The shoulder's rest
   rotation is exactly `'180'` about `(0, √½, √½)` and its translation
   `(0, -68, 123)`; the wrist's is exactly `'90'` about `[0, 0, 1]`.
-- [ ] 2.7 **The sign.** The reversed yaw with the stated axis turns `+30`
+- [x] 2.7 **The sign.** The reversed yaw with the stated axis turns `+30`
   about `(0, 0, 1)`; the same pair with `Revolute()` turns about
   `(0, 0, -1)` (today's behaviour, pinned so the difference is
   visible).
-- [ ] 2.8 **Defaults unchanged.** For a freedom stating no line, the
+- [x] 2.8 **Defaults unchanged.** For a freedom stating no line, the
   installed joint's declared `axis` and `at` are the moving frame's
   declared `z` and `at` (the same objects); every existing test in
   `tests/test_mates.py`, `tests/test_frames.py` and
   `tests/test_joints.py::AxislessRevoluteTest` stays green unedited
   (the axis-less refusal outside a mate is unchanged).
-- [ ] 2.9 **Document.** The two fixtures of 0.4 export byte-identical to
+- [x] 2.9 **Document.** The two fixtures of 0.4 export byte-identical to
   their captured base documents (green at the base; stays green). The
   verbatim-shoulder root exports the version an unmated machine declares,
   no new field, and its child's operations are those of the twin root
@@ -106,29 +106,29 @@ placement and whose child class declares the hand-written joint:
 
 ## 3. Implementation
 
-- [ ] 3.1 `machinome/motion/mates.py`, `_check_freedom`: drop the
+- [x] 3.1 `machinome/motion/mates.py`, `_check_freedom`: drop the
   restatement refusal; refuse a stated `axis` (not `None`) or a written
   `at` (`anchor_written`) that is not a sequence of three real numbers
   (not `str`/`bytes`, not a callable, no `bool`), and a stated `axis` of
   zero length (the joint's `1e-9` threshold), each naming class, mate
   and argument.
-- [ ] 3.2 `_install`: `Revolute(axis=freedom.axis if freedom.axis is not
+- [x] 3.2 `_install`: `Revolute(axis=freedom.axis if freedom.axis is not
   None else frame.z, at=freedom.at if freedom.anchor_written else
   frame.at, range=freedom.range, unit=freedom.unit)`.
-- [ ] 3.3 Docstrings and messages: `mates.py` module docstring and
+- [x] 3.3 Docstrings and messages: `mates.py` module docstring and
   `_install`/`_check_freedom`; `joints.py` `_DefaultAnchor` (one purpose
   now: left out takes the frame's origin), `Revolute` (the axis may be
   left out only in a mate's freedom, where the moving frame supplies it
   by default), `axisless_refusal` wording (keep the fragments `axis` and
   `mate`); `frames.py` `Frame` ("`z` is the line a revolute mate turns
   about unless the mate's freedom states one").
-- [ ] 3.4 Every test of section 2 green; the full suite green with the
+- [x] 3.4 Every test of section 2 green; the full suite green with the
   counts of 0.2 minus the replaced test plus the new ones, nothing
   skipped that was not skipped at the base. Record in `evidence.md`.
 
 ## 4. Documentation, records (the second commit)
 
-- [ ] 4.1 `docs/concepts/joints.rst`, "Frames and mates", under
+- [x] 4.1 `docs/concepts/joints.rst`, "Frames and mates", under
   `skills/write-the-manual`: the frame's `z` is the line BY DEFAULT; a
   freedom may state `axis` and `at` in the moving part's own frame,
   numbers only, each defaulting to the frame's; the frames fix the rest
@@ -138,27 +138,27 @@ placement and whose child class declares the hand-written joint:
   second, runnable example (a connector whose `z` stands across the joint
   line) pinned by a `ManualTest` test that execs it and checks the
   installed joint's line.
-- [ ] 4.2 `docs/project/changelog.rst`, Unreleased: the mate bullet says a
+- [x] 4.2 `docs/project/changelog.rst`, Unreleased: the mate bullet says a
   freedom may state its own line in the moving part's frame.
-- [ ] 4.3 Record for the studio (a separate change in
+- [x] 4.3 Record for the studio (a separate change in
   `machinome-studio`, not made here): `shop-skills/machinome-api/SKILL.md`
   gains the stated line.
-- [ ] 4.4 Write ADR-148 (NODE) as **Accepted** (design §7), add the
+- [x] 4.4 Write ADR-148 (NODE) as **Accepted** (design §7), add the
   *Amended by* line to ADR-147, both to `docs/adrs/README.md`'s index;
   amend `docs/architecture.md`'s mate paragraph ("the freedom a fresh
   `Revolute` with neither `axis` nor `at`" and "built from the moving
   frame's DECLARED `z` and `at`").
-- [ ] 4.5 `workflow/ongoing/mates-and-sketches.md` §5.1–5.2: "`z` is the
+- [x] 4.5 `workflow/ongoing/mates-and-sketches.md` §5.1–5.2: "`z` is the
   line a revolute turns about" becomes "by default"; "The freedom is a
   joint written with no `axis` and no `at`" gains the stated line in the
   moving child's own frame; mark it cut into this change.
-- [ ] 4.6 `workflow/warts.md`: the first two bullets of the
+- [x] 4.6 `workflow/warts.md`: the first two bullets of the
   `place-parts-by-mate` findings gain their new disposition (fixed by
   `state-the-mate-line`, pending the Thor follow-up of §6).
 
 ## 5. Sync and archive
 
-- [ ] 5.1 Sync the delta specs into `openspec/specs/` (`mates`,
+- [x] 5.1 Sync the delta specs into `openspec/specs/` (`mates`,
   `joints`), `openspec validate --strict`, archive the change, final
   full suite, and commit the implementation record.
 
