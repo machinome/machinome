@@ -4011,3 +4011,32 @@ decided: handedness is a fact of the realized node, not of the class.
   that states the mate, called once with the realized assembly as it
   realizes the moving child. `at` stays three numbers (the project
   needs none). Pending openarm's follow-up (the change's tasks §6).
+
+## A gripper's fingers cannot be mated: no prismatic freedom (2026-09-26, open_manipulator)
+
+Recorded while preparing the OpenMANIPULATOR-X migration onto frames and
+mates (the third URDF project after SO-ARM100 and OpenArm;
+`projects/Robotic-Arms/open_manipulator`, `main` at `eb170c1`). Its
+URDF states six joints: four revolute (`joint1` to `joint4`) and two
+prismatic (`gripper_left_joint`, `gripper_right_joint`), the fingers
+sliding along `(0, 1, 0)` and `(0, -1, 0)` in their own frames over
+`-0.011..0.02` m, the right one a `mimic` of the left. The simulation
+(`simulation/open_manipulator_x.py`) declares the four revolutes on the
+links they move and the two `Prismatic` joints on the finger classes,
+with the parent's `render()` translating each child to the URDF origin
+and the mimic as `left_finger.travel.drives(right_finger.travel)`.
+
+- **A mate's freedom must be a `Revolute`.** The `mates` spec refuses a
+  `Prismatic` freedom by name (place-parts-by-mate: "a freedom that is
+  not a `Revolute` -- a `Prismatic`, an `Orbit` or a `Free` -- ... is
+  refused", ADR-147, because Thor exercised only revolutes). The four
+  links migrate as SO-ARM100's did, but the two fingers cannot: they are
+  placed and freed by a slide, and would stay on the old form -- a
+  `translate` in `render()` and a class-body `Prismatic` -- beside four
+  mates, leaving the migration split down the middle. The URDF's
+  prismatic joint is the same statement as its revolute one (parent,
+  child, origin, axis, limits), and a mate should be able to give the
+  moving child a `Prismatic` with the same rules: the line stated in the
+  child's frame or taken from the moving frame's `z`, the range in
+  millimetres, the rest placement from the frames as today.
+  **Cycle cut: `slide-by-mate`.**
