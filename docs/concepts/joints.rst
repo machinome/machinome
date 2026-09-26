@@ -119,6 +119,101 @@ inverse of the child's rest placement, so a body whose rest placement
 carries a value the framework cannot evaluate numerically refuses a site
 joint by name where a class-declared one would not.
 
+Frames and mates
+----------------
+
+In the example above one physical pin is stated twice: the arm's
+``render()`` places the forearm with arithmetic, and the forearm's class
+states the elbow line again, and the two agree only because the numbers
+were worked out together. An assembly CAD design states it once: a
+connector on each part, and how the two meet. So can a machine.
+
+A **frame** is a connector a part declares on itself, in its own rest
+frame: an origin ``at`` and a right-handed triad whose ``z`` is the line
+a revolute turns about. A **mate** is one sentence in the assembly that
+holds both parts, written from the frame that moves:
+
+.. code-block:: python
+
+    from machinome.motion.joints import Revolute
+    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.frames import Frame
+    from machinome.parameters import Length
+    from solid2 import cube
+
+    class Forearm(Solid2Node):
+        hinge = Frame(at=(0, 0, 81.5), z=(0, 1, 0), x=(1, 0, 0))
+
+        def render(self):
+            return cube([20, 20, 160])
+
+    class UpperArm(AssemblyNode):
+        reach = Length(160)
+        elbow_pin = Frame(at=(0, reach, 68), z=(0, 0, 1))
+
+        forearm = Forearm()
+
+        elbow = forearm.hinge.on(elbow_pin,
+                                 Revolute(range=(-135, 135), unit='deg'))
+
+There is no ``render()`` and no joint on ``Forearm``. The mate compiles,
+when the arm is built, to three things this page already describes:
+
+- the forearm's **rest placement**, the rotation and translation that
+  put ``hinge`` onto ``elbow_pin``, origin on origin and ``x``, ``y``,
+  ``z`` onto ``x``, ``y``, ``z``: here ``rotate(90, [1, 0, 0])`` then
+  ``translate`` to ``(0, 241.5, 68)``, applied after ``render()``, exactly
+  as if written there;
+- a **joint on the forearm**, a ``Revolute`` about the moving frame's
+  ``z`` through its ``at``, in the forearm's own frame, carrying the
+  freedom's range and unit. It is a joint of the forearm's class like any
+  other, placed after the joints the class declares itself, and the
+  forearm keeps its name and its build identity;
+- a **coordinate on the arm** under the mate's name. ``arm.elbow`` reads
+  and binds as a joint's coordinate does, ``declared_ports`` reports it,
+  and a relation, a driver or a derived coordinate names it as any other
+  end (``elbow.drives(belt.travel, ratio=...)`` in the arm's body,
+  ``angle.drives(arm.elbow)`` from above). The forearm's joint is bound
+  through it and through nothing else: binding ``arm.forearm.elbow`` by
+  hand or by a relation is refused, naming ``arm.elbow``. Left unbound,
+  the forearm rests at the mate's rest placement.
+
+``x`` matters. It fixes the attitude about ``z``, and so the zero of the
+mate's coordinate: with the forearm's ``x`` left out the two lines still
+meet, but the forearm rests turned 120 degrees about ``(1, 1, 1)``. Left
+out, ``x`` is the next principal axis after a principal ``z`` (``+X`` for
+``+Z``, ``+Y`` for ``+X``, ``+Z`` for ``+Y``, negated for a negated
+``z``); a ``z`` along no principal axis must state its ``x``.
+
+A frame's arguments follow the joint rule below, resolve to numbers when
+the part is built, and are neither identity nor geometry: adding one
+changes no artifact. A frame may be declared on any node, an assembly
+included, since an assembly's frames are its connectors to the one
+above it. ``declared_frames(cls)`` and ``declared_mates(cls)`` enumerate
+them off the class.
+
+The **fixed end** is a frame of the assembly itself, written by its bare
+name, or ``<child>.<frame>`` of another child the assembly declares, which
+then must not move: the mated part rests against that child's rest
+placement, and siblings do not carry each other. The **moving end** is a
+frame of a child the assembly declares directly. The **freedom** is a
+``Revolute`` written with neither ``axis`` nor ``at``, the one place a
+``Revolute`` may leave out its axis; its range is numbers, ``None`` or
+functions of the coordinate's own value.
+
+Refused when the class is created, naming the mate: a mate on a node
+that is not an assembly; a moving end that is the assembly's own frame;
+either end reached through more than one child, a list or a
+``repeat()``; a fixed end on a child that can move; a second mate on one
+child; a mate never assigned to a name; a freedom that is not a fresh
+``Revolute``, or that states an ``axis`` or ``at``, or whose range reads
+other coordinates or the node; a mate with no freedom at all; and a mate
+name the moving child already answers to. Refused when the arm renders:
+a ``render()`` that also places a mated child. A mate publishes nothing
+new: the document carries its rest placement as operations and its
+coordinate as a binding, at the version the same machine without mates
+declares.
+
 Arguments
 ---------
 
@@ -272,4 +367,5 @@ other attribute the child already answers to; two site joints of one
 name; a site joint and a wiring naming the same coordinate. Assigning to
 a ``Free`` as a whole is refused naming its six coordinates.
 ``declared_joints(cls)`` enumerates a class's joints, in composition
-order, with no instance constructed.
+order, with no instance constructed. A ``Revolute`` written without an
+axis is refused anywhere but as a mate's freedom.

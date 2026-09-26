@@ -36,6 +36,15 @@ the simulation's, and are shown live on `machinome.org
 <https://machinome.org/foundry/>`_; the :doc:`examples </examples>` page
 says what to look for there.
 
+Since |release|
+---------------
+
+Frames and mates, which place a part by its connectors and give it a
+revolute joint in one sentence (:doc:`/concepts/joints`), are on the
+main branch and unreleased. They add nothing to the published document
+and need no newer viewer. The :doc:`changelog` lists them under
+*Unreleased*.
+
 Packages
 --------
 

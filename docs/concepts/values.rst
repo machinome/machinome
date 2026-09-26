@@ -36,12 +36,15 @@ assignment, with the sink's scale applied. A driver is an input to the
 machine; a port is a connection point between parts. A joint's
 coordinate is a port the joint owns (:doc:`joints`).
 
-Two further class-body declarations are none of the three: the root's
+Three further class-body declarations are none of the three: the root's
 time base, ``time = Time(loop=...)``, ``Time.running()`` or
 ``Time.elapsed()``, which says what ``self.time`` means
-(:doc:`execution-models`), and a rigid part's marking, which says what
+(:doc:`execution-models`); a rigid part's marking, which says what
 the part carries on its surface and adds no solid
-(:doc:`/howto/markings`).
+(:doc:`/howto/markings`); and a node's frame, ``hinge = Frame(at=...,
+z=..., x=...)``, a named connector in the node's own frame that an
+assembly mates another part onto, which is neither identity nor geometry
+(:doc:`joints`).
 
 Where names come from
 ---------------------

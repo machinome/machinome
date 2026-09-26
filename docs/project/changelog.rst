@@ -3,6 +3,20 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* **Parts placed by mate.** A part declares its connectors as frames,
+  ``hinge = Frame(at=..., z=..., x=...)``, in its own frame; an assembly
+  relates two of them in one sentence,
+  ``elbow = forearm.hinge.on(elbow_pin, Revolute(range=(-135, 135)))``,
+  which places the child at rest, gives it a revolute joint about the
+  frame's line and gives the assembly a coordinate named ``elbow``. The
+  placement, the joint and the constants that kept them in agreement are
+  no longer written by hand. ``Revolute`` may leave out its ``axis`` only
+  as a mate's freedom. Revolute mates only; documents are unchanged
+  (ADR-147).
+
 Machinome 0.7.0
 ---------------
 

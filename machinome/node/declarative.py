@@ -299,6 +299,19 @@ class ChildDeclaration:
         for key, value in kwargs.items():
             if (_is_joint(value) and value.owner is None
                     and not _in_current_body(value)):
+                from machinome.motion.joints import (Revolute,
+                                                      axisless_refusal)
+
+                if isinstance(value, Revolute) and value.axis is None:
+                    # A `Revolute` left without an axis is a mate's
+                    # freedom and nothing else: refused here, before it
+                    # could specialize anything (tasks 3.2).
+
+                    body = executing_body()
+                    declaring = ((body or {}).get('__qualname__')
+                                 or '<class>')
+                    raise TypeError(axisless_refusal(
+                        declaring, key, site=node_class.__name__))
                 # Marked the moment it is claimed: `Joint.place` reads
                 # this to decide whether its arguments need carrying,
                 # and nothing else ever sets it.
@@ -357,6 +370,12 @@ class ChildDeclaration:
 
         ours = {id(port) for port in declared_ports(owner).values()}
         ours.update(id(joint) for joint in declared_joints(owner).values())
+        # A MATE's coordinate is the assembly's own like a joint's: read
+        # off the class dictionaries, since `declared_mates` is recorded
+        # only once every `__set_name__` -- this one included -- has run.
+        ours.update(id(value) for klass in owner.__mro__
+                    for value in vars(klass).values()
+                    if getattr(type(value), 'mate_kind', None) == 'mate')
         theirs = declared_ports(self.node_class)
         theirs_joints = declared_joints(self.node_class)
         for keyword, source in self.wiring.items():
@@ -434,6 +453,12 @@ class ChildDeclaration:
 
         held = f'{self._name}.{attribute}' if self._name else attribute
         found = read_through(self.node_class, attribute, held)
+        if getattr(type(found), 'frame_kind', None) == 'frame':
+            # A FRAME the declared class carries: a place too, the end of
+            # a mate (OpenSpec change ``place-parts-by-mate``).
+            from machinome.motion.mates import FrameRef
+
+            return FrameRef(self, (attribute,), found)
         if isinstance(found, RepeatDeclaration):
             # The first (and, so far, only) repeated segment this path
             # steps onto: a BROADCAST from here on, not a value -- the
@@ -516,6 +541,10 @@ class ChildDeclaration:
             # name -- read the name back out, so this message keeps
             # reading exactly as it always has.
             slot.wired_from = (type(owner).__name__, self._name, keyword)
+            if getattr(type(source), 'mate_kind', None) == 'mate':
+                # The joint a MATE installed: a hand binding of it is
+                # refused naming the mate's coordinate instead.
+                slot.mated_by = source
 
     def __repr__(self):
         return f'<declared {self.node_class.__name__} {self._name or ""}>'
@@ -555,6 +584,12 @@ class RepeatDeclaration:
 
         held = f'{self._name}.{attribute}' if self._name else attribute
         found = read_through(self.node_class, attribute, held)
+        if getattr(type(found), 'frame_kind', None) == 'frame':
+            # Read, never refused for being written: a mate naming it is
+            # refused by the mate, which can say why.
+            from machinome.motion.mates import FrameRef
+
+            return FrameRef(self, (attribute,), found, repeat=self)
         if isinstance(found, RepeatDeclaration):
             _refuse_two_repeats(held, self, found)
         return BroadcastRef(self, (attribute,), found, self)
@@ -689,6 +724,10 @@ _RELATIONS_KEY = '__machinome_relations__'
 _COMMITMENTS_KEY = '__machinome_commitments__'
 _CONSTRAINTS_KEY = '__machinome_constraints__'
 
+#: The mates one class body states, kept the same way and for the same
+#: reason (OpenSpec change ``place-parts-by-mate``).
+_MATES_KEY = '__machinome_mates__'
+
 
 class _DeclaringNamespace(dict):
     """The namespace a node class body executes in.
@@ -705,10 +744,12 @@ class _DeclaringNamespace(dict):
         super().__setitem__(_RELATIONS_KEY, [])
         super().__setitem__(_COMMITMENTS_KEY, [])
         super().__setitem__(_CONSTRAINTS_KEY, [])
+        super().__setitem__(_MATES_KEY, [])
 
     def __setitem__(self, key, value):
         shadowed = self.get(key)
         if shadowed is not None and shadowed is not value:
+            _refuse_mate_clash(key, shadowed, value)
             _refuse_coordinate_clash(self, key, shadowed, value)
         if (getattr(type(value), 'marking_kind', None) == 'marking'
                 and shadowed is not None and shadowed is not value):
@@ -724,6 +765,20 @@ class _DeclaringNamespace(dict):
                 f"a marking and then as {value!r}. A marking is read as "
                 f"an attribute of its node, so its name has to be free "
                 f"on that node: rename one of them.")
+        if (getattr(type(value), 'frame_kind', None) == 'frame'
+                and shadowed is not None and shadowed is not value):
+            raise TypeError(
+                f"'{key}' is declared twice in one class body: first as "
+                f"{shadowed!r} and then as a frame. A frame is read as an "
+                f"attribute of its node, so its name has to be free on "
+                f"that node: rename one of them.")
+        if (getattr(type(shadowed), 'frame_kind', None) == 'frame'
+                and value is not None and value is not shadowed):
+            raise TypeError(
+                f"'{key}' is declared twice in one class body: first as "
+                f"a frame and then as {value!r}. A frame is read as an "
+                f"attribute of its node, so its name has to be free on "
+                f"that node: rename one of them.")
         if isinstance(value, (Declaration, ChildDeclaration,
                               RepeatDeclaration)):
             if isinstance(value, Declaration) and value._name is None:
@@ -737,6 +792,24 @@ class _DeclaringNamespace(dict):
             # __set_name__ is too late for that.
             value._name = key
         super().__setitem__(key, value)
+
+
+def _refuse_mate_clash(key, shadowed, value):
+    """A name assigned a mate and something else in one class body --
+    refused where it is written, for the reason a marking's is: the
+    second assignment would silently replace the first."""
+    first = getattr(type(shadowed), 'mate_kind', None) == 'mate'
+    second = getattr(type(value), 'mate_kind', None) == 'mate'
+    if not first and not second:
+        return
+    if second and value is None:
+        return
+    raise TypeError(
+        f"'{key}' is declared twice in one class body: first as "
+        f"{'a mate' if first else repr(shadowed)} and then as "
+        f"{'a mate' if second else repr(value)}. A mate's coordinate is "
+        f"read as an attribute of its assembly, so its name has to be free "
+        f"there: rename one of them.")
 
 
 def _refuse_coordinate_clash(namespace, key, shadowed, value):
@@ -796,6 +869,22 @@ def record_relation(relation):
             f'assembly that owns the relation.')
     namespace[_RELATIONS_KEY].append(relation)
     return relation
+
+
+def record_mate(mate):
+    """Record `mate` on the class body that is executing:
+    `record_relation`'s twin. A mate is a STATEMENT, recorded whether or
+    not it is assigned; stated with no node class body executing it is
+    refused by name."""
+    namespace = executing_body()
+    if namespace is None:
+        raise TypeError(
+            f'{mate!r} was stated with no node class body executing: a '
+            f'mate is declared in the body of the assembly that holds both '
+            f'frames, like a relation. Write '
+            f'<child>.<frame>.on(<frame>, Revolute(...)) there.')
+    namespace[_MATES_KEY].append(mate)
+    return mate
 
 
 def record_constraint(constraint):
@@ -868,7 +957,19 @@ class NodeMeta(type):
         relations = namespace.pop(_RELATIONS_KEY, None)
         commitments = namespace.pop(_COMMITMENTS_KEY, None)
         constraints = namespace.pop(_CONSTRAINTS_KEY, ())
+        mates = namespace.pop(_MATES_KEY, ())
         cls = super().__new__(mcs, name, bases, namespace, **kwargs)
+        if _declares_frame(cls):
+            _validate_frames(cls, name, namespace)
+        if mates or any(base.__dict__.get('_own_mates')
+                        for base in cls.__mro__[1:]):
+            # Before the relations: a relation in the same body may name
+            # a mate's coordinate, and `OwnRef.check_declared_on` admits
+            # it off `cls._declared_mates`. A local import, taken only by
+            # a class that states or inherits a mate.
+            from machinome.motion.mates import declare_mates
+
+            declare_mates(cls, name, list(mates))
         inherited = []
         for base in reversed(cls.__mro__[1:]):
             inherited.extend(base.__dict__.get('_own_constraints', ()))
@@ -1094,6 +1195,100 @@ def _validate_markings(cls, name, namespace):
                 f"name has to be free on that node: rename the marking.")
 
         marking.declared_on(cls, attribute)
+
+
+def _declares_frame(cls):
+    """Whether any class in `cls`'s method resolution order wrote a
+    frame: `_declares_marking`'s duck-typed scan, on `frame_kind`, so a
+    class that declares none pays one attribute scan and no import."""
+    for klass in cls.__mro__:
+        for value in vars(klass).values():
+            if getattr(type(value), 'frame_kind', None) == 'frame':
+                return True
+    return False
+
+
+def _validate_frames(cls, name, namespace):
+    """Validate every frame `cls` carries where it is written, for the
+    reason a marking is (`_validate_markings`): the class exists now, so
+    a frame that collides with a parameter, a child, a joint, a port, a
+    marking or a mate of the same class -- or would shadow an attribute
+    every node carries -- is refused at the line that wrote it.
+
+    Unlike a marking, a frame is allowed on ANY node kind: an assembly's
+    frames are its connectors to the assembly above it (design decision
+    1). A malformed ARGUMENT is not refused here: a frame's arguments
+    may be tokens, formulas or a callable of the realized node, so they
+    are resolved, and refused, per instance at construction
+    (`machinome.node.frames.resolve_declared_frames`).
+    """
+    from machinome.motion.joints import declared_joints
+    from machinome.motion.ports import declared_ports
+    from machinome.node.frames import declared_frames
+    from machinome.node.markings import declared_markings
+
+    frames = declared_frames(cls)
+    if not frames:
+        return
+
+    parameters = declared_parameters(cls)
+    children = declared_children(cls)
+    joints = declared_joints(cls)
+    ports = declared_ports(cls)
+    markings = declared_markings(cls)
+    mates = {attribute for klass in cls.__mro__
+             for attribute, value in vars(klass).items()
+             if getattr(type(value), 'mate_kind', None) == 'mate'}
+
+    for attribute in frames:
+        collision = None
+        if attribute in parameters:
+            collision = 'the declared parameter'
+        elif attribute in children:
+            collision = 'the declared child'
+        elif attribute in joints:
+            collision = 'the joint'
+        elif attribute in mates:
+            collision = 'the mate'
+        elif attribute in ports:
+            collision = 'the port'
+        elif attribute in markings:
+            collision = 'the marking'
+        if collision is not None:
+            raise TypeError(
+                f"'{attribute}' on {name} is declared twice, as a frame "
+                f"and as {collision} of the same class. A frame is read as "
+                f"an attribute of its node, so its name has to be free on "
+                f"that node: rename one of them.")
+
+        if attribute in _RESERVED:
+            raise TypeError(
+                f"frame '{attribute}' on {name} would shadow the node "
+                f"attribute '{attribute}', which every node carries. Rename "
+                f"the frame.")
+
+        for klass in cls.__mro__[1:]:
+            existing = vars(klass).get(attribute, _ABSENT)
+            if existing is _ABSENT:
+                continue
+            if getattr(type(existing), 'frame_kind', None) == 'frame':
+                continue
+            if existing is None and _drops_frame(klass, attribute):
+                continue
+            raise TypeError(
+                f"frame '{attribute}' on {name} would shadow "
+                f"{klass.__name__}.{attribute}, which a read of the frame "
+                f"would then hide for good. A frame is read as an "
+                f"attribute of its node, exactly as a parameter is, so its "
+                f"name has to be free on that node: rename the frame.")
+
+
+def _drops_frame(klass, attribute):
+    """Whether `klass` assigning `attribute = None` removes a frame it
+    inherited, rather than declaring an attribute of its own."""
+    return any(getattr(type(vars(base).get(attribute)), 'frame_kind', None)
+               == 'frame'
+               for base in klass.__mro__[1:])
 
 
 def _drops_marking(klass, attribute):

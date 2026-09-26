@@ -292,6 +292,21 @@ An assembly may add a range to an existing scalar descendant with
 replace, the joint's original limits. The method needs no import; see
 :ref:`ancestor-joint-constraints` for scope, accepted bounds and refusals.
 
+Frames and mates
+====================
+
+A frame is a named connector a node declares on itself, importable from
+``machinome.node.frames`` and from ``machinome.node``; a mate relates two
+frames in an assembly's class body, ``<child>.<frame>.on(<frame>,
+Revolute(...))``, and needs no import beyond ``Revolute``. See
+:doc:`Joints </concepts/joints>`.
+
+.. autoclass:: machinome.node.frames.Frame
+
+.. autofunction:: machinome.node.frames.declared_frames
+
+.. autofunction:: machinome.motion.mates.declared_mates
+
 Couplings
 =============
 

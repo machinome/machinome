@@ -87,6 +87,12 @@ class BoundPort:
     # would be silently overwritten and is refused instead.
     wired_from = None
 
+    # The mate whose wiring this is, when the wired coordinate is the
+    # joint a mate installed on its moving child (OpenSpec change
+    # ``place-parts-by-mate``): a hand binding is then refused naming the
+    # mate's own coordinate as the one to bind.
+    mated_by = None
+
     # What bound the value this slot holds, for the current enumeration
     # of the tree: None for the author's own code, and otherwise
     # whatever the framework was binding as -- a wiring, a relation, a
@@ -425,6 +431,10 @@ def bind(sink, source):
             f'coordinate only under a guard that finds it unbound.')
     if (sink.wired_from is not None and not _wiring_depth
             and not isinstance(_binder, RunBinder)):
+        if sink.mated_by is not None:
+            from machinome.motion.mates import refused_binding
+
+            raise refused_binding(sink)
         parent, attribute, keyword = sink.wired_from
         raise ValueError(
             f"cannot bind '{keyword}' of {attribute}: {parent} declares "

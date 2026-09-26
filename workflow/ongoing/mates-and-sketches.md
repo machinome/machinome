@@ -121,6 +121,17 @@ design note, not a spelling that exists; a cycle cut from it re-checks
 every rule here against its originating project's evidence. The pilot's two
 directions (§5.3, §5.5) are kept as written and are not proposals.
 
+**§5.1 and §5.2 were cut, 2026-09-26,** into the framework OpenSpec change
+`place-parts-by-mate` (ADR-147), from Thor's root chain: frames on any node
+kind, and the REVOLUTE mate only, compiling to a rest placement, a joint
+and a coordinate. The change's spike and design corrected this note in six
+places, folded in below and marked *(corrected 2026-09-26)*; what the cycle
+deliberately left out -- the rigid mate, `Prismatic` and `Free` freedoms,
+repeated frames, broadcast mates, ends deeper than one child -- still
+reads here as proposal, and the change's `design.md` §9 says what the rigid
+mate would add. Where this note and the change disagree, the change is
+right.
+
 ### 5.1 Named frames on parts
 
 A part declares its connectors once, in its own frame, as class-body
@@ -145,16 +156,25 @@ class Bolt(StepNode):                                # catalogue hardware
 ```
 
 - **Signature.** `Frame(at=(0, 0, 0), z=(0, 0, 1), x=None)`. `z` is the
-  line a revolute turns about or a prismatic slides along. `x` matters
-  only to a rigid mate and, when omitted, follows the rule `Wrapped`
-  already uses for `zero` — the next principal axis in right-hand order —
-  refused for a diagonal `z` naming `x` as the remedy. `y` is `z × x`.
+  line a revolute turns about or a prismatic slides along. *(corrected
+  2026-09-26)* `x` matters to EVERY mate, not only to a rigid one: the
+  moving child is placed whole triad onto whole triad, so `x` fixes the
+  rest attitude about `z` and therefore the zero of a revolute mate's
+  coordinate -- Thor's elbow with the forearm's `x` left to the default
+  still meets its line, and rests turned 120 degrees about `(1, 1, 1)`
+  instead of 90 about X. Omitted, `x` is the next principal axis in
+  right-hand order for a PRINCIPAL `z` only (where it agrees with
+  `Wrapped`'s derived zero); a `z` along no principal axis must state
+  `x`, and is refused naming `x`, because `Wrapped`'s general derivation
+  would be a zero nobody can read off the declaration. `y` is `z × x`.
   Vectors need not be unit: `z` is normalized and `x` squared up against
   it, exactly as Inmoov-sim's project-local `Frame`
   (`Inmoov_sim/frames.py`) does today.
 - **Components** follow the joint rule (ADR-088): a number, a
   declared-parameter token, a formula over them, or — for the whole
-  argument — a callable of the realized node.
+  argument — a callable of the realized node. *(corrected 2026-09-26)*
+  Like a joint's, every component resolves to a NUMBER at realization;
+  no frame is symbolic.
 - **Frame of reference.** The declarer's own rest frame, ADR-097's rule,
   and the framework transforms nothing.
 - **Where.** On any node kind — a leaf adapter, a fusion, and an
@@ -202,7 +222,15 @@ default, so the base sentence is placement and the freedom is the
 addition. Either frame is named as a relation's end is named: a frame the
 class body's own children declare, or a path through declared children
 (`arm.link.hole`), validated at class definition by the `PathRef` rules; a
-list-held child is refused as it is for relations.
+list-held child is refused as it is for relations. *(corrected
+2026-09-26)* The fixed end may also be the DECLARING ASSEMBLY'S OWN frame,
+written by its bare name, whose owner placement is the identity -- every
+fixed end of Thor's root chain but the first is one. In the first cycle
+both ends are depth one: the moving end a frame of a directly declared
+child, the fixed end the assembly's own frame or a directly declared
+child's, because a grandchild's rest placement is decided by its own
+parent's `render()`, after this assembly's. The first cycle also has no
+rigid mate: `on()` with no freedom is refused naming the deferral.
 
 **The freedom** is a joint written with no `axis` and no `at`, because the
 two frames supply both: `Revolute(range=, unit=)`,
@@ -222,7 +250,15 @@ without one is refused naming the mate as the only place it is allowed.
    owner placement, composed with the fixed frame, composed with the
    inverse of the moving frame. Mates resolve in dependency order, fixed
    side first; a child neither mated nor hand-placed rests at the identity
-   as today.
+   as today. *(corrected 2026-09-26)* A fixed end on a sibling that can
+   MOVE does not follow it: the moving child is placed against the fixed
+   child's REST placement, and siblings do not carry each other, so the
+   `lid = cap.bottom.on(link.knee)` example above would leave the lid at
+   the link's rest pose while the link swings. The first cycle refuses a
+   fixed end on any child whose class declares a joint (its own, a site's
+   or a mate's), which with revolute freedoms only also makes the
+   dependency order the declaration order and a cycle unwritable; a rigid
+   mate would bring both back.
 2. **A joint on the moving child**, in ADR-097's class form, with the
    moving frame's `z` as `axis` and its `at` as anchor, copied literally:
    the frame is already in the child's own frame, so nothing is inverted
@@ -247,11 +283,10 @@ this section left open:
   and until §5.3 exists the build refuses it naming both mates.
 - *The rigid mate* is the default of `on()` and needs no class; its
   document kind is `fixed`.
-- *Symbolic frames.* A symbolic `at` publishes as a symbolic translation,
-  exactly as a formula in `render()` does. A symbolic axis is refused in
-  the first cycle, naming the frame: the document carries only `rotate`
-  and `translate` operations, and a symbolic axis-angle derived from a
-  symbolic matrix is not a thing to publish.
+- *Symbolic frames.* *(corrected 2026-09-26)* Do not arise: a frame's
+  arguments resolve to numbers at realization by the joint rule, so a
+  component that is not a number is refused naming the frame, and no
+  symbolic translation or axis reaches the compile.
 - *Broadcast.* A moving path through a `.repeat()` is a broadcast
   (ADR-096): one mate per copy, in copy order, the fixed side either one
   frame or a repeated frame of the same count, a count mismatch refused by
@@ -264,9 +299,12 @@ this section left open:
   viewer's frame. The wrist bolt is `axle.shank.on(clevis.ear, Revolute())`
   with no arithmetic at all, once `Bolt` carries a `shank` frame and the
   clevis an `ear`.
-- *Range and `Bound`.* Unchanged: both come from the joint passed to the
-  mate, and a `Bound`'s reads resolve against the assembly that declares
-  the mate.
+- *Range and `Bound`.* Both come from the joint passed to the mate.
+  *(corrected 2026-09-26)* The joint the mate installs is in class form on
+  the child, so its range resolves against the CHILD; the first cycle
+  therefore admits a freedom's range only as numbers, `None` or functions
+  of the coordinate's own value, and refuses a parameter token, a
+  whole-range callable or a `Bound` with reads, naming the mate.
 
 Coordinates do not disappear: they move into the one place they are local
 and obvious, and are written once. This layer answers every item of §4
@@ -374,7 +412,10 @@ Under the evidence rule, none of §5 is proposed until a named project needs
 it now. The candidates were re-read on 2026-09-23 against the interface
 above.
 
-- **§5.1 + §5.2, one change.** Originating project: **Inmoov-sim** is the
+- **§5.1 + §5.2, one change.** *(Cut 2026-09-26 as `place-parts-by-mate`,
+  originating project **Thor**, whose root chain states each of five links
+  twice; revolute mates only. What follows is the pre-cut reading, kept for
+  the parts the cycle left out.)* Originating project: **Inmoov-sim** is the
   clean candidate. Its frames already exist as project code — `Frame`,
   `FRAMES`, `STATIONS`, `WRIST` and `PRESENTATION`, each placed by
   `rotation()` plus a `translate`, and the wrist axle's `_presented`

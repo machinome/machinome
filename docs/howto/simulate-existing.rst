@@ -50,7 +50,11 @@ Size the control surface to the machine
 Declare the inputs the machine actually has, on the assembly that owns
 each: an axis's travel on the axis, the whole printer's ``Home`` on the
 printer. A joint per moving body, a relation per mechanical link, a
-driver per handle, an instruction per operation a user performs. Do not
+driver per handle, an instruction per operation a user performs. Where
+the design's own assembly states how its links attach — a connector on
+each part and how the two meet, as assembly CAD does — declare those
+connectors as frames and mate the links, so neither the placement nor the
+joint is transcribed by hand (:doc:`/concepts/joints`). Do not
 add inputs the machine does not have; a simulation that can pose the
 design into states the real machine cannot reach proves less, not more.
 Pick the execution model by what the machine keeps

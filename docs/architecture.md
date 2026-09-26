@@ -175,6 +175,25 @@ connectivity verdict are what they are without it — and it lives in the
 part's own adjusted frame, so the part's placement carries it and
 nothing about time or a joint is involved.
 
+A fifth kind says WHERE on a node another node attaches: a **frame**
+(ADR-147), `hinge = Frame(at=(0, 0, 81.5), z=(0, 1, 0), x=(1, 0, 0))`, an
+origin and a right-handed triad in the declarer's OWN rest frame, the
+frame a class-declared joint is read in (ADR-097). It follows the
+marking's mould — duck-typed on `frame_kind` in `NodeMeta.__new__`,
+collected off the MRO by `declared_frames` (a plain mixin contributes,
+`None` drops one), refused on a name clashing with a parameter, a child,
+a joint, a port, a marking or a mate or shadowing a node attribute,
+neither a `Declaration` nor a descriptor and so never identity — with
+one departure: it is allowed on ANY node kind, an assembly included,
+because an assembly's frames are its connectors to the one above it.
+Its arguments follow the joint argument rule (`resolved_vector`, shared
+with `Joint`) and resolve to numbers per instance in the constructor,
+right after `resolve_declared_joints`, cached as `_frame_arguments`; `z`
+is normalized, `x` squared up against it, an omitted `x` derived only
+for a principal `z` (the next principal axis, where `Wrapped`'s zero
+lands) and refused for any other. A frame builds nothing; it is the end
+of a **mate** (Kinematics, below).
+
 The public surface is split by concern above the node package, so an
 import line says what each name is for: build parameters come from
 `machinome/parameters.py`, node classes from `machinome/node/`, ports
@@ -743,6 +762,38 @@ node's `operations` list being replaced wholesale — a test runner's
 checkpoint restore, a pose capture — which a remembered object cannot,
 so a placement removed by mark can never be stranded beside the one that
 replaces it, however the list arrived at its current content.
+
+**A mate places a child and declares its freedom in one sentence**
+(ADR-147, spec `mates`): `elbow = forearm.hinge.on(elbow_pin,
+Revolute(range=(-135, 135)))` in an assembly's class body, the frame that
+speaks being the one that MOVES. Reading a frame off a child declaration
+yields a `FrameRef` (`machinome/motion/mates.py`), a place like a
+`PathRef` that refuses `drives`, arithmetic and further reads; `on()`
+records a `Mate` through the relations channel (`record_mate`), and
+`NodeMeta.__new__` validates it BEFORE the class's constraints and
+relations — the moving end a frame of a child this body declares, the
+fixed end the assembly's own frame or a frame of a declared child whose
+class declares no joint (a sibling does not carry a sibling), both ends
+depth one, neither list-held nor repeated, one mate per child, the
+freedom a fresh `Revolute` with neither `axis` nor `at` (the one place a
+`Revolute` may omit its axis) whose range does not depend on a
+declarer. A mate compiles to three things that already exist: (1) the
+child's REST PLACEMENT `P_owner · F_fixed · F_moving⁻¹`, one rotation
+then one translation, appended untagged by `apply_mates` from `_rest`
+after the author's `render()` returns — a render that also places the
+child is refused from its phase's `applied` list, and a legacy re-run
+drops and re-applies by the `_mate_slot` mark; (2) a `Revolute` of the
+child's class built from the moving frame's DECLARED `z` and `at`,
+installed by `_specialize` (ADR-098) so it takes the slot after the
+child's own joints and resolves in the child's own frame with nothing
+carried; (3) a rotational COORDINATE of the assembly — the `Mate` itself,
+a `Coordinate` owning one port and deliberately not a `Joint` — wired to
+the child's joint through the child declaration's `wiring` (ADR-088),
+the one wiring whose unbound source rests instead of being refused
+(`Wiring.rests_unbound`). Binding the installed joint by any other route
+is refused naming the mate's coordinate (`BoundPort.mated_by`). Nothing
+new is published: operations and a binding, at the version the machine
+declares without mates.
 
 **A relation** (spec `couplings`) says that one coordinate's motion IS
 another's: `a.drives(b, ratio=…, offset=…, law=…)`, written as a
@@ -2976,10 +3027,10 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `machinome/node/`, `machinome/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115 |
+| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
-| Motion | `machinome/motion/` | `ports`, `joints`, `couplings` | 056, 072, 087, 088, 089, 096, 100, 105, 121, 122, 125, 126, 127 |
+| Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147 |
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |

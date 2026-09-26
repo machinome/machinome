@@ -4,13 +4,15 @@
 
 """What moves, and what drives what.
 
-Three submodules, each answering to its own import line so that reading
+Four submodules, each answering to its own import line so that reading
 one says which kind of thing is in use:
 
 - `machinome.motion.ports` -- a value that flows between nodes,
   including the root's own time channel;
 - `machinome.motion.joints` -- a pair that places a body;
-- `machinome.motion.couplings` -- a law between two coordinates.
+- `machinome.motion.couplings` -- a law between two coordinates;
+- `machinome.motion.mates` -- two frames related in one sentence, which
+  places a child and gives it a joint.
 
 This package exports no name of its own and resolves no submodule's
 names as its own attributes: `from machinome.motion import

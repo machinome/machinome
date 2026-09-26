@@ -3766,3 +3766,69 @@ already on record and is tracked there, not here.
   with a linkage machine that wants its loop closed rather than derived —
   a second flexure stage, or a Foundry machine built around a linkage — and
   is a natural neighbour of 0.9 dynamics on `workflow/ongoing/roadmap.md`.
+
+## Findings from the framework cycle `place-parts-by-mate` (2026-09-26)
+
+The cycle's validation in its originating project: Thor's five root-chain
+links re-placed by frames and mates (Thor branch `place-parts-by-mate`,
+commits `7aebdd0` emitter, `8a42a59` migration, `5cc98c4` records), with
+`capture_poses.py compare` at maximum deviation 0 over 25 poses and 441
+leaves, Thor's own tests identical to its `main` (32 of 34, the two
+failures pre-existing seat-inventory ones), and `Home`/`Park` snapshots
+pixel-identical to `main`. No refusal blocked the migration; the two
+refusals probed (a `render()` that also places a mated child; a joint of
+the mate's name left on the child) fire naming the mate. The findings
+below are recorded, not fixed; every disposition is provisional until the
+pilot triages it.
+
+- **A design's attachment frames are not joint frames.** Thor's Assembly4
+  connectors, folded with their `AttachmentOffset`, put the connector's `z`
+  on the joint line for two of the five links (base yaw, elbow), reversed
+  for one (forearm yaw) and ACROSS the line for two (shoulder, wrist). A
+  revolute mate turns only about the moving frame's `z`, so Thor's emitter
+  turns both frames of each pair by one common rotation onto the joint
+  line the model declares, choosing the fixed frame's `x` as the default —
+  a choice the design does not make. The cycle's briefing assumed the
+  folded `z` is always the joint line; it is not. **Deferred.** A mate
+  could take the joint line separately from the attachment frame (an
+  `axis=` in the frame's own terms), which would let a design's
+  connectors be declared verbatim; comes back with a second design read
+  through its connectors, or with the rigid mate, which is the shape those
+  three attachments actually have.
+- **The frame's origin becomes the joint's anchor.** The moving frame's
+  `at` is copied as the installed joint's `at`, so a frame whose origin is
+  off the child's own origin but on the joint line (Thor's shoulder,
+  `(0, 0, 68)`) publishes a centring pair the hand-written joint at the
+  origin did not, and the composed poses differ by up to `1.42e-14` mm
+  under the comparison tool's `1e-9` rounding. Known at proposal time
+  (design.md, risks). **Left as is:** the pose is the same; the centring
+  pair is the honest reading of the declared origin.
+- **A mated machine's document is not byte-identical to its hand-placed
+  twin.** Version, nodes, drivers, bindings and artifact keys are
+  unchanged, but the mate-built rotations serialize their snapped values
+  as `'180'`, `[0, 1, 0]` where Thor's hand-written floats gave `'180.0'`,
+  `[0.0, 1.0, 0.0]`. **Not a defect:** joints snap their normalized axis
+  to the same exact integers (`joints._snapped`), the serializer writes
+  what it is given, and every consumer reads both. The spec's byte
+  identity is for a machine WITHOUT mates, which holds.
+- **A mate's range lives in the holder's body.** Thor kept every travel
+  constant in `thor.py` beside the drivers; a mate's range is written in
+  the assembly that states the mate, so the constants moved into the link
+  modules and `thor.py` imports them, or the import would cycle. A
+  consequence of the interface, not a defect. **Left as is.**
+- **No documented way to read a declared frame's numbers, or a mate's
+  ends and freedom, off the class.** Thor's `test_frames.py`, which guards
+  the emitted frames against the design documents, had to restate the
+  default-`x` rule and read `Mate.described()` and `Mate.freedom.range`
+  — undocumented surfaces — because `declared_frames` yields the
+  declarations with their raw arguments and the resolved triad lives in
+  the instance's private `_frame_arguments`. The design chose no
+  instance-level read for this cycle. **Deferred:** a project has now
+  needed one; the smallest change is a documented resolved-frame read on
+  the instance and documented `moving`/`fixed`/`freedom` on `Mate`.
+- **One value at two addresses in `declared_ports`.** The mate's port on
+  the holder (`Art1.shoulder`) and the joint it installs on the child
+  (`Art2.shoulder`) are both enumerated; reading the child's works and
+  Thor's tests read `art3.elbow`. Binding the child's is refused by name.
+  A known consequence of choosing a wiring over aliasing (design.md
+  decision 6). **Left as is.**

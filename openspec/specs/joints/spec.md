@@ -825,16 +825,20 @@ whose line runs through the body's own origin is exactly this case.
 ### Requirement: Joint declarations
 
 The system SHALL provide the one-coordinate lower pairs as declarations
-exported from `machinome.motion.joints`: `Revolute(axis, at=(0, 0, 0),
-range=None, unit='deg')`, which turns a body about a line;
+exported from `machinome.motion.joints`: `Revolute(axis=None,
+at=(0, 0, 0), range=None, unit='deg')`, which turns a body about a line;
 `Prismatic(axis, at=(0, 0, 0), range=None, unit='mm')`, which slides a
 body along one; and `Orbit(axis, at=(0, 0, 0), carries=(0, 0, 0),
 range=None, unit='deg')`, which carries a point of a body round one while
 the body's attitude stays fixed. A joint SHALL be declared in either of two
 places: as a CLASS ATTRIBUTE of the node it moves — an assembly or a leaf
 — or at a DECLARATION SITE, passed as a keyword where a parent declares
-that node as a child, see "A joint declared where a child is placed". In
-both cases it SHALL be stateless declaration metadata shared by every
+that node as a child, see "A joint declared where a child is placed". A
+`Revolute` SHALL additionally be accepted as the FREEDOM of a mate, where
+it is written with neither `axis` nor `at` and the mate's two frames
+supply both, as the `mates` capability specifies; the joint the mate then
+gives the moving child is a joint of that child's class like any other. In
+every case it SHALL be stateless declaration metadata shared by every
 node the declaration realizes, exactly as a port declaration is; a site
 declaration is shared by every child that site realizes, including every
 copy of a `.repeat()`.
@@ -842,7 +846,14 @@ copy of a `.repeat()`.
 `axis` SHALL be a direction of three components and `at` an anchor point
 of three components, both stated in the frame of the body the joint is
 declared on; see "A joint is stated in the frame of whoever declares it".
-`axis` SHALL have no named constants; it is written as a tuple. `at`
+`axis` SHALL have no named constants; it is written as a tuple.
+`Revolute`'s `axis` MAY be omitted when the declaration is constructed,
+and a `Revolute` without an axis SHALL be refused at class definition
+wherever it is declared except as a mate's freedom — as a class
+attribute, at a declaration site, or held by anything else — naming the
+class, the joint and the mate as the only place an axis may be left out.
+Every other joint kind's `axis`, where it has one, SHALL remain
+required. `at`
 SHALL default to that body's OWN origin, which is the case of a joint
 whose line passes through the origin of the body it moves. `range` SHALL
 be a `(lo, hi)` pair in `unit`, and `unit` SHALL be the label the
@@ -925,6 +936,19 @@ definition naming the name and both declarations.
   site also passed `orbit=Orbit(...)`
 - **THEN** the first reports `spin` alone and the second reports `spin`
   then `orbit`, both read off a class without constructing anything
+
+#### Scenario: A revolute without an axis is refused outside a mate
+
+- **WHEN** a class body declares `turn = Revolute(unit='deg')`, or a
+  parent declares a child with `turn=Revolute()` at its declaration site
+- **THEN** class definition raises, naming the class and the joint and
+  saying an axis may be left out only in a mate's freedom
+
+#### Scenario: A revolute with an axis is unchanged
+
+- **WHEN** a class body declares `turn = Revolute((0, 0, 1))`, the axis
+  passed by position as before this change
+- **THEN** the class carries the joint with that axis, exactly as before
 
 ### Requirement: A joint owns one or more coordinates, and each is a port
 
@@ -1708,3 +1732,4 @@ The port enumerator SHALL report the same names and port declarations on repeate
 
 - **WHEN** a node class declares a joint with a `Bound` that checks another joint during class creation
 - **THEN** port enumeration after class creation reports the fully named coordinates, even if the bound check enumerated ports before descriptor naming finished
+

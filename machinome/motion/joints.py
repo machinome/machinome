@@ -139,6 +139,19 @@ _SNAP = 1e-9
 _MISSING = object()
 
 
+class _DefaultAnchor(tuple):
+    """The anchor a `Revolute` gets when `at` is not written: the
+    body's own origin, `(0, 0, 0)`, in every respect a tuple -- and ONE
+    object, so a mate's freedom can tell "left out" from an explicit
+    `at=(0, 0, 0)` by identity (design decision 7). A literal the author
+    writes can never be this object."""
+
+    __slots__ = ()
+
+
+_DEFAULT_ANCHOR = _DefaultAnchor((0, 0, 0))
+
+
 class _OwnPlacedOrigin:
     """What an `Orbit` declared at a SITE carries when its `carries` is
     left unstated: the body's OWN PLACED ORIGIN, the point the parent's
@@ -294,6 +307,12 @@ class Joint(Coordinate):
         # the class attribute, and `__set_name__` sets `owner` to the
         # class that declares it before anything reads this flag.
         self._declared_at_site = False
+        # Whether a mate took this joint as its FREEDOM
+        # (`machinome.motion.mates`): the one place a `Revolute` may be
+        # written without an axis. Set by the mate statement the moment
+        # it is claimed, so a freedom that was ALSO assigned in the body
+        # is refused by the mate, by name, rather than here.
+        self._mate_freedom = False
         # The one coordinate this joint owns. Created here rather than
         # per instance for the same reason a port declaration is class
         # metadata: it must be readable off the class, and the VALUE it
@@ -326,6 +345,8 @@ class Joint(Coordinate):
                 f"rename the joint.")
 
     def __set_name__(self, owner, name):
+        if self.axis is None and not self._mate_freedom:
+            raise TypeError(axisless_refusal(owner.__name__, name))
         self._refuse_shadowing(owner, name)
         self.name = name
         self.owner = owner
@@ -466,48 +487,16 @@ class Joint(Coordinate):
             f"{type(node).__name__}.{self.name}: {argument} -- {detail}")
 
     def _resolved(self, node, operand, argument):
-        from machinome.parameters import evaluate
-
-        values = node.__dict__.get('_parameters', {})
-        try:
-            return evaluate(operand, values)
-        except Exception as failure:
-            raise self._refusal(
-                node, argument,
-                f'{operand!r} does not resolve against this instance '
-                f'({type(failure).__name__}: {failure})') from None
+        return resolved_operand(
+            node, operand, argument,
+            lambda argument, detail: self._refusal(node, argument, detail))
 
     def _vector(self, node, values, declared, argument):
-        """`declared` as three plain numbers.
-
-        The whole argument may be a CALLABLE of one argument, called
-        with the realized node: the case of a position that comes out
-        of a library object the node builds from its parameters rather
-        than out of a formula in the dimension algebra. Anything else is
-        a sequence whose components are numbers, tokens or derived
-        formulas.
-        """
-        if callable(declared):
-            try:
-                declared = declared(node)
-            except Exception as failure:
-                raise self._refusal(
-                    node, argument,
-                    f'the callable raised {type(failure).__name__}: '
-                    f'{failure}') from None
-        if isinstance(declared, (str, bytes)) or not _sized(declared, 3):
-            raise self._refusal(
-                node, argument,
-                f'{declared!r} is not three components')
-        components = []
-        for component in declared:
-            value = self._resolved(node, component, argument)
-            if not _is_number(value):
-                raise self._refusal(
-                    node, argument,
-                    f'component {value!r} is not a number')
-            components.append(float(value))
-        return tuple(components)
+        """`declared` as three plain numbers, by `resolved_vector`'s
+        rule, refused naming this joint."""
+        return resolved_vector(
+            node, declared, argument,
+            lambda argument, detail: self._refusal(node, argument, detail))
 
     def _span(self, node, values):
         declared = self.range
@@ -807,10 +796,24 @@ class Revolute(Joint):
     `translate(anchor)` in the node's own frame -- the two centring
     translations omitted entirely when the line runs through the node's
     placed origin, which is the case of a wheel on its own bearing.
+
+    `axis` may be left out in exactly one place: as the FREEDOM of a
+    mate, `hinge.on(pin, Revolute(range=...))`, where the two frames
+    supply the axis and the anchor (`machinome.motion.mates`). Anywhere
+    else an axis-less `Revolute` is refused when the class is defined.
     """
 
     coordinate_kind = RotationalPort
     default_unit = 'deg'
+
+    def __init__(self, axis=None, at=_DEFAULT_ANCHOR, range=None,
+                 unit=None):
+        super().__init__(axis, at, range, unit)
+
+    @property
+    def anchor_written(self):
+        """Whether `at` was written, even as `(0, 0, 0)`."""
+        return self.at is not _DEFAULT_ANCHOR
 
     def placement(self, node, value, axis, anchor):
         from machinome.node.operations import Rotation, Translation
@@ -1333,6 +1336,69 @@ def _sized(value, length):
 # `declared_drivers_of` keeps one: class attributes do not change at
 # runtime, and a render asks this question for every node of the tree.
 _declared_cache = {}
+
+
+
+def axisless_refusal(owner, name, site=None):
+    """The message refusing a `Revolute` written without an axis
+    anywhere but as a mate's freedom."""
+    where = (f"{owner}: the joint '{name}' passed where {site} is "
+             f"declared" if site is not None
+             else f"{owner}.{name}")
+    return (
+        f"{where} is a Revolute without an axis. An axis may be left out "
+        f"only in a mate's freedom -- moving.on(fixed, Revolute(...)) -- "
+        f"where the two frames supply the axis and the anchor; everywhere "
+        f"else a joint states the line it turns about: "
+        f"Revolute(axis=(x, y, z), ...).")
+
+
+def resolved_operand(node, operand, argument, refusal):
+    """`operand` evaluated against `node`'s own resolved parameters: a
+    number stays a number, a parameter token or a formula over tokens
+    becomes one. Anything that does not resolve is `refusal(argument,
+    detail)`, which the caller raises -- a joint names itself, a frame
+    (`machinome.node.frames`) names itself."""
+    from machinome.parameters import evaluate
+
+    values = node.__dict__.get('_parameters', {})
+    try:
+        return evaluate(operand, values)
+    except Exception as failure:
+        raise refusal(
+            argument,
+            f'{operand!r} does not resolve against this instance '
+            f'({type(failure).__name__}: {failure})') from None
+
+
+def resolved_vector(node, declared, argument, refusal):
+    """`declared` as three plain numbers: THE argument rule a joint's
+    `axis`, `at` and `carries` follow, and a frame's `at`, `z` and `x`.
+
+    The whole argument may be a CALLABLE of one argument, called
+    with the realized node: the case of a position that comes out
+    of a library object the node builds from its parameters rather
+    than out of a formula in the dimension algebra. Anything else is
+    a sequence whose components are numbers, tokens or derived
+    formulas. A failure is `refusal(argument, detail)`, raised.
+    """
+    if callable(declared):
+        try:
+            declared = declared(node)
+        except Exception as failure:
+            raise refusal(
+                argument,
+                f'the callable raised {type(failure).__name__}: '
+                f'{failure}') from None
+    if isinstance(declared, (str, bytes)) or not _sized(declared, 3):
+        raise refusal(argument, f'{declared!r} is not three components')
+    components = []
+    for component in declared:
+        value = resolved_operand(node, component, argument, refusal)
+        if not _is_number(value):
+            raise refusal(argument, f'component {value!r} is not a number')
+        components.append(float(value))
+    return tuple(components)
 
 
 def declared_joints(node_class):

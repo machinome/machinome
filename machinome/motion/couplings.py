@@ -380,8 +380,11 @@ class OwnRef(CoordinateRef):
     def check_declared_on(self, owner, relation):
         from machinome.motion.joints import declared_joints
 
+        from machinome.motion.mates import declared_mates
+
         ours = list(declared_ports(owner).values())
         ours.extend(declared_joints(owner).values())
+        ours.extend(declared_mates(owner).values())
         if any(self.declared is mine for mine in ours):
             return
         elsewhere = getattr(self.declared, 'owner', None)
@@ -635,6 +638,10 @@ class PathRef(CoordinateRef):
                 f"parts.")
         found = read_through(self.terminal.node_class, attribute,
                              f'{self.written}.{attribute}')
+        if getattr(type(found), 'frame_kind', None) == 'frame':
+            from machinome.motion.mates import FrameRef
+
+            return FrameRef(self.root, self.segments + (attribute,), found)
         if isinstance(found, RepeatDeclaration):
             # The FIRST repeat this path steps onto: a broadcast from
             # here on, not a refusal (ADR-095's own relaxation, extended
@@ -754,6 +761,11 @@ class BroadcastRef(PathRef):
         node_class = self.terminal.node_class
         found = read_through(node_class, attribute,
                              f'{self.written}.{attribute}')
+        if getattr(type(found), 'frame_kind', None) == 'frame':
+            from machinome.motion.mates import FrameRef
+
+            return FrameRef(self.root, self.segments + (attribute,), found,
+                            repeat=self.repeat)
         if isinstance(found, RepeatDeclaration):
             raise TypeError(
                 f"'{self.written}.{attribute}' passes through TWO repeated "
@@ -1221,6 +1233,11 @@ def read_through(node_class, attribute, written):
 
     found = getattr(node_class, attribute, None)
     if found is not None:
+        if getattr(type(found), 'frame_kind', None) == 'frame':
+            # A FRAME is a place too: the end of a mate, never a value
+            # (OpenSpec change ``place-parts-by-mate``). The caller turns
+            # it into a frame reference.
+            return found
         if _coordinate_of(found) is not None:
             return found
         if _coordinates_of(found) is not None:
@@ -1289,8 +1306,11 @@ def _is_declaration_list(value):
 def _declared_places(node_class):
     from machinome.node.declarative import declared_children
 
+    from machinome.node.frames import declared_frames
+
     names = sorted(set(declared_ports(node_class))
-                   | set(declared_children(node_class)))
+                   | set(declared_children(node_class))
+                   | set(declared_frames(node_class)))
     return ', '.join(names) or 'no port, joint or child'
 
 
@@ -2299,6 +2319,12 @@ def coordinate_ref(value, role='end'):
 
     if isinstance(value, CoordinateRef):
         return value
+    if getattr(type(value), 'frame_kind', None) in ('frame', 'reference'):
+        from machinome.motion.mates import _not_a_coordinate
+
+        written = getattr(value, 'written', None) or getattr(
+            value, 'name', None) or repr(value)
+        raise TypeError(_not_a_coordinate(written))
     if isinstance(value, Time):
         # The root's own clock, named in the body that declares it: the
         # base it declares is judged where the relation exists.
@@ -2429,6 +2455,12 @@ class Wiring:
         self.slot = source.__get__(parent)
         self.target = declared_ports(type(child))[keyword].__get__(child)
         self.applied = False
+        # A MATE's wiring: its source left unbound is not a mistake but
+        # a mate at rest, as an unbound joint rests, so `_refuse` leaves
+        # it -- and the child's joint -- unbound (design decision 6 of
+        # OpenSpec change ``place-parts-by-mate``). Every wiring an
+        # author writes keeps the refusal.
+        self.rests_unbound = getattr(source, 'rests_unbound', False)
 
     def described(self):
         return (f'the wiring {type(self.parent).__name__}.{self.source.name} '
@@ -3125,4 +3157,6 @@ def _refuse(assembly, records, derived, wirings):
                 f"bind the others, or state relations that reach them.")
     for wiring in wirings:
         if not wiring.applied:
+            if wiring.rests_unbound and wiring.slot._value is None:
+                continue
             raise wiring.unbound_source()

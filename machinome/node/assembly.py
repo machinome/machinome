@@ -56,6 +56,16 @@ def _rest(assembly, render):
         rendered = render(assembly)
     finally:
         _phase.pop()
+    if getattr(type(assembly), '_declared_mates', None):
+        # The children a mate places, placed at rest once the author's
+        # render() has returned: after it, so what the render applied to
+        # a mated child can be read off its phase and refused, and on
+        # every re-run of a legacy render, which drops what the last run
+        # placed (OpenSpec change ``place-parts-by-mate``). A local
+        # import, taken only by a class that declares a mate.
+        from machinome.motion.mates import apply_mates
+
+        apply_mates(assembly, phase)
     if assembly.__dict__.get('_legacy_render'):
         return rendered
     if phase.read is None:

@@ -1198,6 +1198,33 @@ class SpecializationOwnTypeGuardTest(BaseNodeTest):
             wrapper.validate([Wrapper()])
         self.assertIn('own type', str(raised.exception))
 
+    def test_a_mated_child_is_its_declared_class_by_subclass_only(self):
+        """The mate case (OpenSpec change ``place-parts-by-mate``, task
+        5.10): a mated child is realized as a specialization of its
+        declared class, exactly as a site-jointed one is (ADR-098), so
+        the guard's `type(child) is type(self)` no longer matches it --
+        the one identity check the specialization loosens. Pinned so
+        the loosening is a known consequence, not a surprise."""
+        from machinome.motion.joints import Revolute
+        from machinome.node.frames import Frame
+
+        class Link(AssemblyNode):
+            hinge = Frame(z=(0, 1, 0))
+
+        class Chain(AssemblyNode):
+            pin = Frame()
+            link = Link()
+            swing = link.hinge.on(pin, Revolute(unit='deg'))
+
+        chain = Chain()
+
+        self.assertIsInstance(chain.link, Link)
+        self.assertIsNot(type(chain.link), Link)
+        Link().validate([chain.link])
+        with self.assertRaises(Exception) as raised:
+            Link().validate([Link()])
+        self.assertIn('own type', str(raised.exception))
+
 
 class SpecializationCacheBoundTest(BaseNodeTest):
 

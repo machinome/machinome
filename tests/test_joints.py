@@ -4733,3 +4733,58 @@ class UntaggedPlacementLifetimeTest(BaseNodeTest):
 
         self.assertEqual(motions(node.gate), [])
         self.assertIsNone(get_coordinate(node.gate, 'travel')._value)
+
+
+##############################################
+# place-parts-by-mate, tasks section 3: a `Revolute` without an axis
+
+class AxislessRevoluteTest(BaseNodeTest):
+    """`Revolute`'s `axis` becomes optional for ONE use: the freedom of
+    a mate, whose two frames supply the axis and the anchor
+    (`tests/test_mates.py`). Anywhere else a `Revolute` without an axis
+    is refused when the class is defined, naming the class, the joint
+    and the mate as the only place it may be left out -- and every
+    other joint kind, and every existing declaration, keeps its
+    meaning."""
+
+    def assertNamesTheMate(self, raised, *names):
+        message = str(raised.exception)
+        for fragment in names + ('axis', 'mate'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+
+    def test_an_axisless_class_joint_is_refused_naming_the_mate(self):
+        with self.assertRaises(TypeError) as raised:
+            class Loose(Solid2Node):
+                turn = Revolute(unit='deg')
+
+                def render(self):
+                    return cube(1, center=True)
+
+        self.assertNamesTheMate(raised, 'Loose', 'turn')
+
+    def test_an_axisless_site_joint_is_refused_naming_the_mate(self):
+        with self.assertRaises(TypeError) as raised:
+            class Axle(AssemblyNode):
+                wheel = Wheel(turn=Revolute())
+
+        self.assertNamesTheMate(raised, 'Axle', 'Wheel', 'turn')
+
+    def test_the_other_kinds_still_require_an_axis(self):
+        for kind in (Prismatic, Orbit):
+            with self.subTest(kind=kind.__name__):
+                with self.assertRaises(TypeError) as raised:
+                    kind()
+                self.assertIn('axis', str(raised.exception))
+
+    def test_a_positional_axis_is_unchanged(self):
+        class Spinner(Solid2Node):
+            turn = Revolute((0, 0, 1))
+
+            def render(self):
+                return cube(1, center=True)
+
+        self.assertEqual(Spinner.turn.axis, (0, 0, 1))
+        spinner = Spinner()
+        spinner.turn = 30
+        self.assertEqual(serialized(spinner), [['r', '30', [0, 0, 1]]])

@@ -24,8 +24,13 @@ class ProfileDocumentationTest(unittest.TestCase):
         conf = (ROOT / 'docs/conf.py').read_text()
         for text in (status, changelog, history):
             self.assertNotIn('current source', text)
-        # The first section of each record is the 0.7.0 release itself.
-        self.assertNotIn('unreleased', changelog.split('machinome 0.7.0')[0])
+        # The first RELEASED section of each record is the 0.7.0 release
+        # itself. Work since the release sits above it in the changelog's
+        # one `Unreleased` section (skills/write-the-manual, "Work after
+        # a release"), and nowhere else.
+        head = changelog.split('machinome 0.7.0')[0]
+        self.assertNotIn('unreleased',
+                         head.replace('\nunreleased\n----------\n', '\n', 1))
         self.assertNotIn('unreleased', history.split('machinome 0.7.0')[0])
         self.assertIn('profile contact', status)
         self.assertIn('schema 13', status)

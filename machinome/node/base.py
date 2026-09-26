@@ -22,6 +22,7 @@ from machinome.openscad import require_openscad
 from machinome.source_generation import (
     current_census, current_generation, current_phase, track_sources,
 )
+from .frames import resolve_declared_frames
 from .markings import DEFAULT_DEFLECTION, declared_markings
 from .sources import source_closure, source_scope
 from . import phase as _phase
@@ -667,6 +668,12 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # which imports this package.
         from machinome.motion.joints import resolve_declared_joints
         resolve_declared_joints(self)
+        # Where on this node other parts attach, resolved at the same
+        # moment and for the same reason: a frame follows the joint
+        # argument rule, and one that cannot resolve refuses the node
+        # before it has realized anything, whether or not a mate names
+        # it (OpenSpec change ``place-parts-by-mate``).
+        resolve_declared_frames(self)
 
         # A list of rotations and translations to be applied to object
         # after rendering. Operations done this way will be applied after

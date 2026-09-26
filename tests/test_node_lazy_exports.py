@@ -64,6 +64,9 @@ EXPECTED_EXPORTS = {
     'Wrapped': 'machinome.node.markings',
     'Flat': 'machinome.node.markings',
     'Svg': 'machinome.node.markings',
+    # OpenSpec change ``place-parts-by-mate``: a frame resolves from
+    # ``machinome.node`` as the ``mates`` spec requires.
+    'Frame': 'machinome.node.frames',
 }
 
 # What the node package must NOT answer for. A build parameter is imported

@@ -68,6 +68,7 @@ _EXPORTS = {
     'Wrapped': 'markings',
     'Flat': 'markings',
     'Svg': 'markings',
+    'Frame': 'frames',
     'StepNode': 'adapters.step',
     'property_as_number': 'decorators',
 }
