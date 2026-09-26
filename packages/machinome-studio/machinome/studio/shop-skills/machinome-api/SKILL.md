@@ -761,7 +761,7 @@ a body whose rest placement carries a value the framework cannot evaluate
 numerically refuses a SITE-declared joint by name — where a class-declared
 one on the same body would not.
 
-**Frames and mates (ADR-147, ADR-148):** a joint whose line does not pass through the
+**Frames and mates (ADR-147, ADR-148, ADR-150):** a joint whose line does not pass through the
 moving part's origin is otherwise stated twice — a rest placement the
 parent's `render()` computes by hand and a joint the child restates in its
 own frame, kept in agreement by shared constants. A **frame** is the part's
@@ -820,20 +820,48 @@ is refused). The **moving end** is a frame of a directly declared child.
 The **freedom** is a fresh `Revolute`. A design's connectors are attachment
 frames and the line a part turns about need not be the connector's `z`, so
 the freedom may state its own line, `Revolute(axis=(0,0,1), at=(0,0,0))`:
-`axis` and `at` are three numbers each (no tokens, formulas or callables),
-read in the MOVING part's own frame, each left out taking the moving
-frame's `z` or origin; `at=(0,0,0)` written is the part's origin, not the
-frame's; the frames still fix the rest placement and the zero, the freedom
-only the line (ADR-148). Its range is numbers, `None` or functions of the
-coordinate's own value.
+`axis` is three numbers or one function of one argument, `at` three numbers
+(no tokens or formulas in either, and no function `at`), read in the
+MOVING part's own frame, each left out taking the moving frame's `z` or
+origin; `at=(0,0,0)` written is the part's origin, not the frame's; the
+frames still fix the rest placement and the zero, the freedom only the line
+(ADR-148). Its range is a pair of numbers, `None` or functions of the
+coordinate's own value, or one function of one argument returning such a
+pair. A function on the freedom is called ONCE, with the realized ASSEMBLY
+that states the mate — the node whose class body wrote it, never the
+moving part — as the assembly builds that child, in the state a
+site-declared joint's callable sees (parameters resolved, `check()` run,
+earlier children built, nothing rendered); its result is taken exactly as
+the numbers would be and refused, naming the assembly, the mate and the
+argument, when it is not; the class reads return the function as written,
+and no read gives the numbers it returned for a built assembly (ADR-150).
+So a handed design states one mate for both sides, beside a frame that is
+a function of the same node:
+
+```python
+class Mount(AssemblyNode):
+    left = Flag(False)
+    pin = Frame(at=lambda node: (0, 62.5 if node.left else -62.5, 0))
+    link = Link()
+    turn = link.origin.on(pin, Revolute(
+        axis=lambda node: (0, 1, 0) if node.left else (0, -1, 0),
+        range=lambda node: (-200, 80) if node.left else (-80, 200),
+        unit='deg'))
+```
+
+A mated child whose freedom states a function is built by its assembly
+and by nothing else: built on its own, it is refused by name.
 Refused by name at class creation: a mate on a non-assembly; a moving end
 that is the assembly's own frame; either end through more than one child, a
 list or a `.repeat()`; a fixed end on a child that can move; a second mate
 on one child (a loop); a mate never assigned a name; a freedom that is not
-a fresh `Revolute`, or whose stated `axis` or `at` is not three numbers, or
-whose stated `axis` has no length, or whose range reads other coordinates
-or the node; a mate with no freedom (the rigid mate is
-not provided); a mate name the moving child already answers to. Refused
+a fresh `Revolute`, or whose stated `axis` is neither three numbers nor a
+function, or whose stated `at` is not three numbers (a function `at`
+included), or whose stated `axis` has no length, or whose range holds a
+parameter or reads other coordinates; a mate with no freedom (the rigid
+mate is not provided); a mate name the moving child already answers to.
+Refused when the assembly is built: a freedom's function that raises, or
+returns what the same argument written in numbers would refuse. Refused
 when the assembly renders: a `render()` that also places a mated child. A
 mate publishes nothing new — operations and a binding, at the version the
 same machine without mates declares — and the viewer draws no connector
