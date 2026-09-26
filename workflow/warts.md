@@ -3853,10 +3853,19 @@ pilot triages it.
   `Revolute.anchor_written` are documented; `described()` stays
   undocumented. ADR-147's reason for rejecting an instance read
   ("nothing reads a frame on an instance in this version") is overtaken;
-  its decision that a frame is not a descriptor stands. **Pending** the
-  originating project's follow-up (the change's tasks §7): Thor's
-  `test_frames.py` rewritten on the documented reads, in Thor's own
-  repository.
+  its decision that a frame is not a descriptor stands. **Validated in
+  Thor the same day** (its branch `read-frames-and-mates`, commits
+  `6c8714b`, `00af732`, `6470957`): `test_frames.py` reads the modules
+  through `resolved_frames` of each link built once and through
+  `declared_mates`'s documented `name`, `moving.written`, `fixed` and
+  `freedom`, and no longer touches the raw declarations, the default-`x`
+  rule or `described()`; no module of the model changed, the pose
+  comparison over 25 poses and 441 leaves gives a maximum deviation of
+  0, and the suite is unchanged. Two observations, needing nothing: a
+  stated `freedom.axis` is read as written, so a reader normalizes it
+  before comparing directions; and the frame-reference kind of fixed
+  end has no public type, so a guard tells it from a `Frame` by
+  `isinstance` and then reads `.written`.
 - **One value at two addresses in `declared_ports`.** The mate's port on
   the holder (`Art1.shoulder`) and the joint it installs on the child
   (`Art2.shoulder`) are both enumerated; reading the child's works and
