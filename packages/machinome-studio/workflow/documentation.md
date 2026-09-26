@@ -42,8 +42,7 @@ Nothing is hosted. The intended project slug is `machinome-studio`, which
 would serve <https://machinome-studio.readthedocs.io/>; `.readthedocs.yaml`
 is ready for it, installing `docs/requirements.txt` alone and failing on
 warnings. Importing the repository into Read the Docs is the pilot's
-decision, and the repository is private, so the account importing it needs
-access. When a slug is chosen, add a `Documentation` URL to
+decision; the repository is public. When a slug is chosen, add a `Documentation` URL to
 `pyproject.toml`, and list the studio's manual in the framework's
 `reference/manuals.rst` through a framework change.
 

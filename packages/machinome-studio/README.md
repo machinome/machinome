@@ -23,7 +23,7 @@ and a logged-in agent backend: Claude Code (`claude`) or OpenCode
 (`opencode`). Then:
 
 ```text
-git clone git@github.com:machinome/machinome-studio.git
+git clone https://github.com/machinome/machinome-studio.git
 cd machinome-studio
 scripts/setup
 ```
