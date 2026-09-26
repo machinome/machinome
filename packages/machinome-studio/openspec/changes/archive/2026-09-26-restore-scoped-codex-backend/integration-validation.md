@@ -1,9 +1,12 @@
 # Main integration validation
 
 The pilot explicitly requested merging the completed Codex change on
-26 September 2026. Integration joins main `0c137cf` (including the new manual
-and public-repository status) with implementation `d4f0277`, preserving its
-planning and spike commits.
+26 September 2026. Integration began on main `0c137cf` (including the new
+manual and public-repository status). Before the merge commit, an independent
+update to `shop-skills/machinome-api/SKILL.md` advanced main to `e604bcb`.
+Merge `0144981` joins that actual main parent with implementation `d4f0277`,
+preserving its planning and spike commits. The concurrent skill file was
+verified byte-identical to `e604bcb`; no conflict resolution rewrote it.
 
 Conflicts in README and AGENTS were reconciled by preserving main's manual
 structure and public status while retaining Codex support. Under the
@@ -27,6 +30,8 @@ Combined-content validation:
   The previously observed ignored asyncio subprocess-destructor warning
   remains after shutdown.
 - Documentation suite: 21 tests passed, including the two red-first additions.
+- After verifying the concurrent skill update was preserved in the merge,
+  all 75 focused Codex tests and all 21 documentation tests passed again.
 - Frontend TypeScript checks and production build passed; the existing
   large-chunk warning remains.
 - Strict nitpicky Sphinx HTML build passed. Changed pages were opened in
