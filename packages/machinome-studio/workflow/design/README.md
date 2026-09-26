@@ -34,6 +34,19 @@ or a second lifecycle connection.
 `current-workspace.html` is an exact recreation of today's UI, included as the
 before-state for diffing.
 
+## Identity, 26 September 2026
+
+The Machinome visual identity was applied to the product after this handoff
+and supersedes the prototype's brand elements wherever the two disagree:
+the title bar carries the identity's white wordmark with a `Studio`
+qualifier instead of the amber square mark and typed name and is 50px tall
+for the wordmark's clear space; the interface face is Space Grotesk, not
+IBM Plex Sans; the tab carries the studio's white-on-black favicon; and
+the identity release, the favicon pack and the fonts are shipped as
+assets. The identity's orange was tried as the accent and rejected as
+harsh on these surfaces; the amber below stands. The `product-identity`
+spec states the requirement; the prototype files are unchanged history.
+
 ## Fidelity
 
 **High fidelity.** Colours, type, spacing and states below are final values.
@@ -48,7 +61,7 @@ top. Each carries a visible id badge.
 
 ### 3a — Setup, step 1: working folder
 - **Purpose:** pick the folder that will hold all projects.
-- **Layout:** title bar (38px) over a centred column, `width: 640px`, gap 26px,
+- **Layout:** title bar (50px) over a centred column, `width: 640px`, gap 26px,
   on `radial-gradient(90% 90% at 50% 0%, #14171c 0%, #0f1115 60%)`.
 - **Components:**
   - Stepper: mono 11px, `1 · FOLDER` in `#e0a350`, later steps `#4a515c`,
@@ -96,7 +109,7 @@ top. Each carries a visible id badge.
 
 ### 1a — Project hub
 - **Purpose:** landing screen; every session starts here.
-- **Layout:** title bar 38px; body grid `300px minmax(0,1fr)`.
+- **Layout:** title bar 50px; body grid `300px minmax(0,1fr)`.
 - **Left column** (`#121419`, 1px right border `#262b33`, padding 26/22, gap 28):
   working-folder card (path mono 12px, `6 projects · 2.4 GB`, `Change…`), then
   Backends group with a `2 detected` mono count and one compact row per backend
@@ -121,13 +134,16 @@ Single layout; Model, Code, Agents, and Build swap the navigator/context and
 center content. The mounted viewers, editor state, selections, and chat are
 preserved across the switch.
 
-- **Grid:** `74px 270px minmax(0,1fr) 400px` between a 38px title bar and a
+- **Grid:** `74px 270px minmax(0,1fr) 400px` between a 50px title bar and a
   26px status bar. In 2b the panel column widens to `330px`. All columns
   `min-height:0` with their own scroll.
-- **Title bar** (`#14171c`, bottom 1px `#262b33`, 12px): 11px amber rounded
-  square mark, `Shop`, `/` in `#4a515c`, project name, mono 11px
-  `fordesmac · claude`; right side mono 11px `run 2f9c41 · open` with a green
-  dot.
+- **Title bar** (`#14171c`, bottom 1px `#262b33`, 50px, padding 0 14px): the
+  identity's white outlined wordmark at 180px, then `Studio` in Space
+  Grotesk 17px/500 in the same white 16px away, together one link named
+  `Machinome Studio` for assistive technology (hover: a `#1c2128` surface,
+  never a recolour); then `/ project path` at 13px `#c3c8d1`; right side
+  mono 11px `fordesmac · open` and the `Close project` control. The hub's
+  bar is the same lockup with the shop state at the right.
 - **Activity rail** (`#121419`): four interactive items — MODEL (diamond: 14px
   square rotated 45°), CODE (mono `{ }`), AGENTS (circle), and BUILD (plate
   grid). There is no Files or deferred Sheets area. Each item is a full-width column,
@@ -352,15 +368,22 @@ Colours
 - Text `#e6e8ec`; secondary `#c3c8d1`; muted `#8b929e`; faint `#6b7280`;
   disabled `#4a515c`; gutter `#3d4450`
 - Accent (amber) `#e0a350`, hover `#f0c07a`; tints `rgba(224,163,80,.09/.14)`
+- The identity's orange `#D94E32`, black and white are declared as tokens
+  on `:root` for lockups only; the orange is not an interface colour
+  (tried as the accent on 26 September 2026 and rejected as harsh)
 - Agent/secondary (teal) `#4fb6b8`; ok `#5f9e6a`, tag text `#7fbf8a`
 - Accent is themeable — `#4fb6b8`, `#9a8cff`, `#5f9e6a` are the alternates the
   prototype ships; nothing else in the palette changes with it.
 
 Typography
-- UI: IBM Plex Sans 400/500/600. Sizes 30 / 26 / 22 / 20 / 14 / 13.5 / 13 /
-  12.5 / 12. Headings `letter-spacing: -.02em`.
-- Data, paths, timestamps, code, rail labels: IBM Plex Mono 400/500. Sizes
-  13 / 12.5 / 11.5 / 11 / 10.5 / 10 / 9.
+- UI: Space Grotesk (the identity's interface face; variable 300–700,
+  bundled) 400/500/600. Sizes 30 / 26 / 22 / 20 / 14 / 13.5 / 13 / 12.5 /
+  12. Headings `letter-spacing: -.02em`.
+- Data, paths, timestamps, code, rail labels, the editor: IBM Plex Mono
+  (the identity's technical face; regular only, bundled, no synthesised
+  bold) 400/500. Sizes 13 / 12.5 / 11.5 / 11 / 10.5 / 10 / 9.
+- The identity's logo-only font is never a text face; the wordmark is the
+  release's SVG.
 - Section labels: mono 10px, uppercase, `letter-spacing: .14em`, `#6b7280`.
 - Body line-height 1.5–1.6; code 1.75.
 
@@ -369,7 +392,7 @@ Panel padding 20/18; hub content padding 36/44; card padding 14/15.
 
 Radii — 4 (tags) / 5 (rows, small pills) / 6 (buttons, list rows) /
 7 (chips) / 8 (inputs, cards) / 9 (bubbles, panels) / 10 (frames, cards) /
-12 (modal). Fixed sizes: title bar 38, status bar 26, tab strip 40, rail 74,
+12 (modal). Fixed sizes: title bar 50, status bar 26, tab strip 40, rail 74,
 panel 270 (330 for agents), chat 400, preview strip 150.
 
 Shadows — modal only: `0 30px 80px rgba(0,0,0,.6)`. No shadows elsewhere;
@@ -380,13 +403,19 @@ animates the viewport.
 
 ## Assets
 
-None. All glyphs are CSS primitives (rotated squares, circles, rules, the mono
+Under `floor/frontend/public/assets/`, served unchanged from `/assets/`: the
+Machinome identity release copied intact as `brand/v1/` (pinned to its
+manifest by a test; a revision arrives as a new versioned directory), the
+studio's favicon pack `favicon/` (the white symbol on a black plate, built
+from the release's symbol by `scripts/build-favicon`, links versioned
+`?v=`), and the two faces with their notices under `fonts/`. All other
+glyphs are CSS primitives (rotated squares, circles, rules, the mono
 `{ }`). Project thumbnails use the root `screenshot.png` when available: it is
 contain-fitted within the 158px preview region, cache-busted by its content
 revision, and has model-preview alt text. Missing or failed images retain the
 striped `model preview` placeholder.
-snapshots. Fonts load from Google Fonts in the prototype — vendor IBM Plex
-Sans/Mono locally for an offline desktop app.
+snapshots. The prototype loads IBM Plex Sans and Mono from Google Fonts; the
+product vendors Space Grotesk and IBM Plex Mono locally.
 
 ## Files
 
