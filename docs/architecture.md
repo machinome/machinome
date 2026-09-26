@@ -1952,6 +1952,13 @@ duck-typed registry naming where each lives: `build`, `develop`, `test`,
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk
 every declared model in order and never stop at a failing one (ADR-119).
+`vet` checks statically that a project stays inside the machinome
+universe — a versioned declaration shipped as `machinome/vet/universe.toml`
+— reading project files as bytes through the kernel-free
+`machinome.manifest` and importing no project code, no node module and no
+kernel; it is a static check, not a sandbox, and the reads it admits are
+bounded by the runtime, declared sources by the adapters, which refuse at
+construction a source whose real path leaves its project (ADR-149).
 Every command
 that loads a node takes `--set name=value`, registered once beside the
 shared reference positional: the loader parses each value by the root's
@@ -3044,7 +3051,7 @@ The short list that changes must not silently break:
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
-| CLI | `cli.py`, `machinome/manager/` | `cli` | 021, 024, 068, 079, 103, 115 |
+| CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
 | Test framework | `machinome/test.py`, `machinome/exact.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |

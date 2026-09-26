@@ -5,6 +5,7 @@ include NOTICE
 include README.rst
 
 recursive-include machinome/manager/templates *
+include machinome/vet/universe.toml
 
 recursive-include tests *
 recursive-exclude * __pycache__

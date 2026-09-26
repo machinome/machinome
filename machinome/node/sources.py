@@ -22,6 +22,7 @@ import os
 import sys
 from importlib.util import resolve_name
 
+from machinome.manifest import ProjectManifestError, project_root
 from machinome.source_generation import observation_key
 
 
@@ -60,6 +61,47 @@ class MissingSourceFile(FileNotFoundError):
         return self.strerror
 
 
+#: The project root above each declaring module's real path, or None for
+#: a module that lies in no project. Cost, not semantics: the manifest is
+#: read once per module per process rather than once per leaf.
+_declaring_roots = {}
+
+
+def _declaring_root(declaring):
+    try:
+        return _declaring_roots[declaring]
+    except KeyError:
+        pass
+    try:
+        root = os.path.realpath(project_root(declaring))
+    except ProjectManifestError:
+        root = None
+    _declaring_roots[declaring] = root
+    return root
+
+
+def _require_inside_project(klass, attribute, declared, path, declaring):
+    """Refuse a declared source whose real path leaves the project root of
+    the module that declares `klass` (vet-the-project, design D10).
+
+    Made before any existence check, so a source outside the project is
+    refused whether or not it is there, and before anything is read from
+    it or any process is started for it. A module that lies in no project
+    is not judged: there is no project to contain the source in.
+    """
+    root = _declaring_root(declaring)
+    if root is None:
+        return
+    resolved = os.path.realpath(path)
+    if os.path.commonpath((resolved, root)) == root:
+        return
+    raise ValueError(
+        f'{klass.__name__} declares {attribute} = {declared!r}, resolved '
+        f'against {declaring}, but {resolved} lies outside the project at '
+        f'{root}. A source is part of its project: move the file under '
+        f'the project root, or correct the declaration.')
+
+
 def require_source_file(klass, attribute, declared, path):
     """Refuse a leaf whose declared source file is not there.
 
@@ -79,11 +121,23 @@ def require_source_file(klass, attribute, declared, path):
     file, matching the other admission refusals these adapters already
     raise for a missing declaration. Returns `None` when `path` is a
     file, so a caller can call this and move on.
+
+    Before either, raises `ValueError` when the real path of `path` is
+    not under the real path of the project root of the module declaring
+    `klass`, found through the kernel-free `machinome.manifest`: a
+    source outside its project is refused whatever expression computed
+    it and whether or not it exists. `Svg.resolve` admits a marking's
+    artwork through this same call, so the artwork is contained too.
     """
+    module = sys.modules.get(klass.__module__)
+    declaring = getattr(module, '__file__', None)
+    if declaring:
+        _require_inside_project(klass, attribute, declared, path,
+                                os.path.realpath(declaring))
+
     if os.path.isfile(path):
         return None
 
-    module = sys.modules[klass.__module__]
     wrapper = os.path.realpath(module.__file__)
     where = (f'{klass.__name__} declares {attribute} = {declared!r}, '
              f'resolved against {wrapper}, but {path} ')

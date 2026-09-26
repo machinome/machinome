@@ -6,12 +6,17 @@
 
 import inspect
 import os
-import re
 import sys
-import tomllib
 from dataclasses import dataclass
 from importlib import import_module
 
+# Manifest discovery and the model declaration live in the kernel-free
+# `machinome.manifest` (vet-the-project, design D1); these names are
+# re-exported here so every existing importer receives the same objects.
+from machinome.manifest import (  # noqa: F401
+    MODEL_NAME, ProjectManifestError, _find_manifest, project_root,
+    read_declaration,
+)
 from machinome.node.base import AbstractBaseNode
 from machinome.node.declarative import parse_overrides
 from machinome.simulation.enumeration import bind_declared_defaults
@@ -22,17 +27,8 @@ __all__ = [
 ]
 
 
-class ProjectManifestError(Exception):
-    pass
-
-
 class AmbiguousNodeError(Exception):
     pass
-
-
-#: A declared model name: one word, so it can never be read as a qualifier
-#: (which carries a `.` or a `:`) or as a path.
-MODEL_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_-]*$')
 
 
 @dataclass(frozen=True)
@@ -73,77 +69,26 @@ class Project:
         return [model.name for model in self.models if model.name]
 
 
-def _find_manifest(origin=None):
-    origin = os.path.realpath(origin or os.getcwd())
-    directory = origin if os.path.isdir(origin) else os.path.dirname(origin)
-    while True:
-        manifest = os.path.join(directory, 'pyproject.toml')
-        try:
-            with open(manifest, 'rb') as stream:
-                config = tomllib.load(stream)
-            tools = config.get('tool', {})
-            machinome = tools.get('machinome')
-            if machinome is not None:
-                return directory, manifest, machinome
-            if 'solid-node' in tools:
-                raise ProjectManifestError(
-                    f"{manifest} uses [tool.solid-node]; Machinome 0.7 uses "
-                    "[tool.machinome] (and [tool.machinome.models])")
-        except FileNotFoundError:
-            pass
-        parent = os.path.dirname(directory)
-        if parent == directory:
-            raise ProjectManifestError(
-                f"No pyproject.toml with [tool.machinome] found above {origin}")
-        directory = parent
-
-
 def read_project(origin=None):
     """The nearest Machinome project above `origin`, as a `Project`.
 
     Reads the manifest and looks at the project root's directories; never
     imports project code, so a host may call it as often as it likes.
     """
-    root, manifest, declaration = _find_manifest(origin)
+    declaration = read_declaration(origin)
+    root, manifest = declaration.root, declaration.manifest
     # Local import: builder imports this module at load time.
     from machinome.core.builder import project_build_root
     build_root = project_build_root(root)
-    table = declaration.get('models')
-    model = declaration.get('model')
-    if table is None:
-        if not isinstance(model, str) or not model:
-            raise ProjectManifestError(
-                f"{manifest} has [tool.machinome] but no model reference")
-        only = Model(None, model, build_root)
+    if not declaration.named:
+        (_, reference), = declaration.models
+        only = Model(None, reference, build_root)
         return Project(root, manifest, build_root, (only,), only, False)
-
-    if not isinstance(table, dict) or not table:
-        raise ProjectManifestError(
-            f"{manifest} declares [tool.machinome.models] with no models")
-    models = []
-    for name, reference in table.items():
-        if not MODEL_NAME.match(name):
-            raise ProjectManifestError(
-                f"{manifest} declares the model name {name!r}; a name is one "
-                f"word of letters, digits, underscores and hyphens")
-        if not isinstance(reference, str) or ':' not in reference:
-            raise ProjectManifestError(
-                f"{manifest} declares model {name!r} as {reference!r}; a "
-                f"model is a reference of the form package.module:Class")
-        if os.path.isdir(os.path.join(root, name)):
-            raise ProjectManifestError(
-                f"{manifest} declares a model named {name!r}, but {name}/ is "
-                f"a directory at the project root and its artifacts would "
-                f"mirror into the model's build directory; rename the model")
-        models.append(Model(name, reference, os.path.join(build_root, name)))
-    default = None
-    if model is not None:
-        default = next((m for m in models if m.name == model), None)
-        if default is None:
-            raise ProjectManifestError(
-                f"{manifest} sets model = {model!r}, which must name one of "
-                f"the declared models: {', '.join(m.name for m in models)}")
-    return Project(root, manifest, build_root, tuple(models), default, True)
+    models = tuple(Model(name, reference, os.path.join(build_root, name))
+                   for name, reference in declaration.models)
+    default = next((model for model in models
+                    if model.name == declaration.default), None)
+    return Project(root, manifest, build_root, models, default, True)
 
 
 def discover_project(origin=None):
@@ -155,10 +100,6 @@ def discover_project(origin=None):
     project = read_project(origin)
     return project.root, (project.default.reference if project.default
                           else None)
-
-
-def project_root(origin=None):
-    return _find_manifest(origin)[0]
 
 
 def _within(path, root):

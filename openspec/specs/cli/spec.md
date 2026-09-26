@@ -42,7 +42,7 @@ environment variables always win. Recognized variables: `MACHINOME_PORT`
 ### Requirement: Node path resolution
 
 The system SHALL accept an optional `reference` positional for every command
-that operates on a node (all except `new`, `viewer` and `models`). When the
+that operates on a node (all except `new`, `viewer`, `models` and `vet`). When the
 positional is given, it SHALL be a node reference in any of the four spellings
 the loader accepts: a declared model name, `package.module:Class`,
 `path/to/file.py`, or `path/to/file.py:Class`. A bare word that equals a name
@@ -56,6 +56,13 @@ default model: the model named by `[tool.machinome] model`, whether that key
 holds a reference or, beside a `models` table, a declared name. When the
 project declares models and no default, the command SHALL exit nonzero with an
 error listing the declared names, and SHALL NOT pick one.
+
+`machinome vet` SHALL take its own optional `reference` positional, which
+accepts the same four spellings and resolves a declared name the same way.
+It SHALL NOT take `--set`, because vet constructs no node. When that
+positional is omitted, vet SHALL vet every model the project declares
+rather than the default model, and a project that declares models and no
+default SHALL NOT be an error for vet.
 
 The system SHALL NOT rewrite a directory argument to `<dir>/__init__.py`. A
 directory is not a node reference and SHALL be reported as an error naming the
@@ -107,6 +114,19 @@ accepted spellings.
 - **WHEN** a user runs `machinome build sail` in a project whose `models` table
   has no `sail` key
 - **THEN** the reference is read as the module qualifier `sail`, as before
+
+#### Scenario: Vet with no argument vets every model
+
+- **WHEN** a user runs `machinome vet` in a project declaring models and no
+  `model` key
+- **THEN** the command vets every declared model and does not fail for the
+  missing default
+
+#### Scenario: Vet takes no parameters
+
+- **WHEN** a user runs `machinome vet -h`
+- **THEN** the help lists `reference`, `--tests` and `--json`, and no
+  `--set`
 
 ### Requirement: Develop command
 
@@ -773,6 +793,16 @@ A `FILE` that does not exist, or that the STEP reader cannot read or
 transfer, SHALL be reported on standard error with exit status 1 and no
 file written.
 
+When the `--into` directory lies in a project, meaning a `pyproject.toml`
+with `[tool.machinome]` is found above it, the command SHALL refuse a
+document whose real path is not under that project's real root, because
+the adapters refuse a declared source outside its project and the
+scaffold could not construct. It SHALL refuse before creating or writing
+anything, naming the document, the project root and the remedy (copy the
+document under the project root), and exit 1. When the `--into`
+directory lies in no project, the document's location SHALL NOT be
+judged.
+
 #### Scenario: The command appears in CLI help
 
 - **WHEN** a user runs `machinome -h`
@@ -820,6 +850,22 @@ file written.
   transfer
 - **THEN** the failure is reported on standard error, nothing is written,
   and the command exits 1
+
+#### Scenario: A document outside the project is refused
+
+- **WHEN** a user runs `machinome import-step /elsewhere/actuator.step
+  --into sim` in a directory whose `pyproject.toml` declares
+  `[tool.machinome]`
+- **THEN** nothing is created or written, the message names the document,
+  the project root and the remedy of copying the document under the
+  root, and the command exits 1
+
+#### Scenario: A document inside the project scaffolds
+
+- **WHEN** a user runs `machinome import-step vendor/actuator.step --into
+  sim` in that project, with the document under its root
+- **THEN** `sim/parts.py` and `sim/assembly.py` are written and the
+  command exits 0
 
 ### Requirement: A snapshot never silently drops geometry OpenSCAD could not open
 
@@ -877,3 +923,23 @@ worktree-specific runtime configuration SHALL use `MACHINOME_*` variables.
 - **THEN** the child runs the Machinome module/command and receives the
   `MACHINOME_*` environment
 
+### Requirement: Vet command
+
+The system SHALL provide `machinome vet [reference] [--tests] [--json]`,
+registered in the command registry after `import-step`, with the help text
+taken from its docstring. Its behaviour is specified by the `vet`
+capability. A directory given as its reference SHALL be refused naming the
+accepted spellings, as it is for the node-scoped commands, but with exit
+status 2 and nothing on standard output.
+
+#### Scenario: Vet appears in CLI help
+
+- **WHEN** a user runs `machinome -h`
+- **THEN** the command list includes `vet`, after `import-step`
+
+#### Scenario: A directory is refused
+
+- **WHEN** a user runs `machinome vet sim/`, where `sim/` is a directory
+- **THEN** the command writes an error naming the accepted reference
+  spellings to standard error, prints nothing on standard output, and
+  exits 2

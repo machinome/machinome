@@ -31,6 +31,7 @@ COMMANDS = {
     'viewer': ('machinome.manager.viewer', 'Viewer'),
     'models': ('machinome.manager.models', 'Models'),
     'import-step': ('machinome.manager.import_step', 'ImportStep'),
+    'vet': ('machinome.manager.vet', 'Vet'),
 }
 
 #: The tokens that make the top-level parser print its own help. That is the

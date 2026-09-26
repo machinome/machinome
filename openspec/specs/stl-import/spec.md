@@ -24,6 +24,14 @@ SHALL fail the same way, saying so. Neither failure SHALL substitute a
 placeholder mesh, and neither SHALL be deferred to the moment the mesh is
 read.
 
+A subclass whose `stl_source` resolves, after symbolic links, to a path
+outside the project root of the module that declares the subclass SHALL
+fail at construction with `ValueError`, whether or not the file exists,
+naming the class, `stl_source` and its declared value, the resolved path
+and the project root. The project root is the one the manifest module
+finds above the declaring module's file; a module that lies in no project
+is not judged. Construction SHALL NOT read the mesh before this check.
+
 #### Scenario: The declared file resolves relative to the wrapper module
 
 - **WHEN** an `StlNode` subclass in `parts/bracket.py` declares
@@ -66,6 +74,21 @@ read.
   is instantiated
 - **THEN** an error is raised saying the path is not a file, naming the class
   and `stl_source`, rather than the mesh loader failing on it later
+
+#### Scenario: A mesh outside the project is refused
+
+- **WHEN** an `StlNode` subclass declares `stl_source` as a `../` path
+  that resolves to an existing file above its project root
+- **THEN** construction raises `ValueError` naming the class,
+  `stl_source`, the resolved path and the project root, and no mesh is
+  read
+
+#### Scenario: A mesh reached through a symbolic link is refused
+
+- **WHEN** an `StlNode` subclass declares `stl_source = 'link/part.stl'`
+  and `link` is a symbolic link to a directory outside the project root
+- **THEN** construction raises `ValueError` saying the source lies
+  outside the project
 
 ### Requirement: Materialized artifact
 
@@ -202,4 +225,3 @@ than an open question.
 - **WHEN** a `FusionNode` combines an `StlNode` with an exact leaf
 - **THEN** the fusion reports not exact and its union is produced
   through the mesh path, per the exact-fusion composition rule
-

@@ -1,9 +1,11 @@
 # Vet: a project stays inside the machinome universe
 
-**Status:** design note, settled in discussion with the pilot on
-2026-09-26; being cut into the OpenSpec change `vet-the-project`. Nothing
-here is ratified. When the change's specs and this note disagree, the specs
-are right.
+**Status:** archived 2026-09-26. The design this note settled was cut into
+the OpenSpec change `vet-the-project`, implemented and archived the same day
+at `openspec/changes/archive/2026-09-26-vet-the-project/` (ADR-149). The
+baseline specs `vet`, `cli`, `cli-startup-cost`, `stl-import`,
+`step-import`, `node-model` and `markings` are the authority; where this
+note and they disagree, they are right and this note is history.
 
 **What this does not claim:** that a project which passes vet is safe to
 run. Vet proves the project *declares* nothing outside the universe and

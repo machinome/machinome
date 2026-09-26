@@ -3905,3 +3905,30 @@ pilot's triage.
   Whether a fixed end on a moving sibling should follow it, or whether a
   part's fasteners belong in its own class, is a design question for the
   next project that fastens a moving part. **Recorded.**
+
+# OpenSCAD parameter values are echoed by hand (2026-09-26, the vet survey)
+
+- **Three printers run OpenSCAD themselves to read a parameter's value.**
+  The catalogue survey behind `vet-the-project` (2026-09-26) found that
+  every `subprocess` in the survey but one is the same workaround:
+  the project needs a number an OpenSCAD source computes (a rod length,
+  a bearing offset, a layout placement), and nothing in the framework
+  hands it over, so the project writes a probe `.scad` that `echo`s the
+  names, runs `openscad -o <file>.echo` in a temporary directory, and
+  parses the `ECHO:` lines back into Python. Evidence:
+  `3D-Printers/Metamaquina2/simulation/params.py` (lines 22-23, 54-67: a
+  `PARAM`/`PRECISE` echo pair per name, the second splitting a scalar
+  into integer and fraction because OpenSCAD prints six significant
+  digits), `3D-Printers/snappy-reprap/simulation/params.py` (lines 26-27,
+  72-89: the same probe, written independently), and
+  `3D-Printers/hangprinter/simulation/csg.py` (lines 16-17, 75-81 and
+  234-248: `openscad -o layout.csg` for the layout tree, and an `echo()`
+  helper for expressions). Each is `outside-universe` (`subprocess`,
+  `tempfile`) and `file-write` under `machinome vet`, so none of the
+  three can be pure while the only way to a parameter value is running
+  OpenSCAD by hand. The fourth `subprocess` in the survey,
+  3DPrintedClocks' `check_models.py`, is a quality audit, not a model
+  need. **Gap:** the SCAD import could close it by reading a source's
+  top-level assignments, or evaluating named expressions, through the
+  OpenSCAD run the framework already makes, with the precision the
+  projects had to recover themselves. Not triaged.

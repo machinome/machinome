@@ -220,3 +220,26 @@ class DirectoryPart(StepNode):
     """A declared source that resolves to a directory, not a file."""
 
     step_source = 'a_directory'
+
+
+class EscapingPart(StepNode):
+    """A document above the fixtures' project root (`tests/`): the
+    repository's own `pyproject.toml`. Refused at construction as outside
+    the project; constructed nowhere but
+    `tests/test_missing_source_file.py`."""
+
+    step_source = '../../pyproject.toml'
+
+
+class EscapingAbsentPart(StepNode):
+    """A document above the project root that is not there either."""
+
+    step_source = '../../no-such-outside-part.step'
+
+
+class LinkedPart(StepNode):
+    """A document reached through a symbolic link that
+    `tests/test_missing_source_file.py` creates beside this module, and
+    removes, pointing into a temporary directory outside the project."""
+
+    step_source = 'linked_outside.step'

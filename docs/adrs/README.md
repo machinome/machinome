@@ -137,6 +137,7 @@ that way.
 - [ADR-103](BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md) — The browser is the only interactive development viewer — **Accepted**, amends 046/068/102
 - [ADR-116](BUILD/ADR-116-an-artifact-import-is-anchored-on-the-build-directory.md) — An artifact import is anchored on the build directory — **Accepted**, extends 119, cites 086
 - [ADR-119](BUILD/ADR-119-named-project-models-and-per-model-build-directories.md) — Named project models and per-model build directories — **Accepted**, amends 005, 024, 038, extended by 116 (renumbered 2026-09-15 from 073)
+- [ADR-149](BUILD/ADR-149-vet-checks-a-project-against-a-versioned-universe.md) — Vet checks a project against a versioned universe, statically, and the adapters contain their sources: `machinome vet` judges the model closure, resolved from the filesystem without importing anything, against `machinome/vet/universe.toml` (contract, kernels, pure stdlib, a tests tier; reads inside the project are pure); sixteen finding kinds, a static check and not a sandbox; `require_source_file` refuses a source outside its declaring module's project; manifest reading moves to the kernel-free `machinome.manifest` — **Accepted**, extends 024/054/059/119
 
 ### IPC — inter-process communication
 - [ADR-015](IPC/ADR-015-fastapi-unified-stack-for-http-services.md) — FastAPI + Uvicorn HTTP stack — **Accepted, amended** (broker consumer removed)

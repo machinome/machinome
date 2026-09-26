@@ -172,8 +172,9 @@ so one ``.scad`` module can back several parametrized nodes:
 
     box = Box(50, hole_radius=10)
 
-A ``scad_source`` that does not resolve to a file is refused when the node
-is constructed, naming the class, the attribute and the resolved path.
+A ``scad_source`` that does not resolve to a file, or that resolves
+outside the project, is refused when the node is constructed, naming the
+class, the attribute and the resolved path, before OpenSCAD runs.
 :doc:`simulate-existing` shows a whole printer read this way.
 
 Resolution
@@ -221,6 +222,9 @@ dependencies installed in the directory you run ``machinome`` from.
     }
 
     module.exports = { main }
+
+As with every source file, a ``jscad_source`` outside the project is
+refused when the node is constructed.
 
 Colour
 ------

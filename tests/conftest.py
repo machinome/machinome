@@ -5,5 +5,6 @@
 # The fixture projects contain test_*.py files written for the solid
 # runner, some of them deliberately failing. They must only ever run
 # inside the subprocess tests/test_meta.py spawns — never be collected
-# by pytest itself.
-collect_ignore = ['meta_project']
+# by pytest itself. The vet fixture projects (tests/vet_projects/) are
+# read by `machinome vet` as bytes and never imported or run at all.
+collect_ignore = ['meta_project', 'vet_projects']

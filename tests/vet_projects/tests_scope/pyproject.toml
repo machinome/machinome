@@ -1,0 +1,4 @@
+# A vet fixture project: read by `machinome vet` as bytes, never imported.
+
+[tool.machinome]
+model = "sim.gear:Gear"

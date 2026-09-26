@@ -108,6 +108,11 @@ created, naming the class, the attribute, the declared value and the absolute
 path it resolved to, in the same failure family as a leaf whose declared source
 file is missing.
 
+An artwork path whose real path is not under the real path of the
+declaring module's project root SHALL be refused the same way, with
+`ValueError`, naming the resolved path and the project root; a module
+that lies in no project is not judged.
+
 The artwork SHALL be reduced to the drawing's **closed regions**: the file's
 own origin is preserved, its Y axis is flipped into model orientation, and each
 closed region becomes one face carrying its enclosed regions as holes, so a
@@ -159,6 +164,13 @@ scale collapses the artwork to a point.
 
 - **WHEN** a marking declares `Svg('label.svg', scale=-1.0)`, or `scale=0`
 - **THEN** it is refused naming the value
+
+#### Scenario: Artwork outside the project is refused
+
+- **WHEN** a marking declares `Svg('../../outside.svg')` and that path
+  resolves to an existing file above the declaring module's project root
+- **THEN** creating the class raises `ValueError` naming the resolved path
+  and the project root
 
 ### Requirement: A marking is placed on a cylinder or on a plane
 
@@ -419,4 +431,3 @@ a marking is not a parameter.
   realized, one declaring a marking and one declaring none
 - **THEN** both report the same `uniq_id`, so the marking changed no artifact
   key
-

@@ -50,6 +50,10 @@ dependencies = [
     "manifold3d",
     "rtree",
     "scipy",
+    # A member of the vet universe's kernel tier (machinome/vet/universe.toml):
+    # a member the framework does not install would let a project pass
+    # `machinome vet` and fail at import. Pinned to the installed minor.
+    "shapely==2.1.*",
 ]
 
 [project.optional-dependencies]

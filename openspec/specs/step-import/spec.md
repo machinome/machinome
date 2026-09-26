@@ -26,6 +26,15 @@ placeholder solid, and neither SHALL be deferred to the moment the document
 is read — a vendor document that has not been fetched is a declaration to
 correct or a file to obtain, never geometry to invent.
 
+A subclass whose `step_source`, relative or absolute, resolves after
+symbolic links to a path outside the project root of the module that
+declares the subclass SHALL fail at construction with `ValueError`,
+whether or not the file exists, naming the class, `step_source` and its
+declared value, the resolved path and the project root. An absolute path
+under the project root SHALL still resolve to itself and be admitted. The
+project root is the one the manifest module finds above the declaring
+module's file; a module that lies in no project is not judged.
+
 #### Scenario: The declared file resolves beside the wrapper module
 
 - **WHEN** a `StepNode` subclass in `parts/gearbox.py` declares
@@ -66,6 +75,21 @@ correct or a file to obtain, never geometry to invent.
   is instantiated
 - **THEN** an error is raised saying the path is not a file, naming the class
   and `step_source`, rather than the STEP reader failing on it later
+
+#### Scenario: A document outside the project is refused
+
+- **WHEN** a `StepNode` subclass declares `step_source` as a `../` path
+  that resolves to an existing file above its project root
+- **THEN** construction raises `ValueError` naming the class,
+  `step_source`, the resolved path and the project root, and no document
+  is read
+
+#### Scenario: A computed source under the project passes
+
+- **WHEN** a `StepNode` subclass declares
+  `step_source = os.path.join(HERE, 'part.step')`, where `HERE` is its
+  module's directory and the file exists
+- **THEN** construction succeeds as before
 
 ### Requirement: One part selected out of the document by product name
 
@@ -387,4 +411,3 @@ declares no `StepNode`.
 - **WHEN** a `StepNode` declares `angular_deflection = 0.5`
 - **THEN** its STL artifact holds strictly fewer triangles than the same
   node declaring nothing, and its `.brep` is unchanged
-

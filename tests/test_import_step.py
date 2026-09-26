@@ -418,6 +418,11 @@ class GeneratedSourceCompilesTest(ColdCacheTestCase):
 class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
 
     def _write_and_import(self, step_path, model_name):
+        # A generated project's document belongs to the project: the
+        # adapters refuse a source outside it (design D10 of
+        # vet-the-project), and import-step refuses to generate against
+        # one (D11). Generate against a copy under the scratch root.
+        step_path = shutil.copy(step_path, self._root_dir.name)
         assembly = StepAssembly(step_path)
         parts_source, class_names = generate_parts(
             assembly, step_path, self._package_dir)
@@ -644,10 +649,13 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
             handle.write('[tool.machinome]\nmodel = "x"\n')
         with open('pyproject.toml') as handle:
             before = handle.read()
+        # The directory is now a project, whose document must lie in it
+        # (design D11 of vet-the-project).
+        document = shutil.copy(SIMPLE_STEP, 'actuator.step')
 
         with patch('sys.stdout') as stdout:
             try:
-                self.run_command(SIMPLE_STEP, into='actuator',
+                self.run_command(document, into='actuator',
                                 model='actuator')
             except SystemExit:
                 pass
@@ -712,6 +720,52 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
 
         self.assertNotIn('actuator.assembly', sys.modules)
         self.assertNotIn('actuator.parts', sys.modules)
+
+
+class ImportStepContainmentTest(ImportStepCommandTestCase):
+    """The generation-time half of the adapters' containment
+    (vet-the-project, design D11): a document outside the project the
+    `--into` directory lies in is refused before anything is written."""
+
+    def _declare_project(self):
+        with open('pyproject.toml', 'w') as handle:
+            handle.write('[tool.machinome]\nmodel = "sim.assembly:X"\n')
+
+    def test_a_document_outside_the_project_is_refused(self):
+        self._declare_project()
+        root = os.path.realpath(self._project_dir.name)
+        document = os.path.realpath(SIMPLE_STEP)
+
+        with patch('sys.stderr') as stderr:
+            with self.assertRaises(SystemExit) as raised:
+                self.run_command(SIMPLE_STEP, into='sim', model='actuator')
+        message = ''.join(call.args[0]
+                          for call in stderr.write.call_args_list)
+
+        self.assertEqual(raised.exception.code, 1)
+        self.assertIn(document, message)
+        self.assertIn(root, message)
+        self.assertIn('Copy the document under', message)
+        self.assertFalse(os.path.exists('sim'))
+        self.assertEqual(sorted(os.listdir('.')), ['pyproject.toml'])
+
+    def test_a_document_inside_the_project_scaffolds(self):
+        self._declare_project()
+        os.makedirs('vendor')
+        shutil.copy(SIMPLE_STEP, os.path.join('vendor', 'actuator.step'))
+
+        self.run_command(os.path.join('vendor', 'actuator.step'),
+                         into='sim', model='actuator')
+
+        self.assertTrue(os.path.exists('sim/parts.py'))
+        self.assertTrue(os.path.exists('sim/assembly.py'))
+
+    def test_into_in_no_project_is_not_judged(self):
+        # The scratch directory holds no manifest: nothing is judged, and
+        # a document anywhere scaffolds as before.
+        self.run_command(SIMPLE_STEP, into='sim', model='actuator')
+
+        self.assertTrue(os.path.exists('sim/parts.py'))
 
 
 class ImportStepCliHelpTest(TestCase):

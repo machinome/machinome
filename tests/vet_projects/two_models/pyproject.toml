@@ -1,0 +1,5 @@
+# A vet fixture project: read by `machinome vet` as bytes, never imported.
+
+[tool.machinome.models]
+clock_a = "sim.a:ClockA"
+clock_b = "sim.b:ClockB"

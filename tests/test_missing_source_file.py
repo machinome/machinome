@@ -38,8 +38,11 @@ import tempfile
 import uuid
 from unittest import TestCase
 
-from machinome.node import AssemblyNode, StepNode, StlNode
+from unittest.mock import patch
+
+from machinome.node import AssemblyNode, Solid2Node, StepNode, StlNode
 from machinome.node.declarative import ChildDeclaration
+from machinome.node.markings import Marking, Svg, Wrapped
 
 from .stl_project import parts as stl_parts
 from .step_project import parts as step_parts
@@ -60,14 +63,41 @@ STL_DIRECTORY_SOURCE = os.path.join(STL_PROJECT, 'a_directory')
 STEP_DIRECTORY_SOURCE = os.path.join(STEP_PROJECT, 'a_directory')
 
 
+#: The fixtures' project root: `tests/`, by `tests/pyproject.toml`.
+TESTS_ROOT = TEST_DIR
+#: The repository's own manifest, a regular file above that root, which
+#: `EscapingBracket`/`EscapingPart` declare through `../../`.
+ABOVE_ROOT = os.path.join(os.path.dirname(TEST_DIR), 'pyproject.toml')
+
+#: `LinkedBracket`/`LinkedPart` declare a source through these symbolic
+#: links, which point into a temporary directory outside the project and
+#: exist only while this module runs.
+STL_LINK = os.path.join(STL_PROJECT, 'linked_outside.stl')
+STEP_LINK = os.path.join(STEP_PROJECT, 'linked_outside.step')
+OUTSIDE = None
+
+
 def setUpModule():
+    global OUTSIDE
     os.makedirs(STL_DIRECTORY_SOURCE, exist_ok=True)
     os.makedirs(STEP_DIRECTORY_SOURCE, exist_ok=True)
+    OUTSIDE = os.path.realpath(tempfile.mkdtemp(prefix='machinome_outside_'))
+    for link, name in ((STL_LINK, 'part.stl'), (STEP_LINK, 'part.step')):
+        target = os.path.join(OUTSIDE, name)
+        open(target, 'w').close()
+        if os.path.lexists(link):
+            os.remove(link)
+        os.symlink(target, link)
 
 
 def tearDownModule():
     shutil.rmtree(STL_DIRECTORY_SOURCE, ignore_errors=True)
     shutil.rmtree(STEP_DIRECTORY_SOURCE, ignore_errors=True)
+    for link in (STL_LINK, STEP_LINK):
+        if os.path.lexists(link):
+            os.remove(link)
+    if OUTSIDE:
+        shutil.rmtree(OUTSIDE, ignore_errors=True)
 
 
 class MissingChildRig(AssemblyNode):
@@ -248,3 +278,195 @@ class ForeignScratchSourceTest(TestCase):
         self.assertIn('no-such-shape.scad', message)
         self.assertIn(path, message)
         self.assertNotIn('committed', message)
+
+
+class ContainmentTest(TestCase):
+    """A declared source outside the declaring module's project is refused
+    at construction (OpenSpec change ``vet-the-project``, design D10),
+    whatever expression computed it and whether or not it exists."""
+
+    def assertOutside(self, construct, klass, attribute, declared, resolved,
+                      root=TESTS_ROOT):
+        with self.assertRaises(ValueError) as raised:
+            construct()
+
+        error = raised.exception
+        self.assertNotIsInstance(error, FileNotFoundError)
+        message = str(error)
+        self.assertIn(klass, message)
+        self.assertIn(attribute, message)
+        self.assertIn(repr(declared), message)
+        self.assertIn(resolved, message)
+        self.assertIn(root, message)
+        self.assertIn('outside the project', message)
+
+    def test_an_stl_source_above_the_root(self):
+        self.assertOutside(stl_parts.EscapingBracket, 'EscapingBracket',
+                           'stl_source', '../../pyproject.toml', ABOVE_ROOT)
+
+    def test_an_absent_stl_source_above_the_root(self):
+        self.assertOutside(
+            stl_parts.EscapingAbsentBracket, 'EscapingAbsentBracket',
+            'stl_source', '../../no-such-outside-bracket.stl',
+            os.path.join(os.path.dirname(TEST_DIR),
+                         'no-such-outside-bracket.stl'))
+
+    def test_an_stl_source_through_a_symbolic_link(self):
+        self.assertOutside(stl_parts.LinkedBracket, 'LinkedBracket',
+                           'stl_source', 'linked_outside.stl',
+                           os.path.join(OUTSIDE, 'part.stl'))
+
+    def test_a_step_source_above_the_root(self):
+        self.assertOutside(step_parts.EscapingPart, 'EscapingPart',
+                           'step_source', '../../pyproject.toml', ABOVE_ROOT)
+
+    def test_an_absent_step_source_above_the_root(self):
+        self.assertOutside(
+            step_parts.EscapingAbsentPart, 'EscapingAbsentPart',
+            'step_source', '../../no-such-outside-part.step',
+            os.path.join(os.path.dirname(TEST_DIR),
+                         'no-such-outside-part.step'))
+
+    def test_a_step_source_through_a_symbolic_link(self):
+        self.assertOutside(step_parts.LinkedPart, 'LinkedPart',
+                           'step_source', 'linked_outside.step',
+                           os.path.join(OUTSIDE, 'part.step'))
+
+    def test_an_artwork_above_the_root(self):
+        def declare():
+            class EscapingArtwork(Solid2Node):
+                digits = Marking(Svg('../pyproject.toml'),
+                                 Wrapped(axis=(0, 0, 1), radius=9.45,
+                                         at=(0, 0, 0)),
+                                 color='#FFFFFF')
+
+        self.assertOutside(declare, 'EscapingArtwork', 'digits',
+                           '../pyproject.toml', ABOVE_ROOT)
+
+    def test_a_computed_source_under_the_root_constructs(self):
+        fd, path = tempfile.mkstemp(suffix='.stl', dir=STL_PROJECT)
+        os.close(fd)
+        self.addCleanup(os.remove, path)
+
+        class ComputedBracket(StlNode):
+            stl_source = os.path.join(STL_PROJECT, os.path.basename(path))
+
+        self.assertEqual(ComputedBracket().stl_source, os.path.realpath(path))
+
+    def test_an_absolute_step_source_under_the_root_is_admitted(self):
+        fd, path = tempfile.mkstemp(suffix='.step', dir=STEP_PROJECT)
+        os.close(fd)
+        self.addCleanup(os.remove, path)
+
+        class AbsolutePart(StepNode):
+            step_source = path
+
+        self.assertEqual(AbsolutePart().step_source, os.path.realpath(path))
+
+
+class ScratchContainmentTest(TestCase):
+    """The OpenSCAD and JSCAD adapters, in scratch projects laid out as
+    `<base>/project/` beside `<base>/outside.*`."""
+
+    def setUp(self):
+        self.base = os.path.realpath(
+            tempfile.mkdtemp(prefix='machinome_containment_'))
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
+        self.project = os.path.join(self.base, 'project')
+        os.makedirs(self.project)
+        for name in ('outside.scad', 'outside.js'):
+            with open(os.path.join(self.base, name), 'w') as source:
+                source.write('cube(1);\n')
+
+    def manifest(self):
+        with open(os.path.join(self.project, 'pyproject.toml'), 'w') as stream:
+            stream.write('[tool.machinome]\n')
+
+    def load(self, source):
+        path = os.path.join(self.project, 'leaf.py')
+        with open(path, 'w') as module_file:
+            module_file.write(source)
+        name = f'_containment_scratch_{uuid.uuid4().hex}'
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        self.addCleanup(sys.modules.pop, name, None)
+        spec.loader.exec_module(module)
+        return module
+
+    def assertOutside(self, construct, klass, attribute, declared, resolved):
+        with self.assertRaises(ValueError) as raised:
+            construct()
+        message = str(raised.exception)
+        for part in (klass, attribute, repr(declared), resolved,
+                     self.project, 'outside the project'):
+            self.assertIn(part, message)
+
+    def test_an_openscad_source_above_the_root_runs_nothing(self):
+        self.manifest()
+        module = self.load(
+            'from machinome.node import OpenScadNode\n\n\n'
+            'class Outside(OpenScadNode):\n'
+            '    scad_source = "../outside.scad"\n')
+
+        with patch('machinome.node.adapters.openscad.coherent_read') as read:
+            self.assertOutside(module.Outside, 'Outside', 'scad_source',
+                               '../outside.scad',
+                               os.path.join(self.base, 'outside.scad'))
+        read.assert_not_called()
+
+    def test_an_openscad_source_through_a_symbolic_link(self):
+        self.manifest()
+        os.symlink(os.path.join(self.base, 'outside.scad'),
+                   os.path.join(self.project, 'link.scad'))
+        module = self.load(
+            'from machinome.node import OpenScadNode\n\n\n'
+            'class Linked(OpenScadNode):\n'
+            '    scad_source = "link.scad"\n')
+
+        self.assertOutside(module.Linked, 'Linked', 'scad_source',
+                           'link.scad', os.path.join(self.base, 'outside.scad'))
+
+    def test_a_jscad_source_above_the_root(self):
+        self.manifest()
+        module = self.load(
+            'from machinome.node import JScadNode\n\n\n'
+            'class Outside(JScadNode):\n'
+            '    jscad_source = "../outside.js"\n')
+
+        self.assertOutside(module.Outside, 'Outside', 'jscad_source',
+                           '../outside.js',
+                           os.path.join(self.base, 'outside.js'))
+
+    def test_a_jscad_source_through_a_symbolic_link(self):
+        self.manifest()
+        os.symlink(os.path.join(self.base, 'outside.js'),
+                   os.path.join(self.project, 'link.js'))
+        module = self.load(
+            'from machinome.node import JScadNode\n\n\n'
+            'class Linked(JScadNode):\n'
+            '    jscad_source = "link.js"\n')
+
+        self.assertOutside(module.Linked, 'Linked', 'jscad_source',
+                           'link.js', os.path.join(self.base, 'outside.js'))
+
+    def test_a_class_outside_any_project_is_not_judged(self):
+        # (6.4) No manifest above the declaring module, so there is no
+        # project to contain its source in. The source itself lies in a
+        # project, because a node's build directory mirrors its source's
+        # place in one (`AbstractBaseNode.__init__`), as it always has.
+        elsewhere = os.path.join(self.base, 'elsewhere')
+        os.makedirs(elsewhere)
+        with open(os.path.join(elsewhere, 'pyproject.toml'), 'w') as stream:
+            stream.write('[tool.machinome]\n')
+        with open(os.path.join(elsewhere, 'shape.scad'), 'w') as source:
+            source.write('cube(1);\n')
+        module = self.load(
+            'from machinome.node import OpenScadNode\n\n\n'
+            'class Loose(OpenScadNode):\n'
+            '    scad_source = "../elsewhere/shape.scad"\n')
+
+        node = module.Loose()
+
+        self.assertEqual(node.openscad_source,
+                         os.path.join(elsewhere, 'shape.scad'))

@@ -387,6 +387,30 @@ def _module_reference(into, module_name, class_name):
     return f'{prefix}{module_name}:{class_name}'
 
 
+def _outside_project(document, into):
+    """The refusal for a `document` outside the project that the `--into`
+    directory lies in, or None (vet-the-project, design D11).
+
+    The adapters refuse a declared source outside its project at
+    construction (D10), so a scaffold declaring such a document could
+    never construct; the command refuses first, before writing anything.
+    When `into` lies in no project, nothing is judged.
+    """
+    from machinome.manifest import ProjectManifestError, project_root
+    try:
+        root = os.path.realpath(project_root(os.path.abspath(into)))
+    except ProjectManifestError:
+        return None
+    resolved = os.path.realpath(document)
+    if os.path.commonpath((resolved, root)) == root:
+        return None
+    return (f'Error: {resolved} lies outside the project at {root}, and '
+            'the adapters refuse a source outside its project, so the '
+            'generated model could not construct. Copy the document under '
+            f'{root} and run import-step on the copy. Nothing was '
+            'written.\n')
+
+
 class ImportStep:
     """Scaffold declarative source from a STEP document's assembly structure."""
 
@@ -451,6 +475,12 @@ class ImportStep:
                     'a different --into, and run the command again.\n')
                 sys.exit(1)
                 return
+
+        refusal = _outside_project(args.file, into)
+        if refusal:
+            sys.stderr.write(refusal)
+            sys.exit(1)
+            return
 
         model_name = args.model or _default_model_name(assembly, args.file)
 

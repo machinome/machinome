@@ -29,6 +29,13 @@ fusion, the viewer, the export and the tests all see. Two things make it
 stale, and both are tracked: the file, and the module that declares the
 node, because ``adjust()`` below can change the geometry.
 
+The file belongs to the project. A source that resolves, symbolic links
+followed, outside the project root (the directory holding the
+``pyproject.toml`` that declares the project) is refused when the node
+is constructed, naming the class, the attribute, the resolved path and
+the root, whether the file is there or not. This holds for every source
+declaration on this page, however its path is computed.
+
 Watertight, or knowingly not
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -117,6 +124,9 @@ external tool.
     class Bracket(StepNode):
 
         step_source = 'vendor/bracket.step'
+
+``step_source`` is relative to the declaring module, or absolute; either
+way the document must lie inside the project, as an STL's must.
 
 Selecting a product
 ~~~~~~~~~~~~~~~~~~~

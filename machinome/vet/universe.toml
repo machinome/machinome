@@ -1,0 +1,117 @@
+# Machinome - A framework for mechanical CAD projects
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: Apache-2.0
+#
+# The machinome universe: what a pure project may import and reach.
+# `machinome vet` judges a project against this declaration and nothing
+# else, so a verdict is a property of the project and of the framework
+# version named below, never of what a machine happens to have installed.
+
+[universe]
+name = "machinome"
+version = "0.7.0"
+# The version equals machinome.__version__; a test pins it, and
+# setup.cfg's bumpversion rewrites it with the others on a release.
+
+[contract]                  # allowed whole, minus `deny`
+members = ["machinome", "machinome_mechanics", "molejo"]
+
+# The framework's own modules that spawn processes, write to a
+# caller-chosen path, or import by name. Kind `framework-internal`,
+# matched exactly as the kernel denylist is.
+deny = [
+  "machinome.cli", "machinome.manager",
+  "machinome.core.builder", "machinome.core.processes",
+  "machinome.core.loader", "machinome.core.export",
+  "machinome.core.pieces",
+  "machinome.source_generation", "machinome.viewers", "machinome.sphinx",
+  "machinome.currency", "machinome._artifact",
+]
+
+[kernels]                   # allowed, minus the denylists below
+members = ["cadquery", "build123d", "OCP", "solid2", "trimesh",
+           "numpy", "scipy", "manifold3d", "shapely"]
+
+# Dotted names. A name reached by import or by an attribute chain on an
+# import-bound name is denied when it equals, or lies beneath, one of these.
+deny = [
+  # cadquery importers and exporters
+  "cadquery.importers", "cadquery.exporters",
+  "cadquery.occ_impl.importers", "cadquery.occ_impl.exporters",
+  # build123d importers, exporters and mesher
+  "build123d.importers", "build123d.exporters", "build123d.exporters3d",
+  "build123d.mesher", "build123d.Mesher",
+  "build123d.import_brep", "build123d.import_step", "build123d.import_stl",
+  "build123d.import_svg", "build123d.import_svg_as_buildline_code",
+  "build123d.import_svg_document",
+  "build123d.export_brep", "build123d.export_gltf", "build123d.export_step",
+  "build123d.export_stl", "build123d.ExportDXF", "build123d.ExportSVG",
+  "build123d.Export2D",
+  # OCP STEP/IGES/STL readers and writers, and the file-level exchange
+  "OCP.STEPControl", "OCP.STEPCAFControl", "OCP.IGESControl",
+  "OCP.IGESCAFControl", "OCP.StlAPI", "OCP.RWStl", "OCP.RWGltf",
+  "OCP.VrmlAPI", "OCP.XSControl", "OCP.IFSelect", "OCP.DE", "OCP.OSD",
+  "OCP.BinTools", "OCP.BRepTools.BRepTools.Write_s",
+  "OCP.BRepTools.BRepTools.Read_s",
+  # trimesh loaders and exchange
+  "trimesh.load", "trimesh.load_mesh", "trimesh.load_path",
+  "trimesh.load_remote", "trimesh.exchange", "trimesh.resources",
+  "trimesh.interfaces",
+  # numpy file IO
+  "numpy.load", "numpy.save", "numpy.savez", "numpy.savez_compressed",
+  "numpy.fromfile", "numpy.loadtxt", "numpy.savetxt", "numpy.genfromtxt",
+  "numpy.memmap", "numpy.fromregex", "numpy.lib.npyio", "numpy.lib.format",
+  "numpy.ctypeslib", "numpy.f2py",
+  # scipy file IO
+  "scipy.io", "scipy.datasets",
+  # solid2 render-to-file
+  "solid2.scad_render_to_file", "solid2.render_to_stl_file",
+]
+
+# Attribute names that do file IO on a kernel object. Matched only on a
+# receiver no import bound (a call result, a local, `self.x`).
+deny_methods = [
+  "export", "exportBin", "exportBrep", "exportStep", "exportStl",
+  "exportSvg", "importBin", "importBrep", "importStep", "importDXF",
+  "save", "load", "dump", "tofile", "save_image",
+  "save_as_scad", "save_as_stl",
+]
+
+[stdlib]
+members = ["math", "cmath", "fractions", "decimal", "statistics",
+           "itertools", "functools", "operator", "collections",
+           "dataclasses", "enum", "typing", "abc", "numbers", "re",
+           "string", "json", "hashlib", "struct", "copy", "contextlib",
+           "random", "bisect", "heapq", "xml.etree", "__future__",
+           "ast", "os", "pathlib"]
+
+# A restricted member admits the member itself and only the dotted names
+# at or beneath one of its allowed prefixes. Anything else under it is
+# `outside-universe`, named by the member and its next component.
+[stdlib.restricted]
+os = ["os.path", "os.listdir", "os.scandir", "os.walk"]
+
+# Members only for a file reached solely through a companion test under
+# `machinome vet --tests`.
+[tests]
+members = ["unittest", "pytest", "logging"]
+
+[routes]
+dynamic_builtins = ["exec", "eval", "compile", "__import__"]
+dynamic_modules = ["importlib", "runpy"]
+import_system = ["sys.path", "sys.modules"]
+dunders = ["__subclasses__", "__globals__", "__builtins__", "__loader__",
+           "__spec__", "__code__", "__closure__", "__mro__", "__bases__",
+           "__base__", "__path__"]
+denied_builtins = ["breakpoint", "help", "input"]
+
+[writes]                    # kind `file-write`
+open = "open"               # the built-in, and any `.open` method
+write_modes = ["w", "a", "x", "+"]
+# Mutating pathlib methods, matched by name on any receiver.
+methods = ["write_text", "write_bytes", "mkdir", "unlink", "rmdir",
+           "touch", "chmod", "lchmod", "symlink_to", "hardlink_to"]
+
+[sources]
+attributes = ["stl_source", "step_source", "scad_source"]
+refused = ["jscad_source"]

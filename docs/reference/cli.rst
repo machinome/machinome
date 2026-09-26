@@ -381,7 +381,11 @@ rule ``machinome new`` applies to its target directory, for the same reason.
 It writes nothing, either, when the document holds a placement that is
 not a proper rigid transform (a mirror or a scale): the framework's
 ``rotate``/``translate`` pair cannot state one, and the message names the
-occurrence with its determinant and scale factor.
+occurrence with its determinant and scale factor. When ``--into`` lies in
+a project, it refuses a document outside that project's root before
+writing anything, naming the document, the root and the remedy — copy
+the document under the root — because a declared source outside its
+project is refused at construction and the scaffold could not build.
 
 It takes no node reference and loads no node — like ``machinome models``, it
 never imports project code — but it does need the exact-geometry kernel
@@ -393,6 +397,115 @@ The command never touches ``pyproject.toml``: it prints the
 ``[tool.machinome.models]`` line to add, along with the ``machinome build``
 and ``machinome develop`` invocations to try next — following ``machinome
 models``, which reads the manifest and never writes it.
+
+.. _vet:
+
+machinome vet
+=============
+
+::
+
+    machinome vet [reference] [--tests] [--json]
+
+Checks that a project stays inside the machinome universe, and says so
+without running it. A project is **pure** when its code imports only the
+framework, the geometry kernels the framework depends on and pure
+computation from the standard library; reads files only inside its own
+tree; and writes no file, runs no process, opens no network connection
+and imports nothing by a computed name. Vet reads the project's Python
+files as bytes and parses them: it never imports or runs a file of the
+project, never imports a kernel, and gives the same answer on any
+machine, because it judges against a declaration rather than against
+what happens to be installed.
+
+The declaration is ``machinome/vet/universe.toml``, shipped inside the
+installed package and naming the framework version it describes. It has
+three tiers. The **contract** — ``machinome`` and its sibling packages —
+is allowed whole, except the framework's own modules that run processes,
+write where a caller says or import by name, such as the command modules
+and the loader. The **kernels** are allowed except their file readers and
+writers: importers, exporters, and the load and save functions and
+methods. The **standard library** tier is an explicit list of pure
+modules; ``os`` is in it for ``os.path`` and directory listing only, and
+``pathlib`` whole except the methods that change the file system. A
+fourth tier, the test frameworks, applies only under ``--tests``, to a
+file reached through a companion test. Every other name is outside.
+
+Starting from every model the manifest declares, or from the one
+``reference`` names, vet follows each import statement wherever it
+sits — in a function, a class, a guarded ``try`` — to the files under
+the project root that Python would run, package ``__init__.py`` files
+included, and judges each file for:
+
+- an import outside the universe, a project file named like one of its
+  modules, a file that does not parse, an import that resolves to
+  nothing, or a module reached through a symbolic link that leaves the
+  project;
+- a kernel file reader or writer, or a framework internal, reached by
+  import or through an attribute of an imported name;
+- ``exec``, ``eval``, ``compile``, ``__import__``, ``importlib`` or
+  ``runpy``; any touch of ``sys.path`` or ``sys.modules``; the
+  introspection dunders such as ``__globals__`` or ``__subclasses__``,
+  written as a name, an attribute or a string; ``breakpoint``, ``help``
+  or ``input``;
+- a file opened for writing: ``open`` or an ``.open`` method whose mode
+  holds ``w``, ``a``, ``x`` or ``+``, or cannot be read from the source,
+  and the ``pathlib`` methods that write, create or remove;
+- a declared source written as a string that is absolute or resolves
+  outside the project, and any ``jscad_source``, because JavaScript is
+  outside this universe. A source computed at run time is contained by
+  the node that declares it, which refuses one outside the project when
+  it is constructed.
+
+With no reference, vet checks every declared model, whether or not the
+project names a default. ``--tests`` also checks the companion test of
+every checked module (``test_gear.py`` beside ``gear.py``, ``test.py``
+beside a package's ``__init__.py``) and what those import; nothing else
+in the tree is read, so tools and fetch scripts that no model imports do
+not count.
+
+The report starts by naming the universe and its version, gives each
+model's verdict with its findings — the file relative to the project
+root, the line, the kind and the offending name — and ends with the
+project's verdict:
+
+.. parsed-literal::
+
+    $ machinome vet
+    machinome vet: universe machinome |release|
+    Vet statically checks what this project declares; it is not a sandbox, and it
+    does not hold against an author who sets out to evade it.
+
+    clock_a  pure
+    clock_b  not pure
+      design/clock_b.py:3  outside-universe  socket
+    project  not pure
+
+``--json`` prints one object instead, for a program to read: ``universe``
+(its ``name`` and ``version``), ``root``, ``scope`` (``models``, or
+``tests`` under ``--tests``), ``pure``, and ``models``, a list in
+declaration order whose entries hold ``name`` (null for a project's
+single ``model`` or a reference that is not a declared name),
+``reference``, ``pure``, the sorted ``files`` checked and the
+``findings``, each an object of ``path``, ``line`` (null when the finding
+has none), ``kind`` and ``name``. Two runs over the same tree print the
+same bytes. The kinds are ``outside-universe``, ``kernel-io``,
+``framework-internal``, ``file-write``, ``dynamic-route``,
+``import-system``, ``denied-dunder``, ``denied-builtin``, ``shadowing``,
+``unparseable``, ``unresolved-import``, ``escaped-module``,
+``unresolved-reference``, ``source-absolute``, ``source-escapes`` and
+``jscad-source``.
+
+The exit status is 0 when every model checked is pure and 1 when any is
+not. When vet cannot run — no manifest, a malformed one, or a directory
+given as the reference — it writes the reason to standard error, prints
+nothing on standard output and exits 2.
+
+Vet is a static check of what a project declares, not a sandbox. It
+catches every ordinary way of writing these things, not an author who
+sets out to hide them — a name assembled at run time passes — and it
+does not prove that a path computed at run time stays inside the
+project; that is left to the environment the project runs in.
 
 .. _several-models:
 

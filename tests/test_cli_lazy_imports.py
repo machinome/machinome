@@ -52,12 +52,13 @@ COMMAND_MODULES = {
     'machinome.manager.viewer',
     'machinome.manager.models',
     'machinome.manager.import_step',
+    'machinome.manager.vet',
 }
 
 #: The order `machinome -h` lists commands in, and has listed them in since
-#: the command-first flip (ADR-024).
+#: the command-first flip (ADR-024); `vet` joined last (vet-the-project).
 COMMAND_ORDER = ['build', 'develop', 'test', 'snapshot', 'new', 'export',
-                 'viewer', 'models', 'import-step']
+                 'viewer', 'models', 'import-step', 'vet']
 
 MIGRATION_HINT = ('The CLI grammar changed in 0.4: commands come first. '
                   'Try: machinome {command} {path} [options]\n')
@@ -81,6 +82,7 @@ def reference_parser():
     from machinome.manager.new import New
     from machinome.manager.snapshot import Snapshot
     from machinome.manager.test import Test
+    from machinome.manager.vet import Vet
     from machinome.manager.viewer import Viewer
 
     # Paired with a name explicitly, rather than derived from the class
@@ -90,7 +92,7 @@ def reference_parser():
     commands = [('build', Build()), ('develop', Develop()), ('test', Test()),
                ('snapshot', Snapshot()), ('new', New()), ('export', Export()),
                ('viewer', Viewer()), ('models', Models()),
-               ('import-step', ImportStep())]
+               ('import-step', ImportStep()), ('vet', Vet())]
 
     # argparse derives `prog` from argv[0], and `manage()` lets it: the
     # reference has to be built under the same argv the comparison runs

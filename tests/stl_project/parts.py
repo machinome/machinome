@@ -131,3 +131,27 @@ class DirectoryBracket(StlNode):
     """A declared source that resolves to a directory, not a file."""
 
     stl_source = 'a_directory'
+
+
+class EscapingBracket(StlNode):
+    """A mesh above the fixtures' project root (`tests/`, by
+    `tests/pyproject.toml`): the repository's own `pyproject.toml`, a
+    regular file that exists. Refused at construction as outside the
+    project; constructed nowhere but `tests/test_missing_source_file.py`."""
+
+    stl_source = '../../pyproject.toml'
+
+
+class EscapingAbsentBracket(StlNode):
+    """A mesh above the project root that is not there either: the
+    containment refusal comes first."""
+
+    stl_source = '../../no-such-outside-bracket.stl'
+
+
+class LinkedBracket(StlNode):
+    """A mesh reached through a symbolic link that
+    `tests/test_missing_source_file.py` creates beside this module, and
+    removes, pointing into a temporary directory outside the project."""
+
+    stl_source = 'linked_outside.stl'

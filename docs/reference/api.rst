@@ -126,7 +126,8 @@ Leaf nodes
    .. attribute:: scad_source
 
       Path of the OpenScad source file, relative to the directory of the
-      python file declaring the node.
+      python file declaring the node. A path that resolves outside the
+      project is refused when the node is constructed.
 
    .. attribute:: module_name
 
@@ -139,7 +140,8 @@ Leaf nodes
 
       Path of the JScad source file, relative to the directory of the
       python file declaring the node. The file must export a ``main``
-      function.
+      function. A path that resolves outside the project is refused when
+      the node is constructed.
 
 .. autoclass:: machinome.node.StlNode
 
@@ -153,7 +155,8 @@ Leaf nodes
    .. attribute:: stl_source
 
       Path of the ``.stl``, relative to the directory of the
-      python file declaring the node.
+      python file declaring the node. A path that resolves outside the
+      project is refused when the node is constructed.
 
    .. attribute:: require_watertight
 

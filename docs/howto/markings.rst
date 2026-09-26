@@ -61,8 +61,8 @@ The artwork
 -----------
 
 ``Svg(path, scale=None)``. The path is relative to the module that
-declared the marking, and a path that is not there is refused at the
-declaration. The drawing is reduced to its **closed regions**, each one
+declared the marking, and a path that is not there, or that resolves
+outside the project, is refused at the declaration. The drawing is reduced to its **closed regions**, each one
 face carrying its enclosed regions as holes, so a digit's counter is a
 hole with no rule of your own. The file's origin is kept and its Y axis
 is flipped into model orientation, so a drawing authored in a drawing
