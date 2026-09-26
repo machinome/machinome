@@ -146,8 +146,8 @@ neither ratifies nor handles a spec artifact.
 
 Runtime prompts live beside their profile. A prompt names only skills exposed
 through its profile `skills/` allowlist. Shared runtime skills live under
-`shop-skills/`; repository operator and development skills remain under
-`skills/`. Each declared agent receives the exact verified project repository
+`shop-skills/`; the workspace's repository-operator and development skills are
+not part of this repository. Each declared agent receives the exact verified project repository
 root, while prompts and skills remain shop-owned outside that project.
 
 Every allowlisted skill declares its own `name` and `description` in

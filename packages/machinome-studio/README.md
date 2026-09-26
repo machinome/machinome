@@ -30,7 +30,9 @@ lose that record silently. Install it with:
 
 ```text
 npm install -g @fission-ai/openspec
-``` The orchestrator takes no project or profile. The pilot opens an
+```
+
+The orchestrator takes no project or profile. The pilot opens an
 existing project or creates one in the browser;
 several projects may be open at once. `fordesmac` is the default and opens
 standing Foreman, Designer, Machinist, and Librarian sessions; Foreman alone
@@ -45,6 +47,16 @@ the workspace; profile, preparation, and agent-start failures leave no partial
 session and are reported on the hub. Closing a project ends its ephemeral
 conversation, agents, watcher, and backend resources without stopping the hub
 or another project.
+
+The hub lists every entry under the selected projects directory, including
+unopenable entries with their reason. Each open project has one opaque session
+identifier, an isolated broker, profile roster, conversation, model build and
+watcher. Agent processes receive only their own identifier through
+`FLOOR_SESSION`; a stale identifier cannot reach a later session of the same
+project. The service serves only each session's completed `_build/` artifacts
+and refreshes them with its own watcher. The floor serves the viewer bundle
+the framework reports through `machinome viewer`, and refuses to open a
+project when no usable viewer is installed.
 
 Declare runtime choices in the project's `pyproject.toml`. Omitted agents use
 their profile's Claude model and effort. A final segment overrides reasoning;
@@ -69,14 +81,7 @@ session starts each distinct selected backend exactly once.
 
 Each runtime agent receives the exact verified `<projects-dir>/<name>`
 repository root. Runtime prompts belong to `profiles/<id>/`; their shared
-allowlisted skills are in `shop-skills/`. Repository operation and development
-skills stay under `skills/` and are not runtime capabilities.
-
-For educational videos from an existing project simulation, use the shared
-[Videomaker skill](skills/videomaker/SKILL.md). It directs the independent
-`videomaker/` tool with project-owned YAML sources and requires the pilot to
-approve exact spoken, on-screen and description credits for every video.
-It does not grant shop-floor agents new tools or publish videos.
+allowlisted skills are in `shop-skills/`.
 
 Two backends are selectable per agent: Claude and OpenCode. Claude resolves
 project-selected model/reasoning values over explicit profile defaults; the
@@ -115,62 +120,26 @@ configuration is disabled and an authenticated persistent session is created.
 
 No backend loads global shop role cards or `.codex/agents` runtime adapters.
 
-## Workspace
+## Install
 
-`<projects-dir>/<name>/` is an independent Git repository. The catalogue path
-comes only from the required launcher option and need not be inside a shop
-source tree or installation. In this development workspace, `machinome/` and
-its `WTs/` are framework checkouts, `machinome-viewer/` is the independent
-AGPL browser-viewer repository the framework installs as its `viewer` extra,
-and top-level `WTs/` holds shop worktrees. `scripts/setup` installs
-`machinome[viewer]` (tier 1) or clones and installs both repositories
-editable and builds the viewer's frontends (tier 2, `scripts/setup dev`);
-`scripts/dev-env <name> setup|teardown` opens per-slot framework benches,
-which hold no frontend of their own. The floor serves the viewer bundle the
-framework reports through `machinome viewer`, and refuses to open a project when
-no usable viewer is installed. The hub
-lists every entry under the selected projects directory, including unopenable
-entries with their reason. Each open project has one opaque session identifier,
-an isolated broker, profile roster, conversation, model build and watcher.
-Agent processes receive only their own identifier through `FLOOR_SESSION`; a
-stale identifier cannot reach a later session of the same project. The service
-serves only each session's completed `_build/` artifacts and refreshes them
-with its own watcher.
-
-`scripts/migrate-projects-to-machinome` previews the one-time ecosystem rename
-across every Git project below the development catalogue. Pass `--apply` to
-write the previewed tracked files. Pass `--apply --stage` to stage only the
-rename while retaining unrelated unstaged edits; that mode refuses a repository
-which already has staged work. The script stops at repository boundaries,
-preserves archived OpenSpec history and the legacy `solid-node-export` document
-marker, and otherwise blocks a repository instead of touching a target file
-that already has uncommitted changes. `--include-untracked` also updates live
-untracked text files without adding them to Git.
-
-## Cross-Repository Sprints
-
-A sprint always integrates shop work on branch and worktree `sprint-NNN` and
-`WTs/sprint-NNN`. If its ratified scope includes framework work, the framework
-repository has its own same-named integration branch and worktree at
-`machinome/WTs/sprint-NNN`. Framework commits remain in
-machinome; shop
-commits remain in machinome-studio.
-
-The framework sprint worktree is linked into the shop sprint worktree at
-`WTs/sprint-NNN/machinome`. Run combined validation from the shop sprint
-worktree so it uses the exact paired integration content. Framework child cycles
-are created from the registered framework sprint head with:
+Machinome Studio is not published to any package index; installing it means
+cloning this repository and running:
 
 ```text
-scripts/dev-env sprint-NNN-<change> setup --base sprint-NNN
+scripts/setup
 ```
 
-Standalone framework benches keep using `scripts/dev-env <name> setup`. Sprint
-dependencies and both tested content commits are recorded in `current.md` on
-the shop sprint integration branch. Evidence-only record commits do not create
-a new paired product state. The primary copy identifies the active sprint until
-final integration. See `skills/sprint/SKILL.md` for lifecycle and authority
-rules.
+It creates `.venv/`, installs `machinome[viewer]` and
+`machinome-viewer[snapshot]` from PyPI with the Chromium the snapshot renderer
+needs, installs the OpenSpec CLI, builds the frontend into `floor/static/`, and
+installs the studio itself editable. It requires Python 3.11 or later,
+node and npm, git, and OpenSCAD.
+
+`<projects-dir>/<name>/` is an independent Git repository. The catalogue path
+comes only from the required launcher option and need not be inside the studio
+checkout or installation.
+
+## Development
 
 Run the local checks with:
 
@@ -182,8 +151,14 @@ scripts/test-e2e
 ```
 
 `floor/static/` is generated output, not tracked: the frontend build empties
-and rewrites it. `scripts/setup` builds it in both tiers, so a fresh checkout
-has a browser surface; rerun the build above after changing `floor/frontend`.
+and rewrites it. `scripts/setup` builds it, so a fresh checkout has a browser
+surface; rerun the build above after changing `floor/frontend`.
+
+The studio is developed from the machinome workspace repository
+(<https://github.com/machinome/workspace>), beside the framework and the other
+packages of the ecosystem; framework changes, cross-repository sprints and the
+rest of the ecosystem's process live there. [AGENTS.md](AGENTS.md) is the
+contract for changing this repository.
 
 ## License
 

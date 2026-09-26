@@ -18,14 +18,12 @@ class MachinomeStudioIdentityTest(TestCase):
                          'Machinome Studio mechanical CAD agent harness')
         self.assertIn('# Machinome Studio', (ROOT / 'README.md').read_text())
 
-    def test_workspace_scripts_use_canonical_product_paths(self):
+    def test_studio_scripts_use_canonical_product_paths(self):
         sources = '\n'.join(path.read_text(errors='ignore')
                             for path in (ROOT / 'scripts').iterdir()
                             if path.is_file())
-        for name in ('machinome', 'machinome-viewer',
-                     'machinome-mechanics'):
+        for name in ('machinome', 'machinome-viewer'):
             self.assertIn(name, sources)
-        self.assertIn('machinome', sources)
 
     def test_project_configuration_uses_machinome_studio(self):
         source = '\n'.join(path.read_text(errors='ignore')

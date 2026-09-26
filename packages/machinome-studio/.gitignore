@@ -1,11 +1,10 @@
-# The shop checkout is a WORKSPACE: everything the setup scripts create
-# next to the shop's own files stays out of git — including the
-# framework working copy at machinome/ (its version is the pilot's
-# choice: released tag, main, a fork). Each project under projects/
-# is its OWN repository (untracked here).
+# Everything the setup script and the build generate in this checkout stays
+# out of git: the virtualenv, caches, the built frontend and test reports.
 .venv/
 __pycache__/
 *.pyc
+# Written by the editable install scripts/setup performs.
+*.egg-info/
 node_modules/
 # Vite output for the shop floor browser surface. Generated from
 # floor/frontend by scripts/setup (and `npm --prefix floor/frontend run
@@ -14,33 +13,6 @@ node_modules/
 floor/static/
 playwright-report/
 test-results/
-# No trailing slash: this must also ignore the framework sprint worktree
-# link a cross-repository sprint creates at WTs/sprint-NNN/machinome,
-# which is a symlink rather than a directory.
-/machinome
-/machinome-mechanics
-/name-holders
-# Independent browser-delivery prototype repositories, each with its own
-# Git history (see AGENTS.md, "Browser delivery prototypes").
-/browser-engine
-/mcp-server
-/browser-plugin
-# Independent molejo library repository (analytic flexible parts),
-# born from the flexible-leaf finding; its own Git history.
-/molejo
-# Independent machinome-viewer repository: the AGPL browser viewer the
-# framework installs as its [viewer] extra; its own Git history.
-/machinome-viewer
-# Independent machinome.org repository: the public website for the whole
-# ecosystem, founded from the editorial spine and design proposal that
-# used to live in docs/site; its own Git history.
-/machinome.org
+# Shop worktrees.
 WTs/
 .env
-/projects
-*.pyc
-__pycache__
-
-# machinome.org's intake artifact store: viewer exports and previews
-# produced from the projects, carried into the site build, never committed.
-/.machinome-site
