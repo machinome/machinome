@@ -704,10 +704,10 @@ function Hub({ folder }: { folder: string }) {
           <small>{projects.length} {projects.length === 1 ? "project" : "projects"}</small>
         </section>
         <section className="backend-group">
-          <header><h2>Backends</h2><span>{backends.filter((item) => item.found).length} ready</span></header>
+          <header><h2>Backends</h2><span>{backends.filter((item) => item.found).length} detected</span></header>
           {backends.map((backend) => <div className="backend-row" key={backend.id} data-found={backend.found}>
             <span className="backend-dot" aria-hidden="true" />
-            <div><strong>{backend.id}</strong><small>{backend.found ? `${backend.model ?? "default"} · ${backend.version}` : "no executable on PATH"}</small></div>
+            <div><strong>{backend.id}</strong><small>{backend.found ? [backend.model, backend.version].filter(Boolean).join(" · ") : "no executable on PATH"}</small></div>
           </div>)}
         </section>
       </aside>

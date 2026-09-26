@@ -268,6 +268,12 @@ class CaveatTest(unittest.TestCase):
 
 
 class ReferenceTest(unittest.TestCase):
+    def test_hub_documents_all_supported_backends_as_detection_only(self) -> None:
+        page = (DOCS / "opening-a-project.rst").read_text()
+        self.assertIn("Claude Code, OpenCode and Codex", page)
+        self.assertIn("detected", page)
+        self.assertIn("does not qualify it", page)
+
     def test_codex_reference_matches_the_qualified_runtime(self) -> None:
         namespace = conf()
         self.assertEqual(namespace["codex_version"], source_constant("floor/codex_auth.py", "PINNED_VERSION"))

@@ -319,7 +319,7 @@ class FloorAPITest(unittest.TestCase):
     def test_backend_detection_is_read_only_and_repeatable(self) -> None:
         first = _request(self.url("/api/backends"), "GET")["backends"]
         second = _request(self.url("/api/backends/detect"), "POST")["backends"]
-        self.assertEqual({item["id"] for item in first}, {"claude", "opencode"})
+        self.assertEqual({item["id"] for item in first}, {"claude", "opencode", "codex"})
         self.assertEqual([item["id"] for item in first], [item["id"] for item in second])
         self.assertTrue(all(set(item) == {"id", "found", "executable", "version", "model"} for item in first))
 

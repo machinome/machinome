@@ -48,10 +48,11 @@ top names the working folder and each folder between; choose one to go
 back up. The browser location carries the folder or project you are
 looking at.
 
-**Backends.** For Claude Code and OpenCode, the hub reports
-whether it found the program on this machine and, when it did, its path,
-its version and the models the shipped profiles would ask of it. This is
-observation only: the hub does not install, enable or locate a backend.
+**Backends.** The hub lists Claude Code, OpenCode and Codex, whether each
+program was found on this machine or is missing. Found programs count as
+**detected**, with their version and any models the shipped profiles would
+ask of them. Codex has no profile default; its model is selected explicitly.
+This is observation only: the hub does not install, enable or relocate a backend.
 Codex availability is checked separately when opening a project that
 selects it or loading runtime choices in Agents; an executable-version
 summary alone does not qualify it.

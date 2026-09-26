@@ -123,6 +123,19 @@ class ShopLifecycleE2E(unittest.TestCase):
             f"{installed_version if installed_version is not None else 'no bundle installed'})"
         )
 
+    def test_hub_lists_codex_with_the_other_supported_backends(self) -> None:
+        self.page.goto(self.url("/"))
+        group = self.page.locator(".backend-group")
+        group.get_by_text("codex", exact=True).wait_for(timeout=15000)
+        self.assertEqual(group.locator(".backend-row strong").all_text_contents(), ["claude", "opencode", "codex"])
+        self.assertIn("detected", group.locator("header").inner_text())
+        values = _request(self.url("/api/backends"), "GET")["backends"]
+        codex = next(item for item in values if item["id"] == "codex")
+        row = group.locator(".backend-row").filter(has=self.page.get_by_text("codex", exact=True))
+        self.assertEqual(row.get_attribute("data-found"), str(codex["found"]).lower())
+        self.assertIn(codex["version"] if codex["found"] else "no executable on PATH", row.inner_text())
+        self.assertNotIn("default", row.inner_text())
+
     def test_hub_lists_projects_unopenable_entries_and_opens_the_creation_sheet(self) -> None:
         self._make_project("bracket")
         (self.project_home / "not-a-repository").mkdir()

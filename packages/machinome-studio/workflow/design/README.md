@@ -99,7 +99,7 @@ top. Each carries a visible id badge.
 - **Layout:** title bar 38px; body grid `300px minmax(0,1fr)`.
 - **Left column** (`#121419`, 1px right border `#262b33`, padding 26/22, gap 28):
   working-folder card (path mono 12px, `6 projects · 2.4 GB`, `Change…`), then
-  Backends group with a `2 ready` mono count and one compact row per backend
+  Backends group with a `2 detected` mono count and one compact row per backend
   (8px dot + name 13px + mono 11px model line). Backend detection happens
   automatically when the hub loads; there is no manual detection control.
 - **Right column** (padding 36/44, gap 26): header row — `Projects` 26px/600

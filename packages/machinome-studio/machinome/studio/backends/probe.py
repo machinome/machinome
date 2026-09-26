@@ -11,7 +11,8 @@ from pathlib import Path
 from ..profiles import load_profile, resolve_profile_runtime
 
 
-BACKENDS = ("claude", "opencode")
+# Presence is not runtime qualification; selection still uses backend policy.
+BACKENDS = ("claude", "opencode", "codex")
 
 
 def probe_backends(shop_root: Path) -> list[dict[str, object]]:
