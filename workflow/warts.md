@@ -4116,3 +4116,39 @@ not fixed, until the pilot triages them.
   was struck with the axis-less `Prismatic`. A one-line wording fix
   naming the kind and, for a `Prismatic`, saying the axis is required
   everywhere. **Recorded.**
+## A bought part cannot be held by mate: no rigid mate (2026-09-26, AlbertPro)
+
+Recorded while preparing AlbertPro's migration onto frames and mates
+(the fourth project of the campaign after SO-ARM100, OpenArm and
+OpenMANIPULATOR-X; `projects/Robots/AlbertPro`, `main` at `d4384fd`,
+MIT). Its MuJoCo file `RL/dog.xml` states the printed chain as bodies
+with a `pos` and hinge joints with an `axis` (four hips, four knees,
+all `(0, 1, 0)`), which migrate as revolute mates read verbatim, as
+SO-ARM100's did. Its bought parts do not come from the file: four hip
+servos bolted by their ears into the trunk's bays, eight servo horns
+seated in the thighs' horn holes, four knee servos bolted to the shins'
+bolt patterns, and their M2 screws and nuts, every seat a project
+measurement (`simulation/hardware_layout.py`). Today they live in a
+parallel tree (`simulation/sourced.py`: `SourcedRobot` → `SourcedLeg`
+→ `SourcedUpper` (`hip`) → `SourcedLower` (`knee`)), each level
+re-placing its hardware by `rotate`/`translate` in `render()`, tied to
+the printed tree by eight `drives` relations, and one wrapper class
+(`KneeServoMount`) exists only so a quarter turn and a placement compose
+before the knee angle does.
+
+- **A mate must have a freedom; a part that is simply held has none.**
+  The `mates` spec refuses a mate with no freedom ("the rigid mate is
+  not provided", place-parts-by-mate, because Thor's root chain needed
+  only revolutes). A servo's ears onto the trunk's bores, a horn's seat
+  onto the thigh's hole, a knee servo's ears onto the shin's pattern are
+  connector onto connector with nothing free between them: the
+  statement `servo.ears.on(trunk.bay_fl)` with no freedom, placing the
+  child from the two frames and giving it no joint and no coordinate.
+  With it, each bought part is declared in the class of the printed
+  part that holds it and rides with it, the parallel tree, its eight
+  relations and the ordering wrapper go, and Thor's recorded question
+  ("whether a fixed end on a moving sibling should follow it, or
+  whether a part's fasteners belong in its own class") gets its answer
+  from this project: the fasteners belong in the class of the part they
+  fasten, held by a rigid mate, and a fixed end on a moving sibling is
+  not needed. **Cycle cut: `hold-by-mate`.**
