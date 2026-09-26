@@ -35,6 +35,7 @@ from machinome.node import (                  # what the machine is made of
     Build123dSheetNode, StlNode, StepNode, MolejoNode,
     declared_children, property_as_number,
     Marking, Wrapped, Flat, Svg,               # what a part CARRIES (also machinome.node.markings)
+    Frame,                                     # where another part ATTACHES (also machinome.node.frames)
 )
 from machinome.parameters import (            # what is built
     Length, Angle, Count, Ratio, Scalar, Flag, Quantity,
@@ -46,6 +47,8 @@ from machinome.motion.joints import (         # where a body may move
     Revolute, Prismatic, Orbit, Free, JointRangeError, declared_joints)
 from machinome.motion.couplings import (      # a law between two coordinates
     Affine, UnreachedCoordinate, DoublyBound, NotInvertible, PrematureRead)
+from machinome.motion.mates import declared_mates   # a frame placed on a frame (the verb is .on())
+from machinome.node.frames import declared_frames
 from machinome.simulation import (            # how it runs
     Driver, State, Instruction, Button, Turn, Slide, Sim, ScenarioTest,
     RampProgram,
@@ -205,7 +208,9 @@ tables and naming logic are constants and ordinary code.
 A fourth class-body declaration says what a rigid part *carries* rather
 than what it is made of: a `Marking` (see "Markings"). It is none of the
 three layers — not a parameter (never build identity), not a child, not a
-port — and it adds no solid.
+port — and it adds no solid. A fifth says WHERE another part attaches: a
+`Frame` (see "Frames and mates"), in the same mould, allowed on any node
+kind including an assembly, and likewise never identity and never a solid.
 
 ### Kinds
 
@@ -540,7 +545,8 @@ rather than answered with `None`.
 **Joints** say where a body MAY move, next to the body, once: a class
 attribute of the node it moves, from `machinome.motion.joints`.
 `Revolute(axis, at=(0,0,0), range=None, unit='deg')` turns a body about a
-line; `Prismatic(axis, at=(0,0,0), range=None, unit='mm')` slides it along
+line (`axis` may be left out in exactly one place, as a mate's freedom —
+see "Frames and mates" — and is refused at class definition anywhere else); `Prismatic(axis, at=(0,0,0), range=None, unit='mm')` slides it along
 one (`at` does not affect a `Prismatic`'s placement — a translation along a
 line is the same wherever the line is taken to pass — it is carried only
 as the declared position of the slide, for a reader or an exporter);
@@ -754,6 +760,75 @@ the inverse of the child's own rest placement before they are applied, so
 a body whose rest placement carries a value the framework cannot evaluate
 numerically refuses a SITE-declared joint by name — where a class-declared
 one on the same body would not.
+
+**Frames and mates (ADR-147):** a joint whose line does not pass through the
+moving part's origin is otherwise stated twice — a rest placement the
+parent's `render()` computes by hand and a joint the child restates in its
+own frame, kept in agreement by shared constants. A **frame** is the part's
+own statement of one connector, in its own rest frame, and a **mate** is one
+sentence in the assembly that holds both parts, written from the frame that
+MOVES:
+
+```python
+from machinome.node import AssemblyNode, Frame
+from machinome.motion.joints import Revolute
+
+class Forearm(AssemblyNode):
+    hinge = Frame(at=(0, 0, 81.5), z=(0, 1, 0), x=(1, 0, 0))   # the elbow bore
+
+class UpperArm(AssemblyNode):
+    reach = Length(160)
+    elbow_pin = Frame(at=(0, reach, 68), z=(0, 0, 1))        # the fork's elbow line
+
+    forearm = Forearm()
+
+    elbow = forearm.hinge.on(elbow_pin, Revolute(range=(-135, 135), unit='deg'))
+```
+
+`Frame(at=(0,0,0), z=(0,0,1), x=None)`: `z` is the line a revolute turns
+about, `x` fixes the attitude about it — and therefore the ZERO of the
+mate's coordinate; left out, `x` is the next principal axis after a
+principal `z` (`+X` for `+Z`, `+Y` for `+X`, `+Z` for `+Y`, negated for a
+negated `z`), and a `z` along no principal axis must state its `x`.
+Arguments follow the joint argument rule (numbers, tokens, formulas, or one
+callable of the realized node), resolve to numbers when the declarer is
+built, and are neither identity nor geometry. `declared_frames(cls)` and
+`declared_mates(cls)` enumerate them off the class. No `render()` places
+`forearm`, and `Forearm` declares no `elbow` joint: the mate COMPILES, at
+realization, to three things this page already describes —
+
+- the forearm's **rest placement**, `hinge` onto `elbow_pin` whole triad onto
+  whole triad (here `rotate(90, [1,0,0])` then `translate` to
+  `(0, 241.5, 68)`), applied after `render()` exactly as if written there;
+- a **joint on the forearm**, `Revolute(axis=hinge.z, at=hinge.at)` in the
+  forearm's own frame, a class joint of the forearm placed after the joints
+  its class declares itself; the forearm keeps its name and build identity;
+- a **coordinate on the arm** under the mate's name: `arm.elbow` reads and
+  binds as a joint's coordinate, `declared_ports` reports it, and a relation
+  (`elbow.drives(belt.travel, ratio=...)` in the arm's body,
+  `angle.drives(arm.elbow)` or `art3.drives(shoulder.art2.elbow)` from
+  above) or a derived coordinate names it as any other end. The forearm's
+  joint is bound through it and through nothing else: binding
+  `arm.forearm.elbow` by hand or by a relation is refused naming
+  `arm.elbow`. Left unbound, the forearm rests at the mate's placement.
+
+The **fixed end** is a frame of the assembly itself, by its bare name, or
+`<child>.<frame>` of another directly declared child that does not move (a
+sibling does not carry a sibling, so a fixed end on a child with any joint
+is refused). The **moving end** is a frame of a directly declared child.
+The **freedom** is a fresh `Revolute` with neither `axis` nor `at`; its
+range is numbers, `None` or functions of the coordinate's own value.
+Refused by name at class creation: a mate on a non-assembly; a moving end
+that is the assembly's own frame; either end through more than one child, a
+list or a `.repeat()`; a fixed end on a child that can move; a second mate
+on one child (a loop); a mate never assigned a name; a freedom that is not
+a fresh `Revolute`, or that states `axis` or `at`, or whose range reads
+other coordinates or the node; a mate with no freedom (the rigid mate is
+not provided); a mate name the moving child already answers to. Refused
+when the assembly renders: a `render()` that also places a mated child. A
+mate publishes nothing new — operations and a binding, at the version the
+same machine without mates declares — and the viewer draws no connector
+yet.
 
 **Relations** say that one coordinate's motion IS another's, stated with
 `drives` in a class body — no import needed for the verb itself, imported
