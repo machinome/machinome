@@ -14,8 +14,7 @@ Unreleased
   frame's line and gives the assembly a coordinate named ``elbow``. The
   placement, the joint and the constants that kept them in agreement are
   no longer written by hand. ``Revolute`` may leave out its ``axis`` only
-  as a mate's freedom. Revolute mates only; documents are unchanged
-  (ADR-147).
+  as a mate's freedom. Documents are unchanged (ADR-147).
 * **A mate's freedom may state its own line.** A design's connectors are
   attachment frames, and the line a part turns about need not be the
   connector's ``z``: ``Revolute(axis=(0, 0, 1), at=(0, 0, 0))`` as a
@@ -38,6 +37,17 @@ Unreleased
   line and limits beside the fixed frame that is already a function of
   the side. The result is taken as numbers written there are; ``at``
   stays three numbers (ADR-150).
+* **A gripper's fingers are mated like its links.** A mate's freedom may
+  be a ``Prismatic``,
+  ``left_grip = left_finger.origin.on(left_seat, Prismatic(axis=(0, 1, 0), range=(-11, 20)))``,
+  which slides the part along the line it states, in the part's own
+  frame, by the rules a ``Revolute`` freedom follows: the frames fix
+  where it rests, ``at`` and ``range`` are taken the same way, and
+  ``axis`` and ``range`` may be functions of the assembly. A
+  ``Prismatic`` states its ``axis``, as it does anywhere. The part gets a
+  ``Prismatic`` joint, the mate's coordinate is a length, in ``'mm'``
+  unless the freedom states a unit, and the slide is published as the
+  translation a class-declared ``Prismatic`` publishes (ADR-151).
 
 Machinome 0.7.0
 ---------------

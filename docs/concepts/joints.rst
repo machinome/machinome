@@ -242,32 +242,34 @@ above it. ``declared_frames(cls)`` and ``declared_mates(cls)`` enumerate
 them off the class.
 
 The **fixed end** is a frame of the assembly itself, written by its bare
-name, or ``<child>.<frame>`` of another child the assembly declares, which
-then must not move: the mated part rests against that child's rest
+name, or ``<child>.<frame>`` of another child the assembly declares,
+which then must not move: the mated part rests against that child's rest
 placement, and siblings do not carry each other. The **moving end** is a
 frame of a child the assembly declares directly. The **freedom** is a
-``Revolute``, the one place a ``Revolute`` may leave out its axis. A
-stated ``axis`` is three numbers or one function of the assembly, a
-stated ``at`` three numbers, and the range a pair of numbers, ``None``
-or functions of the coordinate's own value, or one function of the
-assembly returning such a pair.
+``Revolute``, the one place a ``Revolute`` may leave out its axis, or a
+``Prismatic``, which states its axis here as it does anywhere (see the
+end of this section). A stated ``axis`` is three numbers or one function
+of the assembly, a stated ``at`` three numbers, and the range a pair of
+numbers, ``None`` or functions of the coordinate's own value, or one
+function of the assembly returning such a pair.
 
 Refused when the class is created, naming the mate: a mate on a node
 that is not an assembly; a moving end that is the assembly's own frame;
 either end reached through more than one child, a list or a
 ``repeat()``; a fixed end on a child that can move; a second mate on one
-child; a mate never assigned to a name; a freedom that is not a fresh
-``Revolute``, or whose stated ``axis`` is neither three numbers nor a
-function, or whose stated ``at`` is not three numbers, a function
-``at`` included, or whose stated ``axis`` has no length, or whose range
-holds a parameter or reads other coordinates; a mate with no freedom at
-all; and a mate name the moving child already answers to. Refused when
-the arm is built: a freedom's function that raises, or returns what the
-same argument written in numbers would refuse, naming the assembly, the
-mate and the argument. Refused when the arm renders: a ``render()`` that
-also places a mated child. A mate publishes nothing new: the document
-carries its rest placement as operations and its coordinate as a
-binding, at the version the same machine without mates declares.
+child; a mate never assigned to a name; a freedom that is neither a
+fresh ``Revolute`` nor a fresh ``Prismatic``, or whose stated ``axis``
+is neither three numbers nor a function, or whose stated ``at`` is not
+three numbers, a function ``at`` included, or whose stated ``axis`` has
+no length, or whose range holds a parameter or reads other coordinates;
+a mate with no freedom at all; and a mate name the moving child already
+answers to. Refused when the arm is built: a freedom's function that
+raises, or returns what the same argument written in numbers would
+refuse, naming the assembly, the mate and the argument. Refused when the
+arm renders: a ``render()`` that also places a mated child. A mate
+publishes nothing new: the document carries its rest placement as
+operations and its coordinate as a binding, at the version the same
+machine without mates declares.
 
 A test that holds a machine's connectors to a design reads them back
 rather than restating them. ``resolved_frames(node)``, from
@@ -311,15 +313,16 @@ A mate's ``name`` is its coordinate's. Its ``moving`` end reads
 ``written`` as ``'<child>.<frame>'``; its ``fixed`` end is either such a
 reference, for a frame of another child, or, for a frame of the assembly
 written by its bare name, that ``Frame``, read by its ``name``. Its
-``freedom`` is the ``Revolute`` as written: ``axis`` is ``None`` unless
-stated, ``range`` and ``unit`` as written, and an ``axis`` or ``range``
-stated as a function reads as that function, without calling it.
-``at`` is the mate's anchor only when ``anchor_written`` is true; left
-out, it reads ``(0, 0, 0)``, and the anchor is the moving frame's
-origin. So the line a mate turns its child about is ``freedom.axis``,
-else the moving frame's resolved ``z``, through ``freedom.at`` when
-written, else through the moving frame's resolved ``at``. What a
-function returned for a built machine is not one of these reads.
+``freedom`` is the ``Revolute`` or ``Prismatic`` as written: ``axis`` is
+``None`` unless stated, ``range`` and ``unit`` as written, and an
+``axis`` or ``range`` stated as a function reads as that function,
+without calling it. ``at`` is the mate's anchor only when
+``anchor_written`` is true; left out, it reads ``(0, 0, 0)``, and the
+anchor is the moving frame's origin. So the line a mate turns its child
+about, or slides it along, is ``freedom.axis``, else the moving frame's
+resolved ``z``, through ``freedom.at`` when written, else through the
+moving frame's resolved ``at``. What a function returned for a built
+machine is not one of these reads.
 
 A handed design mounts one part mirrored on each side, and the sides
 may differ in more than where the part sits: the line it turns about,
@@ -367,6 +370,52 @@ numbers with a direction, read in the moving part's own frame, and a
 ``(0, 62.5, 0)`` and turns about ``(0, 1, 0)`` within ``(-200, 80)``;
 the right one rests at ``(0, -62.5, 0)`` and turns about ``(0, -1, 0)``
 within ``(-80, 200)``. A stated ``at`` stays three numbers.
+
+A gripper's fingers do not turn: each slides along a line of its own,
+and a two-finger gripper moves them equally and oppositely. The freedom
+may be a ``Prismatic``:
+
+.. code-block:: python
+
+    from machinome.motion.joints import Prismatic
+    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.frames import Frame
+    from solid2 import cube
+
+    class Finger(Solid2Node):
+        origin = Frame()
+
+        def render(self):
+            return cube([4, 2, 6], center=True)
+
+    class Palm(AssemblyNode):
+        left_seat = Frame(at=(81.7, 21, 0))
+        right_seat = Frame(at=(81.7, -21, 0))
+
+        left_finger = Finger()
+        right_finger = Finger()
+
+        left_grip = left_finger.origin.on(
+            left_seat, Prismatic(axis=(0, 1, 0), range=(-11, 20), unit='mm'))
+        right_grip = right_finger.origin.on(
+            right_seat, Prismatic(axis=(0, -1, 0), range=(-11, 20), unit='mm'))
+
+        left_grip.drives(right_grip)
+
+The part then slides along the line instead of turning about it, by the
+same rules: the frames fix where it rests, and so the zero of its
+coordinate; ``at`` and ``range`` are taken as a ``Revolute`` freedom's;
+an ``axis`` or a ``range`` may be one function of the assembly. A
+``Prismatic`` always states its ``axis``, here as anywhere: only a
+``Revolute`` freedom may leave its axis to the moving frame. A stated
+``at`` moves nothing on a slide, since a translation along a line is the
+same wherever the line is taken to pass; it is carried as the joint's
+anchor. The mate gives the finger a ``Prismatic`` joint, and the
+coordinate on the palm is a length, in ``'mm'`` unless the freedom
+states a unit. The two coordinates are related like any others, so
+binding ``palm.left_grip = 10`` moves the left finger 10 along
+``(0, 1, 0)`` and the right one 10 along ``(0, -1, 0)``, each from its
+seat.
 
 Arguments
 ---------

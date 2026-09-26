@@ -31,6 +31,20 @@ the moving child's own frame; each it leaves out, the frame supplies.
 The frames still fix where the child rests, and so the zero of its
 coordinate; the freedom fixes only the line (ADR-148).
 
+The freedom may instead be a `Prismatic`, and the child then SLIDES
+along the line rather than turning about it, by the same rules save one:
+a `Prismatic` states its `axis`, as it must anywhere, so only a
+`Revolute` freedom takes the moving frame's `z` (ADR-151)::
+
+    class Palm(AssemblyNode):
+        left_seat = Frame(at=(81.7, 21, 0))
+        left_finger = Finger()       # declares origin = Frame()
+        left_grip = left_finger.origin.on(
+            left_seat, Prismatic(axis=(0, 1, 0), range=(-11, 20)))
+
+Its `at` is taken as a `Revolute` freedom's and places nothing: a
+translation along a line is the same wherever the line is taken to pass.
+
 A handed design -- one class per joint, instantiated once per side --
 states the freedom per instance: its `axis` and its `range` may each be
 ONE FUNCTION of the assembly that states the mate, the node whose class
@@ -58,16 +72,19 @@ has and invents no fourth (ADR-147):
    F_moving^-1` as one rotation then one translation, ordinary
    operations appended after the author's `render()` returns
    (`apply_mates`, called from `machinome.node.assembly._rest`);
-2. a revolute JOINT of the moving child's class, whose axis and anchor
-   are the ones the freedom states, else the moving frame's `z` and `at`
-   as DECLARED, installed by
+2. a JOINT of the moving child's class, of the freedom's kind -- a
+   `Revolute` or a `Prismatic` -- whose axis and anchor are the ones the
+   freedom states, else the moving frame's `z` (a `Revolute` freedom's
+   only) and `at` as DECLARED, installed by
    `_specialize` -- ADR-098's mechanism -- under the mate's name, so it
    takes a slot after every joint the child's own class declares; an
    axis or range the freedom states as a function of the assembly is
    what that function returned, resolved with the rest against the
    child when the assembly realizes it (`resolve_freedom_functions`);
-3. a rotational COORDINATE of the assembly under the mate's name --
-   this object, a `Coordinate` owning one port -- which relations,
+3. a COORDINATE of the assembly under the mate's name, of the
+   freedom's port kind -- rotational for a `Revolute`, translational for
+   a `Prismatic` -- and in its unit: this object, a `Coordinate` owning
+   one port, which relations,
    drivers and bindings see as an ordinary coordinate and which reaches
    the child's joint through a wiring (ADR-088), the one wiring whose
    unbound source is not refused: an unbound mate rests, as an unbound
@@ -212,7 +229,9 @@ def state_mate(moving, fixed, freedom):
 
 class Mate(Coordinate):
     """`moving.on(fixed, freedom)`: the declaration, and -- with a
-    freedom -- the rotational coordinate it owns on the assembly.
+    freedom -- the coordinate it owns on the assembly: rotational for a
+    `Revolute` freedom, translational for a `Prismatic` one, in the
+    freedom's unit.
 
     A mate is read OFF THE CLASS, as `declared_mates(cls)[name]` reports
     it; reading it as an attribute of an instance gives its coordinate
@@ -228,23 +247,25 @@ class Mate(Coordinate):
       `'<child>.<frame>'`; for a frame of the assembly itself, written by
       its bare name, that `Frame` declaration, whose `name` is its
       attribute. `isinstance(mate.fixed, Frame)` tells the two apart.
-    - `freedom`: the `Revolute` written in the statement. Its `axis` is
-      `None` when no axis is stated, the three numbers as written, not
+    - `freedom`: the `Revolute` or `Prismatic` written in the statement.
+      Its `axis` is `None` when no axis is stated, which only a
+      `Revolute` freedom may do, the three numbers as written, not
       normalized, when numbers are stated, and the function itself, the
       same object, when a function of the assembly is stated.
       `anchor_written` says whether `at` was written: when true, `at` is
       the three numbers as written, in the moving child's own frame,
       `(0, 0, 0)` meaning the child's origin; when false, `at` reads the
-      `Revolute` default `(0, 0, 0)` and is NOT the mate's anchor, which
-      is then the moving frame's origin. `range` is as written -- a
-      pair, or the function itself -- or `None`; `unit` as written, or
-      `'deg'`. Reading any of them calls no function.
+      default `(0, 0, 0)` and is NOT the mate's anchor, which is then the
+      moving frame's origin. `range` is as written -- a pair, or the
+      function itself -- or `None`; `unit` as written, else `'deg'` for a
+      `Revolute` and `'mm'` for a `Prismatic`. Reading any of them calls
+      no function.
 
     When `freedom.axis` is not a function, the line the mate turns its
-    child about follows from these reads and the moving child's resolved
-    frames (`machinome.node.frames.resolved_frames`) alone:
-    `freedom.axis` when it is not `None`, else the moving frame's
-    resolved `z`; through `freedom.at` when `anchor_written` is true,
+    child about, or slides it along, follows from these reads and the
+    moving child's resolved frames
+    (`machinome.node.frames.resolved_frames`) alone: `freedom.axis` when
+    it is not `None`, else the moving frame's resolved `z`; through `freedom.at` when `anchor_written` is true,
     else through the moving frame's resolved `at`. When it is a
     function, the axis on a built machine is what the function returned
     for that machine's assembly, and no documented read reports it in
@@ -275,7 +296,7 @@ class Mate(Coordinate):
         self.freedom = freedom
         self.freedom_in_body = freedom_in_body
         unit = getattr(freedom, 'unit', None) or 'deg'
-        self.coordinate = RotationalPort(unit=unit)
+        self.coordinate = _coordinate_kind(freedom)(unit=unit)
         self.coordinates = {None: self.coordinate}
         #: The joint this mate installs on the moving child, once the
         #: assembly's class exists.
@@ -323,6 +344,19 @@ class Mate(Coordinate):
 
 
 _MISSING = object()
+
+
+def _coordinate_kind(freedom):
+    """The port kind of a mate's coordinate: the freedom's own --
+    `RotationalPort` for a `Revolute`, `TranslationalPort` for a
+    `Prismatic` -- or `RotationalPort` for a freedom `_check_freedom`
+    refuses when the class is created (the mate exists, unchecked, while
+    the body still runs)."""
+    from machinome.motion.joints import Prismatic, Revolute
+
+    if isinstance(freedom, (Revolute, Prismatic)):
+        return freedom.coordinate_kind
+    return RotationalPort
 
 
 ##############################################
@@ -429,16 +463,19 @@ def _check_still_declared(cls, name, mate):
 
 
 def _check_freedom(name, mate):
-    """The freedom a mate accepts in this version: a fresh `Revolute`
-    whose stated `at`, if any, is three numbers; whose stated `axis`, if
-    any, is three numbers with a direction or one function of the
-    assembly; and whose range is a pair independent of any declarer or
-    one function of the assembly (state-the-freedom-per-instance).
+    """The freedom a mate accepts in this version: a fresh `Revolute` or
+    `Prismatic` (slide-by-mate) whose stated `at`, if any, is three
+    numbers; whose stated `axis`, if any, is three numbers with a
+    direction or one function of the assembly; and whose range is a
+    pair independent of any declarer or one function of the assembly
+    (state-the-freedom-per-instance). Both kinds are checked by the same
+    rules in the same order; a `Prismatic` states its axis, as it must
+    anywhere, so only a `Revolute` freedom reaches here without one.
 
     A function is only accepted here: it is called, and its result
     checked by the same rules, when the assembly realizes the moving
     child (`call_freedom_functions`)."""
-    from machinome.motion.joints import Revolute
+    from machinome.motion.joints import Prismatic, Revolute
 
     freedom = mate.freedom
     where = _named(name, mate)
@@ -447,26 +484,34 @@ def _check_freedom(name, mate):
             f"{where} states no freedom. The rigid mate -- a child "
             f"placed by two frames with no freedom at all -- is not "
             f"provided in this version (deferred, OpenSpec change "
-            f"place-parts-by-mate); a mate's freedom is a Revolute: "
-            f"...on(<fixed>, Revolute(range=(lo, hi))).")
-    if not isinstance(freedom, Revolute):
+            f"place-parts-by-mate); a mate's freedom is a Revolute or a "
+            f"Prismatic: ...on(<fixed>, Revolute(range=(lo, hi))) to turn "
+            f"the part, ...on(<fixed>, Prismatic(axis=(x, y, z), "
+            f"range=(lo, hi))) to slide it.")
+    if not isinstance(freedom, (Revolute, Prismatic)):
         raise TypeError(
-            f"{where} has the freedom {type(freedom).__name__}, and a mate "
-            f"accepts a Revolute only in this version: Prismatic, Orbit "
-            f"and Free are not mate freedoms yet. Write "
-            f"Revolute(range=(lo, hi), unit='deg').")
+            f"{where} has the freedom {type(freedom).__name__}, which is "
+            f"neither a Revolute nor a Prismatic: a mate accepts a "
+            f"Revolute or a Prismatic in this version, and Orbit and Free "
+            f"are not mate freedoms. Write Revolute(range=(lo, hi), "
+            f"unit='deg') to turn the part about a line, or "
+            f"Prismatic(axis=(x, y, z), range=(lo, hi), unit='mm') to "
+            f"slide it along one.")
+    slides = isinstance(freedom, Prismatic)
     if mate.freedom_in_body or freedom.owner is not None:
         declared = (f'on {freedom.owner.__name__}' if freedom.owner
                     is not None else 'in this class body')
+        written = ('Prismatic(axis=(x, y, z), range=(lo, hi))' if slides
+                   else 'Revolute(range=(lo, hi))')
         raise TypeError(
             f"{where}: its freedom is already declared {declared}. A "
             f"mate's freedom becomes a joint of the child it moves, so it "
             f"is written fresh in the statement: "
-            f"...on(<fixed>, Revolute(range=(lo, hi))).")
+            f"...on(<fixed>, {written}).")
     if freedom.axis is not None and not _is_function(freedom.axis):
-        _check_stated(where, 'axis', freedom.axis)
+        _check_stated(where, 'axis', freedom.axis, slides=slides)
     if freedom.anchor_written:
-        _check_stated(where, 'at', freedom.at)
+        _check_stated(where, 'at', freedom.at, slides=slides)
     declared = freedom.range
     if declared is None or _is_function(declared):
         return
@@ -477,6 +522,14 @@ def _check_freedom(name, mate):
             f"range of a mate's freedom is written in the assembly and "
             f"resolved on the child it moves, so it is admitted only as "
             f"numbers, None, or functions of the coordinate's own value.")
+
+
+def _slides(freedom):
+    """Whether a mate's freedom slides the child (a `Prismatic`) rather
+    than turning it."""
+    from machinome.motion.joints import Prismatic
+
+    return isinstance(freedom, Prismatic)
 
 
 def _is_number(value):
@@ -558,7 +611,7 @@ def _has_no_length(axis):
     return math.sqrt(sum(component ** 2 for component in axis)) < _SNAP
 
 
-def _check_stated(where, argument, value):
+def _check_stated(where, argument, value, slides=False):
     """A line a freedom states in numbers: three numbers, and an axis
     with a direction (state-the-mate-line, design decision 5).
 
@@ -575,15 +628,20 @@ def _check_stated(where, argument, value):
     A function `at` is refused here with its own reason: a stated anchor
     is three numbers in this version (state-the-freedom-per-instance,
     design decision 5).
+
+    `slides` is true for a `Prismatic` freedom, whose messages speak of
+    a line to slide along; a `Revolute` freedom's are worded as they
+    were before a freedom could slide (slide-by-mate).
     """
     if argument == 'at' and _is_function(value):
+        left_out = ("take the moving frame's origin" if slides
+                    else "turn about the moving frame's origin")
         raise TypeError(
             f"{where}: its freedom's at {value!r} is a function, and a "
             f"stated anchor is three numbers in this version: at=(x, y, "
             f"z), in the moving child's own frame. A freedom's axis and "
             f"range may each be one function of the assembly that states "
-            f"the mate, its at may not; leave at out to turn about the "
-            f"moving frame's origin.")
+            f"the mate, its at may not; leave at out to {left_out}.")
     reason = _stated_reason(value)
     if reason is not None:
         raise TypeError(
@@ -592,11 +650,14 @@ def _check_stated(where, argument, value):
             f"in the moving child's frame, so it is three numbers: "
             f"{argument}=(x, y, z).")
     if argument == 'axis' and _has_no_length(value):
+        advice = ('states no line to slide along. State the direction of '
+                  'the line.' if slides else
+                  "states no line to turn about. State the direction of "
+                  "the line, or leave axis out to turn about the moving "
+                  "frame's z.")
         raise TypeError(
             f"{where}: its freedom's axis {value!r} has zero length, and an "
-            f"axis of zero length states no line to turn about. State the "
-            f"direction of the line, or leave axis out to turn about the "
-            f"moving frame's z.")
+            f"axis of zero length {advice}")
 
 
 def _check_end_shape(name, mate, end, role):
@@ -758,17 +819,21 @@ def _install(cls, name, mate):
     """Give the moving child's declaration the mate's joint and the
     wiring that binds it (design decisions 5 and 6).
 
-    The joint is a `Revolute` whose axis is the freedom's stated `axis`,
-    else the moving frame's `z`, and whose anchor is the freedom's
-    written `at`, else the moving frame's `at` -- each passed straight
+    The joint is of the freedom's kind -- a `Revolute` for a `Revolute`
+    freedom, a `Prismatic` for a `Prismatic` one (slide-by-mate) --
+    whose axis is the freedom's stated `axis`, else, for a `Revolute`
+    only, the moving frame's `z` (a `Prismatic` always states its
+    axis), and whose anchor is the freedom's written `at`, else the
+    moving frame's `at` -- each passed straight
     through, the frame's exactly as DECLARED (a tuple, tokens, formulas
     or a callable of the node), the freedom's as the three numbers
     `_check_stated` admitted. Both are in the child's own rest frame, so
     the joint resolves against the child in `resolve_declared_joints`
     like any class-declared joint, with nothing carried or inverted
     (ADR-097). A left-out `at` is told from a written `(0, 0, 0)` by
-    identity (`Revolute.anchor_written`): the written one is the CHILD's
-    origin, not the frame's.
+    identity (`anchor_written`): the written one is the CHILD's origin,
+    not the frame's. A `Prismatic`'s anchor moves nothing; it is carried
+    as the joint's, as a class-declared slide's is.
     It goes on the child by `_specialize`, ADR-098's mechanism: the
     child keeps its name, identity and artifacts, and the joint -- new
     on the child -- takes the slot after every joint the child's class
@@ -787,13 +852,17 @@ def _install(cls, name, mate):
     The wiring hands the assembly's coordinate to that joint (ADR-088):
     one binder, one address, and relations see only the assembly's port.
     """
-    from machinome.motion.joints import Revolute
+    from machinome.motion.joints import Prismatic, Revolute
     from machinome.node.declarative import _specialize
 
     frame = mate.moving.frame
     freedom = mate.freedom
-    joint = Revolute(
-        axis=freedom.axis if freedom.axis is not None else frame.z,
+    kind = Prismatic if _slides(freedom) else Revolute
+    axis = freedom.axis
+    if axis is None and kind is Revolute:
+        axis = frame.z
+    joint = kind(
+        axis=axis,
         at=freedom.at if freedom.anchor_written else frame.at,
         range=freedom.range, unit=freedom.unit)
     joint.installed_by = mate
@@ -836,10 +905,10 @@ def _function_refusal(assembly, mate, argument, detail):
         f"taken as the {argument} written in numbers is: {rule}.")
 
 
-def _result_reason(argument, result):
+def _result_reason(argument, result, slides=False):
     """Why a function's `result` is not what the numbers form of
     `argument` takes, or None: `_check_stated`'s and `_check_freedom`'s
-    rules, worded once."""
+    rules, worded once. `slides` as for `_check_stated`."""
     if _is_function(result):
         return ('is a function, not three numbers' if argument == 'axis'
                 else 'is a function, not a (lo, hi) pair')
@@ -848,7 +917,7 @@ def _result_reason(argument, result):
     reason = _stated_reason(result)
     if reason is None and _has_no_length(result):
         reason = ('has zero length, and an axis of zero length states no '
-                  'line to turn about')
+                  'line to ' + ('slide along' if slides else 'turn about'))
     return reason
 
 
@@ -885,7 +954,8 @@ def call_freedom_functions(declaration, assembly):
                     assembly, mate, argument,
                     f'raised {type(failure).__name__}: {failure} when '
                     f'called with this {type(assembly).__name__}') from None
-            reason = _result_reason(argument, result)
+            reason = _result_reason(argument, result,
+                                    slides=_slides(mate.freedom))
             if reason is not None:
                 raise _function_refusal(
                     assembly, mate, argument,

@@ -170,19 +170,33 @@ frame the declaring assembly itself declares, written by its bare name in
 the class body, or a frame declared by another child the assembly
 declares directly, written `<child>.<frame>`.
 
-The FREEDOM SHALL be a `Revolute`: `Revolute(range=(lo, hi), unit='deg')`.
-It MAY also state the line the child turns about,
-`Revolute(axis=(x, y, z), at=(x, y, z), range=..., unit=...)`, because a
-design's connectors are ATTACHMENT frames and the line a part turns about
-need not be the moving frame's `z` nor pass through its origin. A stated
+The FREEDOM SHALL be a `Revolute`, `Revolute(range=(lo, hi), unit='deg')`,
+the child turning about a line, or a `Prismatic`,
+`Prismatic(axis=(x, y, z), range=(lo, hi), unit='mm')`, the child sliding
+along one; both kinds SHALL follow every rule of this requirement alike
+but one: a `Prismatic` freedom SHALL state its `axis`, as a `Prismatic`
+anywhere must, and only a `Revolute` freedom MAY leave its `axis` out. A
+`Prismatic` without an axis SHALL be refused by its own constructor, as
+it is refused anywhere, before the mate is stated; the mate SHALL add no
+refusal of its own. A `Revolute` freedom MAY also state its line,
+`Revolute(axis=(x, y, z), at=(x, y, z), range=..., unit=...)`, and a
+`Prismatic` freedom MAY state its anchor beside its axis,
+`Prismatic(axis=(x, y, z), at=(x, y, z), range=..., unit=...)`, because
+a design's connectors are ATTACHMENT frames and the line a part turns
+about or slides along need not be the moving frame's `z` nor pass
+through its origin. A `Prismatic` freedom's `at` places
+nothing — a translation along a line is the same wherever the line is
+taken to pass — and is carried as the joint's anchor, as a class-body
+`Prismatic`'s is. A stated
 `at` SHALL be three numbers. A stated `axis` SHALL be three numbers or
 one function of the assembly that states the mate (see "A mate's freedom
 may be a function of the assembly that states it"). Each SHALL be read
 in the MOVING CHILD's own rest frame — the frame the moving frame is
 declared in and a joint the child's own class declares is read in — and
 nothing SHALL be carried or inverted to read them. Each SHALL be
-independent of the other: a freedom may state `axis` alone, `at` alone,
-both or neither, and what it leaves out the moving frame supplies (see
+independent of the other: a `Revolute` freedom may state `axis` alone,
+`at` alone, both or neither, a `Prismatic` freedom `axis` alone or with
+`at`, and what a freedom leaves out the moving frame supplies (see
 "A mate gives the moving child a joint"). The freedom's `range` SHALL be
 omitted, a pair of numbers, a pair whose bounds are numbers, `None`, or
 functions of the coordinate's own value, or one function of the assembly
@@ -206,8 +220,8 @@ naming the class, the mate and the reason:
   subclass — no longer declares as the one the mate was written against;
 - a mate with a freedom that is left unnamed, because its coordinate is
   named after the mate;
-- a freedom that is not a `Revolute` — a `Prismatic`, an `Orbit` or a
-  `Free` —, a freedom whose range is neither a pair nor a function, or
+- a freedom that is neither a `Revolute` nor a `Prismatic` — an `Orbit`
+  or a `Free` —, a freedom whose range is neither a pair nor a function, or
   holds a parameter token or a formula, or reads other coordinates, or a
   freedom already declared on some class;
 - a freedom whose stated `axis` is neither three numbers nor a function,
@@ -257,12 +271,22 @@ naming the class, the mate and the reason:
 - **THEN** creating the class raises, naming both mates and saying a
   second mate on a placed child closes a loop
 
-#### Scenario: A mate needs a revolute freedom
+#### Scenario: A mate needs a revolute or prismatic freedom
 
 - **WHEN** an assembly states `art3.hinge.on(elbow_pin)`, or
-  `art3.hinge.on(elbow_pin, Prismatic())`
+  `art3.hinge.on(elbow_pin, Orbit(axis=(0, 0, 1)))`, or
+  `art3.hinge.on(elbow_pin, Free())`
 - **THEN** creating the class raises, naming the mate and saying which
-  freedoms a mate accepts in this version
+  freedoms a mate accepts in this version: a `Revolute` or a `Prismatic`
+
+#### Scenario: A gripper's finger is one statement
+
+- **WHEN** a palm declares `left_seat = Frame(at=(81.7, 21, 0))` and the
+  child `left_finger = Finger()`, `Finger` declaring `origin = Frame()`,
+  and states `left_grip = left_finger.origin.on(left_seat,
+  Prismatic(axis=(0, 1, 0), range=(-11, 20), unit='mm'))`
+- **THEN** the class is created and reports one mate named `left_grip`,
+  moving `left_finger.origin` onto `left_seat`
 
 #### Scenario: A freedom states the line across its attachment frame
 
@@ -416,10 +440,13 @@ refuse the mate at realization, naming the mate and the child.
 
 ### Requirement: A mate gives the moving child a joint
 
-At realization the moving child SHALL move about a revolute joint whose
-axis is the freedom's stated `axis` — the three numbers written, or what
-its function returned for the realized assembly —, or the moving frame's
-`z` when the freedom states none, and whose anchor is the freedom's
+At realization the moving child SHALL move about a joint of the
+freedom's kind — a `Revolute` for a `Revolute` freedom, turning the
+child about the line, a `Prismatic` for a `Prismatic` freedom, sliding
+the child along it — whose axis is the freedom's stated `axis` — the three numbers written, or what
+its function returned for the realized assembly —, or, for a
+`Revolute` freedom only, the moving frame's `z` when the freedom states
+none, a `Prismatic` freedom always stating its axis, and whose anchor is the freedom's
 stated `at`, or the moving frame's origin when the freedom states none —
 all in the child's own rest frame, where the frame was declared and a
 stated line is read, so nothing is carried or inverted — carrying the
@@ -509,6 +536,41 @@ declares.
   both applies `spin`'s operations innermost, then `steer`'s, then the
   mate's rest placement
 
+#### Scenario: A finger's joint is the one the gripper writes by hand
+
+- **WHEN** the palm of "A gripper's finger is one statement" is realized,
+  and its `left_grip` is bound to 10
+- **THEN** the finger's class reports a `Prismatic` joint `left_grip`
+  with axis `(0, 1, 0)`, anchor `(0, 0, 0)`, range `(-11, 20)` and unit
+  `'mm'`; unbound, the finger's operations are one translation
+  `(81.7, 21, 0)`; at 10 they are a translation of 10 along `(0, 1, 0)`
+  then that translation, equal in kind, order and value to those of a
+  finger whose class declares `travel = Prismatic(axis=(0, 1, 0),
+  range=(-11, 20), unit='mm')` placed by the palm's `render()` with
+  `translate(81.7, 21, 0)` and bound to 10
+
+#### Scenario: A slide states its axis
+
+- **WHEN** a part declaring `slot = Frame(z=(0, 1, 0), x=(1, 0, 0))` is
+  mated onto `seat = Frame(at=(0, 0, 5), z=(0, 1, 0), x=(1, 0, 0))` with
+  `Prismatic(axis=(1, 0, 0), range=(0, 10))`, and bound to 4; and a
+  freedom is written `Prismatic(range=(0, 10))`, with no axis
+- **THEN** the part's joint is a `Prismatic` whose line is the stated
+  axis `(1, 0, 0)`, read in the part's own rest frame, through its
+  anchor, the moving frame's origin — not the moving frame's `z` — and
+  its operations are a translation of 4 along `(1, 0, 0)` then the rest
+  translation `(0, 0, 5)`; and `Prismatic(range=(0, 10))` is refused as
+  a `Prismatic` without an axis is refused anywhere, by its constructor,
+  before any mate is stated — the mate adds no refusal of its own
+
+#### Scenario: A slide's stated anchor moves nothing
+
+- **WHEN** a finger is mated once with `Prismatic(axis=(0, 1, 0),
+  at=(0, 0, 5), range=(-11, 20))` and once with `Prismatic(axis=(0, 1,
+  0), range=(-11, 20))`, and each is bound to 10
+- **THEN** the first joint's anchor is `(0, 0, 5)` and the second's the
+  moving frame's origin, and the two fingers' operations are equal
+
 #### Scenario: A mate cannot hide a child's attribute
 
 - **WHEN** the forearm root's class already declares a joint `elbow` and
@@ -524,9 +586,10 @@ declares.
 
 ### Requirement: A mate owns a coordinate on the assembly
 
-A mate with a freedom SHALL own one rotational coordinate on the
-declaring assembly, named after the mate and carrying the freedom's
-unit. It SHALL be reported by the port enumerator for the assembly's
+A mate with a freedom SHALL own one coordinate on the declaring
+assembly, named after the mate, of the freedom's kind — rotational for a
+`Revolute`, translational for a `Prismatic` — and carrying the freedom's
+unit, `'deg'` or `'mm'` when it states none. It SHALL be reported by the port enumerator for the assembly's
 class, SHALL read and bind on an instance as a joint's coordinate does,
 and SHALL be an end of a relation, a target of a driver and a source of
 a law as the `couplings` capability specifies.
@@ -589,6 +652,28 @@ another frame").
 - **THEN** the binding is refused naming the range, as a joint's range
   refuses it
 
+#### Scenario: A finger's coordinate is a translational port
+
+- **WHEN** a consumer enumerates the ports of the palm of "A gripper's
+  finger is one statement"
+- **THEN** it receives `left_grip`, a translational coordinate in
+  millimetres
+
+#### Scenario: A gripper's mimic relates two mates
+
+- **WHEN** a palm mates `left_finger` by `Prismatic(axis=(0, 1, 0),
+  range=(-11, 20), unit='mm')` as `left_grip` and `right_finger` onto
+  `right_seat = Frame(at=(81.7, -21, 0))` by `Prismatic(axis=(0, -1, 0),
+  range=(-11, 20), unit='mm')` as `right_grip`, states
+  `left_grip.drives(right_grip)`, and a root declaring
+  `grip = Driver(default=0, unit='mm')` holds the palm under an
+  intermediate assembly `wrist` and states
+  `grip.drives(wrist.palm.left_grip)`
+- **THEN** bound to `grip=10`, the left finger translates 10 along
+  `(0, 1, 0)` and the right finger 10 along `(0, -1, 0)`, each inside its
+  rest translation; bound to `grip=25`, the binding is refused naming
+  `left_grip` and its range
+
 ### Requirement: A mate publishes nothing new
 
 A mated machine's published document SHALL carry the mate's compiled
@@ -600,7 +685,9 @@ before frames and mates existed, and a mated machine whose mates' freedoms
 state no line SHALL publish a document byte-identical to the one it
 published before a freedom could state one. A mate whose freedom states
 its line SHALL publish that line only as the axis and anchor of the
-joint's ordinary operations.
+joint's ordinary operations, and a mate whose freedom is a `Prismatic`
+SHALL publish its slide only as the translation of the joint's ordinary
+operations.
 
 #### Scenario: A mated machine needs no newer consumer
 
@@ -620,6 +707,19 @@ joint's ordinary operations.
 - **WHEN** a mated fixture machine whose freedoms state no line is
   exported before and after a freedom could state one
 - **THEN** the two documents are byte-identical
+
+#### Scenario: A sliding mate publishes a slide as operations
+
+- **WHEN** the root of "A gripper's mimic relates two mates" is exported,
+  and so is its hand-placed twin, whose finger classes declare
+  `travel = Prismatic(axis=(0, ±1, 0), range=(-11, 20), unit='mm')`,
+  whose palm's `render()` translates each finger to its seat and states
+  `left_finger.travel.drives(right_finger.travel)`, and whose root's
+  `grip` drives the left finger's `travel`
+- **THEN** the two documents declare the same version and the same
+  top-level keys, no node entry of the mated document has a key the
+  twin's lacks, and each finger's operations equal the twin's, the
+  translation driven by `grip` included
 
 ### Requirement: A realized node reads its resolved frames
 
@@ -756,8 +856,10 @@ with these reads documented in the framework's API reference:
   child, a reference whose `written` SHALL be `'<child>.<frame>'`; for a
   frame of the assembly itself, written by its bare name, that `Frame`
   declaration, whose `name` SHALL be its attribute;
-- `freedom`, the `Revolute` written in the statement, whose `axis` SHALL
-  be `None` when no axis is stated, the three numbers as written, not
+- `freedom`, the `Revolute` or `Prismatic` written in the statement,
+  whose `axis` SHALL
+  be `None` when no axis is stated, which only a `Revolute` freedom may
+  do, the three numbers as written, not
   normalized, when numbers are stated, and the function itself, the same
   object, when a function is stated; whose `anchor_written` SHALL say
   whether `at` was written; whose `at` SHALL be the three numbers as
@@ -765,12 +867,12 @@ with these reads documented in the framework's API reference:
   anchor when it is false, the anchor then being the moving frame's
   origin; whose `range` SHALL be as written — a pair, or the function
   itself, the same object — or `None`; and whose `unit` SHALL be as
-  written, or `'deg'`.
+  written, or `'deg'` for a `Revolute` and `'mm'` for a `Prismatic`.
 
 When the freedom's `axis` is not a function, the line a mate turns its
-child about SHALL be readable from these reads and the moving child's
-resolved frames alone: `freedom.axis` when it is not `None`, else the
-moving frame's resolved `z`; through `freedom.at` when `anchor_written`
+child about or slides it along SHALL be readable from these reads and the moving child's
+resolved frames alone: `freedom.axis` when it is not `None`, else — a
+`Revolute` freedom's only — the moving frame's resolved `z`; through `freedom.at` when `anchor_written`
 is true, else through the moving frame's resolved `at`. When it is a
 function, the read SHALL be that function, and the axis on a realized
 machine is what the function returned for that machine's assembly; no
@@ -828,10 +930,17 @@ change nothing and SHALL NOT call a function.
   same objects, `anchor_written` is false, and neither function's count
   moves
 
+#### Scenario: A sliding freedom is read as written
+
+- **WHEN** the palm of "A gripper's finger is one statement" is read
+  under `left_grip`
+- **THEN** its freedom is a `Prismatic` whose `axis` is `(0, 1, 0)`,
+  `anchor_written` false, `range` `(-11, 20)` and `unit` `'mm'`
+
 ### Requirement: A mate's freedom may be a function of the assembly that states it
 
 The system SHALL accept, as a mate's freedom's `axis` and as its
-`range`, each as a whole, one function of one argument — a callable that
+`range` — a `Revolute`'s or a `Prismatic`'s alike —, each as a whole, one function of one argument — a callable that
 is not a parameter token, a formula or a `Bound`. Each function SHALL be
 called with the realized ASSEMBLY that states the mate — the node whose
 class body the function is written in, the node a function given to a
@@ -942,3 +1051,14 @@ places the moving child at rest" states, whatever the function returns.
   `turn = Revolute(axis=lambda node: ..., range=lambda node: ...)` over
   its own `left` flag and whose mount's `render()` translates the link
   to the same origin
+
+#### Scenario: A sliding freedom's axis may be a function
+
+- **WHEN** an assembly declaring `left = Flag(True)` and
+  `seat = Frame(at=lambda node: (81.7, 21 if node.left else -21, 0))`
+  states `grip = finger.origin.on(seat, Prismatic(axis=lambda node:
+  (0, 1, 0) if node.left else (0, -1, 0), range=(-11, 20), unit='mm'))`,
+  and it is realized once with `left=True` and once with `left=False`
+- **THEN** each finger's joint is a `Prismatic` resolving with axis
+  `(0, 1, 0)` and `(0, -1, 0)` respectively, and bound to 10 each finger
+  translates 10 along its side's axis inside its side's rest translation

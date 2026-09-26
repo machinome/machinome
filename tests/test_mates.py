@@ -29,7 +29,8 @@ from solid2 import cube
 
 from machinome.motion.joints import (Bound, Free, JointRangeError, Orbit,
                                       Prismatic, Revolute, declared_joints)
-from machinome.motion.ports import RotationalPort, declared_ports
+from machinome.motion.ports import (RotationalPort, TranslationalPort,
+                                     declared_ports)
 from machinome.node import AssemblyNode, Solid2Node
 from machinome.node.declarative import SidewaysReadError
 from machinome.node.frames import Frame
@@ -49,6 +50,13 @@ def mates_module():
     from machinome.motion import mates
 
     return mates
+
+
+def slide_fixtures():
+    """`tests/mate_project/slide.py`, imported where a test needs it."""
+    from .mate_project import slide
+
+    return slide
 
 
 def serialized(node):
@@ -332,9 +340,11 @@ class RefusalTest(BaseNodeTest):
 
         self.assertRefused(build, 'Rigid', 'fixed', 'rigid', 'Revolute')
 
+    # slide-by-mate 2.1: the `Prismatic` case moved out to
+    # `test_a_freedom_may_be_a_prismatic`; the refusal names the two
+    # kinds a mate accepts.
     def test_other_freedoms_are_refused(self):
-        for freedom in (lambda: Prismatic(axis=(0, 0, 1)),
-                        lambda: Orbit(axis=(0, 0, 1)),
+        for freedom in (lambda: Orbit(axis=(0, 0, 1)),
                         lambda: Free()):
             def build():
                 class Sliding(AssemblyNode):
@@ -344,7 +354,60 @@ class RefusalTest(BaseNodeTest):
 
             with self.subTest(freedom=type(freedom()).__name__):
                 self.assertRefused(build, 'Sliding', 'slide', 'Revolute',
+                                   'Prismatic', 'a Revolute or a Prismatic',
                                    type(freedom()).__name__)
+
+    # slide-by-mate 2.1: a mate's freedom may be a `Prismatic`.
+    def test_a_freedom_may_be_a_prismatic(self):
+        Palm = slide_fixtures().Palm
+
+        found = mates_module().declared_mates(Palm)
+        self.assertEqual(list(found), ['left_grip', 'right_grip'])
+        for name, finger, seat in (('left_grip', 'left_finger', 'left_seat'),
+                                   ('right_grip', 'right_finger',
+                                    'right_seat')):
+            with self.subTest(mate=name):
+                mate = found[name]
+                self.assertEqual(mate.moving.written, f'{finger}.origin')
+                self.assertIs(mate.moving.frame, slide_fixtures().Finger.origin)
+                self.assertIs(mate.fixed, getattr(Palm, seat))
+
+    # slide-by-mate 3.3: the rigid mate's hint names both kinds (the spec
+    # scenario "A mate needs a revolute or prismatic freedom").
+    def test_the_rigid_mate_names_both_freedoms(self):
+        def build():
+            class Rigid(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                fixed = part.hinge.on(pin)
+
+        self.assertRefused(build, 'Rigid', 'fixed', 'rigid',
+                           'a Revolute or a Prismatic')
+
+    # slide-by-mate 2.7: a slide's stated anchor follows the `Revolute`
+    # freedom's rules: three numbers, never a function or a parameter.
+    def test_a_slides_stated_anchor_is_three_numbers(self):
+        def function():
+            class Lifted(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                slide = part.hinge.on(pin, Prismatic(
+                    axis=(0, 1, 0), at=lambda node: (0, 0, 0)))
+
+        def token():
+            class Lifted(AssemblyNode):
+                lift = Length(5)
+                pin = Frame()
+                part = Pin()
+                slide = part.hinge.on(pin, Prismatic(axis=(0, 1, 0),
+                                                     at=(0, 0, lift)))
+
+        for build, fragment in (
+                (function, 'a stated anchor is three numbers in this version'),
+                (token, 'resolve against the moving child')):
+            with self.subTest(case=build.__name__):
+                self.assertRefused(build, 'Lifted', 'slide', "freedom's at",
+                                   fragment)
 
     # state-the-mate-line 2.1: the refusal of a stated line is gone.
     def test_a_freedom_may_state_its_line(self):
@@ -1438,6 +1501,42 @@ class ManualTest(BaseNodeTest):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, section)
 
+    def test_the_joints_page_states_a_sliding_freedom(self):
+        """slide-by-mate 4.1: the sliding example -- the section's fifth
+        block, after the handed one, so the first four keep their
+        indices -- runs; binding one finger's mate slides both fingers,
+        equally and oppositely, and the coordinate is a length."""
+        section = _section(self.page('concepts', 'joints.rst'),
+                           'Frames and mates')
+        example = _code_blocks(section)[4]
+        namespace = {'__name__': __name__}
+        exec(compile(example, 'joints.rst', 'exec'), namespace)
+
+        Palm = namespace['Palm']
+        port = declared_ports(Palm)['left_grip']
+        self.assertIsInstance(port, TranslationalPort)
+        self.assertEqual(port.unit, 'mm')
+        palm = Palm()
+        palm.left_grip = 10
+        palm.render()
+        for finger, axis in (('left_finger', (0, 1, 0)),
+                             ('right_finger', (0, -1, 0))):
+            with self.subTest(finger=finger):
+                operations = serialized(getattr(palm, finger))
+                self.assertEqual(operations[0][0], 't')
+                self.assertEqual(numbers(operations[0]),
+                                 [10.0 * component for component in axis])
+        for fragment in ('``Prismatic``', 'slides', 'always states its',
+                         'moves nothing', 'a length', "``'mm'``",
+                         'neither a fresh ``Revolute`` nor a fresh '
+                         '``Prismatic``'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, ' '.join(section.split()))
+
+        reference = _section(self.page('reference', 'api.rst'),
+                             'Frames and mates')
+        self.assertIn('Prismatic(...))', reference)
+
     def test_the_reference_lists_frames_and_mates(self):
         api = self.page('reference', 'api.rst')
 
@@ -2003,3 +2102,296 @@ class HandedTwinTest(BaseNodeTest):
         for entry in walk(mated['root']):
             with self.subTest(node=entry['name']):
                 self.assertIn(frozenset(entry), fields)
+
+
+##############################################
+# slide-by-mate: a mate's freedom may be a `Prismatic`.
+#
+# A gripper's finger is placed and freed by a slide, stated once as a
+# mate whose freedom is a `Prismatic` with the axis its URDF states, the
+# mimic a relation between the two mates' coordinates. The fixtures are
+# the gripper and its hand-placed twin (`mate_project/slide.py`).
+
+#: (finger, mate, axis, seat) of `Palm`.
+FINGERS = (('left_finger', 'left_grip', (0, 1, 0), [81.7, 21.0, 0.0]),
+           ('right_finger', 'right_grip', (0, -1, 0), [81.7, -21.0, 0.0]))
+
+GRIPS = ('default', -11, 0, 10, 20)
+
+
+class SlidingMateTest(BaseNodeTest):
+    """2.3 and 2.5 to 2.8: the joint a sliding freedom installs, its
+    coordinate, the mimic, the range, a function axis, the stated axis
+    and anchor, and the class reads."""
+
+    def posed(self, cls, value):
+        from machinome.simulation.enumeration import bind_declared_defaults
+
+        node = cls()
+        if value == 'default':
+            bind_declared_defaults(node)
+        elif value is not None:
+            node.set_state(grip=value)
+        node.render()
+        return node
+
+    # 2.3 The installed joint and the coordinate.
+    def test_the_installed_joint_is_a_prismatic(self):
+        palm = slide_fixtures().Palm()
+
+        for finger, mate, axis, _seat in FINGERS:
+            with self.subTest(mate=mate):
+                child = getattr(palm, finger)
+                joint = declared_joints(type(child))[mate]
+                self.assertIsInstance(joint, Prismatic)
+                self.assertEqual(joint.arguments(child),
+                                 (axis, (0.0, 0.0, 0.0), (-11, 20)))
+                self.assertEqual(joint.unit, 'mm')
+
+    def test_the_mates_coordinate_is_a_translational_port(self):
+        ports = declared_ports(slide_fixtures().Palm)
+
+        for _finger, mate, _axis, _seat in FINGERS:
+            with self.subTest(mate=mate):
+                self.assertIsInstance(ports[mate], TranslationalPort)
+                self.assertNotIsInstance(ports[mate], RotationalPort)
+                self.assertEqual(ports[mate].domain, 'translational')
+                self.assertEqual(ports[mate].unit, 'mm')
+
+    # 2.5 The mimic and the range.
+    def test_the_mimic_moves_the_fingers_equally_and_oppositely(self):
+        gripper = self.posed(slide_fixtures().Gripper, 10)
+        palm = gripper.wrist.palm
+
+        for finger, _mate, axis, _seat in FINGERS:
+            with self.subTest(finger=finger):
+                first = serialized(getattr(palm, finger))[0]
+                self.assertEqual(first[0], 't')
+                self.assertEqual(numbers(first),
+                                 [10.0 * component for component in axis])
+
+    def test_the_range_belongs_to_the_freedom(self):
+        for value in (25, -12):
+            with self.subTest(grip=value):
+                with self.assertRaises(JointRangeError) as raised:
+                    self.posed(slide_fixtures().Gripper, value)
+                self.assertIn('left_grip', str(raised.exception))
+
+    # 2.6 A function axis on a slide.
+    def test_a_slides_axis_may_be_a_function_of_the_assembly(self):
+        SidePalm = slide_fixtures().SidePalm
+
+        for left, axis, seat in ((True, (0, 1, 0), [81.7, 21.0, 0.0]),
+                                 (False, (0, -1, 0), [81.7, -21.0, 0.0])):
+            with self.subTest(left=left):
+                palm = SidePalm(left=left)
+                joint = declared_joints(type(palm.finger))['grip']
+                self.assertIsInstance(joint, Prismatic)
+                self.assertEqual(joint.arguments(palm.finger)[0], axis)
+
+                palm.grip = 10
+                palm.render()
+                operations = serialized(palm.finger)
+                self.assertEqual([operation[0] for operation in operations],
+                                 ['t', 't'])
+                self.assertEqual(numbers(operations[0]),
+                                 [10.0 * component for component in axis])
+                for found, expected in zip(numbers(operations[1]), seat):
+                    self.assertAlmostEqual(found, expected, delta=1e-9)
+
+    # 2.7 The stated axis, the unit default and `at`.
+    def test_a_slide_takes_its_stated_axis_not_the_frames_z(self):
+        SlotMount = slide_fixtures().SlotMount
+        mount = SlotMount()
+
+        joint = declared_joints(type(mount.part))['slide']
+        self.assertIsInstance(joint, Prismatic)
+        self.assertEqual(joint.arguments(mount.part)[0], (1, 0, 0))
+        self.assertEqual(joint.unit, 'mm')
+        port = declared_ports(SlotMount)['slide']
+        self.assertIsInstance(port, TranslationalPort)
+        self.assertEqual(port.unit, 'mm')
+
+        mount.slide = 4
+        mount.render()
+        operations = serialized(mount.part)
+        self.assertEqual([operation[0] for operation in operations],
+                         ['t', 't'])
+        self.assertEqual(numbers(operations[0]), [4.0, 0.0, 0.0])
+        self.assertEqual(numbers(operations[1]), [0.0, 0.0, 5.0])
+
+    def test_a_prismatic_without_an_axis_is_refused_by_its_constructor(self):
+        # A guard: green at the base and after. The mate adds no refusal
+        # of its own; the constructor refuses before any mate is stated.
+        with self.assertRaises(TypeError) as raised:
+            Prismatic(range=(0, 10))
+        self.assertIn('axis', str(raised.exception))
+
+    def test_a_slides_stated_anchor_moves_nothing(self):
+        slide = slide_fixtures()
+        anchored = slide.AnchoredPalm()
+
+        joint = declared_joints(type(anchored.left_finger))['left_grip']
+        self.assertEqual(joint.arguments(anchored.left_finger)[1],
+                         (0.0, 0.0, 5.0))
+
+        anchored.left_grip = 10
+        anchored.render()
+        palm = slide.Palm()
+        palm.left_grip = 10
+        palm.render()
+        self.assertEqual(serialized(anchored.left_finger),
+                         serialized(palm.left_finger))
+
+    # 2.8 The class reads.
+    def test_a_sliding_freedom_is_read_as_written(self):
+        slide = slide_fixtures()
+
+        freedom = mates_module().declared_mates(slide.Palm)[
+            'left_grip'].freedom
+        self.assertIsInstance(freedom, Prismatic)
+        self.assertEqual(freedom.axis, (0, 1, 0))
+        self.assertIs(freedom.anchor_written, False)
+        self.assertEqual(freedom.range, (-11, 20))
+        self.assertEqual(freedom.unit, 'mm')
+
+        stated = mates_module().declared_mates(slide.SlotMount)[
+            'slide'].freedom
+        self.assertEqual(stated.axis, (1, 0, 0))
+        self.assertEqual(stated.unit, 'mm')
+        self.assertIs(stated.anchor_written, False)
+
+
+class SlidingTwinTest(BaseNodeTest):
+    """2.4 and 2.9: the gripper against its hand-placed twin, and nothing
+    else moves."""
+
+    posed = SlidingMateTest.posed
+
+    def assertSameOperations(self, mated, hand, delta=1e-9):
+        self.assertEqual([operation[0] for operation in mated],
+                         [operation[0] for operation in hand])
+        for ours, theirs in zip(mated, hand):
+            for mine, written in zip(numbers(ours), numbers(theirs)):
+                self.assertAlmostEqual(mine, written, delta=delta)
+
+    def assertSameLeaves(self, mated, hand, expected):
+        ours = dict(leaves_of(mated))
+        theirs = dict(leaves_of(hand))
+        self.assertEqual(sorted(ours), expected)
+        self.assertEqual(sorted(theirs), sorted(ours))
+        for path in ours:
+            self.assertTrue((abs(ours[path] - theirs[path]) < 1e-9).all(),
+                            path)
+
+    # 2.4 The finger rests and slides as the twin's.
+    def test_each_unbound_finger_rests_on_its_seat(self):
+        # A palm whose mimic has nothing bound at either end does not
+        # render, and neither does its twin, so "unbound" is each side's
+        # finger on its own, its mate left unbound (`SidePalm`).
+        slide = slide_fixtures()
+        for left, (finger, _mate, _axis, seat) in zip((True, False),
+                                                       FINGERS):
+            with self.subTest(finger=finger):
+                palm = slide.SidePalm(left=left)
+                palm.render()
+                ours = serialized(palm.finger)
+                self.assertEqual([operation[0] for operation in ours], ['t'])
+                for found, expected in zip(numbers(ours[0]), seat):
+                    self.assertAlmostEqual(found, expected, delta=1e-9)
+
+    def test_an_unbound_mimic_is_refused_as_the_twins_is(self):
+        from machinome.motion.couplings import UnreachedCoordinate
+
+        slide = slide_fixtures()
+        for cls in (slide.Palm, slide.TwinPalm):
+            with self.subTest(palm=cls.__name__):
+                with self.assertRaises(UnreachedCoordinate) as raised:
+                    cls().render()
+                self.assertIn('nothing bound either end',
+                              str(raised.exception))
+
+    def test_the_gripper_reproduces_its_twin(self):
+        slide = slide_fixtures()
+        for value in GRIPS:
+            with self.subTest(grip=value):
+                mated = self.posed(slide.Gripper, value)
+                hand = self.posed(slide.TwinGripper, value)
+                for finger, _mate, axis, seat in FINGERS:
+                    ours = serialized(getattr(mated.wrist.palm, finger))
+                    theirs = serialized(getattr(hand.wrist.palm, finger))
+                    self.assertEqual([operation[0] for operation in ours],
+                                     ['t', 't'])
+                    travel = 0.0 if value == 'default' else float(value)
+                    self.assertEqual(numbers(ours[0]),
+                                     [travel * component
+                                      for component in axis])
+                    for found, expected in zip(numbers(ours[1]), seat):
+                        self.assertAlmostEqual(found, expected, delta=1e-9)
+                    self.assertSameOperations(ours, theirs)
+                self.assertSameLeaves(
+                    mated, hand, ['/wrist/palm/left_finger',
+                                  '/wrist/palm/right_finger'])
+
+    # 2.9 Nothing else moves.
+    def test_a_sliding_machine_needs_no_newer_consumer(self):
+        slide = slide_fixtures()
+        mated = published(slide.Gripper())
+        hand = published(slide.TwinGripper())
+
+        self.assertEqual(mated['version'], hand['version'])
+        self.assertEqual(set(mated), set(hand))
+        self.assertEqual(mated['drivers'], hand['drivers'])
+
+        for finger, _mate, _axis, _seat in FINGERS:
+            ours = entry_of(mated, 'wrist', 'palm', finger)['operations']
+            theirs = entry_of(hand, 'wrist', 'palm', finger)['operations']
+            with self.subTest(finger=finger):
+                self.assertEqual([operation[0] for operation in ours],
+                                 [operation[0] for operation in theirs])
+                for mine, written in zip(ours, theirs):
+                    for component, other in zip(mine[1], written[1]):
+                        try:
+                            expected = float(other)
+                        except ValueError:
+                            # The slide driven by `grip`: symbolic, and
+                            # the same string on both sides.
+                            self.assertEqual(component, other)
+                            continue
+                        self.assertAlmostEqual(float(component), expected,
+                                               delta=1e-9)
+        left = entry_of(mated, 'wrist', 'palm', 'left_finger')['operations']
+        right = entry_of(mated, 'wrist', 'palm', 'right_finger')['operations']
+        self.assertIn('grip', left[0][1])
+        self.assertIn('(grip * -1)', right[0][1])
+
+        fields = {frozenset(entry) for entry in walk(hand['root'])}
+        for entry in walk(mated['root']):
+            with self.subTest(node=entry['name']):
+                self.assertIn(frozenset(entry), fields)
+
+    def test_a_class_body_prismatic_places_what_it_placed(self):
+        # A guard of 3.1's anchor default: a `Prismatic` stating its axis
+        # positionally on a class, bound to 10, places exactly the
+        # operations it placed at the base.
+        class Carriage(Solid2Node):
+            travel = Prismatic((0, 1, 0), range=(-11, 20), unit='mm')
+
+            def render(self):
+                return cube(2, center=True)
+
+        carriage = Carriage()
+        self.assertEqual(declared_joints(Carriage)['travel'].arguments(
+            carriage), ((0, 1, 0), (0.0, 0.0, 0.0), (-11, 20)))
+        carriage.travel = 10
+        carriage.render()
+        self.assertEqual(serialized(carriage), [['t', ['0', '10', '0']]])
+
+    def test_a_revolute_mate_still_installs_a_revolute(self):
+        # A guard: the `Revolute` path takes exactly today's objects.
+        mate = mates_module().declared_mates(fixtures().MatedArm)['elbow']
+        self.assertIs(type(mate.joint), Revolute)
+        self.assertIs(type(mate.coordinate), RotationalPort)
+        self.assertEqual(mate.coordinate.unit, 'deg')
+        self.assertIs(mate.joint.axis, fixtures().MatedForearm.hinge.z)
+        self.assertIs(mate.joint.at, fixtures().MatedForearm.hinge.at)

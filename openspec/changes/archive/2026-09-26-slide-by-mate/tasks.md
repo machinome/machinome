@@ -9,22 +9,22 @@ that turns it green; record each red run in `evidence.md`.
 
 ## 0. Opening evidence
 
-- [ ] 0.1 Confirm `python -c "import machinome; print(machinome.__file__)"`
+- [x] 0.1 Confirm `python -c "import machinome; print(machinome.__file__)"`
   prints this worktree's path, and record the base (`b7cc651`, plus the
   records commits `eec8689` and `60834c9`).
-- [ ] 0.2 Run the full suite at the base and record the counts in
+- [x] 0.2 Run the full suite at the base and record the counts in
   `evidence.md`.
-- [ ] 0.3 Record the answers to the four scope questions, ratified in
+- [x] 0.3 Record the answers to the four scope questions, ratified in
   `proposal.md` ("Ratified scope": the three recommendations accepted,
   the axis-less `Prismatic` struck and already folded into these
   artifacts). If any answer differs from what the artifacts say, STOP
   and update the planning artifacts before writing a test.
-- [ ] 0.4 Record `sha256sum` of every file in `tests/base_documents/` at
+- [x] 0.4 Record `sha256sum` of every file in `tests/base_documents/` at
   the base in `evidence.md` (the byte-identity guard of 2.9).
 
 ## 1. Planning record
 
-- [ ] 1.1 `openspec validate slide-by-mate --strict` passes; the planning
+- [x] 1.1 `openspec validate slide-by-mate --strict` passes; the planning
   commit holds the change folder and its `evidence/`, nothing else. No
   ADR here (task 4.5).
 
@@ -66,7 +66,7 @@ shortest form that discriminates:
   translating each to `(81.7, ±21.0, 0.0)`; `TwinWrist` and
   `TwinGripper` as above, `grip.drives(wrist.palm.left_finger.travel)`.
 
-- [ ] 2.1 **The `Prismatic` refusal is gone; `Orbit` and `Free` stay.**
+- [x] 2.1 **The `Prismatic` refusal is gone; `Orbit` and `Free` stay.**
   In `RefusalTest.test_other_freedoms_are_refused` move the `Prismatic`
   case out into `test_a_freedom_may_be_a_prismatic` (`Palm` is created
   and `declared_mates(Palm)` lists `left_grip` then `right_grip`, each
@@ -75,13 +75,13 @@ shortest form that discriminates:
   fragments `Revolute` and `Prismatic` as the accepted kinds (red at the
   base: the message says Prismatic is "not a mate freedom").
 2.2 struck at ratification (the axis-less `Prismatic`, design decision 8).
-- [ ] 2.3 **The installed joint and the coordinate.** Realized `Palm`:
+- [x] 2.3 **The installed joint and the coordinate.** Realized `Palm`:
   `declared_joints(type(palm.left_finger))['left_grip']` is a
   `Prismatic`, its `arguments(palm.left_finger)` is
   `((0, 1, 0), (0.0, 0.0, 0.0), (-11, 20))` (the right finger's
   `(0, -1, 0)`), unit `'mm'`; `declared_ports(Palm)['left_grip']` is a
   `TranslationalPort` in `'mm'`. Red at the base (class refused).
-- [ ] 2.4 **The finger rests and slides as the twin's.** Unbound, each
+- [x] 2.4 **The finger rests and slides as the twin's.** Unbound, each
   finger's operations are one translation `(81.7, ±21, 0)`; `Gripper`
   and `TwinGripper` under `set_state(grip=v)` for `v` in
   `(-11, 0, 10, 20)` and under the declared default: each finger's
@@ -89,16 +89,16 @@ shortest form that discriminates:
   within `1e-9`), `['t', ...]` along the axis then the rest translation;
   the composed world matrices of every leaf equal within `1e-9`
   (`leaves_of`). Red at the base.
-- [ ] 2.5 **The mimic and the range.** `Gripper` at `grip=10`: the left
+- [x] 2.5 **The mimic and the range.** `Gripper` at `grip=10`: the left
   finger's first operation is a translation `(0, 10, 0)` and the right's
   `(0, -10, 0)`; at `grip=25` and at `grip=-12`, `JointRangeError`
   naming `left_grip`. Red at the base.
-- [ ] 2.6 **A function axis on a slide (ADR-150's path, the new kind).**
+- [x] 2.6 **A function axis on a slide (ADR-150's path, the new kind).**
   `SidePalm(left=True)` and `SidePalm(left=False)`: the joint resolves
   with axis `(0, 1, 0)` and `(0, -1, 0)`; bound to 10, each finger's
   operations are a translation of 10 along its side's axis then its
   side's rest translation. Red at the base.
-- [ ] 2.7 **The stated axis, the unit default and `at`.** `SlotMount`:
+- [x] 2.7 **The stated axis, the unit default and `at`.** `SlotMount`:
   the joint's axis is `(1, 0, 0)` (the stated axis, not the moving
   frame's `z`), its unit `'mm'`, the mate's port a `TranslationalPort`
   in `'mm'`; bound to 4 its operations are `(4, 0, 0)` then
@@ -111,11 +111,11 @@ shortest form that discriminates:
   refused at class creation with today's `Revolute` fragments ("three
   numbers in this version"; "resolve against the moving child"). All
   red at the base (class refused, for the refusals by fragment).
-- [ ] 2.8 **The class reads.** `declared_mates(Palm)['left_grip'].freedom`
+- [x] 2.8 **The class reads.** `declared_mates(Palm)['left_grip'].freedom`
   is a `Prismatic` whose `axis` is `(0, 1, 0)`, `anchor_written` false,
   `range` `(-11, 20)`, `unit` `'mm'`; `SlotMount`'s `slide` reads `axis`
   `(1, 0, 0)` and `unit` `'mm'`. Red at the base.
-- [ ] 2.9 **Nothing else moves.** Every file in `tests/base_documents/`
+- [x] 2.9 **Nothing else moves.** Every file in `tests/base_documents/`
   is byte-identical to its hash in 0.4 (the existing `DocumentTest`,
   `StatedLineDocumentTest` byte-identity tests, run unedited).
   `Gripper`'s and `TwinGripper`'s exported documents (`published`)
@@ -135,14 +135,14 @@ shortest form that discriminates:
 
 ## 3. Implementation
 
-- [ ] 3.1 `machinome/motion/joints.py`: `Prismatic` takes
+- [x] 3.1 `machinome/motion/joints.py`: `Prismatic` takes
   `(axis, at=_DEFAULT_ANCHOR, range=None, unit=None)` -- `axis` still
   the first, required, positional-or-keyword argument -- and
   `anchor_written`, one definition shared with `Revolute` (design
   decision 3). Nothing else in `joints.py` changes behaviour.
 
 3.2 struck at ratification (`declarative.py`'s site refusal stays `Revolute`'s alone).
-- [ ] 3.3 `machinome/motion/mates.py`: `_check_freedom` accepts a
+- [x] 3.3 `machinome/motion/mates.py`: `_check_freedom` accepts a
   `Revolute` or a `Prismatic`, the refusal of anything else naming both;
   the rigid-mate refusal's hint names both; `Mate.__init__` builds the
   coordinate as the freedom's `coordinate_kind` with its unit, falling
@@ -150,18 +150,18 @@ shortest form that discriminates:
   `_install` builds `type(freedom)(...)` from today's four expressions;
   the zero-length refusals in `_check_stated` and `_result_reason` say
   "states no line", not "no line to turn about".
-- [ ] 3.4 Docstrings and messages: `mates.py` module docstring ("The
+- [x] 3.4 Docstrings and messages: `mates.py` module docstring ("The
   freedom is a `Revolute`"; "a revolute JOINT"; "a rotational
   COORDINATE"), `Mate` (the reads: `freedom` a `Revolute` or `Prismatic`,
   `unit` `'deg'` or `'mm'`), `_check_freedom`, `_install`;
   `joints.py` `_DefaultAnchor`, `Revolute`, `Prismatic`.
-- [ ] 3.5 Every test of section 2 green; the full suite green with the
+- [x] 3.5 Every test of section 2 green; the full suite green with the
   counts of 0.2 plus the new ones, nothing skipped that was not skipped
   at the base. Record in `evidence.md`.
 
 ## 4. Documentation, records (the second commit)
 
-- [ ] 4.1 `docs/concepts/joints.rst`, "Frames and mates", under
+- [x] 4.1 `docs/concepts/joints.rst`, "Frames and mates", under
   `skills/write-the-manual`: a FIFTH code block, appended after the
   handed example so the first four keep their indices -- a palm whose
   two fingers are mated by `Prismatic` freedoms on mirrored axes and
@@ -178,34 +178,34 @@ shortest form that discriminates:
   a `ManualTest` test that execs `_code_blocks(section)[4]`, binds one
   finger's mate and checks both fingers' first operations, and asserts
   the paragraph's fragments.
-- [ ] 4.2 `docs/reference/api.rst`, "Frames and mates": the sentence
+- [x] 4.2 `docs/reference/api.rst`, "Frames and mates": the sentence
   "``<child>.<frame>.on(<frame>, Revolute(...))``, and needs no import
   beyond ``Revolute``" names ``Prismatic`` too. No entry changes; the
   `Prismatic` and `Mate` entries render from their docstrings (3.4), and
   `test_the_reference_lists_frames_and_mates` stays green.
-- [ ] 4.3 `docs/project/changelog.rst`, Unreleased: a bullet saying a
+- [x] 4.3 `docs/project/changelog.rst`, Unreleased: a bullet saying a
   mate's freedom may be a `Prismatic`, so a gripper's fingers are mated
   like its links, the mate's coordinate then a length (ADR-151).
-- [ ] 4.4 Record for the studio (a separate change in
+- [x] 4.4 Record for the studio (a separate change in
   `machinome-studio`, not made here):
   `shop-skills/machinome-api/SKILL.md` gains the sliding freedom.
-- [ ] 4.5 Write ADR-151 (NODE) as **Accepted** (design §9); add an
+- [x] 4.5 Write ADR-151 (NODE) as **Accepted** (design §9); add an
   *Amended by* line to ADR-147; ADR-151 and ADR-147's updated entry in
   `docs/adrs/README.md`'s index; amend `docs/architecture.md`'s mate
   paragraph ("the freedom a fresh `Revolute`", "(2) a `Revolute` of the
   child's class", "(3) a rotational COORDINATE": a `Revolute` or a
   `Prismatic`, a joint of the freedom's kind, a coordinate of its port
   kind).
-- [ ] 4.6 `workflow/ongoing/mates-and-sketches.md`: the paragraph that
+- [x] 4.6 `workflow/ongoing/mates-and-sketches.md`: the paragraph that
   lists "the rigid mate, `Prismatic` and `Free` freedoms" as left out
   says `Prismatic` was cut into `slide-by-mate` (ADR-151).
-- [ ] 4.7 `workflow/warts.md`: the bullet "A mate's freedom must be a
+- [x] 4.7 `workflow/warts.md`: the bullet "A mate's freedom must be a
   `Revolute`." gains its disposition (fixed by `slide-by-mate`; pending
   the open_manipulator follow-up of §6).
 
 ## 5. Sync and archive
 
-- [ ] 5.1 Sync the `mates` delta spec into `openspec/specs/mates/spec.md`
+- [x] 5.1 Sync the `mates` delta spec into `openspec/specs/mates/spec.md`
   (there is no `joints` delta: struck at ratification). It deliberately
   REPLACES one scenario of "An assembly mates a child's frame onto
   another frame": "A mate needs a revolute freedom" becomes "A mate

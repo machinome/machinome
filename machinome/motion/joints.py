@@ -140,13 +140,13 @@ _MISSING = object()
 
 
 class _DefaultAnchor(tuple):
-    """The anchor a `Revolute` gets when `at` is not written: the
-    body's own origin, `(0, 0, 0)`, in every respect a tuple -- and ONE
-    object, so a mate's freedom can tell "left out" from an explicit
-    `at=(0, 0, 0)` by identity. Left out, a mate's anchor is the moving
-    frame's origin; written, even as `(0, 0, 0)`, it is the moving
-    child's own origin (`machinome.motion.mates`). A literal the author
-    writes can never be this object."""
+    """The anchor a `Revolute` or a `Prismatic` gets when `at` is not
+    written: the body's own origin, `(0, 0, 0)`, in every respect a
+    tuple -- and ONE object, so a mate's freedom can tell "left out" from
+    an explicit `at=(0, 0, 0)` by identity. Left out, a mate's anchor is
+    the moving frame's origin; written, even as `(0, 0, 0)`, it is the
+    moving child's own origin (`machinome.motion.mates`). A literal the
+    author writes can never be this object."""
 
     __slots__ = ()
 
@@ -819,7 +819,28 @@ class Joint(Coordinate):
         raise NotImplementedError
 
 
-class Revolute(Joint):
+class _MateFreedom(Joint):
+    """The one definition of what the two joint kinds a mate accepts as
+    its freedom -- `Revolute` and `Prismatic` -- share and the others do
+    not: `at` defaults to the one `_DEFAULT_ANCHOR` object, so
+    `anchor_written` can tell a left-out anchor from a written
+    `(0, 0, 0)` by identity (`machinome.motion.mates`). `axis` stays the
+    first, required argument; `Revolute` alone makes it optional."""
+
+    def __init__(self, axis, at=_DEFAULT_ANCHOR, range=None, unit=None):
+        super().__init__(axis, at, range, unit)
+
+    @property
+    def anchor_written(self):
+        """Whether `at` was written, even as `(0, 0, 0)`.
+
+        When false, `at` reads the default `(0, 0, 0)`, which is not a
+        point anyone stated: as a mate's freedom, the mate's anchor is
+        then the moving frame's origin, not the moving child's."""
+        return self.at is not _DEFAULT_ANCHOR
+
+
+class Revolute(_MateFreedom):
     """A body turning about one line: `Revolute(axis, at, range, unit)`.
 
     Bound, it places `translate(-anchor)`, `rotate(value, axis)`,
@@ -834,7 +855,7 @@ class Revolute(Joint):
     numbers, in the moving child's own frame, and its axis and its range
     may each be one function of the assembly that states the mate.
     Anywhere else an axis-less `Revolute` is refused when the class is
-    defined.
+    defined. `anchor_written` says whether `at` was written.
     """
 
     coordinate_kind = RotationalPort
@@ -843,15 +864,6 @@ class Revolute(Joint):
     def __init__(self, axis=None, at=_DEFAULT_ANCHOR, range=None,
                  unit=None):
         super().__init__(axis, at, range, unit)
-
-    @property
-    def anchor_written(self):
-        """Whether `at` was written, even as `(0, 0, 0)`.
-
-        When false, `at` reads the default `(0, 0, 0)`, which is not a
-        point anyone stated: as a mate's freedom, the mate's anchor is
-        then the moving frame's origin, not the moving child's."""
-        return self.at is not _DEFAULT_ANCHOR
 
     def placement(self, node, value, axis, anchor):
         from machinome.node.operations import Rotation, Translation
@@ -867,14 +879,23 @@ class Revolute(Joint):
         return operations
 
 
-class Prismatic(Joint):
+class Prismatic(_MateFreedom):
     """A body sliding along one line: `Prismatic(axis, at, range, unit)`.
 
     Bound, it places one translation of `value` along the carried unit
     axis. `at` does not affect the placement -- a translation along a
     line is the same wherever the line is taken to pass -- and is
     carried as the declared position of the slide, for a reader and for
-    a later exporter.
+    a later exporter; left out, it is the body's own origin.
+
+    `axis` is always stated. A `Prismatic` may also be the FREEDOM of a
+    mate, `finger.origin.on(seat, Prismatic(axis=(0, 1, 0),
+    range=(-11, 20)))`, sliding the moving child along that line in its
+    own frame, by the rules a `Revolute` freedom follows save the axis
+    (`machinome.motion.mates`): its axis and its range may each be one
+    function of the assembly that states the mate, its `at` is three
+    numbers, and left out the anchor is the moving frame's origin, which
+    `anchor_written` tells apart from a written `(0, 0, 0)`.
     """
 
     coordinate_kind = TranslationalPort

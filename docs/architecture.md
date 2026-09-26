@@ -767,7 +767,7 @@ so a placement removed by mark can never be stranded beside the one that
 replaces it, however the list arrived at its current content.
 
 **A mate places a child and declares its freedom in one sentence**
-(ADR-147, ADR-148, ADR-150, spec `mates`): `elbow = forearm.hinge.on(elbow_pin,
+(ADR-147, ADR-148, ADR-150, ADR-151, spec `mates`): `elbow = forearm.hinge.on(elbow_pin,
 Revolute(range=(-135, 135)))` in an assembly's class body, the frame that
 speaks being the one that MOVES. Reading a frame off a child declaration
 yields a `FrameRef` (`machinome/motion/mates.py`), a place like a
@@ -779,7 +779,10 @@ fixed end the assembly's own frame or a frame of a declared child whose
 class declares no joint (a sibling does not carry a sibling), both ends
 depth one, neither list-held nor repeated, one mate per child, the
 freedom a fresh `Revolute` (the one place a `Revolute` may omit its
-axis) whose stated `at`, if any, is three numbers, whose stated `axis`
+axis) or a fresh `Prismatic` (ADR-151: always stating its axis, as its
+constructor requires; `anchor_written` and the default anchor shared
+with `Revolute` through `joints._MateFreedom`), checked by one rule in
+one order, whose stated `at`, if any, is three numbers, whose stated `axis`
 is three numbers of non-zero length or one function, and whose range is
 a pair independent of any declarer or one function (ADR-148, refused by
 `_check_stated` naming the mate). A function `axis` or `range` is of the
@@ -796,17 +799,21 @@ child's REST PLACEMENT `P_owner · F_fixed · F_moving⁻¹`, one rotation
 then one translation, appended untagged by `apply_mates` from `_rest`
 after the author's `render()` returns — a render that also places the
 child is refused from its phase's `applied` list, and a legacy re-run
-drops and re-applies by the `_mate_slot` mark; (2) a `Revolute` of the
-child's class whose axis is the freedom's stated `axis`, else the moving
-frame's DECLARED `z`, and whose anchor is the freedom's written `at`
+drops and re-applies by the `_mate_slot` mark; (2) a joint of the
+child's class of the freedom's kind, a `Revolute` or a `Prismatic`,
+whose axis is the freedom's stated `axis`, else (a `Revolute` freedom's
+only) the moving frame's DECLARED `z`, and whose anchor is the freedom's written `at`
 (told from a left-out one by identity, `anchor_written`), else the
 moving frame's DECLARED `at` — a stated line is read in the child's own
 frame, like the frame itself, so the frames fix the rest placement and
 the zero and the freedom only the line — installed by `_specialize`
 (ADR-098) so it takes the slot after the child's own joints and
-resolves in the child's own frame with nothing carried; (3) a
-rotational COORDINATE of the assembly — the `Mate` itself,
-a `Coordinate` owning one port and deliberately not a `Joint` — wired to
+resolves in the child's own frame with nothing carried, a
+`Prismatic`'s anchor placing nothing and carried for a control's origin
+(ADR-112); (3) a COORDINATE of the assembly of the freedom's port kind,
+in its unit (a `RotationalPort` for a `Revolute`, a `TranslationalPort`,
+`'mm'` by default, for a `Prismatic`, chosen in `Mate.__init__` by
+`_coordinate_kind`) — the `Mate` itself, a `Coordinate` owning one port and deliberately not a `Joint` — wired to
 the child's joint through the child declaration's `wiring` (ADR-088),
 the one wiring whose unbound source rests instead of being refused
 (`Wiring.rests_unbound`). Binding the installed joint by any other route
@@ -3053,10 +3060,10 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150 |
+| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
-| Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150 |
+| Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151 |
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |

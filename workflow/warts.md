@@ -4044,7 +4044,14 @@ and the mimic as `left_finger.travel.drives(right_finger.travel)`.
   moving child a `Prismatic` with the same rules: the line stated in the
   child's frame or taken from the moving frame's `z`, the range in
   millimetres, the rest placement from the frames as today.
-  **Cycle cut: `slide-by-mate`.**
+  **Cycle cut: `slide-by-mate`.** **Fixed, 2026-09-26, by
+  `slide-by-mate` (ADR-151):** a mate's freedom may be a `Prismatic`,
+  by the `Revolute` freedom's rules save that it always states its axis
+  (the axis-less `Prismatic`, "taken from the moving frame's `z`", was
+  struck at ratification: the fingers state the URDF's axes); the child
+  gets a `Prismatic` joint and the assembly a translational coordinate
+  in `'mm'`. Pending open_manipulator's follow-up (the change's tasks
+  §6): all six URDF joints as mates, compared at maximum deviation 0.
 
 ## Findings from the OpenArm project's migration onto mates (2026-09-26)
 
@@ -4095,3 +4102,17 @@ not fixed, until the pilot triages them.
   consequence sentence is clarified accordingly in the records commit
   of `slide-by-mate`; the spec scenario already speaks of the realized
   child. **Recorded.**
+
+## Findings from the framework cycle `slide-by-mate` (2026-09-26)
+
+- **The axis-less refusal names a `Revolute` for any kind.**
+  `Joint.__set_name__`'s `axisless_refusal` was written when only a
+  `Revolute` could lack an axis; a `Prismatic(axis=None)` written in a
+  class body, or as a mate's freedom, is refused by it with "is a
+  Revolute without an axis ... where the moving frame supplies it",
+  which is wrong on both counts for a `Prismatic` (a `Prismatic` freedom
+  states its axis, ADR-151). Found in the orchestrator's review of
+  `slide-by-mate`; the cycle left the wording alone because widening it
+  was struck with the axis-less `Prismatic`. A one-line wording fix
+  naming the kind and, for a `Prismatic`, saying the axis is required
+  everywhere. **Recorded.**

@@ -134,7 +134,14 @@ deliberately left out -- the rigid mate, `Prismatic` and `Free` freedoms,
 repeated frames, broadcast mates, ends deeper than one child -- still
 reads here as proposal, and the change's `design.md` §9 says what the rigid
 mate would add. Where this note and the change disagree, the change is
-right.
+right. *(amended 2026-09-26, slide-by-mate, ADR-151)* Of those, the
+`Prismatic` freedom was cut into the framework OpenSpec change
+`slide-by-mate` (ADR-151, amending ADR-147), from open_manipulator's two
+gripper fingers: a mate's freedom may be a `Revolute` or a `Prismatic`,
+by one rule save that a `Prismatic` states its axis, the moving child
+getting a joint of the freedom's kind and the assembly a coordinate of
+its port kind. The rigid mate and the `Free` freedom still read here as
+proposal.
 
 **A freedom's own line was cut, 2026-09-26,** into the framework OpenSpec
 change `state-the-mate-line` (ADR-148, amending ADR-147), from Thor's
