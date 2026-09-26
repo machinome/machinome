@@ -500,11 +500,29 @@ class ChildDeclaration:
         a site's callable may read. `owner` has NOT rendered, so no
         placement exists yet, including this child's own; the CARRY
         that needs one happens later, at binding.
+
+        A mate moving this child whose freedom states its axis or range
+        as a function of the assembly has that function called here, in
+        the same state, with `owner` -- once, BEFORE the child is
+        constructed, so a refused result refuses before the child's
+        subtree is built -- and its joint resolved against the child
+        right after construction, with the results in the functions'
+        place (`machinome.motion.mates.call_freedom_functions`,
+        `resolve_freedom_functions`; state-the-freedom-per-instance).
         """
+        called = ()
+        if self.wiring:
+            from machinome.motion.mates import call_freedom_functions
+
+            called = call_freedom_functions(self, owner)
         args = [evaluate(arg, values) for arg in self.args]
         kwargs = {key: evaluate(arg, values)
                   for key, arg in self.kwargs.items()}
         child = self.node_class(*args, **kwargs)
+        if called:
+            from machinome.motion.mates import resolve_freedom_functions
+
+            resolve_freedom_functions(child, called)
         if self.wiring:
             self._record_wiring(child, owner)
         if self.site_joints:

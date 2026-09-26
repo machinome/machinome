@@ -97,6 +97,14 @@ The artifacts are written to each recommendation.
    (the range rule) and ADR-148 (the numbers-only line)*, with *Amended
    by* lines on both, written after implementation confirms the design.
 
+### Ratified scope
+
+Ratified on 2026-09-26 at every recommendation, under the review gate
+the pilot delegated on 2026-09-07 (recorded at the opening of the
+implementation, `evidence.md` 0.3): the function receives the assembly
+that states the mate; `at` stays numbers; no read of the resolved
+values; a new ADR-150 (NODE) amends ADR-147 and ADR-148.
+
 ## Capabilities
 
 ### New Capabilities

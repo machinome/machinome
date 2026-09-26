@@ -228,10 +228,11 @@ state the axis alone, the anchor alone, both or neither. ``at=(0, 0, 0)``
 written is the moving part's origin, not the frame's: left out, the
 anchor here would be ``(0, 0, 68)``, a point on the same line, turning
 the link the same way. Nothing checks a stated line against the frames;
-an anchor is any point on its line. A stated line is three numbers,
-because it is written in the assembly and read in the moving part's
-frame, where a parameter or a callable would resolve against the wrong
-node.
+an anchor is any point on its line. A stated line holds no parameter or
+formula, because it is written in the assembly and read in the moving
+part's frame, where a parameter would resolve against the wrong node.
+Its ``axis`` may instead be one function of the assembly, as the end of
+this section shows; its ``at`` is three numbers.
 
 A frame's arguments follow the joint rule below, resolve to numbers when
 the part is built, and are neither identity nor geometry: adding one
@@ -245,24 +246,28 @@ name, or ``<child>.<frame>`` of another child the assembly declares, which
 then must not move: the mated part rests against that child's rest
 placement, and siblings do not carry each other. The **moving end** is a
 frame of a child the assembly declares directly. The **freedom** is a
-``Revolute``, the one place a ``Revolute`` may leave out its axis; the
-line it states, if any, is three numbers for each of ``axis`` and
-``at``, and its range is numbers, ``None`` or functions of the
-coordinate's own value.
+``Revolute``, the one place a ``Revolute`` may leave out its axis. A
+stated ``axis`` is three numbers or one function of the assembly, a
+stated ``at`` three numbers, and the range a pair of numbers, ``None``
+or functions of the coordinate's own value, or one function of the
+assembly returning such a pair.
 
 Refused when the class is created, naming the mate: a mate on a node
 that is not an assembly; a moving end that is the assembly's own frame;
 either end reached through more than one child, a list or a
 ``repeat()``; a fixed end on a child that can move; a second mate on one
 child; a mate never assigned to a name; a freedom that is not a fresh
-``Revolute``, or whose stated ``axis`` or ``at`` is not three numbers,
-or whose stated ``axis`` has no length, or whose range reads other
-coordinates or the node; a mate with no freedom at all; and a mate
-name the moving child already answers to. Refused when the arm renders:
-a ``render()`` that also places a mated child. A mate publishes nothing
-new: the document carries its rest placement as operations and its
-coordinate as a binding, at the version the same machine without mates
-declares.
+``Revolute``, or whose stated ``axis`` is neither three numbers nor a
+function, or whose stated ``at`` is not three numbers, a function
+``at`` included, or whose stated ``axis`` has no length, or whose range
+holds a parameter or reads other coordinates; a mate with no freedom at
+all; and a mate name the moving child already answers to. Refused when
+the arm is built: a freedom's function that raises, or returns what the
+same argument written in numbers would refuse, naming the assembly, the
+mate and the argument. Refused when the arm renders: a ``render()`` that
+also places a mated child. A mate publishes nothing new: the document
+carries its rest placement as operations and its coordinate as a
+binding, at the version the same machine without mates declares.
 
 A test that holds a machine's connectors to a design reads them back
 rather than restating them. ``resolved_frames(node)``, from
@@ -307,12 +312,61 @@ A mate's ``name`` is its coordinate's. Its ``moving`` end reads
 reference, for a frame of another child, or, for a frame of the assembly
 written by its bare name, that ``Frame``, read by its ``name``. Its
 ``freedom`` is the ``Revolute`` as written: ``axis`` is ``None`` unless
-stated, ``range`` and ``unit`` as written. ``at`` is the mate's anchor
-only when ``anchor_written`` is true; left out, it reads ``(0, 0, 0)``,
-and the anchor is the moving frame's origin. So the line a mate turns
-its child about is ``freedom.axis``, else the moving frame's resolved
-``z``, through ``freedom.at`` when written, else through the moving
-frame's resolved ``at``.
+stated, ``range`` and ``unit`` as written, and an ``axis`` or ``range``
+stated as a function reads as that function, without calling it.
+``at`` is the mate's anchor only when ``anchor_written`` is true; left
+out, it reads ``(0, 0, 0)``, and the anchor is the moving frame's
+origin. So the line a mate turns its child about is ``freedom.axis``,
+else the moving frame's resolved ``z``, through ``freedom.at`` when
+written, else through the moving frame's resolved ``at``. What a
+function returned for a built machine is not one of these reads.
+
+A handed design mounts one part mirrored on each side, and the sides
+may differ in more than where the part sits: the line it turns about,
+and how far it turns. A frame may already be a function of the node
+that declares it. A freedom's ``axis`` and ``range`` may each be one
+function too, of the assembly that states the mate:
+
+.. code-block:: python
+
+    from machinome.motion.joints import Revolute
+    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.frames import Frame
+    from machinome.parameters import Flag
+    from solid2 import cube
+
+    class Link(Solid2Node):
+        origin = Frame()
+
+        def render(self):
+            return cube([20, 20, 100])
+
+    class Mount(AssemblyNode):
+        left = Flag(False)
+        pin = Frame(at=lambda node: (0, 62.5 if node.left else -62.5, 0))
+
+        link = Link()
+
+        turn = link.origin.on(pin, Revolute(
+            axis=lambda node: (0, 1, 0) if node.left else (0, -1, 0),
+            range=lambda node: (-200, 80) if node.left else (-80, 200),
+            unit='deg'))
+
+    left, right = Mount(left=True), Mount(left=False)
+
+Every ``node`` here is the mount. A freedom's function is called with
+the assembly that states the mate, the node whose class body it is
+written in, as the frame's function is, and never with the moving part,
+which here has no ``left`` at all. It is called once, when the assembly
+builds the moving part: the assembly's own parameters, frames and
+joints are resolved by then, and every child it declares before the
+moving part is built, but nothing is rendered yet. What it returns is
+taken as the same argument written in numbers is: an ``axis`` of three
+numbers with a direction, read in the moving part's own frame, and a
+``range`` pair of the kinds above. The left link rests at
+``(0, 62.5, 0)`` and turns about ``(0, 1, 0)`` within ``(-200, 80)``;
+the right one rests at ``(0, -62.5, 0)`` and turns about ``(0, -1, 0)``
+within ``(-80, 200)``. A stated ``at`` stays three numbers.
 
 Arguments
 ---------

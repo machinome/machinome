@@ -292,6 +292,12 @@ class Joint(Coordinate):
     # carries when the declaration names none.
     coordinate_kind = None
     default_unit = None
+    # Whether a MATE installed this joint from a freedom that states its
+    # axis or range as a function of the ASSEMBLY
+    # (`machinome.motion.mates._install`): such a joint is resolved by
+    # `ChildDeclaration.realize`, with the assembly in hand, never in the
+    # child's own constructor and never lazily against the child.
+    _resolved_by_mate = False
 
     def __init__(self, axis, at=(0, 0, 0), range=None, unit=None):
         self.axis = axis
@@ -548,13 +554,35 @@ class Joint(Coordinate):
     def arguments(self, node):
         """The resolved `(axis, at, range)` for `node` -- and whatever
         further argument the subclass declares after them -- resolving
-        them now for a node the realization path never reached."""
+        them now for a node the realization path never reached.
+
+        A joint a mate installed from a function of its assembly is the
+        exception: only the assembly can resolve it, so a node the
+        realization path never reached is refused, naming the mate and
+        its assembly, and the function is never called with the node."""
         resolved = node.__dict__.setdefault('_joint_arguments', {})
         found = resolved.get(self.name)
         if found is None:
+            if self._resolved_by_mate:
+                raise self._unreached_by_mate(node)
             found = resolved[self.name] = self.resolve(
                 node, node.__dict__.get('_parameters', {}))
         return found
+
+    def _unreached_by_mate(self, node):
+        from machinome.parameters import ParameterError
+
+        mate = self.installed_by
+        owner = mate.owner.__name__
+        child = mate.moving.root._name
+        return ParameterError(
+            f"{type(node).__name__}.{self.name}: this is the joint the mate "
+            f"{owner}.{mate.name} gives '{child}', and its freedom states a "
+            f"function of {owner}, called with the realized {owner} as it "
+            f"builds '{child}'. This {type(node).__name__} was built "
+            f"outside {owner}, so there is no {owner} to call it with; the "
+            f"function is never called with the moving part itself. Build "
+            f"it as the child '{child}' of a {owner}.")
 
     ##############################################
     # Binding
@@ -803,8 +831,10 @@ class Revolute(Joint):
     mate, `hinge.on(pin, Revolute(range=...))`, where the moving frame
     supplies it by default, its `z` the axis and its origin the anchor
     (`machinome.motion.mates`); a freedom may instead state either, in
-    numbers, in the moving child's own frame. Anywhere else an axis-less
-    `Revolute` is refused when the class is defined.
+    numbers, in the moving child's own frame, and its axis and its range
+    may each be one function of the assembly that states the mate.
+    Anywhere else an axis-less `Revolute` is refused when the class is
+    defined.
     """
 
     coordinate_kind = RotationalPort
@@ -1458,6 +1488,14 @@ def resolve_declared_joints(node):
     parent is still building this very child. `ChildDeclaration.realize`
     resolves it instead, immediately after this child is constructed,
     against the parent it already has (`machinome.node.declarative`).
+
+    A joint a MATE installed from a freedom stating a function of the
+    assembly is skipped for the same reason: the function is called
+    with that assembly, which is still building this child, and
+    `ChildDeclaration.realize` resolves the joint once this child exists
+    (`machinome.motion.mates.resolve_freedom_functions`). A mate whose
+    freedom states numbers or nothing installs an ordinary class joint,
+    resolved here.
     """
     joints = declared_joints(type(node))
     if not joints:
@@ -1465,7 +1503,7 @@ def resolve_declared_joints(node):
     values = node.__dict__.get('_parameters', {})
     resolved = node.__dict__.setdefault('_joint_arguments', {})
     for name, joint in joints.items():
-        if joint._declared_at_site:
+        if joint._declared_at_site or joint._resolved_by_mate:
             continue
         resolved[name] = joint.resolve(node, values)
 

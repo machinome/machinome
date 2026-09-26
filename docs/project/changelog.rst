@@ -30,6 +30,14 @@ Unreleased
   and ``Revolute`` freedom are documented reads off the class through
   ``declared_mates``, so a test can hold a machine's connectors to its
   design without restating how a frame resolves.
+* **A handed design mates per instance.** A mate's freedom may state its
+  ``axis`` and its ``range`` each as one function of the assembly that
+  states the mate, ``Revolute(axis=lambda node: ..., range=lambda node:
+  ...)``, called once with that assembly as it builds the moving part,
+  so one class per joint, mounted on either side, states each side's
+  line and limits beside the fixed frame that is already a function of
+  the side. The result is taken as numbers written there are; ``at``
+  stays three numbers (ADR-150).
 
 Machinome 0.7.0
 ---------------

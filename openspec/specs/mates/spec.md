@@ -175,15 +175,18 @@ It MAY also state the line the child turns about,
 `Revolute(axis=(x, y, z), at=(x, y, z), range=..., unit=...)`, because a
 design's connectors are ATTACHMENT frames and the line a part turns about
 need not be the moving frame's `z` nor pass through its origin. A stated
-`axis` and a stated `at` SHALL each be three numbers, read in the MOVING
-CHILD's own rest frame — the frame the moving frame is declared in and a
-joint the child's own class declares is read in — and nothing SHALL be
-carried or inverted to read them. Each SHALL be independent of the
-other: a freedom may state `axis` alone, `at` alone, both or neither,
-and what it leaves out the moving frame supplies (see "A mate gives the
-moving child a joint"). The freedom's `range` SHALL be omitted, a pair of
-numbers, or a pair whose bounds are numbers, `None`, or functions of the
-coordinate's own value.
+`at` SHALL be three numbers. A stated `axis` SHALL be three numbers or
+one function of the assembly that states the mate (see "A mate's freedom
+may be a function of the assembly that states it"). Each SHALL be read
+in the MOVING CHILD's own rest frame — the frame the moving frame is
+declared in and a joint the child's own class declares is read in — and
+nothing SHALL be carried or inverted to read them. Each SHALL be
+independent of the other: a freedom may state `axis` alone, `at` alone,
+both or neither, and what it leaves out the moving frame supplies (see
+"A mate gives the moving child a joint"). The freedom's `range` SHALL be
+omitted, a pair of numbers, a pair whose bounds are numbers, `None`, or
+functions of the coordinate's own value, or one function of the assembly
+that states the mate returning such a pair.
 
 The following SHALL be refused when the declaring class is created,
 naming the class, the mate and the reason:
@@ -204,12 +207,15 @@ naming the class, the mate and the reason:
 - a mate with a freedom that is left unnamed, because its coordinate is
   named after the mate;
 - a freedom that is not a `Revolute` — a `Prismatic`, an `Orbit` or a
-  `Free` —, a freedom whose range is a callable of the node or reads
-  other coordinates, or a freedom already declared on some class;
-- a freedom whose stated `axis` or `at` is not three numbers — a
-  parameter token, a formula, or a callable of the node, each of which
-  would be resolved against the moving child although it is written in
-  the assembly —, or whose stated `axis` has no length;
+  `Free` —, a freedom whose range is neither a pair nor a function, or
+  holds a parameter token or a formula, or reads other coordinates, or a
+  freedom already declared on some class;
+- a freedom whose stated `axis` is neither three numbers nor a function,
+  or whose stated `at` is not three numbers — a parameter token or a
+  formula in either, which would be resolved by name against the moving
+  child although it is written in the assembly, or a function in `at`,
+  which this version does not accept —, or whose stated `axis` of three
+  numbers has no length;
 - a mate stated with no freedom, the rigid mate, which this version does
   not provide.
 
@@ -277,14 +283,36 @@ naming the class, the mate and the reason:
 - **THEN** the class is created, the line keeping the moving frame's `z`
   as its direction
 
-#### Scenario: A stated line is numbers
+#### Scenario: A stated line holds no parameter
 
 - **WHEN** an assembly declaring `lift = Length(5)` states
   `part.hinge.on(pin, Revolute(at=(0, 0, lift)))`, or
-  `part.hinge.on(pin, Revolute(axis=lambda node: (0, 0, 1)))`
+  `part.hinge.on(pin, Revolute(at=(0, 0, lift * 2)))`
 - **THEN** creating the class raises, naming the class, the mate and the
   argument, and saying a mate's stated line is written in the assembly
-  and read in the moving child's frame, so it is three numbers
+  and read in the moving child's frame, so a parameter or a formula
+  would resolve against the moving child
+
+#### Scenario: A stated anchor is not a function
+
+- **WHEN** an assembly states
+  `part.hinge.on(pin, Revolute(at=lambda node: (0, 0, 0)))`
+- **THEN** creating the class raises, naming the class, the mate and
+  `at`, and saying a stated anchor is three numbers in this version
+
+#### Scenario: A freedom's axis or range may be a function
+
+- **WHEN** an assembly states
+  `swing = part.hinge.on(pin, Revolute(axis=lambda node: (0, 0, 1)))`,
+  or `swing = part.hinge.on(pin, Revolute(range=lambda node: (0, 90)))`
+- **THEN** the class is created and reports one mate named `swing`
+
+#### Scenario: A range holds no parameter
+
+- **WHEN** an assembly declaring `limit = Angle(90)` states
+  `part.hinge.on(pin, Revolute(range=(0, limit)))`
+- **THEN** creating the class raises, naming the class, the mate and the
+  range
 
 #### Scenario: A stated axis has a direction
 
@@ -389,12 +417,14 @@ refuse the mate at realization, naming the mate and the child.
 ### Requirement: A mate gives the moving child a joint
 
 At realization the moving child SHALL move about a revolute joint whose
-axis is the freedom's stated `axis`, or the moving frame's `z` when the
-freedom states none, and whose anchor is the freedom's stated `at`, or
-the moving frame's origin when the freedom states none — all in the
-child's own rest frame, where the frame was declared and a stated line is
-read, so nothing is carried or inverted — carrying the freedom's range
-and unit. An `at` written as `(0, 0, 0)` SHALL be the child's own origin,
+axis is the freedom's stated `axis` — the three numbers written, or what
+its function returned for the realized assembly —, or the moving frame's
+`z` when the freedom states none, and whose anchor is the freedom's
+stated `at`, or the moving frame's origin when the freedom states none —
+all in the child's own rest frame, where the frame was declared and a
+stated line is read, so nothing is carried or inverted — carrying the
+freedom's range — the range written, or what its function returned for
+the realized assembly — and unit. An `at` written as `(0, 0, 0)` SHALL be the child's own origin,
 not the frame's. The frames SHALL fix the child's rest placement, and
 therefore the zero of the coordinate, whatever line the freedom states;
 the freedom SHALL fix only the line. Nothing SHALL check that a stated
@@ -727,19 +757,25 @@ with these reads documented in the framework's API reference:
   frame of the assembly itself, written by its bare name, that `Frame`
   declaration, whose `name` SHALL be its attribute;
 - `freedom`, the `Revolute` written in the statement, whose `axis` SHALL
-  be `None` when no axis is stated and otherwise the three numbers as
-  written, not normalized; whose `anchor_written` SHALL say whether `at`
-  was written; whose `at` SHALL be the three numbers as written when
-  `anchor_written` is true, and SHALL NOT be the mate's anchor when it is
-  false, the anchor then being the moving frame's origin; whose `range`
-  SHALL be as written, or `None`; and whose `unit` SHALL be as written,
-  or `'deg'`.
+  be `None` when no axis is stated, the three numbers as written, not
+  normalized, when numbers are stated, and the function itself, the same
+  object, when a function is stated; whose `anchor_written` SHALL say
+  whether `at` was written; whose `at` SHALL be the three numbers as
+  written when `anchor_written` is true, and SHALL NOT be the mate's
+  anchor when it is false, the anchor then being the moving frame's
+  origin; whose `range` SHALL be as written — a pair, or the function
+  itself, the same object — or `None`; and whose `unit` SHALL be as
+  written, or `'deg'`.
 
-The line a mate turns its child about SHALL be readable from these reads
-and the moving child's resolved frames alone: `freedom.axis` when it is
-not `None`, else the moving frame's resolved `z`; through `freedom.at`
-when `anchor_written` is true, else through the moving frame's resolved
-`at`. Reading any of them SHALL change nothing.
+When the freedom's `axis` is not a function, the line a mate turns its
+child about SHALL be readable from these reads and the moving child's
+resolved frames alone: `freedom.axis` when it is not `None`, else the
+moving frame's resolved `z`; through `freedom.at` when `anchor_written`
+is true, else through the moving frame's resolved `at`. When it is a
+function, the read SHALL be that function, and the axis on a realized
+machine is what the function returned for that machine's assembly; no
+documented read reports it in this version. Reading any of them SHALL
+change nothing and SHALL NOT call a function.
 
 #### Scenario: Thor's elbow is read back
 
@@ -782,3 +818,127 @@ when `anchor_written` is true, else through the moving frame's resolved
   `rotation`, and the mate with its `name`, `moving`, `fixed` and
   `freedom`, beside `Frame`, `declared_frames` and `declared_mates`
 
+
+#### Scenario: A function is read as written
+
+- **WHEN** the mount of "OpenArm's joint is one mate on both sides" is
+  read under `turn`, its `axis` and `range` functions counting their
+  calls
+- **THEN** its freedom's `axis` and `range` are those two functions, the
+  same objects, `anchor_written` is false, and neither function's count
+  moves
+
+### Requirement: A mate's freedom may be a function of the assembly that states it
+
+The system SHALL accept, as a mate's freedom's `axis` and as its
+`range`, each as a whole, one function of one argument — a callable that
+is not a parameter token, a formula or a `Bound`. Each function SHALL be
+called with the realized ASSEMBLY that states the mate — the node whose
+class body the function is written in, the node a function given to a
+frame that assembly declares is called with — and SHALL NOT be called
+with the moving child. For a mate a subclass inherits, it SHALL be called
+with the realized subclass instance.
+
+Each function SHALL be called exactly once per realized assembly, when
+that assembly realizes the moving child: after the assembly's parameters
+are resolved, its `check()` has run and its joints and frames are
+resolved, with every child it declares before the moving child already
+realized, and before the assembly renders — the state in which a
+function given to a site-declared joint is called. Binding, rendering,
+reading and exporting SHALL NOT call it again. It SHALL enter no node's
+identity and no artifact key.
+
+The function's result SHALL be taken exactly as the same argument written
+in numbers is taken: an `axis` SHALL be three real numbers — each an
+`int` or a `float`, not a `bool` — of non-zero length, read in the moving
+child's own rest frame; a `range` SHALL be a `(lo, hi)` pair whose
+bounds are numbers, `None`, functions of the coordinate's own value, or
+a `Bound` that reads no other coordinate. The joint the mate gives the
+moving child SHALL then resolve, normalize and refuse that result as it
+resolves, normalizes and refuses the same numbers written in the
+freedom, so a function returning the numbers a freedom could state gives
+the child the joint those numbers give.
+
+A function that raises, or whose result is not what the numbers form
+takes — a sequence of another length, a string, a `bool`, a parameter
+token or a formula, a function, an axis of zero length, a range that is
+not a pair or holds a bound that is not a number, `None`, a function of
+the coordinate or a `Bound` reading no other coordinate — SHALL be
+refused when the assembly realizes the moving child, naming the
+assembly's class, the mate and the argument, and quoting what the
+function returned or raised.
+
+The frames alone SHALL fix the moving child's rest placement, as "A mate
+places the moving child at rest" states, whatever the function returns.
+
+#### Scenario: OpenArm's joint is one mate on both sides
+
+- **WHEN** an assembly `HandedMount` declares `left = Flag(False)`,
+  `pin = Frame(at=lambda node: (0, 62.5 if node.left else -62.5, 0))`
+  and the child `link = HandedLink()`, `HandedLink` declaring
+  `origin = Frame()` and no parameter `left`, and states
+  `turn = link.origin.on(pin, Revolute(axis=lambda node: (0, 1, 0) if
+  node.left else (0, -1, 0), range=lambda node: (-200, 80) if node.left
+  else (-80, 200), unit='deg'))`, and it is realized once with
+  `left=True` and once with `left=False`
+- **THEN** the class is created; the left link's joint `turn` resolves
+  with axis `(0, 1, 0)` and range `(-200, 80)` and the link rests
+  translated by `(0, 62.5, 0)`; the right link's resolves with axis
+  `(0, -1, 0)` and range `(-80, 200)` and it rests translated by
+  `(0, -62.5, 0)`; binding the left mount's `turn` to 150 is refused
+  naming the range, and binding the right mount's `turn` to 150 is
+  accepted
+
+#### Scenario: The function receives the assembly, not the moving child
+
+- **WHEN** the moving child's class declares its own `left = Flag(True)`,
+  the assembly's `left` is `False`, the child is declared without
+  passing `left`, and the freedom's `axis` function records the node it
+  is called with
+- **THEN** it is called with the realized assembly, an instance of the
+  assembly's class, and the child's joint turns about `(0, -1, 0)`, the
+  assembly's side
+
+#### Scenario: The function is called once per realized assembly
+
+- **WHEN** functions counting their calls are given as a freedom's
+  `axis` and `range`, two assemblies are realized, and each is then bound
+  three times, rendered and exported
+- **THEN** each function has been called twice, once for each realized
+  assembly, both before the first binding
+
+#### Scenario: The function sees the assembly as a site's function does
+
+- **WHEN** an assembly declares a child `base` before the moving child,
+  and the freedom's `axis` function reads `node.base` and
+  `resolved_frames(node)`
+- **THEN** both reads succeed when the moving child is realized
+
+#### Scenario: A function's result is taken as the numbers are
+
+- **WHEN** the freedom's `axis` function returns `(0, 1)`, `(0, 0, 0)`,
+  `(0, 0, True)`, `'xyz'` or a function, or its `range` function returns
+  `(0,)` or `(True, 90)` or a pair holding a `Bound` that reads another
+  coordinate, or either function raises
+- **THEN** creating the assembly's class succeeds, and realizing the
+  assembly raises when it realizes the moving child, naming the
+  assembly's class, the mate and the argument and quoting what the
+  function returned or raised
+
+#### Scenario: A returned axis is normalized as a written one
+
+- **WHEN** the freedom's `axis` function returns `(0, 3, 0)`
+- **THEN** the child's joint resolves with axis exactly `(0, 1, 0)`
+
+#### Scenario: A handed machine publishes each side's line as operations
+
+- **WHEN** a root declares `angle = Driver(default=30, unit='deg')`,
+  `left = HandedMount(left=True)` and `right = HandedMount(left=False)`,
+  states `angle.drives(left.turn)` and `angle.drives(right.turn)`, and is
+  exported
+- **THEN** the document declares the version a machine without mates
+  declares and adds no field, and each link's operations equal, within
+  `1e-9`, those of a hand-placed twin whose link class declares
+  `turn = Revolute(axis=lambda node: ..., range=lambda node: ...)` over
+  its own `left` flag and whose mount's `render()` translates the link
+  to the same origin

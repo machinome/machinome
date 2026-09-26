@@ -381,13 +381,6 @@ class RefusalTest(BaseNodeTest):
                 part = Pin()
                 swing = part.hinge.on(pin, Revolute(at=(0, 0, lift * 2)))
 
-        def callable_axis():
-            class Lifted(AssemblyNode):
-                pin = Frame()
-                part = Pin()
-                swing = part.hinge.on(
-                    pin, Revolute(axis=lambda node: (0, 0, 1)))
-
         def two_components():
             class Lifted(AssemblyNode):
                 pin = Frame()
@@ -400,8 +393,9 @@ class RefusalTest(BaseNodeTest):
                 part = Pin()
                 swing = part.hinge.on(pin, Revolute(axis=(0, 0, True)))
 
+        # state-the-freedom-per-instance 2.1: the `callable_axis` case
+        # moved out to `test_a_freedom_axis_or_range_may_be_a_function`.
         for build, argument in ((token, 'at'), (formula, 'at'),
-                                (callable_axis, 'axis'),
                                 (two_components, 'axis'), (a_bool, 'axis')):
             with self.subTest(case=build.__name__):
                 message = self.assertRefused(
@@ -428,13 +422,6 @@ class RefusalTest(BaseNodeTest):
                 part = Pin()
                 swing = part.hinge.on(pin, Revolute(range=(0, limit)))
 
-        def whole():
-            class Ranged(AssemblyNode):
-                pin = Frame()
-                part = Pin()
-                swing = part.hinge.on(
-                    pin, Revolute(range=lambda node: (0, 90)))
-
         def reads():
             class Ranged(AssemblyNode):
                 gate = RotationalPort(unit='deg')
@@ -443,9 +430,41 @@ class RefusalTest(BaseNodeTest):
                 swing = part.hinge.on(pin, Revolute(
                     range=(Bound(lambda own, gate: gate, reads=gate), None)))
 
-        for build in (token, whole, reads):
+        # state-the-freedom-per-instance 2.1: the `whole` case moved out
+        # to `test_a_freedom_axis_or_range_may_be_a_function`.
+        for build in (token, reads):
             with self.subTest(range=build.__name__):
                 self.assertRefused(build, 'Ranged', 'swing', 'range')
+
+    # state-the-freedom-per-instance 2.1: the refusals of a function
+    # `axis` and a whole-range function are gone.
+    def test_a_freedom_axis_or_range_may_be_a_function(self):
+        for label, freedom in (
+                ('axis', lambda: Revolute(axis=lambda node: (0, 0, 1))),
+                ('range', lambda: Revolute(range=lambda node: (0, 90)))):
+            with self.subTest(label=label):
+                class Handed(AssemblyNode):
+                    pin = Frame()
+                    part = Pin()
+                    swing = part.hinge.on(pin, freedom())
+
+                self.assertEqual(
+                    list(mates_module().declared_mates(Handed)), ['swing'])
+
+    # state-the-freedom-per-instance 2.2: a function `at` stays refused,
+    # with its own reason.
+    def test_a_stated_anchor_is_not_a_function(self):
+        def build():
+            class Anchored(AssemblyNode):
+                pin = Frame()
+                part = Pin()
+                swing = part.hinge.on(
+                    pin, Revolute(at=lambda node: (0, 0, 0)))
+
+        message = self.assertRefused(
+            build, 'Anchored', 'swing', "freedom's at",
+            'a stated anchor is three numbers in this version')
+        self.assertNotIn('called with the moving child', message)
 
     def test_a_range_over_the_coordinate_itself_is_accepted(self):
         class Ranged(AssemblyNode):
@@ -1391,6 +1410,34 @@ class ManualTest(BaseNodeTest):
             self.assertAlmostEqual(component, expected, delta=1e-9)
         self.assertIn('(0, -68, 123)', section)
 
+    def test_the_joints_page_states_a_handed_freedom(self):
+        """state-the-freedom-per-instance 4.1: the handed example --
+        after the reads example, so the first three blocks keep their
+        indices -- runs, and each side's installed joint turns about its
+        side's axis within its side's range."""
+        section = _section(self.page('concepts', 'joints.rst'),
+                           'Frames and mates')
+        example = _code_blocks(section)[3]
+        namespace = {'__name__': __name__}
+        exec(compile(example, 'joints.rst', 'exec'), namespace)
+
+        Mount = namespace['Mount']
+        for left, axis, span, origin in (
+                (True, (0, 1, 0), (-200, 80), [0.0, 62.5, 0.0]),
+                (False, (0, -1, 0), (-80, 200), [0.0, -62.5, 0.0])):
+            with self.subTest(left=left):
+                mount = Mount(left=left)
+                joint = declared_joints(type(mount.link))['turn']
+                found_axis, _anchor, found_span = joint.arguments(mount.link)
+                self.assertEqual(found_axis, axis)
+                self.assertEqual(found_span, span)
+                mount.render()
+                self.assertEqual(numbers(serialized(mount.link)[0]), origin)
+        self.assertNotIn('left', vars(namespace['Link']))
+        for fragment in ('once', 'at=', 'the assembly'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, section)
+
     def test_the_reference_lists_frames_and_mates(self):
         api = self.page('reference', 'api.rst')
 
@@ -1600,3 +1647,359 @@ class ManualReadTest(BaseNodeTest):
                          'anchor_written', "'forearm.hinge'"):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, section)
+
+
+##############################################
+# state-the-freedom-per-instance, tasks 2.3 to 2.10: a mate's freedom
+# may state its `axis` and its `range` as a function of the ASSEMBLY
+# that states the mate, called once as the assembly realizes the moving
+# child, its result taken as the numbers are. The fixtures are a handed
+# joint and its hand-placed twin (`mate_project/handed.py`).
+
+def handed_fixtures():
+    from .mate_project import handed
+
+    return handed
+
+
+def installed(mount, name='turn'):
+    """The resolved `(axis, at, range)` of the joint the mate `name`
+    gives `mount.link`."""
+    return declared_joints(type(mount.link))[name].arguments(mount.link)
+
+
+class HandedFreedomTest(BaseNodeTest):
+    """2.3 to 2.8: the function, the node it receives, when, and how its
+    result is taken."""
+
+    def assertRefused(self, build, *expected, absent=(), kind=None):
+        from machinome.parameters import ParameterError
+
+        with self.assertRaises(kind or ParameterError) as raised:
+            build()
+        message = str(raised.exception)
+        for fragment in expected:
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+        for fragment in absent:
+            with self.subTest(absent=fragment):
+                self.assertNotIn(fragment, message)
+        return message
+
+    # 2.3 OpenArm's joint on both sides.
+    def test_the_handed_joint_resolves_per_side(self):
+        HandedMount = handed_fixtures().HandedMount
+
+        for left, axis, span, origin in (
+                (True, (0, 1, 0), (-200, 80), [0.0, 62.5, 0.0]),
+                (False, (0, -1, 0), (-80, 200), [0.0, -62.5, 0.0])):
+            with self.subTest(left=left):
+                mount = HandedMount(left=left)
+                self.assertEqual(installed(mount),
+                                 (axis, (0.0, 0.0, 0.0), span))
+
+                mount.render()
+                operations = serialized(mount.link)
+                self.assertEqual([operation[0] for operation in operations],
+                                 ['t'])
+                self.assertEqual(numbers(operations[0]), origin)
+
+    def test_the_handed_range_belongs_to_each_side(self):
+        from machinome.simulation import Driver
+
+        HandedMount = handed_fixtures().HandedMount
+
+        class LeftRoot(AssemblyNode):
+            angle = Driver(default=0.0, unit='deg')
+            mount = HandedMount(left=True)
+            angle.drives(mount.turn)
+
+        class RightRoot(AssemblyNode):
+            angle = Driver(default=0.0, unit='deg')
+            mount = HandedMount(left=False)
+            angle.drives(mount.turn)
+
+        with self.assertRaises(JointRangeError) as raised:
+            LeftRoot().set_state(angle=150)
+        self.assertIn('turn', str(raised.exception))
+
+        right = RightRoot()
+        right.set_state(angle=150)
+        self.assertEqual(right.mount.turn.value, 150)
+
+    # 2.4 The function receives the assembly.
+    def test_the_function_receives_the_assembly_not_the_child(self):
+        # (a) The child has no `left`: called with it, the function
+        # would raise AttributeError.
+        mount = handed_fixtures().HandedMount(left=True)
+        self.assertFalse(hasattr(mount.link, 'left'))
+        self.assertEqual(installed(mount)[0], (0, 1, 0))
+
+    def test_the_childs_own_flag_is_not_read(self):
+        # (b) The child's own `left` says the opposite of the mount's:
+        # called with the child, the function would read it silently.
+        handed = handed_fixtures()
+        del handed.CONTRARY_CALLS[:]
+        contrary = handed.ContraryMount(left=False)
+        self.assertIs(contrary.link.left, True)
+        self.assertEqual(len(handed.CONTRARY_CALLS), 1)
+        self.assertIs(handed.CONTRARY_CALLS[0], contrary)
+        self.assertIsInstance(handed.CONTRARY_CALLS[0], handed.ContraryMount)
+        self.assertEqual(installed(contrary)[0], (0, -1, 0))
+
+    # 3.4, pinned: the joint is never resolved against the child.
+    def test_a_handed_link_built_outside_its_mount_is_refused(self):
+        from machinome.parameters import ParameterError
+
+        mount = handed_fixtures().HandedMount(left=True)
+        stray = type(mount.link)()
+
+        with self.assertRaises(ParameterError) as raised:
+            declared_joints(type(stray))['turn'].arguments(stray)
+        message = str(raised.exception)
+        for fragment in ('HandedMount.turn', 'HandedMount'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+        self.assertNotIn('AttributeError', message)
+
+    # 2.5 Called once per realized assembly.
+    def test_the_function_is_called_once_per_realized_assembly(self):
+        from machinome.simulation import Driver
+
+        counts = {'axis': 0, 'range': 0}
+
+        def axis(node):
+            counts['axis'] += 1
+            return (0, 0, 1)
+
+        def span(node):
+            counts['range'] += 1
+            return (-90, 90)
+
+        class Counted(AssemblyNode):
+            angle = Driver(default=10.0, unit='deg')
+            pin = Frame()
+            part = Pin()
+            swing = part.hinge.on(pin, Revolute(axis=axis, range=span,
+                                                unit='deg'))
+            angle.drives(swing)
+
+        mounts = [Counted(), Counted()]
+        self.assertEqual(counts, {'axis': 2, 'range': 2})
+
+        for mount in mounts:
+            for value in (10, 20, 30):
+                mount.set_state(angle=value)
+            mount.render()
+            published(mount)
+        self.assertEqual(counts, {'axis': 2, 'range': 2})
+
+    # 2.6 The state it sees.
+    def test_the_function_sees_the_assembly_as_a_sites_function_does(self):
+        seen = []
+
+        def axis(node):
+            seen.append((node.base, resolved_frames(node)['pin'].at))
+            return (1, 0, 0) if isinstance(node.base, Swung) else (0, 0, 1)
+
+        class Based(AssemblyNode):
+            pin = Frame(at=(0, 0, 9))
+            base = Swung()
+            part = Pin()
+            swing = part.hinge.on(pin, Revolute(axis=axis, unit='deg'))
+
+        based = Based()
+
+        self.assertEqual(len(seen), 1)
+        self.assertIs(seen[0][0], based.base)
+        self.assertEqual(seen[0][1], (0.0, 0.0, 9.0))
+        axis_found = declared_joints(type(based.part))['swing'].arguments(
+            based.part)[0]
+        self.assertEqual(axis_found, (1, 0, 0))
+
+        based.swing = 30
+        based.render()
+        self.assertIn(['r', '30', [1, 0, 0]], serialized(based.part))
+
+    # 2.7 The result is taken as the numbers are.
+    def refusing(self, argument, returned):
+        """A mount whose freedom's `argument` function returns
+        `returned()` -- or raises, when `returned` does."""
+        HandedLink = handed_fixtures().HandedLink
+
+        def function(node):
+            return returned()
+
+        class Refusing(AssemblyNode):
+            pin = Frame()
+            link = HandedLink()
+            turn = link.origin.on(pin, Revolute(unit='deg',
+                                                **{argument: function}))
+
+        return Refusing
+
+    def test_a_functions_result_is_taken_as_the_numbers_are(self):
+        held = []
+
+        class Gated(AssemblyNode):
+            gate = RotationalPort(unit='deg')
+            held.append(Bound(lambda own, gate: gate, reads=gate))
+
+        def raising():
+            raise KeyError('no such side')
+
+        def a_function():
+            return lambda node: (0, 0, 1)
+
+        for argument, label, returned, quoted in (
+                ('axis', 'two', lambda: (0, 1), '(0, 1)'),
+                ('axis', 'zero', lambda: (0, 0, 0), '(0, 0, 0)'),
+                ('axis', 'bool', lambda: (0, 0, True), '(0, 0, True)'),
+                ('axis', 'string', lambda: 'xyz', "'xyz'"),
+                ('axis', 'function', a_function, 'lambda'),
+                ('axis', 'raising', raising, 'KeyError'),
+                ('range', 'one', lambda: (0,), '(0,)'),
+                ('range', 'bool', lambda: (True, 90), '(True, 90)'),
+                ('range', 'reads', lambda: (held[0], None), 'gate'),
+                ('range', 'raising', raising, 'KeyError')):
+            with self.subTest(argument=argument, returned=label):
+                Refusing = self.refusing(argument, returned)
+                self.assertRefused(
+                    Refusing, 'Refusing.turn', f"freedom's {argument}",
+                    quoted, absent=('HandedLink',))
+
+    def test_a_returned_axis_is_normalized_as_a_written_one(self):
+        Scaled = self.refusing('axis', lambda: (0, 3, 0))
+
+        self.assertEqual(installed(Scaled())[0], (0, 1, 0))
+
+    # 2.8 The class reads return the function.
+    def test_a_function_is_read_as_written(self):
+        handed = handed_fixtures()
+        counts = {'axis': 0, 'range': 0}
+
+        def axis(node):
+            counts['axis'] += 1
+            return (0, 0, 1)
+
+        def span(node):
+            counts['range'] += 1
+            return (-90, 90)
+
+        class Counted(AssemblyNode):
+            pin = Frame()
+            part = Pin()
+            swing = part.hinge.on(pin, Revolute(axis=axis, range=span,
+                                                unit='deg'))
+
+        freedom = mates_module().declared_mates(Counted)['swing'].freedom
+        self.assertIs(freedom.axis, axis)
+        self.assertIs(freedom.range, span)
+        self.assertIs(freedom.anchor_written, False)
+        self.assertEqual(counts, {'axis': 0, 'range': 0})
+
+        written = mates_module().declared_mates(
+            handed.HandedMount)['turn'].freedom
+        self.assertIs(written.axis, handed.side_axis)
+        self.assertIs(written.range, handed.side_range)
+        self.assertIs(written.anchor_written, False)
+
+
+class HandedTwinTest(BaseNodeTest):
+    """2.9 and 2.10: the handed machine against its hand-placed twin, and
+    nothing else moves."""
+
+    def assertSameOperations(self, mated, hand, delta=1e-9):
+        self.assertEqual([operation[0] for operation in mated],
+                         [operation[0] for operation in hand])
+        for ours, theirs in zip(mated, hand):
+            if ours[0] == 'r':
+                self.assertAlmostEqual(float(ours[1]), float(theirs[1]),
+                                       delta=delta)
+                for mine, written in zip(ours[2], theirs[2]):
+                    self.assertAlmostEqual(float(mine), float(written),
+                                           delta=delta)
+            else:
+                for mine, written in zip(numbers(ours), numbers(theirs)):
+                    self.assertAlmostEqual(mine, written, delta=delta)
+
+    def posed(self, cls, value):
+        from machinome.simulation.enumeration import bind_declared_defaults
+
+        node = cls()
+        if value == 'default':
+            bind_declared_defaults(node)
+        elif value is not None:
+            node.set_state(angle=value)
+        node.render()
+        return node
+
+    def assertSameLeaves(self, mated, hand, expected):
+        ours = dict(leaves_of(mated))
+        theirs = dict(leaves_of(hand))
+        self.assertEqual(sorted(ours), expected)
+        self.assertEqual(sorted(theirs), sorted(ours))
+        for path in ours:
+            self.assertTrue((abs(ours[path] - theirs[path]) < 1e-9).all(),
+                            path)
+
+    def test_the_handed_pair_reproduces_its_twin(self):
+        handed = handed_fixtures()
+        for value in ('default', -80, 0, 80):
+            with self.subTest(value=value):
+                mated = self.posed(handed.HandedPair, value)
+                hand = self.posed(handed.TwinPair, value)
+                for side in ('left', 'right'):
+                    ours = serialized(getattr(mated, side).link)
+                    theirs = serialized(getattr(hand, side).link)
+                    self.assertEqual([operation[0] for operation in ours],
+                                     ['r', 't'])
+                    self.assertSameOperations(ours, theirs)
+                self.assertSameLeaves(mated, hand,
+                                      ['/left/link', '/right/link'])
+
+    def test_each_unbound_side_rests_as_its_twin(self):
+        # A pair whose driver is unbound does not render, so "unbound"
+        # is each side's mount on its own, its mate left unbound.
+        handed = handed_fixtures()
+        for left in (True, False):
+            with self.subTest(left=left):
+                mated = handed.HandedMount(left=left)
+                hand = handed.TwinMount(left=left)
+                mated.render()
+                hand.render()
+                ours = serialized(mated.link)
+                self.assertEqual([operation[0] for operation in ours], ['t'])
+                self.assertSameOperations(ours, serialized(hand.link))
+                self.assertSameLeaves(mated, hand, ['/link'])
+
+    def test_a_handed_machine_needs_no_newer_consumer(self):
+        handed = handed_fixtures()
+        mated = published(handed.HandedPair())
+        hand = published(handed.TwinPair())
+
+        self.assertEqual(mated['version'], hand['version'])
+        self.assertEqual(set(mated), set(hand))
+        self.assertEqual(mated['drivers'], hand['drivers'])
+
+        for side in ('left', 'right'):
+            ours = entry_of(mated, side, 'link')['operations']
+            theirs = entry_of(hand, side, 'link')['operations']
+            with self.subTest(side=side):
+                self.assertEqual([operation[0] for operation in ours],
+                                 [operation[0] for operation in theirs])
+                for mine, written in zip(ours, theirs):
+                    if mine[0] == 'r':
+                        self.assertEqual(mine[1], written[1])
+                        for component, other in zip(mine[2], written[2]):
+                            self.assertAlmostEqual(float(component),
+                                                   float(other), delta=1e-9)
+                    else:
+                        for component, other in zip(mine[1], written[1]):
+                            self.assertAlmostEqual(float(component),
+                                                   float(other), delta=1e-9)
+
+        fields = {frozenset(entry) for entry in walk(hand['root'])}
+        for entry in walk(mated['root']):
+            with self.subTest(node=entry['name']):
+                self.assertIn(frozenset(entry), fields)

@@ -324,6 +324,12 @@ this section left open:
   therefore admits a freedom's range only as numbers, `None` or functions
   of the coordinate's own value, and refuses a parameter token, a
   whole-range callable or a `Bound` with reads, naming the mate.
+  *(amended 2026-09-26, state-the-freedom-per-instance, ADR-150)* A
+  whole-range function of the ASSEMBLY that states the mate is admitted,
+  and so is a function `axis`: each is called once with the realized
+  assembly as it realizes the moving child, its result checked as the
+  numbers are and resolved against the child. Tokens, formulas, a `Bound`
+  with reads and a function `at` stay refused.
 
 Coordinates do not disappear: they move into the one place they are local
 and obvious, and are written once. This layer answers every item of §4

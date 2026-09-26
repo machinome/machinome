@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-26
+**Amended by:** [ADR-150: A Mate's Freedom May Be a Function of the Assembly That States It](ADR-150-a-mates-freedom-may-be-a-function-of-the-assembly-that-states-it.md) — a stated `axis` may be one function of the assembly that states the mate, called once as the assembly realizes the moving child, its result checked and read as three numbers are; `at` stays three numbers
 **Amends:** [ADR-147](ADR-147-a-mate-compiles-to-a-rest-placement-a-joint-and-a-coordinate.md) ("the freedom is a fresh `Revolute` with neither axis nor anchor")
 **Extends:** [ADR-097](ADR-097-a-joint-is-stated-in-the-frame-of-whoever-declares-it.md) (a stated line is read in the moving child's own frame, the class form)
 **OpenSpec change:** `state-the-mate-line`

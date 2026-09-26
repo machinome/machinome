@@ -4006,3 +4006,8 @@ decided: handedness is a fact of the realized node, not of the class.
   its migration onto mates would have to split every joint class in two
   by side and give up the per-instance handedness its design already
   settled on. **Cycle cut: `state-the-freedom-per-instance`.**
+  **Fixed, 2026-09-26, by `state-the-freedom-per-instance` (ADR-150),
+  for `axis` and `range`:** each may be one function of the assembly
+  that states the mate, called once with the realized assembly as it
+  realizes the moving child. `at` stays three numbers (the project
+  needs none). Pending openarm's follow-up (the change's tasks §6).

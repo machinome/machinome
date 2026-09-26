@@ -31,6 +31,26 @@ the moving child's own frame; each it leaves out, the frame supplies.
 The frames still fix where the child rests, and so the zero of its
 coordinate; the freedom fixes only the line (ADR-148).
 
+A handed design -- one class per joint, instantiated once per side --
+states the freedom per instance: its `axis` and its `range` may each be
+ONE FUNCTION of the assembly that states the mate, the node whose class
+body writes it, as a function given to that assembly's own frame is
+(ADR-150)::
+
+    class Mount(AssemblyNode):
+        left = Flag(False)
+        pin = Frame(at=lambda node: (0, 62.5 if node.left else -62.5, 0))
+        link = Link()
+        turn = link.origin.on(pin, Revolute(
+            axis=lambda node: (0, 1, 0) if node.left else (0, -1, 0),
+            range=lambda node: (-200, 80) if node.left else (-80, 200)))
+
+It is called once per realized assembly, with that assembly, as it
+realizes the moving child (`call_freedom_functions`, from
+`ChildDeclaration.realize`), and never with the child; its result is
+checked by the rules the numbers are checked by and taken as they are,
+read in the moving child's own frame. A stated `at` stays three numbers.
+
 A mate compiles, at realization, to three things the framework already
 has and invents no fourth (ADR-147):
 
@@ -42,7 +62,10 @@ has and invents no fourth (ADR-147):
    are the ones the freedom states, else the moving frame's `z` and `at`
    as DECLARED, installed by
    `_specialize` -- ADR-098's mechanism -- under the mate's name, so it
-   takes a slot after every joint the child's own class declares;
+   takes a slot after every joint the child's own class declares; an
+   axis or range the freedom states as a function of the assembly is
+   what that function returned, resolved with the rest against the
+   child when the assembly realizes it (`resolve_freedom_functions`);
 3. a rotational COORDINATE of the assembly under the mate's name --
    this object, a `Coordinate` owning one port -- which relations,
    drivers and bindings see as an ordinary coordinate and which reaches
@@ -206,20 +229,26 @@ class Mate(Coordinate):
       its bare name, that `Frame` declaration, whose `name` is its
       attribute. `isinstance(mate.fixed, Frame)` tells the two apart.
     - `freedom`: the `Revolute` written in the statement. Its `axis` is
-      `None` when no axis is stated, otherwise the three numbers as
-      written, not normalized. `anchor_written` says whether `at` was
-      written: when true, `at` is the three numbers as written, in the
-      moving child's own frame, `(0, 0, 0)` meaning the child's origin;
-      when false, `at` reads the `Revolute` default `(0, 0, 0)` and is
-      NOT the mate's anchor, which is then the moving frame's origin.
-      `range` is as written, or `None`; `unit` as written, or `'deg'`.
+      `None` when no axis is stated, the three numbers as written, not
+      normalized, when numbers are stated, and the function itself, the
+      same object, when a function of the assembly is stated.
+      `anchor_written` says whether `at` was written: when true, `at` is
+      the three numbers as written, in the moving child's own frame,
+      `(0, 0, 0)` meaning the child's origin; when false, `at` reads the
+      `Revolute` default `(0, 0, 0)` and is NOT the mate's anchor, which
+      is then the moving frame's origin. `range` is as written -- a
+      pair, or the function itself -- or `None`; `unit` as written, or
+      `'deg'`. Reading any of them calls no function.
 
-    The line the mate turns its child about follows from these reads
-    and the moving child's resolved frames
-    (`machinome.node.frames.resolved_frames`) alone: `freedom.axis` when
-    it is not `None`, else the moving frame's resolved `z`; through
-    `freedom.at` when `anchor_written` is true, else through the moving
-    frame's resolved `at`.
+    When `freedom.axis` is not a function, the line the mate turns its
+    child about follows from these reads and the moving child's resolved
+    frames (`machinome.node.frames.resolved_frames`) alone:
+    `freedom.axis` when it is not `None`, else the moving frame's
+    resolved `z`; through `freedom.at` when `anchor_written` is true,
+    else through the moving frame's resolved `at`. When it is a
+    function, the axis on a built machine is what the function returned
+    for that machine's assembly, and no documented read reports it in
+    this version; nor does one report a range a function returned.
 
     A data descriptor, like a joint, so reading it on an instance yields
     the bound port slot and assigning to it binds; a `Coordinate`, so
@@ -401,9 +430,15 @@ def _check_still_declared(cls, name, mate):
 
 def _check_freedom(name, mate):
     """The freedom a mate accepts in this version: a fresh `Revolute`
-    whose stated line, if any, is three numbers with a direction, and
-    whose range is independent of any declarer."""
-    from machinome.motion.joints import Bound, Revolute
+    whose stated `at`, if any, is three numbers; whose stated `axis`, if
+    any, is three numbers with a direction or one function of the
+    assembly; and whose range is a pair independent of any declarer or
+    one function of the assembly (state-the-freedom-per-instance).
+
+    A function is only accepted here: it is called, and its result
+    checked by the same rules, when the assembly realizes the moving
+    child (`call_freedom_functions`)."""
+    from machinome.motion.joints import Revolute
 
     freedom = mate.freedom
     where = _named(name, mate)
@@ -428,35 +463,14 @@ def _check_freedom(name, mate):
             f"mate's freedom becomes a joint of the child it moves, so it "
             f"is written fresh in the statement: "
             f"...on(<fixed>, Revolute(range=(lo, hi))).")
-    if freedom.axis is not None:
+    if freedom.axis is not None and not _is_function(freedom.axis):
         _check_stated(where, 'axis', freedom.axis)
     if freedom.anchor_written:
         _check_stated(where, 'at', freedom.at)
     declared = freedom.range
-    if declared is None:
+    if declared is None or _is_function(declared):
         return
-    reason = None
-    if callable(declared):
-        reason = ('is a callable of the node, which would be resolved '
-                  'against the moving child')
-    elif (isinstance(declared, (str, bytes))
-          or not hasattr(declared, '__len__') or len(declared) != 2):
-        reason = 'is not a plain (lo, hi) pair'
-    else:
-        for bound in declared:
-            if bound is None or _is_number(bound):
-                continue
-            if isinstance(bound, Bound):
-                if bound.reads:
-                    reason = (f'has a bound reading other coordinates '
-                              f'({bound.described()})')
-                    break
-                continue
-            if callable(bound) and not hasattr(bound, 'dimension'):
-                continue
-            reason = (f'has the bound {bound!r}, which is not a number, '
-                      f'None or a function of the coordinate itself')
-            break
+    reason = _range_reason(declared)
     if reason is not None:
         raise TypeError(
             f"{where}: its freedom's range {declared!r} {reason}. The "
@@ -469,18 +483,49 @@ def _is_number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def _check_stated(where, argument, value):
-    """A line a freedom states: three numbers, and an axis with a
-    direction (state-the-mate-line, design decision 5).
+def _is_function(value):
+    """Whether a freedom's argument is ONE FUNCTION of the assembly:
+    callable, and neither a parameter token or formula (tested first,
+    by `dimension`, as the stated-line rule orders it) nor a `Bound`."""
+    from machinome.motion.joints import Bound
 
-    The installed joint resolves its arguments against the moving CHILD,
-    and a parameter token resolves by NAME, so a token or formula
-    written in the assembly would silently read the child's parameter of
-    the same name, and a callable would be called with the child. The
-    values are numbers, so a zero-length axis -- below the joint's own
-    `1e-9` threshold -- is known here, where the refusal can name the
-    mate, rather than at realization.
-    """
+    return (callable(value) and not hasattr(value, 'dimension')
+            and not isinstance(value, Bound))
+
+
+def _range_reason(declared):
+    """Why `declared` is not a range a mate's freedom takes as a pair --
+    a `(lo, hi)` pair whose bounds are numbers, `None`, functions of the
+    coordinate's own value or a `Bound` reading no other coordinate --
+    or None when it is. The one wording of the rule, for a range written
+    in the freedom and for one a function of the assembly returned."""
+    from machinome.motion.joints import Bound
+
+    if callable(declared):
+        return ('is a callable of the node, which would be resolved '
+                'against the moving child')
+    if (isinstance(declared, (str, bytes))
+            or not hasattr(declared, '__len__') or len(declared) != 2):
+        return 'is not a plain (lo, hi) pair'
+    for bound in declared:
+        if bound is None or _is_number(bound):
+            continue
+        if isinstance(bound, Bound):
+            if bound.reads:
+                return (f'has a bound reading other coordinates '
+                        f'({bound.described()})')
+            continue
+        if callable(bound) and not hasattr(bound, 'dimension'):
+            continue
+        return (f'has the bound {bound!r}, which is not a number, None or '
+                f'a function of the coordinate itself')
+    return None
+
+
+def _stated_reason(value):
+    """Why `value` is not three real numbers, or None when it is. The
+    one wording of the stated-line rule, for a line written in the
+    freedom and for an axis a function of the assembly returned."""
     reason = None
     if hasattr(value, 'dimension'):
         reason = ('is a parameter token or a formula, which would resolve '
@@ -505,14 +550,48 @@ def _check_stated(where, argument, value):
             else:
                 reason = f'holds {component!r}, which is not a number'
             break
+    return reason
+
+
+def _has_no_length(axis):
+    """Whether three numbers are shorter than the joint's own `1e-9`."""
+    return math.sqrt(sum(component ** 2 for component in axis)) < _SNAP
+
+
+def _check_stated(where, argument, value):
+    """A line a freedom states in numbers: three numbers, and an axis
+    with a direction (state-the-mate-line, design decision 5).
+
+    The installed joint resolves its arguments against the moving CHILD,
+    and a parameter token resolves by NAME, so a token or formula
+    written in the assembly would silently read the child's parameter of
+    the same name. The values are numbers, so a zero-length axis --
+    below the joint's own `1e-9` threshold -- is known here, where the
+    refusal can name the mate, rather than at realization.
+
+    A function `axis` never reaches here: it is one function of the
+    assembly, called when the assembly realizes the moving child and its
+    result checked by these same rules then (`call_freedom_functions`).
+    A function `at` is refused here with its own reason: a stated anchor
+    is three numbers in this version (state-the-freedom-per-instance,
+    design decision 5).
+    """
+    if argument == 'at' and _is_function(value):
+        raise TypeError(
+            f"{where}: its freedom's at {value!r} is a function, and a "
+            f"stated anchor is three numbers in this version: at=(x, y, "
+            f"z), in the moving child's own frame. A freedom's axis and "
+            f"range may each be one function of the assembly that states "
+            f"the mate, its at may not; leave at out to turn about the "
+            f"moving frame's origin.")
+    reason = _stated_reason(value)
     if reason is not None:
         raise TypeError(
             f"{where}: its freedom's {argument} {value!r} {reason}. A line "
             f"a mate's freedom states is written in the assembly and read "
             f"in the moving child's frame, so it is three numbers: "
             f"{argument}=(x, y, z).")
-    if argument == 'axis' and math.sqrt(
-            sum(component ** 2 for component in value)) < _SNAP:
+    if argument == 'axis' and _has_no_length(value):
         raise TypeError(
             f"{where}: its freedom's axis {value!r} has zero length, and an "
             f"axis of zero length states no line to turn about. State the "
@@ -695,6 +774,16 @@ def _install(cls, name, mate):
     on the child -- takes the slot after every joint the child's class
     declares (ADR-093).
 
+    A freedom whose `axis` or `range` is a FUNCTION of the assembly is
+    passed through the same way, the function itself, and the joint is
+    marked `_resolved_by_mate`: the child's own constructor skips it
+    (`resolve_declared_joints`), and `ChildDeclaration.realize` resolves
+    it instead, against the child, with what the function returned for
+    the realized assembly in the function's place
+    (`call_freedom_functions`, `resolve_freedom_functions`;
+    state-the-freedom-per-instance). A freedom stating numbers or
+    nothing installs exactly the joint it installed before, unmarked.
+
     The wiring hands the assembly's coordinate to that joint (ADR-088):
     one binder, one address, and relations see only the assembly's port.
     """
@@ -708,11 +797,125 @@ def _install(cls, name, mate):
         at=freedom.at if freedom.anchor_written else frame.at,
         range=freedom.range, unit=freedom.unit)
     joint.installed_by = mate
+    if _is_function(freedom.axis) or _is_function(freedom.range):
+        joint._resolved_by_mate = True
     declaration = mate.moving.root
     declaration.node_class = _specialize(declaration.node_class,
                                          {mate.name: joint})
     declaration.wiring[mate.name] = mate
     mate.joint = joint
+
+
+##############################################
+# Realization: a freedom that is a function of the assembly
+
+def _freedom_functions(declaration):
+    """The mates whose freedom states a function and whose moving child
+    `declaration` declares: at most one, since a child is placed by one
+    mate."""
+    return [source for source in declaration.wiring.values()
+            if _is_mate(source) and source.joint is not None
+            and source.joint._resolved_by_mate]
+
+
+def _function_refusal(assembly, mate, argument, detail):
+    from machinome.parameters import ParameterError
+
+    owner = type(assembly).__name__
+    if argument == 'axis':
+        rule = ("three real numbers with a direction, read in the moving "
+                "child's own frame")
+    else:
+        rule = ("a (lo, hi) pair whose bounds are numbers, None, "
+                "functions of the coordinate's own value or a Bound that "
+                "reads no other coordinate")
+    return ParameterError(
+        f"{owner}.{mate.name}: its freedom's {argument} function {detail}. "
+        f"The function is called with the {owner} that states the mate, "
+        f"as it builds '{mate.moving.root._name}', and what it returns is "
+        f"taken as the {argument} written in numbers is: {rule}.")
+
+
+def _result_reason(argument, result):
+    """Why a function's `result` is not what the numbers form of
+    `argument` takes, or None: `_check_stated`'s and `_check_freedom`'s
+    rules, worded once."""
+    if _is_function(result):
+        return ('is a function, not three numbers' if argument == 'axis'
+                else 'is a function, not a (lo, hi) pair')
+    if argument == 'range':
+        return _range_reason(result)
+    reason = _stated_reason(result)
+    if reason is None and _has_no_length(result):
+        reason = ('has zero length, and an axis of zero length states no '
+                  'line to turn about')
+    return reason
+
+
+def call_freedom_functions(declaration, assembly):
+    """Call each function a mate's freedom states for the child
+    `declaration` declares, ONCE, with the realized `assembly` -- the
+    node whose class body wrote it -- and check each result by the rules
+    the numbers are checked by at class creation.
+
+    Called by `ChildDeclaration.realize` BEFORE the child is
+    constructed, in the state a site-declared joint's function sees
+    (ADR-098): the assembly's parameters resolved, its `check()` run,
+    its joints and frames resolved, every child it declares before this
+    one realized, nothing rendered. A function that raises, or whose
+    result is not what the numbers form takes, is refused here, naming
+    the assembly's class, the mate and the argument, before the child's
+    subtree is built.
+
+    Returns `[(mate, {argument: result})]`, for
+    `resolve_freedom_functions` once the child exists; empty for every
+    declaration whose mate states no function.
+    """
+    called = []
+    for mate in _freedom_functions(declaration):
+        results = {}
+        for argument in ('axis', 'range'):
+            declared = getattr(mate.freedom, argument)
+            if not _is_function(declared):
+                continue
+            try:
+                result = declared(assembly)
+            except Exception as failure:
+                raise _function_refusal(
+                    assembly, mate, argument,
+                    f'raised {type(failure).__name__}: {failure} when '
+                    f'called with this {type(assembly).__name__}') from None
+            reason = _result_reason(argument, result)
+            if reason is not None:
+                raise _function_refusal(
+                    assembly, mate, argument,
+                    f'returned {result!r} for this '
+                    f'{type(assembly).__name__}, which {reason}')
+            results[argument] = result
+        called.append((mate, results))
+    return called
+
+
+def resolve_freedom_functions(child, called):
+    """Resolve the joint each mate of `called` gives `child`, against
+    the child, with what each function returned in the function's place,
+    and cache it where every reader of a joint's arguments looks,
+    `_joint_arguments[<mate>]`.
+
+    The joint's own resolution does the rest, exactly as for the numbers
+    form: the axis normalized and snapped, the range's bounds handled
+    and a numeric range order-checked, and what the moving frame
+    supplies -- its declared `z` or `at` -- still resolved against the
+    child, the node whose class declared it."""
+    import copy
+
+    values = child.__dict__.get('_parameters', {})
+    resolved = child.__dict__.setdefault('_joint_arguments', {})
+    for mate, results in called:
+        joint = copy.copy(mate.joint)
+        for argument, result in results.items():
+            setattr(joint, argument, result)
+        resolved[mate.name] = joint.resolve(child, values)
 
 
 ##############################################
