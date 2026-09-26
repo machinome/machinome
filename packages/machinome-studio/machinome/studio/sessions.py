@@ -17,6 +17,7 @@ from watchdog.observers import Observer
 from .app import Broker
 from .backends import create_backend
 from .backends.base import AgentBackend
+from .backends.codex_service import CodexService, ServiceReference, role_registry
 from .orchestrator import LocalBrokerControl, ShopOrchestrator, _route_backend_events
 from .preparation import (
     FolderListing,
@@ -97,6 +98,7 @@ class Session:
     source_workspace: SourceWorkspace = field(init=False)
     source_save_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     runtime_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    codex_reference: ServiceReference | None = None
 
     def __post_init__(self) -> None:
         self.source_workspace = SourceWorkspace(self.project_root)
@@ -149,6 +151,7 @@ class Session:
             "runtime": _runtime_value(self.orchestrator.current_runtime(role)),
             "supported": catalogue.supported,
             "reason": catalogue.reason or None,
+            "unavailable": catalogue.unavailable,
             "choices": [asdict(choice) for choice in catalogue.choices],
             "config_revision": await asyncio.to_thread(config_revision, self.project_root / "pyproject.toml"),
             "runtime_idle": self.broker.runtime_idle(role),
@@ -278,6 +281,11 @@ class Session:
                 # process owner to escalate shutdown. One failure must not
                 # prevent watcher cleanup or registry removal.
                 pass
+        if self.codex_reference is not None:
+            try:
+                await self.codex_reference.close()
+            except Exception:
+                pass
         if self.source_watcher is not None:
             self.source_watcher.close()
         if self.observer is not None:
@@ -299,6 +307,7 @@ class SessionRegistry:
         backend_factory: BackendFactory = create_backend,
         start_agents: bool = True,
         settle_delay: float = 0.5,
+        codex_service: CodexService | None = None,
     ) -> None:
         self.working_folder = working_folder.resolve()
         self.shop_root = shop_root.resolve()
@@ -317,6 +326,7 @@ class SessionRegistry:
         self._lock = asyncio.Lock()
         self._viewer: ViewerBundle | None = None
         self._viewer_lock = asyncio.Lock()
+        self.codex_service = codex_service or CodexService()
 
     def by_entry(self, path: str) -> Session | None:
         return self._by_entry.get(path)
@@ -452,6 +462,7 @@ class SessionRegistry:
 
     async def _open(self, entry: HubEntry, *, create_profile: str | None) -> Session | None:
         session: Session | None = None
+        codex_reference: ServiceReference | None = None
         name = entry.path
         try:
             selection = await asyncio.to_thread(read_project_runtime, entry.project_root)
@@ -460,6 +471,10 @@ class SessionRegistry:
                     load_profile(create_profile, shop_root=self.shop_root, selection=selection), selection
                 )
             )
+            session_id = secrets.token_urlsafe(24)
+            codex_agents = [agent for agent in profile.agents if agent.runtime is not None and agent.runtime.backend == "codex"]
+            if self.start_agents and codex_agents:
+                codex_reference = await self.codex_service.acquire(session_id, [role_registry(agent) for agent in codex_agents])
             prepared = await asyncio.to_thread(
                 prepare_project,
                 entry,
@@ -477,7 +492,6 @@ class SessionRegistry:
                 outcome = await asyncio.to_thread(build_project, prepared, allow_failure=True)
                 prepared = replace(prepared, build_error=outcome.error)
                 await asyncio.to_thread(commit_new_project, prepared)
-            session_id = secrets.token_urlsafe(24)
             broker = Broker(profile=profile, session_id=session_id)
             broker.model_building = present_early
             session = Session(
@@ -489,6 +503,7 @@ class SessionRegistry:
                 on_screenshot_changed=lambda revision: self.publish_hub(
                     "screenshot", name, screenshot_revision=revision
                 ),
+                codex_reference=codex_reference,
             )
             if self.start_agents:
                 await self._start_orchestrator(session)
@@ -514,6 +529,8 @@ class SessionRegistry:
             self.publish_hub("failed", name, reason=str(error))
             return None
         finally:
+            if session is None and codex_reference is not None:
+                await codex_reference.close()
             async with self._lock:
                 self._opening.pop(name, None)
                 self._provisional_profiles.pop(name, None)
@@ -572,6 +589,8 @@ class SessionRegistry:
                     machinome_command=self.machinome_command,
                     session_id=session.id,
                     skills=_profile_skills(session.profile),
+                    codex_service=self.codex_service,
+                    codex_reference=session.codex_reference,
                 )
         by_agent = {
             agent.id: backend_instances[agent.runtime.backend]
@@ -584,15 +603,21 @@ class SessionRegistry:
                 existing = backend_instances.get(backend_name)
                 if existing is not None:
                     return existing
+                if backend_name == "codex" and session.codex_reference is None:
+                    session.codex_reference = await self.codex_service.acquire(session.id,
+                        [role_registry(agent) for agent in session.profile.agents])
                 backend = self.backend_factory(
                     backend_name,
                     shop_root=self.shop_root,
                     project=session.project_root,
+                    model=session.prepared.project_model,
                     broker_url=self.broker_url,
                     command_overrides=self.backend_commands,
                     machinome_command=self.machinome_command,
                     session_id=session.id,
                     skills=_profile_skills(session.profile),
+                    codex_service=self.codex_service,
+                    codex_reference=session.codex_reference,
                 )
                 try:
                     await backend.start()
@@ -651,6 +676,7 @@ class SessionRegistry:
         for session in sessions:
             await session.close()
             self.publish_hub("closed", session.name)
+        await self.codex_service.close()
 
 
 def _runtime_value(runtime) -> dict[str, object]:

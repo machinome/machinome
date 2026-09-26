@@ -55,6 +55,9 @@ def create_backend(
     }
     if "skills" in inspect.signature(_BACKENDS[name]).parameters:
         arguments["skills"] = tuple(skills)
+    if name == "codex":
+        for key in ("codex_service", "codex_reference"):
+            arguments[key] = _kwargs.get(key)
     return _BACKENDS[name](**arguments)
 
 
@@ -91,3 +94,5 @@ def _register(name: str, cls: type[AgentBackend]) -> None:
 from .base import AgentBackend  # noqa: E402
 from . import claude as _claude  # noqa: E402
 from . import opencode as _opencode  # noqa: E402
+from . import codex as _codex  # noqa: E402
+_register("codex", _codex.CodexBackend)

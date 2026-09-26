@@ -1,6 +1,6 @@
 # ADR 0025: Retire Codex as a shop agent backend
 
-**Status:** Accepted
+**Status:** Superseded by [ADR 0032](./0032-restore-scoped-codex-backend.md)
 
 **Date:** 2026-08-12
 

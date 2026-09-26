@@ -1,6 +1,6 @@
 # ADR 0027: Depend on the OpenSpec CLI and refuse to start without it
 
-**Status:** Accepted
+**Status:** Accepted (amended by [ADR 0032](./0032-restore-scoped-codex-backend.md))
 
 **Date:** 2026-08-22
 
@@ -41,10 +41,13 @@ verifies it is present and runnable before binding a listener or opening any
 project. When it is absent, the shop refuses to start, naming the missing
 prerequisite. There is no reduced mode.
 
-The relaxation of runtime location independence is bounded to this one named
-executable. Every other shop and backend behavior still resolves from the
-running package or the shop's own Python environment, and no further ambient
-dependency may be introduced without superseding this decision.
+The original relaxation of runtime location independence was bounded to this
+one named executable. ADR 0032 adds only the pilot-approved pinned and qualified
+Codex installation when qualifying availability, resolving explicit selection,
+or separately provisioning its login. It resolves
+and retains that Codex executable without adding a Codex prerequisite to other
+projects or changing package/framework resolution. No other ambient discovery
+is authorized by that amendment.
 
 Node and `@fission-ai/openspec` become documented installation prerequisites
 alongside the Python environment.

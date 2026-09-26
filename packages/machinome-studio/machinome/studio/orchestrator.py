@@ -18,7 +18,7 @@ from typing import Any, Callable, Protocol
 import uvicorn
 
 from .app import Broker, Envelope, SystemNotice, create_app
-from .backends.base import AgentActivity, AgentBackend, BackendEvent, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle, RuntimeCatalogue
+from .backends.base import AgentActivity, AgentBackend, BackendEvent, ContextUnrecoverable, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle, RuntimeCatalogue
 from .backends import create_backend, parse_backend_command_overrides
 from .openspec import OpenSpecUnavailable, resolve_openspec_command
 from .preparation import (
@@ -57,6 +57,7 @@ class RoleRuntime:
     handle: RoleHandle | None
     active_delivery_id: str | None = None
     failed: bool = False
+    latest_delivery_id: str | None = None
 
 
 class LocalBrokerControl:
@@ -203,20 +204,25 @@ class ShopOrchestrator:
                 return
             if runtime.handle is None:
                 raise RuntimeError(f"{role} has no open backend session")
-            if runtime.active_delivery_id is None:
-                receipt = await self._backend(role).deliver_start(runtime.handle, message)
-                await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
-            else:
-                active_delivery_id = runtime.active_delivery_id
-                try:
-                    receipt = await self._backend(role).deliver_steer(
-                        runtime.handle, active_delivery_id, message
-                    )
-                    if receipt.delivery_id != active_delivery_id:
-                        raise RuntimeError("backend steering changed the active delivery identity")
-                except InactiveTurn:
+            try:
+                if runtime.active_delivery_id is None:
                     receipt = await self._backend(role).deliver_start(runtime.handle, message)
                     await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
+                else:
+                    active_delivery_id = runtime.active_delivery_id
+                    try:
+                        receipt = await self._backend(role).deliver_steer(
+                            runtime.handle, active_delivery_id, message
+                        )
+                        if receipt.delivery_id != active_delivery_id:
+                            raise RuntimeError("backend steering changed the active delivery identity")
+                    except InactiveTurn:
+                        receipt = await self._backend(role).deliver_start(runtime.handle, message)
+                        await self._adopt_started_delivery(role, runtime, receipt.delivery_id)
+            except ContextUnrecoverable as error:
+                await self._context_unavailable(role, runtime, str(error))
+                await self.broker.mark_delivery_failed(sequence, str(error))
+                return
             await self.broker.mark_delivered(sequence)
             if notices:
                 await self.broker.mark_system_notices_delivered(
@@ -235,16 +241,26 @@ class ShopOrchestrator:
             notices = await self.broker.pending_system_notices(role)
             if not notices:
                 return
-            accepted = await self._backend(role).deliver_notice(
-                runtime.handle,
-                runtime.active_delivery_id,
-                self._system_notice_message(notices),
-            )
+            try:
+                accepted = await self._backend(role).deliver_notice(
+                    runtime.handle,
+                    runtime.active_delivery_id,
+                    self._system_notice_message(notices),
+                )
+            except ContextUnrecoverable as error:
+                await self._context_unavailable(role, runtime, str(error))
+                return
             if accepted:
                 await self.broker.mark_system_notices_delivered(
                     role,
                     [self._notice_sequence(notice) for notice in notices],
                 )
+
+    async def _context_unavailable(self, role: str, runtime: RoleRuntime, reason: str) -> None:
+        runtime.failed = True
+        runtime.active_delivery_id = None
+        await self.broker.role_failed(role, reason)
+        await self.broker.backend_idle_changed(role, False)
 
     async def _recover_and_deliver(
         self,
@@ -259,6 +275,11 @@ class ShopOrchestrator:
         if runtime.handle is not None:
             try:
                 receipt = await backend.deliver_start(runtime.handle, message)
+            except ContextUnrecoverable as delivery_error:
+                reason = str(delivery_error)
+                await self._context_unavailable(role, runtime, reason)
+                await self.broker.mark_delivery_failed(sequence, reason)
+                return False
             except Exception as delivery_error:
                 error = delivery_error
                 failed_handle, runtime.handle = runtime.handle, None
@@ -313,6 +334,7 @@ class ShopOrchestrator:
         """Correlate a start receipt with events that may have won the race."""
         key = (role, delivery_id)
         runtime.active_delivery_id = delivery_id
+        runtime.latest_delivery_id = delivery_id
         await self.broker.mark_runtime_used(role)
         await self.broker.backend_idle_changed(role, False)
         direct = self.profile.work_mode == "direct" and role == self.profile.user_agent_id
@@ -328,6 +350,12 @@ class ShopOrchestrator:
 
     async def handle_event(self, event: BackendEvent) -> None:
         """Consume one portable backend event."""
+        if event.is_current is not None and not event.is_current():
+            return
+        if event.handle_id is not None:
+            runtime = self.roles.get(event.role or "")
+            if runtime is None or runtime.handle is None or runtime.handle.backend_id != event.handle_id:
+                return
         if event.kind == "role_message" and event.role == self.profile.user_agent_id:
             if event.text and event.text.strip():
                 await self.broker.record_conversation(self.profile.user_agent_id, event.text.strip())
@@ -372,6 +400,12 @@ class ShopOrchestrator:
             if runtime is None:
                 raise RuntimeError(f"unknown role failed: {role or 'missing role'}")
             async with self._delivery_locks[role]:
+                if event.is_current is not None and not event.is_current():
+                    return
+                if event.handle_id is not None and (runtime.handle is None or runtime.handle.backend_id != event.handle_id):
+                    return
+                if event.handle_id is not None and event.delivery_id != runtime.latest_delivery_id:
+                    return
                 runtime.active_delivery_id = None
                 runtime.failed = True
                 self._started_deliveries = {
@@ -425,21 +459,26 @@ class ShopOrchestrator:
             return await self._backend(role).runtime_catalog(runtime.handle)
         choices = []
         reasons: list[str] = []
-        names = ("claude", "opencode") if self.backend_resolver is not None else (self.current_runtime(role).backend,)
+        unavailable: dict[str, str] = {}
+        names = ("claude", "opencode", "codex") if self.backend_resolver is not None else (self.current_runtime(role).backend,)
         for name in names:
             try:
                 backend = await self._backend_for_name(name)
                 catalogue = await backend.runtime_catalog(None)
             except Exception as error:
                 reasons.append(f"{name}: {error}")
+                unavailable[name] = str(error)
                 continue
             choices.extend(catalogue.choices)
             if not catalogue.supported and catalogue.reason:
                 reasons.append(f"{name}: {catalogue.reason}")
+                unavailable[name] = catalogue.reason
+            unavailable.update(catalogue.unavailable)
         return RuntimeCatalogue(
             bool(choices),
             tuple(choices),
             "" if choices else "; ".join(reasons) or "no runtime choices are available",
+            unavailable,
         )
 
     async def update_runtime(

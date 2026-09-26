@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Exercise the real Codex app-server with a deterministic local model transport.
 
 No model credentials, external model requests, project execution or production

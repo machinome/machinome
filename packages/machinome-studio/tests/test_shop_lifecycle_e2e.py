@@ -506,6 +506,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         runtime_requests: list[dict[str, object]] = []
         stale = {"enabled": False}
         pristine = {"value": True}
+        codex_available = {"value": True}
 
         def runtime_route(route) -> None:
             if route.request.method == "PATCH":
@@ -524,11 +525,14 @@ class ShopLifecycleE2E(unittest.TestCase):
                 "runtime": {"backend": "claude", "provider": None, "model": "sonnet", "effort": "high"},
                 "supported": True,
                 "reason": None,
+                "unavailable": {} if codex_available["value"] else {"codex": "Run python -m floor.codex_auth login after closing the hub"},
                 "choices": [
                     {"backend": "claude", "provider": None, "model": "sonnet", "efforts": ["medium", "high"]},
                     {"backend": "claude", "provider": None, "model": "opus", "efforts": ["medium", "high"]},
                     {"backend": "opencode", "provider": "anthropic", "model": "claude-sonnet-4-5", "efforts": ["medium", "high"]},
                     {"backend": "opencode", "provider": "openai-codex", "model": "gpt-5.6-sol", "efforts": ["high"]},
+                    *([{ "backend": "codex", "provider": None, "model": "gpt-6-sol", "efforts": ["medium", "high"]},
+                      {"backend": "codex", "provider": None, "model": "gpt-6-astra", "efforts": ["medium", "high"]}] if codex_available["value"] else []),
                 ],
                 "config_revision": revision,
                 "runtime_idle": True,
@@ -549,7 +553,17 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertEqual(provider_select.input_value(), "anthropic")
         self.assertTrue(provider_select.is_disabled())
         self.assertEqual(self.page.get_by_text("Tools", exact=True).count(), 0)
-        self.assertEqual(self.page.get_by_role("button", name="codex", exact=True).count(), 0)
+        self.assertEqual(self.page.get_by_role("button", name="codex", exact=True).count(), 1)
+        self.page.get_by_role("button", name="codex", exact=True).click()
+        self.assertEqual(provider_select.input_value(), "openai")
+        self.assertTrue(provider_select.is_disabled())
+        self.assertEqual(model_select.locator("option").all_text_contents(), ["gpt-6-sol", "gpt-6-astra"])
+        self.page.get_by_role("button", name="Apply", exact=True).click()
+        self.page.get_by_text("applied · written to pyproject.toml", exact=True).wait_for()
+        self.assertEqual(runtime_requests[-1]["backend"], "codex")
+        self.assertIsNone(runtime_requests[-1]["provider"])
+        if evidence := getattr(self, "evidence_dir", None):
+            self.page.screenshot(path=str(evidence / "codex-selection.png"))
         self.assertFalse(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
         self.page.get_by_role("button", name="opencode", exact=True).click()
         self.assertFalse(provider_select.is_disabled())
@@ -570,6 +584,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="tools 1", exact=True).click()
         self.page.get_by_role("button", name="machinome_test", exact=False).click()
         self.page.get_by_text("8 passed", exact=True).wait_for()
+        if evidence := getattr(self, "evidence_dir", None):
+            self.page.screenshot(path=str(evidence / "codex-activity.png"))
         self.page.get_by_role("button", name="files 1", exact=True).click()
         self.page.get_by_text("# revised model", exact=True).wait_for()
         self.page.get_by_role("button", name="Open in Code", exact=True).click()
@@ -597,12 +613,38 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.set_viewport_size({"width": 760, "height": 900})
         self.assertFalse(self.page.evaluate("() => document.documentElement.scrollWidth > window.innerWidth"))
 
+        codex_available["value"] = False
+        self.page.reload()
+        self.page.get_by_role("button", name="Agents", exact=True).click()
+        self.page.get_by_text("Codex unavailable: Run python -m floor.codex_auth login after closing the hub", exact=True).wait_for()
+        self.assertTrue(self.page.get_by_role("button", name="codex", exact=True).is_disabled())
+        self.assertFalse(self.page.get_by_role("button", name="claude", exact=True).is_disabled())
+        codex_box = self.page.get_by_role("button", name="codex", exact=True).bounding_box()
+        agents_box = self.page.locator(".agents-area").bounding_box()
+        self.assertLessEqual(codex_box["x"] + codex_box["width"], agents_box["x"] + agents_box["width"])
+        if evidence := getattr(self, "evidence_dir", None):
+            self.page.screenshot(path=str(evidence / "codex-unavailable.png"))
+
         agent["runtime_pristine"] = False
         pristine["value"] = False
         self.page.reload()
         self.page.get_by_role("button", name="Agents", exact=True).click()
         self.page.get_by_text("Locked after this agent's first use.").wait_for()
         self.assertTrue(self.page.get_by_role("button", name="opencode", exact=True).is_disabled())
+
+        agent["failure"] = "Studio Codex transport stopped; retained context recovery is required"
+        run["activity"].append({"id": "image-1", "sequence": 3, "role": "builder", "category": "tool",
+            "state": "completed", "name": "machinome_snapshot", "summary": "machinome_snapshot · image result",
+            "detail": "Image result delivered to the model", "path": "", "diff": "", "timestamp": "2026-08-12T08:42:50Z",
+            "input_tokens": None, "output_tokens": None})
+        self.page.set_viewport_size({"width": 1440, "height": 900})
+        self.page.reload()
+        self.page.get_by_role("button", name="Agents", exact=True).click()
+        self.page.locator(".agents-area").get_by_text("Builder session failed", exact=True).wait_for()
+        self.page.get_by_role("button", name="machinome_snapshot", exact=False).click()
+        self.page.get_by_text("Image result delivered to the model", exact=True).wait_for()
+        if evidence := getattr(self, "evidence_dir", None):
+            self.page.screenshot(path=str(evidence / "codex-failure-image.png"))
 
     def test_model_panel_mounts_and_disposes_the_viewer_navigator(self) -> None:
         self._make_project("navigator-project")

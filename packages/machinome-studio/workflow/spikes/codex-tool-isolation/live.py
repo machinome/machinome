@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Small authenticated smoke test using the operator's existing Codex login.
 
 Copies only auth.json into a private temporary home, never prints its contents,

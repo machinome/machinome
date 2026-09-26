@@ -32,3 +32,16 @@ carried spike head `696282f` (existing unclosed-file ResourceWarnings).
 
 No primary integration, push, publication or unrelated containment work is
 authorized by this record.
+
+## Final executable-discovery reconciliation
+
+After implementation, independent review and authenticated synthetic validation,
+the coordinator identified that the installed Codex resolver needed an explicit
+exception to the existing ambient-executable wording. On 26 September 2026 the
+pilot ratified: “Accept the narrow Codex exception”. This authorizes only the
+fresh availability qualification, explicit selection or dedicated provisioning
+of the pinned and qualified Codex installation; it does not relax
+the default Claude path, add general ambient discovery, or permit fallback.
+The scoped-tools delta, ADR 0032 and its amendment of ADR 0027 record that exact
+bounded decision. Archive and implementation commit remain separately gated by
+the coordinator's final artifact review.

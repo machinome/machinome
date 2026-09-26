@@ -319,6 +319,7 @@ a.workspace-title:hover, .workspace-home:hover { color: #e0a350; }
 .agent-tokens + button { margin-left: 0; }
 .agent-controls { background: #121419; border-bottom: 1px solid #262b33; display: grid; gap: 14px; padding: 14px; }
 .agent-control-grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+.agent-backend-unavailable { color: #f0b4b4; font-size: 11.5px; grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; }
 .agent-control { align-content: start; display: grid; gap: 7px; }
 .agent-control > span { color: #8b929e; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em; text-transform: uppercase; }
 .agent-control > small { color: #6b7280; font: 10.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -398,6 +399,12 @@ a.workspace-title:hover, .workspace-home:hover { color: #e0a350; }
 }
 
 @media (max-width: 900px) {
+  .shop-workspace:has(.agents-area:not(.area-hidden)) { height: auto; min-height: 100dvh; overflow: visible; }
+  .workspace-body:has(.agents-area:not(.area-hidden)) { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: auto minmax(34rem, 1fr) minmax(22rem, 1fr); overflow: visible; }
+  .workspace-body:has(.agents-area:not(.area-hidden)) .activity-rail { grid-row: 1 / span 3; }
+  .workspace-body:has(.agents-area:not(.area-hidden)) .agents-context { grid-column: 2; grid-row: 1; max-height: 14rem; }
+  .workspace-body:has(.agents-area:not(.area-hidden)) .agents-area { grid-column: 2; grid-row: 2; min-height: 34rem; }
+  .workspace-body:has(.agents-area:not(.area-hidden)) .conversation { grid-column: 2; grid-row: 3; min-height: 22rem; }
   .hub-body { grid-template-columns: 240px minmax(0, 1fr); }
   .project-area { padding: 28px; }
   .project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

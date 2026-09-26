@@ -22,7 +22,7 @@ pilot-selected machinome installation; the shop invokes that environment's
 `machinome` command directly rather than resolving an unrelated command through
 ambient `PATH`.
 
-The OpenSpec CLI is a startup prerequisite and the one exception to that rule:
+The OpenSpec CLI is an unconditional startup prerequisite and an exception to that rule:
 it is a Node program, so the shop resolves `openspec` from ambient `PATH` and
 refuses to start when it is missing or will not run, naming what to install.
 There is no reduced mode — a shop that cannot record a project's design would
@@ -31,6 +31,12 @@ lose that record silently. Install it with:
 ```text
 npm install -g @fission-ai/openspec
 ```
+
+Qualifying fresh Codex availability, resolving explicit Codex selection or
+provisioning its dedicated login additionally discovers `codex` through ambient
+`PATH`, then retains and qualifies its pinned executable. Other projects do not
+require Codex. This exception changes neither package/framework resolution nor
+the discovery authority for other tools.
 
 The orchestrator takes no project or profile. The pilot opens an
 existing project or creates one in the browser;
@@ -83,20 +89,50 @@ Each runtime agent receives the exact verified `<projects-dir>/<name>`
 repository root. Runtime prompts belong to `profiles/<id>/`; their shared
 allowlisted skills are in `shop-skills/`.
 
-Two backends are selectable per agent: Claude and OpenCode. Claude resolves
+Three backends are selectable per agent: Claude, OpenCode and qualified Codex. Claude resolves
 project-selected model/reasoning values over explicit profile defaults; the
 supported tools remain profile-owned, and that declared list is the whole
 authority a session holds — no session runs with permission checking disabled.
 
-Both replace native file, shell, and network access with a floor-owned MCP
+All replace native file, shell, and network access with a floor-owned
 surface for roles with explicit profile tools. It is rooted at the active
 project and provides bounded filesystem, Git, machinome, image, and
 shop-broker lifecycle operations. A backend that cannot enforce a
-profile-declared tool policy is not selectable: Codex was retired for that
-reason, because its sessions keep native command execution and file editing
-whatever the profile declares. The librarian is provisionally unavailable on
+profile-declared tool policy is not selectable. The librarian is provisionally unavailable on
 the scoped backends because bounded external-research tools are not yet
 present.
+
+Codex is explicitly selected as `codex:gpt-6-sol[:effort]` or
+`codex:gpt-6-astra[:effort]`; Claude remains the default and profiles gain no
+Codex tables. Effort defaults to `medium`; supported values are `low`, `medium`,
+`high`, `xhigh`, `max` and `ultra`. Only pinned Linux x86_64
+`codex-cli 0.157.1` is qualified. Studio verifies
+the actual native schemas, model catalogue, effective private configuration and
+forced-call isolation before preparing a selected project. Its native sessions
+use read-only sandboxing, never approvals, and no environment at thread creation
+or any turn. Exact declared floor tools are bridged dynamically through owned
+per-role MCP workers, including raster image results.
+
+Provision Studio once with your existing ChatGPT account:
+
+```sh
+python -m floor.codex_auth login
+```
+
+This creates a separate Studio-owned login under
+`$XDG_STATE_HOME/machinome-studio/codex` (or
+`$HOME/.local/state/machinome-studio/codex`), never copies refresh tokens from
+ordinary Codex or changes its credentials. One exclusively leased native
+app-server owns authentication and refresh across simultaneous Studio projects.
+Closing project roles removes their owned native histories, not the login.
+Unsupported policy, missing login or changed qualification reports an unavailable
+reason; it does not silently fall back to another runtime. Used Codex contexts
+that cannot safely resume fail role-locally without fresh-session replacement.
+Workers preserve resolved plain Git identity but cannot honor required signed
+commits; signing-required commit/setup operations refuse with an explicit remedy.
+This is a bounded tool boundary, not an OS sandbox guarantee for executable
+project code: owned process groups are stopped, but malicious code deliberately
+escaping those groups is outside this implementation's containment claim.
 
 OpenCode currently uses a bounded compatibility exception. Existing profiles
 remain unchanged and valid and do not contain OpenCode tables. A project-selected

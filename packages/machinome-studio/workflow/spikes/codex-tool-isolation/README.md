@@ -29,11 +29,12 @@ as `additional_tools` input items, and emits deliberate calls to forbidden
 tools. This avoids treating a model's voluntary refusal as enforcement proof.
 No credentials or external model endpoint are used in that experiment.
 
-`live.py` runs a separate authenticated smoke test with the operator's existing
-file-backed Codex login. It copies only `auth.json` into a private temporary
-home, removes that copy afterward, and does not load the operator's MCP,
-plugins, instructions or configuration. Its prompts contain only synthetic
-fixture content. Neither script passes `danger-full-access` or bypass flags.
+The historical `live.py` ran a separate authenticated smoke test by copying the
+operator's file-backed login into a temporary home. **Do not rerun it:** that
+authentication strategy was rejected during implementation review because
+refresh-token rotation can disrupt the authoritative login. Its synthetic
+interoperability results are retained as historical evidence only. Neither
+script passed `danger-full-access` or bypass flags.
 
 | Experiment | Observed outcome |
 | --- | --- |
@@ -82,6 +83,14 @@ the tool. The controlled catalogue is necessary for the tested solution.
 
 ## Evidence and reproduction
 
+**Authentication correction from subsequent implementation review:** do not
+rerun the historical `live.py` harness. Its copied refresh credentials can
+rotate independently of the operator's authoritative login. The four recorded
+short-lived results remain interoperability evidence, not authentication-lifecycle
+evidence. Restoration uses a separately provisioned Studio login instead; its
+authenticated validation must use that store, never copied operator credentials.
+The credential-free `probe.py` reproduction below remains appropriate.
+
 - `default-catalog.json`: records the extra advertised and callable surface.
 - `unguarded-resume.json`: records the failed exact-tool assertion after restart.
 - `guarded.json`: passing deterministic cases and observed tool registries.
@@ -91,11 +100,9 @@ Run from the Studio worktree root with the installed Codex executable on PATH:
 
 ```sh
 python3 docs/spikes/codex-tool-isolation/probe.py --controlled-catalog --guard-turns --output /tmp/codex-guarded.json
-python3 docs/spikes/codex-tool-isolation/live.py --output /tmp/codex-live.json
 ```
 
-The live script makes authenticated model requests and consumes the operator's
-quota. The deterministic script writes a compact summary and a separate
+The deterministic script writes a compact summary and a separate
 `.raw.json` containing the full local mock-model requests. The retained JSON
 evidence is reduced to relevant facts; full requests are intentionally not
 committed because they repeat large vendor instruction blocks.

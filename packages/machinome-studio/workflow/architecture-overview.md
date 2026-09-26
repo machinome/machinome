@@ -106,8 +106,8 @@ without modifying it. The project may select backend, provider, model, and
 reasoning level per agent under `[tool.machinome-studio.agents]`; the profile
 tool policy remains non-overridable and is the whole authority a Claude session
 holds, so no profile or project declaration can widen it or disable permission
-checking. OpenCode has no profile
-table and is available only through an explicit project selection. Creating a
+checking. OpenCode and Codex have no profile
+tables and are available only through an explicit project selection. Creating a
 project records the profile selected in the hub in that repository's initial
 commit. Before a role's first message, assignment, accepted delivery, or
 activity, an idle role may immediately replace its unused standing handle with
@@ -117,11 +117,13 @@ reasoning together for later turns on the same backend and provider, temporarily
 or with a revision-checked update to the same project table.
 
 The profile's Claude tool list is also the shared capability vocabulary for
-scoped Claude and OpenCode sessions. The adapters resolve those names to a
-floor-owned MCP allowlist; OpenCode inherits the policy without adding a
+scoped Claude, OpenCode and Codex sessions. The adapters resolve those names to a
+floor-owned tool allowlist; OpenCode and Codex inherit the policy without adding a
 profile table. Enforcing that allowlist is a condition of being selectable at
-all: Codex was retired as a backend because its sessions keep native command
-execution and file editing whatever the profile declares (ADR 0025). The
+all. Historical Codex retirement ([ADR 0025](./adrs/0025-retire-codex-agent-backend.md)),
+superseded by [ADR 0032](./adrs/0032-restore-scoped-codex-backend.md), remains the reason the restored
+adapter requires measured native no-environment isolation and exact dynamic
+tools rather than relying on tool-disabling flags alone. The
 Fordesmac librarian is provisionally non-functional because this surface
 intentionally has no web or external documentation tools, pending a bounded
 research surface.
@@ -164,7 +166,7 @@ project browser <--> source service      +--> filesystem/build watchers
         |               |
         +-----------> Broker <--> Orchestrator <--> per-agent backend owners
                           |             |                   /    |    \
-                    state, SSE,    resolved profile        Claude OpenCode
+                    state, SSE,    resolved profile        Claude OpenCode Codex
                     conversation   and runtime map       event streams fan in
 ```
 
@@ -214,8 +216,11 @@ currently active delivery. Native session and turn identifiers never enter the
 broker. A role-scoped failure clears only that role's active delivery and keeps
 the floor and other sessions alive. The next envelope to that role starts a new
 turn on the retained session; if its transport is dead, the orchestrator opens
-one replacement session and retries once. It never polls or retries without a
-new envelope. A backend-wide failure still ends the run.
+one replacement session and retries once, except when a backend reports
+`ContextUnrecoverable`: used Codex history must never be silently replaced.
+That role and envelope fail locally while unrelated roles/projects continue.
+It never polls or retries without a new envelope. A shared Codex transport death
+affects attached Codex roles, not unrelated Claude/OpenCode adapters.
 
 Before an ordinary delivery, the orchestrator prepends that role's pending
 trusted notices and acknowledges them only after the backend accepts the
@@ -250,6 +255,26 @@ portable role-message, turn, failure, and normalized activity events.
 `deliver_notice` is steer-only: each adapter verifies that the expected
 delivery is still active and returns false instead of starting a turn. The
 protocol has no generic compatibility delivery operation.
+
+Portable events may carry an opaque handle, delivery correlation and a pure
+synchronous liveness predicate. The orchestrator checks liveness again after
+acquiring delivery locks, so queued old failures cannot poison a replacement
+or a recovered delivery on the same handle. Native thread/generation identifiers
+remain private to the adapter.
+
+Codex uses one registry-injected authenticated owner shared by project adapters,
+with an exclusive inherited lease across hub/login processes. A separate native
+device login preserves ordinary CLI credentials and native refresh ownership.
+Credential-free qualification pins 0.157.1 schemas, catalogue and effective
+private policy; it proves the exact role registry against forced forbidden calls.
+Every native thread/start and turn/start declares no environment, read-only and
+never approval. Per-handle private workers expose only declared floor operations.
+Native marked groups permit exact ephemeral history cleanup without deleting auth.
+Shared recovery first quiesces all attached workers, then resumes verified used
+threads or recreates only never-used handles; accepted inputs are not replayed.
+Owned process-group cleanup does not claim containment of malicious executable
+project code deliberately escaping that group. Plain Git identity is resolved
+without importing operator configuration; required signed commits are refused.
 
 Claude launches one isolated CLI process per profile agent and translates the
 selected model, effort, and permitted tools into its supported command fields.
@@ -385,10 +410,14 @@ directory is the session's artifact root — what it serves, watches, and
 packages — and a directory outside the project fails the open. The initial build
 runs through the `solid` console script installed beside the Python interpreter
 running the shop, so an unrelated executable earlier on ambient `PATH` cannot
-select a different framework installation. `openspec` is the single exception:
+select a different framework installation. `openspec` is an unconditional exception:
 it is a Node program the shop cannot supply from its own environment, so it is
-resolved from ambient `PATH` and named as an installation prerequisite. No
-other shop or backend behavior depends on an ambient executable (ADR 0027). The build
+resolved from ambient `PATH` and named as an installation prerequisite. ADR 0032
+amends ADR 0027 only for pinned qualified Codex: fresh availability qualification,
+explicit selection or dedicated login provisioning resolves and retains `codex`
+from ambient `PATH`. Other projects have no Codex prerequisite; no other ambient
+discovery is authorized by this exception. Package/framework resolution remains
+unchanged. The build
 runs off the event loop and reports an error into that session instead of
 gating it; agent start remains all-or-nothing. The hub remains available during
 opening and after any one project's failure. The browser renders
@@ -402,7 +431,8 @@ conversation and the session's single snapshot/SSE connection. Agents selects on
 role, renders normalized messages, tools, results, failures, file diffs, and
 honest native token counts, and can open an activity path in the existing Code
 workspace. Its runtime controls are ordered backend, provider, model, and
-reasoning. Claude shows its fixed Anthropic provider; OpenCode shows exact
+reasoning. Claude shows its fixed Anthropic provider, Codex its fixed OpenAI
+provider, and OpenCode shows exact
 connected provider IDs separately and filters models by the selected provider. Profile-owned tools are not part of this choice. The
 explicit Apply control fetches the role-owned catalogue, remains disabled
 unless the server reports the role idle, and defaults to writing the selection
