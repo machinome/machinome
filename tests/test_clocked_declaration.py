@@ -11,7 +11,7 @@ and every refusal below is one of those.
 
 The originating project is `projects/Calculators/Curta-Type-I-3x`, whose
 two registers are the states this declaration exists for; the
-requirement note is `workflow/docs/clocked-machine.md`.
+requirement note is `workflow/archive/clocked-machine-2026-09-17/clocked-machine.md`.
 """
 
 from unittest import TestCase

@@ -42,7 +42,7 @@ neither is expressible without it:
   prove reverse blocking", and nothing in the model blocks reverse;
 - the **spike's swept stop** — a rack that stops at its admitted limit
   inside a tick while an independent motor runs its full tick
-  (`workflow/open-run-simulation/spikes/kernel.py`). The spike proved it
+  (`workflow/archive/open-run-simulation-2026-09-13/spikes/kernel.py`). The spike proved it
   with a unilateral coordinate stop, a blocked-group rule and a `blocked`
   status, and recorded the gap this decision closes: *"precise fractional
   progress/replanning remains a required design item for production."*

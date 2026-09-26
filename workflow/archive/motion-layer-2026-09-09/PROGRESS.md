@@ -31,4 +31,4 @@ Open after the campaign (see `warts.md`): a joint anchored at a
 design-placed part's own origin; a relation chain across class bodies; a
 node's own derived coordinate read in its own `simulate()`; MuJoCo and
 Modelica emission, deferred to the pilot's discussion
-(`workflow/docs/mujoco-viability.md` stays in `docs/` for it).
+(`workflow/ongoing/mujoco-viability.md` stays open for it).

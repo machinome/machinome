@@ -49,7 +49,7 @@ DISCIPLINE. One square of that table was unsayable:
 
 **elapsed × memory** is a machine with a clock and memory and no integration,
 and the requirement note names it in one sentence
-(`workflow/docs/clocked-machine.md`, "Time without running"): *a pendulum is a
+(`workflow/archive/clocked-machine-2026-09-17/clocked-machine.md`, "Time without running"): *a pendulum is a
 formula of elapsed time; a counter beside it is a state variable committed
 when the pendulum's phase, an expression of time, crosses its release. Events
 on time and events on inputs are the same kind of event.*

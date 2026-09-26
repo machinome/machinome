@@ -10,7 +10,7 @@ carry a stroke's arithmetic forward; its `fast_curta` carries nothing at
 all, so the maker edits the registers by hand. The machine between those
 two is a CLOCKED one: a few retained values, closed-form positions
 between events, and a commit of the retained values at each event
-(`workflow/docs/clocked-machine.md`).
+(`workflow/archive/clocked-machine-2026-09-17/clocked-machine.md`).
 
 A `State` is the declaration of one of those retained values. It takes
 exactly `Driver`'s arguments with exactly their meanings, is read

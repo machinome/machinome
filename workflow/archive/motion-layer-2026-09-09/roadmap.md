@@ -17,7 +17,7 @@ folder is the durable record of that work, independent of any conversation.
   kinds of motion the local project catalogue contains. Its class catalogue
   was set aside on 2026-09-09; it stays as evidence and as a checklist the
   primitive must eventually satisfy.
-- `../../docs/mujoco-viability.md` is the 2026-09-06 research on exporting a
+- `../../ongoing/mujoco-viability.md` is the 2026-09-06 research on exporting a
   solid-node tree to MuJoCo. It is cited by the design as a fit check and is
   kept for the future discussion, not for a cycle here.
 
@@ -139,7 +139,7 @@ named.
 ## Future, not scheduled
 
 - **MuJoCo and Modelica emission.** Mechanically simple once cycles 2 and
-  3 exist (see the design's fit table and `../../docs/mujoco-viability.md`),
+  3 exist (see the design's fit table and `../../ongoing/mujoco-viability.md`),
   but meaningless without mass and inertia, and a prescribed law such as
   the escapement has no constraint form. The pilot wants this discussed
   before anything is built.

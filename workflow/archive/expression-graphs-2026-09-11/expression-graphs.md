@@ -70,7 +70,7 @@ repetitions of `x = x + x`, starting with `$t`.
 
 ## Existing architecture and the overlap
 
-[ADR-080](../../docs/adrs/EXPORT/ADR-080-a-shared-subexpression-is-named-once.md)
+[ADR-080](../../../docs/adrs/EXPORT/ADR-080-a-shared-subexpression-is-named-once.md)
 introduced schema-4 bindings: shared expressions are published once and
 referenced by name. However, sharing is discovered by parsing strings the
 producer has already constructed. Curta fails before this optimization can

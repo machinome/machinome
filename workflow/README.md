@@ -34,7 +34,7 @@ An entry is evidence, not a requirement. It becomes a requirement only when
 it is taken up as a framework change under
 `machinome-studio/skills/framework-change/SKILL.md`.
 
-### `docs/` — provisional plans and design notes
+### `ongoing/` — provisional plans and design notes
 
 The document a plan is worked out in before it is broken into an OpenSpec
 change and its ADRs: research proposals, surveys of what the project
@@ -49,13 +49,18 @@ deleted. A note that supersedes an earlier one says what it keeps of it — as
 `archive/motion-layer-2026-09-09/`), keeping the survey as a coverage
 checklist while setting its class catalogue aside. When
 a plan is taken up, the OpenSpec change becomes the authority and the note
-stays as the context the change was cut from.
+stays as the context the change was cut from. Once everything the note plans
+is implemented and its changes are archived, the note leaves `ongoing/` for
+`archive/`, as below; a note only partly taken up stays here.
 
 ### `archive/` — finished campaigns and their evidence
 
 One directory per completed campaign, named `<campaign>-<YYYY-MM-DD>`. A
 campaign is work too large to be one OpenSpec change: an audit, a due
-diligence, a remediation programme. Each holds its own report, a `PROGRESS.md`
+diligence, a remediation programme. A plan or design note from `ongoing/`
+whose work has been implemented is archived the same way, in a directory
+named after the note and dated by the archive of the change that finished
+it. Each campaign holds its own report, a `PROGRESS.md`
 execution index naming the worktree, the measured commits, the OpenSpec
 changes it produced, and the raw evidence — probes, logs, JSON measurements,
 checksums.

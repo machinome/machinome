@@ -28,7 +28,7 @@ engagement depends on where the driven part itself stands.
 
 The originating project is `projects/Calculators/Curta-Type-I-3x`,
 branch `direct-operation`, checkpoint `b285393`; the requirement is
-recorded whole in `workflow/docs/curta-retained-angle-clearing.md`. The
+recorded whole in `workflow/archive/curta-retained-angle-clearing-2026-09-15/curta-retained-angle-clearing.md`. The
 Curta is cleared by sweeping a ring carrying two nine-tooth racks past
 the register dials. A rack turns a dial only while its teeth reach it
 AND the dial is not already standing at its missing-tooth zero: nine

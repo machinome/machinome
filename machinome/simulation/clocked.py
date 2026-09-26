@@ -9,7 +9,7 @@ between events, and a commit of the retained values at each event. The
 originating project is `projects/Calculators/Curta-Type-I-3x`, whose
 crank is off rest only while its interlocks hold everything else still,
 so nothing about its state changes except at the end of a stroke
-(`workflow/docs/clocked-machine.md`).
+(`workflow/archive/clocked-machine-2026-09-17/clocked-machine.md`).
 
 This module is a CONSUMER of the running executor's locator and adds no
 second one. `JumpPlan._solved` solves an affine level by one division;

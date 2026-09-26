@@ -13,8 +13,8 @@ that one.
 
 The originating project is ``projects/Calculators/Curta-Type-I-3x``,
 branch ``direct-operation``, checkpoint ``6a00abe``, and the requirement
-is recorded whole in
-``workflow/docs/curta-shifted-carry-association.md``. Its executable
+is recorded whole in the note archived under
+``workflow/archive/curta-shifted-carry-association-2026-09-15/``. Its executable
 diagnostic is reduced to ``tests/carriage_project/machine.py``.
 
 Such a union is a BLOCK: one entry of the program, ordered once per

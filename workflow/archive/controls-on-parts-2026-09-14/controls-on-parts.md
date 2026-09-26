@@ -54,7 +54,7 @@ wants the other door: click the dial, and the dial advances.
 Most of the design is already ratified, and this note only has to obey
 it:
 
-- The 2026-09-12 ratification (`workflow/open-run-simulation/design.md`,
+- The 2026-09-12 ratification (`workflow/archive/open-run-simulation-2026-09-13/design.md`,
   "Inputs, instructions and controls"): an **input** exposes a coordinate;
   an **instruction** is a named, reusable movement request; a **control**
   is how a person issues a request — "a button, a held jog, or **dragging

@@ -5,7 +5,8 @@
 """The LOCK fixture: the requirement note's interlock sketch, AS
 WRITTEN.
 
-`workflow/docs/clocked-machine.md` sketches a selector interlock as
+`workflow/archive/clocked-machine-2026-09-17/clocked-machine.md` sketches a
+selector interlock as
 
     setting = Prismatic(..., range=(0, Bound(
         lambda setting, crank: 54 * (phase(crank) < 1), reads=(crank_turn,))))

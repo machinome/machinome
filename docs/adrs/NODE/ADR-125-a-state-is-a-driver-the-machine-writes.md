@@ -47,7 +47,7 @@ ADR-121, ADR-123 and ADR-124 were cut from — and after the `curta-speed` campa
 it still costs about **0.73 s per 0.1 s Python tick** and about **40 ms per crank
 tick in the browser**.
 
-The requirement note `workflow/docs/clocked-machine.md` names what the machine
+The requirement note `workflow/archive/clocked-machine-2026-09-17/clocked-machine.md` names what the machine
 actually is: a **clocked** one. It has a few retained values, closed-form
 positions between events, and a commit of the retained values at each event; its
 interlocks hold the selectors, the carriage and the clearing ring while the crank
@@ -78,7 +78,7 @@ oracle (574 ticks, 439.2 s):
 **The shape of the answer was constrained before this cycle began.** On
 2026-09-13 the pilot rejected the `running(r)` / `r.state` / `r.event` / `r.equal`
 protocol — a per-relation protocol with event objects handed into laws
-(`workflow/open-run-simulation/design.md`, "Decision 2026-09-13"). Whatever
+(`workflow/archive/open-run-simulation-2026-09-13/design.md`, "Decision 2026-09-13"). Whatever
 carried the memory had to be declared in the places the API already has, and the
 author had to go on writing the closed forms they already write.
 

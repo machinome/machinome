@@ -352,7 +352,7 @@ formulas, or stays inside the laws.
   root, in the spirit of `Driver`, `Port` and `.drives(law=)`. No per-relation
   protocol, no event objects inside laws: that was the `running(r)` protocol
   the pilot rejected on 2026-09-13
-  (`workflow/open-run-simulation/design.md`, "Decision 2026-09-13"), and the
+  (`workflow/archive/open-run-simulation-2026-09-13/design.md`, "Decision 2026-09-13"), and the
   difference here is that a state is a value with one commit law, and the
   author writes the closed forms they already write.
 - Commit semantics: synchronous reads of pre-event state, ordered commits for

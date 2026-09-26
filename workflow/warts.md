@@ -1748,7 +1748,7 @@ rather than folded into the closure:
   subclasses-for-metadata are deleted in their overlays: openvmp's
   `Wheel` and `CameraArm` (with `CameraArm`'s `__init__` override and
   its two instance attributes), OMX's `LeftFinger` and `RightFinger`.
-- **CORRECTED: the plan note's record.** `workflow/docs/motion-catalogue-2.md`
+- **CORRECTED: the plan note's record.** `workflow/archive/motion-catalogue-2-2026-09-11/motion-catalogue-2.md`
   §3.3 gave three example sentences and named four validation projects;
   measured against the source (`declaration-site-joint/evidence/sightings.md`
   §5), two of the three examples are ADR-097's work, not this cycle's
@@ -2567,7 +2567,7 @@ ratified requirements or permission to implement a framework change. No
 framework source was modified; `machinome/node/base.py`,
 `machinome/core/serializer.py` and the viewer's `widget/src/tree.ts` were
 read to locate the limit. The proposed design is
-`workflow/docs/markings.md`; **status: cycle 1 of 3 implemented** — OpenSpec change
+`workflow/archive/markings-2026-09-15/markings.md`; **status: cycle 1 of 3 implemented** — OpenSpec change
 `carry-markings-on-a-part` (archived 2026-09-15, ADR-120) gives a rigid node a
 declared zero-volume `Marking` with `Svg` artwork and `Wrapped`/`Flat` placement,
 a decal artifact with its own currency, and an additive `markings` document
@@ -2690,7 +2690,7 @@ driven end a meaning and integrates it piece by piece; nothing below was
 implemented by it.
 
 The pilot's retained-angle clearing requirement,
-`workflow/docs/curta-retained-angle-clearing.md` (Curta Type I 3x, branch
+`workflow/archive/curta-retained-angle-clearing-2026-09-15/curta-retained-angle-clearing.md` (Curta Type I 3x, branch
 `direct-operation`, checkpoint `b285393`), was **taken up as this change**.
 Its items 8 (replay through the independent viewer, whose version 6 execution
 is that repository's own cycle) and 9 (the Curta's own migration) stay open,
@@ -2869,7 +2869,7 @@ once per piece of a tick; nothing below except that last entry was
 implemented by it.
 
 The pilot's shifted carry association requirement,
-`workflow/docs/curta-shifted-carry-association.md`, is what the cycle took
+`workflow/archive/curta-shifted-carry-association-2026-09-15/curta-shifted-carry-association.md`, is what the cycle took
 up; the Curta's own migration (item 6 there) and the viewer's execution of a
 version 7 document (item 7) are open in their own repositories.
 
@@ -3495,8 +3495,8 @@ watched turning it. Nothing here is a defect.
 companion after adversarial review; originating project migration follows.**
 Originating project `projects/Locks/Vault_with_combination_lock`, checkpoint
 `78d4ceb`; framework baseline `b9b64dd`. Historical reproduction and control
-evidence: [investigation](docs/vault-running-pickup-investigation.md).
-The [external issue draft](docs/vault-running-pickup-wart.md) was not posted:
+evidence: [investigation](archive/vault-running-pickup-2026-09-19/vault-running-pickup-investigation.md).
+The [external issue draft](archive/vault-running-pickup-2026-09-19/vault-running-pickup-wart.md) was not posted:
 GitHub CLI authentication is unavailable. No external issue number is claimed.
 
 - A positional self-read gate cannot state the Vault's unilateral peg contact:
@@ -3550,7 +3550,7 @@ is explicitly parked, not completed.
   included.
 
 Evidence and cycle identity:
-[investigation](docs/astrarium-running-time-drive.md).
+[investigation](archive/astrarium-running-time-drive-2026-09-20/astrarium-running-time-drive.md).
 Ratified [proposal](../openspec/changes/archive/2026-09-20-running-time-drive/proposal.md) and
 [design](../openspec/changes/archive/2026-09-20-running-time-drive/design.md).
 The [implementation evidence](../openspec/changes/archive/2026-09-20-running-time-drive/evidence.md)
@@ -3571,7 +3571,7 @@ The cycle retains the located contact's two-sided bracket and tests individual
 admissions there. The original four-case Curta reproduction and its broader
 six-test measured-profile suite pass. Producer corpus evidence is included;
 independent viewer conformance and production Curta adoption are not claimed.
-See [investigation](docs/curta-periodic-lockout-first-contact.md).
+See [investigation](archive/curta-periodic-lockout-first-contact-2026-09-20/curta-periodic-lockout-first-contact.md).
 
 # Corpus record cursor across restore (2026-09-20)
 
@@ -3735,7 +3735,7 @@ maintainer's machine, same Ubuntu 24.04 and same
 
 Not a project finding: two gaps in how a maker states a design, recorded at
 the pilot's request so they are not lost. The assessment behind them is
-`workflow/docs/mates-and-sketches.md` (§2, ideas 1 and 3; §5.3 and §5.4).
+`workflow/ongoing/mates-and-sketches.md` (§2, ideas 1 and 3; §5.3 and §5.4).
 Its idea 2, mates between named frames, is the part with project evidence
 already on record and is tracked there, not here.
 
@@ -3765,4 +3765,4 @@ already on record and is tracked there, not here.
   the build-time side. Comes back
   with a linkage machine that wants its loop closed rather than derived —
   a second flexure stage, or a Foundry machine built around a linkage — and
-  is a natural neighbour of 0.9 dynamics on `workflow/docs/roadmap.md`.
+  is a natural neighbour of 0.9 dynamics on `workflow/ongoing/roadmap.md`.

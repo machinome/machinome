@@ -7,7 +7,8 @@ for.
 
 The originating project is `projects/Calculators/Curta-Type-I-3x`, branch
 `direct-operation`, checkpoint `b285393`, and the requirement is recorded
-whole in `workflow/docs/curta-retained-angle-clearing.md`. Clearing
+whole in the note archived under
+`workflow/archive/curta-retained-angle-clearing-2026-09-15/`. Clearing
 sweeps a ring carrying two nine-tooth racks past the register dials: one
 row over the counter, one over the result, on opposite halves of the
 ring. A rack turns a dial only while its teeth reach it AND the dial is

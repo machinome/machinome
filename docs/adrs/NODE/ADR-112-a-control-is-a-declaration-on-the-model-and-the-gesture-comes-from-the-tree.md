@@ -21,7 +21,7 @@ button per declared instruction, a nudge pair and a jog pair per
 declared input. The viewer's ADR-048 ratified that chrome and closed with
 a promise — *"the next viewer cycle binds a pick to a declared input
 through this same command interface"* — and the 2026-09-12 ratification
-in `workflow/open-run-simulation/design.md` had already named the third
+in `workflow/archive/open-run-simulation-2026-09-13/design.md` had already named the third
 thing a control can be: "clicking a button, holding a jog control or
 **dragging a part**". The Pascaline module made the promise concrete:
 click the dial, and the dial advances.

@@ -25,7 +25,7 @@ SELECTED by where one of its own parts stands.
 
 The originating project is `projects/Calculators/Curta-Type-I-3x`,
 branch `direct-operation`, checkpoint `6a00abe`, and the requirement is
-recorded whole in `workflow/docs/curta-shifted-carry-association.md`.
+recorded whole in `workflow/archive/curta-shifted-carry-association-2026-09-15/curta-shifted-carry-association.md`.
 The Curta's carry levers and transmission shafts belong to the FIXED
 frame; the number dials ride on the CARRIAGE. The same fixed lever is
 therefore tripped by dial `s` and advances dial `s + 1`, where `s` is
@@ -73,7 +73,7 @@ requirement note means by "accepting an arbitrary evaluation order
 supplies no such semantics".
 
 **Three routes through the model as it stood fail, and the note names
-them** (`workflow/docs/curta-shifted-carry-association.md`, "The
+them** (`workflow/archive/curta-shifted-carry-association-2026-09-15/curta-shifted-carry-association.md`, "The
 following do not meet the originating project's approved outcome"):
 making the carriage position a construction parameter, or reconstructing
 the run on every shift — neither demonstrates retained state or a stable

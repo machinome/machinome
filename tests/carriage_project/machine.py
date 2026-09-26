@@ -7,7 +7,8 @@ parts stands.
 
 The originating project is `projects/Calculators/Curta-Type-I-3x`,
 branch `direct-operation`, checkpoint `6a00abe`, and the requirement is
-recorded whole in `workflow/docs/curta-shifted-carry-association.md`.
+recorded whole in the note archived under
+`workflow/archive/curta-shifted-carry-association-2026-09-15/`.
 The Curta's carry levers belong to the FIXED frame and its number dials
 ride on the CARRIAGE, so the same lever is tripped by dial `s` and
 advances dial `s + 1`, where `s` is the carriage position the maker

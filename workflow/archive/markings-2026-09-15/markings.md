@@ -2,7 +2,7 @@
 
 Status: design note, **not ratified, not implemented, not a public API
 promise**. Date: 2026-09-15. Written at the pilot's request from a finding in
-`projects/Calculators`, recorded in `../warts.md` under *Calculators
+`projects/Calculators`, recorded in `../../warts.md` under *Calculators
 (2026-09-15)*, so that another agent can take the work up under
 `machinome-studio/skills/framework-change/SKILL.md`. Every name below is a
 placeholder for the pilot to rename. Nothing in any repository is changed by

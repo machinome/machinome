@@ -13,7 +13,7 @@ is declared. The project-side migration (item 6) and the viewer's execution of
 a version 7 document (item 7) remain open, each in its own repository, and
 what the migration needs is listed in that change's design.md section 12.
 
-This follows [retained-angle clearing](curta-retained-angle-clearing.md).
+This follows [retained-angle clearing](../curta-retained-angle-clearing-2026-09-15/curta-retained-angle-clearing.md).
 ADR-121 has resolved that declaration limitation in Python, and the project's
 finite-band clearing prerequisite tests now pass. The finding below concerns
 dependencies between different moving parts, not another own-angle read.

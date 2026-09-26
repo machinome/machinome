@@ -239,7 +239,7 @@ tick's place:
 own sketch is the counter-example.** It is what makes the ratchet's lower
 bound the LAST SEATED TOOTH rather than a bound that follows the arbor down
 and never blocks. And it is what makes an interlock stating a FREEZE
-expressible at all. The note `workflow/docs/clocked-machine.md` sketched a
+expressible at all. The note `workflow/archive/clocked-machine-2026-09-17/clocked-machine.md` sketched a
 Curta selector lock as
 
 ```python

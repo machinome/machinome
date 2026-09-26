@@ -174,7 +174,7 @@ does not measure against the catalogue and is not taken here.
   children with a structurally different expression per position, a
   separate finding this ADR does not touch.
 - **`&` is not the ratified spelling** the plan named
-  (`workflow/docs/motion-catalogue-2.md` section 3.5). Measured
+  (`workflow/archive/motion-catalogue-2-2026-09-11/motion-catalogue-2.md` section 3.5). Measured
   impossible; the driven side keeps the ratified tuple verbatim, and the
   plan is corrected by this ADR and the change's own record.
 - **Nothing existing moved.** Every form this cycle gives a meaning to
