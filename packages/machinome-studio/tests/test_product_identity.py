@@ -33,6 +33,70 @@ class ProductIdentityTest(unittest.TestCase):
 
         self.assertIn("<title>Machinome Studio</title>", browser_document)
 
+    def test_browser_document_links_the_identity_favicons(self) -> None:
+        """The tab carries the identity's favicon pack, versioned as its
+        application guide asks, because browsers cache favicons hard."""
+        browser_document = (ROOT / "floor" / "frontend" / "index.html").read_text()
+
+        self.assertIn(
+            '<link rel="icon" href="/assets/brand/v1/favicon.svg?v=1" type="image/svg+xml" />',
+            browser_document,
+        )
+        self.assertIn(
+            '<link rel="icon" href="/assets/brand/v1/favicon.ico?v=1" sizes="16x16 32x32 48x48" />',
+            browser_document,
+        )
+        self.assertIn(
+            '<link rel="apple-touch-icon" href="/assets/brand/v1/favicon-180.png" />',
+            browser_document,
+        )
+
+    def test_the_brand_directory_is_the_complete_identity_release(self) -> None:
+        """`brand/v1` is the identity's approved release copied intact: every
+        asset its manifest lists is present, nothing else is, and the derived
+        logo font travels with its licence."""
+        brand = ROOT / "floor" / "frontend" / "public" / "assets" / "brand" / "v1"
+        manifest = json.loads((brand / "manifest.json").read_text())
+
+        self.assertEqual(manifest["version"], "1.0")
+        self.assertEqual(manifest["identity"], "Machinome")
+        self.assertEqual(manifest["colors"]["orange"], "#D94E32")
+        present = sorted(
+            str(path.relative_to(brand)) for path in brand.rglob("*") if path.is_file()
+        )
+        self.assertEqual(sorted(manifest["assets"] + ["manifest.json"]), present)
+        self.assertIn("SIL OPEN FONT LICENSE", (brand / "fonts" / "OFL.txt").read_text())
+
+    def test_interface_fonts_ship_with_their_notices(self) -> None:
+        fonts = ROOT / "floor" / "frontend" / "public" / "assets" / "fonts"
+
+        for font, notice in (
+            ("SpaceGrotesk.ttf", "SpaceGrotesk-OFL.txt"),
+            ("IBMPlexMono-Regular.ttf", "IBMPlexMono-OFL.txt"),
+        ):
+            self.assertTrue((fonts / font).is_file(), font)
+            self.assertIn("SIL OPEN FONT LICENSE", (fonts / notice).read_text())
+
+    def test_the_interface_wears_the_identity_and_keeps_the_logo_font_out_of_text(self) -> None:
+        """Space Grotesk for the interface, IBM Plex Mono for the technical
+        text, the identity orange as the accent; the wordmark and its `Studio`
+        qualifier in the title bar; and the logo-only font never named as a
+        text face, as the identity's application guide requires."""
+        styles = (ROOT / "floor" / "frontend" / "src" / "styles.css").read_text()
+        markup = (ROOT / "floor" / "frontend" / "src" / "main.tsx").read_text()
+
+        self.assertIn('font-family: "Space Grotesk"', styles)
+        self.assertIn('font-family: "IBM Plex Mono"', styles)
+        self.assertIn("--machinome-orange: #D94E32", styles)
+        self.assertNotIn("Machinome Logo", styles)
+        self.assertNotIn("Machinome Logo", markup)
+        self.assertNotIn("Inter,", styles)
+        self.assertNotIn("#e0a350", styles)
+        self.assertIn('const WORDMARK = "/assets/brand/v1/wordmark-white.svg";', markup)
+        self.assertEqual(markup.count('<img className="workspace-wordmark" src={WORDMARK} width="180" height="25" alt="" />'), 2)
+        self.assertIn('<span className="workspace-qualifier">Studio</span>', markup)
+        self.assertIn('aria-label="Machinome Studio"', markup)
+
     def test_chat_children_have_stable_grid_rows_when_failure_list_is_absent(self) -> None:
         styles = (ROOT / "floor" / "frontend" / "src" / "styles.css").read_text()
 

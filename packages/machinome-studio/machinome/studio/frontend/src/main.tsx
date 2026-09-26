@@ -9,6 +9,12 @@ import "./monaco";
 import "./styles.css";
 import type { ViewerHandle, ViewerView } from "./machinome-viewer";
 
+// The identity's outlined wordmark, served intact from public/assets/brand/v1;
+// white is the identity's treatment on a dark ground. The `Studio` qualifier
+// beside it is plain text in the interface face, as the application guide
+// asks, and the link names the product to assistive technology.
+const WORDMARK = "/assets/brand/v1/wordmark-white.svg";
+
 const BuildPieceViewer = lazy(() => import("./build-viewer").then((module) => ({ default: module.BuildPieceViewer })));
 
 type AgentState = "waiting" | "active";
@@ -693,7 +699,10 @@ function Hub({ folder }: { folder: string }) {
 
   return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
     <header className="workspace-titlebar">
-      <a className="workspace-title" {...linkProps("/")} title="All projects"><span className="shop-mark" aria-hidden="true" /><span>Machinome Studio</span></a>
+      <a className="workspace-home" {...linkProps("/")} title="All projects" aria-label="Machinome Studio">
+        <img className="workspace-wordmark" src={WORDMARK} width="180" height="25" alt="" />
+        <span className="workspace-qualifier">Studio</span>
+      </a>
       <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
     </header>
     <div className="hub-body">
@@ -1113,6 +1122,9 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
     // shows.
     editor.onDidLayoutChange(() => editor.handleInitialized?.());
     editor.handleInitialized?.();
+    // Monaco measured its glyphs against whatever face was available when it
+    // mounted; once the identity's mono face has loaded, measure again.
+    void document.fonts.ready.then(() => monaco.editor.remeasureFonts());
   };
 
   useEffect(() => {
@@ -1213,7 +1225,7 @@ function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOp
           }}
           options={{
             automaticLayout: true,
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            fontFamily: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
             fontSize: 12.5,
             minimap: { enabled: false },
             padding: { top: 12 },
@@ -1824,8 +1836,11 @@ function Workspace({ path: entryPath }: { path: string }) {
     <main className="shop-workspace">
       <header className="workspace-titlebar">
         <div className="workspace-title">
-          <span className="shop-mark" aria-hidden="true" />
-          <span><a className="workspace-home" {...linkProps("/")} title="All projects">Machinome Studio</a> / {entryPath}</span>
+          <a className="workspace-home" {...linkProps("/")} title="All projects" aria-label="Machinome Studio">
+            <img className="workspace-wordmark" src={WORDMARK} width="180" height="25" alt="" />
+            <span className="workspace-qualifier">Studio</span>
+          </a>
+          <span className="workspace-path">/ {entryPath}</span>
         </div>
         <div className="title-actions"><p className="workspace-run" aria-live="polite">{opening ? "Opening…" : shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
       </header>

@@ -1,0 +1,32 @@
+/* Machinome identity 1.0. Relative URLs stay within the copied brand/v1 folder. */
+@font-face {
+  font-family: "Machinome Logo";
+  src: url("fonts/MachinomeLogo-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  /* Only M a c e h i m n o. Not a general typeface or fallback. */
+  unicode-range: U+004D, U+0061, U+0063, U+0065, U+0068-0069, U+006D-006F;
+}
+:root {
+  --machinome-orange: #D94E32;
+  --machinome-black: #000000;
+  --machinome-white: #FFFFFF;
+  --machinome-paper: #F2F0E9;
+}
+.machinome-logo {
+  /* Apply only to an isolated element whose exact text is "Machinome".
+     Never apply to body, an ancestor container, arbitrary children or user text. */
+  font-family: "Machinome Logo", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-synthesis: none;
+  font-kerning: none;
+  font-variant-ligatures: none;
+  letter-spacing: -.01em;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--machinome-logo-color, var(--machinome-orange));
+}
+.machinome-logo--black { --machinome-logo-color: #000000; }
+.machinome-logo--white { --machinome-logo-color: #FFFFFF; }

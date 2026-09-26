@@ -31,6 +31,11 @@ backend.
   machine. A project is created with a name and a profile, from the
   framework's scaffold, as its own Git repository, and opened in the same
   action.
+- **The Machinome identity**: the wordmark with its `Studio` qualifier in
+  the title bar of the hub and of every workspace, the Machinome favicon
+  in the tab, Space Grotesk for the interface and IBM Plex Mono for code,
+  paths and values, and the identity orange as the accent of selections,
+  actions and in-progress states.
 - **A project workspace**: a conversation with the agent who speaks for
   the team; the model in the framework's browser viewer, updated part by
   part as the source changes, with the viewer's own assembly navigator; the

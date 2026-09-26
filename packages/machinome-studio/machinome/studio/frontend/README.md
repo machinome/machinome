@@ -23,6 +23,11 @@ served by the shop-floor service, run:
 npm --prefix floor/frontend run build
 ```
 
+`public/assets/` holds what the build copies to `floor/static/assets/`
+unchanged: the Machinome identity release under `brand/v1/` and the two
+interface fonts under `fonts/`, each directory with its own README and
+licence notices. Both are served by the floor's `/assets` route.
+
 Use `npm --prefix floor/frontend run test` for the TypeScript check. From the repository root,
 `scripts/test-e2e` builds the frontend and runs the Python Playwright browser
 test; install its dependency with `python -m pip install -e '.[e2e]'`.

@@ -10,6 +10,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".py", ".sh", ".ts", ".tsx"}
+# The Machinome identity release and the interface fonts are copied intact
+# from their own sources and carry their own notices; they are served as
+# static assets and are not this repository's source.
+VENDORED = ("floor", "frontend", "public", "assets")
 COPYRIGHT = "Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes"
 SPDX = "SPDX-License-Identifier: AGPL-3.0-or-later"
 
@@ -25,7 +29,8 @@ def tracked_source_files() -> list[Path]:
     return sorted(
         path
         for path in paths
-        if path.suffix in SOURCE_SUFFIXES or path.parts[:1] == ("scripts",)
+        if (path.suffix in SOURCE_SUFFIXES or path.parts[:1] == ("scripts",))
+        and path.parts[: len(VENDORED)] != VENDORED
     )
 
 

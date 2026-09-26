@@ -150,6 +150,50 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("heading", name="New project").wait_for()
         self.page.get_by_text("stored in the working folder").wait_for()
 
+    def test_the_hub_wears_the_machinome_identity(self) -> None:
+        """The identity is applied, not only declared: the wordmark is painted
+        in the title bar with its `Studio` qualifier and names the product to
+        assistive technology, the identity's interface and technical fonts are
+        the ones the page actually loaded, and the tab carries its favicon."""
+        self.page.goto(self.url("/"))
+        self.page.get_by_role("heading", name="Projects").wait_for()
+
+        home = self.page.get_by_role("link", name="Machinome Studio")
+        home.wait_for()
+        self.assertEqual(home.get_attribute("href"), "/")
+        wordmark = home.locator("img")
+        self.assertEqual(wordmark.get_attribute("src"), "/assets/brand/v1/wordmark-white.svg")
+        self.assertEqual(wordmark.get_attribute("alt"), "")
+        self.assertGreater(wordmark.evaluate("image => image.naturalWidth"), 0)
+        self.assertAlmostEqual(wordmark.bounding_box()["width"], 180, delta=1)
+        self.assertEqual(home.get_by_text("Studio", exact=True).count(), 1)
+
+        # `document.fonts.load` resolves with the faces that match; with no
+        # face declared it resolves with none, which is what makes this red
+        # before the identity is applied rather than trivially true.
+        loaded = self.page.evaluate(
+            """async () => {
+                const result = {};
+                for (const [family, sample] of [["Space Grotesk", '13px "Space Grotesk"'], ["IBM Plex Mono", '12px "IBM Plex Mono"']]) {
+                    const faces = await document.fonts.load(sample);
+                    result[family] = faces.length > 0 && faces.every((face) => face.status === "loaded");
+                }
+                return result;
+            }"""
+        )
+        self.assertEqual(loaded, {"Space Grotesk": True, "IBM Plex Mono": True})
+        self.assertIn("Space Grotesk", self.page.evaluate("getComputedStyle(document.body).fontFamily"))
+        state = self.page.get_by_text("Shop is open", exact=True)
+        self.assertIn("IBM Plex Mono", state.evaluate("element => getComputedStyle(element).fontFamily"))
+
+        icons = self.page.evaluate(
+            """[...document.querySelectorAll('link[rel="icon"]')].map((link) => link.getAttribute("href"))"""
+        )
+        self.assertEqual(icons, ["/assets/brand/v1/favicon.svg?v=1", "/assets/brand/v1/favicon.ico?v=1"])
+        favicon = self.page.request.get(self.url("/assets/brand/v1/favicon.svg"))
+        self.assertEqual(favicon.status, 200)
+        self.assertIn("image/svg+xml", favicon.headers.get("content-type", ""))
+
     def test_project_creation_opens_a_workspace_and_close_returns_to_the_hub(self) -> None:
         self.page.goto(self.url("/"))
         self.page.get_by_role("button", name="New project").first.click()
@@ -158,7 +202,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.page.get_by_role("button", name="Create and open").click()
         self.page.get_by_text("creating · builder", exact=False).wait_for(timeout=2_000)
         self.page.wait_for_url("**/projects/new_bracket", timeout=10_000)
-        self.page.get_by_text("Machinome Studio / new_bracket").wait_for()
+        self.page.get_by_role("link", name="Machinome Studio").wait_for()
+        self.page.get_by_text("/ new_bracket", exact=True).wait_for()
         self.page.get_by_role("button", name="Close project").click()
         self.page.wait_for_url(self.url("/"), timeout=5_000)
         self.page.get_by_role("heading", name="Projects").wait_for()
@@ -205,7 +250,8 @@ class ShopLifecycleE2E(unittest.TestCase):
 
         # The maker who clicks the card never sees it; they land here.
         self.page.goto(self.url("/projects/warm-workspace"))
-        self.page.get_by_text("Machinome Studio / warm-workspace").wait_for()
+        self.page.get_by_role("link", name="Machinome Studio").wait_for()
+        self.page.get_by_text("/ warm-workspace", exact=True).wait_for()
         rebuilding = self.page.get_by_text("Bringing the model up to date", exact=False)
         rebuilding.wait_for(timeout=10_000)
 
@@ -730,7 +776,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertIn("rgb(79, 182, 184)", engine_row.evaluate("element => getComputedStyle(element).boxShadow"))
         self.assertEqual(
             engine_row.evaluate("element => getComputedStyle(element).getPropertyValue('--machinome-nav-focus-ring')").strip(),
-            "#e0a350",
+            "#D94E32",
         )
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
 
@@ -843,7 +889,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         self._open("sandbox/windmill")
 
         self.page.goto(self.url("/projects/sandbox/windmill"))
-        self.page.get_by_text("Machinome Studio / sandbox/windmill").wait_for(timeout=10_000)
+        self.page.get_by_role("link", name="Machinome Studio").wait_for(timeout=10_000)
+        self.page.get_by_text("/ sandbox/windmill", exact=True).wait_for()
         self.page.get_by_role("button", name="Close project").click()
 
         self.page.wait_for_url(self.url("/folders/sandbox"), timeout=5_000)
