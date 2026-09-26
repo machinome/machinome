@@ -268,6 +268,26 @@ class CaveatTest(unittest.TestCase):
 
 
 class ReferenceTest(unittest.TestCase):
+    def test_codex_reference_matches_the_qualified_runtime(self) -> None:
+        namespace = conf()
+        self.assertEqual(namespace["codex_version"], source_constant("floor/codex_auth.py", "PINNED_VERSION"))
+        self.assertEqual(set(namespace["codex_models"]), set(source_constant("floor/backends/codex_policy.py", "MODEL_FINGERPRINTS")))
+        self.assertEqual(tuple(namespace["codex_efforts"]), source_constant("floor/backends/codex_policy.py", "EFFORTS"))
+        configuration = (DOCS / "reference/project-configuration.rst").read_text()
+        for value in ("codex:<model>", "|codex-models|", "|codex-efforts|", "medium"):
+            self.assertIn(value, configuration)
+
+    def test_codex_login_recovery_and_limits_are_documented(self) -> None:
+        for page in ("installation.rst", "reference/cli.rst", "troubleshooting.rst"):
+            with self.subTest(page=page):
+                self.assertIn("python -m floor.codex_auth login", (DOCS / page).read_text())
+        status = (DOCS / "project/status.rst").read_text()
+        self.assertNotIn("Codex was retired", status)
+        self.assertIn("|codex-version|", status)
+        self.assertIn("Linux x86_64", status)
+        self.assertIn("not an OS sandbox", (DOCS / "working-with-agents.rst").read_text())
+        self.assertIn("never silently replaces", (DOCS / "troubleshooting.rst").read_text())
+
     def test_every_launcher_option_is_documented(self) -> None:
         reference = (DOCS / "reference/cli.rst").read_text()
         options: set[str] = set()

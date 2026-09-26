@@ -46,10 +46,13 @@ top names the working folder and each folder between; choose one to go
 back up. The browser location carries the folder or project you are
 looking at.
 
-**Backends.** For each agent backend the studio supports, the hub reports
+**Backends.** For Claude Code and OpenCode, the hub reports
 whether it found the program on this machine and, when it did, its path,
 its version and the models the shipped profiles would ask of it. This is
 observation only: the hub does not install, enable or locate a backend.
+Codex availability is checked separately when opening a project that
+selects it or loading runtime choices in Agents; an executable-version
+summary alone does not qualify it.
 
 Create a project
 ================

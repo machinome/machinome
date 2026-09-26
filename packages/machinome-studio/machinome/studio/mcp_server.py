@@ -174,6 +174,7 @@ class ProjectTools:
         floor_url: str | None = None,
         floor_session: str | None = None,
         skills: Mapping[str, Path] | None = None,
+        git_signing_required: bool = False,
     ) -> None:
         self.root = project.resolve(strict=True)
         if not self.root.is_dir():
@@ -183,6 +184,7 @@ class ProjectTools:
         # this session's model rather than on whichever one the project
         # defaults to.
         self.model = model
+        self.git_signing_required = git_signing_required
         # Fixed at launch by the shop: an agent names a skill, never a location.
         self.skills = {
             name: Path(path).resolve(strict=True) for name, path in (skills or {}).items()
@@ -788,6 +790,7 @@ class ProjectTools:
         no model content — a planning commit against the spec record — skips
         the render, so a missing refresh is never mistaken for a failure.
         """
+        self._check_commit_signing()
         if not isinstance(message, str) or not message:
             raise ValueError("message must be a non-empty string")
         if not self._carries_model_content():
@@ -891,6 +894,10 @@ class ProjectTools:
             if match
         ]
 
+    def _check_commit_signing(self) -> None:
+        if self.git_signing_required:
+            raise RuntimeError("Scoped Codex workers cannot honor required signed commits; use a backend with configured signing support")
+
     def openspec_setup(self) -> dict[str, Any]:
         """Prepare this project's OpenSpec record: initialize, seed, commit.
 
@@ -905,6 +912,7 @@ class ProjectTools:
                 "root": str(self.root),
                 "message": "this project already owns an OpenSpec record; nothing was changed",
             }
+        self._check_commit_signing()
         initialized = self._run_openspec(["init", "--tools", "none"])
         if not initialized["ok"] or not config.is_file():
             raise RuntimeError(
@@ -1331,13 +1339,17 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
 class StdioMcpServer:
     """Minimal MCP tools server using newline-delimited JSON-RPC stdio."""
 
-    def __init__(self, tools: ProjectTools) -> None:
+    def __init__(self, tools: ProjectTools, names: tuple[str, ...] | None = None) -> None:
         self.tools = tools
         # A session holding no skill is not offered a way to load one.
         self.names = tuple(
             name for name in TOOL_NAMES
             if name != SKILL_TOOL or tools.skills
         )
+        if names is not None:
+            if len(set(names)) != len(names) or set(names) - set(self.names):
+                raise ValueError("Invalid scoped floor worker tool names")
+            self.names = names
 
     def run(self) -> None:
         for line in sys.stdin:
@@ -1439,11 +1451,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--floor-url")
     parser.add_argument("--floor-session")
     parser.add_argument("--skills-json", default="{}")
+    parser.add_argument("--tools-json")
+    parser.add_argument("--git-signing-required", action="store_true")
     args = parser.parse_args(argv)
     raw_command = json.loads(args.machinome_command_json)
     if not isinstance(raw_command, list) or not raw_command or not all(isinstance(item, str) for item in raw_command):
         parser.error("--machinome-command-json must encode a non-empty string array")
     raw_skills = json.loads(args.skills_json)
+    raw_tools = json.loads(args.tools_json) if args.tools_json is not None else None
+    if raw_tools is not None and (not isinstance(raw_tools, list) or not all(isinstance(name, str) for name in raw_tools)):
+        parser.error("--tools-json must encode a tool name array")
     if not isinstance(raw_skills, dict) or not all(
         isinstance(name, str) and name and isinstance(path, str) and path
         for name, path in raw_skills.items()
@@ -1457,7 +1474,9 @@ def main(argv: list[str] | None = None) -> None:
             floor_url=args.floor_url,
             floor_session=args.floor_session,
             skills={name: Path(path) for name, path in raw_skills.items()},
-        )
+            git_signing_required=args.git_signing_required,
+        ),
+        names=tuple(raw_tools) if raw_tools is not None else None,
     ).run()
 
 

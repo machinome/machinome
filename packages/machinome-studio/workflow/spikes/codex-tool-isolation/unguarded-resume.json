@@ -1,0 +1,64 @@
+{
+  "version": "codex-cli 0.157.1",
+  "controlled_catalog": true,
+  "guard_turns": null,
+  "completed": null,
+  "error": "AssertionError({'name': 'restart_resume', 'models': ['gpt-6-astra', 'gpt-6-astra'], 'tool_sets': [['functions.apply_patch', 'functions.floor_hello'], ['functions.apply_patch', 'functions.floor_hello']], 'last_output': 'HELLO_SPIKE_RESULT'})",
+  "cases": [
+    {
+      "name": "hello",
+      "models": [
+        "gpt-6-sol",
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "restart_resume",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.apply_patch",
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "restart_resume_native_stdin",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.apply_patch",
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: write_stdin"
+    },
+    {
+      "name": "restart_resume_native_patch",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.apply_patch",
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "patch rejected: writing is blocked by read-only sandbox; rejected by user approval settings"
+    }
+  ]
+}

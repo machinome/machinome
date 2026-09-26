@@ -3,7 +3,8 @@
 The manual is `docs/`, built with Sphinx and `sphinx-rtd-theme` like the
 framework, viewer and mechanics manuals. Release facts are read once in
 `docs/conf.py`: the version from `pyproject.toml`; the required viewer API,
-the Claude model and reasoning sets and the Build volume from the floor's
+the Claude and Codex model and reasoning sets, the pinned Codex version,
+and the Build volume from the floor's
 source, read as text; and the framework version the studio runs against,
 the one hand-maintained value. Pages use the substitutions and never the
 numbers.

@@ -9,7 +9,7 @@ vendor-specific configuration.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Protocol
@@ -70,6 +70,10 @@ class InactiveTurn(RuntimeError):
     record, and a backend whose runtime provides no such signal never raises it
     (see ADR 0008).
     """
+
+
+class ContextUnrecoverable(RuntimeError):
+    """A used conversation cannot be safely restored; never replace it fresh."""
 
 
 # ── role context & handles ────────────────────────────────────────────────
@@ -141,6 +145,7 @@ class RuntimeCatalogue:
     supported: bool
     choices: tuple[RuntimeChoice, ...] = ()
     reason: str = ""
+    unavailable: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -176,6 +181,15 @@ class BackendEvent:
     delivery_id: str | None = None
     error: str | None = None
     activity: AgentActivity | None = None
+    handle_id: str | None = None
+    """Optional opaque role-handle correlation, never a native session id."""
+    is_current: Callable[[], bool] | None = None
+    """Optional owner liveness check, pure synchronous and side-effect-free.
+
+    It performs no I/O or mutation. Consumers recheck it after delivery locks
+    because an event may already have been yielded before context recovery.
+    Backend-native generation/session identities remain inside its owner.
+    """
 
 
 # ── AgentBackend protocol ──────────────────────────────────────────────────

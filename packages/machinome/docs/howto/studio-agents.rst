@@ -62,7 +62,7 @@ guessing.
 
 **Librarian** researches external CAD libraries and files a distilled,
 verified note under the project's ``docs/notes/``. It is provisionally out
-of service: the two backends give it no web, documentation or package
+of service: the scoped backends give it no web, documentation or package
 access, so it reports that it cannot take the assignment. Foreman knows.
 
 What an agent can do
@@ -97,15 +97,30 @@ activity, is not kept; the repository is the record.
 Backends
 ========
 
-An agent runs on one of two backends, chosen per agent by the project:
+An agent's backend is chosen per agent by the project:
 **Claude Code**, the default for every agent the project does not name,
-with the model and effort its profile declares; and **OpenCode**, which a
+with the model and effort its profile declares; **OpenCode**, which a
 project selects by naming a connected provider and a model, and which
-otherwise inherits the model the OpenCode installation is logged in with.
-On both, the agent's native file, shell and network tools are replaced by
+otherwise inherits the model the OpenCode installation is logged in with;
+or **Codex**, explicitly selected after qualification and separate Studio
+login (:doc:`installation`).
+On all three, the agent's native file, shell and network tools are replaced by
 the studio's bounded operations above, and the profile's prompt and skill
 list travel with every session. Under OpenCode, a regular ``AGENTS.md`` at
 the project root is appended to the prompt as subordinate guidance: it may
 describe the project, and it cannot change an agent's model, tools, role or
 boundaries. A backend that cannot enforce the profile's tool policy is not
 selectable.
+
+Codex shares one authenticated service across projects but keeps each
+role's tools and conversation separate. It does not inherit your native
+Codex plugins, skills or configuration. An idle role may change between
+supported Codex models without losing its conversation. Closing one
+project leaves the others running, and closing all projects preserves
+the separate login for later use.
+
+This tool boundary is not an OS sandbox for hostile project code. Floor
+builds and tests execute project code on the host; only open projects you
+trust. Codex preserves plain Git author identity but refuses commit and
+spec-setup operations when signed commits are required, rather than
+silently creating unsigned commits.

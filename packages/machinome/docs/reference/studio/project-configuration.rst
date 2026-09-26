@@ -40,17 +40,21 @@ table is neither read nor written by the studio.
       ``opencode:<provider>:<model>:<reasoning>``, where the provider and
       model are identifiers from the OpenCode installation's connected
       catalogue and the reasoning level is one of that model's variants.
+    * ``codex:<model>`` or ``codex:<model>:<reasoning>``, where the model
+      is one of |codex-models| and the reasoning level one of
+      |codex-efforts|. Its provider is fixed to OpenAI.
 
     An agent the table does not name opens on Claude with the model and
     effort its profile declares. A value that omits the reasoning level
-    keeps the profile's effort. The parts cannot be declared separately.
+    keeps the profile's effort for Claude and OpenCode; Codex defaults to
+    ``medium``. The parts cannot be declared separately.
 
 What is rejected, and what is ignored
 =====================================
 
 The studio refuses to open a project, naming the file and the value, when
 a runtime value names an unknown or retired backend, has more or fewer
-parts than its backend admits, leaves a part empty, names a Claude model or
+parts than its backend admits, leaves a part empty, names a Claude or Codex model or
 reasoning level outside the sets above, or names a reasoning level for a
 backend that cannot enforce one; when an agent key is not a lowercase
 kebab-case identifier; or when the table carries a key it does not define.

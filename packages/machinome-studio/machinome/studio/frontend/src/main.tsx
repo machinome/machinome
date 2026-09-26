@@ -52,6 +52,7 @@ type RuntimeCatalogue = {
   runtime: { backend: string; provider: string | null; model: string; effort: string };
   supported: boolean;
   reason: string | null;
+  unavailable?: Record<string, string>;
   choices: RuntimeChoice[];
   config_revision: string;
   runtime_idle: boolean;
@@ -1235,12 +1236,14 @@ function activityTime(value: string) {
 function runtimeProviderKey(backend: string, provider: string | null) {
   if (provider) return provider;
   if (backend === "claude") return "anthropic";
+  if (backend === "codex") return "openai";
   return "";
 }
 
 function runtimeProviderLabel(backend: string, provider: string | null) {
   if (provider) return provider;
   if (backend === "claude") return "Anthropic";
+  if (backend === "codex") return "OpenAI";
   return "unavailable";
 }
 
@@ -1414,10 +1417,11 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       {controlsOpen ? <div className="agent-controls">
         <div className="agent-control-grid">
           <div className="agent-control"><span>Backend</span><div className="backend-picks">
-            {["claude", "opencode"].map((value) => <button
+            {["claude", "opencode", "codex"].map((value) => <button
               disabled={loading || !catalogue?.choices.some((item) => item.backend === value) || (!focused?.runtime_pristine && value !== focused?.backend)}
               className={value === backend ? "selected" : ""}
               key={value}
+              title={catalogue?.unavailable?.[value]}
               onClick={() => selectBackend(value)}
             >{value}</button>)}
           </div><small>{focused?.runtime_pristine ? "Replace this unused session immediately." : "Locked after this agent's first use."}</small></div>
@@ -1445,6 +1449,7 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
               onClick={() => { setEffort(value); setNotice(""); }}
             >{value}</button>)}
           </div><small>Changes atomically with the model.</small></div>
+          {catalogue?.unavailable?.codex ? <p className="agent-backend-unavailable" role="status">Codex unavailable: {catalogue.unavailable.codex}</p> : null}
         </div>
         <div className="agent-apply-row">
           <label><input type="checkbox" checked={persist} onChange={(event) => setPersist(event.target.checked)} />write to pyproject.toml</label>

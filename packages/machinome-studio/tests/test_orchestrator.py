@@ -854,6 +854,12 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
             backend_factory=factory,
         )
         self.addAsyncCleanup(self.registry.close_all)
+        # Generic project-open fixtures never borrow the operator's dedicated
+        # authenticated native owner. Missing optional login must not poison
+        # the existing Claude/OpenCode catalogue.
+        from unittest.mock import AsyncMock
+        from floor.codex_auth import CodexAuthError
+        self.registry.codex_service.acquire = AsyncMock(side_effect=CodexAuthError("Dedicated Studio login unavailable in this fixture"))
 
     async def test_open_resolves_prepares_builds_and_starts_agents_inside_one_session(self) -> None:
         await self.registry.request_open("engine")
@@ -1259,7 +1265,7 @@ class BackendFlagAcceptanceTest(unittest.TestCase):
         from pathlib import Path
         from floor.backends import create_backend
 
-        for retired in ("hermes", "codex"):
+        for retired in ("hermes",):
             with self.subTest(backend=retired):
                 with self.assertRaisesRegex(ValueError, f"unknown backend.*{retired}"):
                     create_backend(retired, shop_root=Path("/tmp"))

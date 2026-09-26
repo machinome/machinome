@@ -64,7 +64,7 @@ the backend has more than one, a model, and an optional reasoning level, in that
 order, separated by `:`. A backend with one provider SHALL be written
 `backend:model`; a backend with several providers SHALL be written
 `backend:provider:model`. Either form MAY carry a reasoning level as a final
-segment. Claude SHALL take the single-provider form and OpenCode SHALL take the
+segment. Claude and Codex SHALL take the single-provider form and OpenCode SHALL take the
 multi-provider form, so the backend named in the first segment SHALL determine
 how the remaining segments are read. The parts SHALL NOT be declarable
 separately, in separate tables, or in separate files.
@@ -74,7 +74,7 @@ Selections SHALL be declared per agent under
 in one run MAY name different backends.
 
 A value SHALL be rejected when it names an unknown or retired backend, carries a
-segment count the named backend does not admit, names a Claude model outside
+segment count the named backend does not admit, names a Claude or Codex model outside
 that backend's supported set, names a reasoning level outside the set that
 backend supports, names a reasoning level for a backend that cannot enforce one,
 or leaves any segment empty. Rejection SHALL identify the offending agent key
@@ -104,12 +104,16 @@ and value.
 - **WHEN** a selection names an unknown backend, carries more or fewer segments than the named backend admits, or leaves a segment empty
 - **THEN** the run exits with an error naming that agent key and value before any project or backend side effect
 
-#### Scenario: A retired backend is rejected
-- **WHEN** a selection names the retired `codex` backend
-- **THEN** the run exits with an error naming that agent key and value rather than substituting another backend
+#### Scenario: A qualified Codex selection is resolved
+- **WHEN** an agent is declared as `codex:gpt-6-sol:medium` and that runtime satisfies the supported Codex contract
+- **THEN** that agent opens on Codex with its named model and reasoning, without changing other agents' Claude defaults
+
+#### Scenario: An unsupported Codex selection is rejected
+- **WHEN** a Codex selection names an unsupported model, reasoning combination or installed capability contract
+- **THEN** the shop rejects it naming the agent key, value and remedy before project preparation or real role sessions, without substituting a backend
 
 #### Scenario: An unsupported concrete model is rejected
-- **WHEN** a Claude selection names a model outside that backend's supported set
+- **WHEN** a Claude or Codex selection names a model outside that backend's supported set
 - **THEN** the run exits with an error rather than passing the value to the backend
 
 #### Scenario: An unsupported reasoning level is rejected
@@ -254,7 +258,7 @@ next-assignment runtime mode.
 ### Requirement: Runtime controls expose provider before model
 The Agents workspace SHALL present runtime selection in the order backend,
 provider, model, and reasoning level. The provider control SHALL identify the
-provider independently of the model control. Claude SHALL show `Anthropic` as
+provider independently of the model control. Claude SHALL show `Anthropic` and qualified Codex SHALL show `OpenAI` as
 its single fixed provider, and OpenCode SHALL show only the exact provider IDs
 in the live endpoint's connected provider set. The shop SHALL NOT expose entries
 that exist only in OpenCode's complete known-provider catalogue, and SHALL NOT
@@ -275,7 +279,7 @@ maker-selectable.
 
 #### Scenario: The backend control offers only selectable backends
 - **WHEN** the maker opens an agent's runtime controls
-- **THEN** the backend control offers Claude and OpenCode and does not offer the retired Codex backend
+- **THEN** the backend control offers Claude, OpenCode and qualified Codex choices, and explains why an unqualified Codex runtime is unavailable
 
 #### Scenario: A maker selects an OpenCode provider
 - **WHEN** a pristine agent's live OpenCode catalogue contains more than one connected provider and the maker selects one provider ID

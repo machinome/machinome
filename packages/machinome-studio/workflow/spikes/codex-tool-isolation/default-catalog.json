@@ -1,0 +1,94 @@
+{
+  "version": "codex-cli 0.157.1",
+  "controlled_catalog": false,
+  "guard_turns": null,
+  "completed": true,
+  "error": null,
+  "sentinel_unchanged": true,
+  "cases": [
+    {
+      "name": "hello",
+      "models": [
+        "gpt-6-sol",
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "collaboration.followup_task",
+          "collaboration.interrupt_agent",
+          "collaboration.list_agents",
+          "collaboration.send_message",
+          "collaboration.spawn_agent",
+          "collaboration.wait_agent",
+          "functions.exec",
+          "functions.request_user_input_async",
+          "functions.wait"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "namespaced_agent_list",
+      "models": [
+        "gpt-6-sol",
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "collaboration.followup_task",
+          "collaboration.interrupt_agent",
+          "collaboration.list_agents",
+          "collaboration.send_message",
+          "collaboration.spawn_agent",
+          "collaboration.wait_agent",
+          "functions.exec",
+          "functions.request_user_input_async",
+          "functions.wait"
+        ]
+      ],
+      "last_output": "{\"agents\":[{\"agent_name\":\"/root\",\"agent_status\":\"running\"}]}"
+    },
+    {
+      "name": "code_mode_inventory",
+      "models": [
+        "gpt-6-sol",
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "collaboration.followup_task",
+          "collaboration.interrupt_agent",
+          "collaboration.list_agents",
+          "collaboration.send_message",
+          "collaboration.spawn_agent",
+          "collaboration.wait_agent",
+          "functions.exec",
+          "functions.request_user_input_async",
+          "functions.wait"
+        ]
+      ],
+      "last_output": "code-mode host is disabled"
+    },
+    {
+      "name": "restart_resume",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "collaboration.followup_task",
+          "collaboration.interrupt_agent",
+          "collaboration.list_agents",
+          "collaboration.send_message",
+          "collaboration.spawn_agent",
+          "collaboration.wait_agent",
+          "functions.exec",
+          "functions.request_user_input_async",
+          "functions.wait"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    }
+  ]
+}

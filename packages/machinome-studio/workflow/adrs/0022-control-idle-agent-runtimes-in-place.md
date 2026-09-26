@@ -1,6 +1,6 @@
 # ADR 0022: Control idle agent runtimes in place and normalize native activity
 
-**Status:** Accepted (amended by ADR 0025)
+**Status:** Accepted (amended by ADRs 0025 and 0032)
 
 **Date:** 2026-08-12
 

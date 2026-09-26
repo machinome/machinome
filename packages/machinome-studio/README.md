@@ -19,8 +19,10 @@ stands is `docs/project/status.rst`.
 ## Install
 
 Linux, Python 3.11 or later, Node.js 22 or later with npm, Git, OpenSCAD,
-and a logged-in agent backend: Claude Code (`claude`) or OpenCode
-(`opencode`). Then:
+and an agent backend: Claude Code (`claude`), OpenCode (`opencode`), or
+qualified Codex (`codex`). Codex uses a separate Studio login; the manual's
+installation page gives its pinned requirements and provisioning command.
+Then:
 
 ```text
 git clone https://github.com/machinome/machinome-studio.git

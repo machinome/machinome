@@ -7,7 +7,7 @@ and a new `Unreleased` section opens above it.
 ## Unreleased
 
 Machinome Studio 0.1.0 runs against Machinome 0.7.0 installed with its
-`viewer` extra, on Linux, with Claude Code or OpenCode as the agent
+`viewer` extra, on Linux, with Claude Code, OpenCode or qualified Codex as the agent
 backend.
 
 ### What a maker gets
@@ -30,10 +30,14 @@ backend.
   and keeping the project's design in an OpenSpec record it owns; and
   `fordesmac`, a foreman who speaks with the maker and assigns a designer,
   a machinist and a librarian one increment at a time.
-- **Two backends, chosen per agent by the project**: Claude Code and
-  OpenCode, each agent replacing its native tools with the studio's bounded
+- **Three backends, chosen per agent by the project**: Claude Code,
+  OpenCode and qualified Codex, each agent replacing its native tools with the studio's bounded
   operations rooted at the project, holding exactly the capabilities its
   profile declares, and loading the skills its profile allows.
+- **Scoped Codex sessions** with a separate Studio login, concurrent
+  projects, image tools, active steering and context-preserving recovery
+  and idle model changes. Unsupported runtimes fail closed; native tool
+  execution is not enabled to make a session work.
 - **Project-owned configuration**: the `[tool.machinome-studio]` table
   selects the profile and, per agent, backend, provider, model and
   reasoning level; the studio writes it on creation and on request, and

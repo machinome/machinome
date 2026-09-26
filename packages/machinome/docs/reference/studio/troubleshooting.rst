@@ -34,7 +34,7 @@ kebab-case name. Fix the ``profile`` key; the studio does not fall back to
 the default in place of a declared profile.
 
 **A runtime selection is rejected.** An agent's value names an unknown or
-retired backend, a Claude model or reasoning level the studio does not
+retired backend, a Claude or Codex model or reasoning level the studio does not
 accept, or has the wrong number of parts; or the table carries a key the
 studio does not define, such as ``effort`` or ``tools``.
 :doc:`reference/project-configuration` gives the grammar. A selection for
@@ -51,8 +51,9 @@ upgrade it in the studio's environment, ``pip install --upgrade
 "machinome[viewer]"``, and check with ``machinome viewer``.
 
 **An agent would not start.** The backend is not installed, not on
-``PATH``, or not logged in. The hub's Backends panel says which it found;
-log in with the backend's own command and open the project again. The
+``PATH``, or not logged in. The hub's Backends panel reports Claude Code
+and OpenCode; Codex qualification reports its reason on project opening or
+in Agents. Use the appropriate login command and open the project again. The
 studio never opens a project with part of its team.
 
 **Project preparation failed during a named stage.** The framework's
@@ -85,14 +86,17 @@ An agent stopped answering
 A notice in the conversation names the agent and the backend's reason: a
 session limit, a lost login, a backend that exited. Restore access with the
 backend's own command and send a new message; the studio resumes on the
-retained session where it can, and otherwise opens one replacement session.
+retained session where it can, and otherwise opens one replacement session
+when the backend permits it. Codex never silently replaces a used
+conversation whose history cannot safely be recovered; it leaves that role
+failed with the reason while other roles continue.
 Closing the project ends its conversation; reopening starts afresh.
 
 The librarian says it cannot research
 =====================================
 
 It is right. Under ``fordesmac`` the librarian is provisionally out of
-service: neither backend gives it web, documentation or package access.
+service: none of the scoped backends gives it web, documentation or package access.
 Foreman knows and does not depend on it.
 
 OpenCode offers no models
@@ -101,3 +105,19 @@ OpenCode offers no models
 The Agents area shows only providers OpenCode is connected to. Log in or
 connect a provider in OpenCode itself, then open the project again for a
 fresh agent, or change an idle agent's runtime.
+
+Codex is unavailable
+====================
+
+Use the reason shown in Agents or on the failed project card. Studio
+requires its qualified pinned installation (:doc:`installation`), not
+just any executable named ``codex``. Do not enable dangerous permissions
+or relax the tool policy to bypass qualification.
+
+For a missing, expired or rejected Studio login, stop the hub and run
+``python -m floor.codex_auth login`` in the studio's Python environment,
+then reopen the project. An ownership error means another hub or login
+command still holds the same store; close that owner before trying again.
+An ordinary Codex CLI login does not provision Studio's separate login.
+An unavailable model may also mean your account lacks access; the studio
+does not silently substitute another model.

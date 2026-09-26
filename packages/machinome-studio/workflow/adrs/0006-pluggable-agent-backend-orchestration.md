@@ -1,6 +1,6 @@
 # ADR 0006: Generalize shop orchestration to a pluggable agent backend
 
-**Status:** Accepted (amended by ADRs 0008, 0011, 0012, 0016, 0018, and 0025)
+**Status:** Accepted (amended by ADRs 0008, 0011, 0012, 0016, 0018, 0025, and 0032)
 
 **Date:** 2026-07-26
 

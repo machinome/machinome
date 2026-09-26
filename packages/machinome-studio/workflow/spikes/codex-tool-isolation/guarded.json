@@ -1,0 +1,309 @@
+{
+  "version": "codex-cli 0.157.1",
+  "controlled_catalog": true,
+  "guard_turns": true,
+  "disabled_features": [
+    "apps",
+    "plugins",
+    "browser_use",
+    "browser_use_external",
+    "computer_use",
+    "multi_agent",
+    "multi_agent_v2",
+    "hooks",
+    "memories",
+    "image_generation",
+    "shell_tool",
+    "shell_snapshot",
+    "view_image",
+    "goals",
+    "sleep_tool",
+    "skill_search",
+    "skill_mcp_dependency_install",
+    "enable_request_compression",
+    "code_mode",
+    "code_mode_host",
+    "workspace_dependencies",
+    "tool_suggest"
+  ],
+  "completed": true,
+  "error": null,
+  "sentinel_unchanged": true,
+  "cases": [
+    {
+      "name": "hello",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "native_exec",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: exec_command"
+    },
+    {
+      "name": "native_shell",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: shell"
+    },
+    {
+      "name": "native_shell_command",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: shell_command"
+    },
+    {
+      "name": "native_stdin",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: write_stdin"
+    },
+    {
+      "name": "native_patch",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported custom tool call: apply_patch"
+    },
+    {
+      "name": "native_image",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: view_image"
+    },
+    {
+      "name": "native_mcp",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: list_mcp_resources"
+    },
+    {
+      "name": "native_delegation",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: spawn_agent"
+    },
+    {
+      "name": "namespaced_agent_list",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: collaborationlist_agents"
+    },
+    {
+      "name": "native_question",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: request_user_input"
+    },
+    {
+      "name": "native_plan",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: update_plan"
+    },
+    {
+      "name": "native_web",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: web.run"
+    },
+    {
+      "name": "code_mode_inventory",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported custom tool call: exec"
+    },
+    {
+      "name": "undeclared_dynamic",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: floor_write_file"
+    },
+    {
+      "name": "second_turn",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "model_change",
+      "models": [
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "model_change_native_exec",
+      "models": [
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: exec_command"
+    },
+    {
+      "name": "restart_resume",
+      "models": [
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "HELLO_SPIKE_RESULT"
+    },
+    {
+      "name": "restart_resume_native_stdin",
+      "models": [
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported call: write_stdin"
+    },
+    {
+      "name": "restart_resume_native_patch",
+      "models": [
+        "gpt-6-astra"
+      ],
+      "tool_sets": [
+        [
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": "unsupported custom tool call: apply_patch"
+    },
+    {
+      "name": "other_role_no_tools",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        []
+      ],
+      "last_output": "unsupported call: floor_hello"
+    },
+    {
+      "name": "positive_control_default_environment",
+      "models": [
+        "gpt-6-sol"
+      ],
+      "tool_sets": [
+        [
+          "functions.apply_patch",
+          "functions.floor_hello"
+        ]
+      ],
+      "last_output": null
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-26",
+  "runtime": "codex-cli 0.157.1",
+  "platform": "Linux x86_64",
+  "models": [
+    "gpt-6-sol",
+    "gpt-6-astra"
+  ],
+  "planning_commit": "58fa947",
+  "tested_content": "Uncommitted restore-scoped-codex-backend worktree; final policy contract 5a61647fe805a3f8111e14f5f75c5da82ef6a5375163915f630495750c912886, including narrow native bookkeeping provenance correction",
+  "harness": "docs/spikes/codex-tool-isolation/studio_live.py",
+  "exit_code": 0,
+  "checks_passed": 22,
+  "checks": [
+    "image fixture exceeds64KiB",
+    "active steering",
+    "active notice",
+    "actual image observation",
+    "image result activity",
+    "tool error activity",
+    "late notice does not start turn",
+    "two projects share authenticated owner",
+    "concurrent projects and model change retain context",
+    "model change retains thread",
+    "native foreman actual declared assignment tool",
+    "used context resumes without replay",
+    "used native identities retained",
+    "pristine handle retained and native thread recreated",
+    "native machinist lifecycle tools",
+    "native machinist report and exact session routes",
+    "closing one project preserves sibling",
+    "sibling delivers after other project closes",
+    "last project reaps native owner",
+    "owned rollout files removed",
+    "dedicated login persists",
+    "synthetic projects unchanged"
+  ],
+  "first_run": "Direct checks passed; second borrower refused unrecognized native bookkeeping. Narrow reviewed type/owner/marker/lock validation correction followed red/green tests; no policy gate skipped.",
+  "limitations": [
+    "Lifecycle HTTP peer is a diagnostic fixture; actual model calls and production adapter/workers are real.",
+    "Native account/read refreshToken=true and auth persistence were exercised, not multi-day expiry longevity.",
+    "Revoked response/remedy was synthetic; real dedicated login was not revoked.",
+    "Owned process-group cleanup does not contain malicious code deliberately escaping the group."
+  ]
+}

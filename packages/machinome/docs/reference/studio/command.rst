@@ -42,3 +42,16 @@ on standard error prefixed ``error:``.
 There is no option to choose a project, a profile, a backend or a model:
 the project is chosen in the browser, and the rest is the project's own
 configuration, :doc:`project-configuration`.
+
+Codex login
+===========
+
+.. code-block:: console
+
+   $ python -m floor.codex_auth login
+
+Provision or renew Studio's separate Codex login with the hub stopped.
+The command checks the supported runtime, acquires exclusive ownership of
+the Studio credential store and starts native device authorization. It
+does not read or copy an ordinary Codex login. See :doc:`../installation`
+for the supported installation and storage location.

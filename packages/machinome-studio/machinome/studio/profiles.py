@@ -201,12 +201,12 @@ def resolve_profile_runtime(
         choice = choices.get(agent.id)
         if choice is None:
             runtime = agent.backends["claude"]
-        elif choice.backend == "opencode":
+        elif choice.backend in {"opencode", "codex"}:
             runtime = BackendRuntime(
                 choice.model,
-                choice.effort or "inherit",
+                choice.effort or ("medium" if choice.backend == "codex" else "inherit"),
                 agent.backends["claude"].tools,
-                backend="opencode",
+                backend=choice.backend,
                 provider=choice.provider,
             )
         else:

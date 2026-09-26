@@ -732,9 +732,9 @@ def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectA
     if any(not part for part in parts):
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} contains an empty segment")
     backend = parts[0] if parts else ""
-    if backend not in {"claude", "opencode"}:
+    if backend not in {"claude", "opencode", "codex"}:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unknown backend")
-    expected = {2, 3} if backend == "claude" else {3, 4}
+    expected = {3, 4} if backend == "opencode" else {2, 3}
     if len(parts) not in expected:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} has the wrong segment count")
     if backend == "opencode":
@@ -746,6 +746,11 @@ def _parse_agent_runtime(agent_id: str, raw: str, source_path: Path) -> ProjectA
     if backend == "claude" and model not in CLAUDE_MODELS:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported Claude model")
     supported_efforts = CLAUDE_EFFORTS if backend == "claude" else None
+    if backend == "codex":
+        from .backends.codex_policy import EFFORTS, MODEL_FINGERPRINTS
+        if model not in MODEL_FINGERPRINTS:
+            raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported scoped Codex model")
+        supported_efforts = frozenset(EFFORTS)
     if effort is not None and supported_efforts is not None and effort not in supported_efforts:
         raise ProjectRuntimeError(source_path, f"agent {agent_id!r} value {raw!r} names an unsupported reasoning level")
     return ProjectAgentRuntime(backend, provider, model, effort, raw)

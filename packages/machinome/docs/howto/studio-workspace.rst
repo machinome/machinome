@@ -87,7 +87,9 @@ While an agent is idle, its model and reasoning level can be changed for
 the rest of the session. Before an agent has done anything at all, its
 backend and provider can be replaced too; after its first message,
 assignment or action they are fixed for the session. Claude's provider is
-Anthropic. OpenCode offers the providers it is connected to and the models
+Anthropic; Codex's is OpenAI, with only its qualified models available.
+An unavailable Codex choice includes the qualification or login remedy.
+OpenCode offers the providers it is connected to and the models
 of the one you select; with none connected, it offers nothing. **Apply**
 takes effect at once and, unless you untick it, records the selection in
 the project's ``pyproject.toml`` for later sessions;
