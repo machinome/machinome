@@ -126,6 +126,9 @@ as written; no documented read gives the values it returned.
   from the class reads and the moving child's resolved frames alone;
   the read returns the function.
 - A child built outside the assembly that declares it cannot resolve
-  the joint and is refused by the mate's name.
+  the joint and is refused by the mate's name -- the child as the
+  assembly realizes it, the class carrying the mate's joint; the plain
+  class it was written as carries no joint and builds alone as before
+  (clarified 2026-09-26 from OpenArm's validation).
 - The line is asymmetric: `axis` may be a function, `at` may not. The
   refusal says so.

@@ -4010,7 +4010,12 @@ decided: handedness is a fact of the realized node, not of the class.
   for `axis` and `range`:** each may be one function of the assembly
   that states the mate, called once with the realized assembly as it
   realizes the moving child. `at` stays three numbers (the project
-  needs none). Pending openarm's follow-up (the change's tasks §6).
+  needs none). **Validated in OpenArm** (branch `frames-and-mates`,
+  commits `8a62ad7` guard, `53c63f3` migration, `7127d19` records;
+  nine mates stated once and realized per side, deviation 0 over 30
+  poses on `OpenArm` and 4 each on `ArmsAtRest`, `GrippersAtThirtyDegrees`
+  and `Body`, test counts unchanged, snapshots identical; nothing
+  refused).
 
 ## A gripper's fingers cannot be mated: no prismatic freedom (2026-09-26, open_manipulator)
 
@@ -4040,3 +4045,53 @@ and the mimic as `left_finger.travel.drives(right_finger.travel)`.
   child's frame or taken from the moving frame's `z`, the range in
   millimetres, the rest placement from the frames as today.
   **Cycle cut: `slide-by-mate`.**
+
+## Findings from the OpenArm project's migration onto mates (2026-09-26)
+
+The validation of `state-the-freedom-per-instance` (ADR-150) in its
+originating project: OpenArm's seven arm joints and two finger joints
+stated once as mates whose fixed frame's `at` and whose freedom's `axis`
+and `range` are functions of the parent's `left`, realized per side
+(OpenArm branch `frames-and-mates`, commits `8a62ad7`, `53c63f3`,
+`7127d19`; framework `b7cc651`), with `capture_poses.py compare` at
+maximum deviation 0 (unrounded 0.0) on every model, the four documented
+suites at their `main` counts, and the three documented snapshots
+identical to `main`'s. Nothing was refused. Four findings; all recorded,
+not fixed, until the pilot triages them.
+
+- **No documented read of a mate's resolved line and range for one
+  instance.** The ratified scope of ADR-150 deferred it ("no resolved
+  read"); OpenArm is the project that needed it: its guard has to hold
+  each side's realized line and range to the URDF, and the class reads
+  return the function. It checks through behaviour instead -- a bound
+  mate turns the child's `mesh` about the side's URDF axis through the
+  URDF point within 1e-6 mm, and a binding 0.01° past each side's limit
+  raises `JointRangeError` naming the mate -- which is a correct guard
+  and a long way round. Thor's guard before `read-frames-and-mates` was
+  the first project to reach for the same numbers. What is wanted: a
+  read, on a realized assembly or its mated child, of each mate's
+  resolved axis, anchor and range for that instance, beside
+  `resolved_frames`. **Recorded.**
+- **A mate's coordinate is reported twice.** The mate installs its joint
+  on the child under the mate's name (ADR-147), so `declared_ports`
+  reports the coordinate on the assembly and on the child, with
+  identical values, and a chain cannot name every level's mate `turn`
+  without `arm.joint1.turn` reading as joint 2's coordinate. A
+  consequence of the joint living on the child; the binding rule
+  (only through the assembly's coordinate) is unaffected. **Recorded.**
+- **A mate omits a zero rest translation the old path published.**
+  OpenArm's joint 7 sits at its parent's origin; `render()` translated it
+  by `(0, 0, 0)` and the document carried `['t', [0, 0, 0]]`; the mate
+  publishes no operation for an identity placement. Versions, axes and
+  poses are identical; the operation list is one entry shorter. A
+  consequence, noted so a document comparison does not read it as a
+  defect. **Recorded.**
+- **ADR-150's "built outside its assembly" refusal names the class the
+  child is realized as.** The mate's joint lives on the class the
+  assembly realizes the child as (place-parts-by-mate); a plain
+  `Joint3()` written as the project writes it carries no joint and
+  builds alone with none, as before this cycle, while
+  `type(arm.joint2.joint3)()` is refused by the mate's name. The ADR's
+  consequence sentence is clarified accordingly in the records commit
+  of `slide-by-mate`; the spec scenario already speaks of the realized
+  child. **Recorded.**
