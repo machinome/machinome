@@ -3,8 +3,8 @@
 """Project-scoped MCP tools exposed to runtime agents over stdio.
 
 The server deliberately implements the small MCP JSON-RPC surface it needs
-instead of importing the Python MCP SDK.  The workspace venv also carries the
-machinome CLI, whose pinned Uvicorn version conflicts with the SDK's runtime
+instead of importing the Python MCP SDK.  The environment the studio runs in
+also carries the machinome CLI, whose pinned Uvicorn version conflicts with the SDK's runtime
 dependency.  Keeping this server stdio-only avoids changing that environment.
 """
 

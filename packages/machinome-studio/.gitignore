@@ -16,3 +16,5 @@ test-results/
 # Shop worktrees.
 WTs/
 .env
+# Sphinx output of the manual under docs/.
+docs/_build/
