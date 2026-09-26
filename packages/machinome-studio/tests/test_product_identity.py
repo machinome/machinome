@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 import unittest
 from pathlib import Path
@@ -33,23 +34,39 @@ class ProductIdentityTest(unittest.TestCase):
 
         self.assertIn("<title>Machinome Studio</title>", browser_document)
 
-    def test_browser_document_links_the_identity_favicons(self) -> None:
-        """The tab carries the identity's favicon pack, versioned as its
-        application guide asks, because browsers cache favicons hard."""
+    def test_browser_document_links_the_studio_favicon(self) -> None:
+        """The tab carries the studio's own favicon pack, versioned as the
+        identity's application guide asks, because browsers cache favicons
+        hard."""
         browser_document = (ROOT / "floor" / "frontend" / "index.html").read_text()
 
         self.assertIn(
-            '<link rel="icon" href="/assets/brand/v1/favicon.svg?v=1" type="image/svg+xml" />',
+            '<link rel="icon" href="/assets/favicon/favicon.svg?v=2" type="image/svg+xml" />',
             browser_document,
         )
         self.assertIn(
-            '<link rel="icon" href="/assets/brand/v1/favicon.ico?v=1" sizes="16x16 32x32 48x48" />',
+            '<link rel="icon" href="/assets/favicon/favicon.ico?v=2" sizes="16x16 32x32 48x48" />',
             browser_document,
         )
         self.assertIn(
-            '<link rel="apple-touch-icon" href="/assets/brand/v1/favicon-180.png" />',
+            '<link rel="apple-touch-icon" href="/assets/favicon/favicon-180.png" />',
             browser_document,
         )
+
+    def test_the_favicon_is_the_intact_symbol_on_a_black_plate(self) -> None:
+        """The studio's favicon carries the identity symbol's path verbatim,
+        white on a black plate, and ships every raster the links and the
+        builder promise."""
+        favicon = ROOT / "floor" / "frontend" / "public" / "assets" / "favicon"
+        symbol = (ROOT / "floor" / "frontend" / "public" / "assets" / "brand" / "v1" / "mark-white.svg").read_text()
+        svg = (favicon / "favicon.svg").read_text()
+
+        path = re.search(r' d="([^"]+)"', symbol).group(1)
+        self.assertIn(f' d="{path}"', svg)
+        self.assertIn('<rect width="100" height="100" rx="24" fill="#000000"/>', svg)
+        self.assertIn('fill="#FFFFFF"', svg)
+        for name in ("favicon.ico", *(f"favicon-{size}.png" for size in (16, 32, 48, 64, 180, 192, 512))):
+            self.assertTrue((favicon / name).is_file(), name)
 
     def test_the_brand_directory_is_the_complete_identity_release(self) -> None:
         """`brand/v1` is the identity's approved release copied intact: every

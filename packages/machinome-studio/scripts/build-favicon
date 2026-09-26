@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-or-later
+"""Build the studio's favicon pack from the intact Machinome symbol.
+
+The studio's favicon is the identity's white symbol on a black rounded plate:
+the identity's reverse treatment (white on a black ground, the dots showing
+the ground) given its own ground so it reads on light browser chrome too, and
+distinct from machinome.org's orange favicon. The symbol's path is taken
+verbatim from ``brand/v1/mark-white.svg``; only the plate and the placement
+are the studio's.
+
+Writes ``floor/frontend/public/assets/favicon/``: the SVG, the 16/32/48 ICO
+and PNGs at 16, 32, 48, 64, 180, 192 and 512 px. Needs Playwright with its
+Chromium (the ``e2e`` extra) and Pillow.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+BRAND = ROOT / "floor" / "frontend" / "public" / "assets" / "brand" / "v1"
+OUT = ROOT / "floor" / "frontend" / "public" / "assets" / "favicon"
+PLATE_RADIUS = 24
+SYMBOL_SCALE = 0.78
+SIZES = (16, 32, 48, 64, 180, 192, 512)
+
+
+def symbol_path() -> str:
+    """The linkage symbol's path data, verbatim from the identity release."""
+    match = re.search(r' d="([^"]+)"', (BRAND / "mark-white.svg").read_text())
+    if match is None:
+        raise SystemExit(f"no path in {BRAND / 'mark-white.svg'}")
+    return match.group(1)
+
+
+def favicon_svg() -> str:
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" role="img">'
+        "<title>Machinome Studio favicon / white symbol on a black plate</title>"
+        f'<rect width="100" height="100" rx="{PLATE_RADIUS}" fill="#000000"/>'
+        # The symbol's 84 by 80 artwork is centred on (50, 52) of its canvas.
+        f'<path fill="#FFFFFF" fill-rule="evenodd" transform="translate(50 50) scale({SYMBOL_SCALE}) translate(-50 -52)" d="{symbol_path()}"/>'
+        "</svg>\n"
+    )
+
+
+def main() -> None:
+    from PIL import Image
+    from playwright.sync_api import sync_playwright
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    (OUT / "favicon.svg").write_text(favicon_svg())
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        for size in SIZES:
+            page = browser.new_page(viewport={"width": size, "height": size}, device_scale_factor=1)
+            page.goto((OUT / "favicon.svg").as_uri())
+            page.screenshot(path=str(OUT / f"favicon-{size}.png"), omit_background=True)
+            page.close()
+        browser.close()
+    Image.open(OUT / "favicon-48.png").save(
+        OUT / "favicon.ico",
+        format="ICO",
+        sizes=[(16, 16), (32, 32), (48, 48)],
+        append_images=[Image.open(OUT / "favicon-16.png"), Image.open(OUT / "favicon-32.png")],
+    )
+    print(f"wrote {OUT}")
+
+
+if __name__ == "__main__":
+    main()

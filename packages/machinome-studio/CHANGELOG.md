@@ -32,8 +32,8 @@ backend.
   framework's scaffold, as its own Git repository, and opened in the same
   action.
 - **The Machinome identity**: the wordmark with its `Studio` qualifier in
-  the title bar of the hub and of every workspace, the Machinome favicon
-  in the tab, Space Grotesk for the interface and IBM Plex Mono for code,
+  the title bar of the hub and of every workspace, the white Machinome
+  symbol on a black plate as the tab's favicon, Space Grotesk for the interface and IBM Plex Mono for code,
   paths and values.
 - **A project workspace**: a conversation with the agent who speaks for
   the team; the model in the framework's browser viewer, updated part by

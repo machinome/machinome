@@ -189,8 +189,8 @@ class ShopLifecycleE2E(unittest.TestCase):
         icons = self.page.evaluate(
             """[...document.querySelectorAll('link[rel="icon"]')].map((link) => link.getAttribute("href"))"""
         )
-        self.assertEqual(icons, ["/assets/brand/v1/favicon.svg?v=1", "/assets/brand/v1/favicon.ico?v=1"])
-        favicon = self.page.request.get(self.url("/assets/brand/v1/favicon.svg"))
+        self.assertEqual(icons, ["/assets/favicon/favicon.svg?v=2", "/assets/favicon/favicon.ico?v=2"])
+        favicon = self.page.request.get(self.url("/assets/favicon/favicon.svg"))
         self.assertEqual(favicon.status, 200)
         self.assertIn("image/svg+xml", favicon.headers.get("content-type", ""))
 

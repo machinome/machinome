@@ -11,7 +11,10 @@ manifest.
 Do not edit a file here. A revised identity arrives as a new versioned
 directory beside this one, never as a change to `v1/`.
 
-The studio uses the white wordmark in its title bars and the favicon pack.
+The studio uses the white wordmark in its title bars. Its favicon is not
+this release's orange pack but a white symbol on a black plate built from
+`v1/mark-white.svg` into `../favicon/` by `scripts/build-favicon`, so a
+studio tab tells apart from a machinome.org tab.
 The logo font is present because the release ships as one directory; no
 stylesheet of the studio names it, and none may: it contains the nine
 characters of `Machinome` and is not a typeface for text.
