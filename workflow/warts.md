@@ -3863,3 +3863,36 @@ pilot triages it.
   Thor's tests read `art3.elbow`. Binding the child's is refused by name.
   A known consequence of choosing a wiring over aliasing (design.md
   decision 6). **Left as is.**
+
+## Findings from the Thor project's fastener holders (2026-09-26)
+
+Recorded from project-lane work in Thor, change
+`hold-the-fasteners-by-their-bodies` (Thor main `8e575f3`): turning the
+tool left bolts and nuts floating behind the gripper, because every
+derived fastener of a design group was held by the link's node and stood
+in its frame, while some fasten a body that moves inside the link (the
+crown plate and gripper the tool turns, a jaw on its parallelogram, a
+pinion on its shaft). Thor now holds each fastener in the body it
+fastens and guards it with a test that, at seven poses, reads every
+fastener's and every part's world placement and holds the two together.
+Two findings for the framework; neither is requested, both await the
+pilot's triage.
+
+- **No documented read of a node's world placement.** Thor's
+  `FastenerRideTest` needs each part's and each fastener's placement in
+  world coordinates at a pose, and the public contract gives none; the
+  test reads `machinome.node.base._compose_world_matrix`, as the
+  workspace's pose-capture tool (`docs/motion-general-refactor/capture_poses.py`)
+  does. A project test that holds two nodes together across poses is a
+  recurring shape (every "rides with" contract), so the read is a
+  candidate for the public contract when a second project needs it.
+  **Recorded.**
+- **A screw cannot be mated to the moving sibling it fastens.** A
+  fastener follows a part only as that part's child, so a turning leaf
+  (a pinion) has to be wrapped in an assembly to carry its grub screw,
+  and a jaw's pins are carried by hand in `simulate()`. The rigid mate
+  the mates design defers would not change that while a mate's fixed end
+  must be still (a sibling does not carry a sibling, `mates` spec).
+  Whether a fixed end on a moving sibling should follow it, or whether a
+  part's fasteners belong in its own class, is a design question for the
+  next project that fastens a moving part. **Recorded.**
