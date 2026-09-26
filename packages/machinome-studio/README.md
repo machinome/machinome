@@ -88,3 +88,6 @@ Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes.
 
 Machinome Studio is licensed under the GNU Affero General Public License,
 version 3 or (at your option) any later version. See [LICENSE](LICENSE).
+Machinome, the linkage symbol and the wordmark are trademarks of Poiesis
+Tecnologia da Informação LTDA; the licence grants no right to use them, as
+[NOTICE](NOTICE) states.
