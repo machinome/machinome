@@ -776,7 +776,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         self.assertIn("rgb(79, 182, 184)", engine_row.evaluate("element => getComputedStyle(element).boxShadow"))
         self.assertEqual(
             engine_row.evaluate("element => getComputedStyle(element).getPropertyValue('--machinome-nav-focus-ring')").strip(),
-            "#D94E32",
+            "#e0a350",
         )
         self.assertEqual(self.page.get_by_role("button", name="Show full assembly").count(), 0)
 

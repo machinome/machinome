@@ -79,9 +79,9 @@ class ProductIdentityTest(unittest.TestCase):
 
     def test_the_interface_wears_the_identity_and_keeps_the_logo_font_out_of_text(self) -> None:
         """Space Grotesk for the interface, IBM Plex Mono for the technical
-        text, the identity orange as the accent; the wordmark and its `Studio`
-        qualifier in the title bar; and the logo-only font never named as a
-        text face, as the identity's application guide requires."""
+        text, the accent a token; the wordmark and its `Studio` qualifier in
+        the title bar; and the logo-only font never named as a text face, as
+        the identity's application guide requires."""
         styles = (ROOT / "floor" / "frontend" / "src" / "styles.css").read_text()
         markup = (ROOT / "floor" / "frontend" / "src" / "main.tsx").read_text()
 
@@ -91,7 +91,7 @@ class ProductIdentityTest(unittest.TestCase):
         self.assertNotIn("Machinome Logo", styles)
         self.assertNotIn("Machinome Logo", markup)
         self.assertNotIn("Inter,", styles)
-        self.assertNotIn("#e0a350", styles)
+        self.assertIn("--accent:", styles)
         self.assertIn('const WORDMARK = "/assets/brand/v1/wordmark-white.svg";', markup)
         self.assertEqual(markup.count('<img className="workspace-wordmark" src={WORDMARK} width="180" height="25" alt="" />'), 2)
         self.assertIn('<span className="workspace-qualifier">Studio</span>', markup)

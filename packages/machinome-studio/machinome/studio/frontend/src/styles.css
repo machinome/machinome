@@ -2,8 +2,8 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 
 /* The Machinome identity, application guide 1.0: Space Grotesk for the
-   interface, IBM Plex Mono for code, paths and values, the identity orange as
-   the accent. Both faces are served unchanged from public/assets/fonts beside
+   interface, IBM Plex Mono for code, paths and values, the wordmark in the
+   title bar. Both faces are served unchanged from public/assets/fonts beside
    their notices. The logo-only font under public/assets/brand/v1 is never a
    text face; the title bar shows the outlined wordmark instead. */
 @font-face {
@@ -26,15 +26,16 @@
   --machinome-paper: #F2F0E9;
   --sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* The accent is the identity orange. Black on it reads at 5.1:1; the orange
-     itself on the darkest surface here reads at about 4.6:1, so it may carry
-     small text, and never carries text on a light ground. */
-  --accent: var(--machinome-orange);
-  --accent-hover: #e4694f;
-  --accent-tint: rgba(217, 78, 50, .12);
-  --accent-edge: rgba(217, 78, 50, .35);
-  --on-accent: var(--machinome-black);
-  --on-accent-tint: #f3e4df;
+  /* The accent stays the design's amber. The identity orange was tried here
+     on 26 September 2026 and read harsh against these cool dark surfaces; the
+     application guide keeps the orange for the lockup, not for interface
+     colour. The identity's own colours remain available as the tokens above. */
+  --accent: #e0a350;
+  --accent-hover: #f0c07a;
+  --accent-tint: rgba(224, 163, 80, .12);
+  --accent-edge: rgba(224, 163, 80, .35);
+  --on-accent: #14171c;
+  --on-accent-tint: #f0e3cf;
   /* Tall enough for the 180px wordmark with half an M of clear space above
      and below it, as the identity's application guide asks. */
   --titlebar-height: 50px;
@@ -330,8 +331,8 @@ button, input { font: inherit; }
 .code-state.preview { color: #8b929e; }
 .code-error, .code-conflict { border-bottom: 1px solid #5a2a2a; color: #f0b4b4; font: 11.5px var(--mono); padding: 8px 12px; }
 .code-error { background: #2a1a1a; grid-row: 2; }
-.code-conflict { align-items: center; background: #2a1a15; border-color: #6b3021; color: #f3d6cd; display: flex; gap: 12px; grid-row: 3; justify-content: space-between; }
-.code-conflict button { background: transparent; border: 1px solid #8a4534; border-radius: 5px; color: #f3d6cd; cursor: pointer; padding: 4px 8px; }
+.code-conflict { align-items: center; background: #261f18; border-color: #604724; color: #f0dcbc; display: flex; gap: 12px; grid-row: 3; justify-content: space-between; }
+.code-conflict button { background: transparent; border: 1px solid #806133; border-radius: 5px; color: #f0dcbc; cursor: pointer; padding: 4px 8px; }
 .code-editor-host { grid-row: 4; min-height: 0; position: relative; }
 .code-editor-host > section { height: 100%; }
 .source-image-preview { align-items: center; display: flex; height: 100%; justify-content: center; margin: 0; overflow: auto; padding: 24px; width: 100%; }
