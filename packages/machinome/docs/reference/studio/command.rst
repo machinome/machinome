@@ -45,7 +45,7 @@ Options
     used when set, then the configuration file's ``port`` key, then
     ``9000``.
 
-Both entry points listen on ``127.0.0.1`` only. The exit status is ``2``
+All three ways of starting the hub listen on ``127.0.0.1`` only. The exit status is ``2``
 for an unknown option and ``1`` for a failed prerequisite, including a
 project folder that neither an option nor the configuration file supplies,
 with the reason on standard error prefixed ``error:``.
