@@ -761,7 +761,7 @@ a body whose rest placement carries a value the framework cannot evaluate
 numerically refuses a SITE-declared joint by name — where a class-declared
 one on the same body would not.
 
-**Frames and mates (ADR-147, ADR-148, ADR-150):** a joint whose line does not pass through the
+**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151):** a joint whose line does not pass through the
 moving part's origin is otherwise stated twice — a rest placement the
 parent's `render()` computes by hand and a joint the child restates in its
 own frame, kept in agreement by shared constants. A **frame** is the part's
@@ -817,7 +817,7 @@ The **fixed end** is a frame of the assembly itself, by its bare name, or
 `<child>.<frame>` of another directly declared child that does not move (a
 sibling does not carry a sibling, so a fixed end on a child with any joint
 is refused). The **moving end** is a frame of a directly declared child.
-The **freedom** is a fresh `Revolute`. A design's connectors are attachment
+The **freedom** is a fresh `Revolute` or a fresh `Prismatic`. A design's connectors are attachment
 frames and the line a part turns about need not be the connector's `z`, so
 the freedom may state its own line, `Revolute(axis=(0,0,1), at=(0,0,0))`:
 `axis` is three numbers or one function of one argument, `at` three numbers
@@ -851,11 +851,35 @@ class Mount(AssemblyNode):
 
 A mated child whose freedom states a function is built by its assembly
 and by nothing else: built on its own, it is refused by name.
+
+A **`Prismatic` freedom** slides the child instead of turning it, under the
+same rules save one: it STATES its `axis` (three numbers or one function of
+the assembly, in the moving part's frame), as a `Prismatic` anywhere must —
+only a `Revolute` freedom may leave its axis to the moving frame's `z`;
+`at` is the `Revolute`'s (three numbers, left out the moving frame's
+origin), its `range` is in its own unit (`'mm'`), the mate's coordinate is a
+translational port in that unit, the frames still fix the rest placement and
+the zero, and the slide publishes as the translation a class-body
+`Prismatic` publishes (ADR-151). A gripper's mimic is a relation between the
+two mates' coordinates on the palm:
+
+```python
+class Palm(AssemblyNode):
+    left_seat = Frame(at=(81.7, 21.0, 0))
+    right_seat = Frame(at=(81.7, -21.0, 0))
+    left = Finger()
+    right = Finger()
+    left_travel = left.origin.on(left_seat, Prismatic(axis=(0, 1, 0), range=(-11, 20), unit='mm'))
+    right_travel = right.origin.on(right_seat, Prismatic(axis=(0, -1, 0), range=(-11, 20), unit='mm'))
+    left_travel.drives(right_travel)
+```
 Refused by name at class creation: a mate on a non-assembly; a moving end
 that is the assembly's own frame; either end through more than one child, a
 list or a `.repeat()`; a fixed end on a child that can move; a second mate
 on one child (a loop); a mate never assigned a name; a freedom that is not
-a fresh `Revolute`, or whose stated `axis` is neither three numbers nor a
+a fresh `Revolute` or `Prismatic` (an `Orbit`, a `Free`), or a `Prismatic`
+freedom without an axis (its own constructor refuses it, before any mate),
+or whose stated `axis` is neither three numbers nor a
 function, or whose stated `at` is not three numbers (a function `at`
 included), or whose stated `axis` has no length, or whose range holds a
 parameter or reads other coordinates; a mate with no freedom (the rigid
