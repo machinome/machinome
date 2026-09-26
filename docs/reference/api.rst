@@ -298,7 +298,9 @@ Frames and mates
 A frame is a named connector a node declares on itself, importable from
 ``machinome.node.frames`` and from ``machinome.node``; a mate relates two
 frames in an assembly's class body, ``<child>.<frame>.on(<frame>,
-Revolute(...))``, and needs no import beyond ``Revolute``. See
+Revolute(...))``, and needs no import beyond ``Revolute``. A built node's
+frames are read as numbers with ``resolved_frames``, and a mate's name,
+ends and freedom off the class through ``declared_mates``. See
 :doc:`Joints </concepts/joints>`.
 
 .. autoclass:: machinome.node.frames.Frame
@@ -306,6 +308,13 @@ Revolute(...))``, and needs no import beyond ``Revolute``. See
 .. autofunction:: machinome.node.frames.declared_frames
 
 .. autofunction:: machinome.motion.mates.declared_mates
+
+.. autofunction:: machinome.node.frames.resolved_frames
+
+.. autoclass:: machinome.node.frames.ResolvedFrame
+   :members: rotation
+
+.. autoclass:: machinome.motion.mates.Mate
 
 Couplings
 =============

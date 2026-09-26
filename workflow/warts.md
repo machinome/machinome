@@ -3844,6 +3844,19 @@ pilot triages it.
   instance-level read for this cycle. **Deferred:** a project has now
   needed one; the smallest change is a documented resolved-frame read on
   the instance and documented `moving`/`fixed`/`freedom` on `Mate`.
+  **Fixed, 2026-09-26, by `read-frames-and-mates`:** `resolved_frames(node)`
+  in `machinome.node.frames` reads a realized node's frames as the
+  `ResolvedFrame`s its constructor cached (a fresh mapping, never a
+  second resolution; a class, a non-node and a read before resolution
+  refused by name), and `ResolvedFrame`, `Mate.name`/`moving`/`fixed`/
+  `freedom`, `FrameRef.written`, `Frame.name` and
+  `Revolute.anchor_written` are documented; `described()` stays
+  undocumented. ADR-147's reason for rejecting an instance read
+  ("nothing reads a frame on an instance in this version") is overtaken;
+  its decision that a frame is not a descriptor stands. **Pending** the
+  originating project's follow-up (the change's tasks §7): Thor's
+  `test_frames.py` rewritten on the documented reads, in Thor's own
+  repository.
 - **One value at two addresses in `declared_ports`.** The mate's port on
   the holder (`Art1.shoulder`) and the joint it installs on the child
   (`Art2.shoulder`) are both enumerated; reading the child's works and

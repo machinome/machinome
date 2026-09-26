@@ -264,6 +264,56 @@ new: the document carries its rest placement as operations and its
 coordinate as a binding, at the version the same machine without mates
 declares.
 
+A test that holds a machine's connectors to a design reads them back
+rather than restating them. ``resolved_frames(node)``, from
+``machinome.node.frames``, gives a built node's frames as numbers, by
+name, in the order the class declares them; ``declared_mates(cls)``
+gives each mate, off the class. With the arm above:
+
+.. code-block:: python
+
+    from machinome.motion.mates import declared_mates
+    from machinome.node.frames import resolved_frames
+
+    arm = UpperArm(reach=150)
+
+    pin = resolved_frames(arm)['elbow_pin']
+    pin.at                      # (0.0, 150.0, 68.0)
+
+    hinge = resolved_frames(arm.forearm)['hinge']
+    hinge.x, hinge.y, hinge.z   # (1, 0, 0), (0, 0, -1), (0, 1, 0)
+
+    elbow = declared_mates(UpperArm)['elbow']
+    elbow.moving.written        # 'forearm.hinge'
+    elbow.fixed.name            # 'elbow_pin'
+    elbow.freedom.range         # (-135, 135)
+    elbow.freedom.anchor_written  # False
+
+The read takes a built node, not a class, because a frame's arguments
+may read the node's parameters, as ``elbow_pin`` reads ``reach``: the
+class holds the declaration, and ``declared_frames(UpperArm)`` reports
+it as written, while ``UpperArm(reach=150)`` resolves it to
+``(0.0, 150.0, 68.0)``. Given a class, a child read off a class body, or
+a node whose frames have not resolved yet (from its own ``check()``),
+the read raises ``TypeError``; reading ``arm.elbow_pin`` still gives the
+declaration. Each resolved frame has ``at`` in floats, a unit ``x``,
+``y`` and ``z`` whose components within ``1e-9`` of ``0``, ``1`` or
+``-1`` are exactly those integers, and ``rotation()``, the 3×3 whose
+columns are ``x``, ``y`` and ``z``; they are the numbers the mate
+composed, to be read and not assigned.
+
+A mate's ``name`` is its coordinate's. Its ``moving`` end reads
+``written`` as ``'<child>.<frame>'``; its ``fixed`` end is either such a
+reference, for a frame of another child, or, for a frame of the assembly
+written by its bare name, that ``Frame``, read by its ``name``. Its
+``freedom`` is the ``Revolute`` as written: ``axis`` is ``None`` unless
+stated, ``range`` and ``unit`` as written. ``at`` is the mate's anchor
+only when ``anchor_written`` is true; left out, it reads ``(0, 0, 0)``,
+and the anchor is the moving frame's origin. So the line a mate turns
+its child about is ``freedom.axis``, else the moving frame's resolved
+``z``, through ``freedom.at`` when written, else through the moving
+frame's resolved ``at``.
+
 Arguments
 ---------
 

@@ -42,6 +42,14 @@ resolved per instance when its declarer is constructed, right after the
 declarer's joints, so a frame that cannot resolve refuses its declarer
 whether or not any mate names it.
 
+Two reads, one for each question. `declared_frames(<Class>)` gives the
+DECLARATIONS off the class, arguments as written; `resolved_frames(node)`
+gives a realized node's frames as NUMBERS, each a `ResolvedFrame` -- the
+resolution its constructor made and its mates compose with. Only an
+instance has numbers, because a frame's arguments may read its
+parameters or be a function of it; and reading a frame as an attribute
+of an instance still gives the declaration.
+
 Nothing is imported here at module scope but `math`: the argument rule
 is reached inside `resolve`, at construction, where the joint module is
 already loaded.
@@ -51,7 +59,7 @@ import math
 
 
 __all__ = ['Frame', 'ResolvedFrame', 'declared_frames',
-           'resolve_declared_frames']
+           'resolve_declared_frames', 'resolved_frames']
 
 
 # How close to an exact 0, 1 or -1 a normalized component has to be
@@ -110,8 +118,26 @@ def _principal_next(z):
 
 
 class ResolvedFrame:
-    """A frame resolved against one realized declarer: an origin and
-    three unit directions, every component a plain number."""
+    """A frame resolved against one realized declarer, as
+    `resolved_frames(node)` reads it: an origin and three unit
+    directions, each a tuple of three plain numbers in the declarer's
+    own rest frame.
+
+    - `at`: the origin, three `float` values.
+    - `x`, `y`, `z`: a right-handed triad of unit directions -- `z` the
+      declared `z` normalized, `x` the declared `x` squared up against
+      `z` and normalized (or, left out, the next principal axis after a
+      principal `z`), `y` equal to `z` cross `x`. A component within
+      `1e-9` of `0`, `1` or `-1` IS that `int`, so `z=(0, 0, 2)` reads
+      `(0, 0, 1)`.
+    - `rotation()`: the 3x3 as a list of three rows whose columns are
+      `x`, `y` and `z`, the rotation carrying the frame's axes onto the
+      declarer's.
+
+    Read it; do not assign to it. The object is the one the node's mates
+    compose with, so assigning an attribute would move a mate placed
+    afterwards. A project never constructs one.
+    """
 
     __slots__ = ('at', 'x', 'y', 'z')
 
@@ -159,7 +185,10 @@ class Frame:
 
     @property
     def name(self):
-        """The attribute this frame was declared under."""
+        """The attribute this frame was declared under. A mate whose fixed
+        end is a frame of the assembly itself, written by its bare name,
+        holds this declaration as its `fixed`, so the end reads as
+        `mate.fixed.name`."""
         return self._name
 
     def __set_name__(self, owner, name):
@@ -277,6 +306,9 @@ def resolve_declared_frames(node):
     """Resolve every frame `node`'s class declares against `node`,
     cached under `_frame_arguments` in its instance dict.
 
+    The constructor's hook, not a read: calling it again resolves again.
+    A project reads the resolved frames with `resolved_frames`.
+
     Called by the node constructor right after
     `resolve_declared_joints`: after the node's parameters and its
     `check()`, before any child is realized -- ADR-088's earliest point
@@ -289,3 +321,56 @@ def resolve_declared_frames(node):
     resolved = node.__dict__.setdefault(RESOLVED_KEY, {})
     for name, frame in frames.items():
         resolved[name] = frame.resolve(node)
+
+
+
+def resolved_frames(node):
+    """Every frame the realized `node`'s class declares, by name, in
+    declaration order, as the numbers it resolved to when `node` was
+    constructed: `{name: ResolvedFrame}`.
+
+    The objects are the very ones a mate composes with -- the node's
+    single resolution, not a second one -- so a function given as a
+    frame argument is not called again. Each read is a new `dict`;
+    removing a key from it changes nothing the node or its mates use.
+    A node whose class declares no frame reads `{}`, and a frame a
+    subclass removed with `None` is not in the mapping.
+
+    It takes an instance because only an instance has numbers: a
+    frame's arguments may read the declarer's parameters or be a
+    function of it. The declarations themselves, arguments as written,
+    are `declared_frames(<Class>)`; reading a frame as an attribute of
+    an instance also gives the declaration.
+
+    Raises `TypeError` for a class, for anything that is not a realized
+    node (a child declaration read off a class body, a `Frame`, a
+    number), and for a node whose frames are not resolved yet -- a read
+    made from its own `check()`, or from a function given as one of its
+    joint or frame arguments.
+    """
+    from machinome.node.base import AbstractBaseNode
+
+    if isinstance(node, type):
+        raise TypeError(
+            f"resolved_frames({node.__name__}) was given a class. A frame "
+            f"resolves against the instance that declares it -- its "
+            f"arguments may read that instance's parameters or be a "
+            f"function of it -- so only a realized node has numbers. Read "
+            f"the declarations with declared_frames({node.__name__}), or "
+            f"the numbers with resolved_frames({node.__name__}(...)).")
+    if not isinstance(node, AbstractBaseNode):
+        raise TypeError(
+            f"resolved_frames() was given a {type(node).__name__}, and it "
+            f"reads a realized node: an instance of a node class, whose "
+            f"frames resolved when it was constructed.")
+    declared = declared_frames(type(node))
+    cached = node.__dict__.get(RESOLVED_KEY, {})
+    pending = [name for name in declared if name not in cached]
+    if pending:
+        raise TypeError(
+            f"resolved_frames() was given a {type(node).__name__} whose "
+            f"frames are not resolved yet ({', '.join(pending)}). A node's "
+            f"frames resolve after its check() and its joints, so they "
+            f"cannot be read from check(), or from a function given as one "
+            f"of its joint or frame arguments.")
+    return {name: cached[name] for name in declared}

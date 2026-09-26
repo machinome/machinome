@@ -1408,3 +1408,195 @@ class ManualTest(BaseNodeTest):
         for fragment in ('Frame', '.on(', 'Revolute'):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, unreleased)
+
+
+##############################################
+# read-frames-and-mates, tasks 2.9 to 2.13: a mate's ends and freedom
+# read off the class, and the line it turns about read from them and
+# the moving child's resolved frames alone.
+
+def resolved_frames(node):
+    """`machinome.node.frames.resolved_frames`, imported where a test
+    needs it, so each test names its own failure."""
+    from machinome.node.frames import resolved_frames as read
+
+    return read(node)
+
+
+class Swung(Solid2Node):
+    """A part whose connector sits 5 up its own `z`."""
+
+    hinge = Frame(at=(0, 0, 5))
+
+    def render(self):
+        return cube(2, center=True)
+
+
+class Swinging(AssemblyNode):
+    """A freedom stating an axis, unnormalized, and leaving `at` out:
+    the anchor is then the moving frame's origin, `(0, 0, 5)` in the
+    part's own frame, not the `(0, 0, 0)` `freedom.at` reads."""
+
+    pin = Frame()
+
+    part = Swung()
+
+    swing = part.hinge.on(pin, Revolute(axis=(0, 0, 2), unit='deg'))
+
+
+class MateReadTest(BaseNodeTest):
+    """The documented reads of a mate, off the class. 2.9 and 2.10 are
+    GREEN GUARDS: the attributes exist at the base; this change
+    documents them."""
+
+    def mate(self, cls, name):
+        return mates_module().declared_mates(cls)[name]
+
+    def test_the_ends_and_freedom_of_a_mate_stating_no_line(self):
+        arm = fixtures().MatedArm
+        mate = self.mate(arm, 'elbow')
+
+        self.assertEqual(mate.name, 'elbow')
+        self.assertEqual(mate.moving.written, 'forearm.hinge')
+        self.assertIsInstance(mate.fixed, Frame)
+        self.assertIs(mate.fixed, arm.elbow_pin)
+        self.assertEqual(mate.fixed.name, 'elbow_pin')
+        self.assertIsNone(mate.freedom.axis)
+        self.assertIs(mate.freedom.anchor_written, False)
+        self.assertEqual(mate.freedom.range, (-135, 135))
+        self.assertEqual(mate.freedom.unit, 'deg')
+
+    def test_a_fixed_end_on_a_child_is_read_as_written(self):
+        mate = self.mate(fixtures().Pedestal, 'yaw')
+
+        self.assertEqual(mate.moving.written, 'housing.origin')
+        self.assertNotIsInstance(mate.fixed, Frame)
+        self.assertEqual(mate.fixed.written, 'base.seat')
+
+    def test_a_stated_line_is_read_as_written(self):
+        line = line_fixtures()
+
+        shoulder = self.mate(line.VerbatimShoulder, 'shoulder').freedom
+        self.assertEqual(shoulder.axis, (0, 0, 1))
+        self.assertIs(shoulder.anchor_written, True)
+        self.assertEqual(shoulder.at, (0, 0, 0))
+
+        anchored = self.mate(line.AnchoredHousing, 'shoulder').freedom
+        self.assertIsNone(anchored.axis)
+        self.assertIs(anchored.anchor_written, True)
+
+        wrist = self.mate(line.VerbatimWrist, 'wrist').freedom
+        self.assertEqual(wrist.axis, (1, 0, 0))
+        self.assertIs(wrist.anchor_written, False)
+
+    def test_a_left_out_anchor_is_read_as_not_written(self):
+        freedom = self.mate(Swinging, 'swing').freedom
+
+        self.assertEqual(freedom.axis, (0, 0, 2))
+        self.assertIs(freedom.anchor_written, False)
+
+    def test_a_left_out_anchor_is_the_moving_frames_resolved_origin(self):
+        node = Swinging()
+        freedom = self.mate(Swinging, 'swing').freedom
+
+        joint = declared_joints(type(node.part))['swing']
+        _axis, anchor, _span = joint.arguments(node.part)
+        self.assertEqual(anchor, (0.0, 0.0, 5.0))
+        self.assertEqual(anchor, resolved_frames(node.part)['hinge'].at)
+        self.assertNotEqual(anchor, tuple(freedom.at))
+
+    def test_the_mates_line_from_the_documented_reads_alone(self):
+        arm, line = fixtures(), line_fixtures()
+        for cls, name in ((arm.MatedArm, 'elbow'),
+                          (arm.Pedestal, 'yaw'),
+                          (line.VerbatimShoulder, 'shoulder'),
+                          (line.AnchoredHousing, 'shoulder'),
+                          (line.VerbatimWrist, 'wrist'),
+                          (Swinging, 'swing')):
+            with self.subTest(mate=f'{cls.__name__}.{name}'):
+                mate = self.mate(cls, name)
+                node = cls()
+                child_name, frame_name = mate.moving.written.split('.')
+                child = getattr(node, child_name)
+                moving = resolved_frames(child)[frame_name]
+                freedom = mate.freedom
+
+                # The rule the documentation states, in its own terms.
+                axis = (freedom.axis if freedom.axis is not None
+                        else moving.z)
+                at = freedom.at if freedom.anchor_written else moving.at
+                length = math.sqrt(sum(component * component
+                                       for component in axis))
+                axis = tuple(component / length for component in axis)
+
+                joint = declared_joints(type(child))[name]
+                installed_axis, installed_at, _span = joint.arguments(child)
+                for ours, theirs in zip(axis + tuple(at),
+                                        tuple(installed_axis)
+                                        + tuple(installed_at)):
+                    self.assertAlmostEqual(float(ours), float(theirs),
+                                           delta=1e-12)
+
+
+class ManualReadTest(BaseNodeTest):
+    """The reference and the joints page teach the reads."""
+
+    def page(self, *path):
+        with open(os.path.join(DOCS, *path)) as handle:
+            return handle.read()
+
+    def test_the_reference_lists_the_reads(self):
+        api = self.page('reference', 'api.rst')
+
+        for entry in ('.. autofunction:: machinome.node.frames.resolved_frames',
+                      '.. autoclass:: machinome.node.frames.ResolvedFrame',
+                      '.. autoclass:: machinome.motion.mates.Mate'):
+            with self.subTest(entry=entry):
+                self.assertIn(entry, api)
+        after = api.split(
+            '.. autoclass:: machinome.node.frames.ResolvedFrame', 1)[-1]
+        self.assertEqual(after.splitlines()[1].strip(), ':members: rotation')
+
+    def test_the_docstrings_state_the_reads(self):
+        from machinome.motion.mates import FrameRef, Mate
+        from machinome.node.frames import ResolvedFrame
+
+        for where, doc, fragments in (
+                ('ResolvedFrame', ResolvedFrame.__doc__,
+                 ('columns', 'int', 'float', 'rotation()')),
+                ('Mate', Mate.__doc__,
+                 ('declared_mates', 'name', 'moving', 'fixed', 'freedom',
+                  'anchor_written', "moving frame's origin")),
+                ('FrameRef.written', FrameRef.written.__doc__,
+                 ("'<child>.<frame>'",)),
+                ('Frame.name', Frame.name.__doc__, ('mate.fixed.name',)),
+                ('Revolute.anchor_written', Revolute.anchor_written.__doc__,
+                 ("moving frame's origin",))):
+            for fragment in fragments:
+                with self.subTest(where=where, fragment=fragment):
+                    self.assertIn(fragment, doc or '')
+
+    def test_the_joints_page_reads_frames_and_mates(self):
+        # The third block builds on the first block's `UpperArm`, as the
+        # page's prose says, so the two run in one namespace.
+        section = _section(self.page('concepts', 'joints.rst'),
+                           'Frames and mates')
+        blocks = _code_blocks(section)
+        self.assertGreaterEqual(len(blocks), 3)
+        namespace = {'__name__': __name__}
+        exec(compile(blocks[0], 'joints.rst', 'exec'), namespace)
+        exec(compile(blocks[2], 'joints.rst', 'exec'), namespace)
+
+        pin, hinge, elbow = (namespace['pin'], namespace['hinge'],
+                             namespace['elbow'])
+        self.assertEqual(pin.at, (0.0, 150.0, 68.0))
+        self.assertEqual((hinge.x, hinge.y, hinge.z),
+                         ((1, 0, 0), (0, 0, -1), (0, 1, 0)))
+        self.assertEqual(elbow.moving.written, 'forearm.hinge')
+        self.assertEqual(elbow.fixed.name, 'elbow_pin')
+        self.assertEqual(elbow.freedom.range, (-135, 135))
+        self.assertIs(elbow.freedom.anchor_written, False)
+        for fragment in ('(0.0, 150.0, 68.0)', 'resolved_frames',
+                         'anchor_written', "'forearm.hinge'"):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, section)

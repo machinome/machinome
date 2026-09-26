@@ -37,7 +37,9 @@ The read SHALL be refused, raising `TypeError`:
 - given a realized node whose frames are not yet resolved — a read made
   from its own `check()`, or from a function given as one of its joint or
   frame arguments —, naming the class and saying a node's frames resolve
-  after its `check()` and its joints.
+  after its `check()` and its joints. From such a function the refusal
+  reaches the author as the argument rule reports any error a function
+  raises, quoting it.
 
 Reading a frame as an attribute of an instance SHALL continue to yield
 the declaration.

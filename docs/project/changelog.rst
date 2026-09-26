@@ -23,6 +23,13 @@ Unreleased
   the moving part's own frame, while the frames still fix where it rests.
   Each of ``axis`` and ``at`` left out is the moving frame's, so a mate
   that states no line is unchanged (ADR-148).
+* **Frames and mates read back.** ``resolved_frames(node)``, from
+  ``machinome.node.frames``, reads a built node's frames as numbers --
+  origin, unit ``x``, ``y``, ``z`` and ``rotation()``, the very ones its
+  mates compose -- and a mate's ``name``, ``moving`` and ``fixed`` ends
+  and ``Revolute`` freedom are documented reads off the class through
+  ``declared_mates``, so a test can hold a machine's connectors to its
+  design without restating how a frame resolves.
 
 Machinome 0.7.0
 ---------------

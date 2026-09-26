@@ -188,10 +188,13 @@ one departure: it is allowed on ANY node kind, an assembly included,
 because an assembly's frames are its connectors to the one above it.
 Its arguments follow the joint argument rule (`resolved_vector`, shared
 with `Joint`) and resolve to numbers per instance in the constructor,
-right after `resolve_declared_joints`, cached as `_frame_arguments`; `z`
-is normalized, `x` squared up against it, an omitted `x` derived only
-for a principal `z` (the next principal axis, where `Wrapped`'s zero
-lands) and refused for any other. A frame builds nothing; it is the end
+right after `resolve_declared_joints`, cached as `_frame_arguments` —
+read publicly on the instance by `resolved_frames`, which returns those
+very objects in a fresh mapping and refuses a class, a non-node and a
+read before resolution, never off the class (`declared_frames` gives the
+declarations); `z` is normalized, `x` squared up against it, an omitted
+`x` derived only for a principal `z` (the next principal axis, where
+`Wrapped`'s zero lands) and refused for any other. A frame builds nothing; it is the end
 of a **mate** (Kinematics, below).
 
 The public surface is split by concern above the node package, so an

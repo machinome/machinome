@@ -54,6 +54,10 @@ A `Mate` is deliberately NOT a `Joint`: `declared_joints` enumerates by
 `isinstance(value, Joint)` and `clear_solved` finds a coordinate's joint
 the same way, and a mate moves no body of the assembly that declares it.
 
+A mate is read off the class, never constructed by a project:
+`declared_mates(cls)[name]` gives its `name`, its two ends `moving` and
+`fixed` as the class body wrote them, and its `freedom` (`Mate`).
+
 Module scope imports `machinome.motion.ports` and nothing else, as
 `joints` and `couplings` do. The arithmetic is pure Python on 3x3 lists;
 the one `matrix()` read of a fixed child's rest placement happens inside
@@ -109,6 +113,9 @@ class FrameRef:
 
     @property
     def written(self):
+        """The reference as the class body wrote it,
+        `'<child>.<frame>'`: `'forearm.hinge'` for the frame `hinge` of
+        the child `forearm`."""
         head = self.root._name or f'<{self.root.node_class.__name__} in a list>'
         return '.'.join((head,) + self.segments)
 
@@ -183,6 +190,36 @@ def state_mate(moving, fixed, freedom):
 class Mate(Coordinate):
     """`moving.on(fixed, freedom)`: the declaration, and -- with a
     freedom -- the rotational coordinate it owns on the assembly.
+
+    A mate is read OFF THE CLASS, as `declared_mates(cls)[name]` reports
+    it; reading it as an attribute of an instance gives its coordinate
+    instead (below). A project never constructs one. Its reads:
+
+    - `name`: the attribute the mate is assigned to, which is also the
+      name of its coordinate on the assembly and of the joint it gives
+      the moving child.
+    - `moving`: the moving end, a frame reference whose `written` is
+      `'<child>.<frame>'` as the class body writes it.
+    - `fixed`: the fixed end as the class body writes it -- for a frame
+      of another child, a frame reference whose `written` is
+      `'<child>.<frame>'`; for a frame of the assembly itself, written by
+      its bare name, that `Frame` declaration, whose `name` is its
+      attribute. `isinstance(mate.fixed, Frame)` tells the two apart.
+    - `freedom`: the `Revolute` written in the statement. Its `axis` is
+      `None` when no axis is stated, otherwise the three numbers as
+      written, not normalized. `anchor_written` says whether `at` was
+      written: when true, `at` is the three numbers as written, in the
+      moving child's own frame, `(0, 0, 0)` meaning the child's origin;
+      when false, `at` reads the `Revolute` default `(0, 0, 0)` and is
+      NOT the mate's anchor, which is then the moving frame's origin.
+      `range` is as written, or `None`; `unit` as written, or `'deg'`.
+
+    The line the mate turns its child about follows from these reads
+    and the moving child's resolved frames
+    (`machinome.node.frames.resolved_frames`) alone: `freedom.axis` when
+    it is not `None`, else the moving frame's resolved `z`; through
+    `freedom.at` when `anchor_written` is true, else through the moving
+    frame's resolved `at`.
 
     A data descriptor, like a joint, so reading it on an instance yields
     the bound port slot and assigning to it binds; a `Coordinate`, so

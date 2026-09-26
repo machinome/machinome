@@ -816,7 +816,11 @@ class Revolute(Joint):
 
     @property
     def anchor_written(self):
-        """Whether `at` was written, even as `(0, 0, 0)`."""
+        """Whether `at` was written, even as `(0, 0, 0)`.
+
+        When false, `at` reads the default `(0, 0, 0)`, which is not a
+        point anyone stated: as a mate's freedom, the mate's anchor is
+        then the moving frame's origin, not the moving child's."""
         return self.at is not _DEFAULT_ANCHOR
 
     def placement(self, node, value, axis, anchor):
