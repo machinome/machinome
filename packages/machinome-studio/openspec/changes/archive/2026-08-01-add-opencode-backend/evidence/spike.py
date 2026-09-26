@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Record the OpenCode server contract required by this change.
 
 This probe intentionally does not send a model prompt unless --exercise-prompt

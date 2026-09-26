@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Project-scoped MCP tools exposed to runtime agents over stdio.
 
 The server deliberately implements the small MCP JSON-RPC surface it needs

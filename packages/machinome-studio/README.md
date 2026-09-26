@@ -165,4 +165,4 @@ contract for changing this repository.
 Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes.
 
 Machinome Studio is licensed under the GNU Affero General Public License,
-version 3 only. See [LICENSE](LICENSE).
+version 3 or (at your option) any later version. See [LICENSE](LICENSE).

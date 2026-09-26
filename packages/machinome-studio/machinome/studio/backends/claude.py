@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Claude agent backend — wraps one ``claude`` CLI process per role.
 
 Unlike the OpenCode backend, which multiplexes every role through a

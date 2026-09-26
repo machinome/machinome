@@ -1,5 +1,5 @@
 // Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Vendored from machinome-viewer 0.2.0, viewer API 11 (viewer worktree
 // commit 644b504ca3431b8450ed98408d5e151cf7437ef5, branch
 // viewer-navigator), declaring API 10 -- the version this studio requires

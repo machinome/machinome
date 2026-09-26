@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """The shop's dependency on the external OpenSpec CLI.
 
 This is the one ambient ``PATH`` executable the shop depends on. Everything

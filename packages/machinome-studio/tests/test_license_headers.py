@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_SUFFIXES = {".css", ".html", ".js", ".py", ".sh", ".ts", ".tsx"}
 COPYRIGHT = "Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes"
-SPDX = "SPDX-License-Identifier: AGPL-3.0-only"
+SPDX = "SPDX-License-Identifier: AGPL-3.0-or-later"
 
 
 def tracked_source_files() -> list[Path]:

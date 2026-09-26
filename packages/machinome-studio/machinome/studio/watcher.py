@@ -1,5 +1,5 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Filesystem-event model watching for the shop floor.
 
 The floor never imports project code.  It asks ``machinome build`` to publish
