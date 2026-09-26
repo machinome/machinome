@@ -19,9 +19,22 @@ from floor.openspec import OpenSpecUnavailable, resolve_openspec_command
 
 
 @contextlib.contextmanager
+def _isolated_environment(*, path: str):
+    """Never inherit the developer's own configuration file or FLOOR_PORT.
+
+    Keeps only PATH, set explicitly by the caller, and a temporary, empty
+    XDG_CONFIG_HOME so no default studio configuration file exists.
+    """
+    with tempfile.TemporaryDirectory() as home:
+        environ = {"PATH": path, "XDG_CONFIG_HOME": str(Path(home) / "xdg")}
+        with patch.dict(os.environ, environ, clear=True):
+            yield
+
+
+@contextlib.contextmanager
 def _path_without_openspec():
     with tempfile.TemporaryDirectory() as empty:
-        with patch.dict(os.environ, {"PATH": empty}):
+        with _isolated_environment(path=empty):
             yield
 
 
@@ -31,7 +44,7 @@ def _path_with_broken_openspec():
         stub = Path(folder) / "openspec"
         stub.write_text("#!/bin/sh\necho 'boom' >&2\nexit 1\n", encoding="utf-8")
         stub.chmod(stub.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-        with patch.dict(os.environ, {"PATH": folder}):
+        with _isolated_environment(path=folder):
             yield
 
 
@@ -91,6 +104,10 @@ class OpenSpecStartupPrerequisiteTest(unittest.TestCase):
 
     def test_the_hub_entrypoint_starts_when_the_cli_runs(self) -> None:
         with (
+            # PATH stays real so the ambient OpenSpec CLI still resolves;
+            # only XDG_CONFIG_HOME is isolated, so no developer configuration
+            # file or FLOOR_PORT is read.
+            _isolated_environment(path=os.environ.get("PATH", "")),
             patch.object(sys, "argv", ["floor", "--projects-dir", "/work/projects", "--machinome-command", "fake-solid"]),
             patch.object(__main__, "SessionRegistry", return_value=object()),
             patch.object(__main__, "create_app", return_value=object()),

@@ -320,6 +320,23 @@ class ReferenceTest(unittest.TestCase):
         self.assertIn("python -m floor.orchestrator", reference)
         self.assertIn("python -m floor ", reference)
 
+    def test_the_configuration_file_is_documented(self) -> None:
+        reference = (DOCS / "reference/cli.rst").read_text()
+        for needed in ("machinome-studio", "MACHINOME_STUDIO_CONFIG", "config.toml", "[studio]"):
+            with self.subTest(needed=needed):
+                self.assertIn(needed, reference)
+        for key in source_constant("floor/launcher.py", "STUDIO_KEYS"):
+            with self.subTest(key=key):
+                self.assertIn(key, reference)
+
+    def test_pages_that_start_the_hub_show_the_command(self) -> None:
+        for name, text in (
+            ("docs/opening-a-project.rst", (DOCS / "opening-a-project.rst").read_text()),
+            ("README.md", (ROOT / "README.md").read_text()),
+        ):
+            with self.subTest(page=name):
+                self.assertIn("machinome-studio", text)
+
     def test_project_configuration_reference_names_the_table(self) -> None:
         page = (DOCS / "reference/project-configuration.rst").read_text()
         for needed in (

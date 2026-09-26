@@ -16,6 +16,9 @@ dependencies = [
     "watchdog>=6,<7",
 ]
 
+[project.scripts]
+machinome-studio = "floor.orchestrator:main"
+
 [tool.setuptools.package-data]
 floor = ["static/**"]
 

@@ -18,6 +18,13 @@ with ``--port`` or set ``FLOOR_PORT``; :doc:`reference/cli`.
 **A blank page.** The browser surface has not been built:
 ``npm --prefix floor/frontend run build``, or ``scripts/setup``.
 
+**An error naming the configuration file.** The studio configuration file
+is present but malformed, or ``MACHINOME_STUDIO_CONFIG`` names a file that
+does not exist. The message names the file and the key; fix it or remove
+the file. A missing project folder, with no ``--projects-dir`` and no
+``projects`` key in the file, is reported the same way.
+:doc:`reference/cli` gives the file's location, keys and precedence.
+
 A project cannot be opened
 ==========================
 

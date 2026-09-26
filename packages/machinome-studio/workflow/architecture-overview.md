@@ -26,13 +26,27 @@ source, contracts, workspace paths, and guidance use the Machinome identity.
 ## Project hub and sessions
 
 The process starts without preparing a project, building a model, or starting
-an agent. Both entry points first verify that the `openspec` CLI resolves and
-runs, and refuse to start when it does not, naming the prerequisite and how to
-install it; nothing is bound and no project is opened. There is no reduced mode
-in which projects open without their spec record (ADR 0027). Both entry points
-require `--projects-dir`, which names the exact external catalogue served by
-`floor/app.py`. The runtime neither appends a
-directory name nor derives a location from cwd or Git metadata.
+an agent. All three ways of starting the hub — the installed `machinome-studio`
+command and the two module entry points — first resolve their project folder
+and port through `floor/launcher.py`'s `resolve_launch`, then verify that the
+`openspec` CLI resolves and runs, and refuse to start when either fails,
+naming the prerequisite and how to satisfy it; nothing is bound and no
+project is opened. There is no reduced mode in which projects open without
+their spec record (ADR 0027).
+
+The project folder is supplied by the caller, exactly, by `--projects-dir` or
+by the `projects` key of a studio configuration file (ADR 0033), and names
+the exact external catalogue served by `floor/app.py`. The runtime neither
+appends a directory name nor derives a location from cwd or Git metadata; a
+folder named by the configuration file is a declared value, not discovery.
+The configuration file, a TOML file resolved from `MACHINOME_STUDIO_CONFIG`,
+`XDG_CONFIG_HOME` or `HOME`, also supplies the port; an explicit option
+always wins, then the environment (`FLOOR_PORT`, port only), then the file,
+then the built-in default of 9000. A missing file is not an error; a
+malformed one refuses startup naming the file and the key. When neither an
+option nor the file supplies a project folder, startup refuses with an
+`error:` line and exit status 1 (not argparse's usage error 2, since omitting
+the option is no longer necessarily a malformed command line).
 
 Its inventory is derived from the filesystem, one folder at a time, and every
 entry is identified by its path under the working folder — `sandbox/windmill`

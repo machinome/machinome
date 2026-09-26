@@ -7,16 +7,18 @@ Start the hub
 
 .. code-block:: console
 
-   $ python -m floor.orchestrator --projects-dir ~/machines
+   $ machinome-studio --projects-dir ~/machines
 
-``--projects-dir`` is required and names the folder that holds your
-projects, exactly as given: the studio neither appends a directory name nor
-guesses one from where it was started. The folder may be anywhere and may
-be empty. The command prints the hub's address, ``http://127.0.0.1:9000``
-unless ``--port`` or ``FLOOR_PORT`` says otherwise, and keeps running: it
-is the service that holds every open project's agents, viewer and
-conversation. Stop it with Ctrl-C when you are done; stopping ends every
-open session. :doc:`reference/cli` lists the options.
+``--projects-dir`` names the folder that holds your projects, exactly as
+given: the studio neither appends a directory name nor guesses one from
+where it was started. The folder may be anywhere and may be empty. Write it
+once in the studio configuration file and the option can be left off on
+later launches; :doc:`reference/cli` describes the file. The command prints
+the hub's address, ``http://127.0.0.1:9000`` unless ``--port``,
+``FLOOR_PORT`` or the file says otherwise, and keeps running: it is the
+service that holds every open project's agents, viewer and conversation.
+Stop it with Ctrl-C when you are done; stopping ends every open session.
+:doc:`reference/cli` lists the options.
 
 Before it listens, the studio checks that the ``openspec`` command runs and
 refuses to start when it does not. A project's design record is kept with

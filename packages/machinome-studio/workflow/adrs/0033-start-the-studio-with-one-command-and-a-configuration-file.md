@@ -1,8 +1,8 @@
 # ADR 0033: Start the studio with one command and a configuration file
 
-**Status:** Proposed
+**Status:** Accepted
 
-**Date:** 2026-09-26 (drafted; the accepted date is recorded on acceptance)
+**Date:** 2026-09-26
 
 **Deciders:** Pilot
 

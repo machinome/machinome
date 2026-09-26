@@ -12,6 +12,7 @@ from pathlib import Path
 import uvicorn
 
 from .app import create_app
+from .launcher import LaunchError, resolve_launch
 from .openspec import OpenSpecUnavailable, resolve_openspec_command
 from .preparation import default_machinome_command, shop_resource_root
 from .sessions import SessionRegistry
@@ -22,20 +23,21 @@ def main() -> None:
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.environ.get("FLOOR_PORT", "9000")),
+        default=None,
         help="local browser port (default: 9000 or FLOOR_PORT)",
     )
     parser.add_argument(
         "--projects-dir",
         type=Path,
-        required=True,
+        default=None,
         help="exact directory containing project repositories",
     )
     parser.add_argument("--machinome-command", help=argparse.SUPPRESS)
     arguments = parser.parse_args()
     try:
+        arguments.projects_dir, arguments.port = resolve_launch(arguments, os.environ)
         resolve_openspec_command()
-    except OpenSpecUnavailable as error:
+    except (LaunchError, OpenSpecUnavailable) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
     project_home = arguments.projects_dir

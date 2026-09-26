@@ -40,13 +40,15 @@ studio editable. It is idempotent.
 
 ```text
 source .venv/bin/activate
-python -m floor.orchestrator --projects-dir PATH
+machinome-studio --projects-dir PATH
 ```
 
-`--projects-dir` is required and names the folder that holds your projects,
-exactly as given. The command prints the hub's address and keeps running;
-choose or create a project in the browser. `python -m floor` serves the
-same hub without agents.
+`--projects-dir` names the folder that holds your projects, exactly as
+given. The command prints the hub's address and keeps running; choose or
+create a project in the browser. Write the folder once in
+`$HOME/.config/machinome-studio/config.toml` and later launches can leave
+the option off; the manual's command reference gives the file's keys and
+precedence. `python -m floor` serves the same hub without agents.
 
 Every project is its own Git repository under that folder. A project
 selects its profile and its agents' runtimes in its own `pyproject.toml`,

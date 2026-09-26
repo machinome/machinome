@@ -12,6 +12,18 @@ backend.
 
 ### What a maker gets
 
+- **A `machinome-studio` command**, on `PATH` wherever the studio is
+  installed, starting the same hub as `python -m floor.orchestrator`. A
+  studio configuration file, TOML at
+  `$XDG_CONFIG_HOME/machinome-studio/config.toml` or
+  `$HOME/.config/machinome-studio/config.toml` (or the file
+  `MACHINOME_STUDIO_CONFIG` names), supplies the project folder and the
+  port once for all three ways of starting the hub; a command-line option
+  still overrides it, and a malformed file refuses startup naming the file
+  and the key. **Breaking:** a missing project folder, with no
+  `--projects-dir` and no configuration file, now exits `1` with an
+  `error:` line, as a failed prerequisite, instead of argparse's usage
+  error `2`.
 - **A project hub** over any folder of projects: one card per project with
   its profile, branch, last commit and a preview of its model; folders of
   projects and multi-model projects entered in place; directories that

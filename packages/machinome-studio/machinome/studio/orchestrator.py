@@ -20,6 +20,7 @@ import uvicorn
 from .app import Broker, Envelope, SystemNotice, create_app
 from .backends.base import AgentActivity, AgentBackend, BackendEvent, ContextUnrecoverable, DeliveryReceipt, InactiveTurn, RoleContext, RoleHandle, RuntimeCatalogue
 from .backends import create_backend, parse_backend_command_overrides
+from .launcher import resolve_launch
 from .openspec import OpenSpecUnavailable, resolve_openspec_command
 from .preparation import (
     PreparationError,
@@ -780,17 +781,19 @@ async def _serve(arguments: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the event-driven agent shop")
-    parser.add_argument("--port", type=int, default=int(os.environ.get("FLOOR_PORT", "9000")))
+    parser.add_argument("--port", type=int, default=None)
     parser.add_argument(
         "--projects-dir",
         type=Path,
-        required=True,
+        default=None,
         help="exact directory containing project repositories",
     )
     parser.add_argument("--machinome-command", help=argparse.SUPPRESS)
     parser.add_argument("--backend-command", action="append", default=[], metavar="BACKEND=COMMAND", help=argparse.SUPPRESS)
+    arguments = parser.parse_args()
     try:
-        asyncio.run(_serve(parser.parse_args()))
+        arguments.projects_dir, arguments.port = resolve_launch(arguments, os.environ)
+        asyncio.run(_serve(arguments))
     except (OpenSpecUnavailable, PreparationError, ProfileError, ProjectRuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
