@@ -1,7 +1,11 @@
 # Mates and sketches: placing parts by relation instead of by coordinate
 
-**Status: provisional direction, 2026-09-23.** Nothing here is ratified and
-no OpenSpec change has been cut from it. It records an assessment the pilot
+**Status: provisional direction, 2026-09-23; §5.1–5.2 cut 2026-09-26.**
+Two OpenSpec changes have been cut from it so far, both from Thor's
+connectors: `place-parts-by-mate` (ADR-147, frames and revolute mates)
+and `state-the-mate-line` (ADR-148, the freedom's own line); §5 marks
+what they took and corrected. Everything else here is unratified. It
+records an assessment the pilot
 asked for after reading about MakerCAD
 (<https://github.com/marcuswu/makercad>): how the way mainstream CAD builds
 parts and assemblies — constrained sketches, mate connectors, joints between

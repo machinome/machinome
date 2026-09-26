@@ -3799,10 +3799,13 @@ pilot triages it.
   originating project: a mate's freedom may state `axis` and `at` in
   numbers, read in the moving child's own frame (not the frame's own
   terms, which the change's design rejects), each defaulting to the moving
-  frame's, so the design's connectors can be declared verbatim. Pending
-  Thor's follow-up in its own repository (the change's tasks §6): verbatim
-  connectors, the emitter's turn deleted, pose comparison at maximum
-  deviation 0.
+  frame's, so the design's connectors can be declared verbatim. **Validated
+  in Thor the same day** (its branch `state-the-mate-line`, commits
+  `676841b`, `66ca47e`, `87a5ddb`): the emitter's turn is deleted, six
+  frames changed to the design's connectors as they stand with the
+  freedom stating the line for the shoulder, the wrist and the forearm
+  yaw, and the pose comparison over 25 poses and 441 leaves gives a
+  maximum deviation of 0; `Home` and `Park` render byte-identical.
 - **The frame's origin becomes the joint's anchor.** The moving frame's
   `at` is copied as the installed joint's `at`, so a frame whose origin is
   off the child's own origin but on the joint line (Thor's shoulder,
@@ -3814,8 +3817,10 @@ pilot triages it.
   fixed, 2026-09-26, by `state-the-mate-line` (ADR-148):** a freedom may
   write `at=(0, 0, 0)`, the moving child's own origin, and the installed
   joint then publishes the turn alone; left out, the anchor is still the
-  frame's origin. Pending Thor's follow-up (tasks §6), which is expected
-  to measure the shoulder's `1.42e-14` mm residue vanish.
+  frame's origin. **Measured in Thor** (same branch): with the shoulder's
+  freedom stating `at=(0, 0, 0)`, the unrounded world matrices of every
+  leaf at every one of the 25 poses are bit-identical to the pre-mate
+  model's; the `1.42e-14` mm residue is gone.
 - **A mated machine's document is not byte-identical to its hand-placed
   twin.** Version, nodes, drivers, bindings and artifact keys are
   unchanged, but the mate-built rotations serialize their snapped values
