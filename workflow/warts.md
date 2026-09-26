@@ -3932,3 +3932,77 @@ pilot's triage.
   top-level assignments, or evaluating named expressions, through the
   OpenSCAD run the framework already makes, with the precision the
   projects had to recover themselves. Not triaged.
+
+## Findings from the SO-ARM100 project's migration onto mates (2026-09-26)
+
+The first migration of a URDF design onto frames and mates, in
+SO-ARM100 (project branch `frames-and-mates`, commits `92fb5d0` emitter
+and red test, `9762d9b` migration, `ce8b3b1` records; validates framework
+`main` at `61f2335`): six revolute joints read verbatim from
+`Simulation/SO100/so100.urdf` -- the joint's `<origin>` as a frame of the
+parent link, the child's own frame as a bare `Frame()`, the `<axis>` as
+the freedom's line where it is not the moving `z` -- with
+`capture_poses.py compare` at maximum deviation 0 over 25 poses and 110
+leaves (2.1e-13 mm unrounded, the difference of composition order), the
+project's tests unchanged but for the two that compared the deleted hand
+transcription, and `Rest`/`Grip` snapshots pixel-identical to `main`. The
+design states its joint lines, so the emitter needs no hand table of
+lines (Thor's `ROOT_CHAIN`). Nothing the URDF states was refused. The
+project's guard reads only documented surfaces (`resolved_frames`,
+`declared_mates`, the mate's ends and freedom). Two findings; both
+recorded, not fixed, until the pilot triages them.
+
+- **A snapped triad component leaves the triad non-unit.** `frames.py`
+  normalizes a declared direction and then snaps each component within
+  `_SNAP = 1e-9` of 0, 1 or -1 onto that value, one component at a time
+  and without renormalizing. A URDF rpy of `1.57079` gives
+  `z = (0, -0.99999999998, 6.33e-6)`: the second component snaps to
+  exactly `-1` while the third stays, and the resolved `z` has length
+  `1 + 2e-11`; `3.14158` gives `1 + 8e-11`, on `z` and `x` both. Four of
+  the SO-100's six fixed frames resolve so. No pose shows it (the mate's
+  axis-angle extraction goes through `atan2`) and the placement is within
+  1e-10, but the documented read promises a unit triad, and the project's
+  test had to compare resolved directions at 1e-9 rather than 1e-12. The
+  snap should keep the triad orthonormal: snap a component only when the
+  snapped vector is still unit to `_SNAP` (the other components within
+  the snap of 0), or renormalize after snapping. A small fix in
+  `frames.py`; the joint's own `_SNAP` shares the rule and should be
+  checked with it. **Recorded.**
+- **A root that is both a link and the control surface cannot name its
+  mate after its joint.** SO-ARM100's root is the URDF's `base` link and
+  also carries the maker's six drivers named after the six joints; its
+  own mate, the `shoulder_pan` joint, cannot be named `shoulder_pan`
+  because the driver of that name is already an attribute of the class
+  (refused at class creation, naming both declarations). The mate is
+  `shoulder_pan_joint` and the driver drives it. A consequence of a
+  mate's coordinate being an attribute of its assembly, not a defect; the
+  refusal names the collision. **Recorded.**
+
+## A handed design cannot state its mates per instance (2026-09-26, openarm)
+
+Recorded while preparing openarm's migration onto frames and mates (the
+second URDF project after SO-ARM100; `projects/Robotic-Arms/openarm`,
+`main` at `48a2ac9`). OpenArm is two mirrored seven-joint arms with a
+pinch gripper each, one class per joint instantiated twice with a
+`left = Flag(False)` passed down the chain (`simulation/arm.py`,
+`simulation/gripper.py`). The pinned URDF states, per side, a different
+joint origin (joints 1 and 2 mirror in `y`, the mounts too), a different
+axis (joints 1 and 6 flip sign) and a different range (joints 1 and 2
+swap their limits, the fingers reverse theirs); the project reads them
+per instance, `Revolute(axis=lambda node: ARM_JOINTS[side(node.left)][row].axis, range=lambda node: ...limits)`,
+as the ADR-097 migration `2026-09-10-joint-frame-follows-declarer`
+decided: handedness is a fact of the realized node, not of the class.
+
+- **A mate's freedom cannot state its line or its range as a function of
+  the node.** A frame already may: `Frame` takes three numbers, tokens or
+  formulas, or one callable of the realized declarer, so a handed fixed
+  frame (`at=lambda node: ...`) needs nothing new. The freedom may not:
+  `_check_stated` (ADR-148) refuses a callable `axis` or `at`, and
+  ADR-147 restricts `range` to numbers, both because the installed joint
+  resolves against the moving child while the freedom is written in the
+  assembly. ADR-148 rejected "the whole joint argument rule" with
+  "No project needs one; one that does gets a resolver-side resolution
+  then, together with the range." OpenArm is that project: without it,
+  its migration onto mates would have to split every joint class in two
+  by side and give up the per-instance handedness its design already
+  settled on. **Cycle cut: `state-the-freedom-per-instance`.**
