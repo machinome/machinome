@@ -18,6 +18,9 @@ eggs/
 lib/
 lib64/
 parts/
+# The vet fixture projects keep a `parts` package on purpose; the rule
+# above hid them from the 0.7.0 vet cycle's commit and CI ran red.
+!tests/vet_projects/*/sim/parts/
 sdist/
 var/
 wheels/

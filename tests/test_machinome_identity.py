@@ -19,7 +19,7 @@ class MachinomeIdentityTest(TestCase):
     def test_distribution_import_command_and_extras_share_the_name(self):
         project = self.metadata['project']
         self.assertEqual(project['name'], 'machinome')
-        self.assertEqual(project['version'], '0.7.0')
+        self.assertEqual(project['version'], '0.7.1')
         self.assertEqual(project['scripts'], {'machinome': 'machinome.cli:manage'})
         self.assertEqual(project['urls']['Homepage'],
                          'https://github.com/machinome/machinome')

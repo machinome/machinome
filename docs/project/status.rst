@@ -3,7 +3,7 @@
 Project status and direction
 ============================
 
-**Machinome |release| was released on |release_date|.** It continues the
+Machinome |release| was released on |release_date|. It continues the
 published solid-node 0.6.0 under the Machinome name and the `machinome
 GitHub organisation <https://github.com/machinome>`_; the distribution,
 import package, command and configuration table are all ``machinome``.
@@ -21,9 +21,13 @@ documents carry them to the independent browser viewer.
 
 Exact STEP parts and assembly import, sheet cutting profiles, flexible
 parts, surface markings, named project models, native geometry builds
-and incremental artifact reuse are implemented. :doc:`changelog` has the
-release summary, and the :doc:`release note </releases/release-0.7>`
-the story.
+and incremental artifact reuse are implemented. A part declares its
+connectors as frames and an assembly places it by a mate, one sentence
+that gives the part its rest placement, its joint and the assembly its
+coordinate (:doc:`/concepts/joints`); ``machinome vet`` checks that a
+project stays inside the framework's universe (:ref:`vet`).
+:doc:`changelog` has the release summary, and the :doc:`release note
+</releases/release-0.7>` the story.
 
 The development has been empirical and agent-assisted: clock gear
 trains, printer axes, calculator registers and interlocks supplied the
@@ -35,19 +39,6 @@ beside the design it simulates and each stating the design's licence and
 the simulation's, and are shown live on `machinome.org
 <https://machinome.org/foundry/>`_; the :doc:`examples </examples>` page
 says what to look for there.
-
-Since |release|
----------------
-
-Frames and mates, which place a part by its connectors and give it a
-revolute joint in one sentence (:doc:`/concepts/joints`), are on the
-main branch and unreleased. Moving mates also carry assembly-scoped Bounds,
-additive constraints and explicit control selections through their generated
-child joints. A mate may also reference an existing scalar child joint,
-placing its frames without replacing its original coordinate or binding
-rules. These additions are unreleased and add nothing to the published document
-and need no newer viewer. The :doc:`changelog` lists them under
-*Unreleased*.
 
 Packages
 --------

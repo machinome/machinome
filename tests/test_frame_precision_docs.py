@@ -18,8 +18,10 @@ class PrecisionDocumentationTest(unittest.TestCase):
                 self.assertIn('joint', passage.lower())
                 self.assertIn('both directions explicitly', passage)
 
-    def test_changelog_records_precision_only_under_unreleased(self):
+    def test_changelog_records_precision_in_the_release_that_ships_it(self):
         text = (ROOT / 'docs/project/changelog.rst').read_text()
-        pending, released = text.split('Machinome 0.7.0', 1)
-        self.assertIn('explicit direction precision', pending)
-        self.assertNotIn('explicit direction precision', released)
+        current, earlier = text.split('Machinome 0.7.0', 1)
+        self.assertIn('Machinome 0.7.1', current)
+        self.assertNotIn('Unreleased', current)
+        self.assertIn('explicit direction precision', current)
+        self.assertNotIn('explicit direction precision', earlier)

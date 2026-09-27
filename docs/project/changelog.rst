@@ -3,29 +3,21 @@
 Changelog
 =========
 
-Unreleased
-----------
+Machinome 0.7.1
+---------------
 
-* **Retain explicit direction precision.** Frames supplied with both ``x``
-  and ``z`` keep their normalized attachment directions without component
-  snapping. Omitting either direction keeps the previous default behavior;
-  final mate rotation and joint axis snapping are unchanged.
+Released on 27/Sep/2026
 
-* **Attach an existing joint by its frames.**
-  ``ones_mount = ones.axle.on(ones_seat, ones.turn)`` places a dial at its
-  connector while preserving its original scalar joint, name, order,
-  argument scope, limits and bindings. The handle names that same child
-  coordinate for relations, formulas, wiring, constraints and controls;
-  it adds no coordinate or document format (ADR-154).
+**Parts placed by relation.** A part names its connectors and an
+assembly says how two connectors meet; the rest placement, the joint
+and the coordinate follow from that one sentence. A new command checks
+that a project stays inside the framework's universe. Nothing changes in
+the published document: a 0.7.0 viewer reads a 0.7.1 export, and the
+matching viewer 0.7.1 is 0.7.0 renumbered, API 27, schemas 1–13.
+:doc:`/concepts/joints` teaches frames and mates and :ref:`vet` the
+command.
 
-* **Mate coordinates carry mechanical contracts.** A moving mate's range
-  may read sibling coordinates through ``Bound`` in its declaring assembly.
-  Its name, or a descendant path to it, may be a Bound read, an additive
-  ``constrain(range=...)`` target or an explicit turn, slide or button
-  selection. Each uses the existing generated child joint, with one retained
-  coordinate and the existing document format (ADR-153).
-
-* **Parts placed by mate.** A part declares its connectors as frames,
+* **Frames and mates:** a part declares its connectors as frames,
   ``hinge = Frame(at=..., z=..., x=...)``, in its own frame; an assembly
   relates two of them in one sentence,
   ``elbow = forearm.hinge.on(elbow_pin, Revolute(range=(-135, 135)))``,
@@ -33,47 +25,89 @@ Unreleased
   frame's line and gives the assembly a coordinate named ``elbow``. The
   placement, the joint and the constants that kept them in agreement are
   no longer written by hand. ``Revolute`` may leave out its ``axis`` only
-  as a mate's freedom. Documents are unchanged (ADR-147).
-* **A mate's freedom may state its own line.** A design's connectors are
+  as a mate's freedom (ADR-147). Born of a robot arm whose every link
+  stated one pin twice.
+* **A mate's freedom may state its own line:** a design's connectors are
   attachment frames, and the line a part turns about need not be the
   connector's ``z``: ``Revolute(axis=(0, 0, 1), at=(0, 0, 0))`` as a
   mate's freedom turns the part about that line, stated in numbers in
   the moving part's own frame, while the frames still fix where it rests.
   Each of ``axis`` and ``at`` left out is the moving frame's, so a mate
   that states no line is unchanged (ADR-148).
-* **Frames and mates read back.** ``resolved_frames(node)``, from
-  ``machinome.node.frames``, reads a built node's frames as numbers --
-  origin, unit ``x``, ``y``, ``z`` and ``rotation()``, the very ones its
-  mates compose -- and a mate's ``name``, ``moving`` and ``fixed`` ends
-  and ``Revolute`` freedom are documented reads off the class through
-  ``declared_mates``, so a test can hold a machine's connectors to its
-  design without restating how a frame resolves.
-* **A handed design mates per instance.** A mate's freedom may state its
+* **A mate may slide:** a mate's freedom may be a ``Prismatic``,
+  ``left_grip = left_finger.origin.on(left_seat, Prismatic(axis=(0, 1, 0), range=(-11, 20)))``,
+  which slides the part along the line it states, in the part's own
+  frame, by the rules a ``Revolute`` freedom follows: the frames fix
+  where it rests, ``at`` and ``range`` are taken the same way, and a
+  ``Prismatic`` states its ``axis`` as it does anywhere. The part gets a
+  ``Prismatic`` joint, the mate's coordinate is a length, in ``'mm'``
+  unless the freedom states a unit, and the slide is published as the
+  translation a class-declared ``Prismatic`` publishes (ADR-151). Born
+  of a gripper's fingers.
+* **A handed design mates per instance:** a mate's freedom may state its
   ``axis`` and its ``range`` each as one function of the assembly that
   states the mate, ``Revolute(axis=lambda node: ..., range=lambda node:
   ...)``, called once with that assembly as it builds the moving part,
   so one class per joint, mounted on either side, states each side's
   line and limits beside the fixed frame that is already a function of
   the side. The result is taken as numbers written there are; ``at``
-  stays three numbers (ADR-150).
-* **A gripper's fingers are mated like its links.** A mate's freedom may
-  be a ``Prismatic``,
-  ``left_grip = left_finger.origin.on(left_seat, Prismatic(axis=(0, 1, 0), range=(-11, 20)))``,
-  which slides the part along the line it states, in the part's own
-  frame, by the rules a ``Revolute`` freedom follows: the frames fix
-  where it rests, ``at`` and ``range`` are taken the same way, and
-  ``axis`` and ``range`` may be functions of the assembly. A
-  ``Prismatic`` states its ``axis``, as it does anywhere. The part gets a
-  ``Prismatic`` joint, the mate's coordinate is a length, in ``'mm'``
-  unless the freedom states a unit, and the slide is published as the
-  translation a class-declared ``Prismatic`` publishes (ADR-151).
-* **A bought part is held by one statement.** A mate may leave its
+  stays three numbers (ADR-150). Born of a two-armed robot mirrored
+  side to side.
+* **A bought part is held by one statement:** a mate may leave its
   freedom out, ``bolted = servo.ears.on(servo_seat)``, for a part that is
   held rather than freed: it places the part at its seat, connector onto
   connector, and gives it no joint and no coordinate, so a servo, a horn
   or a screw is declared in the class of the part that holds it and
   rides with it. The mate is read with ``freedom`` ``None``, is not a
-  port, and publishes only operations (ADR-152).
+  port, and publishes only operations (ADR-152). Born of a quadruped's
+  forty-eight bought parts.
+* **Mate coordinates carry mechanical contracts:** a moving mate's range
+  may read sibling coordinates through ``Bound`` in its declaring
+  assembly. Its name, or a descendant path to it, may be a Bound read, an
+  additive ``constrain(range=...)`` target or an explicit turn, slide or
+  button selection. Each uses the existing generated child joint, with
+  one retained coordinate and the existing document format (ADR-153).
+  Born of a calculator's crank and its pawl.
+* **An existing joint attached by its frames:**
+  ``ones_mount = ones.axle.on(ones_seat, ones.turn)`` places a dial at its
+  connector while preserving its original scalar joint, name, order,
+  argument scope, limits and bindings. The handle names that same child
+  coordinate for relations, formulas, wiring, constraints and controls;
+  it adds no coordinate or document format (ADR-154). Born of a
+  calculator's seventeen register dials.
+* **Frames and mates read back:** ``resolved_frames(node)``, from
+  ``machinome.node.frames``, reads a built node's frames as numbers,
+  origin, unit ``x``, ``y``, ``z`` and ``rotation()``, the very ones its
+  mates compose, and a mate's ``name``, ``moving`` and ``fixed`` ends
+  and its freedom are documented reads off the class through
+  ``declared_mates``, so a test can hold a machine's connectors to its
+  design without restating how a frame resolves.
+* **Frames keep explicit direction precision:** frames supplied with
+  both ``x`` and ``z`` keep their normalized attachment directions
+  without component snapping, and ``resolved_frames`` reads that same
+  basis. Omitting either direction keeps the snapped default; final
+  mate rotation and joint axis snapping are unchanged.
+* **``machinome vet``:** ``machinome vet [reference] [--tests] [--json]``
+  checks, statically, that a project stays inside the machinome
+  universe, the framework, its kernels and pure computation: it runs no
+  command, opens no socket, imports nothing by a computed name, writes
+  no file, and every declared source stays under the project root. It
+  reads only the project's bytes and the universe declaration shipped
+  with the package, which names the framework version it describes, and
+  reports one verdict per model, ``pure`` or the findings by path and
+  line. The STL, STEP, OpenSCAD and JSCAD adapters now refuse at
+  construction a source outside the declaring project (ADR-149). Born of
+  the hosts that run a project they did not write.
+* **Corrections:** an imported part wrapped by two classes of the same
+  name in two modules of one project no longer shares one cached
+  artifact; the artifact identity of ``StlNode``, ``StepNode``,
+  ``OpenScadNode`` and ``JScadNode`` wrappers includes the defining
+  source file relative to the project, so each wrapper's artifact is
+  current on its own, and the affected artifacts rebuild once
+  (ADR-155). A mate's rest rotation recovered from its matrix no longer
+  carries phantom axis components after a pure principal turn, so a
+  placement compares equal to itself. Both found while a calculator's
+  dials moved onto mates.
 
 Machinome 0.7.0
 ---------------

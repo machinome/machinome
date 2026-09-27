@@ -2,6 +2,85 @@
 History
 =======
 
+Machinome 0.7.1 (2026-09-27)
+----------------------------
+
+**Parts placed by relation.** Frames and mates, ``machinome vet`` and
+three corrections, all landed after the 0.7.0 tag and released as a
+patch: the published document, the viewer API (27) and the document
+versions (1–13) do not move, and the matching viewer 0.7.1 is 0.7.0
+renumbered. Each item names the archived OpenSpec change that carries
+its evidence.
+
+* **A mate COMPILES to a rest placement, a joint and a coordinate
+  (ADR-147).** A robot arm's five-link root chain stated every pin
+  twice, a placement in the parent's ``render()`` and a joint in the
+  child, agreeing only through shared constants; its design already
+  carried the connectors. ``Frame(at=, z=, x=)`` declares a connector
+  in a part's own rest frame and ``elbow = forearm.hinge.on(elbow_pin,
+  Revolute(...))`` in the assembly compiles, at realization, to the
+  rotation and translation that put frame onto frame, a ``Revolute`` on
+  the child about the moving frame's ``z``, and a coordinate on the
+  assembly. Change ``place-parts-by-mate``.
+* **A mate's freedom may STATE ITS OWN LINE (ADR-148).** The same arm's
+  connectors were attachment frames whose ``z`` lay across the joint
+  line for two of five links. ``Revolute(axis=, at=)`` as a mate's
+  freedom, read in the moving child's frame, fixes the line; the frames
+  still fix the rest. Change ``state-the-mate-line``.
+* **Frames and mates READ BACK.** ``resolved_frames(node)`` and the
+  documented ``Mate.moving``, ``fixed`` and ``freedom`` let the arm's
+  tests hold its connectors to its design without re-deriving the
+  default-``x`` rule. Change ``read-frames-and-mates``; no ADR.
+* **A mate's freedom may be a FUNCTION of the assembly (ADR-150).** A
+  two-armed robot mirrored side to side states a different axis and
+  range per side; ``axis`` and ``range`` may each be one function
+  called once with the realized assembly. Change
+  ``state-the-freedom-per-instance``.
+* **A mate's freedom may be a PRISMATIC (ADR-151).** A four-joint arm's
+  gripper fingers are prismatic in their design; ``Prismatic`` as a
+  freedom slides the part, the coordinate a length in ``'mm'``. Change
+  ``slide-by-mate``.
+* **A mate may LEAVE ITS FREEDOM OUT (ADR-152).** A quadruped's
+  forty-eight bought parts sit connector onto connector on the parts
+  that hold them; ``servo.ears.on(servo_seat)`` places and compiles to
+  nothing else. Change ``hold-by-mate``.
+* **Mate mechanical contracts RESOLVE the generated child joint
+  (ADR-153).** A calculator's crank carries a pawl-dependent ``Bound``,
+  additive stops and a selected ``Turn``; a moving mate accepts them
+  through its generated joint with one bank coordinate. Change
+  ``mates-in-mechanical-contracts``.
+* **A mate may REFERENCE an existing child joint (ADR-154).** The
+  calculator's seventeen register dials keep their ``turn`` coordinates
+  under ``ones.axle.on(ones_seat, ones.turn)``: the frames place, the
+  joint stays. Change ``mate-existing-child-joint``.
+* **Explicit frame directions RETAIN precision.** A frame given both
+  ``x`` and ``z`` keeps its normalized basis unsnapped, the one its
+  mates compose; the omitted-direction path is unchanged. Change
+  ``explicit-frame-direction-precision``; no ADR.
+* **vet CHECKS a project against a versioned universe (ADR-149).** A
+  site's intake, the studio floor and a browser runtime run projects
+  they did not write; ``machinome vet`` judges the project's bytes
+  against the universe declaration shipped with the package, the
+  framework, the kernels and the pure stdlib tier, and the source
+  adapters refuse a source outside the project. Change
+  ``vet-the-project``.
+* **External wrapper identity INCLUDES its defining source (ADR-155).**
+  Two same-named wrappers of one STEP in two modules of one project
+  invalidated each other's artifact until a faceted build did not
+  terminate; the built-in source-bound adapters qualify their identity
+  with the defining source relative to the project. Change
+  ``external-wrapper-cache-identity``.
+* **A mate's rest rotation is RECOVERED stably.** Matrix-to-axis-angle
+  recovery amplified cancellation residue into phantom axis components
+  after a pure principal turn; the recovery is stabilized with the
+  ``1e-9`` snap, order and identity omission unchanged. Change
+  ``stable-mate-rotation-conversion``; no ADR.
+* **The vet fixtures are COMMITTED.** Eleven ``test_vet_*`` tests were
+  red in the suite and in CI since ``vet-the-project``: ``.gitignore``
+  ignores ``parts/``, which hid the three fixture packages
+  ``tests/vet_projects/*/sim/parts/`` from that cycle's commit. The
+  rule gains a negation for the fixtures. Change ``release-0-7-1``.
+
 Machinome 0.7.0 (2026-09-23)
 ----------------------------
 

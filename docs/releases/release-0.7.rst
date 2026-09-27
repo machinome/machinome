@@ -95,3 +95,30 @@ experimental and unpublished.
 
 See :doc:`/start/install` for installation and :doc:`/project/changelog`
 for the capability summary and historical release notes.
+
+0.7.1: parts placed by relation
+-------------------------------
+
+Released on 27 September 2026.
+
+A part now declares its connectors as frames, in its own rest frame, and
+an assembly relates two connectors in one sentence that places the part
+at rest, gives it its joint and gives the assembly the coordinate. The
+freedom may be a revolute or a prismatic, may state its own line, may be
+a function of the assembly for a handed design, or may be left out for a
+part that is simply held; it may carry the stops, constraints and
+controls a hand-written joint carries, or attach an existing joint
+without replacing it. The frames and mates a machine declares read back
+as numbers, so a test holds the machine to its design without restating
+the rule. The work grew out of a robot arm whose design already carried
+its connectors, then two handed arms, a gripper, a quadruped's bought
+parts and a calculator's dials.
+
+``machinome vet`` checks, without running it, that a project stays
+inside the framework's universe: the framework, its kernels and pure
+computation, with every declared source under the project root.
+
+Nothing in the published document changes. A 0.7.0 viewer reads a 0.7.1
+export, and the matching viewer 0.7.1 is 0.7.0 renumbered.
+:doc:`/concepts/joints`, :ref:`vet` and :doc:`/project/changelog` have
+the details.

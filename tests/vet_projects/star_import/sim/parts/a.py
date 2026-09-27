@@ -2,4 +2,8 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: Apache-2.0
 
-__version__ = "0.7.1"
+from machinome.node import AssemblyNode
+
+
+class PartA(AssemblyNode):
+    pass
