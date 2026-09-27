@@ -79,7 +79,7 @@ the assembly, no wiring. The child moves only as the assembly that
 declares it moves, so a held part is declared in the class of the part
 that holds it; its fixed end follows every fixed end's rule.
 
-A mate compiles, at realization, to three things the framework already
+A fresh-freedom mate compiles, at realization, to three things the framework already
 has and invents no fourth (ADR-147) -- a rigid mate to the first alone:
 
 1. the moving child's REST PLACEMENT -- `P_owner . F_fixed .
@@ -108,10 +108,18 @@ A `Mate` is deliberately NOT a `Joint`: `declared_joints` enumerates by
 `isinstance(value, Joint)` and `clear_solved` finds a coordinate's joint
 the same way, and a mate moves no body of the assembly that declares it.
 
+An explicit joint path of the same direct moving child is a third mode:
+`ones_mount = ones.axle.on(ones_seat, ones.turn)`. It applies only the
+rest placement and reuses the original scalar Revolute or Prismatic,
+without specialization, renaming, reordering or wiring. The handle reads
+and binds the original child coordinate in every reference context;
+it owns no assembly coordinate. The original joint's argument scope,
+factories, limits and binding rules remain unchanged.
+
 A mate is read off the class, never constructed by a project:
 `declared_mates(cls)[name]` gives its `name`, its two ends `moving` and
-`fixed` as the class body wrote them, and its `freedom` (`Mate`), `None`
-for a rigid mate.
+`fixed` as the class body wrote them, and its `freedom`: a fresh joint
+declaration, a `PathRef` to the original child joint, or `None` for a rigid mate.
 
 Module scope imports `machinome.motion.ports` and nothing else, as
 `joints` and `couplings` do. The arithmetic is pure Python on 3x3 lists;
@@ -146,6 +154,12 @@ def _is_rigid(value):
     """Whether `value` is a RIGID mate: one that states no freedom, and
     so owns no coordinate (hold-by-mate)."""
     return _is_mate(value) and value.freedom is None
+
+
+def _reuses_joint(value):
+    """A written child-joint reference, not a newly installed freedom."""
+    from .couplings import PathRef
+    return _is_mate(value) and isinstance(value.freedom, PathRef)
 
 
 def _owns_no_coordinate(written):
@@ -264,11 +278,14 @@ def state_mate(moving, fixed, freedom):
 
 class Mate(Coordinate):
     """`moving.on(fixed, freedom)`: the declaration, and -- with a
-    freedom -- the coordinate it owns on the assembly: rotational for a
+    fresh freedom -- the coordinate it owns on the assembly: rotational for a
     `Revolute` freedom, translational for a `Prismatic` one, in the
     freedom's unit. With the freedom left out, `moving.on(fixed)`, it is
     a RIGID mate, which holds the child where the two frames meet and
-    owns no coordinate.
+    owns no coordinate. An explicit existing-child joint path as freedom,
+    `moving.on(fixed, child.turn)`, instead gives a handle to that same
+    scalar Revolute or Prismatic. It owns no assembly coordinate and
+    changes none of the original joint's scope, order or binding rules.
 
     A mate is read OFF THE CLASS, as `declared_mates(cls)[name]` reports
     it; reading one that states a freedom as an attribute of an instance
@@ -276,8 +293,9 @@ class Mate(Coordinate):
     the mate itself. A project never constructs one. Its reads:
 
     - `name`: the attribute the mate is assigned to; for a mate with a
-      freedom it is also the name of its coordinate on the assembly and
-      of the joint it gives the moving child.
+      fresh freedom it is also the name of its coordinate on the assembly
+      and of the joint it gives the moving child. An existing-joint handle
+      preserves the referenced joint's own name.
     - `moving`: the moving end, a frame reference whose `written` is
       `'<child>.<frame>'` as the class body writes it.
     - `fixed`: the fixed end as the class body writes it -- for a frame
@@ -286,7 +304,8 @@ class Mate(Coordinate):
       its bare name, that `Frame` declaration, whose `name` is its
       attribute. `isinstance(mate.fixed, Frame)` tells the two apart.
     - `freedom`: the `Revolute` or `Prismatic` written in the statement,
-      or `None` for a rigid mate, which states none. Its `axis` is `None` when no axis is stated, which only a
+      the explicit joint path for an existing-joint handle, or `None` for
+      a rigid mate, which states none. A fresh freedom's `axis` is `None` when no axis is stated, which only a
       `Revolute` freedom may do, the three numbers as written, not
       normalized, when numbers are stated, and the function itself, the
       same object, when a function of the assembly is stated.
@@ -312,14 +331,16 @@ class Mate(Coordinate):
     A data descriptor, like a joint, so reading it on an instance yields
     the bound port slot and assigning to it binds; a `Coordinate`, so
     `drives` and the arithmetic of a derived coordinate treat it as one.
-    It owns its port as `coordinate` and `coordinates`, which is what
+    A fresh moving mate owns its port as `coordinate` and `coordinates`, which is what
     makes `declared_ports` report it with no change there and a relation
-    end resolve it. A rigid mate owns none -- `coordinate` is `None` and
+    end resolve it. An existing-joint handle reads and binds the original
+    child's coordinate instead; its `coordinate` is `None` and
+    `coordinates` empty. A rigid mate owns none -- `coordinate` is `None` and
     `coordinates` empty, so `declared_ports` reports nothing for it --
     and assigning to it on an instance, or naming it as a relation's
     end, a term, a wiring source or by path, is refused naming it.
 
-    A moving mate may name its generated child joint as a Bound read,
+    A fresh moving mate may name its generated child joint as a Bound read,
     a constrain(range=...) target or an explicit control coordinate.
     Bounds in its freedom read the declaring assembly; its axis and
     anchor keep the moving child's own rest frame. Ordinary relations
@@ -342,7 +363,7 @@ class Mate(Coordinate):
         self.fixed = fixed
         self.freedom = freedom
         self.freedom_in_body = freedom_in_body
-        if freedom is None:
+        if freedom is None or _reuses_joint(self):
             # A rigid mate owns no coordinate: `declared_ports` then
             # reports nothing for it (hold-by-mate, design decision 4).
             self.coordinate = None
@@ -379,11 +400,17 @@ class Mate(Coordinate):
         self.coordinates = {name: self.coordinate}
 
     def __get__(self, instance, owner=None):
+        if instance is not None and _reuses_joint(self):
+            return self.freedom.resolve(instance).slot
         if instance is None or self.coordinate is None:
             return self
         return self.coordinate.__get__(instance)
 
     def __set__(self, instance, value):
+        if _reuses_joint(self):
+            end = self.freedom.resolve(instance)
+            end.declared.__set__(end.node, value)
+            return
         if self.coordinate is None:
             raise AttributeError(
                 f"cannot bind {type(instance).__name__}.{self._name}: "
@@ -501,7 +528,7 @@ def declare_mates(cls, name, own):
         placed[id(mate.moving.root)] = mate
     for mate in own:
         _check_fixed(cls, name, mate, placed)
-        if mate.freedom is not None:
+        if mate.freedom is not None and not _reuses_joint(mate):
             _check_child_name(name, mate)
     for mate in own:
         _install(cls, name, mate)
@@ -509,7 +536,7 @@ def declare_mates(cls, name, own):
     cls._own_mates = tuple(own)
     cls._declared_mates = tuple(inherited) + tuple(own)
     for mate in cls._declared_mates:
-        if mate.joint is not None:
+        if mate.joint is not None and not _reuses_joint(mate):
             mate.joint.check_bound_reads(cls)
 
 
@@ -556,6 +583,18 @@ def _check_freedom(name, mate):
 
     freedom = mate.freedom
     where = _named(name, mate)
+    if _reuses_joint(mate):
+        from .couplings import BroadcastRef
+        ref = freedom
+        if (isinstance(ref, BroadcastRef) or not isinstance(mate.moving, FrameRef)
+                or ref.root is not mate.moving.root or len(ref.segments) != 1
+                or not isinstance(ref.terminal, (Revolute, Prismatic))):
+            raise TypeError(
+                f'{where}: {ref.described()} must explicitly name an existing '
+                'scalar Revolute or Prismatic of the same directly declared '
+                'moving child; not another site, node or deeper path.')
+        ref.check('end')
+        return
     if freedom is None:
         # The rigid mate: nothing to check here (hold-by-mate).
         return
@@ -946,6 +985,10 @@ def _install(cls, name, mate):
     from machinome.node.declarative import _specialize
 
     freedom = mate.freedom
+    if _reuses_joint(mate):
+        # No specialization, mutation, slot or relay wiring is needed.
+        mate.joint = freedom.terminal
+        return
     if freedom is None:
         # The rigid mate installs nothing: the child keeps its declared
         # class and no wiring, and `mate.joint` stays None

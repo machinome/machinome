@@ -797,7 +797,7 @@ the joint against the child by `Joint.resolve` with the results in the
 functions' place (`resolve_freedom_functions`); `_install` marks such a
 joint `_resolved_by_mate`, which `resolve_declared_joints` skips and
 `Joint.arguments`' lazy path refuses.
-A mate compiles to a rest placement and, when it states a freedom, a
+A fresh-freedom mate compiles to a rest placement and a
 joint and a coordinate, three things that already exist: (1) the
 child's REST PLACEMENT `P_owner · F_fixed · F_moving⁻¹`, one rotation
 then one translation, appended untagged by `apply_mates` from `_rest`
@@ -837,7 +837,7 @@ version the machine declares without mates.
 
 **Mechanical contracts follow a moving mate to its physical joint**
 (ADR-153). `motion.mechanical` normalizes only Bound reads, additive constraint
-targets and explicit control selections; ordinary relation ends, wiring and
+targets and explicit control selections of fresh-freedom mates; ordinary relation ends, wiring and
 author binding still name the assembly port. The generated joint's existing
 `installed_by` provenance supplies assembly scope for Bound reads without a
 site-joint marker or any geometric carry. Static Bounds are checked after
@@ -850,6 +850,26 @@ explicit generated joint or a node inferring that single joint. Missing or
 incompatible effective paths and rigid mates are refused. The same existing
 joint is banked once and consumed by running, clocked and untimed evaluation;
 no solver, document field or version is added.
+
+**An existing-joint mate is a reference handle, not a new coordinate**
+(ADR-154). `ones_mount = ones.axle.on(ones_seat, ones.turn)` accepts only
+an explicit scalar Revolute/Prismatic of the same directly declared moving
+child. `_install` keeps that original joint without specialization, markers,
+renaming, slot changes or identity wiring; ordinary class/site declarer scope,
+argument factories, Bounds, defaults and binders therefore remain authoritative.
+The same mate rest-placement calculation applies after `render()`.
+`Mate.__get__` returns the original child's BoundPort and `__set__` invokes
+the original joint binder. No assembly port, bank value or public id is added.
+`couplings` recognizes this mode in own/path references and resolves every
+reference context to the same endpoint, preserving fresh-freedom port semantics.
+Handle/child aliases share numeric formula terms and supported retained-law
+self identity; grouped aliases and duplicate writers are refused. Formula
+provenance is stored separately from canonical terms, so original foreign
+handles are checked against the final declaring class even after scaling,
+flattening, zero multiplication or cancellation. Ordinary formulas retain
+their direct dictionary merge without alias-key traversal. Existing mechanical
+contracts use the original joint name and scope; rigid and fresh modes,
+inheritance restrictions, solver and document versions remain unchanged.
 
 **A relation** (spec `couplings`) says that one coordinate's motion IS
 another's: `a.drives(b, ratio=…, offset=…, law=…)`, written as a

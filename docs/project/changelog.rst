@@ -6,6 +6,13 @@ Changelog
 Unreleased
 ----------
 
+* **Attach an existing joint by its frames.**
+  ``ones_mount = ones.axle.on(ones_seat, ones.turn)`` places a dial at its
+  connector while preserving its original scalar joint, name, order,
+  argument scope, limits and bindings. The handle names that same child
+  coordinate for relations, formulas, wiring, constraints and controls;
+  it adds no coordinate or document format (ADR-154).
+
 * **Mate coordinates carry mechanical contracts.** A moving mate's range
   may read sibling coordinates through ``Bound`` in its declaring assembly.
   Its name, or a descendant path to it, may be a Bound read, an additive

@@ -3,8 +3,10 @@
 
 """Physical endpoints for Bounds, installed limits and explicit controls.
 
-Relations and author bindings still address the mate's assembly port. Only
-these mechanical contracts follow it to the existing posing child joint.
+Relations and author bindings of fresh-freedom mates still address their
+assembly port; these contracts follow it to the generated child joint.
+Existing-joint mate handles name the original child endpoint in every
+reference context and preserve its original scope and binder.
 """
 
 def is_mate(value):
@@ -41,6 +43,9 @@ def posing_joint(ref):
     if declared.freedom is None:
         from .mates import _owns_no_coordinate
         raise TypeError(_owns_no_coordinate(ref.described()))
+    from .mates import _reuses_joint
+    if _reuses_joint(declared):
+        return declared.freedom.terminal
     # During the executing class body installation has not happened yet.
     return declared.joint if declared.joint is not None else declared.freedom
 
@@ -57,7 +62,7 @@ def endpoint_key(ref, owner):
         path = (ref.root._name,) + ref.segments
         if is_mate(declared):
             posing_joint(ref)
-            path = path[:-1] + (declared.moving.root._name, declared.name)
+            path = path[:-1] + (declared.moving.root._name, posing_joint(ref).name)
         elif isinstance(declared, ChildDeclaration):
             # A node used as a read stands for its one scalar joint,
             # exactly as it does in a relation. It is the same physical
@@ -66,7 +71,7 @@ def endpoint_key(ref, owner):
         return ('coordinate', path)
     if is_mate(declared):
         posing_joint(ref)
-        return ('coordinate', (declared.moving.root._name, declared.name))
+        return ('coordinate', (declared.moving.root._name, posing_joint(ref).name))
     if isinstance(declared, Joint) or getattr(declared, 'domain', None) is not None:
         return ('coordinate', (declared.name,)) if declared.name is not None else ref.key()
     return ref.key()
@@ -111,7 +116,7 @@ def resolve_endpoint(ref, owner):
     mate = end.declared
     posing_joint(ref)
     child = getattr(end.node, mate.moving.root._name)
-    joint = declared_joints(type(child))[mate.name]
+    joint = declared_joints(type(child))[posing_joint(ref).name]
     return ResolvedEnd(child, joint, ref)
 
 

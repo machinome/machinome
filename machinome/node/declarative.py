@@ -105,7 +105,9 @@ def _coordinates_of(value):
 
 def _is_coordinate(value):
     """A port, a derived coordinate, or a joint of any arity."""
-    return (_coordinate_of(value) is not None
+    return ((getattr(type(value), 'mate_kind', None) == 'mate'
+             and value.freedom is not None)
+            or _coordinate_of(value) is not None
             or _coordinates_of(value) is not None)
 
 
@@ -572,7 +574,8 @@ class ChildDeclaration:
             # name -- read the name back out, so this message keeps
             # reading exactly as it always has.
             slot.wired_from = (type(owner).__name__, self._name, keyword)
-            if getattr(type(source), 'mate_kind', None) == 'mate':
+            if (getattr(type(source), 'mate_kind', None) == 'mate'
+                    and source.coordinate is not None):
                 # The joint a MATE installed: a hand binding of it is
                 # refused naming the mate's coordinate instead.
                 slot.mated_by = source

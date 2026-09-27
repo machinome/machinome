@@ -1,6 +1,7 @@
 # ADR-153: Mate Mechanical Contracts Resolve the Generated Child Joint
 
 **Status:** Accepted
+**Extended by:** [ADR-154](ADR-154-a-mate-may-reference-an-existing-child-joint.md) — referenced-joint handles name the original child endpoint in every reference context and preserve its original Bound scope
 **Date:** 2026-09-27
 **Amends:** [ADR-147](ADR-147-a-mate-compiles-to-a-rest-placement-a-joint-and-a-coordinate.md), [ADR-150](ADR-150-a-mates-freedom-may-be-a-function-of-the-assembly-that-states-it.md) — their refusal of Bound reads in a mate freedom
 **Extends:** [ADR-113](ADR-113-a-bound-may-read-other-coordinates.md), [ADR-117](ADR-117-a-control-may-name-the-freedom-it-means.md), [ADR-134](ADR-134-ancestors-add-constraints-without-replacing-joints.md) — mechanical references may name moving mates

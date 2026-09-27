@@ -3,6 +3,63 @@
 ## Purpose
 TBD - created by archiving change place-parts-by-mate. Update Purpose after archive.
 ## Requirements
+
+### Requirement: A mate attaches frames through an existing child joint
+
+The system SHALL accept `moving_child.frame.on(fixed_frame, moving_child.joint)` in an assembly class body where the explicit declaration reference names an existing one-coordinate Revolute or Prismatic joint on that exact directly declared moving child. It SHALL accept a class-declared or declaration-site joint, including a supported inherited joint, with its existing name and unit. The mate SHALL place the frames by the existing rest-placement rule and SHALL reuse the joint rather than install, rename, replace, reorder or mutate it. Its axis, anchor, range, arguments, original class/site frame and Bound read declarer SHALL be preserved. The frame SHALL not supply axis or anchor defaults to the referenced joint. Class-shared joint metadata and existing child specialization SHALL not be changed by attachment.
+
+The mate name SHALL name the attachment handle only and SHALL not be required to be a free attribute name on the child. Existing end scope, one mate per moving child, fixed-end, inheritance, list/repeat and render-placement restrictions SHALL remain. Strings, a bare foreign class Joint declaration, implicit whole-node selection, another child's joint, deeper descendant joints, ports, derived coordinates, Orbit, Free or components of multi-coordinate joints SHALL be refused by name. No joint_name keyword or other naming-string API SHALL be introduced.
+
+#### Scenario: The complete declared-reference example runs
+
+- **WHEN** the following declarations are realized and rendered
+
+```python
+from machinome.node import AssemblyNode, Frame
+from machinome.motion.joints import Revolute
+
+class Dial(AssemblyNode):
+    axle = Frame()
+    turn = Revolute(axis=(0, 0, 1))
+
+class Register(AssemblyNode):
+    ones_seat = Frame(at=(10, 0, 0))
+    ones = Dial()
+    ones_mount = ones.axle.on(ones_seat, ones.turn)
+```
+
+- **THEN** ones rests with its axle at (10, 0, 0), its original turn joint remains, and no ones_mount joint or assembly coordinate is created
+
+#### Scenario: Sibling dials retain their repeated local names
+
+- **WHEN** a register attaches two children with uniquely named mates referencing each child's turn joint
+- **THEN** the original ones.turn and tens.turn endpoints remain distinct and neither is renamed after its mate
+
+#### Scenario: A site joint keeps its original scope and carried line
+
+- **WHEN** a child is declared with a site Revolute or Prismatic whose arguments and Bound read the declaring parent, then attached through that explicit child-joint reference
+- **THEN** its original resolved arguments, parent frame/carry, bound reads and joint order remain unchanged and no mate-generated scope replaces them
+
+#### Scenario: A class joint keeps its own Bound scope
+
+- **WHEN** a class-declared joint's Bound reads that child's declared coordinate and the parent attaches its frames through that joint
+- **THEN** the read still resolves in the child and a same-named parent coordinate cannot substitute for it
+
+#### Scenario: Joint metadata stays independent of attachment sites
+
+- **WHEN** two assemblies attach instances of the same child class at different frames and a third instance remains unattached
+- **THEN** each original joint's name, owner, arguments and order are unchanged and attachment state does not leak into another instance or class
+
+#### Scenario: An invalid joint reference is refused
+
+- **WHEN** the attachment names another child's joint, a deeper descendant, a whole node, a string, a port, an Orbit or a Free coordinate
+- **THEN** it is refused naming the reference and the requirement for an explicit scalar Revolute or Prismatic of the moving child
+
+#### Scenario: Existing placement restrictions remain
+
+- **WHEN** a reused-joint mate closes a second mate on the same child, uses a moving fixed sibling, or the parent render also places that child
+- **THEN** the existing named refusal applies
+
 ### Requirement: A part declares named frames
 
 The system SHALL accept a **frame** as a class-body declaration on a node
@@ -173,7 +230,7 @@ the class body, or a frame declared by another child the assembly
 declares directly, written `<child>.<frame>`.
 
 The FREEDOM MAY be left out -- passing `None` is the same statement --
-and, when stated, SHALL be a `Revolute`, `Revolute(range=(lo, hi), unit='deg')`,
+and, when stated as a fresh freedom, SHALL be a `Revolute`, `Revolute(range=(lo, hi), unit='deg')`,
 the child turning about a line, or a `Prismatic`,
 `Prismatic(axis=(x, y, z), range=(lo, hi), unit='mm')`, the child sliding
 along one; both kinds SHALL follow every rule of this requirement alike
@@ -207,6 +264,12 @@ or one function of the assembly that states the mate returning such a pair.
 A Bound's read scope SHALL be the declaring assembly under "A moving mate's
 range reads the assembly that declares it".
 
+The FREEDOM SHALL also accept an explicit declaration reference to an
+existing scalar Revolute or Prismatic joint of that same directly declared
+moving child, under "A mate attaches frames through an existing child joint".
+Such a reference reuses the joint and does not state a fresh freedom; its
+original arguments and scope are preserved.
+
 The following SHALL be refused when the declaring class is created,
 naming the class, the mate and the reason:
 
@@ -231,7 +294,7 @@ naming the class, the mate and the reason:
 - a mate that is left unnamed -- a mate with a freedom because its
   coordinate is named after the mate, a rigid mate because a mate is
   enumerated, read and refused by its name;
-- a freedom that is neither a `Revolute` nor a `Prismatic` — an `Orbit`
+- a fresh freedom that is neither a `Revolute` nor a `Prismatic` — an `Orbit`
   or a `Free` —, a freedom whose range is neither a pair nor a function, or
   holds a parameter token or a formula, or a freedom already declared on
   some class;
@@ -476,7 +539,7 @@ refuse the mate at realization, naming the mate and the child.
 
 ### Requirement: A mate gives the moving child a joint
 
-At realization the moving child of a mate that states a freedom SHALL
+At realization the moving child of a mate that states a fresh freedom SHALL
 move about a joint of the freedom's kind — a `Revolute` for a `Revolute` freedom, turning the
 child about the line, a `Prismatic` for a `Prismatic` freedom, sliding
 the child along it — whose axis is the freedom's stated `axis` — the three numbers written, or what
@@ -503,6 +566,10 @@ AFTER every joint the child's own class declares, and SHALL compose in
 that position, outside the child's own freedoms and inside its rest
 placement.
 
+A mate referencing an existing child joint SHALL generate no joint and
+shall not apply its mate name to the child; it SHALL preserve the original
+joint under "A mate attaches frames through an existing child joint".
+
 A child a mate moves SHALL keep its identity: it SHALL key the same
 artifacts as the same child declared with no mate, and its class SHALL
 report the declared class's name.
@@ -511,7 +578,7 @@ A rigid mate SHALL give the moving child no joint: the child SHALL be
 realized as its declared class itself, not a specialization of it, and
 its class SHALL report exactly the joints that class declares.
 
-A mate stating a freedom whose name the moving child's class already
+A mate stating a fresh freedom whose name the moving child's class already
 answers to — a
 parameter, a child, a port, a joint, a frame, a marking, a method or any
 other attribute — SHALL be refused when the assembly's class is created,
@@ -637,7 +704,7 @@ child's class, since the rigid mate gives the child nothing under it.
 
 ### Requirement: A mate owns a coordinate on the assembly
 
-A mate with a freedom SHALL own one coordinate on the declaring
+A mate with a fresh freedom SHALL own one coordinate on the declaring
 assembly, named after the mate, of the freedom's kind — rotational for a
 `Revolute`, translational for a `Prismatic` — and carrying the freedom's
 unit, `'deg'` or `'mm'` when it states none. It SHALL be reported by the port enumerator for the assembly's
@@ -645,7 +712,7 @@ class, SHALL read and bind on an instance as a joint's coordinate does,
 and SHALL be an end of a relation, a target of a driver and a source of
 a law as the `couplings` capability specifies.
 
-Whenever the mate's coordinate is bound, the child's joint SHALL take its
+Whenever the fresh-freedom mate's coordinate is bound, the child's joint SHALL take its
 value, subject to the freedom's range, by the end of the assembly's
 simulate phase, and the child's body SHALL be placed exactly as a
 binding of that joint places it. Whenever the mate's coordinate is
@@ -653,10 +720,15 @@ unbound, the child's joint SHALL be unbound and the child SHALL rest at
 the mate's rest placement, exactly as a body with an unbound joint rests
 — an unbound mate coordinate SHALL NOT be refused.
 
-The joint a mate gives the child SHALL be bound only through the mate's
+The joint a fresh-freedom mate gives the child SHALL be bound only through the mate's
 coordinate: binding it by any other route — an assignment on the child,
 a relation or a driver naming it by path — SHALL be refused, naming the
 mate's coordinate as the one to bind.
+
+A mate referencing an existing joint SHALL own no assembly coordinate;
+its instance reads, bindings and declaration references SHALL reach the
+original child joint under "A reused-joint mate handle shares the child slot".
+The fresh-freedom exclusive wiring refusal SHALL NOT apply to a reused joint.
 
 A rigid mate SHALL own no coordinate. The port enumerator SHALL NOT
 report it. Reading it on an instance SHALL yield the mate declaration,
@@ -758,7 +830,7 @@ the mate and saying a rigid mate owns no coordinate.
 
 ### Requirement: A mate publishes nothing new
 
-A mated machine's published document SHALL carry the mate's compiled
+A fresh-freedom mated machine's published document SHALL carry the mate's compiled
 rest placement as ordinary operations and its coordinate as an ordinary
 binding, SHALL declare the document version a machine without mates
 declares, and SHALL add no field. A machine that declares no frame and
@@ -771,6 +843,11 @@ joint's ordinary operations, and a mate whose freedom is a `Prismatic`
 SHALL publish its slide only as the translation of the joint's ordinary
 operations. A rigid mate SHALL publish its placement only as the held
 child's ordinary operations, and no binding.
+
+An existing-joint attachment SHALL publish its frame placement as ordinary
+rest operations and its original joint's existing binding under its original
+qualified path. Its mate handle SHALL add no binding address, bank entry,
+identity wiring, field or document version.
 
 #### Scenario: A mated machine needs no newer consumer
 
@@ -946,7 +1023,7 @@ instance, as the object `declared_mates(cls)` reports under its name,
 with these reads documented in the framework's API reference:
 
 - `name`, the attribute the mate is assigned to — for a mate stating a
-  freedom, also the name of its coordinate on the assembly and of the
+  fresh freedom, also the name of its coordinate on the assembly and of the
   joint it gives the child;
 - `moving`, the moving end, whose `written` SHALL be
   `'<child>.<frame>'` as the class body writes it;
@@ -954,7 +1031,8 @@ with these reads documented in the framework's API reference:
   child, a reference whose `written` SHALL be `'<child>.<frame>'`; for a
   frame of the assembly itself, written by its bare name, that `Frame`
   declaration, whose `name` SHALL be its attribute;
-- `freedom`, `None` for a rigid mate, else the `Revolute` or
+- `freedom`, the exact declared child-joint reference written for a
+  reused-joint mate, `None` for a rigid mate, else the fresh `Revolute` or
   `Prismatic` written in the statement,
   whose `axis` SHALL
   be `None` when no axis is stated, which only a `Revolute` freedom may
@@ -968,7 +1046,10 @@ with these reads documented in the framework's API reference:
   itself, the same object — or `None`; and whose `unit` SHALL be as
   written, or `'deg'` for a `Revolute` and `'mm'` for a `Prismatic`.
 
-A rigid mate has no line. When the freedom is stated and its `axis` is
+A rigid mate has no line. For an existing-joint reference, the original
+joint declaration gives its line, unit and range under its original
+class/site scope; the reference is read as written and the mate supplies
+none of its argument defaults. When a fresh freedom is stated and its `axis` is
 not a function, the line a mate turns its
 child about or slides it along SHALL be readable from these reads and the moving child's
 resolved frames alone: `freedom.axis` when it is not `None`, else — a
@@ -1252,7 +1333,10 @@ re-running `render()` SHALL NOT stack its placement.
 
 ### Requirement: A moving mate's range reads the assembly that declares it
 
-Either side of a Revolute or Prismatic mate freedom's range SHALL accept the existing Bound(expression, reads=(...)) vocabulary. The expression SHALL receive the generated joint's own coordinate first and declared reads in written order. Reads SHALL be checked within the assembly that declares the mate and resolved against that realized assembly when needed, including inherited declarations. Its axis, anchor, placement order and rest frame SHALL retain their existing meanings in the moving child's frame. This SHALL apply both to a written range pair and a pair returned by the existing whole-range function of the assembly; the function SHALL retain its once-per-instance timing. Read coordinates SHALL NOT be evaluated during child realization, so a valid read through a later declared sibling SHALL be supported. Non-mate joint declarer scopes SHALL remain unchanged.
+Either side of a fresh Revolute or Prismatic mate freedom's range SHALL accept the existing Bound(expression, reads=(...)) vocabulary. The expression SHALL receive the generated joint's own coordinate first and declared reads in written order. Reads SHALL be checked within the assembly that declares the mate and resolved against that realized assembly when needed, including inherited declarations. Its axis, anchor, placement order and rest frame SHALL retain their existing meanings in the moving child's frame. This SHALL apply both to a written range pair and a pair returned by the existing whole-range function of the assembly; the function SHALL retain its once-per-instance timing. Read coordinates SHALL NOT be evaluated during child realization, so a valid read through a later declared sibling SHALL be supported. A reused existing joint SHALL retain its original class/site Bound declarer
+scope; the attachment SHALL not make its Bounds assembly-scoped or change
+the receiver or timing of its original argument functions. Non-mate joint
+declarer scopes SHALL remain unchanged.
 
 #### Scenario: The crank freedom reads its sibling pawl
 

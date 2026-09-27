@@ -281,16 +281,58 @@ can use ``drive.travel`` for those same contracts. The physical coordinate
 is still ``drive.handle.travel``; neither spelling adds another bank value.
 The mate's ordinary relation and binding address remains ``drive.travel``.
 
+When the child already has a joint, name that joint instead of declaring
+a fresh freedom. The frames place it at rest without replacing the joint:
+
+.. code-block:: python
+
+    from machinome.node import AssemblyNode, Solid2Node, Frame
+    from machinome.motion.joints import Revolute
+    from solid2 import cube
+
+    class Dial(Solid2Node):
+        axle = Frame()
+        turn = Revolute(axis=(0, 0, 1))
+
+        def render(self):
+            return cube(1)
+
+    class Register(AssemblyNode):
+        ones_seat = Frame(at=(10, 0, 0))
+        ones = Dial()
+        ones_mount = ones.axle.on(ones_seat, ones.turn)
+
+        def simulate(self):
+            if self.ones.turn.value is None:
+                self.ones.turn = 36
+
+``register.ones_mount`` reads exactly ``register.ones.turn`` and either
+spelling binds that same coordinate. The handle adds no coordinate to the
+assembly: its canonical coordinate id remains ``ones.turn``. Relations,
+derived formulas, wiring sources, Bounds, added constraints and explicit
+controls may use the handle, but ownership and sole-binding rules still
+apply. The joint keeps its original name, order, geometric frame, limits,
+factory receivers and binding rules. A class-declared joint still reads
+the child; a site-declared joint still reads the parent. Its guarded
+``simulate()`` default therefore needs no rewrite.
+
+This form requires an explicit scalar ``Revolute`` or ``Prismatic`` of
+the same directly declared moving child, such as ``ones.turn``. A string,
+a bare joint declaration, a whole node, a deeper or foreign path, a port,
+an ``Orbit`` or a ``Free`` is not an existing-joint freedom. The handle
+can have the same name as that child's joint without replacing it.
+
 Refused when the class is created, naming the mate: a mate on a node
 that is not an assembly; a moving end that is the assembly's own frame;
 either end reached through more than one child, a list or a
 ``repeat()``; a fixed end on a child that can move or that another mate
 places; a second mate on one child; a mate never assigned to a name; a
-freedom that is neither a fresh ``Revolute`` nor a fresh ``Prismatic``,
-or whose stated ``axis`` is neither three numbers nor a function, or
+freedom that is neither a fresh ``Revolute`` nor a fresh ``Prismatic``
+nor the explicit existing-joint reference described above,
+or, for a fresh freedom, a stated ``axis`` that is neither three numbers nor a function, or
 whose stated ``at`` is not three numbers, a function ``at`` included,
 or whose stated ``axis`` has no length, or whose range holds a parameter;
-a mate with a freedom whose name the moving
+a mate with a fresh freedom whose name the moving
 child already answers to; and a mate with no freedom named where a
 coordinate is named. Refused when the arm is built: a freedom's
 function that raises, or returns what the same argument written in

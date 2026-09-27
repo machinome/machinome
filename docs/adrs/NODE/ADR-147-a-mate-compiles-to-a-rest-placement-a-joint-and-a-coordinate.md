@@ -1,6 +1,7 @@
 # ADR-147: A Mate Compiles at Realization to a Rest Placement, a Joint and a Coordinate
 
 **Status:** Accepted
+**Amended by:** [ADR-154](ADR-154-a-mate-may-reference-an-existing-child-joint.md) — an explicit existing-child scalar joint reference applies the rest placement and gives a handle to the original endpoint without installing a joint or assembly coordinate
 **Amended by:** [ADR-153](ADR-153-mate-mechanical-contracts-resolve-the-generated-child-joint.md) — freedom Bounds read the declaring assembly; mechanical contract references to moving mates resolve to the generated child joint, preserving ordinary mate binding and child-frame geometry
 **Date:** 2026-09-26
 **Amended by:** [ADR-148: A Mate's Freedom May State Its Own Line](ADR-148-a-mates-freedom-may-state-its-own-line.md) — the freedom may state `axis` and `at` in numbers, read in the moving child's own frame, each defaulting to the moving frame's; the frames still fix the rest placement and the zero

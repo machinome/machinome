@@ -112,6 +112,10 @@ def _coordinate_of(value):
     uses, restated here rather than closed into an import cycle."""
     if isinstance(value, Port):
         return value
+    if getattr(type(value), 'mate_kind', None) == 'mate':
+        from .mates import _reuses_joint
+        if _reuses_joint(value):
+            return _coordinate_of(value.freedom.terminal)
     owned = getattr(value, 'coordinate', None)
     return owned if isinstance(owned, Port) else None
 
@@ -367,8 +371,11 @@ class OwnRef(CoordinateRef):
 
     def __init__(self, declared):
         self.declared = declared
+        self.reused_mate = _is_reused_mate(declared)
 
     def key(self):
+        if self.reused_mate:
+            return self.declared.freedom.key()
         return ('own', id(self.declared))
 
     def declaration(self):
@@ -399,6 +406,9 @@ class OwnRef(CoordinateRef):
             f"declares; reach another node's coordinate by path.")
 
     def resolve(self, instance):
+        if self.reused_mate:
+            end = self.declared.freedom.resolve(instance)
+            return ResolvedEnd(end.node, end.declared, self)
         return ResolvedEnd(instance, self.declared, self)
 
     def __repr__(self):
@@ -565,8 +575,13 @@ class PathRef(CoordinateRef):
         self.root = root
         self.segments = tuple(segments)
         self.terminal = terminal
+        self.reused_mate = _is_reused_mate(terminal)
 
     def key(self):
+        if self.reused_mate:
+            ref = self.terminal.freedom
+            return ('path', id(self.root), self.segments[:-1]
+                    + (ref.root._name,) + ref.segments)
         return ('path', id(self.root), self.segments)
 
     @property
@@ -653,6 +668,9 @@ class PathRef(CoordinateRef):
     def resolve(self, instance):
         node = self._walk(instance)
         declared = self.declaration()
+        if self.reused_mate:
+            end = declared.freedom.resolve(node)
+            return ResolvedEnd(end.node, end.declared, self)
         return ResolvedEnd(node, declared, self)
 
     def _walk(self, instance):
@@ -983,11 +1001,12 @@ def _end_group(value, role):
             'by one: a group cannot be empty, hold a single coordinate, or '
             'hold another group. Name a single coordinate without &, or '
             'flatten the group into one & chain.')
+    converted = [coordinate_ref(operand, role) for operand in operands]
+    aliases = _uses_reused_alias(converted)
     refs = []
     seen = {}
-    for operand in operands:
-        ref = coordinate_ref(operand, role)
-        key = ref.key()
+    for ref in converted:
+        key = _alias_comparison_key(ref, aliases)
         if key in seen:
             raise TypeError(
                 f'{ref.described()} is named twice in one group: a '
@@ -995,6 +1014,34 @@ def _end_group(value, role):
         seen[key] = ref
         refs.append(ref)
     return EndGroup(refs)
+
+
+def _uses_reused_alias(refs):
+    return any(getattr(item, 'reused_mate', False) for item in refs)
+
+
+def _is_reused_mate(value):
+    if getattr(type(value), 'mate_kind', None) != 'mate':
+        return False
+    from .mates import _reuses_joint
+    return _reuses_joint(value)
+
+
+def _alias_comparison_key(ref, aliases):
+    """Expand inferred nodes only in comparisons involving reused handles.
+
+    Ordinary written PathRef identities remain unchanged. The explicit
+    handle's key already follows its referenced joint; an inferred node
+    must identify that same scalar endpoint rather than bypass the check.
+    """
+    from machinome.node.declarative import ChildDeclaration
+
+    if not aliases:
+        return ref.key()
+    if (isinstance(ref, PathRef) and not isinstance(ref, BroadcastRef)
+            and isinstance(ref.terminal, ChildDeclaration)):
+        return ('path', id(ref.root), ref.segments + (ref.declaration().name,))
+    return ref.key()
 
 
 class EndGroup(CoordinateRef):
@@ -1156,9 +1203,11 @@ def _self_read_index(driver_ref, driven_ref):
     path while the sibling's own walk is cutting it.
     """
     driven_refs = _end_refs(driven_ref)
-    driven_keys = {ref.key(): ref for ref in driven_refs}
-    for index, ref in enumerate(_end_refs(driver_ref)):
-        shared = driven_keys.get(ref.key())
+    sources = _end_refs(driver_ref)
+    aliases = _uses_reused_alias(sources + driven_refs)
+    driven_keys = {_alias_comparison_key(ref, aliases): ref for ref in driven_refs}
+    for index, ref in enumerate(sources):
+        shared = driven_keys.get(_alias_comparison_key(ref, aliases))
         if shared is None:
             continue
         if len(driven_refs) > 1:
@@ -1395,22 +1444,47 @@ def _terms_of(operand):
         f'the relation with law=.')
 
 
+def _written_reused_refs(operand):
+    """Ownership evidence must survive flattening and alias cancellation."""
+    if isinstance(operand, DerivedCoordinate):
+        return operand.reused_references
+    if not isinstance(operand, CoordinateRef) and _is_reused_mate(operand):
+        operand = OwnRef(operand)
+    return (operand,) if getattr(operand, 'reused_mate', False) else ()
+
+
 def _combine(ref, other, sign):
     left_terms, left_constant = ref.terms()
     right_terms, right_constant = _terms_of(other)
-    terms = dict(left_terms)
+    written = _written_reused_refs(ref) + _written_reused_refs(other)
+    if not written:
+        # Keep the ordinary linear-expression merge: no alias traversal
+        # or reconstruction per existing term on this overwhelmingly
+        # common path.
+        terms = dict(left_terms)
+        for term, coefficient in right_terms.items():
+            terms[term] = terms.get(term, 0) + sign * coefficient
+        return DerivedCoordinate(terms, left_constant + sign * right_constant)
+    terms = {}
+    representatives = {}
+    for term, coefficient in left_terms.items():
+        key = _alias_comparison_key(term, True)
+        canonical = representatives.setdefault(key, term)
+        terms[canonical] = terms.get(canonical, 0) + coefficient
     for term, coefficient in right_terms.items():
-        merged = terms.get(term, 0) + sign * coefficient
-        terms[term] = merged
+        key = _alias_comparison_key(term, True)
+        canonical = representatives.setdefault(key, term)
+        merged = terms.get(canonical, 0) + sign * coefficient
+        terms[canonical] = merged
     constant = left_constant + sign * right_constant
-    return DerivedCoordinate(terms, constant)
+    return DerivedCoordinate(terms, constant, reused_references=written)
 
 
 def _scaled(ref, factor):
     terms, constant = ref.terms()
     return DerivedCoordinate(
         {term: coefficient * factor for term, coefficient in terms.items()},
-        constant * factor)
+        constant * factor, reused_references=_written_reused_refs(ref))
 
 
 class DerivedCoordinate(CoordinateRef):
@@ -1430,8 +1504,11 @@ class DerivedCoordinate(CoordinateRef):
     _name = None
     owner = None
 
-    def __init__(self, terms, constant):
+    def __init__(self, terms, constant, *, reused_references=()):
         self.terms_map = terms
+        # Separate from the canonical numeric terms: merging two aliases
+        # must never erase the written declaration's ownership evidence.
+        self.reused_references = reused_references
         self.constant = constant
         self._domain, self._unit = _shared_domain(terms)
         kind = _PORT_KINDS.get(self._domain, SignalPort)
@@ -1500,7 +1577,12 @@ class DerivedCoordinate(CoordinateRef):
             f"relation that drives it.")
 
     def resolve(self, instance):
+        self.check_declared_on(type(instance), self)
         return ResolvedEnd(instance, self, self)
+
+    def check_declared_on(self, owner, relation):
+        for ref in self.reused_references:
+            ref.check_declared_on(owner, relation)
 
     def __repr__(self):
         return f'<derived coordinate {self._name or ""}: {self.written}>'
@@ -1515,6 +1597,7 @@ class DerivedCoordinate(CoordinateRef):
         """`[(ResolvedEnd, coefficient)]` for this instance."""
         from machinome.parameters import evaluate
 
+        self.check_declared_on(type(instance), self)
         values = instance.__dict__.get('_parameters', {})
         resolved = []
         for term, coefficient in self.terms_map.items():
@@ -2480,7 +2563,9 @@ class Wiring:
         # it -- and the child's joint -- unbound (design decision 6 of
         # OpenSpec change ``place-parts-by-mate``). Every wiring an
         # author writes keeps the refusal.
-        self.rests_unbound = getattr(source, 'rests_unbound', False)
+        from .mates import _reuses_joint
+        self.rests_unbound = (getattr(source, 'rests_unbound', False)
+                             and not _reuses_joint(source))
 
     def described(self):
         return (f'the wiring {type(self.parent).__name__}.{self.source.name} '
