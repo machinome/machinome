@@ -4241,3 +4241,23 @@ Three findings, all consequences, recorded for the pilot's triage.
   final selected 591 tests and 574 subtests pass. No caller/API/cache-name
   workaround or weakened currency was introduced. ADR-155 records the decision;
   integration and teardown remain root-owned.
+
+## Curta Type I — mate rotation conversion (27 September 2026)
+
+- **A pure principal rotation acquires phantom axis components.** During the
+  selector mate migration at project `Curta-Type-I-3x` content `4b2ea5ad`,
+  selector 6's pure Z rotation of -95.6 degrees becomes an axis of
+  `[-5.028708403180495e-09, -5.028708403180495e-09, -1]` at 95.6 degrees
+  through `motion/mates.py::_axis_angle`. Subtracting nearly equal diagonal
+  values and square-rooting the residue creates the false components; a
+  matrix made directly from cos/sin(-95.6 degrees) reproduces it without CAD.
+  The unchanged caller's physical-basis comparison at
+  `.bank.digit_selector_axle_6.selector_shaft_bottom` reports Z -127.775
+  versus -127.77499998947587, about `1.0524e-8` mm difference. This is a
+  numerical pose-equivalence regression, not a demonstrated fit failure.
+  Caller evidence is `simulation/test_selector_mates.py`; its saved migration
+  candidate is `_build/selector-mates-candidate.patch` in the project.
+  **Ratified:** narrowly stabilize matrix-to-axis-angle conversion while
+  preserving genuine small components, signed principal rotations, half-turn
+  symmetry, the existing `1e-9` snap and caller tolerances. No interface,
+  schema or viewer change. Taken up by `stable-mate-rotation-conversion`.
