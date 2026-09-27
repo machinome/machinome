@@ -4202,3 +4202,29 @@ Three findings, all consequences, recorded for the pilot's triage.
 - **A mate's coordinate is reported twice** (second project: OpenArm
   recorded it first): `arm.link2` reports `base_yaw`, its parent's
   mate, beside its own `shoulder`. **Recorded** (see OpenArm's entry).
+
+## Curta Type I — external-wrapper cache collision (27 September 2026)
+
+- **Different wrappers claim one imported-part artifact.** The project at
+  `/mnt/data/machinome-projects/Calculators/Curta-Type-I-3x` has two
+  `FittedDialType2` classes, in `simulation/dial_fits.py` and
+  `simulation/dial_frames.py`, importing the same STEP and using the same
+  inherited `ClearingGearFit.adjust`; the framed wrapper adds an `axle` frame.
+  Their wrapper source closures differ. On framework `163afcc`, both claim
+  `_build/simulation/_source/curta-FittedDialType2-1d3ddea04ccb.stl`.
+  Their maximum source mtimes are respectively `1790100303329848018`
+  and `1790509484210848006`, and their source digests differ. A faceted
+  register build repeatedly produced this same artifact (over 30,000 log
+  lines) until the root agent interrupted its own spawned test process; it never reached its
+  geometry assertion. A metadata-only reproduction on `928ac64` confirms
+  the same collision, with digests
+  `9ee52b908401c1c4b30f7bf6024062c495f2dd15aee13f93d46443f95808cd69`
+  and `5deb9c291d3d9c6c80855378dea77b69dcc0293918f871c5e540406d62bd926a`.
+  The external asset controls the artifact directory and basename, so class
+  qualname alone no longer distinguishes the defining Python files.
+  **Ratified for a narrow internal fix:** qualify external-wrapper cache
+  identity by stable project-relative defining Python source plus class
+  qualname; preserve ordinary Python identity and generated joint
+  specializations. No author API or viewer-format change. Affected caches
+  rebuild once. Taken up by `external-wrapper-cache-identity`; this finding
+  remains evidence, not a baseline requirement.
