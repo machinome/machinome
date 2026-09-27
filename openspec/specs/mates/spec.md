@@ -480,6 +480,15 @@ class declares. A rotation axis component and a rotation angle within
 normalized axis is snapped; the translation SHALL be what the arithmetic
 gives.
 
+Matrix-to-axis-angle conversion SHALL preserve the represented rest rotation,
+subject to the unchanged documented `1e-9` snap, without amplifying
+cancellation residue into phantom axis components. Signed
+principal rotations beyond 90 degrees SHALL retain their principal axis;
+genuine small axis components outside the existing snap SHALL remain present.
+Near and exact half-turn rotations SHALL remain numerically stable, and
+symmetric equal-component half-turns SHALL retain equal axis components. This
+SHALL NOT enlarge the snap or alter caller tolerances.
+
 A child a mate places SHALL NOT also be placed by the assembly's
 `render()`: a rotation or translation the `render()` applies to it SHALL
 be refused, naming the assembly, the child and the mate, because a
@@ -536,6 +545,31 @@ refuse the mate at realization, naming the mate and the child.
   it is rendered under three successive bindings
 - **THEN** the moving child carries the mate's rest placement exactly
   once after each
+
+#### Scenario: Curta's negative principal rest rotation stays principal
+
+- **WHEN** a mate's rest matrix is a pure Z rotation of -95.6 degrees, as in
+  Curta selector 6
+- **THEN** its emitted rotation has zero X/Y axis components and represents
+  the same signed Z rotation, without the phantom approximately 5e-9 components
+- **AND** the unchanged caller physical-basis comparison meets its existing
+  tolerance
+
+#### Scenario: Genuine small components are not erased
+
+- **WHEN** a proper rest rotation beyond 90 degrees has a genuine small axis
+  component outside the existing 1e-9 snap
+- **THEN** conversion preserves that component rather than treating it as
+  cancellation noise, and reconstructs the rotation within floating-point
+  accuracy subject to the unchanged documented snap of axis components and angle
+
+#### Scenario: Near and exact half turns retain their rotation
+
+- **WHEN** rest rotations approach or reach 180 degrees about principal or
+  mixed-sign oblique axes, including symmetric equal-component axes
+- **THEN** the emitted rotations reconstruct the represented matrices within
+  floating-point accuracy subject to the unchanged documented snap of axis
+  components and angle, and preserve equal components in symmetric half turns
 
 ### Requirement: A mate gives the moving child a joint
 

@@ -1170,11 +1170,12 @@ def _axis_angle(rotation):
 
     The angle comes from `atan2(2 sin, 2 cos)`, well conditioned
     everywhere. The axis comes from the antisymmetric part up to 90
-    degrees and from the DIAGONAL beyond it, where the antisymmetric
-    part shrinks to nothing: `a_i^2 = (R_ii - cos) / (1 - cos)`, signs
-    from the symmetric off-diagonal terms and the orientation from the
-    antisymmetric part. At exactly 180 degrees the diagonal gives every
-    component by the same square root, so a half turn about
+    degrees and from the dominant DIAGONAL beyond it, where the
+    antisymmetric part shrinks to nothing. Only the well-conditioned
+    dominant component takes a square root; the others follow from
+    `R_ij + R_ji = 2 (1 - cos) a_i a_j`, without amplifying diagonal
+    cancellation residue. Orientation follows the antisymmetric part.
+    Equal diagonal components retain equal magnitudes, so a half turn about
     `(0, 1, 1)` reads `(0, sqrt(.5), sqrt(.5))` rather than two
     different last bits.
     """
@@ -1193,11 +1194,18 @@ def _axis_angle(rotation):
         squares = [max(0.0, (rotation[index][index] - cosine)
                        / (1 - cosine)) for index in range(3)]
         largest = max(range(3), key=lambda index: squares[index])
-        axis = [math.sqrt(square) for square in squares]
+        dominant = math.sqrt(squares[largest])
+        axis = [0.0] * 3
+        axis[largest] = dominant
         for index in range(3):
-            if index != largest and (rotation[largest][index]
-                                     + rotation[index][largest]) < 0:
-                axis[index] = -axis[index]
+            if index != largest:
+                symmetric = rotation[largest][index] + rotation[index][largest]
+                if squares[index] == squares[largest]:
+                    # Preserve exact equal-component serialization, rather
+                    # than introducing a last-bit difference by division.
+                    axis[index] = math.copysign(dominant, symmetric)
+                else:
+                    axis[index] = symmetric / (2 * (1 - cosine) * dominant)
         if sum(a * b for a, b in zip(axis, skew)) < 0:
             axis = [-component for component in axis]
         length = math.sqrt(sum(component * component for component in axis))

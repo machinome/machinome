@@ -4261,3 +4261,11 @@ Three findings, all consequences, recorded for the pilot's triage.
   preserving genuine small components, signed principal rotations, half-turn
   symmetry, the existing `1e-9` snap and caller tolerances. No interface,
   schema or viewer change. Taken up by `stable-mate-rotation-conversion`.
+  **Resolved, 27 September 2026:** dominant-component recovery removes
+  phantom principal-axis components without losing genuine small components
+  or changing the snap. Root adversarial review accepted matrix and composed
+  public-frame evidence; unchanged Curta selector/register/crank comparisons
+  passed 8 tests in 8.980s. This establishes numerical pose equivalence, not a
+  measured fit improvement. See archived OpenSpec change
+  `2026-09-27-stable-mate-rotation-conversion` for exact red/green evidence.
+  Nonarchitectural correction: no new ADR or author interface.
