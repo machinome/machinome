@@ -6,6 +6,13 @@ Changelog
 Unreleased
 ----------
 
+* **Mate coordinates carry mechanical contracts.** A moving mate's range
+  may read sibling coordinates through ``Bound`` in its declaring assembly.
+  Its name, or a descendant path to it, may be a Bound read, an additive
+  ``constrain(range=...)`` target or an explicit turn, slide or button
+  selection. Each uses the existing generated child joint, with one retained
+  coordinate and the existing document format (ADR-153).
+
 * **Parts placed by mate.** A part declares its connectors as frames,
   ``hinge = Frame(at=..., z=..., x=...)``, in its own frame; an assembly
   relates two of them in one sentence,

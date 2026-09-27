@@ -202,8 +202,10 @@ independent of the other: a `Revolute` freedom may state `axis` alone,
 `at`, and what a freedom leaves out the moving frame supplies (see
 "A mate gives the moving child a joint"). The freedom's `range` SHALL be
 omitted, a pair of numbers, a pair whose bounds are numbers, `None`, or
-functions of the coordinate's own value, or one function of the assembly
-that states the mate returning such a pair.
+functions of the coordinate's own value, or `Bound(expression, reads=(...))`,
+or one function of the assembly that states the mate returning such a pair.
+A Bound's read scope SHALL be the declaring assembly under "A moving mate's
+range reads the assembly that declares it".
 
 The following SHALL be refused when the declaring class is created,
 naming the class, the mate and the reason:
@@ -231,8 +233,8 @@ naming the class, the mate and the reason:
   enumerated, read and refused by its name;
 - a freedom that is neither a `Revolute` nor a `Prismatic` — an `Orbit`
   or a `Free` —, a freedom whose range is neither a pair nor a function, or
-  holds a parameter token or a formula, or reads other coordinates, or a
-  freedom already declared on some class;
+  holds a parameter token or a formula, or a freedom already declared on
+  some class;
 - a freedom whose stated `axis` is neither three numbers nor a function,
   or whose stated `at` is not three numbers — a parameter token or a
   formula in either, which would be resolved by name against the moving
@@ -1068,7 +1070,9 @@ in numbers is taken: an `axis` SHALL be three real numbers — each an
 `int` or a `float`, not a `bool` — of non-zero length, read in the moving
 child's own rest frame; a `range` SHALL be a `(lo, hi)` pair whose
 bounds are numbers, `None`, functions of the coordinate's own value, or
-a `Bound` that reads no other coordinate. The joint the mate gives the
+a `Bound` with reads scoped to the assembly declaring the mate. Returned
+Bound reads SHALL follow "A moving mate's range reads the assembly that
+declares it" without reading their values during realization. The joint the mate gives the
 moving child SHALL then resolve, normalize and refuse that result as it
 resolves, normalizes and refuses the same numbers written in the
 freedom, so a function returning the numbers a freedom could state gives
@@ -1078,7 +1082,7 @@ A function that raises, or whose result is not what the numbers form
 takes — a sequence of another length, a string, a `bool`, a parameter
 token or a formula, a function, an axis of zero length, a range that is
 not a pair or holds a bound that is not a number, `None`, a function of
-the coordinate or a `Bound` reading no other coordinate — SHALL be
+the coordinate or a `Bound` — SHALL be
 refused when the assembly realizes the moving child, naming the
 assembly's class, the mate and the argument, and quoting what the
 function returned or raised.
@@ -1133,8 +1137,8 @@ places the moving child at rest" states, whatever the function returns.
 
 - **WHEN** the freedom's `axis` function returns `(0, 1)`, `(0, 0, 0)`,
   `(0, 0, True)`, `'xyz'` or a function, or its `range` function returns
-  `(0,)` or `(True, 90)` or a pair holding a `Bound` that reads another
-  coordinate, or either function raises
+  `(0,)` or `(True, 90)` or a pair holding an invalid bound,
+  or either function raises
 - **THEN** creating the assembly's class succeeds, and realizing the
   assembly raises when it realizes the moving child, naming the
   assembly's class, the mate and the argument and quoting what the
@@ -1245,3 +1249,32 @@ re-running `render()` SHALL NOT stack its placement.
 - **WHEN** the shin states `bolted` and its `render()` calls
   `self.servo.translate(...)`
 - **THEN** rendering raises, naming the shin, `servo` and `bolted`
+
+### Requirement: A moving mate's range reads the assembly that declares it
+
+Either side of a Revolute or Prismatic mate freedom's range SHALL accept the existing Bound(expression, reads=(...)) vocabulary. The expression SHALL receive the generated joint's own coordinate first and declared reads in written order. Reads SHALL be checked within the assembly that declares the mate and resolved against that realized assembly when needed, including inherited declarations. Its axis, anchor, placement order and rest frame SHALL retain their existing meanings in the moving child's frame. This SHALL apply both to a written range pair and a pair returned by the existing whole-range function of the assembly; the function SHALL retain its once-per-instance timing. Read coordinates SHALL NOT be evaluated during child realization, so a valid read through a later declared sibling SHALL be supported. Non-mate joint declarer scopes SHALL remain unchanged.
+
+#### Scenario: The crank freedom reads its sibling pawl
+
+- **WHEN** a Curta-shaped assembly states a revolute crank mate with an upper Bound reading its anti-reversal pawl's turn
+- **THEN** the bound uses that assembly's pawl at evaluation, the own argument is the generated crank joint's coordinate, and the existing stop and release behavior applies
+
+#### Scenario: A range factory returns a Bound
+
+- **WHEN** a mate's whole-range function returns a pair containing a Bound with declared assembly-scoped reads
+- **THEN** the function runs once with the realized assembly, its returned reads receive the same scope and validity checks, and later bindings do not call the factory again
+
+#### Scenario: A later sibling can be read
+
+- **WHEN** a mate freedom's Bound names a coordinate on a sibling realized after the moving child
+- **THEN** creating the child does not read the sibling's value and evaluation resolves it once the complete assembly exists
+
+#### Scenario: Two assemblies keep independent bound reads
+
+- **WHEN** two instances of an assembly have different pawl positions, including instances of a subclass inheriting the mate
+- **THEN** each crank range reads its own assembly's pawl and no read cache or range metadata leaks between instances
+
+#### Scenario: Invalid returned reads are refused
+
+- **WHEN** a whole-range factory returns a Bound reading an out-of-scope declaration or the mate's own generated coordinate
+- **THEN** the assembly is refused when that returned declaration becomes available, naming the mate and invalid read

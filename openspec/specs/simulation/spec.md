@@ -2063,7 +2063,9 @@ coordinate poses.
 
 An explicit `coordinate` SHALL name one existing single-coordinate joint,
 using its declaration or a declaration path from the class declaring the
-control. The joint SHALL pose the touched part or one of its ancestors in
+control. An explicit selection SHALL also accept a moving mate declared on
+that class or reached through its declared children, resolving to the
+mate's existing generated child joint and the body that joint poses. The joint SHALL pose the touched part or one of its ancestors in
 that same tree, and its coordinate SHALL be run-banked. Selection SHALL
 permit independently controlled sliding and turning joints on the same
 body without changing the body, its placement, or the run program.
@@ -2093,7 +2095,8 @@ find in the model:
 - a control without explicit selection whose nearest posing node declares
   MORE THAN ONE joint, or any selected joint owning MORE THAN ONE coordinate
   — refused naming them and saying a control names one coordinate;
-- an explicit coordinate that is not a joint declaration/reference, is not
+- an explicit coordinate that is neither a joint nor moving mate declaration/reference,
+  names a rigid mate, is not
   run-banked, or does not pose this part or an ancestor in this tree —
   refused naming the control, part and selected reference;
 - a `Turn` whose coordinate's domain is not `rotational`, or a `Slide`
@@ -2273,6 +2276,26 @@ find in the model:
   dependent on a second mechanism
 - **THEN** the run admits exactly the movement the same ordinary move request
   admits, reports the same outcome, and does not reposition that second mechanism
+
+#### Scenario: Turn and Button select a mate on a body with another freedom
+
+- **WHEN** an assembly selects its revolute mate in `Turn(part, input, coordinate=turn)` and `Button(part, instruction, coordinate=turn)`, while the mated child also declares a prismatic lift
+- **THEN** both controls resolve the generated revolute child joint and its existing placement block, without ambiguity or an extra bank coordinate
+
+#### Scenario: A slide selects a nested prismatic mate
+
+- **WHEN** a control selects `coordinate=unit.mount.travel` where travel is a prismatic mate and the touched part descends from its moving child
+- **THEN** the published control uses that generated child joint's translational coordinate, axis, anchor and operation span
+
+#### Scenario: Selection retains its ancestry and kind checks
+
+- **WHEN** a control selects a mate that moves a sibling of the touched part, a Turn selects a prismatic mate, or a Slide selects a revolute mate
+- **THEN** selection is refused naming the control and reference by the existing ancestry or domain rule
+
+#### Scenario: A rigid mate cannot be selected
+
+- **WHEN** a Turn, Slide or Button selects a rigid mate
+- **THEN** it is refused by name because the mate owns no coordinate
 
 ### Requirement: A law may read the coordinate it drives
 
@@ -4747,3 +4770,27 @@ When a compiled running law's evaluation at a point the tick already visits rais
 
 - **WHEN** the machine moves from `feed=0` to its finite law boundary at `feed=0.1`
 - **THEN** the tick retains the law's ordinary finite result and the command completes without a domain refusal
+
+### Requirement: Mate mechanical contracts retain existing execution and publication
+
+Running and clocked compilation SHALL resolve moving mate Bound reads, ranges and additive constraints to the existing generated child joint and SHALL bank no second coordinate for the mate's assembly port. The mate wiring SHALL remain the existing identity edge into that joint. Untimed enumeration, running and clocked Bounds SHALL retain their existing scope-specific expression validation, supported expression limits, contact search, outward admission, committed own-coordinate semantics, atomic refusal and replay rules. Explicit mate control selections SHALL use the generated joint's existing placement and publish the existing control fields, including operation_span where explicit selection requires it. No document field or version SHALL be added. A model using none of the new mate contract forms SHALL retain its existing caller behavior and document bytes.
+
+#### Scenario: A running mate uses one physical bank coordinate
+
+- **WHEN** a running crank mate reads another moving mate in its Bound and has an added constraint plus an explicit control
+- **THEN** the bank contains each generated joint exactly once, its constraint reads use those joint ids, and its control selects the same joint id without an assembly-port bank alias
+
+#### Scenario: Running contact retains existing admission and replay
+
+- **WHEN** a Curta-shaped mated crank request meets the pawl-dependent stop, then a later request relieves it
+- **THEN** blocked travel, release and snapshot replay match the corresponding ordinary-joint fixture under existing tolerances and atomicity
+
+#### Scenario: Clocked and untimed constraints keep their rules
+
+- **WHEN** a supported clocked request or untimed binding uses a Bound or added constraint through a moving mate
+- **THEN** it is checked against the generated joint using the existing solver or enumeration semantics and existing unsupported cases remain refused
+
+#### Scenario: Existing documents stay unchanged
+
+- **WHEN** existing non-mate fixtures and existing simple-mate fixtures are exported without the new contract forms
+- **THEN** their documents are byte-identical to the baseline and declare their existing version

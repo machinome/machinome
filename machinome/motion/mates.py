@@ -318,6 +318,12 @@ class Mate(Coordinate):
     `coordinates` empty, so `declared_ports` reports nothing for it --
     and assigning to it on an instance, or naming it as a relation's
     end, a term, a wiring source or by path, is refused naming it.
+
+    A moving mate may name its generated child joint as a Bound read,
+    a constrain(range=...) target or an explicit control coordinate.
+    Bounds in its freedom read the declaring assembly; its axis and
+    anchor keep the moving child's own rest frame. Ordinary relations
+    and author bindings keep the mate's assembly coordinate.
     """
 
     mate_kind = 'mate'
@@ -383,6 +389,10 @@ class Mate(Coordinate):
                 f"cannot bind {type(instance).__name__}.{self._name}: "
                 + _owns_no_coordinate(self._name))
         bind(self.coordinate.__get__(instance), value)
+
+    def constrain(self, *, range):
+        from .couplings import coordinate_ref
+        return coordinate_ref(self).constrain(range=range)
 
     def described(self):
         fixed = (self.fixed.written if isinstance(self.fixed, FrameRef)
@@ -498,6 +508,9 @@ def declare_mates(cls, name, own):
 
     cls._own_mates = tuple(own)
     cls._declared_mates = tuple(inherited) + tuple(own)
+    for mate in cls._declared_mates:
+        if mate.joint is not None:
+            mate.joint.check_bound_reads(cls)
 
 
 def _check_still_declared(cls, name, mate):
@@ -531,7 +544,7 @@ def _check_freedom(name, mate):
     `Revolute` or `Prismatic` (slide-by-mate) whose stated `at`, if any, is three
     numbers; whose stated `axis`, if any, is three numbers with a
     direction or one function of the assembly; and whose range is a
-    pair independent of any declarer or one function of the assembly
+    pair with assembly-scoped Bound reads or one function of the assembly
     (state-the-freedom-per-instance). Both kinds are checked by the same
     rules in the same order; a `Prismatic` states its axis, as it must
     anywhere, so only a `Revolute` freedom reaches here without one.
@@ -608,7 +621,7 @@ def _is_function(value):
 def _range_reason(declared):
     """Why `declared` is not a range a mate's freedom takes as a pair --
     a `(lo, hi)` pair whose bounds are numbers, `None`, functions of the
-    coordinate's own value or a `Bound` reading no other coordinate --
+    coordinate's own value or a `Bound` with assembly-scoped reads --
     or None when it is. The one wording of the rule, for a range written
     in the freedom and for one a function of the assembly returned."""
     from machinome.motion.joints import Bound
@@ -623,9 +636,6 @@ def _range_reason(declared):
         if bound is None or _is_number(bound):
             continue
         if isinstance(bound, Bound):
-            if bound.reads:
-                return (f'has a bound reading other coordinates '
-                        f'({bound.described()})')
             continue
         if callable(bound) and not hasattr(bound, 'dimension'):
             continue
@@ -981,8 +991,8 @@ def _function_refusal(assembly, mate, argument, detail):
                 "child's own frame")
     else:
         rule = ("a (lo, hi) pair whose bounds are numbers, None, "
-                "functions of the coordinate's own value or a Bound that "
-                "reads no other coordinate")
+                "functions of the coordinate's own value or a Bound "
+                "whose reads belong to the declaring assembly")
     return ParameterError(
         f"{owner}.{mate.name}: its freedom's {argument} function {detail}. "
         f"The function is called with the {owner} that states the mate, "
@@ -1047,6 +1057,13 @@ def call_freedom_functions(declaration, assembly):
                     f'returned {result!r} for this '
                     f'{type(assembly).__name__}, which {reason}')
             results[argument] = result
+            if argument == 'range':
+                try:
+                    mate.joint.check_bound_reads(type(assembly), result)
+                except TypeError as failure:
+                    raise _function_refusal(
+                        assembly, mate, argument,
+                        f'returned {result!r} with invalid reads: {failure}') from None
         called.append((mate, results))
     return called
 

@@ -1,6 +1,7 @@
 # ADR-147: A Mate Compiles at Realization to a Rest Placement, a Joint and a Coordinate
 
 **Status:** Accepted
+**Amended by:** [ADR-153](ADR-153-mate-mechanical-contracts-resolve-the-generated-child-joint.md) — freedom Bounds read the declaring assembly; mechanical contract references to moving mates resolve to the generated child joint, preserving ordinary mate binding and child-frame geometry
 **Date:** 2026-09-26
 **Amended by:** [ADR-148: A Mate's Freedom May State Its Own Line](ADR-148-a-mates-freedom-may-state-its-own-line.md) — the freedom may state `axis` and `at` in numbers, read in the moving child's own frame, each defaulting to the moving frame's; the frames still fix the rest placement and the zero
 **Amended by:** [ADR-150: A Mate's Freedom May Be a Function of the Assembly That States It](ADR-150-a-mates-freedom-may-be-a-function-of-the-assembly-that-states-it.md) — the freedom's range may be one function of the assembly that states the mate, called once as the assembly realizes the moving child and its result resolved against the child as a written range is

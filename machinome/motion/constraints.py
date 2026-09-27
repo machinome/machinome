@@ -16,32 +16,25 @@ from .joints import Bound, Joint, JointRangeError, declared_joints, _is_number
 
 def _scoped(ref, owner):
     """Recheck an inherited path against the class actually instantiated."""
-    from .couplings import PathRef
-    from machinome.node.declarative import ChildDeclaration, declared_children
-
-    if not isinstance(ref, PathRef):
-        return ref
-    root = declared_children(owner).get(ref.root._name)
-    if not isinstance(root, ChildDeclaration):
-        raise TypeError(f'{owner.__name__}: constraint path {ref.written} '
-                        'does not start at one declared child')
-    found = PathRef(root, (), root)
-    for segment in ref.segments:
-        found = getattr(found, segment)
-    return found
+    from .mechanical import scoped_ref
+    return scoped_ref(ref, owner)
 
 
 def _scalar_target(ref):
-    from .couplings import BroadcastRef, PathRef
+    from .couplings import BroadcastRef, OwnRef, PathRef
+    from .mechanical import declaration, is_mate, posing_joint
 
-    if (not isinstance(ref, PathRef) or isinstance(ref, BroadcastRef)
-            or not isinstance(ref.terminal, Joint)
-            or len(ref.terminal.coordinates) != 1):
+    mate = is_mate(declaration(ref))
+    joint = posing_joint(ref)
+    if (not isinstance(ref, PathRef) and not (isinstance(ref, OwnRef) and mate)
+            or isinstance(ref, BroadcastRef)
+            or not isinstance(joint, Joint)
+            or len(joint.coordinates) != 1):
         raise TypeError(f'constraint target {ref.described()} must name an '
                         'explicit scalar descendant joint, not a node, '
                         'port, input, state, group or broadcast')
     ref.check('driver')
-    return ref.terminal
+    return joint
 
 
 class Constraint:
@@ -63,24 +56,16 @@ class Constraint:
         target = _scoped(self.target, owner) if inherited else self.target
         joint = _scalar_target(target)
         target.check_declared_on(owner, self)
-        if (type(joint) is not type(self.target.terminal)
-                or joint.unit != self.target.terminal.unit):
+        original = _scalar_target(self.target)
+        if (type(joint) is not type(original)
+                or joint.unit != original.unit):
             raise TypeError(f'{owner.__name__}: {self.described()} reaches '
                             'an incompatible joint type or unit')
         for bound in self.span:
             if not isinstance(bound, Bound):
                 continue
-            seen = set()
-            for written in bound.reads:
-                ref = _scoped(written, owner) if inherited else written
-                ref.check_declared_on(owner, self)
-                if ref.key() == target.key():
-                    raise TypeError(f'{self.described()}: reads its OWN '
-                                    'coordinate; drop it from reads=')
-                if ref.key() in seen:
-                    raise TypeError(f'{self.described()}: reads '
-                                    f'{ref.described()} twice')
-                seen.add(ref.key())
+            from .mechanical import check_reads, endpoint_key
+            check_reads(bound, owner, endpoint_key(target, owner))
 
 
 class Contribution:
@@ -95,9 +80,10 @@ class Contribution:
 
         declaration.check_declared_on(type(owner), inherited=True)
         target = _scoped(declaration.target, type(owner))
-        end = target.resolve(owner)
+        from .mechanical import resolve_endpoint
+        end = resolve_endpoint(target, owner)
         self.node = end.node
-        self.joint = declared_joints(type(self.node))[target.terminal.name]
+        self.joint = declared_joints(type(self.node))[end.declared.name]
         self.name, self.unit = self.joint.name, self.joint.unit
         self.owner, self.declaration = owner, declaration
         self._reads = {}
@@ -117,9 +103,7 @@ class Contribution:
     def bound_reads(self, node, side):
         if side not in self._reads:
             bound = self.span[0 if side == 'lower' else 1]
-            self._reads[side] = tuple(
-                _scoped(ref, type(self.owner)).resolve(self.owner)
-                for ref in bound.reads)
+            self._reads[side] = bound.resolve(self.owner)
         return self._reads[side]
 
     def _bound_at(self, node, bound, value, side):

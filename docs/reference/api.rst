@@ -291,7 +291,9 @@ occupies one position in that order like any other. See
 .. autofunction:: machinome.motion.joints.declared_joints
 
 An assembly may add a range to an existing scalar descendant with
-``joint_path.constrain(range=(lo, hi))``. Contributions intersect, never
+``joint_path.constrain(range=(lo, hi))`` or to a moving mate, bare or by
+path, with the same verb. A mate target resolves to its generated child joint.
+Contributions intersect, never
 replace, the joint's original limits. The method needs no import; see
 :ref:`ancestor-joint-constraints` for scope, accepted bounds and refusals.
 
@@ -307,6 +309,13 @@ import beyond ``Revolute`` or ``Prismatic``. A built node's
 frames are read as numbers with ``resolved_frames``, and a mate's name,
 ends and freedom off the class through ``declared_mates``. See
 :doc:`Joints </concepts/joints>`.
+
+A moving mate accepts ``Bound(expression, reads=(...))`` range sides,
+whose reads belong to its declaring assembly. It may itself be a Bound
+read, a ``constrain(range=...)`` target or the ``coordinate=`` selection
+of a ``Turn``, ``Slide`` or ``Button``. Those contracts resolve to the
+generated child joint; ordinary relations and bindings keep the mate's
+assembly coordinate. A rigid mate accepts none of those coordinate uses.
 
 .. autoclass:: machinome.node.frames.Frame
 

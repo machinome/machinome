@@ -89,7 +89,10 @@ pivot are read off the tree, and ``per_unit``, how far the part moves per
 unit of the input, is **measured** from the compiled program at the rest
 bank, never declared, because a number stated twice is a number that
 drifts. When a body has two freedoms, a crank that both lifts and turns,
-``coordinate=`` names the joint declaration the gesture means; it may
+``coordinate=`` names the joint declaration the gesture means, or a moving
+mate: ``Turn(handle, request, coordinate=travel)`` selects that mate's
+generated child joint. A path to a mate, such as ``drive.travel``, works
+from an ancestor too. A rigid mate has no coordinate and is refused. Selection may
 select a joint further up the part's ancestry but never one on another
 branch. The framework never guesses which part a hand means: a dial
 moved by two things has no inferrable gesture, and the author declares

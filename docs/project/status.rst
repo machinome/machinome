@@ -41,7 +41,9 @@ Since |release|
 
 Frames and mates, which place a part by its connectors and give it a
 revolute joint in one sentence (:doc:`/concepts/joints`), are on the
-main branch and unreleased. They add nothing to the published document
+main branch and unreleased. Moving mates also carry assembly-scoped Bounds,
+additive constraints and explicit control selections through their generated
+child joints. They add nothing to the published document
 and need no newer viewer. The :doc:`changelog` lists them under
 *Unreleased*.
 

@@ -615,17 +615,10 @@ class RefusalTest(BaseNodeTest):
                 part = Pin()
                 swing = part.hinge.on(pin, Revolute(range=(0, limit)))
 
-        def reads():
-            class Ranged(AssemblyNode):
-                gate = RotationalPort(unit='deg')
-                pin = Frame()
-                part = Pin()
-                swing = part.hinge.on(pin, Revolute(
-                    range=(Bound(lambda own, gate: gate, reads=gate), None)))
-
         # state-the-freedom-per-instance 2.1: the `whole` case moved out
         # to `test_a_freedom_axis_or_range_may_be_a_function`.
-        for build in (token, reads):
+        # mates-in-mechanical-contracts admits assembly-scoped Bound reads.
+        for build in (token,):
             with self.subTest(range=build.__name__):
                 self.assertRefused(build, 'Ranged', 'swing', 'range')
 
@@ -1551,6 +1544,16 @@ def _code_blocks(text):
     return blocks
 
 
+def _code_block_named(text, marker):
+    """Select exactly one example by content, not its page ordinal."""
+    matches = [block for block in _code_blocks(text) if marker in block]
+    if len(matches) != 1:
+        raise AssertionError(
+            f'Expected one manual codeblock containing {marker!r}; '
+            f'found {len(matches)}')
+    return matches[0]
+
+
 class ManualTest(BaseNodeTest):
     """The joints page teaches frames and mates with an example that
     runs, and the changelog names the feature above the release."""
@@ -1604,13 +1607,12 @@ class ManualTest(BaseNodeTest):
         self.assertIn('(0, -68, 123)', section)
 
     def test_the_joints_page_states_a_handed_freedom(self):
-        """state-the-freedom-per-instance 4.1: the handed example --
-        after the reads example, so the first three blocks keep their
-        indices -- runs, and each side's installed joint turns about its
+        """state-the-freedom-per-instance 4.1: the handed example
+        runs, and each side's installed joint turns about its
         side's axis within its side's range."""
         section = _section(self.page('concepts', 'joints.rst'),
                            'Frames and mates')
-        example = _code_blocks(section)[3]
+        example = _code_block_named(section, 'class Mount(AssemblyNode):')
         namespace = {'__name__': __name__}
         exec(compile(example, 'joints.rst', 'exec'), namespace)
 
@@ -1632,13 +1634,12 @@ class ManualTest(BaseNodeTest):
                 self.assertIn(fragment, section)
 
     def test_the_joints_page_states_a_sliding_freedom(self):
-        """slide-by-mate 4.1: the sliding example -- the section's fifth
-        block, after the handed one, so the first four keep their
-        indices -- runs; binding one finger's mate slides both fingers,
+        """slide-by-mate 4.1: the sliding example
+        runs; binding one finger's mate slides both fingers,
         equally and oppositely, and the coordinate is a length."""
         section = _section(self.page('concepts', 'joints.rst'),
                            'Frames and mates')
-        example = _code_blocks(section)[4]
+        example = _code_block_named(section, 'class Palm(AssemblyNode):')
         namespace = {'__name__': __name__}
         exec(compile(example, 'joints.rst', 'exec'), namespace)
 
@@ -1668,13 +1669,12 @@ class ManualTest(BaseNodeTest):
         self.assertIn('Prismatic(...))', reference)
 
     def test_the_joints_page_states_a_held_part(self):
-        """hold-by-mate 4.1: the held-part example -- the section's sixth
-        block, after the gripper, so the first five keep their indices --
+        """hold-by-mate 4.1: the held-part example
         runs; the servo is placed by one rotation and one translation and
         the shin gains no port."""
         section = _section(self.page('concepts', 'joints.rst'),
                            'Frames and mates')
-        example = _code_blocks(section)[5]
+        example = _code_block_named(section, 'class Shin(AssemblyNode):')
         namespace = {'__name__': __name__}
         exec(compile(example, 'joints.rst', 'exec'), namespace)
 
@@ -1892,7 +1892,7 @@ class ManualReadTest(BaseNodeTest):
                     self.assertIn(fragment, doc or '')
 
     def test_the_joints_page_reads_frames_and_mates(self):
-        # The third block builds on the first block's `UpperArm`, as the
+        # The frame-read block builds on the first block's `UpperArm`, as the
         # page's prose says, so the two run in one namespace.
         section = _section(self.page('concepts', 'joints.rst'),
                            'Frames and mates')
@@ -1900,7 +1900,8 @@ class ManualReadTest(BaseNodeTest):
         self.assertGreaterEqual(len(blocks), 3)
         namespace = {'__name__': __name__}
         exec(compile(blocks[0], 'joints.rst', 'exec'), namespace)
-        exec(compile(blocks[2], 'joints.rst', 'exec'), namespace)
+        reads = _code_block_named(section, 'pin = resolved_frames(arm)')
+        exec(compile(reads, 'joints.rst', 'exec'), namespace)
 
         pin, hinge, elbow = (namespace['pin'], namespace['hinge'],
                              namespace['elbow'])

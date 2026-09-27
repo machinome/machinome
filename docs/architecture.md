@@ -611,8 +611,10 @@ a callable of the realized node, and are outside identity.
 
 **An ancestor may add a constraint without replacing the joint** (ADR-134).
 `path.to.joint.constrain(range=(lo, hi))` records additive metadata in an
-assembly class body, targeting an explicit scalar descendant joint. Structural
-values and typed reads belong to the declaring ancestor; the joint's frame,
+assembly class body, targeting an explicit scalar descendant joint.
+The same verb accepts a moving mate bare in its declaring assembly or by a
+descendant path, installing on its actual generated child joint (ADR-153).
+Structural values and typed reads belong to the declaring ancestor; the joint's frame,
 owner, order and original range do not change. Inherited declarations stay
 additive and resolve independently per instance, with missing/incompatible
 paths refused. At untimed enumeration close, every known contribution is
@@ -785,7 +787,7 @@ constructor requires; `anchor_written` and the default anchor shared
 with `Revolute` through `joints._MateFreedom`), checked by one rule in
 one order, whose stated `at`, if any, is three numbers, whose stated `axis`
 is three numbers of non-zero length or one function, and whose range is
-a pair independent of any declarer or one function (ADR-148, refused by
+a pair including assembly-scoped Bounds or one function (ADR-153, refused by
 `_check_stated` naming the mate). A function `axis` or `range` is of the
 ASSEMBLY that states the mate (ADR-150): `ChildDeclaration.realize`
 calls it once with the realized assembly before constructing the moving
@@ -832,6 +834,22 @@ it named bare in a relation or a term (`coordinate_ref`), by path
 moves only as its declaring assembly does. Nothing new is published:
 operations and a binding, a rigid mate's operations and none, at the
 version the machine declares without mates.
+
+**Mechanical contracts follow a moving mate to its physical joint**
+(ADR-153). `motion.mechanical` normalizes only Bound reads, additive constraint
+targets and explicit control selections; ordinary relation ends, wiring and
+author binding still name the assembly port. The generated joint's existing
+`installed_by` provenance supplies assembly scope for Bound reads without a
+site-joint marker or any geometric carry. Static Bounds are checked after
+installation; returned Bounds when the once-per-instance range factory returns.
+Neither resolves read values during construction, and evaluation consumes the
+resolved span after the parent link and complete tree exist. Read caches are
+instance-local. Written ownership precedes rewalking effective inherited paths;
+canonical physical paths refuse self and duplicate reads through a mate, its
+explicit generated joint or a node inferring that single joint. Missing or
+incompatible effective paths and rigid mates are refused. The same existing
+joint is banked once and consumed by running, clocked and untimed evaluation;
+no solver, document field or version is added.
 
 **A relation** (spec `couplings`) says that one coordinate's motion IS
 another's: `a.drives(b, ratio=…, offset=…, law=…)`, written as a
@@ -1022,9 +1040,9 @@ than declared. The coordinate is the one owned by the nearest
 ancestor-or-self of the part whose joint the run banks, and a body
 with TWO freedoms — a crank that lifts and turns — has no nearest
 joint: the keyword-only `coordinate=` names one existing
-single-coordinate joint declaration instead, by the same path a
+single-coordinate joint declaration or moving mate instead, by the same path a
 relation's end is written, required to pose the part or an ancestor
-of it in the same tree and never to reach sideways (ADR-117). A
+of it in the same tree and never to reach sideways (ADR-117, ADR-153). A
 control moves nothing itself and changes nothing the run computes:
 `Program.described()`, and therefore the program identity, never
 learns that one exists. An explicit subclass `controls` table replaces

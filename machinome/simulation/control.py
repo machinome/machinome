@@ -97,9 +97,8 @@ class Control:
         CLASSES alone can say -- no instance needed, which is what lets
         a joint owning several coordinates be refused before anything
         tries to walk to the node it poses."""
-        if isinstance(self.coordinate, PathRef):
-            return self.coordinate.terminal
-        return self.coordinate.declared
+        from machinome.motion.mechanical import posing_joint
+        return posing_joint(self.coordinate)
 
     def selected_node(self, declaring):
         """The realized node the explicit selection's joint POSES,
@@ -109,6 +108,9 @@ class Control:
         relation's end does; a joint written bare in the class body is
         a joint of the DECLARING node, and poses it.
         """
+        from machinome.motion.mechanical import declaration, is_mate, resolve_endpoint
+        if is_mate(declaration(self.coordinate)):
+            return resolve_endpoint(self.coordinate, declaring).node
         if isinstance(self.coordinate, PathRef):
             # The terminal is the whole JOINT, not one of its coordinates.
             # Drop that final segment even for a Free declaration, whose
@@ -177,7 +179,9 @@ class Control:
                 f"{owner.__name__} declares. A control's coordinate is "
                 f"walked from the assembly that declares the control; "
                 f"{owner.__name__} declares: {declares}.")
-        declared = declared_joints(owner)
+        declared = dict(declared_joints(owner))
+        from machinome.motion.mates import declared_mates
+        declared.update(declared_mates(owner))
         if any(self.coordinate.declared is joint
                for joint in declared.values()):
             return
@@ -436,6 +440,12 @@ def _coordinate_ref(value, kind):
     about the TREE, and are asked where the tree exists -- at compile,
     by `_selected_joint`.
     """
+    from machinome.motion.mechanical import is_mate
+    from machinome.motion.couplings import coordinate_ref
+    if is_mate(value) or (isinstance(value, PathRef) and is_mate(value.terminal)):
+        ref = coordinate_ref(value)
+        ref.check('driver')
+        return ref
     if isinstance(value, BroadcastRef):
         raise TypeError(
             f"a {kind} names ONE coordinate, and '{value.written}' passes "

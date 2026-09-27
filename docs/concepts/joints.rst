@@ -253,8 +253,33 @@ place a ``Revolute`` may leave out its axis, or a ``Prismatic``, which
 states its axis here as it does anywhere, or it is left out for a part
 that is held (see the end of this section). A stated ``axis`` is three numbers or one function
 of the assembly, a stated ``at`` three numbers, and the range a pair of
-numbers, ``None`` or functions of the coordinate's own value, or one
-function of the assembly returning such a pair.
+numbers, ``None``, functions of the coordinate's own value, or
+``Bound(expression, reads=(...))``, or one function of the assembly
+returning such a pair. A Bound's reads resolve in the **declaring assembly**;
+its first argument is the generated child joint's own coordinate. Axis and
+anchor still belong to the moving child's rest frame. Reads are evaluated
+once the whole tree exists, so a later sibling can supply one. A whole-range
+function keeps its once-per-instance timing, including when it returns Bounds.
+
+For example, with ``Handle`` declaring ``origin = Frame()`` and ``Pawl``
+declaring a revolute ``turn``, an assembly can state a stop beside its mate
+(the part classes and their geometry are omitted):
+
+.. code-block:: python
+
+    class Drive(AssemblyNode):
+        pin = Frame()
+        handle = Handle()
+        pawl = Pawl()
+        travel = handle.origin.on(pin, Revolute(range=(0, Bound(
+            lambda own, pawl: 90 + pawl, reads=(pawl.turn,)))))
+        travel.constrain(range=(None, 100))
+
+``travel`` also names the generated child joint when used as a Bound read,
+an added constraint target or an explicit control selection. An ancestor
+can use ``drive.travel`` for those same contracts. The physical coordinate
+is still ``drive.handle.travel``; neither spelling adds another bank value.
+The mate's ordinary relation and binding address remains ``drive.travel``.
 
 Refused when the class is created, naming the mate: a mate on a node
 that is not an assembly; a moving end that is the assembly's own frame;
@@ -264,8 +289,8 @@ places; a second mate on one child; a mate never assigned to a name; a
 freedom that is neither a fresh ``Revolute`` nor a fresh ``Prismatic``,
 or whose stated ``axis`` is neither three numbers nor a function, or
 whose stated ``at`` is not three numbers, a function ``at`` included,
-or whose stated ``axis`` has no length, or whose range holds a parameter
-or reads other coordinates; a mate with a freedom whose name the moving
+or whose stated ``axis`` has no length, or whose range holds a parameter;
+a mate with a freedom whose name the moving
 child already answers to; and a mate with no freedom named where a
 coordinate is named. Refused when the arm is built: a freedom's
 function that raises, or returns what the same argument written in
@@ -528,7 +553,10 @@ or replacing its joint:
             lambda own, shaft: 120 + shaft, reads=(bank.ones.turn,))))
 
 ``constrain`` needs no import. It targets one explicitly named scalar
-descendant joint: not a node, a port, a driver, a state, a ``repeat()``
+descendant joint, or a moving mate, bare in its declaring assembly or by
+path from an ancestor. A mate target installs the contribution on its
+generated child joint. A rigid mate owns no coordinate and is refused, as
+are a node, a port, a driver, a state, a ``repeat()``
 broadcast or one coordinate of a ``Free``. The joint keeps its owner, its
 axis and anchor, its place in the composition order, its geometry, its
 coordinate id and its own ``range``. Each side of the added range is

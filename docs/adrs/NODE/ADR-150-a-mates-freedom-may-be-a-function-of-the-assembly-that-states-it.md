@@ -1,6 +1,7 @@
 # ADR-150: A Mate's Freedom May Be a Function of the Assembly That States It
 
 **Status:** Accepted
+**Amended by:** [ADR-153](ADR-153-mate-mechanical-contracts-resolve-the-generated-child-joint.md) — returned range Bounds may read the declaring assembly; factory timing and the child's geometric frame remain unchanged
 **Date:** 2026-09-26
 **Amends:** [ADR-147](ADR-147-a-mate-compiles-to-a-rest-placement-a-joint-and-a-coordinate.md) ("a whole-range callable ... is refused, because the installed joint resolves its range against the CHILD"), [ADR-148](ADR-148-a-mates-freedom-may-state-its-own-line.md) ("A stated line is three numbers")
 **Extends:** [ADR-097](ADR-097-a-joint-is-stated-in-the-frame-of-whoever-declares-it.md) (a function is called with the node whose class body wrote it), [ADR-098](ADR-098-a-joint-may-be-declared-where-a-child-is-placed.md) (called at the moment, and in the state, a site-declared joint's function is)
