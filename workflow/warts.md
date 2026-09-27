@@ -4269,3 +4269,24 @@ Three findings, all consequences, recorded for the pilot's triage.
   measured fit improvement. See archived OpenSpec change
   `2026-09-27-stable-mate-rotation-conversion` for exact red/green evidence.
   Nonarchitectural correction: no new ADR or author interface.
+
+## Curta Type I — explicit frame direction precision (27 September 2026)
+
+- **Frame snapping erases a source-derived attachment triad.** Curta's
+  zero-positioning pin has explicit source-derived directions
+  `x=(-3.2740476996195866e-13, 3.6046641539722035e-10, 1)` and
+  `z=(.9999983500045653, .0018165869499783267, -3.2740476996195866e-13)`.
+  Current frame normalization snaps their tiny components. The independent
+  legacy/mated moving-pose comparison differs by `1.4452851360147179e-8` mm
+  and fails at places 8; geometric tests pass 6/6. An in-memory diagnostic
+  omitting frame `_snapped` passes the unchanged comparisons. This is a
+  precision contract finding, not a demonstrated physical fit failure.
+  Evidence lives in project `Curta-Type-I-3x`:
+  `_build/zero-mates-candidate.patch`, `simulation/test_zero_mates.py` and
+  `simulation/docs/zero-mates-in-progress-2026-09-27.md`.
+  **Explicitly ratified public numeric change:** retain full normalized
+  directions only when both `x` and `z` are explicitly supplied to `Frame`.
+  Preserve omitted-axis defaults, orthogonal projection and named refusals;
+  `resolved_frames` exposes exactly what mates use. Final mate rotation/axis
+  snap stays `1e-9`. No new arguments or viewer/schema changes. Taken up by
+  `explicit-frame-direction-precision`.
