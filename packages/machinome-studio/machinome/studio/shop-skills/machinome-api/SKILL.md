@@ -761,7 +761,7 @@ a body whose rest placement carries a value the framework cannot evaluate
 numerically refuses a SITE-declared joint by name — where a class-declared
 one on the same body would not.
 
-**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151):** a joint whose line does not pass through the
+**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151, ADR-152):** a joint whose line does not pass through the
 moving part's origin is otherwise stated twice — a rest placement the
 parent's `render()` computes by hand and a joint the child restates in its
 own frame, kept in agreement by shared constants. A **frame** is the part's
@@ -817,7 +817,8 @@ The **fixed end** is a frame of the assembly itself, by its bare name, or
 `<child>.<frame>` of another directly declared child that does not move (a
 sibling does not carry a sibling, so a fixed end on a child with any joint
 is refused). The **moving end** is a frame of a directly declared child.
-The **freedom** is a fresh `Revolute` or a fresh `Prismatic`. A design's connectors are attachment
+The **freedom** is a fresh `Revolute` or a fresh `Prismatic`, or left out for a
+part that is simply held (below). A design's connectors are attachment
 frames and the line a part turns about need not be the connector's `z`, so
 the freedom may state its own line, `Revolute(axis=(0,0,1), at=(0,0,0))`:
 `axis` is three numbers or one function of one argument, `at` three numbers
@@ -852,6 +853,20 @@ class Mount(AssemblyNode):
 A mated child whose freedom states a function is built by its assembly
 and by nothing else: built on its own, it is refused by name.
 
+A **rigid mate** leaves the freedom out, `bolted = servo.ears.on(servo_seat)`,
+for a bought part that is simply held: it places the child exactly as any
+mate does — connector onto connector, one rotation then one translation
+after `render()` — and compiles to nothing else: no joint, no
+specialization of the child's class, no coordinate, no wiring. It is named
+like every mate, `declared_mates` reports it with `freedom` `None`, and
+reading it on a built assembly yields the declaration; binding it, naming
+it as a relation's end or a wiring source, or reading it by path from above
+is refused naming the mate. A held part keeps its own joints, children and
+mates inside the placement, and the fixed end still does not move: a
+sibling does not carry a sibling, so a bought part is declared in the class
+of the printed part that holds it and rides because it is that part's
+descendant (ADR-152).
+
 A **`Prismatic` freedom** slides the child instead of turning it, under the
 same rules save one: it STATES its `axis` (three numbers or one function of
 the assembly, in the moving part's frame), as a `Prismatic` anywhere must —
@@ -882,8 +897,8 @@ freedom without an axis (its own constructor refuses it, before any mate),
 or whose stated `axis` is neither three numbers nor a
 function, or whose stated `at` is not three numbers (a function `at`
 included), or whose stated `axis` has no length, or whose range holds a
-parameter or reads other coordinates; a mate with no freedom (the rigid
-mate is not provided); a mate name the moving child already answers to.
+parameter or reads other coordinates; a bare rigid mate never assigned a
+name; a mate name the moving child already answers to.
 Refused when the assembly is built: a freedom's function that raises, or
 returns what the same argument written in numbers would refuse. Refused
 when the assembly renders: a `render()` that also places a mated child. A
