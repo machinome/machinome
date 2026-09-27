@@ -4050,8 +4050,11 @@ and the mimic as `left_finger.travel.drives(right_finger.travel)`.
   (the axis-less `Prismatic`, "taken from the moving frame's `z`", was
   struck at ratification: the fingers state the URDF's axes); the child
   gets a `Prismatic` joint and the assembly a translational coordinate
-  in `'mm'`. Pending open_manipulator's follow-up (the change's tasks
-  §6): all six URDF joints as mates, compared at maximum deviation 0.
+  in `'mm'`. **Validated in OpenMANIPULATOR-X** (branch
+  `frames-and-mates`, commits `597e18c` guard, `5548c4b` migration,
+  `eb8ec16` records): all six URDF joints as mates, the two fingers by
+  `Prismatic`, maximum deviation 0 over 23 poses and 43 leaves, suites
+  and snapshots unchanged, nothing refused.
 
 ## Findings from the OpenArm project's migration onto mates (2026-09-26)
 
@@ -4152,3 +4155,40 @@ before the knee angle does.
   from this project: the fasteners belong in the class of the part they
   fasten, held by a rigid mate, and a fixed end on a moving sibling is
   not needed. **Cycle cut: `hold-by-mate`.**
+
+## Findings from the OpenMANIPULATOR-X project's migration onto mates (2026-09-26)
+
+The validation of `slide-by-mate` (ADR-151) in its originating project:
+the four revolutes and the two prismatic finger joints of
+OpenMANIPULATOR-X stated as mates referencing the URDF transcription
+(branch `frames-and-mates`, commits `597e18c`, `5548c4b`, `eb8ec16`;
+framework `6f11aba`), `capture_poses.py compare` at maximum deviation 0
+(unrounded 0.0) over 23 poses and 43 leaves, the documented suites at
+their `main` counts with no test edited, `machinome export` identical
+but for mtimes, `Rest`/`Present` snapshots byte-identical. Nothing
+refused; the `Prismatic` freedom, its translational coordinate and the
+mimic as a relation between two mates expressed the URDF with nothing
+left over. The workspace's `capture_poses.py compare` silently skips
+ports whose names move between nodes, which every mate migration does;
+the matrices carry the proof, and the tool could say what it skipped.
+Three findings, all consequences, recorded for the pilot's triage.
+
+- **A frame needs a class.** A part that is a plain instance of a
+  shared class (`VisualPack("gripper_left_palm.stl")`) cannot carry a
+  connector: `Frame` is declared on a class, so the project keeps a
+  one-line subclass `Finger(VisualPack)` for the two mated fingers, and
+  declined to put the frame on `VisualPack` itself because every link
+  body shares it. The same shape Thor's pinion wrappers took for a
+  different reason. A consequence of frames living on classes, as
+  joints do; recorded, not a request. **Recorded.**
+- **`JointRangeError` names the child's installed joint, not the mate's
+  coordinate.** `set_state(grip=21)` is refused as
+  `...link5.left_finger: joint 'left_travel' declares the range -11.0
+  to 20.0 mm`, naming the joint the mate installed on the finger, while
+  the only place it can be bound is `Link5Assembly.left_travel`; the
+  names match, so a reader finds it, but the message points at the
+  node a reader cannot bind. A wording candidate for the next mates
+  cycle. **Recorded.**
+- **A mate's coordinate is reported twice** (second project: OpenArm
+  recorded it first): `arm.link2` reports `base_yaw`, its parent's
+  mate, beside its own `shoulder`. **Recorded** (see OpenArm's entry).
