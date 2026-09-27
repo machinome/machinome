@@ -29,19 +29,17 @@ Still open before it is a release: the catalogue's deferred projects
 (`docs/motion-general-refactor.md`), the open gaps recorded in
 `workflow/warts.md`, and a push.
 
-## 0.8 — production
+## 0.8 — layers, typed declarations, one import path
 
-The release that knows how a part is *made*. Process and material stop being
-something a maker holds in their head and become something the model
-declares: printed in this material at this layer height, turned from this
-bar, cut from this sheet.
-
-Mass arrives from here, and that ordering is deliberate. Density is not a
-number to be typed onto a solid — it is a consequence of knowing how the
-part is produced. A framework that knows the process knows the material,
-knows the density, and can compute mass and inertia from geometry it already
-has exactly. It also makes the BOM real, and lets
-`assertAssemblySupported` stop assuming unit density (ADR-048/049).
+Superseded in scope on 2026-09-27 by `roadmap-0.8.md` beside this note,
+which keeps what this section said about production — the release that
+knows how a part is *made*, mass arriving from process and material, the
+BOM made real, `assertAssemblySupported` freed of unit density
+(ADR-048/049) — as its fourth layer, and adds the other three: a project
+split into Model, Simulation, View and Production with typed seams, the
+end of behaviour recognised by spelling, and, as its first cycle, the
+package roots ceasing to re-export their submodules. The Curta pair is
+its empirical conductor.
 
 ## 0.9 — dynamics
 
