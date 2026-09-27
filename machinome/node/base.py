@@ -9,6 +9,7 @@ import copy
 import time
 import inspect
 import hashlib
+import json
 import logging
 import tempfile
 import numpy as np
@@ -491,7 +492,7 @@ _PREFIX_LEN = 60
 _HASH_LEN = 12
 
 
-def _canonical_serialization(klass, args, kwargs):
+def _canonical_serialization(klass, args, kwargs, *, origin=None):
     """The full, order-stable string identifying a call's identity:
     the node class's __qualname__ (skill-repo improvements.md #22),
     then positional args in call order, then kwargs sorted by key (so
@@ -506,14 +507,24 @@ def _canonical_serialization(klass, args, kwargs):
     no-arg classes defined in the same file both got the empty
     canonical serialization and silently shared the bare-script-name
     artifact (one served the other's stale geometry).
+
+    Only a built-in external-file adapter supplies `origin`: the defining
+    Python source relative to its asset's project root qualifies the class
+    component. Ordinary Python node serialization remains byte-for-byte
+    unchanged; source content and times remain currency, never identity.
     """
-    parts = [klass.__qualname__]
+    # Ordinary Python producers retain their exact historical bytes. External
+    # wrappers share the asset's directory, so their class component also
+    # names the defining Python source, with unambiguous string boundaries.
+    component = (klass.__qualname__ if origin is None else
+                 json.dumps([klass.__qualname__, origin], separators=(',', ':')))
+    parts = [component]
     parts += [str(a) for a in args]
     parts += [f'{k}={v}' for k, v in sorted(kwargs.items())]
     return ','.join(parts)
 
 
-def _build_uniq_id(klass, args, kwargs):
+def _build_uniq_id(klass, args, kwargs, *, origin=None):
     """The artifact key for a node instance: ALWAYS derived from its
     class plus its constructor parameters, never from name= (name
     only addresses the node in the tree/tests -- see
@@ -537,8 +548,11 @@ def _build_uniq_id(klass, args, kwargs):
     values (fixes the OSError: File name too long a long list-valued
     kwarg used to cause when it serialized verbatim into the
     filename).
+
+    An external-file adapter additionally qualifies its class component by
+    defining-source `origin`, without changing the parameter encoding.
     """
-    canonical = _canonical_serialization(klass, args, kwargs)
+    canonical = _canonical_serialization(klass, args, kwargs, origin=origin)
     digest = hashlib.sha256(canonical.encode()).hexdigest()[:_HASH_LEN]
     prefix = _UNSAFE_PREFIX_CHARS.sub('_', canonical)[:_PREFIX_LEN]
     return f'{prefix}-{digest}'
@@ -700,6 +714,14 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # the directory the command happened to run from, or a build from a
         # subdirectory publishes a second, private tree.
         root = self._project_root = project_root(self.src)
+        origin = self._external_identity_origin(root)
+        if origin is not None:
+            # Do this only after existing source validation and project
+            # discovery, preserving their refusal order and accepted roots.
+            values = (identity_values(type(self), self.__dict__['_parameters'])
+                      if declarative else kwargs)
+            self.uniq_id = _build_uniq_id(type(self), () if declarative else args,
+                                        values, origin=origin)
         self.build_dir = os.path.normpath(os.path.join(
             get_build_dir(self.src),
             os.path.relpath(self.basedir, root),
@@ -815,6 +837,10 @@ class AbstractBaseNode(metaclass=NodeMeta):
                 f"'{self.name}' in simulate(): structure is decided at "
                 f"rest, in render(); simulate() only moves.")
         self._omitted = True
+
+    def _external_identity_origin(self, root):
+        """Ordinary Python producers need no source-qualified class component."""
+        return None
 
     def get_source_file(self):
         """Finds the source file of this node"""

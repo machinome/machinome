@@ -8,11 +8,11 @@ from solid2 import scad_render
 from solid2.core.parse_scad import get_scad_file_as_dict
 from solid2.core.utils import resolve_scad_filename
 from machinome.node.leaf import LeafNode
-from machinome.node.sources import require_source_file
+from machinome.node.sources import require_source_file, _ExternalWrapperIdentity
 from machinome.source_generation import coherent_read
 
 
-class OpenScadNode(LeafNode):
+class OpenScadNode(_ExternalWrapperIdentity, LeafNode):
     """
     A pure OpenScad node. You just need to declare the property "scad_source" with
     the path of your OpenScad source code. It must be placed in the same directory

@@ -20,6 +20,7 @@ import ast
 import errno
 import os
 import sys
+import inspect
 from importlib.util import resolve_name
 
 from machinome.manifest import ProjectManifestError, project_root
@@ -31,6 +32,22 @@ from machinome.source_generation import observation_key
 # itself the checkout IS the working directory -- so exclude it by path
 # rather than relying on where it happens to be installed.
 FRAMEWORK_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+
+class _ExternalWrapperIdentity:
+    """Internal participation of the four external-file leaf adapters.
+
+    The asset determines artifact placement, but the Python wrapper decides
+    which producer owns it. Keep its origin relative to the already resolved
+    asset project; a wrapper outside a project is still an admitted wrapper.
+    Site specializations retain the author's module and therefore source.
+    No geometry or source contents are read here.
+    """
+
+    def _external_identity_origin(self, root):
+        return os.path.relpath(
+            os.path.realpath(inspect.getfile(type(self))),
+            os.path.realpath(root))
 
 
 # Per-file import lists, keyed on complete observable identity so an edited or

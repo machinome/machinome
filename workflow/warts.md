@@ -4228,3 +4228,16 @@ Three findings, all consequences, recorded for the pilot's triage.
   specializations. No author API or viewer-format change. Affected caches
   rebuild once. Taken up by `external-wrapper-cache-identity`; this finding
   remains evidence, not a baseline requirement.
+  **Resolved, 27 September 2026:** the narrow source-qualified
+  identity is implemented and accepted by root adversarial review. Bounded
+  framework fixtures isolate genuinely different STEP/STL cached geometry and
+  fresh rebuilds. Root's originating Curta register CLI now terminates:
+  faceted 3/3 passed in 19.00 s, exact 3/3 in 0.36 s; a fresh process produces
+  no native exports while both wrappers' distinct STL/BREP pairs remain
+  simultaneously current. Caller adjustments remain identical. The archived
+  OpenSpec change `2026-09-27-external-wrapper-cache-identity` records the
+  full-suite result honestly: 14 failures, three reviewed test assumptions
+  corrected and eleven missing-fixture failures reproduced on unchanged base;
+  final selected 591 tests and 574 subtests pass. No caller/API/cache-name
+  workaround or weakened currency was introduced. ADR-155 records the decision;
+  integration and teardown remain root-owned.

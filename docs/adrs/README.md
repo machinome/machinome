@@ -38,7 +38,7 @@ that way.
 - [ADR-006](NODE/ADR-006-mtime-based-stl-caching-strategy.md) — Mtime-based STL caching — **Accepted**, extended by 026/028/033, amended by 050/060
 - [ADR-008](NODE/ADR-008-time-based-animation-system-for-assemblies.md) — Time-based animation — **Accepted**, extended by 023/072, deferred leaf geometry resolved by 057
 - [ADR-023](NODE/ADR-023-kinematic-operations-and-driver-tagged-idempotent-renders.md) — Kinematic operations, driver-tagged idempotent renders — **Accepted**, extended by 027/028
-- [ADR-026](NODE/ADR-026-node-identity-parameter-hashed-artifact-keys-vs-tree-names.md) — Parameter-hashed artifact keys vs tree names — **Accepted**, extended by 043/063
+- [ADR-026](NODE/ADR-026-node-identity-parameter-hashed-artifact-keys-vs-tree-names.md) — Parameter-hashed artifact keys vs tree names — **Accepted**, extended by 043/063/155
 - [ADR-028](NODE/ADR-028-cached-base-meshes-and-single-matrix-world-composition.md) — Cached base meshes, single-matrix world composition — **Accepted** (characterization), amended by 085
 - [ADR-033](NODE/ADR-033-import-closure-source-set-and-up-to-date-leaf-path.md) — Import-closure source set, up-to-date leaf path — **Accepted**, one-node-per-file driver withdrawn by 071
 - [ADR-039](NODE/ADR-039-solid-integrity-at-the-topmost-rigid-node.md) — Solid integrity at the topmost rigid node — **Accepted**, amended 2026-08-10
@@ -56,7 +56,7 @@ that way.
 - [ADR-060](NODE/ADR-060-content-verified-currency-beneath-the-mtime-rule.md) — Content-verified currency beneath the mtime rule — **Accepted**, amends 006, amended by 071/081
 - [ADR-061](NODE/ADR-061-a-call-in-a-class-body-is-a-declaration.md) — A call in a node class body is a declaration — **Accepted**, extends 001
 - [ADR-062](NODE/ADR-062-typed-parameters-and-the-exponent-algebra.md) — Typed parameters and the exponent algebra — **Accepted** *(amended 2026-09-04: the vocabulary lives in `solid_node.parameters`)*
-- [ADR-063](NODE/ADR-063-identity-from-resolved-declared-values.md) — Identity from resolved declared values — **Accepted**, extends 026
+- [ADR-063](NODE/ADR-063-identity-from-resolved-declared-values.md) — Identity from resolved declared values — **Accepted**, extends 026, extended by 155
 - [ADR-064](NODE/ADR-064-an-internal-render-that-returns-nothing.md) — An internal render() that returns nothing, and structural omission — **Accepted**, extends 002, extended by 082
 - [ADR-065](NODE/ADR-065-instance-checks-after-resolution.md) — Instance checks after resolution: `check()` on a declarative node — **Accepted**, extends 062
 - [ADR-066](NODE/ADR-066-render-at-rest-simulate-per-instant.md) — render() builds the machine at rest, simulate() moves it — **Accepted**, extends 002, 023, extended by 088
@@ -122,6 +122,7 @@ that way.
 - [ADR-152](NODE/ADR-152-a-mate-may-leave-its-freedom-out.md) — A mate may leave its freedom out: `<child>.<frame>.on(<frame>)`, the rigid mate, places the held child at rest from the two frames exactly as any mate does and compiles to nothing else -- no joint (the child keeps its declared class), no coordinate (`declared_ports` reports nothing), no wiring, only operations published; every mate named; read on an instance as its declaration, assigning to it or naming it as a relation's end, a term, a wiring source or by path refused naming the mate; the fixed end stays still, a fixed end on a held sibling refused for want of a dependency order; mates with a freedom unchanged — **Accepted**, amends 147/151, cites 088/098
 - [ADR-153](NODE/ADR-153-mate-mechanical-contracts-resolve-the-generated-child-joint.md) — Mate mechanical contracts resolve the generated child joint: Bounds read the declaring assembly, without changing the child's geometric frame; moving mate reads, constraints and explicit controls normalize to one physical endpoint while relations and binding keep the assembly port; canonical aliases and effective inherited references are checked — **Accepted**, amends 147/150, extends 113/117/134
 - [ADR-154](NODE/ADR-154-a-mate-may-reference-an-existing-child-joint.md) — A mate may reference an existing direct-child scalar joint: frames place it at rest, the handle names the same original endpoint in every reference context, and original name/order/scope/binder survive without another port, bank value or wiring; canonical aliases retain written ownership provenance — **Accepted**, amends 147, extends 153
+- [ADR-155](NODE/ADR-155-external-wrapper-identity-includes-defining-source.md) — External-file wrapper identity includes project-relative real defining Python source; ordinary keys, author specializations and currency are unchanged — **Accepted**, extends 026/063
 
 ### BUILD — loading, watching, CLI
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**

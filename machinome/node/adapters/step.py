@@ -66,7 +66,8 @@ from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
 
 from machinome.node.exact_leaf import ExactLeafNode
-from machinome.node.sources import require_source_file, source_closure
+from machinome.node.sources import (require_source_file, source_closure,
+                                    _ExternalWrapperIdentity)
 from machinome.source_generation import consumed_source
 
 
@@ -408,7 +409,7 @@ def solids_from_faces(shape, tolerance):
 # The node
 
 
-class StepNode(ExactLeafNode):
+class StepNode(_ExternalWrapperIdentity, ExactLeafNode):
     """A part that comes from one product of a STEP document.
 
     Declare the file with `step_source`, as a path relative to the

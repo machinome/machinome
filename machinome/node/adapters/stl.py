@@ -38,7 +38,8 @@ import trimesh
 
 from machinome import currency
 from machinome.node.leaf import LeafNode
-from machinome.node.sources import require_source_file, source_closure
+from machinome.node.sources import (require_source_file, source_closure,
+                                    _ExternalWrapperIdentity)
 
 
 #: Decimal places the body ordering compares centroids on. STL stores
@@ -116,7 +117,7 @@ def _write_binary_stl(mesh, path, mtime_ns, digest=None, fingerprint=None):
         raise
 
 
-class StlNode(LeafNode):
+class StlNode(_ExternalWrapperIdentity, LeafNode):
     """A part that comes from a committed STL file.
 
     Declare the file with `stl_source`, as a path relative to the

@@ -1,14 +1,15 @@
 # External-wrapper cache identity
 
-Status: provisional pre-spec note, 27 September 2026. The pilot ratified the
-narrow direction below; this note is evidence and intent, not a spec or an
-implemented capability. The OpenSpec change `external-wrapper-cache-identity`
-will own the requirements and implementation plan.
+Status: historical pre-spec note, completed 27 September 2026. The pilot
+ratified the narrow direction below; implementation and root review are
+complete. The [archived OpenSpec change](../../../openspec/changes/archive/2026-09-27-external-wrapper-cache-identity/)
+and ADR-155 own the accepted requirements and decision. This note preserves
+the original plan and is not baseline authority.
 
 Curta's two `FittedDialType2` wrappers in `simulation/dial_fits.py` and
 `simulation/dial_frames.py` import the same STEP, retain the same inherited
 adjustment, and differ by the framed wrapper's `axle` frame and source closure.
-Both claim one cache path, alternately invalidating it. See `../warts.md`
+Both claimed one cache path, alternately invalidating it. See `../../warts.md`
 for measured mtimes, digests and the interrupted build.
 
 Use defining Python source relative to the artifact-owning project root,
@@ -29,3 +30,10 @@ ordinary-node invariants, specialization identity, and unchanged freshness.
 STEP-to-STL caching is the originating case; synthetic differing-adjustment
 fixtures must also cover STEP and STL's shared wrapper-origin failure. No
 mechanical-contract or viewer work belongs to this cycle.
+
+Resolution: four actual source-bound adapters qualify internal identity by
+project-relative real defining Python source, with no author API change.
+Bounded native fixtures and Curta's faceted/exact register CLI now terminate;
+fresh builds retain independently current artifacts without native exports.
+The change's evidence records full-suite baseline limitations and the reviewed
+markings-test adaptations. This archive does not imply integration or publication.

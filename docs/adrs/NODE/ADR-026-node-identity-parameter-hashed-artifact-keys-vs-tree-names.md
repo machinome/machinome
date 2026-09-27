@@ -124,6 +124,15 @@ Rationale:
 - **Small author-facing obligations.** Multi-class files need a `NODE` marker; children needing a specific name still pass `name=`. Both fail-safe (loud error, or class-name fallback) rather than silently misbehaving.
 - **Hash truncation is a bounded risk.** 12 hex digits is not cryptographically collision-proof, but is more than sufficient for a single project's artifact set; it can be widened via `_HASH_LEN` if ever needed.
 
+## Extension — 27 September 2026
+
+[ADR-155](ADR-155-external-wrapper-identity-includes-defining-source.md)
+qualifies the class component only for the four external-file adapters by
+real defining Python source relative to the asset-owning project. Their shared
+asset layout does not itself distinguish different same-qualname wrappers.
+Ordinary Python bytes, complete parameters, tree-name exclusion and prefix/hash
+limits remain unchanged. Source contents and times still determine currency.
+
 ## References
 
 - `solid_node/node/base.py:66-116` — `_canonical_serialization`, `_build_uniq_id` (class-led hash + decorative prefix, both taking `klass` first), `_UNSAFE_PREFIX_CHARS`, `_PREFIX_LEN`, `_HASH_LEN`

@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import tempfile
 import warnings
+from contextlib import ExitStack
 from types import SimpleNamespace
 
 import numpy as np
@@ -1261,7 +1262,9 @@ class SolidIdentityTest(BaseNodeTest):
         marked = built(FixturePlate)
         plain = built(PlainPlate)
 
-        self.assertEqual(marked.uniq_id, plain.uniq_id)
+        # Separate external wrapper sources now qualify their own keys.
+        # Markings still contribute no geometry: retain the byte/piece proof.
+        self.assertNotEqual(marked.uniq_id, plain.uniq_id)
         self.assertEqual(open(marked.stl_file, 'rb').read(),
                          open(plain.stl_file, 'rb').read())
         self.assertEqual(piece_of(marked), piece_of(plain))
@@ -1276,7 +1279,18 @@ class SolidIdentityTest(BaseNodeTest):
         # `_build_uniq_id`: there is no code path by which a marking
         # can change an artifact key.
         self.assertEqual(FixtureDial().uniq_id, PlainDial().uniq_id)
-        self.assertEqual(FixturePlate().uniq_id, PlainPlate().uniq_id)
+        original = FixturePlate()
+        markings = declared_markings(FixturePlate)
+        self.assertTrue(markings)
+        # Compare the SAME real author class, removing every actual marking
+        # (including inherited ones), not mocking discovery or comparing two
+        # distinct defining-source identities.
+        with ExitStack() as stack:
+            for name in markings:
+                stack.enter_context(patch.object(FixturePlate, name, None))
+            self.assertEqual(declared_markings(FixturePlate), {})
+            self.assertEqual(original.uniq_id, FixturePlate().uniq_id)
+        self.assertEqual(declared_markings(FixturePlate), markings)
         self.assertNotIn('digits', identity_values(
             FixtureDial, FixtureDial().__dict__.get('_parameters', {})))
 
@@ -1624,14 +1638,18 @@ class OpenScadPathTest(BaseNodeTest):
         marked, with_markings = self.scad_of(Bench)
         plain, without = self.scad_of(PlainBench)
 
-        # The artifact names differ only by the module each twin is
-        # declared in; nothing of a marking reaches the SCAD at all.
-        self.assertNotIn('marking', with_markings)
-        self.assertEqual(
-            with_markings.replace('dial-Dial', 'X').replace(
-                'plate-Plate', 'Y'),
-            without.replace('plain_dial-Dial', 'X').replace(
-                'plain_plate-Plate', 'Y'))
+        # Normalize only the exact solid artifact paths. External wrappers'
+        # source-qualified names may themselves include "markings_project";
+        # a decal import is the distinct ".marking-" artifact spelling.
+        normalized = []
+        for node, code in ((marked, with_markings), (plain, without)):
+            self.assertNotIn('.marking-', code)
+            for child, replacement in ((node.dial, 'DIAL'), (node.plate, 'PLATE')):
+                path = f'"{child.local_stl}"'
+                self.assertEqual(code.count(path), 1)
+                code = code.replace(path, f'"{replacement}"')
+            normalized.append(code)
+        self.assertEqual(*normalized)
 
     def test_the_openscad_renderer_photographs_the_marked_model(self):
         node = Bench()

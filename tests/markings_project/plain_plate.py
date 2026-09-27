@@ -5,9 +5,10 @@
 """The same plate, declaring no marking.
 
 `plain_plate.stl` is a byte-for-byte copy of `plate.stl`: the two parts
-must produce the same artifact, and an `StlNode`'s artifact basename is
-derived from the mesh file it names, so the twin needs a file of its own
-to have an artifact path of its own.
+must produce the same solid bytes and piece identity. Their external-wrapper
+keys differ because their defining Python sources differ (ADR-155), independently
+of the markings. The separate asset file also keeps their original mirrored
+artifact locations independent.
 """
 
 from machinome.node import StlNode

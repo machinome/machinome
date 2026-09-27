@@ -430,7 +430,7 @@ or inventing a moment. An unbound port, or one still carrying a raw driver
 token the loader should have bound, is a wiring mistake and still fails
 loudly (ADR-057).
 
-Identity is split three ways. `uniq_id` (class qualname + canonicalized
+Identity is split three ways. `uniq_id` (class component + canonicalized
 params, 12-hex sha256, readable prefix) keys build artifacts —
 parameters change, artifacts change; `name` (explicit or derived from
 the parent attribute holding the child) addresses the tree for tests
@@ -439,7 +439,17 @@ class the params are the resolved, coerced declared values sorted by
 name, computed by the framework through the same serialization, so a
 class that forwarded everything keeps its key and no keyword can be
 forgotten; repeated identical units share one key and one artifact
-(ADR-063). A **piece** id
+(ADR-063). Ordinary Python class components are the unchanged qualname.
+The four external-file adapters instead qualify that component with their
+real defining Python source relative to the asset-owning project (ADR-155):
+their artifacts mirror a shared asset, so qualname alone cannot distinguish
+same-named wrappers in different Python files. An unambiguous internal encoding
+keeps origin and qualname distinct. Import/source aliases and relocation of a
+project with its local wrappers preserve keys; generated site-joint and fresh
+mate specializations retain the author's origin. An already admitted outside
+wrapper can use relative `..` without gaining a new manifest requirement.
+Source contents and times remain currency, not identity; external layout,
+parameters and name exclusion are unchanged. A **piece** id
 (12-hex sha256 of the built STL's canonical oriented-triangle content,
 not its raw bytes, ADR-145) identifies one thing to print,
 so solids factored into different classes but building identical geometry
