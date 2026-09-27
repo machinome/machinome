@@ -374,11 +374,18 @@ it as written, while ``UpperArm(reach=150)`` resolves it to
 ``(0.0, 150.0, 68.0)``. Given a class, a child read off a class body, or
 a node whose frames have not resolved yet (from its own ``check()``),
 the read raises ``TypeError``; reading ``arm.elbow_pin`` still gives the
-declaration. Each resolved frame has ``at`` in floats, a unit ``x``,
-``y`` and ``z`` whose components within ``1e-9`` of ``0``, ``1`` or
-``-1`` are exactly those integers, and ``rotation()``, the 3×3 whose
-columns are ``x``, ``y`` and ``z``; they are the numbers the mate
-composed, to be read and not assigned.
+declaration. Each resolved frame has ``at`` in floats, unit ``x``, ``y`` and
+``z``, and ``rotation()``, the 3×3 whose columns are those directions.
+Supplying both directions explicitly retains full floating-point precision:
+``z`` is normalized, ``x`` projected across it and normalized, and ``y`` is
+their cross product, without component snap. Even an explicit default
+``z=(0, 0, 1)`` counts: ``Frame(z=(0, 0, 1), x=...)`` retains precision,
+whereas ``Frame(x=...)`` with ``z`` omitted keeps the old snapped path.
+Omitted ``x`` or ``x=None`` also keeps that path: components within ``1e-9``
+of ``0``, ``1`` or ``-1`` become those integers, with the same principal
+inference and zero/parallel refusals. These are the same cached numbers the
+mate composes, not a separately altered readout; read them, do not assign.
+Final mate angle/axis snap and Joint axis snapping remain unchanged.
 
 A mate's ``name`` is its coordinate's, when it states a freedom. Its ``moving`` end reads
 ``written`` as ``'<child>.<frame>'``; its ``fixed`` end is either such a

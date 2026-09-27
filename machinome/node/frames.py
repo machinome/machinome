@@ -50,19 +50,20 @@ instance has numbers, because a frame's arguments may read its
 parameters or be a function of it; and reading a frame as an attribute
 of an instance still gives the declaration.
 
-Nothing is imported here at module scope but `math`: the argument rule
+Only `math` and `functools.wraps` are imported at module scope: the argument rule
 is reached inside `resolve`, at construction, where the joint module is
 already loaded.
 """
 
 import math
+from functools import wraps
 
 
 __all__ = ['Frame', 'ResolvedFrame', 'declared_frames',
            'resolve_declared_frames', 'resolved_frames']
 
 
-# How close to an exact 0, 1 or -1 a normalized component has to be
+# On the omitted-direction path, how close to 0, 1 or -1 a component must be
 # before it IS that value: the joint's own `_SNAP`, for the same reason
 # -- normalizing `(0, 0, 2)` must give the exact `(0, 0, 1)` a reader
 # wrote, not residue.
@@ -127,9 +128,12 @@ class ResolvedFrame:
     - `x`, `y`, `z`: a right-handed triad of unit directions -- `z` the
       declared `z` normalized, `x` the declared `x` squared up against
       `z` and normalized (or, left out, the next principal axis after a
-      principal `z`), `y` equal to `z` cross `x`. A component within
-      `1e-9` of `0`, `1` or `-1` IS that `int`, so `z=(0, 0, 2)` reads
-      `(0, 0, 1)`.
+      principal `z`), `y` equal to `z` cross `x`. Supplying both directions explicitly
+      retains normalized/projected/cross-product precision without component
+      snap, including an explicit default `z=(0, 0, 1)`. With `z` omitted,
+      or `x` omitted or None, components within `1e-9` of `0`, `1` or `-1`
+      are those integers. Final mate angle/axis snap and Joint axis snapping
+      are unchanged.
     - `rotation()`: the 3x3 as a list of three rows whose columns are
       `x`, `y` and `z`, the rotation carrying the frame's axes onto the
       declarer's.
@@ -156,6 +160,18 @@ class ResolvedFrame:
                 f'z={self.z}>')
 
 
+def _record_explicit_z(initializer):
+    """Capture presence before defaults fill in, including super().__init__.
+
+    wraps retains the public constructor signature and literal defaults.
+    """
+    @wraps(initializer)
+    def initialize(self, *args, **kwargs):
+        initializer(self, *args, **kwargs)
+        self._z_explicit = len(args) >= 2 or 'z' in kwargs
+    return initialize
+
+
 class Frame:
     """A connector on a part: `Frame(at=(0, 0, 0), z=(0, 0, 1),
     x=None)`, in the declarer's own rest frame.
@@ -169,6 +185,14 @@ class Frame:
     its `x`, because a derived one would be a zero nobody can read off
     the declaration.
 
+    Supplying both directions explicitly retains full floating-point precision:
+    normalize `z`, project and normalize `x`, then cross `z` with `x`, without
+    component snap. An explicit default `z=(0, 0, 1)` counts; `Frame(x=...)`
+    with `z` omitted keeps snapping, as does omitted `x` or `x=None`.
+    Zero/parallel refusals are unchanged. `resolved_frames` reads the same
+    cached basis mates use. Final mate angle/axis snap and Joint axis snapping
+    remain unchanged.
+
     An ordinary class attribute, NOT a data descriptor and NOT a
     `Declaration` -- the marking's reasons, restated in
     `machinome.node.markings.Marking`.
@@ -176,6 +200,7 @@ class Frame:
 
     frame_kind = 'frame'
 
+    @_record_explicit_z
     def __init__(self, at=(0, 0, 0), z=(0, 0, 1), x=None):
         self.at = at
         self.z = z
@@ -233,12 +258,14 @@ class Frame:
 
         at = resolved_vector(node, self.at, 'at', refusal)
         z = resolved_vector(node, self.z, 'z', refusal)
+        precise = self._z_explicit and self.x is not None
+        component_value = (lambda value: value) if precise else _snapped
         length = math.sqrt(_dot(z, z))
         if length < _SNAP:
             raise refusal(
                 'z', f'{self.z!r} has no direction: a z of zero length '
                 f'states no line')
-        z = tuple(_snapped(component / length) for component in z)
+        z = tuple(component_value(component / length) for component in z)
         if self.x is None:
             x = _principal_next(z)
             if x is None:
@@ -259,8 +286,8 @@ class Frame:
                 raise refusal(
                     'x', f'{self.x!r} is parallel to z={self.z!r}, so it '
                     f'fixes no attitude about it. State an x across z.')
-            x = tuple(_snapped(component / size) for component in across)
-        y = tuple(_snapped(component) for component in _cross(z, x))
+            x = tuple(component_value(component / size) for component in across)
+        y = tuple(component_value(component) for component in _cross(z, x))
         return ResolvedFrame(at, x, y, z)
 
     def __repr__(self):

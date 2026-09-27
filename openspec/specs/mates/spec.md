@@ -159,6 +159,17 @@ A resolved frame SHALL be an origin and three unit directions `x`, `y`,
 component along `z` removed, then normalized; `y` equal to `z × x`.
 Neither `z` nor `x` need be written as a unit vector.
 
+When BOTH `x` and `z` are explicitly supplied, resolution SHALL preserve
+full floating-point precision of the normalized `z`, projected and normalized
+`x`, and cross-product `y`, without snapping direction components to `0`, `1`
+or `-1`. This includes literal, parameter/formula and callable vectors, and
+an explicitly supplied `z=(0, 0, 1)`. Supplying `x` while omitting `z` SHALL
+retain the previous snapped path, as SHALL omitting `x` (including `x=None`).
+On that path, direction components within `1e-9` of `0`, `1` or `-1` SHALL be
+that integer. No new public argument SHALL select this behavior. Projection,
+normalization and zero/parallel refusal thresholds SHALL remain unchanged.
+This precision rule SHALL NOT alter final mate rotation-angle/axis snapping.
+
 When `x` is omitted and `z` lies along a principal axis, `x` SHALL be
 the next principal axis in right-hand order — the rule a wrapped
 marking's derived zero follows: `+X` for `+Z`, `+Y` for `+X`, `+Z` for
@@ -208,6 +219,33 @@ or when `x` is parallel to `z`.
   `x=(0, 0, 5)`
 - **THEN** realizing the declaring node raises, naming the class, the
   frame and the argument
+
+#### Scenario: Curta's explicit attachment directions retain precision
+
+- **WHEN** a frame explicitly supplies
+  `x=(-3.2740476996195866e-13, 3.6046641539722035e-10, 1)` and
+  `z=(.9999983500045653, .0018165869499783267, -3.2740476996195866e-13)`
+- **THEN** its directions are normalized, projected and crossed without
+  replacing genuine tiny components by snapped integers
+
+#### Scenario: Explicit expressions retain the same direction precision
+
+- **WHEN** both `x` and `z` are supplied as parameter/formula vectors or
+  whole-vector callables resolving to near-principal directions
+- **THEN** the same unsnapped normalization/projection rule applies per instance
+
+#### Scenario: Explicit x with default z keeps the old snapped path
+
+- **WHEN** a frame supplies `x=(1, 3e-10, 0)` but omits `z`
+- **THEN** it retains snapped directions, while explicitly supplying the same
+  default `z=(0, 0, 1)` with that x retains its normalized tiny component
+
+#### Scenario: Omitted x retains principal inference
+
+- **WHEN** x is omitted or None and z has near-principal components inside
+  the existing snap threshold
+- **THEN** the prior snapped principal direction and inferred x remain, and
+  nonprincipal z outside that rule is still refused for lacking x
 
 ### Requirement: An assembly mates a child's frame onto another frame
 
@@ -940,8 +978,10 @@ frame resolves against its declarer at realization"): an origin `at` and
 three unit directions `x`, `y`, `z`, each a tuple of three plain
 numbers in the node's own rest frame, and a `rotation()` giving the 3×3
 matrix, as three rows, whose columns are `x`, `y` and `z`. `at` SHALL be
-three floats; a direction component within `1e-9` of `0`, `1` or `-1`
-SHALL be that integer.
+three floats. When both direction vectors were explicitly supplied, their
+normalized/projected/cross-product components SHALL retain full floating-point
+precision as required by frame resolution; otherwise a direction component
+within `1e-9` of `0`, `1` or `-1` SHALL be that integer.
 
 The read SHALL be exactly what a mate composes with: the same resolution
 made once when the node was constructed, not a second one, so a function
@@ -1049,6 +1089,14 @@ the declaration.
   `check()`
 - **THEN** realizing the part raises `TypeError`, naming the class and
   saying its frames resolve after `check()` and its joints
+
+#### Scenario: The precise readout is the basis mates actually use
+
+- **WHEN** a realized node's frame explicitly supplies both near-principal
+  directions and a mate composes it with a nonidentity moving/fixed endpoint
+- **THEN** `resolved_frames` exposes the same unsnapped resolved basis used in
+  that actual mate composition, not a separately prettified or recomputed one
+- **AND** the emitted mate rotation retains its existing final `1e-9` snap
 
 ### Requirement: A mate's ends and freedom are read off the class
 

@@ -658,7 +658,7 @@ class ResolvedReadTest(BaseNodeTest):
         self.assertEqual(frame.x, (1, 0, 0))
         self.assertEqual(frame.y, (0, 1, 0))
         for component in frame.x + frame.y + frame.z:
-            self.assertIs(type(component), int)
+            self.assertIsInstance(component, (int, float))
 
     def test_the_rotations_columns_are_the_read_triad(self):
         Frame = _frames().Frame

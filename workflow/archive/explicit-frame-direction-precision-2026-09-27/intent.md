@@ -1,13 +1,13 @@
 # Explicit frame direction precision
 
-Status: provisional pre-spec intent, 27 September 2026. The pilot ratified the
-numeric contract below; this note is evidence and intent, not implemented
-behavior. The OpenSpec change will govern it.
+Status: implemented and root-reviewed, 27 September 2026. The pilot ratified
+the numeric contract below; archived OpenSpec change
+`2026-09-27-explicit-frame-direction-precision` governs it and records proof.
 
 Curta's source-derived zero-positioning-pin triad loses sub-1e-9 direction
 components during frame resolution. Its strict independent moving-pose test
 fails despite 6/6 geometric tests passing; removing frame snap diagnostically
-passes the unchanged comparison. See `../warts.md` for exact directions.
+passes the unchanged comparison. See `../../warts.md` for exact directions.
 
 Retain full normalized/projected/cross-product direction precision only when
 both x and z were supplied explicitly (including expressions/callables).

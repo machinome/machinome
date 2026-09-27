@@ -6,6 +6,11 @@ Changelog
 Unreleased
 ----------
 
+* **Retain explicit direction precision.** Frames supplied with both ``x``
+  and ``z`` keep their normalized attachment directions without component
+  snapping. Omitting either direction keeps the previous default behavior;
+  final mate rotation and joint axis snapping are unchanged.
+
 * **Attach an existing joint by its frames.**
   ``ones_mount = ones.axle.on(ones_seat, ones.turn)`` places a dial at its
   connector while preserving its original scalar joint, name, order,

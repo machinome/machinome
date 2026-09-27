@@ -4290,3 +4290,12 @@ Three findings, all consequences, recorded for the pilot's triage.
   `resolved_frames` exposes exactly what mates use. Final mate rotation/axis
   snap stays `1e-9`. No new arguments or viewer/schema changes. Taken up by
   `explicit-frame-direction-precision`.
+  **Resolved, 27 September 2026:** both explicitly supplied directions now
+  retain normalized/projected/cross-product precision; omitted-direction
+  defaults and final mate/Joint snaps remain unchanged. Root reviewed the
+  source, documentation and separate Studio contract companion. Unchanged
+  zero/selector/register/crank caller comparisons passed10tests9.448s;
+  zero geometry passed6/6 faceted3.59s epsilon0 and6/6 exact48.35s.
+  This establishes numerical equivalence and scoped geometric evidence, not
+  a physical fit claim. Archived change
+  `2026-09-27-explicit-frame-direction-precision` records exact content/results.

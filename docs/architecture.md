@@ -192,8 +192,14 @@ right after `resolve_declared_joints`, cached as `_frame_arguments` —
 read publicly on the instance by `resolved_frames`, which returns those
 very objects in a fresh mapping and refuses a class, a non-node and a
 read before resolution, never off the class (`declared_frames` gives the
-declarations); `z` is normalized, `x` squared up against it, an omitted
-`x` derived only for a principal `z` (the next principal axis, where
+declarations); `z` is normalized, `x` squared up against it. Supplying both
+directions explicitly retains normalized/projected/cross-product precision
+without component snap, including an explicit default z. A private wrapped
+initializer records z presence while preserving the public literal signature
+and handling subclass super-initialization. With z omitted or x omitted/None,
+the existing `1e-9` component snap remains. Readout and mate composition use
+the same cached basis; final mate and Joint snaps are unchanged. An omitted
+`x` is derived only for a principal `z` (the next principal axis, where
 `Wrapped`'s zero lands) and refused for any other. A frame builds nothing; it is the end
 of a **mate** (Kinematics, below).
 
