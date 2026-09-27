@@ -807,6 +807,13 @@ revolute turns about (a freedom may state its own, below), `x` fixes the
 attitude about it — and therefore the ZERO of the mate's coordinate; left out, `x` is the next principal axis after a
 principal `z` (`+X` for `+Z`, `+Y` for `+X`, `+Z` for `+Y`, negated for a
 negated `z`), and a `z` along no principal axis must state its `x`.
+Supplying both directions explicitly retains full floating-point precision:
+normalize z, project/normalize x across z, then y=z×x, without component
+snap. Even explicitly writing default `z=(0,0,1)` counts; `Frame(x=...)`
+with z omitted keeps the snapped path, as does omitted x or `x=None`.
+There, components within 1e-9 of 0, 1 or -1 become those integers. Principal
+inference and zero/parallel refusals are unchanged. Final mate angle/axis snap
+and Joint axis snapping remain unchanged; no precision flag is added.
 Arguments follow the joint argument rule (numbers, tokens, formulas, or one
 callable of the realized node), resolve to numbers when the declarer is
 built, and are neither identity nor geometry. `declared_frames(cls)` and
@@ -981,9 +988,13 @@ yet.
 
 **Reading them back.** `resolved_frames(node)`, from `machinome.node.frames`,
 reads a BUILT node's frames as numbers, `{name: ResolvedFrame}` in
-declaration order — `at` (three floats), unit `x`, `y`, `z` (a component
-within 1e-9 of 0, 1 or -1 is that int) and `rotation()` (a 3×3 whose columns
-are `x`, `y`, `z`) — the very objects its mates compose with: read, never
+declaration order — `at` (three floats), unit `x`, `y`, `z` and `rotation()`
+(a 3×3 whose columns are `x`, `y`, `z`). Supplying both directions explicitly
+retains normalized/projected/cross-product precision without component snap,
+including explicit default z. With z omitted or x omitted/None, components
+within 1e-9 of 0, 1 or -1 become those integers. This is the same cached basis
+mates compose, not a display-only adjustment. Final mate and Joint snaps stay
+unchanged. Read these objects, never
 assign; no second resolution, so a callable argument is not called again.
 Refused by name on a class (`declared_frames(cls)` gives the declarations),
 on anything that is not a realized node, and on a read before the node's
