@@ -9,21 +9,21 @@ that turns it green; record each red run in `evidence.md`.
 
 ## 0. Opening evidence
 
-- [ ] 0.1 Confirm `python -c "import machinome; print(machinome.__file__)"`
+- [x] 0.1 Confirm `python -c "import machinome; print(machinome.__file__)"`
   prints this worktree's path, and record the base (`6f11aba`, plus the
   records commits `4504471` and `ed1b8f0`).
-- [ ] 0.2 Run the full suite at the base and record the counts in
+- [x] 0.2 Run the full suite at the base and record the counts in
   `evidence.md`.
-- [ ] 0.3 Record the answers to the four scope questions of
+- [x] 0.3 Record the answers to the four scope questions of
   `proposal.md` as ratified. If any answer differs from what the
   artifacts say, STOP and update the planning artifacts before writing a
   test.
-- [ ] 0.4 Record `sha256sum` of every file in `tests/base_documents/` at
+- [x] 0.4 Record `sha256sum` of every file in `tests/base_documents/` at
   the base in `evidence.md` (the byte-identity guard of 2.8).
 
 ## 1. Planning record
 
-- [ ] 1.1 `openspec validate hold-by-mate --strict` passes; the planning
+- [x] 1.1 `openspec validate hold-by-mate --strict` passes; the planning
   commit holds the change folder and its `evidence/`, nothing else. No
   ADR here (task 4.5).
 
@@ -68,7 +68,7 @@ the shortest form that discriminates:
   `(-14, -5.5, 0)`; `TwinLeg` translating `shin` to `(0, 8, -30)` in
   `render()`; `TwinRobot` with `angle.drives(leg.shin.knee)`.
 
-- [ ] 2.1 **A mate may leave its freedom out.** Replace
+- [x] 2.1 **A mate may leave its freedom out.** Replace
   `RefusalTest.test_the_rigid_mate_is_deferred` and
   `test_the_rigid_mate_names_both_freedoms` with
   `test_a_mate_may_leave_its_freedom_out`: `Shin` is created, and
@@ -78,17 +78,17 @@ the shortest form that discriminates:
   statement. `test_other_freedoms_are_refused` stays, unedited but for
   one added fragment, `no freedom` (the message still says
   `a Revolute or a Prismatic`). Red at the base (refused).
-- [ ] 2.2 **Every mate is named.** A bare `servo.ears.on(servo_seat)` is
+- [x] 2.2 **Every mate is named.** A bare `servo.ears.on(servo_seat)` is
   refused at class creation naming `servo.ears` and `by its name`;
   `test_a_bare_mate_with_a_freedom` stays green unedited. Red at the
   base (refused for having no freedom, without the fragment).
-- [ ] 2.3 **The rest placement.** `Shin()` rendered: the servo's
+- [x] 2.3 **The rest placement.** `Shin()` rendered: the servo's
   operations are `['r', '180', [0.7071067811865476, 0,
   0.7071067811865476]]` then a translation within `1e-9` of
   `(-0.98, -9.5, -7.0)`; its composed placement (`leaves_of`) equals
   `TwinShin`'s within `1e-9`. `PlateShin` against `TwinPlateShin`: the
   same, the plate's `translate(0, 0, 3)` carried. Red at the base.
-- [ ] 2.4 **Nothing on the child, nothing on the assembly.**
+- [x] 2.4 **Nothing on the child, nothing on the assembly.**
   `type(Shin().servo) is Servo`; `declared_joints(type(shin.servo))`
   equals `declared_joints(Servo)`; the held servo has the identity of a
   bare `Servo()`; `declared_ports(Shin)` is empty and
@@ -96,7 +96,7 @@ the shortest form that discriminates:
   `None` and `Shin.servo` (the declaration) carries no wiring. A rigid
   mate named like an attribute of the child's class
   (`ears = servo.ears.on(servo_seat)`) is accepted. Red at the base.
-- [ ] 2.5 **The held part rides, and keeps what it carries.** `Robot` and
+- [x] 2.5 **The held part rides, and keeps what it carries.** `Robot` and
   `TwinRobot` under `set_state(angle=v)` for `v` in
   `(-90, -30, 0, 30, 90)` and under the default: every leaf's composed
   placement equal within `1e-9`. `OutputShin` with the servo's `output`
@@ -104,7 +104,7 @@ the shortest form that discriminates:
   rest rotation and translation. `BoltedShin` against `TwinBoltedShin`:
   every leaf (the servo and the screw) equal within `1e-9`. Red at the
   base.
-- [ ] 2.6 **A rigid mate is not a coordinate.** On a realized `Shin`,
+- [x] 2.6 **A rigid mate is not a coordinate.** On a realized `Shin`,
   `shin.bolted` is the mate `declared_mates` reports; `shin.bolted = 10`
   raises `AttributeError` naming `Shin`, `bolted` and
   `owns no coordinate`. Refused at class creation, each naming `bolted`
@@ -112,7 +112,7 @@ the shortest form that discriminates:
   the port `travel`; `wheel = Wheel(spin=bolted)` with `Wheel`
   declaring the joint `spin`; a root declaring `angle = Driver(...)` and
   `shin = Shin()` stating `angle.drives(shin.bolted)`. Red at the base.
-- [ ] 2.7 **What stays refused.** Two mates on the held servo -- two rigid,
+- [x] 2.7 **What stays refused.** Two mates on the held servo -- two rigid,
   and one rigid with one `Revolute` -- refused naming both and `loop`;
   a `render()` translating a held servo refused naming the shin,
   `servo` and `bolted`; `screwed = screw.head.on(servo.ear_near)` beside
@@ -121,7 +121,7 @@ the shortest form that discriminates:
   on an inherited child refused, its message not containing
   `joint of its own`. Red at the base (the rigid mates are refused for
   having no freedom, without the fragments).
-- [ ] 2.8 **Nothing else moves.** Every file in `tests/base_documents/`
+- [x] 2.8 **Nothing else moves.** Every file in `tests/base_documents/`
   is byte-identical to its hash in 0.4 (the existing byte-identity tests,
   run unedited). `Robot`'s and `TwinRobot`'s exported documents
   (`published`) declare the same version and top-level keys, equal
@@ -136,7 +136,7 @@ the shortest form that discriminates:
 
 ## 3. Implementation
 
-- [ ] 3.1 `machinome/motion/mates.py`: `_check_freedom` returns early for
+- [x] 3.1 `machinome/motion/mates.py`: `_check_freedom` returns early for
   no freedom, and its refusal of another kind names the three accepted
   forms, keeping `a Revolute or a Prismatic`; `declare_mates`' bare-mate
   refusal gives a mate with no freedom its own true reason (design
@@ -147,22 +147,22 @@ the shortest form that discriminates:
   `_check_child_name` is skipped for it; `_check_fixed`'s message for a
   fixed child a rigid mate places and `_check_moving`'s for an inherited
   child say what is true (decision 5).
-- [ ] 3.2 The coordinate refusal (decision 4): in
+- [x] 3.2 The coordinate refusal (decision 4): in
   `machinome/motion/couplings.py` `coordinate_ref`, beside the frame
   refusal, for a rigid mate and for a path reference ending on one; in
   `machinome/node/declarative.py`'s wiring source check. One message,
   worded once in `mates.py`.
-- [ ] 3.3 Docstrings: the `mates.py` module docstring (the compile list,
+- [x] 3.3 Docstrings: the `mates.py` module docstring (the compile list,
   "A mate compiles ... to three things"), `Mate` (the reads: `freedom`
   `None` for a rigid mate; `name` names a coordinate only with a
   freedom), `_check_freedom`, `_install`, `apply_mates`.
-- [ ] 3.4 Every test of section 2 green; the full suite green with the
+- [x] 3.4 Every test of section 2 green; the full suite green with the
   counts of 0.2 plus the new ones, nothing skipped that was not skipped
   at the base. Record in `evidence.md`.
 
 ## 4. Documentation, records (the second commit)
 
-- [ ] 4.1 `docs/concepts/joints.rst`, "Frames and mates", under
+- [x] 4.1 `docs/concepts/joints.rst`, "Frames and mates", under
   `skills/write-the-manual`: a SIXTH code block, appended after the
   gripper so the first five keep their indices -- a shin holding a
   servo by `bolted = servo.ears.on(servo_seat)`, the numbers of the
@@ -180,27 +180,27 @@ the shortest form that discriminates:
   `ManualTest` test that execs `_code_blocks(section)[5]`, renders the
   shin and checks the servo's two operations, `declared_ports` empty and
   `freedom` `None`, and asserts the paragraph's fragments.
-- [ ] 4.2 `docs/reference/api.rst`, "Frames and mates": the sentence on
+- [x] 4.2 `docs/reference/api.rst`, "Frames and mates": the sentence on
   the mate's spelling adds ``<child>.<frame>.on(<frame>)`` for a held
   part. The `Mate` entry renders from its docstring (3.3);
   `test_the_reference_lists_frames_and_mates` stays green.
-- [ ] 4.3 `docs/project/changelog.rst`, Unreleased: a bullet saying a
+- [x] 4.3 `docs/project/changelog.rst`, Unreleased: a bullet saying a
   mate may leave its freedom out, so a bought part is held at its seat
   by one statement in the class of the part that holds it, with no joint
   and no coordinate (ADR-152).
-- [ ] 4.4 Record for the studio (a separate change in
+- [x] 4.4 Record for the studio (a separate change in
   `machinome-studio`, not made here):
   `shop-skills/machinome-api/SKILL.md` gains the rigid mate.
-- [ ] 4.5 Write ADR-152 (NODE) as **Accepted** (design §9); add an
+- [x] 4.5 Write ADR-152 (NODE) as **Accepted** (design §9); add an
   *Amended by* line to ADR-147 and to ADR-151; ADR-152 and both updated
   entries in `docs/adrs/README.md`'s index; amend
   `docs/architecture.md`'s mate paragraph (a mate compiles to a rest
   placement and, when it states a freedom, a joint and a coordinate).
-- [ ] 4.6 `workflow/ongoing/mates-and-sketches.md`: the paragraphs that
+- [x] 4.6 `workflow/ongoing/mates-and-sketches.md`: the paragraphs that
   say the rigid mate "still read[s] here as proposal" say it was cut
   into `hold-by-mate` (ADR-152), the fixed end still still, and the
   dependency order among sibling mates still proposal.
-- [ ] 4.7 `workflow/warts.md`: the bullet "A mate must have a freedom; a
+- [x] 4.7 `workflow/warts.md`: the bullet "A mate must have a freedom; a
   part that is simply held has none." gains its disposition (fixed by
   `hold-by-mate`; pending the AlbertPro follow-up of §6), and Thor's
   "A screw cannot be mated to the moving sibling it fastens." gains
@@ -209,7 +209,7 @@ the shortest form that discriminates:
 
 ## 5. Sync and archive
 
-- [ ] 5.1 Sync the `mates` delta spec into `openspec/specs/mates/spec.md`.
+- [x] 5.1 Sync the `mates` delta spec into `openspec/specs/mates/spec.md`.
   It ADDS one requirement ("A mate with no freedom holds a child where
   two frames meet") and deliberately REPLACES one scenario of "An
   assembly mates a child's frame onto another frame": "A mate needs a

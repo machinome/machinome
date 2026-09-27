@@ -156,7 +156,9 @@ or when `x` is parallel to `z`.
 
 The system SHALL let an assembly relate two frames in its class body with
 the statement `<moving frame>.on(<fixed frame>, <freedom>)`, called a
-**mate**. The frame that speaks is the one that MOVES. The statement
+**mate**, or, with the freedom left out, `<moving frame>.on(<fixed
+frame>)`, called a **rigid mate** (see "A mate with no freedom holds a
+child where two frames meet"). The frame that speaks is the one that MOVES. The statement
 SHALL be recorded on the class being defined whether or not it is
 assigned; assigning it, `elbow = art3.hinge.on(elbow_pin, Revolute())`,
 SHALL name the mate. A mate SHALL be enumerable off the class, in
@@ -170,7 +172,8 @@ frame the declaring assembly itself declares, written by its bare name in
 the class body, or a frame declared by another child the assembly
 declares directly, written `<child>.<frame>`.
 
-The FREEDOM SHALL be a `Revolute`, `Revolute(range=(lo, hi), unit='deg')`,
+The FREEDOM MAY be left out -- passing `None` is the same statement --
+and, when stated, SHALL be a `Revolute`, `Revolute(range=(lo, hi), unit='deg')`,
 the child turning about a line, or a `Prismatic`,
 `Prismatic(axis=(x, y, z), range=(lo, hi), unit='mm')`, the child sliding
 along one; both kinds SHALL follow every rule of this requirement alike
@@ -213,13 +216,19 @@ naming the class, the mate and the reason:
   class declares a joint, including one a mate or a declaration site
   gives it — because the moving child is placed against the fixed
   child's REST placement and would not follow it;
+- a fixed end on a child another mate places, a rigid mate included,
+  because this version places a class's mates in declaration order and
+  orders no mate before another; the refusal SHALL name the mate that
+  places the fixed child and SHALL NOT say that a rigidly held child
+  moves;
 - either end on a child held in a list or declared with `.repeat()`;
 - a second mate whose moving end is a frame of a child another mate
   already places, which is a loop;
 - a mate that names a child the class — or, for an inherited mate, the
   subclass — no longer declares as the one the mate was written against;
-- a mate with a freedom that is left unnamed, because its coordinate is
-  named after the mate;
+- a mate that is left unnamed -- a mate with a freedom because its
+  coordinate is named after the mate, a rigid mate because a mate is
+  enumerated, read and refused by its name;
 - a freedom that is neither a `Revolute` nor a `Prismatic` — an `Orbit`
   or a `Free` —, a freedom whose range is neither a pair nor a function, or
   holds a parameter token or a formula, or reads other coordinates, or a
@@ -229,9 +238,7 @@ naming the class, the mate and the reason:
   formula in either, which would be resolved by name against the moving
   child although it is written in the assembly, or a function in `at`,
   which this version does not accept —, or whose stated `axis` of three
-  numbers has no length;
-- a mate stated with no freedom, the rigid mate, which this version does
-  not provide.
+  numbers has no length.
 
 #### Scenario: Thor's elbow is one statement
 
@@ -271,13 +278,14 @@ naming the class, the mate and the reason:
 - **THEN** creating the class raises, naming both mates and saying a
   second mate on a placed child closes a loop
 
-#### Scenario: A mate needs a revolute or prismatic freedom
+#### Scenario: A mate's freedom is a revolute, a prismatic or none
 
-- **WHEN** an assembly states `art3.hinge.on(elbow_pin)`, or
+- **WHEN** an assembly states
   `art3.hinge.on(elbow_pin, Orbit(axis=(0, 0, 1)))`, or
   `art3.hinge.on(elbow_pin, Free())`
 - **THEN** creating the class raises, naming the mate and saying which
-  freedoms a mate accepts in this version: a `Revolute` or a `Prismatic`
+  freedoms a mate accepts in this version: a `Revolute` or a
+  `Prismatic`, or none at all for a part that is held
 
 #### Scenario: A gripper's finger is one statement
 
@@ -358,6 +366,32 @@ naming the class, the mate and the reason:
   on a frame reached through `arms`
 - **THEN** the statement is refused, naming the declaration and saying a
   list-held child is named one by one
+
+#### Scenario: A bought part is held by one statement
+
+- **WHEN** a shin assembly declares
+  `servo_seat = Frame(at=(-0.98, -4, -7), z=(1, 0, 0), x=(0, 0, 1))` and
+  the child `servo = Servo()`, `Servo` declaring
+  `ears = Frame(at=(0, -5.5, 0))`, and states
+  `bolted = servo.ears.on(servo_seat)`
+- **THEN** the class is created and reports one mate named `bolted`,
+  moving `servo.ears` onto `servo_seat`, with no freedom
+
+#### Scenario: A rigid mate has a name
+
+- **WHEN** the shin states `servo.ears.on(servo_seat)` bare, without
+  assigning it
+- **THEN** creating the class raises, naming the statement and asking
+  for an assignment, and saying a mate is read and refused by its name
+
+#### Scenario: A fixed end on a held sibling is refused
+
+- **WHEN** the shin also declares `screw = Screw()`, `Screw` declaring
+  `head = Frame()`, `Servo` declaring `ear_near = Frame(at=(-14, -5.5,
+  0))`, and states `screwed = screw.head.on(servo.ear_near)` beside
+  `bolted`
+- **THEN** creating the class raises, naming `screwed`, `servo` and the
+  mate `bolted` that places it, and does not say that `servo` moves
 
 ### Requirement: A mate places the moving child at rest
 
@@ -440,8 +474,8 @@ refuse the mate at realization, naming the mate and the child.
 
 ### Requirement: A mate gives the moving child a joint
 
-At realization the moving child SHALL move about a joint of the
-freedom's kind — a `Revolute` for a `Revolute` freedom, turning the
+At realization the moving child of a mate that states a freedom SHALL
+move about a joint of the freedom's kind — a `Revolute` for a `Revolute` freedom, turning the
 child about the line, a `Prismatic` for a `Prismatic` freedom, sliding
 the child along it — whose axis is the freedom's stated `axis` — the three numbers written, or what
 its function returned for the realized assembly —, or, for a
@@ -471,11 +505,17 @@ A child a mate moves SHALL keep its identity: it SHALL key the same
 artifacts as the same child declared with no mate, and its class SHALL
 report the declared class's name.
 
-A mate whose name the moving child's class already answers to — a
+A rigid mate SHALL give the moving child no joint: the child SHALL be
+realized as its declared class itself, not a specialization of it, and
+its class SHALL report exactly the joints that class declares.
+
+A mate stating a freedom whose name the moving child's class already
+answers to — a
 parameter, a child, a port, a joint, a frame, a marking, a method or any
 other attribute — SHALL be refused when the assembly's class is created,
 naming the assembly, the mate, the child's class and what it already
-declares.
+declares. A rigid mate's name SHALL NOT be checked against the moving
+child's class, since the rigid mate gives the child nothing under it.
 
 #### Scenario: The elbow joint is the one Thor writes by hand
 
@@ -584,6 +624,15 @@ declares.
   unmated child with the same arguments
 - **THEN** both realized parts have the same identity
 
+#### Scenario: A held part gets no joint
+
+- **WHEN** the shin of "A bought part is held by one statement" is
+  realized
+- **THEN** its servo is an instance of `Servo` itself, the joint
+  enumerator reports for `type(shin.servo)` exactly the joints `Servo`
+  declares, and the servo has the identity of a `Servo` declared with no
+  mate
+
 ### Requirement: A mate owns a coordinate on the assembly
 
 A mate with a freedom SHALL own one coordinate on the declaring
@@ -607,9 +656,16 @@ coordinate: binding it by any other route — an assignment on the child,
 a relation or a driver naming it by path — SHALL be refused, naming the
 mate's coordinate as the one to bind.
 
-Reading an assembly's rigid mate is not provided in this version; the
-rigid mate is refused (see "An assembly mates a child's frame onto
-another frame").
+A rigid mate SHALL own no coordinate. The port enumerator SHALL NOT
+report it. Reading it on an instance SHALL yield the mate declaration,
+as reading a frame on an instance yields the frame. Assigning to it on
+an instance SHALL raise `AttributeError`, naming the assembly and the
+mate and saying it states no freedom and owns no coordinate. Naming it
+where a coordinate is named -- an end of a relation or of a derived
+coordinate in the class body that states it, a wiring source, or a path
+reaching it from an assembly above -- SHALL be refused where the
+statement is written or when the class stating it is created, naming
+the mate and saying a rigid mate owns no coordinate.
 
 #### Scenario: A driver turns Thor's elbow through the mate
 
@@ -674,6 +730,30 @@ another frame").
   rest translation; bound to `grip=25`, the binding is refused naming
   `left_grip` and its range
 
+#### Scenario: A rigid mate is not a port
+
+- **WHEN** a consumer enumerates the ports of the shin of "A bought part
+  is held by one statement"
+- **THEN** it receives nothing for `bolted`
+
+#### Scenario: A rigid mate is read, not bound
+
+- **WHEN** `shin.bolted` is read on a realized shin, and then
+  `shin.bolted = 10` is assigned
+- **THEN** the read yields the mate `declared_mates` reports under
+  `bolted`, and the assignment raises `AttributeError` naming the shin's
+  class and `bolted` and saying it owns no coordinate
+
+#### Scenario: A rigid mate is not a relation's end
+
+- **WHEN** the shin's body states `bolted.drives(travel)` over a port
+  `travel` it declares; or it declares a child `wheel =
+  Wheel(spin=bolted)`, `Wheel` declaring the joint `spin`, wiring the
+  mate into it; or a root declaring `angle = Driver(default=0)` and the
+  child `shin = Shin()` states `angle.drives(shin.bolted)`
+- **THEN** each is refused, naming `bolted` and saying a rigid mate owns
+  no coordinate
+
 ### Requirement: A mate publishes nothing new
 
 A mated machine's published document SHALL carry the mate's compiled
@@ -687,7 +767,8 @@ published before a freedom could state one. A mate whose freedom states
 its line SHALL publish that line only as the axis and anchor of the
 joint's ordinary operations, and a mate whose freedom is a `Prismatic`
 SHALL publish its slide only as the translation of the joint's ordinary
-operations.
+operations. A rigid mate SHALL publish its placement only as the held
+child's ordinary operations, and no binding.
 
 #### Scenario: A mated machine needs no newer consumer
 
@@ -720,6 +801,20 @@ operations.
   top-level keys, no node entry of the mated document has a key the
   twin's lacks, and each finger's operations equal the twin's, the
   translation driven by `grip` included
+
+#### Scenario: A held part publishes as operations
+
+- **WHEN** a root turning the shin of "A bought part is held by one
+  statement" by a revolute mate is exported, and so is its hand-placed
+  twin, whose shin's `render()` places the servo by
+  `rotate(90, [0, 1, 0])`, `rotate(180, [1, 0, 0])` and
+  `translate(-0.98, -9.5, -7)`
+- **THEN** the two documents declare the same version, the same
+  top-level keys and the same drivers and bindings, no node entry of the
+  mated document has a key the twin's lacks, and every leaf's composed
+  placement equals the twin's within `1e-9`; the servo's operations
+  differ from the twin's only in form -- one rotation of 180 about
+  `(0.7071…, 0, 0.7071…)` where the twin writes two
 
 ### Requirement: A realized node reads its resolved frames
 
@@ -848,15 +943,17 @@ A mate SHALL be readable, off the class and without constructing an
 instance, as the object `declared_mates(cls)` reports under its name,
 with these reads documented in the framework's API reference:
 
-- `name`, the attribute the mate is assigned to — also the name of its
-  coordinate on the assembly and of the joint it gives the child;
+- `name`, the attribute the mate is assigned to — for a mate stating a
+  freedom, also the name of its coordinate on the assembly and of the
+  joint it gives the child;
 - `moving`, the moving end, whose `written` SHALL be
   `'<child>.<frame>'` as the class body writes it;
 - `fixed`, the fixed end as the class body writes it: for a frame of a
   child, a reference whose `written` SHALL be `'<child>.<frame>'`; for a
   frame of the assembly itself, written by its bare name, that `Frame`
   declaration, whose `name` SHALL be its attribute;
-- `freedom`, the `Revolute` or `Prismatic` written in the statement,
+- `freedom`, `None` for a rigid mate, else the `Revolute` or
+  `Prismatic` written in the statement,
   whose `axis` SHALL
   be `None` when no axis is stated, which only a `Revolute` freedom may
   do, the three numbers as written, not
@@ -869,7 +966,8 @@ with these reads documented in the framework's API reference:
   itself, the same object — or `None`; and whose `unit` SHALL be as
   written, or `'deg'` for a `Revolute` and `'mm'` for a `Prismatic`.
 
-When the freedom's `axis` is not a function, the line a mate turns its
+A rigid mate has no line. When the freedom is stated and its `axis` is
+not a function, the line a mate turns its
 child about or slides it along SHALL be readable from these reads and the moving child's
 resolved frames alone: `freedom.axis` when it is not `None`, else — a
 `Revolute` freedom's only — the moving frame's resolved `z`; through `freedom.at` when `anchor_written`
@@ -936,6 +1034,14 @@ change nothing and SHALL NOT call a function.
   under `left_grip`
 - **THEN** its freedom is a `Prismatic` whose `axis` is `(0, 1, 0)`,
   `anchor_written` false, `range` `(-11, 20)` and `unit` `'mm'`
+
+#### Scenario: A rigid mate is read with no freedom
+
+- **WHEN** `declared_mates` of the shin of "A bought part is held by one
+  statement" is read under `bolted`
+- **THEN** its `name` is `bolted`, its `moving.written` is
+  `'servo.ears'`, its `fixed` is the shin's `servo_seat` frame with
+  `name` `servo_seat`, and its `freedom` is `None`
 
 ### Requirement: A mate's freedom may be a function of the assembly that states it
 
@@ -1062,3 +1168,80 @@ places the moving child at rest" states, whatever the function returns.
 - **THEN** each finger's joint is a `Prismatic` resolving with axis
   `(0, 1, 0)` and `(0, -1, 0)` respectively, and bound to 10 each finger
   translates 10 along its side's axis inside its side's rest translation
+
+### Requirement: A mate with no freedom holds a child where two frames meet
+
+The system SHALL accept a mate whose freedom is left out,
+`<child>.<frame>.on(<fixed frame>)`, called a **rigid mate**, for a part
+that is held -- bolted, pressed, seated -- rather than freed. At
+realization a rigid mate SHALL place the moving child at rest exactly as
+"A mate places the moving child at rest" states, from the same two
+frames, by the same composition, as the same one rotation and one
+translation after the author's `render()` with the same `1e-9` snap, and
+SHALL compile to nothing else: no joint on the child, no coordinate on
+the assembly and no wiring.
+
+A held child SHALL move only as the assembly that declares it moves. A
+part declared in the class of the part that holds it, and mated onto
+that class's own frame or onto a frame of a sibling that does not move,
+SHALL ride with the holding part under every joint and mate above it.
+The fixed end of a rigid mate SHALL follow every rule a fixed end
+follows; a fixed end on a sibling that can move, or that another mate
+places, SHALL stay refused.
+
+A held child MAY itself declare joints, children and mates of its own;
+the rest placement SHALL compose outside every one of them, as any
+mate's rest placement composes outside the child's own joints.
+
+Every other rule of "An assembly mates a child's frame onto another
+frame" and "A mate places the moving child at rest" SHALL hold for a
+rigid mate: it is named; its ends are depth one and are refused through
+a list or a `repeat()`; a second mate on the held child, rigid or not,
+SHALL be refused as a loop; a `render()` that also places the held child
+SHALL be refused naming the assembly, the child and the mate; and a
+re-running `render()` SHALL NOT stack its placement.
+
+#### Scenario: A servo is held at its measured seat
+
+- **WHEN** the shin of "A bought part is held by one statement" is
+  realized and rendered
+- **THEN** the servo's operations are a rotation of 180 degrees about
+  `(0.7071…, 0, 0.7071…)` followed by a translation of
+  `(-0.98, -9.5, -7)`, and its composed placement equals, within `1e-9`,
+  that of a twin shin whose `render()` places the servo with
+  `rotate(90, [0, 1, 0])`, `rotate(180, [1, 0, 0])` and
+  `translate(-0.98, -9.5, -7)`
+
+#### Scenario: A held part rides with the part that holds it
+
+- **WHEN** a leg assembly declares `knee_pin = Frame(at=(0, 8, -30),
+  z=(0, 1, 0))` and the shin as `shin`, the shin declaring
+  `knee_bore = Frame(z=(0, 1, 0))`, and states
+  `knee = shin.knee_bore.on(knee_pin, Revolute(range=(-90, 90)))`, and a
+  root declaring `angle = Driver(default=0, unit='deg')` states
+  `angle.drives(leg.knee)` and is bound to `angle=30`
+- **THEN** the servo's composed placement equals, within `1e-9`, that of
+  the twin shin's servo in a twin leg whose shin class declares
+  `knee = Revolute(axis=(0, 1, 0))`, placed by the leg's `render()` with
+  `translate(0, 8, -30)` and bound to 30
+
+#### Scenario: A held part keeps its own joints inside the placement
+
+- **WHEN** the servo's class declares `output = Revolute(axis=(0, 1, 0))`
+  and the held servo's `output` is bound to 20
+- **THEN** its operations are the turn of 20 about `(0, 1, 0)`, then the
+  rigid mate's rest rotation and translation
+
+#### Scenario: A held part is held once
+
+- **WHEN** the shin states `bolted = servo.ears.on(servo_seat)` and
+  `again = servo.ears.on(other_seat)`, or `bolted` and
+  `swing = servo.ears.on(other_seat, Revolute())`
+- **THEN** creating the class raises, naming both mates and saying a
+  second mate on a placed child closes a loop
+
+#### Scenario: A held part is not placed by hand
+
+- **WHEN** the shin states `bolted` and its `render()` calls
+  `self.servo.translate(...)`
+- **THEN** rendering raises, naming the shin, `servo` and `bolted`

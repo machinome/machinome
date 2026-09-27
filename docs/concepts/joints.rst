@@ -158,7 +158,9 @@ that moves:
                                  Revolute(range=(-135, 135), unit='deg'))
 
 There is no ``render()`` and no joint on ``Forearm``. The mate compiles,
-when the arm is built, to three things this page already describes:
+when the arm is built, to three things this page already describes (a
+mate that holds a part rather than freeing it compiles to the first
+alone, as the end of this section shows):
 
 - the forearm's **rest placement**, the rotation and translation that
   put ``hinge`` onto ``elbow_pin``, origin on origin and ``x``, ``y``,
@@ -243,12 +245,13 @@ them off the class.
 
 The **fixed end** is a frame of the assembly itself, written by its bare
 name, or ``<child>.<frame>`` of another child the assembly declares,
-which then must not move: the mated part rests against that child's rest
-placement, and siblings do not carry each other. The **moving end** is a
-frame of a child the assembly declares directly. The **freedom** is a
-``Revolute``, the one place a ``Revolute`` may leave out its axis, or a
-``Prismatic``, which states its axis here as it does anywhere (see the
-end of this section). A stated ``axis`` is three numbers or one function
+which then must not move and must not be placed by another mate: the
+mated part rests against that child's rest placement, and siblings do
+not carry each other. The **moving end** is a frame of a child the
+assembly declares directly. The **freedom** is a ``Revolute``, the one
+place a ``Revolute`` may leave out its axis, or a ``Prismatic``, which
+states its axis here as it does anywhere, or it is left out for a part
+that is held (see the end of this section). A stated ``axis`` is three numbers or one function
 of the assembly, a stated ``at`` three numbers, and the range a pair of
 numbers, ``None`` or functions of the coordinate's own value, or one
 function of the assembly returning such a pair.
@@ -256,20 +259,21 @@ function of the assembly returning such a pair.
 Refused when the class is created, naming the mate: a mate on a node
 that is not an assembly; a moving end that is the assembly's own frame;
 either end reached through more than one child, a list or a
-``repeat()``; a fixed end on a child that can move; a second mate on one
-child; a mate never assigned to a name; a freedom that is neither a
-fresh ``Revolute`` nor a fresh ``Prismatic``, or whose stated ``axis``
-is neither three numbers nor a function, or whose stated ``at`` is not
-three numbers, a function ``at`` included, or whose stated ``axis`` has
-no length, or whose range holds a parameter or reads other coordinates;
-a mate with no freedom at all; and a mate name the moving child already
-answers to. Refused when the arm is built: a freedom's function that
-raises, or returns what the same argument written in numbers would
-refuse, naming the assembly, the mate and the argument. Refused when the
-arm renders: a ``render()`` that also places a mated child. A mate
-publishes nothing new: the document carries its rest placement as
-operations and its coordinate as a binding, at the version the same
-machine without mates declares.
+``repeat()``; a fixed end on a child that can move or that another mate
+places; a second mate on one child; a mate never assigned to a name; a
+freedom that is neither a fresh ``Revolute`` nor a fresh ``Prismatic``,
+or whose stated ``axis`` is neither three numbers nor a function, or
+whose stated ``at`` is not three numbers, a function ``at`` included,
+or whose stated ``axis`` has no length, or whose range holds a parameter
+or reads other coordinates; a mate with a freedom whose name the moving
+child already answers to; and a mate with no freedom named where a
+coordinate is named. Refused when the arm is built: a freedom's
+function that raises, or returns what the same argument written in
+numbers would refuse, naming the assembly, the mate and the argument.
+Refused when the arm renders: a ``render()`` that also places a mated
+child. A mate publishes nothing new: the document carries its rest
+placement as operations and its coordinate, if it has one, as a
+binding, at the version the same machine without mates declares.
 
 A test that holds a machine's connectors to a design reads them back
 rather than restating them. ``resolved_frames(node)``, from
@@ -309,11 +313,11 @@ declaration. Each resolved frame has ``at`` in floats, a unit ``x``,
 columns are ``x``, ``y`` and ``z``; they are the numbers the mate
 composed, to be read and not assigned.
 
-A mate's ``name`` is its coordinate's. Its ``moving`` end reads
+A mate's ``name`` is its coordinate's, when it states a freedom. Its ``moving`` end reads
 ``written`` as ``'<child>.<frame>'``; its ``fixed`` end is either such a
 reference, for a frame of another child, or, for a frame of the assembly
 written by its bare name, that ``Frame``, read by its ``name``. Its
-``freedom`` is the ``Revolute`` or ``Prismatic`` as written: ``axis`` is
+``freedom`` is the ``Revolute`` or ``Prismatic`` as written, or ``None`` for a mate that holds a part: ``axis`` is
 ``None`` unless stated, ``range`` and ``unit`` as written, and an
 ``axis`` or ``range`` stated as a function reads as that function,
 without calling it. ``at`` is the mate's anchor only when
@@ -416,6 +420,47 @@ states a unit. The two coordinates are related like any others, so
 binding ``palm.left_grip = 10`` moves the left finger 10 along
 ``(0, 1, 0)`` and the right one 10 along ``(0, -1, 0)``, each from its
 seat.
+
+A servo, a bearing or a screw does not move of its own: it is held,
+bolted, pressed or seated where the part that holds it says. A mate may
+leave its freedom out for a part that is held:
+
+.. code-block:: python
+
+    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.frames import Frame
+    from solid2 import cube
+
+    class Servo(Solid2Node):
+        ears = Frame(at=(0, -5.5, 0))
+
+        def render(self):
+            return cube([12, 23, 22], center=True)
+
+    class Shin(AssemblyNode):
+        servo_seat = Frame(at=(-0.98, -4, -7), z=(1, 0, 0), x=(0, 0, 1))
+
+        servo = Servo()
+
+        bolted = servo.ears.on(servo_seat)
+
+The mate places the servo, connector onto connector, as a mate with a
+freedom does: it rests turned 180 degrees about ``(0.7071, 0, 0.7071)``
+and translated to ``(-0.98, -9.5, -7)``, its ears on the seat. It gives
+the servo nothing else, no joint and no coordinate: the servo is a
+``Servo`` itself, ``declared_ports(Shin)`` is empty, and ``shin.bolted``
+reads the mate, whose ``freedom`` is ``None``; assigning to it, or
+naming it as a relation's end, a term, a wiring or a path, is refused.
+The part moves only as the assembly that declares it moves, so a held
+part is declared in the class of the part that holds it: the servo in
+the shin that carries it, and its screws beside it in an assembly of
+servo and screws, each screw held on one of the servo's ears. The fixed
+end still does not move, and the held
+part may declare joints, children and mates of its own, all inside the
+placement. The mate is named like any other. Its operations may take
+another form than a hand placement's with the same placement: one
+rotation where a hand writes two, ``rotate(90, [0, 1, 0])`` then
+``rotate(180, [1, 0, 0])``.
 
 Arguments
 ---------

@@ -141,7 +141,20 @@ gripper fingers: a mate's freedom may be a `Revolute` or a `Prismatic`,
 by one rule save that a `Prismatic` states its axis, the moving child
 getting a joint of the freedom's kind and the assembly a coordinate of
 its port kind. The rigid mate and the `Free` freedom still read here as
-proposal.
+proposal. *(amended 2026-09-27, hold-by-mate, ADR-152)* The rigid mate
+was cut into the framework OpenSpec change `hold-by-mate` (ADR-152,
+amending ADR-147 and ADR-151), from AlbertPro's bought parts: a mate may
+leave its freedom out, `moving.on(fixed)` with no `Rigid` class, and then
+compiles to the rest placement alone -- no joint, no coordinate, no
+wiring, nothing published but the operations; it is named like every
+mate, reads on an instance as its declaration, and is refused where a
+coordinate is named. Two readings below do not hold for it: it has no
+document kind `fixed` (it publishes the held child's ordinary
+operations), and it does not bring the dependency order back -- the
+fixed end still does not move, a fixed end on a child any mate places,
+the rigid one included, stays refused, and the dependency order among
+sibling mates still reads here as proposal. The `Free` freedom still
+reads here as proposal.
 
 **A freedom's own line was cut, 2026-09-26,** into the framework OpenSpec
 change `state-the-mate-line` (ADR-148, amending ADR-147), from Thor's

@@ -301,8 +301,9 @@ Frames and mates
 A frame is a named connector a node declares on itself, importable from
 ``machinome.node.frames`` and from ``machinome.node``; a mate relates two
 frames in an assembly's class body, ``<child>.<frame>.on(<frame>,
-Revolute(...))`` or ``<child>.<frame>.on(<frame>, Prismatic(...))``, and
-needs no import beyond ``Revolute`` or ``Prismatic``. A built node's
+Revolute(...))`` or ``<child>.<frame>.on(<frame>, Prismatic(...))``, or
+``<child>.<frame>.on(<frame>)`` for a part that is held, and needs no
+import beyond ``Revolute`` or ``Prismatic``. A built node's
 frames are read as numbers with ``resolved_frames``, and a mate's name,
 ends and freedom off the class through ``declared_mates``. See
 :doc:`Joints </concepts/joints>`.

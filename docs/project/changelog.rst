@@ -48,6 +48,13 @@ Unreleased
   ``Prismatic`` joint, the mate's coordinate is a length, in ``'mm'``
   unless the freedom states a unit, and the slide is published as the
   translation a class-declared ``Prismatic`` publishes (ADR-151).
+* **A bought part is held by one statement.** A mate may leave its
+  freedom out, ``bolted = servo.ears.on(servo_seat)``, for a part that is
+  held rather than freed: it places the part at its seat, connector onto
+  connector, and gives it no joint and no coordinate, so a servo, a horn
+  or a screw is declared in the class of the part that holds it and
+  rides with it. The mate is read with ``freedom`` ``None``, is not a
+  port, and publishes only operations (ADR-152).
 
 Machinome 0.7.0
 ---------------

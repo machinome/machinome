@@ -65,8 +65,22 @@ realizes the moving child (`call_freedom_functions`, from
 checked by the rules the numbers are checked by and taken as they are,
 read in the moving child's own frame. A stated `at` stays three numbers.
 
+A part that is HELD -- bolted, pressed, seated -- has no freedom, and the
+freedom is then left out: the RIGID mate (ADR-152)::
+
+    class Shin(AssemblyNode):
+        servo_seat = Frame(at=(-0.98, -4, -7), z=(1, 0, 0), x=(0, 0, 1))
+        servo = Servo()              # declares ears = Frame(...)
+        bolted = servo.ears.on(servo_seat)
+
+It places the child as every mate does and compiles to nothing else: no
+joint on the child, whose class stays the declared one, no coordinate on
+the assembly, no wiring. The child moves only as the assembly that
+declares it moves, so a held part is declared in the class of the part
+that holds it; its fixed end follows every fixed end's rule.
+
 A mate compiles, at realization, to three things the framework already
-has and invents no fourth (ADR-147):
+has and invents no fourth (ADR-147) -- a rigid mate to the first alone:
 
 1. the moving child's REST PLACEMENT -- `P_owner . F_fixed .
    F_moving^-1` as one rotation then one translation, ordinary
@@ -96,7 +110,8 @@ the same way, and a mate moves no body of the assembly that declares it.
 
 A mate is read off the class, never constructed by a project:
 `declared_mates(cls)[name]` gives its `name`, its two ends `moving` and
-`fixed` as the class body wrote them, and its `freedom` (`Mate`).
+`fixed` as the class body wrote them, and its `freedom` (`Mate`), `None`
+for a rigid mate.
 
 Module scope imports `machinome.motion.ports` and nothing else, as
 `joints` and `couplings` do. The arithmetic is pure Python on 3x3 lists;
@@ -125,6 +140,26 @@ def _is_frame(value):
 
 def _is_mate(value):
     return getattr(type(value), 'mate_kind', None) == 'mate'
+
+
+def _is_rigid(value):
+    """Whether `value` is a RIGID mate: one that states no freedom, and
+    so owns no coordinate (hold-by-mate)."""
+    return _is_mate(value) and value.freedom is None
+
+
+def _owns_no_coordinate(written):
+    """The one refusal of a rigid mate named where a coordinate is named:
+    a relation's end, a term of a derived coordinate, a wiring source, a
+    path from above, or an assignment on an instance (hold-by-mate,
+    design decision 4)."""
+    return (f"'{written}' is a rigid mate: it states no freedom and owns "
+            f"no coordinate. It holds its child where two frames meet and "
+            f"gives nothing to drive, bind or read as a value, so it is not "
+            f"an end of a relation, a term of a derived coordinate or a "
+            f"wiring source. A mate owns a coordinate when it states a "
+            f"freedom: ...on(<fixed>, Revolute(...)) or "
+            f"...on(<fixed>, Prismatic(...)).")
 
 
 class FrameReadError(AttributeError):
@@ -231,15 +266,18 @@ class Mate(Coordinate):
     """`moving.on(fixed, freedom)`: the declaration, and -- with a
     freedom -- the coordinate it owns on the assembly: rotational for a
     `Revolute` freedom, translational for a `Prismatic` one, in the
-    freedom's unit.
+    freedom's unit. With the freedom left out, `moving.on(fixed)`, it is
+    a RIGID mate, which holds the child where the two frames meet and
+    owns no coordinate.
 
     A mate is read OFF THE CLASS, as `declared_mates(cls)[name]` reports
-    it; reading it as an attribute of an instance gives its coordinate
-    instead (below). A project never constructs one. Its reads:
+    it; reading one that states a freedom as an attribute of an instance
+    gives its coordinate instead (below), and reading a rigid one gives
+    the mate itself. A project never constructs one. Its reads:
 
-    - `name`: the attribute the mate is assigned to, which is also the
-      name of its coordinate on the assembly and of the joint it gives
-      the moving child.
+    - `name`: the attribute the mate is assigned to; for a mate with a
+      freedom it is also the name of its coordinate on the assembly and
+      of the joint it gives the moving child.
     - `moving`: the moving end, a frame reference whose `written` is
       `'<child>.<frame>'` as the class body writes it.
     - `fixed`: the fixed end as the class body writes it -- for a frame
@@ -247,8 +285,8 @@ class Mate(Coordinate):
       `'<child>.<frame>'`; for a frame of the assembly itself, written by
       its bare name, that `Frame` declaration, whose `name` is its
       attribute. `isinstance(mate.fixed, Frame)` tells the two apart.
-    - `freedom`: the `Revolute` or `Prismatic` written in the statement.
-      Its `axis` is `None` when no axis is stated, which only a
+    - `freedom`: the `Revolute` or `Prismatic` written in the statement,
+      or `None` for a rigid mate, which states none. Its `axis` is `None` when no axis is stated, which only a
       `Revolute` freedom may do, the three numbers as written, not
       normalized, when numbers are stated, and the function itself, the
       same object, when a function of the assembly is stated.
@@ -276,7 +314,10 @@ class Mate(Coordinate):
     `drives` and the arithmetic of a derived coordinate treat it as one.
     It owns its port as `coordinate` and `coordinates`, which is what
     makes `declared_ports` report it with no change there and a relation
-    end resolve it.
+    end resolve it. A rigid mate owns none -- `coordinate` is `None` and
+    `coordinates` empty, so `declared_ports` reports nothing for it --
+    and assigning to it on an instance, or naming it as a relation's
+    end, a term, a wiring source or by path, is refused naming it.
     """
 
     mate_kind = 'mate'
@@ -295,9 +336,15 @@ class Mate(Coordinate):
         self.fixed = fixed
         self.freedom = freedom
         self.freedom_in_body = freedom_in_body
-        unit = getattr(freedom, 'unit', None) or 'deg'
-        self.coordinate = _coordinate_kind(freedom)(unit=unit)
-        self.coordinates = {None: self.coordinate}
+        if freedom is None:
+            # A rigid mate owns no coordinate: `declared_ports` then
+            # reports nothing for it (hold-by-mate, design decision 4).
+            self.coordinate = None
+            self.coordinates = {}
+        else:
+            unit = getattr(freedom, 'unit', None) or 'deg'
+            self.coordinate = _coordinate_kind(freedom)(unit=unit)
+            self.coordinates = {None: self.coordinate}
         #: The joint this mate installs on the moving child, once the
         #: assembly's class exists.
         self.joint = None
@@ -319,16 +366,22 @@ class Mate(Coordinate):
                 f"to be free there: rename the mate.")
         self._name = name
         self.owner = owner
+        if self.coordinate is None:
+            return
         self.coordinate.name = name
         self.coordinate.owner = owner
         self.coordinates = {name: self.coordinate}
 
     def __get__(self, instance, owner=None):
-        if instance is None:
+        if instance is None or self.coordinate is None:
             return self
         return self.coordinate.__get__(instance)
 
     def __set__(self, instance, value):
+        if self.coordinate is None:
+            raise AttributeError(
+                f"cannot bind {type(instance).__name__}.{self._name}: "
+                + _owns_no_coordinate(self._name))
         bind(self.coordinate.__get__(instance), value)
 
     def described(self):
@@ -337,6 +390,8 @@ class Mate(Coordinate):
         moving = (self.moving.written if isinstance(self.moving, FrameRef)
                   else getattr(self.moving, 'name', None)
                   or repr(self.moving))
+        if self.freedom is None:
+            return f'{moving}.on({fixed})'
         return f'{moving}.on({fixed}, ...)'
 
     def __repr__(self):
@@ -413,6 +468,13 @@ def declare_mates(cls, name, own):
         placed[id(mate.moving.root)] = mate
     for mate in own:
         _check_freedom(name, mate)
+        if mate.name is None and mate.freedom is None:
+            raise TypeError(
+                f"{_named(name, mate)} is never assigned. A mate is known "
+                f"by its name: declared_mates reports it under that name, "
+                f"and every refusal names it by its name, so a mate that "
+                f"holds a part is named as one that frees it: write "
+                f"<name> = {mate.described()}.")
         if mate.name is None:
             raise TypeError(
                 f"{_named(name, mate)} is never assigned. A mate with a "
@@ -429,7 +491,8 @@ def declare_mates(cls, name, own):
         placed[id(mate.moving.root)] = mate
     for mate in own:
         _check_fixed(cls, name, mate, placed)
-        _check_child_name(name, mate)
+        if mate.freedom is not None:
+            _check_child_name(name, mate)
     for mate in own:
         _install(cls, name, mate)
 
@@ -463,8 +526,9 @@ def _check_still_declared(cls, name, mate):
 
 
 def _check_freedom(name, mate):
-    """The freedom a mate accepts in this version: a fresh `Revolute` or
-    `Prismatic` (slide-by-mate) whose stated `at`, if any, is three
+    """The freedom a mate accepts in this version: none at all, the rigid
+    mate (hold-by-mate), which has nothing to check here; or a fresh
+    `Revolute` or `Prismatic` (slide-by-mate) whose stated `at`, if any, is three
     numbers; whose stated `axis`, if any, is three numbers with a
     direction or one function of the assembly; and whose range is a
     pair independent of any declarer or one function of the assembly
@@ -480,23 +544,18 @@ def _check_freedom(name, mate):
     freedom = mate.freedom
     where = _named(name, mate)
     if freedom is None:
-        raise TypeError(
-            f"{where} states no freedom. The rigid mate -- a child "
-            f"placed by two frames with no freedom at all -- is not "
-            f"provided in this version (deferred, OpenSpec change "
-            f"place-parts-by-mate); a mate's freedom is a Revolute or a "
-            f"Prismatic: ...on(<fixed>, Revolute(range=(lo, hi))) to turn "
-            f"the part, ...on(<fixed>, Prismatic(axis=(x, y, z), "
-            f"range=(lo, hi))) to slide it.")
+        # The rigid mate: nothing to check here (hold-by-mate).
+        return
     if not isinstance(freedom, (Revolute, Prismatic)):
         raise TypeError(
             f"{where} has the freedom {type(freedom).__name__}, which is "
             f"neither a Revolute nor a Prismatic: a mate accepts a "
-            f"Revolute or a Prismatic in this version, and Orbit and Free "
-            f"are not mate freedoms. Write Revolute(range=(lo, hi), "
-            f"unit='deg') to turn the part about a line, or "
-            f"Prismatic(axis=(x, y, z), range=(lo, hi), unit='mm') to "
-            f"slide it along one.")
+            f"Revolute or a Prismatic in this version, or no freedom at "
+            f"all for a part that is held, and Orbit and Free are not "
+            f"mate freedoms. Write Revolute(range=(lo, hi), unit='deg') "
+            f"to turn the part about a line, Prismatic(axis=(x, y, z), "
+            f"range=(lo, hi), unit='mm') to slide it along one, or "
+            f"...on(<fixed>) to hold it.")
     slides = isinstance(freedom, Prismatic)
     if mate.freedom_in_body or freedom.owner is not None:
         declared = (f'on {freedom.owner.__name__}' if freedom.owner
@@ -716,6 +775,13 @@ def _check_moving(cls, name, mate):
     if vars(cls).get(child) is not moving.root:
         owner = next((klass.__name__ for klass in cls.__mro__[1:]
                       if vars(klass).get(child) is moving.root), 'a base')
+        if mate.freedom is None:
+            raise TypeError(
+                f"{where}: its moving end {moving.written} is a child "
+                f"{owner} declares, and {name} inherits it. In this "
+                f"version a mate is stated in the class that declares the "
+                f"child it moves, a rigid mate included; state the mate in "
+                f"{owner}, or redeclare '{child}' in {name}.")
         raise TypeError(
             f"{where}: its moving end {moving.written} is a child "
             f"{owner} declares, and {name} inherits it. A mate gives the "
@@ -755,8 +821,20 @@ def _check_fixed(cls, name, mate, placed):
             f"child against a frame it does not carry.")
     mover = placed.get(id(fixed.root))
     joints = declared_joints(fixed.root.node_class)
+    if mover is not None and mover.freedom is None and not joints:
+        raise TypeError(
+            f"{where}: its fixed end {fixed.written} is on '{child}', which "
+            f"the rigid mate '{mover.name}' places within {name}. A mated "
+            f"child is placed against the fixed child's REST placement, and "
+            f"this version orders no mate before another, so "
+            f"'{mate.moving.root._name}' would not be placed against where "
+            f"'{mover.name}' puts '{child}'. Mate onto a frame of {name} "
+            f"itself, or of a child no mate places; a part that holds its "
+            f"own fasteners declares them in its own class.")
     if mover is not None or joints:
-        because = (f"the mate '{mover.name}' moves it" if mover is not None
+        # A child a rigid mate places moves only by its class's joints.
+        moves = mover is not None and mover.freedom is not None
+        because = (f"the mate '{mover.name}' moves it" if moves
                    else f"its class declares the joint(s) "
                         f"{', '.join(joints)}")
         raise TypeError(
@@ -817,7 +895,9 @@ def _kind_of(value):
 
 def _install(cls, name, mate):
     """Give the moving child's declaration the mate's joint and the
-    wiring that binds it (design decisions 5 and 6).
+    wiring that binds it (design decisions 5 and 6) -- or, for a rigid
+    mate, nothing: the child keeps its declared class, it gets no
+    wiring, and `mate.joint` stays `None` (hold-by-mate, ADR-152).
 
     The joint is of the freedom's kind -- a `Revolute` for a `Revolute`
     freedom, a `Prismatic` for a `Prismatic` one (slide-by-mate) --
@@ -855,8 +935,13 @@ def _install(cls, name, mate):
     from machinome.motion.joints import Prismatic, Revolute
     from machinome.node.declarative import _specialize
 
-    frame = mate.moving.frame
     freedom = mate.freedom
+    if freedom is None:
+        # The rigid mate installs nothing: the child keeps its declared
+        # class and no wiring, and `mate.joint` stays None
+        # (hold-by-mate, design decision 2).
+        return
+    frame = mate.moving.frame
     kind = Prismatic if _slides(freedom) else Revolute
     axis = freedom.axis
     if axis is None and kind is Revolute:
@@ -1134,7 +1219,9 @@ def apply_mates(assembly, phase):
     joint block exactly as a hand-written rest placement does (ADR-066,
     ADR-093). Each carries `_mate_slot`, the mate's index in
     `declared_mates`, and a re-run first drops every operation carrying
-    that mark -- ADR-114's slot-mark rule -- so it never stacks.
+    that mark -- ADR-114's slot-mark rule -- so it never stacks. A rigid
+    mate is placed here exactly as a mate with a freedom is: the
+    placement never reads the freedom.
     """
     from machinome.node.operations import Rotation, Translation
 

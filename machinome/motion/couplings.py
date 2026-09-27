@@ -1240,6 +1240,12 @@ def read_through(node_class, attribute, written):
             return found
         if _coordinate_of(found) is not None:
             return found
+        if getattr(type(found), 'mate_kind', None) == 'mate':
+            # A RIGID mate, which owns no coordinate: a place all the
+            # same, so the path that names it is refused by
+            # `coordinate_ref`, naming the mate, rather than as a
+            # sibling's value (OpenSpec change ``hold-by-mate``).
+            return found
         if _coordinates_of(found) is not None:
             # A joint owning several is a PLACE too: the path steps into
             # it for one of its coordinates, and stopping on it is
@@ -2317,6 +2323,20 @@ def coordinate_ref(value, role='end'):
     from machinome.node.qualified import (DriverDeclaration,
                                            StateDeclaration)
 
+    if (getattr(type(value), 'mate_kind', None) == 'mate'
+            and value.freedom is None):
+        # A rigid mate, named bare in the body that states it: it owns
+        # no coordinate (OpenSpec change ``hold-by-mate``).
+        from machinome.motion.mates import _owns_no_coordinate
+
+        raise TypeError(_owns_no_coordinate(value.name))
+    if (isinstance(value, PathRef)
+            and getattr(type(value.terminal), 'mate_kind', None) == 'mate'
+            and value.terminal.freedom is None):
+        # ... or reached by path from above: `shin.bolted`.
+        from machinome.motion.mates import _owns_no_coordinate
+
+        raise TypeError(_owns_no_coordinate(value.written))
     if isinstance(value, CoordinateRef):
         return value
     if getattr(type(value), 'frame_kind', None) in ('frame', 'reference'):

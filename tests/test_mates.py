@@ -94,6 +94,28 @@ class Holder(AssemblyNode):
     pin = Pin()
 
 
+class HeldServo(Solid2Node):
+    """A bought part with two connectors and no joint: what a rigid mate
+    holds (hold-by-mate). Declared here, beside `Pin`, so a refusal test
+    builds its assembly in its own body; `mate_project/hold.py` carries
+    the same part for the placement tests."""
+
+    ears = Frame(at=(0, -5.5, 0))
+    ear_near = Frame(at=(-14, -5.5, 0))
+
+    def render(self):
+        return cube(2, center=True)
+
+
+class HeldScrew(Solid2Node):
+    """A fastener with one connector under its head."""
+
+    head = Frame()
+
+    def render(self):
+        return cube(1, center=True)
+
+
 ##############################################
 # 4.1 A frame read off a child declaration is a place
 
@@ -331,14 +353,44 @@ class RefusalTest(BaseNodeTest):
 
         self.assertRefused(build, 'Bare', 'part.hinge', 'named after the mate')
 
-    def test_the_rigid_mate_is_deferred(self):
-        def build():
-            class Rigid(AssemblyNode):
-                pin = Frame()
-                part = Pin()
-                fixed = part.hinge.on(pin)
+    # hold-by-mate 2.1: a mate may leave its freedom out. Replaces
+    # `test_the_rigid_mate_is_deferred` and
+    # `test_the_rigid_mate_names_both_freedoms`, which pinned the refusal
+    # this change removes.
+    def test_a_mate_may_leave_its_freedom_out(self):
+        hold = hold_fixtures()
+        Shin = hold.Shin
+        Shin()
 
-        self.assertRefused(build, 'Rigid', 'fixed', 'rigid', 'Revolute')
+        mate = mates_module().declared_mates(Shin)['bolted']
+        self.assertEqual(mate.name, 'bolted')
+        self.assertEqual(mate.moving.written, 'servo.ears')
+        self.assertIs(mate.fixed, Shin.servo_seat)
+        self.assertEqual(mate.fixed.name, 'servo_seat')
+        self.assertIsNone(mate.freedom)
+
+        class Explicit(AssemblyNode):
+            servo_seat = Frame(**hold.SEAT)
+            servo = hold.Servo()
+            bolted = servo.ears.on(servo_seat, None)
+
+        explicit = mates_module().declared_mates(Explicit)['bolted']
+        self.assertIsNone(explicit.freedom)
+        self.assertEqual(explicit.moving.written, 'servo.ears')
+        ours, theirs = Explicit(), Shin()
+        ours.render()
+        theirs.render()
+        self.assertEqual(serialized(ours.servo), serialized(theirs.servo))
+
+    # hold-by-mate 2.2: every mate is named, a rigid one included.
+    def test_a_rigid_mate_has_a_name(self):
+        def build():
+            class Bare(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+                servo.ears.on(servo_seat)
+
+        self.assertRefused(build, 'Bare', 'servo.ears', 'by its name')
 
     # slide-by-mate 2.1: the `Prismatic` case moved out to
     # `test_a_freedom_may_be_a_prismatic`; the refusal names the two
@@ -355,7 +407,7 @@ class RefusalTest(BaseNodeTest):
             with self.subTest(freedom=type(freedom()).__name__):
                 self.assertRefused(build, 'Sliding', 'slide', 'Revolute',
                                    'Prismatic', 'a Revolute or a Prismatic',
-                                   type(freedom()).__name__)
+                                   type(freedom()).__name__, 'no freedom')
 
     # slide-by-mate 2.1: a mate's freedom may be a `Prismatic`.
     def test_a_freedom_may_be_a_prismatic(self):
@@ -372,17 +424,95 @@ class RefusalTest(BaseNodeTest):
                 self.assertIs(mate.moving.frame, slide_fixtures().Finger.origin)
                 self.assertIs(mate.fixed, getattr(Palm, seat))
 
-    # slide-by-mate 3.3: the rigid mate's hint names both kinds (the spec
-    # scenario "A mate needs a revolute or prismatic freedom").
-    def test_the_rigid_mate_names_both_freedoms(self):
-        def build():
-            class Rigid(AssemblyNode):
-                pin = Frame()
-                part = Pin()
-                fixed = part.hinge.on(pin)
+    # hold-by-mate 2.6: a rigid mate is not a coordinate, so it is
+    # refused wherever a coordinate is named.
+    def test_a_rigid_mate_is_not_a_relations_end(self):
+        from machinome.simulation import Driver
 
-        self.assertRefused(build, 'Rigid', 'fixed', 'rigid',
-                           'a Revolute or a Prismatic')
+        def body():
+            class Bodied(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+                travel = RotationalPort()
+                bolted = servo.ears.on(servo_seat)
+                bolted.drives(travel)
+
+        def arithmetic():
+            class Summed(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+                travel = RotationalPort()
+                bolted = servo.ears.on(servo_seat)
+                (bolted + 1).drives(travel)
+
+        def wiring():
+            class Wired(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+                bolted = servo.ears.on(servo_seat)
+                wheel = JointedPin(spin=bolted)
+
+        def path():
+            class HeldShin(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+                bolted = servo.ears.on(servo_seat)
+
+            class Root(AssemblyNode):
+                angle = Driver(default=0.0, unit='deg')
+                shin = HeldShin()
+                angle.drives(shin.bolted)
+
+        for build in (body, arithmetic, wiring, path):
+            with self.subTest(route=build.__name__):
+                self.assertRefused(build, 'bolted', 'owns no coordinate')
+
+    # hold-by-mate 2.7: what stays refused for a rigid mate.
+    def test_a_held_part_is_held_once(self):
+        def rigid():
+            class Twice(AssemblyNode):
+                servo_seat = Frame()
+                other_seat = Frame(at=(0, 0, 9))
+                servo = HeldServo()
+                bolted = servo.ears.on(servo_seat)
+                again = servo.ear_near.on(other_seat)
+
+        def freed():
+            class Twice(AssemblyNode):
+                servo_seat = Frame()
+                other_seat = Frame(at=(0, 0, 9))
+                servo = HeldServo()
+                bolted = servo.ears.on(servo_seat)
+                swing = servo.ear_near.on(other_seat, Revolute())
+
+        for build, second in ((rigid, 'again'), (freed, 'swing')):
+            with self.subTest(second=second):
+                self.assertRefused(build, 'Twice', 'bolted', second, 'loop')
+
+    def test_a_fixed_end_on_a_held_sibling_is_refused(self):
+        def build():
+            class Screwed(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+                screw = HeldScrew()
+                bolted = servo.ears.on(servo_seat)
+                screwed = screw.head.on(servo.ear_near)
+
+        message = self.assertRefused(build, 'screwed', "'servo'", 'bolted')
+        self.assertNotIn('moves it', message)
+
+    def test_a_rigid_mate_on_an_inherited_child_is_refused(self):
+        def build():
+            class Base(AssemblyNode):
+                servo_seat = Frame()
+                servo = HeldServo()
+
+            class Mating(Base):
+                bolted = Base.servo.ears.on(Base.servo_seat)
+
+        message = self.assertRefused(build, 'Mating', 'bolted', "'servo'",
+                                     'Base')
+        self.assertNotIn('joint of its own', message)
 
     # slide-by-mate 2.7: a slide's stated anchor follows the `Revolute`
     # freedom's rules: three numbers, never a function or a parameter.
@@ -1537,6 +1667,45 @@ class ManualTest(BaseNodeTest):
                              'Frames and mates')
         self.assertIn('Prismatic(...))', reference)
 
+    def test_the_joints_page_states_a_held_part(self):
+        """hold-by-mate 4.1: the held-part example -- the section's sixth
+        block, after the gripper, so the first five keep their indices --
+        runs; the servo is placed by one rotation and one translation and
+        the shin gains no port."""
+        section = _section(self.page('concepts', 'joints.rst'),
+                           'Frames and mates')
+        example = _code_blocks(section)[5]
+        namespace = {'__name__': __name__}
+        exec(compile(example, 'joints.rst', 'exec'), namespace)
+
+        Shin = namespace['Shin']
+        shin = Shin()
+        shin.render()
+        operations = serialized(shin.servo)
+        self.assertEqual(operations[0], HELD_ROTATION)
+        for found, expected in zip(numbers(operations[1]),
+                                   (-0.98, -9.5, -7.0)):
+            self.assertAlmostEqual(found, expected, delta=1e-9)
+        self.assertEqual(declared_ports(Shin), {})
+        self.assertIs(type(shin.servo), namespace['Servo'])
+        self.assertIsNone(
+            mates_module().declared_mates(Shin)['bolted'].freedom)
+        text = ' '.join(section.split())
+        for fragment in ('may leave its freedom out', 'connector onto '
+                         'connector', 'no joint and no coordinate',
+                         'the class of the part that holds it',
+                         '``freedom`` is ``None``', 'one rotation where',
+                         'a fixed end on a child that can move or that '
+                         'another mate places'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, text)
+        self.assertNotIn('a mate with no freedom at all', text)
+
+        reference = _section(self.page('reference', 'api.rst'),
+                             'Frames and mates')
+        self.assertIn('``<child>.<frame>.on(<frame>)``',
+                      ' '.join(reference.split()))
+
     def test_the_reference_lists_frames_and_mates(self):
         api = self.page('reference', 'api.rst')
 
@@ -2395,3 +2564,208 @@ class SlidingTwinTest(BaseNodeTest):
         self.assertEqual(mate.coordinate.unit, 'deg')
         self.assertIs(mate.joint.axis, fixtures().MatedForearm.hinge.z)
         self.assertIs(mate.joint.at, fixtures().MatedForearm.hinge.at)
+
+
+##############################################
+# hold-by-mate: a mate with no freedom holds a child where two frames
+# meet. The fixtures are a quadruped's left knee servo held in its shin
+# (`mate_project/hold.py`), every one held to a hand-placed twin.
+
+def hold_fixtures():
+    """`tests/mate_project/hold.py`, imported where a test needs it."""
+    from .mate_project import hold
+
+    return hold
+
+
+HELD_ROTATION = ['r', '180', [0.7071067811865476, 0, 0.7071067811865476]]
+
+
+class HeldPartTest(BaseNodeTest):
+    """2.3, 2.4, 2.6 and 2.7: what a rigid mate compiles to, and what it
+    is not."""
+
+    # 2.3 The rest placement.
+    def test_the_servo_is_held_at_its_measured_seat(self):
+        shin = hold_fixtures().Shin()
+        shin.render()
+
+        operations = serialized(shin.servo)
+        self.assertEqual([operation[0] for operation in operations],
+                         ['r', 't'])
+        self.assertEqual(operations[0], HELD_ROTATION)
+        for found, expected in zip(numbers(operations[1]),
+                                   (-0.98, -9.5, -7.0)):
+            self.assertAlmostEqual(found, expected, delta=1e-9)
+
+    # 2.4 Nothing on the child, nothing on the assembly.
+    def test_the_held_servo_is_its_declared_class(self):
+        hold = hold_fixtures()
+        shin = hold.Shin()
+
+        self.assertIs(type(shin.servo), hold.Servo)
+        self.assertEqual(declared_joints(type(shin.servo)),
+                         declared_joints(hold.Servo))
+        self.assertEqual(shin.servo.uniq_id, hold.Servo().uniq_id)
+
+    def test_a_rigid_mate_installs_no_joint_and_no_wiring(self):
+        hold = hold_fixtures()
+        mate = mates_module().declared_mates(hold.Shin)['bolted']
+
+        self.assertIsNone(mate.joint)
+        self.assertEqual(hold.Shin.servo.wiring, {})
+        self.assertIs(hold.Shin.servo.node_class, hold.Servo)
+
+    def test_a_rigid_mate_is_not_a_port(self):
+        hold = hold_fixtures()
+
+        self.assertEqual(declared_ports(hold.Shin), {})
+        self.assertEqual(list(declared_ports(hold.Leg)), ['knee'])
+
+    def test_a_rigid_mate_may_share_a_name_with_the_childs_attribute(self):
+        hold = hold_fixtures()
+
+        class Eared(AssemblyNode):
+            servo_seat = Frame(**hold.SEAT)
+            servo = hold.Servo()
+            ears = servo.ears.on(servo_seat)
+
+        eared = Eared()
+        eared.render()
+        self.assertEqual(serialized(eared.servo)[0], HELD_ROTATION)
+        self.assertIs(type(eared.servo), hold.Servo)
+
+    # 2.5 A held part keeps its own joints inside the placement.
+    def test_a_held_part_keeps_its_own_joints_inside_the_placement(self):
+        shin = hold_fixtures().OutputShin()
+        shin.render()
+        shin.servo.output = 20
+
+        operations = serialized(shin.servo)
+        self.assertEqual([operation[0] for operation in operations],
+                         ['r', 'r', 't'])
+        self.assertEqual(operations[0], ['r', '20', [0, 1, 0]])
+        self.assertEqual(operations[1], HELD_ROTATION)
+        for found, expected in zip(numbers(operations[2]),
+                                   (-0.98, -9.5, -7.0)):
+            self.assertAlmostEqual(found, expected, delta=1e-9)
+
+    # 2.6 A rigid mate is read, not bound.
+    def test_a_rigid_mate_is_read_not_bound(self):
+        hold = hold_fixtures()
+        shin = hold.Shin()
+
+        self.assertIs(shin.bolted,
+                      mates_module().declared_mates(hold.Shin)['bolted'])
+        with self.assertRaises(AttributeError) as raised:
+            shin.bolted = 10
+        message = str(raised.exception)
+        for fragment in ('Shin', 'bolted', 'owns no coordinate'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+
+    # 2.7 A held part is not placed by hand.
+    def test_a_held_part_is_not_placed_by_hand(self):
+        Shin = hold_fixtures().Shin
+
+        class Handed(Shin):
+            def render(self):
+                self.servo.translate([0, 0, 1])
+
+        with self.assertRaises(ValueError) as raised:
+            Handed().render()
+
+        message = str(raised.exception)
+        for fragment in ('Handed', 'servo', 'bolted'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+
+
+class HeldTwinTest(BaseNodeTest):
+    """2.3, 2.5 and 2.8: the held servo against its hand-placed twin, and
+    nothing else moves."""
+
+    def assertSameLeaves(self, mated, hand, expected):
+        ours = dict(leaves_of(mated))
+        theirs = dict(leaves_of(hand))
+        self.assertEqual(sorted(ours), expected)
+        self.assertEqual(sorted(theirs), sorted(ours))
+        for path in ours:
+            self.assertTrue((abs(ours[path] - theirs[path]) < 1e-9).all(),
+                            path)
+
+    def rendered(self, cls):
+        node = cls()
+        node.render()
+        return node
+
+    # 2.3 The rest placement against the twin.
+    def test_the_held_servo_reproduces_its_twin(self):
+        hold = hold_fixtures()
+        for mated, hand, leaves in (
+                (hold.Shin, hold.TwinShin, ['/servo']),
+                (hold.PlateShin, hold.TwinPlateShin, ['/plate', '/servo'])):
+            with self.subTest(shin=mated.__name__):
+                self.assertSameLeaves(self.rendered(mated),
+                                      self.rendered(hand), leaves)
+
+    def test_a_held_servo_is_held_on_a_still_siblings_frame(self):
+        shin = self.rendered(hold_fixtures().PlateShin)
+
+        self.assertEqual(serialized(shin.plate), [['t', ['0', '0', '3']]])
+        operations = serialized(shin.servo)
+        self.assertEqual(operations[0], HELD_ROTATION)
+        for found, expected in zip(numbers(operations[1]),
+                                   (-0.98, -9.5, -4.0)):
+            self.assertAlmostEqual(found, expected, delta=1e-9)
+
+    # 2.5 The held part rides, and keeps what it carries.
+    def test_a_held_part_rides_with_the_part_that_holds_it(self):
+        from machinome.simulation.enumeration import bind_declared_defaults
+
+        hold = hold_fixtures()
+        for value in (-90, -30, 0, 30, 90, 'default'):
+            with self.subTest(angle=value):
+                nodes = []
+                for cls in (hold.Robot, hold.TwinRobot):
+                    node = cls()
+                    if value == 'default':
+                        bind_declared_defaults(node)
+                    else:
+                        node.set_state(angle=value)
+                    node.render()
+                    nodes.append(node)
+                self.assertSameLeaves(*nodes, ['/leg/shin/servo'])
+
+    def test_a_held_assembly_keeps_its_own_mates(self):
+        hold = hold_fixtures()
+        mated = self.rendered(hold.BoltedShin)
+        hand = self.rendered(hold.TwinBoltedShin)
+
+        self.assertSameLeaves(mated, hand,
+                              ['/servo/screw', '/servo/servo'])
+        self.assertIs(type(mated.servo.screw), hold.Screw)
+
+    # 2.8 Nothing else moves.
+    def test_a_held_machine_needs_no_newer_consumer(self):
+        hold = hold_fixtures()
+        mated = published(hold.Robot())
+        hand = published(hold.TwinRobot())
+
+        self.assertEqual(mated['version'], hand['version'])
+        self.assertEqual(set(mated), set(hand))
+        self.assertEqual(mated['drivers'], hand['drivers'])
+
+        ours = entry_of(mated, 'leg', 'shin', 'servo')['operations']
+        theirs = entry_of(hand, 'leg', 'shin', 'servo')['operations']
+        self.assertEqual([operation[0] for operation in ours], ['r', 't'])
+        self.assertEqual([operation[0] for operation in theirs],
+                         ['r', 'r', 't'])
+        self.assertEqual(ours[0], HELD_ROTATION)
+        self.assertTrue((abs(matrix_of(ours) - matrix_of(theirs))
+                         < 1e-9).all())
+
+        fields = {frozenset(entry) for entry in walk(hand['root'])}
+        for entry in walk(mated['root']):
+            with self.subTest(node=entry['name']):
+                self.assertIn(frozenset(entry), fields)

@@ -297,6 +297,19 @@ class ChildDeclaration:
         # bound to no name anywhere is a fresh site declaration.
         self.site_joints = {}
         for key, value in kwargs.items():
+            if (getattr(type(value), 'mate_kind', None) == 'mate'
+                    and value.freedom is None):
+                # A RIGID mate handed to a child as a wiring: it owns no
+                # coordinate to hand (OpenSpec change ``hold-by-mate``).
+                from machinome.motion.mates import _owns_no_coordinate
+
+                body = executing_body()
+                declaring = ((body or {}).get('__qualname__')
+                             or '<class>')
+                raise TypeError(
+                    f"{declaring}: {node_class.__name__}({key}="
+                    f"{value.name}) hands a mate to a child as a wiring, "
+                    f"and " + _owns_no_coordinate(value.name))
             if (_is_joint(value) and value.owner is None
                     and not _in_current_body(value)):
                 from machinome.motion.joints import (Revolute,

@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-26
+**Amended by:** [ADR-152: A Mate May Leave Its Freedom Out](ADR-152-a-mate-may-leave-its-freedom-out.md) — the rigid mate is no longer refused: a mate may leave its freedom out, and the refusal of `Orbit` and `Free` names the three accepted forms
 **Amends:** [ADR-147](ADR-147-a-mate-compiles-to-a-rest-placement-a-joint-and-a-coordinate.md) ("The freedom is a fresh `Revolute`"; "A `Mate` is a `Coordinate` owning one `RotationalPort`"; "`Prismatic`, `Orbit`, `Free` and no freedom at all (the rigid mate) are refused naming this version's scope"; the deferral of `Prismatic` freedoms in its Consequences)
 **Extends:** [ADR-148](ADR-148-a-mates-freedom-may-state-its-own-line.md) (a freedom's stated line, read in the moving child's own frame, now also for a slide, save that a `Prismatic` freedom always states its axis), [ADR-150](ADR-150-a-mates-freedom-may-be-a-function-of-the-assembly-that-states-it.md) (a freedom's `axis` and `range` as functions of the assembly, unchanged for the new kind)
 **Cites:** [ADR-112](ADR-112-a-control-is-a-declaration-on-the-model-and-the-gesture-comes-from-the-tree.md) (a control publishes the joint's anchor as its gesture's origin, which is what a slide's `at` still means)

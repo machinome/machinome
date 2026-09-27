@@ -3904,7 +3904,11 @@ pilot's triage.
   must be still (a sibling does not carry a sibling, `mates` spec).
   Whether a fixed end on a moving sibling should follow it, or whether a
   part's fasteners belong in its own class, is a design question for the
-  next project that fastens a moving part. **Recorded.**
+  next project that fastens a moving part. **Recorded.** **Answered by
+  AlbertPro's shape (hold-by-mate, ADR-152), 2026-09-27:** the fastener
+  is declared in the class of the part it fastens, held there by a rigid
+  mate, and rides with it; no rule change -- a fixed end on a moving
+  sibling stays refused.
 
 # OpenSCAD parameter values are echoed by hand (2026-09-26, the vet survey)
 
@@ -4154,7 +4158,13 @@ before the knee angle does.
   whether a part's fasteners belong in its own class") gets its answer
   from this project: the fasteners belong in the class of the part they
   fasten, held by a rigid mate, and a fixed end on a moving sibling is
-  not needed. **Cycle cut: `hold-by-mate`.**
+  not needed. **Cycle cut: `hold-by-mate`.** **Fixed, 2026-09-27, by
+  `hold-by-mate` (ADR-152):** a mate may leave its freedom out,
+  `servo.ears.on(servo_seat)`, placing the child from the two frames and
+  giving it no joint and no coordinate; every mate is named, so the
+  statement is assigned (`bolted = servo.ears.on(trunk.bay_fl)`), not
+  bare as written above. Pending AlbertPro's follow-up (the change's
+  tasks §6).
 
 ## Findings from the OpenMANIPULATOR-X project's migration onto mates (2026-09-26)
 
