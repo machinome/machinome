@@ -663,7 +663,7 @@ sideways driver read) plus one: never the bounded coordinate itself.
 Reads resolve against the joint's DECLARER: the node for a class-body
 joint, the declaring parent for a site joint (`key = Key(insert=...)`
 above reads `Plug`'s own `turn`), or the declaring assembly for a mate's
-generated joint. A moving mate read names its generated child's coordinate,
+generated joint. A moving mate read names its generated or referenced child's coordinate,
 not a second retained value on the assembly; naming both that mate and
 its child joint cannot evade the self-read or duplicate-read refusals.
 Declare the joint in the body whose subtree holds everything it reads.
@@ -699,7 +699,7 @@ values and `Bound.reads` scoped to the assembly stating the constraint.
 Constraints are inherited additively; they are not removable overrides.
 A moving mate is also a target, bare in its declaring body
 (`turn.constrain(range=(0, 90))`) or by a descendant path
-(`drive.turn.constrain(range=(...))`); its generated child joint receives
+(`drive.turn.constrain(range=(...))`); its generated or referenced child joint receives
 the stop. A rigid mate, port, driver, grouped or multi-coordinate target,
 ordinary own joint, wholly unbounded range, or empty numeric intersection
 is refused. Inherited paths are rechecked, never silently dropped.
@@ -778,7 +778,7 @@ a body whose rest placement carries a value the framework cannot evaluate
 numerically refuses a SITE-declared joint by name — where a class-declared
 one on the same body would not.
 
-**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151, ADR-152, ADR-153):** a joint whose line does not pass through the
+**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151, ADR-152, ADR-153, ADR-154):** a joint whose line does not pass through the
 moving part's origin is otherwise stated twice — a rest placement the
 parent's `render()` computes by hand and a joint the child restates in its
 own frame, kept in agreement by shared constants. A **frame** is the part's
@@ -834,8 +834,9 @@ The **fixed end** is a frame of the assembly itself, by its bare name, or
 `<child>.<frame>` of another directly declared child that does not move (a
 sibling does not carry a sibling, so a fixed end on a child with any joint
 is refused). The **moving end** is a frame of a directly declared child.
-The **freedom** is a fresh `Revolute` or a fresh `Prismatic`, or left out for a
-part that is simply held (below). A design's connectors are attachment
+The **freedom** is a fresh `Revolute` or a fresh `Prismatic`, a declaration
+path to that moving child's existing scalar joint (below), or left out for a
+part that is simply held. For a FRESH freedom, a design's connectors are attachment
 frames and the line a part turns about need not be the connector's `z`, so
 the freedom may state its own line, `Revolute(axis=(0,0,1), at=(0,0,0))`:
 `axis` is three numbers or one function of one argument, `at` three numbers
@@ -877,6 +878,50 @@ class Mount(AssemblyNode):
 A mated child whose freedom states a function is built by its assembly
 and by nothing else: built on its own, it is refused by name.
 
+**Reference an existing child joint** when the child already owns the motion:
+
+```python
+from machinome.node import AssemblyNode, Frame
+from machinome.motion.joints import Revolute
+
+class Dial(AssemblyNode):
+    axle = Frame()
+    turn = Revolute(axis=(0, 0, 1))
+
+class Register(AssemblyNode):
+    ones_seat = Frame(at=(10, 0, 0))
+    tens_seat = Frame(at=(20, 0, 0))
+    ones = Dial()
+    tens = Dial()
+    ones_mount = ones.axle.on(ones_seat, ones.turn)
+    tens_mount = tens.axle.on(tens_seat, tens.turn)
+```
+
+The frames place each child; `ones_mount` references the SAME `ones.turn`
+joint, not a new joint named after the mount. Its name, declaration order,
+axis, anchor, range, unit, defaults, bindings and retained state stay intact.
+A class-body joint still resolves its arguments and Bound reads against the
+child; a site joint still resolves them against its declaring parent. The
+mate neither reinterprets those arguments as a fresh freedom nor changes a
+site joint's parent-space line. No extra assembly port, identity binding or
+bank entry is created; `declared_ports(Register)` omits these handles.
+
+On an instance, `register.ones_mount` is the original child's bound coordinate;
+reads and writes use its existing binding path, including the usual refusal
+of direct writes while a run owns the state. In declarations, the handle can
+be used in relations, derived expressions, wiring, Bound reads, constraints
+and `coordinate=` controls; it resolves to the same end as `ones.turn`.
+Using both spellings cannot evade duplicate-end, writer or self-read checks.
+An ordinary retained law may still read its own original joint; a Bound
+may not. Existing child bindings remain valid and are not replaced by an
+exclusive assembly-port binding as they are for a fresh freedom.
+
+This form requires a declaration path to a scalar `Revolute` or `Prismatic`
+on the exact directly declared moving child, including a site-declared joint.
+Not a string, bare `Dial.turn`, whole child, port, driver, derived coordinate,
+another child or a deeper path; not `Orbit`, `Free`, a list or a repeat.
+It does not relax the fixed-end, one-mate-per-child or inheritance rules.
+
 A **rigid mate** leaves the freedom out, `bolted = servo.ears.on(servo_seat)`,
 for a bought part that is simply held: it places the child exactly as any
 mate does — connector onto connector, one rotation then one translation
@@ -916,19 +961,21 @@ Refused by name at class creation: a mate on a non-assembly; a moving end
 that is the assembly's own frame; either end through more than one child, a
 list or a `.repeat()`; a fixed end on a child that can move; a second mate
 on one child (a loop); a mate never assigned a name; a freedom that is not
-a fresh `Revolute` or `Prismatic` (an `Orbit`, a `Free`), or a `Prismatic`
+a fresh `Revolute` or `Prismatic` or the supported child-joint reference
+(an `Orbit`, a `Free`), or a fresh `Prismatic`
 freedom without an axis (its own constructor refuses it, before any mate),
-or whose stated `axis` is neither three numbers nor a
+or a fresh freedom whose stated `axis` is neither three numbers nor a
 function, or whose stated `at` is not three numbers (a function `at`
 included), or whose stated `axis` has no length, or whose range holds a
 parameter; invalid Bound read scope, self reads or duplicate reads;
 a bare rigid mate never assigned a
-name; a mate name the moving child already answers to.
+name; for a fresh freedom, a mate name the moving child already answers to.
 Refused when the assembly is built: a freedom's function that raises, or
 returns what the same argument written in numbers would refuse, including
 invalid reads in a returned Bound. Refused
 when the assembly renders: a `render()` that also places a mated child. A
-mate publishes nothing new — operations and a binding, at the version the
+mate publishes nothing new — existing operations and, for a fresh freedom,
+a binding, at the version the
 same machine without mates declares — and the viewer draws no connector
 yet.
 
@@ -943,9 +990,12 @@ on anything that is not a realized node, and on a read before the node's
 frames resolve (from `check()`, or from a joint or frame callable). A mate is
 read OFF THE CLASS: `declared_mates(cls)[name]` has `name`, `moving.written`
 (`'<child>.<frame>'`), `fixed` (a reference with `.written`, or the
-assembly's own `Frame` with `.name`) and `freedom` (`axis` or `None`; `at`
+assembly's own `Frame` with `.name`) and `freedom`. For a referenced joint,
+`freedom` is the original declaration path, with `.written` such as
+`'ones.turn'`; for a rigid mate it is `None`. For a fresh freedom it holds
+`axis` or `None`; `at`
 only together with `anchor_written`, else the anchor is the moving frame's
-origin; `range`; `unit`). The line a mate turns about: `freedom.axis`, else
+origin; `range`; `unit`. The line a fresh-freedom mate turns about: `freedom.axis`, else
 the moving frame's resolved `z`; through `freedom.at` when `anchor_written`,
 else the frame's resolved `at`. `described()` is not a contract.
 
@@ -1248,7 +1298,7 @@ controls = {
 `coordinate=` names a JOINT declaration or a moving MATE, not a
 coordinate-id string or a `Free` component. A mate may be bare in the
 declaring body or reached through child declarations; selection resolves
-to its existing generated child joint and the body that joint poses.
+to its generated or referenced child joint and the body that joint poses.
 For example, `Turn(crank.handle, rotation, coordinate=turn)` selects the
 assembly's `turn = crank.spindle.on(seat, Revolute(...))` mate even when
 the crank also has a lift joint. A rigid mate is refused.
