@@ -8,7 +8,7 @@ Three version numbers
 This release declares:
 
 * **Package** |package-version| — the Python distribution and its bundled
-  widget, released with Machinome 0.7.0 and numbered with it. The widget is
+  widget, released with Machinome 0.7.1 and numbered with it. The widget is
   not published on npm; it ships inside the Python distribution.
 * **Viewer API** |viewer-api| — the browser-host interface/capabilities.
 * **Document versions** |document-versions| — model schemas this bundle reads.

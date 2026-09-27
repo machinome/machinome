@@ -29,7 +29,7 @@ def test_docs_contains_no_development_records():
 
 
 def test_the_manual_states_the_release():
-    """0.7.0 released with Machinome 0.7.0: nothing reader-facing says otherwise."""
+    """0.7.1 released with Machinome 0.7.1: nothing reader-facing says otherwise."""
     pages = sorted((ROOT / 'docs').rglob('*.rst'))
     assert pages
     for page in pages + [ROOT / 'README.md']:
@@ -38,21 +38,21 @@ def test_the_manual_states_the_release():
         assert 'not yet published' not in text.lower(), page
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     sections = re.split(r'^## ', changelog, flags=re.M)
-    # 0.7.0 ships the current source: no pending section sits above it.
+    # 0.7.1 ships the current source: no pending section sits above it.
     release_sections = sections[1:]
     assert not release_sections[0].startswith('Unreleased'), release_sections[0][:40]
     current = ' '.join(release_sections[0].split())
-    assert current.startswith('0.7.0 — 23 September 2026'), current[:40]
+    assert current.startswith('0.7.1 — 27 September 2026'), current[:40]
     assert 'unreleased' not in current.lower()
-    assert 'Machinome 0.7.0' in current
+    assert 'Machinome 0.7.1' in current
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     versions = widget['machinomeDocumentVersions']
     assert f"viewer API {widget['machinomeViewerApi']}" in current
     assert f'document versions {versions[0]} through {versions[-1]}' in current
     assert 'released-viewer-api' not in (ROOT / 'docs/conf.py').read_text()
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
-    assert project['version'] == '0.7.0'
-    assert (ROOT / 'README.md').read_text().count('0.7.0') >= 1
+    assert project['version'] == '0.7.1'
+    assert (ROOT / 'README.md').read_text().count('0.7.1') >= 1
 
 
 def test_package_points_readers_to_manual():

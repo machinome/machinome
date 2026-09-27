@@ -3,6 +3,16 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## 0.7.1 — 27 September 2026
+
+Released with Machinome 0.7.1 and numbered with it. The viewer is the
+published 0.7.0 renumbered: nothing in the widget, the server or the
+capture changes, it still declares viewer API 27 and reads document
+versions 1 through 13, and `pip install "machinome[viewer]"` installs the
+pair. Machinome 0.7.1's frames and mates compile to the rest placements,
+joints and coordinates the document already carries, so a 0.7.0 viewer
+reads a 0.7.1 export too.
+
 ## 0.7.0 — 23 September 2026
 
 The first published release of Machinome Viewer, released with Machinome

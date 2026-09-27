@@ -12,7 +12,7 @@ exports, custom embeds and headless snapshots.
 [Embedding](https://machinome-viewer.readthedocs.io/en/latest/embedding.html) ·
 [API and CLI reference](https://machinome-viewer.readthedocs.io/en/latest/reference/index.html)
 
-Version **0.7.0** releases with Machinome 0.7.0 and is numbered with it. It
+Version **0.7.1** releases with Machinome 0.7.1 and is numbered with it. It
 declares viewer API **27** and reads document versions **1–13**. The widget is
 not published on npm; it ships inside the Python distribution.
 

@@ -54,3 +54,15 @@ full-screen button, whose inline `display` beat the manual's own hide rule
 that, and the bench proves the documented rule in a real browser. The
 "pre-existing environmental flake" the `go-fullscreen` record describes was
 this button: its hide rule never applied.
+
+27 September 2026: released as **0.7.1** with Machinome 0.7.1 (change
+`release-0-7-1`). The 0.7.0 distributions were uploaded to PyPI on
+26 September from the files built at `1e67c83` (the sha256 digests in
+`dist/0.7.0-2026-09-25/` match the index); the GitHub `v0.7.0` tag still
+points at `0761145`, two commits short of what was published. 0.7.1
+renumbers that same source: the package, the widget and the banner say
+0.7.1, API 27 and document versions 1–13 do not move, and the changelog
+says so. The framework's 0.7.1 changes the document not at all, so the
+pairing is by number only. Distributions are built from the primary
+checkout with `scripts/check-dist` after integration; tagging, pushing
+and uploading remain the maintainer's.
