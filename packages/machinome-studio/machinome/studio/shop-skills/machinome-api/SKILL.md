@@ -657,13 +657,17 @@ lower bound captures it at full insertion while the plug is turned. A
 then to each read in the order `reads` states them, and returns a number
 or an expression in `machinome.math`'s vocabulary. Reads are named as a
 relation's ends are — a joint or port the class body owns, a path through
-child declarations, a driver of the class — and are refused at class
+child declarations, a driver of the class, or a moving mate — and are refused at class
 definition by the same rules (no list-held child, no `.repeat()`, no
 sideways driver read) plus one: never the bounded coordinate itself.
 Reads resolve against the joint's DECLARER: the node for a class-body
 joint, the declaring parent for a site joint (`key = Key(insert=...)`
-above reads `Plug`'s own `turn`), so declare the joint in the body whose
-subtree holds everything it reads. A `Bound` that returns a plain number
+above reads `Plug`'s own `turn`), or the declaring assembly for a mate's
+generated joint. A moving mate read names its generated child's coordinate,
+not a second retained value on the assembly; naming both that mate and
+its child joint cannot evade the self-read or duplicate-read refusals.
+Declare the joint in the body whose subtree holds everything it reads.
+A `Bound` that returns a plain number
 or never uses a read it declares is refused at simulation construction,
 and so is a read of a plain port or derived coordinate — a bound reads
 the state; read the joint the port follows. A callable INSIDE the pair
@@ -686,6 +690,19 @@ CLOCKED root a range is a stop that clips the request's path before any
 event is located (see "Clocked simulations"). The driver's
 own range remains presentation metadata under every root (see "Running
 simulations").
+
+**An assembly may add a stop to an existing descendant joint:**
+`child.turn.constrain(range=(lo, hi))` in its class body intersects that
+joint's original range without replacing its axis, anchor, unit, order or
+coordinate. Each side uses the range vocabulary above, with structural
+values and `Bound.reads` scoped to the assembly stating the constraint.
+Constraints are inherited additively; they are not removable overrides.
+A moving mate is also a target, bare in its declaring body
+(`turn.constrain(range=(0, 90))`) or by a descendant path
+(`drive.turn.constrain(range=(...))`); its generated child joint receives
+the stop. A rigid mate, port, driver, grouped or multi-coordinate target,
+ordinary own joint, wholly unbounded range, or empty numeric intersection
+is refused. Inherited paths are rechecked, never silently dropped.
 
 **A joint may be declared where a child is placed (ADR-098):** a shared
 catalogue class that carries no joint of its own — a bought bearing, a
@@ -761,7 +778,7 @@ a body whose rest placement carries a value the framework cannot evaluate
 numerically refuses a SITE-declared joint by name — where a class-declared
 one on the same body would not.
 
-**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151, ADR-152):** a joint whose line does not pass through the
+**Frames and mates (ADR-147, ADR-148, ADR-150, ADR-151, ADR-152, ADR-153):** a joint whose line does not pass through the
 moving part's origin is otherwise stated twice — a rest placement the
 parent's `render()` computes by hand and a joint the child restates in its
 own frame, kept in agreement by shared constants. A **frame** is the part's
@@ -826,9 +843,9 @@ the freedom may state its own line, `Revolute(axis=(0,0,1), at=(0,0,0))`:
 MOVING part's own frame, each left out taking the moving frame's `z` or
 origin; `at=(0,0,0)` written is the part's origin, not the frame's; the
 frames still fix the rest placement and the zero, the freedom only the line
-(ADR-148). Its range is a pair of numbers, `None` or functions of the
-coordinate's own value, or one function of one argument returning such a
-pair. A function on the freedom is called ONCE, with the realized ASSEMBLY
+(ADR-148). Its range is a pair whose sides are numbers, `None`, functions of
+the coordinate's own value, or `Bound(expression, reads=(...))`, or one
+function of one argument returning such a pair. A function on the freedom is called ONCE, with the realized ASSEMBLY
 that states the mate — the node whose class body wrote it, never the
 moving part — as the assembly builds that child, in the state a
 site-declared joint's callable sees (parameters resolved, `check()` run,
@@ -836,6 +853,13 @@ earlier children built, nothing rendered); its result is taken exactly as
 the numbers would be and refused, naming the assembly, the mate and the
 argument, when it is not; the class reads return the function as written,
 and no read gives the numbers it returned for a built assembly (ADR-150).
+For a `Bound`, the implicit first argument is the generated joint's own
+coordinate and its reads resolve against that ASSEMBLY, not the child.
+This applies to written Bounds and Bounds returned by the whole-range
+function. Read values are delayed until the complete tree exists, so a
+later sibling can be read. A moving mate may itself be a read; a rigid
+mate has no coordinate and is refused. Geometry remains in the moving
+child's frame: assembly-scoped reads do not change its axis or anchor.
 So a handed design states one mate for both sides, beside a frame that is
 a function of the same node:
 
@@ -897,10 +921,12 @@ freedom without an axis (its own constructor refuses it, before any mate),
 or whose stated `axis` is neither three numbers nor a
 function, or whose stated `at` is not three numbers (a function `at`
 included), or whose stated `axis` has no length, or whose range holds a
-parameter or reads other coordinates; a bare rigid mate never assigned a
+parameter; invalid Bound read scope, self reads or duplicate reads;
+a bare rigid mate never assigned a
 name; a mate name the moving child already answers to.
 Refused when the assembly is built: a freedom's function that raises, or
-returns what the same argument written in numbers would refuse. Refused
+returns what the same argument written in numbers would refuse, including
+invalid reads in a returned Bound. Refused
 when the assembly renders: a `render()` that also places a mated child. A
 mate publishes nothing new — operations and a binding, at the version the
 same machine without mates declares — and the viewer draws no connector
@@ -1219,8 +1245,14 @@ controls = {
 }
 ```
 
-`coordinate=` names a JOINT declaration, not a coordinate-id string or a
-`Free` component. It may select a joint farther up the touched part's
+`coordinate=` names a JOINT declaration or a moving MATE, not a
+coordinate-id string or a `Free` component. A mate may be bare in the
+declaring body or reached through child declarations; selection resolves
+to its existing generated child joint and the body that joint poses.
+For example, `Turn(crank.handle, rotation, coordinate=turn)` selects the
+assembly's `turn = crank.spindle.on(seat, Revolute(...))` mate even when
+the crank also has a lift joint. A rigid mate is refused.
+It may select a joint farther up the touched part's
 ancestry than inference would choose, but never one on another branch.
 The selected joint must own exactly one coordinate that the run banks;
 selection neither creates a joint nor changes the mechanical program.
@@ -1245,7 +1277,7 @@ Every mistake is refused where its facts exist. At class definition: a
 part the declaring class does not hold, a misspelt path segment, a
 coordinate or a driver written where a part belongs, a repeated or
 list-held child, a drag over a driver that class does not declare, a
-`coordinate=` that is not an owned joint declaration/path, and a
+`coordinate=` that is not an owned joint or moving-mate declaration/path, and a
 `controls` value that is not a table of controls. When the tree is
 enumerated or the program compiled: a `Button` naming no declared
 instruction, a part no run-owned coordinate poses, a posing node declaring
