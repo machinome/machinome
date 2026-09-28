@@ -16,7 +16,7 @@
 
 - [x] 3.1 Author one short Leonardo release-film scene using actual Python and
   an expressive feminine voice; measure speech and align typed cues.
-- [ ] 3.2 Run tests, inspect browser/encoded frames, verify onset preservation,
+- [x] 3.2 Run tests, inspect browser/encoded frames, verify onset preservation,
   separate subtitles and media properties; record reproducible evidence.
-- [ ] 3.3 Commit tool and consumer sources separately and hand off MP4/SRT.
+- [x] 3.3 Commit tool and consumer sources separately and hand off MP4/SRT.
   Human listening approval and publication are explicitly not claimed.

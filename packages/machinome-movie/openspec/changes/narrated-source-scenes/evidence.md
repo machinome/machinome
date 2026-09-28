@@ -66,3 +66,12 @@ pixel replay and invalid-camera state preservation. Visually inspected both
 partial and complete code; model framing enlarged after the first preview.
 Final encoded-media checks are recorded in the consumer's verification record.
 This evidence is not human listening approval or publication authorization.
+
+Final consumer MP4: 28 seconds, 1920×1080/30 fps, 840 frames, H.264/AAC with
+no subtitle stream. Same-basename SRT has 10 cues. Video SHA-256:
+`9f93e8f9183dcb442a88d3faba103115f24a8cfef1a23bdeb696260c6ac65057`.
+Actual encoded frames at 1.4, 11.8 and 25 seconds were inspected. The new raw
+onset correlates 0.998907 with decoded AAC; final audio is -15.81 LUFS and
+-1.42 dBTP. Tool rendering revision is `1f7b278`; consumer source is `e61dcbb`.
+See consumer `videos/machinome-source-study/verification.md` for complete bounds,
+hashes and reproduction. The original 177-second release master hash is unchanged.
