@@ -37,7 +37,8 @@ as you edit. The optional browser viewer lets people operate and explore
 the machine, including from an exported static web page.
 
 Machinome is developed empirically from mechanical projects, with
-AI-assisted design and implementation. The
+AI-assisted design and implementation; `AI-USE.md <AI-USE.md>`_ records
+which agents, since when, and how the history marks their work. The
 `Machinome Foundry <https://github.com/machinome-foundry>`_ organisation
 holds simulations of open-source machines built with it, each beside the
 design it simulates; the framework, viewer and mechanics packages live
