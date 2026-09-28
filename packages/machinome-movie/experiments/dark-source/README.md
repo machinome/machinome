@@ -36,3 +36,21 @@ assets. The runner checks static pixels before the final reveal, exact seek
 replay, source text equality, no competing model/captions, layout bounds and
 encoded frame/stream properties. It never generates or purchases new speech.
 Only consider promoting a presentation capability after the pilot reviews it.
+
+The Leonardo syntax study adds optional `emphasis` to this disposable recipe:
+one literal source line, an exact spoken phrase and an ordered list of words.
+Each word's highlight begins at its cached narration character timestamp plus
+the speech offset. Highlights accumulate through the phrase and hold briefly,
+then clear before the closing typing effect. No estimated word timing, source
+rewriting or separate animation competes with the code.
+
+The pilot commissioned this empirical extension after approving the continuous
+Machinome pronunciation. It is not a stable format addition. Unit tests cover
+measured onsets, literal token targeting, invalid/stale inputs and half-open
+boundaries; browser capture checks exact source text and highlight replay.
+
+```sh
+node experiments/dark-source/render.mjs \
+  ../projects/Leonardo/videos/machinome-syntax-study/visual.yaml \
+  ../machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js
+```

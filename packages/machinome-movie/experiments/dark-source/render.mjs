@@ -10,6 +10,7 @@ import hljs from 'highlight.js/lib/core';
 import {loadEpisode,parseSource,contained} from '../../src/episode.mjs';
 import {loadSourceCode} from '../../src/code.mjs';
 import {hash,fileHash,command,json} from '../../src/util.mjs';
+import {resolveEmphasis,activeEmphasis} from './emphasis.mjs';
 
 const recipe=await realpath(resolve(process.argv[2]??''));
 if(!process.argv[2])throw new Error('Pass the project-owned experimental episode.yaml');
@@ -27,7 +28,8 @@ const sources=await loadSourceCode({...parent,paths:{...parent.paths,production:
 // Restore indentation removed by the reusable excerpt loader. These are literal
 // ranges from one file, not a rewritten tutorial; omission markers are editorial.
 const original=s=>s.text.split('\n').map(line=>' '.repeat(s.dedent)+line).join('\n');
-const fixed=original(sources.imports)+'\n\n# …\n\n'+original(sources.architecture)+'\n    # …\n\n';
+const prefix=original(sources.imports)+'\n\n# …\n\n';
+const fixed=prefix+original(sources.architecture)+'\n    # …\n\n';
 const ending=original(sources.ending);
 const {from,to}=r.endingMotion;
 assert.ok(from>=0&&to>from&&to<r.output.durationSeconds);
@@ -37,11 +39,30 @@ let end=0;
 for(const shot of sequence){assert.equal(shot.start,end);assert.ok(shot.end>shot.start);assert.ok(['code','machine'].includes(shot.kind));end=shot.end;}
 assert.equal(end,r.output.durationSeconds);
 const codeShot=sequence.find(s=>s.kind==='code');assert.ok(codeShot&&from>=codeShot.start&&to<codeShot.end);
+let emphasis=[];
+if(r.emphasis){
+  assert.equal(r.emphasis.snippet,'architecture','This empirical edit emphasizes the architecture excerpt');
+  assert.equal(audio.records.length,1);
+  const record=audio.records[0];
+  assert.equal(await fileHash(record.file),record.sha256);
+  const take=JSON.parse(await readFile(record.file+'.json','utf8'));
+  assert.equal(take.sha256,record.sha256);
+  const spoken=Object.entries(parent.audio.replacements??{}).reduce((text,[term,replacement])=>text.replaceAll(term,replacement),r.narration);
+  assert.equal(take.request.text,spoken,'Cached speech differs from current narration');
+  emphasis=resolveEmphasis({...r.emphasis,source:original(sources.architecture),
+    firstLine:sources.architecture.lines[0],alignment:take.alignment,offset:record.offset})
+    .map(cue=>({...cue,start:cue.start+prefix.length,end:cue.end+prefix.length}));
+  for(const cue of emphasis){
+    assert.ok(cue.from>=codeShot.start&&cue.to<from,'Emphasis must finish before the closing reveal');
+    assert.equal(full.slice(cue.start,cue.end),cue.word);
+  }
+  console.log('Narration-synced emphasis: '+JSON.stringify(emphasis));
+}
 const credit=/©|copyright|licen[cs]e|vibecoded|made with|created by|written by/i;
 assert.ok(!credit.test(r.narration+full),'Film content contains a credit marker');
 const build=resolve(base,'_build');await mkdir(build,{recursive:true});
 const html=await readFile(new URL('./stage.html',import.meta.url),'utf8');
-const identity=hash(JSON.stringify({r,sources,html,script:await fileHash(fileURLToPath(import.meta.url))}));
+const identity=hash(JSON.stringify({r,sources,emphasis,html,script:await fileHash(fileURLToPath(import.meta.url)),emphasisScript:await fileHash(fileURLToPath(new URL('./emphasis.mjs',import.meta.url)))}));
 const frames=resolve(build,'frames',identity.slice(0,16));await mkdir(frames,{recursive:true});
 let server,modelPage;
 const modelHashes={};
@@ -91,15 +112,31 @@ try{
     const count=Math.floor(ending.length*Math.max(0,Math.min(1,(t-from)/(to-from))));
     const text=fixed+ending.slice(0,count);
     return {text,html:hljs.highlight(text,{language:'python',ignoreIllegals:true}).value,
-      cursor:t>=from&&t<to};
+      cursor:t>=from&&t<to,emphasis:activeEmphasis(emphasis,t)};
   };
   async function poseCode(t){
     const frame=state(t);
     await page.evaluate(f=>{
       document.querySelector('code').innerHTML=f.html;
       document.querySelector('#cursor').style.visibility=f.cursor?'visible':'hidden';
+      const code=document.querySelector('code');
+      for(const cue of f.emphasis){
+        const walker=document.createTreeWalker(code,NodeFilter.SHOW_TEXT);
+        const range=document.createRange();
+        let offset=0,node,started=false,ended=false;
+        while((node=walker.nextNode())){
+          const next=offset+node.textContent.length;
+          if(!started&&cue.start>=offset&&cue.start<next){range.setStart(node,cue.start-offset);started=true;}
+          if(started&&cue.end>offset&&cue.end<=next){range.setEnd(node,cue.end-offset);ended=true;break;}
+          offset=next;
+        }
+        if(!started||!ended||range.toString()!==cue.word)throw new Error('Highlight does not match literal source');
+        const mark=document.createElement('mark');mark.className='spoken';mark.dataset.word=cue.word;
+        mark.append(range.extractContents());range.insertNode(mark);
+      }
     },frame);
     assert.equal(await page.locator('code').textContent(),frame.text);
+    assert.deepEqual(await page.locator('mark.spoken').allTextContents(),frame.emphasis.map(cue=>cue.word));
     assert.ok(await page.locator('pre').evaluate(el=>el.scrollWidth<=el.clientWidth&&el.scrollHeight<=el.clientHeight),'Code overflows');
     assert.equal(await page.locator('canvas,video,#caption').count(),0,'Code-only shot must have no competing animation or captions');
     assert.equal(errors.length,0,errors.join('\n'));checked++;
@@ -128,6 +165,16 @@ try{
   await poseCode((from+to)/2);const typing=await page.screenshot();
   await poseCode(to+.5);await poseCode((from+to)/2);assert.ok(typing.equals(await page.screenshot()),'Typing must replay exactly');
   const samples=[['opening',0],['code',codeShot.start+.5],['ending',(from+to)/2],['complete',to+.5],['closing',r.output.durationSeconds-1]];
+  for(let i=0;i<emphasis.length;i++){
+    const cue=emphasis[i],next=emphasis[i+1]?.from??cue.wordEnd;
+    const time=cue.from+(next-cue.from)/2;
+    samples.push(['highlight-'+cue.word,time]);
+    await poseCode(cue.from-1e-5);assert.equal(await page.locator(`mark[data-word="${cue.word}"]`).count(),0);
+    await poseCode(cue.from);assert.equal(await page.locator(`mark[data-word="${cue.word}"]`).count(),1);
+    const focused=await page.screenshot();
+    await poseCode(cue.to);assert.equal(await page.locator('mark.spoken').count(),0);
+    await poseCode(cue.from);assert.ok(focused.equals(await page.screenshot()),'Emphasis must replay exactly');
+  }
   for(const [name,time] of samples){
     const active=await pose(time);await active.screenshot({path:resolve(build,name+'.png')});
   }
@@ -160,9 +207,9 @@ try{
   const video=probe.streams.find(s=>s.codec_type==='video');
   assert.equal(Number(video.nb_read_frames),count);assert.equal(video.width,r.output.width);assert.equal(video.height,r.output.height);
   await json(resolve(build,'experiment-manifest.json'),{status:'visual experiment, not a ratified format',recipe:r,identity,sources,sequence,modelHashes,
-    omittedRanges:[[8,195],[207,248]],sourceText:full,audio:{reusedFrom:mix,sha256:audio.mixSha256,records:audio.records},
+    omittedRanges:[[sources.imports.lines[1]+1,sources.architecture.lines[0]-1],[sources.architecture.lines[1]+1,sources.ending.lines[0]-1]],sourceText:full,emphasis,audio:{reusedFrom:mix,sha256:audio.mixSha256,records:audio.records},
     output,sha256:await fileHash(output),subtitles:{file:srt,sha256:await fileHash(srt),burnedIn:false},probe,
-    browser:browser.version(),checks:{staticReadingHold:true,pixelReplay:true,exclusiveCodeAndMachine:true,machineMotionChecked:Boolean(modelPage),noBurnedCaptions:true,poses:checked,uniqueFrames:captured}});
+    browser:browser.version(),checks:{staticOutsideEmphasis:true,measuredWordOnsets:emphasis.length,emphasisPixelReplay:true,pixelReplay:true,exclusiveCodeAndMachine:true,machineMotionChecked:Boolean(modelPage),noBurnedCaptions:true,poses:checked,uniqueFrames:captured}});
   console.log(output);
   }
 }finally{await browser.close();if(server)await new Promise(resolve=>server.close(resolve));}
