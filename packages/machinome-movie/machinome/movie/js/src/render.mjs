@@ -3,7 +3,7 @@ import {readFile,writeFile,mkdir,copyFile,stat,rename} from 'node:fs/promises';
 import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
-import {frameAt} from './timeline.mjs';
+import {frameAt,srt} from './timeline.mjs';
 import {contained} from './episode.mjs';
 import {fileHash,hash,json,command} from './util.mjs';
 
@@ -52,14 +52,19 @@ async function browserSession(e,viewer,width,captions,action) {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw new Error(error);
-    const canvasSize=await page.locator('#stage canvas').boundingBox();
-    if(!canvasSize||canvasSize.height<height*.6||canvasSize.width<width*.85)throw new Error('Viewer canvas does not fill the film stage');
     let frames=0;
     async function pose(t){
       if(errors.length)throw new Error(errors.join('\n'));
       const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds};
       const observed=await page.evaluate(f=>window.film.setFrame(f),f);
       for(const k of ['camera','target'])for(let i=0;i<3;i++)if(Math.abs(observed[k][i]-f.view[k][i])>1e-6)throw new Error('Viewer did not adopt requested camera');
+      const canvasSize=await page.locator('#stage canvas').boundingBox(),stageSize=await page.locator('#stage').boundingBox();
+      if(!canvasSize||canvasSize.height<stageSize.height*.98||canvasSize.width<stageSize.width*.98)throw new Error('Viewer canvas does not fill the film stage');
+      if(f.code){
+        const fits=await page.locator('#source').evaluate(el=>el.scrollHeight<=el.clientHeight&&el.scrollWidth<=el.clientWidth);
+        if(!fits)throw new Error(`Source excerpt overflows the panel: ${f.shotId}; select fewer lines`);
+        if(await page.locator('#source-code').textContent()!==f.code.text)throw new Error('Displayed code differs from source');
+      }
       frames++;return f;
     }
     const info={width,height,browser:browser.version(),viewerApi:await page.evaluate(()=>window.film.apiVersion),hashes};
@@ -73,8 +78,10 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
   const dir=resolve(e.paths.build,'preview');await mkdir(dir,{recursive:true});
   const result=await browserSession(e,viewer,width,captions,async({page,pose})=>{
     const samples=[];
-    for(const shot of e.shots)for(const u of [0,.5,.95]){
-      const t=shot.start+(shot.end-shot.start)*u;
+    for(const shot of e.shots){
+      const times=[0,.5,.95].map(u=>shot.start+(shot.end-shot.start)*u);
+      for(const cue of shot.code?.typing??[])times.push(shot.start+(cue.from+cue.to)/2);
+      for(const t of [...new Set(times)].sort((a,b)=>a-b)){
       await pose(t);
       const readable=await page.locator('.lower-third').evaluateAll(elements=>elements.every(element=>{
         const background=getComputedStyle(element).backgroundColor;
@@ -83,10 +90,12 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
       if(!readable)throw new Error('Lower-third credits need an opaque background over the model');
       const file=resolve(dir,`${String(samples.length).padStart(2,'0')}-${shot.id}.png`);
       await page.screenshot({path:file});samples.push({time:t,file});
+      }
     }
     // Real-browser check: revisiting an exact pose must restore the pixels.
-    await pose(1);const original=await page.screenshot();
-    await pose(61);await pose(1);const restored=await page.screenshot();
+    const replay=e.output.durationSeconds*.23;
+    await pose(replay);const original=await page.screenshot();
+    await pose(e.output.durationSeconds*.87);await pose(replay);const restored=await page.screenshot();
     if(!original.equals(restored))throw new Error('Pixel replay is not deterministic');
     // Bad camera requests must leave the actual mounted view intact.
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
@@ -95,7 +104,7 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
   });
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.
-  await command('ffmpeg',['-y','-v','error','-pattern_type','glob','-i',resolve(dir,'*.png'),'-vf','scale=480:-1,tile=3x8','-frames:v','1',resolve(e.paths.build,'storyboard.jpg')]);
+  await command('ffmpeg',['-y','-v','error','-pattern_type','glob','-i',resolve(dir,'*.png'),'-vf',`scale=480:-1,tile=3x${Math.ceil(result.samples.length/3)}`,'-frames:v','1',resolve(e.paths.build,'storyboard.jpg')]);
   return result;
 }
 
@@ -103,7 +112,8 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const captions=audio?.captions??[];
   const report=await browserSession(e,viewer,width,captions,async({page,pose,info})=>{
     const identity=hash(JSON.stringify({episode:e,hashes:info.hashes,browser:info.browser,width,fps,captions,
-      renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs'))}));
+      renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
+      sourceRenderer:await fileHash(resolve(here,'code.mjs')),dependencies:await fileHash(resolve(here,'../package-lock.json'))}));
     const dir=resolve(e.paths.build,'frames',identity.slice(0,16));await mkdir(dir,{recursive:true});
     const count=e.output.durationSeconds*fps;
     if(!Number.isInteger(count))throw new Error('Frame count is not integral');
@@ -127,7 +137,9 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const video=probe.streams.find(s=>s.codec_type==='video');
   if(Number(video.nb_read_frames)!==report.count||video.width!==report.width||video.height!==report.height)throw new Error('Encoded video does not match requested frames/dimensions');
   if(audio&&!probe.streams.some(s=>s.codec_type==='audio'))throw new Error('Encoded video has no audio');
-  await copyFile(resolve(report.dir,`${String(Math.floor(10*fps)).padStart(6,'0')}.png`),resolve(e.paths.build,'thumbnail.png'));
+  await copyFile(resolve(report.dir,`${String(Math.min(report.count-1,Math.floor(Math.min(10,e.output.durationSeconds*.5)*fps))).padStart(6,'0')}.png`),resolve(e.paths.build,'thumbnail.png'));
+  const subtitles=audio?resolve(e.paths.build,`${label}.srt`):null;
+  if(subtitles)await writeFile(subtitles,srt(captions));
   const releaseReady=Boolean(e.release.simulationUrl&&e.release.sourceUrl);
   const description=await readFile(resolve(dirname(e.paths.production),e.release.descriptionTemplate),'utf8');
   await writeFile(resolve(e.paths.build,'description.md'),description
@@ -139,7 +151,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const font=await command('fc-match',['-f','%{file}','DejaVu Sans']).catch(()=>null);
   const fontRecord=font?{path:font,sha256:await fileHash(font)}:null;
   await json(resolve(e.paths.build,`${label}-manifest.json`),{...report,fps,output,outputSha256:await fileHash(output),
-    audio:audio?.records??[],episode:e,probe,releaseReady,
+    audio:audio?.records??[],subtitles:subtitles?{file:subtitles,sha256:await fileHash(subtitles),burnedIn:false}:null,episode:e,probe,releaseReady,
     provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,
       episodeSha256:await fileHash(e.paths.episode),productionSha256:await fileHash(e.paths.production),
       ffmpeg:(await command('ffmpeg',['-version'])).split('\n')[0]}});

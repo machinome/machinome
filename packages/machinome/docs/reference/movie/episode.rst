@@ -61,9 +61,10 @@ Narration lives only inside each shot; there is no separate script to keep in sy
   optional `voiceSettings` passed to ElevenLabs and `replacements` mapping
   written terms to spoken aliases. Captions restore the written spelling.
 - `series`: optional short series label for the top corner; defaults to the title.
-- `style`: background, foreground, accent, font, caption placement and safe inset.
+- `sourceCode`: optional named Python excerpts, described below.
+- `style`: background, foreground, accent, font and safe inset.
   Background, foreground, accent and font are applied by the current renderer;
-  caption placement and safe inset are editorial hints for its fixed layout,
+  safe inset is an editorial hint for its fixed layout,
   not independently implemented layout controls.
 - `cameras`: named world-space `position`, `target`, `up` and `fov`.
 - `layers`: named lists of root-relative assembly paths. Each path is a list
@@ -110,7 +111,7 @@ parts visible, then hide those layers. Do not accumulate state from earlier shot
 
 Overlay `from`/`to` values are shot-local, half-open intervals. Positions are
 `top`, `lower-third`, or `center`. These are screen labels, not world-tracked
-annotations. Narration captions occupy the bottom safe area separately.
+annotations. Narration captions are external SRT files, never film pixels.
 Framing and text placement need visual review at the final aspect ratio.
 
 Narration timing remains an editorial target until speech is generated and
@@ -118,6 +119,69 @@ measured. `speechOffset` optionally sets a shot-local audio start (default 0.2 s
 Align speech and captions, then revise shot timing and affected cues
 together. Never truncate narration or silently stretch it to fit. Silent tails
 are allowed. Mechanical cut/advance cues must stay tied to model time.
+
+`audio.outputFormat` supports `mp3_44100_128` (legacy default) and `pcm_24000`
+(lossless mono 16-bit PCM, cached in WAV). `audio.model: eleven_v3` uses v3
+defaults with stability 0.5 and omits previous/next-text stitching fields. Select
+a voice ID explicitly. `audio.direction` remains editorial guidance, not a
+provider instruction; punctuation, the chosen voice and voiceSettings influence
+delivery. Plain narration is also the subtitle transcript; inline performance
+tags are not an implemented separate direction channel.
+
+Speech offsets preserve the complete cached clip. Leave a deliberate preroll
+and enough tail, especially for a scene's opening. Mixing has no onset gate or
+fade-in. This cannot restore a syllable already absent from provider audio:
+review the raw clip and final mix and regenerate/revise if needed. Continuous
+paragraphs avoid an independent synthesis restart at every sentence.
+
+## Actual Python beside the animation
+
+In production.yaml, select source lines rather than copying code into YAML:
+
+```yaml
+sourceCode:
+  drive:
+    file: ../../models/hydraulic_sawmill/model.py
+    lines: [200, 206]
+```
+
+The inclusive, one-based range must exist in a `.py` file inside the consuming
+Git repository. The entire file must match `model.sourceRevision`, a full commit
+hash matching the export. Missing, modified or external files are refused.
+Only common leading spaces are removed; source is never evaluated. File path,
+revision, range, dedent and file/excerpt SHA-256 values enter the build manifest.
+
+Add a code cue to the shot:
+
+```yaml
+code:
+  snippet: drive
+  typing:
+    - {from: 0.8, to: 4.3, throughLine: 203}
+    - {from: 6.5, to: 9, throughLine: 205}
+    - {from: 11, to: 14, throughLine: 206}
+```
+
+Typing uses shot-local video seconds and absolute source line numbers. Each
+cue reveals characters from the previous endpoint through that line. Gaps hold
+the code already visible. Cues must not overlap, lines must increase, the last
+cue must complete the excerpt, and all cues must fit the shot. Align these cues
+after generating and measuring speech; automatic semantic matching is not
+claimed. This is an editorial reveal, not a live coding session.
+
+Code shots use a fixed split layout: highlighted Python left, actual 3D right.
+Shots without code keep the full model stage. Select a short excerpt and inspect
+the final aspect ratio; overflowing panels fail capture. Typing, cursor and
+syntax colors follow video time, so seeking/resuming preserves exact frames.
+
+## Optional subtitles
+
+Narration produces `captions.json` and UTF-8 `captions.srt`. A narrated render
+also writes `rehearsal.srt` beside `rehearsal.mp4` (or the selected render label).
+Upload the SRT separately to YouTube or load it in a player, for example
+`mplayer rehearsal.mp4 -sub rehearsal.srt`. The MP4 has no subtitle stream and
+no burned narration. This intentionally changes earlier draft-0.2 rendering:
+old mastered files stay unchanged; new renders use external subtitles only.
 
 The film stage mounts Viewer API 21 with external, paused, on-demand rendering
 and no interactive controls. The viewer's setters pose/render synchronously;

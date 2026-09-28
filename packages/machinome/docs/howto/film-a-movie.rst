@@ -3,7 +3,8 @@
 Build narrated educational videos from a project's YAML screenplay and
 Machinome simulation. The first working consumer is Leonardo's hydraulic
 sawmill: an 84-second rehearsal with scripted cameras, assembly reveals,
-AI narration, aligned captions and credits.
+AI narration and aligned captions. The release-film source study adds real
+Python typing beside the animation and expressive feminine narration.
 
 This is a local production tool, not a publishing service. It supports posed
 models with a normalized animation timeline; running/clocked machines are
@@ -12,8 +13,8 @@ refused. The viewer executes the actual mechanical model.
 ## Set up
 
 Requires Node 22+, FFmpeg/ffprobe, and a Machinome Viewer API 21 bundle with
-`setView` and on-demand rendering. The viewer change is currently local and
-unreleased. Linux/Chromium software rendering is the tested environment.
+`setView` and on-demand rendering. Viewer API 27 is used by the release-film
+study. Linux/Chromium software rendering is the tested environment.
 
 ```sh
 npm ci
@@ -30,6 +31,7 @@ The key is read only by the speech command and is never sent to the browser,
 written into episode sources or included in build manifests. A key with text
 to speech permission is enough; listing voices is not required when a voice ID
 is supplied. The first episode uses George / `eleven_multilingual_v2`.
+The source study uses Jessica / `eleven_v3` with lossless `pcm_24000` input.
 
 ## Produce an episode
 
@@ -56,7 +58,8 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
 - `speech` generates narration through ElevenLabs, caches each segment and its
   character timestamps, checks it fits, then mixes audio and writes captions.
   It makes chargeable requests only for missing cached segments.
-- `preview` creates 24 stills and a contact sheet for the first episode. It also
+- `preview` creates three stills per shot, a midpoint for each typing cue, and
+  a contact sheet. It also
   checks real-browser pixel replay, requested camera readback, canvas layout and
   invalid camera refusal. No speech generation occurs.
 - `render` requires cached speech and renders the film. Add
@@ -72,8 +75,8 @@ loopback asset server exposes the selected model assets and film page only.
 
 Each episode's ignored `_build/` contains:
 
-- `rehearsal.mp4`: H.264 video, AAC narration, captions drawn into the image.
-- `captions.srt` and `captions.json`: timed captions for reuse.
+- `rehearsal.mp4`: H.264 video and AAC narration, no burned or embedded subtitles.
+- `rehearsal.srt`, `captions.srt` and `captions.json`: separate timed subtitles.
 - `narration.wav` and `audio/`: mixed audio, cached segments and alignments.
 - `thumbnail.png`, `storyboard.jpg`, `preview/`: presentation review assets.
 - `description.md`: draft release copy with missing public URLs explicitly marked.
@@ -92,6 +95,8 @@ false but do not prevent a rehearsal. Nothing uploads or publishes.
 Model seconds are independent of video seconds. Linear spans or explicit model
 keyframes can slow a mechanism or align a stroke with a word. The sawmill's
 completed pass is 296 seconds; the 84-second film uses seconds 8–80.
+That was the first rehearsal export; the current release-film export records
+1460 seconds. Production always verifies the selected manifest's duration.
 
 If speech overruns a shot, the command stops after caching it and names the
 needed duration. Edit YAML timing and cues, then rerun. Audio is never truncated

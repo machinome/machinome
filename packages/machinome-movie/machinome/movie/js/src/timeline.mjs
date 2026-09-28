@@ -1,4 +1,5 @@
 // Pure time mapping: no wall clock, browser state or mechanical equations.
+import {codeAt} from './code.mjs';
 export function frameAt(e, t, captions=[]) {
   const shot=e.shots.find(s=>t>=s.start && t<s.end);
   if(!shot)throw new Error(`Frame time ${t} is outside the episode`);
@@ -17,7 +18,7 @@ export function frameAt(e, t, captions=[]) {
     view:{camera:mix('position'),target:mix('target')},up:ca.up,fov:ca.fov,
     hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
     overlays:shot.overlays.filter(o=>local>=o.from&&local<o.to),
-    caption:captions.find(c=>t>=c.start&&t<c.end)?.text??''};
+    code:codeAt(e,shot,local)};
 }
 
 export function captionsFromAlignment(a, offset=0) {

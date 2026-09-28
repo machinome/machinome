@@ -9,6 +9,7 @@
   document.querySelector('#brand').style.color=style.accent;
   document.querySelector('#progress').style.background=style.accent;
   document.querySelector('#series').textContent=cfg.series;
+  document.body.classList.toggle('with-code',Boolean(cfg.initial.code));
   const viewer=await MachinomeViewer.mount('#stage','/model/manifest.json',{
     renderMode:'on-demand',
     animation:'external',autoplay:false,driverControls:'none',partControls:'none',
@@ -17,7 +18,12 @@
   if(viewer.apiVersion<21||typeof viewer.setView!=='function')throw new Error('Viewer API 21 with setView is required');
   await document.fonts.ready;
   let hidden=[];
-  window.film={viewer,apiVersion:viewer.apiVersion,setFrame(frame){
+  window.film={viewer,apiVersion:viewer.apiVersion,async setFrame(frame){
+    const split=Boolean(frame.code);
+    if(document.body.classList.contains('with-code')!==split){
+      document.body.classList.toggle('with-code',split);
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    }
     if(JSON.stringify(hidden)!==JSON.stringify(frame.hidden)){
       for(const path of hidden)viewer.setVisible(path,true);
       for(const path of frame.hidden)viewer.setVisible(path,false);
@@ -27,8 +33,10 @@
     viewer.setView(frame.view); // Validates, updates and renders synchronously.
     const overlays=document.querySelector('#overlays');overlays.replaceChildren();
     for(const cue of frame.overlays){const el=document.createElement('div');el.className='overlay '+cue.position;el.textContent=cue.text;overlays.append(el);}
-    document.querySelector('#caption span').textContent=frame.caption;
-    document.querySelector('#caption').hidden=!frame.caption;
+    document.querySelector('#source-file').textContent=frame.code?`${frame.code.file} · L${frame.code.firstLine}–${frame.code.lastLine}`:'';
+    // Markup is escaped by the server-side Python highlighter; source is never executed.
+    document.querySelector('#source-code').innerHTML=frame.code?.html??'';
+    document.querySelector('#source-cursor').style.visibility=frame.code?.cursor?'visible':'hidden';
     document.querySelector('#progress').style.width=`${frame.progress*100}%`;
     const view=viewer.view();
     return {camera:view.camera.toArray(),target:view.target.toArray(),navigation:viewer.navigation()};

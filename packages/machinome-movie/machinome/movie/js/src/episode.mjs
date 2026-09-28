@@ -2,6 +2,7 @@ import {readFile, realpath} from 'node:fs/promises';
 import {resolve, dirname, relative, isAbsolute} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
+import {loadSourceCode,validateCode} from './code.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -35,6 +36,8 @@ export function validateEpisode(e, manifest) {
     need(typeof s.id==='string' && /^[a-z0-9-]+$/.test(s.id) && !ids.has(s.id), 'Shot ids must be unique slugs');ids.add(s.id);
     need(s.start===end && finite(s.end) && s.end>s.start, `Shots must be contiguous: ${s.id}`);end=s.end;
     need(typeof s.narration==='string' && s.narration.trim() && typeof s.direction==='string', `Missing narration/direction: ${s.id}`);
+    need(s.speechOffset===undefined||(finite(s.speechOffset)&&s.speechOffset>=0&&s.speechOffset<s.end-s.start),`Invalid speech offset: ${s.id}`);
+    validateCode(e,s);
     need(finite(s.simulation.from) && finite(s.simulation.to) && s.simulation.from>=0 && s.simulation.to>=s.simulation.from && s.simulation.to<=e.model.expectedDurationSeconds,`Invalid simulation range: ${s.id}`);
     if(s.simulation.keyframes){
       const keys=s.simulation.keyframes;
@@ -73,6 +76,7 @@ export async function loadEpisode(file) {
   const sourceRevision=(await readFile(resolve(dirname(manifestPath),'source-revision.txt'),'utf8')).trim();
   need(e.model.sourceRevision===sourceRevision,'Pin model.sourceRevision to the export source-revision.txt before rendering');
   e.paths={episode:episodePath,production:productionPath,manifest:manifestPath,repository,build:resolve(base,'_build')};
+  e.sourceCode=await loadSourceCode(e);
   return e;
 }
 

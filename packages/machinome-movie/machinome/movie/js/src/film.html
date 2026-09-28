@@ -12,13 +12,27 @@ body{background:#faf7ef;color:#222;font-family:'DejaVu Sans',sans-serif}
 .top{top:9%;font-size:1.8vw}
 .lower-third{bottom:16%;font-size:1.2vw;color:#514b43;background:var(--film-background,#faf7ef);padding:.3em .65em}
 .center{top:43%;font-size:2vw}
-#caption{position:absolute;bottom:5%;left:12%;right:12%;text-align:center;font-size:1.7vw;line-height:1.45;font-weight:500}
-#caption span{background:#242424;color:#fff;padding:.3em .65em;box-decoration-break:clone;-webkit-box-decoration-break:clone;border-radius:.25em}
+#source{display:none;position:absolute;left:5%;top:25%;width:49%;bottom:18%;border-top:1px solid #cfc7ba;padding:1.2vw 1.2vw 0 0}
+#source-file{color:#766c60;font: .7vw 'DejaVu Sans Mono',monospace;letter-spacing:.01em;margin-bottom:1.5vw}
+#source pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:1.02vw/1.8 'DejaVu Sans Mono',monospace;color:#3a342e}
+#source code{font:inherit}
+#source-cursor{display:inline-block;border-left:2px solid #bf531f;height:1.1em;vertical-align:-.15em}
+.with-code #source{display:block}
+.with-code #viewport{inset:20% 2% 15% 56%}
+.with-code .top{top:11%;font-size:2.35vw;text-align:left;left:5%;font-weight:500;letter-spacing:-.025em}
+.with-code .lower-third{bottom:7%;left:5%;right:5%;text-align:left;font-size:1.05vw;font-weight:400}
+.hljs-keyword,.hljs-literal{color:#a34820;font-weight:600}
+.hljs-title,.hljs-built_in{color:#216f78}
+.hljs-string{color:#577443}
+.hljs-number{color:#9a562d}
+.hljs-comment{color:#817767}
+.hljs-params{color:#5b5677}
 #rule{position:absolute;bottom:2.5%;left:6%;right:6%;height:2px;background:#d9d2c7}
 #progress{height:100%;background:#237c86;width:0}
 </style></head><body>
 <div id="brand">MACHINOME</div><div id="series">LEONARDO · HOW IT WORKS</div>
-<div id="viewport"><div id="stage"></div></div><div id="overlays"></div><div id="caption"><span></span></div>
+<div id="viewport"><div id="stage"></div></div><div id="overlays"></div>
+<section id="source"><div id="source-file"></div><pre><code id="source-code"></code><span id="source-cursor"></span></pre></section>
 <div id="rule"><div id="progress"></div></div>
 <script src="/viewer.js"></script><script src="/film.js"></script>
 </body></html>
