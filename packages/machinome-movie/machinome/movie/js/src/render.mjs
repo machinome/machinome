@@ -96,7 +96,11 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     const replay=e.output.durationSeconds*.23;
     await pose(replay);const original=await page.screenshot();
     await pose(e.output.durationSeconds*.87);await pose(replay);const restored=await page.screenshot();
-    if(!original.equals(restored))throw new Error('Pixel replay is not deterministic');
+    if(!original.equals(restored)){
+      await writeFile(resolve(dir,'replay-before.png'),original);
+      await writeFile(resolve(dir,'replay-after.png'),restored);
+      throw new Error('Pixel replay is not deterministic; inspect preview/replay-{before,after}.png');
+    }
     // Bad camera requests must leave the actual mounted view intact.
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
     if(!preserved)throw new Error('Invalid camera request changed viewer state');
@@ -150,9 +154,11 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const project=await gitHead(e.paths.repository);
   const font=await command('fc-match',['-f','%{file}','DejaVu Sans']).catch(()=>null);
   const fontRecord=font?{path:font,sha256:await fileHash(font)}:null;
+  const codeFont=await command('fc-match',['-f','%{file}','DejaVu Sans Mono']).catch(()=>null);
+  const codeFontRecord=codeFont?{path:codeFont,sha256:await fileHash(codeFont)}:null;
   await json(resolve(e.paths.build,`${label}-manifest.json`),{...report,fps,output,outputSha256:await fileHash(output),
     audio:audio?.records??[],subtitles:subtitles?{file:subtitles,sha256:await fileHash(subtitles),burnedIn:false}:null,episode:e,probe,releaseReady,
-    provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,
+    provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,codeFont:codeFontRecord,
       episodeSha256:await fileHash(e.paths.episode),productionSha256:await fileHash(e.paths.production),
       ffmpeg:(await command('ffmpeg',['-version'])).split('\n')[0]}});
   return output;

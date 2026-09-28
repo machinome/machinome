@@ -10,11 +10,19 @@ external, and rebuild one small animation-and-code scene. Planning commit
 ## Red / green
 
 `npm test` initially failed because the source-scene API did not exist; all
-eight existing tests passed. The implemented suite passes 13 tests, including
+eight existing tests passed. The implemented suite passes 14 tests, including
 Git-pinned source integrity, invalid ranges/paths, typing holds/seeking/escaping,
 v3 request defaults, lossless WAV wrapping and a real FFmpeg first-sample test.
 The film HTML has no caption element. Legacy missing/corrupt/overflow MP3 cache
 tests remain green. The release film's existing YAML still passes `check`.
+
+A two-second real-browser/encoder test with a minimal viewer double switches
+between code and full-model layout, seeks backward, encodes four frames, checks
+the in-range thumbnail and verifies external SRT with only audio/video streams.
+It exposed a six-channel-value glyph-overhang repaint difference at 640 px;
+paint containment and a one-pixel text inset fixed it without weakening exact
+pixel replay. Failed previews now retain their before/after images for diagnosis.
+Real mechanical/viewer evidence comes from the Leonardo preview, not the double.
 
 The old hydraulic-sawmill tutorial refuses the now-replaced export because its
 duration is stale. This is the intended existing guard, not a compatibility
