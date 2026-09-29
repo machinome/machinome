@@ -55,4 +55,6 @@ Recorded in place as each cycle is proposed, ratified, implemented and
 demonstrated.
 
 - 29 Sep: `keyframes-and-easing` proposed and ratified (planning commit
-  follows this note's revision).
+  37b2e56); implementation in progress.
+- 29 Sep: `shot-transitions` proposed and ratified, reconciled with the
+  easing design (field `ease`, end-rate rule, 0.4 frames carry `transition`).
