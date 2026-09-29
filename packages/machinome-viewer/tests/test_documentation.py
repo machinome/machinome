@@ -165,6 +165,8 @@ def test_film_annotations_are_documented_as_current_source():
     assert '.. js:method:: ViewerHandle.partOnScreen(path)' in handle
     assert '.. js:method:: ViewerHandle.project(world)' in handle
     assert 'available since API 28' in handle
+    assert '.. js:method:: ViewerHandle.highlight(paths, options)' in handle
+    assert ':js:meth:`ViewerHandle.highlight`' in compatibility
     for page in sorted((ROOT / 'docs').rglob('*.rst')):
         text = page.read_text().lower()
         for word in ('videomaker', 'revolutions', 'leonardo', ' film'):

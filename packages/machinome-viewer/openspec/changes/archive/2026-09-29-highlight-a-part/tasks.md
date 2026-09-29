@@ -1,9 +1,9 @@
 ## 1. Red first
 
-- [ ] 1.1 Apply on the line that carries `track-a-part-on-screen` (API 28 and
+- [x] 1.1 Apply on the line that carries `track-a-part-on-screen` (API 28 and
       `nearestVisibleMesh`). Link the primary checkout's widget
       `node_modules`; never install. Record the base counts.
-- [ ] 1.2 Add `machinome_viewer/widget/src/presentation.test.ts` (red: the
+- [x] 1.2 Add `machinome_viewer/widget/src/presentation.test.ts` (red: the
       module does not exist), on plain three.js materials:
       - "tints the highlighted meshes' emissive and restores it exactly";
       - "dims the others' colour and leaves the highlighted ones";
@@ -19,7 +19,7 @@
       And for the pure request validator `highlightRequest`: "refuses no
       path", "refuses a colour that is not #rgb or #rrggbb", "refuses an
       unknown treatment of the others", "defaults to #ffb000 and keep".
-- [ ] 1.3 Add to `tests/test_widget_e2e.py` (spinner, on-demand mount) and
+- [x] 1.3 Add to `tests/test_widget_e2e.py` (spinner, on-demand mount) and
       run red against the API-28 bundle without this change:
       - `test_a_highlighted_part_is_visibly_lifted`: screenshot, highlight
         `['Hub']` in `#00ff00`, screenshot: hub pixels move toward green by
@@ -41,23 +41,23 @@
 
 ## 2. Implement
 
-- [ ] 2.1 Create `presentation.ts`: `MaterialPresentation` (design D3) and
+- [x] 2.1 Create `presentation.ts`: `MaterialPresentation` (design D3) and
       `highlightRequest` (D6), with `DIM_FACTOR`, `GHOST_OPACITY` and the
       default colour as named constants.
-- [ ] 2.2 In `viewer.ts`, route `liftParts` through the owner; confirm the
+- [x] 2.2 In `viewer.ts`, route `liftParts` through the owner; confirm the
       hover tests in `partSurface.test.ts` stay green unchanged.
-- [ ] 2.3 Add `highlight` to `ViewerHandle` and the handle (D1, D4, D6);
+- [x] 2.3 Add `highlight` to `ViewerHandle` and the handle (D1, D4, D6);
       render after applying and after restoring.
-- [ ] 2.4 At `replaceTree`, `manifestChanged` and `artifactChanged`, call
+- [x] 2.4 At `replaceTree`, `manifestChanged` and `artifactChanged`, call
       `forget()` before replacement and re-apply the standing highlight
       after (D7); drop the owner in `dispose()`.
-- [ ] 2.5 Make `partOnScreen`'s reach predicate skip ghosted meshes (D5);
+- [x] 2.5 Make `partOnScreen`'s reach predicate skip ghosted meshes (D5);
       leave `pickAt` unfiltered. Rebuild the bundle with `npm run build`
       only.
 
 ## 3. Document
 
-- [ ] 3.1 `docs/reference/viewer-handle.rst`: `highlight` under the camera
+- [x] 3.1 `docs/reference/viewer-handle.rst`: `highlight` under the camera
       and presentation members, with the options, the default colour, the
       one-at-a-time rule, the restore function, "hidden stays hidden",
       survival across updates, the colourless-part limitation, the ghost
@@ -65,11 +65,11 @@
 
 ## 4. Validate and close
 
-- [ ] 4.1 Widget suite, typecheck, Python suite (one at a time), the five
+- [x] 4.1 Widget suite, typecheck, Python suite (one at a time), the five
       browser tests; inspect the highlighted, dimmed and ghosted frames by
       eye and record the constants finally used, counts and images'
       locations in `evidence.md`.
-- [ ] 4.2 Mark ADR-076 Accepted in the record and the ADR index if the
+- [x] 4.2 Mark ADR-076 Accepted in the record and the ADR index if the
       pilot ratifies it; sync the delta spec, strict-validate, archive, and commit
       in this repository only. Integration, push and publication stay with
       the pilot.

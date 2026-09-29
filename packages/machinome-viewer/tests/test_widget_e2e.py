@@ -1108,6 +1108,160 @@ class ViewerMountApiTest(TestCase):
             self.assertEqual(control['part']['point'], control['point'], control['name'])
         self.assertGreater(seen, 0, 'no declared control was on screen')
 
+    # -- A highlight (OpenSpec `highlight-a-part`) ------------------------
+
+    def patch_mean(self, image, point, radius=2):
+        """The mean colour of a small square around a point."""
+        x, y = round(point['x']), round(point['y'])
+        pixels = [image.getpixel((i, j))
+                  for i in range(x - radius, x + radius + 1)
+                  for j in range(y - radius, y + radius + 1)]
+        return tuple(sum(channel) / len(pixels) for channel in zip(*pixels))
+
+    def mount_film(self, page, view=FILM_VIEW, time=0):
+        return page.evaluate("""async () => {
+          const host = document.getElementById('host');
+          window.viewer = await MachinomeViewer.mount(host, 'manifest.json', FILM);
+          viewer.setTime(TIME);
+          viewer.setView(VIEW);
+          return { hub: viewer.partOnScreen(['Hub']), b1: viewer.partOnScreen(['b1']) };
+        }""".replace('VIEW', view).replace('TIME', str(time)).replace('FILM', FILM_MOUNT))
+
+    @needs_pil
+    def test_a_highlighted_part_is_visibly_lifted(self):
+        with self.harness() as page:
+            where = self.mount_film(page)
+            plain = self.shot(page)
+            page.evaluate("() => { window.restore = viewer.highlight([['Hub']], { color: '#00ff00' }); }")
+            lifted = self.shot(page)
+            page.evaluate('() => { window.restore(); window.restore(); }')
+            restored = self.shot(page)
+        hub, blade = where['hub']['point'], where['b1']['point']
+        before, after = self.patch_mean(plain, hub), self.patch_mean(lifted, hub)
+        print(f'\nhub under #00ff00: {before} -> {after}')
+        self.assertGreater(after[1] - before[1], 60, 'the hub did not move toward green')
+        self.assertEqual(self.patch_mean(plain, blade), self.patch_mean(lifted, blade),
+                         'a blade changed although the others were kept')
+        self.assertIsNone(ImageChops.difference(plain, restored).getbbox(),
+                          'restoring did not give back the frame before the highlight')
+
+    @needs_pil
+    def test_ghosted_others_are_translucent(self):
+        # b0 at t = 0.75 points straight at a camera on -Y: its end face
+        # covers the middle of the hub's rectangle.
+        view = '{ camera: [2, -80, 2], target: [2, 0, 2] }'
+        with self.harness() as page:
+            where = self.mount_film(page, view=view, time=0.75)
+            plain = self.shot(page)
+            rect = where['hub']['rect']
+            centre = {'x': rect['x'] + rect['width'] / 2, 'y': rect['y'] + rect['height'] / 2}
+            ghosted = page.evaluate("""() => {
+              window.restore = viewer.highlight([['Hub']], { others: 'ghost' });
+              return viewer.partOnScreen(['Hub']);
+            }""")
+            shot = self.shot(page)
+            after = page.evaluate("() => { window.restore(); return viewer.partOnScreen(['Hub']); }")
+        self.assertNotEqual(where['hub']['point'], centre,
+                            'the blade does not cover the centre of the hub in this view')
+        r, g, b = self.patch_mean(plain, centre)
+        self.assertGreater(b, r, f'the centre is not the blade before ghosting: {(r, g, b)}')
+        r, g, b = self.patch_mean(shot, centre)
+        print(f'\nhub centre through a ghosted blade: {(r, g, b)}')
+        self.assertGreater(r, b + 60, f'the hub is not seen through the ghost: {(r, g, b)}')
+        self.assertEqual(ghosted['point'], centre, 'the point search did not see through the ghost')
+        self.assertEqual(after['point'], where['hub']['point'])
+        # A blade elsewhere moves toward the white page behind the canvas.
+        blade = where['b1']['point']
+        before, ghost = sum(self.patch_mean(plain, blade)), sum(self.patch_mean(shot, blade))
+        print(f'blade b1 brightness {before:.0f} -> {ghost:.0f}')
+        self.assertGreater(ghost - before, 150, 'a ghosted blade did not turn translucent')
+
+    @needs_pil
+    def test_dimmed_others_are_darker(self):
+        with self.harness() as page:
+            where = self.mount_film(page)
+            plain = self.shot(page)
+            page.evaluate("() => { window.restore = viewer.highlight([['Hub']], { others: 'dim' }); }")
+            dimmed = self.shot(page)
+        blade, hub = where['b1']['point'], where['hub']['point']
+        before, after = sum(self.patch_mean(plain, blade)), sum(self.patch_mean(dimmed, blade))
+        print(f'\nblade b1 brightness {before:.0f} -> {after:.0f} dimmed')
+        self.assertLess(after, before * 0.8, 'the others were not dimmed')
+        self.assertGreaterEqual(sum(self.patch_mean(dimmed, hub)),
+                                sum(self.patch_mean(plain, hub)), 'the highlighted hub darkened')
+
+    @needs_pil
+    def test_highlight_refusals_and_hidden_parts(self):
+        with self.harness() as page:
+            where = self.mount_film(page)
+            plain = self.shot(page)
+            refusals = page.evaluate("""() => {
+              const refusal = (action) => {
+                try { action(); return null; } catch (error) { return String(error.message); }
+              };
+              return {
+                none: refusal(() => viewer.highlight([])),
+                unknown: refusal(() => viewer.highlight([['Hub'], ['Nope']])),
+                colour: refusal(() => viewer.highlight([['Hub']], { color: 'green' })),
+                mode: refusal(() => viewer.highlight([['Hub']], { others: 'hide' })),
+              };
+            }""")
+            unchanged = self.shot(page)
+            second = page.evaluate("""() => {
+              window.restore = viewer.highlight([['Hub']], { color: '#00ff00' });
+              try { viewer.highlight([['b0']]); return null; }
+              catch (error) { return String(error.message); }
+            }""")
+            still = page.evaluate("() => viewer.partOnScreen(['Hub'])")
+            highlighted = self.shot(page)
+            page.evaluate("""() => {
+              window.restore();
+              viewer.setVisible(['b1'], false);
+              window.restore = viewer.highlight([['b1']], { color: '#00ff00' });
+            }""")
+            hidden = self.shot(page)
+            hiddenPart = page.evaluate("() => viewer.partOnScreen(['b1'])")
+            navigation = page.evaluate('() => viewer.navigation()')
+            page.evaluate("() => viewer.setVisible(['b1'], true)")
+            shown = self.shot(page)
+        self.assertEqual(refusals['none'], 'highlight needs at least one assembly path')
+        self.assertIn('Unknown assembly path: Nope', refusals['unknown'])
+        self.assertIn('green', refusals['colour'])
+        self.assertIn('hide', refusals['mode'])
+        self.assertIsNone(ImageChops.difference(plain, unchanged).getbbox(),
+                          'a refused highlight changed the frame')
+        self.assertIn('call the function the previous highlight returned', second)
+        self.assertIsNotNone(still)
+        green = lambda image: sum(1 for r, g, b in image.getdata() if g > 150 and g > r + 60 and g > b + 60)
+        self.assertGreater(green(highlighted), 50, 'the first highlight did not stand after the refusal')
+        self.assertIsNone(hiddenPart)
+        self.assertEqual(navigation['hidden'], [['b1']])
+        self.assertEqual(green(hidden), 0, 'a hidden highlighted blade was drawn')
+        blade = where['b1']['point']
+        r, g, b = self.patch_mean(shown, blade)
+        self.assertGreater(g, b, f'the blade shown again is not highlighted: {(r, g, b)}')
+
+    @needs_pil
+    def test_highlight_survives_an_in_place_update(self):
+        manifest_path = self.out_dir / 'manifest.json'
+        with self.harness() as page:
+            where = self.mount_film(page)
+            plain = self.shot(page)
+            page.evaluate("() => { window.restore = viewer.highlight([['Hub']], { color: '#00ff00' }); }")
+            # A republish that replaces the hub's mesh: its mtime moves.
+            manifest = json.loads(manifest_path.read_text())
+            manifest['root']['children'][0]['mtime'] += 1
+            manifest_path.write_text(json.dumps(manifest))
+            page.evaluate('() => viewer.manifestChanged()')
+            updated = self.shot(page)
+            page.evaluate('() => window.restore()')
+            restored = self.shot(page)
+        hub = where['hub']['point']
+        before, after = self.patch_mean(plain, hub), self.patch_mean(updated, hub)
+        self.assertGreater(after[1] - before[1], 60, 'the highlight did not survive the update')
+        self.assertIsNone(ImageChops.difference(plain, restored).getbbox(),
+                          'restoring after the update did not give back the frame')
+
 
 @needs_bundle
 @needs_playwright
@@ -1651,6 +1805,14 @@ class FullscreenE2ETest(TestCase):
                         "    && Math.abs(rect.height - before.height) <= 2;"
                         "}")
             page.wait_for_function(restored, arg=before, timeout=5_000)
+            # `fullscreenElement` clears and the canvas shrinks before the
+            # browser dispatches `fullscreenchange`, which is what relabels
+            # the button, so the label is awaited rather than read at once
+            # (evidence of `highlight-a-part`, "Out of scope": the immediate
+            # read raced and lost at the base bundle too).
+            page.wait_for_function(
+                "document.querySelector('.machinome-fullscreen')"
+                ".getAttribute('aria-label') === 'Full screen'", timeout=5_000)
             self.assertEqual(
                 page.locator('.machinome-fullscreen').get_attribute('aria-label'),
                 'Full screen')

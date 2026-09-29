@@ -82,6 +82,10 @@ import {
   boundsOnScreen, projectToViewport, searchPoint, worldBounds,
 } from './screen';
 import type { CanvasBounds, Point, ScreenRect } from './screen';
+import { highlightRequest, MaterialPresentation } from './presentation';
+import type {
+  HighlightOptions, HighlightRequest, OthersMode,
+} from './presentation';
 import {
   createFullscreenController, fullscreenRootFor,
 } from './fullscreen';
@@ -102,6 +106,7 @@ export type PartControlsMode = 'inline' | 'none';
 export type View = ViewerView;
 export type { AssemblyNode, AssemblyPath } from './tree';
 export type { AssemblyChange, AssemblyListener, AssemblyNavigationState } from './assembly';
+export type { HighlightOptions, OthersMode };
 export type VectorInput = THREE.Vector3 | readonly [number, number, number];
 export interface ViewInput {
   camera: VectorInput;
@@ -319,6 +324,13 @@ export interface ViewerHandle {
    * point in front of the camera off the canvas answers a position
    * outside it. Draws, changes and notifies nothing (design D5, D6). */
   project(world: readonly [number, number, number]): Point | null;
+  /** Tint every part under the named paths and keep, dim or ghost every
+   * other part; draw that, and return the function that puts every
+   * material back exactly and draws again. One highlight stands at a
+   * time; a stale or repeated restore does nothing. Visibility, focus
+   * and the navigation state are untouched, and nothing is notified
+   * (OpenSpec `highlight-a-part`, design D1-D7). */
+  highlight(paths: readonly AssemblyPath[], options?: HighlightOptions): () => void;
   apiVersion: number;
 }
 
@@ -524,6 +536,13 @@ export async function mount(
   // field survives into `artifactChanged`'s freshly loaded replacement
   // only if every construction site remembers to set it (design D4).
   let loadedControls: LoadedControl[] = [];
+  // The one owner of every material's departure from its declared look
+  // -- the hover lift and the host's highlight are its two overlays --
+  // and the standing highlight's request, kept so it can be re-resolved
+  // onto the meshes an update puts in place (OpenSpec `highlight-a-part`,
+  // design D3, D4 and D7; ADR-076).
+  const presentation = new MaterialPresentation();
+  let standingHighlight: { token: object; request: HighlightRequest } | null = null;
   let partMeshes = new Map<THREE.Mesh, LoadedControl[]>();
   let partOf = new Map<string, THREE.Mesh[]>();
   const raycaster = new THREE.Raycaster();
@@ -722,14 +741,18 @@ export async function mount(
    * pressed through the lid. three.js's raycaster does not consult
    * `visible` at all in this version, so that filter is ours. It needs
    * no declared control: `partOnScreen` asks it for any path. */
-  const nearestVisibleMesh = (x: number, y: number): THREE.Mesh | null => {
+  const nearestVisibleMesh = (
+    x: number, y: number,
+    seeThrough: (mesh: THREE.Mesh) => boolean = () => false,
+  ): THREE.Mesh | null => {
     if (tree === undefined) {
       return null;
     }
     rayAt(x, y);
     for (const hit of raycaster.intersectObject(scene, true)) {
       if (!(hit.object instanceof THREE.Mesh)
-          || !visibleUpTo(hit.object, scene)) {
+          || !visibleUpTo(hit.object, scene)
+          || seeThrough(hit.object)) {
         continue;
       }
       return hit.object;
@@ -754,23 +777,12 @@ export async function mount(
    * A node with no declared colour renders through
    * `MeshNormalMaterial`, which HAS no `emissive`: it gets the cursor
    * and the title and no lift, which is said out loud rather than
-   * worked around (design D7). */
+   * worked around (design D7). The lift is an overlay on the one owner
+   * of a material's look, so it and a host's highlight put each other
+   * back exactly in any order (OpenSpec `highlight-a-part`, ADR-076). */
   const liftParts = (naming: readonly LoadedControl[]): (() => void) => {
-    const lifted: { emissive: THREE.Color; was: THREE.Color }[] = [];
-    for (const control of naming) {
-      for (const mesh of partOf.get(control.name) ?? []) {
-        const materials = Array.isArray(mesh.material)
-          ? mesh.material : [mesh.material];
-        for (const material of materials) {
-          const glow = (material as { emissive?: THREE.Color }).emissive;
-          if (glow instanceof THREE.Color) {
-            lifted.push({ emissive: glow, was: glow.clone() });
-            glow.setHex(HOVER_EMISSIVE);
-          }
-        }
-      }
-    }
-    return () => { lifted.forEach(({ emissive, was }) => emissive.copy(was)); };
+    presentation.setHover(naming.flatMap((control) => partOf.get(control.name) ?? []));
+    return () => { presentation.setHover([]); };
   };
 
   /** The world line the control turns about, from the JOINT node's own
@@ -961,8 +973,11 @@ export async function mount(
       return null;
     }
     const own = new Set(meshes);
+    // A ghost is drawn to be seen through, so the search sees through
+    // it too (OpenSpec `highlight-a-part`, design D5); what a press or a
+    // hover reaches is `pickAt`'s, unfiltered.
     const point = searchPoint(rect, canvas, ({ x, y }) => {
-      const mesh = nearestVisibleMesh(x, y);
+      const mesh = nearestVisibleMesh(x, y, (one) => presentation.isGhosted(one));
       return mesh !== null && own.has(mesh);
     });
     return { rect, point };
@@ -980,6 +995,67 @@ export async function mount(
     scene.updateMatrixWorld(true);
     camera.updateMatrixWorld();
     return projectToViewport(world, camera, canvasBounds());
+  };
+
+  /** Resolve the standing highlight onto the meshes the tree holds now
+   * and hand it to the owner (design D2, D7). A path the tree no longer
+   * has is dropped; when none remains the highlight lapses. */
+  const presentHighlight = (): void => {
+    const standing = standingHighlight;
+    if (standing === null || tree === undefined) {
+      presentation.setHighlight(null);
+      return;
+    }
+    const current = tree;
+    const paths = standing.request.paths.filter((path) => current.hasPath(path));
+    if (paths.length === 0) {
+      standingHighlight = null;
+      presentation.setHighlight(null);
+      return;
+    }
+    const lit = new Set(paths.flatMap(meshesUnder));
+    const others: THREE.Mesh[] = [];
+    current.group.traverse((object) => {
+      if (object instanceof THREE.Mesh && !lit.has(object)) {
+        others.push(object);
+      }
+    });
+    standingHighlight = { token: standing.token,
+      request: { ...standing.request, paths } };
+    presentation.setHighlight({ lit: [...lit], others,
+      color: standing.request.color, mode: standing.request.others });
+  };
+
+  /** Highlight (design D1, D4, D6): everything is checked before
+   * anything changes. */
+  const highlight = (paths: readonly AssemblyPath[],
+                     options?: HighlightOptions): (() => void) => {
+    if (disposed) {
+      throw new Error('highlight cannot use a disposed viewer');
+    }
+    const request = highlightRequest(paths, options);
+    if (tree === undefined) {
+      throw new Error('Viewer assembly is unavailable');
+    }
+    for (const path of request.paths) {
+      tree.requirePath(path);
+    }
+    if (standingHighlight !== null) {
+      throw new Error('highlight is already applied; call the function the '
+        + 'previous highlight returned before highlighting again');
+    }
+    const token = {};
+    standingHighlight = { token, request };
+    presentHighlight();
+    renderer.render(scene, camera);
+    return () => {
+      if (disposed || standingHighlight?.token !== token) {
+        return;
+      }
+      standingHighlight = null;
+      presentation.setHighlight(null);
+      renderer.render(scene, camera);
+    };
   };
 
   const partControlViews = (): PartControlView[] => {
@@ -1536,6 +1612,9 @@ export async function mount(
       return;
     }
     if (tree) {
+      // Every base goes back before the materials are disposed with the
+      // tree (OpenSpec `highlight-a-part`, design D7).
+      presentation.forget();
       scene.remove(tree.group);
       tree.dispose();
     }
@@ -1546,6 +1625,7 @@ export async function mount(
     // One of the three places a mesh can be replaced (design D4).
     loadedControls = declared;
     rebuildPartControls();
+    presentHighlight();
 
     refreshControls(document);
     // Mount calls this before the handle exists, so no listener can be
@@ -1880,6 +1960,9 @@ export async function mount(
       // go with the mount (design D13).
       partSurface.dispose();
       partLabel.remove();
+      // The materials go with the tree, so nothing is written back.
+      standingHighlight = null;
+      presentation.drop();
       partMeshes = new Map();
       partOf = new Map();
       loadedControls = [];
@@ -1907,6 +1990,7 @@ export async function mount(
     },
     async artifactChanged(path: string) {
       partSurface.clear();
+      presentation.forget();
       await tree?.artifactChanged(path, baseUrl);
       if (tree) {
         assemblyNavigation.reconcile(tree);
@@ -1914,6 +1998,7 @@ export async function mount(
       // The third place a mesh can be replaced: the controls are the
       // same, the meshes carrying them are not (design D4).
       rebuildPartControls();
+      presentHighlight();
       renderer.render(scene, camera);
       notifyAssemblyChange();
     },
@@ -1932,6 +2017,7 @@ export async function mount(
       // materials and a lifted emissive would be restored onto a
       // material nothing is showing any more (design D7).
       partSurface.clear();
+      presentation.forget();
       await tree?.reconcile(document.root, baseUrl, null, bindingsTable);
       if (tree) {
         const rootChanged = assemblyNavigation.reconcile(tree);
@@ -1943,6 +2029,7 @@ export async function mount(
       }
       loadedControls = declared;
       rebuildPartControls();
+      presentHighlight();
       renderer.render(scene, camera);
       notifyAssemblyChange();
     },
@@ -1998,6 +2085,7 @@ export async function mount(
     controls: partControlViews,
     partOnScreen,
     project,
+    highlight,
     machine(): MachineHandle | null {
       const started = machine;
       if (started === undefined) return null;
@@ -2084,16 +2172,6 @@ const EMPTY: ReadonlySet<string> = new Set();
  * click's slop, and small enough that a dial's quantum -- 36 degrees of
  * sweep -- is never reached inside it (design D8). */
 const PRESS_SLOP = 4;
-
-/** The grey a hovered part's emissive colour is lifted to.
- *
- * `Color.setHex` reads sRGB and stores linear, so the lift a viewer
- * actually SEES is much smaller than the hex suggests: 0x333333
- * measured about 10/255 on the acceptance model's own materials, which
- * is not the "visible change" the spec asks for. 0x777777 measures
- * about 60/255 there -- unmistakable beside the parts around it, and
- * still a grey rather than a colour of its own. */
-const HOVER_EMISSIVE = 0x777777;
 
 /** How long a transient outcome label stays before it is taken away. */
 const OUTCOME_LINGER = 4000;

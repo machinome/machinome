@@ -1,6 +1,6 @@
 # ADR-076: A part's presented look has one owner
 
-**Status:** Proposed
+**Status:** Accepted
 
 **Date:** 2026-09-29
 

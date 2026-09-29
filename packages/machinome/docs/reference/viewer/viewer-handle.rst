@@ -28,6 +28,53 @@ Camera and lifecycle
    view. Preserves up vector, field of view, tree, machine state and timeline;
    a later read returns a fresh snapshot.
 
+.. js:method:: ViewerHandle.highlight(paths, options)
+
+   Tint every part under the named assembly paths, keep, dim or ghost every
+   other part, draw that before returning, and return a zero-argument function
+   that puts every part back exactly as it looked and draws again. Available
+   since API 28.
+
+   ``paths`` is a non-empty array of assembly paths, parts or subassemblies.
+   ``options`` is optional:
+
+   * ``color``: the tint, a ``'#rgb'`` or ``'#rrggbb'`` string; default
+     ``'#ffb000'``. It is added to each part's lit colour as an emissive
+     glow, so the result mixes the tint with the part's own colour; a bright
+     tint largely evens out a part's shading.
+   * ``others``: what happens to every part not named. ``'keep'`` (default)
+     leaves them as they are; ``'dim'`` darkens their colour; ``'ghost'``
+     draws them translucent, so a highlighted part behind them is seen
+     through them.
+
+   Only one highlight stands at a time. Call the returned function before
+   highlighting again; a second ``highlight()`` while one stands throws
+   ``highlight is already applied; call the function the previous highlight
+   returned before highlighting again``. Calling the returned function more
+   than once, or after ``dispose()``, does nothing.
+
+   An empty or missing ``paths``, a path that is not an array of names, an
+   unknown or ambiguous path, a colour in another form and an unknown
+   ``others`` value each throw naming the problem, before anything changes.
+   A disposed viewer throws.
+
+   A highlight changes how parts look and nothing else: it does not show,
+   hide or focus anything, does not move the view or the pose, and notifies no
+   assembly listener. A hidden part stays hidden; shown again, it appears
+   highlighted, dimmed or ghosted as the standing highlight says.
+   ``reload()``, ``manifestChanged()`` and ``artifactChanged()`` keep a
+   standing highlight on the same paths of the new geometry; a path the
+   updated tree no longer has is dropped, and when none is left the highlight
+   ends and its function does nothing. The hover highlight of a declared part
+   control and a host highlight put each other back exactly, in any order.
+
+   A part with no declared colour is drawn with a colour derived from its
+   surface direction and has no colour to tint or dim: it can be ghosted but
+   not tinted or dimmed. A ghosted part still receives presses and hovers. For
+   :js:meth:`ViewerHandle.partOnScreen`, a ghosted part does not hide the part
+   behind it: the ``point`` of a part inside a ghosted housing is found on
+   that part.
+
 .. js:method:: ViewerHandle.dispose()
 
    Stop rendering, release geometry/materials, listeners and execution resources,

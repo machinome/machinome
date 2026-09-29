@@ -59,7 +59,7 @@ both repositories. Consequences:
 - [ADR-049](EXPORT/ADR-049-the-viewer-publishes-its-navigation-state.md) — The viewer publishes its assembly navigation state — **Accepted**, amends 042
 - [ADR-050](EXPORT/ADR-050-the-navigator-is-a-component-of-the-viewer.md) — The assembly navigator is a component of the viewer package — **Accepted**, amends 042
 - [ADR-051](EXPORT/ADR-051-the-bundle-ships-an-inspector-layout.md) — The bundle ships an inspector layout, and the page selects it — **Accepted**, extends 050
-- [ADR-053](EXPORT/ADR-053-a-pick-is-bound-to-a-declared-control.md) — A pick is bound to a declared control, and the part follows commits — **Accepted**, extends 048, consumes solid-node ADR-112
+- [ADR-053](EXPORT/ADR-053-a-pick-is-bound-to-a-declared-control.md) — A pick is bound to a declared control, and the part follows commits — **Accepted**, amended by 076, extends 048, consumes solid-node ADR-112
 - [ADR-054](EXPORT/ADR-054-a-constraint-is-derived-from-the-published-document.md) — A constraint is derived from the published document, never published — **Accepted**, amended by 069, extends 045 and 047, consumes solid-node ADR-113
 - [ADR-056](EXPORT/ADR-056-a-marking-is-a-decal-in-the-parts-own-group.md) — A marking is a decal mesh in the part's own group, and the bias over the surface is the viewer's — **Accepted**, extends 035, consumes solid-node ADR-120
 - [ADR-057](EXPORT/ADR-057-a-self-read-edge-is-executed-from-the-retained-value.md) — A self-read edge is executed from the retained value, piece by piece — **Accepted**, extends 045 and 047, builds on 054, consumes solid-node ADR-121
@@ -82,4 +82,4 @@ both repositories. Consequences:
 - [ADR-073](EXPORT/ADR-073-a-gesture-is-drawn-at-the-declared-tempo.md) — A gesture is drawn at the tempo its input's declared instruction states — **Accepted**, amends 065, extends 064
 - [ADR-074](EXPORT/ADR-074-a-path-piece-reuses-unchanged-bound-nodes.md) — A path piece reuses unchanged bound nodes — **Accepted**, amends 060
 - [ADR-075](EXPORT/ADR-075-two-moving-envelopes-retain-a-free-follower.md) — Two moving envelopes retain a free follower — **Accepted**, extends 067, builds on 054/061
-- [ADR-076](EXPORT/ADR-076-a-parts-presented-look-has-one-owner.md) — A part's presented look has one owner — **Proposed**, amends 053, builds on 035
+- [ADR-076](EXPORT/ADR-076-a-parts-presented-look-has-one-owner.md) — A part's presented look has one owner — **Accepted**, amends 053, builds on 035

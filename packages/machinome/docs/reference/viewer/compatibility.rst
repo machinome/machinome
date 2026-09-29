@@ -16,9 +16,10 @@ The 0.7.1 release declares:
 The current source, after 0.7.1 and in no published release, declares viewer
 API |viewer-api| with the same document versions. API 28 adds
 :js:meth:`ViewerHandle.partOnScreen` and :js:meth:`ViewerHandle.project`,
-which tell a host where any part and any world point stand on screen. A host
-relying on them checks for API 28 or later; a bundle reporting 27 has none of
-them.
+which tell a host where any part and any world point stand on screen, and
+:js:meth:`ViewerHandle.highlight`, which tints named parts and keeps, dims or
+ghosts the rest. A host relying on them checks for API 28 or later; a bundle
+reporting 27 has none of them.
 
 A host requiring separately named handles for two ``Turn`` controls on one
 part must check the viewer API, not only the document version: the document
@@ -115,7 +116,7 @@ API 27, the 0.7.0 release, adds separately named handles for two ``Turn``
 controls on one part selecting different joints, without changing the
 document schema or the ``controls()`` shape. API 26 refuses that pair at
 load. API 28, in the source after 0.7.1, adds screen positions for any part
-and world point. A host that needs a feature can check the declared API before using
+and world point and a reversible highlight. A host that needs a feature can check the declared API before using
 it. Do not assume an old pinned bundle implements the
 current manual.
 

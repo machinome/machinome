@@ -2,6 +2,11 @@
 
 **Status:** Accepted
 
+**Amended by:** [ADR-076](ADR-076-a-parts-presented-look-has-one-owner.md):
+the hover lift is an overlay on the one owner of a material's look, which
+writes and restores it from recorded base values, rather than a closure
+copying the emissive it found. What a hover looks like is unchanged.
+
 **Date:** 2026-09-14
 
 **Change:** `drive-the-run-by-touch`
