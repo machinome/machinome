@@ -4,7 +4,7 @@ import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {frameAt,srt} from './timeline.mjs';
-import {contained} from './episode.mjs';
+import {contained,requiredViewerApi,viewerApiRefusal} from './episode.mjs';
 import {fileHash,hash,json,command} from './util.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -28,7 +28,8 @@ async function browserSession(e,viewer,width,captions,action) {
   const {paths,hashes}=await stage(e,viewer);
   const height=Math.round(e.output.height*width/e.output.width/2)*2;
   const initial=frameAt(e,0,captions);
-  const cfg={style:e.style,series:e.series??e.title,initial};
+  const required=requiredViewerApi(e);
+  const cfg={style:e.style,series:e.series??e.title,initial,requiredViewerApi:required,viewerRefusal:viewerApiRefusal(required,'{declared}')};
   const errors=[];
   const server=createServer(async(req,res)=>{
     try{
@@ -65,9 +66,17 @@ async function browserSession(e,viewer,width,captions,action) {
         if(!fits)throw new Error(`Source excerpt overflows the panel: ${f.shotId}; select fewer lines`);
         if(await page.locator('#source-code').textContent()!==f.code.text)throw new Error('Displayed code differs from source');
       }
-      frames++;return f;
+      for(const drawn of f.annotations?observed.annotations:[]){
+        const cue=f.annotations.find(a=>a.index===drawn.index),stage=observed.stage,frame=observed.frame;
+        const name=`${f.shotId} #${drawn.index}${cue.text===undefined?` (${cue.kind})`:` '${cue.text}'`} at ${t.toFixed(2)} s`;
+        const p=drawn.anchor;
+        if(!p||p.x<stage.x||p.x>stage.x+stage.width||p.y<stage.y||p.y>stage.y+stage.height)throw new Error(`Annotation target is not on screen: ${name}`);
+        const box=drawn.text;
+        if(box&&(box.x<-.5||box.y<-.5||box.x+box.width>frame.width+.5||box.y+box.height>frame.height+.5))throw new Error(`Annotation text leaves the frame: ${name}`);
+      }
+      frames++;return Object.assign(f,{observed});
     }
-    const info={width,height,browser:browser.version(),viewerApi:await page.evaluate(()=>window.film.apiVersion),hashes};
+    const info={width,height,browser:browser.version(),viewerApi:await page.evaluate(()=>window.film.apiVersion),hashes,requiredViewerApi:required};
     const result=await action({page,pose,info});
     if(errors.length)throw new Error(errors.join('\n'));
     return {...result,...info,framesChecked:frames};
@@ -81,15 +90,21 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     for(const shot of e.shots){
       const times=[0,.5,.95].map(u=>shot.start+(shot.end-shot.start)*u);
       for(const cue of shot.code?.typing??[])times.push(shot.start+(cue.from+cue.to)/2);
+      // Each annotation at its start, quarters, midpoint and last frame before it ends.
+      for(const a of shot.annotations??[]){
+        for(const u of [0,.25,.5,.75])times.push(shot.start+a.from+(a.to-a.from)*u);
+        times.push(shot.start+Math.max(a.from,a.to-1/e.output.fps));
+      }
       for(const t of [...new Set(times)].sort((a,b)=>a-b)){
-      await pose(t);
+      const posed=await pose(t);
       const readable=await page.locator('.lower-third').evaluateAll(elements=>elements.every(element=>{
         const background=getComputedStyle(element).backgroundColor;
         return background!=='transparent'&&background!=='rgba(0, 0, 0, 0)';
       }));
       if(!readable)throw new Error('Lower-third credits need an opaque background over the model');
       const file=resolve(dir,`${String(samples.length).padStart(2,'0')}-${shot.id}.png`);
-      await page.screenshot({path:file});samples.push({time:t,file});
+      await page.screenshot({path:file});
+      samples.push(posed.annotations?{time:t,file,annotations:posed.observed.annotations}:{time:t,file});
       }
     }
     // Real-browser check: revisiting an exact pose must restore the pixels.

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import {parseArgs} from 'node:util';
 import {resolve,dirname} from 'node:path';
-import {loadEpisode} from '../src/episode.mjs';
+import {readFile} from 'node:fs/promises';
+import {loadEpisode,requiredViewerApi,confirmViewerApi} from '../src/episode.mjs';
 import {speech} from '../src/speech.mjs';
 import {preview,render} from '../src/render.mjs';
 
@@ -16,7 +17,15 @@ try{
   if(options.width!==undefined&&(!Number.isInteger(options.width)||options.width<320||options.width%2))throw new Error('Width must be an even integer >= 320');
   if(options.fps!==undefined&&(!Number.isInteger(options.fps)||options.fps<1||options.fps>120))throw new Error('FPS must be an integer from 1 to 120');
   console.log(`${e.title}: ${e.shots.length} shots, ${e.output.durationSeconds}s; model ${e.model.expectedDurationSeconds}s`);
-  if(command==='check')process.exit(0);
+  if(command==='check'){
+    // check has no browser; preview and render confirm the running viewer's apiVersion instead.
+    const required=requiredViewerApi(e);
+    if(required.api>21){
+      const declared=confirmViewerApi(required,await readFile(options.viewer,'utf8').catch(()=>null));
+      console.log(`Viewer API ${required.api} required for ${required.reasons.join(', ')}; ${options.viewer} declares API ${declared}`);
+    }
+    process.exit(0);
+  }
   if(command==='speech'){await speech(e,{generate:true});process.exit(0);}
   if(command==='preview'){await preview(e,options);console.log('Storyboard: '+resolve(e.paths.build,'storyboard.jpg'));process.exit(0);}
   const audio=values.silent?null:await speech(e,{generate:command==='build'});

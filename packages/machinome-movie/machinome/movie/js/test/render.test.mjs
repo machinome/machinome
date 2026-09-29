@@ -46,3 +46,89 @@ test('short mixed-layout film renders with a same-basename sidecar, not embedded
   assert.equal(report.count,4);assert.equal(report.subtitles.burnedIn,false);
   assert.ok((await readFile(join(dir,'_build/thumbnail.png'))).length>0);
 });
+
+// A configurable API 28 viewer double. Its canvas is one flat colour; a part's
+// on-screen rect moves with model time; project() is a pinhole camera.
+function viewerDouble(options={}){
+  const o={api:28,color:'#6f8fa8',...options};
+  return `window.MachinomeViewer={async mount(selector,url,options){
+    const o=${JSON.stringify(o)};
+    const canvas=document.createElement('canvas');canvas.style.width='100%';canvas.style.height='100%';canvas.style.background=o.color;
+    document.querySelector(selector).append(canvas);
+    let view={camera:options.view.camera,target:options.view.target,up:options.up,fov:options.fov},time=options.time??0,lit=null;
+    const calls=window.viewerCalls=[];
+    const sub=(a,b)=>a.map((v,i)=>v-b[i]),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0);
+    const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+    const norm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l);};
+    const vec=a=>({toArray:()=>[...a]});
+    return {apiVersion:o.api,setVisible(){},navigation(){return {};},
+      setTime(t){time=t;},
+      setView(v){calls.push(['setView',v]);if(!v.camera.every(Number.isFinite))throw new Error('invalid camera');
+        view={...view,camera:v.camera,target:v.target};
+        if(!o.ignoreFov){if(v.up)view.up=v.up;if(v.fov!==undefined)view.fov=v.fov;}},
+      view(){return {camera:vec(view.camera),target:vec(view.target),up:vec(view.up),fov:view.fov};},
+      partOnScreen(path){
+        if(path.join('/')!=='Feed/Pawl')throw new Error('Unknown assembly path: '+path.join('/'));
+        if(o.vanishAfter!==undefined&&time>o.vanishAfter)return null;
+        const b=canvas.getBoundingClientRect();
+        return {rect:{x:b.left+b.width*(.35+.3*time),y:b.top+b.height*.5-10,width:24,height:20},point:null};
+      },
+      project(p){
+        const f=norm(sub(view.target,view.camera)),r=norm(cross(f,view.up)),u=cross(r,f),d=sub(p,view.camera),z=dot(d,f);
+        if(z<=0)return null;const b=canvas.getBoundingClientRect(),k=(b.height/2)/Math.tan(view.fov*Math.PI/360);
+        return {x:b.left+b.width/2+dot(d,r)/z*k,y:b.top+b.height/2-dot(d,u)/z*k};
+      },
+      highlight(paths,settings){
+        if(lit)throw new Error('A highlight is already standing');
+        calls.push(['highlight',paths,settings]);canvas.style.background=settings.color;
+        const token=lit={};
+        return ()=>{if(lit!==token)throw new Error('restore called twice');calls.push(['restore']);lit=null;if(!o.brokenRestore)canvas.style.background=o.color;};
+      }};
+  }};`;
+}
+async function pixel(file,x,y){
+  const bytes=execFileSync('ffmpeg',['-v','error','-i',file,'-f','rawvideo','-pix_fmt','rgb24','pipe:1']);
+  const width=Number(execFileSync('ffprobe',['-v','error','-select_streams','v:0','-show_entries','stream=width','-of','csv=p=0',file],{encoding:'utf8'}).trim());
+  const i=(Math.round(y)*width+Math.round(x))*3;return [bytes[i],bytes[i+1],bytes[i+2]];
+}
+function filmEpisode(dir,shotExtra={},extra={}){
+  return {format:'machinome-video-draft/0.3',title:'Test',series:'',output:{width:640,height:360,fps:2,durationSeconds:2},
+    model:{expectedDurationSeconds:2},
+    style:{background:'#f5f1e8',foreground:'#222222',accent:'#bf531f',fontFamily:'DejaVu Sans',safeInsetFraction:.08},
+    paths:{repository:dir,episode:join(dir,'episode.yaml'),production:join(dir,'production.yaml'),manifest:join(dir,'manifest.json'),build:join(dir,'_build')},
+    cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37}},layers:{pawl:[['Feed','Pawl']]},
+    release:{descriptionTemplate:'description.md'},
+    shots:[{id:'pawls',start:0,end:2,narration:'Look.',direction:'Look.',simulation:{from:0,to:2},camera:[{at:0,preset:'a'}],
+      hiddenLayers:[],overlays:[],evidence:[],...shotExtra}],...extra};
+}
+async function filmFixture(t){
+  const dir=await mkdtemp(join(tmpdir(),'videomaker-film-test-'));
+  t.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]},animation:{loop:2}}));
+  const viewer=async(name,options)=>{const file=join(dir,name);await writeFile(file,viewerDouble(options));return file;};
+  return {dir,viewer};
+}
+
+test('an arrow follows a moving part and a label rides a world point, reproducibly',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{annotations:[
+    {from:.5,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls'},
+    {from:0,to:2,kind:'label',point:[0,0,0],offset:[0,-.2],text:'Origin'}]});
+  const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
+  assert.equal(p.pixelReplay,true);
+  const arrows=p.samples.filter(s=>s.annotations?.some(a=>a.index===0)).map(s=>({...s,arrow:s.annotations.find(a=>a.index===0)}));
+  assert.ok(arrows.length>=4,'preview samples the cue at its start, quarters and end');
+  const [first,last]=[arrows[1],arrows.at(-2)];
+  assert.notDeepEqual(first.arrow.anchor,last.arrow.anchor);
+  for(const {arrow} of [first,last]){
+    const {anchor,rect}=arrow;
+    assert.ok(anchor.x>=rect.x&&anchor.x<=rect.x+rect.width&&anchor.y>=rect.y&&anchor.y<=rect.y+rect.height,'the tip lies on the part');
+  }
+  const {anchor,tail}=first.arrow,l=Math.hypot(anchor.x-tail.x,anchor.y-tail.y);
+  const colour=await pixel(first.file,anchor.x-2*(anchor.x-tail.x)/l,anchor.y-2*(anchor.y-tail.y)/l);
+  for(const [i,v] of [0xbf,0x53,0x1f].entries())assert.ok(Math.abs(colour[i]-v)<=24,`accent at the tip: ${colour}`);
+  const label=p.samples[0].annotations.find(a=>a.index===1);
+  assert.ok(label.text.y+label.text.height<label.anchor.y,'the label sits above its point');
+  await assert.rejects(preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640}),/Viewer API 28.*annotations \(shot pawls\).*declares API 27/);
+  await assert.rejects(preview(e,{viewer:await viewer('vanishing.js',{vanishAfter:.5}),width:640}),/not on screen: pawls #0 'Pulls'/);
+});

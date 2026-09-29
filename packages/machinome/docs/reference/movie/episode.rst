@@ -1,13 +1,15 @@
-# Episode source contract — draft 0.2
+# Episode source contract — drafts 0.2 and 0.3
 
-Status: implemented for the first sawmill rehearsal; still a provisional format.
+Status: 0.2 is implemented and used by every Leonardo episode; 0.3 is a draft
+that adds cues needing Viewer API 28 (see "Format 0.3" below). Both remain
+provisional formats.
 The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
 ## Read the screenplay first
 
 `videos/<episode-id>/episode.yaml` is the entry point. Its `format` is
-`machinome-video-draft/0.2`. It contains `id`, `title`, `status`, `learningGoal`,
+`machinome-video-draft/0.2` or `machinome-video-draft/0.3`. It contains `id`, `title`, `status`, `learningGoal`,
 the relative `production` settings path, and ordered `shots`.
 
 Each shot contains its spoken narration and a plain-language visual direction.
@@ -110,8 +112,8 @@ Shot boundaries are hard cuts; no crossfade or automatic framing is implied.
 parts visible, then hide those layers. Do not accumulate state from earlier shots.
 
 Overlay `from`/`to` values are shot-local, half-open intervals. Positions are
-`top`, `lower-third`, or `center`. These are screen labels, not world-tracked
-annotations. Narration captions are external SRT files, never film pixels.
+`top`, `lower-third`, or `center`. Overlays are screen labels, fixed on the frame;
+in format 0.3, `annotations` (below) point at parts and follow them. Narration captions are external SRT files, never film pixels.
 Framing and text placement need visual review at the final aspect ratio.
 
 Narration timing remains an editorial target until speech is generated and
@@ -174,6 +176,87 @@ Shots without code keep the full model stage. Select a short excerpt and inspect
 the final aspect ratio; overflowing panels fail capture. Typing, cursor and
 syntax colors follow video time, so seeking/resuming preserves exact frames.
 
+## Format 0.3 and the viewer it needs
+
+`machinome-video-draft/0.3` accepts everything 0.2 does, with the same meaning,
+plus the cues below. They are accepted only in 0.3: a 0.2 episode carrying one is
+refused and asked to change its format, never rendered with the cue silently
+missing. A 0.2 episode keeps its exact behaviour and any Viewer API 21 or later.
+
+An episode that uses a 0.3 cue needs Viewer API 28 (the machinome-viewer source
+that adds `partOnScreen`, `project`, `highlight` and `setView` up/field of view;
+not yet a published release). `check` reads the `viewer API <n>` banner of the
+selected bundle and refuses an older or unmarked one; `preview` and `render`
+refuse on mount against the running viewer's `apiVersion`, before capturing:
+
+    This episode needs Viewer API 28 for annotations (shot pawls); the selected
+    viewer declares API 27. Select a newer machinome-viewer bundle with --viewer.
+
+Episodes that use none of them are not held to API 28, and `check` does not read
+the bundle for them.
+
+## Pointing at parts
+
+A 0.3 shot may carry `annotations`: timed arrows and labels aimed at a part or a
+world point, which follow it on screen every frame.
+
+```yaml
+    annotations:
+      - from: 0.4
+        to: 5.366
+        kind: arrow
+        part: [Feed mechanism, Driving pawl]
+        place: [0.18, 0.22]
+        text: Pulls one tooth
+      - {from: 5.366, to: 10, kind: arrow, part: [Feed mechanism, Holding pawl],
+         place: [0.82, 0.22], text: Holds it}
+      - {from: 0, to: 10, kind: label, part: rope-1, offset: [0.04, -0.05], text: Rope 1}
+```
+
+- `from`, `to`: shot-local seconds, half-open like overlays, `0 <= from < to <= duration`.
+- `kind`: `arrow` or `label`.
+- The target is exactly one of `part` and `point`. `part` is a production layer
+  name (a string) or one root-relative assembly path (a list, spelled as a
+  `layers` path is); a layer holding several paths is one target, its bounds the
+  union of theirs. `point: [x, y, z]` is a fixed world point in the model's units
+  and frame, the frame the named cameras use.
+- `text`: required for a label; optional for an arrow (a bare pointer).
+- `place` (arrow, required): `[x, y]` in safe-area units where the arrow's text
+  and tail sit, fixed on screen. `[0, 0]` is the top-left and `[1, 1]` the
+  bottom-right of the safe area: the frame inset on every side by
+  `style.safeInsetFraction`.
+- `offset` (label, optional, default `[0, 0]`): `[dx, dy]` in safe-area units from
+  the target's anchor to the label's centre, each within `[-1, 1]`.
+
+An episode using annotations must declare `style.safeInsetFraction` in `[0, 0.5)`;
+this is its first operational use, and no default is invented. Other fields in
+an annotation are refused, so a misspelled `offset` cannot silently vanish.
+
+The anchor of a part is the centre of its on-screen bounding rectangle (the
+union of rectangles for a multi-path layer), as the viewer reports it for the
+posed frame; the anchor of a `point` is its projection. An arrow's shaft runs
+from the edge of its text nearest the anchor, and its tip is drawn at the
+anchor. For a slender diagonal part the centre of its rectangle can lie beside
+the part; choose a better part or layer, or a `point`, and review the stills.
+Arrows are drawn in `style.accent`, text in `style.foreground` on a
+`style.background` plate, sized to the frame width, above the model and below
+the overlays. Annotations never change the model, the camera or visibility.
+
+`check` refuses, naming the shot: an unknown kind or field; both or neither of
+`part` and `point`; an unknown layer; an assembly path the export does not
+contain; a non-finite point; times outside the shot or not increasing; an arrow
+without `place` or with `place` outside `[0, 1]`; a label without text; `offset`
+outside `[-1, 1]`; `place` on a label or `offset` on an arrow; a target equal to
+or inside a path the same shot hides; a missing safe inset; annotations in 0.2.
+
+`preview` and `render` refuse any frame on which an active annotation's anchor
+is missing or outside the model stage, or its text leaves the frame, naming the
+shot, the annotation's index and text, and the video time:
+`Annotation target is not on screen: pawls #1 'Holds it' at 44.87 s`. A moving
+part that leaves the view therefore stops production; shorten the cue or
+reframe. `preview` samples every annotation at its start, quarters, midpoint and
+last frame, and its report records each drawn anchor, part rectangle and text box.
+
 ## Optional subtitles
 
 Narration produces `captions.json` and UTF-8 `captions.srt`. A narrated render
@@ -183,8 +266,8 @@ Upload the SRT separately to YouTube or load it in a player, for example
 no burned narration. This intentionally changes earlier draft-0.2 rendering:
 old mastered files stay unchanged; new renders use external subtitles only.
 
-The film stage mounts Viewer API 21 with external, paused, on-demand rendering
-and no interactive controls. The viewer's setters pose/render synchronously;
+The film stage mounts Viewer API 21 or later (28 for format 0.3 cues) with
+external, paused, on-demand rendering and no interactive controls. The viewer's setters pose/render synchronously;
 Playwright captures the composed frame. A rendered frame does not advance
 the model by wall-clock time. Named cameras currently share a fixed up and FOV.
 

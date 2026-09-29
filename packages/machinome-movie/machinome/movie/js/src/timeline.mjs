@@ -1,5 +1,18 @@
 // Pure time mapping: no wall clock, browser state or mechanical equations.
 import {codeAt} from './code.mjs';
+const V03='machinome-video-draft/0.3';
+// Active annotations as data. Screen positions exist only in the posed page.
+function annotationsAt(e,shot,local){
+  return (shot.annotations??[]).flatMap((a,index)=>{
+    if(!(local>=a.from&&local<a.to))return [];
+    const target=a.point?{point:a.point}:{paths:typeof a.part==='string'?e.layers[a.part]:[a.part]};
+    const cue={index,kind:a.kind,text:a.text,target};
+    if(a.text===undefined)delete cue.text;
+    if(a.kind==='arrow')cue.place=a.place;else cue.offset=a.offset??[0,0];
+    cue.safeInset=e.style.safeInsetFraction;
+    return [cue];
+  });
+}
 export function frameAt(e, t, captions=[]) {
   const shot=e.shots.find(s=>t>=s.start && t<s.end);
   if(!shot)throw new Error(`Frame time ${t} is outside the episode`);
@@ -14,11 +27,14 @@ export function frameAt(e, t, captions=[]) {
   const index=keys.findIndex((k,i)=>i+1<keys.length&&local>=k.at&&local<keys[i+1].at);
   const left=keys[Math.max(0,index)],right=keys[Math.max(0,index)+1];
   const modelSeconds=left.seconds+(right.seconds-left.seconds)*(local-left.at)/(right.at-left.at);
-  return {shotId:shot.id,time:modelSeconds/e.model.expectedDurationSeconds,
+  const frame={shotId:shot.id,time:modelSeconds/e.model.expectedDurationSeconds,
     view:{camera:mix('position'),target:mix('target')},up:ca.up,fov:ca.fov,
     hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
     overlays:shot.overlays.filter(o=>local>=o.from&&local<o.to),
     code:codeAt(e,shot,local)};
+  // Format 0.2 frames keep their exact shape; 0.3 frames always carry the new cues.
+  if(e.format===V03)frame.annotations=annotationsAt(e,shot,local);
+  return frame;
 }
 
 export function captionsFromAlignment(a, offset=0) {

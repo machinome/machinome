@@ -170,3 +170,34 @@ episode is then refused by format, never rendered without its arrows.
 - Visible point versus rect centre as the anchor (D2): chosen to touch the part;
   the pilot may prefer the steadier centre after seeing a moving arrow.
 - Whether `ring` is wanted: no shot asks for one yet, so it is left out.
+
+## Ratification and resolutions (29 September 2026)
+
+The pilot ratified this change with the sibling changes `highlight-a-part` and
+`move-up-and-field-of-view`. D5 is implemented here, the first of the three
+applied. Where the ratified implementation departs from the text above:
+
+- **D2 amended; first open question resolved.** The anchor of a `part` target is
+  the centre of the part's on-screen `rect`, the union of rects for a multi-path
+  layer. The viewer's ray-cast `point` is not used: its grid search can land on
+  a different place of a moving part from frame to frame and make the tip jump.
+  The risk noted for slender diagonal parts (the rect centre may lie beside the
+  part) is accepted and left to visual review; FORMAT.md says so.
+- **Reconciled viewer contract.** The viewer (API 28) returns `rect` as the
+  unclipped projected box and `null` only when nothing is visible or the part is
+  wholly off screen; `project` returns off-canvas coordinates for a point in
+  front of the camera and `null` only at or behind the camera plane. The page
+  therefore refuses an anchor outside the stage rectangle itself (D4), not only
+  a null one. Coordinates are viewport CSS pixels; the page subtracts its
+  annotation layer's origin when drawing.
+- **Unknown annotation fields are refused** (`Unknown annotation field: palce`),
+  a small addition to D4 so that a misspelled optional `offset` cannot silently
+  fall back to its default.
+- **Annotation indices are zero-based** in messages and reports, as in D4's
+  example (`pawls #1 'Holds it'` is the second annotation).
+- **Frame shape.** `frameAt` adds `annotations` only to format 0.3 frames (always,
+  empty when none is active), so 0.2 frame objects stay identical field for field.
+- **Preview samples** each annotation at `from`, its quarters and midpoint, and
+  the last output frame before `to`; each sample in the preview report carries
+  the drawn anchors, part rectangles, arrow tails and text boxes.
+- **`check`** reads the first 4 KiB of the selected bundle for `viewer API <n>`.

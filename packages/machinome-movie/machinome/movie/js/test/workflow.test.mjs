@@ -50,3 +50,19 @@ test('model keyframes synchronize stroke boundaries with spoken cues',()=>{
   assert.equal(frameAt(e,1.5).time,10/296);
   assert.equal(frameAt(e,1.75).time,11/296);
 });
+test('0.2 episodes are unchanged',()=>{
+  // Pinned literally from the pre-annotation timeline (b32ef53).
+  const pinned={
+    0:{shotId:'first',time:0.02702702702702703,view:{camera:[0,0,10],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[['Frame']],overlays:[],code:null},
+    1:{shotId:'first',time:0.033783783783783786,view:{camera:[5,0,10],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[['Frame']],overlays:[],code:null},
+    2:{shotId:'second',time:0.04054054054054054,view:{camera:[10,0,10],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[],overlays:[],code:null},
+    3:{shotId:'second',time:0.04054054054054054,view:{camera:[10,0,10],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[],overlays:[],code:null}};
+  for(const format of [undefined,'machinome-video-draft/0.2']){
+    const e=fixture();if(format)e.format=format;
+    validateEpisode(e,{animation:{loop:296}});
+    for(const [t,frame] of Object.entries(pinned))assert.deepEqual(frameAt(e,Number(t)),frame);
+  }
+  const e=fixture();e.format='machinome-video-draft/0.2';
+  e.shots[1].annotations=[{from:0,to:1,kind:'label',point:[0,0,0],text:'Here'}];
+  assert.throws(()=>validateEpisode(e,{animation:{loop:296}}),/Annotations need format machinome-video-draft\/0\.3: shot second/);
+});

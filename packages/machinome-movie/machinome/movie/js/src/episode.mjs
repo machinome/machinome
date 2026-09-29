@@ -18,7 +18,82 @@ export function parseSource(source) {
 }
 const need = (ok, message) => {if (!ok) throw new Error(message);};
 const finite = n => typeof n === 'number' && Number.isFinite(n);
+export const FORMATS=['machinome-video-draft/0.2','machinome-video-draft/0.3'];
+const V03=FORMATS[1];
+// Episodes without a format field are the unit-test shape of a 0.2 episode.
+const formatOf=e=>e.format??FORMATS[0];
+export function assemblyPaths(root) {
+  const paths=new Set();
+  (function walk(n,path=[]){paths.add(JSON.stringify(path));for(const child of n.children??[])walk(child,[...path,child.name]);})(root);
+  return paths;
+}
+const within=(outer,inner)=>outer.length<=inner.length&&outer.every((name,i)=>name===inner[i]);
+const isPath=p=>Array.isArray(p)&&p.length>0&&p.every(n=>typeof n==='string'&&n.length>0);
+// A part target is a production layer name or one root-relative assembly path.
+function targetPaths(e,s,part,known,where){
+  if(typeof part==='string'){need(e.layers?.[part],`Unknown layer: ${part} (${where} in shot ${s.id})`);return e.layers[part];}
+  need(isPath(part),`Invalid part: expected a layer name or an assembly path (${where} in shot ${s.id})`);
+  need(known(part),`Missing assembly path: ${part.join('/')} (${where} in shot ${s.id})`);
+  return [part];
+}
+function hiddenPaths(e,s){return (s.hiddenLayers??[]).flatMap(name=>e.layers?.[name]??[]);}
+const pair=(v,lo,hi)=>Array.isArray(v)&&v.length===2&&v.every(n=>finite(n)&&n>=lo&&n<=hi);
+const ANNOTATION_FIELDS=new Set(['from','to','kind','part','point','text','place','offset']);
+function validateAnnotations(e,s,known){
+  if(s.annotations===undefined)return;
+  need(formatOf(e)===V03,`Annotations need format machinome-video-draft/0.3: shot ${s.id}`);
+  need(Array.isArray(s.annotations),`Annotations must be a list: shot ${s.id}`);
+  const inset=e.style?.safeInsetFraction;
+  need(finite(inset)&&inset>=0&&inset<.5,`Annotations need a declared style.safeInsetFraction in [0, 0.5): shot ${s.id}`);
+  const duration=s.end-s.start,hidden=hiddenPaths(e,s);
+  s.annotations.forEach((a,i)=>{
+    const where=`annotation #${i}`,bad=why=>`Invalid ${where} in shot ${s.id}: ${why}`;
+    need(a&&typeof a==='object'&&!Array.isArray(a),bad('expected a mapping'));
+    for(const key of Object.keys(a))need(ANNOTATION_FIELDS.has(key),`Unknown annotation field: ${key} (${where} in shot ${s.id})`);
+    need(['arrow','label'].includes(a.kind),bad('kind must be arrow or label'));
+    need(finite(a.from)&&finite(a.to)&&a.from>=0&&a.from<a.to&&a.to<=duration,bad('times must satisfy 0 <= from < to <= shot duration'));
+    need((a.part===undefined)!==(a.point===undefined),bad('give exactly one of part or point'));
+    if(a.point!==undefined)need(Array.isArray(a.point)&&a.point.length===3&&a.point.every(finite),bad('point must be three finite numbers'));
+    else for(const path of targetPaths(e,s,a.part,known,where))
+      need(!hidden.some(h=>within(h,path)),`Annotated part is hidden in shot ${s.id}: ${path.join('/')} (${where})`);
+    need(a.text===undefined||(typeof a.text==='string'&&a.text.trim().length>0),bad('text must be non-empty words'));
+    if(a.kind==='arrow'){
+      need(a.offset===undefined,bad('offset belongs to a label; an arrow takes place'));
+      need(pair(a.place,0,1),bad('an arrow needs place: [x, y] within the safe area, each in [0, 1]'));
+    }else{
+      need(a.place===undefined,bad('place belongs to an arrow; a label takes offset'));
+      need(typeof a.text==='string'&&a.text.trim().length>0,bad('a label needs text'));
+      need(a.offset===undefined||pair(a.offset,-1,1),bad('offset must be [dx, dy], each in [-1, 1]'));
+    }
+  });
+}
+// The lowest Viewer API an episode can be produced with, and why.
+export function requiredViewerApi(e) {
+  const reasons=[];
+  for(const s of e.shots??[]){
+    if(s.annotations?.length)reasons.push(`annotations (shot ${s.id})`);
+  }
+  return {api:reasons.length?28:21,reasons};
+}
+export function viewerApiRefusal(required,declared) {
+  return `This episode needs Viewer API ${required.api} for ${required.reasons.join(', ')}; the selected viewer declares API ${declared}. Select a newer machinome-viewer bundle with --viewer.`;
+}
+// check has no browser: it reads the "viewer API <n>" banner of the selected bundle.
+export function viewerApiFromBanner(text) {
+  const match=/\bviewer API (\d+)\b/.exec(String(text).slice(0,4096));
+  return match?Number(match[1]):null;
+}
+export function confirmViewerApi(required,bundleText) {
+  if(required.api<=21)return null;
+  const declared=bundleText==null?null:viewerApiFromBanner(bundleText);
+  need(declared!==null,`Cannot confirm the viewer API: this episode needs Viewer API ${required.api} for ${required.reasons.join(', ')}, and the selected bundle is missing or declares no "viewer API" banner. Select a machinome-viewer bundle with --viewer.`);
+  need(declared>=required.api,viewerApiRefusal(required,declared));
+  return declared;
+}
 export function validateEpisode(e, manifest) {
+  need(FORMATS.includes(formatOf(e)),'Unsupported episode format');
+  const paths=manifest.root?assemblyPaths(manifest.root):null;
+  const known=path=>!paths||paths.has(JSON.stringify(path));
   need(manifest.animation?.loop === e.model.expectedDurationSeconds, 'Model duration differs from production settings; recheck the exported simulation');
   need(e.model.timeMode === 'normalized-loop' && !manifest.program && !manifest.clocked, 'Only posed normalized-loop models are supported');
   need(finite(e.model.expectedDurationSeconds) && e.model.expectedDurationSeconds > 0, 'Invalid model duration');
@@ -53,22 +128,21 @@ export function validateEpisode(e, manifest) {
     for(const name of s.hiddenLayers)need(e.layers[name],`Unknown layer: ${name}`);
     for(const cue of s.overlays)need(finite(cue.from)&&finite(cue.to)&&cue.from>=0&&cue.to>cue.from&&cue.to<=s.end-s.start&&typeof cue.text==='string'&&['top','lower-third','center'].includes(cue.position),`Invalid overlay: ${s.id}`);
     for(const name of s.evidence)need(e.evidence[name],`Unknown evidence: ${name}`);
+    validateAnnotations(e,s,known);
   }
   need(end===e.output.durationSeconds,'Shots must cover the video duration');
 }
 export async function loadEpisode(file) {
   const episodePath=await realpath(file), base=dirname(episodePath);
   const script=parseSource(await readFile(episodePath,'utf8'));
-  need(script.format==='machinome-video-draft/0.2','Unsupported episode format');
+  need(FORMATS.includes(script.format),'Unsupported episode format');
   const productionPath=await realpath(resolve(base,script.production));
   const p=parseSource(await readFile(productionPath,'utf8'));
   const e={...p,...script};
   const manifestPath=await realpath(resolve(dirname(productionPath),p.model.manifest));
   const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
   validateEpisode(e,manifest);
-  const paths=new Set();
-  function walk(n,path=[]) {paths.add(JSON.stringify(path));for(const child of n.children??[])walk(child,[...path,child.name]);}
-  walk(manifest.root);
+  const paths=assemblyPaths(manifest.root);
   for(const layer of Object.values(e.layers)) for(const path of layer) need(paths.has(JSON.stringify(path)),`Missing assembly path: ${path.join('/')}`);
   for(const path of Object.values(e.evidence)) await readFile(resolve(dirname(productionPath),path));
   const repository=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:base,encoding:'utf8'}).trim();
