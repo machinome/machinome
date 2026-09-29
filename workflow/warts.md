@@ -4299,3 +4299,67 @@ Three findings, all consequences, recorded for the pilot's triage.
   This establishes numerical equivalence and scoped geometric evidence, not
   a physical fit claim. Archived change
   `2026-09-27-explicit-frame-direction-precision` records exact content/results.
+
+# 3DPrintedClocks wall clock 02 and strandbeest (2026-09-29, verdict memo across runs)
+
+The pilot asked whether the result of the spatial assertions could be kept
+between `machinome test` runs, so a run costs only what changed. Measured
+at the primary's bf24687 with an in-process probe (the session's
+scratchpad script, not kept) that wrapped `_memoized`, `intersect_shapes`
+and `Shape.importBrep`, then ran a suite twice inside one interpreter:
+the first pass with the ADR-070 memo cold, the second with it warm. The
+warm pass is the floor a cache that survives the process could reach.
+
+- `machinome test wall_clock_02` (22 tests, exact kernel): 1348.9 s cold,
+  of which 1280.6 s (95%) were spent inside verdict-memo misses — 4238
+  keyed asks, 3100 in-process hits, 1138 misses, 643 of them reaching the
+  boolean (1240.9 s, 1.93 s each), 0 uncacheable. 53 BREP imports took
+  0.08 s. Warm pass: 18.35 s, all 4238 asks served, no boolean, the same
+  16 passed and 6 failed. The six failures are the project's own state
+  today (collet against hinge_screw 14.58 mm³, holder body against the
+  beat crinkle washer 1.58 mm³, `standoffs` two bodies, the weight screw
+  not meeting its nut) and were not diagnosed.
+- `machinome test` on strandbeest's declared walking demo (3 tests, exact
+  kernel): 246.9 s cold, 228.1 s (92%) inside misses — 6635 asks, 5125
+  hits, 1510 misses, 1055 booleans (176.4 s), 0 uncacheable. Warm pass:
+  11.97 s, all 6635 asks served, 3 passed both times.
+
+Findings:
+
+- **The memo is the whole cost, and it dies with the process.** Every
+  spatial assertion routes through `_memoized` in `machinome/test.py`,
+  keyed on two solid identities, the quantised relative placement
+  (ADR-090) and the kernel path; ADR-070 chose to keep it per run
+  ("nothing survives the process"). The studio floor spawns a fresh
+  `machinome test` per run, so every floor run is cold. A persistent tier
+  beneath the same memo, hit for hit, would leave 12–18 s of these
+  suites: node construction, currency, BREP loads, placement and the
+  broad phase.
+- **The identities are file observations, not state.** An exact shape's
+  identity is `(brep path, mtime)` (`cached_shape` in `exact.py`); a
+  faceted solid's is the STL's `ArtifactObservation`. Both change on a
+  rebuild that reproduces identical bytes, and neither survives a clone.
+  The state the verdict is a function of is the artifact's content.
+- **Flexible leaves already compute a state identity and the memo
+  throws it away.** `FlexibleNode._faceted_cache_snapshot` keys the
+  Manifold cache on tech, source fingerprint and digest, structural
+  identity, the bound values and the sha256 of the serialized spec;
+  `_fast_geometry` returns `None` as the verdict identity for the same
+  node. ADR-070's "uncacheable by construction" argued against keying on
+  names, where two bindings at one relative placement collide; a state
+  key has no such collision. ADR-070 measured 1499 s of v8-engine's
+  1687 s in exactly those pairs.
+- **The builder's sweep deletes any file in `_build` it does not
+  name** (`kept` in `core/builder.py`: referenced artifacts,
+  `viewer.json`, `errors.json`, `.scad`/`.brep`/`.lock`/`.tmp` and the
+  currency sidecars). A store that lives there must be named or it is
+  gone on the next build.
+- **Two writers are normal.** The floor's test subprocess and a running
+  `machinome develop` both hold a memo; a persistent store is shared
+  between them.
+
+Not a framework fix, recorded for the project: the six wall_clock_02
+failures above.
+
+Taken up by cycle `persistent-verdict-memo` (bench
+`machinome/WTs/persistent-verdict-memo`, base bf24687).
