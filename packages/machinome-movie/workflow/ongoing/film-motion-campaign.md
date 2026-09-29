@@ -34,6 +34,10 @@ two browser runs at once (the workspace drive is virtiofs).
   name: `linear`, `smooth` (today's smoothstep, and the default wherever a
   smoothstep exists today), `in`, `out`, `in-out`. No spring or bounce: no
   episode asks for one. Shared code lives in `src/easing.mjs`.
+- **Closed field lists in 0.4** (ratified with `keyframes-and-easing` D7): a
+  0.4 shot, its `simulation`, its model keyframes and its camera keys refuse
+  unknown fields; every later cycle adds its fields to those lists, and the
+  first cycle to touch overlay cues closes their list as well.
 - **A frame stays a pure function of video time** (plus the captions the
   speech cache supplies). A transition frame may pose the viewer twice; nothing
   may depend on the previous frame.
@@ -49,3 +53,6 @@ two browser runs at once (the workspace drive is virtiofs).
 
 Recorded in place as each cycle is proposed, ratified, implemented and
 demonstrated.
+
+- 29 Sep: `keyframes-and-easing` proposed and ratified (planning commit
+  follows this note's revision).
