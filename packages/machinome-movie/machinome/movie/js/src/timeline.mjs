@@ -13,6 +13,13 @@ function annotationsAt(e,shot,local){
     return [cue];
   });
 }
+// The active highlight cue as data, with every choice explicit, or null.
+function highlightAt(e,shot,local){
+  const cue=(shot.highlight??[]).find(c=>local>=c.from&&local<c.to);
+  if(!cue)return null;
+  return {paths:cue.parts.flatMap(part=>typeof part==='string'?e.layers[part]:[part]),
+    others:cue.others??'keep',color:cue.color??e.style.accent};
+}
 export function frameAt(e, t, captions=[]) {
   const shot=e.shots.find(s=>t>=s.start && t<s.end);
   if(!shot)throw new Error(`Frame time ${t} is outside the episode`);
@@ -33,7 +40,7 @@ export function frameAt(e, t, captions=[]) {
     overlays:shot.overlays.filter(o=>local>=o.from&&local<o.to),
     code:codeAt(e,shot,local)};
   // Format 0.2 frames keep their exact shape; 0.3 frames always carry the new cues.
-  if(e.format===V03)frame.annotations=annotationsAt(e,shot,local);
+  if(e.format===V03){frame.annotations=annotationsAt(e,shot,local);frame.highlight=highlightAt(e,shot,local);}
   return frame;
 }
 

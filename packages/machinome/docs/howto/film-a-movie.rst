@@ -14,8 +14,8 @@ refused. The viewer executes the actual mechanical model.
 
 Requires Node 22+, FFmpeg/ffprobe, and a Machinome Viewer API 21 bundle with
 `setView` and on-demand rendering. Viewer API 27 is used by the release-film
-study. Episodes in the draft format 0.3 that point at parts (`annotations`)
-need Viewer API 28, which the machinome-viewer source is adding and no
+study. Episodes in the draft format 0.3 that point at parts (`annotations`) or
+highlight them (`highlight`) need Viewer API 28, which the machinome-viewer source is adding and no
 published viewer release declares yet; `check`, `preview` and `render` refuse them against an
 older bundle. Linux/Chromium software rendering is the tested environment.
 
@@ -67,7 +67,9 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   checks real-browser pixel replay, requested camera readback, canvas layout and
   invalid camera refusal. Annotated shots add stills at each arrow or label's
   start, quarters and end; every posed frame refuses an annotation whose part
-  is off screen or whose text leaves the frame. No speech generation occurs.
+  is off screen or whose text leaves the frame. Each highlight cue is posed
+  with and without its cue and must change the pixels and restore them exactly.
+  No speech generation occurs.
 - `render` requires cached speech and renders the film. Add
   `--width 960 --fps 10 --silent` for a quick silent video.
 - `build` combines speech generation/cache reuse and final rendering.

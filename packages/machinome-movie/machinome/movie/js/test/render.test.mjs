@@ -4,7 +4,7 @@ import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {preview,render} from '../src/render.mjs';
+import {preview,render,browserSession} from '../src/render.mjs';
 import {pcmWav} from '../src/speech.mjs';
 
 // A minimal viewer double exercises film composition/encoding only. The real
@@ -80,7 +80,7 @@ function viewerDouble(options={}){
       },
       highlight(paths,settings){
         if(lit)throw new Error('A highlight is already standing');
-        calls.push(['highlight',paths,settings]);canvas.style.background=settings.color;
+        calls.push(['highlight',paths,settings]);if(!o.inertHighlight)canvas.style.background=settings.color;
         const token=lit={};
         return ()=>{if(lit!==token)throw new Error('restore called twice');calls.push(['restore']);lit=null;if(!o.brokenRestore)canvas.style.background=o.color;};
       }};
@@ -131,4 +131,23 @@ test('an arrow follows a moving part and a label rides a world point, reproducib
   assert.ok(label.text.y+label.text.height<label.anchor.y,'the label sits above its point');
   await assert.rejects(preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640}),/Viewer API 28.*annotations \(shot pawls\).*declares API 27/);
   await assert.rejects(preview(e,{viewer:await viewer('vanishing.js',{vanishAfter:.5}),width:640}),/not on screen: pawls #0 'Pulls'/);
+});
+
+test('a highlight is applied and restored by requested state, and preview proves both in pixels',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{highlight:[{from:.5,to:1.5,parts:['pawl'],others:'ghost'}]});
+  const good=await viewer('viewer28.js');
+  const p=await preview(e,{viewer:good,width:640});
+  assert.equal(p.pixelReplay,true);
+  assert.deepEqual(p.highlightChecks.map(c=>[c.shotId,c.index,c.changed,c.restored,c.reapplied]),[['pawls',0,true,true,true]]);
+  const calls=await browserSession(e,good,640,[],async({page,pose})=>{
+    for(const time of [0,.6,1,1.6,.6,0])await pose(time);
+    return {result:await page.evaluate(()=>window.viewerCalls.filter(c=>c[0]!=='setView'))};
+  });
+  assert.deepEqual(calls.result.map(c=>c[0]),['highlight','restore','highlight','restore'],'one highlight and one restore per entry and exit');
+  for(const call of calls.result.filter(c=>c[0]==='highlight'))
+    assert.deepEqual(call.slice(1),[[['Feed','Pawl']],{color:'#bf531f',others:'ghost'}]);
+  await assert.rejects(preview(e,{viewer:await viewer('broken.js',{brokenRestore:true}),width:640}),/Highlight did not restore exactly: pawls #0/);
+  await assert.rejects(preview(e,{viewer:await viewer('inert.js',{inertHighlight:true}),width:640}),/Highlight did not reach the pixels: pawls #0/);
+  await assert.rejects(preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640}),/Viewer API 28 for highlight \(shot pawls\).*declares API 27/);
 });

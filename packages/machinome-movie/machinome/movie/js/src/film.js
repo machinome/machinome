@@ -19,7 +19,7 @@
   // Refuse on mount rather than render a film with its new cues missing.
   if(viewer.apiVersion<cfg.requiredViewerApi.api)throw new Error(cfg.viewerRefusal.replace('{declared}',String(viewer.apiVersion)));
   await document.fonts.ready;
-  let hidden=[];
+  let hidden=[],applied=null,restore=null;
   const layer=document.querySelector('#annotations'),svgNS='http://www.w3.org/2000/svg';
   const plain=r=>({x:r.x,y:r.y,width:r.width,height:r.height});
   const union=(a,b)=>{const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);
@@ -73,10 +73,20 @@
       document.body.classList.toggle('with-code',split);
       await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     }
+    // Highlight state follows the request, never the order frames are posed in:
+    // restore a standing cue that differs, apply visibility, then the new cue.
+    const wanted=frame.highlight?JSON.stringify(frame.highlight):null;
+    if(wanted!==applied&&restore){const put=restore;restore=null;applied=null;put();}
     if(JSON.stringify(hidden)!==JSON.stringify(frame.hidden)){
       for(const path of hidden)viewer.setVisible(path,true);
       for(const path of frame.hidden)viewer.setVisible(path,false);
       hidden=frame.hidden;
+    }
+    if(wanted!==applied){
+      const {paths,others,color}=frame.highlight;
+      try{restore=viewer.highlight(paths,{color,others});}
+      catch(error){throw new Error(`Viewer refused the highlight in shot ${frame.shotId}: ${error.message}`);}
+      applied=wanted;
     }
     viewer.setTime(frame.time);
     viewer.setView(frame.view); // Validates, updates and renders synchronously.

@@ -67,11 +67,35 @@ function validateAnnotations(e,s,known){
     }
   });
 }
+const HIGHLIGHT_FIELDS=new Set(['from','to','parts','others','color']);
+export const COLOR=/^#[0-9a-fA-F]{6}$/;
+function validateHighlight(e,s,known){
+  if(s.highlight===undefined)return;
+  need(formatOf(e)===V03,`Highlights need format machinome-video-draft/0.3: shot ${s.id}`);
+  need(Array.isArray(s.highlight),`Highlight must be a list of cues: shot ${s.id}`);
+  const duration=s.end-s.start,hidden=hiddenPaths(e,s);
+  s.highlight.forEach((c,i)=>{
+    const where=`highlight #${i}`,bad=why=>`Invalid ${where} in shot ${s.id}: ${why}`;
+    need(c&&typeof c==='object'&&!Array.isArray(c),bad('expected a mapping'));
+    for(const key of Object.keys(c))need(HIGHLIGHT_FIELDS.has(key),`Unknown highlight field: ${key} (${where} in shot ${s.id})`);
+    need(finite(c.from)&&finite(c.to)&&c.from>=0&&c.from<c.to&&c.to<=duration,bad('times must satisfy 0 <= from < to <= shot duration'));
+    // A string is a layer name and a list is one path; a bare path therefore reads as unknown layers.
+    need(Array.isArray(c.parts)&&c.parts.length>0,bad('parts must be a non-empty list of layer names or assembly paths'));
+    for(const part of c.parts)for(const path of targetPaths(e,s,part,known,where))
+      need(!hidden.some(h=>within(h,path)),`Highlighted part is hidden in shot ${s.id}: ${path.join('/')} (${where})`);
+    need(c.others===undefined||['keep','dim','ghost'].includes(c.others),bad('others must be keep, dim or ghost'));
+    if(c.color===undefined)need(typeof e.style?.accent==='string'&&COLOR.test(e.style.accent),bad('the default colour style.accent must be a quoted #rrggbb'));
+    else need(typeof c.color==='string'&&COLOR.test(c.color),bad('color must be a quoted #rrggbb'));
+  });
+  const cues=[...s.highlight].sort((a,b)=>a.from-b.from);
+  for(let i=1;i<cues.length;i++)need(cues[i].from>=cues[i-1].to,`Highlight cues overlap in shot ${s.id}`);
+}
 // The lowest Viewer API an episode can be produced with, and why.
 export function requiredViewerApi(e) {
   const reasons=[];
   for(const s of e.shots??[]){
     if(s.annotations?.length)reasons.push(`annotations (shot ${s.id})`);
+    if(s.highlight?.length)reasons.push(`highlight (shot ${s.id})`);
   }
   return {api:reasons.length?28:21,reasons};
 }
@@ -129,6 +153,7 @@ export function validateEpisode(e, manifest) {
     for(const cue of s.overlays)need(finite(cue.from)&&finite(cue.to)&&cue.from>=0&&cue.to>cue.from&&cue.to<=s.end-s.start&&typeof cue.text==='string'&&['top','lower-third','center'].includes(cue.position),`Invalid overlay: ${s.id}`);
     for(const name of s.evidence)need(e.evidence[name],`Unknown evidence: ${name}`);
     validateAnnotations(e,s,known);
+    validateHighlight(e,s,known);
   }
   need(end===e.output.durationSeconds,'Shots must cover the video duration');
 }

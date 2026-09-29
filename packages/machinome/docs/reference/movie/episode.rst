@@ -110,6 +110,8 @@ Shot boundaries are hard cuts; no crossfade or automatic framing is implied.
 
 `hiddenLayers` describes the complete shot visibility state: start with all
 parts visible, then hide those layers. Do not accumulate state from earlier shots.
+In format 0.3 a `highlight` (below) composes with it: hidden parts stay hidden
+while the others are kept, dimmed or ghosted, and highlighting a hidden part is refused.
 
 Overlay `from`/`to` values are shot-local, half-open intervals. Positions are
 `top`, `lower-third`, or `center`. Overlays are screen labels, fixed on the frame;
@@ -256,6 +258,53 @@ shot, the annotation's index and text, and the video time:
 part that leaves the view therefore stops production; shorten the cue or
 reframe. `preview` samples every annotation at its start, quarters, midpoint and
 last frame, and its report records each drawn anchor, part rectangle and text box.
+
+## Drawing attention to a part
+
+A 0.3 shot may carry `highlight` cues: for a timed interval, the named parts are
+tinted and every other part is kept, dimmed or ghosted (still drawn, translucent,
+so what is behind it shows through). Use it to show a mechanism inside its
+housing instead of hiding the housing.
+
+```yaml
+    highlight:
+      - from: 0
+        to: 5.366
+        parts: [[Feed mechanism, Driving pawl], [Feed mechanism, Ratchet and slender winding axle]]
+        others: ghost
+      - {from: 5.366, to: 10, parts: [[Feed mechanism, Holding pawl]], others: dim, color: "#237c86"}
+```
+
+- `from`, `to`: shot-local, half-open, `0 <= from < to <= duration`. Cues in one
+  shot must not overlap; gaps show the model plainly.
+- `parts`: a non-empty list. A string entry is a production layer name; a list
+  entry is one root-relative assembly path. So `parts: [saw, feed]` is two layers
+  and `parts: [[Saw mechanism, Connecting rod]]` is one path. A bare path written
+  without the outer list, `parts: [Saw mechanism, Connecting rod]`, reads as two
+  layer names and is refused as unknown layers, never guessed.
+- `others`: `keep`, `dim` or `ghost`; default `keep`.
+- `color`: optional quoted `"#rrggbb"`; default `style.accent`, which must then be
+  a quoted `#rrggbb` too. Both choices are always passed to the viewer
+  explicitly, so the viewer's own defaults never decide a film.
+
+A cue ends at its `to` and at the shot's cut; every material is restored exactly,
+and each frame's look depends only on its video time. The viewer tints only parts
+that declare a colour of their own; an undeclared-colour part is neither tinted
+nor dimmed, though `ghost` still makes it translucent. Review the stills.
+
+`check` refuses, naming the shot: empty parts, an unknown layer, a path the export
+does not contain, an `others` outside the three words, a colour that is not
+`#rrggbb`, unknown fields, times outside the shot, overlapping cues, a
+highlighted part equal to or inside a path the same shot hides, and `highlight`
+in a 0.2 episode. A highlighted ancestor of a hidden part is allowed; the hidden
+part stays hidden, and `ghost` does not bring it back.
+
+`preview` checks each cue at its midpoint: the same instant with the cue removed,
+with it, without it and with it again. The cue must change the pixels, the two
+captures without it must match exactly (restore is complete), and the two with
+it must match (it re-applies identically). A failure keeps its before/after
+images in `preview/`. Whether a ghosted frame reads as translucent context is a
+judgement on the stills, not an automated claim.
 
 ## Optional subtitles
 

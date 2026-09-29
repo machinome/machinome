@@ -24,7 +24,7 @@ async function stage(e,viewer) {
   return {paths,hashes};
 }
 
-async function browserSession(e,viewer,width,captions,action) {
+export async function browserSession(e,viewer,width,captions,action) {
   const {paths,hashes}=await stage(e,viewer);
   const height=Math.round(e.output.height*width/e.output.width/2)*2;
   const initial=frameAt(e,0,captions);
@@ -54,9 +54,10 @@ async function browserSession(e,viewer,width,captions,action) {
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw new Error(error);
     let frames=0;
-    async function pose(t){
+    // override replaces frame fields for preview-only comparison frames.
+    async function pose(t,override={}){
       if(errors.length)throw new Error(errors.join('\n'));
-      const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds};
+      const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds,...override};
       const observed=await page.evaluate(f=>window.film.setFrame(f),f);
       for(const k of ['camera','target'])for(let i=0;i<3;i++)if(Math.abs(observed[k][i]-f.view[k][i])>1e-6)throw new Error('Viewer did not adopt requested camera');
       const canvasSize=await page.locator('#stage canvas').boundingBox(),stageSize=await page.locator('#stage').boundingBox();
@@ -86,6 +87,23 @@ async function browserSession(e,viewer,width,captions,action) {
 export async function preview(e,{viewer,width=960,captions=[]}) {
   const dir=resolve(e.paths.build,'preview');await mkdir(dir,{recursive:true});
   const result=await browserSession(e,viewer,width,captions,async({page,pose})=>{
+    // Highlights first, while every material is pristine: the same instant
+    // without its cue, with it, without it, with it. The cue must change the
+    // pixels, restore() must return them exactly, and re-applying must match.
+    const highlightChecks=[];
+    for(const shot of e.shots)for(const [index,cue] of (shot.highlight??[]).entries()){
+      const t=shot.start+(cue.from+cue.to)/2,capture=async override=>{await pose(t,override);return page.screenshot();};
+      const plain=await capture({highlight:null}),lit=await capture(),plainAgain=await capture({highlight:null}),litAgain=await capture();
+      const fail=async(check,message,before,after)=>{
+        await writeFile(resolve(dir,`highlight-${shot.id}-${index}-${check}-before.png`),before);
+        await writeFile(resolve(dir,`highlight-${shot.id}-${index}-${check}-after.png`),after);
+        throw new Error(`${message}: ${shot.id} #${index} at ${t.toFixed(2)} s; inspect preview/highlight-${shot.id}-${index}-${check}-{before,after}.png`);
+      };
+      if(!plain.equals(plainAgain))await fail('restore','Highlight did not restore exactly',plain,plainAgain);
+      if(lit.equals(plain))await fail('visible','Highlight did not reach the pixels',plain,lit);
+      if(!lit.equals(litAgain))await fail('reapply','Highlight did not re-apply identically',lit,litAgain);
+      highlightChecks.push({shotId:shot.id,index,time:t,changed:true,restored:true,reapplied:true});
+    }
     const samples=[];
     for(const shot of e.shots){
       const times=[0,.5,.95].map(u=>shot.start+(shot.end-shot.start)*u);
@@ -95,6 +113,7 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
         for(const u of [0,.25,.5,.75])times.push(shot.start+a.from+(a.to-a.from)*u);
         times.push(shot.start+Math.max(a.from,a.to-1/e.output.fps));
       }
+      for(const cue of shot.highlight??[])times.push(shot.start+(cue.from+cue.to)/2);
       for(const t of [...new Set(times)].sort((a,b)=>a-b)){
       const posed=await pose(t);
       const readable=await page.locator('.lower-third').evaluateAll(elements=>elements.every(element=>{
@@ -119,7 +138,7 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     // Bad camera requests must leave the actual mounted view intact.
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
     if(!preserved)throw new Error('Invalid camera request changed viewer state');
-    return {samples,pixelReplay:true,invalidCameraPreserved:true};
+    return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{})};
   });
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.

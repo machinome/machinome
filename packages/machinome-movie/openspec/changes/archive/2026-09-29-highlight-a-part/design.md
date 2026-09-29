@@ -123,3 +123,32 @@ tool commit makes 0.3 episodes refused by format, never rendered unhighlighted.
 
 - Default `others`: `keep` is proposed as the least surprising; the pilot's wish
   pairs highlighting with dimming or ghosting, so each Leonardo cue will state it.
+
+## Ratification and resolutions (29 September 2026)
+
+The pilot ratified this change with `annotate-a-part` and
+`move-up-and-field-of-view`; the shared D5 was implemented by `annotate-a-part`,
+applied first, and this change adds the reason `highlight (shot <id>)`. The
+open question is settled as proposed: `others` defaults to `keep`. Where the
+implementation departs from, or sharpens, the text above:
+
+- **Reconciled viewer contract.** The viewer accepts `color` as `#rgb` or
+  `#rrggbb`; Videomaker keeps the stricter `#rrggbb`, and when a cue omits
+  `color` it requires `style.accent` to be `#rrggbb` as well, so the default
+  cannot be refused mid-render. The viewer refuses `highlight([])`; `check`
+  refuses empty `parts` first. A second `highlight` while one stands throws in
+  the viewer, which D2 already avoids by calling the stored `restore()` before
+  any new cue. A part with no declared colour gets neither tint nor dim (ghost
+  still applies): recorded in FORMAT.md as a limit for visual review.
+- **Order within a frame.** A standing cue that differs from the request is
+  restored *before* visibility changes, and the new cue applied after them, so
+  visibility never changes under a highlight. This still satisfies D2 and D3
+  (visibility before the new highlight).
+- **D6's unhighlighted instant** is the comparison frame itself: the same
+  instant with the cue removed. The checks run before the other preview samples,
+  while every material is pristine, as plain, lit, plain, lit captures; this
+  isolates the highlight from any change of pose or camera. The midpoint of each
+  cue is also a regular preview still.
+- **Unknown highlight fields are refused**, as for annotations.
+- `browserSession` is exported from `src/render.mjs` so a test can pose an
+  exact sequence and read the viewer double's recorded calls.
