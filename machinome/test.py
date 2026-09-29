@@ -17,8 +17,10 @@ from scipy.sparse import coo_matrix, eye as sparse_eye
 from scipy.sparse import hstack as sparse_hstack
 from unittest import TestCase as BaseTestCase
 
+from machinome import _verdict_store
 from machinome.mesh_engine import require_mesh_engine
-from machinome._artifact import ArtifactChanged, artifact_cache_key
+from machinome._artifact import (ArtifactChanged, ArtifactObservation,
+                                 artifact_cache_key)
 from machinome.node.base import (cached_base_mesh, _compose_solid_matrix,
                                   _compose_world_matrix, _enclosing_solid,
                                   _topmost_rigid_nodes)
@@ -67,6 +69,7 @@ def _deferred_exact(name):
 cached_bounding_box = _deferred_exact('cached_bounding_box')
 cached_face_boxes = _deferred_exact('cached_face_boxes')
 shape_identity = _deferred_exact('shape_identity')
+shape_load_observation = _deferred_exact('shape_load_observation')
 fuse_shapes = _deferred_exact('fuse_shapes')
 intersect_shapes = _deferred_exact('intersect_shapes')
 placed_shape = _deferred_exact('placed_shape')
@@ -108,6 +111,13 @@ class IntersectionStats:
 # intent, which is why it may have a default where the epsilon may not.
 # It applies under both kernels, unlike the epsilon.
 #
+# And it carries the verdict-store switch (ADR-156, amending ADR-070): whether
+# a verdict this run decides is kept in the project's build directory and
+# served to a later process asking the same question of the same state. On
+# by default and under both kernels; a served verdict is the verdict the same
+# key produced, so the default run's output does not change, and only a run
+# with the store off says so.
+#
 # `machinome test` resolves the policy from its flags and the environment
 # and sets it before the first build; any other entry (a ScenarioTest
 # under pytest, an assertion driven directly) resolves it from the
@@ -120,29 +130,36 @@ class IntersectionStats:
 DEFAULT_PLACEMENT_QUANTUM = 1e-9
 
 ComparisonPolicy = namedtuple(
-    'ComparisonPolicy', 'kernel volume_epsilon placement_quantum',
-    defaults=(DEFAULT_PLACEMENT_QUANTUM,))
+    'ComparisonPolicy',
+    'kernel volume_epsilon placement_quantum verdict_store',
+    defaults=(DEFAULT_PLACEMENT_QUANTUM, True))
 
 KERNELS = ('exact', 'faceted')
+
+#: `SOLID_TEST_VERDICT_STORE`'s two accepted values.
+VERDICT_STORE_SETTINGS = {'on': True, 'off': False}
 
 _policy = None
 
 
 def resolve_comparison_policy(kernel=None, volume_epsilon=None,
-                              placement_quantum=None, environ=None):
+                              placement_quantum=None, verdict_store=None,
+                              environ=None):
     """The run's comparison policy from explicit values, then the
     environment, then the defaults.
 
     An explicit `kernel` (a flag) beats `SOLID_TEST_KERNEL`; an explicit
     `volume_epsilon` beats `SOLID_TEST_VOLUME_EPSILON`; an explicit
-    `placement_quantum` beats `SOLID_TEST_PLACEMENT_QUANTUM`. The epsilon
-    exists only for the faceted kernel: offered explicitly to the exact
-    kernel it is refused, and the environment's value is not even read
-    there, so a checkout's `.env` may carry both lines while CI overrides
-    the kernel alone. The placement quantum is resolved and validated
-    before the kernel is even branched on, and BOTH kernels carry it: it
-    identifies a question, not a quantity of material, and both kernels'
-    verdicts pass through the same memo.
+    `placement_quantum` beats `SOLID_TEST_PLACEMENT_QUANTUM`; an explicit
+    `verdict_store` beats `SOLID_TEST_VERDICT_STORE` (`on` or `off`), whose
+    default is on. The epsilon exists only for the faceted kernel: offered
+    explicitly to the exact kernel it is refused, and the environment's
+    value is not even read there, so a checkout's `.env` may carry both
+    lines while CI overrides the kernel alone. The placement quantum and
+    the verdict-store switch are resolved and validated before the kernel
+    is even branched on, and BOTH kernels carry them: they identify a
+    question and where its answer is kept, not a quantity of material, and
+    both kernels' verdicts pass through the same memo.
     """
     environ = os.environ if environ is None else environ
     if placement_quantum is None:
@@ -171,6 +188,17 @@ def resolve_comparison_policy(kernel=None, volume_epsilon=None,
     if placement_quantum < 0:
         raise ValueError(
             f'{quantum_source} must not be negative ({placement_quantum})')
+    if verdict_store is None:
+        raw = environ.get('SOLID_TEST_VERDICT_STORE')
+        if not raw:
+            verdict_store = True
+        elif raw in VERDICT_STORE_SETTINGS:
+            verdict_store = VERDICT_STORE_SETTINGS[raw]
+        else:
+            raise ValueError(
+                f"SOLID_TEST_VERDICT_STORE must be 'on' or 'off', not "
+                f"{raw!r}")
+    verdict_store = bool(verdict_store)
     if kernel is None:
         kernel = environ.get('SOLID_TEST_KERNEL') or 'exact'
         if kernel not in KERNELS:
@@ -184,7 +212,8 @@ def resolve_comparison_policy(kernel=None, volume_epsilon=None,
             raise ValueError(
                 'the exact kernel has nothing for a volume epsilon to '
                 'absorb: drop --volume-epsilon or select --faceted')
-        return ComparisonPolicy('exact', 0.0, placement_quantum)
+        return ComparisonPolicy('exact', 0.0, placement_quantum,
+                                verdict_store)
     if volume_epsilon is None:
         raw = environ.get('SOLID_TEST_VOLUME_EPSILON') or '0'
         try:
@@ -197,7 +226,8 @@ def resolve_comparison_policy(kernel=None, volume_epsilon=None,
     if volume_epsilon < 0:
         raise ValueError(
             f'the volume epsilon must not be negative ({volume_epsilon})')
-    return ComparisonPolicy('faceted', volume_epsilon, placement_quantum)
+    return ComparisonPolicy('faceted', volume_epsilon, placement_quantum,
+                            verdict_store)
 
 
 def set_comparison_policy(policy):
@@ -259,7 +289,9 @@ _manifold_cache = {}
 # bounds and admitted Manifold entries.  Its keys come from the leaf's full
 # source/spec/binding snapshot, never the shortened display or artifact ids.
 # Access order bounds a long simulation trajectory without changing any
-# Boolean verdict (which remains deliberately uncached for flexible nodes).
+# Boolean verdict.  It keeps geometry, never verdicts: those are the verdict
+# memo's, keyed on the leaf's STATE identity taken from the same snapshot
+# (ADR-156), which drops this key's absolute source path and fingerprint.
 _FLEXIBLE_MANIFOLD_CACHE_LIMIT = 64
 _flexible_manifold_cache = OrderedDict()
 
@@ -362,11 +394,25 @@ def _flexible_manifold(node, needed_by=_FACETED_NEEDED_BY,
     binding, built from ``base_mesh()`` -- never from ``stl_file``,
     which for a flexible leaf names an artifact it does not write.
     """
+    return _flexible_geometry(node, needed_by, reason)[:2]
+
+
+def _flexible_geometry(node, needed_by=_FACETED_NEEDED_BY,
+                       reason=_FACETED_REASON):
+    """(Manifold, local_bounds, verdict_identity) for a flexible leaf.
+
+    The verdict identity is the leaf's STATE identity (ADR-156), taken from
+    the very snapshot that keys the Manifold and, on a miss, supplies the
+    rendered shape it is built from: a verdict keyed on it names the
+    geometry actually compared. None for a leaf whose `base_mesh()` seam is
+    overridden or whose sources cannot be read.
+    """
     # `FlexibleNode.base_mesh()` is the public project seam. Its stock
     # implementation can use the coherent private snapshot below, but an
     # override may produce geometry the serialized molejo spec cannot name.
-    # Preserve that override exactly and keep it uncached rather than bless a
-    # cache identity that does not prove the custom mesh current.
+    # Preserve that override exactly and keep it uncached -- geometry and
+    # verdict alike -- rather than bless a cache identity that does not
+    # prove the custom mesh current.
     if getattr(node.base_mesh, '__func__', None) is not FlexibleNode.base_mesh:
         mesh = node.base_mesh()
         Manifold, Mesh = require_mesh_engine(needed_by, _engine_reason(reason))
@@ -375,9 +421,9 @@ def _flexible_manifold(node, needed_by=_FACETED_NEEDED_BY,
             vert_properties=np.asarray(mesh.vertices, np.float32),
             tri_verts=np.asarray(mesh.faces, np.uint32),
         )), mesh, f"{node.name} at this binding")
-        return manifold, bounds
+        return manifold, bounds, None
 
-    key, rendered, values = node._faceted_cache_snapshot()
+    key, identity, rendered, values = node._snapshot(geometry_key=True)
     if key is not None:
         try:
             cached = _flexible_manifold_cache.pop(key)
@@ -385,7 +431,7 @@ def _flexible_manifold(node, needed_by=_FACETED_NEEDED_BY,
             pass
         else:
             _flexible_manifold_cache[key] = cached
-            return cached
+            return cached[0], cached[1], identity
 
     Manifold, Mesh = require_mesh_engine(needed_by, _engine_reason(reason))
     # Deliberately bypass the public `base_mesh()` seam: its public contract
@@ -404,7 +450,7 @@ def _flexible_manifold(node, needed_by=_FACETED_NEEDED_BY,
         _flexible_manifold_cache[key] = cached
         while len(_flexible_manifold_cache) > _FLEXIBLE_MANIFOLD_CACHE_LIMIT:
             _flexible_manifold_cache.popitem(last=False)
-    return cached
+    return manifold, bounds, identity
 
 
 def _body_count(mesh):
@@ -422,9 +468,12 @@ def _fast_geometry(node, compose_matrix=_compose_world_matrix):
     """(Manifold, local_bounds, world_matrix, verdict_identity) for `node`.
 
     A rigid verdict identity is the exact observation that supplied its
-    Manifold and bounds. Flexible geometry has no artifact identity and is
-    deliberately returned with ``None``, even if a stale file happens to
-    exist at its nominal ``stl_file`` path.
+    Manifold and bounds. Flexible geometry has no artifact identity, and a
+    stale file that happens to exist at its nominal ``stl_file`` path is
+    never read: its verdict identity is the leaf's state identity from the
+    snapshot that supplied the Manifold (ADR-156), or ``None`` for a leaf
+    whose ``base_mesh()`` seam is overridden or whose sources cannot be
+    read.
 
     Returns geometry if `node` exposes
     the attributes the fast path needs (docs/performance-improvement.md
@@ -434,8 +483,8 @@ def _fast_geometry(node, compose_matrix=_compose_world_matrix):
     doubles in tests/test_assertions.py), which then falls back to a
     plain boolean over `.mesh` with no caching or culling."""
     if getattr(node, 'flexible', False):
-        manifold, bounds = _flexible_manifold(node)
-        return manifold, bounds, compose_matrix(node), None
+        manifold, bounds, identity = _flexible_geometry(node)
+        return manifold, bounds, compose_matrix(node), identity
     stl_file = getattr(node, 'stl_file', None)
     if stl_file is None:
         return None
@@ -1586,10 +1635,22 @@ def _unbalanced_bodies(bodies, contacts, declared, unit_gravity):
 # instant though none of it has moved relative to anything.
 #
 # Like the AABB broad phase this only ever skips work whose answer is
-# already certain. It introduces NO tolerance: the relative matrix is
-# compared by its exact bytes, so a placement difference too small to see
-# is still a different placement. A near-miss costs a miss, which costs
-# exactly what today costs.
+# already certain. The relative placement is keyed on the run's placement
+# quantum's integer cells (ADR-090), a statement about float noise, never a
+# tolerance on a verdict; a near-miss costs a miss, which costs exactly
+# what computing costs.
+#
+# Two tiers answer (ADR-156, amending ADR-070). This process's memo below
+# answers first, keyed on in-process identities: a rigid solid's artifact
+# observation, a flexible leaf's state. Beneath it, at an in-process miss
+# and with the run's store switch on, the project's verdict store
+# (`machinome._verdict_store`, under `<build root>/.verdicts`) serves what
+# an EARLIER process decided for the same state: the same key with each
+# identity replaced by a persistent one -- the SHA-256 of the artifact
+# bytes the compared geometry was read from, or the flexible state -- and
+# bound to a stamp of the framework source, the kernels and the platform.
+# Every doubt about an identity is a miss, and a miss computes exactly as
+# it would with no store.
 
 # Bounded so a long-lived process (`machinome develop`) cannot grow it without
 # limit. A test run is far below this; the oldest entry goes first.
@@ -1628,7 +1689,15 @@ def _verdict_key(identity1, matrix1, identity2, matrix2, path):
     geometry identity, so nothing about a later comparison can be known to
     be the same question, OR the relative matrix carries a non-finite
     entry (a degenerate composed transform), so no cell index can be
-    trusted.
+    trusted. Nothing is kept in either tier for such a comparison.
+
+    The key is ``(identity1, identity2, path, quantum, placement)``, in
+    that order, so (A, B) and (B, A) stay two questions. An identity is a
+    rigid solid's in-process identity -- ``(brep path, float mtime)`` on the
+    exact path, ``(stl path, ArtifactObservation)`` on the faceted one -- or
+    a flexible leaf's ``('flexible', state digest)``. The verdict store
+    keeps the same fields with each identity made persistent (see
+    ``_persisted_key``).
 
     The placement term is the run's PLACEMENT QUANTUM's integer cell
     indices of the relative matrix -- ``inv(matrix1) @ matrix2`` divided
@@ -1684,16 +1753,104 @@ def _record_key(first, second, identity_index, path):
 
 
 def _memoized(key, compute):
-    """``compute()``, once per key."""
+    """``compute()``, once per key -- and, with the run's verdict store
+    on, once per key across the project's runs.
+
+    A ``None`` key computes and keeps nothing. An in-process hit returns
+    at once and touches nothing else. At an in-process miss the verdict
+    store is consulted under the persisted form of the key; a verdict it
+    serves enters this process's memo. Otherwise the verdict is computed,
+    entered here and, when a persisted key could be derived, queued for
+    the store. A computation that raises is kept nowhere. The store holds
+    the raw engine verdict: ``_settled`` applies the run's epsilon after
+    this returns, exactly as after an in-process hit.
+    """
     if key is None:
         return compute()
     cached = _verdict_cache.get(key)
-    if cached is None:
-        cached = compute()
-        if len(_verdict_cache) >= _VERDICT_CACHE_LIMIT:
-            del _verdict_cache[next(iter(_verdict_cache))]
-        _verdict_cache[key] = cached
+    if cached is not None:
+        return cached
+    store = (_verdict_store.active() if comparison_policy().verdict_store
+             else None)
+    persisted = None if store is None else _persisted_key(key)
+    if persisted is not None:
+        served = store.lookup(persisted)
+        if served is not None:
+            cached = IntersectionStats(*served)
+            _remember(key, cached)
+            return cached
+    cached = compute()
+    _remember(key, cached)
+    if persisted is not None:
+        store.record(persisted, cached.is_empty, cached.volume, cached.exact)
     return cached
+
+
+def _remember(key, stats):
+    """Enter one verdict in the bounded in-process memo."""
+    if len(_verdict_cache) >= _VERDICT_CACHE_LIMIT:
+        del _verdict_cache[next(iter(_verdict_cache))]
+    _verdict_cache[key] = stats
+
+
+def _is_state_identity(identity):
+    """Whether `identity` is a flexible leaf's ``('flexible', digest)``:
+    already state, and persistent as it is."""
+    return (isinstance(identity, tuple) and len(identity) == 2
+            and identity[0] == 'flexible' and isinstance(identity[1], str))
+
+
+def _persistent_identity(identity, path):
+    """An in-process identity made persistent, or None.
+
+    A rigid solid becomes ``('artifact', kind, sha256)`` of the bytes its
+    compared geometry was READ from: the STL whose observation keyed its
+    Manifold on the faceted path, the BREP whose load observation
+    ``cached_shape`` recorded on the exact path. If that file has changed
+    since, or the load was not observed coherently, there is no persistent
+    identity and the pair is kept in process only. A flexible leaf's state
+    identity is persistent already.
+    """
+    if _is_state_identity(identity):
+        return identity
+    if not (isinstance(identity, tuple) and len(identity) == 2):
+        return None
+    if path == 'faceted':
+        if not isinstance(identity[1], ArtifactObservation):
+            return None
+        kind, observation = 'stl', identity[1]
+    elif path == 'exact':
+        kind, observation = 'brep', shape_load_observation(identity)
+        if observation is None:
+            return None
+    else:
+        return None
+    digest = _verdict_store.artifact_digest(identity[0], observation)
+    return None if digest is None else ('artifact', kind, digest)
+
+
+def _persisted_key(key):
+    """The verdict store's key for an in-process memo key, or None.
+
+    The evaluation path, the quantum and the placement cells are the
+    in-process key's own; only the identities change, and the store adds
+    its stamp. Any doubt -- an identity that cannot be made persistent, or
+    anything unexpected while deriving one -- is None: a miss, which costs
+    what computing costs and never a wrong verdict.
+    """
+    identity1, identity2, path, quantum, placement = key
+    try:
+        persistent1 = _persistent_identity(identity1, path)
+        if persistent1 is None:
+            return None
+        persistent2 = _persistent_identity(identity2, path)
+        if persistent2 is None:
+            return None
+        return _verdict_store.persisted_key(path, quantum, persistent1,
+                                            persistent2, placement)
+    except Exception as error:
+        _verdict_store.logger.debug('No persisted verdict key: %s', error)
+        return None
 
 
 def _exact_verdict(shape1, matrix1, shape2, matrix2, name1, name2):
@@ -1795,8 +1952,8 @@ def _engine_intersection_stats(node1, node2, compose_matrix):
         matrix1 = compose_matrix(node1)
         matrix2 = compose_matrix(node2)
         return _memoized(
-            _verdict_key(shape_identity(shape1), matrix1,
-                         shape_identity(shape2), matrix2, 'exact'),
+            _verdict_key(_exact_identity(node1, shape1), matrix1,
+                         _exact_identity(node2, shape2), matrix2, 'exact'),
             lambda: _exact_verdict(shape1, matrix1, shape2, matrix2,
                                    node1.name, node2.name))
 
@@ -1812,6 +1969,24 @@ def _engine_intersection_stats(node1, node2, compose_matrix):
     intersection = trimesh.boolean.intersection([node1.mesh, node2.mesh])
     volume = 0.0 if intersection.is_empty else intersection.volume
     return IntersectionStats(intersection.is_empty, volume, False)
+
+
+def _exact_identity(node, shape):
+    """The exact path's verdict identity for the shape `node.shape()` just
+    returned, or None.
+
+    A rigid solid's is its ``shape_identity``. A flexible leaf's solid is
+    evaluated, not loaded, so it has none; the leaf carries instead the
+    state identity of the snapshot it built that solid from (ADR-156), and
+    only for the solid it built -- unless the leaf's class overrides the
+    public ``shape()`` seam, whose geometry is not proven to be a function
+    of the serialized spec.
+    """
+    if getattr(node, 'flexible', False):
+        if getattr(node.shape, '__func__', None) is not FlexibleNode.shape:
+            return None
+        return node._exact_state_identity(shape)
+    return shape_identity(shape)
 
 
 def _mesh_in_frame(node, compose_matrix):

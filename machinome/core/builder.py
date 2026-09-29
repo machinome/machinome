@@ -25,7 +25,7 @@ from .serializer import (
 )
 from . import pieces
 from .pieces import PieceInventory
-from machinome._artifact import ArtifactChanged
+from machinome._artifact import ArtifactChanged, VERDICT_STORE_DIRECTORY
 from machinome import currency
 from machinome.node.base import StlRenderStart
 from machinome.source_generation import (SourceChanged, current_phase)
@@ -796,7 +796,12 @@ class Builder(FileSystemEventHandler):
         collect(snapshot['root'])
         collect_snapshots(self.node)
         # A declared model's directory is its own to sweep: the build root's
-        # walk does not descend into one.
+        # walk does not descend into one. Nor into the test framework's
+        # verdict store (ADR-156): test state no document names, written by
+        # test runs that may be in progress while a build publishes. It is
+        # spared by location, at the top of whichever build directory this
+        # sweep owns -- the root's, or a declared model's when a fresh
+        # interpreter resolved that as its build root.
         try:
             model_names = set(read_project(self.build_dir).names)
         except ProjectManifestError:
@@ -805,7 +810,8 @@ class Builder(FileSystemEventHandler):
         for root, directories, files in os.walk(self.build_dir):
             if root == self.build_dir:
                 directories[:] = [name for name in directories
-                                  if name not in model_names]
+                                  if name not in model_names
+                                  and name != VERDICT_STORE_DIRECTORY]
             for filename in files:
                 path = os.path.join(root, filename)
                 relative = os.path.normpath(os.path.relpath(path,

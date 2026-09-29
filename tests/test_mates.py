@@ -1718,9 +1718,9 @@ class ManualTest(BaseNodeTest):
     def test_the_changelog_names_the_mate_in_the_release_that_ships_it(self):
         changelog = self.page('project', 'changelog.rst')
 
-        release = changelog.split('Machinome 0.7.0')[0]
-        self.assertIn('Machinome 0.7.1\n---------------', release)
-        self.assertNotIn('Unreleased', release)
+        heading = 'Machinome 0.7.1\n---------------'
+        self.assertIn(heading, changelog)
+        release = changelog.split(heading, 1)[1].split('Machinome 0.7.0')[0]
         for fragment in ('Frame', '.on(', 'Revolute'):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, release)

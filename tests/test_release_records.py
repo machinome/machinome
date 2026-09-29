@@ -75,7 +75,9 @@ class VersionFilesTest(TestCase):
 
 class ReleaseRecordsTest(TestCase):
     """The changelog, the history, the status page and context7 describe
-    the released version, and nothing as unreleased."""
+    the released version as released. Work done after it is recorded as it
+    lands, in an `Unreleased` section above the release's own, and never
+    inside it: a release moves that section down, not the other way."""
 
     def setUp(self):
         self.version = released_version()
@@ -90,12 +92,16 @@ class ReleaseRecordsTest(TestCase):
         end = text.index(f'\n{following[0]}\n') if following else len(text)
         return text[start:end]
 
-    def test_the_changelog_top_entry_is_the_released_version(self):
-        self.assertEqual(sections(self.changelog)[0],
-                         f'Machinome {self.version}')
-        self.assertNotIn('unreleased', self.changelog.lower())
+    def test_the_changelog_first_release_section_is_the_released_version(self):
+        titles = sections(self.changelog)
+        releases = [title for title in titles if title.startswith('Machinome ')]
+        self.assertEqual(releases[0], f'Machinome {self.version}')
+        # Only work after the release may precede it, under one heading.
+        self.assertIn(titles[0], ('Unreleased', releases[0]))
+        self.assertEqual(titles.count('Unreleased'), int(titles[0] == 'Unreleased'))
         entry = self.section(self.changelog, f'Machinome {self.version}')
         self.assertIn(f"Released on {self.date.strftime('%d/%b/%Y')}", entry)
+        self.assertNotIn('unreleased', entry.lower())
 
     def test_the_0_7_1_entry_names_what_it_ships(self):
         entry = self.section(self.changelog, 'Machinome 0.7.1')

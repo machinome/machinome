@@ -270,7 +270,15 @@ class FlexibleFacetedCacheTest(TestCase):
         self.assertEqual(tuple(local_bounds[1]), tuple(repeated_bounds[1]))
         self.assertEqual(len(test_module._flexible_manifold_cache), 0)
 
-    def test_flexible_verdicts_are_not_memoized_after_geometry_reuse(self):
+    def test_flexible_verdicts_are_memoized_on_their_state(self):
+        """Inverted from `test_flexible_verdicts_are_not_memoized_after_
+        geometry_reuse`, which pinned ADR-070's "flexible parts are
+        uncacheable by construction". That argument was against keying a
+        pair on NAMES, where two bindings at one relative placement
+        collide; the leaf's state identity (ADR-156) carries the bound
+        values and the spec digest, so a repeated binding is the same
+        question and a new binding is a new one. Evidence: ADR-070 measured
+        1499 s of the v8-engine root suite in exactly these pairs."""
         with TemporaryDirectory(prefix='machinome-flex-verdict-') as build, \
                 patch.dict(os.environ, {'SOLID_BUILD_DIR': build}):
             machine = self.spring_at(4.0)
@@ -282,14 +290,20 @@ class FlexibleFacetedCacheTest(TestCase):
             with patch.object(type(machine.retainer), 'exact', False), \
                     patch.object(test_module, '_faceted_verdict',
                                  wraps=test_module._faceted_verdict) as verdict:
-                test_module._intersection_stats(
+                first = test_module._intersection_stats(
                     machine.spring, machine.retainer)
+                served = test_module._intersection_stats(
+                    machine.spring, machine.retainer)
+                self.assertEqual(verdict.call_count, 1,
+                                 'the same binding ran a second boolean')
                 machine.set_state(lift=8.0)
                 test_module._intersection_stats(
                     machine.spring, machine.retainer)
 
-        self.assertEqual(verdict.call_count, 2)
-        self.assertEqual(len(test_module._verdict_cache), 0)
+        self.assertEqual(tuple(served), tuple(first))
+        self.assertEqual(verdict.call_count, 2,
+                         'a new binding was served the old verdict')
+        self.assertEqual(len(test_module._verdict_cache), 2)
 
     def test_exact_memo_remains_per_instance_and_last_binding_only(self):
         first = self.flexible_at(fixture.Spring, 2.0)

@@ -2,6 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+import argparse
 import os
 import sys
 import bdb
@@ -19,6 +20,7 @@ from machinome.core.builder import project_build_lock
 from machinome.node.base import AbstractBaseNode
 from machinome.test import (ComparisonPolicy, DEFAULT_PLACEMENT_QUANTUM,
                              resolve_comparison_policy, set_comparison_policy)
+from machinome._verdict_store import flush as flush_verdict_store
 
 
 class StopTestRun(Exception):
@@ -82,6 +84,14 @@ class Test:
                  'SOLID_TEST_PLACEMENT_QUANTUM, else '
                  f'{DEFAULT_PLACEMENT_QUANTUM:g}). Accepted by both '
                  'kernels; 0 restores the exact-bytes key.')
+        parser.add_argument(
+            '--verdict-store', action=argparse.BooleanOptionalAction,
+            default=None,
+            help='Keep every decided verdict in the build directory\'s '
+                 '.verdicts and serve it to a later run asking the same '
+                 'question of the same state (default '
+                 'SOLID_TEST_VERDICT_STORE, else on). --no-verdict-store '
+                 'computes every comparison and leaves the store alone.')
         parser.add_argument('--all', action='store_true',
                             help='Test every model the project declares, '
                                  'as one run.')
@@ -91,7 +101,8 @@ class Test:
             self.policy = resolve_comparison_policy(
                 getattr(args, 'kernel', None),
                 getattr(args, 'volume_epsilon', None),
-                getattr(args, 'placement_quantum', None))
+                getattr(args, 'placement_quantum', None),
+                getattr(args, 'verdict_store', None))
         except ValueError as error:
             self.fail(str(error))
         set_comparison_policy(self.policy)
@@ -179,6 +190,10 @@ class Test:
                 self.run_selection()
         except StopTestRun:
             pass
+        finally:
+            # Publish the verdicts this run decided however it ended:
+            # --failfast, a model failure under --all, or an error.
+            flush_verdict_store()
         self.report(time.time() - start_time)
         if self.num_failed or self.num_unexpected_successes:
             sys.exit(1)
@@ -310,6 +325,11 @@ class Test:
             # The default run's output must stay byte-for-byte what it is
             # today (ADR-090); only a non-default quantum is worth a line.
             notes.append(f"placement quantum {policy.placement_quantum:g} mm")
+        if not policy.verdict_store:
+            # A served verdict is the verdict the same key produced, so a
+            # run with the store on is not a different kind of run and says
+            # nothing (ADR-156); only one without it is named.
+            notes.append("verdict store off")
         if notes:
             summary += f" ({', '.join(notes)})"
         sys.stdout.write(f"\n{summary}\n")

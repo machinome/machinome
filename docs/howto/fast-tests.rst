@@ -77,9 +77,10 @@ contract with a manufacturing margin in length.
 The placement quantum
 ---------------------
 
-Every intersection verdict is asked once per run and remembered: two
-comparisons of the same pair in the same relative placement are one
-question. "Same placement" is decided by the pair's relative matrix, and
+Every intersection verdict is remembered: two comparisons of the same
+pair in the same relative placement are one question, answered once in a
+run and kept for the next (see :ref:`verdict-store`). "Same placement" is
+decided by the pair's relative matrix, and
 recomposing one rigid motion by two multiplication orders leaves float
 noise between the results, around 1e-13 on a real assembly, so keyed on
 exact bytes a sweep re-asks a question it already answered.
@@ -102,6 +103,61 @@ designed to hold; a pair that straddles a cell boundary simply misses and
 recomputes. Raising it well past the default is a judgement about
 arithmetic noise, never about material, and the run names a non-default
 quantum on its summary line.
+
+.. _verdict-store:
+
+Verdicts kept between runs
+--------------------------
+
+A second run of an unchanged project does not ask its questions again.
+Every verdict a run decides is kept in the ``.verdicts`` directory of the
+project's build directory (``_build/.verdicts`` by default), and a later
+``machinome test`` that asks the same question of the same state is
+served the kept verdict without running a boolean. Most of a slow suite's
+time is spent deciding verdicts, so the second run of a suite that took
+twenty minutes can finish in well under one. Every model a project
+declares shares the one store, so a part two models build identically is
+decided once.
+
+A question is identified by state, never by a path or a time:
+
+* a rigid part by the content of the artifact its compared geometry was
+  read from, the ``.brep`` on the exact kernel and the ``.stl`` on the
+  faceted one. A rebuild that reproduces the same bytes, or a project
+  moved or copied with its build directory, still reuses the store; a
+  part whose content changed is a new question, even if its file kept
+  its modification time and size;
+* a flexible part by its bound values and its shape specification,
+  together with the content of the sources that define it, so the same
+  spring at the same length is the same question and at another length a
+  new one;
+* the pair's relative placement, rounded by the placement quantum as
+  above, the kernel, and the quantum itself.
+
+Each kept verdict is also bound to the framework's own source code, to
+the installed versions of the geometry kernels and of molejo, and to the
+platform. Upgrading the framework or a kernel, or editing the framework
+in a development checkout, starts the store afresh with no action from
+you; the first run after it costs what a first run costs.
+
+The store never changes a verdict. It keeps the kernel's own answer,
+emptiness, volume and which kernel decided it, and the volume epsilon is
+applied after a kept verdict is read, exactly as after one decided in the
+same run: a flush contact still comes back non-empty at 0.0 mm³ and still
+fails at the strict default. A comparison whose answer cannot be tied to
+state, or whose artifact changed after it was read, is simply decided
+again. Two runs of one project at once are safe, and a damaged, foreign or
+unwritable store is ignored rather than reported.
+
+To run without it, for a measurement or an experiment that patches the
+framework, pass ``--no-verdict-store`` or set
+``SOLID_TEST_VERDICT_STORE=off`` in ``.env``; ``--verdict-store`` turns it
+back on for one run. Such a run neither reads nor writes the store, and
+says so at the end of its summary line with ``(verdict store off)``. A run
+with the store on prints exactly what it printed before the store
+existed. Deleting the ``.verdicts`` directory is always safe: the next
+run decides again what it is no longer served, and reaches the same
+verdicts.
 
 More levers
 -----------

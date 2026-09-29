@@ -4363,3 +4363,47 @@ failures above.
 
 Taken up by cycle `persistent-verdict-memo` (bench
 `machinome/WTs/persistent-verdict-memo`, base bf24687).
+
+**Status: FIXED by `persistent-verdict-memo` (ADR-156), 2026-09-29.** A
+persistent tier beneath the memo keeps every decided verdict in
+`<build root>/.verdicts`, keyed on artifact content, flexible state and the
+quantised relative placement, and bound to a stamp of the framework source,
+the kernels and the platform; flexible pairs are keyed on their state in
+both tiers. Measured one fresh process after another (the change's
+`evidence.md`): `wall_clock_02` 1255.93 s cold (1138 computations, 643
+booleans) then 27.81 s warm (1138 store hits, 0 computations), 16 passed and
+6 failed both times with identical messages; strandbeest 163.51 s cold (1510
+computations, 1055 booleans) then 10.63 s warm (1510 store hits), 3 passed,
+and 166.36 s with `--no-verdict-store`. The clock's warm process sits 9.46 s
+above the in-interpreter 18.35 s floor; the store's own share of it was
+measured at 0.1 s. On the v8-engine valve-motion slice the spring pairs went
+from 2 uncacheable asks to 0 on both kernels and were served on the second
+run.
+
+# `cached_shape` keys a loaded BREP on `(path, float mtime)` (2026-09-29, found while designing persistent-verdict-memo)
+
+**Status (as filed): recorded; triage open.**
+
+`machinome.exact.cached_shape` keeps one imported CadQuery shape per
+`(brep path, os.path.getmtime(...))`, a float mtime, and `shape_identity`
+hands that key to every exact-path cache: the bounding boxes, the face
+boxes, the placements and the in-process verdict memo. Every other artifact
+cache has since moved to the full `ArtifactObservation` (realpath, device,
+inode, size, mtime_ns, ctime_ns) -- `cached_base_mesh`, the Manifold and
+bounds caches, `currency._file_key` -- because `_atomic_export` stamps every
+artifact with its SOURCE's mtime: a rebuild not caused by a source edit
+(a changed producer recipe, a deleted artifact, a framework or kernel
+upgrade that exports differently) reproduces the old mtime while its bytes
+may differ. Under the float key such a rebuild inside one long-lived
+process keeps serving the old shape, and every exact cache keyed on it.
+
+`persistent-verdict-memo` (ADR-156) did not change this key; it was a
+non-goal. The persistent tier guards itself instead: `cached_shape` now
+records the observation it loaded from (observed before and after
+`importBrep`), and a persisted identity is the digest of THOSE bytes, or
+none when the file has changed since. The in-process gap is unchanged:
+within one process a same-mtime rebuild still reads as current. Candidate
+fix: key `cached_shape` on the load observation, as the mesh caches key on
+theirs. Evidence: design.md "Non-Goals" and §3 of the
+`persistent-verdict-memo` change; no project has reported a wrong verdict
+from it.

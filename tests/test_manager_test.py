@@ -1287,26 +1287,26 @@ class ComparisonKernelSelectionTest(TestCase):
     def test_the_default_is_the_exact_kernel(self):
         policy = framework.resolve_comparison_policy(environ={})
         self.assertEqual(policy, ('exact', 0.0,
-                                  framework.DEFAULT_PLACEMENT_QUANTUM))
+                                  framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_faceted_without_an_epsilon_is_strict(self):
         policy = framework.resolve_comparison_policy('faceted', environ={})
         self.assertEqual(policy, ('faceted', 0.0,
-                                  framework.DEFAULT_PLACEMENT_QUANTUM))
+                                  framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_the_environment_selects_the_faceted_kernel(self):
         policy = framework.resolve_comparison_policy(
             environ={'SOLID_TEST_KERNEL': 'faceted',
                      'SOLID_TEST_VOLUME_EPSILON': '0.25'})
         self.assertEqual(policy, ('faceted', 0.25,
-                                  framework.DEFAULT_PLACEMENT_QUANTUM))
+                                  framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_a_flag_beats_the_environment(self):
         policy = framework.resolve_comparison_policy(
             'exact', environ={'SOLID_TEST_KERNEL': 'faceted',
                               'SOLID_TEST_VOLUME_EPSILON': '0.25'})
         self.assertEqual(policy, ('exact', 0.0,
-                                  framework.DEFAULT_PLACEMENT_QUANTUM))
+                                  framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_an_unknown_kernel_name_is_refused_naming_the_variable(self):
         with self.assertRaisesRegex(
@@ -1338,7 +1338,7 @@ class ComparisonKernelSelectionTest(TestCase):
         policy = framework.resolve_comparison_policy(
             environ={'SOLID_TEST_VOLUME_EPSILON': 'tiny'})
         self.assertEqual(policy, ('exact', 0.0,
-                                  framework.DEFAULT_PLACEMENT_QUANTUM))
+                                  framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_a_two_argument_construction_means_the_default_quantum(self):
         # The seven positional two-argument ComparisonPolicy(...) sites in
@@ -1386,7 +1386,7 @@ class ComparisonKernelSelectionTest(TestCase):
         # Unlike --volume-epsilon, refused by the exact kernel.
         policy = framework.resolve_comparison_policy(
             'exact', placement_quantum=1e-6, environ={})
-        self.assertEqual(policy, ('exact', 0.0, 1e-6))
+        self.assertEqual(policy, ('exact', 0.0, 1e-6, True))
 
     def test_the_environment_quantum_is_read_under_both_kernels(self):
         exact_policy = framework.resolve_comparison_policy(
@@ -1462,9 +1462,11 @@ class ComparisonKernelSelectionTest(TestCase):
         framework.set_comparison_policy(None)
         with patch.dict(os.environ, {'SOLID_TEST_KERNEL': 'faceted',
                                      'SOLID_TEST_VOLUME_EPSILON': '0.5'}):
+            # The suite pins SOLID_TEST_VERDICT_STORE=off
+            # (tests/conftest.py), and the lazy resolution reads it.
             self.assertEqual(framework.comparison_policy(),
                              ('faceted', 0.5,
-                              framework.DEFAULT_PLACEMENT_QUANTUM))
+                              framework.DEFAULT_PLACEMENT_QUANTUM, False))
         # Resolved once: the environment changing afterwards does not
         # move a run that has already chosen.
         with patch.dict(os.environ, {'SOLID_TEST_KERNEL': 'exact'}):
@@ -1486,8 +1488,11 @@ class ComparisonKernelSelectionTest(TestCase):
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 with self.assertRaises(SystemExit):
                     Runner().handle(args)
+        # The runner reads the suite's pinned SOLID_TEST_VERDICT_STORE=off
+        # (tests/conftest.py) when no flag is given.
         self.assertEqual(seen['policy'], ('faceted', 0.5,
-                                          framework.DEFAULT_PLACEMENT_QUANTUM))
+                                          framework.DEFAULT_PLACEMENT_QUANTUM,
+                                          False))
         self.assertIn('faceted kernel', stdout.getvalue())
         self.assertIn('0.5', stdout.getvalue())
 
@@ -1554,6 +1559,139 @@ class ComparisonKernelSelectionTest(TestCase):
             r'Ran 0 tests in 1\.00 seconds: 0 passed, 0 failed '
             r'\(faceted kernel, volume epsilon 0\.5 mm³, '
             r'placement quantum 1e-06 mm\)')
+
+    # -- the verdict store switch (persistent-verdict-memo, ADR-156) -------
+
+    def test_every_positional_construction_means_the_store_on(self):
+        # Two- and three-argument constructions are none of them edited:
+        # the fourth field defaults on, like the quantum defaults before it.
+        self.assertIs(framework.ComparisonPolicy('exact', 0.0).verdict_store,
+                      True)
+        self.assertIs(framework.ComparisonPolicy(
+            'faceted', 0.5, 1e-6).verdict_store, True)
+        self.assertEqual(framework.ComparisonPolicy('faceted', 0.5),
+                         ('faceted', 0.5,
+                          framework.DEFAULT_PLACEMENT_QUANTUM, True))
+
+    def test_the_verdict_store_flags_parse(self):
+        parser = self.parser()
+        self.assertIs(parser.parse_args(['--verdict-store']).verdict_store,
+                      True)
+        self.assertIs(
+            parser.parse_args(['--no-verdict-store']).verdict_store, False)
+        self.assertIsNone(parser.parse_args([]).verdict_store)
+
+    def test_the_verdict_store_flags_are_not_in_the_kernel_group(self):
+        args = self.parser().parse_args(['--exact', '--no-verdict-store'])
+        self.assertEqual((args.kernel, args.verdict_store), ('exact', False))
+        args = self.parser().parse_args(['--faceted', '--verdict-store'])
+        self.assertEqual((args.kernel, args.verdict_store), ('faceted', True))
+
+    def test_the_verdict_store_flag_beats_the_environment_both_ways(self):
+        self.assertIs(framework.resolve_comparison_policy(
+            verdict_store=True,
+            environ={'SOLID_TEST_VERDICT_STORE': 'off'}).verdict_store, True)
+        self.assertIs(framework.resolve_comparison_policy(
+            verdict_store=False,
+            environ={'SOLID_TEST_VERDICT_STORE': 'on'}).verdict_store, False)
+
+    def test_the_environment_turns_the_verdict_store_on_and_off(self):
+        for value, expected in (('on', True), ('off', False), ('', True)):
+            with self.subTest(value=value):
+                self.assertIs(framework.resolve_comparison_policy(
+                    environ={'SOLID_TEST_VERDICT_STORE': value}
+                ).verdict_store, expected)
+        self.assertIs(framework.resolve_comparison_policy(
+            environ={}).verdict_store, True)
+
+    def test_an_unknown_verdict_store_value_is_refused(self):
+        with self.assertRaisesRegex(
+                ValueError,
+                r"SOLID_TEST_VERDICT_STORE.*'on'.*'off'.*sometimes"):
+            framework.resolve_comparison_policy(
+                environ={'SOLID_TEST_VERDICT_STORE': 'sometimes'})
+
+    def test_the_verdict_store_is_read_under_both_kernels(self):
+        for kernel in ('exact', 'faceted'):
+            with self.subTest(kernel=kernel):
+                self.assertIs(framework.resolve_comparison_policy(
+                    kernel, environ={'SOLID_TEST_VERDICT_STORE': 'off'}
+                ).verdict_store, False)
+                self.assertIs(framework.resolve_comparison_policy(
+                    kernel, verdict_store=False, environ={}).verdict_store,
+                    False)
+
+    def test_an_unknown_verdict_store_value_is_refused_before_building(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        args = Namespace(path='whatever.py', failfast=False,
+                         kernel=None, volume_epsilon=None)
+        with patch.dict(os.environ,
+                        {'SOLID_TEST_VERDICT_STORE': 'sometimes'}), \
+                patch.object(Runner, 'build_node',
+                             side_effect=AssertionError('must not build')):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as stop:
+                    Runner().handle(args)
+        self.assertEqual(stop.exception.code, 1)
+        self.assertIn('SOLID_TEST_VERDICT_STORE', stderr.getvalue())
+        self.assertEqual(stdout.getvalue(), '')
+
+    def test_the_summary_line_names_a_run_without_the_store(self):
+        runner = Runner()
+        runner.policy = framework.ComparisonPolicy(
+            'exact', 0.0, framework.DEFAULT_PLACEMENT_QUANTUM, False)
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            runner.report(1.0)
+        self.assertEqual(
+            stdout.getvalue(),
+            '\nRan 0 tests in 1.00 seconds: 0 passed, 0 failed '
+            '(verdict store off)\n')
+
+    def test_the_summary_line_with_the_store_on_is_unchanged(self):
+        runner = Runner()
+        runner.policy = framework.resolve_comparison_policy(
+            verdict_store=True, environ={})
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            runner.report(1.0)
+        self.assertEqual(
+            stdout.getvalue(),
+            '\nRan 0 tests in 1.00 seconds: 0 passed, 0 failed\n')
+
+    def test_the_store_note_follows_the_faceted_label_and_the_quantum(self):
+        args = self.parser().parse_args(
+            ['--faceted', '--volume-epsilon', '0.5',
+             '--placement-quantum', '1e-6', '--no-verdict-store'])
+        runner = Runner()
+        runner.policy = framework.resolve_comparison_policy(
+            args.kernel, args.volume_epsilon, args.placement_quantum,
+            args.verdict_store, environ={})
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            runner.report(1.0)
+        self.assertEqual(
+            stdout.getvalue(),
+            '\nRan 0 tests in 1.00 seconds: 0 passed, 0 failed '
+            '(faceted kernel, volume epsilon 0.5 mm³, '
+            'placement quantum 1e-06 mm, verdict store off)\n')
+
+    def test_a_run_without_the_store_announces_nothing_before_building(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        args = Namespace(path='whatever.py', failfast=False, kernel=None,
+                         volume_epsilon=None, verdict_store=False)
+        seen = {}
+
+        def record(path):
+            seen['policy'] = framework.comparison_policy()
+            raise SystemExit(0)
+
+        with patch('machinome.manager.test.resolve_node', record):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                with self.assertRaises(SystemExit):
+                    Runner().handle(args)
+        self.assertIs(seen['policy'].verdict_store, False)
+        self.assertEqual(stdout.getvalue(), '')
 
 
 ROBOT_SOURCE = '''from machinome.node import Solid2Node

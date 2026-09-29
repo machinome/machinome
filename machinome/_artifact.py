@@ -10,6 +10,15 @@ import tempfile
 from dataclasses import asdict, dataclass
 
 
+#: The test framework's verdict store: the directory at the top of a build
+#: root that keeps decided intersection verdicts between runs (ADR-156). It
+#: is test state, never a build artifact, and no published document names
+#: it, so the builder's sweep spares it by location. Named here, not in the
+#: store module, so the builder takes it from a module it already imports
+#: and no command's path gains the store.
+VERDICT_STORE_DIRECTORY = '.verdicts'
+
+
 class ArtifactChanged(RuntimeError):
     """An artifact stopped naming the open identity being consumed."""
 

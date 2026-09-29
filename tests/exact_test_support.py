@@ -16,6 +16,7 @@ def clear_exact_shape_caches():
     the shape cache so a future object-id reuse cannot acquire stale identity.
     """
     exact._shape_keys.clear()
+    exact._shape_observations.clear()
     exact._bounds_cache.clear()
     exact._face_box_cache.clear()
     exact._placement_cache.clear()

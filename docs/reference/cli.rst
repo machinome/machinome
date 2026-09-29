@@ -117,6 +117,7 @@ machinome test
     machinome test [reference] [--set NAME=VALUE ...] [--failfast]
               [--exact | --faceted] [--volume-epsilon MM3]
               [--placement-quantum MM]
+              [--verdict-store | --no-verdict-store]
     machinome test --all [--failfast]
 
 Builds the node selected by ``reference`` and runs its tests — the ``test_*``
@@ -168,6 +169,15 @@ fail the run — the marking is now a false statement about the machine. See
     kernels; ``0`` restores the exact-bytes key. A non-default quantum
     names itself on the summary line. See :ref:`The placement quantum
     <placement-quantum>`.
+
+``--verdict-store`` / ``--no-verdict-store``
+    Keep every decided verdict in the build root's ``.verdicts`` directory
+    and serve it to a later run asking the same question of the same
+    state, or run without the store, neither reading nor writing it.
+    Default ``SOLID_TEST_VERDICT_STORE``, else on. Accepted by both
+    kernels. A run without the store names itself on the summary line;
+    a run with it prints what it would print without it. See
+    :ref:`Verdicts kept between runs <verdict-store>`.
 
 ``--all``
     Run the tests of every model the project declares as one run, each
@@ -563,6 +573,12 @@ Environment variables
     The placement quantum (mm) of the verdict memo when no
     ``--placement-quantum`` is given. Default: ``1e-9``. Read by both
     kernels.
+
+``SOLID_TEST_VERDICT_STORE``
+    Whether ``machinome test`` keeps and consults the project's verdict
+    store when neither ``--verdict-store`` nor ``--no-verdict-store`` is
+    given: ``on`` (the default) or ``off``. Any other value is refused by
+    name. Read by both kernels.
 
 The ``machinome`` command loads a ``.env`` file from the working directory
 at startup, so a project can pin its ports there — and a developer can

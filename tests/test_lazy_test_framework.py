@@ -38,6 +38,7 @@ import os
 import tempfile
 from unittest import TestCase
 
+from . import verdict_probe
 from .import_probe import probe
 
 import machinome.simulation
@@ -518,13 +519,17 @@ class BuildImportCost(TestCase):
                         'cadquery')
 
 
-def run_tests(reference):
-    """Run a real `machinome test` of a fixture, in a throwaway build tree."""
-    with tempfile.TemporaryDirectory(prefix='machinome-lazy-test-') as build_dir:
-        return ran('from machinome.cli import manage\nmanage()\n',
-                   argv=['test', reference],
-                   env={'SOLID_BUILD_DIR': build_dir},
-                   cwd=BASEDIR)
+def run_tests(reference, build_dir=None, env=None, snippet=None):
+    """Run a real `machinome test` of a fixture, in a throwaway build tree
+    unless one is given."""
+    if build_dir is None:
+        with tempfile.TemporaryDirectory(
+                prefix='machinome-lazy-test-') as build_dir:
+            return run_tests(reference, build_dir, env, snippet)
+    return ran(snippet or 'from machinome.cli import manage\nmanage()\n',
+               argv=['test', reference],
+               env={'SOLID_BUILD_DIR': build_dir, **(env or {})},
+               cwd=BASEDIR)
 
 
 class TestFrameworkImportCost(TestCase):
@@ -553,11 +558,31 @@ class TestFrameworkImportCost(TestCase):
         # The consequence that pays for the change, against the real CLI:
         # a project modelling in solid2 and asserting over meshes runs its
         # tests without ever loading the boundary-representation kernel.
-        result = run_tests('meta_project/separated.py')
-        self.assertIn('test_no_pairwise_intersections', result.stdout,
-                      result.stderr)
-        self.assertFalse(result.imported('cadquery'),
-                         'a faceted test run imported cadquery')
+        #
+        # With the verdict store on (ADR-156), twice in one build tree: the
+        # second run is served from the store, and neither the store nor
+        # its stamp -- which names cadquery's installed version, read from
+        # distribution metadata -- may import the exact stack. An all-exact
+        # fixture cannot make this point in a fresh interpreter: every exact
+        # node class imports `machinome.exact`, and with it cadquery, the
+        # moment its module is loaded.
+        with tempfile.TemporaryDirectory(
+                prefix='machinome-lazy-test-') as build_dir:
+            runs = [run_tests('meta_project/separated.py', build_dir,
+                              env={'SOLID_TEST_VERDICT_STORE': 'on'},
+                              snippet=verdict_probe.PROBE)
+                    for _ in range(2)]
+        for result in runs:
+            self.assertIn('test_no_pairwise_intersections', result.stdout,
+                          result.stderr)
+            self.assertFalse(result.imported('cadquery'),
+                             'a faceted test run imported cadquery')
+            self.assertTrue(result.imported('machinome._verdict_store'))
+        first, second = (verdict_probe.counts(result.stderr)
+                         for result in runs)
+        self.assertGreater(first['computations'], 0)
+        self.assertEqual(second['computations'], 0)
+        self.assertEqual(second['store_hits'], first['computations'])
 
     def test_an_exact_test_run_still_imports_cadquery(self):
         # The half that makes the half above mean something.

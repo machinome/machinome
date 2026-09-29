@@ -139,6 +139,10 @@ class FlexibleNode(LeafNode):
         #: (see `shape`), so the memo is where that saving lives instead.
         self._exact_binding = None
         self._exact_result = None
+        #: The state identity of the snapshot `_exact_result` was built
+        #: from (see `_snapshot`), so a verdict about that solid is keyed on
+        #: exactly the state it came from.
+        self._exact_identity = None
 
     ##############################################
     # The parameter surface
@@ -337,41 +341,83 @@ class FlexibleNode(LeafNode):
         """
         return self._snapshot_mesh(self.current_shape(), self.bound_values())
 
-    def _faceted_cache_snapshot(self):
-        """The coherent current shape and full identity for one faceted read.
+    def _snapshot(self, values=None, geometry_key=False):
+        """ONE coherent read of this leaf's state, serving both paths.
 
-        The test framework owns the bounded Manifold cache.  It calls this
-        narrow seam so the spec used to decide a cache hit is exactly the
-        rendered spec used to evaluate a miss; a second ``current_shape()``
-        could otherwise observe a stateful adapter differently.  Source
-        digest calculation reuses the currency module's existing per-file
-        memoization; no new source-byte cache is introduced here.
+        Returns ``(geometry key, state identity, rendered, values)`` from a
+        single ``current_shape()``: the spec that decides a cache hit and
+        names a verdict is exactly the rendered spec a miss evaluates, where
+        a second ``current_shape()`` could observe a stateful adapter
+        differently. Source digest calculation reuses the currency module's
+        existing per-file memoization; no new source-byte cache is
+        introduced here.
+
+        The STATE identity keys this leaf's intersection verdicts, within a
+        run and across runs (ADR-156): ``('flexible', sha256)`` of the
+        technology, the defining module, the project-relative source digest,
+        the full structural identity, the exact bound values and the digest
+        of the serialized spec. It carries no absolute path, so a moved
+        project keeps it, and no source fingerprint, whose device, inode and
+        ctime a move, a clone or a touch changes: the digest is the content
+        claim the fingerprint only guards. None when a source cannot be
+        read -- a coherent miss.
+
+        The GEOMETRY key, asked for with `geometry_key`, keys the faceted
+        Manifold working set exactly as before: the same values plus the
+        source's real path and its fingerprint, and None when either the
+        fingerprint or the digest is unknown.
         """
-        values = self.bound_values()
+        if values is None:
+            values = self.bound_values()
         rendered = self.current_shape()
         spec = self._shape_spec(rendered)
         serialized_spec = json.dumps(
             spec, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
-        fingerprint = self.source_fingerprint
+        spec_digest = hashlib.sha256(
+            serialized_spec.encode('utf-8')).hexdigest()
+        bound = tuple((name, repr(value)) for name, value in
+                      sorted(values.items()))
+        fingerprint = self.source_fingerprint if geometry_key else None
         digest = self.source_digest
+
+        identity = None
+        if digest is not None:
+            state = json.dumps(
+                [self.tech, type(self).__module__, digest,
+                 self._flexible_structural_identity,
+                 [list(item) for item in bound], spec_digest],
+                separators=(',', ':'), ensure_ascii=True)
+            identity = ('flexible',
+                        hashlib.sha256(state.encode('utf-8')).hexdigest())
 
         # A source that cannot be observed cannot safely identify a reusable
         # entry.  Return a coherent miss rather than turning two unknowns
         # into a cache hit.
-        if fingerprint is None or digest is None:
-            return None, rendered, values
+        key = None
+        if geometry_key and fingerprint is not None and digest is not None:
+            key = (
+                self.tech,
+                type(self).__module__,
+                os.path.realpath(self.src),
+                fingerprint,
+                digest,
+                self._flexible_structural_identity,
+                bound,
+                spec_digest,
+            )
+        return key, identity, rendered, values
 
-        identity = (
-            self.tech,
-            type(self).__module__,
-            os.path.realpath(self.src),
-            fingerprint,
-            digest,
-            self._flexible_structural_identity,
-            tuple((name, repr(value)) for name, value in
-                  sorted(values.items())),
-            hashlib.sha256(serialized_spec.encode('utf-8')).hexdigest(),
-        )
+    def _faceted_cache_snapshot(self):
+        """The coherent current shape and full geometry key for one faceted
+        read: ``(key, rendered, values)``. The test framework owns the
+        bounded Manifold cache this keys (see `_snapshot`)."""
+        key, _, rendered, values = self._snapshot(geometry_key=True)
+        return key, rendered, values
+
+    def _state_snapshot(self, values=None):
+        """The coherent state identity and current shape:
+        ``(identity, rendered, values)`` (see `_snapshot`)."""
+        _, identity, rendered, values = self._snapshot(values)
         return identity, rendered, values
 
     def current_shape(self):
@@ -414,14 +460,33 @@ class FlexibleNode(LeafNode):
         return self._exact_solid()[1]
 
     def _exact_solid(self):
-        """`(shape, tolerance)` for the current binding, built once."""
+        """`(shape, tolerance)` for the current binding, built once.
+
+        Built from one coherent state snapshot, whose state identity is
+        recorded beside the result (see `_exact_state_identity`)."""
         values = self.bound_values()
         key = binding_hash(values)
         if key != self._exact_binding:
-            self._exact_result = self._snapshot_shape(
-                self.current_shape(), values)
+            identity, rendered, values = self._state_snapshot(values)
+            self._exact_result = self._snapshot_shape(rendered, values)
+            self._exact_identity = identity
             self._exact_binding = key
         return self._exact_result
+
+    def _exact_state_identity(self, shape):
+        """The state identity recorded with `shape`, if it is the solid
+        this leaf last built, else None.
+
+        The last-binding memo keeps one entry per instance and replaces it
+        on a new binding. Should a shortened `binding_hash` collision ever
+        serve an older binding's solid, the identity it carries is that
+        older binding's too: a verdict keyed on it still names the geometry
+        compared.
+        """
+        result = self._exact_result
+        if result is not None and result[0] is shape:
+            return self._exact_identity
+        return None
 
     ##############################################
     # Backend hooks

@@ -20,8 +20,8 @@ class PrecisionDocumentationTest(unittest.TestCase):
 
     def test_changelog_records_precision_in_the_release_that_ships_it(self):
         text = (ROOT / 'docs/project/changelog.rst').read_text()
-        current, earlier = text.split('Machinome 0.7.0', 1)
-        self.assertIn('Machinome 0.7.1', current)
-        self.assertNotIn('Unreleased', current)
+        self.assertIn('Machinome 0.7.1', text)
+        shipped = text.split('Machinome 0.7.1', 1)[1]
+        current, earlier = shipped.split('Machinome 0.7.0', 1)
         self.assertIn('explicit direction precision', current)
         self.assertNotIn('explicit direction precision', earlier)

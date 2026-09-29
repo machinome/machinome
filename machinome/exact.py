@@ -26,6 +26,7 @@ from OCP.TopAbs import TopAbs_IN, TopAbs_UNKNOWN
 from OCP.TopTools import TopTools_ListOfShape
 
 from machinome import currency
+from machinome._artifact import ArtifactChanged, observe_artifact
 
 
 _shape_cache = {}
@@ -41,6 +42,13 @@ _shape_cache = {}
 # differently placed copy of it compare equal -- keying placements on the
 # shape would serve one part's placement for another's.
 _shape_keys = {}
+
+# The observation each cached shape was loaded FROM, by shape cache key --
+# recorded only when the file was the same before and after the import. The
+# in-process key above stays `(path, float mtime)`; this is what lets the
+# verdict store (ADR-156) digest the very bytes a compared shape came from,
+# and refuse a persistent identity when the path has changed since.
+_shape_observations = {}
 
 # One placed shape per (shape cache key, exact matrix bytes), and one bounding box per
 # shape cache key. `placed_shape` runs a full `BRepBuilderAPI_Transform`
@@ -78,6 +86,7 @@ def _evict(brep_file):
     """Drop every cached artifact derived from a rebuilt file."""
     for key in [key for key in _shape_cache if key[0] == brep_file]:
         _shape_keys.pop(id(_shape_cache.pop(key)), None)
+        _shape_observations.pop(key, None)
         _bounds_cache.pop(key, None)
         _face_box_cache.pop(key, None)
         for placement in [placement for placement in _placement_cache
@@ -85,17 +94,39 @@ def _evict(brep_file):
             del _placement_cache[placement]
 
 
+def _observed(path):
+    try:
+        return observe_artifact(path)
+    except (OSError, ArtifactChanged):
+        return None
+
+
 def cached_shape(brep_file):
-    """Load one immutable CadQuery shape per ``(path, mtime)``."""
+    """Load one immutable CadQuery shape per ``(path, mtime)``.
+
+    The file is observed before and after the import, and the load
+    observation is recorded beside the shape only when the two agree: the
+    file the shape was read from is then exactly that observation's.
+    """
     mtime = os.path.getmtime(brep_file)
     key = (brep_file, mtime)
     cached = _shape_cache.get(key)
     if cached is None:
         _evict(brep_file)
+        before = _observed(brep_file)
         cached = cq.Shape.importBrep(brep_file)
+        after = _observed(brep_file)
         _shape_cache[key] = cached
         _shape_keys[id(cached)] = key
+        if before is not None and before == after:
+            _shape_observations[key] = before
     return cached
+
+
+def shape_load_observation(key):
+    """The observation the shape cached under `key` was loaded from, or
+    None when its load was not observed coherently or it is gone."""
+    return _shape_observations.get(key)
 
 
 def shape_identity(shape):

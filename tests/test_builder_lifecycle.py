@@ -656,6 +656,60 @@ class PublicationOrderingTest(TestCase):
         self.assertLessEqual({'part.scad', 'part.stl.lock',
                               '.part.stl.abc123.tmp'}, remaining)
 
+    def verdict_store_in(self, directory):
+        """A verdict store as test runs leave it: published segments, one
+        in-flight temporary, and a file of another name. Returns the
+        directory and what it holds."""
+        store = os.path.join(directory, '.verdicts')
+        os.makedirs(store)
+        names = ['0123456789abcdef-100-200-deadbeef.seg',
+                 'fedcba9876543210-101-201-cafebabe.seg',
+                 '.0123456789abcdef-102-202-0badf00d.seg.tmp',
+                 'README']
+        for name in names:
+            with open(os.path.join(store, name), 'wb') as handle:
+                handle.write(b'verdicts')
+        return store, sorted(names)
+
+    def test_the_verdict_store_survives_the_sweep(self):
+        """persistent-verdict-memo, task 5.1: the store is test state that
+        no published document names, spared by location."""
+        store, names = self.verdict_store_in(self.root)
+        self.builder.node = self.node_for('part')
+
+        self.builder._write_viewer_snapshot()
+        self.builder.node = self.node_for('renamed')
+        self.builder._write_viewer_snapshot()
+
+        self.assertFalse(os.path.exists(os.path.join(self.root, 'part.stl')),
+                         'the sweep did not run')
+        self.assertEqual(sorted(os.listdir(store)), names)
+
+    def test_a_model_sweep_spares_a_verdict_store_inside_it(self):
+        """Task 5.2: a fresh interpreter started after `anchor_build_dir`
+        sees SOLID_BUILD_DIR set to the model's directory and resolves it as
+        its build root, so a store may live there too."""
+        model_dir = os.path.join(self.root, 'a_model')
+        os.makedirs(model_dir)
+        store, names = self.verdict_store_in(model_dir)
+        builder = Builder('model.py', build_dir=model_dir, watch=False)
+        with patch.dict(os.environ, {'SOLID_BUILD_DIR': model_dir}):
+            builder.node = self.node_in(model_dir, 'part')
+            builder._write_viewer_snapshot()
+            builder.node = self.node_in(model_dir, 'renamed')
+            builder._write_viewer_snapshot()
+
+        self.assertFalse(os.path.exists(os.path.join(model_dir, 'part.stl')),
+                         'the sweep did not run')
+        self.assertEqual(sorted(os.listdir(store)), names)
+
+    def node_in(self, directory, *names):
+        root, self.root = self.root, directory
+        try:
+            return self.node_for(*names)
+        finally:
+            self.root = root
+
     def test_a_failed_build_sweeps_nothing(self):
         """The sweep is driven by a manifest, and a failed build writes no
         manifest, so nothing a previous build published is removed."""

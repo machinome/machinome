@@ -3,6 +3,28 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* **Verdicts kept between runs:** a second ``machinome test`` of an
+  unchanged project is served every intersection verdict the first one
+  decided, without running a boolean. Verdicts are kept in the build
+  root's ``.verdicts`` directory, shared by every declared model, and are
+  identified by state, never by a path or a time: the content of each
+  rigid part's artifact, a flexible part's bound values and
+  specification, and the pair's quantised relative placement. A flexible
+  pair is now remembered within a run as well, where before it was
+  computed at every ask. Each verdict is bound to the framework's source,
+  the installed kernels and molejo, and the platform, so an upgrade
+  starts the store afresh; no verdict changes, and a damaged or
+  unwritable store is ignored. The store is on by default and silent;
+  ``--no-verdict-store`` or ``SOLID_TEST_VERDICT_STORE=off`` runs without
+  it and says so on the summary line, and deleting ``.verdicts`` is always
+  safe (:ref:`verdict-store`, ADR-156). Born of a 3D-printed wall clock
+  whose 22 tests took 1255.9 s in a fresh process and now take 27.8 s in
+  the next one, with the same 16 passed and 6 failed, and of a Strandbeest
+  walking demo, 163.5 s then 10.6 s.
+
 Machinome 0.7.1
 ---------------
 

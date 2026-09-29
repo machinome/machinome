@@ -167,7 +167,7 @@ that way.
 - [ADR-048](TEST-FRAMEWORK/ADR-048-gravity-support-graph-assertion.md) — Gravity support graph assertion — **Accepted**, extended by 049
 - [ADR-049](TEST-FRAMEWORK/ADR-049-static-equilibrium-as-lp-feasibility.md) — Static equilibrium as LP feasibility — **Accepted**
 - [ADR-052](TEST-FRAMEWORK/ADR-052-conditional-mesh-engine-dependency.md) — Conditional mesh-engine dependency — **Accepted**
-- [ADR-070](TEST-FRAMEWORK/ADR-070-relative-placement-as-the-identity-of-an-intersection-question.md) — Relative placement as the identity of an intersection question — **Accepted**, extends 029, amended by 090
+- [ADR-070](TEST-FRAMEWORK/ADR-070-relative-placement-as-the-identity-of-an-intersection-question.md) — Relative placement as the identity of an intersection question — **Accepted**, extends 029, amended by 090, amended by 156
 - [ADR-073](TEST-FRAMEWORK/ADR-073-the-comparison-kernel-is-a-property-of-the-test-run.md) — The comparison kernel is a property of the test run — **Accepted**, extends 044, 029
 - [ADR-074](TEST-FRAMEWORK/ADR-074-the-mesh-engine-judges-its-own-input.md) — The mesh engine judges its own input — **Accepted**, amends 029
 - [ADR-075](TEST-FRAMEWORK/ADR-075-the-perturbation-is-the-nodes-first-operation.md) — The perturbation is the node's first operation — **Accepted**, amends 025
@@ -177,6 +177,7 @@ that way.
 - [ADR-118](TEST-FRAMEWORK/ADR-118-an-unexpected-success-fails-the-run.md) — An unexpected success fails the run: `solid test` honours `skipTest`/`unittest.skip` and `@unittest.expectedFailure`, and a stale expected-failure marking that starts passing fails the run — **Accepted**
 - [ADR-142](TEST-FRAMEWORK/ADR-142-a-shared-interior-witness-refuses-an-empty-exact-common.md) — A strict shared-interior witness refuses a contradictory empty exact common without inventing an overlap volume — **Accepted**
 - [ADR-143](TEST-FRAMEWORK/ADR-143-exact-booleans-preserve-their-reusable-inputs.md) — Native Common, Fuse and witness Section preserve reusable caller-owned input B-reps — **Accepted**
+- [ADR-156](TEST-FRAMEWORK/ADR-156-a-decided-verdict-outlives-the-run.md) — A decided verdict outlives the run: a persistent, content-keyed verdict store beneath the per-run memo, bound to a stamp of the framework, kernels and platform; flexible leaves keyed on their state — **Accepted**, amends 070 (and 090's restatement of flexible uncacheability)
 
 ### VIEWER-WEB — web viewer
 - [ADR-012](VIEWER-WEB/ADR-012-threejs-for-3d-rendering.md) — Three.js rendering — **Accepted** — *Relocated* to solid-node-viewer (ADR-068)

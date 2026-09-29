@@ -307,3 +307,37 @@ class RegistryConformanceTest(TestCase):
                 self.assertTrue(callable(command.handle))
                 self.assertIsInstance(getattr(command, 'needs_node', True),
                                       bool)
+
+
+class VerdictStoreImportWeight(TestCase):
+    """The verdict store adds no metadata, platform or kernel import to the
+    paths that avoid one (design.md §5, §6 of persistent-verdict-memo).
+
+    Its stamp reads distribution metadata and the platform, but only inside
+    the stamp function at the first store use; its directory name lives in
+    `machinome._artifact`, so the builder's sweep exemption brings the store
+    module onto no `build`, `develop`, `export` or `snapshot` path.
+    """
+
+    WATCHED = ('importlib.metadata', 'platform', 'cadquery', 'OCP',
+               'manifold3d', 'trimesh', 'molejo')
+
+    #: What a `machinome build -h` dispatch loaded of WATCHED at bf24687,
+    #: before this change (task 1.4): the ceiling it must stay under.
+    BUILD_BASELINE = {'importlib.metadata', 'platform'}
+
+    def test_importing_the_store_module_adds_none_of_them(self):
+        result = probe('import machinome._verdict_store\n').check()
+        for name in self.WATCHED:
+            added = {module for module in result.added
+                     if module == name or module.startswith(f'{name}.')}
+            self.assertEqual(added, set(),
+                             f'importing the store module imported {name}')
+
+    def test_a_build_dispatch_loads_no_store_module(self):
+        # A guard, green before this change: it must stay green.
+        result = probe(DISPATCH, argv=['build', '-h']).check()
+        self.assertTrue(result.imported('machinome.core.builder'))
+        self.assertFalse(result.imported('machinome._verdict_store'))
+        loaded = {name for name in self.WATCHED if result.imported(name)}
+        self.assertLessEqual(loaded, self.BUILD_BASELINE)

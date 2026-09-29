@@ -1410,9 +1410,12 @@ only for a comparison it has not.
 A comparison's cache key SHALL identify everything the verdict depends on and
 nothing else:
 
-- the identity of each compared solid's geometry, under the same
-  `(file, mtime)` identity the per-STL cache already uses, so a rebuilt part
-  is a different key rather than a stale hit;
+- the identity of each compared solid's geometry. A rigid solid has the
+  identity the per-artifact caches already use, so a rebuilt part is a
+  different key rather than a stale hit. A stock flexible leaf has its STATE:
+  its technology, its defining module, the content of its tracked sources,
+  its full structural identity, its exact bound values and a full digest of
+  its serialized shape specification;
 - the pair's RELATIVE placement — one node's composed world matrix inverted
   and applied to the other's — QUANTISED to the run's placement quantum;
 - the run's placement quantum itself, so entries made under two different
@@ -1456,9 +1459,21 @@ animation sweep, the pairwise sweep, the whole-assembly interference
 assertion and the perturbation assertions share one another's answers for the
 same pair in the same relative placement.
 
-A node whose geometry has no stable identity — a test double exposing only
-`.mesh`, or a flexible leaf evaluating its current binding — SHALL NOT be
-cached, and its comparisons SHALL be computed exactly as they are today.
+A flexible leaf's identity SHALL be taken from the same evaluation that
+supplies the geometry being compared. Two comparisons SHALL therefore share a
+key only when their flexible geometry is the same geometry, in the same
+relative placement. That is why a flexible part at a new binding is a new
+question, and a flexible part at a binding already asked is not.
+
+A node whose geometry has no stable identity SHALL NOT be cached, and its
+comparisons SHALL be computed exactly as they are today. Such nodes are: a
+test double exposing only `.mesh`; a flexible leaf whose class overrides the
+stock evaluation seam the comparison reads (`base_mesh` on the faceted path,
+`shape` on the exact path); and a flexible leaf whose tracked sources cannot
+be read.
+
+Beneath this per-run cache, the verdict store of "A decided verdict is kept
+between runs of a project" MAY serve a comparison the run has not yet decided.
 
 #### Scenario: A repeated comparison is not recomputed
 
@@ -1529,6 +1544,27 @@ cached, and its comparisons SHALL be computed exactly as they are today.
 - **THEN** both comparisons report non-empty with 0.0 mm³, and the strict
   `volume_epsilon=0` default still reports the foul
 
+#### Scenario: A flexible pair at one binding is not recomputed
+
+- **WHEN** a stock flexible leaf is compared with a part, then compared again
+  in the same run at the same binding and the same relative placement
+- **THEN** the second comparison is served from the cache, no boolean is run,
+  and its verdict equals the first
+
+#### Scenario: A flexible pair at a new binding is recomputed
+
+- **WHEN** a stock flexible leaf is compared with a part, then rebound to
+  different port values and compared again at the same relative placement
+- **THEN** the second comparison runs its boolean and returns the verdict for
+  the new geometry
+
+#### Scenario: A flexible leaf with a custom evaluation seam is not cached
+
+- **WHEN** a comparison involves a flexible leaf whose class overrides
+  `base_mesh` (faceted path) or `shape` (exact path)
+- **THEN** the comparison is computed as it is today, and no cache entry
+  serves a later comparison in its place
+
 #### Scenario: A node without stable geometry identity is not cached
 
 - **WHEN** a comparison involves a node exposing only `.mesh`
@@ -1578,9 +1614,10 @@ The exact module SHALL own the bounded cache. A fresh build/develop process SHAL
 
 ### Requirement: Run-level comparison kernel
 
-The test framework SHALL hold one comparison kernel per run, `exact` or
-`faceted`, one volume epsilon in mm³, and one placement quantum in mm,
-together the run's comparison policy. The kernel is a property of the run,
+The test framework SHALL hold, for each run, one comparison kernel (`exact`
+or `faceted`), one volume epsilon in mm³, one placement quantum in mm and one
+verdict-store switch (on or off). Together these are the run's comparison
+policy. The kernel is a property of the run,
 never of the model: a node's `exact` attribute SHALL keep reporting whether
 its geometry is exact, and neither the build nor any artifact SHALL depend on
 the kernel a test run selects.
@@ -1607,6 +1644,14 @@ SHALL be accepted by the exact kernel, because it identifies a question and
 not a quantity of material, and both kernels' verdicts pass through the same
 memo. A quantum of `0` SHALL be accepted and SHALL mean the exact-bytes key.
 
+It SHALL resolve the verdict-store switch from `--verdict-store` /
+`--no-verdict-store`, else from `SOLID_TEST_VERDICT_STORE`, else on. The
+variable's value SHALL be `on` or `off`. Any other non-empty value is an
+error naming the variable and the two accepted values, raised before any
+node is built. Like the placement quantum, the switch SHALL apply under BOTH
+kernels. With the switch off, a run SHALL neither read nor write the verdict
+store; its per-run cache is unaffected.
+
 Outside `machinome test` — a `ScenarioTest` under pytest, an assertion driven
 directly — the framework SHALL resolve the same policy from the environment
 at the first comparison of the process, with the same defaults and the same
@@ -1623,6 +1668,12 @@ A run at the default placement quantum SHALL produce exactly the output it
 produces today: no announcement, and no change to the summary line. A run at
 any other placement quantum SHALL name it on the summary line, after the
 preserved summary prefix and beside the faceted label when both apply.
+
+A run with the verdict store on SHALL produce exactly the output it produces
+without the store, whether or not any verdict was served from it. A run with
+the store off SHALL say so on the summary line, after the preserved summary
+prefix, in the same parenthesis as the faceted label and a non-default
+quantum when those apply.
 
 #### Scenario: The default run is the exact run
 
@@ -1699,6 +1750,40 @@ preserved summary prefix and beside the faceted label when both apply.
 - **WHEN** a run uses a placement quantum other than the default
 - **THEN** the summary line keeps its prefix verbatim and names the quantum,
   beside the faceted label and volume epsilon when the run is faceted
+
+#### Scenario: The verdict store is on by default
+
+- **WHEN** `machinome test` runs with no verdict-store flag and no
+  `SOLID_TEST_VERDICT_STORE`
+- **THEN** the run's policy has the store on, and the run's output is
+  byte-for-byte what it is without this option
+
+#### Scenario: A checkout turns the verdict store off
+
+- **WHEN** the project's `.env` contains `SOLID_TEST_VERDICT_STORE=off` and
+  `machinome test` runs without a verdict-store flag
+- **THEN** the run neither reads nor writes the store, and its summary line
+  says the store is off
+
+#### Scenario: The verdict-store flag beats the environment
+
+- **WHEN** `SOLID_TEST_VERDICT_STORE=off` is set and
+  `machinome test --verdict-store` runs, or `SOLID_TEST_VERDICT_STORE=on` is
+  set and `machinome test --no-verdict-store` runs
+- **THEN** the flag decides the run's switch
+
+#### Scenario: An unknown verdict-store value is refused
+
+- **WHEN** `SOLID_TEST_VERDICT_STORE=sometimes` is set
+- **THEN** `machinome test` exits with an error naming the variable and the
+  two accepted values, before any node is built
+
+#### Scenario: A run without the store says so beside the other notes
+
+- **WHEN** `machinome test --faceted --volume-epsilon 0.5 --no-verdict-store`
+  runs
+- **THEN** the summary line keeps its prefix verbatim and names the faceted
+  kernel, the epsilon and the store being off, in one parenthesis
 
 #### Scenario: A faceted run of an exact project never reaches the exact stack
 
@@ -1936,3 +2021,197 @@ When an exact intersection Boolean reports no solids, the system SHALL refuse th
 #### Scenario: Independent check fails
 - **WHEN** the native section, classifier, face distance, or native face tolerance cannot be evaluated while checking an empty common
 - **THEN** the exact comparison refuses to return a clearance verdict from that failed check
+
+### Requirement: A decided verdict is kept between runs of a project
+
+When a run's comparison policy has the verdict store on and the project under
+test has a resolvable build root, the shared `(is_empty, volume)` helper SHALL
+keep every verdict it computes in a verdict store, the directory `.verdicts` at
+the top of that build root. A LATER process asking the same question of the
+same state SHALL be served that verdict without running a boolean. The store
+SHALL be consulted only for a comparison the run's own per-run cache has not
+already decided. A process with no resolvable project build root SHALL keep no
+store and SHALL behave as it does without one.
+
+A project SHALL have one store. Every declared model of the project SHALL
+share it, whether a run tests one model or every model with `--all`: a
+verdict kept by a run of one declared model SHALL be served to a run of
+another declared model of the same project that asks the same question.
+
+A question kept across runs SHALL be identified by state, never by location or
+time:
+
+- a rigid solid by the CONTENT of the artifact its compared geometry was read
+  from: its exact-geometry artifact on the exact path, its mesh artifact on the
+  faceted path. An artifact rewritten with identical content is still the same
+  question, and so is a project moved or copied together with its build
+  directory. An artifact whose content changed is a different question even
+  when its modification time and size are unchanged;
+- a flexible leaf by its state, as the per-run cache identifies it;
+- the evaluation path, the run's placement quantum and the quantised relative
+  placement, exactly as the per-run cache identifies them.
+
+No filesystem path and no timestamp SHALL be part of what identifies a kept
+question. Every kept verdict SHALL also be bound to the framework's own source
+code, to the installed versions of the geometry kernels and the flexible
+evaluator on the verdict path, and to the platform. A verdict kept under any
+other framework source, kernel or evaluator version, or platform SHALL NOT be
+served.
+
+The store SHALL hold the kernel's raw verdict (emptiness, volume, and whether
+the exact kernel produced it) and no geometry. The run's volume epsilon SHALL
+be applied after a kept verdict is read, exactly as after a per-run hit. A
+served verdict SHALL therefore be identical to the verdict the kernel produced
+for the same question, including flush contact's non-empty 0.0 mm³, and SHALL
+NOT change any assertion's outcome, message or epsilon semantics. This is a
+recomputation shortcut of the same kind as the per-run cache, not a tolerance.
+
+The store SHALL NOT keep a verdict:
+
+- for a comparison the per-run cache does not cache: a node without a stable
+  identity, or a relative placement with a non-finite entry;
+- for a comparison whose computation raised;
+- for a solid whose artifact changed after its geometry was read.
+
+Such comparisons SHALL be computed exactly as they are without the store.
+
+The store SHALL never make a run fail and SHALL never print. A store that is
+corrupt, truncated, written under another framework or kernel version,
+unreadable or unwritable SHALL be ignored, and the run SHALL compute whatever
+it cannot serve, with the output and exit status it has without a store.
+
+Two runs of one project in progress at once SHALL both complete without
+error, and a later run SHALL be served the verdicts either of them kept. A
+run whose reading of the store overlaps one reorganisation of it by another
+process SHALL still be served every verdict the store held when that run
+began, other than a verdict that reorganisation discards under the store's
+bound.
+
+The store SHALL be bounded by a fixed internal number of verdicts. When full,
+it SHALL discard first the verdicts kept under another framework source,
+kernel or evaluator version or platform, and then the verdicts least recently
+used. The bound SHALL NOT be exposed as a flag or an environment variable.
+Deleting the store SHALL always be safe: the next run SHALL compute what it
+is no longer served, and SHALL reach the same verdicts.
+
+Keeping the store SHALL require neither the mesh engine nor the exact-geometry
+stack. A run that does not import them without the store SHALL NOT import them
+with it.
+
+#### Scenario: A second run is served from the store
+
+- **WHEN** a project is tested, and then tested again by a new process with
+  nothing changed
+- **THEN** the second run runs no boolean for any comparison the first run
+  decided, and reports the same outcome for every test
+
+#### Scenario: An artifact rewritten with identical content is still served
+
+- **WHEN** between two runs a solid's artifact is replaced by a file with
+  identical content, under a new modification time
+- **THEN** the second run serves that solid's comparisons from the store
+
+#### Scenario: A moved project is still served
+
+- **WHEN** a project directory is moved together with its build directory
+  between two runs
+- **THEN** the second run, in the new location, serves its comparisons from
+  the store
+
+#### Scenario: A content change under a preserved timestamp is recomputed
+
+- **WHEN** between two runs a solid's artifact content changes while its
+  modification time and size are restored to their previous values
+- **THEN** every comparison involving that solid is recomputed, and its
+  verdict is the one for the new content
+
+#### Scenario: A framework or kernel change invalidates kept verdicts
+
+- **WHEN** the framework's source code, or the installed version of a kernel
+  or evaluator on the verdict path, differs from the one under which a
+  verdict was kept
+- **THEN** that verdict is not served and the comparison is computed
+
+#### Scenario: A flexible pair is served at an equal state and recomputed at another
+
+- **WHEN** a flexible leaf is compared with a part at one binding in one run,
+  and a later run compares them at the same binding and relative placement
+  and then at a different binding
+- **THEN** the later run serves the equal binding from the store and computes
+  the different binding
+
+#### Scenario: A different placement quantum is a different question
+
+- **WHEN** a verdict is kept under one placement quantum, and a later run asks
+  the same pair under another quantum whose quantised relative placement
+  coincides with the kept one
+- **THEN** the kept verdict is not served
+
+#### Scenario: Uncacheable comparisons are never kept
+
+- **WHEN** a run compares a node exposing only `.mesh`, a pair whose relative
+  placement has a non-finite entry, or a pair whose computation raises
+- **THEN** nothing is kept for them, and a later run computes them again
+
+#### Scenario: A flush contact survives the store
+
+- **WHEN** a flush abutment that reports non-empty with exactly 0.0 mm³ is
+  decided in one run and asked again in a later run
+- **THEN** the later run reports non-empty with 0.0 mm³, and the strict
+  `volume_epsilon=0` default still reports the foul
+
+#### Scenario: A corrupt store is ignored
+
+- **WHEN** the store holds a truncated, garbled or foreign file, or the store
+  location cannot be written
+- **THEN** the run completes with the verdicts, output and exit status it has
+  without a store, and nothing from the store raises
+
+#### Scenario: Two concurrent runs keep both their verdicts
+
+- **WHEN** two processes testing one project keep verdicts in the store at
+  the same time
+- **THEN** neither fails, and a later run is served every verdict either of
+  them decided
+
+#### Scenario: A run that starts while the store is reorganised is still served
+
+- **WHEN** a run begins reading a store within its bound while another
+  process is merging the store's files and removing the ones it merged
+- **THEN** the run is served every verdict the store held when it began, and
+  neither process fails
+
+#### Scenario: An interrupted run leaves a readable store
+
+- **WHEN** a run is killed while it keeps verdicts
+- **THEN** the next run reads the store without error, computes what it
+  cannot serve, and reaches the same verdicts
+
+#### Scenario: No project build root, no store
+
+- **WHEN** assertions run in a process that has no resolvable project build
+  root
+- **THEN** no store is created, and comparisons are cached within the run
+  only
+
+#### Scenario: Declared models of one project share one store
+
+- **WHEN** a run of one declared model keeps a verdict, and a later run of
+  another declared model of the same project asks the same question, of two
+  parts both models build identically at the same relative placement
+- **THEN** the later run is served that verdict without running a boolean,
+  whether each run tests one model or every model with `--all`
+
+#### Scenario: A faceted run of an exact project still never reaches the exact stack
+
+- **WHEN** an all-exact project whose build is current is tested under the
+  faceted kernel, in a fresh interpreter, with the store on
+- **THEN** the test framework imports no `cadquery`, and reads no node's
+  `shape()`
+
+#### Scenario: An all-exact project keeps its store without the mesh engine
+
+- **WHEN** an all-exact project is tested twice, with the store on, on a
+  machine where `manifold3d` cannot be imported
+- **THEN** both runs complete as they do without the store, and the second is
+  served from it

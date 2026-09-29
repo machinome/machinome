@@ -16,6 +16,7 @@ transmit the true color of each contract.
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -84,7 +85,7 @@ def run_solid_test_path(path):
 
 def run_solid(*arguments, env=None):
     """Run any `machinome` command against the meta fixtures."""
-    env = dict(os.environ, SOLID_BUILD_DIR=BUILD_DIR, **(env or {}))
+    env = dict(os.environ, SOLID_BUILD_DIR=BUILD_DIR) | (env or {})
     return subprocess.run(
         [sys.executable, '-c',
          'from machinome.cli import manage; manage()',
@@ -876,8 +877,20 @@ class FacetedKernelMetaTest(TestCase):
     FACETED_LINE = 'Comparing on the faceted kernel'
 
     def faceted(self, fixture, *arguments, env=None):
+        """A run at the defaults but for `arguments` and `env`.
+
+        These tests pin what such a run prints. The suite pins
+        SOLID_TEST_VERDICT_STORE=off (tests/conftest.py), and a run without
+        the verdict store names itself on its summary line, so these runs
+        restore the store's default -- in a throwaway build directory, so
+        nothing is kept between suite runs.
+        """
+        build_dir = tempfile.mkdtemp(prefix='machinome-meta-defaults-')
+        self.addCleanup(shutil.rmtree, build_dir, ignore_errors=True)
         return SolidTestRun(run_solid(
-            'test', f'tests/meta_project/{fixture}.py', *arguments, env=env))
+            'test', f'tests/meta_project/{fixture}.py', *arguments,
+            env={'SOLID_TEST_VERDICT_STORE': '', 'SOLID_BUILD_DIR': build_dir,
+                 **(env or {})}))
 
     def test_a_zero_clearance_fit_is_interference_on_meshes(self):
         run = self.faceted('exact_tight_fit', '--faceted')
@@ -901,7 +914,7 @@ class FacetedKernelMetaTest(TestCase):
         self.assertEqual(run.returncode, 0)
 
     def test_the_exact_run_reads_as_it_always_did(self):
-        run = solid_test('exact_tight_fit')
+        run = self.faceted('exact_tight_fit')
         self.assertNotIn(self.FACETED_LINE, run.stdout)
         summary = [line for line in run.stdout.splitlines()
                    if line.startswith('Ran ')]

@@ -2185,7 +2185,8 @@ shape caches (ADR-143). OCCT's nominal non-destructive mode is not used: it
 made a valid Curta fresh-input common invalid. Copy failure remains a named
 refusal, never a shared-input, mesh, or fuzzy fallback.
 
-Verdicts are memoized within a run (ADR-070, amended by ADR-090). The
+Verdicts are memoized within a run (ADR-070, amended by ADR-090) and kept
+between runs (ADR-156). The
 identity of an intersection question is `(both geometry identities,
 evaluation path, the run's placement quantum, the relative rigid placement
 quantised to it)` — the relative matrix `inv(M1) @ M2` divided by the
@@ -2206,6 +2207,34 @@ never serve one another, a node with no file identity is never cached, a
 relative matrix carrying a non-finite entry is never cached either, and
 entries are evicted when a geometry identity changes, on the same discipline
 as the Manifold cache.
+Beneath that in-process memo sits a persistent tier, consulted only at an
+in-process miss: the project's verdict store, the directory `.verdicts` at
+the top of the build root the testing process resolves (the anchored root,
+so every declared model of a project shares one store; else an absolute
+`SOLID_BUILD_DIR`; else `SOLID_BUILD_DIR` under the project root above the
+working directory, and no store at all when there is none). A kept question
+is identified by state, never by a path or a time: the same key with each
+identity replaced by a persistent one — the SHA-256 of the artifact bytes
+the compared geometry was READ from (the BREP whose load `cached_shape`
+observed coherently, or the STL whose observation keyed the Manifold), or a
+flexible leaf's state identity — and bound to a STAMP of the store format,
+the machinome version, every Python source of the running package, the
+installed versions of `cadquery-ocp`, `cadquery`, `manifold3d`, `trimesh`
+and `molejo`, and the platform, read from metadata inside the stamp function
+and never by importing a kernel. The store keeps raw verdicts (emptiness,
+volume bits, which kernel) as immutable checksummed segments published by
+atomic rename and merged on read, so concurrent runs need no lock; a reader
+that finds a listed segment gone lists once more, because compaction
+publishes its merged segment before deleting the inputs; the store is
+bounded and evicts foreign stamps first, then its least recently used
+records. The builder's sweep spares `.verdicts` by location, its name taken
+from `machinome._artifact`. The run switch is `verdict_store`
+(`--verdict-store` / `--no-verdict-store`, `SOLID_TEST_VERDICT_STORE`), on
+by default, silent when on and named on the summary line when off. The
+failure direction is a miss: an identity that cannot be made persistent, a
+file changed since it was read, a foreign stamp, or a corrupt, unreadable
+or unwritable store computes exactly as a run without a store would, and
+the store never raises into an assertion.
 Bounding boxes, and the per-face bounding boxes the exact-only face-box
 tier above reads, share those stable geometry identities. Exact placements use a
 512-entry LRU keyed by stable shape identity and the exact placement-matrix
@@ -2213,10 +2242,17 @@ bytes, with no rounding; eviction merely recomputes the same placement and a
 new managed `machinome test` run starts empty. A stock `FlexibleNode` keeps a
 separate 64-entry LRU of evaluated mesh, bounds and Manifold results keyed by
 its full source identity, canonical structural identity, exact binding and
-serialized shape specification. A subclass that overrides the stock flexible
-evaluation seam is conservatively uncached, and flexible intersection verdicts
-remain uncached: the per-instance final binding can still change between
-comparisons.
+serialized shape specification. That cache keeps geometry, never verdicts.
+A flexible leaf's verdicts are memoized in both tiers under its STATE
+identity, taken from the same coherent snapshot the geometry comes from:
+technology, defining module, project-relative source digest, full
+structural identity, exact bound values and spec digest — the geometry key
+without its absolute source path and source fingerprint. On the exact path
+the leaf records that identity beside the solid its per-instance
+last-binding memo built, so a key always names the geometry compared. A
+subclass that overrides the stock evaluation seam a comparison reads
+(`base_mesh` on the faceted path, `shape` on the exact path), or whose
+sources cannot be read, is conservatively uncached in both tiers.
 
 The root-level integrity boundary is the first rigid node on every branch
 (ADR-039/040). Connectivity is deliberately solid-local.

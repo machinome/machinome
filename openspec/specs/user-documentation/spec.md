@@ -412,8 +412,26 @@ statement about arithmetic noise and must stay far below the smallest
 clearance the suite judges. It SHALL state that a run at a non-default quantum
 says so on its summary line.
 
-The CLI page SHALL list the four options under `machinome test` and the three
-environment variables. The changelog SHALL record the capability.
+The same guide SHALL also explain the verdict store. It SHALL say:
+
+- that every verdict a run decides is kept under the project's build
+  directory, and served to a later run that asks the same question of the
+  same state;
+- that the state is the content of the compared parts' artifacts, a flexible
+  part's bound values and specification, and the pair's quantised relative
+  placement, so a rebuild reproducing the same artifacts or a moved project
+  still reuses it;
+- that a change to the framework or to an installed geometry kernel starts
+  it afresh on its own;
+- that it never changes a verdict;
+- that `--no-verdict-store` or `SOLID_TEST_VERDICT_STORE=off` runs without
+  it, and that such a run says so;
+- that deleting the `.verdicts` directory is always safe.
+
+The CLI page SHALL list the options under `machinome test` (`--exact`,
+`--faceted`, `--volume-epsilon`, `--placement-quantum`, and `--verdict-store` /
+`--no-verdict-store`) and the four environment variables. The changelog SHALL
+record the capability.
 
 #### Scenario: A developer learns how to run fast
 
@@ -425,8 +443,8 @@ environment variables. The changelog SHALL record the capability.
 
 - **WHEN** a reader looks up `machinome test` on the CLI page
 - **THEN** they find `--exact`, `--faceted`, `--volume-epsilon`,
-  `--placement-quantum`, and the three environment variables with their
-  precedence
+  `--placement-quantum`, `--verdict-store` / `--no-verdict-store`, and the four
+  environment variables with their precedence
 
 #### Scenario: A reader learns what the placement quantum decides
 
@@ -434,6 +452,15 @@ environment variables. The changelog SHALL record the capability.
   reads the guide
 - **THEN** they find what the quantum merges, its default, that `0` restores
   the exact key, and that it is not a tolerance on any assertion
+
+#### Scenario: A reader learns why a second run is fast
+
+- **WHEN** a reader whose second test run finished in seconds, where the first
+  took minutes, reads the guide
+- **THEN** they find that verdicts are kept between runs and keyed on the
+  state of their parts, that no verdict changes because of it, how to run
+  without the store, and that the `.verdicts` directory may be deleted at any
+  time
 
 ### Requirement: Current documentation presents Machinome and its lineage
 
