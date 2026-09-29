@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { frameBounds, scriptedView } from './camera';
+import { frameBounds, scriptedView, upDirectionChanged } from './camera';
 
 const FOV = 50;
 
@@ -34,6 +34,77 @@ describe('scriptedView', () => {
       .toThrow(/target/);
     expect(() => scriptedView({camera: [1, 2, 3], target: [1, 2, 3]}))
       .toThrow(/distinct/);
+  });
+});
+
+// A scripted view's up direction and field of view (OpenSpec
+// `move-up-and-field-of-view`, design D1-D4).
+describe('scriptedView up and fov', () => {
+  it('copies up and fov without aliasing caller state', () => {
+    const up: [number, number, number] = [0, 2, 0];
+    const view = scriptedView({camera: [0, 0, 10], target: [0, 0, 0], up, fov: 20});
+    up[1] = 999;
+    expect(view.up!.toArray()).toEqual([0, 2, 0]);
+    expect(view.fov).toBe(20);
+    const vector = new THREE.Vector3(1, 0, 0);
+    const again = scriptedView({camera: [0, 0, 10], target: [0, 0, 0], up: vector});
+    vector.x = 5;
+    expect(again.up!.toArray()).toEqual([1, 0, 0]);
+  });
+
+  it('leaves up and fov undefined when omitted', () => {
+    const view = scriptedView({camera: [0, 0, 10], target: [0, 0, 0]});
+    expect(view.up).toBeUndefined();
+    expect(view.fov).toBeUndefined();
+  });
+
+  it.each([[[NaN, 1, 0]], [[Infinity, 1, 0]], [[1, 0]], [[1, 0, 0, 0]], ['up']])(
+    'refuses a non-finite or non-three-dimensional up %j', (up) => {
+      expect(() => scriptedView({camera: [0, 0, 10], target: [0, 0, 0],
+        up: up as never})).toThrow('setView up must contain three finite coordinates');
+    },
+  );
+
+  it('refuses a zero up', () => {
+    expect(() => scriptedView({camera: [0, 0, 10], target: [0, 0, 0], up: [0, 0, 0]}))
+      .toThrow('setView up must not be zero');
+  });
+
+  it('refuses an up parallel or anti-parallel to the view direction', () => {
+    for (const up of [[0, 0, 1], [0, 0, -3], [0, 0, 1e-9]] as [number, number, number][]) {
+      expect(() => scriptedView({camera: [0, 0, 10], target: [0, 0, 0], up}))
+        .toThrow('setView up must not be parallel to the view direction');
+    }
+    // 1e-3 rad off the view direction is a defined roll.
+    const view = scriptedView({camera: [0, 0, 10], target: [0, 0, 0],
+      up: [Math.sin(1e-3), 0, Math.cos(1e-3)]});
+    expect(view.up!.z).toBeCloseTo(Math.cos(1e-3));
+  });
+
+  it.each([0, 180, -10, 200, NaN, Infinity, '30'])(
+    'refuses a fov of %j', (fov) => {
+      expect(() => scriptedView({camera: [0, 0, 10], target: [0, 0, 0],
+        fov: fov as number})).toThrow(
+        'setView fov must be a finite number of degrees between 0 and 180, exclusive');
+    },
+  );
+
+  it('does not check the omitted up against the view direction', () => {
+    // A camera straight above its target with the default Z up: accepted
+    // at API 21 to 27, and still accepted.
+    expect(() => scriptedView({camera: [0, 0, 10], target: [0, 0, 0]})).not.toThrow();
+  });
+});
+
+describe('upDirectionChanged', () => {
+  it('an orbit is rebuilt only when the up direction changes', () => {
+    const z = new THREE.Vector3(0, 0, 1);
+    expect(upDirectionChanged(z, new THREE.Vector3(0, 0, 7))).toBe(false);
+    expect(upDirectionChanged(z, new THREE.Vector3(0, 0, -1))).toBe(true);
+    expect(upDirectionChanged(z, new THREE.Vector3(0, 1, 0))).toBe(true);
+    expect(upDirectionChanged(new THREE.Vector3(1, 1, 0), new THREE.Vector3(3, 3, 0))).toBe(false);
+    // Neither argument is changed by asking.
+    expect(z.toArray()).toEqual([0, 0, 1]);
   });
 });
 

@@ -16,17 +16,36 @@ Camera and lifecycle
 
 .. js:method:: ViewerHandle.view()
 
-   Return a detached snapshot ``{camera, target}``, each a three.js vector
-   with ``x``, ``y``, ``z``. Editing the returned vectors does not move the
-   viewer. Pass the snapshot to a new mount or ``setView()``.
+   Return a detached snapshot ``{camera, target, up, fov}``. ``camera``,
+   ``target`` and ``up`` are three.js vectors with ``x``, ``y``, ``z``;
+   ``up`` is the adopted up direction exactly as it was supplied, not
+   normalised. ``fov`` is the vertical field of view in degrees. Editing the
+   returned vectors does not move the viewer. Pass the snapshot to
+   ``setView()`` to restore all four, or to a new mount's ``view`` option to
+   restore camera and target; ``up`` and ``fov`` are mount options of their
+   own. ``up`` and ``fov`` are reported since API 28.
 
 .. js:method:: ViewerHandle.setView(view)
 
    Adopt a ``ViewInput`` and render immediately; return ``void``. Available
    since API 21. Requires finite 3D camera/target vectors at distinct positions.
-   Invalid input or a disposed viewer throws without changing the previous
-   view. Preserves up vector, field of view, tree, machine state and timeline;
-   a later read returns a fresh snapshot.
+   Since API 28 it also takes an optional ``up`` direction, in the same vector
+   form, and an optional ``fov``, the vertical field of view in degrees. What
+   you omit keeps its current value. Preserves tree, machine state, timeline,
+   visibility and focus; a later read returns a fresh snapshot.
+
+   Refused, each by name and before anything changes: non-finite or
+   non-three-dimensional vectors, coincident camera and target, a zero
+   ``up``, an ``up`` parallel or anti-parallel to the direction from camera to
+   target (there is no defined roll there), and a ``fov`` that is not a
+   finite number strictly between 0 and 180. The parallel check applies only
+   to an ``up`` you supply: a view straight along the retained up, such as a
+   camera directly above its target with the default Z-up, is accepted as
+   before. A disposed viewer throws.
+
+   An adopted up direction and field of view persist through ``setRoot()``,
+   ``reload()`` and the targeted updates. Orbiting by pointer turns about the
+   adopted up direction.
 
 .. js:method:: ViewerHandle.highlight(paths, options)
 

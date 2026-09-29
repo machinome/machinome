@@ -7,8 +7,26 @@
 import * as THREE from 'three';
 import type { ViewInput, VectorInput } from './viewer';
 
-/** Validate both endpoints before the caller changes any visible state. */
-export function scriptedView(view: ViewInput): ViewerView {
+/** A validated scripted view: camera and target always, and the up
+ * direction and field of view only when the host supplied them. */
+export interface ScriptedView extends ViewerView {
+  up?: THREE.Vector3;
+  fov?: number;
+}
+
+/** The sine of the angle below which an up direction counts as parallel
+ * to the view direction: three.js's `lookAt` has no defined roll there
+ * (OpenSpec `move-up-and-field-of-view`, design D3). */
+const PARALLEL_SINE = 1e-6;
+
+/** Validate every field before the caller changes any visible state.
+ *
+ * `up` and `fov` are checked only when given (OpenSpec
+ * `move-up-and-field-of-view`, design D2-D3): an omitted one keeps the
+ * viewer's current value, and the retained up is NOT checked against
+ * the view direction, because API 21 to 27 accept a camera straight
+ * above its target with the default Z up and three.js resolves it. */
+export function scriptedView(view: ViewInput): ScriptedView {
   function vector(value: VectorInput, name: string): THREE.Vector3 {
     const values = Array.isArray(value) ? value
       : value instanceof THREE.Vector3 ? value.toArray() : [];
@@ -20,7 +38,35 @@ export function scriptedView(view: ViewInput): ViewerView {
   const camera = vector(view?.camera, 'camera');
   const target = vector(view?.target, 'target');
   if (camera.equals(target)) throw new Error('setView camera and target must be distinct');
-  return {camera, target};
+  const scripted: ScriptedView = {camera, target};
+  if (view?.up !== undefined) {
+    const up = vector(view.up!, 'up');
+    if (up.lengthSq() === 0) throw new Error('setView up must not be zero');
+    const direction = target.clone().sub(camera);
+    const sine = direction.clone().cross(up).length() / (direction.length() * up.length());
+    if (!(sine >= PARALLEL_SINE)) {
+      throw new Error('setView up must not be parallel to the view direction');
+    }
+    scripted.up = up;
+  }
+  if (view?.fov !== undefined) {
+    const fov = view.fov;
+    if (typeof fov !== 'number' || !Number.isFinite(fov) || fov <= 0 || fov >= 180) {
+      throw new Error('setView fov must be a finite number of degrees between 0 and 180, exclusive');
+    }
+    scripted.fov = fov;
+  }
+  return scripted;
+}
+
+/** Whether an adopted up direction differs from the one the orbit
+ * controls were built with, so they must be built again: three.js's
+ * `OrbitControls` fixes its orbit axis when constructed (design D4).
+ * A scaled copy of the same direction is the same direction. */
+export function upDirectionChanged(current: THREE.Vector3,
+                                   next: THREE.Vector3): boolean {
+  return current.clone().normalize()
+    .distanceTo(next.clone().normalize()) > 1e-12;
 }
 
 export interface ViewerView {

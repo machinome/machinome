@@ -1,0 +1,124 @@
+# Evidence: move-up-and-field-of-view
+
+Date: 2026-09-29. Worktree `WTs/film-annotations`, branch `film-annotations`,
+applied on the line that carries `track-a-part-on-screen` (`686c3c8`, API 28)
+and `highlight-a-part` (`49e50f3`); planning commit `8a79ba2`. Ratified as
+proposed.
+
+## Base
+
+The `highlight-a-part` implementation: `npx vitest run` 62 files passed,
+1 skipped, **1645 passed, 2 skipped**; `npx tsc --noEmit` clean; Python suite
+230 passed, 0 skipped. `node_modules` linked, never installed.
+
+## Red first
+
+- `src/camera.test.ts`, the cases the tasks name under
+  "scriptedView up and fov" plus "upDirectionChanged": **16 failed, 15
+  passed** of 31. The refusals failed with `expected [Function] to throw an
+  error` (the fields were ignored), the copy case with `Cannot read
+  properties of undefined (reading 'toArray')` (nothing was copied), and the
+  orbit helper with `upDirectionChanged is not a function`. "leaves up and
+  fov undefined when omitted" and "does not check the omitted up against the
+  view direction" passed at red, as they must: they pin today's behaviour.
+- Five browser tests in `tests/test_widget_e2e.py::ViewerMountApiTest`, run
+  against the API-28 bundle without this change: **5 failed** —
+  `test_setview_changes_the_field_of_view` (`None != 20`: `view()` had no
+  `fov`), `test_setview_rolls_to_the_supplied_up`,
+  `test_setview_refusals_leave_the_frame` and
+  `test_an_adopted_view_survives_refocus_and_reload` (`view().up` undefined),
+  `test_orbit_turns_about_the_adopted_up` (`angleTo` of an undefined up).
+- `src/documentation.test.ts` gained "documents ViewInput.up" and
+  "documents ViewInput.fov" once the fields were declared; they pass only
+  with the reference entries.
+
+## What changed
+
+- `src/camera.ts`: `scriptedView` returns a `ScriptedView` and validates and
+  copies an optional `up` (three finite numbers, nonzero, sine of its angle to
+  the view direction at least 1e-6) and `fov` (finite, 0 < fov < 180), with
+  the messages of design D3; an omitted `up` is not checked against the view
+  direction. `upDirectionChanged` compares normalised directions.
+  `ViewerView` stays the mount's and the framing's shape.
+- `src/viewer.ts`: `ViewInput` gains optional `up` and `fov`; `View` is its
+  own interface `{camera, target, up, fov}`; the viewer holds the adopted up
+  (`adoptedUp`, as supplied) and uses `camera.fov` as the field of view's
+  state; `applyFrame` frames with the adopted up, so `setRoot`,
+  `manifestChanged` and `reload()` keep both; `setView` adopts `fov`, then
+  `up`, rebuilding the orbit controls only when the direction changed and
+  before framing, so the new controls' axis is the one the framing's
+  `update()` uses; `view()` reports fresh copies of all four; the part
+  surface's `orbit` collaborator is a stable object delegating `enabled` to
+  the current controls; `dispose()` disposes the current ones.
+- Manual: `view()` and `setView()` in `docs/reference/viewer-handle.rst`;
+  `ViewInput.up`, `ViewInput.fov` and notes on the `view`, `up` and `fov`
+  mount options in `docs/reference/mount.rst`; `docs/compatibility.rst`
+  names the capability under API 28; `tests/test_documentation.py` checks
+  them.
+
+## Green
+
+- `npx vitest run`: 62 files passed, 1 skipped; **1665 passed, 2 skipped**
+  (+18 in `camera.test.ts` counting each parameter, +2 documentation
+  coverage). `partSurface.test.ts` green unchanged with the delegating
+  `orbit` collaborator.
+- `npx tsc --noEmit`: clean.
+- `python -m pytest` (whole suite, workspace venv, worktree root):
+  **235 passed, 443 subtests passed, 0 skipped**, 325 s.
+- The five new browser tests: 5 passed; the existing view tests
+  (`test_a_captured_view_survives_a_remount`,
+  `test_reload_keeps_the_maker_looking_where_they_were`,
+  `test_manifest_update_keeps_the_canvas_and_camera`) green unchanged.
+- Strict Sphinx build: succeeded, no warnings.
+- `openspec validate move-up-and-field-of-view --strict`: valid.
+- The bundle built from these sources (`npm run build` only): banner
+  `machinome-viewer 0.7.1 - viewer API 28`; `python -m machinome_viewer
+  describe` from the worktree reports `apiVersion` 28 and document versions
+  1-13.
+
+## Measurements
+
+- Field of view, same camera `[0, -300, 250]` and target, 60 then 20
+  degrees: the model's non-background extent grew x3.250 horizontally and
+  x3.242 vertically against tan 30 / tan 10 = 3.274 (pixel rounding of an
+  84-pixel box); `view().fov` read 20.
+- Roll, camera on the Z axis, up `[1, 0, 0]` then `[0, 2, 0]`: mean absolute
+  difference against the first frame turned a quarter turn about the canvas
+  centre **0.000**, against it unturned 8.030; `view().up` read back
+  `[0, 2, 0]` as supplied.
+- Orbit after adopting up `[1, 0, 0]` in a continuous mount, a 120-pixel
+  horizontal drag: the camera moved and the angle between camera - target
+  and the adopted up was unchanged within 1e-6 rad.
+
+Frames inspected by eye (`_build/film-annotations/view-*.png` and
+`view-sheet.png`, regenerated by this cycle's script, not committed): the
+20-degree frame is the 60-degree frame enlarged about its centre; the two
+rolls are the same view turned a quarter turn; a 30-degree roll and a
+refocus on the hub after it both keep the adopted up.
+
+## Deviations from the design
+
+- `setView` adopts `fov`, then `up` (rebuilding the orbit controls when the
+  direction changed), and only then frames; D4 does not fix the order. With
+  the controls rebuilt before the framing's `update()`, the one orbit step
+  that follows a new up already runs about the new axis, so its polar clamp
+  is never taken about the old one.
+- `setView` calls `camera.updateProjectionMatrix()` when it adopts a field of
+  view, so the new angle applies even when the framing finds nothing visible
+  to fit.
+
+## Out of scope, found while applying
+
+- The mount options stay lenient, as the design's Risks say: `resolveOptions`
+  accepts a zero or non-finite `up` (it falls back per component through
+  `resolveVector`) and silently replaces a non-finite or nonpositive `fov`
+  with 50, where `setView` now refuses both. Recorded here rather than
+  changed; `workflow/warts.md` only if the pilot wants it tracked.
+- `python -m machinome_viewer describe` from this worktree reports
+  `"version": "0.7.0"`: `bundle.version()` reads the installed distribution's
+  metadata, and the workspace venv's record of `machinome-viewer` is still
+  0.7.0 although `pyproject.toml` and `__version__` say 0.7.1. An environment
+  record, not a source defect; a reinstall of the package into the venv
+  would refresh it.
+
+Nothing is pushed or published; integration is the pilot's.

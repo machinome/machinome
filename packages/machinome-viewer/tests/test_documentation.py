@@ -167,6 +167,11 @@ def test_film_annotations_are_documented_as_current_source():
     assert 'available since API 28' in handle
     assert '.. js:method:: ViewerHandle.highlight(paths, options)' in handle
     assert ':js:meth:`ViewerHandle.highlight`' in compatibility
+    assert 'Return a detached snapshot ``{camera, target, up, fov}``' in handle
+    assert 'optional ``fov``' in ' '.join(handle.split())
+    mount = (ROOT / 'docs/reference/mount.rst').read_text()
+    assert '.. js:attribute:: ViewInput.up' in mount
+    assert '.. js:attribute:: ViewInput.fov' in mount
     for page in sorted((ROOT / 'docs').rglob('*.rst')):
         text = page.read_text().lower()
         for word in ('videomaker', 'revolutions', 'leonardo', ' film'):

@@ -12,6 +12,7 @@ because a screenshot cannot click a control or read an attribute.
 
 import io
 import json
+import math
 import os
 import tempfile
 from contextlib import contextmanager
@@ -1261,6 +1262,144 @@ class ViewerMountApiTest(TestCase):
         self.assertGreater(after[1] - before[1], 60, 'the highlight did not survive the update')
         self.assertIsNone(ImageChops.difference(plain, restored).getbbox(),
                           'restoring after the update did not give back the frame')
+
+    # -- A scripted view's up and field of view (OpenSpec
+    # `move-up-and-field-of-view`) -----------------------------------------
+
+    def model_box(self, image):
+        """The bounding box of everything that is not the white page."""
+        mask = image.convert('L').point(lambda value: 255 if value < 235 else 0)
+        return mask.getbbox()
+
+    @needs_pil
+    def test_setview_changes_the_field_of_view(self):
+        view = "{ camera: [0, -300, 250], target: [0, 0, 2], fov: FOV }"
+        with self.harness() as page:
+            self.mount_film(page)
+            page.evaluate('() => viewer.setView(VIEW)'.replace('VIEW', view.replace('FOV', '60')))
+            wide = self.shot(page)
+            read = page.evaluate('() => { viewer.setView(VIEW); return viewer.view().fov; }'
+                                 .replace('VIEW', view.replace('FOV', '20')))
+            narrow = self.shot(page)
+        self.assertEqual(read, 20)
+        wide_box, narrow_box = self.model_box(wide), self.model_box(narrow)
+        expected = math.tan(math.radians(30)) / math.tan(math.radians(10))
+        for axis in (0, 1):
+            grown = ((narrow_box[axis + 2] - narrow_box[axis])
+                     / (wide_box[axis + 2] - wide_box[axis]))
+            print(f'\nextent along axis {axis}: {wide_box} -> {narrow_box}, x{grown:.3f} '
+                  f'(tan 30 / tan 10 = {expected:.3f})')
+            self.assertAlmostEqual(grown, expected, delta=expected * 0.06)
+
+    @needs_pil
+    def test_setview_rolls_to_the_supplied_up(self):
+        with self.harness() as page:
+            self.mount_film(page)
+            first = page.evaluate("""() => {
+              viewer.setView({ camera: [0, 0, 120], target: [0, 0, 0], up: [1, 0, 0] });
+              return viewer.view().up.toArray();
+            }""")
+            rolled = self.shot(page)
+            second = page.evaluate("""() => {
+              viewer.setView({ camera: [0, 0, 120], target: [0, 0, 0], up: [0, 2, 0] });
+              return viewer.view().up.toArray();
+            }""")
+            again = self.shot(page)
+        self.assertEqual(first, [1, 0, 0])
+        self.assertEqual(second, [0, 2, 0], 'the up read back is not the one supplied')
+
+        def mismatch(a, b):
+            difference = ImageChops.difference(a, b).convert('L')
+            return sum(difference.getdata()) / (a.width * a.height)
+        # A quarter turn about the canvas centre; the spinner is threefold,
+        # not fourfold, symmetric, so an unrolled frame cannot pass.
+        quarter = min(mismatch(again, rolled.rotate(angle, fillcolor=(255, 255, 255)))
+                      for angle in (90, -90))
+        unrotated = mismatch(again, rolled)
+        print(f'\nroll mismatch: quarter turn {quarter:.3f}, unrotated {unrotated:.3f}')
+        self.assertLess(quarter * 5, unrotated, 'the frame did not roll a quarter turn')
+
+    @needs_pil
+    def test_setview_refusals_leave_the_frame(self):
+        with self.harness() as page:
+            self.mount_film(page)
+            page.evaluate("() => viewer.setView({ camera: [0, -100, 80], target: [0, 0, 2], up: [0, 0, 1], fov: 40 })")
+            before = page.evaluate('() => { const v = viewer.view(); return [v.camera.toArray(), v.target.toArray(), v.up.toArray(), v.fov]; }')
+            plain = self.shot(page)
+            refusals = page.evaluate("""() => {
+              const refusal = (view) => {
+                try { viewer.setView(view); return null; } catch (error) { return String(error.message); }
+              };
+              return [
+                refusal({ camera: [0, -100, 80], target: [0, 0, 2], up: [0, 100, -78] }),
+                refusal({ camera: [0, -100, 80], target: [0, 0, 2], up: [0, 0, 0] }),
+                refusal({ camera: [0, -100, 80], target: [0, 0, 2], fov: 0 }),
+                refusal({ camera: [0, -100, 80], target: [0, 0, 2], fov: 180 }),
+                refusal({ camera: [0, -100, 80], target: [0, 0, 2], up: [0, NaN, 1] }),
+              ];
+            }""")
+            after = page.evaluate('() => { const v = viewer.view(); return [v.camera.toArray(), v.target.toArray(), v.up.toArray(), v.fov]; }')
+            unchanged = self.shot(page)
+        self.assertEqual(refusals, [
+            'setView up must not be parallel to the view direction',
+            'setView up must not be zero',
+            'setView fov must be a finite number of degrees between 0 and 180, exclusive',
+            'setView fov must be a finite number of degrees between 0 and 180, exclusive',
+            'setView up must contain three finite coordinates',
+        ])
+        self.assertEqual(before, after)
+        self.assertIsNone(ImageChops.difference(plain, unchanged).getbbox(),
+                          'a refused view changed the frame')
+
+    def test_an_adopted_view_survives_refocus_and_reload(self):
+        with self.harness() as page:
+            result = page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              const viewer = await MachinomeViewer.mount(host, 'manifest.json', FILM);
+              const read = () => { const v = viewer.view(); return [v.up.toArray(), v.fov]; };
+              const mounted = read();
+              viewer.setView({ camera: [0, -100, 80], target: [0, 0, 2], up: [0, 1, 0], fov: 30 });
+              const adopted = read();
+              viewer.setView({ camera: [10, -100, 80], target: [0, 0, 2] });
+              const kept = read();
+              viewer.setRoot(['Hub']);
+              const refocused = read();
+              await viewer.reload();
+              const reloaded = read();
+              await viewer.manifestChanged();
+              const updated = read();
+              viewer.setRoot(null);
+              return { mounted, adopted, kept, refocused, reloaded, updated };
+            }""".replace('FILM', FILM_MOUNT))
+        self.assertEqual(result['mounted'], [[0, 0, 1], 50])
+        self.assertEqual(result['adopted'], [[0, 1, 0], 30])
+        for moment in ('kept', 'refocused', 'reloaded', 'updated'):
+            self.assertEqual(result[moment], [[0, 1, 0], 30], moment)
+
+    def test_orbit_turns_about_the_adopted_up(self):
+        with self.harness() as page:
+            page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              window.viewer = await MachinomeViewer.mount(host, 'manifest.json', { autoplay: false });
+              viewer.setView({ camera: [0, -60, 40], target: [0, 0, 2], up: [1, 0, 0] });
+            }""")
+            angle = """() => {
+              const v = viewer.view();
+              const offset = v.camera.clone().sub(v.target);
+              return { angle: offset.angleTo(v.up), camera: v.camera.toArray(),
+                       up: v.up.toArray() };
+            }"""
+            before = page.evaluate(angle)
+            page.mouse.move(400, 250)
+            page.mouse.down()
+            page.mouse.move(520, 250, steps=12)
+            page.mouse.up()
+            page.evaluate('() => new Promise(done => requestAnimationFrame(done))')
+            after = page.evaluate(angle)
+        moved = max(abs(a - b) for a, b in zip(before['camera'], after['camera']))
+        self.assertGreater(moved, 5, 'the drag did not orbit the camera')
+        self.assertAlmostEqual(before['angle'], after['angle'], delta=1e-6)
+        self.assertEqual(after['up'], [1, 0, 0])
 
 
 @needs_bundle

@@ -76,7 +76,9 @@ accept these too, with the additions/defaults in :doc:`layouts`.
 
    Optional ``ViewInput`` with ``camera`` and ``target``. Defaults to fitting
    the visible model. Vectors use model coordinates, normally millimetres.
-   A previous ``viewer.view()`` result can be passed to a new mount.
+   A previous ``viewer.view()`` result can be passed to a new mount; it
+   restores camera and target only. Pass its ``up`` and ``fov`` as the mount
+   options of those names.
 
 .. js:attribute:: ViewInput.camera
 
@@ -88,14 +90,31 @@ accept these too, with the additions/defaults in :doc:`layouts`.
    Orbit/look-at target in the same vector form. For a usable view, provide
    finite coordinates and keep camera and target distinct.
 
+.. js:attribute:: ViewInput.up
+
+   Only for :js:meth:`ViewerHandle.setView`, since API 28: the up direction
+   to adopt, in the same vector form, nonzero and not parallel to the
+   direction from camera to target. Omitted keeps the current one. A mount's
+   ``view`` option ignores it; use :js:attr:`ViewerOptions.up`.
+
+.. js:attribute:: ViewInput.fov
+
+   Only for :js:meth:`ViewerHandle.setView`, since API 28: the vertical field
+   of view in degrees to adopt, strictly between 0 and 180. Omitted keeps the
+   current one. A mount's ``view`` option ignores it; use
+   :js:attr:`ViewerOptions.fov`.
+
 .. js:attribute:: ViewerOptions.up
 
-   Up vector in the same form, default ``[0, 0, 1]`` (Z-up).
+   Up vector in the same form, default ``[0, 0, 1]`` (Z-up), adopted at mount.
+   :js:meth:`ViewerHandle.setView` may adopt another later.
 
 .. js:attribute:: ViewerOptions.fov
 
    Vertical field of view in degrees, default ``50``. A non-finite or
    nonpositive mount value falls back to 50; supply a sensible camera angle.
+   :js:meth:`ViewerHandle.setView` may adopt another later, and refuses a value
+   outside 0 to 180 rather than falling back.
 
 .. js:attribute:: ViewerOptions.className
 

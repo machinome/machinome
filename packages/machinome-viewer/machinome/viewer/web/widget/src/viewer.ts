@@ -6,7 +6,9 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { frameBounds, scriptedView, ViewerView } from './camera';
+import {
+  frameBounds, scriptedView, upDirectionChanged, ViewerView,
+} from './camera';
 import {
   AssemblyChangeNotifier, AssemblyListener, AssemblyNavigation,
   AssemblyNavigationState,
@@ -103,7 +105,16 @@ export type DriverControlsMode = 'inline' | 'none';
 // cursor, the highlight, the title and the pick; `controls()` answers
 // and the run API is whole either way.
 export type PartControlsMode = 'inline' | 'none';
-export type View = ViewerView;
+/** A view as the viewer reads it back: detached copies (OpenSpec
+ * `move-up-and-field-of-view`, design D1, D5). `up` is the adopted up
+ * direction as it was supplied; `fov` the vertical field of view in
+ * degrees. A mount's `view` option restores camera and target only. */
+export interface View {
+  camera: THREE.Vector3;
+  target: THREE.Vector3;
+  up: THREE.Vector3;
+  fov: number;
+}
 export type { AssemblyNode, AssemblyPath } from './tree';
 export type { AssemblyChange, AssemblyListener, AssemblyNavigationState } from './assembly';
 export type { HighlightOptions, OthersMode };
@@ -111,6 +122,11 @@ export type VectorInput = THREE.Vector3 | readonly [number, number, number];
 export interface ViewInput {
   camera: VectorInput;
   target: VectorInput;
+  /** `setView` only: the up direction to adopt; omitted keeps it. */
+  up?: VectorInput;
+  /** `setView` only: the vertical field of view in degrees, strictly
+   * between 0 and 180, to adopt; omitted keeps it. */
+  fov?: number;
 }
 
 export interface ViewerOptions {
@@ -262,7 +278,8 @@ export interface PartOnScreen {
 export interface ViewerHandle {
   dispose(): void;
   view(): View;
-  /** Adopt and render a camera/target without reloading or changing machine state. */
+  /** Adopt and render a camera/target, and optionally an up direction
+   * and a field of view, without reloading or changing machine state. */
   setView(view: ViewInput): void;
   reload(): Promise<void>;
   artifactChanged(path: string): Promise<void>;
@@ -409,9 +426,34 @@ export async function mount(
   container.appendChild(renderer.domElement);
 
   const camera = new THREE.PerspectiveCamera(resolved.fov, 1, 0.1, 10000);
-  camera.up.copy(resolved.up);
-  const controls = new OrbitControls(camera, renderer.domElement);
+  // The up direction the viewer has adopted, as it was supplied: the
+  // mount option until a host's `setView` supplies another, and what
+  // every later framing keeps (OpenSpec `move-up-and-field-of-view`,
+  // design D2). The field of view's state is `camera.fov` itself.
+  let adoptedUp = resolved.up.clone();
+  camera.up.copy(adoptedUp);
+  let controls = new OrbitControls(camera, renderer.domElement);
   controls.rotateSpeed = 0.5;
+  // The up direction the CURRENT orbit controls were built with: they
+  // fix their orbit axis at construction, so a new direction needs new
+  // controls (design D4).
+  let orbitUp = adoptedUp.clone();
+  // The part surface's view of the orbit: stable across a rebuild, so a
+  // gesture that suspends orbiting suspends whichever controls exist.
+  const orbit = {
+    get enabled(): boolean { return controls.enabled; },
+    set enabled(value: boolean) { controls.enabled = value; },
+  };
+  const rebuildOrbit = (): void => {
+    const previous = controls;
+    const next = new OrbitControls(camera, renderer.domElement);
+    next.rotateSpeed = previous.rotateSpeed;
+    next.enabled = previous.enabled;
+    next.target.copy(previous.target);
+    previous.dispose();
+    controls = next;
+    orbitUp = adoptedUp.clone();
+  };
 
   let tree: WidgetTree | undefined;
   // The loaded document's bindings table (OpenSpec `read-expression-bindings`,
@@ -853,7 +895,7 @@ export async function mount(
   const partSurface = partSurfaceWith({
     container,
     canvas: renderer.domElement,
-    orbit: controls,
+    orbit,
     pick: pickAt,
     highlight: liftParts,
     reader: sweepReaderFor,
@@ -1092,9 +1134,11 @@ export async function mount(
     });
   };
 
-  const applyFrame = (view: View | null) => {
+  const applyFrame = (view: ViewerView | null) => {
     scene.updateMatrixWorld(true);
-    const framed = frameBounds(visibleBounds(scene), camera.fov, view, resolved.up);
+    // The ADOPTED up and field of view, so refocusing, an update and a
+    // reload keep what a host set (design D2).
+    const framed = frameBounds(visibleBounds(scene), camera.fov, view, adoptedUp);
     if (!framed) {
       return;
     }
@@ -1110,6 +1154,8 @@ export async function mount(
   const captureView = (): View => ({
     camera: camera.position.clone(),
     target: controls.target.clone(),
+    up: adoptedUp.clone(),
+    fov: camera.fov,
   });
 
   /** Start (or restart) the run of a document carrying a program, posed
@@ -1594,7 +1640,7 @@ export async function mount(
     placeFullscreenControl();
   }
 
-  const replaceTree = async (view: View | null) => {
+  const replaceTree = async (view: ViewerView | null) => {
     const { document, table, program, machine: loaded,
             controls: declared } = await loadDocument(sourceUrl);
     assertCaptureDocument(document);
@@ -1981,8 +2027,20 @@ export async function mount(
     view: captureView,
     setView(view: ViewInput) {
       if (disposed) throw new Error('setView cannot use a disposed viewer');
+      // Everything is checked before anything changes (design D3).
       const next = scriptedView(view);
-      applyFrame(next);
+      if (next.fov !== undefined) {
+        camera.fov = next.fov;
+        camera.updateProjectionMatrix();
+      }
+      if (next.up !== undefined) {
+        adoptedUp = next.up;
+        camera.up.copy(adoptedUp);
+        if (upDirectionChanged(orbitUp, adoptedUp)) {
+          rebuildOrbit();
+        }
+      }
+      applyFrame({ camera: next.camera, target: next.target });
       renderer.render(scene, camera);
     },
     async reload() {
