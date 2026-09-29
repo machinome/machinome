@@ -65,3 +65,7 @@ demonstrated.
 - 29 Sep: `keyframes-and-easing` implemented red-first and archived (format
   0.4, `src/easing.mjs`); evidence episode `demo-keyframes-and-easing`
   untracked in Leonardo. The pilot's motion review (cubic or quadratic) is open.
+- 29 Sep: `keyframes-and-easing` demo verified frame by frame by the
+  orchestrator (Leonardo `videos/demo-keyframes-and-easing-2/_build/silent-preview.mp4`,
+  5 s, sha256 5f64f399…): camera `out` settle, model `in` then `out`. Ratified.
+
