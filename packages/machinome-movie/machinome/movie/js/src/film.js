@@ -67,7 +67,10 @@
     }
     return drawn;
   }
-  window.film={viewer,apiVersion:viewer.apiVersion,async setFrame(frame){
+  window.film={viewer,apiVersion:viewer.apiVersion,
+    // Preview's lens check: viewport positions of world points for the current pose.
+    project:points=>points.map(p=>viewer.project(p)),
+    async setFrame(frame){
     const split=Boolean(frame.code);
     if(document.body.classList.contains('with-code')!==split){
       document.body.classList.toggle('with-code',split);
@@ -89,7 +92,10 @@
       applied=wanted;
     }
     viewer.setTime(frame.time);
-    viewer.setView(frame.view); // Validates, updates and renders synchronously.
+    // Validates, updates and renders synchronously. From API 28 up and field of
+    // view are set on every frame; below it the call is exactly as before.
+    if(viewer.apiVersion>=28)viewer.setView({camera:frame.view.camera,target:frame.view.target,up:frame.up,fov:frame.fov});
+    else viewer.setView(frame.view);
     const overlays=document.querySelector('#overlays');overlays.replaceChildren();
     for(const cue of frame.overlays){const el=document.createElement('div');el.className='overlay '+cue.position;el.textContent=cue.text;overlays.append(el);}
     document.querySelector('#source-file').textContent=frame.code?`${frame.code.file} · L${frame.code.firstLine}–${frame.code.lastLine}`:'';
@@ -101,6 +107,7 @@
     const view=viewer.view();
     return {camera:view.camera.toArray(),target:view.target.toArray(),navigation:viewer.navigation(),
       annotations,stage:plain(document.querySelector('#stage').getBoundingClientRect()),
-      frame:{width:window.innerWidth,height:window.innerHeight}};
+      frame:{width:window.innerWidth,height:window.innerHeight},
+      ...(viewer.apiVersion>=28?{up:view.up.toArray(),fov:Number(view.fov)}:{})};
   }};
 })().catch(error=>{window.filmError=String(error);});

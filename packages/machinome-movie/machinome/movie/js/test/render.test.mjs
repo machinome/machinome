@@ -151,3 +151,34 @@ test('a highlight is applied and restored by requested state, and preview proves
   await assert.rejects(preview(e,{viewer:await viewer('inert.js',{inertHighlight:true}),width:640}),/Highlight did not reach the pixels: pawls #0/);
   await assert.rejects(preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640}),/Viewer API 28 for highlight \(shot pawls\).*declares API 27/);
 });
+
+test('field of view and up reach the viewer at API 28 and the picture proves the lens',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const cameras={a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},tight:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:20},
+    rolled:{position:[0,-10,0],target:[0,0,0],up:[1,0,1],fov:37}};
+  const e=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:1.5,preset:'tight'}]},{cameras});
+  const good=await viewer('viewer28.js');
+  const p=await preview(e,{viewer:good,width:640});
+  assert.equal(p.pixelReplay,true);
+  assert.deepEqual(p.cameraChecks.map(c=>[c.shotId,c.time,c.fov]),[['pawls',0,37],['pawls',1.5,20]]);
+  for(const c of p.cameraChecks)assert.ok(Math.abs(c.measured/c.expected-1)<=.02);
+  const calls=await browserSession(e,good,640,[],async({page,pose})=>{await pose(.75);return {result:await page.evaluate(()=>window.viewerCalls.at(-1)[1])};});
+  assert.deepEqual(calls.result,{camera:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:28.5});
+  const rolled=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:1.5,preset:'rolled'}]},{cameras});
+  const r=await preview(rolled,{viewer:good,width:640});
+  assert.ok(r.cameraChecks.length===2&&r.cameraChecks.every(c=>c.upAbove===true));
+  await assert.rejects(preview(e,{viewer:await viewer('ignores.js',{ignoreFov:true}),width:640}),/Viewer did not adopt the requested field of view/);
+  await assert.rejects(preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640}),/Viewer API 28 for camera up\/field of view \(shot pawls\).*declares API 27/);
+});
+
+test('below API 28 the page calls setView exactly as before, with camera and target only',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:2,preset:'b'}]},{format:'machinome-video-draft/0.2',
+    cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},b:{position:[5,-10,0],target:[0,0,0],up:[0,0,1],fov:37}}});
+  const calls=await browserSession(e,await viewer('viewer27.js',{api:27}),640,[],async({page,pose})=>{
+    for(const time of [0,.5,1.5])await pose(time);
+    return {result:await page.evaluate(()=>window.viewerCalls.map(c=>Object.keys(c[1]).sort()))};
+  });
+  assert.equal(calls.result.length,3);
+  for(const keys of calls.result)assert.deepEqual(keys,['camera','target']);
+});

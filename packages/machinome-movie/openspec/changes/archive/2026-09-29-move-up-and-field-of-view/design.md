@@ -116,3 +116,37 @@ second preset. Reverting the tool commit restores the within-shot refusal.
 
 - Which *Revolutions* shot uses the move; the proposal assumes the pawls
   close-up, and the pilot confirms at ratification or names another.
+
+## Ratification and resolutions (29 September 2026)
+
+The pilot ratified this change with `annotate-a-part` and `highlight-a-part`;
+the shared D5 was implemented by `annotate-a-part`. The consuming *Revolutions*
+shot remains the pawls close-up proposed above; authoring it is Leonardo's work
+in its own repository. Where the implementation departs from, or sharpens, the
+text above:
+
+- **Up normalization per shot (D2 sharpened).** "Identical arrays carry
+  exactly" is applied to the shot, not to the pair of keys: in a shot whose
+  keys all share one `up` array it is carried as authored (constant-up
+  episodes keep identical frame data); in a shot whose `up` changes, every
+  frame's up is a unit vector, including the hold after the last key. Applied
+  per pair, the hold would have jumped from a normalized to an unnormalized
+  spelling of the same direction.
+- **Reconciled viewer contract.** `view().up` returns exactly what was supplied,
+  not normalized, so the readback in `pose` compares normalized directions
+  (within 1e-6), as D4 already specified; `fov` within 1e-6 degrees.
+  `setView` refuses an up parallel to the view direction and a field of view
+  outside (0, 180); `check` refuses both earlier (0.5 degrees, presets in (0,
+  180)). `project` returns off-canvas coordinates in front of the camera and
+  `null` only at or behind the camera plane; the D5 check fails on a null.
+- **D4's requirement** is computed against the first camera the episode uses
+  (the page mounts with its up and field of view): every shot using a preset
+  whose field of view or up direction differs from it is named, so a cut
+  between lenses names the shot after the cut, and a shot holding the changed
+  lens is named too.
+- **The 0.2 refusal** now names the shot: `Changing FOV/up within a shot is not
+  supported: shot <id>; use format machinome-video-draft/0.3 with Viewer API 28`.
+- **D5's instants** are each changing pair's first key and its second key,
+  clamped to the shot's last output frame when the key sits at the cut; the
+  canvas height is the `H` of the formula; results are in the preview report
+  as `cameraChecks`.

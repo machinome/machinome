@@ -14,8 +14,9 @@ refused. The viewer executes the actual mechanical model.
 
 Requires Node 22+, FFmpeg/ffprobe, and a Machinome Viewer API 21 bundle with
 `setView` and on-demand rendering. Viewer API 27 is used by the release-film
-study. Episodes in the draft format 0.3 that point at parts (`annotations`) or
-highlight them (`highlight`) need Viewer API 28, which the machinome-viewer source is adding and no
+study. Episodes in the draft format 0.3 that point at parts (`annotations`),
+highlight them (`highlight`) or change field of view or up between cameras
+need Viewer API 28, which the machinome-viewer source is adding and no
 published viewer release declares yet; `check`, `preview` and `render` refuse them against an
 older bundle. Linux/Chromium software rendering is the tested environment.
 

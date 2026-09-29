@@ -3,6 +3,7 @@ import {resolve, dirname, relative, isAbsolute} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
 import {loadSourceCode,validateCode} from './code.mjs';
+import {cameraAt} from './timeline.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -26,6 +27,18 @@ export function assemblyPaths(root) {
   const paths=new Set();
   (function walk(n,path=[]){paths.add(JSON.stringify(path));for(const child of n.children??[])walk(child,[...path,child.name]);})(root);
   return paths;
+}
+const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
+const dot=(a,b)=>a.reduce((sum,v,i)=>sum+v*b[i],0);
+// Before a viewer would refuse it mid-render: every output frame of a shot whose
+// up changes keeps up at least about half a degree away from the view direction.
+function validateUpAlongShot(e,s){
+  const fps=e.output.fps,limit=Math.cos(.5*Math.PI/180);
+  for(let i=Math.ceil(s.start*fps-1e-9);i/fps<s.end;i++){
+    const local=i/fps-s.start,{view,up}=cameraAt(e,s,local);
+    const forward=unit(view.target.map((v,k)=>v-view.camera[k]));
+    need(Math.abs(dot(forward,unit(up)))<limit,`Camera up lies along the view direction in shot ${s.id} at ${(i/fps).toFixed(2)} s`);
+  }
 }
 const within=(outer,inner)=>outer.length<=inner.length&&outer.every((name,i)=>name===inner[i]);
 const isPath=p=>Array.isArray(p)&&p.length>0&&p.every(n=>typeof n==='string'&&n.length>0);
@@ -92,10 +105,14 @@ function validateHighlight(e,s,known){
 }
 // The lowest Viewer API an episode can be produced with, and why.
 export function requiredViewerApi(e) {
-  const reasons=[];
+  const reasons=[],first=e.cameras?.[e.shots?.[0]?.camera?.[0]?.preset];
+  const differs=(c,d)=>c&&(c.fov!==d.fov||unit(c.up).some((v,i)=>Math.abs(v-unit(d.up)[i])>1e-12));
   for(const s of e.shots??[]){
     if(s.annotations?.length)reasons.push(`annotations (shot ${s.id})`);
     if(s.highlight?.length)reasons.push(`highlight (shot ${s.id})`);
+    // The page mounts with the first camera's up and field of view; any other
+    // lens or up, within a shot or across a cut, must be set on every setView.
+    if(first&&s.camera?.some(k=>differs(e.cameras?.[k.preset],first)))reasons.push(`camera up/field of view (shot ${s.id})`);
   }
   return {api:reasons.length?28:21,reasons};
 }
@@ -147,8 +164,12 @@ export function validateEpisode(e, manifest) {
     let at=-1;let prior;
     for (const key of s.camera) {
       const c=e.cameras[key.preset];need(c && finite(key.at) && key.at>at && key.at<=s.end-s.start,`Invalid camera key: ${s.id}`);at=key.at;
-      if(prior)need(c.fov===prior.fov && JSON.stringify(c.up)===JSON.stringify(prior.up),'Changing FOV/up within a shot is not supported');prior=c;
+      if(prior&&formatOf(e)!==V03)need(c.fov===prior.fov && JSON.stringify(c.up)===JSON.stringify(prior.up),`Changing FOV/up within a shot is not supported: shot ${s.id}; use format machinome-video-draft/0.3 with Viewer API 28`);
+      if(prior)need(dot(unit(c.up),unit(prior.up))>=-.99,`Camera up reverses between keys in shot ${s.id}; add an intermediate preset`);
+      prior=c;
     }
+    if(formatOf(e)===V03&&s.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(e.cameras[s.camera[0].preset].up)))
+      validateUpAlongShot(e,s);
     for(const name of s.hiddenLayers)need(e.layers[name],`Unknown layer: ${name}`);
     for(const cue of s.overlays)need(finite(cue.from)&&finite(cue.to)&&cue.from>=0&&cue.to>cue.from&&cue.to<=s.end-s.start&&typeof cue.text==='string'&&['top','lower-third','center'].includes(cue.position),`Invalid overlay: ${s.id}`);
     for(const name of s.evidence)need(e.evidence[name],`Unknown evidence: ${name}`);

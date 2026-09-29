@@ -66,3 +66,18 @@ test('0.2 episodes are unchanged',()=>{
   e.shots[1].annotations=[{from:0,to:1,kind:'label',point:[0,0,0],text:'Here'}];
   assert.throws(()=>validateEpisode(e,{animation:{loop:296}}),/Annotations need format machinome-video-draft\/0\.3: shot second/);
 });
+test('constant up and field of view are unchanged',()=>{
+  // Pinned literally before the move-up-and-field-of-view change (fbc95a4).
+  const view=camera=>({camera,target:[0,0,0]});
+  const first={shotId:'first',up:[0,1,0],fov:37,hidden:[['Frame']],overlays:[],code:null};
+  const second={shotId:'second',up:[0,1,0],fov:37,hidden:[],overlays:[],code:null};
+  const pinned={
+    0:{...first,time:0.02702702702702703,view:view([0,0,10])},
+    0.5:{...first,time:0.030405405405405407,view:view([1.5625,0,10])},
+    1:{...first,time:0.033783783783783786,view:view([5,0,10])},
+    1.5:{...first,time:0.037162162162162164,view:view([8.4375,0,10])},
+    2:{...second,time:0.04054054054054054,view:view([10,0,10])},
+    3:{...second,time:0.04054054054054054,view:view([10,0,10])}};
+  const e=fixture();
+  for(const [t,frame] of Object.entries(pinned))assert.deepEqual(frameAt(e,Number(t)),frame);
+});

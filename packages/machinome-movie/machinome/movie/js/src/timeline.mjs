@@ -1,6 +1,24 @@
 // Pure time mapping: no wall clock, browser state or mechanical equations.
 import {codeAt} from './code.mjs';
 const V03='machinome-video-draft/0.3';
+const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
+// Camera keys ease position, target and field of view with one smoothstep. In a
+// shot whose keys share one up, it is carried exactly as authored; in a shot
+// whose up changes, up is always a unit vector: the two keys' unit directions
+// mixed and normalized again (a hold normalizes the held direction).
+export function cameraAt(e,shot,local){
+  let a=shot.camera[0],b=a;
+  for(const key of shot.camera){if(key.at<=local)a=key;else{b=key;break;}b=a;}
+  const ca=e.cameras[a.preset],cb=e.cameras[b.preset];
+  const u=b.at===a.at?0:Math.min(1,(local-a.at)/(b.at-a.at));
+  const ease=u*u*(3-2*u);
+  const mix=k=>ca[k].map((v,i)=>v+(cb[k][i]-v)*ease);
+  const fov=ca.fov===cb.fov?ca.fov:ca.fov+(cb.fov-ca.fov)*ease;
+  let up=ca.up;
+  const upChanges=shot.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(ca.up));
+  if(upChanges){const ua=unit(ca.up),ub=unit(cb.up);up=unit(ua.map((v,i)=>v+(ub[i]-v)*ease));}
+  return {view:{camera:mix('position'),target:mix('target')},up,fov};
+}
 // Active annotations as data. Screen positions exist only in the posed page.
 function annotationsAt(e,shot,local){
   return (shot.annotations??[]).flatMap((a,index)=>{
@@ -24,18 +42,13 @@ export function frameAt(e, t, captions=[]) {
   const shot=e.shots.find(s=>t>=s.start && t<s.end);
   if(!shot)throw new Error(`Frame time ${t} is outside the episode`);
   const local=t-shot.start,duration=shot.end-shot.start;
-  let a=shot.camera[0],b=a;
-  for(const key of shot.camera){if(key.at<=local)a=key;else{b=key;break;}b=a;}
-  const ca=e.cameras[a.preset],cb=e.cameras[b.preset];
-  const u=b.at===a.at?0:Math.min(1,(local-a.at)/(b.at-a.at));
-  const ease=u*u*(3-2*u);
-  const mix=k=>ca[k].map((v,i)=>v+(cb[k][i]-v)*ease);
+  const camera=cameraAt(e,shot,local);
   const keys=shot.simulation.keyframes??[{at:0,seconds:shot.simulation.from},{at:duration,seconds:shot.simulation.to}];
   const index=keys.findIndex((k,i)=>i+1<keys.length&&local>=k.at&&local<keys[i+1].at);
   const left=keys[Math.max(0,index)],right=keys[Math.max(0,index)+1];
   const modelSeconds=left.seconds+(right.seconds-left.seconds)*(local-left.at)/(right.at-left.at);
   const frame={shotId:shot.id,time:modelSeconds/e.model.expectedDurationSeconds,
-    view:{camera:mix('position'),target:mix('target')},up:ca.up,fov:ca.fov,
+    view:camera.view,up:camera.up,fov:camera.fov,
     hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
     overlays:shot.overlays.filter(o=>local>=o.from&&local<o.to),
     code:codeAt(e,shot,local)};

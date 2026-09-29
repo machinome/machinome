@@ -8,6 +8,21 @@ import {contained,requiredViewerApi,viewerApiRefusal} from './episode.mjs';
 import {fileHash,hash,json,command} from './util.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
+const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
+const sub=(a,b)=>a.map((v,i)=>v-b[i]),add=(a,b,s)=>a.map((v,i)=>v+b[i]*s);
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+// Where a camera key starts or ends a change of field of view or up direction.
+function lensChanges(e,shot){
+  const sameUp=(a,b)=>unit(a.up).every((v,i)=>Math.abs(v-unit(b.up)[i])<=1e-12);
+  const instants=[];
+  for(let i=1;i<shot.camera.length;i++){
+    const a=e.cameras[shot.camera[i-1].preset],b=e.cameras[shot.camera[i].preset];
+    if(a.fov===b.fov&&sameUp(a,b))continue;
+    const last=shot.end-shot.start-1/e.output.fps;
+    for(const at of [shot.camera[i-1].at,Math.min(shot.camera[i].at,last)])instants.push({time:shot.start+at,up:!sameUp(a,b)});
+  }
+  return instants;
+}
 async function stage(e,viewer) {
   const manifest=JSON.parse(await readFile(e.paths.manifest,'utf8'));
   const assets=new Set();
@@ -54,12 +69,18 @@ export async function browserSession(e,viewer,width,captions,action) {
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw new Error(error);
     let frames=0;
+    const viewerApi=await page.evaluate(()=>window.film.apiVersion);
     // override replaces frame fields for preview-only comparison frames.
     async function pose(t,override={}){
       if(errors.length)throw new Error(errors.join('\n'));
       const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds,...override};
       const observed=await page.evaluate(f=>window.film.setFrame(f),f);
       for(const k of ['camera','target'])for(let i=0;i<3;i++)if(Math.abs(observed[k][i]-f.view[k][i])>1e-6)throw new Error('Viewer did not adopt requested camera');
+      if(viewerApi>=28){
+        if(!(Math.abs(observed.fov-f.fov)<=1e-6))throw new Error(`Viewer did not adopt the requested field of view: ${f.shotId} at ${t.toFixed(2)} s (${observed.fov} instead of ${f.fov})`);
+        const seen=unit(observed.up),asked=unit(f.up);
+        if(!seen.every((v,i)=>Math.abs(v-asked[i])<=1e-6))throw new Error(`Viewer did not adopt the requested up direction: ${f.shotId} at ${t.toFixed(2)} s`);
+      }
       const canvasSize=await page.locator('#stage canvas').boundingBox(),stageSize=await page.locator('#stage').boundingBox();
       if(!canvasSize||canvasSize.height<stageSize.height*.98||canvasSize.width<stageSize.width*.98)throw new Error('Viewer canvas does not fill the film stage');
       if(f.code){
@@ -77,7 +98,7 @@ export async function browserSession(e,viewer,width,captions,action) {
       }
       frames++;return Object.assign(f,{observed});
     }
-    const info={width,height,browser:browser.version(),viewerApi:await page.evaluate(()=>window.film.apiVersion),hashes,requiredViewerApi:required};
+    const info={width,height,browser:browser.version(),viewerApi,hashes,requiredViewerApi:required};
     const result=await action({page,pose,info});
     if(errors.length)throw new Error(errors.join('\n'));
     return {...result,...info,framesChecked:frames};
@@ -126,6 +147,23 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
       samples.push(posed.annotations?{time:t,file,annotations:posed.observed.annotations}:{time:t,file});
       }
     }
+    // A changed lens must reach the picture: a world offset of s beside the
+    // target, at distance d, projects to (H/2)·s/(d·tan(fov/2)) pixels; a
+    // changed up must put a point above the target above it on screen.
+    const cameraChecks=[];
+    for(const shot of e.shots)for(const instant of lensChanges(e,shot)){
+      const f=await pose(instant.time),C=f.view.camera,T=f.view.target;
+      const d=Math.hypot(...sub(T,C)),forward=unit(sub(T,C)),up=unit(f.up),right=unit(cross(forward,up)),s=.01*d;
+      const [p0,p1,pu]=await page.evaluate(points=>window.film.project(points),[T,add(T,right,s),add(T,up,s)]);
+      const H=(await page.locator('#stage canvas').boundingBox()).height;
+      const measured=p0&&p1?Math.hypot(p1.x-p0.x,p1.y-p0.y):NaN,expected=(H/2)*s/(d*Math.tan(f.fov*Math.PI/360));
+      const where=`${shot.id} at ${instant.time.toFixed(2)} s`;
+      const keep=async()=>{const file=resolve(dir,`lens-${shot.id}-${instant.time.toFixed(2)}.png`);await page.screenshot({path:file});return file;};
+      if(!(Math.abs(measured/expected-1)<=.02))throw new Error(`Field of view did not reach the picture: ${where} (measured ${measured} px, expected ${expected} px); inspect ${await keep()}`);
+      const upAbove=instant.up?Boolean(pu&&pu.y<p0.y):undefined;
+      if(instant.up&&!upAbove)throw new Error(`Camera up did not reach the picture: ${where}; inspect ${await keep()}`);
+      cameraChecks.push({shotId:shot.id,time:instant.time,fov:f.fov,up:f.up,measured,expected,...(instant.up?{upAbove}:{})});
+    }
     // Real-browser check: revisiting an exact pose must restore the pixels.
     const replay=e.output.durationSeconds*.23;
     await pose(replay);const original=await page.screenshot();
@@ -138,7 +176,7 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     // Bad camera requests must leave the actual mounted view intact.
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
     if(!preserved)throw new Error('Invalid camera request changed viewer state');
-    return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{})};
+    return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{}),...(cameraChecks.length?{cameraChecks}:{})};
   });
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.

@@ -105,7 +105,9 @@ does not pretend their state is an arbitrary time coordinate.
 `camera` keys use shot-local `at` seconds. One key holds the view; multiple
 keys interpolate position and target with smoothstep easing. The first is at
 zero, keys increase strictly, and the last cannot exceed the shot's duration.
-Hold the last key to the end. This episode keeps up and field of view constant.
+Hold the last key to the end. In format 0.2 every key of a shot must share one
+up and field of view. In format 0.3 they may differ (see "Changing the lens and
+the up direction" below).
 Shot boundaries are hard cuts; no crossfade or automatic framing is implied.
 
 `hiddenLayers` describes the complete shot visibility state: start with all
@@ -259,6 +261,47 @@ part that leaves the view therefore stops production; shorten the cue or
 reframe. `preview` samples every annotation at its start, quarters, midpoint and
 last frame, and its report records each drawn anchor, part rectangle and text box.
 
+## Changing the lens and the up direction
+
+In format 0.3 a shot may key between named cameras whose `fov` or `up` differ;
+there is no new screenplay field, because the presets in `production.yaml`
+already carry both.
+
+```yaml
+# production.yaml
+cameras:
+  pawls:       {position: [145, 410, 400], target: [135, 0, 332], up: [0, 0, 1], fov: 37}
+  pawls-tight: {position: [145, 410, 400], target: [135, 0, 332], up: [0, 0, 1], fov: 20}
+# episode.yaml, format machinome-video-draft/0.3
+    camera:
+      - {at: 0, preset: pawls}
+      - {at: 4, preset: pawls-tight}   # hold position, narrow the view onto the pawls
+```
+
+The field of view eases with the same smoothstep as position and target and
+holds after the last key. In a shot whose keys share one `up`, it is used
+exactly as written. In a shot whose `up` changes, the two keys' directions are
+mixed with the same easing and normalized, so up is always a unit vector (this
+is not constant angular speed; it follows the easing the position already has).
+Episodes whose cameras all share one up and field of view produce the same
+frames as before, in either format.
+
+`check` refuses, naming the shot: in 0.2, keys of one shot that change field of
+view or up; in 0.3, adjacent keys whose up directions are nearly opposite (add
+an intermediate preset), and, in a shot whose up changes, any output frame whose
+up lies within about half a degree of the viewing direction, with its time.
+
+Any episode whose cameras differ in `fov` or `up` direction from the first
+camera it uses, within a shot or across a cut, in either format, needs Viewer
+API 28 and is refused against an older viewer; before API 28 a later shot's lens
+could never be applied. From API 28 `preview` and `render` refuse a frame whose
+viewer does not report back the requested field of view and up direction, and
+`preview` proves each change by projecting two world points at the keys where it
+starts and ends: a small offset beside the target must measure
+`(H/2)·s/(d·tan(fov/2))` pixels within 2 %, and for an up change a point above
+the target must appear above it. Whether the zoom or roll reads well in motion
+is for review.
+
 ## Drawing attention to a part
 
 A 0.3 shot may carry `highlight` cues: for a timed interval, the named parts are
@@ -318,7 +361,8 @@ old mastered files stay unchanged; new renders use external subtitles only.
 The film stage mounts Viewer API 21 or later (28 for format 0.3 cues) with
 external, paused, on-demand rendering and no interactive controls. The viewer's setters pose/render synchronously;
 Playwright captures the composed frame. A rendered frame does not advance
-the model by wall-clock time. Named cameras currently share a fixed up and FOV.
+the model by wall-clock time. Below Viewer API 28 the page gives the viewer an up
+and field of view once, at mount; from API 28 it sets them on every frame.
 
 ## Evidence and provenance
 
