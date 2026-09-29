@@ -714,9 +714,26 @@ async function loadMesh(
   url: string, color: string | null,
   material: (color: string | null) => THREE.Material = materialForColor,
 ): Promise<THREE.Mesh> {
-  const geometry = await stlLoader.loadAsync(url);
-  geometry.computeVertexNormals();
-  return new THREE.Mesh(geometry, material(color));
+  // Reserve both render identities in document traversal order, before any
+  // STL can finish. Equal-depth surfaces must not change their draw order
+  // merely because one response beat another. The placeholder is never
+  // attached to the scene; a ready mesh takes the existing attachment path.
+  const placeholder = new THREE.BufferGeometry();
+  const mesh = new THREE.Mesh(placeholder, material(color));
+  let geometry: THREE.BufferGeometry | undefined;
+  try {
+    geometry = await stlLoader.loadAsync(url);
+    geometry.computeVertexNormals();
+    mesh.geometry = geometry;
+    placeholder.dispose();
+    return mesh;
+  } catch (error) {
+    // Only this load's reservation and returned geometry are ours here.
+    // Other successful or pending sibling loads retain their old lifecycle.
+    if (geometry && geometry !== mesh.geometry) geometry.dispose();
+    disposeMesh(mesh);
+    throw error;
+  }
 }
 
 /** Weld the sheet, average its normals, and lift it (design D3).
@@ -752,10 +769,15 @@ export function liftDecal(geometry: THREE.BufferGeometry): THREE.BufferGeometry 
 async function loadDecal(url: string, color: string): Promise<THREE.Mesh> {
   const mesh = await loadMesh(url, color,
                               (own) => markingMaterial(own as string));
-  const loadedGeometry = mesh.geometry;
-  mesh.geometry = liftDecal(loadedGeometry);
-  loadedGeometry.dispose();
-  return mesh;
+  try {
+    const loadedGeometry = mesh.geometry;
+    mesh.geometry = liftDecal(loadedGeometry);
+    loadedGeometry.dispose();
+    return mesh;
+  } catch (error) {
+    disposeMesh(mesh);
+    throw error;
+  }
 }
 
 function uniqueByName(children: WidgetTree[]): Map<string, WidgetTree> {

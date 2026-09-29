@@ -72,6 +72,155 @@ describe('materialForColor', () => {
   });
 });
 
+// Film production found that the completed image of coincident parts could
+// depend on which STL response arrived first. These promises control response
+// completion while preserving the constructor's concurrent requests.
+describe('WidgetTree fresh-load identity order', () => {
+  const deferred = () => {
+    let resolve!: (geometry: THREE.BufferGeometry) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<THREE.BufferGeometry>((yes, no) => {
+      resolve = yes; reject = no;
+    });
+    return { promise, resolve, reject };
+  };
+  const ownMesh = (tree: WidgetTree) => tree.group.children.find(
+    (child): child is THREE.Mesh => child instanceof THREE.Mesh,
+  )!;
+
+  it('reserves sibling mesh and material identities in document order before either STL completes', async () => {
+    for (const reverse of [true, false]) {
+      const red = deferred(), blue = deferred();
+      loadAsync.mockImplementationOnce(() => red.promise)
+        .mockImplementationOnce(() => blue.promise);
+      const tree = new WidgetTree(root([
+        leaf({ name: 'red', model: 'red.stl', color: '#cc2222' }),
+        leaf({ name: 'blue', model: 'blue.stl', color: '#2222cc' }),
+      ]), '/build/');
+      expect(loadAsync.mock.calls.slice(-2).map(([url]) => url))
+        .toEqual(['/build/red.stl', '/build/blue.stl']);
+      const sentinel = new THREE.Mesh(new THREE.BoxGeometry(), materialForColor('#ffffff'));
+      expect(tree.children.every((child) => ownMesh(child) === undefined)).toBe(true);
+      if (reverse) {
+        blue.resolve(new THREE.BoxGeometry()); await Promise.resolve();
+        red.resolve(new THREE.BoxGeometry());
+      } else {
+        red.resolve(new THREE.BoxGeometry()); await Promise.resolve();
+        blue.resolve(new THREE.BoxGeometry());
+      }
+      await tree.loaded;
+      const first = ownMesh(tree.children[0]), second = ownMesh(tree.children[1]);
+      expect(first.id).toBeLessThan(second.id);
+      expect((first.material as THREE.Material).id).toBeLessThan((second.material as THREE.Material).id);
+      expect(first.id).toBeLessThan(sentinel.id);
+      expect((first.material as THREE.Material).id).toBeLessThan((sentinel.material as THREE.Material).id);
+      expect(first.geometry.getAttribute('normal')).toBeDefined();
+      tree.dispose(); sentinel.geometry.dispose(); (sentinel.material as THREE.Material).dispose();
+    }
+  });
+
+  it('reserves a model and its two markings in declaration order, with each marking policy intact', async () => {
+    const model = deferred(), digits = deferred(), band = deferred();
+    loadAsync.mockImplementationOnce(() => model.promise)
+      .mockImplementationOnce(() => digits.promise)
+      .mockImplementationOnce(() => band.promise);
+    const tree = new WidgetTree(root([leaf({ name: 'dial', model: 'dial.stl', markings: [
+      { name: 'digits', model: 'digits.stl', color: '#ffffff' },
+      { name: 'band', model: 'band.stl', color: '#c0c0c0' },
+    ] })]), '/build/');
+    expect(loadAsync.mock.calls.slice(-3).map(([url]) => url))
+      .toEqual(['/build/dial.stl', '/build/digits.stl', '/build/band.stl']);
+    band.resolve(new THREE.BoxGeometry()); await Promise.resolve();
+    digits.resolve(new THREE.BoxGeometry()); await Promise.resolve();
+    model.resolve(new THREE.BoxGeometry());
+    await tree.loaded;
+    const dial = tree.children[0], meshes = [ownMesh(dial), ...dial.markings.map((m) => m.mesh)];
+    expect(meshes.map((mesh) => mesh.id)).toEqual([...meshes.map((mesh) => mesh.id)].sort((a, b) => a - b));
+    expect(meshes.map((mesh) => (mesh.material as THREE.Material).id))
+      .toEqual([...meshes.map((mesh) => (mesh.material as THREE.Material).id)].sort((a, b) => a - b));
+    expect(dial.markings.map((m) => m.color)).toEqual(['#ffffff', '#c0c0c0']);
+    const markings = dial.markings.map((m) => m.mesh.material as THREE.MeshStandardMaterial);
+    expect(markings.map((m) => m.color.getHexString())).toEqual(['ffffff', 'c0c0c0']);
+    for (const marking of markings) {
+      expect(marking.side).toBe(THREE.DoubleSide);
+      expect(marking.polygonOffset).toBe(true);
+      expect(marking.polygonOffsetFactor).toBe(-1);
+      expect(marking.polygonOffsetUnits).toBe(-1);
+      expect(marking.depthWrite).toBe(true);
+    }
+    expect(dial.markings[0].mesh.geometry.boundingBox).toBeNull();
+    tree.dispose();
+  });
+
+  it('disposes a locally reserved mesh and material when its fetch rejects', async () => {
+    const pending = deferred();
+    loadAsync.mockImplementationOnce(() => pending.promise);
+    const materials: number[] = [], geometries: number[] = [];
+    const originalMaterialDispose = THREE.Material.prototype.dispose;
+    const originalGeometryDispose = THREE.BufferGeometry.prototype.dispose;
+    const disposeMaterial = vi.spyOn(THREE.Material.prototype, 'dispose')
+      .mockImplementation(function (this: THREE.Material) {
+        materials.push(this.id); originalMaterialDispose.call(this);
+      });
+    const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose')
+      .mockImplementation(function (this: THREE.BufferGeometry) {
+        geometries.push(this.id); originalGeometryDispose.call(this);
+      });
+    try {
+      const tree = new WidgetTree(root([leaf()]), '/build/');
+      const sentinel = new THREE.Mesh(new THREE.BoxGeometry(), materialForColor('#ffffff'));
+      pending.reject(new Error('mesh fetch failed'));
+      await expect(tree.loaded).rejects.toThrow('mesh fetch failed');
+      expect(ownMesh(tree.children[0])).toBeUndefined();
+      expect(materials).toHaveLength(1);
+      expect(geometries).toHaveLength(1);
+      expect(materials[0]).toBeLessThan((sentinel.material as THREE.Material).id);
+      expect(geometries[0]).toBeLessThan(sentinel.geometry.id);
+      sentinel.geometry.dispose(); (sentinel.material as THREE.Material).dispose();
+    } finally {
+      disposeMaterial.mockRestore(); disposeGeometry.mockRestore();
+    }
+  });
+
+  it('disposes returned geometry and marking material when decal preparation rejects', async () => {
+    const bad = new THREE.BoxGeometry();
+    const disposed = vi.spyOn(bad, 'dispose');
+    vi.spyOn(bad, 'clone').mockImplementation(() => { throw new Error('decal prep failed'); });
+    loadAsync.mockResolvedValueOnce(bad);
+    const disposeMaterial = vi.spyOn(THREE.Material.prototype, 'dispose');
+    try {
+      const tree = new WidgetTree(root([leaf({ model: undefined, markings: [
+        { name: 'digits', model: 'digits.stl', color: '#ffffff' },
+      ] })]), '/build/');
+      await expect(tree.loaded).rejects.toThrow('decal prep failed');
+      expect(tree.children[0].markings).toEqual([]);
+      expect(disposed).toHaveBeenCalled();
+      expect(disposeMaterial).toHaveBeenCalled();
+    } finally {
+      disposeMaterial.mockRestore();
+    }
+  });
+
+  it('disposes returned geometry and its reserved material when normal preparation rejects', async () => {
+    const bad = new THREE.BoxGeometry();
+    const disposed = vi.spyOn(bad, 'dispose');
+    vi.spyOn(bad, 'computeVertexNormals').mockImplementation(() => {
+      throw new Error('normal preparation failed');
+    });
+    loadAsync.mockResolvedValueOnce(bad);
+    const disposeMaterial = vi.spyOn(THREE.Material.prototype, 'dispose');
+    try {
+      const tree = new WidgetTree(root([leaf()]), '/build/');
+      await expect(tree.loaded).rejects.toThrow('normal preparation failed');
+      expect(ownMesh(tree.children[0])).toBeUndefined();
+      expect(disposed).toHaveBeenCalledTimes(1);
+      expect(disposeMaterial).toHaveBeenCalledTimes(1);
+    } finally {
+      disposeMaterial.mockRestore();
+    }
+  });
+});
+
 describe('WidgetTree targeted updates', () => {
   it('uses model path and mtime together as geometry identity', async () => {
     const tree = new WidgetTree(root([leaf()]), '/build/');
