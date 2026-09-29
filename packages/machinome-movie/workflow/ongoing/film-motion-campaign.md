@@ -58,3 +58,7 @@ demonstrated.
   37b2e56); implementation in progress.
 - 29 Sep: `shot-transitions` proposed and ratified, reconciled with the
   easing design (field `ease`, end-rate rule, 0.4 frames carry `transition`).
+- 29 Sep: `stills-and-clips` proposed and ratified (caption field withdrawn;
+  demo uses the project's own renders only).
+- 29 Sep: `text-animation` proposed and ratified (no covering card; entrance
+  spelling follows `graphic-overlays`; its demo may generate its own speech).
