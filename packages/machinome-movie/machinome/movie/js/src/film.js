@@ -67,10 +67,64 @@
     }
     return drawn;
   }
+  // A fresh pose ends with the whole page repainted. Chromium re-rasterizes only
+  // what changed, and the antialiased edge of text just outside the changed area
+  // keeps what an earlier pose left there, so without this a pose's pixels could
+  // depend on the poses before it. Transitions and their proofs pose fresh;
+  // every other frame is posed exactly as before.
+  const frames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  async function repaint(){
+    const background=document.body.style.background;
+    document.body.style.background='#010203';await frames();
+    document.body.style.background=background;await frames();
+  }
+  // The transition layer: above the picture (stage, annotations, overlays, code
+  // panel), below the film's masthead and progress rule. A transition frame is
+  // drawn in it entirely from captures of this page at the same instant, each an
+  // image at its own pixel size and a whole-pixel offset, optionally translucent
+  // and optionally cut to the columns [from, to), with a colour plate over them.
+  // The live stage is hidden meanwhile: a visible WebGL canvas beneath the layer
+  // would make Chromium composite the masthead separately and draw its text
+  // without subpixel antialiasing, so it would not match the plain frames.
+  const transition=document.querySelector('#transition'),viewport=document.querySelector('#viewport');
+  function clearComposition(){
+    transition.replaceChildren();
+    document.body.classList.remove('in-transition');
+    viewport.style.visibility='';
+  }
+  async function compose(request){
+    clearComposition();
+    document.body.classList.add('in-transition');
+    document.body.classList.toggle('picture-only',Boolean(request.pictureOnly));
+    viewport.style.visibility='hidden';
+    for(const image of request.images){
+      const img=new Image();img.src=image.src;await img.decode();
+      const [from,to]=image.columns??[0,window.innerWidth];
+      const box=document.createElement('div');
+      Object.assign(box.style,{left:`${from}px`,width:`${to-from}px`,height:'100%',overflow:'hidden'});
+      Object.assign(img.style,{position:'absolute',left:`${image.x-from}px`,top:'0'});
+      if(image.opacity!==undefined)box.style.opacity=String(image.opacity);
+      box.append(img);transition.append(box);
+    }
+    if(request.plate){
+      const plate=document.createElement('div');
+      Object.assign(plate.style,{left:'0',width:'100%',height:'100%',background:request.plate.color,opacity:String(request.plate.opacity)});
+      transition.append(plate);
+    }
+    await repaint();
+  }
+  const rect=selector=>plain(document.querySelector(selector).getBoundingClientRect());
+  const chrome=()=>['#brand','#series','#rule'].map(rect);
   window.film={viewer,apiVersion:viewer.apiVersion,
     // Preview's lens check: viewport positions of world points for the current pose.
     project:points=>points.map(p=>viewer.project(p)),
+    // Draws a transition frame over the posed page; see compose.
+    async compose(request){await compose(request);return {chrome:chrome()};},
     async setFrame(frame){
+    // Every frame starts from an empty transition layer and a visible stage.
+    clearComposition();
+    // Picture-only captures leave out the film's own chrome (design D6).
+    document.body.classList.toggle('picture-only',Boolean(frame.pictureOnly));
     const split=Boolean(frame.code);
     if(document.body.classList.contains('with-code')!==split){
       document.body.classList.toggle('with-code',split);
@@ -104,10 +158,12 @@
     document.querySelector('#source-cursor').style.visibility=frame.code?.cursor?'visible':'hidden';
     document.querySelector('#progress').style.width=`${frame.progress*100}%`;
     const annotations=drawAnnotations(frame);
+    if(frame.fresh)await repaint();
     const view=viewer.view();
     return {camera:view.camera.toArray(),target:view.target.toArray(),navigation:viewer.navigation(),
       annotations,stage:plain(document.querySelector('#stage').getBoundingClientRect()),
       frame:{width:window.innerWidth,height:window.innerHeight},
+      chrome:chrome(),
       ...(viewer.apiVersion>=28?{up:view.up.toArray(),fov:Number(view.fov)}:{})};
   }};
 })().catch(error=>{window.filmError=String(error);});

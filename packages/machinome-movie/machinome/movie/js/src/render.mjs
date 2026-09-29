@@ -6,6 +6,7 @@ import {chromium} from 'playwright';
 import {frameAt,srt} from './timeline.mjs';
 import {contained,requiredViewerApi,viewerApiRefusal} from './episode.mjs';
 import {fileHash,hash,json,command} from './util.mjs';
+import {decodePng,hexColor,chromeMask,largestDifference,at} from './pixels.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
@@ -70,11 +71,14 @@ export async function browserSession(e,viewer,width,captions,action) {
     const error=await page.evaluate(()=>window.filmError);if(error)throw new Error(error);
     let frames=0;
     const viewerApi=await page.evaluate(()=>window.film.apiVersion);
-    // override replaces frame fields for preview-only comparison frames.
-    async function pose(t,override={}){
+    // Poses one picture and runs every check a posed frame has. The page sets its
+    // state by request, so nothing depends on what was posed before. A fresh pose
+    // does not depend on the one before it even in the raster of its text; every
+    // pose inside a transition is fresh.
+    async function show(f,t,{pictureOnly=false,fresh=false}={}){
       if(errors.length)throw new Error(errors.join('\n'));
-      const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds,...override};
-      const observed=await page.evaluate(f=>window.film.setFrame(f),f);
+      const {transition,...request}=f;
+      const observed=await page.evaluate(f=>window.film.setFrame(f),{...request,pictureOnly,fresh:fresh||pictureOnly});
       for(const k of ['camera','target'])for(let i=0;i<3;i++)if(Math.abs(observed[k][i]-f.view[k][i])>1e-6)throw new Error('Viewer did not adopt requested camera');
       if(viewerApi>=28){
         if(!(Math.abs(observed.fov-f.fov)<=1e-6))throw new Error(`Viewer did not adopt the requested field of view: ${f.shotId} at ${t.toFixed(2)} s (${observed.fov} instead of ${f.fov})`);
@@ -96,6 +100,42 @@ export async function browserSession(e,viewer,width,captions,action) {
         const box=drawn.text;
         if(box&&(box.x<-.5||box.y<-.5||box.x+box.width>frame.width+.5||box.y+box.height>frame.height+.5))throw new Error(`Annotation text leaves the frame: ${name}`);
       }
+      return observed;
+    }
+    // A picture of this instant without the film's chrome, posed and checked, as
+    // the page will draw it again.
+    async function capture(f,t){
+      const observed=await show(f,t,{pictureOnly:true});
+      return {src:'data:image/png;base64,'+(await page.screenshot()).toString('base64'),observed};
+    }
+    // One film frame. Inside a transition it is composed from poses of the same
+    // instant only (design D6): the page draws captures of the pictures it is made
+    // of, then the plate of a fade, under its own masthead and progress rule. A
+    // fade poses one picture; a dissolve, wipe or slide poses both. override
+    // replaces frame fields for preview-only comparison frames; pictureOnly
+    // leaves out the masthead and progress rule.
+    async function pose(t,override={},{pictureOnly=false,fresh=false}={}){
+      const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds,...override};
+      const x=f.transition;let observed;
+      if(!x)observed=await show(f,t,{pictureOnly,fresh});
+      else{
+        const outgoing=x.outgoing&&{...x.outgoing,progress:f.progress};
+        let request;
+        if(x.kind==='fade'){
+          const picture=await capture(x.picture==='outgoing'?outgoing:f,t);
+          observed=picture.observed;
+          request={images:[{src:picture.src,x:0}],plate:{color:x.color,opacity:x.plate}};
+        }else{
+          // Whole pixels, so the proofs can be exact: the edge or offset is round(p·W).
+          const s=Math.round(x.progress*width),left=x.direction==='left';
+          const a=(await capture(outgoing,t)).src,b=await capture(f,t);
+          observed={...b.observed,offset:s};
+          request={images:x.kind==='dissolve'?[{src:b.src,x:0},{src:a,x:0,opacity:1-x.progress}]
+            :x.kind==='wipe'?[{src:b.src,x:0},{src:a,x:0,columns:left?[0,width-s]:[s,width]}]
+            :[{src:a,x:left?-s:s},{src:b.src,x:left?width-s:s-width}]};
+        }
+        Object.assign(observed,await page.evaluate(r=>window.film.compose(r),{...request,pictureOnly}));
+      }
       frames++;return Object.assign(f,{observed});
     }
     const info={width,height,browser:browser.version(),viewerApi,hashes,requiredViewerApi:required};
@@ -113,7 +153,8 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     // pixels, restore() must return them exactly, and re-applying must match.
     const highlightChecks=[];
     for(const shot of e.shots)for(const [index,cue] of (shot.highlight??[]).entries()){
-      const t=shot.start+(cue.from+cue.to)/2,capture=async override=>{await pose(t,override);return page.screenshot();};
+      // Posed without any transition, so a cue under an outgoing picture is still proved on its own shot.
+      const t=shot.start+(cue.from+cue.to)/2,capture=async override=>{await pose(t,{transition:null,...override});return page.screenshot();};
       const plain=await capture({highlight:null}),lit=await capture(),plainAgain=await capture({highlight:null}),litAgain=await capture();
       const fail=async(check,message,before,after)=>{
         await writeFile(resolve(dir,`highlight-${shot.id}-${index}-${check}-before.png`),before);
@@ -147,12 +188,81 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
       samples.push(posed.annotations?{time:t,file,annotations:posed.observed.annotations}:{time:t,file});
       }
     }
+    // Each transition: stills at its first frame, quarters, midpoint and last frame
+    // (a fade in or out: first, middle, last), and proofs from the plain pictures
+    // of the same instant (design D8).
+    const transitionChecks=[],fps=e.output.fps,W=width;
+    for(const shot of e.shots)for(const field of ['fadeIn','transition','fadeOut']){
+      const spec=shot[field];if(!spec)continue;
+      const d=spec.duration,start=field==='fadeOut'?shot.end-d:shot.start,middle=start+d/2;
+      const last=(Math.ceil((start+d)*fps-1e-9)-1)/fps,kind=field==='transition'?spec.kind:'fade';
+      const instants=[...new Set(field==='transition'?[start,start+d/4,middle,start+3*d/4,last]:[start,middle,last])];
+      const stills=[];
+      for(const time of instants){
+        await pose(time);
+        const file=resolve(dir,`${String(samples.length).padStart(2,'0')}-${shot.id}-${field}.png`);
+        await page.screenshot({path:file});samples.push({time,file,transition:field});stills.push(file);
+      }
+      const name=field==='transition'?`transition-${shot.id}`:`${field}-${shot.id}`;
+      const grab=async(time,override,options)=>{const posed=await pose(time,override,{fresh:true,...options});const bytes=await page.screenshot();return {posed,bytes,image:decodePng(bytes)};};
+      const prove=async(largest,limit,time,kept)=>{
+        if(largest<=limit)return;
+        for(const [k,v] of Object.entries(kept))await writeFile(resolve(dir,`${name}-${k}.png`),v.bytes);
+        throw new Error(`Transition proof failed: ${kind} ${field==='transition'?'into':field==='fadeIn'?'fading in':'fading out'} shot ${shot.id} at ${time.toFixed(2)} s (largest difference ${largest}, allowed ${limit}); inspect preview/${name}-{${Object.keys(kept).join(',')}}.png`);
+      };
+      const check={shotId:shot.id,field,kind,instants,stills};
+      if(kind!=='fade'){
+        const composed=await grab(middle),x=composed.posed.transition,p=x.progress,s=composed.posed.observed.offset;
+        const incoming=await grab(middle,{transition:null}),outgoing=await grab(middle,{...x.outgoing,transition:null});
+        const A=outgoing.image,B=incoming.image,left=x.direction==='left';
+        let largest,limit=0,kept={outgoing,incoming,composed};
+        if(kind==='dissolve'){limit=2;largest=largestDifference(composed.image,(px,y,k)=>(1-p)*at(A,px,y,k)+p*at(B,px,y,k));}
+        else if(kind==='wipe')largest=largestDifference(composed.image,(px,y,k)=>(left?px>=W-s:px<s)?at(B,px,y,k):at(A,px,y,k));
+        else{
+          // The two pictures alone, without chrome, at their offsets; the chrome stays put above them.
+          const a=await grab(middle,{...x.outgoing,transition:null},{pictureOnly:true}),b=await grab(middle,{transition:null},{pictureOnly:true});
+          const mask=chromeMask(W,composed.image.height,composed.posed.observed.chrome);
+          largest=largestDifference(composed.image,(px,y,k)=>left?(px<W-s?at(a.image,px+s,y,k):at(b.image,px-W+s,y,k)):(px>=s?at(a.image,px-s,y,k):at(b.image,px-s+W,y,k)),mask);
+          kept={outgoing:a,incoming:b,composed};
+        }
+        await prove(largest,limit,middle,kept);
+        Object.assign(check,{progress:p,offset:kind==='dissolve'?undefined:s,largestDifference:largest,picturesDiffer:!A.rgb.equals(B.rgb)});
+        if(!check.picturesDiffer)check.note='the two pictures are identical at the midpoint, so this proof shows nothing';
+      }else{
+        // A fade: the plate blends its colour with the plain picture as its easing says,
+        // and is exactly the colour, outside the chrome, at its full point.
+        const quarters=field==='transition'?[start+d/4,start+3*d/4]:[start+d/4];
+        let largest=0;
+        for(const time of quarters){
+          const composed=await grab(time),x=composed.posed.transition,C=hexColor(x.color),a=x.plate;
+          const plain=await grab(time,x.picture==='outgoing'?{...x.outgoing,transition:null}:{transition:null});
+          const mask=chromeMask(W,composed.image.height,composed.posed.observed.chrome);
+          const found=largestDifference(composed.image,(px,y,k)=>a*C[k]+(1-a)*at(plain.image,px,y,k),mask);
+          await prove(found,2,time,{[x.picture]:plain,composed});
+          largest=Math.max(largest,found);
+        }
+        const full=field==='transition'?middle:field==='fadeIn'?start:last;
+        const composed=await grab(full),x=composed.posed.transition,C=hexColor(x.color);
+        const mask=chromeMask(W,composed.image.height,composed.posed.observed.chrome);
+        await prove(x.plate===1?largestDifference(composed.image,(px,y,k)=>C[k],mask):Infinity,0,full,{composed});
+        Object.assign(check,{progress:frameAt(e,middle).transition.plate,largestDifference:largest,exactColor:true,colorAt:full});
+      }
+      // Replay: the midpoint, another instant, the midpoint again.
+      await pose(middle);const before=await page.screenshot();
+      await pose((middle+e.output.durationSeconds/2)%e.output.durationSeconds);await pose(middle);const after=await page.screenshot();
+      if(!before.equals(after)){
+        await writeFile(resolve(dir,`${name}-replay-before.png`),before);await writeFile(resolve(dir,`${name}-replay-after.png`),after);
+        throw new Error(`Transition replay is not deterministic: ${shot.id} at ${middle.toFixed(2)} s; inspect preview/${name}-replay-{before,after}.png`);
+      }
+      check.replay=true;
+      transitionChecks.push(check);
+    }
     // A changed lens must reach the picture: a world offset of s beside the
     // target, at distance d, projects to (H/2)·s/(d·tan(fov/2)) pixels; a
     // changed up must put a point above the target above it on screen.
     const cameraChecks=[];
     for(const shot of e.shots)for(const instant of lensChanges(e,shot)){
-      const f=await pose(instant.time),C=f.view.camera,T=f.view.target;
+      const f=await pose(instant.time,{transition:null}),C=f.view.camera,T=f.view.target;
       const d=Math.hypot(...sub(T,C)),forward=unit(sub(T,C)),up=unit(f.up),right=unit(cross(forward,up)),s=.01*d;
       const [p0,p1,pu]=await page.evaluate(points=>window.film.project(points),[T,add(T,right,s),add(T,up,s)]);
       const H=(await page.locator('#stage canvas').boundingBox()).height;
@@ -176,7 +286,8 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     // Bad camera requests must leave the actual mounted view intact.
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
     if(!preserved)throw new Error('Invalid camera request changed viewer state');
-    return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{}),...(cameraChecks.length?{cameraChecks}:{})};
+    return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{}),...(cameraChecks.length?{cameraChecks}:{}),
+      ...(transitionChecks.length?{transitionChecks}:{})};
   });
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.

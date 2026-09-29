@@ -64,7 +64,8 @@ function viewerDouble(options={}){
     const norm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l);};
     const vec=a=>({toArray:()=>[...a]});
     return {apiVersion:o.api,setVisible(){},navigation(){return {};},
-      setTime(t){if(o.recordTime)calls.push(['setTime',t]);time=t;},
+      setTime(t){if(o.recordTime)calls.push(['setTime',t]);time=t;
+        if(o.timeColor)canvas.style.background='rgb('+Math.round(255*t)+',96,160)';},
       setView(v){calls.push(['setView',v]);if(!v.camera.every(Number.isFinite))throw new Error('invalid camera');
         view={...view,camera:v.camera,target:v.target};
         if(!o.ignoreFov){if(v.up)view.up=v.up;if(v.fov!==undefined)view.fov=v.fov;}},
@@ -215,4 +216,88 @@ test('eased camera moves and model time reach the viewer as frameAt poses them, 
   assert.equal(old.pixelReplay,true,'easing needs no newer viewer');
   e.model.timeMode='normalized-loop';
   assert.doesNotThrow(()=>validateEpisode(e,{animation:{loop:2},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}}));
+});
+
+// Shot transitions (format 0.4). The double paints its canvas a colour computed
+// from model time, so the continued outgoing shot and the incoming one differ.
+const timeColor=time=>[Math.round(255*time),96,160];
+async function transitionFixture(t){
+  const {dir,viewer}=await filmFixture(t);
+  const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8'}).trim();
+  git('init','-q');
+  for(const [name,text] of [['episode.yaml','test: transitions\n'],['production.yaml','test: transitions\n'],['description.md','Test description.']])await writeFile(join(dir,name),text);
+  git('add','episode.yaml','production.yaml','description.md');git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture');
+  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]},animation:{loop:20}}));
+  return {dir,viewer};
+}
+// Code and model shots alternate, each joined to the next by another kind;
+// model seconds jump between shots so every pair of pictures differs.
+function joinedFilm(dir){
+  const e=filmEpisode(dir,{},{format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:10},
+    model:{expectedDurationSeconds:20,timeMode:'normalized-loop'},
+    sourceCode:{test:{file:'machine.py',lines:[1,1],text:'x = 1'}}});
+  const base=e.shots[0],code={snippet:'test',typing:[{from:0,to:.5,throughLine:1}]};
+  const shot=(i,id,extra)=>({...base,id,start:2*i,end:2*i+2,simulation:{from:3*i,to:3*i+2},...extra});
+  e.shots=[shot(0,'code0',{code,fadeIn:{duration:.5}}),
+    shot(1,'model1',{transition:{kind:'dissolve',duration:1}}),
+    shot(2,'code2',{code,transition:{kind:'wipe',duration:1,direction:'right'}}),
+    shot(3,'model3',{transition:{kind:'slide',duration:1}}),
+    shot(4,'code4',{code,transition:{kind:'fade',duration:1},fadeOut:{duration:.5,color:'#000000'}})];
+  return e;
+}
+
+test('shots joined by every kind pass preview with each transition proved in pixels, and render reproducibly',async t=>{
+  const {dir,viewer}=await transitionFixture(t);
+  const e=joinedFilm(dir);
+  validateEpisode(e,{animation:{loop:20},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}});
+  const colored=await viewer('colored.js',{timeColor:true,recordTime:true});
+  const p=await preview(e,{viewer:colored,width:640});
+  assert.equal(p.pixelReplay,true);
+  const checks=Object.fromEntries(p.transitionChecks.map(c=>[`${c.shotId}:${c.field}`,c]));
+  assert.deepEqual(Object.keys(checks).sort(),['code0:fadeIn','code2:transition','code4:fadeOut','code4:transition','model1:transition','model3:transition']);
+  const dissolve=checks['model1:transition'];
+  assert.equal(dissolve.kind,'dissolve');assert.ok(dissolve.largestDifference<=2);assert.equal(dissolve.picturesDiffer,true);
+  for(const key of ['code2:transition','model3:transition']){
+    assert.equal(checks[key].largestDifference,0,key);assert.equal(checks[key].picturesDiffer,true,key);
+  }
+  for(const key of ['code0:fadeIn','code4:fadeOut','code4:transition']){
+    assert.equal(checks[key].exactColor,true,key);assert.ok(checks[key].largestDifference<=2,key);
+  }
+  for(const c of p.transitionChecks){assert.equal(c.replay,true);assert.equal(c.stills.length,c.instants.length);assert.ok(c.instants.length>=2);}
+  assert.deepEqual(checks['model1:transition'].instants,[2,2.25,2.5,2.75],'first frame, quarters, midpoint and last frame, once each');
+  // The outgoing code shot runs on into the dissolve: at its midpoint the viewer is
+  // first posed at model second 2 + 0.5, and the composed canvas blends that colour.
+  const middle=2.5,f=frameAt(e,middle);
+  assert.equal(f.transition.outgoing.time,2.5/20);
+  const seen=await browserSession(e,colored,640,[],async({page,pose})=>{
+    await page.evaluate(()=>{window.viewerCalls.length=0;});
+    await pose(middle);
+    const file=join(dir,'middle.png');await page.screenshot({path:file});
+    return {result:{calls:await page.evaluate(()=>window.viewerCalls.filter(c=>c[0]==='setTime').map(c=>c[1])),file}};
+  });
+  assert.deepEqual(seen.result.calls,[2.5/20,f.time]);
+  const [pa,pb]=[timeColor(2.5/20),timeColor(f.time)],w=f.transition.progress;
+  const got=await pixel(seen.result.file,640*.78,360*.5);
+  for(let i=0;i<3;i++)assert.ok(Math.abs(got[i]-((1-w)*pa[i]+w*pb[i]))<=2,`blend of the continued outgoing colour: ${got} from ${pa} and ${pb}`);
+  // The whole film renders, and a transition frame posed in a fresh session is byte-identical.
+  const output=await render(e,{viewer:colored,label:'silent-preview'});
+  const report=JSON.parse(await readFile(join(dir,'_build/silent-preview-manifest.json'),'utf8'));
+  assert.equal(output,join(dir,'_build/silent-preview.mp4'));assert.equal(report.count,40);
+  const fresh=await browserSession(e,colored,640,[],async({page,pose})=>{await pose(10/4);return {result:await page.screenshot()};});  assert.ok(fresh.result.equals(await readFile(join(report.dir,'000010.png'))),'frame 10 (the dissolve midpoint) reproduces exactly');
+});
+
+test('an arrow that runs to the cut follows its part into the transition and is refused when it leaves',async t=>{
+  const {dir,viewer}=await transitionFixture(t);
+  const e=filmEpisode(dir,{},{format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:4},
+    model:{expectedDurationSeconds:20,timeMode:'normalized-loop'}});
+  const base=e.shots[0];
+  e.shots=[{...base,id:'model1',start:0,end:2,simulation:{from:0,to:2},
+      annotations:[{from:.5,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls'}]},
+    {...base,id:'next',start:2,end:4,simulation:{from:5,to:7},transition:{kind:'dissolve',duration:1}}];
+  validateEpisode(e,{animation:{loop:20},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}});
+  const error=await preview(e,{viewer:await viewer('vanishing.js',{vanishAfter:2/20}),width:640}).then(()=>null,error=>error);
+  assert.ok(error,'preview refuses');
+  const match=/^Annotation target is not on screen: model1 #0 'Pulls' at (\d+\.\d+) s$/.exec(error.message);
+  assert.ok(match,error.message);assert.ok(Number(match[1])>2,'a time past the outgoing shot\'s end');
+  assert.equal((await preview(e,{viewer:await viewer('staying.js'),width:640})).pixelReplay,true);
 });

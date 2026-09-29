@@ -2,9 +2,10 @@
 
 Status: 0.2 is implemented and used by every Leonardo episode; 0.3 is a draft
 that adds cues needing Viewer API 28 (see "Format 0.3" below); 0.4 is a draft
-that adds named easing of camera moves and model time and closes the field
-lists of shots and keys (see "Format 0.4" and "Easing" below). All three
-remain provisional formats.
+that adds named easing of camera moves and model time, transitions between
+shots and fades at the film's head and tail, and closes the field lists of
+shots and keys (see "Format 0.4", "Easing" and "Joining shots" below). All
+three remain provisional formats.
 The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
@@ -114,7 +115,10 @@ zero, keys increase strictly, and the last cannot exceed the shot's duration.
 Hold the last key to the end. In format 0.2 every key of a shot must share one
 up and field of view. From format 0.3 they may differ (see "Changing the lens and
 the up direction" below).
-Shot boundaries are hard cuts; no crossfade or automatic framing is implied.
+In formats 0.2 and 0.3 every shot boundary is a hard cut. In format 0.4 a
+boundary is a hard cut unless the shot that begins there declares a
+`transition` (a fade, dissolve, wipe or slide; see "Joining shots"). No
+automatic framing is implied.
 
 `hiddenLayers` describes the complete shot visibility state: start with all
 parts visible, then hide those layers. Do not accumulate state from earlier shots.
@@ -359,8 +363,9 @@ judgement on the stills, not an automated claim.
 
 `machinome-video-draft/0.4` accepts everything 0.3 does, with the same meaning:
 a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does,
-and a 0.4 episode that does not ease anything produces the frames it would
-produce declared 0.3. It adds `ease` on camera keys and model keyframes.
+and a 0.4 episode that neither eases nor joins shots produces the frames it
+would produce declared 0.3. It adds `ease` on camera keys and model keyframes,
+and `transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots").
 
 - `ease` is accepted only in 0.4. A 0.2 or 0.3 episode carrying one is refused
   and asked to change its format, never rendered with its curves silently
@@ -368,9 +373,12 @@ produce declared 0.3. It adds `ease` on camera keys and model keyframes.
   `Easing needs format machinome-video-draft/0.4: shot genome`.
 - In 0.4 the field lists are closed. A shot accepts `id`, `start`, `end`,
   `speechOffset`, `narration`, `direction`, `simulation`, `camera`,
-  `hiddenLayers`, `overlays`, `evidence`, `code`, `annotations` and
-  `highlight`; its `simulation` accepts `from`, `to` and `keyframes`; a model
-  keyframe `at`, `seconds` and `ease`; a camera key `at`, `preset` and `ease`.
+  `hiddenLayers`, `overlays`, `evidence`, `code`, `annotations`,
+  `highlight`, `transition`, `fadeIn` and `fadeOut`; its `simulation` accepts
+  `from`, `to` and `keyframes`; a model keyframe `at`, `seconds` and `ease`; a
+  camera key `at`, `preset` and `ease`; a `transition` `kind`, `duration`,
+  `ease`, `direction` and `color`; a `fadeIn` or `fadeOut` `duration`, `ease`
+  and `color`.
   Anything else is refused, naming the field and the shot:
   `Unknown camera key field: eas (key #1 in shot genome)`,
   `Unknown model keyframe field: speed (keyframe #1 in shot genome)`,
@@ -378,10 +386,11 @@ produce declared 0.3. It adds `ease` on camera keys and model keyframes.
   `Unknown shot field: transiton (shot genome)`. So a misspelled field, or a
   field that a later build of Videomaker defines and this one does not, is
   never silently dropped. 0.2 and 0.3 episodes keep ignoring unknown fields.
-- Easing needs no newer viewer: it changes only the numbers the film page
-  already sends. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
+- Easing and transitions need no newer viewer: easing changes only the
+  numbers the film page already sends, and a transition poses the viewer as
+  every frame does. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
   uses (annotations, highlights, a change of lens or up); one that only eases
-  runs on Viewer API 21 or later.
+  or joins shots runs on Viewer API 21 or later.
 
 ## Easing
 
@@ -466,6 +475,205 @@ offsets are not eased.
 in shot genome)`), including other spellings such as `ease-out` or `Smooth`;
 `ease` on a shot's first camera key or first model keyframe; and `ease` in a 0.2
 or 0.3 episode.
+
+## Joining shots
+
+In format 0.4 two neighbouring shots can be joined by a fade through a colour,
+a dissolve, a wipe or a slide instead of a hard cut, and the film can fade in
+at its head and out at its tail. Three shot fields do this; each is short YAML
+written on the shot it belongs to:
+
+- `transition`, on any shot but the first: how this shot comes in from the
+  shot before it.
+- `fadeIn`, on the first shot only: the film fades up from a colour.
+- `fadeOut`, on the last shot only: the film fades down to a colour.
+
+A shot without `transition` begins with a hard cut, as before; there is no
+`kind: cut`, so a cut has one spelling.
+
+```yaml
+# format machinome-video-draft/0.4
+shots:
+  - id: machine
+    start: 0
+    end: 6
+    fadeIn: {duration: 1.5}                     # up from the paper colour
+    ...
+  - id: source
+    start: 6
+    end: 18
+    transition: {kind: dissolve, duration: 1}   # from machine
+    ...
+  - id: mechanism
+    start: 18
+    end: 26
+    transition: {kind: fade, duration: 1.2}     # through the paper colour
+    ...
+  - id: pawls
+    start: 26
+    end: 32
+    transition: {kind: slide, duration: 0.8, direction: left, ease: in-out}
+    ...
+  - id: closing
+    start: 32
+    end: 40
+    transition: {kind: wipe, duration: 0.8, direction: right}
+    fadeOut: {duration: 2}                      # down to the paper colour
+    ...
+```
+
+The fields of `transition`:
+
+- `kind`: `fade` (the outgoing picture fades to a colour, then the incoming
+  one fades up from it), `dissolve` (the outgoing picture fades away over the
+  incoming one), `wipe` (a straight vertical edge travels across the frame,
+  the incoming picture behind it) or `slide` (the incoming picture pushes the
+  outgoing one out of the frame). Required.
+- `duration`: video seconds, at least two frames at `output.fps`. Required.
+- `ease`: optional, one of the five easing names (see "Easing"); default
+  `smooth`. `linear` gives an even dissolve.
+- `direction`: `wipe` and `slide` only, `left` or `right`; default `left`. It
+  names the way the motion goes: `left` means the incoming picture enters from
+  the right edge and the edge (wipe) or both pictures (slide) travel leftward;
+  `right` is the mirror.
+- `color`: `fade` only, a quoted `"#rrggbb"`; default `style.background`.
+
+`fadeIn` and `fadeOut` take `duration` (required), `ease` (default `smooth`)
+and `color` (default `style.background`), and nothing else.
+
+### Where a transition sits in time
+
+A transition never changes `start` or `end`. It occupies the first `duration`
+seconds of the shot that declares it, from its `start`, and that shot's own
+timeline runs exactly as it would after a cut: its model time, camera,
+overlays, annotations, highlights, code typing and speech offset keep the
+times written for them, and are seen through the transition. Narration audio
+and captions are untouched, so the incoming shot's narration may start while
+its picture is still arriving; with `speechOffset` at its default 0.2 s it
+does. `fadeIn` occupies the first `duration` seconds of the film; `fadeOut`
+the last `duration` seconds, and it is complete on the film's last frame.
+
+While a transition still shows the outgoing shot past its `end`, that shot
+continues rather than freezing:
+
+- its model runs on from its `to` at the rate model time had at its end: the
+  last segment's average rate, times the end slope of its easing (`linear` 1,
+  `in` 3, and 0 for `smooth`, `out` and `in-out`). A held shot, or one whose
+  last segment eases to rest, stays held;
+- its camera holds its last key;
+- each overlay, annotation or highlight cue that ran to the shot's end stays
+  on; every other cue has ended. An annotation keeps following its part on the
+  moving model, and is refused if the part leaves the frame;
+- its code panel shows the completed excerpt, without a cursor;
+- its own `hiddenLayers` apply.
+
+The outgoing shot is seen for the whole of a dissolve, wipe or slide, and for
+the first half of a fade. The export must hold that far: `check` refuses a
+continuation that would ask the model for a second past
+`model.expectedDurationSeconds`.
+
+### How each kind draws
+
+With `p` the eased progress, running from 0 on the transition's first frame
+(which shows the outgoing picture alone, the frame after its end) to just under
+1 on its last, and `W` the frame width in pixels:
+
+- **dissolve**: the outgoing picture lies over the incoming one at opacity
+  `1 − p`.
+- **wipe**: a hard vertical edge `round(p·W)` pixels in from the side the
+  incoming picture enters from; outgoing on one side, incoming on the other.
+- **slide**: the outgoing picture moves `round(p·W)` pixels in `direction`
+  and the incoming one enters from the opposite edge, butted against it, so
+  the frame is always covered.
+- **fade**: a plate of the colour over the picture. In the first half the
+  picture is the outgoing shot and the plate rises to fully opaque; the
+  midpoint is the plain colour; in the second half the picture is the incoming
+  shot and the plate falls away. Each half follows the easing. Code and machine
+  are never on screen together in a fade.
+- **fadeIn**: the plate falls from the plain colour on the film's first frame.
+- **fadeOut**: the plate rises to the plain colour on the film's last frame, at
+  `end − 1/fps` for the episode's `output.fps` (a quick render at another
+  `--fps` may stop that last frame a fraction short of it).
+
+Every kind acts on the picture, not on the film's chrome: the transition is
+drawn above the model, annotations, overlays and code panel, and below the
+masthead (`MACHINOME` and the series label) and the progress rule, which stay
+in place. A slide never pushes the masthead out of frame, and a fade shows the
+masthead and progress rule on the colour. A change of layout between a code
+shot and a model shot needs nothing special: each picture keeps its own.
+
+The default colour is `style.background`, which must then be a quoted
+`"#rrggbb"`. On a paper film a fade to the background reads as the picture
+leaving the page; on a dark film it is the conventional fade to black. For
+black on a paper film write `color: "#000000"`.
+
+### Refusals
+
+`check`, `preview` and `render` refuse, naming the shot and the field:
+
+- any of the three fields in a 0.2 or 0.3 episode:
+  `Transitions need format machinome-video-draft/0.4: shot source`;
+- a field that is not a mapping; an unknown field
+  (`Unknown transition field: durration (transition in shot source)`);
+- a kind other than the four (`kind must be fade, dissolve, wipe or slide; omit
+  transition for a cut`), a direction other than `left` or `right`, an easing
+  other than the five; `direction` on a fade or dissolve; `color` on a
+  dissolve, wipe or slide; a colour that is not a quoted `"#rrggbb"`, or a
+  defaulted colour whose `style.background` is not one;
+- a duration that is missing, not finite, or shorter than two frames;
+- a transition longer than either shot it joins
+  (`Invalid transition in shot source: 5 s is longer than shot machine (4.5 s)`),
+  or a `fadeIn` or `fadeOut` longer than its shot;
+- `transition` on the first shot (use `fadeIn`), `fadeIn` on any other shot,
+  `fadeOut` on any shot but the last (give the next shot a transition of kind
+  `fade`);
+- a shot whose incoming `transition` or `fadeIn` and its `fadeOut` together are
+  longer than it (`Transitions overlap in shot closing: 1 s in and 2 s out
+  exceed its 2.5 s`);
+- an outgoing shot whose continued model would pass the export:
+  `Shot machine cannot continue 1 s into the dissolve to shot source: its
+  model would reach 1461.00 s, past the export's 1460 s; end its simulation
+  earlier or shorten the transition`.
+
+In `preview` and `render`, each picture a transition frame is made of passes
+every check a posed frame has; an outgoing annotation whose part leaves the
+frame is refused naming the outgoing shot and a video time past its `end`.
+
+### What preview proves
+
+For each transition `preview` adds stills at its first frame, quarters,
+midpoint and last frame (a `fadeIn` or `fadeOut`: first, middle and last), and
+proves from the plain pictures of the two shots at the same instant, decoded
+pixel by pixel:
+
+- a dissolve's midpoint is their blend at the eased progress within 2 levels
+  of 255 on every channel of every pixel;
+- a wipe's midpoint is exactly the outgoing picture on one side of the edge
+  and exactly the incoming one on the other;
+- a slide's midpoint, outside the masthead and progress rule, is exactly the
+  two pictures at their offsets;
+- a fade blends its colour with the picture as its easing predicts within 2
+  levels at a quarter of each half, and is exactly the colour, outside the
+  masthead and progress rule, at its midpoint; `fadeIn` on the film's first
+  frame and `fadeOut` on its last are exactly the colour there too;
+- posing the midpoint, another instant and the midpoint again gives identical
+  pixels.
+
+`report.json` records, per transition, the shot, field, kind, instants,
+progress, the largest difference found and whether the two pictures differed
+at all (if they did not, the proof shows nothing, and the report says so). A
+failed proof stops preview, naming the shot and the time, and keeps
+`transition-<shot>-{outgoing,incoming,composed}.png` (for a fade in or out,
+`fadeIn-<shot>-…` or `fadeOut-<shot>-…`) in `preview/`. The highlight and lens
+checks pose their shot with its transition removed, so a cue under an outgoing
+picture is still proved on its own shot. Whether a kind reads well in motion is
+for review.
+
+A frame inside a transition depends only on its video time: the film page
+composes it from poses of that instant alone, capturing each picture it is made
+of without the masthead and progress rule and drawing the captures again inside
+the page under them, so a resumed render reproduces it exactly. A fade frame
+therefore poses the viewer once, and a dissolve, wipe or slide frame twice.
 
 ## Optional subtitles
 

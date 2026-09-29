@@ -19,7 +19,7 @@ highlight them (`highlight`) or change field of view or up between cameras
 need Viewer API 28, which the machinome-viewer source is adding and no
 published viewer release declares yet; `check`, `preview` and `render` refuse them against an
 older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
-alone runs on Viewer API 21. Linux/Chromium software rendering is the tested environment.
+and transitions between shots run on Viewer API 21. Linux/Chromium software rendering is the tested environment.
 
 ```sh
 npm ci
@@ -71,9 +71,16 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   start, quarters and end; every posed frame refuses an annotation whose part
   is off screen or whose text leaves the frame. Each highlight cue is posed
   with and without its cue and must change the pixels and restore them exactly.
-  No speech generation occurs.
+  Each transition between shots (format 0.4) adds stills at its first frame,
+  quarters, midpoint and last frame, and is proved in pixels against the plain
+  pictures it is made of: a dissolve blends them within 2 levels, a wipe and a
+  slide reproduce them exactly, a fade reaches exactly its colour, and a
+  revisited instant replays exactly. No speech generation occurs.
 - `render` requires cached speech and renders the film. Add
-  `--width 960 --fps 10 --silent` for a quick silent video.
+  `--width 960 --fps 10 --silent` for a quick silent video. A frame inside a
+  transition is composed from captures of the same instant: a fade costs one
+  pose and capture, a dissolve, wipe or slide two, each several times a plain
+  frame's time.
 - `build` combines speech generation/cache reuse and final rendering.
 
 Without `--viewer`, the bundle beside the model manifest is used. Older

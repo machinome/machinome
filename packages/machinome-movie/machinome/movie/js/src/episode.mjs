@@ -3,7 +3,7 @@ import {resolve, dirname, relative, isAbsolute} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
 import {loadSourceCode,validateCode} from './code.mjs';
-import {cameraAt,FORMATS,formatAtLeast} from './timeline.mjs';
+import {cameraAt,endRate,FORMATS,formatAtLeast} from './timeline.mjs';
 import {EASINGS,unknownEasing} from './easing.mjs';
 
 export function parseSource(source) {
@@ -136,7 +136,7 @@ export function confirmViewerApi(required,bundleText) {
 }
 // Format 0.4 closes the field lists of a shot, its simulation, its model
 // keyframes and its camera keys; 0.2 and 0.3 keep ignoring unknown fields.
-const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','annotations','highlight']);
+const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','annotations','highlight','transition','fadeIn','fadeOut']);
 const SIMULATION_FIELDS=new Set(['from','to','keyframes']);
 const KEYFRAME_FIELDS=new Set(['at','seconds','ease']);
 const CAMERA_KEY_FIELDS=new Set(['at','preset','ease']);
@@ -150,6 +150,50 @@ function validateEase(e,s,key,i,what){
   need(formatAtLeast(e,V04),`Easing needs format machinome-video-draft/0.4: shot ${s.id}`);
   need(i>0,`Nothing to ease before the first ${what}: shot ${s.id}`);
   need(EASINGS.includes(key.ease),`${unknownEasing(key.ease)} (${what} #${i} in shot ${s.id})`);
+}
+// Joining shots (format 0.4): transition on any shot but the first, fadeIn on
+// the first and fadeOut on the last. `index` is the shot's place in the film.
+const TRANSITION_FIELDS=new Set(['kind','duration','ease','direction','color']);
+const FADE_FIELDS=new Set(['duration','ease','color']);
+const KINDS=['fade','dissolve','wipe','slide'];
+function validateTransitions(e,s,index){
+  const fields=['transition','fadeIn','fadeOut'].filter(field=>s[field]!==undefined);
+  if(!fields.length)return;
+  need(formatAtLeast(e,V04),`Transitions need format machinome-video-draft/0.4: shot ${s.id}`);
+  const fps=e.output.fps,length=shot=>shot.end-shot.start,prior=e.shots[index-1];
+  for(const field of fields){
+    const x=s[field],bad=why=>`Invalid ${field} in shot ${s.id}: ${why}`;
+    need(x&&typeof x==='object'&&!Array.isArray(x),bad('expected a mapping'));
+    const known=field==='transition'?TRANSITION_FIELDS:FADE_FIELDS;
+    for(const key of Object.keys(x))need(known.has(key),`Unknown ${field} field: ${key} (${field} in shot ${s.id})`);
+    if(field==='transition'){
+      need(index>0,bad('the first shot comes in from nothing; use fadeIn'));
+      need(KINDS.includes(x.kind),bad('kind must be fade, dissolve, wipe or slide; omit transition for a cut'));
+      if(['wipe','slide'].includes(x.kind))need(x.direction===undefined||['left','right'].includes(x.direction),bad('direction must be left or right'));
+      else need(x.direction===undefined,bad('direction belongs to a wipe or slide'));
+      if(x.kind!=='fade')need(x.color===undefined,bad('color belongs to a fade'));
+    }
+    if(field==='fadeIn')need(index===0,bad('only the first shot fades in; give this shot a transition of kind fade'));
+    if(field==='fadeOut')need(index===e.shots.length-1,bad('only the last shot fades out; give the next shot a transition of kind fade'));
+    if(field!=='transition'||x.kind==='fade'){
+      if(x.color===undefined)need(typeof e.style?.background==='string'&&COLOR.test(e.style.background),bad('the default colour style.background must be a quoted #rrggbb'));
+      else need(typeof x.color==='string'&&COLOR.test(x.color),bad('color must be a quoted #rrggbb'));
+    }
+    if(x.ease!==undefined)need(EASINGS.includes(x.ease),`${unknownEasing(x.ease)} (${field} in shot ${s.id})`);
+    need(finite(x.duration)&&x.duration*fps>=2-1e-9,bad(`duration must be at least two frames (${(2/fps).toFixed(3)} s at ${fps} fps)`));
+    if(field==='transition')need(x.duration<=length(prior),bad(`${x.duration} s is longer than shot ${prior.id} (${length(prior)} s)`));
+    need(x.duration<=length(s),bad(`${x.duration} s is longer than shot ${s.id} (${length(s)} s)`));
+  }
+  const incoming=s.transition??s.fadeIn;
+  if(incoming&&s.fadeOut)need(incoming.duration+s.fadeOut.duration<=length(s),
+    `Transitions overlap in shot ${s.id}: ${incoming.duration} s in and ${s.fadeOut.duration} s out exceed its ${length(s)} s`);
+  // The outgoing shot is seen for the whole transition, or half a fade, and
+  // must not ask the viewer for a model second the export does not have.
+  if(s.transition){
+    const shown=s.transition.kind==='fade'?s.transition.duration/2:s.transition.duration;
+    const reach=prior.simulation.to+endRate(prior)*shown,limit=e.model.expectedDurationSeconds;
+    need(reach<=limit,`Shot ${prior.id} cannot continue ${shown} s into the ${s.transition.kind} to shot ${s.id}: its model would reach ${reach.toFixed(2)} s, past the export's ${limit} s; end its simulation earlier or shorten the transition`);
+  }
 }
 export function validateEpisode(e, manifest) {
   need(FORMATS.includes(formatOf(e)),'Unsupported episode format');
@@ -168,7 +212,7 @@ export function validateEpisode(e, manifest) {
   }
   let end=0;const ids=new Set();
   need(Array.isArray(e.shots) && e.shots.length>0,'No shots');
-  for (const s of e.shots) {
+  for (const [index,s] of e.shots.entries()) {
     need(typeof s.id==='string' && /^[a-z0-9-]+$/.test(s.id) && !ids.has(s.id), 'Shot ids must be unique slugs');ids.add(s.id);
     closedFields(e,s,SHOT_FIELDS,key=>`Unknown shot field: ${key} (shot ${s.id})`);
     need(s.start===end && finite(s.end) && s.end>s.start, `Shots must be contiguous: ${s.id}`);end=s.end;
@@ -204,6 +248,8 @@ export function validateEpisode(e, manifest) {
     validateAnnotations(e,s,known);
     validateHighlight(e,s,known);
   }
+  // After every shot is known to be sound: a transition reads the shots on both sides.
+  for(const [index,s] of e.shots.entries())validateTransitions(e,s,index);
   need(end===e.output.durationSeconds,'Shots must cover the video duration');
 }
 export async function loadEpisode(file) {

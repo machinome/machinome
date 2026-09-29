@@ -25,11 +25,12 @@ const restaged=(format=V04)=>({format,output:{width:1280,height:720,fps:30,durat
 const valid=e=>validateEpisode(e,manifest);
 const frames=e=>Array.from({length:e.output.durationSeconds*e.output.fps},(_,i)=>i/e.output.fps);
 
+// Amended by shot-transitions (ratified): every 0.4 frame also carries transition, null outside one.
 test('a 0.4 episode without ease gives the frames of the same episode in 0.3',()=>{
   for(const [make,m] of [[()=>lens03('tight'),{animation:{loop:296}}],[()=>lens03('rolled'),{animation:{loop:296}}],[cues03,cuesManifest]]){
     const old=make(),next=as04(make());
     validateEpisode(old,m);validateEpisode(next,m);
-    for(const t of frames(old))assert.deepEqual(frameAt(next,t),frameAt(old,t),`at ${t}`);
+    for(const t of frames(old))assert.deepEqual(frameAt(next,t),{...frameAt(old,t),transition:null},`at ${t}`);
   }
 });
 

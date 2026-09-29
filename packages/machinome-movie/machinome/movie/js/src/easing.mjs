@@ -9,6 +9,13 @@ const CURVES={
   out:u=>{const v=1-u;return 1-v*v*v;},
   'in-out':u=>{if(u<.5)return 4*u*u*u;const v=1-u;return 1-4*v*v*v;},
 };
+// Each curve's slope at its end, in units of the segment's average rate: how
+// fast a keyed value is still travelling when it reaches its later key.
+const END_SLOPES={linear:1,smooth:0,in:3,out:0,'in-out':0};
+export function endSlope(name){
+  if(typeof name!=='string'||!Object.hasOwn(END_SLOPES,name))throw new Error(unknownEasing(name));
+  return END_SLOPES[name];
+}
 export function unknownEasing(name){
   return `Unknown easing: ${name}; use linear, smooth, in, out or in-out`;
 }

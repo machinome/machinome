@@ -31,11 +31,16 @@ body{background:#faf7ef;color:#222;font-family:'DejaVu Sans',sans-serif}
 .hljs-comment{color:#817767}
 .hljs-params{color:#5b5677}
 #rule{position:absolute;bottom:2.5%;left:6%;right:6%;height:2px;background:#d9d2c7}
+#transition{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#transition>*{position:absolute;top:0}
+.in-transition #brand,.in-transition #series,.in-transition #rule{z-index:1}
+.picture-only #brand,.picture-only #series,.picture-only #rule{visibility:hidden}
 #progress{height:100%;background:#237c86;width:0}
 </style></head><body>
 <div id="brand">MACHINOME</div><div id="series">LEONARDO · HOW IT WORKS</div>
 <div id="viewport"><div id="stage"></div></div><div id="annotations"></div><div id="overlays"></div>
 <section id="source"><div id="source-file"></div><pre><code id="source-code"></code><span id="source-cursor"></span></pre></section>
+<div id="transition"></div>
 <div id="rule"><div id="progress"></div></div>
 <script src="/viewer.js"></script><script src="/film.js"></script>
 </body></html>
