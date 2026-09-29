@@ -1697,6 +1697,25 @@ tessellation and is not commit evidence: a project's `.env` may select
 the faceted kernel for the loop, and the exact run is the one a verdict
 is certified on.
 
+Two more properties of the run. The **placement quantum** (`--placement-quantum
+MM`, else `SOLID_TEST_PLACEMENT_QUANTUM`, else 1e-9 mm, both kernels) is
+the grid the verdict memo rounds a pair's relative placement to, so the
+float noise of composing one rigid motion by two routes does not make one
+question two; `0` keys on exact bytes; a non-default quantum is named on
+the summary line. The **verdict store** (`--verdict-store` /
+`--no-verdict-store`, else `SOLID_TEST_VERDICT_STORE=on|off`, else on, both
+kernels) keeps every verdict a run decides in the build root's `.verdicts`
+directory and serves it to a later run that asks the same question of the
+same state: the content of each rigid part's artifact, a flexible part's
+bound values and spec, and the pair's quantised relative placement, bound
+to the framework source and the installed kernels. A second run of an
+unchanged project therefore computes nothing it decided before (a
+22-test wall clock: 1256 s, then 28 s), and an edit costs only the pairs it
+touches. No verdict changes and the output is unchanged; a run with the
+store off ends its summary with `(verdict store off)`. Use
+`--no-verdict-store` for a timing measurement or an experiment that
+patches the framework; deleting `.verdicts` is always safe.
+
 Deprecated: `assertNoPairwiseIntersections(root, volume_epsilon=0.0)`
 walks leaf pairs quadratically and warns; `assertNoSolidInterference`
 replaces it. `assertOneBody`, `assertBodyCount` and
@@ -2436,7 +2455,8 @@ framework-internal and is not a project surface.
 machinome new <name>
 machinome build   [ref] [--set NAME=VALUE ...]
 machinome test    [ref] [--set ...] [--failfast] [--exact | --faceted]
-      [--volume-epsilon MM3]
+      [--volume-epsilon MM3] [--placement-quantum MM]
+      [--verdict-store | --no-verdict-store]
 machinome snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
       [--drive NAME=VALUE ...]
       [--viewall] [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]

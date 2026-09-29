@@ -24,6 +24,10 @@ Commands (run from the project directory, with the project's venv):
     machinome test --exact          # the certified run (the default when
                                 # neither flag nor the project's .env
                                 # says otherwise)
+    machinome test --no-verdict-store  # compute every pair again: a
+                                # timing measurement, or a run under a
+                                # patched framework (verdicts are kept
+                                # between runs by default)
     machinome snapshot -o out.png --autocenter   # render an image
     machinome build --set bore=32.0 # the same model at another parameter value
 
@@ -805,7 +809,12 @@ model is an assembly — do not report it as coverage before then.
    `kernel="faceted"`). It decides the same assertions on the parts'
    meshes, about twenty times faster on exact parts and thirty on
    springs and belts, and it labels its own output. Only the last step
-   below runs exact.
+   below runs exact. Verdicts are kept between runs (`_build/.verdicts`,
+   keyed on the parts' content and relative placement), so a rerun after
+   an edit pays only for the pairs the edit touched, and the exact run at
+   the end pays only for what no earlier exact run decided; pass
+   `--no-verdict-store` only when you are measuring time or have patched
+   the framework.
 1. Write the test file first; run it; watch it fail.
 2. Implement to green.
 3. Full regression: run `machinome test` for EVERY node file in the project
