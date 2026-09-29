@@ -68,4 +68,7 @@ demonstrated.
 - 29 Sep: `keyframes-and-easing` demo verified frame by frame by the
   orchestrator (Leonardo `videos/demo-keyframes-and-easing-2/_build/silent-preview.mp4`,
   5 s, sha256 5f64f399…): camera `out` settle, model `in` then `out`. Ratified.
+- 29 Sep: `graphic-overlays` proposed and ratified (ring only; fade and draw-on
+  entrances, fade exits; one spelling `enter`/`leave` for every cue's fade in
+  0.4, pictures included; `fadeIn`/`fadeOut` only for the film's head and tail).
 

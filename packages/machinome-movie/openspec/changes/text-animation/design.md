@@ -445,8 +445,10 @@ pilot's delegation, with these resolutions:
   written can have.
 - **Entrance and exit spelling** (D5): the implementation uses the spelling
   `graphic-overlays` ratifies, applied before this change, so 0.4 has one
-  spelling; if `graphic-overlays` keeps `enter`/`leave: {kind, duration, ease}`,
-  nothing changes here.
+  spelling; `graphic-overlays` ratified `enter`/`leave: {kind, duration, ease}`,
+  so nothing changes here except the refusal wording, which becomes
+  `Unknown entrance field: …` / `Unknown exit field: …` instead of
+  `Unknown fade field`.
 - **Speech for the demo.** The pilot's demo of this feature may run the
   `speech` command for its own short narration (one or two shots), so a
   spoken reveal is demonstrated on a real take; the cost is a few hundred

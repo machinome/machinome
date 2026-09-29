@@ -570,3 +570,12 @@ pilot's delegation, with these resolutions:
   (D5) stand as designed: both are purer than the briefing's suggestions.
 - Every 0.4 frame carries `picture`; the deep-equality tests of the two earlier
   cycles are amended here to expect `picture: null` (D12).
+- **Fade spelling (amended with `graphic-overlays`).** A picture's fades are
+  spelled as every cue's are in 0.4: `enter: {kind: fade, duration, ease?}` and
+  `leave: {kind: fade, duration, ease?}` replace `fadeIn`/`fadeOut` in D2, D9
+  and D12 and in the closed picture field list (`from, to, still, clip, area,
+  fit, enter, leave, view, inPoint`); `kind` accepts only `fade`; unknown
+  fields are refused as `Unknown entrance field` / `Unknown exit field`. The
+  rules of D9 (durations of at least two frames, together no longer than the
+  interval, the opacity formula) are unchanged. `fadeIn`/`fadeOut` remain the
+  film's head and tail only.
