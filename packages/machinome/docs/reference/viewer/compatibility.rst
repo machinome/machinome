@@ -5,13 +5,20 @@ Versions and compatibility
 Three version numbers
 =====================
 
-This release declares:
+The 0.7.1 release declares:
 
 * **Package** |package-version| — the Python distribution and its bundled
   widget, released with Machinome 0.7.1 and numbered with it. The widget is
   not published on npm; it ships inside the Python distribution.
-* **Viewer API** |viewer-api| — the browser-host interface/capabilities.
+* **Viewer API** 27 — the browser-host interface/capabilities.
 * **Document versions** |document-versions| — model schemas this bundle reads.
+
+The current source, after 0.7.1 and in no published release, declares viewer
+API |viewer-api| with the same document versions. API 28 adds
+:js:meth:`ViewerHandle.partOnScreen` and :js:meth:`ViewerHandle.project`,
+which tell a host where any part and any world point stand on screen. A host
+relying on them checks for API 28 or later; a bundle reporting 27 has none of
+them.
 
 A host requiring separately named handles for two ``Turn`` controls on one
 part must check the viewer API, not only the document version: the document
@@ -107,7 +114,8 @@ version-13 finite convex-profile contact inside a numeric running Bound.
 API 27, the 0.7.0 release, adds separately named handles for two ``Turn``
 controls on one part selecting different joints, without changing the
 document schema or the ``controls()`` shape. API 26 refuses that pair at
-load. A host that needs a feature can check the declared API before using
+load. API 28, in the source after 0.7.1, adds screen positions for any part
+and world point. A host that needs a feature can check the declared API before using
 it. Do not assume an old pinned bundle implements the
 current manual.
 

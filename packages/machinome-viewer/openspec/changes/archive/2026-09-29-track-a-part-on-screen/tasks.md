@@ -1,10 +1,10 @@
 ## 1. Red first
 
-- [ ] 1.1 In the apply worktree, link the primary checkout's
+- [x] 1.1 In the apply worktree, link the primary checkout's
       `machinome_viewer/widget/node_modules` (never `npm ci` or `npm install`
       through the link) and record the clean base: `npm test` and
       `npm run typecheck` counts.
-- [ ] 1.2 Add `machinome_viewer/widget/src/screen.test.ts` (red: the module
+- [x] 1.2 Add `machinome_viewer/widget/src/screen.test.ts` (red: the module
       does not exist):
       - `projectToViewport` "projects a world point to viewport pixels of an
         offset canvas" (a `PerspectiveCamera` at a known pose, a canvas rect
@@ -17,9 +17,9 @@
       - `worldBounds` "unions each mesh's box in world coordinates";
       - `searchPoint` "tries the centre first, then the grid in row order,
         then answers null", counting probes (at most 1 + 49).
-- [ ] 1.3 In `version.test.ts`, change the last case to
+- [x] 1.3 In `version.test.ts`, change the last case to
       "declares film annotations as API 28" expecting 28 (red at 27).
-- [ ] 1.4 Add to `tests/test_widget_e2e.py` (class `ViewerMountApiTest`, the
+- [x] 1.4 Add to `tests/test_widget_e2e.py` (class `ViewerMountApiTest`, the
       spinner fixture, which declares no controls) and run them red against
       a bundle built from the base (they fail on the missing members):
       - `test_a_part_is_tracked_on_screen_without_declared_controls`: mount
@@ -40,31 +40,31 @@
 
 ## 2. Implement
 
-- [ ] 2.1 Create `screen.ts` with `projectToViewport`, `worldBounds`,
+- [x] 2.1 Create `screen.ts` with `projectToViewport`, `worldBounds`,
       `boundsOnScreen`, `searchPoint` and the `ScreenRect` type, moved
       unchanged in arithmetic from `partRect`/`partPoint`.
-- [ ] 2.2 In `viewer.ts`, split `pickAt` into `nearestVisibleMesh` (no
+- [x] 2.2 In `viewer.ts`, split `pickAt` into `nearestVisibleMesh` (no
       `partMeshes` guard) and the control mapping; rebuild `partRect`,
       `partPoint` on `screen.ts`; confirm `controls.test.ts`,
       `partSurface.test.ts` and `selectedControls.test.ts` stay green
       unchanged.
-- [ ] 2.3 Add `partOnScreen(path)` and `project(world)` to `ViewerHandle`
+- [x] 2.3 Add `partOnScreen(path)` and `project(world)` to `ViewerHandle`
       and the returned handle (design D2, D5, D6, D7); retype
       `PartControlView.rect` as `ScreenRect`.
-- [ ] 2.4 Raise `machinomeViewerApi` to 28 in `package.json` only (design
+- [x] 2.4 Raise `machinomeViewerApi` to 28 in `package.json` only (design
       D8); document versions unchanged. Rebuild the bundle with
       `npm run build` only.
 
 ## 3. Document
 
-- [ ] 3.1 `docs/reference/viewer-handle.rst`: a "Where parts stand on
+- [x] 3.1 `docs/reference/viewer-handle.rst`: a "Where parts stand on
       screen" subsection with `partOnScreen` and `project` (pixel frame,
       box-not-silhouette, not clipped, `null` cases, errors, "renders
       nothing", "Available since API 28").
-- [ ] 3.2 `docs/compatibility.rst`: API 28 as the source's API after 0.7.1,
+- [x] 3.2 `docs/compatibility.rst`: API 28 as the source's API after 0.7.1,
       in no published release; the 0.7.1 facts untouched. `cli.rst`
       `describe` example to API 28.
-- [ ] 3.3 `tests/test_documentation.py`: pin the 0.7.1 section and
+- [x] 3.3 `tests/test_documentation.py`: pin the 0.7.1 section and
       `test_profile_contact_is_documented_as_part_of_the_release` to the
       recorded API 27 instead of the live declaration, and add a check that
       compatibility names API 28 (design D9, subject to the pilot's
@@ -72,10 +72,10 @@
 
 ## 4. Validate and close
 
-- [ ] 4.1 Widget suite, typecheck, the Python suite (one suite at a time),
+- [x] 4.1 Widget suite, typecheck, the Python suite (one suite at a time),
       and the four browser tests green; inspect the screenshots by eye and
       record the counts and the point-search cost per call in
       `evidence.md`.
-- [ ] 4.2 Sync the delta specs, strict-validate, archive, and commit the
+- [x] 4.2 Sync the delta specs, strict-validate, archive, and commit the
       implementation record in this repository only. Integration, push and
       publication stay with the pilot.

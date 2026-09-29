@@ -79,6 +79,10 @@ import type {
 } from './partControls';
 import { API_VERSION } from './version';
 import {
+  boundsOnScreen, projectToViewport, searchPoint, worldBounds,
+} from './screen';
+import type { CanvasBounds, Point, ScreenRect } from './screen';
+import {
   createFullscreenController, fullscreenRootFor,
 } from './fullscreen';
 import type { FullscreenController } from './fullscreen';
@@ -227,12 +231,27 @@ export interface PartControlView {
   gesturePoint: Point | null;
   /** The part's on-screen bounds, or null when the part is not visible
    * or is wholly off screen. */
-  rect: { x: number; y: number; width: number; height: number } | null;
+  rect: ScreenRect | null;
   /** A point a press reaches this control at right now, or null when
    * none does. Found the way a press finds it -- by raycasting under
    * the same nearest-visible-hit rule -- because the centre of a dial's
    * bounding rectangle is its axle, which may be a hole. */
-  point: { x: number; y: number } | null;
+  point: Point | null;
+}
+
+/** Where an assembly path stands on screen, for the pose and camera the
+ * host last set (OpenSpec `track-a-part-on-screen`, design D1-D3): the
+ * rectangle enclosing its visible geometry and a point at which its
+ * surface is the nearest visible one, in the frame `controls()` uses. */
+export interface PartOnScreen {
+  /** The projected world-aligned box of the path's visible meshes. It
+   * encloses the part, may be larger than its silhouette, and is not
+   * clipped to the canvas. */
+  rect: ScreenRect;
+  /** A point inside the canvas and `rect` whose nearest visible surface
+   * belongs to the path, or null when no probe of the bounded search
+   * finds one. */
+  point: Point | null;
 }
 
 export interface ViewerHandle {
@@ -287,6 +306,19 @@ export interface ViewerHandle {
    * even when the affordance is suppressed: what a presentation choice
    * gates is the pixels and the pointer, never the interface. */
   controls(): PartControlView[];
+  /** Where any assembly path -- a part or a subassembly, `[]` for the
+   * whole model -- stands on screen right now, whether or not the
+   * document declares controls; null when none of its geometry is
+   * visible or all of it is off the canvas. An unknown or ambiguous
+   * path throws naming it. Reads the last state a host call left, and
+   * draws, changes and notifies nothing (OpenSpec
+   * `track-a-part-on-screen`, design D2-D7). */
+  partOnScreen(path: AssemblyPath): PartOnScreen | null;
+  /** Where a point in the scene's world coordinates lands on screen, in
+   * the same viewport CSS pixels, or null at or behind the camera. A
+   * point in front of the camera off the canvas answers a position
+   * outside it. Draws, changes and notifies nothing (design D5, D6). */
+  project(world: readonly [number, number, number]): Point | null;
   apiVersion: number;
 }
 
@@ -676,16 +708,22 @@ export async function mount(
     };
   };
 
-  /** The nearest VISIBLE hit's mesh, and the controls naming it -- or
-   * null (design D5).
+  /** The canvas's client rectangle: the frame every screen position
+   * this viewer reports is offset by. */
+  const canvasBounds = (): CanvasBounds =>
+    renderer.domElement.getBoundingClientRect();
+
+  /** The nearest VISIBLE mesh under a client point, or null (design D5
+   * of `drive-the-run-by-touch`; D4 of `track-a-part-on-screen`).
    *
    * The cast is against the whole tree, not against control meshes
    * only, and the NEAREST hit decides: a part standing in front of a
    * control is in front of it, and a dial under a closed lid is not
    * pressed through the lid. three.js's raycaster does not consult
-   * `visible` at all in this version, so that filter is ours. */
-  const pickAt = (x: number, y: number): readonly LoadedControl[] | null => {
-    if (tree === undefined || partMeshes.size === 0) {
+   * `visible` at all in this version, so that filter is ours. It needs
+   * no declared control: `partOnScreen` asks it for any path. */
+  const nearestVisibleMesh = (x: number, y: number): THREE.Mesh | null => {
+    if (tree === undefined) {
       return null;
     }
     rayAt(x, y);
@@ -694,9 +732,20 @@ export async function mount(
           || !visibleUpTo(hit.object, scene)) {
         continue;
       }
-      return partMeshes.get(hit.object) ?? null;
+      return hit.object;
     }
     return null;
+  };
+
+  /** The controls naming the nearest visible mesh -- or null. A
+   * document declaring no control answers at once, so the hover poll
+   * costs nothing there. */
+  const pickAt = (x: number, y: number): readonly LoadedControl[] | null => {
+    if (tree === undefined || partMeshes.size === 0) {
+      return null;
+    }
+    const mesh = nearestVisibleMesh(x, y);
+    return mesh === null ? null : partMeshes.get(mesh) ?? null;
   };
 
   /** Lift the emissive colour of every mesh of every hovered part, and
@@ -853,56 +902,15 @@ export async function mount(
   };
 
   /** The part's on-screen bounds, in viewport CSS pixels, or null when
-   * it is not visible or is wholly off screen (design D15). */
-  const partRect = (control: LoadedControl): PartRect | null => {
+   * it is not visible or is wholly off screen (design D15). The rule is
+   * `screen.ts`'s, shared with `partOnScreen`. */
+  const partRect = (control: LoadedControl): ScreenRect | null => {
     const meshes = (partOf.get(control.name) ?? [])
       .filter((mesh) => visibleUpTo(mesh, scene));
     if (meshes.length === 0) {
       return null;
     }
-    const bounds = new THREE.Box3();
-    for (const mesh of meshes) {
-      if (mesh.geometry.boundingBox === null) {
-        mesh.geometry.computeBoundingBox();
-      }
-      const box = mesh.geometry.boundingBox;
-      if (box !== null) {
-        bounds.union(box.clone().applyMatrix4(mesh.matrixWorld));
-      }
-    }
-    if (bounds.isEmpty()) {
-      return null;
-    }
-    const canvas = renderer.domElement.getBoundingClientRect();
-    const corner = new THREE.Vector3();
-    let left = Infinity;
-    let right = -Infinity;
-    let top = Infinity;
-    let bottom = -Infinity;
-    let anyInFront = false;
-    for (let index = 0; index < 8; index += 1) {
-      corner.set(index & 1 ? bounds.max.x : bounds.min.x,
-                 index & 2 ? bounds.max.y : bounds.min.y,
-                 index & 4 ? bounds.max.z : bounds.min.z);
-      // Behind the camera a projection is meaningless, so such a corner
-      // is left out rather than folded back into the rectangle.
-      if (corner.clone().applyMatrix4(camera.matrixWorldInverse).z >= 0) {
-        continue;
-      }
-      anyInFront = true;
-      const projected = corner.clone().project(camera);
-      const x = canvas.left + ((projected.x + 1) / 2) * canvas.width;
-      const y = canvas.top + ((1 - projected.y) / 2) * canvas.height;
-      left = Math.min(left, x);
-      right = Math.max(right, x);
-      top = Math.min(top, y);
-      bottom = Math.max(bottom, y);
-    }
-    if (!anyInFront || right < canvas.left || left > canvas.right
-        || bottom < canvas.top || top > canvas.bottom) {
-      return null;
-    }
-    return { x: left, y: top, width: right - left, height: bottom - top };
+    return boundsOnScreen(worldBounds(meshes), camera, canvasBounds());
   };
 
   /** A point at which a press actually REACHES this control right now,
@@ -911,32 +919,67 @@ export async function mount(
    * bounded grid inside the rect, under the same nearest-visible-hit
    * rule. `null` says honestly that nothing does. */
   const partPoint = (control: LoadedControl,
-                     rect: PartRect): Point | null => {
-    const canvas = renderer.domElement.getBoundingClientRect();
-    const reaches = (point: Point): boolean => {
-      if (point.x < canvas.left || point.x > canvas.right
-          || point.y < canvas.top || point.y > canvas.bottom) {
-        return false;
-      }
-      return pickAt(point.x, point.y)?.includes(control) ?? false;
-    };
-    const centre = { x: rect.x + rect.width / 2,
-      y: rect.y + rect.height / 2 };
-    if (reaches(centre)) {
-      return centre;
+                     rect: ScreenRect): Point | null =>
+    searchPoint(rect, canvasBounds(), (point) =>
+      pickAt(point.x, point.y)?.includes(control) ?? false);
+
+  /** Every mesh under an assembly path: its own model, its
+   * descendants', a flexible part's mesh and its decals -- read at call
+   * time, so the mesh-replacement points need no bookkeeping (design
+   * D2 of `track-a-part-on-screen`). */
+  const meshesUnder = (path: AssemblyPath): THREE.Mesh[] => {
+    if (tree === undefined) {
+      throw new Error('Viewer assembly is unavailable');
     }
-    for (let row = 0; row < POINT_GRID; row += 1) {
-      for (let column = 0; column < POINT_GRID; column += 1) {
-        const point = {
-          x: rect.x + (rect.width * (column + 0.5)) / POINT_GRID,
-          y: rect.y + (rect.height * (row + 0.5)) / POINT_GRID,
-        };
-        if (reaches(point)) {
-          return point;
-        }
+    const meshes: THREE.Mesh[] = [];
+    tree.requirePath(path).group.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        meshes.push(object);
       }
+    });
+    return meshes;
+  };
+
+  /** Where an assembly path stands on screen (design D2-D7). Reads the
+   * last state a host call left: it brings the matrices up to date
+   * itself and draws nothing. */
+  const partOnScreen = (path: AssemblyPath): PartOnScreen | null => {
+    if (disposed) {
+      throw new Error('partOnScreen cannot use a disposed viewer');
     }
-    return null;
+    if (!Array.isArray(path) || !path.every((name) => typeof name === 'string')) {
+      throw new Error('partOnScreen needs an assembly path, an array of names');
+    }
+    const meshes = meshesUnder(path);
+    scene.updateMatrixWorld(true);
+    camera.updateMatrixWorld();
+    const canvas = canvasBounds();
+    const rect = boundsOnScreen(
+      worldBounds(meshes.filter((mesh) => visibleUpTo(mesh, scene))),
+      camera, canvas);
+    if (rect === null) {
+      return null;
+    }
+    const own = new Set(meshes);
+    const point = searchPoint(rect, canvas, ({ x, y }) => {
+      const mesh = nearestVisibleMesh(x, y);
+      return mesh !== null && own.has(mesh);
+    });
+    return { rect, point };
+  };
+
+  /** Where a world point lands on screen (design D5-D7). */
+  const project = (world: readonly [number, number, number]): Point | null => {
+    if (disposed) {
+      throw new Error('project cannot use a disposed viewer');
+    }
+    if (!Array.isArray(world) || world.length !== 3
+        || !world.every((value) => typeof value === 'number' && Number.isFinite(value))) {
+      throw new Error('project needs three finite world coordinates');
+    }
+    scene.updateMatrixWorld(true);
+    camera.updateMatrixWorld();
+    return projectToViewport(world, camera, canvasBounds());
   };
 
   const partControlViews = (): PartControlView[] => {
@@ -1953,6 +1996,8 @@ export async function mount(
       return drivers.trigger(name);
     },
     controls: partControlViews,
+    partOnScreen,
+    project,
     machine(): MachineHandle | null {
       const started = machine;
       if (started === undefined) return null;
@@ -2053,28 +2098,15 @@ const HOVER_EMISSIVE = 0x777777;
 /** How long a transient outcome label stays before it is taken away. */
 const OUTCOME_LINGER = 4000;
 
-/** How finely `controls()` searches a part's rectangle for a point a
- * press reaches (design D15). Bounded on purpose: the answer is `null`
- * rather than an unbounded hunt. */
-const POINT_GRID = 7;
-
 const PART_OUTCOME_STYLE =
   'position:absolute;pointer-events:none;z-index:2;'
   + 'padding:2px 6px;border-radius:3px;max-width:24em;'
   + 'background:rgba(30,33,38,0.85);color:#fff;'
   + 'font:12px system-ui,sans-serif;';
 
-export interface Point {
-  x: number;
-  y: number;
-}
-
-export interface PartRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+export type { Point, ScreenRect } from './screen';
+/** A part's on-screen bounds; the same shape as `ScreenRect`. */
+export type PartRect = ScreenRect;
 
 /** The transient outcome label beside a pointer (design D9).
  *

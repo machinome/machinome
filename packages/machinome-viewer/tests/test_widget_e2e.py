@@ -10,6 +10,7 @@ The mount-interface tests drive a real page with playwright instead,
 because a screenshot cannot click a control or read an attribute.
 """
 
+import io
 import json
 import os
 import tempfile
@@ -127,6 +128,15 @@ HARNESS_PAGE = """<!doctype html>
 """
 
 
+# How a film host mounts (OpenSpec `track-a-part-on-screen`): on demand,
+# posed from outside, with no chrome of the viewer's own.
+FILM_MOUNT = ("{ renderMode: 'on-demand', animation: 'external', autoplay: false, "
+              "driverControls: 'none', partControls: 'none' }")
+# A view of the spinner from above and to the side: the hub's top face
+# and all three blades in frame.
+FILM_VIEW = "{ camera: [0, -70, 90], target: [0, 0, 2] }"
+
+
 @needs_bundle
 @needs_playwright
 class ViewerMountApiTest(TestCase):
@@ -231,8 +241,11 @@ class ViewerMountApiTest(TestCase):
         # frame and its transition drawn over the declared duration,
         # where a build at 18 lists the same button and refuses it -- is
         # the one after that, and this moves to 19; the document list
-        # does NOT move with it either.
-        self.assertEqual(result['bundle'], 27)
+        # does NOT move with it either. OpenSpec `track-a-part-on-screen`
+        # declares 28 once for three film-annotation capabilities -- part
+        # and point tracking, highlighting, and a per-view up and field of
+        # view -- with the document list unchanged.
+        self.assertEqual(result['bundle'], 28)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])
@@ -883,6 +896,217 @@ class ViewerMountApiTest(TestCase):
         self.assertFalse(result['collapsed']['barVisible'])
         self.assertEqual(result['expanded'], 'true')
         self.assertTrue(result['barVisible'])
+
+    # -- Where a part stands on screen (OpenSpec `track-a-part-on-screen`)
+    #
+    # A film host mounts on demand, poses with `setTime`/`setView` and asks
+    # where a part stands for the frame it last set. The spinner declares
+    # no controls, which is exactly the case `controls()` cannot answer.
+
+    @contextmanager
+    def harness(self):
+        """The harness page, open, with page errors collected and checked."""
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(self.harness_url)
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
+                yield page
+                self.assertEqual(errors, [], f'uncaught page errors: {errors}')
+            finally:
+                browser.close()
+
+    def shot(self, page):
+        return Image.open(io.BytesIO(page.screenshot())).convert('RGB')
+
+    @needs_pil
+    def test_a_part_is_tracked_on_screen_without_declared_controls(self):
+        with self.harness() as page:
+            first = page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              window.viewer = await MachinomeViewer.mount(host, 'manifest.json', FILM);
+              viewer.setTime(0);
+              viewer.setView(FILM_VIEW);
+              const canvas = host.querySelector('canvas').getBoundingClientRect();
+              return { controls: viewer.controls().length,
+                       hub: viewer.partOnScreen(['Hub']),
+                       blade: viewer.partOnScreen(['b0']),
+                       canvas: { left: canvas.left, top: canvas.top,
+                                 right: canvas.right, bottom: canvas.bottom } };
+            }""".replace('FILM_VIEW', FILM_VIEW).replace('FILM', FILM_MOUNT))
+            image = self.shot(page)
+            later = page.evaluate("""() => {
+              viewer.setTime(0.25);
+              return viewer.partOnScreen(['b0']);
+            }""")
+        self.assertEqual(first['controls'], 0, 'the spinner declares no controls')
+        hub, canvas = first['hub'], first['canvas']
+        self.assertIsNotNone(hub, 'the hub is in view and was not tracked')
+        rect, point = hub['rect'], hub['point']
+        self.assertGreater(rect['width'], 10)
+        self.assertGreater(rect['height'], 10)
+        self.assertGreaterEqual(rect['x'], canvas['left'])
+        self.assertGreaterEqual(rect['y'], canvas['top'])
+        self.assertLessEqual(rect['x'] + rect['width'], canvas['right'])
+        self.assertLessEqual(rect['y'] + rect['height'], canvas['bottom'])
+        self.assertIsNotNone(point, 'no visible point was found on the hub')
+        self.assertTrue(rect['x'] <= point['x'] <= rect['x'] + rect['width'])
+        self.assertTrue(rect['y'] <= point['y'] <= rect['y'] + rect['height'])
+        # The pixel at the point is the hub's red, not a blade's blue and
+        # not the white page behind a transparent canvas.
+        r, g, b = image.getpixel((round(point['x']), round(point['y'])))
+        self.assertTrue(r > 100 and r > 1.4 * g and r > 1.4 * b,
+                        f'the pixel at the hub point is {(r, g, b)}, not the hub')
+        # A blade turns with time and its rectangle moves with it.
+        before, after = first['blade']['rect'], later['rect']
+        moved = max(abs(before[key] - after[key])
+                    for key in ('x', 'y', 'width', 'height'))
+        self.assertGreater(moved, 5, f'the blade rectangle did not move: {before} {after}')
+
+    def test_a_projected_point_lands_in_its_part(self):
+        with self.harness() as page:
+            result = page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              const viewer = await MachinomeViewer.mount(host, 'manifest.json', FILM);
+              viewer.setView(FILM_VIEW);
+              const view = viewer.view();
+              const behind = view.camera.clone().multiplyScalar(2).sub(view.target);
+              return { hub: viewer.partOnScreen(['Hub']).rect,
+                       axis: viewer.project([0, 0, 3]),
+                       behind: viewer.project([behind.x, behind.y, behind.z]),
+                       atCamera: viewer.project([view.camera.x, view.camera.y, view.camera.z]),
+                       aside: viewer.project([500, 0, 2]) };
+            }""".replace('FILM_VIEW', FILM_VIEW).replace('FILM', FILM_MOUNT))
+        hub, axis = result['hub'], result['axis']
+        # A point on the hub's own axis, from the fixture's geometry: a
+        # cylinder of radius 8 standing on z 0 to 6 about the Z axis.
+        self.assertTrue(hub['x'] <= axis['x'] <= hub['x'] + hub['width'], (hub, axis))
+        self.assertTrue(hub['y'] <= axis['y'] <= hub['y'] + hub['height'], (hub, axis))
+        self.assertIsNone(result['behind'], 'a point behind the camera was mirrored')
+        self.assertIsNone(result['atCamera'])
+        # In front of the camera and off the canvas: answered, outside it.
+        self.assertIsNotNone(result['aside'])
+        self.assertGreater(result['aside']['x'], 800)
+
+    def test_part_tracking_answers_nothing_or_refuses(self):
+        with self.harness() as page:
+            result = page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              const viewer = await MachinomeViewer.mount(host, 'manifest.json', FILM);
+              viewer.setView(FILM_VIEW);
+              const blades = ['b0', 'b1', 'b2'].map(name => viewer.partOnScreen([name]).rect);
+              const whole = viewer.partOnScreen([]).rect;
+              viewer.setVisible(['b1'], false);
+              const hidden = viewer.partOnScreen(['b1']);
+              const refusal = (action) => {
+                try { action(); return null; } catch (error) { return String(error.message); }
+              };
+              const refusals = {
+                unknown: refusal(() => viewer.partOnScreen(['Nope'])),
+                notPath: refusal(() => viewer.partOnScreen('Hub')),
+                nonFinite: refusal(() => viewer.project([0, NaN, 0])),
+                short: refusal(() => viewer.project([0, 0])),
+              };
+              viewer.dispose();
+              refusals.disposedPart = refusal(() => viewer.partOnScreen(['Hub']));
+              refusals.disposedProject = refusal(() => viewer.project([0, 0, 0]));
+              return { blades, whole, hidden, refusals };
+            }""".replace('FILM_VIEW', FILM_VIEW).replace('FILM', FILM_MOUNT))
+        self.assertIsNone(result['hidden'], 'a hidden part was reported on screen')
+        whole = result['whole']
+        for blade in result['blades']:
+            self.assertLessEqual(whole['x'], blade['x'] + 1e-6)
+            self.assertLessEqual(whole['y'], blade['y'] + 1e-6)
+            self.assertGreaterEqual(whole['x'] + whole['width'],
+                                    blade['x'] + blade['width'] - 1e-6)
+            self.assertGreaterEqual(whole['y'] + whole['height'],
+                                    blade['y'] + blade['height'] - 1e-6)
+        refusals = result['refusals']
+        self.assertIn('Unknown assembly path: Nope', refusals['unknown'])
+        self.assertIn('partOnScreen', refusals['notPath'])
+        self.assertEqual(refusals['nonFinite'],
+                         'project needs three finite world coordinates')
+        self.assertEqual(refusals['short'],
+                         'project needs three finite world coordinates')
+        self.assertEqual(refusals['disposedPart'],
+                         'partOnScreen cannot use a disposed viewer')
+        self.assertEqual(refusals['disposedProject'],
+                         'project cannot use a disposed viewer')
+
+    def test_reading_positions_draws_no_frame(self):
+        with self.harness() as page:
+            result = page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              const viewer = await MachinomeViewer.mount(host, 'manifest.json', FILM);
+              viewer.setView(FILM_VIEW);
+              const gl = host.querySelector('canvas').getContext('webgl2')
+                || host.querySelector('canvas').getContext('webgl');
+              let draws = 0;
+              for (const name of ['drawArrays', 'drawElements', 'drawArraysInstanced',
+                                  'drawElementsInstanced', 'drawRangeElements']) {
+                if (typeof gl[name] !== 'function') continue;
+                const original = gl[name].bind(gl);
+                gl[name] = (...args) => { draws += 1; return original(...args); };
+              }
+              let notified = 0;
+              viewer.onAssemblyChange(() => { notified += 1; });
+              // The wrap sees a frame: setTime draws one.
+              viewer.setTime(0.1);
+              const bySetTime = draws;
+              draws = 0;
+              const view = viewer.view();
+              let started = performance.now();
+              for (let index = 0; index < 50; index += 1) viewer.partOnScreen(['Hub']);
+              const hubMs = (performance.now() - started) / 50;
+              started = performance.now();
+              for (let index = 0; index < 50; index += 1) viewer.partOnScreen([]);
+              const wholeMs = (performance.now() - started) / 50;
+              started = performance.now();
+              for (let index = 0; index < 50; index += 1) viewer.project([0, 0, 3]);
+              const projectMs = (performance.now() - started) / 50;
+              const after = viewer.view();
+              return { bySetTime, reads: draws, notified, hubMs, wholeMs, projectMs,
+                       unmoved: view.camera.equals(after.camera) && view.target.equals(after.target) };
+            }""".replace('FILM_VIEW', FILM_VIEW).replace('FILM', FILM_MOUNT))
+        self.assertGreater(result['bySetTime'], 0, 'the draw-call probe saw nothing')
+        self.assertEqual(result['reads'], 0, 'reading positions drew a frame')
+        self.assertEqual(result['notified'], 0)
+        self.assertTrue(result['unmoved'])
+        print(f"\npartOnScreen(['Hub']) {result['hubMs']:.3f} ms, partOnScreen([]) "
+              f"{result['wholeMs']:.3f} ms, project {result['projectMs']:.4f} ms per call")
+
+    def test_a_declared_control_and_its_part_agree(self):
+        export_touched(self.out_dir / 'touched')
+        with self.harness() as page:
+            result = page.evaluate("""async () => {
+              const host = document.getElementById('host');
+              const viewer = await MachinomeViewer.mount(host, 'touched/manifest.json',
+                                                         { autoplay: false });
+              // After a drawn frame: `controls()` reads the camera's
+              // matrices as the last render left them (evidence.md,
+              // "Out of scope"), while `partOnScreen` updates them itself.
+              await new Promise(done => requestAnimationFrame(
+                () => requestAnimationFrame(done)));
+              return viewer.controls().map(control => ({
+                name: control.name, rect: control.rect, point: control.point,
+                part: viewer.partOnScreen(control.part),
+              }));
+            }""")
+        self.assertGreater(len(result), 0)
+        seen = 0
+        for control in result:
+            if control['rect'] is None:
+                self.assertIsNone(control['part'], control['name'])
+                continue
+            seen += 1
+            self.assertEqual(control['part']['rect'], control['rect'], control['name'])
+            self.assertEqual(control['part']['point'], control['point'], control['name'])
+        self.assertGreater(seen, 0, 'no declared control was on screen')
 
 
 @needs_bundle

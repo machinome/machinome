@@ -147,8 +147,13 @@ describe('API_VERSION', () => {
   // cycle `slide-and-turn-parts` claims it.
   // API 27 distinguishes two selected Turn joints on one part through
   // named handles. The v13 document wire and version list do not move.
-  it('declares selected-joint handles as API 27', () => {
-    expect(API_VERSION).toBe(27);
+  // API 28 declares three film-annotation capabilities at once
+  // (OpenSpec `track-a-part-on-screen`, design D8): where a part and a
+  // world point stand on screen, a highlight that keeps, dims or ghosts
+  // the rest, and an up direction and field of view per view change.
+  // The document list does not move: none of them reads a new field.
+  it('declares film annotations as API 28', () => {
+    expect(API_VERSION).toBe(28);
   });
 });
 

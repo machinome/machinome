@@ -47,7 +47,9 @@ def test_the_manual_states_the_release():
     assert 'Machinome 0.7.1' in current
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     versions = widget['machinomeDocumentVersions']
-    assert f"viewer API {widget['machinomeViewerApi']}" in current
+    # The recorded release, not the live declaration: the source runs
+    # ahead of it at API 28 (OpenSpec `track-a-part-on-screen`, D9).
+    assert 'viewer API 27' in current
     assert f'document versions {versions[0]} through {versions[-1]}' in current
     assert 'released-viewer-api' not in (ROOT / 'docs/conf.py').read_text()
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
@@ -119,7 +121,10 @@ def test_full_screen_is_documented():
 
 def test_profile_contact_is_documented_as_part_of_the_release():
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
-    assert widget['machinomeViewerApi'] == 27
+    # Profile contact is in every source from API 26 on; the release
+    # record below pins what 0.7.0 declared (OpenSpec
+    # `track-a-part-on-screen`, D9).
+    assert widget['machinomeViewerApi'] >= 27
     assert widget['machinomeDocumentVersions'][-1] == 13
     compatibility = (ROOT / 'docs/compatibility.rst').read_text()
     running = (ROOT / 'docs/reference/running.rst').read_text()
@@ -135,3 +140,32 @@ def test_profile_contact_is_documented_as_part_of_the_release():
     assert 'profileOverlap' in release
     assert 'API 26 and\n  version 13 by finite profile contact' in release
     assert 'It declares viewer API 27' in ' '.join(release.split())
+
+
+def test_film_annotations_are_documented_as_current_source():
+    """OpenSpec `track-a-part-on-screen`, design D9: the source declares
+    API 28 after 0.7.1, in no published release, and the recorded 0.7.1
+    facts stay at API 27."""
+    widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
+    assert widget['machinomeViewerApi'] == 28
+    assert widget['machinomeDocumentVersions'] == list(range(1, 14))
+    compatibility = ' '.join((ROOT / 'docs/compatibility.rst').read_text().split())
+    assert 'The 0.7.1 release declares:' in compatibility
+    assert '**Viewer API** 27' in compatibility
+    assert ('The current source, after 0.7.1 and in no published release, '
+            'declares viewer API |viewer-api|') in compatibility
+    assert 'API 28 adds' in compatibility
+    index = ' '.join((ROOT / 'docs/index.rst').read_text().split())
+    assert 'declares viewer API 27 and reads document versions' in index
+    assert 'viewer API **27**' in (ROOT / 'README.md').read_text()
+    changelog = (ROOT / 'CHANGELOG.md').read_text()
+    assert '## Unreleased' not in changelog
+    assert 'API 28' not in changelog
+    handle = (ROOT / 'docs/reference/viewer-handle.rst').read_text()
+    assert '.. js:method:: ViewerHandle.partOnScreen(path)' in handle
+    assert '.. js:method:: ViewerHandle.project(world)' in handle
+    assert 'available since API 28' in handle
+    for page in sorted((ROOT / 'docs').rglob('*.rst')):
+        text = page.read_text().lower()
+        for word in ('videomaker', 'revolutions', 'leonardo', ' film'):
+            assert word not in text, (page, word)

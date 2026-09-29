@@ -213,3 +213,62 @@ Operating handles and part controls
    ``gesturePoint``. Dragging the undecided body requests neither turn;
    select the handle for the intended joint. Two turns selecting the same
    joint still refuse at load.
+
+Where parts stand on screen
+===========================
+
+These two members tell a host where to place its own overlay, such as an
+arrow or a label, over the model. The viewer draws nothing for them. Both are
+available since API 28; check :js:attr:`ViewerHandle.apiVersion` before calling
+them.
+
+Positions are **viewport CSS pixels**, the frame of ``controls()`` and of
+browser pointer coordinates. To place an absolutely positioned element inside
+your own container, subtract the container's ``getBoundingClientRect()``
+origin. Both members answer for the pose, visibility and camera your last call
+left (``setTime``, ``setView``, ``setVisible``, ``setRoot``, a driver change),
+whether or not a frame has been drawn since. Reading draws no frame, changes
+no view, pose, visibility or material, and notifies no assembly listener, so
+you may read as often as you like between two changes. Read again after each
+change.
+
+.. js:method:: ViewerHandle.partOnScreen(path)
+
+   Return ``{rect, point}`` for an assembly path, or null. ``path`` is any path
+   of the loaded tree, a part or a subassembly; ``[]`` is the whole model. It
+   works whether or not the document declares part controls.
+
+   ``rect`` is ``{x, y, width, height}``: the screen rectangle of the
+   world-aligned box around the path's visible geometry. It encloses the part
+   and may be larger than its silhouette, most visibly for a long diagonal
+   part. It is not clipped to the canvas, so a part partly off screen reports
+   a rectangle that extends past the canvas edge.
+
+   ``point`` is ``{x, y}``, a point inside the canvas and inside ``rect`` at
+   which the nearest visible surface belongs to the path, found by the same
+   bounded search ``controls()`` uses: the rectangle's centre first, then a
+   7 × 7 grid. It is null when no probe finds the path's surface in front, for
+   example a part wholly behind another. Use ``point`` for the tip of an arrow
+   that must land on the part, and ``rect`` for placement around it.
+
+   The whole answer is null when nothing under the path is visible (hidden,
+   outside the focused root, or without geometry) or when all of it is off the
+   canvas. For a declared control's part, ``rect`` and ``point`` agree with
+   what ``controls()`` reports for it.
+
+   An unknown or ambiguous path throws ``Unknown assembly path: …`` or
+   ``Ambiguous assembly path: …`` naming it. A path that is not an array of
+   strings throws, as does a disposed viewer.
+
+.. js:method:: ViewerHandle.project(world)
+
+   Return the ``{x, y}`` screen position of a point given as ``[x, y, z]`` in
+   the scene's world coordinates, the coordinates ``setView()`` takes its
+   camera and target in, or null for a point at or behind the camera. A point
+   in front of the camera that falls outside the canvas returns a position
+   outside it; deciding what to do with it is the host's. ``project()`` says
+   where a point lands, not whether it is seen: a point hidden behind a part
+   still has a position.
+
+   Anything but three finite numbers throws
+   ``project needs three finite world coordinates``; a disposed viewer throws.
