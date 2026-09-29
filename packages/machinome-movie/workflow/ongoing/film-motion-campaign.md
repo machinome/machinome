@@ -71,4 +71,10 @@ demonstrated.
 - 29 Sep: `graphic-overlays` proposed and ratified (ring only; fade and draw-on
   entrances, fade exits; one spelling `enter`/`leave` for every cue's fade in
   0.4, pictures included; `fadeIn`/`fadeOut` only for the film's head and tail).
+- 29 Sep: `shot-transitions` implemented and archived (2885a45; 59 tests).
+  Two findings in its evidence: Chromium repaints the code panel's leftmost
+  column differently on a second pose (pre-existing; repainted only inside
+  transitions, existing films' pixels kept), and the masthead loses subpixel
+  antialiasing over a live WebGL canvas, so a transition frame is composed
+  entirely from captures of the same instant.
 
