@@ -189,6 +189,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const report=await browserSession(e,viewer,width,captions,async({page,pose,info})=>{
     const identity=hash(JSON.stringify({episode:e,hashes:info.hashes,browser:info.browser,width,fps,captions,
       renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
+      easing:await fileHash(resolve(here,'easing.mjs')),
       sourceRenderer:await fileHash(resolve(here,'code.mjs')),dependencies:await fileHash(resolve(here,'../package-lock.json'))}));
     const dir=resolve(e.paths.build,'frames',identity.slice(0,16));await mkdir(dir,{recursive:true});
     const count=e.output.durationSeconds*fps;

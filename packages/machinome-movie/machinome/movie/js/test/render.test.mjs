@@ -6,6 +6,8 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {preview,render,browserSession} from '../src/render.mjs';
 import {pcmWav} from '../src/speech.mjs';
+import {validateEpisode} from '../src/episode.mjs';
+import {frameAt} from '../src/timeline.mjs';
 
 // A minimal viewer double exercises film composition/encoding only. The real
 // sawmill preview separately proves the public viewer and mechanical pixels.
@@ -62,7 +64,7 @@ function viewerDouble(options={}){
     const norm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l);};
     const vec=a=>({toArray:()=>[...a]});
     return {apiVersion:o.api,setVisible(){},navigation(){return {};},
-      setTime(t){time=t;},
+      setTime(t){if(o.recordTime)calls.push(['setTime',t]);time=t;},
       setView(v){calls.push(['setView',v]);if(!v.camera.every(Number.isFinite))throw new Error('invalid camera');
         view={...view,camera:v.camera,target:v.target};
         if(!o.ignoreFov){if(v.up)view.up=v.up;if(v.fov!==undefined)view.fov=v.fov;}},
@@ -181,4 +183,36 @@ test('below API 28 the page calls setView exactly as before, with camera and tar
   });
   assert.equal(calls.result.length,3);
   for(const keys of calls.result)assert.deepEqual(keys,['camera','target']);
+});
+
+test('eased camera moves and model time reach the viewer as frameAt poses them, on API 28 and API 27',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const cameras={a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},b:{position:[4,-10,2],target:[0,0,0],up:[0,0,1],fov:37}};
+  const e=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:1.5,preset:'b',ease:'out'}],
+    simulation:{from:0,to:2,keyframes:[{at:0,seconds:0},{at:.5,seconds:0},{at:2,seconds:2,ease:'in'}]}},
+    {format:'machinome-video-draft/0.4',cameras});
+  const good=await viewer('viewer28.js',{recordTime:true});
+  const p=await preview(e,{viewer:good,width:640});
+  assert.equal(p.pixelReplay,true);
+  const instants=[.25,.75,1.25,1.5,1.75];
+  const calls=await browserSession(e,good,640,[],async({page,pose})=>{
+    await page.evaluate(()=>{window.viewerCalls.length=0;});
+    for(const time of instants)await pose(time);
+    return {result:await page.evaluate(()=>window.viewerCalls)};
+  });
+  const views=calls.result.filter(c=>c[0]==='setView').map(c=>c[1]),times=calls.result.filter(c=>c[0]==='setTime').map(c=>c[1]);
+  assert.equal(views.length,instants.length);assert.equal(times.length,instants.length);
+  instants.forEach((time,i)=>{
+    const f=frameAt(e,time);
+    assert.deepEqual(views[i],{camera:f.view.camera,target:f.view.target,up:f.up,fov:f.fov},`setView at ${time}`);
+    assert.equal(times[i],f.time,`setTime at ${time}`);
+  });
+  // Eased, not the default curves: out at half the move, in at half the segment.
+  assert.deepEqual(views[1].camera,[3.5,-10,1.75]);
+  assert.equal(times[2],.125);
+  assert.equal(times[0],0,'the held pose before the eased segment');
+  const old=await preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640});
+  assert.equal(old.pixelReplay,true,'easing needs no newer viewer');
+  e.model.timeMode='normalized-loop';
+  assert.doesNotThrow(()=>validateEpisode(e,{animation:{loop:2},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}}));
 });

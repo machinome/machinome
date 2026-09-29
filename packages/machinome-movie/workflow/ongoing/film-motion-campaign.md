@@ -62,3 +62,6 @@ demonstrated.
   demo uses the project's own renders only).
 - 29 Sep: `text-animation` proposed and ratified (no covering card; entrance
   spelling follows `graphic-overlays`; its demo may generate its own speech).
+- 29 Sep: `keyframes-and-easing` implemented red-first and archived (format
+  0.4, `src/easing.mjs`); evidence episode `demo-keyframes-and-easing`
+  untracked in Leonardo. The pilot's motion review (cubic or quadratic) is open.

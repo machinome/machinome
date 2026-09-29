@@ -3,7 +3,8 @@ import {resolve, dirname, relative, isAbsolute} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
 import {loadSourceCode,validateCode} from './code.mjs';
-import {cameraAt} from './timeline.mjs';
+import {cameraAt,FORMATS,formatAtLeast} from './timeline.mjs';
+import {EASINGS,unknownEasing} from './easing.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -19,8 +20,10 @@ export function parseSource(source) {
 }
 const need = (ok, message) => {if (!ok) throw new Error(message);};
 const finite = n => typeof n === 'number' && Number.isFinite(n);
-export const FORMATS=['machinome-video-draft/0.2','machinome-video-draft/0.3'];
-const V03=FORMATS[1];
+// The format list and its order live in timeline.mjs; code.mjs imports this
+// module while timeline.mjs is still loading, so nothing here reads them at load.
+export {FORMATS};
+const V02='machinome-video-draft/0.2',V03='machinome-video-draft/0.3',V04='machinome-video-draft/0.4';
 // Episodes without a format field are the unit-test shape of a 0.2 episode.
 const formatOf=e=>e.format??FORMATS[0];
 export function assemblyPaths(root) {
@@ -54,7 +57,7 @@ const pair=(v,lo,hi)=>Array.isArray(v)&&v.length===2&&v.every(n=>finite(n)&&n>=l
 const ANNOTATION_FIELDS=new Set(['from','to','kind','part','point','text','place','offset']);
 function validateAnnotations(e,s,known){
   if(s.annotations===undefined)return;
-  need(formatOf(e)===V03,`Annotations need format machinome-video-draft/0.3: shot ${s.id}`);
+  need(formatAtLeast(e,V03),`Annotations need format machinome-video-draft/0.3: shot ${s.id}`);
   need(Array.isArray(s.annotations),`Annotations must be a list: shot ${s.id}`);
   const inset=e.style?.safeInsetFraction;
   need(finite(inset)&&inset>=0&&inset<.5,`Annotations need a declared style.safeInsetFraction in [0, 0.5): shot ${s.id}`);
@@ -84,7 +87,7 @@ const HIGHLIGHT_FIELDS=new Set(['from','to','parts','others','color']);
 export const COLOR=/^#[0-9a-fA-F]{6}$/;
 function validateHighlight(e,s,known){
   if(s.highlight===undefined)return;
-  need(formatOf(e)===V03,`Highlights need format machinome-video-draft/0.3: shot ${s.id}`);
+  need(formatAtLeast(e,V03),`Highlights need format machinome-video-draft/0.3: shot ${s.id}`);
   need(Array.isArray(s.highlight),`Highlight must be a list of cues: shot ${s.id}`);
   const duration=s.end-s.start,hidden=hiddenPaths(e,s);
   s.highlight.forEach((c,i)=>{
@@ -131,6 +134,23 @@ export function confirmViewerApi(required,bundleText) {
   need(declared>=required.api,viewerApiRefusal(required,declared));
   return declared;
 }
+// Format 0.4 closes the field lists of a shot, its simulation, its model
+// keyframes and its camera keys; 0.2 and 0.3 keep ignoring unknown fields.
+const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','annotations','highlight']);
+const SIMULATION_FIELDS=new Set(['from','to','keyframes']);
+const KEYFRAME_FIELDS=new Set(['at','seconds','ease']);
+const CAMERA_KEY_FIELDS=new Set(['at','preset','ease']);
+function closedFields(e,value,fields,message){
+  if(!formatAtLeast(e,V04)||!value||typeof value!=='object')return;
+  for(const key of Object.keys(value))need(fields.has(key),message(key));
+}
+// ease on a key names the curve of the segment that ends there (format 0.4).
+function validateEase(e,s,key,i,what){
+  if(key?.ease===undefined)return;
+  need(formatAtLeast(e,V04),`Easing needs format machinome-video-draft/0.4: shot ${s.id}`);
+  need(i>0,`Nothing to ease before the first ${what}: shot ${s.id}`);
+  need(EASINGS.includes(key.ease),`${unknownEasing(key.ease)} (${what} #${i} in shot ${s.id})`);
+}
 export function validateEpisode(e, manifest) {
   need(FORMATS.includes(formatOf(e)),'Unsupported episode format');
   const paths=manifest.root?assemblyPaths(manifest.root):null;
@@ -150,25 +170,33 @@ export function validateEpisode(e, manifest) {
   need(Array.isArray(e.shots) && e.shots.length>0,'No shots');
   for (const s of e.shots) {
     need(typeof s.id==='string' && /^[a-z0-9-]+$/.test(s.id) && !ids.has(s.id), 'Shot ids must be unique slugs');ids.add(s.id);
+    closedFields(e,s,SHOT_FIELDS,key=>`Unknown shot field: ${key} (shot ${s.id})`);
     need(s.start===end && finite(s.end) && s.end>s.start, `Shots must be contiguous: ${s.id}`);end=s.end;
     need(typeof s.narration==='string' && s.narration.trim() && typeof s.direction==='string', `Missing narration/direction: ${s.id}`);
     need(s.speechOffset===undefined||(finite(s.speechOffset)&&s.speechOffset>=0&&s.speechOffset<s.end-s.start),`Invalid speech offset: ${s.id}`);
     validateCode(e,s);
+    closedFields(e,s.simulation,SIMULATION_FIELDS,key=>`Unknown simulation field: ${key} (shot ${s.id})`);
     need(finite(s.simulation.from) && finite(s.simulation.to) && s.simulation.from>=0 && s.simulation.to>=s.simulation.from && s.simulation.to<=e.model.expectedDurationSeconds,`Invalid simulation range: ${s.id}`);
     if(s.simulation.keyframes){
       const keys=s.simulation.keyframes;
       need(keys.length>=2&&keys[0].at===0&&keys[0].seconds===s.simulation.from&&keys.at(-1).at===s.end-s.start&&keys.at(-1).seconds===s.simulation.to,`Invalid model keyframe endpoints: ${s.id}`);
+      keys.forEach((k,i)=>{
+        closedFields(e,k,KEYFRAME_FIELDS,key=>`Unknown model keyframe field: ${key} (keyframe #${i} in shot ${s.id})`);
+        validateEase(e,s,k,i,'model keyframe');
+      });
       for(let i=0;i<keys.length;i++)need(finite(keys[i].at)&&finite(keys[i].seconds)&&keys[i].seconds>=s.simulation.from&&keys[i].seconds<=s.simulation.to&&(i===0||(keys[i].at>keys[i-1].at&&keys[i].seconds>=keys[i-1].seconds)),`Invalid model keyframes: ${s.id}`);
     }
     need(Array.isArray(s.camera) && s.camera.length>0 && s.camera[0].at===0,`Missing initial camera: ${s.id}`);
     let at=-1;let prior;
-    for (const key of s.camera) {
+    for (const [i,key] of s.camera.entries()) {
+      closedFields(e,key,CAMERA_KEY_FIELDS,field=>`Unknown camera key field: ${field} (key #${i} in shot ${s.id})`);
+      validateEase(e,s,key,i,'camera key');
       const c=e.cameras[key.preset];need(c && finite(key.at) && key.at>at && key.at<=s.end-s.start,`Invalid camera key: ${s.id}`);at=key.at;
-      if(prior&&formatOf(e)!==V03)need(c.fov===prior.fov && JSON.stringify(c.up)===JSON.stringify(prior.up),`Changing FOV/up within a shot is not supported: shot ${s.id}; use format machinome-video-draft/0.3 with Viewer API 28`);
+      if(prior&&formatOf(e)===V02)need(c.fov===prior.fov && JSON.stringify(c.up)===JSON.stringify(prior.up),`Changing FOV/up within a shot is not supported: shot ${s.id}; use format machinome-video-draft/0.3 with Viewer API 28`);
       if(prior)need(dot(unit(c.up),unit(prior.up))>=-.99,`Camera up reverses between keys in shot ${s.id}; add an intermediate preset`);
       prior=c;
     }
-    if(formatOf(e)===V03&&s.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(e.cameras[s.camera[0].preset].up)))
+    if(formatAtLeast(e,V03)&&s.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(e.cameras[s.camera[0].preset].up)))
       validateUpAlongShot(e,s);
     for(const name of s.hiddenLayers)need(e.layers[name],`Unknown layer: ${name}`);
     for(const cue of s.overlays)need(finite(cue.from)&&finite(cue.to)&&cue.from>=0&&cue.to>cue.from&&cue.to<=s.end-s.start&&typeof cue.text==='string'&&['top','lower-third','center'].includes(cue.position),`Invalid overlay: ${s.id}`);

@@ -1,22 +1,27 @@
 // Pure time mapping: no wall clock, browser state or mechanical equations.
 import {codeAt} from './code.mjs';
-const V03='machinome-video-draft/0.3';
+import {ease,keyedValue} from './easing.mjs';
+// Accepted episode formats, oldest first. Each accepts everything the one before
+// it does, with the same meaning; an episode without a format is a 0.2 episode.
+export const FORMATS=['machinome-video-draft/0.2','machinome-video-draft/0.3','machinome-video-draft/0.4'];
+export const formatAtLeast=(e,format)=>FORMATS.indexOf(e.format??FORMATS[0])>=FORMATS.indexOf(format);
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
-// Camera keys ease position, target and field of view with one smoothstep. In a
-// shot whose keys share one up, it is carried exactly as authored; in a shot
-// whose up changes, up is always a unit vector: the two keys' unit directions
-// mixed and normalized again (a hold normalizes the held direction).
+// Camera keys ease position, target and field of view along the curve named by
+// the key the move ends at (smooth unless it says otherwise). In a shot whose
+// keys share one up, it is carried exactly as authored; in a shot whose up
+// changes, up is always a unit vector: the two keys' unit directions mixed with
+// the same weight and normalized again (a hold normalizes the held direction).
 export function cameraAt(e,shot,local){
   let a=shot.camera[0],b=a;
   for(const key of shot.camera){if(key.at<=local)a=key;else{b=key;break;}b=a;}
   const ca=e.cameras[a.preset],cb=e.cameras[b.preset];
   const u=b.at===a.at?0:Math.min(1,(local-a.at)/(b.at-a.at));
-  const ease=u*u*(3-2*u);
-  const mix=k=>ca[k].map((v,i)=>v+(cb[k][i]-v)*ease);
-  const fov=ca.fov===cb.fov?ca.fov:ca.fov+(cb.fov-ca.fov)*ease;
+  const w=ease(b.ease??'smooth',u);
+  const mix=k=>ca[k].map((v,i)=>v+(cb[k][i]-v)*w);
+  const fov=ca.fov===cb.fov?ca.fov:ca.fov+(cb.fov-ca.fov)*w;
   let up=ca.up;
   const upChanges=shot.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(ca.up));
-  if(upChanges){const ua=unit(ca.up),ub=unit(cb.up);up=unit(ua.map((v,i)=>v+(ub[i]-v)*ease));}
+  if(upChanges){const ua=unit(ca.up),ub=unit(cb.up);up=unit(ua.map((v,i)=>v+(ub[i]-v)*w));}
   return {view:{camera:mix('position'),target:mix('target')},up,fov};
 }
 // Active annotations as data. Screen positions exist only in the posed page.
@@ -43,17 +48,16 @@ export function frameAt(e, t, captions=[]) {
   if(!shot)throw new Error(`Frame time ${t} is outside the episode`);
   const local=t-shot.start,duration=shot.end-shot.start;
   const camera=cameraAt(e,shot,local);
+  // Model keyframes are linear unless the key a segment ends at names a curve.
   const keys=shot.simulation.keyframes??[{at:0,seconds:shot.simulation.from},{at:duration,seconds:shot.simulation.to}];
-  const index=keys.findIndex((k,i)=>i+1<keys.length&&local>=k.at&&local<keys[i+1].at);
-  const left=keys[Math.max(0,index)],right=keys[Math.max(0,index)+1];
-  const modelSeconds=left.seconds+(right.seconds-left.seconds)*(local-left.at)/(right.at-left.at);
+  const modelSeconds=keyedValue(keys.map(k=>({at:k.at,value:k.seconds,ease:k.ease})),local,'linear');
   const frame={shotId:shot.id,time:modelSeconds/e.model.expectedDurationSeconds,
     view:camera.view,up:camera.up,fov:camera.fov,
     hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
     overlays:shot.overlays.filter(o=>local>=o.from&&local<o.to),
     code:codeAt(e,shot,local)};
-  // Format 0.2 frames keep their exact shape; 0.3 frames always carry the new cues.
-  if(e.format===V03){frame.annotations=annotationsAt(e,shot,local);frame.highlight=highlightAt(e,shot,local);}
+  // Format 0.2 frames keep their exact shape; 0.3 and later frames always carry the new cues.
+  if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,local);frame.highlight=highlightAt(e,shot,local);}
   return frame;
 }
 

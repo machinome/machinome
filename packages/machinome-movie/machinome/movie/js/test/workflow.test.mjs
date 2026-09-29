@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {parseSource, validateEpisode} from '../src/episode.mjs';
 import {frameAt, captionsFromAlignment} from '../src/timeline.mjs';
+import {base02,order02,lens03,cues03,cuesManifest} from './frame-fixtures.mjs';
 
 const fixture = () => ({output:{width:1280,height:720,fps:30,durationSeconds:4},
   model:{expectedDurationSeconds:296,timeMode:'normalized-loop'},
@@ -80,4 +81,49 @@ test('constant up and field of view are unchanged',()=>{
     3:{...second,time:0.04054054054054054,view:view([10,0,10])}};
   const e=fixture();
   for(const [t,frame] of Object.entries(pinned))assert.deepEqual(frameAt(e,Number(t)),frame);
+});
+test('0.2 and 0.3 frames are unchanged',()=>{
+  // Whole frameAt objects pinned literally from the timeline before
+  // keyframes-and-easing (base 37b2e56, src/ as 835cf35). order02 at 240/30 = 8 s
+  // is an instant where multiply-first and divide-first linear orders differ.
+  const pinned={
+    base02:{
+      "0":{"shotId":"first","time":0.02702702702702703,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[["Frame"]],"overlays":[],"code":null},
+      "1":{"shotId":"first","time":0.031531531531531536,"view":{"camera":[5,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[["Frame"]],"overlays":[],"code":null},
+      "3":{"shotId":"second","time":0.04054054054054054,"view":{"camera":[10,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null},
+      "0.5":{"shotId":"first","time":0.02927927927927928,"view":{"camera":[1.5625,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[["Frame"]],"overlays":[],"code":null},
+      "1.5":{"shotId":"first","time":0.033783783783783786,"view":{"camera":[8.4375,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[["Frame"]],"overlays":[],"code":null},
+      "1.75":{"shotId":"first","time":0.037162162162162164,"view":{"camera":[9.5703125,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[["Frame"]],"overlays":[],"code":null}},
+    order02:{
+      "238":{"shotId":"stroke","time":0.6028415042949927,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null},
+      "239":{"shotId":"stroke","time":0.6031217263775404,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null},
+      "240":{"shotId":"stroke","time":0.603401948460088,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null},
+      "241":{"shotId":"stroke","time":0.6036821705426356,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null},
+      "242":{"shotId":"stroke","time":0.6039623926251833,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null}},
+    lens03Tight:{
+      "1":{"shotId":"narrow","time":0.030405405405405407,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0,0,1],"fov":28.5,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "0.2":{"shotId":"narrow","time":0.0277027027027027,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0,0,1],"fov":36.524,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "0.5":{"shotId":"narrow","time":0.028716216216216218,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0,0,1],"fov":34.34375,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "1.3":{"shotId":"narrow","time":0.031418918918918924,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0,0,1],"fov":24.789749999999998,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "1.9":{"shotId":"narrow","time":0.033445945945945944,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0,0,1],"fov":20.12325,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "2.5":{"shotId":"narrow","time":0.03547297297297297,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0,0,1],"fov":20,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null}},
+    lens03Rolled:{
+      "1":{"shotId":"narrow","time":0.030405405405405407,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0.3826834323650897,0,0.9238795325112867],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "0.2":{"shotId":"narrow","time":0.0277027027027027,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0.019958727736856283,0,0.99980080475419],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "0.5":{"shotId":"narrow","time":0.028716216216216218,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0.11501586620387408,0,0.9933636547213576],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "1.3":{"shotId":"narrow","time":0.031418918918918924,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0.5409539174957836,0,0.8410522333041895],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "1.9":{"shotId":"narrow","time":0.033445945945945944,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0.703464783916434,0,0.7107301160000219],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null},
+      "2.5":{"shotId":"narrow","time":0.03547297297297297,"view":{"camera":[0,-10,0],"target":[0,0,0]},"up":[0.7071067811865475,0,0.7071067811865475],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[],"highlight":null}},
+    cues03:{
+      "1":{"shotId":"pawls","time":0.030405405405405407,"view":{"camera":[2,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":[{"index":0,"kind":"arrow","text":"Pulls one tooth","target":{"paths":[["Feed mechanism","Driving pawl"]]},"place":[0.18,0.22],"safeInset":0.08}],"highlight":{"paths":[["Feed mechanism","Driving pawl"],["Feed mechanism","Holding pawl"]],"others":"ghost","color":"#bf531f"}}}
+  };
+  const check=(e,pins,t=Number,m={animation:{loop:296}})=>{
+    validateEpisode(e,m);
+    for(const [k,frame] of Object.entries(pins))assert.deepEqual(frameAt(e,t(k)),frame,`${e.shots[0].id} at ${k}`);
+  };
+  for(const format of [undefined,'machinome-video-draft/0.2']){const e=base02();if(format)e.format=format;check(e,pinned.base02);}
+  check(order02(),pinned.order02,k=>Number(k)/30);
+  check(lens03('tight'),pinned.lens03Tight);
+  check(lens03('rolled'),pinned.lens03Rolled);
+  check(cues03(),pinned.cues03,Number,cuesManifest);
 });

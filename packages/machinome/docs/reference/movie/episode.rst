@@ -1,15 +1,18 @@
-# Episode source contract — drafts 0.2 and 0.3
+# Episode source contract — drafts 0.2, 0.3 and 0.4
 
 Status: 0.2 is implemented and used by every Leonardo episode; 0.3 is a draft
-that adds cues needing Viewer API 28 (see "Format 0.3" below). Both remain
-provisional formats.
+that adds cues needing Viewer API 28 (see "Format 0.3" below); 0.4 is a draft
+that adds named easing of camera moves and model time and closes the field
+lists of shots and keys (see "Format 0.4" and "Easing" below). All three
+remain provisional formats.
 The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
 ## Read the screenplay first
 
 `videos/<episode-id>/episode.yaml` is the entry point. Its `format` is
-`machinome-video-draft/0.2` or `machinome-video-draft/0.3`. It contains `id`, `title`, `status`, `learningGoal`,
+`machinome-video-draft/0.2`, `machinome-video-draft/0.3` or
+`machinome-video-draft/0.4`. It contains `id`, `title`, `status`, `learningGoal`,
 the relative `production` settings path, and ordered `shots`.
 
 Each shot contains its spoken narration and a plain-language visual direction.
@@ -91,7 +94,8 @@ The final frame is at `(frameCount - 1) / fps`, not at the duration.
 
 `simulation: {from, to}` maps the shot's video interval linearly to model seconds.
 Optional `keyframes: [{at, seconds}, ...]` maps explicit shot-local video instants
-to model seconds, interpolating linearly between them. The first key is at zero
+to model seconds, interpolating linearly between them; in format 0.4 a key may
+add `ease` to shape the segment that ends at it (see "Easing"). The first key is at zero
 and matches `from`; the last is at the shot duration and matches `to`. Video
 times increase strictly; model times never decrease. The sawmill uses these
 keys to align the return stroke and cut/advance beats with measured speech.
@@ -103,10 +107,12 @@ Machines with memory need a future replay/checkpoint contract; this format
 does not pretend their state is an arbitrary time coordinate.
 
 `camera` keys use shot-local `at` seconds. One key holds the view; multiple
-keys interpolate position and target with smoothstep easing. The first is at
+keys interpolate position and target with smoothstep easing (the curve named
+`smooth`); in format 0.4 a key may add `ease` to name another curve for the
+move that ends at it (see "Easing"). The first is at
 zero, keys increase strictly, and the last cannot exceed the shot's duration.
 Hold the last key to the end. In format 0.2 every key of a shot must share one
-up and field of view. In format 0.3 they may differ (see "Changing the lens and
+up and field of view. From format 0.3 they may differ (see "Changing the lens and
 the up direction" below).
 Shot boundaries are hard cuts; no crossfade or automatic framing is implied.
 
@@ -183,7 +189,7 @@ syntax colors follow video time, so seeking/resuming preserves exact frames.
 ## Format 0.3 and the viewer it needs
 
 `machinome-video-draft/0.3` accepts everything 0.2 does, with the same meaning,
-plus the cues below. They are accepted only in 0.3: a 0.2 episode carrying one is
+plus the cues below. They are accepted only in 0.3 and later: a 0.2 episode carrying one is
 refused and asked to change its format, never rendered with the cue silently
 missing. A 0.2 episode keeps its exact behaviour and any Viewer API 21 or later.
 
@@ -278,7 +284,7 @@ cameras:
       - {at: 4, preset: pawls-tight}   # hold position, narrow the view onto the pawls
 ```
 
-The field of view eases with the same smoothstep as position and target and
+The field of view eases with the same easing as position and target and
 holds after the last key. In a shot whose keys share one `up`, it is used
 exactly as written. In a shot whose `up` changes, the two keys' directions are
 mixed with the same easing and normalized, so up is always a unit vector (this
@@ -287,7 +293,7 @@ Episodes whose cameras all share one up and field of view produce the same
 frames as before, in either format.
 
 `check` refuses, naming the shot: in 0.2, keys of one shot that change field of
-view or up; in 0.3, adjacent keys whose up directions are nearly opposite (add
+view or up; from 0.3, adjacent keys whose up directions are nearly opposite (add
 an intermediate preset), and, in a shot whose up changes, any output frame whose
 up lies within about half a degree of the viewing direction, with its time.
 
@@ -348,6 +354,118 @@ captures without it must match exactly (restore is complete), and the two with
 it must match (it re-applies identically). A failure keeps its before/after
 images in `preview/`. Whether a ghosted frame reads as translucent context is a
 judgement on the stills, not an automated claim.
+
+## Format 0.4
+
+`machinome-video-draft/0.4` accepts everything 0.3 does, with the same meaning:
+a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does,
+and a 0.4 episode that does not ease anything produces the frames it would
+produce declared 0.3. It adds `ease` on camera keys and model keyframes.
+
+- `ease` is accepted only in 0.4. A 0.2 or 0.3 episode carrying one is refused
+  and asked to change its format, never rendered with its curves silently
+  replaced by the default:
+  `Easing needs format machinome-video-draft/0.4: shot genome`.
+- In 0.4 the field lists are closed. A shot accepts `id`, `start`, `end`,
+  `speechOffset`, `narration`, `direction`, `simulation`, `camera`,
+  `hiddenLayers`, `overlays`, `evidence`, `code`, `annotations` and
+  `highlight`; its `simulation` accepts `from`, `to` and `keyframes`; a model
+  keyframe `at`, `seconds` and `ease`; a camera key `at`, `preset` and `ease`.
+  Anything else is refused, naming the field and the shot:
+  `Unknown camera key field: eas (key #1 in shot genome)`,
+  `Unknown model keyframe field: speed (keyframe #1 in shot genome)`,
+  `Unknown simulation field: ease (shot genome)`,
+  `Unknown shot field: transiton (shot genome)`. So a misspelled field, or a
+  field that a later build of Videomaker defines and this one does not, is
+  never silently dropped. 0.2 and 0.3 episodes keep ignoring unknown fields.
+- Easing needs no newer viewer: it changes only the numbers the film page
+  already sends. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
+  uses (annotations, highlights, a change of lens or up); one that only eases
+  runs on Viewer API 21 or later.
+
+## Easing
+
+A curve shapes how a keyed value travels from one key to the next. There are
+five, and only these names are accepted:
+
+- `linear`: constant speed from key to key. The default for model keyframes.
+- `smooth`: starts from rest, is quickest in the middle and arrives at rest. The
+  default for camera keys, and the curve camera moves have always used.
+- `in`: starts from rest and gathers speed, arriving at full speed.
+- `out`: leaves at full speed and slows to rest on the key.
+- `in-out`: starts and arrives at rest like `smooth`, but lingers visibly longer
+  at each end and crosses the middle faster.
+
+`ease` on a key names the curve of the segment that ends at that key: "arrive at
+the linkage settling", "reach 461 gently". A key without `ease` takes the
+default of its field. The first key of a shot ends no segment, so `ease` there
+is refused: `Nothing to ease before the first camera key: shot genome` (and
+`... before the first model keyframe: ...`). A hold (two keys with the same
+preset or the same seconds) looks the same with any curve.
+
+Every curve starts exactly at the earlier key's value, arrives exactly at the
+later key's value, and never reverses or passes beyond either key. The `in`,
+`out` and `in-out` curves are cubic: at their fastest they move at three times
+the segment's average speed. Where that is too brisk, add a key and shorten the
+eased segment.
+
+A camera move that is already travelling at the cut and settles on the linkage
+(the *Revolutions* `genome` shot, restaged):
+
+```yaml
+# format machinome-video-draft/0.4
+    camera:
+      - {at: 0, preset: mechanism}
+      - {at: 9.615, preset: linkage, ease: out}   # already travelling at the cut; settles on the linkage
+```
+
+Position, target, field of view and up all follow the key's curve. A steady
+push-in over a whole shot is `ease: linear` on its last key.
+
+A mechanism that leaves a held pose gently, and one that settles into a pause
+(the *Revolutions* `machinome` and `genome` shots, restaged):
+
+```yaml
+# format machinome-video-draft/0.4
+  - id: machinome
+    simulation:
+      from: 453
+      to: 461
+      keyframes:
+        - {at: 0, seconds: 453}
+        - {at: 3.733, seconds: 453}              # held pose while the assembly is restored
+        - {at: 14, seconds: 461, ease: in}       # the machine starts gently
+  - id: genome
+    simulation:
+      from: 461
+      to: 466.8
+      keyframes:
+        - {at: 0, seconds: 461}
+        - {at: 6.899, seconds: 466.8, ease: out} # settles into the pause on "pause"
+        - {at: 12.5, seconds: 466.8}
+```
+
+Easing model time changes the speed of playback within a segment, like slow
+motion; it is never the machine's own dynamics, and every frame still shows a
+real pose of the simulation at some model second. Narration and directions must
+not present it as physics (a waterwheel does not brake). Keys stay exact: at
+every key's `at` the model is at that key's `seconds`, whatever the curves, so a
+beat keyed to a measured word stays on its word; an event inside a segment moves
+in video time when the segment's curve changes, so put a key where one must be
+exact. Model time never decreases and never passes beyond a segment's keys.
+Each segment is eased on its own: `in` after a moving segment first returns the
+machine to rest, and `out` into a moving segment arrives at rest, so these
+curves read best with a hold on the other side, as in both shots above.
+
+A plain `simulation: {from, to}` span takes no `ease`; write two keyframes with
+`ease` on the second. Typing cues, overlays, annotations, highlights and speech
+offsets are not eased.
+
+`check` refuses, naming the shot: an easing name other than the five
+(`Unknown easing: bounce; use linear, smooth, in, out or in-out (camera key #1
+in shot genome)`), including other spellings such as `ease-out` or `Smooth`;
+`ease` on a shot's first camera key or first model keyframe; and `ease` in a 0.2
+or 0.3 episode.
 
 ## Optional subtitles
 

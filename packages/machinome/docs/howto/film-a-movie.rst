@@ -18,7 +18,8 @@ study. Episodes in the draft format 0.3 that point at parts (`annotations`),
 highlight them (`highlight`) or change field of view or up between cameras
 need Viewer API 28, which the machinome-viewer source is adding and no
 published viewer release declares yet; `check`, `preview` and `render` refuse them against an
-older bundle. Linux/Chromium software rendering is the tested environment.
+older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
+alone runs on Viewer API 21. Linux/Chromium software rendering is the tested environment.
 
 ```sh
 npm ci
@@ -102,7 +103,10 @@ false but do not prevent a rehearsal. Nothing uploads or publishes.
 ## Timing and revisions
 
 Model seconds are independent of video seconds. Linear spans or explicit model
-keyframes can slow a mechanism or align a stroke with a word. The sawmill's
+keyframes can slow a mechanism or align a stroke with a word. In format 0.4 a
+model keyframe or a camera key can name an easing curve (`linear`, `smooth`,
+`in`, `out`, `in-out`) for the segment that ends at it, so a mechanism can leave
+a hold gently or settle into a pause while every key stays exact. The sawmill's
 completed pass is 296 seconds; the 84-second film uses seconds 8–80.
 That was the first rehearsal export; the current release-film export records
 1460 seconds. Production always verifies the selected manifest's duration.
