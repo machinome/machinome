@@ -9,3 +9,7 @@
 | 30 Sep | Leonardo: `videos/cut_and_advance/spec.md` rewritten as version 2 (the project template, source in three chapters, the Jobs element, the target `movie.py`) | Leonardo 7c9fefc |
 | 30 Sep | Worktree `WTs/declarative-stage` (branch `declarative-stage`) opened from be98523; cycle P running on an opus agent beside cycle A; editable install of `machinome-movie` points at it while it runs | this repository |
 | 30 Sep | Cycle A `one-runner` ratified (planning 82ba537, implementation 8b1202b; vitest, two projects, one Chromium and one asset server per run, the verdict and artefact memos in `.test-memo/`, ADR-003; 218 tests cold 340 s, warm 4.9 s with 96 passed from the memo) and merged into `react-stage` | c1040c5, `openspec/changes/archive/2026-09-30-one-runner/evidence.md` |
+| 30 Sep | Merged tree after A: Node suite cold 218 passed (340 s) | `.test-memo/` in `WTs/react-stage` |
+| 30 Sep | Cycle P `declarative-stage` ratified (planning 121a86c, implementation f5eb59f; ADR-005; 185 pytest) with the orchestrator's rulings on its nine contract findings (1782192: a dot bounds a token, `line=` on an emphasis, merged set props, draw is an entrance only; 186 pytest) and merged into `react-stage` | b109fd3, `openspec/changes/archive/2026-09-30-declarative-stage/evidence.md` |
+| 30 Sep | Leonardo spec: the coupling emphasis names line 415 | Leonardo aa3f762 |
+| 30 Sep | Between P and S the Node suite of `react-stage` is red on the removed 0.1 schema and fixtures, as P's wart 4 records; cycle S starts from b109fd3 | this commit |
