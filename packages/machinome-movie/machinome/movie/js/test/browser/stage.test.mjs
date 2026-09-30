@@ -98,6 +98,48 @@ test('posing A, then B, then A again gives identical pixels',async()=>{
   assert.equal((await replay(await double('drifting.js',{drift:true}))).same,false);
 });
 
+test('a pose waits for what can change the picture: nothing when only a view changes, a repaint when a title\'s words change',async()=>{
+  // Chromium rasters only what a change invalidates, and keeps antialiased
+  // glyph edges just outside it; a pose whose page changed repaints the whole
+  // page. A pose that changes only a view's canvas has nothing to repaint.
+  // Counted as the animation frames a pose requests.
+  const {film,viewer}=await theTour();
+  const holds=shotOf(film,'holds'),rise=shotOf(film,'rise'),fps=film.output.fps;
+  const h1=middle(film,'holds'),h2=h1+.2;
+  // An instant of rise with its heading fully shown and no mark half faded
+  // (a half-faded mark is composed from captures, which always repaint).
+  let a=null;
+  for(let n=Math.ceil(rise.start*fps);n/fps<rise.end&&a===null;n++){
+    const state=frameAt(film,n/fps).elements;
+    if(state['tip.heading'].shown&&state['tip.heading'].opacity===1&&state['tip.close'].marks.every(m=>m.opacity===1))a=n/fps;
+  }
+  assert.ok(a!==null&&h2<holds.end,'the instants exist');
+  const heading=frameAt(film,a).elements['tip.heading'],other={...heading,text:'Down and up again'};
+  const seen=await browserSession(film,viewer,WIDTH,[],async({page,pose})=>{
+    await page.evaluate(()=>{
+      const request=window.requestAnimationFrame.bind(window);
+      window.poseFrames=0;window.requestAnimationFrame=callback=>{window.poseFrames++;return request(callback);};
+    });
+    const posed=async(t,override)=>{
+      await page.evaluate(()=>{window.poseFrames=0;});
+      const f=await pose(t,{transition:null,...override});
+      return {frames:await page.evaluate(()=>window.poseFrames),view:f.elements['balance.mill'],png:await page.screenshot()};
+    };
+    const first=await posed(h1),again=await posed(h1),later=await posed(h2);
+    const A=await posed(a),B=await posed(a,{elements:{'tip.heading':other}}),A2=await posed(a);
+    return {result:{first,again,later,A,B,A2}};
+  });
+  const {first,again,later,A,B,A2}=seen.result;
+  assert.notDeepEqual([later.view.time,later.view.view],[first.view.time,first.view.view],'the view moved between the two instants of holds');
+  assert.equal(again.frames,0,'the same frame posed again requests no animation frame');
+  assert.ok(again.png.equals(first.png),'and gives the same pixels');
+  assert.equal(later.frames,0,'a frame of the view alone at another instant requests no animation frame');
+  assert.ok(B.frames>0,'a title whose words changed repaints the page');
+  assert.ok(A2.frames>0,'and so does the pose that changes them back');
+  assert.ok(!B.png.equals(A.png),'the words reach the pixels');
+  assert.ok(A2.png.equals(A.png),'posing A, then B, then A gives identical pixels for A');
+});
+
 test('a set with no Chrome draws no masthead: the shipped frame shows its view to the top edge',async()=>{
   const {film,viewer}=await theTour();
   const band=image=>{const out=new Set();

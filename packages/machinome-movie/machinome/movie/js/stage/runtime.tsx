@@ -4,10 +4,13 @@
 // first by the bundle's entry, so the shipped kinds are registered before a
 // project's modules register theirs; the entry calls boot() last.
 //
-// Raster discipline (the earlier film page's, kept): the whole page repaints
-// after every pose; live views are hidden while a transition or a blend is
-// composed from same-instant captures; nothing depends on the order frames are
-// posed in, because every frame re-specifies each instance's whole state.
+// Raster discipline (the earlier film page's, kept): a pose repaints the whole
+// page when what it draws outside the views' canvases changed since the last
+// repaint, and every composition repaints; live views are hidden while a
+// transition or a blend is composed from same-instant captures; nothing
+// depends on the order frames are posed in, because every frame re-specifies
+// each instance's whole state and the page's pixels are always a whole-page
+// raster of its present content (ADR-004, amendment of 30 September 2026).
 import {flushSync} from 'react-dom';
 import {createRoot,type Root} from 'react-dom/client';
 import './stage.css';
@@ -125,12 +128,20 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     for(const view of pool.values())if(view.host.isConnected)view.host.style.visibility='';
   }
   const hideViews=()=>{for(const view of pool.values())view.host.style.visibility='hidden';};
-  // Fresh poses, pictures and text end with a whole-page repaint: Chromium
+  // A whole-page repaint: Chromium rasters only what a change invalidates and
   // otherwise keeps antialiased glyph edges just outside a changed area.
+  // After it, the pixels are a fresh raster of the page's content, which is
+  // recorded: a later pose whose content is the same (only a view's canvas,
+  // its own rectangle, changed) has nothing an earlier pose could have left.
+  // The content is every element, attribute and word of the document; a
+  // canvas's pixels are not part of it.
+  const content=()=>document.documentElement.outerHTML;
+  let painted:string|null=null;
   async function repaint(){
     const background=document.body.style.background;
     document.body.style.background='#010203';await frames();
     document.body.style.background=background;await frames();
+    painted=content();
   }
   const chrome=():Rect[]=>[...chromeLayer.querySelectorAll(':scope > .vm-chrome')]
     .flatMap(wrapper=>[...wrapper.children].map(rectOf));
@@ -243,7 +254,9 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   const contains=(outer:Rect,inner:Rect)=>outer.x<=inner.x+.5&&outer.y<=inner.y+.5&&
     outer.x+outer.width>=inner.x+inner.width-.5&&outer.y+outer.height>=inner.y+inner.height-.5;
 
-  async function poseViews(frame:StageFrame):Promise<Record<string,Record<string,unknown>>>{
+  // Poses the frame's views and draws their marks; `resized` says a view was
+  // mounted, placed again or its box changed size, so the canvas wait ran.
+  async function poseViews(frame:StageFrame):Promise<{views:Record<string,Record<string,unknown>>;resized:boolean}>{
     const placed=[...new Set(Object.values(frame.slots))].filter(k=>frame.elements[k]?.kind==='view');
     for(const view of pool.values())if(!placed.includes(view.key)){view.host.remove();view.host.style.visibility='hidden';}
     const posed:[PooledView,ViewState,HTMLElement][]=[];
@@ -289,7 +302,7 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
         ...(view.viewer.apiVersion>=28?{up:read.up?.toArray(),fov:Number(read.fov)}:{}),
         navigation:view.viewer.navigation(),marks};
     }
-    return reports;
+    return {views:reports,resized};
   }
 
   // ----- measurement -----
@@ -328,9 +341,13 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     for(const [slot,k] of Object.entries(frame.slots))
       if(!stageRoot.querySelector(`.vm-slot[data-slot="${escape(slot)}"]`))
         throw new Error(`Set ${frame.set} draws no slot ${slot}, where shot ${frame.shotId} places ${k}`);
-    const views=await poseViews(frame);
+    const {views,resized}=await poseViews(frame);
     await decodePictures(frame);
-    await repaint();
+    // A pose waits for what can change the picture and for nothing else: a
+    // proof pose of preview, a view mounted, placed again or resized, or a
+    // page whose content differs from the last repaint's. A pose after a
+    // composition always differs: it emptied the transition layer.
+    if(frame.fresh||resized||content()!==painted)await repaint();
     return measure(frame,reports,views);
   }
 

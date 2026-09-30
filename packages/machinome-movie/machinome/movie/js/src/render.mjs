@@ -205,7 +205,8 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
     };
     // Poses one picture and runs every check a posed frame has. The stage
     // sets its whole state by request, so nothing depends on what was posed
-    // before; every pose ends with a whole-page repaint.
+    // before; a pose repaints the whole page when anything outside the views'
+    // canvases changed since the stage's last repaint.
     async function show(f,t,{pictureOnly=false,fresh=false}={}){
       if(errors.length)throw new Error(errors.join('\n'));
       const {transition,...request}=f;

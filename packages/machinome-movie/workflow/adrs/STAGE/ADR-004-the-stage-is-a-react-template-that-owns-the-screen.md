@@ -61,3 +61,45 @@ root set, a derived split and an element in its `stage.tsx`. The pilot's
 - Chrome is whatever a set marks, so the proofs' mask follows the template.
 - A mismatch between the Python declarations and the components fails
   `check` before speech is bought.
+
+## Amendment, 30 September 2026: a pose waits for what can change the picture
+
+OpenSpec change `pose-repaints`, from wart 4 of "The React stage" and wart 5
+of *Cut and Advance* (version 2: 638 s for 1769 frames at 1080p). The
+`react-stage` change made the whole-page repaint unconditional (its design
+D10): four animation frames on every pose, 55.9 ms of a 150 ms pose on the
+fixture tour.
+
+**Decision.** A pose repaints the whole page only when the frame is a proof
+pose of `preview` (`fresh`), when a view's viewer was mounted, placed again
+or its box resized on that pose, or when the page's content outside the
+pixels of its canvases (the serialized document: every element, attribute
+and word) differs from its content at the last repaint. Any other pose
+returns without waiting for an animation frame. Compositions (`compose`,
+`composeMarkBlend`) repaint every time, and the pose after one always
+differs, since it empties the transition layer.
+
+**Why it keeps a frame a pure function of video time.** The repaint exists
+because Chromium rasters only what a change invalidates and keeps
+antialiased glyph edges just outside it. After a repaint the pixels are a
+fresh raster of the content plus the canvases' pixels; a pose that skips it
+has the content of that repaint, so the same holds, and a canvas's pixels
+are confined to its own rectangle (the earlier film page never repainted
+its model frames). Comparing with the content at the last repaint, not at
+the last pose, keeps the induction exact.
+
+**Options set aside.** Always repainting (the cost). A rule by element kind
+(fresh poses, pictures, titles and source panels whose text changed): it
+misses a project element's words, a mark's label and a set's chrome, and
+repaints a held still on every frame. A mutation observer: the marks are
+rebuilt and the body's classes rewritten on every pose, so it would fire
+nearly always. A cheaper repaint: changes a mechanism the proofs rest on,
+and was not what the finding asked.
+
+**Consequences.** On the fixture tour (1280×720, viewer double) 207 of 778
+poses skip the repaint and capture runs at 5.3 to 5.4 frames a second
+instead of 4.8 to 4.9. Content the serialization cannot see (a shadow root,
+a scroll offset) would skip a repaint it needs; no shipped component uses
+one. On the fixture no pixel proof distinguishes this rule from repainting
+only fresh and resized poses; the content comparison is kept because the
+glyph-edge effect is recorded on real films at other sizes.

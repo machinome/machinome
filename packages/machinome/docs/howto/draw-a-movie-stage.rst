@@ -23,9 +23,14 @@ set a shot names and by the elements the shot places in that set's slots.
 For every output instant the tool resolves one **frame**: the set, which
 element is in which slot, and each placed element's complete state at that
 instant ("The frame" on the document's page). The stage draws the frame in
-one synchronous commit, poses the model's views, draws their marks, repaints
-and measures what was drawn. A component therefore receives everything it
-draws and keeps nothing between frames.
+one synchronous commit, poses the model's views, draws their marks, and
+measures what was drawn. When anything the page shows outside the views'
+canvases changed since its last repaint (an element, an attribute, a word),
+the stage first repaints the whole page, so no pixel of an earlier frame
+survives; a frame in which only the model moved waits for nothing. A
+component therefore receives everything it draws and keeps nothing between
+frames, and draws it in the page's elements, where the stage can see a
+change: not inside a shadow root.
 
 A module imports its API from `videomaker/stage` and registers its kinds
 when the bundle loads:

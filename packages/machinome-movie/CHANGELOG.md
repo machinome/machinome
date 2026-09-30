@@ -6,6 +6,18 @@ lands it.
 
 ## Unreleased
 
+- A pose waits for what can change the picture, and for nothing else: the
+  stage repaints the whole page only for preview's proof poses, when a view
+  was mounted, placed again or resized, or when anything the page shows
+  outside the views' canvases changed since its last repaint; a frame in
+  which only the model moved requests no animation frame. On the fixture
+  tour (567 frames at 1280×720, the viewer double) 207 of 778 poses skip
+  the repaint (55 ms each); capture runs at 5.3 to 5.4 frames a second
+  instead of 4.8 to 4.9 (about 105 s instead of 116 to 118 s), and the
+  command line's render of the tour takes 116.5 s instead of 127.6 s. A
+  browser test pins the rule. Every film's stage bundle changes, so every
+  film recaptures once. (`pose-repaints`, ADR-004 amended)
+
 - The stage waits for a view's canvas to fill its box before measuring it:
   on a fresh mount, after a change of set, and when a view placed again after
   shots without it comes back (the real viewer sizes its canvas on its own
