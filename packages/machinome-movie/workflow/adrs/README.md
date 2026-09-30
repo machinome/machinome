@@ -43,6 +43,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-004](STAGE/ADR-004-the-stage-is-a-react-template-that-owns-the-screen.md) | STAGE | The stage is a React template that owns the screen | Accepted |
 | [ADR-005](SOURCE/ADR-005-project-sets-and-elements-are-declared-in-python-and-drawn-in-react.md) | SOURCE | Project sets and elements are declared in Python and drawn in React | Accepted |
 | [ADR-006](SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md) | SOURCE | YAML episodes and movie documents load into one resolved document | Accepted |
+| [ADR-007](STAGE/ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md) | STAGE | Viewer instances are leased to view elements per frame | Accepted |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may

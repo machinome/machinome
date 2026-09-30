@@ -173,15 +173,34 @@ the views' canvases changed, and that a title whose words change between
 poses still gives identical pixels posed A, B, A; that nothing is drawn as
 chrome unless a set marks it; that chrome is absent from picture-only
 captures; that two views in one shot are two viewer instances and that a
-view keeps its instance across a cut inside its chapter; that a project
-element's state reaches its component; and every pixel proof `preview`
-makes. These tests SHALL be slow tests, memoized by the content they read,
-the stage's sources and the fixture project included.
+view keeps its instance across a cut inside its chapter; that a view
+element's instance is leased to another when it leaves, draws the other's
+state as a fresh instance would and is leased back when it returns, and that
+no order of frames mounts more instances than one frame places views; that a
+project element's state reaches its component; and every pixel proof
+`preview` makes. These tests SHALL be slow tests, memoized by the content
+they read, the stage's sources and the fixture project included.
 
 #### Scenario: A view across a cut
 - **WHEN** the fixture movie places one view in two shots of a chapter
 - **THEN** the browser test asserts that the same viewer instance is posed in
   both, and that a second view placed beside it is another instance.
+
+#### Scenario: A view that leaves and returns
+- **WHEN** the fixture's view A is posed with a standing highlight and a
+  hidden layer, then another chapter's view B with neither in another box,
+  then A again, with a viewer that sizes its canvas on its own animation
+  frame
+- **THEN** the browser test asserts that one instance served all three, that
+  the highlight was restored and the layer shown again before B was drawn,
+  that each canvas filled its box, that A's pixels are identical before and
+  after, and that B's equal those of a session where B is posed first.
+
+#### Scenario: Frames in any order
+- **WHEN** a frame placing A alone, one placing B alone and one placing both
+  side by side are posed in each of their six orders
+- **THEN** the browser test asserts that every order mounts two instances,
+  and that each frame's pixels are the same in all six.
 
 #### Scenario: Chrome only where a set asks for it
 - **WHEN** a fixture shot is drawn on the shipped `frame`

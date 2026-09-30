@@ -6,6 +6,18 @@ lands it.
 
 ## Unreleased
 
+- A film mounts no more viewer instances than one of its frames places
+  views. Instances are leased: a view element keeps its instance while
+  consecutive frames place it, an instance whose view a frame does not place
+  is free for the next view without one, and a new instance mounts only when
+  none is free; what an instance holds (hidden layers, a standing highlight)
+  travels with it, so a leased instance draws what a fresh one would. A
+  viewer below API 28, which keeps the up and field of view it mounted with,
+  is leased only to a view with that lens. The fixture tour, posed in order,
+  mounts one instance instead of four; a movie with six view elements whose
+  frames show one view each mounts one instead of six; a YAML episode no
+  longer mounts one per shot. `window.film.views()` gives each instance the
+  view element it serves, or `null`. (`viewer-instances`, ADR-007)
 - The speech command finds its ElevenLabs key when it runs from another work
   tree of the repository: it takes `ELEVENLABS_API_KEY` from the environment,
   then from the `.env` of the checkout it runs from, then from the `.env` of

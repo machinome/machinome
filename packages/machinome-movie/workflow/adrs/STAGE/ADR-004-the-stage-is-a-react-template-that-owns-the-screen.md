@@ -103,3 +103,13 @@ a scroll offset) would skip a repaint it needs; no shipped component uses
 one. On the fixture no pixel proof distinguishes this rule from repainting
 only fresh and resized poses; the content comparison is kept because the
 glyph-edge effect is recorded on real films at other sizes.
+
+## Amendment, 30 September 2026: viewer instances are leased
+
+OpenSpec change `viewer-instances`. Decision 3's count, "one instance per
+view element, kept across the shots of its chapter", is replaced by
+[ADR-007](ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md):
+instances are leased to the view elements each frame places, so a film
+mounts no more viewers than one of its frames places views. The viewer
+stays outside React, hosted in the view's box and re-posed from the whole
+state on every frame.
