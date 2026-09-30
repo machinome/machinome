@@ -165,3 +165,16 @@ mainline facts, with no source-only, incremental-cache or review-pack guidance:
 No skill metadata/frontmatter UI edit, no new campaign feature advice, and no
 workspace primary-checkout write. Root reviews this precise list before the
 separate apply agent edits the dedicated workspace worktree.
+
+## Workspace correction completed on its branch
+
+Sol applied exactly the four reviewed guidance corrections in workspace
+`WTs/videomaker-film-guidance`. Sol empirical independently compared the diff
+to the existing camera, subtitle and picture-release code; ten pure Node
+camera/annotation/highlight tests passed without a browser. Root reviewed the
+diff and source, independently checked static/cut API selection, ran the
+skill-creator validator and `git diff --check`, and committed only the skill
+at workspace `ba0a39c`. Metadata, no-credit policy and narration-cache wording
+are unchanged. Skill-creator guidance kept this a focused existing-skill
+correction, without new metadata or campaign features. The branch is clean;
+workspace main remains untouched and no merge/push is implied.
