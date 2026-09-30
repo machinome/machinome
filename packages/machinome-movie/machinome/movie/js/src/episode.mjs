@@ -54,26 +54,57 @@ function targetPaths(e,s,part,known,where){
 }
 function hiddenPaths(e,s){return (s.hiddenLayers??[]).flatMap(name=>e.layers?.[name]??[]);}
 const pair=(v,lo,hi)=>Array.isArray(v)&&v.length===2&&v.every(n=>finite(n)&&n>=lo&&n<=hi);
-const ANNOTATION_FIELDS=new Set(['from','to','kind','part','point','text','place','offset']);
+const ANNOTATION_FIELDS=new Set(['from','to','kind','part','point','text','place','offset','padding','enter','leave']);
+// Rings, padding, entrances and exits (format 0.4): the fields 0.3 does not know.
+const MARK_FIELDS=['padding','enter','leave'];
+const ENTRANCE_FIELDS=new Set(['kind','duration','ease']);
+// Seconds as an author wrote them, without the binary remainder of a subtraction.
+const seconds=x=>+x.toFixed(6);
+// An entrance or exit (graphic-overlays D3, D7): `enter` is a fade or a draw-on,
+// `leave` a fade; each at least two frames and within the cue.
+function validateEntrance(e,s,a,i,field,bad){
+  const x=a[field],what=field==='enter'?'entrance':'exit',where=`annotation #${i} in shot ${s.id}`;
+  if(x===undefined)return;
+  need(x&&typeof x==='object'&&!Array.isArray(x),bad(`${field} must be a mapping {kind, duration, ease}`));
+  for(const key of Object.keys(x))need(ENTRANCE_FIELDS.has(key),`Unknown ${what} field: ${key} (${where})`);
+  if(field==='enter'){
+    need(['fade','draw'].includes(x.kind),bad('the entrance kind must be fade or draw'));
+    need(!(x.kind==='draw'&&a.kind==='label'),bad('a label has no stroke to draw; enter with fade'));
+  }else need(x.kind==='fade',bad('the exit kind must be fade'));
+  if(x.ease!==undefined)need(EASINGS.includes(x.ease),`${unknownEasing(x.ease)} (${what} of ${where})`);
+  const fps=e.output.fps,cue=seconds(a.to-a.from);
+  need(finite(x.duration)&&x.duration*fps>=2-1e-9,bad(`the ${what} duration must be at least two frames (${(2/fps).toFixed(3)} s at ${fps} fps)`));
+  need(x.duration<=cue+1e-9,bad(`the ${x.duration} s ${what} is longer than the cue (${cue} s)`));
+}
 function validateAnnotations(e,s,known){
   if(s.annotations===undefined)return;
   need(formatAtLeast(e,V03),`Annotations need format machinome-video-draft/0.3: shot ${s.id}`);
   need(Array.isArray(s.annotations),`Annotations must be a list: shot ${s.id}`);
   const inset=e.style?.safeInsetFraction;
   need(finite(inset)&&inset>=0&&inset<.5,`Annotations need a declared style.safeInsetFraction in [0, 0.5): shot ${s.id}`);
-  const duration=s.end-s.start,hidden=hiddenPaths(e,s);
+  const duration=s.end-s.start,hidden=hiddenPaths(e,s),marks=formatAtLeast(e,V04);
   s.annotations.forEach((a,i)=>{
     const where=`annotation #${i}`,bad=why=>`Invalid ${where} in shot ${s.id}: ${why}`;
     need(a&&typeof a==='object'&&!Array.isArray(a),bad('expected a mapping'));
+    // Before 0.4 a ring or an entrance is asked to change its format, never
+    // refused as an unknown kind or field (design D7).
+    if(!marks){
+      const used=[...(a.kind==='ring'?['kind: ring']:[]),...MARK_FIELDS.filter(key=>a[key]!==undefined)];
+      need(!used.length,`Rings, entrances and exits need format machinome-video-draft/0.4: shot ${s.id} (${used[0]} in ${where})`);
+    }
     for(const key of Object.keys(a))need(ANNOTATION_FIELDS.has(key),`Unknown annotation field: ${key} (${where} in shot ${s.id})`);
-    need(['arrow','label'].includes(a.kind),bad('kind must be arrow or label'));
+    need((marks?['arrow','label','ring']:['arrow','label']).includes(a.kind),bad(marks?'kind must be arrow, label or ring':'kind must be arrow or label'));
     need(finite(a.from)&&finite(a.to)&&a.from>=0&&a.from<a.to&&a.to<=duration,bad('times must satisfy 0 <= from < to <= shot duration'));
+    if(a.kind==='ring')need(a.point===undefined,bad('a ring is drawn around a part; give part, not point'));
     need((a.part===undefined)!==(a.point===undefined),bad('give exactly one of part or point'));
     if(a.point!==undefined)need(Array.isArray(a.point)&&a.point.length===3&&a.point.every(finite),bad('point must be three finite numbers'));
     else for(const path of targetPaths(e,s,a.part,known,where))
       need(!hidden.some(h=>within(h,path)),`Annotated part is hidden in shot ${s.id}: ${path.join('/')} (${where})`);
     need(a.text===undefined||(typeof a.text==='string'&&a.text.trim().length>0),bad('text must be non-empty words'));
-    if(a.kind==='arrow'){
+    if(a.kind==='ring'){
+      need(a.text===undefined&&a.place===undefined&&a.offset===undefined,bad('a ring carries no text or place; add a label or an arrow beside it'));
+      need(a.padding===undefined||(finite(a.padding)&&a.padding>=0&&a.padding<=.25),bad('padding must be a number in [0, 0.25]'));
+    }else if(a.kind==='arrow'){
       need(a.offset===undefined,bad('offset belongs to a label; an arrow takes place'));
       need(pair(a.place,0,1),bad('an arrow needs place: [x, y] within the safe area, each in [0, 1]'));
     }else{
@@ -81,6 +112,11 @@ function validateAnnotations(e,s,known){
       need(typeof a.text==='string'&&a.text.trim().length>0,bad('a label needs text'));
       need(a.offset===undefined||pair(a.offset,-1,1),bad('offset must be [dx, dy], each in [-1, 1]'));
     }
+    if(a.kind!=='ring')need(a.padding===undefined,bad('padding belongs to a ring'));
+    validateEntrance(e,s,a,i,'enter',bad);
+    validateEntrance(e,s,a,i,'leave',bad);
+    if(a.enter&&a.leave)need(a.enter.duration+a.leave.duration<=seconds(a.to-a.from)+1e-9,
+      `Entrance and exit overlap in ${where} in shot ${s.id}: ${a.enter.duration} s in and ${a.leave.duration} s out exceed its ${seconds(a.to-a.from)} s`);
   });
 }
 const HIGHLIGHT_FIELDS=new Set(['from','to','parts','others','color']);

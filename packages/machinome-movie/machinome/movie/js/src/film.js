@@ -38,7 +38,7 @@
     const cues=frame.annotations??[];if(!cues.length)return [];
     const origin=layer.getBoundingClientRect(),W=window.innerWidth,H=window.innerHeight;
     const svg=document.createElementNS(svgNS,'svg');svg.setAttribute('width',W);svg.setAttribute('height',H);layer.append(svg);
-    const shape=(name,attributes)=>{const el=document.createElementNS(svgNS,name);for(const [k,v] of Object.entries(attributes))el.setAttribute(k,v);svg.append(el);};
+    const shape=(name,attributes,parent=svg)=>{const el=document.createElementNS(svgNS,name);for(const [k,v] of Object.entries(attributes))el.setAttribute(k,v);parent.append(el);return el;};
     const local=p=>({x:p.x-origin.left,y:p.y-origin.top});
     const drawn=[];
     for(const cue of cues){
@@ -47,12 +47,35 @@
       const entry={index:cue.index,kind:cue.kind,anchor:found.anchor,rect:found.rect,text:null,tail:null};drawn.push(entry);
       if(!entry.anchor)continue;
       const inset=cue.safeInset,safe={x:W*inset,y:H*inset,width:W*(1-2*inset),height:H*(1-2*inset)};
+      // At rest use the exact old drawing path, including text rasterization.
+      const animated=cue.opacity!==undefined&&(cue.opacity<1||cue.drawn<1);
+      const strokes=animated?shape('g',{opacity:cue.opacity}):svg;
+      if(cue.opacity!==undefined){entry.opacity=cue.opacity;entry.drawn=cue.drawn;}
+      if(cue.kind==='ring'){
+        const {x,y,width,height}=entry.rect,P=cue.padding*safe.width;
+        const cx=x+width/2,cy=y+height/2,rx=Math.SQRT2*(width/2+P),ry=Math.SQRT2*(height/2+P);
+        entry.ring={cx,cy,rx,ry};
+        const top=local({x:cx,y:cy-ry}),bottom=local({x:cx,y:cy+ry});
+        const path=shape('path',{d:`M ${top.x} ${top.y} A ${rx} ${ry} 0 0 1 ${bottom.x} ${bottom.y} A ${rx} ${ry} 0 0 1 ${top.x} ${top.y}`,
+          fill:'none',stroke:style.accent,'stroke-width':W*.0024},strokes);
+        if(cue.drawn!==undefined&&cue.drawn<1){
+          path.setAttribute('pathLength','1');path.setAttribute('stroke-dasharray',`${cue.drawn} 1`);
+          path.setAttribute('stroke-linecap','butt');
+          if(cue.drawn>0){
+            const length=path.getTotalLength(),inside=path.getPointAtLength(cue.drawn*length/2),outside=path.getPointAtLength((1+cue.drawn)*length/2);
+            entry.inside={x:inside.x+origin.left,y:inside.y+origin.top};
+            entry.outside={x:outside.x+origin.left,y:outside.y+origin.top};
+          }
+        }
+        continue;
+      }
       const centre=cue.kind==='arrow'?{x:safe.x+cue.place[0]*safe.width,y:safe.y+cue.place[1]*safe.height}
         :{x:entry.anchor.x+cue.offset[0]*safe.width,y:entry.anchor.y+cue.offset[1]*safe.height};
       if(cue.text!==undefined){
         const el=document.createElement('div');el.className='annotation-text';el.textContent=cue.text;layer.append(el);
         const size=el.getBoundingClientRect(),at=local({x:centre.x-size.width/2,y:centre.y-size.height/2});
         el.style.left=`${at.x}px`;el.style.top=`${at.y}px`;entry.text=plain(el.getBoundingClientRect());
+        if(animated)el.style.opacity=String(cue.opacity);
       }
       if(cue.kind!=='arrow')continue;
       // The shaft leaves the text box at the edge nearest the tip; the tip touches the part.
@@ -62,8 +85,17 @@
       const length=Math.hypot(tip.x-tail.x,tip.y-tail.y),u=length?{x:(tip.x-tail.x)/length,y:(tip.y-tail.y)/length}:{x:0,y:1};
       const head=W*.012,half=head*.7,base={x:tip.x-u.x*head,y:tip.y-u.y*head};
       const a=local(tail),b=local(base),t=local(tip);
-      if(length>head)shape('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:style.accent,'stroke-width':W*.0024});
-      shape('polygon',{fill:style.accent,points:[[t.x,t.y],[b.x-u.y*half,b.y+u.x*half],[b.x+u.y*half,b.y-u.x*half]].map(p=>p.join(',')).join(' ')});
+      if(cue.drawn!==undefined&&cue.drawn<1){
+        const f=cue.drawn,edge={x:a.x+u.x*length*f,y:a.y+u.y*length*f},normal={x:-u.y,y:u.x},span=2*Math.hypot(W,H);
+        const clip=shape('clipPath',{id:`mark-${cue.index}`});
+        shape('polygon',{points:[[a.x+normal.x*span,a.y+normal.y*span],[edge.x+normal.x*span,edge.y+normal.y*span],
+          [edge.x-normal.x*span,edge.y-normal.y*span],[a.x-normal.x*span,a.y-normal.y*span]].map(p=>p.join(',')).join(' ')},clip);
+        strokes.setAttribute('clip-path',`url(#mark-${cue.index})`);
+        if(f>0){entry.inside={x:tail.x+u.x*length*f/2,y:tail.y+u.y*length*f/2};
+          entry.outside={x:tail.x+u.x*length*(1+f)/2,y:tail.y+u.y*length*(1+f)/2};}
+      }
+      if(length>head)shape('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:style.accent,'stroke-width':W*.0024},strokes);
+      shape('polygon',{fill:style.accent,points:[[t.x,t.y],[b.x-u.y*half,b.y+u.x*half],[b.x+u.y*half,b.y-u.x*half]].map(p=>p.join(',')).join(' ')},strokes);
     }
     return drawn;
   }
@@ -90,7 +122,26 @@
   function clearComposition(){
     transition.replaceChildren();
     document.body.classList.remove('in-transition');
+    document.body.classList.remove('in-mark-blend');
     viewport.style.visibility='';
+  }
+  // Same-instant raster blend for faded marks. Chromium switches HTML glyphs
+  // from subpixel to grayscale antialiasing under CSS opacity; blending captures
+  // of the plain mark preserves the plain pixels and the authored opacity.
+  async function composeMarkBlend(pictures){
+    clearComposition();document.body.classList.add('in-mark-blend');
+    const W=window.innerWidth,H=window.innerHeight,canvas=document.createElement('canvas');
+    canvas.width=W;canvas.height=H;canvas.style.width=`${W}px`;canvas.style.height=`${H}px`;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true}),sum=new Float64Array(W*H*4);
+    for(const {src,weight} of pictures){
+      const img=new Image();img.src=src;await img.decode();ctx.clearRect(0,0,W,H);ctx.drawImage(img,0,0);
+      const rgba=ctx.getImageData(0,0,W,H).data;
+      for(let i=0;i<rgba.length;i++)sum[i]+=rgba[i]*weight;
+    }
+    const output=ctx.createImageData(W,H);
+    for(let i=0;i<sum.length;i++)output.data[i]=Math.round(sum[i]);
+    ctx.putImageData(output,0,0);transition.append(canvas);
+    return {chrome:chrome()};
   }
   async function compose(request){
     clearComposition();
@@ -120,6 +171,7 @@
     project:points=>points.map(p=>viewer.project(p)),
     // Draws a transition frame over the posed page; see compose.
     async compose(request){await compose(request);return {chrome:chrome()};},
+    async composeMarkBlend(pictures){return composeMarkBlend(pictures);},
     async setFrame(frame){
     // Every frame starts from an empty transition layer and a visible stage.
     clearComposition();

@@ -3,9 +3,10 @@
 Status: 0.2 is implemented and used by every Leonardo episode; 0.3 is a draft
 that adds cues needing Viewer API 28 (see "Format 0.3" below); 0.4 is a draft
 that adds named easing of camera moves and model time, transitions between
-shots and fades at the film's head and tail, and closes the field lists of
-shots and keys (see "Format 0.4", "Easing" and "Joining shots" below). All
-three remain provisional formats.
+shots and fades at the film's head and tail, rings around parts and
+entrances and exits for every annotation, and closes the field lists of
+shots and keys (see "Format 0.4", "Easing", "Joining shots", "Rings" and
+"Entrances and exits" below). All three remain provisional formats.
 The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
@@ -228,7 +229,9 @@ world point, which follow it on screen every frame.
 ```
 
 - `from`, `to`: shot-local seconds, half-open like overlays, `0 <= from < to <= duration`.
-- `kind`: `arrow` or `label`.
+- `kind`: `arrow` or `label`; in format 0.4 also `ring` (see "Rings" below).
+  A callout (words on a plate with a leader to the part they name) is an
+  `arrow` with `text`; there is no separate `callout` kind.
 - The target is exactly one of `part` and `point`. `part` is a production layer
   name (a string) or one root-relative assembly path (a list, spelled as a
   `layers` path is); a layer holding several paths is one target, its bounds the
@@ -270,6 +273,210 @@ shot, the annotation's index and text, and the video time:
 part that leaves the view therefore stops production; shorten the cue or
 reframe. `preview` samples every annotation at its start, quarters, midpoint and
 last frame, and its report records each drawn anchor, part rectangle and text box.
+
+### Rings
+
+In format 0.4 an annotation of kind `ring` singles out a part without words: an
+ellipse drawn around it, following it every frame as it moves and as the camera
+moves. The *Revolutions* `pawls` shot, restaged, rings the pawl each caption is
+about:
+
+```yaml
+# format machinome-video-draft/0.4
+  - id: pawls
+    start: 39.5
+    end: 49.5
+    ...
+    hiddenLayers: [structure, foundation, water, carriage]
+    overlays:
+      - {from: 0, to: 5.366, text: Pull · advance one tooth, position: top}
+      - {from: 5.366, to: 10, text: Return · hold that progress, position: top}
+    annotations:
+      - from: 0
+        to: 5.366
+        kind: ring
+        part: [Feed mechanism, Driving pawl]
+        enter: {kind: draw, duration: 0.8}      # draws itself round the pawl
+        leave: {kind: fade, duration: 0.4}      # fades as the next ring begins
+      - from: 5.366
+        to: 10
+        kind: ring
+        part: [Feed mechanism, Holding pawl]
+        padding: 0.02
+        enter: {kind: draw, duration: 0.8}
+```
+
+- **Target**: `part` only, a production layer name or one assembly path, as for
+  an arrow. A layer holding several paths is ringed as one: a layer holding
+  both pawls gets one ring around both. `point` is refused (a point has no
+  extent to ring).
+- **Where it is drawn**: take the part's on-screen rectangle, the same one (or
+  union of rectangles) whose centre places an arrow's tip, with centre
+  `(cx, cy)`, width `w` and height `h`. Grow it by `P` on every side, where `P`
+  is `padding` times the safe area's width in pixels. The ring is the ellipse
+  through the four corners of the grown rectangle: centred on `(cx, cy)`, with
+  semi-axes `rx = √2·(w/2 + P)` and `ry = √2·(h/2 + P)`. So it always encloses
+  the whole rectangle, stays clear of a slender diagonal part whose ends reach
+  the rectangle's corners, and takes the part's proportions (a long rope section
+  gets a long ring).
+- **`padding`** (optional, ring only): a number in `[0, 0.25]`, in safe-area
+  widths as `place` and `offset` are, the same distance on every side. Default
+  `0.01`, about 16 pixels on a 1920-pixel frame with a safe inset of 0.08.
+- **Look**: a stroke in `style.accent`, as wide as an arrow's shaft (`0.0024` of
+  the frame width), with no fill; drawn above the model and below the overlays,
+  in annotation order, like every annotation.
+- A ring carries no words: `text`, `place` and `offset` are refused on it. Put a
+  `label` or an `arrow` beside it in the same list when words are wanted.
+
+As a part turns, its rectangle changes shape and the ring breathes with it; for
+a part seen along a diagonal the rectangle, and so the ring, is much larger than
+the part. Review the stills; a smaller layer or another view is the remedy.
+
+`preview` and `render` refuse, at every posed frame of the cue (its entrance and
+exit included, and the frames a transition continues it into), in addition to
+the anchor check every annotation has: a ring whose part's rectangle is not
+wholly inside the model stage, `Ring target is not wholly on screen: pawls #0
+(ring) at 44.87 s` (the ring would enclose what the audience cannot see; shorten
+the cue or reframe); and a ring whose ellipse (`cx ± rx`, `cy ± ry`) leaves the
+frame, `Ring leaves the frame: pawls #0 (ring) at 44.87 s` (reduce the padding
+or reframe). A ring is never clipped or dropped silently.
+
+## Entrances and exits
+
+In format 0.4 every annotation (arrow, label or ring) may arrive and leave
+instead of appearing and vanishing in one frame. Two optional fields do this,
+each a short mapping on the annotation:
+
+- `enter: {kind, duration, ease}`: how the mark arrives. `kind` is `fade` (the
+  whole mark comes up from nothing) or `draw` (its stroke draws itself on).
+- `leave: {kind, duration, ease}`: how it goes. `kind` is `fade`, the only
+  departure.
+- `duration`: video seconds, at least two frames at `output.fps`. Required.
+- `ease`: optional, one of the five easing names (see "Easing"); default
+  `smooth`.
+
+The *demo-feed-mechanism* `name-the-pawls` shot, restaged:
+
+```yaml
+# format machinome-video-draft/0.4
+    annotations:
+      - {from: 0.2, to: 9, kind: arrow, part: [Feed mechanism, Driving pawl],
+         place: [0.1, 0.3], text: Driving pawl, enter: {kind: draw, duration: 0.8, ease: out}}
+      - {from: 1.9, to: 9, kind: label, part: [Feed mechanism, Holding pawl],
+         offset: [0.12, -0.03], text: Holding pawl, enter: {kind: fade, duration: 0.5}}
+```
+
+The words "Driving pawl" are there from 0.2 s and the arrow grows from them to
+the pawl, arriving at rest at 1.0 s; the label fades in between 1.9 s and 2.4 s.
+
+### Where they sit in time
+
+`from` and `to` keep their meaning. The entrance occupies the first `duration`
+seconds of the cue, from `from`; the exit the last `duration` seconds, up to
+`to`, so a mark that fades out is gone at `to` exactly as one without an exit
+is. With `u` the progress through the entrance or exit, from 0 to 1, eased by
+its curve:
+
+- a **fade** shows the whole mark (stroke, head, text plate and words) at an
+  opacity rising from 0 to 1 through an entrance and falling from 1 to 0
+  through an exit. Nothing moves or changes size.
+- a **draw**-on on a **ring** reveals the ellipse's stroke along its length from
+  its top point, clockwise on screen, to the drawn fraction of its perimeter.
+- a **draw**-on on an **arrow** shows the words and their plate in full from
+  `from` (the stroke leaves from them), and reveals the shaft and then the head
+  from the words towards the tip; an arrow without text reveals the same way
+  from its tail.
+- a **label** has no stroke, so `draw` is refused on it; enter it with `fade`.
+
+An entrance's first frame shows nothing of a faded mark, and none of a drawn
+stroke. An entrance or exit never changes where the mark is: from the end of
+the entrance, if that instant is still inside the cue, and at the start of the
+exit, the mark is drawn exactly as it is without one. Throughout the cue it
+keeps following its part (a ring's ellipse and an arrow's tip are recomputed
+from the part every frame).
+
+Into a transition (see "Joining shots"), a cue with a `leave` has left by its
+`to`, so if it runs to the shot's end it is not continued into the outgoing
+picture; a cue without `leave` stays, as every cue that runs to the end does,
+fully drawn.
+
+### Refusals
+
+`check`, `preview` and `render` refuse, naming the shot and the annotation:
+
+- `ring`, `padding`, `enter` or `leave` in a 0.3 episode, which is asked to
+  change its format, never rendered without them:
+  `Rings, entrances and exits need format machinome-video-draft/0.4: shot pawls (kind: ring in annotation #0)`
+  (0.2 keeps `Annotations need format machinome-video-draft/0.3`);
+- a kind other than `arrow`, `label` or `ring` (`kind must be arrow, label or
+  ring`, so `kind: callout` is refused too);
+- a ring with `point` (`a ring is drawn around a part; give part, not point`),
+  or with `text`, `place` or `offset` (`a ring carries no text or place; add a
+  label or an arrow beside it`); `padding` outside `[0, 0.25]` or on an arrow or
+  a label (`padding belongs to a ring`);
+- `enter` or `leave` that is not a mapping; an unknown field in either
+  (`Unknown entrance field: durration (annotation #0 in shot pawls)`,
+  `Unknown exit field: eas (annotation #0 in shot pawls)`);
+- an entrance kind other than `fade` or `draw`, an exit kind other than `fade`;
+  `draw` on a label (`a label has no stroke to draw; enter with fade`); an
+  easing other than the five (`Unknown easing: bounce; use linear, smooth, in,
+  out or in-out (entrance of annotation #0 in shot pawls)`);
+- a duration that is missing, not finite or shorter than two frames; an
+  entrance or exit longer than the cue (`the 1.2 s entrance is longer than the
+  cue (1 s)`); an entrance and an exit that together are longer than the cue
+  (`Entrance and exit overlap in annotation #0 in shot pawls: 0.8 s in and
+  0.6 s out exceed its 1.2 s`);
+- as for every annotation: an unknown layer or assembly path, a target the same
+  shot hides, a missing safe inset and times outside the shot.
+
+A frame's target checks (anchor on the stage, text in the frame, and a ring's
+two checks) apply for the whole cue, entrance and exit included: a mark fading
+in is still a claim about where the part is.
+
+### What preview proves
+
+For each annotation with an entrance or exit, `preview` adds stills at the
+entrance's first frame, midpoint and end, and at the exit's start, midpoint and
+last frame before `to`, beside the annotation's usual samples. It then poses
+each check's instant three ways, as authored ("composed"), with that one cue's
+`enter` and `leave` removed ("full") and with that one cue removed ("without"),
+and compares the decoded pixels:
+
+If an entrance lasts the whole cue, its end is exactly the exclusive `to`
+boundary. There is no active mark to sample there; the report records
+`enter-end` as skipped with `cue ends at this exclusive boundary` and checks
+the entrance's start and midpoint.
+
+- at a **fade**'s midpoint, entrance or exit, every channel of every pixel of
+  composed is within 2 levels of 255 of the blend `(1 − a)·without + a·full`,
+  `a` being the frame's opacity for the cue;
+- at a **draw**-on's midpoint, around the point halfway along the undrawn part
+  of the stroke composed equals without (within 2 levels) while full does not,
+  and around the point halfway along the drawn part composed differs from
+  without: the midpoint shows part of the stroke and not the rest;
+- at the entrance's first frame composed equals without exactly (for a draw-on
+  arrow with words, everywhere outside its text box);
+- at the entrance's end and at the exit's start composed equals full exactly;
+- posing the entrance's midpoint (or, without an entrance, the exit's), another
+  instant and the midpoint again gives identical pixels.
+
+`report.json` records `entranceChecks`, one per check: the shot, the
+annotation's index, the phase (`enter-start`, `enter`, `enter-end`,
+`leave-start`, `leave`), the entrance or exit kind, the time, the frame's
+opacity and drawn fraction, the largest difference found and whether full and
+without were identical (`vacuous`: then the check shows nothing). A failed proof
+stops preview, naming the shot, the annotation, the check and the time, and
+keeps `entrance-<shot>-<index>-<phase>-{composed,full,without}.png` in
+`preview/`:
+`Annotation fade does not blend as its easing predicts: pawls #0 leave at 45.07 s (largest difference 9 levels); inspect preview/entrance-pawls-0-leave-{composed,full,without}.png`.
+Whether a ring reads well, whether a draw-on is too quick and whether a fade is
+soft enough are for review on the stills and in motion.
+
+For a partly faded mark the film blends same-instant captures with that mark
+fully drawn and absent. This preserves the exact opaque text pixels in the
+blend, even where the browser changes text antialiasing under element opacity.
+When several marks fade together, it blends every full/absent combination in
+annotation order; `n` such marks require `2^n` captures per picture.
 
 ## Changing the lens and the up direction
 
@@ -365,12 +572,18 @@ judgement on the stills, not an automated claim.
 a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does,
 and a 0.4 episode that neither eases nor joins shots produces the frames it
 would produce declared 0.3. It adds `ease` on camera keys and model keyframes,
-and `transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots").
+`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"), and, on
+annotations, the kind `ring` with its `padding` and `enter` and `leave` on
+every kind (see "Rings" and "Entrances and exits"). A 0.4 annotation that uses
+none of `padding`, `enter` or `leave` and is an arrow or label is drawn exactly
+as in 0.3.
 
 - `ease` is accepted only in 0.4. A 0.2 or 0.3 episode carrying one is refused
   and asked to change its format, never rendered with its curves silently
   replaced by the default:
-  `Easing needs format machinome-video-draft/0.4: shot genome`.
+  `Easing needs format machinome-video-draft/0.4: shot genome`. Likewise a
+  ring, `padding`, `enter` or `leave` in a 0.3 episode:
+  `Rings, entrances and exits need format machinome-video-draft/0.4: shot pawls (kind: ring in annotation #0)`.
 - In 0.4 the field lists are closed. A shot accepts `id`, `start`, `end`,
   `speechOffset`, `narration`, `direction`, `simulation`, `camera`,
   `hiddenLayers`, `overlays`, `evidence`, `code`, `annotations`,
@@ -378,7 +591,10 @@ and `transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots").
   `from`, `to` and `keyframes`; a model keyframe `at`, `seconds` and `ease`; a
   camera key `at`, `preset` and `ease`; a `transition` `kind`, `duration`,
   `ease`, `direction` and `color`; a `fadeIn` or `fadeOut` `duration`, `ease`
-  and `color`.
+  and `color`. An annotation, whose list was closed in every format already,
+  accepts `from`, `to`, `kind`, `part`, `point`, `text`, `place`, `offset`,
+  `padding`, `enter` and `leave`; an `enter` or `leave` accepts `kind`,
+  `duration` and `ease`.
   Anything else is refused, naming the field and the shot:
   `Unknown camera key field: eas (key #1 in shot genome)`,
   `Unknown model keyframe field: speed (keyframe #1 in shot genome)`,
@@ -390,7 +606,9 @@ and `transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots").
   numbers the film page already sends, and a transition poses the viewer as
   every frame does. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
   uses (annotations, highlights, a change of lens or up); one that only eases
-  or joins shots runs on Viewer API 21 or later.
+  or joins shots runs on Viewer API 21 or later. A ring is an annotation, so it
+  needs Viewer API 28 as every annotation does; entrances and exits add
+  nothing.
 
 ## Easing
 
@@ -467,8 +685,9 @@ machine to rest, and `out` into a moving segment arrives at rest, so these
 curves read best with a hold on the other side, as in both shots above.
 
 A plain `simulation: {from, to}` span takes no `ease`; write two keyframes with
-`ease` on the second. Typing cues, overlays, annotations, highlights and speech
-offsets are not eased.
+`ease` on the second. Typing cues, overlays, highlights and speech offsets are
+not eased; an annotation's curve names only how its entrance or exit runs (see
+"Entrances and exits").
 
 `check` refuses, naming the shot: an easing name other than the five
 (`Unknown easing: bounce; use linear, smooth, in, out or in-out (camera key #1
@@ -563,7 +782,8 @@ continues rather than freezing:
 - its camera holds its last key;
 - each overlay, annotation or highlight cue that ran to the shot's end stays
   on; every other cue has ended. An annotation keeps following its part on the
-  moving model, and is refused if the part leaves the frame;
+  moving model, and is refused if the part leaves the frame; an annotation
+  with a `leave` has left by the shot's end and does not stay;
 - its code panel shows the completed excerpt, without a cursor;
 - its own `hiddenLayers` apply.
 

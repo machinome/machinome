@@ -150,7 +150,7 @@ entering or leaving. They MUST NOT clip or drop the ring silently.
 ### Requirement: Older episodes and plain 0.4 marks are unchanged
 
 Episodes in formats 0.2 and 0.3 SHALL produce exactly the frames and pixels they
-produced before this change, and a 0.4 annotation declaring none of `padding`,
+produced before this change, and a 0.4 arrow or label declaring none of `padding`,
 `enter` or `leave` SHALL be drawn exactly as the same annotation in 0.3. Rings
 and entrances MUST NOT raise the Viewer API an annotated episode needs.
 

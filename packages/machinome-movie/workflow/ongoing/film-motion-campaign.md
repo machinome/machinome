@@ -99,3 +99,14 @@ demonstrated.
   transitions, existing films' pixels kept), and the masthead loses subpixel
   antialiasing over a live WebGL canvas, so a transition frame is composed
   entirely from captures of the same instant.
+- 29 Sep, resumed run: `graphic-overlays` completed and archived after Codex's
+  adversarial and film review: 77 tests pass, all 32 fresh legacy 0.3 preview
+  images match detached pre-change `6417f97`, and the new Leonardo preview has
+  36 nonvacuous entrance/exit checks with maximum one-level pixel difference.
+  `videos/demo-graphic-overlays/_build/silent-preview.mp4` is 15 s at 960×540,
+  30 fps, SHA-256 `73b68c0e403e0a2482113d43bfe02ddd6f75ae0976b7eff0752590e70cc36404`.
+  Sixty decoded frames were visually inspected. Same-instant raster blending
+  resolved the HTML fade antialiasing finding; a fractional-start regression
+  resolved the real-model 10.2 s cue boundary failure. The archived change's
+  `root-review.md` keeps the independent video evidence. Text animation and
+  stills/clips remain, followed by the all-features film.

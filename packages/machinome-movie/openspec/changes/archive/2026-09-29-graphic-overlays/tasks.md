@@ -1,11 +1,11 @@
 ## 0. Preconditions
 
-- [ ] 0.1 The orchestrator, as ratification gate, and the pilot ratify this
-  proposal: the ring and its geometry (D2), a callout as an arrow with text
+- [x] 0.1 Confirm the existing 29 September ratification under the pilot's
+  delegation still covers this proposal: the ring and its geometry (D2), a callout as an arrow with text
   (D1), the `enter`/`leave` spelling and defaults (D3), the time functions
-  (D4), the refusals (D7), the pixel proofs (D8) and what is left out (D9); and
-  settle the spelling question with `stills-and-clips` (Open Questions).
-- [ ] 0.2 `keyframes-and-easing` and `shot-transitions` are implemented and
+  (D4), the refusals (D7), the pixel proofs (D8) and what is left out (D9).
+  `stills-and-clips` already adopted the shared `enter`/`leave` spelling.
+- [x] 0.2 `keyframes-and-easing` and `shot-transitions` are implemented and
   archived on branch `film-motion`; this change is applied before
   `text-animation` and `stills-and-clips`. Record the base commit in
   `evidence.md`, and the name of the pixel-comparison helper that
@@ -13,7 +13,7 @@
 
 ## 1. Red tests (written before any implementation; record each failure)
 
-- [ ] 1.1 `test/graphic-overlays.test.mjs` (new, Node only). Red before 2.1–2.2.
+- [x] 1.1 `test/graphic-overlays.test.mjs` (new, Node only). Red before 2.1–2.2.
   - A 0.4 fixture (the `annotated()` shape of `test/annotations.test.mjs`,
     declared 0.4, `output.fps` 30) with a ring on a path, a ring on a two-path
     layer, an arrow with `enter: {kind: draw, duration: 0.8, ease: out}` and a
@@ -51,11 +51,11 @@
     pawls`; in 0.2, the existing `Annotations need format ... 0.3` message.
   - `requiredViewerApi` of the 0.4 fixture is `{api: 28, reasons:
     ['annotations (shot pawls)']}`, unchanged by rings and entrances.
-- [ ] 1.2 Pins, green by design before and after (record green on the base):
+- [x] 1.2 Pins, green by design before and after (record green on the base):
   `test/annotations.test.mjs` passes unchanged; the whole `frameAt` objects of the
   0.3 annotated fixture at 0.25, 1 and 1.5 s, and of the same fixture declared 0.4
   (whatever frame-level keys the earlier 0.4 cycles added), are pinned literally.
-- [ ] 1.3 `test/render.test.mjs` (real browser, the API 28 viewer double).
+- [x] 1.3 `test/render.test.mjs` (real browser, the API 28 viewer double).
   Red before 2.3–2.4. Add double options, off by default so existing cases are
   unchanged: `rectSize: [w, h]` for the part's on-screen rectangle.
   - A 0.4 episode with a ring on `pawl` (0 to 2 s): preview passes with exact
@@ -75,7 +75,11 @@
     label with `leave: {kind: fade, duration: 1}`: preview passes and
     `entranceChecks` record the fade midpoints with `largestDifference <= 2` and
     `vacuous: false`, the entrance start equal to "without" and the entrance end
-    and exit start equal to "full".
+    and exit start equal to "full". Include overlapping cues so the full and
+    without captures hold the other cue in its authored state. A cue whose
+    `enter.duration` equals its `to − from` records `enter-end` skipped with
+    `cue ends at this exclusive boundary`, while its start and midpoint are
+    checked; no capture at `to` claims a visible mark.
   - Refusals: a ring whose double rect is wider than the stage
     (`Ring target is not wholly on screen: pawls #0 (ring)`); a ring with
     `padding: 0.25` whose ellipse leaves the 640×360 frame (`Ring leaves the
@@ -92,33 +96,36 @@
 
 ## 2. Implementation
 
-- [ ] 2.1 `src/episode.mjs`: in 0.4, `ring` and its fields, `padding`,
+- [x] 2.1 `src/episode.mjs`: in 0.4, `ring` and its fields, `padding`,
   `enter`/`leave` with their closed lists, kinds, durations and easing, the
   overlap rule (D2, D3, D7); in 0.3 the format message for the new fields; the
   annotation field list extended (D10). Every existing message unchanged.
-- [ ] 2.2 `src/timeline.mjs`: ring cues with explicit padding; `opacity` and
+- [x] 2.2 `src/timeline.mjs`: ring cues with explicit padding; `opacity` and
   `drawn` through `ease` for cues with `enter` or `leave` (D4, D5); no
   continuation of a cue with `leave` past its `to` (D5). Cues without the new
   fields emitted exactly as before.
-- [ ] 2.3 `src/film.js`: ring path, group opacity, dash and clip reveals, and the
-  report fields (D6); cues without the new fields drawn by the unchanged code.
-- [ ] 2.4 `src/render.mjs`: the two ring refusals in `pose` (D7); preview's
+- [x] 2.3 `src/film.js`: ring path, dash and clip reveals, the same-instant
+  opaque full/absent subset captures and weighted raster composition for
+  animated fades, and the report fields (D6); cues without the new fields
+  drawn by the unchanged code.
+- [x] 2.4 `src/render.mjs`: the two ring refusals in `pose` (D7); preview's
   entrance and exit samples, the pixel proofs with the shared comparison helper,
-  kept failure images and `entranceChecks` (D8); any new frame-path module in the
-  render identity (D10).
-- [ ] 2.5 `docs/FORMAT.md`: "Pointing at parts" gains the ring (target, geometry,
+  including a skipped `enter-end` at the cue's exclusive `to`, kept failure
+  images and `entranceChecks` (D8); any new frame-path module in the render
+  identity (D10).
+- [x] 2.5 `docs/FORMAT.md`: "Pointing at parts" gains the ring (target, geometry,
   padding, look, the D2 example) and the sentence "a callout is an arrow with
   text"; a new section "Entrances and exits" (the fields, fade and draw-on per
   kind, the D3 example, what an entrance never changes, the continuation rule
   into a transition, the refusals, the preview proofs); "Format 0.4" lists the
   annotation fields added and the 0.3 refusal. `README.md`: the `preview` bullet
   names the entrance and exit proofs and the ring refusals.
-- [ ] 2.6 `npm test` green; record the red runs of 1.1 and 1.3, the green pins
+- [x] 2.6 `npm test` green; record the red runs of 1.1 and 1.3, the green pins
   of 1.2 before and after, and the green run in `evidence.md`.
 
 ## 3. Consumer verification (implementation evidence)
 
-- [ ] 3.1 In the Leonardo project, as an untracked demo episode (nothing
+- [x] 3.1 In the Leonardo project, as an untracked demo episode (nothing
   committed there), `videos/demo-graphic-overlays/` in format 0.4 on the sawmill
   export: the restaged *Revolutions* `pawls` shot of D2 (two rings, draw-on and
   fade, the two `top` captions kept); the restaged `name-the-pawls` shot of D3
@@ -126,23 +133,28 @@
   shot on the `rope-wide` to `reduction` camera move, with rings on layers
   holding the export's `Large-radius rope reserve` and `Central small-radius
   take-up` in turn and labels "Rope 1" and "Rope 2" fading in.
-- [ ] 3.2 `check`, then `preview` with the Viewer API 28 bundle: record the
+- [x] 3.2 `check`, then `preview` with the Viewer API 28 bundle: record the
   `entranceChecks`, each ring's geometry at two instants of a moving pawl and
   during the camera move, the exact replay result and the stills.
-- [ ] 3.3 With one viewer bundle, `demo-annotate-a-part` and
+- [x] 3.3 With one viewer bundle, `demo-annotate-a-part` and
   `demo-feed-mechanism` (0.3) pass `check`, and their preview stills before (base
   commit) and after this change are byte-identical. One browser at a time.
-- [ ] 3.4 Render a short silent clip of the demo at full frame rate
-  (`--width 960 --fps 30 --silent`) so draw-ons and fades can be judged in
-  motion; record its hash.
+- [x] 3.4 The orchestrating agent renders a short silent clip of the demo at
+  full frame rate (`--width 960 --fps 30 --silent`) so draw-ons and fades can
+  be judged in motion; record its hash.
 
-## 4. Human review (not claimed by automation)
+## 4. Delegated film review and archive gate
 
-- [ ] 4.1 The pilot judges the rings (the ellipse through the grown rectangle,
-  the default padding, the stroke width), the pace of draw-ons and fades, and
-  whether rings breathing with a turning part's rectangle read well. Automated
-  checks prove geometry, blends, reveals and reproducibility, not how they look.
-- [ ] 4.2 The pilot decides whether the plain arrow wants a restyle, as a
-  separate small change (design Open Questions), and whether *Revolutions* or its
-  draft adopts rings or entrances. Publication, pushing and release renders need
-  the pilot's explicit request.
+- [x] 4.1 After implementation tests pass, the orchestrating agent performs an
+  adversarial review of the result against this plan and the rendered pixels,
+  resolving findings before archival. Review the ellipse through the grown
+  rectangle, default padding, stroke width, draw-on and fade pacing, and whether
+  a ring breathing with a turning part reads clearly. Automated checks prove
+  geometry, blends, reveals and reproducibility; record visual findings from
+  inspected video frames separately, without claiming the pilot reviewed them.
+- [x] 4.2 The orchestrating agent inspects the feature demonstration video from
+  Leonardo `videos/demo-graphic-overlays/` with vision,
+  records its path, hash and review findings, then syncs and archives this change.
+  A proposed arrow restyle or adoption by *Revolutions* is a separate pilot
+  decision, not a completion task in this cycle. Publication and pushing remain
+  outside this campaign.

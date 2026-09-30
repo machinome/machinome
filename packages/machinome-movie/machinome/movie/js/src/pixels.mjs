@@ -55,3 +55,43 @@ export function largestDifference(image,expect,mask=null){
   return largest;
 }
 export const at=(image,x,y,k)=>image.rgb[(y*image.width+x)*3+k];
+// The largest channel difference between two images within the 3×3
+// neighbourhood of the point p (viewport pixels, rounded).
+function aroundDifference(a,b,p){
+  let largest=0;
+  for(let y=Math.round(p.y)-1;y<=Math.round(p.y)+1;y++)for(let x=Math.round(p.x)-1;x<=Math.round(p.x)+1;x++){
+    if(x<0||y<0||x>=a.width||y>=a.height)continue;
+    for(let k=0;k<3;k++)largest=Math.max(largest,Math.abs(at(a,x,y,k)-at(b,x,y,k)));
+  }
+  return largest;
+}
+// Graphic-overlays proofs (design D8), on decoded captures of one instant: the
+// mark as authored (composed), drawn without its entrance and exit (full), and
+// not drawn (without). phase is enter-start, enter (the midpoint), enter-end,
+// leave-start or leave (the midpoint); info names the check (`where`), the
+// entrance kind, the frame's opacity, and the reported inside and outside
+// stroke points and text box. Returns what the report records, or throws.
+export function proveMark(phase,{composed,full,without},{where,entrance,opacity,inside,outside,text}={}){
+  const vacuous=full.rgb.equals(without.rgb),same=(a,b,mask)=>largestDifference(a,(x,y,k)=>at(b,x,y,k),mask);
+  let largest;
+  if(phase==='enter'&&entrance==='draw'){
+    largest=aroundDifference(composed,without,outside);
+    if(largest>2)throw new Error(`Annotation draw-on shows the rest of its stroke: ${where} (${largest} levels at the outside point)`);
+    if(aroundDifference(full,without,outside)<=2)throw new Error(`Annotation draw-on proof shows nothing: the complete stroke does not reach the outside point: ${where}`);
+    if(aroundDifference(composed,without,inside)<=2)throw new Error(`Annotation draw-on shows none of its stroke: ${where} (inside point)`);
+  }else if(phase==='enter'||phase==='leave'){
+    largest=largestDifference(composed,(x,y,k)=>(1-opacity)*at(without,x,y,k)+opacity*at(full,x,y,k));
+    if(largest>2)throw new Error(`Annotation fade does not blend as its easing predicts: ${where} (largest difference ${largest} levels)`);
+  }else if(phase==='enter-start'&&entrance==='draw'&&text){
+    // A draw-on arrow shows its words from the start, and nothing else of itself.
+    largest=same(composed,without,chromeMask(composed.width,composed.height,[text]));
+    if(largest>0)throw new Error(`Annotation draw-on does not start from its words alone: ${where} (largest difference ${largest} levels outside its text)`);
+  }else if(phase==='enter-start'){
+    largest=same(composed,without);
+    if(largest>0)throw new Error(`Annotation entrance does not start from nothing: ${where} (largest difference ${largest} levels)`);
+  }else if(phase==='enter-end'||phase==='leave-start'){
+    largest=same(composed,full);
+    if(largest>0)throw new Error(`${phase==='enter-end'?'Annotation entrance changes the mark it ends on':'Annotation exit does not start from the mark as drawn'}: ${where} (largest difference ${largest} levels)`);
+  }else throw new Error(`Unknown mark proof: ${phase}`);
+  return {largestDifference:largest,vacuous};
+}

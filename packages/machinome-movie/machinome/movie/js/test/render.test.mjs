@@ -8,6 +8,7 @@ import {preview,render,browserSession} from '../src/render.mjs';
 import {pcmWav} from '../src/speech.mjs';
 import {validateEpisode} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
+import {decodePng,hexColor} from '../src/pixels.mjs';
 
 // A minimal viewer double exercises film composition/encoding only. The real
 // sawmill preview separately proves the public viewer and mechanical pixels.
@@ -74,6 +75,8 @@ function viewerDouble(options={}){
         if(path.join('/')!=='Feed/Pawl')throw new Error('Unknown assembly path: '+path.join('/'));
         if(o.vanishAfter!==undefined&&time>o.vanishAfter)return null;
         const b=canvas.getBoundingClientRect();
+        // rectSize: the same centre, another size (off by default).
+        if(o.rectSize){const [w,h]=o.rectSize;return {rect:{x:b.left+b.width*(.35+.3*time)+12-w/2,y:b.top+b.height*.5-h/2,width:w,height:h},point:null};}
         return {rect:{x:b.left+b.width*(.35+.3*time),y:b.top+b.height*.5-10,width:24,height:20},point:null};
       },
       project(p){
@@ -300,4 +303,115 @@ test('an arrow that runs to the cut follows its part into the transition and is 
   const match=/^Annotation target is not on screen: model1 #0 'Pulls' at (\d+\.\d+) s$/.exec(error.message);
   assert.ok(match,error.message);assert.ok(Number(match[1])>2,'a time past the outgoing shot\'s end');
   assert.equal((await preview(e,{viewer:await viewer('staying.js'),width:640})).pixelReplay,true);
+});
+
+// Rings, entrances and exits (graphic-overlays, format 0.4).
+const V04={format:'machinome-video-draft/0.4'};
+const ACCENT=hexColor('#bf531f'),CANVAS=hexColor('#6f8fa8');
+// Every pixel of the 3×3 neighbourhood of p, as [r, g, b].
+const around=(image,p)=>{const out=[];
+  for(let y=Math.round(p.y)-1;y<=Math.round(p.y)+1;y++)for(let x=Math.round(p.x)-1;x<=Math.round(p.x)+1;x++)
+    out.push([0,1,2].map(k=>image.rgb[(y*image.width+x)*3+k]));
+  return out;};
+const near=(c,d,levels)=>c.every((v,k)=>Math.abs(v-d[k])<=levels);
+
+test('a ring encloses its moving part in the accent, and draws itself on clockwise from the top',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const good=await viewer('viewer28.js');
+  const e=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl'}]},V04);
+  const p=await preview(e,{viewer:good,width:640});
+  assert.equal(p.pixelReplay,true);
+  const rings=p.samples.filter(s=>s.annotations?.length).map(s=>({file:s.file,...s.annotations[0]}));
+  const [a,b]=[rings[0],rings.at(-1)];
+  assert.notDeepEqual(a.ring,b.ring,'the ring follows the part');
+  const P=.01*640*(1-2*.08);
+  for(const {rect,ring,file} of [a,b]){
+    const {cx,cy,rx,ry}=ring;
+    assert.ok(Math.abs(cx-(rect.x+rect.width/2))<1e-9&&Math.abs(cy-(rect.y+rect.height/2))<1e-9,'centred on the rectangle');
+    assert.ok(Math.abs(rx-Math.SQRT2*(rect.width/2+P))<1e-6&&Math.abs(ry-Math.SQRT2*(rect.height/2+P))<1e-6,'through the grown corners');
+    for(const [x,y] of [[rect.x,rect.y],[rect.x+rect.width,rect.y],[rect.x,rect.y+rect.height],[rect.x+rect.width,rect.y+rect.height]])
+      assert.ok(((x-cx)/rx)**2+((y-cy)/ry)**2<1,'every corner inside the ring');
+    assert.ok(around(decodePng(await readFile(file)),{x:cx+rx,y:cy}).some(c=>near(c,ACCENT,24)),'accent at the rightmost point');
+  }
+  // Drawn on over its first second, linearly: half drawn at 0.5 s, from the top round the right.
+  const drawn=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl',enter:{kind:'draw',duration:1,ease:'linear'}}]},V04);
+  const seen=await browserSession(drawn,good,640,[],async({page,pose})=>{
+    const f=await pose(.5);return {result:{ring:f.observed.annotations[0],image:decodePng(await page.screenshot())}};
+  });
+  const {ring,image}=seen.result;
+  assert.equal(ring.drawn,.5);assert.equal(ring.opacity,1);
+  assert.ok(ring.inside.x>ring.ring.cx,'the drawn half is on the right (clockwise from the top)');
+  assert.ok(ring.outside.x<ring.ring.cx,'the undrawn half is on the left');
+  assert.ok(around(image,ring.inside).some(c=>near(c,ACCENT,24)),'part of the stroke is drawn');
+  assert.ok(around(image,ring.outside).every(c=>near(c,CANVAS,2)),'the rest is not');
+  const q=await preview(drawn,{viewer:good,width:640});
+  assert.deepEqual(q.entranceChecks.map(c=>[c.shotId,c.index,c.phase,c.kind]),
+    [['pawls',0,'enter-start','draw'],['pawls',0,'enter','draw'],['pawls',0,'enter-end','draw']]);
+  assert.deepEqual(q.entranceChecks.map(c=>c.time),[0,.5,1]);
+  assert.equal(q.entranceChecks[1].drawn,.5);assert.equal(q.entranceChecks[1].replay,true);
+  for(const c of q.entranceChecks)assert.equal(c.vacuous,false);
+});
+
+test('an arrow fading in and a label fading out are proved as the blends their easing predicts',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{annotations:[
+    {from:0,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls',enter:{kind:'fade',duration:1,ease:'linear'}},
+    {from:0,to:2,kind:'label',point:[0,0,0],offset:[0,-.2],text:'Origin',leave:{kind:'fade',duration:1}}]},V04);
+  const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
+  assert.equal(p.pixelReplay,true);
+  const checks=Object.fromEntries(p.entranceChecks.map(c=>[`${c.index}:${c.phase}`,c]));
+  assert.deepEqual(Object.keys(checks),['0:enter-start','0:enter','0:enter-end','1:leave-start','1:leave']);
+  for(const key of ['0:enter','1:leave']){
+    const c=checks[key];assert.equal(c.kind,'fade');assert.ok(c.largestDifference<=2,key);assert.equal(c.vacuous,false,key);
+  }
+  assert.equal(checks['0:enter'].opacity,.5);
+  for(const key of ['0:enter-start','0:enter-end','1:leave-start'])assert.equal(checks[key].largestDifference,0,key);
+  assert.equal(checks['0:enter-start'].opacity,0);assert.equal(checks['1:leave-start'].opacity,1);
+});
+
+test('a drawn arrow keeps its words visible and reveals only the shaft toward its part',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'arrow',part:'pawl',place:[.1,.47],text:'Pulls',
+    enter:{kind:'draw',duration:1,ease:'linear'}}]},V04);
+  const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
+  assert.equal(p.pixelReplay,true);
+  assert.deepEqual(p.entranceChecks.map(c=>c.phase),['enter-start','enter','enter-end']);
+  assert.equal(p.entranceChecks[1].drawn,.5);
+  assert.equal(p.entranceChecks[1].replay,true);
+  for(const c of p.entranceChecks)assert.equal(c.vacuous,false);
+});
+
+test('a ring whose part is not wholly on the stage, or that leaves the frame, is refused',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const ring=extra=>filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl',...extra}]},V04);
+  await assert.rejects(preview(ring(),{viewer:await viewer('wide.js',{rectSize:[600,20]}),width:640}),
+    /^Error: Ring target is not wholly on screen: pawls #0 \(ring\) at 0\.00 s$/);
+  await assert.rejects(preview(ring({padding:.25}),{viewer:await viewer('viewer28.js'),width:640}),
+    /^Error: Ring leaves the frame: pawls #0 \(ring\) at 0\.00 s$/);
+  await assert.rejects(preview(ring(),{viewer:await viewer('vanishing.js',{vanishAfter:.5}),width:640}),
+    /Annotation target is not on screen: pawls #0 \(ring\)/);
+});
+
+test('an entrance lasting the whole cue ends at its exclusive boundary without a false full-mark proof',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl',enter:{kind:'fade',duration:2}}]},V04);
+  const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
+  assert.equal(p.pixelReplay,true);
+  assert.deepEqual(p.entranceChecks.map(c=>c.phase),['enter-start','enter','enter-end']);
+  assert.deepEqual(p.entranceChecks[2],{shotId:'pawls',index:0,phase:'enter-end',kind:'fade',time:2,
+    skipped:'cue ends at this exclusive boundary'});
+});
+
+test('a fractional cue at a nonzero shot start is active at its authored start and absent at its end',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  const e=filmEpisode(dir,{},V04);
+  e.output.durationSeconds=12;e.model.expectedDurationSeconds=20;
+  e.shots[0].id='lead';e.shots[0].end=10;e.shots[0].simulation.to=10;
+  e.shots.push({...e.shots[0],id:'ropes',start:10,end:12,simulation:{from:10,to:12},
+    annotations:[{from:.2,to:1.5,kind:'ring',part:'pawl',enter:{kind:'fade',duration:.5}}]});
+  assert.deepEqual(frameAt(e,10.2).annotations.map(a=>a.index),[0]);
+  assert.deepEqual(frameAt(e,11.5).annotations,[]);
+  const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
+  assert.equal(p.pixelReplay,true);
+  assert.deepEqual(p.entranceChecks.map(c=>[c.phase,c.time]),[['enter-start',10.2],['enter',10.45],['enter-end',10.7]]);
 });

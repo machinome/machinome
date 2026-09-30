@@ -24,15 +24,35 @@ export function cameraAt(e,shot,local){
   if(upChanges){const ua=unit(ca.up),ub=unit(cb.up);up=unit(ua.map((v,i)=>v+(ub[i]-v)*w));}
   return {view:{camera:mix('position'),target:mix('target')},up,fov};
 }
+// Normalized progress through an entrance or exit, settled at its ends so the
+// rounding of video time cannot leave a mark a hair short of plain (as transitions).
+const settled=x=>Math.abs(x)<1e-9?0:Math.abs(x-1)<1e-9?1:x;
 // Active annotations as data. Screen positions exist only in the posed page.
-function annotationsAt(e,shot,on){
+// Past the shot's end (a transition's continuation) a cue with an exit has left.
+function annotationsAt(e,shot,on,local,past){
   return (shot.annotations??[]).flatMap((a,index)=>{
-    if(!on(a))return [];
+    // Subtracting a nonzero shot start can put a new mark's written cue
+    // boundary just below `from` (10.2 - 10 < 0.2). Settle comparisons only
+    // for the new 0.4 mark features: older and plain 0.4 cues keep their
+    // original frame behavior. `to` remains exclusive at its rounded value.
+    const newMark=a.kind==='ring'||a.padding!==undefined||a.enter!==undefined||a.leave!==undefined;
+    const active=newMark?local>=a.from-1e-9&&(local<a.to-1e-9||(past&&a.to===shot.end-shot.start)):on(a);
+    if(!active||(past&&a.leave))return [];
     const target=a.point?{point:a.point}:{paths:typeof a.part==='string'?e.layers[a.part]:[a.part]};
     const cue={index,kind:a.kind,text:a.text,target};
     if(a.text===undefined)delete cue.text;
-    if(a.kind==='arrow')cue.place=a.place;else cue.offset=a.offset??[0,0];
+    if(a.kind==='arrow')cue.place=a.place;else if(a.kind==='ring')cue.padding=a.padding??.01;else cue.offset=a.offset??[0,0];
     cue.safeInset=e.style.safeInsetFraction;
+    // Opacity and drawn fraction (graphic-overlays D4), only for a cue that
+    // declares an entrance or exit: every other cue keeps its exact shape.
+    if(a.enter||a.leave){
+      const x=a.enter,y=a.leave;
+      const eIn=x?ease(x.ease??'smooth',settled((local-a.from)/x.duration)):1;
+      const fadeIn=x?.kind==='fade'?eIn:1;
+      const fadeOut=y?1-ease(y.ease??'smooth',settled((local-(a.to-y.duration))/y.duration)):1;
+      cue.opacity=Math.min(fadeIn,fadeOut);
+      cue.drawn=x?.kind==='draw'?eIn:1;
+    }
     return [cue];
   });
 }
@@ -68,7 +88,7 @@ function shotFrame(e,shot,local){
     overlays:shot.overlays.filter(on),
     code:codeAt(e,shot,local)};
   // Format 0.2 frames keep their exact shape; 0.3 and later frames always carry the new cues.
-  if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,on);frame.highlight=highlightAt(e,shot,on);}
+  if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,on,local,past);frame.highlight=highlightAt(e,shot,on);}
   // 0.4 frames always carry transition; a frame posed on its own has none.
   if(formatAtLeast(e,FORMATS[2]))frame.transition=null;
   return frame;

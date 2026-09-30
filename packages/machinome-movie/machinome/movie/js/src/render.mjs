@@ -6,12 +6,32 @@ import {chromium} from 'playwright';
 import {frameAt,srt} from './timeline.mjs';
 import {contained,requiredViewerApi,viewerApiRefusal} from './episode.mjs';
 import {fileHash,hash,json,command} from './util.mjs';
-import {decodePng,hexColor,chromeMask,largestDifference,at} from './pixels.mjs';
+import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
 const sub=(a,b)=>a.map((v,i)=>v-b[i]),add=(a,b,s)=>a.map((v,i)=>v+b[i]*s);
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+// All plain/absent states of simultaneously fading marks, preserving every
+// non-fading mark's position in the drawing order. The weights sum to one.
+export function fadeSubsets(annotations=[]){
+  const fades=annotations.filter(a=>a.opacity>0&&a.opacity<1);
+  if(!fades.length)return null;
+  const variants=[];
+  for(let mask=0;mask<2**fades.length;mask++){
+    let weight=1;
+    const chosen=annotations.flatMap(a=>{
+      const j=fades.findIndex(mark=>mark.index===a.index);
+      if(j<0)return [a];
+      const included=Math.floor(mask/2**j)%2===1;
+      weight*=included?a.opacity:1-a.opacity;
+      if(!included)return [];
+      const {opacity,drawn,...plain}=a;return [plain];
+    });
+    variants.push({annotations:chosen,weight});
+  }
+  return variants;
+}
 // Where a camera key starts or ends a change of field of view or up direction.
 function lensChanges(e,shot){
   const sameUp=(a,b)=>unit(a.up).every((v,i)=>Math.abs(v-unit(b.up)[i])<=1e-12);
@@ -97,15 +117,36 @@ export async function browserSession(e,viewer,width,captions,action) {
         const name=`${f.shotId} #${drawn.index}${cue.text===undefined?` (${cue.kind})`:` '${cue.text}'`} at ${t.toFixed(2)} s`;
         const p=drawn.anchor;
         if(!p||p.x<stage.x||p.x>stage.x+stage.width||p.y<stage.y||p.y>stage.y+stage.height)throw new Error(`Annotation target is not on screen: ${name}`);
+        if(cue.kind==='ring'){
+          const r=drawn.rect,g=drawn.ring;
+          if(r.x<stage.x||r.y<stage.y||r.x+r.width>stage.x+stage.width||r.y+r.height>stage.y+stage.height)
+            throw new Error(`Ring target is not wholly on screen: ${name}`);
+          if(g.cx-g.rx<0||g.cy-g.ry<0||g.cx+g.rx>frame.width||g.cy+g.ry>frame.height)
+            throw new Error(`Ring leaves the frame: ${name}`);
+        }
         const box=drawn.text;
         if(box&&(box.x<-.5||box.y<-.5||box.x+box.width>frame.width+.5||box.y+box.height>frame.height+.5))throw new Error(`Annotation text leaves the frame: ${name}`);
       }
       return observed;
     }
+    async function showPicture(f,t,options={}){
+      const variants=fadeSubsets(f.annotations);
+      if(!variants)return show(f,t,options);
+      // Each screenshot is the same instant with a subset of the faded marks
+      // drawn plainly. The weighted sum is exact even when two marks overlap:
+      // opacity compositing is affine in each mark's opacity separately.
+      const observed=await show(f,t,options),pictures=[];
+      for(const {annotations,weight} of variants){
+        await show({...f,annotations},t,{...options,fresh:true});
+        pictures.push({src:'data:image/png;base64,'+(await page.screenshot()).toString('base64'),weight});
+      }
+      Object.assign(observed,await page.evaluate(p=>window.film.composeMarkBlend(p),pictures));
+      return observed;
+    }
     // A picture of this instant without the film's chrome, posed and checked, as
     // the page will draw it again.
     async function capture(f,t){
-      const observed=await show(f,t,{pictureOnly:true});
+      const observed=await showPicture(f,t,{pictureOnly:true});
       return {src:'data:image/png;base64,'+(await page.screenshot()).toString('base64'),observed};
     }
     // One film frame. Inside a transition it is composed from poses of the same
@@ -117,7 +158,7 @@ export async function browserSession(e,viewer,width,captions,action) {
     async function pose(t,override={},{pictureOnly=false,fresh=false}={}){
       const f={...frameAt(e,t,captions),progress:t/e.output.durationSeconds,...override};
       const x=f.transition;let observed;
-      if(!x)observed=await show(f,t,{pictureOnly,fresh});
+      if(!x)observed=await showPicture(f,t,{pictureOnly,fresh});
       else{
         const outgoing=x.outgoing&&{...x.outgoing,progress:f.progress};
         let request;
@@ -174,6 +215,11 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
       for(const a of shot.annotations??[]){
         for(const u of [0,.25,.5,.75])times.push(shot.start+a.from+(a.to-a.from)*u);
         times.push(shot.start+Math.max(a.from,a.to-1/e.output.fps));
+        if(a.enter){
+          times.push(shot.start+a.from+a.enter.duration/2);
+          if(a.from+a.enter.duration<a.to-1e-9)times.push(shot.start+a.from+a.enter.duration);
+        }
+        if(a.leave)times.push(shot.start+a.to-a.leave.duration,shot.start+a.to-a.leave.duration/2);
       }
       for(const cue of shot.highlight??[])times.push(shot.start+(cue.from+cue.to)/2);
       for(const t of [...new Set(times)].sort((a,b)=>a-b)){
@@ -186,6 +232,57 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
       const file=resolve(dir,`${String(samples.length).padStart(2,'0')}-${shot.id}.png`);
       await page.screenshot({path:file});
       samples.push(posed.annotations?{time:t,file,annotations:posed.observed.annotations}:{time:t,file});
+      }
+    }
+    // Each animated mark is compared against the same instant with the mark
+    // drawn plainly and absent. These captures isolate its shot from a join.
+    const entranceChecks=[];
+    for(const shot of e.shots)for(const [index,cue] of (shot.annotations??[]).entries()){
+      if(!cue.enter&&!cue.leave)continue;
+      const checks=[];
+      if(cue.enter)checks.push(['enter-start',cue.from],['enter',cue.from+cue.enter.duration/2],['enter-end',cue.from+cue.enter.duration]);
+      if(cue.leave)checks.push(['leave-start',cue.to-cue.leave.duration],['leave',cue.to-cue.leave.duration/2]);
+      for(const [phase,local] of checks){
+        if(phase==='enter-end'&&local>=cue.to-1e-9){
+          entranceChecks.push({shotId:shot.id,index,phase,kind:cue.enter.kind,time:shot.start+cue.to,
+            skipped:'cue ends at this exclusive boundary'});
+          continue;
+        }
+        const time=shot.start+local,frame=frameAt(e,time,captions),asWritten=frame.annotations.find(a=>a.index===index);
+        if(!asWritten)throw new Error(`Annotation proof has no active cue: ${shot.id} #${index} ${phase} at ${time.toFixed(2)} s`);
+        const full=frame.annotations.map(a=>{
+          if(a.index!==index)return a;
+          const {opacity,drawn,...plain}=a;return plain;
+        });
+        const without=frame.annotations.filter(a=>a.index!==index);
+        const grab=async annotations=>{
+          const posed=await pose(time,{transition:null,...(annotations?{annotations}:{})},{fresh:true});
+          const bytes=await page.screenshot();return {posed,bytes,image:decodePng(bytes)};
+        };
+        const composed=await grab(),whole=await grab(full),absent=await grab(without);
+        const observed=composed.posed.observed.annotations.find(a=>a.index===index);
+        const kind=phase.startsWith('leave')?cue.leave.kind:cue.enter.kind;
+        const name=`entrance-${shot.id}-${index}-${phase}`,where=`${shot.id} #${index} ${phase} at ${time.toFixed(2)} s`;
+        let proof;
+        try{proof=proveMark(phase,{composed:composed.image,full:whole.image,without:absent.image},
+          {where,entrance:kind,opacity:asWritten.opacity,inside:observed.inside,outside:observed.outside,text:observed.text});}
+        catch(error){
+          for(const [label,picture] of [['composed',composed],['full',whole],['without',absent]])
+            await writeFile(resolve(dir,`${name}-${label}.png`),picture.bytes);
+          throw new Error(`${error.message}; inspect preview/${name}-{composed,full,without}.png`);
+        }
+        const check={shotId:shot.id,index,phase,kind,time,opacity:asWritten.opacity,drawn:asWritten.drawn,...proof};
+        if(phase==='enter'||(phase==='leave'&&!cue.enter)){
+          await pose(time,{transition:null},{fresh:true});const first=await page.screenshot();
+          await pose((time+e.output.durationSeconds/2)%e.output.durationSeconds,{transition:null},{fresh:true});
+          await pose(time,{transition:null},{fresh:true});const again=await page.screenshot();
+          if(!first.equals(again)){
+            await writeFile(resolve(dir,`${name}-replay-before.png`),first);await writeFile(resolve(dir,`${name}-replay-after.png`),again);
+            throw new Error(`Annotation entrance replay is not deterministic: ${where}; inspect preview/${name}-replay-{before,after}.png`);
+          }
+          check.replay=true;
+        }
+        entranceChecks.push(check);
       }
     }
     // Each transition: stills at its first frame, quarters, midpoint and last frame
@@ -287,7 +384,7 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
     if(!preserved)throw new Error('Invalid camera request changed viewer state');
     return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{}),...(cameraChecks.length?{cameraChecks}:{}),
-      ...(transitionChecks.length?{transitionChecks}:{})};
+      ...(transitionChecks.length?{transitionChecks}:{}),...(entranceChecks.length?{entranceChecks}:{})};
   });
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.
@@ -301,6 +398,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
     const identity=hash(JSON.stringify({episode:e,hashes:info.hashes,browser:info.browser,width,fps,captions,
       renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
       easing:await fileHash(resolve(here,'easing.mjs')),
+      pixels:await fileHash(resolve(here,'pixels.mjs')),
       sourceRenderer:await fileHash(resolve(here,'code.mjs')),dependencies:await fileHash(resolve(here,'../package-lock.json'))}));
     const dir=resolve(e.paths.build,'frames',identity.slice(0,16));await mkdir(dir,{recursive:true});
     const count=e.output.durationSeconds*fps;

@@ -16,10 +16,11 @@ Requires Node 22+, FFmpeg/ffprobe, and a Machinome Viewer API 21 bundle with
 `setView` and on-demand rendering. Viewer API 27 is used by the release-film
 study. Episodes in the draft format 0.3 that point at parts (`annotations`),
 highlight them (`highlight`) or change field of view or up between cameras
-need Viewer API 28, which the machinome-viewer source is adding and no
-published viewer release declares yet; `check`, `preview` and `render` refuse them against an
+need Viewer API 28, available in the machinome-viewer source checkout but not
+yet declared by a published release; `check`, `preview` and `render` refuse them against an
 older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
-and transitions between shots run on Viewer API 21. Linux/Chromium software rendering is the tested environment.
+and transitions between shots run on Viewer API 21, and rings, being
+annotations, need Viewer API 28 as annotations do. Linux/Chromium software rendering is the tested environment.
 
 ```sh
 npm ci
@@ -75,12 +76,22 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   quarters, midpoint and last frame, and is proved in pixels against the plain
   pictures it is made of: a dissolve blends them within 2 levels, a wipe and a
   slide reproduce them exactly, a fade reaches exactly its colour, and a
-  revisited instant replays exactly. No speech generation occurs.
+  revisited instant replays exactly. A ring (format 0.4) is refused on any
+  frame where its part is not wholly on the model stage or the ring leaves the
+  frame. Each annotation's entrance and exit adds stills at its first frame,
+  midpoint and end while the cue is active, and is proved in pixels against the same instant with the
+  mark drawn plainly and not drawn: a fade's midpoint is the blend its easing
+  predicts within 2 levels, a draw-on's midpoint shows part of its stroke and
+  not the rest, an entrance starts from nothing, its end and an exit's start
+  are the mark drawn plainly, and a half-drawn instant replays exactly. No
+  speech generation occurs.
 - `render` requires cached speech and renders the film. Add
   `--width 960 --fps 10 --silent` for a quick silent video. A frame inside a
   transition is composed from captures of the same instant: a fade costs one
   pose and capture, a dissolve, wipe or slide two, each several times a plain
-  frame's time.
+  frame's time. A picture with `n` simultaneous partly faded annotations needs
+  `2^n` same-instant captures to preserve exact text pixels; schedule review
+  renders accordingly.
 - `build` combines speech generation/cache reuse and final rendering.
 
 Without `--viewer`, the bundle beside the model manifest is used. Older
