@@ -1,6 +1,7 @@
 # ADR-001: The movie document and chapter narration
 
-Status: Proposed (OpenSpec change `movie-document`, 30 September 2026)
+Status: Accepted (OpenSpec change `movie-document`, proposed and archived 30 September 2026;
+ratified by the campaign orchestrator's review; integration is the pilot's)
 
 ## Context
 
@@ -32,6 +33,10 @@ by marks.
 4. The unresolved document has one JSON Schema,
    `schema/machinome-movie-0.1.json`, which both runtimes validate against
    before any semantic rule, and one set of shared fixtures.
+5. Everything that can be refused without a take is refused before `speech`
+   is needed: phrases in the written narration, marks, sets, fades, camera
+   presets, the last model keyframe at the shot's `until`, and the parts
+   named against the export.
 
 ## Options considered
 

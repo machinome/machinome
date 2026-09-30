@@ -18,10 +18,12 @@ the real model through the machinome viewer and never invents a pose.
 
 ## The pipeline
 
-    source (YAML episode today; movie document tomorrow)
-        │  load, resolve, validate                      src/episode.mjs
+    source: YAML episode, or movie document (machinome-movie/0.1)
+        │  load; a document: schema, static checks,     src/episode.mjs
+        │  anchors resolved from cached takes           src/movie.mjs, src/schema.mjs
+        │  validate against the export and project
         ▼
-    episode object (numeric times, format 0.4 shape)
+    episode object (numeric times, format 0.4 shape, chapters)
         │  frameAt(e, t): pure                          src/timeline.mjs
         ▼
     frame data: view, model time, hidden layers, overlays, annotations,
@@ -36,10 +38,15 @@ the real model through the machinome viewer and never invents a pose.
         ▼
     rehearsal.mp4 + rehearsal.srt + manifest + review packs
 
-Speech runs beside it: `src/speech.mjs` generates one take per narration
-unit through the provider, caches audio and character alignment by request
-hash, mixes the narration bed and writes captions; `src/words.mjs` turns the
-alignment into word onsets for reveals and source emphasis. `src/code.mjs`
+Narration belongs to chapters (`src/chapters.mjs`): a movie document groups
+shots into chapters of one narration each; a YAML episode is one chapter per
+shot. Speech runs beside the pipeline: `src/speech.mjs` generates one take
+per chapter through the provider, caches audio and character alignment by
+request hash, mixes the narration bed and writes captions; `src/words.mjs`
+turns the alignment into word onsets for reveals and source emphasis, reading
+a shot's chapter take from where it starts relative to the shot. For a movie
+document, `speech` generates the takes from the unresolved document, because
+the anchors that place cuts and cues are resolved from those takes. `src/code.mjs`
 pins source excerpts to the model's Git revision; `src/pictures.mjs` probes
 stills and clips; `src/easing.mjs` is the five-curve vocabulary;
 `src/review-samples.mjs` and `src/review-pack.mjs` choose and decode the
@@ -65,13 +72,17 @@ frames a person reviews.
 6. **Nothing is published by the tool.** Release fields left null block a
    release bundle and never default to an address.
 
+7. **The movie document is the contract at the top of the pipeline**
+   ([ADR-001](adrs/SOURCE/ADR-001-movie-document-and-chapter-narration.md)):
+   one JSON Schema (`schema/machinome-movie-0.1.json`) both runtimes check,
+   one set of shared fixtures (`fixtures/`), and a resolution written to
+   `_build/movie-resolved.json` so what the film is produced from can be read.
+
 ## What is changing
 
-The declarative-python campaign (`workflow/ongoing/declarative-python-api.md`,
-`docs/movie-document.md`) introduces the movie document as the explicit
-contract at the top of the pipeline: Python declarations in the project
-evaluate to it, YAML episodes load into its resolved shape, and narration
-moves to the chapter with anchors resolved against the take. The React stage
-that replaces the fixed film page, takes recorded from running and clocked
+The declarative-python campaign (`workflow/ongoing/declarative-python-api.md`)
+continues: the Python declarations that evaluate to the movie document are
+the next change, and the validation film follows them. The React stage that
+replaces the fixed film page, takes recorded from running and clocked
 scenarios, and the studio's live preview are later steps of the same
 direction and are not built.

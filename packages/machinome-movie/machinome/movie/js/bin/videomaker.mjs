@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import {parseArgs} from 'node:util';
-import {resolve,dirname} from 'node:path';
+import {resolve,dirname,extname} from 'node:path';
 import {readFile} from 'node:fs/promises';
 import {loadEpisode,requiredViewerApi,confirmViewerApi} from '../src/episode.mjs';
 import {speech} from '../src/speech.mjs';
+import {generateMovieTakes} from '../src/movie.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
 import {preview,render} from '../src/render.mjs';
@@ -13,13 +14,16 @@ import {reviewManifest} from '../src/review-pack.mjs';
 try{
   const {positionals,values}=parseArgs({allowPositionals:true,options:{viewer:{type:'string'},width:{type:'string'},fps:{type:'string'},silent:{type:'boolean'},help:{type:'boolean'}}});
   const [command,source]=positionals;
-  if(values.help||!source){console.log('videomaker check|speech|preview|render|build EPISODE.yaml [--viewer BUNDLE.js] [--width 960] [--fps 10] [--silent]\nvideomaker review MANIFEST.json');process.exit(source?0:1);}
+  if(values.help||!source){console.log('videomaker check|speech|preview|render|build EPISODE.yaml|MOVIE.json [--viewer BUNDLE.js] [--width 960] [--fps 10] [--silent]\nvideomaker review MANIFEST.json');process.exit(source?0:1);}
   if(command==='review'){
     const result=await reviewManifest(source);
     console.log(`Review pack: ${result.generation}${result.reused?' (verified reuse)':''}`);
     process.exit(0);
   }
   if(!['check','speech','preview','render','build'].includes(command))throw new Error('Unknown command: '+command);
+  // A movie document's takes need only its narration: speech generates them
+  // before the anchors that depend on them are resolved (movie-document D4).
+  if(extname(source).toLowerCase()==='.json'&&(command==='speech'||command==='build'&&!values.silent))await generateMovieTakes(source);
   const e=await loadEpisode(source);
   const options={viewer:resolve(values.viewer??resolve(dirname(e.paths.manifest),'machinome-viewer.js')),
     width:values.width?Number(values.width):undefined,fps:values.fps?Number(values.fps):undefined};

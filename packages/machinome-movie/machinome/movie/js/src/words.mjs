@@ -1,5 +1,6 @@
 // Word timing is derived from the exact cached take, never from reading speed.
 import {ease} from './easing.mjs';
+import {narrationOf,takeOffset} from './chapters.mjs';
 
 const need=(ok,message)=>{if(!ok)throw new Error(message);};
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
@@ -159,17 +160,18 @@ export async function resolveWordTiming(e,read){
     const emphases=shot.code?.emphasis??[];
     if(!spoken.length&&!emphases.length)continue;
     const take=await read(shot),entry={sha256:take.sha256,overlays:{},emphasis:[]};
-    const offset=shot.speechOffset??.2,shotDuration=shot.end-shot.start;
+    // The shot's chapter take, starting at this shot-local instant (movie-document D2).
+    const offset=takeOffset(e,shot),narration=narrationOf(e,shot),shotDuration=shot.end-shot.start;
     for(const {cue,index} of spoken){
       entry.overlays[index]={onsets:spokenOnsets({text:cue.text,phrase:cue.reveal.phrase??cue.text,
-        narration:shot.narration,replacements:e.audio?.replacements??{},alignment:take.alignment,
+        narration,replacements:e.audio?.replacements??{},alignment:take.alignment,
         offset,from:cue.from,to:cue.to,shotStart:shot.start,fps:e.output.fps,shotId:shot.id,index})};
     }
     if(emphases.length){
       const snippet=e.sourceCode[shot.code.snippet];
       for(const [index,cue] of emphases.entries()){
         const cues=resolveEmphasis({source:snippet.text,firstLine:snippet.lines[0],...cue,
-          alignment:take.alignment,offset,narration:shot.narration,shotId:shot.id,shotDuration,
+          alignment:take.alignment,offset,narration,shotId:shot.id,shotDuration,
           replacements:e.audio?.replacements??{}});
         for(const word of cues){
           const typed=typedCount(snippet,shot.code.typing,word.from);

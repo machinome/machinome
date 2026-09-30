@@ -229,8 +229,10 @@ document's field names, types, required fields and closed field lists. It is
 closed at the top level, on chapters, shots, `simulation`, keys, cues,
 entrances, typing and emphasis cues, transitions, fades, `output`, `model`,
 cameras, source excerpts and stills/clips entries; `audio`, `style` and
-`release` are closed to the fields the tool reads plus the editorial `label`
-and `direction` on `audio` and `publish` on `release`; `credits` is an open
+`release` are closed to the fields the tool reads plus the editorial
+`voiceLabel` and `direction` on `audio` and `publish` on `release` (the
+planning commit said `label`; the orchestrator's ratification corrected it
+to FORMAT.md's `voiceLabel`); `credits` is an open
 object, since the tool reads none of it and FORMAT.md does not enumerate it.
 Required at the top level: `format`, `id`, `title`, `root`, `output`,
 `model`, `audio`, `cameras`, `layers`, `evidence` and `chapters` (D14); on a
@@ -342,6 +344,35 @@ existing 0.4 rules). A render of a source without `release.descriptionTemplate`
 writes no `description.md`, says so, and records `releaseReady: false`,
 instead of failing on a missing template after the film is encoded; a YAML
 episode always has one, so nothing changes for it.
+
+### D15. Checks added at the merge with the Python side
+
+Recorded 30 September 2026, after the planning commit, from the Python
+side's invalid fixtures (branch `declarative-movie`), which the Node suite
+iterates after the merge and must refuse without a take:
+
+- a camera key whose preset is not in `cameras`: `Unknown camera preset:
+  <p> (camera[<i>] of shot <s> in chapter <c>)` (static; the 0.4 rule's
+  `Invalid camera key: <s>` does not name the preset);
+- a model keyframe list whose last `at` is not the shot's `until`, compared as
+  written (the same number, or an anchor with the same phrase and `plus`):
+  `Model keyframes must end at the shot's until: shot <s> (chapter <c>) …`.
+  A literal last key under an anchored `until` could only match one take;
+  refusing it keeps the keys ending at the shot's end at every regeneration;
+- the parts a document names against the export, before any take is read
+  (`checkMovieExport`): every layer path, `hiddenLayers` names, highlight and
+  annotation parts: `Missing assembly path: <path> (<field> of shot <s> in
+  chapter <c>)`, `Unknown layer: <name> (…)`. Loading reads the export's
+  manifest first for this; the invalid-fixture test applies it when a
+  fixture's export resolves inside the repository (the Python side's fixture
+  project), resolving `root` from the fixture's own file.
+
+To keep the two branches' fixtures from colliding at the merge, this side's
+documents and invalid cases take names the Python side does not use (`bare`,
+`two-chapters`, `set-not-drawn`, `mark-misspelled`, …). `manifest.json` and
+`fixtures/README.md` are edited on both sides and merge by union.
+`scripts/pin-resolved.mjs` writes a resolution for a person to review, for
+the Python side's documents once their takes exist.
 
 ## Risks / Trade-offs
 

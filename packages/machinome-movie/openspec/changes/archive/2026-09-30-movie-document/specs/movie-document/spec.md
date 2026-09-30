@@ -137,6 +137,24 @@ film's first shot and `fadeOut` only on its last, across chapters.
 - **WHEN** a shot names the set `stage`
 - **THEN** it is refused naming `stage`, the shot and its chapter.
 
+### Requirement: What a document names is checked before any take
+
+Before reading any take, the tool SHALL refuse, naming the shot, its chapter
+and the name: a camera key whose preset the document does not declare; a
+layer, highlighted part or annotated part that the export does not contain
+or the document does not declare; and a model keyframe list whose last key is
+not at the shot's `until`, written as the same number or the same anchor, so
+that the keys end at the shot's end whatever the take.
+
+#### Scenario: A misspelled preset
+- **WHEN** a camera key names preset `faraway` and the document declares none
+- **THEN** it is refused naming `faraway` and the shot, before `speech` is
+  needed.
+
+#### Scenario: A part the export does not have
+- **WHEN** a highlight names the assembly path `Beam/Plonk`
+- **THEN** it is refused naming `Beam/Plonk` and the shot.
+
 ### Requirement: Anchors are resolved only from cached takes
 
 `check`, `preview` and `render` SHALL resolve spoken anchors from the takes

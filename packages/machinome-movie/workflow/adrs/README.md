@@ -37,7 +37,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 
 | ADR | category | title | status |
 |---|---|---|---|
-| [ADR-001](SOURCE/ADR-001-movie-document-and-chapter-narration.md) | SOURCE | The movie document and chapter narration | Proposed |
+| [ADR-001](SOURCE/ADR-001-movie-document-and-chapter-narration.md) | SOURCE | The movie document and chapter narration | Accepted |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may

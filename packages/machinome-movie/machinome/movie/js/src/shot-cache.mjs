@@ -12,8 +12,9 @@ const pngSignature=Buffer.from([137,80,78,71,13,10,26,10]);
 const missing=error=>error?.code==='ENOENT'||error?.code==='ENOTDIR';
 
 export function outputShotUnits(e,fps,captions=[]){
-  const count=e.output.durationSeconds*fps;
-  if(!Number.isInteger(count))throw new Error('Frame count is not integral');
+  // Whole within floating-point error: 31/30 × 30 is 31.000000000000004 (movie-document D12).
+  const frames=e.output.durationSeconds*fps,count=Math.round(frames);
+  if(!(Math.abs(frames-count)<1e-6))throw new Error('Frame count is not integral');
   const byId=new Map(e.shots.map(shot=>[shot.id,{shotId:shot.id,start:shot.start,end:shot.end,frames:[]}]));
   for(let index=0;index<count;index++){
     const time=index/fps,request=frameAt(e,time,captions),unit=byId.get(request.shotId);

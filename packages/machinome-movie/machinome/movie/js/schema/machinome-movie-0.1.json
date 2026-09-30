@@ -1,0 +1,843 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://machinome.org/schema/machinome-movie-0.1.json",
+  "title": "machinome-movie/0.1",
+  "description": "The unresolved movie document: field names, types, required fields and closed field lists. Values (a set, an easing, a range, the format string) are checked by the runtimes, which name what they refuse. See docs/movie-document.md.",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": {
+      "type": "string"
+    },
+    "series": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "learningGoal": {
+      "type": "string"
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "fps": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "fps"
+      ],
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "manifest": {
+          "type": "string"
+        },
+        "expectedDurationSeconds": {
+          "type": "number"
+        },
+        "timeMode": {
+          "type": "string"
+        },
+        "sourceRevision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "readiness": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "manifest",
+        "expectedDurationSeconds",
+        "timeMode",
+        "sourceRevision"
+      ],
+      "additionalProperties": false
+    },
+    "marks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "audio": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "voice": {
+          "type": "string"
+        },
+        "voiceLabel": {
+          "type": "string"
+        },
+        "outputFormat": {
+          "type": "string"
+        },
+        "voiceSettings": {
+          "type": "object"
+        },
+        "replacements": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "direction": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "voice"
+      ],
+      "additionalProperties": false
+    },
+    "style": {
+      "type": "object",
+      "properties": {
+        "background": {
+          "type": "string"
+        },
+        "foreground": {
+          "type": "string"
+        },
+        "accent": {
+          "type": "string"
+        },
+        "fontFamily": {
+          "type": "string"
+        },
+        "safeInsetFraction": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "cameras": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "target": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "up": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "fov": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "position",
+          "target",
+          "up",
+          "fov"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "layers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "sourceCode": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "file",
+          "lines"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "stills": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/media"
+      }
+    },
+    "clips": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/media"
+      }
+    },
+    "credits": {
+      "type": "object"
+    },
+    "release": {
+      "type": "object",
+      "properties": {
+        "simulationUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "descriptionTemplate": {
+          "type": "string"
+        },
+        "publish": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "chapters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/chapter"
+      }
+    }
+  },
+  "required": [
+    "format",
+    "id",
+    "title",
+    "root",
+    "output",
+    "model",
+    "audio",
+    "cameras",
+    "layers",
+    "evidence",
+    "chapters"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "seconds": {
+      "title": "seconds",
+      "type": "number"
+    },
+    "spoken": {
+      "title": "spoken anchor",
+      "type": "object",
+      "properties": {
+        "spoken": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plus": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "spoken"
+      ],
+      "additionalProperties": false
+    },
+    "spokenEnd": {
+      "title": "spokenEnd anchor",
+      "type": "object",
+      "properties": {
+        "spokenEnd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plus": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "spokenEnd"
+      ],
+      "additionalProperties": false
+    },
+    "time": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/seconds"
+        },
+        {
+          "$ref": "#/$defs/spoken"
+        },
+        {
+          "$ref": "#/$defs/spokenEnd"
+        }
+      ]
+    },
+    "markAnchor": {
+      "title": "mark",
+      "type": "object",
+      "properties": {
+        "mark": {
+          "type": "string",
+          "minLength": 1
+        },
+        "plus": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "mark"
+      ],
+      "additionalProperties": false
+    },
+    "modelSeconds": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/seconds"
+        },
+        {
+          "$ref": "#/$defs/markAnchor"
+        }
+      ]
+    },
+    "media": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "credit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rights": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "upscale": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "part": {
+      "anyOf": [
+        {
+          "title": "layer name",
+          "type": "string"
+        },
+        {
+          "title": "assembly path",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "fade": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "number"
+        },
+        "ease": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "chapter": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/slug"
+        },
+        "narration": {
+          "type": "string",
+          "minLength": 1
+        },
+        "speechOffset": {
+          "type": "number"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "shots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/shot"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "narration",
+        "shots"
+      ],
+      "additionalProperties": false
+    },
+    "shot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/slug"
+        },
+        "set": {
+          "type": "string"
+        },
+        "until": {
+          "$ref": "#/$defs/time"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "simulation": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/modelSeconds"
+            },
+            "to": {
+              "$ref": "#/$defs/modelSeconds"
+            },
+            "keyframes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "$ref": "#/$defs/time"
+                  },
+                  "seconds": {
+                    "$ref": "#/$defs/modelSeconds"
+                  },
+                  "ease": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "at",
+                  "seconds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        },
+        "camera": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/time"
+              },
+              "preset": {
+                "type": "string"
+              },
+              "ease": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "at",
+              "preset"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "hiddenLayers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "overlays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "text": {
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              },
+              "reveal": {
+                "type": "object",
+                "properties": {
+                  "timing": {
+                    "type": "string"
+                  },
+                  "phrase": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "number"
+                  },
+                  "ease": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "subtitle": {
+                "type": "string"
+              },
+              "enter": {
+                "$ref": "#/$defs/fade"
+              },
+              "leave": {
+                "$ref": "#/$defs/fade"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "code": {
+          "type": "object",
+          "properties": {
+            "snippet": {
+              "type": "string"
+            },
+            "typing": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "$ref": "#/$defs/time"
+                  },
+                  "to": {
+                    "$ref": "#/$defs/time"
+                  },
+                  "throughLine": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "emphasis": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "line": {
+                    "type": "integer"
+                  },
+                  "phrase": {
+                    "type": "string"
+                  },
+                  "words": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "hold": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "snippet",
+            "typing"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "part": {
+                "$ref": "#/$defs/part"
+              },
+              "point": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "text": {
+                "type": "string"
+              },
+              "place": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "offset": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "padding": {
+                "type": "number"
+              },
+              "enter": {
+                "$ref": "#/$defs/fade"
+              },
+              "leave": {
+                "$ref": "#/$defs/fade"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "parts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/part"
+                }
+              },
+              "others": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "pictures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "still": {
+                "type": "string"
+              },
+              "clip": {
+                "type": "string"
+              },
+              "area": {
+                "type": "string"
+              },
+              "fit": {
+                "type": "string"
+              },
+              "enter": {
+                "$ref": "#/$defs/fade"
+              },
+              "leave": {
+                "$ref": "#/$defs/fade"
+              },
+              "view": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "at": {
+                      "$ref": "#/$defs/time"
+                    },
+                    "center": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "zoom": {
+                      "type": "number"
+                    },
+                    "ease": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "inPoint": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "transition": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "number"
+            },
+            "ease": {
+              "type": "string"
+            },
+            "direction": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "fadeIn": {
+          "type": "object",
+          "properties": {
+            "duration": {
+              "type": "number"
+            },
+            "ease": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "fadeOut": {
+          "type": "object",
+          "properties": {
+            "duration": {
+              "type": "number"
+            },
+            "ease": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "until",
+        "simulation",
+        "camera",
+        "hiddenLayers",
+        "overlays",
+        "evidence"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
