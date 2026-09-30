@@ -283,3 +283,64 @@ Findings met while producing the film on the React stage
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
    `check-measures-the-stage`; done the same day (8b0beae): `check` prints
    the film's peak and allowance from the measured plate box, before speech.
+
+## Fix-warts campaign (30 September 2026): findings met while fixing warts
+
+Findings the seven cycles of the fix-warts campaign recorded in their
+`evidence.md` (or, for a narrow adjustment, in their report), gathered here
+by the orchestrator. Triage: none yet unless stated; the pilot decides each.
+
+1. **The renderer accepts a canvas larger than its box.** Its check asks
+   only that the canvas cover 98 % of the box; with the canvas wait removed,
+   preview passed a 435×288 canvas in a 282×245 box, and only the viewer
+   layer's own assertion caught it. The smallest fix is to refuse a canvas
+   more than a pixel larger than its box (`viewer-integration-layer`).
+2. **`lines.end()` with no `plus` on a chapter's last cut is refused by
+   `speech`:** the take's file runs past its last letter (0.16 s in the
+   doubles) and `speech` wants 0.1 s of slack after the file ends. The
+   per-chapter tail line `check` now prints shows it before `speech`
+   refuses; the behaviour is unchanged (`narration-end-anchor`).
+3. **The two runtimes name a malformed `narrationEnd` differently.** For
+   `{"narrationEnd": true, "phrase": "it"}` Python names the field and
+   Node names `phrase` too; no shared fixture carries this form
+   (`narration-end-anchor`).
+4. **No fixture pixel proof sees Chromium's glyph-edge effect.** Never
+   repainting a pose is caught only by preview's picture replay, and
+   repainting only fresh and resized poses passes every browser proof; the
+   repaint rule is pinned by counting animation frames. The repaint itself,
+   about 55 ms, is now the remaining cost of a pose (`pose-repaints`).
+5. **Below Viewer API 28 an instance is leased only to a view with the lens
+   it mounted with**, since `setView` cannot change up or field of view
+   there; the count bound is exact from API 28 and per lens below it. Only
+   layer 4 tests it: no fixture below 28 has two lenses
+   (`viewer-instances`).
+6. **The picture refusal wording is written twice**, in `src/pictures.mjs`
+   and `src/layout.mjs`, because `pictures.mjs` is hashed into every film's
+   shot-cache common key and sharing the two functions would have recaptured
+   every film (`check-measures-the-stage`).
+7. **A view that leaves its picture is refused before preview, not before
+   `speech`**, because its view keys may be spoken anchors; the enlargement
+   needs no times and is refused before `speech` (`check-measures-the-stage`).
+8. **The layout probe's content test is a probe, not a proof:** a slot that
+   changes only for content of another shape than the large block would be
+   trusted wrongly; preview and render still refuse against the live box
+   (`check-measures-the-stage`).
+9. **`docs/stage.md` quotes the fixture tour's `stage.css` word for word
+   and nothing pins it**, so the manual can fall behind the fixture; a pure
+   test comparing the fenced block with the file would pin it
+   (`fixture-hygiene`).
+10. **Render's `pictures.cues[].peak` is measured at the render's width**,
+    not the film's output width: at `--width 640` it reports half of what
+    preview checks at 1280, as the code comment says; a manifest reader could
+    misread it (`fixture-hygiene`).
+11. **The invalid fixtures carry stale revisions** and drift further with
+    every re-pin; no refusal depends on the revision. Triaged 30 September
+    2026 (orchestrator): harmless; no cycle (`fixture-hygiene`).
+12. **The real viewer tints and dims only parts that declare a colour**; the
+    fixture's blocks gained one so a highlight reaches the pixels. Its
+    cameras frame the seesaw small; whether to change them is the pilot's
+    (`viewer-integration-layer`).
+13. **The old `.env` loading copied the key into the process environment**,
+    so Chromium and FFmpeg inherited it; fixed in passing by
+    `speech-key-lookup`, which parses the file instead. Triaged 30 September
+    2026 (orchestrator): fixed; no cycle.

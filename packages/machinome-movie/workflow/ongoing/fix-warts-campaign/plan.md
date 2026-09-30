@@ -2,7 +2,11 @@
 
 Status: working plan, 30 September 2026, opened on branch `fix-warts`
 (worktree `WTs/fix-warts`) from `main` at e30b05f, the head the pilot had
-the react-stage campaign merged to the same afternoon. The pilot's words:
+the react-stage campaign merged to the same afternoon. Closed the same
+evening at the pilot's word ("this is taking too long … leave the agent
+running and validate the other cycles") on seven of the eight cycles;
+`flaky-pixel-proofs` runs on in `WTs/flaky-pixel-proofs` and is integrated
+later if it brings anything. `PROGRESS.md` has every commit and run. The pilot's words:
 "merge to main. then make a list of warts in videomaker that you can work on
 autonomously. orchestrate cycles on all those." Nothing here is ratified;
 each cycle ratifies its own change under `AGENTS.md`, the orchestrator's
