@@ -2,13 +2,15 @@
 import {parseArgs} from 'node:util';
 import {resolve,dirname,extname} from 'node:path';
 import {readFile} from 'node:fs/promises';
-import {loadEpisode,requiredViewerApi,confirmViewerApi} from '../src/episode.mjs';
+import {loadEpisode,confirmViewerApi,PAPER_STAGE} from '../src/episode.mjs';
+import {filmShots,shotActions} from '../src/timeline.mjs';
+import {buildFilmStage} from '../src/stage-build.mjs';
 import {speech} from '../src/speech.mjs';
 import {generateMovieTakes} from '../src/movie.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
 import {preview,render} from '../src/render.mjs';
-import {pictureReports,clipCadenceForCue} from '../src/pictures.mjs';
+import {clipCadence} from '../src/pictures.mjs';
 import {reviewManifest} from '../src/review-pack.mjs';
 
 try{
@@ -24,27 +26,57 @@ try{
   // A movie document's takes need only its narration: speech generates them
   // before the anchors that depend on them are resolved (movie-document D4).
   if(extname(source).toLowerCase()==='.json'&&(command==='speech'||command==='build'&&!values.silent))await generateMovieTakes(source);
+  // check bundles and type-checks a document's stage before anything that
+  // needs a take, so a template that does not match the declarations is
+  // refused before speech is bought.
+  let early=null;
+  if(command==='check'&&extname(source).toLowerCase()==='.json'){
+    const {readMovie}=await import('../src/movie.mjs');
+    const {doc,documentPath,base,build}=await readMovie(source);
+    const {execFileSync}=await import('node:child_process');
+    const repository=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:base,encoding:'utf8'}).trim();
+    early=await buildFilmStage({stage:doc.stage,paths:{base,build,repository,episode:documentPath}});
+  }
   const e=await loadEpisode(source);
   const options={viewer:resolve(values.viewer??resolve(dirname(e.paths.manifest),'machinome-viewer.js')),
     width:values.width?Number(values.width):undefined,fps:values.fps?Number(values.fps):undefined};
   if(options.width!==undefined&&(!Number.isInteger(options.width)||options.width<320||options.width%2))throw new Error('Width must be an even integer >= 320');
   if(options.fps!==undefined&&(!Number.isInteger(options.fps)||options.fps<1||options.fps>120))throw new Error('FPS must be an integer from 1 to 120');
-  console.log(`${e.title}: ${e.shots.length} shots, ${e.output.durationSeconds}s; model ${e.model.expectedDurationSeconds}s`);
+  console.log(`${e.title}: ${e.chapters.length} chapters, ${filmShots(e).length} shots, ${e.output.durationSeconds}s; model ${e.model.expectedDurationSeconds}s`);
   await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
   if(command==='check'){
     // check has no browser; preview and render confirm the running viewer's apiVersion instead.
-    const required=requiredViewerApi(e);
+    const required=e.viewerApi;
     if(required.api>21){
       const declared=confirmViewerApi(required,await readFile(options.viewer,'utf8').catch(()=>null));
       console.log(`Viewer API ${required.api} required for ${required.reasons.join(', ')}; ${options.viewer} declares API ${declared}`);
     }
-    for(const report of pictureReports(e)){
-      console.log(`Picture ${report.shotId} #${report.index} (${report.kind} ${report.name}): `+
-        (report.peak===null?'vector, no enlargement limit':`peak ${report.peak.toFixed(2)}×; allowance ${report.allowance}×`));
-      if(report.kind==='clip'){
-        const shot=e.shots.find(s=>s.id===report.shotId),cue=shot.pictures[report.index],media=e.pictureMedia.clips[report.name];
-        const cadence=clipCadenceForCue(e,shot,cue,media);
-        console.log(`  source ${media.averageRate.toFixed(3)} fps into film ${e.output.fps} fps: `+
+    // The stage bundle: bundled and type-checked before any speech is bought.
+    const bundle=early??await buildFilmStage(e);
+    const modules=e.stage.modules.length?e.stage.modules.join(', '):'the runtime alone';
+    console.log(`Stage: ${bundle.reused?'reused':'bundled'} ${bundle.js} (sha256 ${bundle.sha256.slice(0,12)}) from ${modules}; `+
+      (bundle.typechecked?'types checked':e.stage.modules.length?'no TypeScript module, types not checked':'no module to type-check'));
+    const shots=filmShots(e),fps=e.output.fps;
+    for(const [i,{chapter,shot}] of shots.entries())for(const {cue,action} of shotActions(shot)){
+      const element=chapter.elements[action.element];
+      if(element?.kind!=='picture'||action.action!=='show')continue;
+      const media=element.still!==undefined?'still':'clip',name=element[media],probe=e.pictureMedia[`${media}s`][name];
+      const slot=Object.keys(shot.places).find(s=>shot.places[s]===action.element),known=PAPER_STAGE[shot.set];
+      const box=!known?null:/^full(-\d+)?$/.test(slot)?[0,0,1,1]:known;
+      let text;
+      if(probe.format==='svg')text='vector, no enlargement limit';
+      else if(!box)text=`allowance ${probe.upscale}×; enlargement checked against its slot's box at preview and render`;
+      else{
+        const zoom=Math.max(1,...(action.view??[]).map(v=>v.zoom)),w=box[2]*e.output.width,h=box[3]*e.output.height;
+        const peak=((element.fit??'contain')==='cover'?Math.max:Math.min)(w/probe.width,h/probe.height)*zoom;
+        text=`peak ${peak.toFixed(2)}×; allowance ${probe.upscale}×`;
+      }
+      console.log(`Picture ${shot.id} ${chapter.id}.${action.element} (${media} ${name}): ${text}`);
+      if(media==='clip'){
+        const globalStart=shot.start+cue.at,phase=Math.max(0,Math.ceil(globalStart*fps-1e-9)/fps-globalStart),start=element.inPoint??0;
+        const next=shots[i+1]?.shot.transition,continuation=Math.abs(cue.until-(shot.end-shot.start))<1e-9&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+        const cadence=clipCadence(probe.timestamps,start,start+cue.until-cue.at+continuation,fps,phase);
+        console.log(`  source ${probe.averageRate.toFixed(3)} fps into film ${fps} fps: `+
           `${cadence.dropped} dropped, ${cadence.repeated} repeated; audio not played`);
       }
     }

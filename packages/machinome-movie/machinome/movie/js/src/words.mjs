@@ -1,6 +1,7 @@
 // Word timing is derived from the exact cached take, never from reading speed.
 import {ease} from './easing.mjs';
-import {narrationOf,takeOffset} from './chapters.mjs';
+import {takeOffset,shotsOf} from './chapters.mjs';
+import {boundedMatches,spokenForm as spokenText} from './text.mjs';
 
 const need=(ok,message)=>{if(!ok)throw new Error(message);};
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
@@ -18,8 +19,7 @@ export function splitWords(text){
   return parts;
 }
 
-export function validateSpokenPair({text,phrase=text,narration,replacements={},shotId='shot',index=0}){
-  const where=`overlay #${index} in shot ${shotId}`;
+export function validateSpokenPair({text,phrase=text,narration,replacements={},shotId='shot',index=0,where=`overlay #${index} in shot ${shotId}`}){
   need(typeof phrase==='string'&&phrase.length>0&&typeof narration==='string',`Missing spoken phrase: ${where}`);
   const pos=narration.indexOf(phrase);
   need(pos>=0,`Spoken phrase is absent from narration: ${where} (${phrase})`);
@@ -55,8 +55,8 @@ function occurrence(haystack,needle,where){
 
 export function spokenOnsets(input){
   const {text,phrase=text,narration,alignment,replacements={},offset=0,from=0,to=Infinity,
-    shotStart=0,fps=30,shotId='shot',index=0}=input;
-  const pair=validateSpokenPair({text,phrase,narration,replacements,shotId,index});
+    shotStart=0,fps=30,shotId='shot',index=0,where}=input;
+  const pair=validateSpokenPair({text,phrase,narration,replacements,shotId,index,where});
   const a=validateAlignment(alignment,pair.where),at=occurrence(a.text,pair.spoken,pair.where);
   let position=0,prior=-Infinity;
   const onsets=[];
@@ -119,71 +119,94 @@ export function resolveEmphasis({source,firstLine,line,phrase,words,alignment,of
 
 export const activeEmphasis=(cues,time)=>cues.filter(c=>time>=c.from-1e-9&&time<c.to-1e-9);
 
-// The CLI may render at a different fps from the episode's declared grid.
-// A valid check at 30 fps does not imply all words are filmed at 10 fps.
-export function validateWordFramesAtFps(e,fps){
-  for(const shot of e.shots)for(const [index,cue] of (shot.overlays??[]).entries()){
-    if(!cue.reveal)continue;
-    const words=splitWords(cue.text).filter(p=>p.word);let shown=0;
-    const onsets=cue.reveal.timing==='spoken'?e.wordTiming?.[shot.id]?.overlays?.[index]?.onsets:null;
-    if(cue.reveal.timing==='spoken'&&!onsets)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
-    for(let frame=Math.ceil((shot.start+cue.from)*fps-1e-9);
-      frame/fps<shot.start+cue.to-1e-9&&frame/fps<shot.end-1e-9;frame++){
-      const local=frame/fps-shot.start;
-      const count=onsets?onsets.filter(t=>local>=Math.max(cue.from,t)-1e-9).length
-        :evenCount(words.length,local,cue.from,cue.reveal.duration,cue.reveal.ease??'linear');
-      shown=Math.max(shown,count);
-    }
-    need(shown>=words.length,
-      `Word ${words.at(-1).text} appears on no ${fps} fps output frame: overlay #${index} in shot ${shot.id}`);
-  }
+// A movie's emphasis (design D2.2): each spoken part's onset in the chapter's
+// take, and the instant the phrase's last character ends plus the hold, in
+// shot-local seconds from `offset` (where the take starts in the shot).
+export function emphasisTiming({phrase,words,alignment,replacements={},offset=0,hold=0,where='emphasis'}){
+  const a=alignment.text!==undefined?alignment:validateAlignment(alignment,where);
+  const spoken=spokenText(phrase,replacements),at=occurrence(a.text,spoken,where);
+  const onsets=words.map((word,index)=>{
+    const form=spokenText(word,replacements),found=boundedMatches(spoken,form);
+    need(found.length===1,`${where}, words[${index}].spoken: the spoken words '${word}' are ${found.length?'ambiguous in':'absent from'} the recorded phrase '${spoken}'`);
+    const letter=/[\p{L}\p{N}]/u.exec(form);
+    need(letter,`${where}, words[${index}].spoken: no spoken letter or digit in '${word}'`);
+    return offset+a.starts[codePointIndex(a.text,at+found[0]+letter.index)];
+  });
+  const clear=offset+a.ends[codePointIndex(a.text,at+spoken.length)-1]+hold;
+  return {onsets,clear};
 }
 
-function typedCount(snippet,typing,time){
-  const lines=snippet.text.split('\n');let count=0,prior=0;
-  for(const cue of typing){
-    const end=Array.from(lines.slice(0,cue.throughLine-snippet.lines[0]+1).join('\n')).length;
-    if(time<cue.from)break;
-    count=prior+Math.floor((end-prior)*Math.min(1,(time-cue.from)/(cue.to-cue.from)));
-    if(time<cue.to)break;
+// The CLI may render at a different fps from the film's declared grid. A
+// valid check at 30 fps does not imply every revealed word is filmed at 10.
+export function validateWordFramesAtFps(film,fps){
+  for(const {shot} of shotsOf(film))shot.cues.forEach((cue,i)=>cue.actions.forEach((action,j)=>{
+    const reveal=action.reveal;if(!reveal)return;
+    const where=action.overlay!==undefined?`overlay #${action.overlay} in shot ${shot.id}`:`shot ${shot.id}, cues[${i}].actions[${j}]`;
+    const title=film.chapters.find(c=>c.shots.includes(shot)).elements[action.element];
+    const words=splitWords(title.text).filter(p=>p.word);let shown=0;
+    if(reveal.timing==='spoken'&&!reveal.onsets)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
+    for(let frame=Math.ceil((shot.start+cue.at)*fps-1e-9);
+      frame/fps<shot.start+cue.until-1e-9&&frame/fps<shot.end-1e-9;frame++){
+      const local=frame/fps-shot.start;
+      const count=reveal.timing==='spoken'?reveal.onsets.filter(t=>local>=Math.max(cue.at,t)-1e-9).length
+        :evenCount(words.length,local,cue.at,reveal.duration,reveal.ease??'linear');
+      shown=Math.max(shown,count);
+    }
+    need(shown>=words.length,`Word ${words.at(-1).text} appears on no ${fps} fps output frame: ${where}`);
+  }));
+}
+
+// How many characters of an excerpt's text a panel has typed at shot-local
+// `time`, from the typing actions [{at, over, throughLine}] of its chapter so
+// far (each starts where the one before stopped).
+export function typedCount(text,firstLine,typings,time){
+  const lines=text.split('\n');let count=0,prior=0;
+  for(const cue of typings){
+    const end=Array.from(lines.slice(0,cue.throughLine-firstLine+1).join('\n')).length;
+    if(time<cue.at)break;
+    count=prior+Math.floor((end-prior)*Math.min(1,(time-cue.at)/cue.over));
+    if(time<cue.at+cue.over)break;
     prior=end;
   }
   return count;
 }
 
-// Resolve only shots with measured cues, from the exact cached take that speech
-// uses. The resulting numbers are immutable inputs to frameAt, not page state.
-export async function resolveWordTiming(e,read){
+// A YAML film's measured timing (spoken reveals and emphasis), from the exact
+// cached take that speech uses; a movie's is resolved with it (design D3).
+// Records which take each measured shot read; the numbers are immutable inputs
+// to frameAt, not page state.
+export async function resolveWordTiming(film,read){
   const timing={};
-  for(const shot of e.shots){
-    const spoken=(shot.overlays??[]).flatMap((cue,index)=>cue.reveal?.timing==='spoken'?[{cue,index}]:[]);
-    const emphases=shot.code?.emphasis??[];
-    if(!spoken.length&&!emphases.length)continue;
-    const take=await read(shot),entry={sha256:take.sha256,overlays:{},emphasis:[]};
-    // The shot's chapter take, starting at this shot-local instant (movie-document D2).
-    const offset=takeOffset(e,shot),narration=narrationOf(e,shot),shotDuration=shot.end-shot.start;
-    for(const {cue,index} of spoken){
-      entry.overlays[index]={onsets:spokenOnsets({text:cue.text,phrase:cue.reveal.phrase??cue.text,
-        narration,replacements:e.audio?.replacements??{},alignment:take.alignment,
-        offset,from:cue.from,to:cue.to,shotStart:shot.start,fps:e.output.fps,shotId:shot.id,index})};
-    }
-    if(emphases.length){
-      const snippet=e.sourceCode[shot.code.snippet];
-      for(const [index,cue] of emphases.entries()){
-        const cues=resolveEmphasis({source:snippet.text,firstLine:snippet.lines[0],...cue,
-          alignment:take.alignment,offset,narration,shotId:shot.id,shotDuration,
-          replacements:e.audio?.replacements??{}});
-        for(const word of cues){
-          const typed=typedCount(snippet,shot.code.typing,word.from);
-          need(codePointIndex(snippet.text,word.end)<=typed,`Source word ${word.word} is not yet typed at its onset: shot ${shot.id}`);
-        }
-        const first=cues[0]?.from,last=cues[0]?.to;
-        for(const prior of entry.emphasis)need(first>=prior.to||last<=prior.from,`Emphasis cues overlap in shot ${shot.id}`);
-        entry.emphasis.push({index,from:first,to:last,cues});
+  for(const {chapter,shot} of shotsOf(film)){
+    const measured=shot.cues.flatMap(cue=>cue.actions.filter(a=>a.action==='emphasize'||a.reveal?.timing==='spoken').map(a=>({cue,action:a})));
+    if(!measured.length)continue;
+    const take=await read(shot);
+    timing[shot.id]={sha256:take.sha256};
+    if(film.source==='movie')continue;
+    const offset=takeOffset(film,shot),duration=shot.end-shot.start,replacements=film.audio?.replacements??{};
+    const emphases=[];
+    for(const {cue,action} of measured){
+      if(action.action==='emphasize'){
+        const element=chapter.elements[action.element],snippet=film.excerpts[element.source];
+        const cues=resolveEmphasis({source:snippet.text,firstLine:snippet.lines[0],line:action.line,phrase:action.phrase,
+          words:action.words.map(w=>w.token),alignment:take.alignment,offset,hold:action.hold??0,narration:chapter.narration,
+          shotId:shot.id,shotDuration:duration,replacements});
+        const typings=shot.cues.flatMap(c=>c.actions.filter(a=>a.action==='type'&&a.element===action.element).map(a=>({...a,at:c.at})));
+        for(const word of cues)
+          need(codePointIndex(snippet.text,word.end)<=typedCount(snippet.text,snippet.lines[0],typings,word.from),`Source word ${word.word} is not yet typed at its onset: shot ${shot.id}`);
+        const first=cues[0].from,last=cues[0].to;
+        for(const prior of emphases)need(first>=prior.to||last<=prior.from,`Emphasis cues overlap in shot ${shot.id}`);
+        emphases.push({from:first,to:last});
+        cues.forEach((word,k)=>{action.words[k].at=word.from;});
+        action.until=last;cue.at=first;
+      }else{
+        const title=chapter.elements[action.element];
+        action.reveal.onsets=spokenOnsets({text:title.text,phrase:action.reveal.phrase??title.text,narration:chapter.narration,
+          replacements,alignment:take.alignment,offset,from:cue.at,to:cue.until,shotStart:shot.start,fps:film.output.fps,
+          shotId:shot.id,index:action.overlay});
       }
     }
-    timing[shot.id]=entry;
   }
-  e.wordTiming=timing;
+  film.wordTiming=timing;
   return timing;
 }

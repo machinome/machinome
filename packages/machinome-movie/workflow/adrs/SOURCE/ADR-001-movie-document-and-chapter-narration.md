@@ -77,3 +77,10 @@ shape will not be preserved, and no compatibility with it is owed or
 maintained. No format becomes a protocol before the pilot makes a release.
 The decision above stands for this step; its consequences do not extend
 past it.
+
+## Amendment (30 September 2026, `react-stage`)
+
+Decision 1 is replaced by [ADR-006](ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md):
+both sources load into the resolved movie document, not into the YAML format
+0.4 shape. Chapters, anchors, one take per chapter, the schema and the shared
+fixtures stand, for `machinome-movie/0.2`.

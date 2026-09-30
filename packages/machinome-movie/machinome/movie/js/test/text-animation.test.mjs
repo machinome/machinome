@@ -1,9 +1,9 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
+import {validateEpisode,requiredViewerApi,episodeFilm} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
 import {resolveWordTiming} from '../src/words.mjs';
-import {base02} from './frame-fixtures.mjs';
+import {base02,yamlFrame,element} from './frame-fixtures.mjs';
 
 const align=text=>({characters:Array.from(text),character_start_times_seconds:Array.from(text,(_,i)=>i/20),character_end_times_seconds:Array.from(text,(_,i)=>(i+1)/20)});
 const episode=()=>{const e=base02();e.format='machinome-video-draft/0.4';e.audio={replacements:{}};
@@ -15,20 +15,25 @@ const episode=()=>{const e=base02();e.format='machinome-video-draft/0.4';e.audio
   return e;};
 const manifest={animation:{loop:296}};
 
+// Overlay #i of a shot is its title element overlay-<i> (react-stage D3).
 test('0.4 measured, even and title frames are deterministic, while plain frames stay authored',async()=>{
   const e=episode();validateEpisode(e,manifest);
   assert.deepEqual(requiredViewerApi(e),{api:21,reasons:[]});
-  assert.throws(()=>frameAt(e,.1),/Word timing is not resolved: shot first/);
-  await resolveWordTiming(e,async()=>({sha256:'take',alignment:align(e.shots[0].narration)}));
-  const at=frameAt(e,.8);
-  assert.equal(at.overlays[0].shown,2);
-  assert.equal(at.overlays[1].shown,2);
-  assert.equal(at.overlays[2].opacity,1);
-  assert.equal(at.overlays[0].words.filter(p=>p.word).length,3);
-  assert.equal(frameAt(e,0).overlays[2].opacity,0);
-  assert.ok(Math.abs(frameAt(e,1.7).overlays[2].opacity-.5)<1e-12);
+  const film=episodeFilm(e);
+  assert.throws(()=>frameAt(film,.1),/Word timing is not resolved: shot first/);
+  await resolveWordTiming(film,async()=>({sha256:'take',alignment:align(e.shots[0].narration)}));
+  const overlay=(t,i)=>element(frameAt(film,t),`overlay-${i}`);
+  assert.equal(overlay(.8,0).revealed,2);
+  assert.equal(overlay(.8,1).revealed,2);
+  assert.equal(overlay(.8,2).opacity,1);
+  assert.equal(overlay(.8,0).words.filter(p=>p.word).length,3);
+  assert.equal(overlay(0,2).opacity,0);
+  assert.ok(Math.abs(overlay(1.7,2).opacity-.5)<1e-12);
+  assert.deepEqual(overlay(.8,2),{kind:'title',shown:true,text:'REVOLUTIONS',subtitle:'A working wheel',opacity:1});
+  assert.deepEqual(frameAt(film,.8),frameAt(film,.8));
   const plain=base02();plain.format='machinome-video-draft/0.4';plain.shots[0].overlays=[{from:0,to:1,text:'Plain',position:'top'}];
-  assert.deepEqual(frameAt(plain,.5).overlays,[plain.shots[0].overlays[0]]);
+  assert.deepEqual(element(yamlFrame(plain,.5),'overlay-0'),{kind:'title',shown:true,text:'Plain',opacity:1});
+  assert.equal(yamlFrame(plain,.5).slots.top,'first.overlay-0');
 });
 
 test('new text fields require 0.4, while older unknown fields remain ignored',()=>{
@@ -79,17 +84,21 @@ test('0.4 closes entrance, exit, code, typing and emphasis fields without closin
   assert.throws(()=>validateEpisode(old,manifest),/Text animation needs format machinome-video-draft\/0.4: shot second/);
 });
 
+// Pinned whole, as the stage reads it: the paper-split set with its source
+// panel, its view and the three text positions (the same content the 0.3 page
+// drew, on the new frame).
 test('the literal 0.3 frame with three overlay positions and typed Python remains pinned',()=>{
   const e=base02();e.format='machinome-video-draft/0.3';
   e.sourceCode={sample:{file:'model.py',lines:[1,1],text:'x = 1'}};
   e.shots[1].overlays=['top','lower-third','center'].map(position=>({from:0,to:2,position,text:position}));
   e.shots[1].code={snippet:'sample',typing:[{from:0,to:.2,throughLine:1}]};
-  assert.deepEqual(frameAt(e,2.5),{shotId:'second',time:12/296,
-    view:{camera:[10,0,10],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[],
-    overlays:[{from:0,to:2,position:'top',text:'top'},
-      {from:0,to:2,position:'lower-third',text:'lower-third'},
-      {from:0,to:2,position:'center',text:'center'}],
-    code:{file:'model.py',firstLine:1,lastLine:1,text:'x = 1',
-      html:'x = <span class="hljs-number">1</span>',cursor:false},
-    annotations:[],highlight:null});
+  const title=text=>({kind:'title',shown:true,text,opacity:1});
+  assert.deepEqual(yamlFrame(e,2.5),{time:2.5,chapterId:'second',shotId:'second',set:'paper-split',
+    slots:{right:'second.view',left:'second.code',top:'second.overlay-0','lower-third':'second.overlay-1',center:'second.overlay-2'},
+    elements:{
+      'second.view':{kind:'view',time:12/296,view:{camera:[10,0,10],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[],highlight:null,marks:[]},
+      'second.code':{kind:'source',file:'model.py',firstLine:1,lastLine:1,text:'x = 1',
+        html:'x = <span class="hljs-number">1</span>',cursor:false,emphasis:[]},
+      'second.overlay-0':title('top'),'second.overlay-1':title('lower-third'),'second.overlay-2':title('center')},
+    transition:null});
 });

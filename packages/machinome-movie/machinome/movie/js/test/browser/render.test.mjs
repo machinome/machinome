@@ -1,31 +1,31 @@
-import {slowTest as test,artefact} from './support/memo.mjs';
+// Layer 5 (serial; Chromium, the viewer double): YAML episodes, loaded as the
+// command line loads them, posed on the stage in the shipped paper sets.
+// Element keys are `<shot id>.<element>`: `view`, `code`, `overlay-<i>`,
+// `picture-<i>` (a YAML shot is one chapter).
+import {slowTest as test,artefact} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,readFile,mkdir,stat,rm,cp} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
-import {join,basename} from 'node:path';
+import {writeFile,readFile,stat,copyFile,mkdir} from 'node:fs/promises';
+import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {preview,render,browserSession} from './support/stage.mjs';
-import {pcmWav} from '../src/speech.mjs';
-import {validateEpisode} from '../src/episode.mjs';
-import {frameAt} from '../src/timeline.mjs';
-import {decodePng,hexColor} from '../src/pixels.mjs';
-import {resolveWordTiming} from '../src/words.mjs';
-import {loadPictures} from '../src/pictures.mjs';
-import {viewerDouble} from './viewer-double.mjs';
+import {preview,render,browserSession} from '../support/stage.mjs';
+import {yamlProject,PAWL_MANIFEST} from '../support/yaml-project.mjs';
+import {pcmWav} from '../../src/speech.mjs';
+import {frameAt,filmShots,shotActions} from '../../src/timeline.mjs';
+import {decodePng,hexColor} from '../../src/pixels.mjs';
+import {resolveWordTiming} from '../../src/words.mjs';
+import {viewerDouble} from '../viewer-double.mjs';
 
-// A minimal viewer double exercises film composition/encoding only. The real
-// sawmill preview separately proves the public viewer and mechanical pixels.
+const stateAt=(film,t,key)=>frameAt(film,t).elements[key];
+// The element state drawn as absent.
+const absent=state=>state.kind==='view'?state:{...state,shown:false,opacity:0};
+// The mark id (cues[i].actions[j]) of a YAML shot's annotation #index.
+const markId=(film,shotId,index)=>shotActions(filmShots(film).find(s=>s.shot.id===shotId).shot)
+  .find(x=>x.action.annotation===index).id;
+
+// A minimal viewer double exercises film composition/encoding only.
 test('short mixed-layout film renders with a same-basename sidecar, not embedded subtitles',async t=>{
-  const dir=await mkdtemp(join(tmpdir(),'videomaker-render-test-'));
-  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
-  const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8'}).trim();
-  git('init','-q');
-  await writeFile(join(dir,'episode.yaml'),'test: film composition\n');
-  await writeFile(join(dir,'production.yaml'),'test: short render\n');
-  await writeFile(join(dir,'description.md'),'Test description.');
-  git('add','.');git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture');
-  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test'},animation:{loop:2}}));
-  const viewer=join(dir,'viewer.js');
+  const project=await yamlProject(t,{manifest:{root:{name:'test'},animation:{loop:2}},files:{'machine.py':'x = 1\n'}});
+  const {dir}=project,viewer=join(dir,'viewer.js');
   await writeFile(viewer,`window.MachinomeViewer={async mount(selector,url,options){
     const canvas=document.createElement('canvas');canvas.style.width='100%';canvas.style.height='100%';document.querySelector(selector).append(canvas);
     let view=options.view;return {apiVersion:27,setTime(){},setVisible(){},navigation(){return {}},
@@ -34,14 +34,14 @@ test('short mixed-layout film renders with a same-basename sidecar, not embedded
   }};`);
   const mix=join(dir,'voice.wav');await writeFile(mix,pcmWav(Buffer.alloc(24000*2*2),24000));
   const shot={narration:'Separate subtitles.',direction:'Show source.',camera:[{at:0,preset:'a'}],hiddenLayers:[],overlays:[],evidence:[]};
-  const e={title:'Test',series:'',output:{width:640,height:360,fps:2,durationSeconds:2},
+  const e=await project.film({title:'Test',series:'',output:{width:640,height:360,fps:2,durationSeconds:2},
     model:{expectedDurationSeconds:2},style:{background:'#f5f1e8',foreground:'#222',accent:'#bf531f',fontFamily:'DejaVu Sans'},
-    sourceCode:{test:{file:'machine.py',lines:[1,1],text:'x = 1'}},
-    paths:{repository:dir,episode:join(dir,'episode.yaml'),production:join(dir,'production.yaml'),manifest:join(dir,'manifest.json'),build:join(dir,'_build')},
+    sourceCode:{test:{file:'machine.py',lines:[1,1]}},
     cameras:{a:{position:[1,1,1],target:[0,0,0],up:[0,0,1],fov:37}},layers:{},
     release:{descriptionTemplate:'description.md'},
     shots:[{...shot,id:'code',start:0,end:1,simulation:{from:0,to:1},code:{snippet:'test',typing:[{from:0,to:.5,throughLine:1}]}},
-      {...shot,id:'whole',start:1,end:2,simulation:{from:1,to:2}}]};
+      {...shot,id:'whole',start:1,end:2,simulation:{from:1,to:2}}]});
+  assert.deepEqual(filmShots(e).map(s=>s.shot.set),['paper-split','paper'],'a code shot is the split set, the other the plain one');
   const p=await preview(e,{viewer,width:640});assert.equal(p.pixelReplay,true);assert.equal(p.samples.length,7);
   const captions=[{text:'Separate subtitles.',start:.2,end:.8}];
   const output=await render(e,{viewer,audio:{mix,records:[],captions}});
@@ -58,40 +58,37 @@ async function pixel(file,x,y){
   const width=Number(execFileSync('ffprobe',['-v','error','-select_streams','v:0','-show_entries','stream=width','-of','csv=p=0',file],{encoding:'utf8'}).trim());
   const i=(Math.round(y)*width+Math.round(x))*3;return [bytes[i],bytes[i+1],bytes[i+2]];
 }
-function filmEpisode(dir,shotExtra={},extra={}){
+// One shot, `pawls`, over the two-second pawl model; `extra` replaces episode fields.
+function filmEpisode(shotExtra={},extra={}){
   return {format:'machinome-video-draft/0.3',title:'Test',series:'',output:{width:640,height:360,fps:2,durationSeconds:2},
     model:{expectedDurationSeconds:2},
     style:{background:'#f5f1e8',foreground:'#222222',accent:'#bf531f',fontFamily:'DejaVu Sans',safeInsetFraction:.08},
-    paths:{repository:dir,episode:join(dir,'episode.yaml'),production:join(dir,'production.yaml'),manifest:join(dir,'manifest.json'),build:join(dir,'_build')},
     cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37}},layers:{pawl:[['Feed','Pawl']]},
     release:{descriptionTemplate:'description.md'},
     shots:[{id:'pawls',start:0,end:2,narration:'Look.',direction:'Look.',simulation:{from:0,to:2},camera:[{at:0,preset:'a'}],
       hiddenLayers:[],overlays:[],evidence:[],...shotExtra}],...extra};
 }
-async function filmFixture(t){
-  const dir=await mkdtemp(join(tmpdir(),'videomaker-film-test-'));
-  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
-  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]},animation:{loop:2}}));
-  const viewer=async(name,options)=>{const file=join(dir,name);await writeFile(file,viewerDouble(options));return file;};
-  return {dir,viewer};
+async function filmFixture(t,options){
+  const project=await yamlProject(t,options);
+  const viewer=async(name,options)=>{const file=join(project.dir,name);await writeFile(file,viewerDouble(options));return file;};
+  return {project,dir:project.dir,viewer};
 }
 
 test('text animation preview proves measured/even words, title fade and source emphasis on a moving model',async t=>{
-  const {dir,viewer}=await filmFixture(t),speech='One Two Three wheel';
+  const {project,viewer}=await filmFixture(t,{files:{'machine.py':'"<&"; wheel\n'}}),speech='One Two Three wheel';
   const alignment={characters:Array.from(speech),character_start_times_seconds:Array.from(speech,(_,i)=>i*.05),
     character_end_times_seconds:Array.from(speech,(_,i)=>(i+1)*.05)};
-  const e=filmEpisode(dir,{narration:speech,speechOffset:.2,
+  const source=filmEpisode({narration:speech,speechOffset:.2,
     overlays:[
       {from:0,to:1.8,text:'One Two Three',position:'top',reveal:{timing:'spoken'}},
       {from:0,to:1.8,text:'A B C',position:'lower-third',reveal:{timing:'even',duration:1.2}},
       {from:0,to:1.8,text:'Moving model',subtitle:'Still visible',position:'title',
         enter:{kind:'fade',duration:.4},leave:{kind:'fade',duration:.4}}],
     code:{snippet:'test',typing:[{from:0,to:.1,throughLine:1}],
-      emphasis:[{line:1,phrase:'wheel',words:['wheel'],hold:.2}]}}
-  );
-  e.format='machinome-video-draft/0.4';e.output.fps=30;e.audio={replacements:{}};e.model.timeMode='normalized-loop';
-  e.sourceCode={test:{file:'machine.py',lines:[1,1],text:'"<&"; wheel'}};
-  validateEpisode(e,{animation:{loop:2}});
+      emphasis:[{line:1,phrase:'wheel',words:['wheel'],hold:.2}]}},
+  {format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:30,durationSeconds:2},audio:{replacements:{}},
+    sourceCode:{test:{file:'machine.py',lines:[1,1]}}});
+  const e=await project.film(source);
   await assert.rejects(preview(e,{viewer:'unused',width:640}),/Word timing needs cached speech.*run the speech command first/);
   await assert.rejects(render(e,{viewer:'unused',width:640,audio:null}),/Word timing needs cached speech.*run the speech command first/);
   await resolveWordTiming(e,async()=>({sha256:'fixture',alignment}));
@@ -103,21 +100,19 @@ test('text animation preview proves measured/even words, title fade and source e
   assert.equal(report.fadeChecks.length,5);
   assert.ok(report.emphasisChecks[0].samples.some(s=>s.phase==='word-0'&&s.words[0]==='wheel'));
   assert.equal(report.samples.filter(s=>s.reveal!==undefined||s.title!==undefined||s.emphasis!==undefined).length,14);
-  await assert.rejects(browserSession(e,moving,640,[],async({pose})=>{
-    const frame=frameAt(e,.4);
-    await pose(.4,{overlays:frame.overlays.map((cue,i)=>i===0?{...cue,shown:cue.shown+1}:cue)});
-  }),/Overlay word count differs from timeline/);
-  const overflow=structuredClone(e);
+  // The check reads the words the stage shows, not the count it was asked for.
+  await assert.rejects(browserSession(e,moving,640,[],async({page,pose})=>{
+    await page.addStyleTag({content:'.vm-reveal-word{visibility:hidden !important}'});
+    await pose(.4);
+  }),/Overlay word count differs from timeline: pawls\.overlay-0 in pawls at 0\.40 s/);
+  const overflow=structuredClone(source);
   overflow.shots[0].overlays[2].text=Array(30).fill('TOO TALL').join('\n');
-  await assert.rejects(browserSession(overflow,moving,640,[],async({pose})=>{await pose(.5);}),/Title leaves the frame/);
+  const tall=await project.film(overflow);
+  await resolveWordTiming(tall,async()=>({sha256:'fixture',alignment}));
+  await assert.rejects(browserSession(tall,moving,640,[],async({pose})=>{await pose(.5);}),/Title leaves the frame/);
 });
 
 test('a still and clip reach real browser pixels at their authored geometry and timestamps',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  execFileSync('git',['init','-q'],{cwd:dir});
-  await writeFile(join(dir,'episode.yaml'),'picture fixture');
-  await writeFile(join(dir,'production.yaml'),'picture fixture');
-  await writeFile(join(dir,'description.md'),'Credits: {{pictureCredits}}');
   // The still, the clip frames and the two lossless encodes are an input
   // product, memoized; the test works on its own copy.
   const media=await artefact('render-picture-media',{},async out=>{
@@ -134,19 +129,18 @@ test('a still and clip reach real browser pixels at their authored geometry and 
       '-shortest','-c:v','libx264','-qp','0','-pix_fmt','yuv444p','-c:a','aac',join(out,'clip.mp4')]);
     execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-c:v','libvpx-vp9','-lossless','1',join(out,'clip.webm')]);
   });
-  await cp(media,dir,{recursive:true,filter:source=>basename(source)!=='index.json'});
-  execFileSync('git',['add','.'],{cwd:dir});
-  execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','picture fixture'],{cwd:dir});
-  const e=filmEpisode(dir,{narration:'Pictures.',pictures:[
+  const files={'description.md':'Credits: {{pictureCredits}}'};
+  for(const name of ['ramp.png','clip.mp4','clip.webm'])files[name]=await readFile(join(media,name));
+  const {project,dir,viewer}=await filmFixture(t,{files});
+  const source=filmEpisode({narration:'Pictures.',pictures:[
     {from:0,to:1,still:'ramp',area:'frame',fit:'contain',
       view:[{at:0,center:[.5,.5],zoom:1},{at:.8,center:[.5,.6],zoom:2,ease:'linear'}]},
     {from:1,to:2,clip:'clip',inPoint:1,area:'stage',enter:{kind:'fade',duration:.5}}],
-    overlays:[{from:0,to:2,position:'top',text:'Above picture'}]});
-  e.format='machinome-video-draft/0.4';e.output.fps=4;e.model.timeMode='normalized-loop';
-  e.stills={ramp:{file:'ramp.png',credit:'Test gradient',rights:'Own work',upscale:3}};
-  e.clips={clip:{file:'clip.mp4',credit:null,rights:null,upscale:3}};
-  await loadPictures(e);
-  validateEpisode(e,{animation:{loop:2}});
+    overlays:[{from:0,to:2,position:'top',text:'Above picture'}]},
+  {format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:2},
+    stills:{ramp:{file:'ramp.png',credit:'Test gradient',rights:'Own work',upscale:3}},
+    clips:{clip:{file:'clip.mp4',credit:null,rights:null,upscale:3}}});
+  const e=await project.film(source);
   const p=await preview(e,{viewer:await viewer('pictures.js',{timeColor:true}),width:640});
   assert.equal(p.pictureChecks.length,2);
   assert.ok(p.pictureChecks.every(c=>c.replay));
@@ -158,10 +152,10 @@ test('a still and clip reach real browser pixels at their authored geometry and 
   assert.deepEqual(p.pictureChecks[1].samples.map(s=>s.frame),[3,3,4,5]);
   for(const sample of p.pictureChecks[1].samples.filter(s=>s.time>=1.5)){
     const screen=decodePng(await readFile(sample.file));
-    const source=decodePng(await readFile(join(e.pictureMedia.clips.clip.extraction.dir,
+    const clipFrame=decodePng(await readFile(join(e.pictureMedia.clips.clip.extraction.dir,
       `${String(sample.frame).padStart(6,'0')}.png`)));
-    const screenAt=(180*screen.width+320)*3,sourceAt=(60*source.width+80)*3;
-    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-source.rgb[sourceAt+k])<=1);
+    const screenAt=(180*screen.width+320)*3,sourceAt=(60*clipFrame.width+80)*3;
+    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-clipFrame.rgb[sourceAt+k])<=1);
   }
   const key=e.pictureMedia.clips.clip.extraction.key,indexPath=join(e.pictureMedia.clips.clip.extraction.dir,'index.json');
   const written=(await stat(indexPath)).mtimeMs;
@@ -175,6 +169,7 @@ test('a still and clip reach real browser pixels at their authored geometry and 
   assert.equal((await stat(indexPath)).mtimeMs,written);
   assert.equal((await stat(extractedPng)).mtimeMs,decodedWritten);
   assert.ok(priorPicture.equals(await readFile(repeated.pictureChecks[1].samples.at(-1).file)));
+  const still='pawls.picture-0',clip='pawls.picture-1',top='pawls.overlay-0';
   await browserSession(e,await viewer('picture-pixels.js',{timeColor:true}),640,[],async({page,pose})=>{
     const at=async t=>{await pose(t);return decodePng(await page.screenshot());};
     const rgb=(picture,x,y)=>[0,1,2].map(k=>picture.rgb[(y*picture.width+x)*3+k]);
@@ -185,10 +180,13 @@ test('a still and clip reach real browser pixels at their authored geometry and 
     assert.ok(Math.abs(rgb(end,320,180)[1]-153)<=1);
     assert.ok(Math.abs(rgb(end,360,180)[0]-(128+40/(720/256)))<=1);
     assert.ok(Math.abs(rgb(middle,320,252)[1]-179)<=1);
+    // The masthead (the paper set's chrome: its brand and series, and no
+    // rule) stays above the full-frame picture, unchanged by it.
     const startPose=await pose(0),withStartPicture=decodePng(await page.screenshot());
-    await pose(0,{picture:null});const withoutStartPicture=decodePng(await page.screenshot());
+    assert.equal(startPose.observed.chrome.length,2,'the brand and the series, and no rule');
+    await pose(0,{elements:{[still]:absent(stateAt(e,0,still))}});const withoutStartPicture=decodePng(await page.screenshot());
     let unchangedMastheadPixels=0;
-    for(const box of startPose.observed.chrome.slice(0,2)){
+    for(const box of startPose.observed.chrome){
       for(let y=Math.floor(box.y);y<Math.ceil(box.y+box.height);y++)
         for(let x=Math.floor(box.x);x<Math.ceil(box.x+box.width);x++){
           const i=(y*withStartPicture.width+x)*3;
@@ -197,20 +195,12 @@ test('a still and clip reach real browser pixels at their authored geometry and 
         }
     }
     assert.ok(unchangedMastheadPixels>100);
-    const pictured=await pose(.4),withPicture=decodePng(await page.screenshot());
-    await pose(.4,{picture:null});const withoutPicture=decodePng(await page.screenshot());
+    await pose(.4);const withPicture=decodePng(await page.screenshot());
+    await pose(.4,{elements:{[still]:absent(stateAt(e,.4,still))}});const withoutPicture=decodePng(await page.screenshot());
     assert.ok(!withPicture.rgb.equals(withoutPicture.rgb),'the picture changes non-chrome pixels');
-    const rule=pictured.observed.chrome[2];let rulePixels=0;
-    for(let y=Math.floor(rule.y);y<Math.ceil(rule.y+rule.height);y++)
-      for(let x=Math.floor(rule.x);x<Math.ceil(rule.x+rule.width);x++){
-        const i=(y*withPicture.width+x)*3;
-        for(let k=0;k<3;k++)assert.equal(withPicture.rgb[i+k],withoutPicture.rgb[i+k],`rule at ${x},${y}`);
-        rulePixels++;
-      }
-    assert.ok(rulePixels>100);
-    await pose(.4,{overlays:[]});const withoutText=decodePng(await page.screenshot());
+    await pose(.4,{elements:{[top]:absent(stateAt(e,.4,top))}});const withoutText=decodePng(await page.screenshot());
     await pose(.4);const withText=decodePng(await page.screenshot());
-    const box=await page.locator('.top').boundingBox();let textPixels=0;
+    const box=await page.locator('.vm-slot[data-slot="top"]').boundingBox();let textPixels=0;
     for(let y=Math.floor(box.y);y<Math.ceil(box.y+box.height);y++)
       for(let x=Math.floor(box.x);x<Math.ceil(box.x+box.width);x++){
         const i=(y*withText.width+x)*3;
@@ -218,47 +208,48 @@ test('a still and clip reach real browser pixels at their authored geometry and 
       }
     assert.ok(textPixels>50,'the top overlay reaches pixels above the full-frame picture');
   });
-  const low=structuredClone(e);low.output.fps=2;delete low.shots[0].pictures[1].enter;
-  validateEpisode(low,{animation:{loop:2}});
-  const lowReport=await preview(low,{viewer:await viewer('pictures-3-into-2.js',{timeColor:true}),width:640});
+  const low=structuredClone(source);low.output.fps=2;delete low.shots[0].pictures[1].enter;
+  const lowFilm=await project.film(low);
+  const lowReport=await preview(lowFilm,{viewer:await viewer('pictures-3-into-2.js',{timeColor:true}),width:640});
   assert.deepEqual(lowReport.pictureChecks[1].samples.map(s=>s.frame),[3,4]);
   for(const sample of lowReport.pictureChecks[1].samples){
     const screen=decodePng(await readFile(sample.file));
-    const source=decodePng(await readFile(join(low.pictureMedia.clips.clip.extraction.dir,
+    const clipFrame=decodePng(await readFile(join(lowFilm.pictureMedia.clips.clip.extraction.dir,
       `${String(sample.frame).padStart(6,'0')}.png`)));
-    const screenAt=(180*screen.width+320)*3,sourceAt=(60*source.width+80)*3;
-    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-source.rgb[sourceAt+k])<=1);
+    const screenAt=(180*screen.width+320)*3,sourceAt=(60*clipFrame.width+80)*3;
+    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-clipFrame.rgb[sourceAt+k])<=1);
   }
-  const cut=structuredClone(e);cut.shots[0].pictures[0].to=.75;
-  cut.shots[0].pictures[0].view=[{at:0,center:[.5,.5],zoom:1}];
-  validateEpisode(cut,{animation:{loop:2}});
+  const cutSource=structuredClone(source);cutSource.shots[0].pictures[0].to=.75;
+  cutSource.shots[0].pictures[0].view=[{at:0,center:[.5,.5],zoom:1}];
+  const cut=await project.film(cutSource);
   await browserSession(cut,await viewer('picture-cut.js',{timeColor:true}),640,[],async({page,pose})=>{
-    const forced=frameAt(cut,.74).picture;
-    await pose(.75,{picture:forced});const full=await page.screenshot();
-    await pose(.75);const absent=await page.screenshot();
-    await pose(.75,{picture:null});const plain=await page.screenshot();
-    assert.ok(!full.equals(absent),'the picture is nonvacuous immediately before its exclusive end');
-    assert.ok(absent.equals(plain),'at cue.to the continuing model is exactly the plain frame');
+    const forced=stateAt(cut,.74,still);
+    await pose(.75,{elements:{[still]:forced}});const full=await page.screenshot();
+    await pose(.75);const gone=await page.screenshot();
+    await pose(.75,{elements:{[still]:absent(forced)}});const plain=await page.screenshot();
+    assert.ok(!full.equals(gone),'the picture is nonvacuous immediately before its exclusive end');
+    assert.ok(gone.equals(plain),'at cue.to the continuing model is exactly the plain frame');
   });
   await assert.rejects(browserSession(e,await viewer('picture-layout.js',{timeColor:true}),640,[],async({page,pose})=>{
-    await page.addStyleTag({content:'#viewport{left:6% !important}'});
-    await pose(0);
+    await page.addStyleTag({content:'.vm-slot[data-slot="stage"]{left:6% !important}'});
+    await pose(1.2);
   }),/Film stage layout differs from the picture geometry/);
-  const webm=structuredClone(e);webm.clips.clip.file='clip.webm';await loadPictures(webm);
+  const webmSource=structuredClone(source);webmSource.clips.clip.file='clip.webm';
+  const webm=await project.film(webmSource);
   const alternate=await preview(webm,{viewer:await viewer('pictures-webm.js',{timeColor:true}),width:640});
   assert.deepEqual(alternate.pictureChecks[1].samples.map(s=>s.frame),[3,3,4,5]);
   const colours=[];
   for(const sample of alternate.pictureChecks[1].samples.filter(s=>s.time>=1.5)){
     const screen=decodePng(await readFile(sample.file));
-    const source=decodePng(await readFile(join(webm.pictureMedia.clips.clip.extraction.dir,
+    const clipFrame=decodePng(await readFile(join(webm.pictureMedia.clips.clip.extraction.dir,
       `${String(sample.frame).padStart(6,'0')}.png`)));
-    const screenAt=(180*screen.width+320)*3,sourceAt=(60*source.width+80)*3;
-    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-source.rgb[sourceAt+k])<=1);
+    const screenAt=(180*screen.width+320)*3,sourceAt=(60*clipFrame.width+80)*3;
+    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-clipFrame.rgb[sourceAt+k])<=1);
     colours.push(screen.rgb[screenAt]);
   }
   assert.ok(colours[1]>colours[0]);
   const narration=join(dir,'narration.wav');await writeFile(narration,pcmWav(Buffer.alloc(24000*2*2),24000));
-  const out=await render(e,{viewer:await viewer('pictures.js',{timeColor:true}),width:640,fps:4,
+  const out=await render(await project.film(source),{viewer:await viewer('pictures.js',{timeColor:true}),width:640,fps:4,
     audio:{mix:narration,records:[],captions:[]},label:'pictures'});
   const record=JSON.parse(await readFile(join(dir,'_build','pictures-manifest.json'),'utf8'));
   assert.equal(record.releaseReady,false);
@@ -273,48 +264,51 @@ test('a still and clip reach real browser pixels at their authored geometry and 
   assert.deepEqual(streams.map(s=>s.codec_type),['video','audio']);
   const clipStreams=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-of','json',join(dir,'clip.mp4')],{encoding:'utf8'})).streams;
   assert.deepEqual(clipStreams.map(s=>s.codec_type),['video','audio']);
-  const collision=structuredClone(e);
-  collision.clips.ramp={...collision.clips.clip,credit:'Distinct clip credit'};delete collision.clips.clip;
-  collision.pictureMedia.clips.ramp={...collision.pictureMedia.clips.clip,credit:'Distinct clip credit'};
-  delete collision.pictureMedia.clips.clip;collision.shots[0].pictures[1].clip='ramp';
-  await render(collision,{viewer:await viewer('pictures-collision.js',{timeColor:true}),width:640,fps:4,
+  // A still and a clip of one name are credited separately.
+  const collisionSource=structuredClone(source);
+  collisionSource.clips={ramp:{...collisionSource.clips.clip,credit:'Distinct clip credit'}};collisionSource.shots[0].pictures[1].clip='ramp';
+  await render(await project.film(collisionSource),{viewer:await viewer('pictures-collision.js',{timeColor:true}),width:640,fps:4,
     audio:null,label:'collision'});
   assert.match(await readFile(join(dir,'_build','description.md'),'utf8'),/ramp: Test gradient\nramp: Distinct clip credit/);
-  const unready=structuredClone(collision);
-  unready.pictureMedia.clips.ramp.rights=null;unready.pictureMedia.clips.ramp.committed=false;
-  unready.clips.ramp.rights=null;
+  // A clip with unresolved rights, not committed, and a template without the credits placeholder.
+  await copyFile(join(dir,'clip.mp4'),join(dir,'uncommitted.mp4'));
+  const unreadySource=structuredClone(collisionSource);
+  unreadySource.clips.ramp={...unreadySource.clips.ramp,file:'uncommitted.mp4',rights:null};
   await writeFile(join(dir,'description.md'),'No picture-credit placeholder.');
-  await render(unready,{viewer:await viewer('pictures-unready.js',{timeColor:true}),width:640,fps:4,
+  await render(await project.film(unreadySource),{viewer:await viewer('pictures-unready.js',{timeColor:true}),width:640,fps:4,
     audio:null,label:'unready'});
   const unreadyReport=JSON.parse(await readFile(join(dir,'_build','unready-manifest.json'),'utf8'));
   assert.ok(unreadyReport.pictureReleaseIssues.some(s=>/unresolved rights/.test(s)));
   assert.ok(unreadyReport.pictureReleaseIssues.some(s=>/not committed/.test(s)));
   assert.ok(unreadyReport.pictureReleaseIssues.some(s=>/lacks \{\{pictureCredits\}\}/.test(s)));
-  await assert.rejects(render(e,{viewer:'/no-viewer-needed-for-this-refusal',width:3840,fps:4,audio:null}),
+  // The render width rechecks the enlargement, on the first frame that draws the still.
+  await assert.rejects(render(e,{viewer:await viewer('pictures-wide.js',{timeColor:true}),width:3840,fps:4,audio:null}),
     /Still ramp would be enlarged/);
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=160x120:r=3',
     '-t','3','-c:v','libx264','-pix_fmt','yuv420p',join(dir,'clip.mp4')]);
-  await loadPictures(e);
-  const replaced=await preview(e,{viewer:await viewer('pictures-replaced.js',{timeColor:true}),width:640});
-  assert.notEqual(e.pictureMedia.clips.clip.extraction.key,key);
+  const blue=await project.film(source);
+  const replaced=await preview(blue,{viewer:await viewer('pictures-replaced.js',{timeColor:true}),width:640});
+  assert.notEqual(blue.pictureMedia.clips.clip.extraction.key,key);
   const replacement=replaced.pictureChecks[1].samples.find(s=>s.time>=1.5);
   const changed=decodePng(await readFile(replacement.file));
   const color=[0,1,2].map(k=>changed.rgb[(180*changed.width+320)*3+k]);
   assert.notDeepEqual(color,originalFullColor);
   assert.ok(color[2]>color[0],'replacement frame is blue, unlike the original luma frame');
-  const changedSource=decodePng(await readFile(join(e.pictureMedia.clips.clip.extraction.dir,
+  const changedSource=decodePng(await readFile(join(blue.pictureMedia.clips.clip.extraction.dir,
     `${String(replacement.frame).padStart(6,'0')}.png`)));
   for(let k=0;k<3;k++)assert.ok(Math.abs(color[k]-changedSource.rgb[(60*changedSource.width+80)*3+k])<=1);
 });
 
 test('an arrow follows a moving part and a label rides a world point, reproducibly',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{annotations:[
+  const {project,viewer}=await filmFixture(t);
+  const e=await project.film(filmEpisode({annotations:[
     {from:.5,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls'},
-    {from:0,to:2,kind:'label',point:[0,0,0],offset:[0,-.2],text:'Origin'}]});
+    {from:0,to:2,kind:'label',point:[0,0,0],offset:[0,-.2],text:'Origin'}]}));
   const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
   assert.equal(p.pixelReplay,true);
-  const arrows=p.samples.filter(s=>s.annotations?.some(a=>a.index===0)).map(s=>({...s,arrow:s.annotations.find(a=>a.index===0)}));
+  const arrowId=markId(e,'pawls',0),labelId=markId(e,'pawls',1);
+  const arrows=p.samples.filter(s=>s.marks?.['pawls.view']?.some(m=>m.id===arrowId))
+    .map(s=>({...s,arrow:s.marks['pawls.view'].find(m=>m.id===arrowId)}));
   assert.ok(arrows.length>=4,'preview samples the cue at its start, quarters and end');
   const [first,last]=[arrows[1],arrows.at(-2)];
   assert.notDeepEqual(first.arrow.anchor,last.arrow.anchor);
@@ -325,15 +319,15 @@ test('an arrow follows a moving part and a label rides a world point, reproducib
   const {anchor,tail}=first.arrow,l=Math.hypot(anchor.x-tail.x,anchor.y-tail.y);
   const colour=await pixel(first.file,anchor.x-2*(anchor.x-tail.x)/l,anchor.y-2*(anchor.y-tail.y)/l);
   for(const [i,v] of [0xbf,0x53,0x1f].entries())assert.ok(Math.abs(colour[i]-v)<=24,`accent at the tip: ${colour}`);
-  const label=p.samples[0].annotations.find(a=>a.index===1);
+  const label=p.samples[0].marks['pawls.view'].find(m=>m.id===labelId);
   assert.ok(label.text.y+label.text.height<label.anchor.y,'the label sits above its point');
   await assert.rejects(preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640}),/Viewer API 28.*annotations \(shot pawls\).*declares API 27/);
   await assert.rejects(preview(e,{viewer:await viewer('vanishing.js',{vanishAfter:.5}),width:640}),/not on screen: pawls #0 'Pulls'/);
 });
 
 test('a highlight is applied and restored by requested state, and preview proves both in pixels',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{highlight:[{from:.5,to:1.5,parts:['pawl'],others:'ghost'}]});
+  const {project,viewer}=await filmFixture(t);
+  const e=await project.film(filmEpisode({highlight:[{from:.5,to:1.5,parts:['pawl'],others:'ghost'}]}));
   const good=await viewer('viewer28.js');
   const p=await preview(e,{viewer:good,width:640});
   assert.equal(p.pixelReplay,true);
@@ -351,10 +345,10 @@ test('a highlight is applied and restored by requested state, and preview proves
 });
 
 test('field of view and up reach the viewer at API 28 and the picture proves the lens',async t=>{
-  const {dir,viewer}=await filmFixture(t);
+  const {project,viewer}=await filmFixture(t);
   const cameras={a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},tight:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:20},
     rolled:{position:[0,-10,0],target:[0,0,0],up:[1,0,1],fov:37}};
-  const e=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:1.5,preset:'tight'}]},{cameras});
+  const e=await project.film(filmEpisode({camera:[{at:0,preset:'a'},{at:1.5,preset:'tight'}]},{cameras}));
   const good=await viewer('viewer28.js');
   const p=await preview(e,{viewer:good,width:640});
   assert.equal(p.pixelReplay,true);
@@ -362,7 +356,7 @@ test('field of view and up reach the viewer at API 28 and the picture proves the
   for(const c of p.cameraChecks)assert.ok(Math.abs(c.measured/c.expected-1)<=.02);
   const calls=await browserSession(e,good,640,[],async({page,pose})=>{await pose(.75);return {result:await page.evaluate(()=>window.viewerCalls.at(-1)[1])};});
   assert.deepEqual(calls.result,{camera:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:28.5});
-  const rolled=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:1.5,preset:'rolled'}]},{cameras});
+  const rolled=await project.film(filmEpisode({camera:[{at:0,preset:'a'},{at:1.5,preset:'rolled'}]},{cameras}),{at:'rolled'});
   const r=await preview(rolled,{viewer:good,width:640});
   assert.ok(r.cameraChecks.length===2&&r.cameraChecks.every(c=>c.upAbove===true));
   await assert.rejects(preview(e,{viewer:await viewer('ignores.js',{ignoreFov:true}),width:640}),/Viewer did not adopt the requested field of view/);
@@ -370,10 +364,11 @@ test('field of view and up reach the viewer at API 28 and the picture proves the
 });
 
 test('below API 28 the page calls setView exactly as before, with camera and target only',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:2,preset:'b'}]},{format:'machinome-video-draft/0.2',
-    cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},b:{position:[5,-10,0],target:[0,0,0],up:[0,0,1],fov:37}}});
+  const {project,viewer}=await filmFixture(t);
+  const e=await project.film(filmEpisode({camera:[{at:0,preset:'a'},{at:2,preset:'b'}]},{format:'machinome-video-draft/0.2',
+    cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},b:{position:[5,-10,0],target:[0,0,0],up:[0,0,1],fov:37}}}));
   const calls=await browserSession(e,await viewer('viewer27.js',{api:27}),640,[],async({page,pose})=>{
+    await page.evaluate(()=>{window.viewerCalls.length=0;});
     for(const time of [0,.5,1.5])await pose(time);
     return {result:await page.evaluate(()=>window.viewerCalls.map(c=>Object.keys(c[1]).sort()))};
   });
@@ -382,11 +377,11 @@ test('below API 28 the page calls setView exactly as before, with camera and tar
 });
 
 test('eased camera moves and model time reach the viewer as frameAt poses them, on API 28 and API 27',async t=>{
-  const {dir,viewer}=await filmFixture(t);
+  const {project,viewer}=await filmFixture(t);
   const cameras={a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37},b:{position:[4,-10,2],target:[0,0,0],up:[0,0,1],fov:37}};
-  const e=filmEpisode(dir,{camera:[{at:0,preset:'a'},{at:1.5,preset:'b',ease:'out'}],
+  const e=await project.film(filmEpisode({camera:[{at:0,preset:'a'},{at:1.5,preset:'b',ease:'out'}],
     simulation:{from:0,to:2,keyframes:[{at:0,seconds:0},{at:.5,seconds:0},{at:2,seconds:2,ease:'in'}]}},
-    {format:'machinome-video-draft/0.4',cameras});
+  {format:'machinome-video-draft/0.4',cameras}));
   const good=await viewer('viewer28.js',{recordTime:true});
   const p=await preview(e,{viewer:good,width:640});
   assert.equal(p.pixelReplay,true);
@@ -399,7 +394,7 @@ test('eased camera moves and model time reach the viewer as frameAt poses them, 
   const views=calls.result.filter(c=>c[0]==='setView').map(c=>c[1]),times=calls.result.filter(c=>c[0]==='setTime').map(c=>c[1]);
   assert.equal(views.length,instants.length);assert.equal(times.length,instants.length);
   instants.forEach((time,i)=>{
-    const f=frameAt(e,time);
+    const f=stateAt(e,time,'pawls.view');
     assert.deepEqual(views[i],{camera:f.view.camera,target:f.view.target,up:f.up,fov:f.fov},`setView at ${time}`);
     assert.equal(times[i],f.time,`setTime at ${time}`);
   });
@@ -409,28 +404,18 @@ test('eased camera moves and model time reach the viewer as frameAt poses them, 
   assert.equal(times[0],0,'the held pose before the eased segment');
   const old=await preview(e,{viewer:await viewer('viewer27.js',{api:27}),width:640});
   assert.equal(old.pixelReplay,true,'easing needs no newer viewer');
-  e.model.timeMode='normalized-loop';
-  assert.doesNotThrow(()=>validateEpisode(e,{animation:{loop:2},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}}));
 });
 
 // Shot transitions (format 0.4). The double paints its canvas a colour computed
 // from model time, so the continued outgoing shot and the incoming one differ.
 const timeColor=time=>[Math.round(255*time),96,160];
-async function transitionFixture(t){
-  const {dir,viewer}=await filmFixture(t);
-  const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8'}).trim();
-  git('init','-q');
-  for(const [name,text] of [['episode.yaml','test: transitions\n'],['production.yaml','test: transitions\n'],['description.md','Test description.']])await writeFile(join(dir,name),text);
-  git('add','episode.yaml','production.yaml','description.md');git('-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture');
-  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]},animation:{loop:20}}));
-  return {dir,viewer};
-}
+const transitionFixture=t=>filmFixture(t,{manifest:{...PAWL_MANIFEST,animation:{loop:20}},files:{'machine.py':'x = 1\n'}});
 // Code and model shots alternate, each joined to the next by another kind;
 // model seconds jump between shots so every pair of pictures differs.
-function joinedFilm(dir){
-  const e=filmEpisode(dir,{},{format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:10},
-    model:{expectedDurationSeconds:20,timeMode:'normalized-loop'},
-    sourceCode:{test:{file:'machine.py',lines:[1,1],text:'x = 1'}}});
+function joinedFilm(){
+  const e=filmEpisode({},{format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:10},
+    model:{expectedDurationSeconds:20},
+    sourceCode:{test:{file:'machine.py',lines:[1,1]}}});
   const base=e.shots[0],code={snippet:'test',typing:[{from:0,to:.5,throughLine:1}]};
   const shot=(i,id,extra)=>({...base,id,start:2*i,end:2*i+2,simulation:{from:3*i,to:3*i+2},...extra});
   e.shots=[shot(0,'code0',{code,fadeIn:{duration:.5}}),
@@ -442,33 +427,29 @@ function joinedFilm(dir){
 }
 
 test('a dissolve from a continued clip into a fading title keeps film chrome unblended',async t=>{
-  const {dir,viewer}=await transitionFixture(t);
+  const {project,dir,viewer}=await transitionFixture(t);
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=160x120:r=4',
     '-t','3','-c:v','libx264','-pix_fmt','yuv420p',join(dir,'joined.mp4')]);
-  const e=filmEpisode(dir,{pictures:[{from:0,to:2,clip:'joined',area:'stage'}],
+  const source=filmEpisode({pictures:[{from:0,to:2,clip:'joined',area:'stage'}],
     overlays:[{from:0,to:2,text:'Outgoing clip',position:'top'}]},
-    {format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:4},
-      model:{expectedDurationSeconds:20,timeMode:'normalized-loop'},
-      clips:{joined:{file:'joined.mp4',credit:'Own',rights:'Own',upscale:2}}});
-  e.shots.push({...structuredClone(e.shots[0]),id:'closing',start:2,end:4,
+  {format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:4},
+    model:{expectedDurationSeconds:20},
+    clips:{joined:{file:'joined.mp4',credit:'Own',rights:'Own',upscale:2}}});
+  source.shots.push({...structuredClone(source.shots[0]),id:'closing',start:2,end:4,
     simulation:{from:2,to:4},pictures:[],transition:{kind:'dissolve',duration:1},
     overlays:[{from:.2,to:2,text:'CLOSING',position:'title',enter:{kind:'fade',duration:.6}}]});
-  await loadPictures(e);
-  validateEpisode(e,{animation:{loop:20}});
-  const p=await preview(e,{viewer:await viewer('joined-picture.js',{timeColor:true}),width:640});
+  const p=await preview(await project.film(source),{viewer:await viewer('joined-picture.js',{timeColor:true}),width:640});
   assert.ok(p.transitionChecks[0].largestDifference<=2);
-  const incoming=structuredClone(e);
+  const incoming=structuredClone(source);
   incoming.shots[0].pictures=[];
   incoming.shots[1].pictures=[{from:0,to:2,clip:'joined',area:'stage'}];
-  await loadPictures(incoming);
-  const q=await preview(incoming,{viewer:await viewer('incoming-picture.js',{timeColor:true}),width:640});
+  const q=await preview(await project.film(incoming),{viewer:await viewer('incoming-picture.js',{timeColor:true}),width:640});
   assert.ok(q.transitionChecks[0].largestDifference<=2);
 });
 
 test('shots joined by every kind pass preview with each transition proved in pixels, and render reproducibly',async t=>{
-  const {dir,viewer}=await transitionFixture(t);
-  const e=joinedFilm(dir);
-  validateEpisode(e,{animation:{loop:20},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}});
+  const {project,dir,viewer}=await transitionFixture(t);
+  const e=await project.film(joinedFilm());
   const colored=await viewer('colored.js',{timeColor:true,recordTime:true});
   const p=await preview(e,{viewer:colored,width:640});
   assert.equal(p.pixelReplay,true);
@@ -486,34 +467,35 @@ test('shots joined by every kind pass preview with each transition proved in pix
   assert.deepEqual(checks['model1:transition'].instants,[2,2.25,2.5,2.75],'first frame, quarters, midpoint and last frame, once each');
   // The outgoing code shot runs on into the dissolve: at its midpoint the viewer is
   // first posed at model second 2 + 0.5, and the composed canvas blends that colour.
-  const middle=2.5,f=frameAt(e,middle);
-  assert.equal(f.transition.outgoing.time,2.5/20);
+  const middle=2.5,f=frameAt(e,middle),incoming=f.elements['model1.view'];
+  assert.equal(f.transition.outgoing.elements['code0.view'].time,2.5/20);
   const seen=await browserSession(e,colored,640,[],async({page,pose})=>{
     await page.evaluate(()=>{window.viewerCalls.length=0;});
     await pose(middle);
     const file=join(dir,'middle.png');await page.screenshot({path:file});
     return {result:{calls:await page.evaluate(()=>window.viewerCalls.filter(c=>c[0]==='setTime').map(c=>c[1])),file}};
   });
-  assert.deepEqual(seen.result.calls,[2.5/20,f.time]);
-  const [pa,pb]=[timeColor(2.5/20),timeColor(f.time)],w=f.transition.progress;
+  assert.deepEqual(seen.result.calls,[2.5/20,incoming.time]);
+  const [pa,pb]=[timeColor(2.5/20),timeColor(incoming.time)],w=f.transition.progress;
   const got=await pixel(seen.result.file,640*.78,360*.5);
   for(let i=0;i<3;i++)assert.ok(Math.abs(got[i]-((1-w)*pa[i]+w*pb[i]))<=2,`blend of the continued outgoing colour: ${got} from ${pa} and ${pb}`);
   // The whole film renders, and a transition frame posed in a fresh session is byte-identical.
   const output=await render(e,{viewer:colored,label:'silent-preview'});
   const report=JSON.parse(await readFile(join(dir,'_build/silent-preview-manifest.json'),'utf8'));
   assert.equal(output,join(dir,'_build/silent-preview.mp4'));assert.equal(report.count,40);
-  const fresh=await browserSession(e,colored,640,[],async({page,pose})=>{await pose(10/4);return {result:await page.screenshot()};});  assert.ok(fresh.result.equals(await readFile(join(report.dir,'000010.png'))),'frame 10 (the dissolve midpoint) reproduces exactly');
+  const fresh=await browserSession(e,colored,640,[],async({page,pose})=>{await pose(10/4);return {result:await page.screenshot()};});
+  assert.ok(fresh.result.equals(await readFile(join(report.dir,'000010.png'))),'frame 10 (the dissolve midpoint) reproduces exactly');
 });
 
 test('an arrow that runs to the cut follows its part into the transition and is refused when it leaves',async t=>{
-  const {dir,viewer}=await transitionFixture(t);
-  const e=filmEpisode(dir,{},{format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:4},
-    model:{expectedDurationSeconds:20,timeMode:'normalized-loop'}});
-  const base=e.shots[0];
-  e.shots=[{...base,id:'model1',start:0,end:2,simulation:{from:0,to:2},
-      annotations:[{from:.5,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls'}]},
-    {...base,id:'next',start:2,end:4,simulation:{from:5,to:7},transition:{kind:'dissolve',duration:1}}];
-  validateEpisode(e,{animation:{loop:20},root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]}});
+  const {project,viewer}=await transitionFixture(t);
+  const source=filmEpisode({},{format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:4},
+    model:{expectedDurationSeconds:20}});
+  const base=source.shots[0];
+  source.shots=[{...base,id:'model1',start:0,end:2,simulation:{from:0,to:2},
+    annotations:[{from:.5,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls'}]},
+  {...base,id:'next',start:2,end:4,simulation:{from:5,to:7},transition:{kind:'dissolve',duration:1}}];
+  const e=await project.film(source);
   const error=await preview(e,{viewer:await viewer('vanishing.js',{vanishAfter:2/20}),width:640}).then(()=>null,error=>error);
   assert.ok(error,'preview refuses');
   const match=/^Annotation target is not on screen: model1 #0 'Pulls' at (\d+\.\d+) s$/.exec(error.message);
@@ -532,12 +514,12 @@ const around=(image,p)=>{const out=[];
 const near=(c,d,levels)=>c.every((v,k)=>Math.abs(v-d[k])<=levels);
 
 test('a ring encloses its moving part in the accent, and draws itself on clockwise from the top',async t=>{
-  const {dir,viewer}=await filmFixture(t);
+  const {project,viewer}=await filmFixture(t);
   const good=await viewer('viewer28.js');
-  const e=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl'}]},V04);
+  const e=await project.film(filmEpisode({annotations:[{from:0,to:2,kind:'ring',part:'pawl'}]},V04));
   const p=await preview(e,{viewer:good,width:640});
   assert.equal(p.pixelReplay,true);
-  const rings=p.samples.filter(s=>s.annotations?.length).map(s=>({file:s.file,...s.annotations[0]}));
+  const rings=p.samples.filter(s=>s.marks?.['pawls.view']?.length).map(s=>({file:s.file,...s.marks['pawls.view'][0]}));
   const [a,b]=[rings[0],rings.at(-1)];
   assert.notDeepEqual(a.ring,b.ring,'the ring follows the part');
   const P=.01*640*(1-2*.08);
@@ -550,9 +532,9 @@ test('a ring encloses its moving part in the accent, and draws itself on clockwi
     assert.ok(around(decodePng(await readFile(file)),{x:cx+rx,y:cy}).some(c=>near(c,ACCENT,24)),'accent at the rightmost point');
   }
   // Drawn on over its first second, linearly: half drawn at 0.5 s, from the top round the right.
-  const drawn=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl',enter:{kind:'draw',duration:1,ease:'linear'}}]},V04);
+  const drawn=await project.film(filmEpisode({annotations:[{from:0,to:2,kind:'ring',part:'pawl',enter:{kind:'draw',duration:1,ease:'linear'}}]},V04),{at:'drawn'});
   const seen=await browserSession(drawn,good,640,[],async({page,pose})=>{
-    const f=await pose(.5);return {result:{ring:f.observed.annotations[0],image:decodePng(await page.screenshot())}};
+    const f=await pose(.5);return {result:{ring:f.observed.elements['pawls.view'].marks[0],image:decodePng(await page.screenshot())}};
   });
   const {ring,image}=seen.result;
   assert.equal(ring.drawn,.5);assert.equal(ring.opacity,1);
@@ -569,10 +551,10 @@ test('a ring encloses its moving part in the accent, and draws itself on clockwi
 });
 
 test('an arrow fading in and a label fading out are proved as the blends their easing predicts',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{annotations:[
+  const {project,viewer}=await filmFixture(t);
+  const e=await project.film(filmEpisode({annotations:[
     {from:0,to:2,kind:'arrow',part:['Feed','Pawl'],place:[.1,.47],text:'Pulls',enter:{kind:'fade',duration:1,ease:'linear'}},
-    {from:0,to:2,kind:'label',point:[0,0,0],offset:[0,-.2],text:'Origin',leave:{kind:'fade',duration:1}}]},V04);
+    {from:0,to:2,kind:'label',point:[0,0,0],offset:[0,-.2],text:'Origin',leave:{kind:'fade',duration:1}}]},V04));
   const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
   assert.equal(p.pixelReplay,true);
   const checks=Object.fromEntries(p.entranceChecks.map(c=>[`${c.index}:${c.phase}`,c]));
@@ -586,9 +568,9 @@ test('an arrow fading in and a label fading out are proved as the blends their e
 });
 
 test('a drawn arrow keeps its words visible and reveals only the shaft toward its part',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'arrow',part:'pawl',place:[.1,.47],text:'Pulls',
-    enter:{kind:'draw',duration:1,ease:'linear'}}]},V04);
+  const {project,viewer}=await filmFixture(t);
+  const e=await project.film(filmEpisode({annotations:[{from:0,to:2,kind:'arrow',part:'pawl',place:[.1,.47],text:'Pulls',
+    enter:{kind:'draw',duration:1,ease:'linear'}}]},V04));
   const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
   assert.equal(p.pixelReplay,true);
   assert.deepEqual(p.entranceChecks.map(c=>c.phase),['enter-start','enter','enter-end']);
@@ -598,35 +580,36 @@ test('a drawn arrow keeps its words visible and reveals only the shaft toward it
 });
 
 test('a ring whose part is not wholly on the stage, or that leaves the frame, is refused',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const ring=extra=>filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl',...extra}]},V04);
-  await assert.rejects(preview(ring(),{viewer:await viewer('wide.js',{rectSize:[600,20]}),width:640}),
+  const {project,viewer}=await filmFixture(t);
+  const ring=async(extra,at)=>project.film(filmEpisode({annotations:[{from:0,to:2,kind:'ring',part:'pawl',...extra}]},V04),{at});
+  await assert.rejects(preview(await ring({},'plain'),{viewer:await viewer('wide.js',{rectSize:[600,20]}),width:640}),
     /^Error: Ring target is not wholly on screen: pawls #0 \(ring\) at 0\.00 s$/);
-  await assert.rejects(preview(ring({padding:.25}),{viewer:await viewer('viewer28.js'),width:640}),
+  await assert.rejects(preview(await ring({padding:.25},'padded'),{viewer:await viewer('viewer28.js'),width:640}),
     /^Error: Ring leaves the frame: pawls #0 \(ring\) at 0\.00 s$/);
-  await assert.rejects(preview(ring(),{viewer:await viewer('vanishing.js',{vanishAfter:.5}),width:640}),
+  await assert.rejects(preview(await ring({},'vanishing'),{viewer:await viewer('vanishing.js',{vanishAfter:.5}),width:640}),
     /Annotation target is not on screen: pawls #0 \(ring\)/);
 });
 
 test('an entrance lasting the whole cue ends at its exclusive boundary without a false full-mark proof',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{annotations:[{from:0,to:2,kind:'ring',part:'pawl',enter:{kind:'fade',duration:2}}]},V04);
+  const {project,viewer}=await filmFixture(t);
+  const e=await project.film(filmEpisode({annotations:[{from:0,to:2,kind:'ring',part:'pawl',enter:{kind:'fade',duration:2}}]},V04));
   const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
   assert.equal(p.pixelReplay,true);
   assert.deepEqual(p.entranceChecks.map(c=>c.phase),['enter-start','enter','enter-end']);
-  assert.deepEqual(p.entranceChecks[2],{shotId:'pawls',index:0,phase:'enter-end',kind:'fade',time:2,
+  assert.deepEqual(p.entranceChecks[2],{shotId:'pawls',element:'pawls.view',mark:markId(e,'pawls',0),index:0,phase:'enter-end',kind:'fade',time:2,
     skipped:'cue ends at this exclusive boundary'});
 });
 
 test('a fractional cue at a nonzero shot start is active at its authored start and absent at its end',async t=>{
-  const {dir,viewer}=await filmFixture(t);
-  const e=filmEpisode(dir,{},V04);
-  e.output.durationSeconds=12;e.model.expectedDurationSeconds=20;
-  e.shots[0].id='lead';e.shots[0].end=10;e.shots[0].simulation.to=10;
-  e.shots.push({...e.shots[0],id:'ropes',start:10,end:12,simulation:{from:10,to:12},
+  const {project,viewer}=await filmFixture(t,{manifest:{...PAWL_MANIFEST,animation:{loop:20}}});
+  const source=filmEpisode({},{...V04,model:{expectedDurationSeconds:20}});
+  source.output.durationSeconds=12;source.output.fps=4;
+  source.shots[0].id='lead';source.shots[0].end=10;source.shots[0].simulation.to=10;
+  source.shots.push({...source.shots[0],id:'ropes',start:10,end:12,simulation:{from:10,to:12},
     annotations:[{from:.2,to:1.5,kind:'ring',part:'pawl',enter:{kind:'fade',duration:.5}}]});
-  assert.deepEqual(frameAt(e,10.2).annotations.map(a=>a.index),[0]);
-  assert.deepEqual(frameAt(e,11.5).annotations,[]);
+  const e=await project.film(source);
+  assert.deepEqual(stateAt(e,10.2,'ropes.view').marks.map(m=>m.id),[markId(e,'ropes',0)]);
+  assert.deepEqual(stateAt(e,11.5,'ropes.view').marks,[]);
   const p=await preview(e,{viewer:await viewer('viewer28.js'),width:640});
   assert.equal(p.pixelReplay,true);
   assert.deepEqual(p.entranceChecks.map(c=>[c.phase,c.time]),[['enter-start',10.2],['enter',10.45],['enter-end',10.7]]);

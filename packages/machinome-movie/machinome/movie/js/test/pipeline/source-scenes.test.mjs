@@ -1,11 +1,13 @@
-import {slowTest as test} from './support/memo.mjs';
+import {slowTest as test} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {loadSourceCode,codeAt,validateCode} from '../src/code.mjs';
-import {speechRequest,pcmWav,mixSpeech} from '../src/speech.mjs';
+import {loadSourceCode,validateCode} from '../../src/code.mjs';
+import {frameAt} from '../../src/timeline.mjs';
+import {yamlProject} from '../support/yaml-project.mjs';
+import {speechRequest,pcmWav,mixSpeech} from '../../src/speech.mjs';
 
 async function temp(t){const dir=await mkdtemp(join(tmpdir(),'videomaker-source-test-'));t.onTestFinished(()=>rm(dir,{recursive:true,force:true}));return dir;}
 test('source excerpts match pinned Git bytes, with validated bounds and containment',async t=>{
@@ -18,16 +20,26 @@ test('source excerpts match pinned Git bytes, with validated bounds and containm
   e.sourceCode.drive.file='../outside.py';await assert.rejects(loadSourceCode(e),/outside|ENOENT/);e.sourceCode.drive.file='machine.py';
   await writeFile(join(dir,'machine.py'),'made_up = True\n');await assert.rejects(loadSourceCode(e),/pinned/);
 });
-test('typing follows local time, holds between cues, restores and escapes markup',()=>{
-  const snippet={file:'machine.py',lines:[10,11],text:'x = "<script>"\nwheel.drives(saw)'};
+test('typing follows local time, holds between cues, restores and escapes markup',async t=>{
+  const lines=[...Array.from({length:9},(_,i)=>`# line ${i+1}`),'x = "<script>"','wheel.drives(saw)'];
+  const project=await yamlProject(t,{manifest:{root:{name:'test'},animation:{loop:8}},files:{'machine.py':lines.join('\n')+'\n'}});
   const code={snippet:'drive',typing:[{from:1,to:3,throughLine:10},{from:5,to:7,throughLine:11}]};
-  const e={sourceCode:{drive:snippet}},s={id:'test',start:0,end:8,code};validateCode(e,s);
-  assert.equal(codeAt(e,s,0).text,'');assert.equal(codeAt(e,s,4).text,'x = "<script>"');
-  const before=codeAt(e,s,2);codeAt(e,s,7);assert.deepEqual(codeAt(e,s,2),before);
-  const full=codeAt(e,s,7);assert.equal(full.text,snippet.text);assert.match(full.html,/hljs-string/);assert.ok(!full.html.includes('<script>'));
+  const e={format:'machinome-video-draft/0.4',title:'Typing',output:{width:320,height:180,fps:10,durationSeconds:8},
+    model:{expectedDurationSeconds:8},cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37}},
+    sourceCode:{drive:{file:'machine.py',lines:[10,11]}},
+    shots:[{id:'test',start:0,end:8,narration:'Type.',direction:'Type.',simulation:{from:0,to:8},camera:[{at:0,preset:'a'}],
+      hiddenLayers:[],overlays:[],evidence:[],code}]};
+  const film=await project.film(e),codeAt=time=>frameAt(film,time).elements['test.code'];
+  assert.equal(codeAt(0).text,'');assert.equal(codeAt(4).text,'x = "<script>"');
+  const before=codeAt(2);codeAt(7);assert.deepEqual(codeAt(2),before);
+  const full=codeAt(7);assert.equal(full.text,'x = "<script>"\nwheel.drives(saw)');assert.match(full.html,/hljs-string/);assert.ok(!full.html.includes('<script>'));
   assert.match(full.html,/hljs-title function_/);
-  code.typing[1].from=2;assert.throws(()=>validateCode(e,s),/typing/);
-  code.typing=[{from:0,to:3,throughLine:10}];assert.throws(()=>validateCode(e,s),/complete/);
+  // The same rules as the YAML validation states them.
+  const snippet={file:'machine.py',lines:[10,11],text:full.text},shot={id:'test',start:0,end:8,code:structuredClone(code)};
+  assert.doesNotThrow(()=>validateCode({sourceCode:{drive:snippet}},shot));
+  shot.code.typing[1].from=2;assert.throws(()=>validateCode({sourceCode:{drive:snippet}},shot),/typing/);
+  shot.code.typing=[{from:0,to:3,throughLine:10}];assert.throws(()=>validateCode({sourceCode:{drive:snippet}},shot),/complete/);
+  code.typing[1].from=2;await assert.rejects(project.film(e),/typing/);
 });
 test('v3 omits continuity fields and uses valid defaults without changing legacy requests',()=>{
   const request=speechRequest({audio:{model:'eleven_v3'}},['First.','Second.'],1);
@@ -49,6 +61,6 @@ test('lossless wrapping preserves every sample and mixing retains sound from cli
   assert.ok(Math.abs(signal[12000])>.05,'first sample is not gated');
 });
 test('film stage has no narration caption element',async()=>{
-  const html=await readFile(new URL('../src/film.html',import.meta.url),'utf8');
+  const html=await readFile(new URL('../../src/film.html',import.meta.url),'utf8');
   assert.doesNotMatch(html,/id="caption"/);
 });

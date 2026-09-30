@@ -1,17 +1,19 @@
 import {describe} from 'vitest';
-import {slowTest as test,artefact} from './support/memo.mjs';
+import {slowTest as test,artefact} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
 import {spawn,execFileSync,spawnSync} from 'node:child_process';
 import {once} from 'node:events';
 import {mkdtemp,mkdir,readFile,readdir,writeFile,appendFile,chmod,stat,rm,symlink,unlink,copyFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {dirname,join,resolve,delimiter} from 'node:path';
-import {fileHash} from '../src/util.mjs';
-import {decodePng} from '../src/pixels.mjs';
-import {render} from './support/stage.mjs';
+import {fileHash} from '../../src/util.mjs';
+import {decodePng} from '../../src/pixels.mjs';
+import {render} from '../support/stage.mjs';
+import {yamlProject} from '../support/yaml-project.mjs';
+import {loadEpisode} from '../../src/episode.mjs';
 
 const cli=resolve('bin/videomaker.mjs');
-const packModule=await import('../src/review-pack.mjs').catch(error=>{
+const packModule=await import('../../src/review-pack.mjs').catch(error=>{
   if(error.code==='ERR_MODULE_NOT_FOUND')return null;
   throw error;
 });
@@ -391,13 +393,11 @@ test('interruption and mid-attempt input drift never publish a complete new inde
   assert.equal((await completeIndexes(dir)).length,1);
 });
 
+// A two-shot YAML episode joined by a dissolve, loaded as the command line
+// loads it; `episodePath` is its file for the command line.
 async function renderFixture(t){
-  const dir=await root(t),build=join(dir,'_build');await mkdir(build);
-  execFileSync('git',['init','-q'],{cwd:dir});
-  await writeFile(join(dir,'episode.yaml'),'review render fixture');
-  await writeFile(join(dir,'production.yaml'),'review render fixture');
-  await writeFile(join(dir,'description.md'),'Review fixture.');
-  await writeFile(join(dir,'model.json'),JSON.stringify({root:{name:'test'},animation:{loop:2}}));
+  const project=await yamlProject(t,{manifest:{root:{name:'test'},animation:{loop:2}},files:{'description.md':'Review fixture.'}});
+  const {dir}=project,build=join(dir,'_build');await mkdir(build);
   const viewer=join(dir,'viewer.js');
   await writeFile(viewer,`window.MachinomeViewer={async mount(selector,url,options){
     const canvas=document.createElement('canvas');canvas.style.width='100%';canvas.style.height='100%';
@@ -408,39 +408,19 @@ async function renderFixture(t){
       view(){return {camera:{toArray:()=>view.camera},target:{toArray:()=>view.target},
         up:{toArray:()=>view.up},fov:view.fov}}};
   }};`);
-  execFileSync('git',['add','.'],{cwd:dir});
-  execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture'],{cwd:dir});
-  const episode={format:'machinome-video-draft/0.4',title:'Review',series:'Review',
+  const episodePath=await project.write({format:'machinome-video-draft/0.4',title:'Review',series:'Review',
     output:{width:320,height:180,fps:2,durationSeconds:2},model:{expectedDurationSeconds:2},
     style:{background:'#f5f1e8',foreground:'#222222',accent:'#bf531f',fontFamily:'DejaVu Sans'},
-    paths:{repository:dir,episode:join(dir,'episode.yaml'),production:join(dir,'production.yaml'),
-      manifest:join(dir,'model.json'),build},
     cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37}},layers:{},
     release:{descriptionTemplate:'description.md'},shots:[
-      {id:'A',start:0,end:1,narration:'',direction:'Look.',simulation:{from:0,to:1},
+      {id:'a',start:0,end:1,narration:'Look.',direction:'Look.',simulation:{from:0,to:1},
         camera:[{at:0,preset:'a'}],hiddenLayers:[],overlays:[],evidence:[]},
-      {id:'B',start:1,end:2,narration:'',direction:'Look.',simulation:{from:1,to:2},
+      {id:'b',start:1,end:2,narration:'Look.',direction:'Look.',simulation:{from:1,to:2},
         camera:[{at:0,preset:'a'}],hiddenLayers:[],overlays:[],evidence:[],
-        transition:{kind:'dissolve',duration:.5}}]};
-  return {dir,build,viewer,episode};
+        transition:{kind:'dissolve',duration:1}}]});
+  return {dir,build,viewer,episode:await loadEpisode(episodePath),episodePath};
 }
-async function cliRenderFixture(t){
-  const fixture=await renderFixture(t),{dir,episode}=fixture;
-  const model={manifest:'model.json',timeMode:'normalized-loop',
-    expectedDurationSeconds:2,sourceRevision:'fixture-revision'};
-  const script={format:episode.format,production:'production.yaml',title:episode.title,
-    series:episode.series,output:episode.output,style:episode.style,cameras:episode.cameras,
-    layers:{},evidence:{},release:episode.release,
-    shots:episode.shots.map(shot=>({...shot,id:shot.id.toLowerCase(),narration:'Look.',
-      ...(shot.transition?{transition:{...shot.transition,duration:1}}:{})}))};
-  await writeFile(join(dir,'source-revision.txt'),'fixture-revision\n');
-  await writeFile(join(dir,'production.yaml'),JSON.stringify({model})+'\n');
-  await writeFile(join(dir,'episode.yaml'),JSON.stringify(script)+'\n');
-  execFileSync('git',['add','.'],{cwd:dir});
-  execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid',
-    'commit','-qm','valid CLI episode'],{cwd:dir});
-  return {...fixture,episodePath:join(dir,'episode.yaml')};
-}
+const cliRenderFixture=renderFixture;
 
 test('render writes a review-samples-v1 plan on a cold capture and on a full shot-cache hit',async t=>{
   const {build,viewer,episode}=await renderFixture(t);

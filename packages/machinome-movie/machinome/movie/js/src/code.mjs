@@ -5,9 +5,7 @@ import hljs from 'highlight.js/lib/core';
 import python from 'highlight.js/lib/languages/python';
 import {hash} from './util.mjs';
 import {contained} from './episode.mjs';
-import {formatAtLeast} from './timeline.mjs';
-import {activeEmphasis} from './words.mjs';
-import {narrationOf} from './chapters.mjs';
+import {formatAtLeast,typedAt,tokenRange} from './timeline.mjs';
 import {sourceBase} from './util.mjs';
 
 hljs.registerLanguage('python',api=>{
@@ -64,7 +62,7 @@ export function validateCode(e,shot){
       need(cue&&typeof cue==='object'&&!Array.isArray(cue),`Invalid ${where}`);
       for(const key of Object.keys(cue))need(['line','phrase','words','hold'].includes(key),`Unknown emphasis field: ${key} (${where})`);
       need(Number.isInteger(cue.line)&&cue.line>=snippet.lines[0]&&cue.line<=snippet.lines[1],`Emphasis line outside snippet: ${where}`);
-      const narration=narrationOf(e,shot);
+      const narration=shot.narration;
       need(typeof cue.phrase==='string'&&cue.phrase.length>0&&narration.includes(cue.phrase)&&
         narration.indexOf(cue.phrase)===narration.lastIndexOf(cue.phrase),`Missing or ambiguous emphasis phrase: ${where}`);
       need(Array.isArray(cue.words)&&cue.words.length>0&&new Set(cue.words).size===cue.words.length&&
@@ -90,25 +88,23 @@ export function validateCodeSource(e,shot){
   }
 }
 
-export function codeAt(e,shot,local){
-  if(!shot.code)return null;
-  const snippet=e.sourceCode[shot.code.snippet],lines=snippet.text.split('\n');
-  let count=0,prior=0;
-  for(const cue of shot.code.typing){
-    const end=Array.from(lines.slice(0,cue.throughLine-snippet.lines[0]+1).join('\n')).length;
-    if(local<cue.from)break;
-    count=prior+Math.floor((end-prior)*Math.min(1,(local-cue.from)/(cue.to-cue.from)));
-    if(local<cue.to)break;
-    prior=end;
-  }
+// A source panel's state at shot-local time (design D4): the typed text,
+// continuing where its chapter's typing stopped, its highlighted markup, the
+// cursor, and the tokens its active emphasis lights.
+export function sourceState(film,chapter,shot,key,element,local){
+  const snippet=film.excerpts?.[element.source];
+  if(!snippet)throw new Error(`Source excerpt is not loaded: ${element.source} in shot ${shot.id}`);
+  const count=typedAt(film,chapter,shot,key,local),total=Array.from(snippet.text).length;
   const text=Array.from(snippet.text).slice(0,count).join('');
-  const frame={file:snippet.file,firstLine:snippet.lines[0],lastLine:snippet.lines[1],text,
+  const emphasis=[];
+  shot.cues.forEach(cue=>cue.actions.forEach(action=>{
+    if(action.element!==key||action.action!=='emphasize')return;
+    if(action.until===undefined||action.words.some(w=>w.at===undefined))throw new Error(`Word timing is not resolved: shot ${shot.id}`);
+    for(const word of action.words)if(local>=word.at-1e-9&&local<action.until-1e-9)
+      emphasis.push({token:word.token,...tokenRange(snippet,word.token,action.line)});
+  }));
+  emphasis.sort((a,b)=>a.start-b.start);
+  return {kind:'source',file:snippet.file,firstLine:snippet.lines[0],lastLine:snippet.lines[1],text,
     html:hljs.highlight(text,{language:'python',ignoreIllegals:true}).value,
-    cursor:count<Array.from(snippet.text).length&&Math.floor(local*2)%2===0};
-  if(shot.code.emphasis!==undefined){
-    const cues=e.wordTiming?.[shot.id]?.emphasis;
-    if(!cues)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
-    frame.emphasis=cues.flatMap(c=>activeEmphasis(c.cues,local)).map(({word,line,start,end})=>({word,line,start,end}));
-  }
-  return frame;
+    cursor:count<total&&Math.floor(local*2)%2===0,emphasis};
 }

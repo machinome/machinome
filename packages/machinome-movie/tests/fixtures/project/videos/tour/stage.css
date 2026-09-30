@@ -1,0 +1,21 @@
+/* The tour's look. Colours come from the movie's style through the stage's
+   custom properties (--vm-background, --vm-foreground, --vm-accent). */
+.playbill-series, .playbill-title {
+  position: absolute; top: 4%; font-size: 1vw; letter-spacing: .14em; font-weight: 700;
+}
+.playbill-series { left: 5%; color: var(--vm-accent); }
+.playbill-title { right: 5%; text-transform: uppercase; }
+
+.playbill-stage { left: 5%; top: 12%; width: 68%; height: 80%; }
+/* The plate is a stamp in the corner: the fixture's still is 48 by 32 pixels
+   and may be enlarged 1.5 times, zoom included. */
+.playbill-plate { right: 5%; bottom: 8%; width: 3.9%; height: 4.6%; z-index: 1; }
+.playbill-aside { left: 76%; top: 30%; width: 19%; height: 40%; }
+.playbill-headline { left: 5%; top: 14%; width: 68%; z-index: 2; --vm-title-size: 3.2vw; --vm-title-weight: 700; }
+
+.playbill-left { left: 5%; top: 22%; width: 44%; height: 68%; }
+.playbill-right { left: 51%; top: 22%; width: 44%; height: 68%; }
+
+.tally { list-style: none; margin: 0; padding: 1vw; border: 2px solid var(--vm-accent); font-size: 1.4vw; }
+.tally-item { padding: .4em .6em; }
+.tally-lit { background: var(--vm-accent); color: var(--vm-background); }

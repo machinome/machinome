@@ -18,25 +18,53 @@ the real model through the machinome viewer and never invents a pose.
 
 ## The pipeline
 
-    source: YAML episode, or movie document (machinome-movie/0.1)
-        │  load; a document: schema, static checks,     src/episode.mjs
-        │  anchors resolved from cached takes           src/movie.mjs, src/schema.mjs
-        │  validate against the export and project
+    source: YAML episode (formats 0.2-0.4), or movie document (machinome-movie/0.2)
+        │  a YAML episode: every rule of its format,     src/episode.mjs
+        │    converted to the resolved document in the paper sets
+        │  a document: format, schema, static checks,    src/movie.mjs, src/schema.mjs
+        │    anchors resolved from the cached takes
+        │  both: validated against the export and project
         ▼
-    episode object (numeric times, format 0.4 shape, chapters)
-        │  frameAt(e, t): pure                          src/timeline.mjs
+    resolved movie document (numeric times, chapters, sets, slots, elements)
+        │  written to <root>/_build/movie-resolved.json for a document
+        │  frameAt(film, t): pure                          src/timeline.mjs
         ▼
-    frame data: view, model time, hidden layers, overlays, annotations,
-                highlight, code, picture, transition
-        │  window.film.setFrame(frame)                  src/film.html, src/film.js
+    frame: set, the element in each slot, each placed element's state,
+           the transition with its outgoing frame
+        │  window.film.setFrame(frame) on the React stage  stage/
+        │  bundled per movie with the project's modules    src/stage-build.mjs
         ▼
-    the film page in headless Chromium, the viewer mounted on-demand
-        │  screenshot, readback checks, pixel proofs    src/render.mjs, src/pixels.mjs
+    observed: what the stage drew, per element, with the chrome's rectangles
+        │  readback checks, pixel proofs (chrome masked)   src/render.mjs, src/pixels.mjs
         ▼
-    PNG frames per shot, cached by content               src/shot-cache.mjs
+    PNG frames per shot, cached by content                src/shot-cache.mjs
         │  FFmpeg
         ▼
     rehearsal.mp4 + rehearsal.srt + manifest + review packs
+
+The seam after loading is the resolved movie document
+([ADR-006](adrs/SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md)):
+a movie document resolves to it against its cached takes; a YAML episode,
+validated as before, converts to it one chapter per shot, its fields
+synthesized into elements and actions placed in the shipped sets `paper`,
+`paper-split` and `source-only`. The timeline, the stage, the renderer, the
+shot cache and the review packs read only this shape.
+
+The stage ([ADR-004](adrs/STAGE/ADR-004-the-stage-is-a-react-template-that-owns-the-screen.md),
+[the authoring contract](stage.md)) is a React 19 runtime in `stage/`:
+`registry.ts` (`defineSet`, `defineElement` and the refusals at mount),
+`components.tsx` (`Slot`, `Chrome`, `useMovie`, `useReport`), `shipped.tsx`
+(the sets `frame`, `split`, `paper`, `paper-split` and `source-only`; the
+elements `view`, `source`, `title` and `picture`), `marks.ts` (rings, labels
+and arrows over a view), `runtime.tsx` (the boot, one viewer instance per
+view element hosted outside React, the transition layer and
+`window.film`) and `stage.css`. `src/film.html` holds three empty layers,
+the stage, the transitions and the chrome, and no colour, word or layout.
+`src/stage-build.mjs` bundles the runtime with a movie's stage modules into
+`_build/stage/stage.js` and `stage.css` with esbuild, generates `movie.d.ts`
+from the document's stage block, checks TypeScript modules with `tsc
+--noEmit`, and reuses the bundle while the content of its inputs is
+unchanged; a YAML episode is drawn by the runtime alone.
 
 Narration belongs to chapters (`src/chapters.mjs`): a movie document groups
 shots into chapters of one narration each; a YAML episode is one chapter per
@@ -46,37 +74,52 @@ request hash, mixes the narration bed and writes captions; `src/words.mjs`
 turns the alignment into word onsets for reveals and source emphasis, reading
 a shot's chapter take from where it starts relative to the shot. For a movie
 document, `speech` generates the takes from the unresolved document, because
-the anchors that place cuts and cues are resolved from those takes. `src/code.mjs`
-pins source excerpts to the model's Git revision; `src/pictures.mjs` probes
-stills and clips; `src/easing.mjs` is the five-curve vocabulary;
-`src/review-samples.mjs` and `src/review-pack.mjs` choose and decode the
-frames a person reviews.
+the anchors that place cuts and cues are resolved from those takes.
+`src/code.mjs` pins source excerpts to the model's Git revision and gives a
+source panel's typed text and markup; `src/text.mjs` holds the counting
+rules for phrases, words and tokens; `src/style.mjs` the style's defaults;
+`src/pictures.mjs` probes stills and clips and computes a picture's
+rectangle; `src/easing.mjs` is the five-curve vocabulary;
+`src/review-samples.mjs` and `src/review-pack.mjs` choose, from the
+element states, and decode the frames a person reviews.
 
 ## Commitments
 
 1. **A frame is a pure function of video time.** No wall clock, no state
-   carried between frames, no dependence on posing order. Preview proves it
-   by posing an instant, another, and the first again, and comparing pixels.
+   carried between frames, no dependence on posing order. The stage's
+   components draw only the state a frame gives them, in one synchronous
+   commit. Preview proves it by posing an instant, another, and the first
+   again, and comparing pixels.
 2. **The source is data.** It is validated completely before a browser
    opens, hashed for the shot cache and recorded in the manifest. The YAML
-   formats refuse aliases, anchors, tags and merge keys; format 0.4 closes
-   every field list so a misspelling is never silently dropped.
-3. **The viewer is a separate product.** The page mounts the bundle a caller
-   selects, requires the API it needs (21, or 28 for cues that point at
-   parts, highlight or change the lens) and refuses an older one on mount.
-   The tool reaches the viewer only through its declared handle.
-4. **Speech is measured, never assumed.** Timing that depends on the voice
+   formats refuse aliases, anchors, tags and merge keys; format 0.4 and the
+   movie document close every field list so a misspelling is never silently
+   dropped. A document's stage modules are bundled to draw the film, never
+   run to read it.
+3. **The template owns the screen**
+   ([ADR-004](adrs/STAGE/ADR-004-the-stage-is-a-react-template-that-owns-the-screen.md)).
+   Everything on a frame is drawn by a set and the elements in its slots;
+   what a set marks as chrome stays above transitions and is masked by the
+   proofs, and nothing else is. No film draws a progress indicator: a
+   viewer's place in a film is the player's to show.
+4. **The viewer is a separate product.** The stage mounts the bundle a
+   caller selects, one instance per view element, requires the API the
+   movie needs (21, or 28 for marks, highlights or a change of lens or up)
+   and refuses an older one when its first view mounts. The tool reaches the
+   viewer only through its declared handle.
+5. **Speech is measured, never assumed.** Timing that depends on the voice
    is read from the cached alignment. Narration is never truncated or
    stretched; a take that does not fit is refused with its measurement.
-5. **Proofs are stated as tolerances and masks**, once, in `src/pixels.mjs`.
-6. **Nothing is published by the tool.** Release fields left null block a
+6. **Proofs are stated as tolerances and masks**, once, in `src/pixels.mjs`.
+7. **Nothing is published by the tool.** Release fields left null block a
    release bundle and never default to an address.
-
-7. **The movie document is the seam at the top of the pipeline for this step**
-   ([ADR-001](adrs/SOURCE/ADR-001-movie-document-and-chapter-narration.md)):
-   one JSON Schema (`schema/machinome-movie-0.1.json`) both runtimes check,
-   one set of shared fixtures (`fixtures/`), and a resolution written to
-   `_build/movie-resolved.json` so what the film is produced from can be read.
+8. **One resolved document is the seam after loading**
+   ([ADR-006](adrs/SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md),
+   amending [ADR-001](adrs/SOURCE/ADR-001-movie-document-and-chapter-narration.md)):
+   one JSON Schema (`schema/machinome-movie-0.2.json`) both runtimes check,
+   one set of shared fixtures (`fixtures/`) with their pinned resolutions,
+   and the resolution written to `_build/movie-resolved.json` so what the
+   film is produced from can be read.
 
 ## Movies declared in Python
 
@@ -127,11 +170,10 @@ is the Python side of the movie document:
 
 The declarative-python campaign (`workflow/ongoing/declarative-python-api.md`,
 `docs/movie-document.md`) made the movie document the seam at the top of
-the pipeline for this step, a step and not a protocol by the pilot's ruling
-of 30 September 2026 (the stage will replace its shape without preserving
-it, and no format is a protocol before a release): Python declarations in the project evaluate to it,
-YAML episodes load into its resolved shape, and narration moved to the
-chapter with anchors resolved against the take. The React stage that
-replaces the fixed film page, takes recorded from running and clocked
-scenarios, and the studio's live preview are later steps of the same
-direction and are not built.
+the pipeline, a step and not a protocol by the pilot's ruling of
+30 September 2026 (no format is a protocol before a release). Python
+declarations in the project evaluate to `machinome-movie/0.2`, the commands
+read it, and the React stage draws every film, a project's movie on its own
+template and a YAML episode on the shipped paper sets. Takes recorded from
+running and clocked scenarios, the page element and the studio's live
+preview are later steps of the same direction and are not built.

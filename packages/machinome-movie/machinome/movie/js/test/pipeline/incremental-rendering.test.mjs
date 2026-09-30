@@ -1,24 +1,21 @@
+// Layer 8 (serial; Chromium, FFmpeg, a viewer double): the shot cache over a
+// four-shot YAML episode, loaded as the command line loads it after every
+// edit. A YAML shot is one chapter; the shots are a, b, c and d.
 import {describe} from 'vitest';
-import {slowTest as test} from './support/memo.mjs';
+import {slowTest as test} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,readFile,readdir,rename,rm,unlink,writeFile} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
+import {mkdir,readFile,readdir,rename,unlink,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {render} from './support/stage.mjs';
-import {fileHash,hash} from '../src/util.mjs';
-import {outputShotUnits,assembleShotFrames,shotCacheRoot} from '../src/shot-cache.mjs';
-import {pcmWav,speechCacheEntry} from '../src/speech.mjs';
+import {render} from '../support/stage.mjs';
+import {yamlProject} from '../support/yaml-project.mjs';
+import {fileHash,hash} from '../../src/util.mjs';
+import {outputShotUnits,assembleShotFrames,shotCacheRoot} from '../../src/shot-cache.mjs';
+import {pcmWav,speechCacheEntry,spokenChapters} from '../../src/speech.mjs';
 
-async function fixture(t){
-  const dir=await mkdtemp(join(tmpdir(),'videomaker-shot-cache-'));
-  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
-  execFileSync('git',['init','-q'],{cwd:dir});
-  await writeFile(join(dir,'episode.yaml'),'shot cache fixture');
-  await writeFile(join(dir,'production.yaml'),'shot cache fixture');
-  await writeFile(join(dir,'description.md'),'Test description.');
-  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test'},animation:{loop:8}}));
-  const viewer=join(dir,'viewer.js');
+async function fixture(t,{files={}}={}){
+  const project=await yamlProject(t,{manifest:{root:{name:'test'},animation:{loop:8}},files});
+  const {dir}=project,viewer=join(dir,'viewer.js');
   await writeFile(viewer,`window.MachinomeViewer={async mount(selector,url,options){
     const canvas=document.createElement('canvas');canvas.style.width='100%';canvas.style.height='100%';
     document.querySelector(selector).append(canvas);let view={...options.view,up:options.up,fov:options.fov};
@@ -28,33 +25,31 @@ async function fixture(t){
       view(){return {camera:{toArray:()=>view.camera},target:{toArray:()=>view.target},
         up:{toArray:()=>view.up},fov:view.fov}}};
   }};`);
-  execFileSync('git',['add','.'],{cwd:dir});
-  execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','fixture'],{cwd:dir});
-  await mkdir(join(dir,'_build'));
-  const common={narration:'',direction:'Test.',camera:[{at:0,preset:'a'}],hiddenLayers:[],overlays:[],evidence:[]};
+  const common={narration:'Look.',direction:'Test.',camera:[{at:0,preset:'a'}],hiddenLayers:[],overlays:[],evidence:[]};
   const shot=(id,start,end,more={})=>({...common,id,start,end,simulation:{from:start,to:end},...more});
   const episode={format:'machinome-video-draft/0.4',title:'Cache test',series:'CACHE TEST',
     output:{width:640,height:360,fps:2,durationSeconds:8},model:{expectedDurationSeconds:8},
     style:{background:'#f5f1e8',foreground:'#222222',accent:'#bf531f',fontFamily:'DejaVu Sans'},
-    paths:{repository:dir,episode:join(dir,'episode.yaml'),production:join(dir,'production.yaml'),
-      manifest:join(dir,'manifest.json'),build:join(dir,'_build')},
     cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37}},layers:{},
-    release:{descriptionTemplate:'description.md'},shots:[
-      shot('A',0,2),shot('B',2,4,{overlays:[{from:0,to:2,position:'title',text:'BEFORE'}]}),
-      shot('C',4,6,{transition:{kind:'wipe',duration:1}}),shot('D',6,8)]};
-  return {dir,viewer,episode};
+    release:{descriptionTemplate:'description.md'},stills:{},clips:{},shots:[
+      shot('a',0,2),shot('b',2,4,{overlays:[{from:0,to:2,position:'title',text:'BEFORE'}]}),
+      shot('c',4,6,{transition:{kind:'wipe',duration:1}}),shot('d',6,8)]};
+  // The episode as it stands now, loaded afresh; `at` puts it in another directory.
+  const load=options=>project.film(episode,options);
+  const run=async(options={},{at}={})=>render(await load({at}),{viewer,label:'incremental',audio:null,...options});
+  return {project,dir,viewer,episode,load,run};
 }
 
 async function report(dir){return JSON.parse(await readFile(join(dir,'_build','incremental-manifest.json'),'utf8'));}
 
 test('a local title edit recaptures its shot and incoming join, but reuses distant shots',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  const {dir,episode,run}=await fixture(t);
+  await run();
   const first=await report(dir);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const warm=await report(dir);
   episode.shots[1].overlays[0].text='AFTER';
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const edited=await report(dir);
   if(!edited.cache){
     const files=await readdir(edited.dir);
@@ -63,42 +58,39 @@ test('a local title edit recaptures its shot and incoming join, but reuses dista
   assert.equal(edited.framesChecked,8,'only B and its dependent incoming-transition C are posed');
   assert.equal(warm.cache?.reusedFrames,16,'an unchanged rerender reuses every verified shot frame');
   assert.deepEqual(edited.cache?.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',0,4],['B',4,0],['C',4,0],['D',0,4]]);
+    [['a',0,4],['b',4,0],['c',4,0],['d',0,4]]);
   assert.equal(edited.cache?.capturedFrames,8);
   assert.equal(edited.cache?.reusedFrames,8);
 });
 
 test('a B-only lens edit does not turn a viewer refusal reason into a global pixel dependency',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  const {dir,episode,run}=await fixture(t);
+  await run();
   episode.cameras.b={...episode.cameras.a,fov:24};
   episode.shots[1].camera=[{at:0,preset:'b'}];
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const edited=await report(dir);
   assert.equal(edited.framesChecked,8,'B and its following join change, not A and D');
   assert.deepEqual(edited.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',0,4],['B',4,0],['C',4,0],['D',0,4]]);
+    [['a',0,4],['b',4,0],['c',4,0],['d',0,4]]);
 });
 
 test('every incremental PNG equals a separately cold film across the first reused-shot gap',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  episode.sourceCode={sampleA:{file:'machine.py',lines:[1,2],text:'water = 1\nturn(water)'},
-    sampleB:{file:'machine.py',lines:[3,4],text:'drive = 1\nreturn drive'}};
+  const {dir,episode,run}=await fixture(t,{files:{'machine.py':'water = 1\nturn(water)\ndrive = 1\nreturn drive\n'}});
+  episode.sourceCode={sampleA:{file:'machine.py',lines:[1,2]},sampleB:{file:'machine.py',lines:[3,4]}};
   episode.shots[0].code={snippet:'sampleA',typing:[{from:0,to:1.5,throughLine:2}]};
   episode.shots[1].code={snippet:'sampleB',typing:[{from:0,to:1.5,throughLine:4}]};
   episode.shots[1].overlays=[
     {from:0,to:2,position:'title',text:'BEFORE',enter:{kind:'fade',duration:1}},
     {from:0,to:2,position:'lower-third',text:'ONE TWO',reveal:{timing:'even',duration:1}}];
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   episode.shots[1].overlays[0].text='AFTER';
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const incremental=await report(dir);
   assert.equal(incremental.cache.reusedFrames,8);
   assert.equal(incremental.cache.capturedFrames,8);
-  const cold=structuredClone(episode);
-  cold.paths.build=join(dir,'cold');await mkdir(cold.paths.build);
-  await render(cold,{viewer,label:'incremental',audio:null});
-  const fresh=JSON.parse(await readFile(join(cold.paths.build,'incremental-manifest.json'),'utf8'));
+  await run({},{at:'cold'});
+  const fresh=JSON.parse(await readFile(join(dir,'cold','_build','incremental-manifest.json'),'utf8'));
   assert.equal(fresh.cache.capturedFrames,16);
   for(let i=0;i<16;i++){
     const name=`${String(i).padStart(6,'0')}.png`;
@@ -109,116 +101,109 @@ test('every incremental PNG equals a separately cold film across the first reuse
 
 describe('each join depends on its outgoing shot, while an ordinary cut does not',()=>{
   for(const kind of ['cut','fade','dissolve','wipe','slide'])test(kind,async sub=>{
-    const {dir,viewer,episode}=await fixture(sub);
+    const {dir,episode,run}=await fixture(sub);
     if(kind==='cut')delete episode.shots[2].transition;
     else episode.shots[2].transition={kind,duration:1};
-    await render(episode,{viewer,label:'incremental',audio:null});
+    await run();
     episode.shots[1].overlays[0].text='CHANGED';
-    await render(episode,{viewer,label:'incremental',audio:null});
+    await run();
     const edited=await report(dir),changed=kind==='cut'?4:8;
     assert.equal(edited.framesChecked,changed);
     assert.deepEqual(edited.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-      [['A',0,4],['B',4,0],['C',kind==='cut'?0:4,kind==='cut'?4:0],['D',0,4]]);
+      [['a',0,4],['b',4,0],['c',kind==='cut'?0:4,kind==='cut'?4:0],['d',0,4]]);
   });
 });
 
-async function addStill(episode,dir,name,color){
-  const file=join(dir,`${name}.png`);
-  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`color=c=${color}:s=16x16`,
-    '-frames:v','1',file]);
-  episode.pictureMedia??={stills:{},clips:{}};
-  episode.pictureMedia.stills[name]={file,sha256:await fileHash(file),format:'png',codec:'png',
-    width:16,height:16,upscale:100,credit:'Test',rights:'Own',committed:false};
-  return file;
+// A still of one colour, declared in the episode (not committed).
+function addStill(episode,dir,name,color){
+  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`color=c=${color}:s=16x16`,'-frames:v','1',join(dir,`${name}.png`)]);
+  episode.stills[name]={file:`${name}.png`,credit:'Test',rights:'Own',upscale:100};
+}
+function addClip(episode,dir,name,color){
+  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`color=c=${color}:s=16x16:r=1`,'-t','1',
+    '-c:v','libx264','-pix_fmt','yuv420p',join(dir,`${name}.mp4`)]);
+  episode.clips[name]={file:`${name}.mp4`,credit:'Test',rights:'Own',upscale:100};
 }
 
 test('release-only and unused media changes keep PNGs; only a reached still recaptures',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  await addStill(episode,dir,'focus','red');
+  const {dir,episode,run}=await fixture(t);
+  addStill(episode,dir,'focus','red');
   episode.shots[2].pictures=[{from:0,to:2,still:'focus',area:'frame',fit:'cover'}];
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   episode.release.sourceUrl='https://example.invalid/source';
-  await addStill(episode,dir,'unused','green');
-  await render(episode,{viewer,label:'incremental',audio:null});
+  addStill(episode,dir,'unused','green');
+  await run();
   let next=await report(dir);
   assert.equal(next.framesChecked,0,'release prose and an unused preload name are nonvisual');
-  await addStill(episode,dir,'unused','blue');
-  await render(episode,{viewer,label:'incremental',audio:null});
+  addStill(episode,dir,'unused','blue');
+  await run();
   next=await report(dir);
   assert.equal(next.framesChecked,0,'changing bytes of unused media is nonvisual');
-  const unusedClip=join(dir,'unused.mp4');
-  await writeFile(unusedClip,'a declared clip that no picture cue reaches');
-  episode.pictureMedia.clips.unused={file:unusedClip,sha256:await fileHash(unusedClip),
-    format:'mp4',codec:'h264',width:16,height:16,upscale:100,timestamps:[0],end:1,
-    averageRate:1,frameCount:1,audio:'not played',credit:'Test',rights:'Own',committed:false};
-  await render(episode,{viewer,label:'incremental',audio:null});
+  addClip(episode,dir,'unused','green');
+  await run();
   next=await report(dir);assert.equal(next.framesChecked,0,'declaring an unused clip is nonvisual');
-  await writeFile(unusedClip,'different unused clip bytes');
-  episode.pictureMedia.clips.unused.sha256=await fileHash(unusedClip);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  addClip(episode,dir,'unused','blue');
+  await run();
   next=await report(dir);assert.equal(next.framesChecked,0,'changing unused clip bytes is nonvisual');
-  await addStill(episode,dir,'focus','yellow');
-  await render(episode,{viewer,label:'incremental',audio:null});
+  addStill(episode,dir,'focus','yellow');
+  await run();
   next=await report(dir);
   assert.deepEqual(next.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',0,4],['B',0,4],['C',4,0],['D',0,4]]);
+    [['a',0,4],['b',0,4],['c',4,0],['d',0,4]]);
 });
 
 test('a shared clip extraction range can broaden without invalidating unchanged selected frames',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
+  const {dir,episode,load,viewer}=await fixture(t);
   const file=join(dir,'shared.mp4');
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','testsrc2=size=160x120:rate=3:duration=4',
     '-c:v','libx264','-pix_fmt','yuv420p',file]);
-  episode.pictureMedia={stills:{},clips:{shared:{file,sha256:await fileHash(file),format:'mp4',codec:'h264',
-    width:160,height:120,upscale:10,timestamps:Array.from({length:12},(_,i)=>i/3),end:4,
-    averageRate:3,frameCount:12,audio:'not played',credit:'Own',rights:'Own',committed:false}}};
+  episode.clips.shared={file:'shared.mp4',credit:'Own',rights:'Own',upscale:10};
   episode.shots[1].pictures=[{from:0,to:1,clip:'shared',inPoint:1,area:'stage'}];
   episode.shots[3].pictures=[{from:0,to:1,clip:'shared',inPoint:2,area:'stage'}];
-  await render(episode,{viewer,label:'incremental',audio:null});
-  const prior=await report(dir),oldRange=episode.pictureMedia.clips.shared.extraction.key;
+  const run=async()=>{const film=await load();await render(film,{viewer,label:'incremental',audio:null});return film;};
+  const before=await run();
+  const prior=await report(dir),oldRange=before.pictureMedia.clips.shared.extraction.key;
   episode.shots[3].pictures[0].to=2;
-  await render(episode,{viewer,label:'incremental',audio:null});
+  const after=await run();
   const next=await report(dir);
-  assert.notEqual(episode.pictureMedia.clips.shared.extraction.key,oldRange);
+  assert.notEqual(after.pictureMedia.clips.shared.extraction.key,oldRange);
   assert.equal(next.cache.shots[1].key,prior.cache.shots[1].key,'B selected the same decoded source bytes');
   assert.deepEqual(next.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',0,4],['B',0,4],['C',0,4],['D',4,0]]);
+    [['a',0,4],['b',0,4],['c',0,4],['d',4,0]]);
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','smptebars=size=160x120:rate=3:duration=4',
     '-c:v','libx264','-pix_fmt','yuv420p',file]);
-  episode.pictureMedia.clips.shared.sha256=await fileHash(file);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const replaced=await report(dir);
   assert.deepEqual(replaced.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',0,4],['B',4,0],['C',0,4],['D',4,0]],
+    [['a',0,4],['b',4,0],['c',0,4],['d',4,0]],
     'new source bytes invalidate only shots that reach this clip');
 });
 
 test('fractional shot boundaries use the global output grid and invalidate shifted requests',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
+  const {dir,episode,load,run}=await fixture(t);
   episode.output.fps=4;
   episode.shots[0].end=1.3;episode.shots[0].simulation.to=1.3;
   episode.shots[1].start=1.3;episode.shots[1].simulation.from=1.3;
-  const plan=outputShotUnits(episode,4);
+  const plan=outputShotUnits(await load(),4);
   assert.deepEqual(plan.units[0].frames.map(f=>f.index),[0,1,2,3,4,5]);
   assert.equal(plan.units[1].frames[0].index,6);
   assert.equal(plan.units[1].frames[0].time,1.5);
-  assert.ok(Math.abs(plan.units[1].frames[0].request.time-1.5/8)<1e-12);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  assert.ok(Math.abs(plan.units[1].frames[0].request.elements['b.view'].time-1.5/8)<1e-12);
+  await run();
   const prior=await report(dir);
   episode.shots[0].end=1.45;episode.shots[0].simulation.to=1.45;
   episode.shots[1].start=1.45;episode.shots[1].simulation.from=1.45;
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const shifted=await report(dir);
   assert.notEqual(shifted.cache.shots[1].key,prior.cache.shots[1].key);
   assert.equal(shifted.cache.shots[2].key,prior.cache.shots[2].key);
-  assert.deepEqual(outputShotUnits(episode,4).units[2].frames.map(f=>f.request.transition?.outgoing),
+  assert.deepEqual(outputShotUnits(await load(),4).units[2].frames.map(f=>f.request.transition?.outgoing),
     plan.units[2].frames.map(f=>f.request.transition?.outgoing),
     'C sees the same B end state and continuation despite the earlier boundary moving');
   assert.deepEqual(shifted.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',6,0],['B',10,0],['C',0,8],['D',0,8]]);
-  const cold=structuredClone(episode);cold.paths.build=join(dir,'cold');await mkdir(cold.paths.build);
-  await render(cold,{viewer,label:'incremental',audio:null});
-  const fresh=JSON.parse(await readFile(join(cold.paths.build,'incremental-manifest.json'),'utf8'));
+    [['a',6,0],['b',10,0],['c',0,8],['d',0,8]]);
+  await run({},{at:'cold'});
+  const fresh=JSON.parse(await readFile(join(dir,'cold','_build','incremental-manifest.json'),'utf8'));
   for(let i=0;i<32;i++){
     const name=`${String(i).padStart(6,'0')}.png`;
     assert.equal(await fileHash(join(shifted.dir,name)),await fileHash(join(fresh.dir,name)),`fractional global frame ${i}`);
@@ -226,8 +211,8 @@ test('fractional shot boundaries use the global output grid and invalidate shift
 });
 
 test('common style, chrome, viewer, model, geometry, FPS and duration invalidate all units',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  const run=async options=>{await render(episode,{viewer,label:'incremental',audio:null,...options});return report(dir);};
+  const {project,dir,viewer,episode,run:render}=await fixture(t);
+  const run=async options=>{await render(options);return report(dir);};
   let current=await run();
   const faces=current.provenance.fontFaces;
   for(const entry of [faces.film.regular,faces.film.bold,faces.code.regular,faces.code.bold]){
@@ -237,7 +222,7 @@ test('common style, chrome, viewer, model, geometry, FPS and duration invalidate
   episode.series='OTHER SERIES';current=await run();assert.equal(current.cache.capturedFrames,16);
   await writeFile(viewer,(await readFile(viewer,'utf8'))+'\n// new viewer bytes\n');
   current=await run();assert.equal(current.cache.capturedFrames,16);
-  await writeFile(episode.paths.manifest,JSON.stringify({root:{name:'test',note:'changed asset manifest'},animation:{loop:8}}));
+  await project.setManifest({root:{name:'test',note:'changed asset manifest'},animation:{loop:8}});
   current=await run();assert.equal(current.cache.capturedFrames,16);
   current=await run({width:320});assert.equal(current.cache.capturedFrames,16);
   current=await run({fps:4});assert.equal(current.cache.capturedFrames,32);
@@ -245,19 +230,27 @@ test('common style, chrome, viewer, model, geometry, FPS and duration invalidate
   current=await run({fps:4});assert.equal(current.cache.capturedFrames,40);
 });
 
-test('a pre-resolved measured cue cannot hide its now-missing cached speech take',async t=>{
-  const {viewer,episode}=await fixture(t);
+// Shot b says ONE TWO, revealed as it is spoken.
+function spokenReveal(episode){
   episode.audio={provider:'elevenlabs',model:'eleven_v3',voice:'test',replacements:{},outputFormat:'pcm_24000'};
   episode.shots[1].narration='ONE TWO';
   episode.shots[1].overlays=[{from:0,to:2,position:'top',text:'ONE TWO',reveal:{timing:'spoken'}}];
-  episode.wordTiming={B:{sha256:'stale',overlays:{0:{onsets:[0,.5]}},emphasis:[]}};
-  await assert.rejects(render(episode,{viewer,label:'incremental',audio:null}),
-    /Word timing needs cached speech for shot B; run the speech command first/);
+}
+
+test('a pre-resolved measured cue cannot hide its now-missing cached speech take',async t=>{
+  const {episode,load,viewer}=await fixture(t);
+  spokenReveal(episode);
+  const film=await load();
+  film.wordTiming={b:{sha256:'stale'}};
+  for(const cue of film.chapters[1].shots[0].cues)for(const action of cue.actions)if(action.reveal)action.reveal.onsets=[0,.5];
+  await assert.rejects(render(film,{viewer,label:'incremental',audio:null}),
+    /Word timing needs cached speech for shot b; run the speech command first/);
 });
 
-async function measuredTake(episode,level=0,secondOnset=.5){
-  const spoken=episode.shots.map(s=>s.narration),entry=speechCacheEntry(episode,spoken,1);
-  await mkdir(join(episode.paths.build,'audio'),{recursive:true});
+// Installs shot b's measured take: 'ONE' at 0 s and 'TWO' at `secondOnset`.
+async function measuredTake(film,level=0,secondOnset=.5){
+  const entry=speechCacheEntry(film,spokenChapters(film),1);
+  await mkdir(join(film.paths.build,'audio'),{recursive:true});
   const pcm=Buffer.alloc(24000*2);pcm.fill(level);
   await writeFile(entry.file,pcmWav(pcm,24000));
   const starts=[0,.1,.2,.3,secondOnset,secondOnset+.1,secondOnset+.2];
@@ -268,27 +261,25 @@ async function measuredTake(episode,level=0,secondOnset=.5){
 }
 
 test('a verified measured take and alignment bind only the shots whose words can show',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  episode.audio={provider:'elevenlabs',model:'eleven_v3',voice:'test',replacements:{},outputFormat:'pcm_24000'};
-  episode.shots[1].narration='ONE TWO';
-  episode.shots[1].overlays=[{from:0,to:2,position:'top',text:'ONE TWO',reveal:{timing:'spoken'}}];
-  await measuredTake(episode);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  const {dir,episode,load,run}=await fixture(t);
+  spokenReveal(episode);
+  await measuredTake(await load());
+  await run();
   const first=await report(dir);
-  await measuredTake(episode,1);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await measuredTake(await load(),1);
+  await run();
   let next=await report(dir);
   assert.notEqual(next.cache.shots[1].key,first.cache.shots[1].key,'the verified take checksum is bound');
   assert.deepEqual(next.cache.shots.map(s=>[s.shotId,s.captured,s.reused]),
-    [['A',0,4],['B',4,0],['C',4,0],['D',0,4]]);
+    [['a',0,4],['b',4,0],['c',4,0],['d',0,4]]);
   const priorKey=next.cache.shots[1].key;
-  await measuredTake(episode,1,.55);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await measuredTake(await load(),1,.55);
+  await run();
   next=await report(dir);
   assert.notEqual(next.cache.shots[1].key,priorKey,'sub-frame measured onset changes remain bound');
   assert.equal(next.cache.shots[1].captured,4);
-  await measuredTake(episode,1,.9);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await measuredTake(await load(),1,.9);
+  await run();
   next=await report(dir);
   assert.equal(next.cache.shots[1].captured,4,'changed measured word onsets recapture B');
   assert.equal(next.cache.shots[0].reused,4);
@@ -296,19 +287,19 @@ test('a verified measured take and alignment bind only the shots whose words can
 });
 
 test('audio and external captions change the output but never buy speech or recapture plain PNGs',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
+  const {dir,episode,run}=await fixture(t);
   episode.shots[1].overlays.push({from:0,to:2,position:'lower-third',text:'ONE TWO',
     reveal:{timing:'even',duration:1}});
   const mix=join(dir,'mix.wav');
   const firstAudio=pcmWav(Buffer.alloc(24000*2*8),24000);
   await writeFile(mix,firstAudio);
   const firstCaptions=[{text:'First narration.',start:.2,end:1}];
-  await render(episode,{viewer,label:'incremental',audio:{mix,records:[{id:'first'}],captions:firstCaptions}});
+  await run({audio:{mix,records:[{id:'first'}],captions:firstCaptions}});
   const prior=await report(dir);
   episode.shots[1].narration='Different words without a measured visual cue.';
   await writeFile(mix,pcmWav(Buffer.alloc(24000*2*8,8),24000));
   const nextCaptions=[{text:'Second narration.',start:.2,end:1}];
-  await render(episode,{viewer,label:'incremental',audio:{mix,records:[{id:'second'}],captions:nextCaptions}});
+  await run({audio:{mix,records:[{id:'second'}],captions:nextCaptions}});
   const next=await report(dir);
   assert.equal(next.cache.reusedFrames,16);
   assert.equal(next.framesChecked,0,'an even reveal does not depend on the narration take');
@@ -318,14 +309,14 @@ test('audio and external captions change the output but never buy speech or reca
 });
 
 test('an index contradicting its bound media or measured inputs is not reused',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  await render(episode,{viewer,label:'incremental',audio:null});
+  const {dir,run}=await fixture(t);
+  await run();
   const first=await report(dir),shot=first.cache.shots[1];
   const path=join(shot.generation,'index.json');
   const index=JSON.parse(await readFile(path,'utf8'));
-  index.measured=[{shotId:'B',sha256:'invented'}];
+  index.measured=[{shotId:'b',sha256:'invented'}];
   await writeFile(path,JSON.stringify(index));
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const next=await report(dir);
   assert.equal(next.cache.shots[1].captured,4,'contradictory index requires a new complete B generation');
   assert.equal(next.cache.shots[0].reused,4);
@@ -333,10 +324,10 @@ test('an index contradicting its bound media or measured inputs is not reused',a
 });
 
 test('only complete, dimensioned and byte-attested shot generations survive interruption or damage',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
+  const {dir,run}=await fixture(t);
   const legacy=join(dir,'_build','frames','legacy');await mkdir(legacy,{recursive:true});
   await writeFile(join(legacy,'000000.png'),'an old nonempty frame is not an attested shot');
-  const rerun=async()=>{await render(episode,{viewer,label:'incremental',audio:null});return report(dir);};
+  const rerun=async()=>{await run();return report(dir);};
   let current=await rerun();
   assert.equal(current.cache.capturedFrames,16,'legacy whole-episode frames are not imported');
   assert.equal(current.cache.shots.length,4);
@@ -391,11 +382,11 @@ test('only complete, dimensioned and byte-attested shot generations survive inte
 });
 
 test('assembly refuses duplicate or missing global output frames before encoding',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  await render(episode,{viewer,label:'incremental',audio:null});
-  const current=await report(dir),units=outputShotUnits(episode,episode.output.fps).units;
+  const {dir,load,run}=await fixture(t);
+  await run();
+  const film=await load(),current=await report(dir),units=outputShotUnits(film,film.output.fps).units;
   const selections=new Map(current.cache.shots.map(shot=>[shot.shotId,{generation:shot.generation}]));
-  const root=shotCacheRoot(episode.paths.build);
+  const root=shotCacheRoot(film.paths.build);
   units[1].frames[0].index=units[0].frames[0].index;
   await assert.rejects(assembleShotFrames(root,units,selections,16),/Duplicate output frame 0/);
   units[1].frames[0].index=4;
@@ -404,17 +395,16 @@ test('assembly refuses duplicate or missing global output frames before encoding
 });
 
 test('a failed encode preserves the previous MP4 and manifest while completed shots remain reusable',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  const output=await render(episode,{viewer,label:'incremental',audio:null});
+  const {dir,episode,run}=await fixture(t);
+  const output=await run();
   const oldOutputHash=await fileHash(output);
   const manifestPath=join(dir,'_build','incremental-manifest.json');
   const oldManifestHash=await fileHash(manifestPath);
   episode.shots[1].overlays[0].text='AFTER FAILURE';
-  await assert.rejects(render(episode,{viewer,label:'incremental',
-    audio:{mix:join(dir,'missing-mix.wav'),records:[],captions:[]}}),/ffmpeg exited/);
+  await assert.rejects(run({audio:{mix:join(dir,'missing-mix.wav'),records:[],captions:[]}}),/ffmpeg exited/);
   assert.equal(await fileHash(output),oldOutputHash,'the old complete film is not overwritten');
   assert.equal(await fileHash(manifestPath),oldManifestHash,'no new manifest claims the failed film');
-  await render(episode,{viewer,label:'incremental',audio:null});
+  await run();
   const recovered=await report(dir);
   assert.equal(recovered.cache.reusedFrames,16,'the interrupted encode did not discard attested shot captures');
   assert.equal(recovered.outputSha256,await fileHash(output));
@@ -425,14 +415,13 @@ test('a failed encode preserves the previous MP4 and manifest while completed sh
 });
 
 test('an interrupted publication leaves a stale-hash manifest and a recoverable prior film',async t=>{
-  const {dir,viewer,episode}=await fixture(t);
-  const output=await render(episode,{viewer,label:'incremental',audio:null});
+  const {dir,episode,run}=await fixture(t);
+  const output=await run();
   const prior=await report(dir),oldHash=await fileHash(output);
   const thumbnail=join(dir,'_build','thumbnail.png');
   await rename(thumbnail,`${thumbnail}.prior`);await mkdir(thumbnail);
   episode.shots[1].overlays[0].text='NEW FILM';
-  await assert.rejects(render(episode,{viewer,label:'incremental',audio:null}),
-    /EISDIR|ENOTEMPTY|directory/i);
+  await assert.rejects(run(),/EISDIR|ENOTEMPTY|directory/i);
   const stillOldManifest=await report(dir);
   assert.equal(stillOldManifest.outputSha256,prior.outputSha256);
   assert.notEqual(stillOldManifest.outputSha256,await fileHash(output),

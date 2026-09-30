@@ -4,18 +4,18 @@
 
 Give Leonardo's finished local films bounded, traceable encoded-MP4 images
 for a person to review, without treating image generation as approval.
-
 ## Requirements
-
 ### Requirement: Render records resolved review events
 
 Videomaker SHALL record a versioned review-sample plan in the published film
 manifest from the same global output-frame requests used for rendering. The
 plan SHALL identify exact zero-based adjacent frame pairs for shot joins,
 resolved active word-reveal changes, source-emphasis changes/clearing, shot
-ends and film end, comparing state by shot and authored cue identity across a
-shot's active-to-outgoing role transfer and retaining incoming/outgoing side
-as context. Authored cue identity SHALL distinguish duplicate identical
+ends and film end, reading word reveals from the titles' revealed words and
+emphasis from the source panels' lit tokens in the element states of those
+requests, and comparing state by shot, element and authored cue identity
+across a shot's active-to-outgoing role transfer, retaining incoming/outgoing
+side as context. Authored cue identity SHALL distinguish duplicate identical
 descriptions without adding fields to existing frame requests. Event
 candidates SHALL follow the picture side selected for composition: a fade
 uses only its resolved outgoing or incoming side, while a dissolve, wipe or
@@ -24,7 +24,7 @@ all labels SHALL remain when events share a pair. The plan SHALL also identify a
 midpoint and last-active output frames of each transition for interior
 inspection. Labels SHALL identify resolved request/candidate picture state,
 not assert perceptual visibility through a full plate, opacity, wipe edge or
-other occlusion. It SHALL not add an episode authoring field.
+other occlusion. It SHALL not add an episode or document authoring field.
 
 #### Scenario: Fractional events and a transition
 - **WHEN** a shot boundary, spoken-word onset, or source-emphasis change falls
@@ -66,6 +66,12 @@ other occlusion. It SHALL not add an episode authoring field.
 #### Scenario: End without a predecessor
 - **WHEN** a film or shot has only one output frame
 - **THEN** the plan uses a single-frame end sample and invents no prior frame
+
+#### Scenario: Lit tokens of a movie's source panel
+- **WHEN** *Cut and Advance* lights `waterwheel`, `drives` and `crankshaft` on
+  its source panel as they are spoken, then clears them
+- **THEN** the plan holds a pair at each token's first lit frame and one at
+  the clearing, each labelled with the shot, the source element and the cue
 
 ### Requirement: Review uses only the attested encoded film
 
@@ -149,3 +155,4 @@ review failure SHALL have a failing command status.
 - **WHEN** standalone review is retried for a matching manifest and MP4
 - **THEN** it either verifies/reuses a complete pack or publishes another
   complete generation without overwriting the earlier one
+

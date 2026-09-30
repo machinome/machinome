@@ -1,9 +1,9 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
+import {validateEpisode,requiredViewerApi,episodeFilm} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
 import {EASINGS,ease,keyedValue} from '../src/easing.mjs';
-import {lens03,cues03,cuesManifest} from './frame-fixtures.mjs';
+import {lens03,cues03,cuesManifest,element} from './frame-fixtures.mjs';
 
 const V04='machinome-video-draft/0.4';
 const manifest={animation:{loop:1460}};
@@ -24,66 +24,71 @@ const restaged=(format=V04)=>({format,output:{width:1280,height:720,fps:30,durat
       [{at:0,preset:'mechanism'},{at:9.615,preset:'linkage',ease:'out'}])]});
 const valid=e=>validateEpisode(e,manifest);
 const frames=e=>Array.from({length:e.output.durationSeconds*e.output.fps},(_,i)=>i/e.output.fps);
+// The episode converted once (design D3): its frame, and its view's state, at video time t.
+const framer=e=>{const film=episodeFilm(e);return t=>frameAt(film,t);};
+const viewer=e=>{const at=framer(e);return t=>element(at(t),'view');};
 
-// Amended by shot-transitions and stills-and-clips: every 0.4 frame carries
-// transition and picture, null outside each cue.
+// Every frame carries transition, whatever the format (react-stage D4).
 test('a 0.4 episode without ease gives the frames of the same episode in 0.3',()=>{
   for(const [make,m] of [[()=>lens03('tight'),{animation:{loop:296}}],[()=>lens03('rolled'),{animation:{loop:296}}],[cues03,cuesManifest]]){
     const old=make(),next=as04(make());
     validateEpisode(old,m);validateEpisode(next,m);
-    for(const t of frames(old))assert.deepEqual(frameAt(next,t),{...frameAt(old,t),transition:null,picture:null},`at ${t}`);
+    const a=framer(old),b=framer(next);
+    for(const t of frames(old))assert.deepEqual(b(t),a(t),`at ${t}`);
   }
 });
 
 test('a camera move follows the ease of the key it ends at, position, target, field of view and up alike',()=>{
   const e=restaged();valid(e);
   // Local time as frameAt computes it: video time minus the shot's start.
-  const a=e.cameras.mechanism,b=e.cameras.linkage,start=e.shots[1].start;
+  const a=e.cameras.mechanism,b=e.cameras.linkage,start=e.shots[1].start,view=viewer(e);
   for(const local of [0,.5,1,3,6,9,9.5]){
-    const w=ease('out',(start+local-start)/9.615),f=frameAt(e,start+local);
+    const w=ease('out',(start+local-start)/9.615),f=view(start+local);
     assert.deepEqual(f.view.camera,a.position.map((v,i)=>v+(b.position[i]-v)*w),`camera at ${local}`);
     assert.deepEqual(f.view.target,a.target.map((v,i)=>v+(b.target[i]-v)*w),`target at ${local}`);
     assert.equal(f.fov,a.fov+(b.fov-a.fov)*w,`fov at ${local}`);
   }
   // Already travelling at the cut: out covers far more of the move in its first second than smooth.
   assert.ok(ease('out',1/9.615)>0.25&&ease('smooth',1/9.615)<0.035);
-  for(const local of [9.615,10,12.4])assert.deepEqual(frameAt(e,start+local).view,{camera:b.position,target:b.target},'the hold after the last key is exact');
+  for(const local of [9.615,10,12.4])assert.deepEqual(view(start+local).view,{camera:b.position,target:b.target},'the hold after the last key is exact');
 
   const linear=restaged();linear.shots[1].camera[1].ease='linear';valid(linear);
-  const x=local=>frameAt(linear,start+local).view.camera[0];
+  const linearView=viewer(linear),x=local=>linearView(start+local).view.camera[0];
   const steps=[1,2,3,4,5,6,7,8,9].map(s=>x(s)-x(s-1));
   for(const step of steps)assert.ok(Math.abs(step-6/9.615)<1e-12,`constant speed: ${step}`);
 
   const rolling=restaged();rolling.shots[1].camera[1]={at:9.615,preset:'rolled',ease:'in'};valid(rolling);
+  const rollingView=viewer(rolling);
   for(const local of [0,1,4.8,8,9.615,11]){
     const w=ease('in',Math.min(1,(start+local-start)/9.615)),ua=unit([0,0,1]),ub=unit([1,0,1]);
-    assert.deepEqual(frameAt(rolling,start+local).up,unit(ua.map((v,i)=>v+(ub[i]-v)*w)),`up at ${local}`);
+    assert.deepEqual(rollingView(start+local).up,unit(ua.map((v,i)=>v+(ub[i]-v)*w)),`up at ${local}`);
   }
   const narrowing=restaged();narrowing.cameras.tight={...narrowing.cameras.mechanism,fov:20};
   narrowing.shots[1].camera[1]={at:9.615,preset:'tight',ease:'in'};valid(narrowing);
-  for(const local of [2,5,9])assert.equal(frameAt(narrowing,start+local).fov,37+(20-37)*ease('in',(start+local-start)/9.615));
+  const narrowingView=viewer(narrowing);
+  for(const local of [2,5,9])assert.equal(narrowingView(start+local).fov,37+(20-37)*ease('in',(start+local-start)/9.615));
 });
 
 test('model time follows the ease of the keyframe it runs to, meets every key and never runs back',()=>{
   const e=restaged();valid(e);
-  const D=e.model.expectedDurationSeconds;
+  const D=e.model.expectedDurationSeconds,view=viewer(e);
   for(const s of e.shots){
     const keys=s.simulation.keyframes.map(k=>({at:k.at,value:k.seconds,ease:k.ease}));
     for(const t of frames(e).filter(t=>t>=s.start&&t<s.end))
-      assert.equal(frameAt(e,t).time,keyedValue(keys,t-s.start,'linear')/D,`${s.id} at ${t}`);
-    for(const k of s.simulation.keyframes)if(k.at<s.end-s.start)assert.equal(frameAt(e,s.start+k.at).time,k.seconds/D,`${s.id} key at ${k.at}`);
+      assert.equal(view(t).time,keyedValue(keys,t-s.start,'linear')/D,`${s.id} at ${t}`);
+    for(const k of s.simulation.keyframes)if(k.at<s.end-s.start)assert.equal(view(s.start+k.at).time,k.seconds/D,`${s.id} key at ${k.at}`);
   }
   // Resume motion gently; settle into the pause.
-  const seconds=t=>frameAt(e,t).time*D;
+  const seconds=t=>view(t).time*D;
   assert.ok(seconds(3.733+1/30)-453<1e-3,'in leaves the hold from rest');
   assert.ok(466.8-seconds(14+6.899-1/30)<1e-3,'out arrives at rest');
   for(const name of EASINGS){
     const eased=restaged();
     for(const s of eased.shots){s.simulation.keyframes.slice(1).forEach(k=>{k.ease=name;});s.camera.slice(1).forEach(k=>{k.ease=name;});}
     valid(eased);
-    let prior=-Infinity;
+    let prior=-Infinity;const at=framer(eased);
     for(const t of frames(eased)){
-      const f=frameAt(eased,t),s=eased.shots.find(s=>s.id===f.shotId),local=t-s.start,keys=s.simulation.keyframes;
+      const frame=at(t),f=element(frame,'view'),s=eased.shots.find(s=>s.id===frame.shotId),local=t-s.start,keys=s.simulation.keyframes;
       const i=keys.findLastIndex(k=>k.at<=local),lo=keys[i].seconds/D,hi=(keys[i+1]??keys[i]).seconds/D;
       assert.ok(f.time>=prior,`${name}: model time decreases at ${t}`);
       assert.ok(f.time>=lo&&f.time<=hi,`${name}: ${f.time} leaves [${lo}, ${hi}] at ${t}`);
@@ -136,7 +141,8 @@ test('0.4 means everything 0.3 means, and needs no newer viewer for easing',()=>
   assert.doesNotThrow(()=>validateEpisode(lens,{animation:{loop:296}}),'0.4 may change lens, never refused with the 0.2 message');
   assert.doesNotThrow(()=>validateEpisode(as04(lens03('rolled')),{animation:{loop:296}}));
   const cues=as04(cues03());validateEpisode(cues,cuesManifest);
-  assert.ok(frameAt(cues,1).annotations.length===1&&frameAt(cues,1).highlight.others==='ghost');
+  const view=viewer(cues)(1);
+  assert.ok(view.marks.length===1&&view.highlight.others==='ghost');
   const next=as04(lens03('tight'));next.format='machinome-video-draft/0.5';
   assert.throws(()=>validateEpisode(next,{animation:{loop:296}}),/Unsupported episode format/);
   const eased=restaged();valid(eased);

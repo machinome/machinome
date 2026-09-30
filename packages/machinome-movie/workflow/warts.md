@@ -103,3 +103,56 @@ each.
    one movie omits and another gives cannot be optional, and two instances
    that disagree are refused. Enough for the film's one card; a reusable
    element library would want declared props.
+
+## The React stage (react-stage campaign, 30 September 2026)
+
+Findings met while building the `react-stage` change (the Node side of
+`machinome-movie/0.2` and the stage). Triage: none yet; the pilot decides each.
+
+1. **A picture's geometry is only known in the browser.** A slot's box is
+   the set's layout, so `check` cannot refuse a picture's enlargement beyond
+   its allowance, or a view that leaves the picture, for a project's set;
+   preview and render refuse them against the box the stage reports. YAML
+   episodes still refuse them at `check` (the paper sets' boxes are known).
+   A layout measured once per set when `check` bundles the stage would move
+   the refusal before speech.
+2. **One element per slot per shot.** The YAML paper sets carry indexed slots
+   (`top`, `top-2` … `top-8`, and so on) so that several captions of one
+   position in one shot stay separate elements; a project template that wants
+   a sequence of captions in one place must declare several slots. A slot
+   that holds a sequence might be the better shape once a film asks.
+3. **Chrome across two templates.** The live chrome is the incoming set's and
+   the outgoing picture is captured without chrome, so a masthead that differs
+   between two sets cuts at the join while the pictures dissolve or wipe. No
+   film joins two templates with different chrome yet.
+4. **Every pose repaints the whole page.** Four animation frames per pose (the
+   old page did it only for fresh poses, pictures and source-only frames): the
+   fixture tour captures 567 frames at 1280×720 in about two minutes with the
+   viewer double. A long 1080p film pays it on every frame.
+5. **One viewer per view element.** The contract's rule; *Cut and Advance*
+   would mount six sawmill viewers in one page. Memory with the real viewer is
+   unmeasured (layer 6 has no test).
+6. **Three YAML refusals are not applied to movie documents** because the
+   Python side emits documents that break them and the contract does not state
+   them: an emphasis hold running past its shot's end (it now ends with the
+   shot), a join longer than the shot it leaves (the outgoing shot continues),
+   and an incoming join overlapping a fade-out (the join is drawn first).
+   Whether the contract should refuse them is the orchestrator's; recorded as
+   findings of the change.
+7. **Emphasis words in a document may light out of spoken order.** The YAML
+   rule that words follow the narration is not applied to (spoken, token)
+   pairs.
+8. **The fixture tour's still is 48 by 32 pixels** with an allowance of 1.5,
+   so its template's plate is a 3.9 % stamp in a corner; a larger fixture
+   still would let the template put the plate over the stage as the film does.
+9. **The storyboard sorted samples by name**, and names had two digits: a
+   preview with a hundred samples or more laid its contact sheet out of order.
+   Names now have three digits; the Leonardo film will have more than a
+   hundred.
+10. **Cold memo artefacts leak.** With the cold switch the artefact memo
+    writes into `/tmp/videomaker-cold-*` and removes them on the process's
+    exit, which vitest's workers never reach; some two hundred directories had
+    gathered by the end of this cycle. The global setup's teardown could
+    remove them.
+11. **A viewer refusal says "episode" for a movie** (`viewerApiRefusal`): the
+    wording predates movie documents.

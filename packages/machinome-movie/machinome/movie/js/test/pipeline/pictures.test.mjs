@@ -1,16 +1,20 @@
-import {slowTest as test,artefact} from './support/memo.mjs';
+import {slowTest as test,artefact} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,mkdir,symlink,copyFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {base02} from './frame-fixtures.mjs';
-import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
-import {frameAt} from '../src/timeline.mjs';
+import {base02} from '../frame-fixtures.mjs';
+import {validateEpisode,requiredViewerApi,episodeFilm} from '../../src/episode.mjs';
+import {frameAt} from '../../src/timeline.mjs';
 import {STAGE_AREAS,pictureRect,viewAt,clipFrameAt,loadPictures,validatePictureSizing,
-  pictureAt,extractClips,pictureReports,inspectClipProbe,clipCadence,clipCadenceForCue} from '../src/pictures.mjs';
+  pictureAt,extractClips,pictureReports,inspectClipProbe,clipCadence,clipCadenceForCue} from '../../src/pictures.mjs';
 
 const manifest={animation:{loop:296}};
+// A validated YAML episode's frame through the loader's conversion; a YAML
+// shot is one chapter, so its picture cue #i is the element `<shot>.picture-<i>`.
+const frameOf=(e,t)=>frameAt(episodeFilm(e),t);
+const pictureIn=(frame,i=0)=>frame.elements[`${frame.chapterId}.picture-${i}`];
 const episode=()=>{const e=base02();e.format='machinome-video-draft/0.4';e.output.width=1920;e.output.height=1080;
   e.stills={image:{file:'image.png',credit:'Own render',rights:'Own work',upscale:2}};
   e.clips={movie:{file:'movie.mp4',credit:null,rights:null,upscale:2}};
@@ -108,10 +112,10 @@ test('picture cue structure is closed and format-gated without changing old fram
   bad(e=>{e.style={safeInsetFraction:.08,accent:'#bf531f'};e.shots[0].hiddenLayers=[];e.shots[0].highlight=[{from:0,to:1,parts:['frame']}];},/Highlight #0 overlaps picture #0/);
   const e=episode();validateEpisode(e,manifest);
   e.pictureMedia={stills:{image:{format:'png',width:1920,height:1080,upscale:2}},clips:{}};
-  assert.equal(frameAt(e,1.9).picture,null);
-  assert.equal(frameAt(e,.5).picture.kind,'still');
+  assert.equal(pictureIn(frameOf(e,1.9)).shown,false);
+  assert.equal(pictureIn(frameOf(e,.5)).shown,true);assert.equal(pictureIn(frameOf(e,.5)).media,'still');
   const old=base02();old.stills=e.stills;old.clips=e.clips;
-  assert.equal(Object.hasOwn(frameAt(old,.5),'picture'),false);
+  assert.ok(Object.values(frameOf(old,.5).elements).every(state=>state.kind!=='picture'),'an older episode has no picture element');
   validateEpisode(old,manifest);
   assert.deepEqual(requiredViewerApi(e),requiredViewerApi(old));
 });
@@ -120,9 +124,9 @@ test('older production media maps are ignored without probing or changing old fr
   for(const format of ['machinome-video-draft/0.2','machinome-video-draft/0.3']){
     const e=base02();e.format=format;e.stills={unused:{file:'no-file.gif'}};e.clips={unused:{file:'no-file.avi'}};
     e.paths={repository:'/not-a-repository',production:'/not-a-production'};
-    const before=frameAt(e,.5);validateEpisode(e,manifest);await loadPictures(e);
+    const before=frameOf(e,.5);validateEpisode(e,manifest);await loadPictures(e);
     assert.deepEqual(e.pictureMedia,{stills:{},clips:{}});
-    assert.deepEqual(frameAt(e,.5),before);
+    assert.deepEqual(frameOf(e,.5),before);
   }
 });
 
@@ -313,16 +317,16 @@ test('fractional picture boundaries and outgoing continuation preserve a still o
   e.shots[1].transition={kind:'dissolve',duration:.5};
   e.pictureMedia={stills:{image:{format:'png',width:1920,height:1080,upscale:20}},clips:{}};
   validateEpisode(e,manifest);
-  assert.equal(frameAt(e,.1).picture.kind,'still');
-  assert.equal(frameAt(e,2.1).transition.outgoing.picture.view.zoom,2);
+  assert.equal(pictureIn(frameOf(e,.1)).media,'still');assert.equal(pictureIn(frameOf(e,.1)).shown,true);
+  assert.equal(pictureIn(frameOf(e,2.1).transition.outgoing).view.zoom,2);
   e.shots[0].pictures[0].leave={kind:'fade',duration:.5};
-  assert.equal(frameAt(e,2.1).transition.outgoing.picture.opacity,0);
+  assert.equal(pictureIn(frameOf(e,2.1).transition.outgoing).opacity,0);
   e.shots[0].pictures=[{from:.1,to:2,clip:'movie',inPoint:0}];
   e.pictureMedia.clips.movie={format:'mp4',width:1920,height:1080,upscale:20,
     timestamps:Array.from({length:12},(_,i)=>i*.25)};
   validateEpisode(e,manifest);
-  assert.equal(frameAt(e,2.1).transition.outgoing.picture.frame,8);
-  assert.equal(frameAt(e,1.999).picture.kind,'clip');
+  assert.equal(pictureIn(frameOf(e,2.1).transition.outgoing).frame,8);
+  assert.equal(pictureIn(frameOf(e,1.999)).media,'clip');assert.equal(pictureIn(frameOf(e,1.999)).shown,true);
 });
 
 test('extraction uses only source frames whose presentation instants precede the exclusive cue end',async t=>{

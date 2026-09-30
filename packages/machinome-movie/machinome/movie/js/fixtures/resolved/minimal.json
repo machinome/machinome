@@ -1,6 +1,6 @@
 {
-  "format": "machinome-video-draft/0.4",
-  "movie": "machinome-movie/0.1",
+  "format": "machinome-movie/0.2",
+  "resolved": true,
   "audio": {
     "model": "eleven_v3",
     "provider": "elevenlabs",
@@ -101,13 +101,19 @@
     ]
   },
   "learningGoal": "Show the smallest movie that evaluates.",
+  "marks": {
+    "fall": 15,
+    "rise": 5,
+    "top": 10
+  },
   "model": {
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "6bf22d069229248c0a3208ab7a70900a295afa50",
+    "sourceRevision": "6aebe87e9cd5a55724225917e771e8357ee7d3cf",
     "timeMode": "normalized-loop"
   },
+  "root": "../../python/tests/fixtures/project/videos/minimal",
   "sourceCode": {
     "declaration": {
       "file": "../../models/seesaw.py",
@@ -115,6 +121,17 @@
         22,
         24
       ]
+    }
+  },
+  "stage": {
+    "elements": {},
+    "modules": [],
+    "sets": {
+      "frame": {
+        "slots": [
+          "stage"
+        ]
+      }
     }
   },
   "status": "rehearsal",
@@ -127,7 +144,6 @@
     }
   },
   "title": "Minimal",
-  "style": {},
   "output": {
     "fps": 10,
     "height": 360,
@@ -141,30 +157,29 @@
       "speechOffset": 0.2,
       "start": 0,
       "end": 1.2,
-      "shots": [
-        "whole"
-      ]
-    }
-  ],
-  "shots": [
-    {
-      "id": "whole",
-      "start": 0,
-      "end": 1.2,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "far"
+      "elements": {
+        "view": {
+          "camera": "far",
+          "kind": "view"
         }
-      ],
-      "evidence": [],
-      "hiddenLayers": [],
-      "overlays": [],
-      "simulation": {
-        "from": 0,
-        "to": 2
-      }
+      },
+      "shots": [
+        {
+          "id": "whole",
+          "start": 0,
+          "end": 1.2,
+          "cues": [],
+          "model": {
+            "from": 0,
+            "to": 2
+          },
+          "places": {
+            "stage": "view"
+          },
+          "set": "frame",
+          "until": 1.2
+        }
+      ]
     }
   ]
 }

@@ -119,7 +119,8 @@ written before the stage keep producing.
   kinds come from the instances the movie declares: every instance of a kind
   gives the same props of the same kinds, or evaluation refuses by name.
   From this block the tool generates the TypeScript types of the
-  components' props.
+  components' props, `movie.d.ts` ([the stage](stage.md), "Typing against
+  the movie").
 
 ## Chapters
 
@@ -220,9 +221,14 @@ The shipped actions:
 - An action that **spans** needs the cue's `until`; a cue whose actions all
   fire and finish on their own (`type`, `move`) needs none.
 - `enter` and `leave` are `{"kind": "fade" | "draw", "duration", "ease"?}`;
-  `draw` only on the entrance of a ring or an arrow; an exit is a fade.
+  `draw` only on the entrance of a ring or an arrow; an exit is a fade. An
+  entrance and an exit may overlap in a short cue, each no longer than the
+  cue: the mark's opacity is then the lesser of the two (finding 6 of the
+  react-stage change).
 - A mark's `offset` and an arrow's `place` are fractions of the **view
-  element's box**, not of the frame: a set may put the view anywhere.
+  element's box**, not of the frame: a set may put the view anywhere. A
+  ring's `padding` is a fraction of the view element's box width, like
+  `offset` and `place` (finding 7 of the react-stage change).
 - `emphasize` lights each `token` of the excerpt from the onset of its
   `spoken` words in the narrator's take until the cue's phrase ends plus
   `hold`. The cue's `at` must be `{"spoken": phrase}` with no `plus`. Each
@@ -296,11 +302,28 @@ Refusals name an anchor's field by its path in the shot: `until`,
    its chapter.
 7. The **resolved document** is the same document with `"resolved": true`,
    `output.durationSeconds`, `start` and `end` on every chapter and shot,
-   and every time numeric. `check` writes it to
-   `<root>/_build/movie-resolved.json`; `preview` and `render` write the
-   same file before capturing. A YAML episode loads into exactly this
+   and every time numeric. An `emphasize` action gains `until`, its
+   phrase's spoken end plus `hold`, and each of its `words` an `at`, the
+   onset of its spoken words; a `show` with a spoken `reveal` gains
+   `reveal.onsets`, each word's onset; these are shot-local and not snapped
+   to the frame grid (finding 2 of the react-stage change). `check` writes
+   it to `<root>/_build/movie-resolved.json`; `preview` and `render` write
+   the same file before capturing. A YAML episode loads into exactly this
    shape: one chapter per shot, the shipped sets `paper`, `paper-split` and
-   `source-only`, and elements synthesized from its fields.
+   `source-only`, and elements synthesized from its fields. A synthesized
+   action keeps its authored identity in a field naming the YAML list it
+   came from and its index (`overlay`, `annotation`, `highlight`,
+   `picture`, `emphasis`, with an emphasis's `phrase`), so refusals and
+   review packs name the authored cue (finding 12 of the react-stage
+   change).
+8. Three rules of the YAML formats do not apply to a document; a YAML
+   episode keeps all three refusals. An emphasis whose hold runs past its
+   shot's end ends with the shot (finding 3 of the react-stage change). A
+   join may be longer than the shot it leaves: the outgoing shot continues
+   past its end for as long as it is seen, within the export (finding 4 of
+   the react-stage change). A shot's incoming join and its fade-out may
+   overlap: the join is drawn until it ends, then the fade-out (finding 5 of
+   the react-stage change).
 
 ## The frame
 
@@ -332,11 +355,16 @@ encodes and the shot cache hashes:
   that is placed and not shown appears with `"shown": false`.
 - `title` state: `shown`, `text`, `subtitle`?, `opacity`, and with a reveal
   `words` (the text split into words and spaces) and `revealed` (how many
-  words are visible). `picture` state: `shown`, `kind` (`still` or `clip`),
-  `name`, `frame`? (clips), `opacity`, `rect` ([x, y, w, h] as fractions of
-  the slot's box), `fit`. A project element's state: `props` and `actions`,
-  the active actions as `{action, params, since, until, progress}` with
-  `since` and `until` shot-local and `progress` in [0, 1].
+  words are visible). `picture` state: `shown`, `media` (`still` or
+  `clip`), `name`, `fit`, `opacity`, `view` (`{"center", "zoom"}`), and for
+  a clip `frame` and `clipSeconds`. The picture's rectangle is not in the
+  frame: a slot's box is the set's layout, known only in the stage, which
+  draws the picture by its fit and view inside the box and reports the
+  rectangle it drew (finding 1 of the react-stage change; `kind` is the
+  element's kind, as on every element). A project element's state: `props`
+  and `actions`, the active actions as `{action, params, since, until,
+  progress}` with `since` and `until` shot-local and `progress` in
+  [0, 1].
 - `transition` is as before: `null`, or the join in progress with the
   outgoing shot's frame under `outgoing`.
 - The frame carries no film-wide position: showing where a viewer is in a
@@ -351,13 +379,23 @@ headless Chromium by the renderer. Its contract with the renderer:
 
 - `window.film.setFrame(frame)` draws a frame synchronously and returns
   what it measured: `{"frame": {"width", "height"}, "chrome": [rects],
-  "slots": {"<slot>": rect}, "elements": {"<key>": report}}`. A view reports
-  its camera, target, up, field of view, navigation and the on-screen
-  geometry of its marks; a source panel its lit tokens and whether the
-  excerpt fits its box; a title its box and revealed count; a picture its
-  drawn rect and natural size; a project element whatever its component
-  reports, always with its box. The renderer checks the report against the
-  request, as it does today, and refuses a frame that differs.
+  "slots": {"<slot>": rect}, "elements": {"<key>": report}}`. Every element
+  reports its `kind` and `box`. A view reports its viewer instance, canvas,
+  camera, target, up, field of view, navigation and the on-screen geometry
+  of its marks; a source panel its displayed text, its lit tokens, its
+  cursor and whether the excerpt fits its box; a title the box of its text
+  and its revealed count; a picture the rectangle it drew (`drawn`), its
+  natural size (`natural`) and a clip's frame; a project element whatever
+  its component reports. The renderer checks each report against the
+  request and refuses a frame that differs, naming the shot, the element
+  and the time; a picture's drawn rectangle is checked against the one its
+  fit and view give for the box the stage reports, enlargement and framing
+  included (finding 1 of the react-stage change).
+- `window.film` also has `project(key, points)`, which projects world
+  points through the viewer of the view element `key`, and `views()`, which
+  lists the viewer instances with their element keys and whether each is
+  shown. `viewer` and `apiVersion` are those of the first view mounted, and
+  `null` before one is (finding 11 of the react-stage change).
 - `window.film.compose(request)` and `composeMarkBlend(pictures)` draw
   transition and blended frames over the page from same-instant captures,
   as today, in a layer above every set's content and below its chrome.
@@ -366,23 +404,37 @@ headless Chromium by the renderer. Its contract with the renderer:
   runtime's `Chrome` component; the stage lifts it above the transition
   layer, hides it in picture-only captures and reports its rects, which the
   pixel proofs mask. Nothing else in the page is fixed: no bar, no brand,
-  no series label the document did not ask for.
+  no series label the document did not ask for. During a join between sets
+  whose chrome differs, the live chrome is the incoming set's and the
+  outgoing picture is captured without chrome (finding 10 of the
+  react-stage change).
 - A set is a React component the module registers under its kind with the
   slots it declares; an element likewise. At mount the stage refuses, by
   name, a set or element kind the bundle does not register, a set whose
-  registered slots differ from the document's, and a runtime API version
-  below what the movie needs.
+  registered slots differ from the document's, and a kind registered twice;
+  when its first view mounts, a viewer whose API is below what the movie
+  needs. A document needs Viewer API 28 when a view carries a mark or a
+  highlight, or moves to a camera whose field of view or up differs from
+  the view's own camera; otherwise 21 (finding 8 of the react-stage
+  change).
 - Components are pure in video time: no wall clock, no asynchronous state
-  between frames, no measurement that changes what is drawn. The viewer
-  mounts once outside React's reconciliation and is positioned over the
-  view element's box; two views in one shot are two viewer instances.
+  between frames, no measurement that changes what is drawn. Each view
+  element's viewer instance mounts once, outside React's reconciliation, in
+  a host placed in the view element's box, and is kept across the shots of
+  its chapter; two views in one shot are two viewer instances.
 
-The authoring contract, `docs/stage.md`, says how a project writes a set or
-an element. The tool ships the sets `frame` (one slot, `stage`, the whole
-picture, no chrome) and `split` (`left`, `right`), the element kinds above,
-and, for YAML episodes only, the sets `paper`, `paper-split` and
-`source-only` that reproduce the earlier film page's layouts with its
-masthead and no progress rule.
+The authoring contract, [the stage](stage.md), says how a project writes a
+set or an element. The tool ships the sets `frame` (one slot, `stage`, the
+whole picture, no chrome) and `split` (`left`, `right`), the element kinds
+above, and, for YAML episodes only, the sets `paper`, `paper-split` and
+`source-only`, which draw the earlier film page's layouts and its masthead;
+the masthead's words are the sets' props `brand` and `series`, never text
+in their source. Their slots are, for `paper`, `stage`, `plate`, `full`,
+`title`, `top`, `lower-third` and `center`; for `paper-split`, `left`,
+`right` and the same others; for `source-only`, `source` and the text
+positions; each position but `stage`, `left`, `right` and `source` also as
+`-2` to `-8`, so several overlays or pictures of one position in one shot
+are separate elements (finding 9 of the react-stage change).
 
 ## Schema and fixtures
 

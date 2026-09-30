@@ -3,26 +3,24 @@
 // while the command line keeps launching its own (ADR-003). Launches are
 // counted by test/support/one-browser.mjs.
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
+import {writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {get} from 'node:http';
-import * as renderer from '../src/render.mjs';
-import {slowTest as test} from './support/memo.mjs';
-import {sharedStage,launches,allowLaunches} from './support/stage.mjs';
-import {viewerDouble} from './viewer-double.mjs';
+import * as renderer from '../../src/render.mjs';
+import {slowTest as test} from '../support/memo.mjs';
+import {sharedStage,launches,allowLaunches} from '../support/stage.mjs';
+import {viewerDouble} from '../viewer-double.mjs';
+import {yamlProject} from '../support/yaml-project.mjs';
 
+// A one-shot YAML episode, loaded as the command line loads it.
 async function fixture(t){
-  const dir=await mkdtemp(join(tmpdir(),'videomaker-browser-seam-'));
-  t.onTestFinished(()=>rm(dir,{recursive:true,force:true}));
-  await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test'},animation:{loop:2}}));
-  const viewer=join(dir,'viewer.js');await writeFile(viewer,viewerDouble());
-  const e={format:'machinome-video-draft/0.4',title:'Seam',series:'SEAM',output:{width:320,height:180,fps:2,durationSeconds:1},
+  const project=await yamlProject(t,{manifest:{root:{name:'test'},animation:{loop:2}}});
+  const viewer=join(project.dir,'viewer.js');await writeFile(viewer,viewerDouble());
+  const e=await project.film({format:'machinome-video-draft/0.4',title:'Seam',series:'SEAM',output:{width:320,height:180,fps:2,durationSeconds:1},
     model:{expectedDurationSeconds:2},style:{background:'#f5f1e8',foreground:'#222222',accent:'#bf531f',fontFamily:'DejaVu Sans'},
-    paths:{repository:dir,episode:join(dir,'episode.yaml'),production:join(dir,'production.yaml'),manifest:join(dir,'manifest.json'),build:join(dir,'_build')},
     cameras:{a:{position:[0,-10,0],target:[0,0,0],up:[0,0,1],fov:37}},layers:{},
-    shots:[{id:'only',start:0,end:1,narration:'',direction:'Look.',simulation:{from:0,to:1},camera:[{at:0,preset:'a'}],
-      hiddenLayers:[],overlays:[],evidence:[]}]};
+    shots:[{id:'only',start:0,end:1,narration:'Look.',direction:'Look.',simulation:{from:0,to:1},camera:[{at:0,preset:'a'}],
+      hiddenLayers:[],overlays:[],evidence:[]}]});
   return {e,viewer};
 }
 // A loopback request to the asset server: status and body.
