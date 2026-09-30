@@ -81,5 +81,11 @@ invented interface requirements merely to fill the campaign.
 
 ## Progress
 
-- Campaign bench opened from merged main. Proposal and baseline evidence for
-  shot-level incremental rendering are next. Deferred items remain deferred.
+- Campaign bench opened from merged main. The first Sol proposal has passed
+  root's adversarial planning review. Leonardo's 80-frame baseline measured
+  31.67 s cold, 1.70 s unchanged, and 32.11 s after one interior title edit;
+  the edit recaptured all 80 although only frames 21–42 changed. Root checked
+  every frame hash and decoded the edited MP4 for inspection. The approved
+  whole-shot target is 40 reused / 40 captured, with exact cold equivalence.
+- Shot-level incremental rendering is entering red-first implementation.
+  Deferred items remain deferred. No new campaign work is integrated to main.
