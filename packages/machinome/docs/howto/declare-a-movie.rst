@@ -44,7 +44,7 @@ class Playground(Loop):
     model = Seesaw
     export = "../export/seesaw"
     marks = {"rise": 5, "top": 10, "fall": 15}
-    readiness = "Fixture export written by hand; nothing is simulated."
+    readiness = "Exported by machinome export; the beam tips on its pivot through the loop."
     far = Camera(position=(400, -600, 300), target=(0, 0, 50), fov=37)
     near = Camera(position=(200, -300, 150), target=(0, 0, 50), fov=37)
     rolled = Camera(position=(-150, 250, 120), target=(0, 0, 60), up=(0.15, 0, 1), fov=42)

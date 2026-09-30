@@ -11,7 +11,9 @@
 //   content fingerprint of everything the test can reach (test/support/reach.mjs:
 //   its import graph, what the reached modules serve or read, the command line
 //   when a test runs it, test/support/, the viewer double, the test's own
-//   file, `package.json`, `package-lock.json`, `vitest.config.mjs`) and the
+//   file, `package.json`, `package-lock.json`, `vitest.config.mjs`), the bytes
+//   of a file the maintainer selects outside the repository for it (the
+//   viewer bundle of the viewer layer, under its variable's name) and the
 //   toolchain record: the versions of Node, Chromium, FFmpeg, ffprobe and Git
 //   and the fonts the stage uses, obtained once per run by the global setup
 //   (`test/support/toolchain.mjs`). A verified entry for the key is a hit: the
@@ -57,7 +59,7 @@ import {tmpdir} from 'node:os';
 import {join,relative,dirname,sep,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test,inject} from 'vitest';
-import {slowTestInputs} from './reach.mjs';
+import {slowTestInputs,selectedInputs} from './reach.mjs';
 
 export const MEMO_LABEL='passed from the memo';
 export const REPOSITORY=join(dirname(fileURLToPath(import.meta.url)),'..','..');
@@ -100,6 +102,20 @@ export async function fingerprint(paths,{base=REPOSITORY}={}){
   const out=[];
   for(const path of [...paths].sort())await walk(path,base,out);
   return sha256(out.join('\n'));
+}
+// The files a maintainer selects outside the repository ([variable, path]),
+// by the variable's name and the file's bytes, never its path; '' for none.
+async function selectedFingerprint(selected){
+  if(!selected.length)return '';
+  const out=[];
+  for(const [name,path] of [...selected].sort(([a],[b])=>a<b?-1:a>b?1:0)){
+    let bytes;
+    try{bytes=await readFile(path);}catch(error){
+      if(error.code==='ENOENT'||error.code==='EISDIR')throw new Error(`Memo input ${path} does not exist`);throw error;
+    }
+    out.push(`selected\0${name}\0${sha256(bytes)}`);
+  }
+  return ':'+sha256(out.join('\n'));
 }
 
 // The regular files of an artefact directory, relative, sorted; null when it
@@ -193,16 +209,18 @@ export function openMemo({dir=memoDirectory(),root=REPOSITORY,toolchain,cold=fal
 
   // Runs `body` unless a verified pass is memoized for `test` over `inputs`.
   // Returns 'memo', 'ran' or 'cold'; a failing body rejects and records nothing.
-  async function verdict({test:name,inputs},body,task){
+  // `selected`: [variable, path] of the files outside the repository the
+  // maintainer selected for the test (reach.mjs, SELECTED), keyed by bytes.
+  async function verdict({test:name,inputs,selected=[]},body,task){
     if(cold){await body();return 'cold';}
-    const read=await fingerprint(inputs,{base:root});
+    const read=await fingerprint(inputs,{base:root})+await selectedFingerprint(selected);
     const key=sha256(canonical({schema:VERDICT_SCHEMA,test:name,inputs:read,toolchain}));
     const file=join(dir,'verdicts',`${key}.json`);
     if(await readVerdict(file,key,name)){
       task.meta.memo=MEMO_LABEL;log(`${MEMO_LABEL}: ${name}`);return 'memo';
     }
     await body();
-    if(await fingerprint(inputs,{base:root})!==read){log(`not memoized, its inputs changed while it ran: ${name}`);return 'ran';}
+    if(await fingerprint(inputs,{base:root})+await selectedFingerprint(selected)!==read){log(`not memoized, its inputs changed while it ran: ${name}`);return 'ran';}
     const entry={schema:VERDICT_SCHEMA,key,test:name,verdict:'pass'};
     await writeWhole(file,JSON.stringify({...entry,check:sha256(canonical(entry))},null,2)+'\n');
     return 'ran';
@@ -280,11 +298,17 @@ function fullName(task){
 }
 
 // A vitest test whose pass is memoized (the verdict memo).
-export function slowTest(name,fn,options){
+export function slowTest(name,fn,options){return memoizedTest(name,fn,options);}
+// A memoized test behind a gate: `gate(context)` runs before the memo is
+// consulted, may skip the test (context.skip) or fail it, and what it returns
+// is passed to `fn` after the context. A skip is never recorded.
+export function gatedSlowTest(gate){return (name,fn,options)=>memoizedTest(name,fn,options,gate);}
+function memoizedTest(name,fn,options,gate=null){
   return test(name,async context=>{
+    const passed=gate?await gate(context):undefined;
     const file=context.task.file.filepath;
     await runMemo().verdict({test:`${posix(relative(REPOSITORY,file))} > ${fullName(context.task)}`,
-      inputs:await slowTestInputs(file)},()=>fn(context),context.task);
+      inputs:await slowTestInputs(file),selected:selectedInputs(file)},()=>fn(context,passed),context.task);
   },options);
 }
 

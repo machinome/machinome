@@ -1,22 +1,167 @@
 {
   "format": "machinome-export",
-  "version": "4",
-  "animation": {"fps": 30, "frames": 600, "loop": 20.0},
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 600,
+    "loop": 20.0
+  },
   "drivers": {},
   "instructions": {},
-  "bindings": [],
   "root": {
     "name": "Seesaw",
-    "type": "Seesaw",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1790802578.936274,
+    "operations": [],
     "children": [
-      {"name": "Base", "type": "Block", "children": []},
-      {"name": "Stand", "type": "Block", "children": []},
-      {"name": "Beam", "type": "Beam", "children": [
-        {"name": "Plank", "type": "Block", "children": []},
-        {"name": "Weight", "type": "Block", "children": []},
-        {"name": "pivot", "type": "Block", "children": []}
-      ]}
+      {
+        "name": "Base",
+        "type": "LeafNode",
+        "color": "#8f9aa3",
+        "mtime": 1790802578.936274,
+        "operations": [
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "5"
+            ]
+          ]
+        ],
+        "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+        "piece": "d19296a8d1c7"
+      },
+      {
+        "name": "Stand",
+        "type": "LeafNode",
+        "color": "#8f9aa3",
+        "mtime": 1790802578.936274,
+        "operations": [
+          [
+            "r",
+            "90",
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "30"
+            ]
+          ]
+        ],
+        "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+        "piece": "d19296a8d1c7"
+      },
+      {
+        "name": "Beam",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1790802578.936274,
+        "operations": [
+          [
+            "r",
+            "(20 - (4 * abs((($t * 20.0) - 10))))",
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "55"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "Plank",
+            "type": "LeafNode",
+            "color": "#8f9aa3",
+            "mtime": 1790802578.936274,
+            "operations": [
+              [
+                "t",
+                [
+                  "0",
+                  "0",
+                  "10"
+                ]
+              ]
+            ],
+            "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+            "piece": "d19296a8d1c7"
+          },
+          {
+            "name": "Weight",
+            "type": "LeafNode",
+            "color": "#8f9aa3",
+            "mtime": 1790802578.936274,
+            "operations": [
+              [
+                "t",
+                [
+                  "-15",
+                  "0",
+                  "20"
+                ]
+              ]
+            ],
+            "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+            "piece": "d19296a8d1c7"
+          },
+          {
+            "name": "pivot",
+            "type": "LeafNode",
+            "color": "#8f9aa3",
+            "mtime": 1790802578.936274,
+            "operations": [
+              [
+                "r",
+                "90",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+            "piece": "d19296a8d1c7"
+          }
+        ]
+      }
     ]
   },
-  "pieces": []
+  "pieces": [
+    {
+      "id": "d19296a8d1c7",
+      "name": "Block",
+      "sources": [
+        "models/seesaw.py"
+      ],
+      "models": [
+        "models/models/seesaw-Block-211d0bb8cf4f.stl"
+      ],
+      "count": 5,
+      "size": [
+        40.0,
+        10.0,
+        10.0
+      ],
+      "volume": 4000.0,
+      "watertight": true
+    }
+  ]
 }

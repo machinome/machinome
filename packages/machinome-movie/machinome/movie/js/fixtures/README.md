@@ -69,7 +69,10 @@ so a new fixture is registered once and missed by neither side.
 ## The fixture project
 
 `python/tests/fixtures/project/` is a tiny machinome project: a seesaw model
-(`models/seesaw.py`), a hand-written posed export (`export/seesaw/`), a still
+(`models/seesaw.py`, a declared 20 s loop through which the beam tips), its
+posed export (`export/seesaw/`, which the framework's command writes from the
+project directory, `machinome export seesaw -o export/seesaw --fps 30
+--frames 600 --no-widget`, and which the viewer layer poses), a still
 (`media/plate.png`), the take every fixture movie films (`videos/takes.py`)
 and the movies, with the tour's template (`videos/tour/stage.tsx` and
 `stage.css`). The still is drawn by `scripts/draw-fixture-still.mjs`, 864 by
