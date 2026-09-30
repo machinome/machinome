@@ -57,3 +57,30 @@ its requested 100 ms interval. Guardrail shutdown must reach owned browser
 descendants even if they use another process group, without touching any
 unrelated process. Root will review these safeguards before granting the
 two-browser execution lease.
+
+## Harness review and execution lease
+
+Root reviewed the full one-off `experiments/film-production/parallel-benchmark.mjs`
+and compared its private orchestration mirror with `render()`. It reuses the
+actual browser pose and shot-cache helpers. Its serial product comparator
+remains necessary: duplicated private orchestration is not assumed identical
+in cost. The harness SHA-256 at approval is
+`0e8a8faf8855840ca1614c7c3df482111df1b87e0012a8bc821773e8058102af`.
+
+Review corrected group-only termination, worker-exit versus inherited-pipe
+closure ordering, misleading phase boundaries and assumed sampler cadence.
+Root independently ran its no-browser safety rehearsal: a PID/starttime-owned
+detached descendant ignored TERM and received KILL; an unrelated sentinel
+remained alive until its own cleanup. All three test PIDs were absent after
+cleanup. The record is Leonardo's
+`videos/demo-incremental-rendering/_build/parallel-benchmark-safety-FMrQNs/report.json`.
+Sol's successful preceding rehearsal is in `parallel-benchmark-safety-BsW6Uy/`;
+the earlier `parallel-benchmark-safety-7blX0K/` was a test-readiness race,
+not evidence of a product shutdown failure, and is preserved. Syntax checks
+passed. No browser benchmark has run at this approval point.
+
+Root grants the empirical worker the exclusive experiment lease: sequential
+reference/seeds/comparator and exactly two concurrent browsers only in the
+two approved parallel arms. No other browser tests/renders may overlap.
+Thresholds above remain unchanged. Any resource/pixel error stops the
+experiment and returns to review; do not retry past it or raise limits.
