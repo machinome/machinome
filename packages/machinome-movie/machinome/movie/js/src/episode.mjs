@@ -213,19 +213,22 @@ export function requiredViewerApi(e) {
   }
   return {api:reasons.length?28:21,reasons};
 }
-export function viewerApiRefusal(required,declared) {
-  return `This episode needs Viewer API ${required.api} for ${required.reasons.join(', ')}; the selected viewer declares API ${declared}. Select a newer machinome-viewer bundle with --viewer.`;
+// `subject` is what the film was loaded from: 'movie' for a movie document,
+// 'episode' for a YAML episode (filmSubject).
+export function filmSubject(film) {return film?.source==='movie'?'movie':'episode';}
+export function viewerApiRefusal(required,declared,subject='episode') {
+  return `This ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}; the selected viewer declares API ${declared}. Select a newer machinome-viewer bundle with --viewer.`;
 }
 // check has no browser: it reads the "viewer API <n>" banner of the selected bundle.
 export function viewerApiFromBanner(text) {
   const match=/\bviewer API (\d+)\b/.exec(String(text).slice(0,4096));
   return match?Number(match[1]):null;
 }
-export function confirmViewerApi(required,bundleText) {
+export function confirmViewerApi(required,bundleText,subject='episode') {
   if(required.api<=21)return null;
   const declared=bundleText==null?null:viewerApiFromBanner(bundleText);
-  need(declared!==null,`Cannot confirm the viewer API: this episode needs Viewer API ${required.api} for ${required.reasons.join(', ')}, and the selected bundle is missing or declares no "viewer API" banner. Select a machinome-viewer bundle with --viewer.`);
-  need(declared>=required.api,viewerApiRefusal(required,declared));
+  need(declared!==null,`Cannot confirm the viewer API: this ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}, and the selected bundle is missing or declares no "viewer API" banner. Select a machinome-viewer bundle with --viewer.`);
+  need(declared>=required.api,viewerApiRefusal(required,declared,subject));
   return declared;
 }
 // Format 0.4 closes the field lists of a shot, its simulation, its model

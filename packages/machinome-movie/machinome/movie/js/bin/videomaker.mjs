@@ -2,7 +2,7 @@
 import {parseArgs} from 'node:util';
 import {resolve,dirname,extname} from 'node:path';
 import {readFile} from 'node:fs/promises';
-import {loadEpisode,confirmViewerApi,PAPER_STAGE} from '../src/episode.mjs';
+import {loadEpisode,confirmViewerApi,filmSubject,PAPER_STAGE} from '../src/episode.mjs';
 import {filmShots,shotActions} from '../src/timeline.mjs';
 import {buildFilmStage} from '../src/stage-build.mjs';
 import {speech} from '../src/speech.mjs';
@@ -48,7 +48,7 @@ try{
     // check has no browser; preview and render confirm the running viewer's apiVersion instead.
     const required=e.viewerApi;
     if(required.api>21){
-      const declared=confirmViewerApi(required,await readFile(options.viewer,'utf8').catch(()=>null));
+      const declared=confirmViewerApi(required,await readFile(options.viewer,'utf8').catch(()=>null),filmSubject(e));
       console.log(`Viewer API ${required.api} required for ${required.reasons.join(', ')}; ${options.viewer} declares API ${declared}`);
     }
     // The stage bundle: bundled and type-checked before any speech is bought.

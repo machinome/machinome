@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
 import {frameAt,srt,filmShots,shotActions} from './timeline.mjs';
-import {contained,viewerApiRefusal,PAPER_STAGE} from './episode.mjs';
+import {contained,viewerApiRefusal,filmSubject,PAPER_STAGE} from './episode.mjs';
 import {fileHash,hash,json,command,sourceBase} from './util.mjs';
 import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
 import {resolveWordTiming,validateWordFramesAtFps} from './words.mjs';
@@ -128,7 +128,7 @@ export function stageConfig(film){
       elements:[...kinds].sort()},
     media:{stills:Object.fromEntries(Object.entries(film.pictureMedia?.stills??{}).map(([n,m])=>[n,size(m)])),
       clips:Object.fromEntries(Object.entries(film.pictureMedia?.clips??{}).map(([n,m])=>[n,size(m)]))},
-    viewer:{required,refusal:viewerApiRefusal(required,'{declared}')}};
+    viewer:{required,refusal:viewerApiRefusal(required,'{declared}',filmSubject(film))}};
 }
 // The clip spans a film shows: each picture's cue, and the continuation a
 // transition shows past its shot's end.

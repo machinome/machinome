@@ -258,10 +258,13 @@ interpolation, visibility reset, model keyframes, speech timestamps, the
 movie document, the generated stage types) and the stage's component tests
 beside its sources (`stage/**/*.test.tsx`, under jsdom) in parallel, then the
 browser tests (`test/browser/`) and the pipeline tests (`test/pipeline/`) one
-at a time on one headless Chromium. A slow test that passed is remembered in the ignored `.test-memo/`
-under the content of everything it read and the versions of Node, Chromium,
-FFmpeg, Git and the fonts; while none of that changes, the next run reports
-it as "passed from the memo" instead of running it. `npm test -- --cold` runs
+at a time on one headless Chromium. A slow test that passed is remembered in
+one memo the repository's worktrees share, `videomaker-test-memo/` beside the
+common Git directory (`git rev-parse --git-common-dir`), under the content of
+everything it can reach (the modules it imports, what they serve and read,
+the test helpers) and the versions of Node, Chromium, FFmpeg, Git and the
+fonts; while none of that changes, the next run, in any worktree, reports it
+as "passed from the memo" instead of running it. `npm test -- --cold` runs
 everything and leaves the memo alone; run it before a change integrates. The
 Python package's suite is `python -m pytest` in `python/`.
 The originating sawmill's browser preview exercises the real viewer and pixels.

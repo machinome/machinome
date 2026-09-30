@@ -1,6 +1,6 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {validateEpisode,requiredViewerApi,viewerApiFromBanner,confirmViewerApi,PAPER_STAGE} from '../src/episode.mjs';
+import {validateEpisode,requiredViewerApi,viewerApiFromBanner,confirmViewerApi,viewerApiRefusal,PAPER_STAGE} from '../src/episode.mjs';
 import {viewAt,placeInBox,offsetInBox} from './frame-fixtures.mjs';
 
 const manifest={animation:{loop:296},root:{name:'Mill',children:[
@@ -87,4 +87,19 @@ test('annotations require Viewer API 28, confirmed from the bundle banner by che
   assert.throws(()=>confirmViewerApi(required,null),/cannot confirm the viewer API/i);
   assert.doesNotThrow(()=>confirmViewerApi(required,banner.replace('API 27','API 28')));
   assert.doesNotThrow(()=>confirmViewerApi({api:21,reasons:[]},null),'a 21 episode never needs the bundle');
+});
+
+test('the viewer refusal calls an episode an episode and a movie a movie',()=>{
+  const required=requiredViewerApi(annotated());
+  const banner='/*! machinome-viewer 0.7.1 - viewer API 27 */';
+  assert.equal(viewerApiRefusal(required,27,'episode'),
+    'This episode needs Viewer API 28 for annotations (shot pawls); the selected viewer declares API 27. Select a newer machinome-viewer bundle with --viewer.');
+  assert.equal(viewerApiRefusal(required,27),viewerApiRefusal(required,27,'episode'),'an episode by default');
+  assert.throws(()=>confirmViewerApi(required,banner),/^Error: This episode needs Viewer API 28/);
+  const marks={api:28,reasons:['marks (shot push)']};
+  assert.equal(viewerApiRefusal(marks,27,'movie'),
+    'This movie needs Viewer API 28 for marks (shot push); the selected viewer declares API 27. Select a newer machinome-viewer bundle with --viewer.');
+  assert.throws(()=>confirmViewerApi(marks,banner,'movie'),/^Error: This movie needs Viewer API 28 for marks \(shot push\)/);
+  assert.throws(()=>confirmViewerApi(marks,null,'movie'),/this movie needs Viewer API 28/);
+  assert.throws(()=>confirmViewerApi(marks,null,'movie'),e=>!/episode/.test(e.message));
 });

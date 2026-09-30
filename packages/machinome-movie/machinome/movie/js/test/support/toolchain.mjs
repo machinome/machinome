@@ -5,12 +5,16 @@
 // - records the toolchain the memo keys on, each obtained by running it once:
 //   Node, Chromium, FFmpeg, ffprobe, Git, and the file and SHA-256 of every
 //   face render binds (DejaVu Sans and DejaVu Sans Mono, regular and bold);
-// - carries the cold switch (VIDEOMAKER_TEST_COLD=1, set by `npm test -- --cold`).
+// - carries the cold switch (VIDEOMAKER_TEST_COLD=1, set by `npm test -- --cold`);
+// - finds the one memo store every worktree of the repository shares, and
+//   removes what a killed run left in it and under the temporary directory;
+// - on a cold run, opens the run's cold directory, which the teardown removes.
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {chromium} from 'playwright';
 import {CHROMIUM_ARGS} from '../../src/render.mjs';
+import {memoDirectory,sweep,openColdRun,closeColdRun} from './memo.mjs';
 
 const FACES=[['DejaVu Sans','Regular'],['DejaVu Sans','Bold'],['DejaVu Sans Mono','Regular'],['DejaVu Sans Mono','Bold']];
 const firstLine=(command,args)=>{
@@ -18,8 +22,11 @@ const firstLine=(command,args)=>{
   catch{return null;}
 };
 
-let server=null;
+let server=null,coldDir=null;
 export async function setup(project){
+  const cold=process.env.VIDEOMAKER_TEST_COLD==='1',memoDir=memoDirectory();
+  await sweep({dir:cold?null:memoDir});
+  if(cold)coldDir=await openColdRun();
   server=await chromium.launchServer({headless:true,args:CHROMIUM_ARGS});
   const probe=await chromium.connect(server.wsEndpoint());
   const browserVersion=probe.version();await probe.close();
@@ -32,6 +39,11 @@ export async function setup(project){
     git:firstLine('git',['--version']),fonts};
   project.provide('toolchain',toolchain);
   project.provide('browserEndpoint',server.wsEndpoint());
-  project.provide('cold',process.env.VIDEOMAKER_TEST_COLD==='1');
+  project.provide('cold',cold);
+  project.provide('memoDir',memoDir);
+  project.provide('coldDir',coldDir);
 }
-export async function teardown(){await server?.close();server=null;}
+export async function teardown(){
+  await server?.close();server=null;
+  if(coldDir)await closeColdRun(coldDir);coldDir=null;
+}

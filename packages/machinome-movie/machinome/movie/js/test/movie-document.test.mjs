@@ -219,6 +219,15 @@ test('movieViewerApi names every reason a movie needs Viewer API 28',async()=>{
   assert.deepEqual(movieViewerApi(resolveMovie(m.doc,m.takes)),{api:28,reasons:['camera up/field of view (shot whole)']});
 });
 
+test('the refusal the stage shows a movie on an older viewer calls it a movie',async()=>{
+  const {stageConfig}=await import('../src/render.mjs');
+  const {doc,takes}=await tour(),resolved=resolveMovie(doc,takes);
+  const film={...resolved,source:'movie',viewerApi:movieViewerApi(resolved)};
+  const {refusal}=stageConfig(film).viewer;
+  assert.match(refusal,/^This movie needs Viewer API 28 for highlight \(shot source\), .*; the selected viewer declares API \{declared\}\./);
+  assert.doesNotMatch(refusal,/episode/);
+});
+
 test('a shot reads its chapter\'s take at the chapter\'s offset from the shot',async()=>{
   const {doc,takes}=await tour(),film=resolveMovie(doc,takes);
   const source=shotOf(film,'source'),balance=film.chapters.find(c=>c.id==='balance');
