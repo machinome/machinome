@@ -8,6 +8,7 @@ and resolved here to the names the export gives it.
 
 import math
 import os
+import re
 
 from machinome.motion.couplings import PathRef
 from machinome.node.declarative import ChildDeclaration, declared_children
@@ -15,6 +16,9 @@ from machinome.node.declarative import ChildDeclaration, declared_children
 from .anchors import Anchor, time_value
 from .names import (MovieError, declaring_class, ease, module_directory, number,
                     slug)
+
+
+_MARK = re.compile(r'[A-Za-z_][A-Za-z0-9_]*')
 
 
 def part_path(model, part, where):
@@ -120,7 +124,8 @@ class Source(_Declared):
 
     @staticmethod
     def panel(source):
-        """The element that shows `source` beside or instead of the model."""
+        """The element that shows `source` in a slot: typed and emphasised on
+        cue."""
         from .stage import SourcePanel
 
         return SourcePanel(source)
@@ -140,12 +145,6 @@ class Still(_Declared):
         if upscale is not None:
             number(upscale, f'Still {file}: upscale', positive=True)
         self.file, self.credit, self.rights, self.upscale = file, credit, rights, upscale
-
-    def show(self, *, area=None, fit=None, enter=None, leave=None, view=()):
-        """Show the still over the stage or the frame, for a cue's span."""
-        from .stage import Picture
-
-        return Picture(self, area=area, fit=fit, enter=enter, leave=leave, view=view)
 
 
 class Simulation:
@@ -184,15 +183,14 @@ class Simulation:
 
         if self.keys is None:
             return {'from': seconds(self.start), 'to': seconds(self.end)}
-        keyframes = []
+        keys = []
         for at, value, curve in self.keys:
             key = {'at': at.document() if isinstance(at, Anchor) else at,
                    'seconds': seconds(value)}
             if curve is not None:
                 key['ease'] = curve
-            keyframes.append(key)
-        return {'from': keyframes[0]['seconds'], 'to': keyframes[-1]['seconds'],
-                'keyframes': keyframes}
+            keys.append(key)
+        return {'keys': keys}
 
 
 def _same_time(a, b):
@@ -219,8 +217,9 @@ class Loop:
             raise MovieError(f'{where}: readiness says what the export does and does not show')
         marks = getattr(cls, 'marks', None) or {}
         for name, seconds in marks.items():
-            if not isinstance(name, str) or not name:
-                raise MovieError(f'{where}: mark {name!r} is not a name')
+            if not isinstance(name, str) or not _MARK.fullmatch(name):
+                raise MovieError(f"{where}: mark {name!r} is not a name; a mark is named "
+                                 f"with letters, digits and underscores, as pull_start")
             number(seconds, f'{where}: mark {name}')
         cls.marks = dict(marks)
         for name, value in vars(cls).items():

@@ -10,6 +10,7 @@ import math
 import re
 
 from .names import MovieError, number
+from .text import count_phrase
 
 
 class Narration:
@@ -36,12 +37,7 @@ class Narration:
 
     def count(self, phrase):
         """How many times `phrase` occurs, overlapping occurrences included."""
-        found, start = 0, 0
-        while True:
-            start = self.text.find(phrase, start)
-            if start < 0:
-                return found
-            found, start = found + 1, start + 1
+        return count_phrase(self.text, phrase)
 
     def tail(self):
         """The shortest run of the last words that occurs exactly once,
@@ -99,9 +95,9 @@ class Anchor:
             raise MovieError(f"{where}: the phrase '{self.phrase}' is absent from the "
                              f"chapter's narration")
         if found > 1:
-            raise MovieError(f"{where}: the phrase '{self.phrase}' occurs {found} times in "
-                             f"the chapter's narration; an anchor names one instant, so "
-                             f"write a longer phrase")
+            raise MovieError(f"{where}: the phrase '{self.phrase}' is ambiguous in the "
+                             f"chapter's narration: it occurs {found} times, and an anchor "
+                             f"names one instant, so write a longer phrase")
 
     def document(self):
         if self.kind == 'end':

@@ -1,29 +1,29 @@
 """The movie tree: a movie orders chapters; a chapter owns its narration,
-declares the elements its shots place, and orders its shots; a shot puts
-elements in the slots of one set for a span of time, with cues.
+declares the elements its shots place, and orders its shots; a shot places
+elements in the slots of one set for a span of time, with cues of actions.
 
 Everything is found by type in declaration order and named by the
 attribute that holds it. A chapter checks itself when its class is
 created, where every class involved is known, and compiles its shots to
-their document form there; evaluation adds only what needs the export.
+their document form there; evaluation adds only what needs a file: the
+export's part paths, the excerpts an emphasis lights, the stage modules.
 """
 
-from .anchors import Anchor, Narration, is_zero, time_document, time_value
-from .names import MovieError, number, slug
-from .stage import (Emphasize, FadeIn, FadeOut, Highlight, Move, Picture, Placement,
-                    Set, SourcePanel, Style, Title, Transition, Type, View,
-                    _Annotation, _check_camera)
+from .anchors import Anchor, Narration, time_document, time_value
+from .names import MovieError, prop_kind, slug
+from .stage import (Cued, Element, FadeIn, FadeOut, Placement, Set, SourcePanel, Style,
+                    Title, Transition, View, check_camera)
 from .take import Simulation, part_path
+from .text import count_phrase, count_words
 
 
 class Cue:
     """At `anchor`, do these actions, optionally until another anchor."""
 
     def __init__(self, anchor, *actions, until=None):
-        from .stage import Action
-
-        if not actions or not all(isinstance(action, Action) for action in actions):
-            raise MovieError(f'A Cue performs actions, not {actions!r}')
+        if not actions or not all(isinstance(action, Cued) for action in actions):
+            raise MovieError(f'A Cue performs actions of elements, as view.highlight(...), '
+                             f'not {actions!r}')
         self.anchor = time_value(anchor, 'Cue')
         self.actions, self.until = actions, None if until is None else time_value(until, 'Cue until')
 
@@ -61,8 +61,7 @@ class Chapter:
         if len(narrations) != 1:
             raise MovieError(f'Chapter {cls.__name__} needs exactly one Narration; it '
                              f'declares {len(narrations)}')
-        elements = {name: value for name, value in body.items()
-                    if isinstance(value, (View, SourcePanel))}
+        elements = {name: value for name, value in body.items() if isinstance(value, Element)}
         shots = [(name, value) for name, value in body.items() if isinstance(value, Shot)]
         cls._compiled = _Compiler(cls, narrations[0], elements, shots).compile()
 
@@ -71,29 +70,34 @@ class Chapter:
 
 
 class _Compiler:
-    """Checks a chapter and writes its shots in document form."""
+    """Checks a chapter and writes it in document form."""
 
     def __init__(self, chapter, narration, elements, shots):
         self.chapter, self.narration = chapter, narration
         self.elements, self.shots = elements, shots
-        self.names = {id(element): name for name, element in elements.items()}
+        self.keys = {}
         self.parts = []      # (where, written, names) for the export check
         self.loops = []      # (where, loop) for the one-take check
+        self.tokens = []     # (where, source, token) for the excerpt check
+        self.sets = []       # the set classes the shots use, in order
+        self.completed = set()   # the source panels typed through their last line
 
     def compile(self):
         cname = self.chapter.__name__
-        views = [e for e in self.elements.values() if isinstance(e, View)]
+        declared = {}
         for name, element in self.elements.items():
             where = f'{cname}.{name}'
-            if isinstance(element, View):
-                element.check(where)
-            self.loops.append((where, element.loop))
-        cameras = {id(view): view.camera for view in views}
-        written = []
-        for name, shot in self.shots:
-            written.append(self.shot(name, shot, views, cameras))
-        return {'narration': self.narration.text, 'shots': written,
-                'parts': self.parts, 'loops': self.loops}
+            key = slug(name, where, 'element')
+            element.check(where)
+            if element.loop is not None:
+                self.loops.append((where, element.loop))
+            self.keys[id(element)] = key
+            declared[key] = element.document()
+        written = [self.shot(name, shot) for name, shot in self.shots]
+        project = [(self.keys[id(e)], e) for e in self.elements.values() if e.project()]
+        return {'narration': self.narration.text, 'elements': declared, 'shots': written,
+                'parts': self.parts, 'loops': self.loops, 'tokens': self.tokens,
+                'sets': self.sets, 'project': project}
 
     def anchor(self, value, where):
         if isinstance(value, Anchor):
@@ -105,12 +109,15 @@ class _Compiler:
         self.parts.append((where, written, names))
         return names
 
-    def shot(self, name, shot, views, cameras):
+    def shot(self, name, shot):
         where = f'{self.chapter.__name__}.{name}'
         shot_id = slug(name, where, 'shot')
         chosen = shot.set
-        if not (isinstance(chosen, type) and issubclass(chosen, Set) and chosen.kind):
-            raise MovieError(f'{where}: {chosen!r} is not a set; use Paper, PaperSplit or SourceOnly')
+        if not (isinstance(chosen, type) and issubclass(chosen, Set) and chosen is not Set):
+            raise MovieError(f'{where}: {chosen!r} is not a set; a shot is on Frame, Split or a '
+                             f'Set the project declares')
+        if chosen not in self.sets:
+            self.sets.append(chosen)
         placed = self.placements(shot, chosen, where)
         until = self.anchor(time_value(shot.until, f'{where}: until'), f'{where}: until')
         if not isinstance(shot.model, Simulation):
@@ -119,109 +126,32 @@ class _Compiler:
         shot.model.check(until, self.narration, where)
         self.loops.append((f'{where}: model', shot.model.loop))
 
-        view = next((e for e in placed.values() if isinstance(e, View)), None)
-        posed = view
-        if posed is None:
-            if len(views) != 1:
-                raise MovieError(f'{where}: the shot places no view and is still posed; it '
-                                 f'poses the chapter\'s view, so the chapter must declare '
-                                 f'exactly one view (it declares {len(views)})')
-            posed = views[0]
-        panel = next((e for e in placed.values() if isinstance(e, SourcePanel)), None)
-
-        document = {'id': shot_id, 'set': chosen.kind, 'until': time_document(until),
-                    'simulation': shot.model.document()}
-        camera = cameras[id(posed)]
-        keys = [{'at': 0, 'preset': camera.document_name()}]
-        overlays, annotations, highlight, pictures = [], [], [], []
-        typing, emphasis = [], []
+        cues = []
+        typed = {}
         for index, cue in enumerate(shot.cues):
             here = f'{where}: cues[{index}]'
             if not isinstance(cue, Cue):
                 raise MovieError(f'{here}: {cue!r} is not a Cue')
-            start = self.anchor(cue.anchor, here)
+            start = self.anchor(cue.anchor, f'{here}.at')
             end = None if cue.until is None else self.anchor(cue.until, f'{here}.until')
-            for action in cue.actions:
-                if action.element is not None and not any(
-                        action.element is element for element in placed.values()):
-                    element = self.names.get(id(action.element), 'an element')
-                    raise MovieError(f'{here}: {action.label} acts on {element}, which the '
-                                     f'shot does not place')
-                if action.spans and end is None:
-                    raise MovieError(f'{here}: {action.label} shows something for a span '
-                                     f'and needs the cue\'s until=')
-                if isinstance(action, Move):
-                    _check_camera(action.camera, view.loop, f'{here}: move')
-                    target = action.camera.document_name()
-                    finish = self.anchor(action.until, f'{here}: move until')
-                    if not is_zero(start) and keys[-1]['at'] != time_document(start):
-                        keys.append({'at': time_document(start), 'preset': keys[-1]['preset']})
-                    key = {'at': time_document(finish), 'preset': target}
-                    if action.ease is not None:
-                        key['ease'] = action.ease
-                    keys.append(key)
-                    camera = action.camera
-                elif isinstance(action, Highlight):
-                    parts = [self.part(view.loop.model, part, f'{here}: highlight')
-                             for part in action.parts]
-                    written = {'from': time_document(start), 'to': time_document(end),
-                               'parts': parts}
-                    if action.others is not None:
-                        written['others'] = action.others
-                    highlight.append(written)
-                elif isinstance(action, _Annotation):
-                    if view is None:
-                        raise MovieError(f'{here}: a {action.label} points at a part of the '
-                                         f'model, and the shot places no view')
-                    part = self.part(view.loop.model, action.part, f'{here}: {action.label}')
-                    annotations.append(action.document(time_document(start),
-                                                       time_document(end), part))
-                elif isinstance(action, Title):
-                    overlays.append(action.document(time_document(start), time_document(end)))
-                elif isinstance(action, Type):
-                    stop = start.shifted(action.over) if isinstance(start, Anchor) else start + action.over
-                    typing.append({'from': time_document(start), 'to': time_document(stop),
-                                   'throughLine': action.through_line})
-                elif isinstance(action, Emphasize):
-                    if not (isinstance(start, Anchor) and start.kind == 'spoken' and not start.plus):
-                        raise MovieError(f'{here}: emphasize lights words where they are spoken, '
-                                         f'so the cue\'s anchor must be a spoken phrase '
-                                         f'(lines.spoken(...)) with no plus')
-                    emphasis.append({'line': action.element.source.lines[1],
-                                     'phrase': start.phrase, 'words': action.words,
-                                     'hold': action.hold})
-                elif isinstance(action, Picture):
-                    self.loops.append((f'{here}: show', action.still.loop))
-                    written = {'from': time_document(start), 'to': time_document(end),
-                               'still': action.still.document_name()}
-                    for key in ('area', 'fit', 'enter', 'leave'):
-                        if getattr(action, key) is not None:
-                            written[key] = getattr(action, key)
-                    if action.view:
-                        written['view'] = []
-                        for number_, key in enumerate(action.view):
-                            at = self.anchor(key['at'], f'{here}: show view[{number_}]')
-                            written['view'].append({**key, 'at': time_document(at)})
-                    pictures.append(written)
-        cameras[id(posed)] = camera
+            actions = [self.action(action, placed, start, end, here, typed)
+                       for action in cue.actions]
+            written = {'at': time_document(start), 'actions': actions}
+            if end is not None:
+                written['until'] = time_document(end)
+            cues.append(written)
+        for slot, element in placed.items():
+            if isinstance(element, SourcePanel) and id(element) not in self.completed:
+                name = self.keys[id(element)]
+                last = element.source.lines[1]
+                raise MovieError(f'{where}: the shot places the source panel {name} in {slot} and '
+                                 f'does not complete it: no earlier shot of the chapter typed it '
+                                 f'through its last line, {last}; add '
+                                 f'Cue(0, {name}.type(through_line={last}, over=...))')
 
-        if panel is not None:
-            if not typing:
-                name = self.names[id(panel)]
-                raise MovieError(f'{where}: the shot places the source panel {name} and no '
-                                 f'cue types it; add Cue(0, {name}.type(through_line=..., over=...))')
-            code = {'snippet': panel.source.document_name(), 'typing': typing}
-            if emphasis:
-                code['emphasis'] = emphasis
-            document['code'] = code
-        document['camera'] = keys
-        document['hiddenLayers'] = [layer.document_name() for layer in posed.hide]
-        document['overlays'] = overlays
-        document['evidence'] = []
-        for key, value in (('annotations', annotations), ('highlight', highlight),
-                           ('pictures', pictures)):
-            if value:
-                document[key] = value
+        document = {'id': shot_id, 'set': chosen.kind,
+                    'places': {slot: self.keys[id(element)] for slot, element in placed.items()},
+                    'until': time_document(until), 'model': shot.model.document(), 'cues': cues}
         for key, value, kind in (('transition', shot.transition, Transition),
                                  ('fadeIn', shot.fade_in, FadeIn),
                                  ('fadeOut', shot.fade_out, FadeOut)):
@@ -230,6 +160,76 @@ class _Compiler:
                     raise MovieError(f'{where}: {key} is a {kind.__name__}, not {value!r}')
                 document[key] = value.document()
         return document
+
+    def action(self, action, placed, start, end, here, typed):
+        element = action.element
+        if not any(element is candidate for candidate in placed.values()):
+            name = self.keys.get(id(element), f'a {element.kind} the chapter does not declare')
+            raise MovieError(f'{here}: {action.name} acts on {name}, which the shot does not place')
+        key = self.keys[id(element)]
+        if action.spans and end is None:
+            raise MovieError(f"{here}: {action.name} shows something for a span and needs the "
+                             f"cue's until=")
+        written = {'element': key, 'action': action.name}
+        if action.params is not None:
+            written['params'] = dict(action.params)
+            return written
+        fields = dict(action.fields)
+        if action.name == 'move':
+            check_camera(fields['camera'], element.loop, f'{here}: move')
+            fields['camera'] = fields['camera'].document_name()
+            fields['until'] = time_document(self.anchor(fields['until'], f'{here}: move until'))
+        elif action.name == 'highlight':
+            fields['parts'] = [self.part(element.loop.model, part, f'{here}: highlight')
+                               for part in fields['parts']]
+        elif action.name in ('ring', 'label', 'arrow'):
+            fields['part'] = self.part(element.loop.model, fields['part'], f'{here}: {action.name}')
+        elif action.name == 'type':
+            self.type(element, fields['throughLine'], key, here, typed)
+        elif action.name == 'emphasize':
+            self.emphasize(element, fields['words'], start, here, fields.get('line'))
+        elif action.name == 'show' and isinstance(element, Title) and 'reveal' in fields:
+            found = count_phrase(self.narration.text, element.text)
+            if found != 1:
+                state = 'absent from' if found == 0 else 'ambiguous in'
+                raise MovieError(f"{here}: show: the title's text '{element.text}' is {state} the "
+                                 f"chapter's narration (found {found} times); a spoken reveal shows "
+                                 f"each word as it is spoken, so the narration says the title once")
+        elif action.name == 'show' and 'view' in fields:
+            fields['view'] = [{**view, 'at': time_document(self.anchor(view['at'],
+                                                                       f'{here}: show view[{n}]'))}
+                              for n, view in enumerate(fields['view'])]
+        written.update(fields)
+        return written
+
+    def type(self, panel, through, name, here, typed):
+        first, last = panel.source.lines
+        if id(panel) in self.completed and id(panel) not in typed:
+            raise MovieError(f'{here}: type: the source panel {name} is already typed through its '
+                             f'last line by an earlier shot of the chapter; it keeps its text')
+        if not first <= through <= last:
+            raise MovieError(f'{here}: type: through_line={through} is outside the excerpt, lines '
+                             f'{first} to {last}')
+        before = typed.get(id(panel))
+        if before is not None and through <= before:
+            raise MovieError(f'{here}: type: through_line={through}, and the panel {name} is '
+                             f'already typed through line {before}; typing runs forward')
+        typed[id(panel)] = through
+        if through == last:
+            self.completed.add(id(panel))
+
+    def emphasize(self, panel, words, start, here, line=None):
+        if not (isinstance(start, Anchor) and start.kind == 'spoken' and not start.plus):
+            raise MovieError(f"{here}: emphasize lights words where they are spoken, so the cue's "
+                             f"anchor must be a spoken phrase, lines.spoken(...), with no plus")
+        for word in words:
+            found = count_words(start.phrase, word['spoken'])
+            if found != 1:
+                state = 'absent from' if found == 0 else 'ambiguous in'
+                raise MovieError(f"{here}: emphasize: the spoken words '{word['spoken']}' are "
+                                 f"{state} the cue's phrase '{start.phrase}' (found {found} times "
+                                 f"as whole words)")
+            self.tokens.append((here, panel.source, word['token'], line))
 
     def placements(self, shot, chosen, where):
         if not isinstance(shot.placements, dict):
@@ -241,22 +241,21 @@ class _Compiler:
                 raise MovieError(f'{where}: {key!r} is not a slot; write {chosen.__name__}.<slot>')
             slot = key.slot
             if slot.set is not chosen:
+                declared = ', '.join(slots) or 'none'
                 raise MovieError(f'{where}: {slot.name} is a slot of {slot.set.__name__}, not of '
-                                 f'{chosen.__name__}, whose slots are {", ".join(slots)}')
+                                 f'{chosen.__name__}, whose slots are {declared}')
             if slot.name in placed:
                 raise MovieError(f'{where}: slot {slot.name} of {chosen.__name__} is filled twice')
             if not any(element is declared for declared in self.elements.values()):
                 raise MovieError(f'{where}: slot {slot.name} holds an element the chapter '
                                  f'{self.chapter.__name__} does not declare; declare it on the '
                                  f'chapter and place it by name')
-            if element.slot_kind != slot.holds:
-                wanted = {'view': 'view', 'panel': 'source panel'}
-                raise MovieError(f'{where}: slot {slot.name} of {chosen.__name__} holds a '
-                                 f'{wanted[slot.holds]}, not a {wanted[element.slot_kind]}')
+            for other, held in placed.items():
+                if held is element:
+                    raise MovieError(f'{where}: the element {self.keys[id(element)]} is placed in '
+                                     f'two slots, {other} and {slot.name}; an element is in one '
+                                     f'place at a time')
             placed[slot.name] = element
-        for name in slots:
-            if name not in placed:
-                raise MovieError(f'{where}: slot {name} of {chosen.__name__} is empty')
         return placed
 
 
@@ -345,7 +344,7 @@ class Movie:
                              f'name = MyChapter()')
         found = {}
         for kind, label in ((Format, 'Format(width, height, fps=...)'), (Narrator, 'Narrator(...)'),
-                            (Style, 'Paper.style(...)'), (Evidence, 'Evidence(...)'),
+                            (Style, 'Style(...)'), (Evidence, 'Evidence(...)'),
                             (Credits, 'Credits(...)'), (Release, 'Release(...)')):
             held = [value for value in body.values() if isinstance(value, kind)]
             if len(held) > 1:
@@ -373,4 +372,27 @@ class Movie:
                                      f"across a movie")
                 seen[shot['id']] = chapter_id
             ordered.append((chapter_id, type(chapter)))
+        _check_props(where, ordered)
         cls._movie = {'chapters': ordered, 'text': text, 'found': found}
+
+
+def _check_props(where, chapters):
+    """Every element of one project kind gives the same props, of the same
+    kinds, so the kind's generated types are one."""
+    first = {}
+    for chapter_id, klass in chapters:
+        for key, element in klass._compiled['project']:
+            kinds = {name: prop_kind(value) for name, value in element.props.items()}
+            if element.kind not in first:
+                first[element.kind] = (chapter_id, key, kinds)
+                continue
+            there, other, known = first[element.kind]
+            for name in sorted(set(kinds) | set(known)):
+                if kinds.get(name) != known.get(name):
+                    def said(chapter, element_key, kind):
+                        how = f'as a {kind}' if kind else 'not at all'
+                        return f'{element_key} in chapter {chapter} gives {name} {how}'
+                    raise MovieError(
+                        f"{where}: the {element.kind} elements disagree on their props: "
+                        f"{said(there, other, known.get(name))}, {said(chapter_id, key, kinds.get(name))}; "
+                        f"every {element.kind} of a movie gives the same props, of the same kinds")

@@ -1,5 +1,6 @@
 # The Videomaker test suite's fixture project: a trivial posed model and two
-# movies. Nothing here is a real machine or a real film.
+# movies, one with its own stage module. Nothing here is a real machine or a
+# real film.
 [project]
 name = "videomaker-fixture-project"
 version = "0.0.0"

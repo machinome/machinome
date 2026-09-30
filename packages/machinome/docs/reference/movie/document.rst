@@ -99,20 +99,27 @@ written before the stage keep producing.
   project repository. The tool bundles them with its own stage runtime into
   one script per movie. A module registers the sets and elements it draws
   under their kinds (see "The stage").
-- `sets` lists **every set kind a shot of the movie uses**, by kind. An
-  entry with a `module` is the project's: `slots` are the slots its own body
-  declares (a derived set inherits its base's chrome, not its layout, so it
-  lists its own slots in full), `base` names the set it derives from (a kind
-  in this table or a shipped kind), `props` is a JSON object of static
-  values the component receives. An entry without a `module` is a set the
+- `sets` lists **every set kind a shot of the movie uses, and the project
+  sets those derive from**, by kind. An entry with a `module` is the
+  project's: `slots` are the slots its own body declares (a derived set
+  inherits its base's chrome, not its layout, so it lists its own slots in
+  full), `base` names the set it derives from (a kind in this table or a
+  shipped kind), `props` is a JSON object of static values the component
+  receives: the set's own class attributes over the ones it inherits from
+  its base, so a derived set's entry carries the merged props and the chrome
+  it inherits reads them from that entry (left out when empty). An entry
+  without a `module` is a set the
   tool ships (`frame`, with the slot `stage`; `split`, with `left` and
   `right`); its `slots` must equal the shipped ones, so both runtimes check
   placements against one table.
 - `elements` lists the **project's element kinds** (never the shipped ones).
   `props` maps each prop name to its kind, one of `string`, `number`,
   `boolean`, `list`, `object`; `actions` maps each action name to its
-  parameters, each of kind `string`, `number` or `boolean`. From this block
-  the tool generates the TypeScript types of the components' props.
+  parameters, each of kind `string`, `number` or `boolean`. A kind's prop
+  kinds come from the instances the movie declares: every instance of a kind
+  gives the same props of the same kinds, or evaluation refuses by name.
+  From this block the tool generates the TypeScript types of the
+  components' props.
 
 ## Chapters
 
@@ -205,7 +212,7 @@ The shipped actions:
 | `view` | `label` | `part`, `text`, `offset`? ([x, y]), `enter`?, `leave`? | yes |
 | `view` | `arrow` | `part` or `point`, `text`?, `place` ([x, y]), `enter`?, `leave`? | yes |
 | `source` | `type` | `throughLine`, `over` (seconds) | no |
-| `source` | `emphasize` | `words` ([{`spoken`, `token`}]), `hold`? | the phrase and its hold |
+| `source` | `emphasize` | `words` ([{`spoken`, `token`}]), `hold`?, `line`? | the phrase and its hold |
 | `title` | `show` | `enter`?, `leave`?, `reveal`? | yes |
 | `picture` | `show` | `enter`?, `leave`?, `view`? ([{`at`, `center`, `zoom`, `ease`?}]) | yes |
 | a project kind | a declared action | `params`, matching the declared parameters | yes |
@@ -213,24 +220,33 @@ The shipped actions:
 - An action that **spans** needs the cue's `until`; a cue whose actions all
   fire and finish on their own (`type`, `move`) needs none.
 - `enter` and `leave` are `{"kind": "fade" | "draw", "duration", "ease"?}`;
-  `draw` only on a ring or an arrow.
+  `draw` only on the entrance of a ring or an arrow; an exit is a fade.
 - A mark's `offset` and an arrow's `place` are fractions of the **view
   element's box**, not of the frame: a set may put the view anywhere.
 - `emphasize` lights each `token` of the excerpt from the onset of its
   `spoken` words in the narrator's take until the cue's phrase ends plus
-  `hold`. The cue's `at` must be `{"spoken": phrase}` with no `plus`; each
-  `spoken` must occur exactly once in that phrase, word-bounded; each
-  `token` must occur exactly once in the excerpt, identifier-bounded
-  (`[A-Za-z_][\w.]*`, so `feed.pawl.turn` is one token), on any line; a
+  `hold`. The cue's `at` must be `{"spoken": phrase}` with no `plus`. Each
+  `spoken` must occur exactly once in that phrase, **word-bounded**: not
+  preceded or followed by an ASCII letter, digit or underscore. A `token` is
+  an identifier or a dotted path of identifiers
+  (`[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*`), and it occurs
+  where its text is word-bounded the same way: **a dot is a boundary**, so
+  `waterwheel` occurs in `water_drive.waterwheel.spin`, `feed.pawl` occurs
+  in `feed.pawl.turn`, and `pawl` does not occur in `pawl_mount`. Each token
+  must occur exactly once in the whole excerpt, on any line, or, when the
+  action names a `line` (a file line number inside the excerpt), exactly
+  once on that line; both runtimes refuse an absent or ambiguous token
+  naming it, and evaluation reads the excerpt's source file to do so. A
   token must be typed by the time its word is spoken. `spoken` and `token`
-  may differ: *the driving pawl* may light `feed.pawl`.
+  may differ: *the driving pawl* may light `feed.pawl.turn`.
 - `type` types the excerpt from where the previous typing stopped through
   `throughLine`, over `over` seconds from the cue's `at`. The typing cues of
   a shot run in order and must complete the excerpt before the shot ends,
   unless the panel was completed in an earlier shot of the chapter.
 - `reveal` is `{"timing": "spoken", "phrase"?}` (each word of the title
-  appears as it is spoken; `phrase` defaults to the title's text and must
-  match it word for word) or `{"timing": "even", "duration", "ease"?}`.
+  appears as it is spoken; `phrase` defaults to the title's text, must match
+  it word for word and must occur exactly once in the chapter's narration)
+  or `{"timing": "even", "duration", "ease"?}`.
 
 ### Anchors
 

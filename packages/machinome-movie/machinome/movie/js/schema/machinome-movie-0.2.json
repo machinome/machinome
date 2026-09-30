@@ -679,6 +679,10 @@
             "hold": {
               "type": "number",
               "minimum": 0
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 1
             }
           },
           "required": [

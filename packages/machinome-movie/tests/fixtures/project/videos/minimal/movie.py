@@ -1,6 +1,6 @@
-"""The smallest movie: one chapter, one shot, no cues."""
+"""The smallest movie: one chapter, one shot on the shipped Frame, no cues."""
 
-from machinome_movie import Chapter, Format, Movie, Narration, Narrator, Paper, Shot, View
+from machinome_movie import Chapter, Format, Frame, Movie, Narration, Narrator, Shot, View
 
 from videos.takes import Playground
 
@@ -8,7 +8,7 @@ from videos.takes import Playground
 class Only(Chapter):
     lines = Narration("A seesaw.")
     view = View(Playground, camera=Playground.far)
-    whole = Shot(Paper, {Paper.stage: view}, until=lines.end(plus=0.5),
+    whole = Shot(Frame, {Frame.stage: view}, until=lines.end(plus=0.5),
                  model=Playground.run(0, 2))
 
 

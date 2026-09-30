@@ -14,7 +14,7 @@ PYTHON = TESTS.parent
 REPOSITORY = PYTHON.parent
 PROJECT = TESTS / 'fixtures' / 'project'
 FIXTURES = REPOSITORY / 'fixtures'
-SCHEMA = REPOSITORY / 'schema' / 'machinome-movie-0.1.json'
+SCHEMA = REPOSITORY / 'schema' / 'machinome-movie-0.2.json'
 
 if str(PROJECT) not in sys.path:
     sys.path.insert(0, str(PROJECT))

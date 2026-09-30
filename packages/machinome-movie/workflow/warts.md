@@ -63,3 +63,43 @@ yet; the pilot decides.
    test that passed once is not run again until its inputs change, so only
    the cold run before integration shows it.
    Worth finding the cause rather than retrying.
+## Declarative stage (react-stage campaign, 30 September 2026): the Python side of the stage
+
+Findings met while making the `machinome_movie` package evaluate to
+`machinome-movie/0.2` (`declarative-stage`) and checking the *Cut and
+Advance* version 2 source against it. Triage: none yet; the pilot decides
+each.
+
+1. **A spoken concept cannot light a segment of a dotted path.** *Triage
+   (orchestrator, 30 September 2026): ruled the other way before the merge; a
+   dot is a boundary, so `waterwheel` is a token inside
+   `water_drive.waterwheel.spin`, and an emphasis may name its `line` when a
+   token repeats in the excerpt. The film keeps its words.* The token
+   rule counts whole identifiers, dots included, so in the film's coupling
+   excerpt (`water_drive.waterwheel.spin.drives(water_drive.crankshaft.spin)`)
+   neither `waterwheel`, `drives` nor `crankshaft` is a token; the source was
+   respelled to light the whole calls. A film that wants the one word lit
+   inside a path needs a sub-token spelling, which no episode has asked for
+   beyond this one.
+2. **The contract's token example cannot hold.** *Triage (orchestrator,
+   30 September 2026): resolved with wart 1; the contract now states the
+   boundary rule in words and its example is `feed.pawl.turn`.* It says *the driving pawl*
+   may light `feed.pawl`; under the rule stated in the same sentence,
+   `feed.pawl` never occurs where the source says `feed.pawl.turn`. Recorded
+   as a contract finding in the change's evidence.
+3. **The fixture project's stage module is under its revision hash.** The
+   tour's placeholder `videos/tour/stage.tsx` is a file of the fixture
+   project, so writing its real components changes
+   `export/seesaw/source-revision.txt` and every Python fixture document
+   with it. Whoever writes the components re-pins and re-evaluates in the
+   same change; the two sides share one fixture project (wart 5 of the
+   previous entry) and now one file in it.
+4. **Between the two halves the campaign branch has no reader.** After the
+   Python side emits 0.2 and removes the 0.1 schema and fixtures, the Node
+   suite fails on them until the Node side's change merges; the two cycles
+   of one format change cannot land one at a time without a red suite.
+5. **An element's prop types come from use.** With no prop declared on the
+   class, the generated types list what the movie's instances give; a prop
+   one movie omits and another gives cannot be optional, and two instances
+   that disagree are refused. Enough for the film's one card; a reusable
+   element library would want declared props.
