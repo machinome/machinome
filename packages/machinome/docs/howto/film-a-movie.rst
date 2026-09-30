@@ -45,6 +45,11 @@ Put the ElevenLabs key in this repository's ignored `.env`:
 ELEVENLABS_API_KEY=your_key
 ```
 
+The speech command takes the first key it finds: `ELEVENLABS_API_KEY` already
+in the environment (even empty, which ends the search), then the `.env` of the
+checkout it runs from, then, when that checkout is another work tree of the
+repository, the `.env` of the repository's primary work tree. When it finds
+none it names every place it looked, and it never prints a key.
 The key is read only by the speech command and is never sent to the browser,
 written into episode sources or included in build manifests. A key with text
 to speech permission is enough; listing voices is not required when a voice ID

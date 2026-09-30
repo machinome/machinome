@@ -1,6 +1,8 @@
-import {loadEnvFile} from 'node:process';
+import {parseEnv} from 'node:util';
 import {fileURLToPath} from 'node:url';
-import {resolve} from 'node:path';
+import {resolve,join,basename,dirname} from 'node:path';
+import {realpathSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {hash,fileHash,json,command,duration} from './util.mjs';
 import {captionsFromAlignment,srt} from './timeline.mjs';
@@ -68,15 +70,51 @@ function checkAudio(e){
   const format=e.audio.outputFormat??'mp3_44100_128';
   if(!['mp3_44100_128','pcm_24000'].includes(format))throw new Error('Supported speech output formats: mp3_44100_128, pcm_24000');
 }
-// Read only when a take is actually missing (movie-document D3).
-function providerKey(){
-  try{loadEnvFile(fileURLToPath(new URL('../.env',import.meta.url)));}catch(error){if(error.code!=='ENOENT')throw error;}
-  const key=process.env.ELEVENLABS_API_KEY;
-  if(!key)throw new Error('Set ELEVENLABS_API_KEY in Videomaker .env');
-  return key;
+// The Videomaker checkout this module belongs to: the one the command runs from.
+const TOOL_CHECKOUT=fileURLToPath(new URL('..',import.meta.url));
+const samePath=(a,b)=>{try{return realpathSync(a)===realpathSync(b);}catch{return false;}};
+// The files the key may be in, in order: the checkout's own `.env`, then, when
+// the checkout is another work tree of its repository, the primary work tree's
+// `.env`, found through Git's common directory. A directory that is not the top
+// of its own work tree (a copy inside some other repository) looks only in its
+// own `.env`, and so does a work tree whose common directory is not a `.git`.
+export function keyFiles(checkout){
+  const own=join(checkout,'.env');
+  // Git is asked about the checkout itself, never about a repository a caller's
+  // environment names (a hook of another repository sets GIT_DIR).
+  const {GIT_DIR,GIT_WORK_TREE,GIT_COMMON_DIR,...env}=process.env;
+  let top,common;
+  try{
+    [top,common]=execFileSync('git',['rev-parse','--path-format=absolute','--show-toplevel','--git-common-dir'],
+      {cwd:checkout,env,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split('\n');
+  }catch{return [own];}
+  if(!top||!common||basename(common)!=='.git'||!samePath(top,checkout))return [own];
+  const primary=dirname(common);
+  return samePath(primary,checkout)?[own]:[own,join(primary,'.env')];
 }
-// Chapter i's cached take, generated first when missing and allowed.
-async function ensureTake(e,spoken,i,{generate}){
+// Read only when a take is actually missing (movie-document D3). The first of:
+// the variable in the environment (even empty: a file never overrides it, as
+// Node's env-file loading never did), then each of keyFiles(checkout). The environment is left
+// unchanged, and no refusal prints a key or any part of one.
+async function providerKey(checkout=TOOL_CHECKOUT){
+  const where=places=>new Error(`No ElevenLabs key: set ELEVENLABS_API_KEY in the environment or in a Videomaker checkout's .env; looked in ${places.join(', ')}`);
+  if(process.env.ELEVENLABS_API_KEY!==undefined){
+    if(process.env.ELEVENLABS_API_KEY)return process.env.ELEVENLABS_API_KEY;
+    throw where(['the environment (set but empty)']);
+  }
+  const looked=['the environment'];
+  for(const file of keyFiles(checkout)){
+    looked.push(file);
+    let text;
+    try{text=await readFile(file,'utf8');}catch(error){if(error.code==='ENOENT')continue;throw error;}
+    const key=parseEnv(text).ELEVENLABS_API_KEY;
+    if(key)return key;
+  }
+  throw where(looked);
+}
+// Chapter i's cached take, generated first when missing and allowed; the key is
+// looked up from `checkout` (the tool's own unless a test names another).
+async function ensureTake(e,spoken,i,{generate,checkout}){
   const chapter=chaptersOf(e)[i],{format,request,cache,file,meta}=speechCacheEntry(e,spoken,i);
   try{
     const record=JSON.parse(await readFile(meta,'utf8'));
@@ -86,7 +124,7 @@ async function ensureTake(e,spoken,i,{generate}){
     if(error.code!=='ENOENT')throw error;
     if(!generate)throw new Error(`Missing speech for ${chapter.id}; run the speech command first`);
   }
-  const key=providerKey();
+  const key=await providerKey(checkout);
   console.log(`Generating narration: ${chapter.id} (${request.text.length} characters)`);
   const response=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(e.audio.voice)}/with-timestamps?output_format=${format}`,{
     method:'POST',headers:{'xi-api-key':key,'Content-Type':'application/json'},body:JSON.stringify(request),signal:AbortSignal.timeout(120000)});
@@ -103,25 +141,25 @@ async function ensureTake(e,spoken,i,{generate}){
 }
 // Every chapter's take, generating the missing ones: needs only narration, so a
 // movie document runs it before anything is resolved (movie-document D4).
-export async function generateTakes(e){
+export async function generateTakes(e,{checkout}={}){
   checkAudio(e);
   await mkdir(resolve(e.paths.build,'audio'),{recursive:true});
   const spoken=spokenChapters(e),result=[];
   for(const [i,chapter] of chaptersOf(e).entries()){
-    const {generated}=await ensureTake(e,spoken,i,{generate:true});
+    const {generated}=await ensureTake(e,spoken,i,{generate:true,checkout});
     result.push({id:chapter.id,generated});
   }
   return result;
 }
 
-export async function speech(e,{generate=false}={}) {
+export async function speech(e,{generate=false,checkout}={}) {
   const dir=resolve(e.paths.build,'audio');await mkdir(dir,{recursive:true});
   checkAudio(e);
   const files=[],captions=[],records=[];let overflow=[];
   const chapters=chaptersOf(e),spoken=spokenChapters(e);
   for(let i=0;i<chapters.length;i++){
     const chapter=chapters[i],{file}=speechCacheEntry(e,spoken,i);
-    const {record}=await ensureTake(e,spoken,i,{generate});
+    const {record}=await ensureTake(e,spoken,i,{generate,checkout});
     const offset=chapter.start+chapter.speechOffset;
     if(!Number.isFinite(offset)||offset<chapter.start)throw new Error(`Invalid speech offset: ${chapter.id}`);
     if(offset+record.duration>chapter.end-0.1)overflow.push(`${chapter.id}: audio ${record.duration.toFixed(2)}s, slot ${(chapter.end-offset-.1).toFixed(2)}s`);
