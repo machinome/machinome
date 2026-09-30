@@ -8,3 +8,4 @@
 | 30 Sep | The contract written: `docs/movie-document.md` for `machinome-movie/0.2`, `schema/machinome-movie-0.2.json` (valid against draft 2020-12), this plan | this commit |
 | 30 Sep | Leonardo: `videos/cut_and_advance/spec.md` rewritten as version 2 (the project template, source in three chapters, the Jobs element, the target `movie.py`) | Leonardo 7c9fefc |
 | 30 Sep | Worktree `WTs/declarative-stage` (branch `declarative-stage`) opened from be98523; cycle P running on an opus agent beside cycle A; editable install of `machinome-movie` points at it while it runs | this repository |
+| 30 Sep | Cycle A `one-runner` ratified (planning 82ba537, implementation 8b1202b; vitest, two projects, one Chromium and one asset server per run, the verdict and artefact memos in `.test-memo/`, ADR-003; 218 tests cold 340 s, warm 4.9 s with 96 passed from the memo) and merged into `react-stage` | c1040c5, `openspec/changes/archive/2026-09-30-one-runner/evidence.md` |
