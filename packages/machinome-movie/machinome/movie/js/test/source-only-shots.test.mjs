@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test,describe} from 'vitest';
 import assert from 'node:assert/strict';
 import {validateEpisode} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
@@ -35,16 +35,16 @@ test('source-only is a 0.4 code-shot opt-in; omitted layout retains the old requ
   assert.equal(Object.hasOwn(frameAt(opted,.5),'layout'),false);
 });
 
-test('source-only refuses missing code, unknown layout, older formats and nonempty model/picture cues by name',async t=>{
+describe('source-only refuses missing code, unknown layout, older formats and nonempty model/picture cues by name',()=>{
   const bad=(edit,pattern)=>{const e=episode();edit(e);assert.throws(()=>valid(e),pattern);};
-  await t.test('code required',()=>bad(e=>{e.shots[0].layout='source-only';},/source-only.*code.*first|first.*source-only.*code/i));
-  await t.test('unknown value',()=>bad(e=>{e.shots[1].layout='split';},/layout.*split.*second|second.*layout.*split/i));
+  test('code required',()=>bad(e=>{e.shots[0].layout='source-only';},/source-only.*code.*first|first.*source-only.*code/i));
+  test('unknown value',()=>bad(e=>{e.shots[1].layout='split';},/layout.*split.*second|second.*layout.*split/i));
   for(const format of ['machinome-video-draft/0.2','machinome-video-draft/0.3'])
-    await t.test(format,()=>bad(e=>{e.format=format;e.shots[1].layout='source-only';},/source-only.*0\.4.*second|second.*source-only.*0\.4/i));
-  await t.test('annotations',()=>bad(e=>{e.shots[1].layout='source-only';e.shots[1].annotations=[{from:0,to:1,kind:'label',point:[0,0,0],text:'No'}];},/source-only.*annotations.*second|second.*annotations.*source-only/i));
-  await t.test('highlight',()=>bad(e=>{e.shots[1].layout='source-only';e.shots[1].highlight=[{from:0,to:1,parts:['frame'],others:'ghost'}];},/source-only.*highlight.*second|second.*highlight.*source-only/i));
-  await t.test('pictures',()=>bad(e=>{e.shots[1].layout='source-only';e.shots[1].pictures=[{from:0,to:1,still:'cover'}];},/source-only.*pictures.*second|second.*pictures.*source-only/i));
-  await t.test('empty cue lists',()=>{
+    test(format,()=>bad(e=>{e.format=format;e.shots[1].layout='source-only';},/source-only.*0\.4.*second|second.*source-only.*0\.4/i));
+  test('annotations',()=>bad(e=>{e.shots[1].layout='source-only';e.shots[1].annotations=[{from:0,to:1,kind:'label',point:[0,0,0],text:'No'}];},/source-only.*annotations.*second|second.*annotations.*source-only/i));
+  test('highlight',()=>bad(e=>{e.shots[1].layout='source-only';e.shots[1].highlight=[{from:0,to:1,parts:['frame'],others:'ghost'}];},/source-only.*highlight.*second|second.*highlight.*source-only/i));
+  test('pictures',()=>bad(e=>{e.shots[1].layout='source-only';e.shots[1].pictures=[{from:0,to:1,still:'cover'}];},/source-only.*pictures.*second|second.*pictures.*source-only/i));
+  test('empty cue lists',()=>{
     const empty=episode();empty.shots[1].layout='source-only';
     empty.shots[1].annotations=[];empty.shots[1].highlight=[];empty.shots[1].pictures=[];
     assert.doesNotThrow(()=>valid(empty));

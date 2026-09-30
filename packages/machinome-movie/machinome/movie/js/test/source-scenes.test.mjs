@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {slowTest as test} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {loadSourceCode,codeAt,validateCode} from '../src/code.mjs';
 import {speechRequest,pcmWav,mixSpeech} from '../src/speech.mjs';
 
-async function temp(t){const dir=await mkdtemp(join(tmpdir(),'videomaker-source-test-'));t.after(()=>rm(dir,{recursive:true,force:true}));return dir;}
+async function temp(t){const dir=await mkdtemp(join(tmpdir(),'videomaker-source-test-'));t.onTestFinished(()=>rm(dir,{recursive:true,force:true}));return dir;}
 test('source excerpts match pinned Git bytes, with validated bounds and containment',async t=>{
   const dir=await temp(t),git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8'}).trim();
   git('init','-q');await writeFile(join(dir,'machine.py'),'class Mill:\n    wheel = Wheel()\n    wheel.drives(saw)\n');

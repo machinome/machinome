@@ -42,3 +42,24 @@ decides each.
    the chapter tails as the only slack, a 100-second shot list resolved to
    59 s once Jessica's takes were measured. That is the point of anchors, and
    an author needs to know it before estimating durations.
+
+## The test suite (one-runner cycle, 30 September 2026)
+
+Findings met while moving the Node suite to vitest and memoizing it
+(`openspec/changes/archive/2026-09-30-one-runner/evidence.md`). Not an
+episode's; recorded here because the suite is the tool's proof. Triage: none
+yet; the pilot decides.
+
+1. **A second intermittent pixel test.** The base run under `node --test`
+   failed `a movie document is refused before its takes, then checks, speaks,
+   previews and renders from them` (`test/movie-pipeline.test.mjs`) with
+   `Partial picture replay is not deterministic: wheel #0 at 1.00 s` from
+   preview's picture proof; the same file alone passed right after, and the
+   three whole-suite vitest runs of the cycle that executed it passed it.
+   With the already known `every incremental PNG equals a separately cold
+   film across the first reused-shot gap` (seen in the movie-document
+   cycle's base run, not in this cycle's runs), the suite has two pixel
+   proofs that fail rarely under load. The memo makes this sharper: a flaky
+   test that passed once is not run again until its inputs change, so only
+   the cold run before integration shows it.
+   Worth finding the cause rather than retrying.

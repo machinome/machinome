@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {validateEpisode,requiredViewerApi,viewerApiFromBanner,confirmViewerApi} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';

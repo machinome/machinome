@@ -11,7 +11,7 @@
     "videomaker": "bin/videomaker.mjs"
   },
   "scripts": {
-    "test": "node --test --test-concurrency=1 test/*.test.mjs experiments/dark-source/emphasis.test.mjs",
+    "test": "node scripts/test.mjs",
     "video": "node bin/videomaker.mjs"
   },
   "dependencies": {

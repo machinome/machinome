@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {slowTest as test,artefact} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,mkdir,symlink,copyFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -18,17 +18,22 @@ const episode=()=>{const e=base02();e.format='machinome-video-draft/0.4';e.outpu
   return e;};
 async function mediaFixture(t){
   const dir=await mkdtemp(join(tmpdir(),'videomaker-picture-matrix-'));
-  t.after(()=>rm(dir,{recursive:true,force:true}));
+  t.onTestFinished(()=>rm(dir,{recursive:true,force:true}));
   execFileSync('git',['init','-q'],{cwd:dir});
-  const still=(name,codec)=>execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=red:s=120x80',
-    '-frames:v','1','-c:v',codec,join(dir,name)]);
-  still('image.png','png');still('photo.jpg','mjpeg');still('web.webp','webp');
+  // The encoded stills and clips are an input product, memoized; the test
+  // works on its own copies.
+  const media=await artefact('pictures-media-matrix',{},async out=>{
+    const still=(name,codec)=>execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=red:s=120x80',
+      '-frames:v','1','-c:v',codec,join(out,name)]);
+    still('image.png','png');still('photo.jpg','mjpeg');still('web.webp','webp');
+    execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=120x80:r=3',
+      '-t','2','-c:v','libx264','-pix_fmt','yuv420p',join(out,'movie.mp4')]);
+    execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=green:s=120x80:r=3',
+      '-t','2','-c:v','libvpx-vp9',join(out,'movie.webm')]);
+  });
+  for(const name of ['image.png','photo.jpg','web.webp','movie.mp4','movie.webm'])await copyFile(join(media,name),join(dir,name));
   await writeFile(join(dir,'drawing.svg'),'<svg width="420" height="240" viewBox="0 0 420 240"><path d="M0 0L10 10"/></svg>');
   await writeFile(join(dir,'missing-viewbox.svg'),'<svg width="420" height="240"><path d="M0 0L10 10"/></svg>');
-  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=120x80:r=3',
-    '-t','2','-c:v','libx264','-pix_fmt','yuv420p',join(dir,'movie.mp4')]);
-  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=green:s=120x80:r=3',
-    '-t','2','-c:v','libvpx-vp9',join(dir,'movie.webm')]);
   await copyFile(join(dir,'photo.jpg'),join(dir,'wrong.png'));
   execFileSync('git',['add','.'],{cwd:dir});
   execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','media'],{cwd:dir});
@@ -123,7 +128,7 @@ test('older production media maps are ignored without probing or changing old fr
 
 test('loading project media probes real files, hashes and committed status; sizing refuses unallowed enlargement',async t=>{
   const dir=await mkdtemp(join(tmpdir(),'videomaker-pictures-test-'));
-  t.after(async()=>{const {rm}=await import('node:fs/promises');await rm(dir,{recursive:true,force:true});});
+  t.onTestFinished(async()=>{const {rm}=await import('node:fs/promises');await rm(dir,{recursive:true,force:true});});
   execFileSync('git',['init','-q'],{cwd:dir});
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=red:s=100x80','-frames:v','1',join(dir,'image.png')]);
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=100x80:r=3','-t','2','-c:v','libx264','-pix_fmt','yuv420p',join(dir,'movie.mp4')]);
@@ -170,7 +175,7 @@ test('media loader accepts three raster formats and an internal SVG paint refere
 test('media loader refuses escape, wrong bytes, animated and scripted stills, and incomplete provenance',async t=>{
   const {dir,e}=await mediaFixture(t);
   const another=await mkdtemp(join(tmpdir(),'videomaker-picture-outside-'));
-  t.after(()=>rm(another,{recursive:true,force:true}));
+  t.onTestFinished(()=>rm(another,{recursive:true,force:true}));
   await copyFile(join(dir,'image.png'),join(another,'outside.png'));
   await symlink(join(another,'outside.png'),join(dir,'link.png'));
   execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','testsrc2=s=120x80:r=2',

@@ -1,7 +1,7 @@
 // Timeline layer (pure): the movie document's schema, static checks and
 // anchor resolution against take doubles, over the shared fixtures and inline
 // cases. No browser, no FFmpeg, no provider.
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {readFile,readdir,access} from 'node:fs/promises';
 import {join,dirname,resolve} from 'node:path';

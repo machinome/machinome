@@ -8,3 +8,4 @@ _build/
 __pycache__/
 *.egg-info/
 .pytest_cache/
+.test-memo/

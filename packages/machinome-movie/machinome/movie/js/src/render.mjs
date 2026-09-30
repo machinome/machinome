@@ -17,6 +17,8 @@ import {buildReviewSamplePlan} from './review-samples.mjs';
 import {reviewManifest} from './review-pack.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
+// Headless Chromium with software WebGL: the browser every session renders in.
+export const CHROMIUM_ARGS=['--use-angle=swiftshader','--enable-unsafe-swiftshader'];
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
 const sub=(a,b)=>a.map((v,i)=>v-b[i]),add=(a,b,s)=>a.map((v,i)=>v+b[i]*s);
 const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
@@ -82,7 +84,28 @@ async function stage(e,viewer) {
   return {paths,hashes};
 }
 
-export async function browserSession(e,viewer,width,captions,action) {
+// One HTTP server for the film page's assets, serving one session at a time:
+// a session mounts its handler and releases it when it ends. The command line
+// makes one per session; a test run shares one across its sessions.
+export async function assetServer(){
+  let handler=null;
+  const server=createServer((req,res)=>{
+    if(handler)return handler(req,res);
+    res.writeHead(503);res.end('No film session');
+  });
+  await new Promise(r=>server.listen(0,'127.0.0.1',r));
+  const origin=`http://127.0.0.1:${server.address().port}`;
+  return {origin,
+    mount(next){
+      if(handler)throw new Error(`The asset server at ${origin} already serves a film session`);
+      handler=next;return ()=>{if(handler===next)handler=null;};
+    },
+    close:()=>new Promise(r=>server.close(r))};
+}
+
+// A browser and an asset server may be given (a test run shares one of each);
+// otherwise the session launches Chromium and makes a server, and closes both.
+export async function browserSession(e,viewer,width,captions,action,{browser:givenBrowser,assets:givenAssets}={}) {
   validatePictureSizing(e,width);
   await extractClips(e);
   const {paths,hashes}=await stage(e,viewer);
@@ -92,7 +115,7 @@ export async function browserSession(e,viewer,width,captions,action) {
   const cfg={style:e.style,series:e.series??e.title,initial,requiredViewerApi:required,
     pictureStills:Object.keys(e.pictureMedia?.stills??{}),viewerRefusal:viewerApiRefusal(required,'{declared}')};
   const errors=[];
-  const server=createServer(async(req,res)=>{
+  const serve=async(req,res)=>{
     try{
       const path=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
       if(path==='/config.json'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(cfg));return;}
@@ -101,17 +124,17 @@ export async function browserSession(e,viewer,width,captions,action) {
       res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'}[extname(file)])??'application/octet-stream');
       res.end(await readFile(file));
     }catch(error){errors.push(String(error));res.writeHead(500);res.end('Asset error');}
-  });
-  await new Promise(r=>server.listen(0,'127.0.0.1',r));
-  let browser;
+  };
+  const assets=givenAssets??await assetServer(),release=assets.mount(serve);
+  let browser=givenBrowser,page;
   try{
-    browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-    const page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
+    browser??=await chromium.launch({headless:true,args:CHROMIUM_ARGS});
+    page=await browser.newPage({viewport:{width,height},deviceScaleFactor:1});
     page.on('pageerror',e=>errors.push(e.message));
     page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
     page.on('requestfailed',r=>errors.push(r.url()+': '+r.failure()?.errorText));
     page.on('response',r=>{if(r.status()>=400)errors.push(`${r.status()} ${r.url()}`);});
-    await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    await page.goto(`${assets.origin}/`);
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw new Error(error);
     let frames=0;
@@ -285,10 +308,14 @@ export async function browserSession(e,viewer,width,captions,action) {
     const result=await action({page,pose,info});
     if(errors.length)throw new Error(errors.join('\n'));
     return {...result,...info,framesChecked:frames};
-  }finally{await browser?.close();await new Promise(r=>server.close(r));}
+  }finally{
+    // A given browser keeps running; closing the page closes its own context.
+    if(givenBrowser)await page?.close();else await browser?.close();
+    release();if(!givenAssets)await assets.close();
+  }
 }
 
-export async function preview(e,{viewer,width=960,captions=[]}) {
+export async function preview(e,{viewer,width=960,captions=[],browser,assets}) {
   if(!e.wordTiming)await resolveWordTiming(e,shot=>readSpeechTake(e,shot));
   const dir=resolve(e.paths.build,'preview');await mkdir(dir,{recursive:true});
   const result=await browserSession(e,viewer,width,captions,async({page,pose})=>{
@@ -632,14 +659,14 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
       ...(transitionChecks.length?{transitionChecks}:{}),...(entranceChecks.length?{entranceChecks}:{}),
       ...(revealChecks.length?{revealChecks}:{}),...(fadeChecks.length?{fadeChecks}:{}),
       ...(emphasisChecks.length?{emphasisChecks}:{}),...(pictureChecks.length?{pictureChecks}:{})};
-  });
+  },{browser,assets});
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.
   await command('ffmpeg',['-y','-v','error','-pattern_type','glob','-i',resolve(dir,'*.png'),'-vf',`scale=480:-1,tile=3x${Math.ceil(result.samples.length/3)}`,'-frames:v','1',resolve(e.paths.build,'storyboard.jpg')]);
   return result;
 }
 
-export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,audio=null,label='rehearsal'}) {
+export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,audio=null,label='rehearsal',browser,assets}) {
   // Re-read measured takes even when the caller resolved them earlier: a
   // cache hit must not launder a removed or changed speech take in a reused e.
   await resolveWordTiming(e,shot=>readSpeechTake(e,shot));
@@ -701,7 +728,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
     const identity=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,commonKey,shots:shotReports.map(s=>s.key)}));
     return {identity,dir,count,reviewSamples,
       cache:{schema:SHOT_CACHE_SCHEMA,commonKey,capturedFrames,reusedFrames,shots:shotReports}};
-  });
+  },{browser,assets});
   const output=resolve(e.paths.build,`${label}.mp4`);
   const publicationId=randomUUID(),pendingOutput=resolve(e.paths.build,`${label}.pending-${publicationId}.mp4`);
   const args=['-y','-v','error','-framerate',String(fps),'-start_number','0','-i',resolve(report.dir,'%06d.png')];

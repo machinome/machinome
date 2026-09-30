@@ -1,10 +1,10 @@
-import {test} from 'node:test';
+import {slowTest as test,artefact} from './support/memo.mjs';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,readFile,mkdir,stat,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,mkdir,stat,rm,cp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,basename} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {preview,render,browserSession} from '../src/render.mjs';
+import {preview,render,browserSession} from './support/stage.mjs';
 import {pcmWav} from '../src/speech.mjs';
 import {validateEpisode} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
@@ -17,7 +17,7 @@ import {viewerDouble} from './viewer-double.mjs';
 // sawmill preview separately proves the public viewer and mechanical pixels.
 test('short mixed-layout film renders with a same-basename sidecar, not embedded subtitles',async t=>{
   const dir=await mkdtemp(join(tmpdir(),'videomaker-render-test-'));
-  t.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
   const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8'}).trim();
   git('init','-q');
   await writeFile(join(dir,'episode.yaml'),'test: film composition\n');
@@ -70,7 +70,7 @@ function filmEpisode(dir,shotExtra={},extra={}){
 }
 async function filmFixture(t){
   const dir=await mkdtemp(join(tmpdir(),'videomaker-film-test-'));
-  t.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
   await writeFile(join(dir,'manifest.json'),JSON.stringify({root:{name:'test',children:[{name:'Feed',children:[{name:'Pawl'}]}]},animation:{loop:2}}));
   const viewer=async(name,options)=>{const file=join(dir,name);await writeFile(file,viewerDouble(options));return file;};
   return {dir,viewer};
@@ -118,18 +118,23 @@ test('a still and clip reach real browser pixels at their authored geometry and 
   await writeFile(join(dir,'episode.yaml'),'picture fixture');
   await writeFile(join(dir,'production.yaml'),'picture fixture');
   await writeFile(join(dir,'description.md'),'Credits: {{pictureCredits}}');
-  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','nullsrc=s=256x256',
-    '-vf','geq=r=X:g=Y:b=0','-frames:v','1',join(dir,'ramp.png')]);
-  await mkdir(join(dir,'clip-frames'));
-  for(let n=0;n<9;n++){
-    const c=(16*n).toString(16).padStart(2,'0');
-    execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`color=c=0x${c}${c}${c}:s=160x120`,
-      '-frames:v','1',join(dir,'clip-frames',`frame${String(n).padStart(3,'0')}.png`)]);
-  }
-  const pictures=join(dir,'clip-frames','frame%03d.png');
-  execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-f','lavfi','-i','sine=frequency=440:duration=3',
-    '-shortest','-c:v','libx264','-qp','0','-pix_fmt','yuv444p','-c:a','aac',join(dir,'clip.mp4')]);
-  execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-c:v','libvpx-vp9','-lossless','1',join(dir,'clip.webm')]);
+  // The still, the clip frames and the two lossless encodes are an input
+  // product, memoized; the test works on its own copy.
+  const media=await artefact('render-picture-media',{},async out=>{
+    execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','nullsrc=s=256x256',
+      '-vf','geq=r=X:g=Y:b=0','-frames:v','1',join(out,'ramp.png')]);
+    await mkdir(join(out,'clip-frames'));
+    for(let n=0;n<9;n++){
+      const c=(16*n).toString(16).padStart(2,'0');
+      execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`color=c=0x${c}${c}${c}:s=160x120`,
+        '-frames:v','1',join(out,'clip-frames',`frame${String(n).padStart(3,'0')}.png`)]);
+    }
+    const pictures=join(out,'clip-frames','frame%03d.png');
+    execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-f','lavfi','-i','sine=frequency=440:duration=3',
+      '-shortest','-c:v','libx264','-qp','0','-pix_fmt','yuv444p','-c:a','aac',join(out,'clip.mp4')]);
+    execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-c:v','libvpx-vp9','-lossless','1',join(out,'clip.webm')]);
+  });
+  await cp(media,dir,{recursive:true,filter:source=>basename(source)!=='index.json'});
   execFileSync('git',['add','.'],{cwd:dir});
   execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','picture fixture'],{cwd:dir});
   const e=filmEpisode(dir,{narration:'Pictures.',pictures:[
