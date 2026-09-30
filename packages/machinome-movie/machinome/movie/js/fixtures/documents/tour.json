@@ -1,0 +1,767 @@
+{
+  "audio": {
+    "direction": "Plain and unhurried.",
+    "model": "eleven_v3",
+    "outputFormat": "pcm_24000",
+    "provider": "elevenlabs",
+    "voice": "fixture-voice",
+    "voiceLabel": "Fixture",
+    "voiceSettings": {
+      "similarity_boost": 0.75,
+      "stability": 0.5
+    }
+  },
+  "cameras": {
+    "far": {
+      "fov": 37,
+      "position": [
+        400,
+        -600,
+        300
+      ],
+      "target": [
+        0,
+        0,
+        50
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    },
+    "near": {
+      "fov": 37,
+      "position": [
+        200,
+        -300,
+        150
+      ],
+      "target": [
+        0,
+        0,
+        50
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    },
+    "rolled": {
+      "fov": 42,
+      "position": [
+        -150,
+        250,
+        120
+      ],
+      "target": [
+        0,
+        0,
+        60
+      ],
+      "up": [
+        0.15,
+        0,
+        1
+      ]
+    },
+    "side": {
+      "fov": 30,
+      "position": [
+        0,
+        -500,
+        100
+      ],
+      "target": [
+        0,
+        0,
+        50
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    }
+  },
+  "chapters": [
+    {
+      "id": "opening",
+      "narration": "A seesaw balances a beam on a stand. How does the weight tip it?",
+      "shots": [
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "far"
+            },
+            {
+              "at": {
+                "spoken": "How"
+              },
+              "ease": "out",
+              "preset": "near"
+            }
+          ],
+          "evidence": [],
+          "fadeIn": {
+            "duration": 1
+          },
+          "hiddenLayers": [],
+          "id": "hook",
+          "overlays": [],
+          "set": "paper",
+          "simulation": {
+            "from": 0,
+            "to": 4
+          },
+          "until": {
+            "spoken": "How"
+          }
+        },
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "near"
+            }
+          ],
+          "evidence": [],
+          "hiddenLayers": [],
+          "id": "question",
+          "overlays": [
+            {
+              "enter": {
+                "duration": 0.6,
+                "kind": "fade"
+              },
+              "from": 0,
+              "leave": {
+                "duration": 0.6,
+                "kind": "fade"
+              },
+              "position": "title",
+              "subtitle": "One beam, one stand",
+              "text": "SEESAW",
+              "to": {
+                "spokenEnd": "it"
+              }
+            }
+          ],
+          "set": "paper",
+          "simulation": {
+            "from": 4,
+            "to": 8
+          },
+          "until": {
+            "plus": 0.8,
+            "spokenEnd": "it"
+          }
+        }
+      ]
+    },
+    {
+      "id": "balance",
+      "narration": "A stand carries the plank. In the source, the beam rests on its pivot. The weight pushes one end down.",
+      "shots": [
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "side"
+            }
+          ],
+          "evidence": [],
+          "hiddenLayers": [
+            "ground"
+          ],
+          "id": "holds",
+          "overlays": [],
+          "set": "paper",
+          "simulation": {
+            "from": 8,
+            "to": 10
+          },
+          "until": {
+            "spoken": "In the source"
+          }
+        },
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "side"
+            }
+          ],
+          "code": {
+            "emphasis": [
+              {
+                "hold": 0.9,
+                "line": 24,
+                "phrase": "the beam rests on its pivot",
+                "words": [
+                  "beam"
+                ]
+              }
+            ],
+            "snippet": "declaration",
+            "typing": [
+              {
+                "from": 0,
+                "throughLine": 24,
+                "to": 1.2
+              }
+            ]
+          },
+          "evidence": [],
+          "hiddenLayers": [
+            "ground"
+          ],
+          "highlight": [
+            {
+              "from": {
+                "spoken": "beam"
+              },
+              "others": "ghost",
+              "parts": [
+                [
+                  "Beam"
+                ]
+              ],
+              "to": {
+                "spoken": "pivot"
+              }
+            },
+            {
+              "from": {
+                "spoken": "pivot"
+              },
+              "others": "ghost",
+              "parts": [
+                [
+                  "Beam",
+                  "pivot"
+                ]
+              ],
+              "to": {
+                "plus": 0.9,
+                "spokenEnd": "rests on its pivot"
+              }
+            }
+          ],
+          "id": "source",
+          "overlays": [],
+          "set": "paper-split",
+          "simulation": {
+            "from": 10,
+            "to": 12
+          },
+          "transition": {
+            "duration": 0.6,
+            "kind": "dissolve"
+          },
+          "until": {
+            "spoken": "The weight"
+          }
+        },
+        {
+          "annotations": [
+            {
+              "enter": {
+                "duration": 0.8,
+                "kind": "draw"
+              },
+              "from": {
+                "spoken": "The weight"
+              },
+              "kind": "arrow",
+              "leave": {
+                "duration": 0.4,
+                "kind": "fade"
+              },
+              "part": [
+                "Beam",
+                "Weight"
+              ],
+              "place": [
+                0.2,
+                0.25
+              ],
+              "text": "Weight",
+              "to": {
+                "plus": 0.6,
+                "spokenEnd": "down"
+              }
+            }
+          ],
+          "camera": [
+            {
+              "at": 0,
+              "preset": "side"
+            },
+            {
+              "at": {
+                "spokenEnd": "down"
+              },
+              "ease": "smooth",
+              "preset": "near"
+            }
+          ],
+          "evidence": [],
+          "hiddenLayers": [
+            "ground"
+          ],
+          "id": "push",
+          "overlays": [],
+          "set": "paper",
+          "simulation": {
+            "from": 12,
+            "to": 16
+          },
+          "transition": {
+            "direction": "right",
+            "duration": 0.6,
+            "kind": "wipe"
+          },
+          "until": {
+            "plus": 0.6,
+            "spokenEnd": "down"
+          }
+        }
+      ]
+    },
+    {
+      "id": "tip",
+      "narration": "Watch the plank rise and fall. On the way down, the stand takes the load. Up. Down. Explore the model.",
+      "shots": [
+        {
+          "annotations": [
+            {
+              "enter": {
+                "duration": 0.8,
+                "kind": "draw"
+              },
+              "from": {
+                "spoken": "the plank"
+              },
+              "kind": "ring",
+              "leave": {
+                "duration": 0.4,
+                "kind": "fade"
+              },
+              "part": [
+                "Beam",
+                "Plank"
+              ],
+              "to": {
+                "spoken": "On the way down"
+              }
+            },
+            {
+              "enter": {
+                "duration": 0.4,
+                "kind": "fade"
+              },
+              "from": {
+                "spoken": "the plank"
+              },
+              "kind": "label",
+              "leave": {
+                "duration": 0.4,
+                "kind": "fade"
+              },
+              "offset": [
+                0.12,
+                -0.08
+              ],
+              "part": [
+                "Beam",
+                "Plank"
+              ],
+              "text": "Plank",
+              "to": {
+                "spoken": "On the way down"
+              }
+            },
+            {
+              "enter": {
+                "duration": 0.8,
+                "kind": "draw"
+              },
+              "from": {
+                "spoken": "the stand"
+              },
+              "kind": "ring",
+              "part": [
+                "Stand"
+              ],
+              "to": {
+                "spoken": "Up."
+              }
+            },
+            {
+              "enter": {
+                "duration": 0.4,
+                "kind": "fade"
+              },
+              "from": {
+                "spoken": "the stand"
+              },
+              "kind": "label",
+              "offset": [
+                0.12,
+                0.08
+              ],
+              "part": [
+                "Stand"
+              ],
+              "text": "Stand",
+              "to": {
+                "spoken": "Up."
+              }
+            }
+          ],
+          "camera": [
+            {
+              "at": 0,
+              "preset": "near"
+            }
+          ],
+          "evidence": [],
+          "hiddenLayers": [
+            "ground"
+          ],
+          "highlight": [
+            {
+              "from": {
+                "spoken": "the plank"
+              },
+              "others": "ghost",
+              "parts": [
+                [
+                  "Beam",
+                  "Plank"
+                ],
+                [
+                  "Beam",
+                  "Weight"
+                ]
+              ],
+              "to": {
+                "spoken": "On the way down"
+              }
+            },
+            {
+              "from": {
+                "spoken": "the stand"
+              },
+              "others": "dim",
+              "parts": [
+                [
+                  "Stand"
+                ]
+              ],
+              "to": {
+                "spoken": "Up."
+              }
+            }
+          ],
+          "id": "rise",
+          "overlays": [
+            {
+              "from": 0,
+              "position": "top",
+              "text": "Rise",
+              "to": {
+                "spoken": "On the way down"
+              }
+            },
+            {
+              "from": {
+                "spoken": "On the way down"
+              },
+              "position": "top",
+              "text": "Fall",
+              "to": {
+                "spoken": "Up."
+              }
+            }
+          ],
+          "set": "paper",
+          "simulation": {
+            "from": {
+              "mark": "rise"
+            },
+            "keyframes": [
+              {
+                "at": 0,
+                "seconds": {
+                  "mark": "rise"
+                }
+              },
+              {
+                "at": {
+                  "spoken": "On the way down"
+                },
+                "ease": "out",
+                "seconds": {
+                  "mark": "top"
+                }
+              },
+              {
+                "at": {
+                  "spoken": "Up."
+                },
+                "seconds": {
+                  "mark": "fall"
+                }
+              }
+            ],
+            "to": {
+              "mark": "fall"
+            }
+          },
+          "until": {
+            "spoken": "Up."
+          }
+        },
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "near"
+            },
+            {
+              "at": {
+                "spoken": "Explore"
+              },
+              "ease": "smooth",
+              "preset": "rolled"
+            }
+          ],
+          "evidence": [],
+          "hiddenLayers": [
+            "ground"
+          ],
+          "id": "rhythm",
+          "overlays": [
+            {
+              "from": 0,
+              "position": "top",
+              "reveal": {
+                "timing": "spoken"
+              },
+              "text": "Up. Down.",
+              "to": {
+                "spoken": "Explore"
+              }
+            }
+          ],
+          "set": "paper",
+          "simulation": {
+            "from": 16,
+            "to": 17
+          },
+          "transition": {
+            "duration": 0.6,
+            "kind": "dissolve"
+          },
+          "until": {
+            "spoken": "Explore"
+          }
+        },
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "rolled"
+            }
+          ],
+          "evidence": [],
+          "hiddenLayers": [
+            "ground"
+          ],
+          "id": "still",
+          "overlays": [],
+          "pictures": [
+            {
+              "area": "frame",
+              "enter": {
+                "duration": 0.5,
+                "kind": "fade"
+              },
+              "fit": "contain",
+              "from": 0,
+              "leave": {
+                "duration": 0.5,
+                "kind": "fade"
+              },
+              "still": "plate",
+              "to": {
+                "spoken": "the model"
+              },
+              "view": [
+                {
+                  "at": 0,
+                  "center": [
+                    0.5,
+                    0.5
+                  ],
+                  "zoom": 1
+                },
+                {
+                  "at": {
+                    "plus": -0.5,
+                    "spoken": "Explore"
+                  },
+                  "center": [
+                    0.5,
+                    0.42
+                  ],
+                  "ease": "in-out",
+                  "zoom": 1.4
+                }
+              ]
+            }
+          ],
+          "set": "paper",
+          "simulation": {
+            "from": 17,
+            "to": 18
+          },
+          "until": {
+            "spoken": "the model"
+          }
+        },
+        {
+          "camera": [
+            {
+              "at": 0,
+              "preset": "far"
+            }
+          ],
+          "evidence": [],
+          "fadeOut": {
+            "duration": 1.2
+          },
+          "hiddenLayers": [
+            "ground",
+            "load"
+          ],
+          "highlight": [
+            {
+              "from": 0,
+              "others": "dim",
+              "parts": [
+                [
+                  "Beam"
+                ]
+              ],
+              "to": {
+                "plus": 1.2,
+                "spokenEnd": "model"
+              }
+            }
+          ],
+          "id": "invitation",
+          "overlays": [],
+          "set": "paper",
+          "simulation": {
+            "from": 18,
+            "to": 19
+          },
+          "transition": {
+            "duration": 0.6,
+            "kind": "dissolve"
+          },
+          "until": {
+            "plus": 1.2,
+            "spokenEnd": "model"
+          }
+        }
+      ]
+    }
+  ],
+  "clips": {},
+  "credits": {
+    "copyright": "No copyright is claimed for this fixture",
+    "creator": "The Videomaker test suite",
+    "license": "None",
+    "licenseFile": "../../NOTICE",
+    "project": "Videomaker fixtures"
+  },
+  "evidence": {
+    "model": "../../models/seesaw.py"
+  },
+  "format": "machinome-movie/0.1",
+  "id": "tour",
+  "layers": {
+    "ground": [
+      [
+        "Base"
+      ]
+    ],
+    "load": [
+      [
+        "Beam",
+        "Plank"
+      ],
+      [
+        "Beam",
+        "Weight"
+      ]
+    ]
+  },
+  "learningGoal": "Exercise every construct the validation film uses.",
+  "marks": {
+    "fall": 15,
+    "rise": 5,
+    "top": 10
+  },
+  "model": {
+    "expectedDurationSeconds": 20,
+    "manifest": "../../export/seesaw/manifest.json",
+    "readiness": "Fixture export written by hand; nothing is simulated.",
+    "sourceRevision": "db6f30a503215756f57131c2287a7437e869f6b4",
+    "timeMode": "normalized-loop"
+  },
+  "output": {
+    "fps": 30,
+    "height": 720,
+    "width": 1280
+  },
+  "release": {
+    "descriptionTemplate": "description.md",
+    "simulationUrl": null,
+    "sourceUrl": null
+  },
+  "root": "../../python/tests/fixtures/project/videos/tour",
+  "series": "VIDEOMAKER · FIXTURES",
+  "sourceCode": {
+    "declaration": {
+      "file": "../../models/seesaw.py",
+      "lines": [
+        22,
+        24
+      ]
+    }
+  },
+  "status": "rehearsal",
+  "stills": {
+    "plate": {
+      "credit": "Fixture drawing of a seesaw",
+      "file": "../../media/plate.png",
+      "rights": "Made for the Videomaker test suite",
+      "upscale": 1.5
+    }
+  },
+  "style": {
+    "accent": "#237c86",
+    "background": "#faf7ef",
+    "fontFamily": "DejaVu Sans, sans-serif",
+    "foreground": "#222222",
+    "safeInsetFraction": 0.08
+  },
+  "title": "Tour"
+}

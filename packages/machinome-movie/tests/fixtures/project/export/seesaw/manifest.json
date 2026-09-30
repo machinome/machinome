@@ -1,0 +1,22 @@
+{
+  "format": "machinome-export",
+  "version": "4",
+  "animation": {"fps": 30, "frames": 600, "loop": 20.0},
+  "drivers": {},
+  "instructions": {},
+  "bindings": [],
+  "root": {
+    "name": "Seesaw",
+    "type": "Seesaw",
+    "children": [
+      {"name": "Base", "type": "Block", "children": []},
+      {"name": "Stand", "type": "Block", "children": []},
+      {"name": "Beam", "type": "Beam", "children": [
+        {"name": "Plank", "type": "Block", "children": []},
+        {"name": "Weight", "type": "Block", "children": []},
+        {"name": "pivot", "type": "Block", "children": []}
+      ]}
+    ]
+  },
+  "pieces": []
+}

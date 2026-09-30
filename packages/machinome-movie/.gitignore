@@ -1,7 +1,10 @@
-node_modules/
-_build/
+!.env.example
+*.egg-info/
+*.log
 .env
 .env.*
-!.env.example
-*.log
+.pytest_cache/
+__pycache__/
+_build/
 node_modules
+node_modules/

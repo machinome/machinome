@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-movie"
+version = "0.0.0"
+description = "Declare a narrated film of a machinome model in Python and evaluate it to the movie document"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["machinome", "jsonschema"]
+# The distribution licence is not selected; see the repository README.
+
+[tool.setuptools]
+packages = ["machinome_movie"]
+
+[tool.setuptools.package-data]
+machinome_movie = ["machinome-movie-0.1.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
