@@ -25,3 +25,13 @@ lands it.
   Schema is `schema/machinome-movie-0.1.json`, and the shared fixtures gain
   the `minimal` and `tour` documents and seven invalid documents
   (`declarative-movie`).
+- The Node suite runs under vitest (`npm test`): pure tests first and in
+  parallel, then the browser and pipeline tests one at a time on one Chromium
+  and one asset server per run. Slow tests are memoized in the ignored
+  `.test-memo/`: a pass is kept under the content of everything the test reads
+  and the toolchain's versions, and reported as "passed from the memo" when
+  reused; expensive input products are kept and verified on reuse.
+  `npm test -- --cold` (or `VIDEOMAKER_TEST_COLD=1`) ignores the memo. The
+  dark-source experiment's tests run on their own. `browserSession`, `preview`
+  and `render` accept an already launched `browser` and a shared `assets`
+  server; the command line is unchanged. (`one-runner`, ADR-003)

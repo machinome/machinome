@@ -22,7 +22,7 @@ const COMMIT_ENV={GIT_AUTHOR_NAME:'Fixture',GIT_AUTHOR_EMAIL:'fixture@example.in
 // A fresh project: models/fixture.py committed once, the export beside it.
 export async function fixtureProject(t){
   const dir=await mkdtemp(join(tmpdir(),'videomaker-project-'));
-  t?.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  t?.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
   const git=(...args)=>execFileSync('git',args,{cwd:dir,encoding:'utf8',env:{...process.env,...COMMIT_ENV}}).trim();
   git('init','-q');
   await mkdir(join(dir,'models'));

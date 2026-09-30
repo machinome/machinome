@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {splitWords,spokenOnsets,evenCount,fadeOpacity,resolveEmphasis,activeEmphasis,resolveWordTiming,validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';

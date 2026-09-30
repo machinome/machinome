@@ -1,13 +1,14 @@
-import {test} from 'node:test';
+import {describe} from 'vitest';
+import {slowTest as test,artefact} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {spawn,execFileSync,spawnSync} from 'node:child_process';
 import {once} from 'node:events';
-import {mkdtemp,mkdir,readFile,readdir,writeFile,appendFile,chmod,stat,rm,symlink,unlink} from 'node:fs/promises';
+import {mkdtemp,mkdir,readFile,readdir,writeFile,appendFile,chmod,stat,rm,symlink,unlink,copyFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {dirname,join,resolve,delimiter} from 'node:path';
 import {fileHash} from '../src/util.mjs';
 import {decodePng} from '../src/pixels.mjs';
-import {render} from '../src/render.mjs';
+import {render} from './support/stage.mjs';
 
 const cli=resolve('bin/videomaker.mjs');
 const packModule=await import('../src/review-pack.mjs').catch(error=>{
@@ -25,7 +26,7 @@ function needHelper(name){
 }
 async function root(t){
   const dir=await mkdtemp(join(tmpdir(),'videomaker-review-pack-'));
-  t.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Preserved review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Preserved review fixture: '+dir):rm(dir,{recursive:true,force:true}));
   return dir;
 }
 const label=(kind,description='resolved candidate')=>({kind,shotId:'B',side:'incoming',
@@ -41,9 +42,13 @@ function samplePlan(count=8,fps=4){
 }
 async function filmFixture(t,{count=8,fps=4,width=160,height=90,plan=samplePlan(count,fps)}={}){
   const dir=await root(t),output=join(dir,'review.mp4'),manifestPath=join(dir,'review-manifest.json');
-  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`testsrc2=size=${width}x${height}:rate=${fps}`,
-    '-frames:v',String(count),'-c:v','libx264','-pix_fmt','yuv420p',
-    '-output_ts_offset','2','-movflags','+faststart',output]);
+  // The encode is an input product, memoized; the test works on its own copy.
+  const film=await artefact('review-fixture-film',{params:{count,fps,width,height}},async out=>{
+    execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`testsrc2=size=${width}x${height}:rate=${fps}`,
+      '-frames:v',String(count),'-c:v','libx264','-pix_fmt','yuv420p',
+      '-output_ts_offset','2','-movflags','+faststart',join(out,'review.mp4')]);
+  });
+  await copyFile(join(film,'review.mp4'),output);
   const manifest={count,width,height,fps,output,outputSha256:await fileHash(output),reviewSamples:plan,
     // Review must not load this author's YAML, source, speech, model or build path.
     episode:{paths:{episode:join(dir,'missing-episode.yaml'),build:join(dir,'wrong-build-root')}}};
@@ -282,8 +287,8 @@ test('overview and event pages keep 93/96 bound, 24 cells, adjacent pairs, paddi
   }
 });
 
-test('a live MP4 or manifest replaced during decode refuses despite a stable snapshot',async t=>{
-  for(const target of ['mp4','manifest'])await t.test(target,async sub=>{
+describe('a live MP4 or manifest replaced during decode refuses despite a stable snapshot',()=>{
+  for(const target of ['mp4','manifest'])test(target,async sub=>{
     const {dir,output,manifestPath,manifest}=await filmFixture(sub);
     const bin=join(dir,'bin');await mkdir(bin);
     const real=execFileSync('which',['ffmpeg'],{encoding:'utf8'}).trim();

@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {base02,cues03} from './frame-fixtures.mjs';
 import {frameAt} from '../src/timeline.mjs';

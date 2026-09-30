@@ -1,7 +1,7 @@
 // Pipeline layer (serial; Chromium, FFmpeg, the viewer double, no provider):
 // a movie document end to end, and a YAML episode's identity with the base
 // commit before chapters existed.
-import {test} from 'node:test';
+import {slowTest as test} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile,copyFile,realpath} from 'node:fs/promises';
 import {join,basename,dirname} from 'node:path';
@@ -11,7 +11,7 @@ import {loadEpisode} from '../src/episode.mjs';
 import {speech,speechCacheEntry,spokenChapters} from '../src/speech.mjs';
 import {frameAt} from '../src/timeline.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
-import {preview,render} from '../src/render.mjs';
+import {preview,render} from './support/stage.mjs';
 import {pendingMovie,generateMovieTakes} from '../src/movie.mjs';
 import {hash} from '../src/util.mjs';
 import {fixtureProject,yamlEpisode,evenAlignment,installTake,readJson} from './project-fixture.mjs';
@@ -23,7 +23,7 @@ function noNetwork(t){
   const fetch=globalThis.fetch,key=process.env.ELEVENLABS_API_KEY,calls=[];
   delete process.env.ELEVENLABS_API_KEY;
   globalThis.fetch=(...args)=>{calls.push(String(args[0]));throw new Error('A test attempted a network request');};
-  t.after(()=>{globalThis.fetch=fetch;if(key!==undefined)process.env.ELEVENLABS_API_KEY=key;});
+  t.onTestFinished(()=>{globalThis.fetch=fetch;if(key!==undefined)process.env.ELEVENLABS_API_KEY=key;});
   return calls;
 }
 
@@ -139,7 +139,7 @@ test('speech generates one take per chapter from the unresolved document, and on
   const {file,doc}=await documentProject(t);
   const fetch=globalThis.fetch,key=process.env.ELEVENLABS_API_KEY,requests=[];
   process.env.ELEVENLABS_API_KEY='double-key-never-sent';
-  t.after(()=>{globalThis.fetch=fetch;if(key===undefined)delete process.env.ELEVENLABS_API_KEY;else process.env.ELEVENLABS_API_KEY=key;});
+  t.onTestFinished(()=>{globalThis.fetch=fetch;if(key===undefined)delete process.env.ELEVENLABS_API_KEY;else process.env.ELEVENLABS_API_KEY=key;});
   globalThis.fetch=async(url,init)=>{
     const body=JSON.parse(init.body),chapter=doc.chapters.find(c=>c.narration===body.text);
     requests.push({url:String(url),text:body.text,previous:body.previous_text,next:body.next_text});

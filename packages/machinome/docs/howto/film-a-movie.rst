@@ -230,8 +230,16 @@ from actual synthesized speech, not estimated reading speed.
 
 ## Validation and boundaries
 
-`npm test` covers parsing refusals, stale model duration, timeline continuity,
-camera interpolation, visibility reset, model keyframes and speech timestamps.
+`npm test` runs the Node suite under vitest: the pure tests (parsing
+refusals, stale model duration, timeline continuity, camera interpolation,
+visibility reset, model keyframes, speech timestamps, the movie document) in
+parallel, then the browser and pipeline tests one at a time on one headless
+Chromium. A slow test that passed is remembered in the ignored `.test-memo/`
+under the content of everything it read and the versions of Node, Chromium,
+FFmpeg, Git and the fonts; while none of that changes, the next run reports
+it as "passed from the memo" instead of running it. `npm test -- --cold` runs
+everything and leaves the memo alone; run it before a change integrates. The
+Python package's suite is `python -m pytest` in `python/`.
 The originating sawmill's browser preview exercises the real viewer and pixels.
 See [production evidence](docs/first-rehearsal.md) for the actual run.
 

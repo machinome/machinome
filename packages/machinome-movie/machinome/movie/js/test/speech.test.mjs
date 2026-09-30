@@ -1,4 +1,4 @@
-import {test} from 'node:test';
+import {slowTest as test} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp, mkdir, writeFile, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -8,7 +8,7 @@ import {hash} from '../src/util.mjs';
 
 async function fixture(t, {cached=true, checksum=true}={}) {
   const build=await mkdtemp(join(tmpdir(),'videomaker-speech-test-'));
-  t.after(()=>rm(build,{recursive:true,force:true}));
+  t.onTestFinished(()=>rm(build,{recursive:true,force:true}));
   const voice='test-voice', model='test-model';
   const request={text:'Hello.',model_id:model,
     voice_settings:{stability:.65,similarity_boost:.75,style:0,use_speaker_boost:true,speed:1},

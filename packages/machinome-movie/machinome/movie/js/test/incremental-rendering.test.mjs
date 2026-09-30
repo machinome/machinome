@@ -1,17 +1,18 @@
-import {test} from 'node:test';
+import {describe} from 'vitest';
+import {slowTest as test} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,readFile,readdir,rename,rm,unlink,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {render} from '../src/render.mjs';
+import {render} from './support/stage.mjs';
 import {fileHash,hash} from '../src/util.mjs';
 import {outputShotUnits,assembleShotFrames,shotCacheRoot} from '../src/shot-cache.mjs';
 import {pcmWav,speechCacheEntry} from '../src/speech.mjs';
 
 async function fixture(t){
   const dir=await mkdtemp(join(tmpdir(),'videomaker-shot-cache-'));
-  t.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
   execFileSync('git',['init','-q'],{cwd:dir});
   await writeFile(join(dir,'episode.yaml'),'shot cache fixture');
   await writeFile(join(dir,'production.yaml'),'shot cache fixture');
@@ -57,7 +58,7 @@ test('a local title edit recaptures its shot and incoming join, but reuses dista
   const edited=await report(dir);
   if(!edited.cache){
     const files=await readdir(edited.dir);
-    t.diagnostic(`old whole-episode renderer: first=${first.dir}, unchanged=${warm.dir}, edited=${edited.dir}; edited directory has ${files.filter(f=>f.endsWith('.png')).length} newly captured PNGs for 16 output frames`);
+    console.log(`old whole-episode renderer: first=${first.dir}, unchanged=${warm.dir}, edited=${edited.dir}; edited directory has ${files.filter(f=>f.endsWith('.png')).length} newly captured PNGs for 16 output frames`);
   }
   assert.equal(edited.framesChecked,8,'only B and its dependent incoming-transition C are posed');
   assert.equal(warm.cache?.reusedFrames,16,'an unchanged rerender reuses every verified shot frame');
@@ -106,8 +107,8 @@ test('every incremental PNG equals a separately cold film across the first reuse
   assert.equal(incremental.outputSha256,fresh.outputSha256,'the identical frame sequence encodes identically');
 });
 
-test('each join depends on its outgoing shot, while an ordinary cut does not',async t=>{
-  for(const kind of ['cut','fade','dissolve','wipe','slide'])await t.test(kind,async sub=>{
+describe('each join depends on its outgoing shot, while an ordinary cut does not',()=>{
+  for(const kind of ['cut','fade','dissolve','wipe','slide'])test(kind,async sub=>{
     const {dir,viewer,episode}=await fixture(sub);
     if(kind==='cut')delete episode.shots[2].transition;
     else episode.shots[2].transition={kind,duration:1};

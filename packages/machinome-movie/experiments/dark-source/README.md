@@ -54,3 +54,10 @@ node experiments/dark-source/render.mjs \
   ../projects/Leonardo/videos/machinome-syntax-study/visual.yaml \
   ../machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js
 ```
+
+Its unit tests are not part of `npm test` (experiments carry their own tests).
+Run them on their own from Videomaker with Node's runner:
+
+```sh
+node --test experiments/dark-source/emphasis.test.mjs
+```

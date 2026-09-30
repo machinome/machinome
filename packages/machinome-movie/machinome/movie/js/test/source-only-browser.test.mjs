@@ -1,15 +1,15 @@
-import {test} from 'node:test';
+import {slowTest as test} from './support/memo.mjs';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {browserSession,preview} from '../src/render.mjs';
+import {browserSession,preview} from './support/stage.mjs';
 import {frameAt} from '../src/timeline.mjs';
 import {decodePng,largestDifference,at,hexColor,chromeMask} from '../src/pixels.mjs';
 
 async function fixture(t){
   const dir=await mkdtemp(join(tmpdir(),'videomaker-source-only-'));
-  t.after(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
+  t.onTestFinished(()=>process.env.KEEP_VIDEOMAKER_TEST?console.log('Review fixture: '+dir):rm(dir,{recursive:true,force:true}));
   const manifest=join(dir,'manifest.json'),viewer=join(dir,'viewer.js'),build=join(dir,'_build');
   await mkdir(build);
   await writeFile(manifest,JSON.stringify({root:{name:'test'},animation:{loop:10}}));
