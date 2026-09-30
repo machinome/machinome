@@ -102,7 +102,11 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
 ```
 
 - `check` validates YAML, timelines, named cameras/layers/evidence, the real model
-  duration, and the export's source revision. For a 0.3 episode that needs
+  duration, and the export's source revision. After its summary line it prints
+  one line per chapter from the cached takes, which is where a film's length
+  comes from: `  drive: take 5.68 s, chapter 7.20 s, tail 1.32 s` (the take's
+  measured length, the chapter's resolved length, and the tail after its
+  speech offset and take), or `no cached take`. For a 0.3 episode that needs
   Viewer API 28 it also reads the selected bundle's `viewer API` banner. An
   episode with spoken reveals or source emphasis needs its cached speech first:
   run `speech` before `check`. `check` reads the verified alignment but never

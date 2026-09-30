@@ -17,3 +17,14 @@ export function takeOffset(film,shot){
   const chapter=chapterOf(film,shot.id);
   return chapter.start===shot.start?chapter.speechOffset:chapter.start+chapter.speechOffset-shot.start;
 }
+// check's report of where the film's length comes from: for each chapter, its
+// cached take's measured length (`records[i].duration`, or none), its resolved
+// length and its tail, the length after the offset and the take.
+export function chapterTakeLines(film,records){
+  const s=x=>`${x.toFixed(2)} s`;
+  return film.chapters.map((chapter,i)=>{
+    const length=chapter.end-chapter.start,record=records[i];
+    if(!record)return `  ${chapter.id}: no cached take, chapter ${s(length)}`;
+    return `  ${chapter.id}: take ${s(record.duration)}, chapter ${s(length)}, tail ${s(length-chapter.speechOffset-record.duration)}`;
+  });
+}

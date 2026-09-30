@@ -112,8 +112,9 @@ required fields present in it, the refusal is that branch's own error, with
 `{"narrationEnd": true, "phrase": "it"}` as an unknown `phrase` at `until`,
 read as a `narrationEnd anchor`. Untitled branches (the shipped actions,
 the model's two shapes, a part) are untouched, so no other refusal of those
-changes; a malformed `spoken`, `spokenEnd` or `mark` anchor is now refused by
-its own field too, which only sharpens a refusal's words (recorded as a
+changes; a malformed `spoken` or `spokenEnd` anchor is now refused by its
+own field too (a mark is reached through the model's untitled `oneOf`
+first, and keeps its refusal), which only sharpens a refusal's words (recorded as a
 consequence in `evidence.md`).
 
 The shared invalid fixture is `{"narrationEnd": false}` on the tour's
@@ -173,8 +174,8 @@ asserts both sentences are on the page.
 - [A take whose last letter's end is followed by a long silence] → the anchor
   names the voice's end, not the file's; the file's length is what `check`
   reports as the take, so the tail line shows the difference.
-- [The sharper `oneOf` refusal changes the words of malformed `spoken`,
-  `spokenEnd` and `mark` anchors] → no invalid fixture pins those words
+- [The sharper `oneOf` refusal changes the words of malformed `spoken` and
+  `spokenEnd` anchors] → no invalid fixture pins those words
   (the suite proves it), and each new message names the field at fault.
 
 ## Migration Plan

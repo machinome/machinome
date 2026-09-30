@@ -153,9 +153,9 @@ def test_a_shot_on_a_project_set_with_a_move_a_project_action_and_fade_in(tour):
 def test_a_title_in_a_slot_and_the_end_of_the_narration(tour):
     question = shot(tour, 'question')
     assert question['places'] == {'stage': 'wide', 'aside': 'card', 'headline': 'title'}
-    assert question['until'] == {'spokenEnd': 'it', 'plus': 0.8}
+    assert question['until'] == {'narrationEnd': True, 'plus': 0.8}
     assert question['cues'][1] == {
-        'at': 0, 'until': {'spokenEnd': 'it'},
+        'at': 0, 'until': {'narrationEnd': True},
         'actions': [{'element': 'title', 'action': 'show',
                      'enter': {'kind': 'fade', 'duration': 0.6},
                      'leave': {'kind': 'fade', 'duration': 0.6}}]}
@@ -188,7 +188,7 @@ def test_a_completed_panel_on_the_shipped_split_and_an_arrow(tour):
                                'actions': [{'element': 'code', 'action': 'emphasize', 'hold': 0.4, 'line': 22,
                                             'words': [{'spoken': 'one end', 'token': 'Block'}]}]}
     assert push['cues'][2] == {
-        'at': {'spoken': 'The weight'}, 'until': {'spokenEnd': 'down', 'plus': 0.6},
+        'at': {'spoken': 'The weight'}, 'until': {'narrationEnd': True, 'plus': 0.6},
         'actions': [{'element': 'mill', 'action': 'arrow', 'part': ['Beam', 'Weight'],
                      'text': 'Weight', 'place': [0.2, 0.25],
                      'enter': {'kind': 'draw', 'duration': 0.8},
@@ -240,7 +240,7 @@ def test_a_second_view_on_the_shipped_frame_and_fade_out(tour):
     invitation = shot(tour, 'invitation')
     assert invitation['set'] == 'frame' and invitation['places'] == {'stage': 'wide'}
     assert invitation['fadeOut'] == {'duration': 1.2}
-    assert invitation['cues'] == [{'at': 0, 'until': {'spokenEnd': 'model', 'plus': 1.2},
+    assert invitation['cues'] == [{'at': 0, 'until': {'narrationEnd': True, 'plus': 1.2},
                                    'actions': [{'element': 'wide', 'action': 'highlight',
                                                 'parts': [['Beam']], 'others': 'dim'}]}]
 
@@ -254,7 +254,7 @@ def test_minimal_document_has_no_optional_blocks():
                                  'elements': {}}
     assert document['chapters'][0]['shots'][0] == {
         'id': 'whole', 'set': 'frame', 'places': {'stage': 'view'},
-        'until': {'spokenEnd': 'seesaw', 'plus': 0.5}, 'model': {'from': 0, 'to': 2}, 'cues': []}
+        'until': {'narrationEnd': True, 'plus': 0.5}, 'model': {'from': 0, 'to': 2}, 'cues': []}
 
 
 def test_evaluating_twice_is_byte_identical():

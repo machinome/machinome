@@ -10,10 +10,10 @@ import assert from 'node:assert/strict';
 import {readFile,readdir,access} from 'node:fs/promises';
 import {join,dirname,resolve,basename} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {checkMovie,resolveMovie,chaptersNeedingTakes,excerptSources,movieViewerApi,shotTimes,MOVIE_FORMAT} from '../src/movie.mjs';
+import {checkMovie,resolveMovie,chaptersNeedingTakes,excerptSources,movieViewerApi,shotTimes,describeAnchor,MOVIE_FORMAT} from '../src/movie.mjs';
 import {SCHEMA_KEYWORDS,schemaKeywords,MOVIE_SCHEMA} from '../src/schema.mjs';
 import {frameAt} from '../src/timeline.mjs';
-import {chapterOf,narrationOf,takeOffset} from '../src/chapters.mjs';
+import {chapterOf,narrationOf,takeOffset,chapterTakeLines} from '../src/chapters.mjs';
 import {validateEpisode,episodeFilm} from '../src/episode.mjs';
 import {outputShotUnits} from '../src/shot-cache.mjs';
 import {evenAlignment} from './project-fixture.mjs';
@@ -148,6 +148,61 @@ test('an until at or before its start is refused naming the shot and the anchor'
   const {doc,takes}=await minimal();
   doc.chapters[0].shots[0].until={spokenEnd:'seesaw',plus:-5};
   refusedNaming(()=>resolveMovie(doc,takes),['chapter only','shot whole','until','at or before its start','spokenEnd "seesaw" plus -5']);
+});
+
+// The end of the narration (wart 2 of Cut and Advance): its own anchor form.
+test('a narrationEnd anchor resolves to the end of the take\'s last letter or digit plus its plus, on the grid',async()=>{
+  const {doc,takes}=await tour(),fps=doc.output.fps;
+  const question=shotOf(doc,'question');
+  assert.deepEqual(question.until,{narrationEnd:true,plus:0.8});
+  const film=resolveMovie(structuredClone(doc),takes),opening=film.chapters[0];
+  // "…How does the weight tip it?": the last letter is the t of "it", before the "?".
+  const {characters,character_end_times_seconds:ends}=takes.opening.alignment;
+  const last=characters.findLastIndex(c=>/[\p{L}\p{N}]/u.test(c));
+  assert.equal(characters[last],'t');assert.equal(characters.at(-1),'?');
+  const expected=Math.round((opening.start+opening.speechOffset+ends[last]+0.8)*fps)/fps;
+  assert.equal(shotOf(film,'question').end,expected);
+  assert.ok(onGrid(expected,fps));
+  // The same instant as the end of the last word, which the document wrote before.
+  const spelled=structuredClone(doc);
+  for(const {obj,key} of shotTimes(shotOf(spelled,'question')))if(obj[key]?.narrationEnd)
+    obj[key]={spokenEnd:'it',...(obj[key].plus!==undefined?{plus:obj[key].plus}:{})};
+  assert.deepEqual(resolveMovie(spelled,takes),film);
+  // Not the last character's end, which the "?" would push one or two frames later.
+  assert.notEqual(Math.round((opening.start+opening.speechOffset+ends.at(-1)+0.8)*fps)/fps,expected);
+});
+
+test('a narrationEnd anchor needs its chapter\'s take, and a take with no letter or digit is refused naming it',async()=>{
+  const {doc,takes}=await minimal();
+  assert.deepEqual(doc.chapters[0].shots[0].until,{narrationEnd:true,plus:0.5});
+  assert.deepEqual(chaptersNeedingTakes(doc),['only']);
+  refusedNaming(()=>resolveMovie(doc,{}),['Chapter only','speech']);
+  takes.only={alignment:evenAlignment('...',.06)};
+  refusedNaming(()=>resolveMovie(doc,takes),['chapter only','shot whole','until','narrationEnd','letter or digit']);
+});
+
+test('check\'s line for each chapter gives its take, its length and its tail, or says it has no take',async()=>{
+  const {doc,takes}=await tour(),film=resolveMovie(doc,takes);
+  const records=await Promise.all(film.chapters.map(c=>json(join(fixtures,'takes','tour',`${c.id}.json`))));
+  assert.deepEqual(chapterTakeLines(film,records),[
+    '  opening: take 3.94 s, chapter 4.77 s, tail 0.63 s',
+    '  balance: take 6.04 s, chapter 6.67 s, tail 0.43 s',
+    '  tip: take 6.22 s, chapter 7.47 s, tail 1.05 s']);
+  const m=await minimal();m.doc.chapters[0].shots[0].until=2.5;
+  assert.deepEqual(chapterTakeLines(resolveMovie(m.doc,{}),[null]),['  only: no cached take, chapter 2.50 s']);
+});
+
+test('a narrationEnd anchor is named in refusals, and one carrying another field is refused by the schema naming it',async()=>{
+  assert.equal(describeAnchor({narrationEnd:true}),'narrationEnd');
+  assert.equal(describeAnchor({narrationEnd:true,plus:0.8}),'narrationEnd plus 0.8');
+  const {doc,takes}=await minimal();
+  doc.chapters[0].shots[0].until={narrationEnd:true,plus:-5};
+  refusedNaming(()=>resolveMovie(doc,takes),['chapter only','shot whole','until','at or before its start','narrationEnd plus -5']);
+  const t=await tour();
+  shotOf(t.doc,'question').until={narrationEnd:true,phrase:'it'};
+  refusedNaming(()=>checkMovie(t.doc),['shot question','until','phrase','narrationEnd anchor']);
+  shotOf(t.doc,'question').until={narrationEnd:'it'};
+  refusedNaming(()=>checkMovie(t.doc),['shot question','until.narrationEnd','narrationEnd anchor']);
 });
 
 test('an anchor outside its shot is refused naming the field and the anchor',async()=>{

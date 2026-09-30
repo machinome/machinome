@@ -84,3 +84,28 @@ Decision 1 is replaced by [ADR-006](ADR-006-yaml-episodes-and-movie-documents-lo
 both sources load into the resolved movie document, not into the YAML format
 0.4 shape. Chapters, anchors, one take per chapter, the schema and the shared
 fixtures stand, for `machinome-movie/0.2`.
+
+## Amended 30 September 2026: the narration's end is an anchor
+
+(OpenSpec change `narration-end-anchor`, fix-warts campaign; warts 2 and 7
+of *Cut and Advance*.) Decision 3 gains a third form of a narration anchor,
+`{"narrationEnd": true}` with an optional `plus`, accepted wherever
+`spokenEnd` is. It resolves to the chapter's start plus its speech offset
+plus the end of the last letter or digit of the chapter's cached take plus
+`plus`, snapped to the frame grid, and needs the take as the other forms do.
+The declarations' `lines.end()` evaluates to it, where it used to evaluate to
+`spokenEnd` of the shortest unique run of the narration's last words, a
+phrase the author never wrote, which grew when the last words repeated
+earlier ones.
+
+The instant is the last *letter or digit*, not the last character, the
+mirror of `spoken`'s first letter or digit: closing punctuation has its own
+time in an alignment and no sound, and waiting for it would have moved every
+existing end-of-narration cut one or two frames later (measured in the
+change's evidence). The orchestrator's ruling named the last character; the
+change keeps the ruling's stated invariant, that the tail's end and the
+narration's end are one instant, and records the departure for review.
+
+A consequence stated in the original Consequences is now shown to the
+author: a document's length follows its takes, and `check` prints each
+chapter's take, resolved length and tail.

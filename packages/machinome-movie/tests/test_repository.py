@@ -102,6 +102,16 @@ def test_the_manual_page_exists_and_is_linked():
     assert '](movie-document.md)' in text and 'machinome-movie/0.2' in text
 
 
+def test_the_manual_says_the_narrator_sets_the_length_and_what_the_end_is():
+    # Warts 2 and 7 of the first film declared in Python.
+    text = ' '.join(PAGE.read_text().split())
+    assert 'The narrator sets the film\'s length.' in text
+    assert 'estimate a film\'s length by speaking its narration, not by counting its shots' in text
+    assert '`check` prints, for each chapter, its take, its length and its tail' in text
+    assert '`lines.end()` the end of the whole narration' in text
+    assert '`{"narrationEnd": true}`' in text
+
+
 def test_the_manual_names_no_project_or_checkout():
     text = PAGE.read_text()
     for word in ('Leonardo', 'worktree', 'WTs/', 'sawmill'):

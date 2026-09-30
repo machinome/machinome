@@ -5,7 +5,8 @@ import {readFile} from 'node:fs/promises';
 import {loadEpisode,confirmViewerApi,filmSubject,PAPER_STAGE} from '../src/episode.mjs';
 import {filmShots,shotActions} from '../src/timeline.mjs';
 import {buildFilmStage} from '../src/stage-build.mjs';
-import {speech} from '../src/speech.mjs';
+import {speech,cachedTake} from '../src/speech.mjs';
+import {chaptersOf,chapterTakeLines} from '../src/chapters.mjs';
 import {generateMovieTakes} from '../src/movie.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
@@ -43,6 +44,12 @@ try{
   if(options.width!==undefined&&(!Number.isInteger(options.width)||options.width<320||options.width%2))throw new Error('Width must be an even integer >= 320');
   if(options.fps!==undefined&&(!Number.isInteger(options.fps)||options.fps<1||options.fps>120))throw new Error('FPS must be an integer from 1 to 120');
   console.log(`${e.title}: ${e.chapters.length} chapters, ${filmShots(e).length} shots, ${e.output.durationSeconds}s; model ${e.model.expectedDurationSeconds}s`);
+  // Where the length comes from: each chapter's cached take and its tail
+  // (read from the cache only; check never generates speech).
+  if(command==='check'){
+    const takes=await Promise.all(chaptersOf(e).map((_,i)=>cachedTake(e,i)));
+    for(const line of chapterTakeLines(e,takes.map(take=>take?.record)))console.log(line);
+  }
   await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
   if(command==='check'){
     // check has no browser; preview and render confirm the running viewer's apiVersion instead.

@@ -274,7 +274,8 @@ class _Semantics:
             raise MovieError(f"{where}: fadeOut is accepted only on the film's last shot")
         self.joins(shot, where)
         for field, value in self.times(shot):
-            if isinstance(value, dict):
+            # The end of the narration names no phrase to look for.
+            if isinstance(value, dict) and 'narrationEnd' not in value:
                 self.phrase(narration, value.get('spoken', value.get('spokenEnd')), where, field)
         self.model(shot, where)
         typed = {}

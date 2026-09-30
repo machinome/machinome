@@ -7,7 +7,6 @@ speech.
 """
 
 import math
-import re
 
 from .names import MovieError, number
 from .text import count_phrase
@@ -32,23 +31,13 @@ class Narration:
         return Anchor('spokenEnd', phrase, plus, self)
 
     def end(self, plus=0):
-        """The instant the narrator finishes the whole narration."""
+        """The instant the narrator finishes the whole narration, written
+        `{"narrationEnd": true}`: no phrase names it."""
         return Anchor('end', None, plus, self)
 
     def count(self, phrase):
         """How many times `phrase` occurs, overlapping occurrences included."""
         return count_phrase(self.text, phrase)
-
-    def tail(self):
-        """The shortest run of the last words that occurs exactly once,
-        edge punctuation removed: the phrase whose end is the narration's."""
-        starts = [match.start() for match in re.finditer(r'\S+', self.text)]
-        for start in reversed(starts):
-            phrase = re.sub(r'^\W+|\W+$', '', self.text[start:])
-            if phrase and self.count(phrase) == 1:
-                return phrase
-        raise MovieError(f"The narration {self.text!r} has no ending that occurs "
-                         f"once, so its end cannot be named")
 
 
 class Anchor:
@@ -88,7 +77,6 @@ class Anchor:
             raise MovieError(f"{where}: {self.written()} is an anchor of another "
                              f"narration, not of this chapter's")
         if self.kind == 'end':
-            self.narration.tail()
             return
         found = narration.count(self.phrase)
         if found == 0:
@@ -101,7 +89,7 @@ class Anchor:
 
     def document(self):
         if self.kind == 'end':
-            written = {'spokenEnd': self.narration.tail()}
+            written = {'narrationEnd': True}
         else:
             written = {self.kind: self.phrase}
         if self.plus:

@@ -6,6 +6,16 @@ lands it.
 
 ## Unreleased
 
+- A movie document's times accept a third anchor of the chapter's
+  narration, `{"narrationEnd": true}` with an optional `plus`: the end of the
+  last letter or digit of the chapter's take. `lines.end()` evaluates to it
+  instead of the spoken end of an invented tail phrase, and resolves to the
+  same frames. The schema refuses a `narrationEnd` that is not `true` or that
+  carries another field, naming it and its path. `check` prints, after its
+  summary line, each chapter's take, resolved length and tail, and the
+  manual says that the narrator sets a film's length. (`narration-end-anchor`,
+  ADR-001 amended)
+
 - The stage waits for a view's canvas to fill its box before measuring it:
   on a fresh mount, after a change of set, and when a view placed again after
   shots without it comes back (the real viewer sizes its canvas on its own
