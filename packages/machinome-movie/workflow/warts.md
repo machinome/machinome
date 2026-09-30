@@ -121,7 +121,9 @@ each.
    previous entry) and now one file in it.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
    `fixture-hygiene` (a re-pin helper; the revision keeps covering the whole
-   project, as a real project's commit does).
+   project, as a real project's commit does); done the same day (7058acf):
+   `node scripts/pin-fixture-project.mjs` re-pins the project and its
+   documents in one command.
 4. **Between the two halves the campaign branch has no reader.** After the
    Python side emits 0.2 and removes the 0.1 schema and fixtures, the Node
    suite fails on them until the Node side's change merges; the two cycles
@@ -194,7 +196,8 @@ Findings met while building the `react-stage` change (the Node side of
    so its template's plate is a 3.9 % stamp in a corner; a larger fixture
    still would let the template put the plate over the stage as the film does.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `fixture-hygiene`.
+   `fixture-hygiene`; done the same day (7058acf): the still is drawn at
+   864 by 576 and the tour's plate covers the stage.
 9. **The storyboard sorted samples by name**, and names had two digits: a
    preview with a hundred samples or more laid its contact sheet out of order.
    Names now have three digits; the Leonardo film will have more than a
