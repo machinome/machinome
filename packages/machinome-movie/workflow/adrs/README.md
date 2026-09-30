@@ -35,6 +35,10 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 
 ## Index
 
-No ADR has been written yet. The twelve archived changes under
-`openspec/changes/archive/` carry their decisions in their `design.md`; a
-characterization pass may promote the load-bearing ones here.
+| ADR | category | title | status |
+|---|---|---|---|
+| [ADR-001](SOURCE/ADR-001-movie-document-and-chapter-narration.md) | SOURCE | The movie document and chapter narration | Proposed |
+
+The twelve changes archived before ADR-001 carry their decisions in their
+`design.md` under `openspec/changes/archive/`; a characterization pass may
+promote the load-bearing ones here.
