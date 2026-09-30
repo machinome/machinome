@@ -24,6 +24,17 @@ lands it.
   summary line, each chapter's take, resolved length and tail, and the
   manual says that the narrator sets a film's length. (`narration-end-anchor`,
   ADR-001 amended)
+- The fixture project's still is drawn by `scripts/draw-fixture-still.mjs`,
+  864 by 576 pixels of flat shapes with no text, the same bytes on every run,
+  and the tour's template puts its plate over the stage, as a film puts a
+  drawing, instead of a stamp in a corner: the 48 by 32 still it replaces
+  left the enlargement check and the picture proofs nothing of a film's
+  shape to exercise. `scripts/pin-fixture-project.mjs` re-pins the fixture
+  project in one command after any of its files changes: it makes the
+  project's commit by the recipe, writes the revision, re-evaluates the
+  registered documents and prints what changed, leaving the resolved pins
+  to a person. The PNG encoder the review pack used moves beside the
+  decoder in `src/pixels.mjs`. (`fixture-hygiene`)
 
 - The stage waits for a view's canvas to fill its box before measuring it:
   on a fresh mount, after a change of set, and when a view placed again after

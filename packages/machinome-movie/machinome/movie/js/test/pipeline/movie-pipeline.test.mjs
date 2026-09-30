@@ -150,6 +150,13 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   assert.deepEqual(probe(manifest.output),{frames,width:640,height:360,rate:ffprobeRate(30),kinds:['audio','video']},
     'every frame, the size and the rate, one audio stream and no subtitle stream');
   assert.equal(manifest.subtitles.burnedIn,false);
+  // The plate covers the stage as a film's drawing does: the still is the
+  // stage's height at 1280 by 720, drawn at its own size, so the shot's zoom of
+  // 1.4 is its peak enlargement there, inside the allowance preview checked.
+  // Render measures it on its own frames, 640 wide: half of it.
+  assert.deepEqual(manifest.pictures.cues.map(c=>[c.shotId,c.element,c.name,c.width,c.height,c.allowance]),
+    [['still','tip.plate','plate',864,576,1.5]]);
+  assert.ok(Math.abs(manifest.pictures.cues[0].peak-1.4*640/1280)<.005,`peak enlargement ${manifest.pictures.cues[0].peak}`);
   const again=cli('render',file,'--viewer',viewer,'--width','640');
   assert.equal(again.code,0,again.out);
   const second=await readJson(manifestPath);

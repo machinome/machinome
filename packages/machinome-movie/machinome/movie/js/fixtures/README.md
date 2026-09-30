@@ -71,10 +71,13 @@ so a new fixture is registered once and missed by neither side.
 `python/tests/fixtures/project/` is a tiny machinome project: a seesaw model
 (`models/seesaw.py`), a hand-written posed export (`export/seesaw/`), a still
 (`media/plate.png`), the take every fixture movie films (`videos/takes.py`)
-and the movies, with the tour's stage module (`videos/tour/stage.tsx`): a
-placeholder whose path the Python suite checks and whose components are the
-stage's to write. Its `export/seesaw/source-revision.txt` is the commit of
-the project made this way, so that source pinned to it can be checked:
+and the movies, with the tour's template (`videos/tour/stage.tsx` and
+`stage.css`). The still is drawn by `scripts/draw-fixture-still.mjs`, 864 by
+576 pixels of flat shapes with no text, the size at which the tour's plate,
+over its stage at 1280 by 720, draws it whole at its own size; a pure test
+asserts that the committed file is that drawing. Its
+`export/seesaw/source-revision.txt` is the commit of the project made this
+way, so that source pinned to it can be checked:
 
 1. copy every file of the project except `export/`, `_build/` and
    `__pycache__/` into an empty directory;
@@ -83,9 +86,23 @@ the project made this way, so that source pinned to it can be checked:
    both dated `2026-09-30T00:00:00+00:00`, and no global or system Git
    configuration.
 
-The Python suite makes that commit and asserts its hash. Changing any file
-of the project changes the hash; re-pin the revision and re-evaluate the
-documents together.
+The Python suite makes that commit and asserts its hash, and the Node suite
+refuses a fixture movie whose copy does not commit to it. Changing any file
+of the project changes the hash, so the revision and every document pinned
+to it are re-pinned together, by one command:
+
+```sh
+node scripts/pin-fixture-project.mjs --python <python>
+```
+
+It makes the commit by the recipe, writes its hash to
+`export/seesaw/source-revision.txt`, evaluates every document `manifest.json`
+registers whose movie the project declares into `documents/` (with
+`PYTHONPATH` set to this repository's `python/`; `<python>`, by default
+`python3`, needs the package's dependencies) and prints what changed. It
+does not write `resolved/`: run `scripts/pin-resolved.mjs` for the documents
+it names and review the pins before committing. A document written by hand
+is not evaluated; the command prints the revision it pins.
 
 ## Refusal words
 
