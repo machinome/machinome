@@ -22,26 +22,42 @@ decides each.
    The film shortened the hold. A resolver could snap a cue's end to the same
    frame as the shot's when they are written on the same anchor, as it
    already does for a model keyframe's last `at`.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): resolved by
+   `react-stage`, which ends an emphasis with its shot instead of refusing
+   the hold; no cycle.
 2. **`lines.end()` has no anchor of its own.** The Python side emits it as the
    spoken end of the shortest unique run of the narration's last words
    (`moment`, `stroke`, `progress`, `blade`, `description`). It works and is
    fragile in principle; a `narrationEnd` anchor form would say what is meant.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `narration-end-anchor`.
 3. **Source emphasis lights only the excerpt's last line.** Enough for the
    film's three-line excerpt; a film that lights a word on another line has no
    spelling for it (`emphasize` takes no `line=`).
+   Triaged 30 September 2026 (orchestrator): resolved by `declarative-stage`
+   (`line=` on an emphasis); no cycle.
 4. **A film is a whole number of frames on its own grid only.** `render --fps
    10` of a 30 fps movie may be refused; the quick silent look at a lower rate
    does not always work for a movie. Render movies at their own rate.
+   Triaged 30 September 2026 (orchestrator): left to the pilot; whether a
+   lower-rate look may drop a partial frame is a product choice.
 5. **Two fixture projects.** The Node side made a Node-generated fixture
    project and the Python side a seesaw project, so the shared fixtures rest
    on two models. One fixture project both sides read would be simpler.
+   Triaged 30 September 2026 (orchestrator): resolved by `declarative-stage`;
+   both suites read `python/tests/fixtures/project`; no cycle.
 6. **The speech key is read from the worktree's `.env`**, so a command run from
    a worktree finds no key until the primary checkout's file is sourced or
    linked. A path option or an environment-only lookup would avoid the trap.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `speech-key-lookup`.
 7. **The narrator sets the film's length.** With every cut on a phrase and
    the chapter tails as the only slack, a 100-second shot list resolved to
    59 s once Jessica's takes were measured. That is the point of anchors, and
    an author needs to know it before estimating durations.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `narration-end-anchor` (the manual says it; the commands print each
+   chapter's take beside its resolved length).
 
 ## The test suite (one-runner cycle, 30 September 2026)
 
@@ -63,6 +79,9 @@ yet; the pilot decides.
    test that passed once is not run again until its inputs change, so only
    the cold run before integration shows it.
    Worth finding the cause rather than retrying.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `flaky-pixel-proofs`.
+
 ## Declarative stage (react-stage campaign, 30 September 2026): the Python side of the stage
 
 Findings met while making the `machinome_movie` package evaluate to
@@ -94,15 +113,22 @@ each.
    with it. Whoever writes the components re-pins and re-evaluates in the
    same change; the two sides share one fixture project (wart 5 of the
    previous entry) and now one file in it.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `fixture-hygiene` (a re-pin helper; the revision keeps covering the whole
+   project, as a real project's commit does).
 4. **Between the two halves the campaign branch has no reader.** After the
    Python side emits 0.2 and removes the 0.1 schema and fixtures, the Node
    suite fails on them until the Node side's change merges; the two cycles
    of one format change cannot land one at a time without a red suite.
+   Triaged 30 September 2026 (orchestrator): a finding about the campaign's
+   process, closed by the merge; no cycle.
 5. **An element's prop types come from use.** With no prop declared on the
    class, the generated types list what the movie's instances give; a prop
    one movie omits and another gives cannot be optional, and two instances
    that disagree are refused. Enough for the film's one card; a reusable
    element library would want declared props.
+   Triaged 30 September 2026 (orchestrator): waits for the episode that
+   needs a reusable element; no cycle.
 
 ## The React stage (react-stage campaign, 30 September 2026)
 
@@ -116,22 +142,33 @@ Findings met while building the `react-stage` change (the Node side of
    episodes still refuse them at `check` (the paper sets' boxes are known).
    A layout measured once per set when `check` bundles the stage would move
    the refusal before speech.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `check-measures-the-stage`.
 2. **One element per slot per shot.** The YAML paper sets carry indexed slots
    (`top`, `top-2` … `top-8`, and so on) so that several captions of one
    position in one shot stay separate elements; a project template that wants
    a sequence of captions in one place must declare several slots. A slot
    that holds a sequence might be the better shape once a film asks.
+   Triaged 30 September 2026 (orchestrator): waits for a film that asks; no
+   cycle.
 3. **Chrome across two templates.** The live chrome is the incoming set's and
    the outgoing picture is captured without chrome, so a masthead that differs
    between two sets cuts at the join while the pictures dissolve or wipe. No
    film joins two templates with different chrome yet.
+   Triaged 30 September 2026 (orchestrator): waits for a film that joins two
+   templates; no cycle.
 4. **Every pose repaints the whole page.** Four animation frames per pose (the
    old page did it only for fresh poses, pictures and source-only frames): the
    fixture tour captures 567 frames at 1280×720 in about two minutes with the
    viewer double. A long 1080p film pays it on every frame.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `pose-repaints`.
 5. **One viewer per view element.** The contract's rule; *Cut and Advance*
    would mount six sawmill viewers in one page. Memory with the real viewer is
    unmeasured (layer 6 has no test).
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycles
+   `viewer-instances` (the count) and `viewer-integration-layer` (the
+   measurement).
 6. **Three YAML refusals are not applied to movie documents** because the
    Python side emits documents that break them and the contract does not state
    them: an emphasis hold running past its shot's end (it now ends with the
@@ -139,16 +176,25 @@ Findings met while building the `react-stage` change (the Node side of
    and an incoming join overlapping a fade-out (the join is drawn first).
    Whether the contract should refuse them is the orchestrator's; recorded as
    findings of the change.
+   Triaged 30 September 2026 (orchestrator): the ruling at the react-stage
+   review stands; the relaxed rules are accepted because anchors make
+   durations unknowable when authoring; no cycle.
 7. **Emphasis words in a document may light out of spoken order.** The YAML
    rule that words follow the narration is not applied to (spoken, token)
    pairs.
+   Triaged 30 September 2026 (orchestrator): not a defect; each pair carries
+   its own instant, so no order is owed between pairs; no cycle.
 8. **The fixture tour's still is 48 by 32 pixels** with an allowance of 1.5,
    so its template's plate is a 3.9 % stamp in a corner; a larger fixture
    still would let the template put the plate over the stage as the film does.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `fixture-hygiene`.
 9. **The storyboard sorted samples by name**, and names had two digits: a
    preview with a hundred samples or more laid its contact sheet out of order.
    Names now have three digits; the Leonardo film will have more than a
    hundred.
+   Triaged 30 September 2026 (orchestrator): fixed within `react-stage`; no
+   cycle.
 10. **Cold memo artefacts leak.** With the cold switch the artefact memo
     writes into `/tmp/videomaker-cold-*` and removes them on the process's
     exit, which vitest's workers never reach; some two hundred directories had
@@ -180,22 +226,33 @@ Findings met while producing the film on the React stage
    mount, a change of set and a re-attached host, and poses after the wait);
    the viewer double gained `lateCanvas` so a browser test pins it. Layer 6,
    the real viewer, still has no test; this is what it would have caught.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `viewer-integration-layer`.
 2. **A mark's offset is a fraction of the view's box, so a split container
    changes where a label lands.** The holding-pawl label written for the
    full-width view left the frame in the split's 43 % container; the offset
    moved to the part's left. An author retunes offsets when the template
    changes, which is what the rule means.
+   Triaged 30 September 2026 (orchestrator): by design; no cycle.
 3. **A camera framed for the whole frame is too tight for a container.** The
    `pawls` camera at 37° cut the ratchet off in the split; 46° frames it. A
    camera belongs to a take and a view to a slot, so a shot in a narrower
    container wants its own camera or a wider lens.
+   Triaged 30 September 2026 (orchestrator): by design; no cycle.
 4. **Six viewer instances of the sawmill cost about 1.5 GB in Chromium** and
    rendered without trouble; the instances are never disposed. A longer film
    with more chapters mounts one per view element.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `viewer-instances`.
 5. **The render took 638 s for 1769 frames at 1080p** (about 2.8 frames a
    second), the whole film recaptured because the template's bundle is a
    common key. Every pose repaints (wart 4 of "The React stage"); the render
    itself is where a film's time goes now.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `pose-repaints`; the bundle stays a common key, since a template change
+   may change every frame.
 6. **The picture's enlargement is checked only in the browser** (wart 1 of
    "The React stage"): the still over a full-frame plate slot passed at
    preview and render; `check` could not say so before speech.
+   Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
+   `check-measures-the-stage`.
