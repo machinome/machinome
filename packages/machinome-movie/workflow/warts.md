@@ -180,7 +180,9 @@ Findings met while building the `react-stage` change (the Node side of
    unmeasured (layer 6 has no test).
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycles
    `viewer-instances` (the count) and `viewer-integration-layer` (the
-   measurement).
+   measurement). The count landed the same day (2f24b66, ADR-007): view
+   elements lease instances frame by frame, so a film mounts no more than
+   the most views one frame places; *Cut and Advance* mounts one.
 6. **Three YAML refusals are not applied to movie documents** because the
    Python side emits documents that break them and the contract does not state
    them: an emphasis hold running past its shot's end (it now ends with the
@@ -256,7 +258,9 @@ Findings met while producing the film on the React stage
    rendered without trouble; the instances are never disposed. A longer film
    with more chapters mounts one per view element.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `viewer-instances`.
+   `viewer-instances`; done the same day (2f24b66): the film's six view
+   elements share one leased instance; the memory is measured on the
+   re-render that closes the campaign.
 5. **The render took 638 s for 1769 frames at 1080p** (about 2.8 frames a
    second), the whole film recaptured because the template's bundle is a
    common key. Every pose repaints (wart 4 of "The React stage"); the render
