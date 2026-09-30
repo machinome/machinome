@@ -1,3 +1,10 @@
+## Purpose
+
+Let Leonardo's film episodes show project-held drawings, reference stills and
+captured simulation clips where the screenplay calls for them, including a
+keyed move across a still, while retaining picture provenance and release
+readiness checks.
+
 ## ADDED Requirements
 
 ### Requirement: Show a named still or clip in a shot

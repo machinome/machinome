@@ -1,3 +1,9 @@
+## Purpose
+
+Let Leonardo's *Revolutions* words and titles follow the intended spoken or
+even rhythm, and bring the syntax study's measured source-word emphasis into
+ordinary Videomaker episodes.
+
 ## ADDED Requirements
 
 ### Requirement: An overlay's words appear as the narration speaks them

@@ -110,3 +110,24 @@ demonstrated.
   resolved the real-model 10.2 s cue boundary failure. The archived change's
   `root-review.md` keeps the independent video evidence. Text animation and
   stills/clips remain, followed by the all-features film.
+
+## Combined demonstration, resumed commission
+
+The final episode is a concise feature study in Leonardo, not a revision of
+*Revolutions*. Its initial target is about 45 seconds, adjusted to measured
+speech rather than trimmed or time-stretched. It will show camera/model easing
+and keyframes, up and field of view, arrows/labels/rings with their entrances
+and exits, highlighting, all four joins plus head/tail fades, titles/subtitles,
+even and spoken reveals, typed source with measured emphasis, keyed stills,
+an SVG, and a clip inserted from an in-point. The final result must be one
+declarative episode rendered by Videomaker, not an edit assembled from unrelated
+feature videos.
+
+As normal production within the resumed full-film commission, the final film
+may generate its short narration through `speech`/`build`; suitable cached
+feature-demo takes are reused. This is separate from the text feature demo's
+one-or-two-short-shot allowance. The graphic and picture feature demos remain
+silent and buy no speech. Every other command remains cache-only. No music,
+publication, push, or main-branch integration is included. Record actual take
+hashes, timing, film hash and decoded-frame visual review before declaring the
+goal complete.
