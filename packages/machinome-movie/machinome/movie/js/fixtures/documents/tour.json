@@ -830,7 +830,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "6aebe87e9cd5a55724225917e771e8357ee7d3cf",
+    "sourceRevision": "58ed09a714c00008f3a3c770f6cf8426efa5e9ca",
     "timeMode": "normalized-loop"
   },
   "output": {

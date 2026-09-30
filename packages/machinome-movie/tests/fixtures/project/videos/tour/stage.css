@@ -7,9 +7,10 @@
 .playbill-title { right: 5%; text-transform: uppercase; }
 
 .playbill-stage { left: 5%; top: 12%; width: 68%; height: 80%; }
-/* The plate is a stamp in the corner: the fixture's still is 48 by 32 pixels
-   and may be enlarged 1.5 times, zoom included. */
-.playbill-plate { right: 5%; bottom: 8%; width: 3.9%; height: 4.6%; z-index: 1; }
+/* The plate covers the stage, over the model and under the masthead: the
+   fixture's still is 864 by 576 pixels, the stage's height at 1280 by 720, and
+   may be enlarged 1.5 times, zoom included. */
+.playbill-plate { left: 5%; top: 12%; width: 68%; height: 80%; z-index: 1; }
 .playbill-aside { left: 76%; top: 30%; width: 19%; height: 40%; }
 .playbill-headline { left: 5%; top: 14%; width: 68%; z-index: 2; --vm-title-size: 3.2vw; --vm-title-weight: 700; }
 

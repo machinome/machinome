@@ -1,8 +1,28 @@
 // Decoded captures for preview's pixel proofs. Playwright's screenshots are
 // 8-bit, non-interlaced RGB or RGBA PNG; anything else is refused, not guessed.
-import {inflateSync} from 'node:zlib';
+import {deflateSync,inflateSync} from 'node:zlib';
 
 const SIGNATURE=Buffer.from([137,80,78,71,13,10,26,10]);
+// A plain 8-bit RGB PNG of `rgb` (width × height × 3 bytes): the review pack's
+// frames and the fixture project's still. The scanlines use filter 0;
+// checksums are standard PNG CRC32, not a tolerance.
+const CRC_TABLE=Uint32Array.from({length:256},(_,index)=>{
+  let value=index;for(let i=0;i<8;i++)value=value&1?0xedb88320^(value>>>1):value>>>1;
+  return value>>>0;
+});
+function crc(bytes){let value=0xffffffff;for(const byte of bytes)value=CRC_TABLE[(value^byte)&255]^(value>>>8);return (value^0xffffffff)>>>0;}
+function chunk(kind,body){
+  const type=Buffer.from(kind,'ascii'),out=Buffer.alloc(12+body.length);
+  out.writeUInt32BE(body.length,0);type.copy(out,4);body.copy(out,8);
+  out.writeUInt32BE(crc(out.subarray(4,8+body.length)),8+body.length);return out;
+}
+export function encodeRgbPng(width,height,rgb){
+  if(rgb.length!==width*height*3)throw new Error('Decoded RGB frame has wrong byte count');
+  const stride=width*3,scan=Buffer.alloc((stride+1)*height);
+  for(let y=0;y<height;y++)rgb.copy(scan,y*(stride+1)+1,y*stride,(y+1)*stride);
+  const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(width,0);ihdr.writeUInt32BE(height,4);ihdr[8]=8;ihdr[9]=2;
+  return Buffer.concat([SIGNATURE,chunk('IHDR',ihdr),chunk('IDAT',deflateSync(scan)),chunk('IEND',Buffer.alloc(0))]);
+}
 export function decodePng(buffer){
   if(!buffer.subarray(0,8).equals(SIGNATURE))throw new Error('Capture is not a PNG');
   let pos=8,header=null;const data=[];

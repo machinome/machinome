@@ -5,9 +5,8 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {copyFile,mkdir,readFile,readdir,realpath,stat,unlink,writeFile} from 'node:fs/promises';
 import {resolve,dirname,relative,isAbsolute,join} from 'node:path';
-import {deflateSync} from 'node:zlib';
 import {command,fileHash,hash,json} from './util.mjs';
-import {decodePng} from './pixels.mjs';
+import {decodePng,encodeRgbPng} from './pixels.mjs';
 
 export const REVIEW_PACK_SCHEMA='review-pack-v1';
 const PLAN_SCHEMA='review-samples-v1';
@@ -148,26 +147,8 @@ export function planReviewPages(plan,metadata){
   return {pages,overviewIndices:overview};
 }
 
-// Plain 8-bit RGB PNGs let the test compare every decoded pixel exactly. The
-// scanlines use filter 0; checksums are standard PNG CRC32, not a tolerance.
-const CRC_TABLE=Uint32Array.from({length:256},(_,index)=>{
-  let value=index;for(let i=0;i<8;i++)value=value&1?0xedb88320^(value>>>1):value>>>1;
-  return value>>>0;
-});
-function crc(bytes){let value=0xffffffff;for(const byte of bytes)value=CRC_TABLE[(value^byte)&255]^(value>>>8);return (value^0xffffffff)>>>0;}
-function chunk(kind,body){
-  const type=Buffer.from(kind,'ascii'),out=Buffer.alloc(12+body.length);
-  out.writeUInt32BE(body.length,0);type.copy(out,4);body.copy(out,8);
-  out.writeUInt32BE(crc(out.subarray(4,8+body.length)),8+body.length);return out;
-}
-function encodeRgbPng(width,height,rgb){
-  need(rgb.length===width*height*3,'Decoded RGB frame has wrong byte count');
-  const stride=width*3,scan=Buffer.alloc((stride+1)*height);
-  for(let y=0;y<height;y++)rgb.copy(scan,y*(stride+1)+1,y*stride,(y+1)*stride);
-  const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(width,0);ihdr.writeUInt32BE(height,4);ihdr[8]=8;ihdr[9]=2;
-  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),
-    chunk('IDAT',deflateSync(scan)),chunk('IEND',Buffer.alloc(0))]);
-}
+// Plain 8-bit RGB PNGs let the test compare every decoded pixel exactly
+// (encodeRgbPng, in src/pixels.mjs).
 
 // Five-row fixed-format cell text: labels contain only numeric PTS/index,
 // controlled event kind and a short slug. Full authored cue text stays JSON.
