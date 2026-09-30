@@ -55,3 +55,8 @@ keeps film-success exit status and prints a distinct retry warning; standalone
 review fails nonzero. Legacy manifests explicitly refuse event review rather
 than being reinterpreted. Implementation follows source-only closure; no
 browser overlap, new episode field or approval claim is authorized here.
+
+Before apply, root also accepted the read-only seam audit's authored-index
+sidecar, duplicate-description coverage and fade picture-side selection.
+These refinements preserve existing frame request shapes and label resolved
+candidate state rather than promising visibility through an occluding plate.

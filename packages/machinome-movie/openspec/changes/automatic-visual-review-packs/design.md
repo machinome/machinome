@@ -52,6 +52,33 @@ invented before/after edges; an empty or one-frame run cannot create a
 nonexistent midpoint or last frame. This makes a join inspectable inside the
 transition as well as at its boundary.
 
+Keep authored identities in a **render-only sidecar**, keyed to each already
+enumerated global request, not in `frameAt`'s JSON or the shot-cache
+fingerprint. The active overlay selection used by `shotFrame` can share a
+small internal helper that yields `{authoredIndex, cue}`; pair those indices
+with the resolved request's `overlays` in order and verify the observed
+`shown` values. Do not key by cue text or the current filtered-array position:
+two simultaneous, identical even-reveal descriptions are valid distinct
+authored cues. For source emphasis, the resolved `wordTiming[shotId].emphasis`
+entries already retain their authored `index`; pair their active word ordinals
+with `codeAt`'s flattened `{word,line,start,end}` descriptors and refuse a
+sidecar/request mismatch. This preserves old request shape and pixels while
+giving review events stable `(shotId, authoredCueIndex[, wordOrdinal])`
+identity across active-to-outgoing transfer.
+
+Event candidates follow the renderer's **picture-side** selection. A
+fade-through-colour join captures only `transition.picture` (`outgoing` in
+its first half, `incoming` in its second); a cue state change on the other,
+uncaptured side is not labelled as a visible onset. At the side switch a
+newly selected cue may carry its then-resolved count/emphasis set as a
+picture-entry state, not a newly timed word onset. Dissolve, wipe and slide
+capture both sides, so both can contribute resolved event candidates.
+Even there, a wipe edge, picture opacity or full colour plate can conceal
+the cue in encoded pixels. Pack labels therefore state **resolved request /
+candidate picture state**, not a guarantee of perceptual visibility; the
+decoded frame is supplied for human judgement. No browser geometry detector
+or additional author field is implied.
+
 Put the plan in the render manifest that binds the published MP4. The plan
 must be produced on cache hits as well as fresh captures. A later standalone
 review consumes only this stored plan and the MP4, never the current episode,
