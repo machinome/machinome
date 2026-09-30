@@ -156,3 +156,39 @@ Findings met while building the `react-stage` change (the Node side of
     remove them.
 11. **A viewer refusal says "episode" for a movie** (`viewerApiRefusal`): the
     wording predates movie documents.
+
+## Cut and Advance, version 2 (Leonardo, 30 September 2026): the first film on a project template
+
+Findings met while producing the film on the React stage
+(`projects/Leonardo/videos/cut_and_advance/`, `movie.py`, `stage.tsx`,
+`stage.css`). Triage: none yet; the pilot decides each.
+
+1. **The real viewer sizes its canvas on its own animation frame, and shrinks
+   it to nothing while its host is detached.** The stage waited for the
+   canvas only after a resize, so the film's first frame was refused (`Viewer
+   canvas does not fill its view`), and once that was fixed the preview's
+   samples were refused when a view came back after shots without it: the
+   viewer had observed the detached host at no size and set its canvas to
+   0×0. Fixed on the campaign branch (the stage waits, bounded, on a fresh
+   mount, a change of set and a re-attached host, and poses after the wait);
+   the viewer double gained `lateCanvas` so a browser test pins it. Layer 6,
+   the real viewer, still has no test; this is what it would have caught.
+2. **A mark's offset is a fraction of the view's box, so a split container
+   changes where a label lands.** The holding-pawl label written for the
+   full-width view left the frame in the split's 43 % container; the offset
+   moved to the part's left. An author retunes offsets when the template
+   changes, which is what the rule means.
+3. **A camera framed for the whole frame is too tight for a container.** The
+   `pawls` camera at 37° cut the ratchet off in the split; 46° frames it. A
+   camera belongs to a take and a view to a slot, so a shot in a narrower
+   container wants its own camera or a wider lens.
+4. **Six viewer instances of the sawmill cost about 1.5 GB in Chromium** and
+   rendered without trouble; the instances are never disposed. A longer film
+   with more chapters mounts one per view element.
+5. **The render took 638 s for 1769 frames at 1080p** (about 2.8 frames a
+   second), the whole film recaptured because the template's bundle is a
+   common key. Every pose repaints (wart 4 of "The React stage"); the render
+   itself is where a film's time goes now.
+6. **The picture's enlargement is checked only in the browser** (wart 1 of
+   "The React stage"): the still over a full-frame plate slot passed at
+   preview and render; `check` could not say so before speech.
