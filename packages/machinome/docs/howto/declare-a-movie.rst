@@ -145,9 +145,17 @@ class Opening(Chapter):
 - The **narration** belongs to the chapter and is spoken as one take. Its
   phrases are the anchors shots cut on: `lines.spoken("How")` is the instant
   the narrator begins "How", `lines.spoken_end(phrase)` the instant a phrase
-  ends, `lines.end()` the end of the whole narration, and each takes
-  `plus=` seconds. A phrase must occur exactly once in the narration. A plain
-  number is seconds from the shot's start.
+  ends, `lines.end()` the end of the whole narration (its last spoken letter
+  or digit, written `{"narrationEnd": true}` in the document, with no phrase),
+  and each takes `plus=` seconds. A phrase must occur exactly once in the
+  narration. A plain number is seconds from the shot's start.
+- **The narrator sets the film's length.** With every cut on a phrase, a film
+  is as long as its takes and their tails, the seconds a chapter lingers after
+  its narration: estimate a film's length by speaking its narration, not by
+  counting its shots. `check` prints, for each chapter, its take, its length
+  and its tail, `  opening: take 3.94 s, chapter 4.77 s, tail 0.63 s`: the
+  tail is the chapter's length after its speech offset and its take, and
+  `plus=` on the chapter's last cut lengthens or shortens it.
 - **Elements** are declared on the chapter and placed by its shots,
   `{Playbill.stage: wide, Playbill.aside: card}`. An element is one instance
   across the chapter's shots: `hook` moves `wide` to `near`, so `question`

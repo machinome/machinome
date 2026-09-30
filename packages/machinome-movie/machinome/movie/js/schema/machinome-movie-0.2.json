@@ -331,9 +331,28 @@
       ],
       "additionalProperties": false
     },
+    "narrationEnd": {
+      "title": "narrationEnd anchor",
+      "description": "The end of the chapter's narration: the end of the last letter or digit of its take.",
+      "type": "object",
+      "properties": {
+        "narrationEnd": {
+          "enum": [
+            true
+          ]
+        },
+        "plus": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "narrationEnd"
+      ],
+      "additionalProperties": false
+    },
     "time": {
       "title": "time",
-      "description": "Shot-local seconds, or a spoken anchor.",
+      "description": "Shot-local seconds, or an anchor of the chapter's narration.",
       "oneOf": [
         {
           "$ref": "#/$defs/seconds"
@@ -343,6 +362,9 @@
         },
         {
           "$ref": "#/$defs/spokenEnd"
+        },
+        {
+          "$ref": "#/$defs/narrationEnd"
         }
       ]
     },

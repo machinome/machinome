@@ -101,8 +101,8 @@
           },
           "set": "frame",
           "until": {
-            "plus": 0.5,
-            "spokenEnd": "seesaw"
+            "narrationEnd": true,
+            "plus": 0.5
           }
         }
       ]

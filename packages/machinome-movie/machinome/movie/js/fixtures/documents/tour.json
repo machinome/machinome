@@ -177,8 +177,8 @@
                 "spoken": "tip it"
               },
               "until": {
-                "plus": 0.8,
-                "spokenEnd": "it"
+                "narrationEnd": true,
+                "plus": 0.8
               }
             },
             {
@@ -198,7 +198,7 @@
               ],
               "at": 0,
               "until": {
-                "spokenEnd": "it"
+                "narrationEnd": true
               }
             }
           ],
@@ -214,8 +214,8 @@
           },
           "set": "playbill",
           "until": {
-            "plus": 0.8,
-            "spokenEnd": "it"
+            "narrationEnd": true,
+            "plus": 0.8
           }
         }
       ]
@@ -356,7 +356,7 @@
                   "ease": "smooth",
                   "element": "mill",
                   "until": {
-                    "spokenEnd": "down"
+                    "narrationEnd": true
                   }
                 }
               ],
@@ -409,8 +409,8 @@
                 "spoken": "The weight"
               },
               "until": {
-                "plus": 0.6,
-                "spokenEnd": "down"
+                "narrationEnd": true,
+                "plus": 0.6
               }
             }
           ],
@@ -430,8 +430,8 @@
             "kind": "wipe"
           },
           "until": {
-            "plus": 0.6,
-            "spokenEnd": "down"
+            "narrationEnd": true,
+            "plus": 0.6
           }
         }
       ]
@@ -761,8 +761,8 @@
               ],
               "at": 0,
               "until": {
-                "plus": 1.2,
-                "spokenEnd": "model"
+                "narrationEnd": true,
+                "plus": 1.2
               }
             }
           ],
@@ -783,8 +783,8 @@
             "kind": "dissolve"
           },
           "until": {
-            "plus": 1.2,
-            "spokenEnd": "model"
+            "narrationEnd": true,
+            "plus": 1.2
           }
         }
       ]

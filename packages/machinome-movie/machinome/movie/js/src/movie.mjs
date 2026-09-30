@@ -45,10 +45,12 @@ const codePointIndex=(text,index)=>Array.from(text.slice(0,index)).length;
 const list=items=>items.length?items.join(', '):'none';
 const sorted=items=>[...items].sort();
 
-// An anchor as refusals name it: spoken "In the model" plus 0.8, mark pull_start.
+// An anchor as refusals name it: spoken "In the model" plus 0.8, mark
+// pull_start, narrationEnd plus 0.9.
 export function describeAnchor(a){
   if(!isAnchor(a))return String(a);
-  const head=a.mark!==undefined?`mark ${a.mark}`:a.spoken!==undefined?`spoken "${a.spoken}"`:`spokenEnd "${a.spokenEnd}"`;
+  const head=a.mark!==undefined?`mark ${a.mark}`:a.spoken!==undefined?`spoken "${a.spoken}"`:
+    a.narrationEnd!==undefined?'narrationEnd':`spokenEnd "${a.spokenEnd}"`;
   return a.plus===undefined?head:`${head} plus ${a.plus}`;
 }
 export const missingTake=id=>`Chapter ${id} has spoken anchors and no cached narration take; run the speech command first (check, preview and render never generate speech)`;
@@ -195,7 +197,8 @@ class Semantics{
     this.joins(shot,where);
     for(const {field,obj,key} of shotTimes(shot)){
       const value=obj[key];
-      if(isAnchor(value))this.phrase(chapter.narration,phraseOf(value),where,field);
+      // The end of the narration names no phrase to look for.
+      if(isAnchor(value)&&value.narrationEnd===undefined)this.phrase(chapter.narration,phraseOf(value),where,field);
     }
     this.model(shot,where);
     const typed=new Map();
@@ -364,6 +367,13 @@ export function resolveMovie(doc,takes={}){
     };
     // Film seconds of a time anchor, snapped to the nearest output frame.
     const instant=(anchor,field,where)=>{
+      if(anchor.narrationEnd!==undefined){
+        // The end of the take's last letter or digit: the mirror of a spoken
+        // anchor's first letter or digit; punctuation carries no sound.
+        const last=Array.from(alignment.text).findLastIndex(c=>/[\p{L}\p{N}]/u.test(c));
+        need(last>=0,`${where}, ${field}: narrationEnd: no spoken letter or digit ends the recorded narration of chapter ${chapter.id}`);
+        return snap(start+offset+alignment.ends[last]+(anchor.plus??0));
+      }
       const phrase=phraseOf(anchor),{spoken,at}=recorded(phrase,field,where);
       let t;
       if(anchor.spoken!==undefined){

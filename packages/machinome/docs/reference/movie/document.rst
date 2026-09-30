@@ -265,13 +265,21 @@ document accepts a number or an anchor:
   the onset of the first letter or digit of its first word;
 - `{"spokenEnd": "<phrase>"}` is the instant the phrase's last character
   ends;
-- either may carry `"plus": <seconds>`, positive or negative.
+- `{"narrationEnd": true}` is the instant the chapter's narration ends: the
+  end of the last letter or digit of the chapter's cached take (the mirror of
+  `spoken`; the take's closing punctuation is not waited for). It names no
+  phrase; its value is `true` and nothing else, and it takes no field but
+  `plus`, or the schema refuses it naming `narrationEnd` and the field's path
+  (`until.narrationEnd`);
+- each may carry `"plus": <seconds>`, positive or negative.
 
 The phrase must occur exactly once in the chapter's written narration and,
 after `audio.replacements`, exactly once in the chapter's cached alignment;
 otherwise the document is refused naming the chapter, the shot, the field
 and the phrase. A spoken anchor resolves to absolute film time: chapter
-start + `speechOffset` + the alignment time + `plus`.
+start + `speechOffset` + the alignment time + `plus`. A `narrationEnd` whose
+take holds no letter or digit is refused naming the chapter, the shot, the
+field and `narrationEnd`.
 
 Wherever a shot takes **model seconds** (`model.from`, `model.to`, a key's
 `seconds`), it accepts a number or `{"mark": "<name>", "plus"?}`, resolved

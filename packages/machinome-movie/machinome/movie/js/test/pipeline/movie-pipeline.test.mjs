@@ -125,6 +125,9 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   const checked=cli('check',file,'--viewer',viewer);
   assert.equal(checked.code,0,checked.out);
   assert.match(checked.out,/^Tour: 3 chapters, 9 shots, 18\.9s; model 20s$/m);
+  // Where the film's length comes from (wart 7 of Cut and Advance): each
+  // chapter's take, its resolved length and its tail, after the summary line.
+  assert.match(checked.out,/^Tour: 3 chapters.*\n {2}opening: take 3\.94 s, chapter 4\.77 s, tail 0\.63 s\n {2}balance: take 6\.04 s, chapter 6\.67 s, tail 0\.43 s\n {2}tip: take 6\.22 s, chapter 7\.47 s, tail 1\.05 s$/m);
   const line=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) from stage\.tsx; types checked$/m.exec(checked.out);
   assert.ok(line,checked.out);
   const bundle=await fileHash(line[1]);
@@ -165,6 +168,8 @@ test('the YAML fixture episode is checked, previewed, rendered twice and reviewe
   const checked=cli('check',file,'--viewer',viewer);
   assert.equal(checked.code,0,checked.out);
   assert.match(checked.out,/^YAML fixture: 3 chapters, 3 shots, 7s; model 20s$/m);
+  // A YAML episode's chapters are its shots.
+  assert.match(checked.out,/^ {2}hook: take 1\.35 s, chapter 2\.50 s, tail 0\.85 s\n {2}coupling: take 1\.90 s, chapter 2\.50 s, tail 0\.40 s\n {2}closing: take 1\.35 s, chapter 2\.00 s, tail 0\.45 s$/m);
   const line=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) from the runtime alone; no module to type-check$/m.exec(checked.out);
   assert.ok(line,checked.out);
   const e=await loadEpisode(file);

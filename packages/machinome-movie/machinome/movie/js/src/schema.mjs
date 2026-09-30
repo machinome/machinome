@@ -68,6 +68,15 @@ export function validateSchema(root,value){
       const errors=schema.oneOf.map(branch=>errorOf(branch,v,path)),passed=errors.filter(e=>!e).length;
       if(passed>1)fail(`Invalid movie document: ${where(path)} matches more than one of: ${schema.oneOf.map(titleOf).join(', ')}`);
       if(passed===0){
+        // An object carrying the required fields of exactly one titled branch
+        // is read as that form, and refused by its own field
+        // ({"narrationEnd": false} at until.narrationEnd), as Python's
+        // best_match does, rather than by the list of every form.
+        if(TYPES.object(v)){
+          const named=schema.oneOf.map((branch,i)=>[branch.$ref?resolveRef(branch.$ref):branch,errors[i]])
+            .filter(([b])=>b.title&&b.required?.length&&b.required.every(name=>Object.hasOwn(v,name)));
+          if(named.length===1){const [[b,error]]=named;fail(`${error.message} (read as a ${b.title})`);}
+        }
         // Name the field: the error of the branch that got furthest (an object
         // of the right shape with one wrong field), else the branch titles.
         const deep=errors.find(e=>/^(Unknown field|Missing field)/.test(e.message)&&TYPES.object(v));

@@ -420,7 +420,22 @@ def test_actions_that_finish_on_their_own_need_no_until():
     assert cues == [{'at': 0, 'actions': [{'element': 'code', 'action': 'type',
                                            'throughLine': 24, 'over': 1}]},
                     {'at': 0, 'actions': [{'element': 'view', 'action': 'move', 'camera': 'near',
-                                           'until': {'spokenEnd': 'pivot'}}]}]
+                                           'until': {'narrationEnd': True}}]}]
+
+
+def test_the_end_of_the_narration_is_its_own_anchor_and_names_no_phrase():
+    # Wart 2 of Cut and Advance: the end was the shortest unique tail of the
+    # last words, a phrase the author never wrote, which grows when the last
+    # words repeat earlier ones ("Down. Up" here).
+    class Rhythm(Chapter):
+        lines = Narration("Up. Down. Up.")
+        view = View(Playground, camera=Playground.far)
+        beat = Shot(Frame, {Frame.stage: view}, until=lines.end(plus=0.9),
+                    model=Playground.run(0, 2),
+                    cues=[Cue(0, view.move(Playground.near, until=lines.end()))])
+    shot = Rhythm._compiled['shots'][0]
+    assert shot['until'] == {'narrationEnd': True, 'plus': 0.9}
+    assert shot['cues'][0]['actions'][0]['until'] == {'narrationEnd': True}
 
 
 def test_a_label_does_not_draw_in():
