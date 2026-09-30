@@ -40,7 +40,9 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-001](SOURCE/ADR-001-movie-document-and-chapter-narration.md) | SOURCE | The movie document and chapter narration | Accepted |
 | [ADR-002](SOURCE/ADR-002-a-movie-is-a-python-tree-evaluated-once-to-the-movie-document.md) | SOURCE | A movie is a Python tree evaluated once to the movie document | Accepted |
 | [ADR-003](RECORDS/ADR-003-one-runner-and-a-content-keyed-test-memo.md) | RECORDS | One runner, and a content-keyed memo of the slow proofs | Accepted |
+| [ADR-004](STAGE/ADR-004-the-stage-is-a-react-template-that-owns-the-screen.md) | STAGE | The stage is a React template that owns the screen | Proposed |
 | [ADR-005](SOURCE/ADR-005-project-sets-and-elements-are-declared-in-python-and-drawn-in-react.md) | SOURCE | Project sets and elements are declared in Python and drawn in React | Accepted |
+| [ADR-006](SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md) | SOURCE | YAML episodes and movie documents load into one resolved document | Proposed |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may
