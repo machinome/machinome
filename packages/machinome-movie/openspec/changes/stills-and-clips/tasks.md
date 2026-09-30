@@ -155,9 +155,16 @@
 - [ ] 3.3 `preview` passes with exact replay and every picture sample's
   geometry. Record the samples, the clip's rate and cadence, and the
   extraction key.
-- [ ] 3.4 With one viewer bundle, the sawmill rehearsal (0.2) and
-  `demo-feed-mechanism` (0.3) pass `check`, and their preview stills are
-  byte-identical before and after this change. One browser at a time.
+- [ ] 3.4 With one viewer bundle, the root-owned
+  `videos/demo-legacy-02` episode (format 0.2, current 1460-second export pinned
+  to revision `28b43bc`) and `demo-feed-mechanism` (0.3) pass `check`. The
+  orchestrating agent compares this 0.2 fixture's preview still hashes on
+  detached pre-overlay `6417f97` and after this cycle, recording their byte
+  identity. Record separately that the unchanged historic
+  `videos/hydraulic-sawmill` refuses because it expects 296 model seconds,
+  and `videos/machinome-revolutions` refuses because its source revision is
+  not pinned; neither original is a rendering compatibility fixture. One
+  browser at a time.
 - [ ] 3.5 The orchestrating agent renders a short silent clip of the demo
   (`--width 960 --fps 30 --silent`) and records its hash and manifest's
   `pictureReleaseIssues`.

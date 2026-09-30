@@ -170,9 +170,16 @@
   speech command first") before; the resolved onsets of every measured cue, the take
   hashes and the even-reveal instants are recorded in `evidence.md`. `preview` passes
   with its reveal, fade and emphasis checks and exact replay.
-- [ ] 3.4 With one viewer bundle, the sawmill rehearsal (0.2), `demo-feed-mechanism`
-  (0.3) and the earlier campaign demos pass `check` without reading speech, and their
-  preview stills before (base commit) and after this change are byte-identical.
+- [ ] 3.4 With one viewer bundle, the root-owned
+  `videos/demo-legacy-02` episode (format 0.2, current 1460-second export pinned
+  to revision `28b43bc`), `demo-feed-mechanism` (0.3) and the earlier campaign
+  demos pass `check` without reading speech. The orchestrating agent compares
+  this 0.2 fixture's preview still hashes on detached pre-overlay `6417f97`
+  and after this cycle, recording their byte identity. Record separately that
+  the unchanged historic `videos/hydraulic-sawmill` refuses because it expects
+  296 model seconds, and `videos/machinome-revolutions` refuses because its
+  source revision is not pinned; neither original is a rendering compatibility
+  fixture.
 - [ ] 3.5 The orchestrating agent renders the short demo with its cached
   narration (`--width 960 --fps 30`) and records its hash; confirm on decoded
   frames that "Propose. Inspect. Correct." appears at the measured frames and
