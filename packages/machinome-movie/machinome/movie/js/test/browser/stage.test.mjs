@@ -62,6 +62,24 @@ test('each view reads back exactly the camera, target, up and field of view it w
   }),/Viewer did not adopt the requested field of view: tip\.close in rhythm at /);
 });
 
+test('a viewer that sizes its canvas on its own animation frame fills its view before the first pose, and after a resize',async()=>{
+  // The real viewer sizes its canvas from its host on an animation frame after
+  // it mounts and after each resize; the stage waits for that before it
+  // measures, on a fresh mount as on a change of set. Found by the Leonardo
+  // film: its first frame refused 'Viewer canvas does not fill its view'.
+  const {film,double}=await theTour();
+  const seen=await browserSession(film,await double('late-canvas.js',{lateCanvas:true}),WIDTH,[],async({pose})=>{
+    const hook=await pose(middle(film,'hook'),{transition:null});
+    const source=await pose(middle(film,'source'),{transition:null});
+    return {result:[hook,source]};
+  });
+  for(const f of seen.result)for(const [key,state] of Object.entries(f.elements)){
+    if(state.kind!=='view')continue;
+    const read=f.observed.elements[key];
+    assert.ok(read.canvas.width>=read.box.width*.98&&read.canvas.height>=read.box.height*.98,`canvas of ${key} in ${f.shotId} fills its box`);
+  }
+});
+
 test('posing A, then B, then A again gives identical pixels',async()=>{
   const {film,viewer,double}=await theTour();
   const a=middle(film,'hook'),b=middle(film,'push');

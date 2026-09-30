@@ -8,8 +8,16 @@ export function viewerDouble(options={}){
   const o={api:28,color:'#6f8fa8',...options};
   return `window.MachinomeViewer={async mount(selector,url,options){
     const o=${JSON.stringify(o)};
-    const canvas=document.createElement('canvas');canvas.style.width='100%';canvas.style.height='100%';canvas.style.background=o.color;
-    document.querySelector(selector).append(canvas);
+    const canvas=document.createElement('canvas');canvas.style.background=o.color;
+    const host=document.querySelector(selector);host.append(canvas);
+    // lateCanvas: size the canvas from the host on the next animation frame,
+    // after mount and after each resize, as the real viewer does; otherwise
+    // the canvas fills its host at once.
+    if(o.lateCanvas){
+      canvas.style.width='1px';canvas.style.height='1px';
+      const fit=()=>{const b=host.getBoundingClientRect();canvas.style.width=b.width+'px';canvas.style.height=b.height+'px';};
+      requestAnimationFrame(fit);new ResizeObserver(()=>requestAnimationFrame(fit)).observe(host);
+    }else{canvas.style.width='100%';canvas.style.height='100%';}
     let view={camera:options.view.camera,target:options.view.target,up:options.up,fov:options.fov},time=options.time??0,lit=null,drifted=0;
     const calls=window.viewerCalls??=[],own=[];
     (window.viewerInstances??=[]).push({selector,calls:own});

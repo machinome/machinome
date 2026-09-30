@@ -6,6 +6,12 @@ lands it.
 
 ## Unreleased
 
+- The stage waits for a freshly mounted view's canvas to fill its box before
+  measuring it, as it did after a resize: the real viewer sizes its canvas on
+  its own animation frame, and the first frame of *Cut and Advance* was
+  refused for a canvas that had not grown yet. The viewer double gains a
+   option that behaves the same, and a browser test pins it.
+
 - The commands accept a movie document, `machinome-movie/0.1` (JSON, contract
   `docs/movie-document.md`), beside YAML episodes: narration in chapters, one
   take each across several shots; cuts, keys and cues anchored to spoken

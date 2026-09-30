@@ -235,6 +235,11 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   }
   const key=(view:PooledView)=>view.key;
 
+  const fills=(view:PooledView,box:HTMLElement)=>{
+    const canvas=view.host.querySelector('canvas'),b=box.getBoundingClientRect();
+    if(!canvas)return false;const c=canvas.getBoundingClientRect();
+    return c.width>=b.width*.98&&c.height>=b.height*.98;
+  };
   const contains=(outer:Rect,inner:Rect)=>outer.x<=inner.x+.5&&outer.y<=inner.y+.5&&
     outer.x+outer.width>=inner.x+inner.width-.5&&outer.y+outer.height>=inner.y+inner.height-.5;
 
@@ -251,11 +256,16 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
       else if(view.host.parentElement!==box)box.append(view.host);
       view.host.style.visibility='';
       const r=box.getBoundingClientRect();
-      if(view.size&&(view.size.width!==r.width||view.size.height!==r.height))resized=true;
+      if(!view.size||view.size.width!==r.width||view.size.height!==r.height)resized=true;
       posed.push([view,state,box]);
     }
-    // A viewer resizes its canvas on its own animation frame.
-    if(resized)await frames();
+    // A viewer sizes its canvas from its host on its own animation frame, after
+    // it mounts and after each resize: wait for every posed canvas to fill its
+    // box, a bounded number of frames; the renderer refuses what still does not.
+    if(resized)for(let tries=0;tries<8;tries++){
+      await frames();
+      if(posed.every(([view,,box])=>fills(view,box)))break;
+    }
     // A view under an opaque picture is posed but hidden, so its canvas does
     // not change how Chromium composites the text above it.
     const opaque=Object.values(frame.slots).filter(k=>{const s=frame.elements[k];
