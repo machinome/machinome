@@ -197,7 +197,7 @@
           "code": {
             "emphasis": [
               {
-                "hold": 0.9,
+                "hold": 0,
                 "line": 24,
                 "phrase": "the beam rests on its pivot",
                 "words": [
@@ -245,8 +245,7 @@
                 ]
               ],
               "to": {
-                "plus": 0.9,
-                "spokenEnd": "rests on its pivot"
+                "spoken": "The weight"
               }
             }
           ],
@@ -612,8 +611,8 @@
                 },
                 {
                   "at": {
-                    "plus": -0.5,
-                    "spoken": "Explore"
+                    "plus": -0.2,
+                    "spoken": "the model"
                   },
                   "center": [
                     0.5,
@@ -723,7 +722,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "db6f30a503215756f57131c2287a7437e869f6b4",
+    "sourceRevision": "6bf22d069229248c0a3208ab7a70900a295afa50",
     "timeMode": "normalized-loop"
   },
   "output": {

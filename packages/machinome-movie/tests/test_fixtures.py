@@ -1,7 +1,8 @@
 """Layer 2: the shared fixtures pin the document.
 
 Every document registered in fixtures/manifest.json is exactly what its
-fixture movie evaluates to, and every invalid fixture Python can refuse
+fixture movie evaluates to (or, for a document written by hand on the Node
+side, is accepted by check_document), and every invalid fixture Python can refuse
 before speech is refused naming its `must_mention` substrings.
 """
 
@@ -29,7 +30,16 @@ def test_both_fixture_movies_are_registered():
 @pytest.mark.parametrize('name', REGISTERED)
 def test_document_is_the_evaluation_of_its_movie(name):
     path = FIXTURES / 'documents' / f'{name}.json'
-    movie = load_movie(PROJECT, name)
+    try:
+        movie = load_movie(PROJECT, name)
+    except MovieError as refusal:
+        # A document written by hand on the Node side has no fixture movie
+        # here; Python then asserts that it accepts the document as written.
+        if 'declares no movie' not in str(refusal):
+            raise
+        document = json.loads(path.read_text(encoding='utf-8'))
+        check_document(document, manifest=manifest_for(document, path.parent))
+        return
     evaluated = dumps(evaluate(movie, name=name, out=path))
     assert evaluated == path.read_text(encoding='utf-8'), (
         f'fixtures/documents/{name}.json differs from the evaluation of the fixture movie {name}')

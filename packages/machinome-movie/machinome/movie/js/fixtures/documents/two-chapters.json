@@ -1,0 +1,403 @@
+{
+  "format": "machinome-movie/0.1",
+  "id": "two-chapters",
+  "title": "Two Chapters",
+  "series": "FIXTURE",
+  "status": "rehearsal",
+  "learningGoal": "Exercise every anchor form across two chapters.",
+  "root": "..",
+  "output": {
+    "width": 320,
+    "height": 180,
+    "fps": 10
+  },
+  "model": {
+    "manifest": "../../export/fixture/manifest.json",
+    "expectedDurationSeconds": 20,
+    "timeMode": "normalized-loop",
+    "sourceRevision": "ef62273f3a1c8f435f208ec027d18fba5dbb0b5b",
+    "readiness": "Fixture export."
+  },
+  "marks": {
+    "start": 2,
+    "pull_start": 8,
+    "return_start": 10,
+    "cycle_end": 12
+  },
+  "audio": {
+    "provider": "elevenlabs",
+    "model": "test-model",
+    "voice": "test-voice",
+    "outputFormat": "pcm_24000"
+  },
+  "style": {
+    "background": "#faf7ef",
+    "foreground": "#222222",
+    "accent": "#237c86",
+    "fontFamily": "DejaVu Sans",
+    "safeInsetFraction": 0.08
+  },
+  "cameras": {
+    "wide": {
+      "position": [
+        0,
+        -10,
+        4
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "fov": 37
+    },
+    "near": {
+      "position": [
+        2,
+        -6,
+        2
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ],
+      "fov": 37
+    }
+  },
+  "layers": {
+    "pawl": [
+      [
+        "Feed",
+        "Pawl"
+      ]
+    ]
+  },
+  "evidence": {
+    "model": "../../models/fixture.py"
+  },
+  "sourceCode": {
+    "coupling": {
+      "file": "../../models/fixture.py",
+      "lines": [
+        3,
+        3
+      ]
+    }
+  },
+  "stills": {
+    "plate": {
+      "file": "media/plate.png",
+      "credit": "Fixture render",
+      "rights": "Own work"
+    }
+  },
+  "credits": {
+    "creator": "Fixture"
+  },
+  "release": {
+    "simulationUrl": null,
+    "sourceUrl": null,
+    "descriptionTemplate": "description.md"
+  },
+  "chapters": [
+    {
+      "id": "drive",
+      "narration": "Water turns the wheel. In the model, the waterwheel drives the crankshaft.",
+      "direction": "Show the drive, then its source.",
+      "shots": [
+        {
+          "id": "wheel",
+          "set": "paper",
+          "until": {
+            "spoken": "In the model"
+          },
+          "direction": "The wheel turns under a still.",
+          "fadeIn": {
+            "duration": 0.5
+          },
+          "simulation": {
+            "from": {
+              "mark": "start"
+            },
+            "to": 6
+          },
+          "camera": [
+            {
+              "at": 0,
+              "preset": "wide"
+            },
+            {
+              "at": {
+                "spoken": "the wheel"
+              },
+              "preset": "near",
+              "ease": "out"
+            }
+          ],
+          "hiddenLayers": [],
+          "overlays": [
+            {
+              "from": {
+                "spoken": "Water"
+              },
+              "to": {
+                "spoken": "In the model"
+              },
+              "text": "Water turns the wheel.",
+              "position": "top",
+              "reveal": {
+                "timing": "spoken"
+              }
+            }
+          ],
+          "evidence": [
+            "model"
+          ],
+          "pictures": [
+            {
+              "from": {
+                "spoken": "the wheel"
+              },
+              "to": {
+                "spoken": "In the model"
+              },
+              "still": "plate",
+              "area": "frame",
+              "fit": "cover",
+              "enter": {
+                "kind": "fade",
+                "duration": 0.2
+              },
+              "view": [
+                {
+                  "at": {
+                    "spoken": "the wheel"
+                  },
+                  "center": [
+                    0.5,
+                    0.5
+                  ],
+                  "zoom": 1
+                },
+                {
+                  "at": {
+                    "spokenEnd": "the wheel.",
+                    "plus": -0.1
+                  },
+                  "center": [
+                    0.5,
+                    0.45
+                  ],
+                  "zoom": 1.2,
+                  "ease": "in-out"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "coupling",
+          "set": "paper-split",
+          "until": {
+            "spokenEnd": "drives the crankshaft.",
+            "plus": 0.6
+          },
+          "transition": {
+            "kind": "dissolve",
+            "duration": 0.4
+          },
+          "simulation": {
+            "from": 6,
+            "to": {
+              "mark": "cycle_end",
+              "plus": -4
+            }
+          },
+          "camera": [
+            {
+              "at": 0,
+              "preset": "near"
+            }
+          ],
+          "hiddenLayers": [],
+          "overlays": [],
+          "evidence": [],
+          "code": {
+            "snippet": "coupling",
+            "typing": [
+              {
+                "from": 0,
+                "to": {
+                  "spoken": "the waterwheel",
+                  "plus": -0.1
+                },
+                "throughLine": 3
+              }
+            ],
+            "emphasis": [
+              {
+                "line": 3,
+                "phrase": "the waterwheel drives the crankshaft.",
+                "words": [
+                  "waterwheel",
+                  "drives",
+                  "crankshaft"
+                ],
+                "hold": 0.2
+              }
+            ]
+          },
+          "highlight": [
+            {
+              "from": {
+                "spoken": "waterwheel"
+              },
+              "to": {
+                "spokenEnd": "crankshaft"
+              },
+              "parts": [
+                "pawl"
+              ],
+              "others": "ghost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "feed",
+      "narration": "Watch the pawls. On the return, a holding pawl keeps the progress.",
+      "speechOffset": 0.3,
+      "shots": [
+        {
+          "id": "pawls",
+          "until": {
+            "spoken": "On the return"
+          },
+          "direction": "The pull settles on the return.",
+          "simulation": {
+            "from": {
+              "mark": "pull_start"
+            },
+            "to": {
+              "mark": "return_start"
+            },
+            "keyframes": [
+              {
+                "at": 0,
+                "seconds": {
+                  "mark": "pull_start"
+                }
+              },
+              {
+                "at": {
+                  "spoken": "On the return"
+                },
+                "seconds": {
+                  "mark": "return_start"
+                },
+                "ease": "out"
+              }
+            ]
+          },
+          "camera": [
+            {
+              "at": 0,
+              "preset": "near"
+            }
+          ],
+          "hiddenLayers": [],
+          "overlays": [
+            {
+              "from": 0,
+              "to": {
+                "spoken": "On the return"
+              },
+              "text": "Pull",
+              "position": "top"
+            }
+          ],
+          "evidence": [
+            "model"
+          ]
+        },
+        {
+          "id": "hold",
+          "set": "paper",
+          "until": {
+            "spokenEnd": "keeps the progress.",
+            "plus": 0.5
+          },
+          "direction": "The holding pawl keeps it.",
+          "transition": {
+            "kind": "wipe",
+            "duration": 0.4,
+            "direction": "right"
+          },
+          "fadeOut": {
+            "duration": 0.5
+          },
+          "simulation": {
+            "from": {
+              "mark": "return_start"
+            },
+            "to": {
+              "mark": "cycle_end",
+              "plus": -0.5
+            }
+          },
+          "camera": [
+            {
+              "at": 0,
+              "preset": "near"
+            },
+            {
+              "at": {
+                "spokenEnd": "keeps the progress.",
+                "plus": 0.5
+              },
+              "preset": "wide",
+              "ease": "linear"
+            }
+          ],
+          "hiddenLayers": [],
+          "overlays": [],
+          "evidence": [],
+          "annotations": [
+            {
+              "from": {
+                "spoken": "a holding pawl"
+              },
+              "to": {
+                "spokenEnd": "keeps the progress.",
+                "plus": 0.5
+              },
+              "kind": "label",
+              "part": "pawl",
+              "text": "Holding pawl",
+              "offset": [
+                0.1,
+                -0.1
+              ],
+              "enter": {
+                "kind": "fade",
+                "duration": 0.3
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

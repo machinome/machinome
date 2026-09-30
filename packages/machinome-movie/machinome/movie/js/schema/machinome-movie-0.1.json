@@ -1,30 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://machinome.org/schema/machinome-movie-0.1.json",
   "title": "machinome-movie/0.1",
-  "description": "The unresolved movie document: what a movie's declarations evaluate to and the renderer loads. See docs/movie-document.md.",
+  "description": "The unresolved movie document: field names, types, required fields and closed field lists. Values (a set, an easing, a range, the format string) are checked by the runtimes, which name what they refuse. See docs/movie-document.md.",
   "type": "object",
   "properties": {
     "format": {
-      "const": "machinome-movie/0.1"
+      "type": "string"
     },
     "id": {
-      "$ref": "#/$defs/slug"
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
     },
     "title": {
-      "type": "string",
-      "minLength": 1
+      "type": "string"
     },
     "series": {
-      "type": "string",
-      "minLength": 1
+      "type": "string"
     },
     "status": {
-      "type": "string",
-      "minLength": 1
+      "type": "string"
     },
     "learningGoal": {
-      "type": "string",
-      "minLength": 1
+      "type": "string"
     },
     "root": {
       "type": "string",
@@ -34,135 +32,113 @@
       "type": "object",
       "properties": {
         "width": {
-          "type": "integer",
-          "minimum": 1
+          "type": "integer"
         },
         "height": {
-          "type": "integer",
-          "minimum": 1
+          "type": "integer"
         },
         "fps": {
-          "type": "integer",
-          "minimum": 1
+          "type": "integer"
         }
       },
-      "additionalProperties": false,
       "required": [
         "width",
         "height",
         "fps"
-      ]
+      ],
+      "additionalProperties": false
     },
     "model": {
       "type": "object",
       "properties": {
         "manifest": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "expectedDurationSeconds": {
-          "type": "number",
-          "exclusiveMinimum": 0
+          "type": "number"
         },
         "timeMode": {
-          "const": "normalized-loop"
+          "type": "string"
         },
         "sourceRevision": {
-          "anyOf": [
-            {
-              "type": "string",
-              "pattern": "^[0-9a-f]{40}$"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ]
         },
         "readiness": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "required": [
         "manifest",
         "expectedDurationSeconds",
         "timeMode",
-        "sourceRevision",
-        "readiness"
-      ]
+        "sourceRevision"
+      ],
+      "additionalProperties": false
     },
     "marks": {
       "type": "object",
       "additionalProperties": {
-        "type": "number",
-        "minimum": 0
+        "type": "number"
       }
     },
     "audio": {
       "type": "object",
       "properties": {
         "provider": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "model": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "voice": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "voiceLabel": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "outputFormat": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "voiceSettings": {
           "type": "object"
-        },
-        "direction": {
-          "type": "string",
-          "minLength": 1
         },
         "replacements": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "direction": {
+          "type": "string"
         }
       },
-      "additionalProperties": false,
       "required": [
         "provider",
         "model",
         "voice"
-      ]
+      ],
+      "additionalProperties": false
     },
     "style": {
       "type": "object",
       "properties": {
         "background": {
-          "$ref": "#/$defs/color"
+          "type": "string"
         },
         "foreground": {
-          "$ref": "#/$defs/color"
+          "type": "string"
         },
         "accent": {
-          "$ref": "#/$defs/color"
+          "type": "string"
         },
         "fontFamily": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "safeInsetFraction": {
-          "type": "number",
-          "minimum": 0,
-          "exclusiveMaximum": 0.5
+          "type": "number"
         }
       },
       "additionalProperties": false
@@ -170,7 +146,37 @@
     "cameras": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/$defs/camera"
+        "type": "object",
+        "properties": {
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "target": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "up": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "fov": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "position",
+          "target",
+          "up",
+          "fov"
+        ],
+        "additionalProperties": false
       }
     },
     "layers": {
@@ -180,19 +186,15 @@
         "items": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1
-        },
-        "minItems": 1
+            "type": "string"
+          }
+        }
       }
     },
     "evidence": {
       "type": "object",
       "additionalProperties": {
-        "type": "string",
-        "minLength": 1
+        "type": "string"
       }
     },
     "sourceCode": {
@@ -201,70 +203,36 @@
         "type": "object",
         "properties": {
           "file": {
-            "type": "string",
-            "minLength": 1
+            "type": "string"
           },
           "lines": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "minItems": 2,
-            "maxItems": 2
+              "type": "integer"
+            }
           }
         },
-        "additionalProperties": false,
         "required": [
           "file",
           "lines"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "stills": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/$defs/picture"
+        "$ref": "#/$defs/media"
       }
     },
     "clips": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/$defs/picture"
+        "$ref": "#/$defs/media"
       }
     },
     "credits": {
-      "type": "object",
-      "properties": {
-        "project": {
-          "type": "string",
-          "minLength": 1
-        },
-        "creator": {
-          "type": "string",
-          "minLength": 1
-        },
-        "copyright": {
-          "type": "string",
-          "minLength": 1
-        },
-        "license": {
-          "type": "string",
-          "minLength": 1
-        },
-        "licenseFile": {
-          "type": "string",
-          "minLength": 1
-        },
-        "references": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "additionalProperties": false
+      "type": "object"
     },
     "release": {
       "type": "object",
@@ -282,19 +250,13 @@
           ]
         },
         "descriptionTemplate": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "publish": {
           "type": "boolean"
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "simulationUrl",
-        "sourceUrl",
-        "descriptionTemplate"
-      ]
+      "additionalProperties": false
     },
     "chapters": {
       "type": "array",
@@ -304,45 +266,31 @@
       }
     }
   },
-  "additionalProperties": false,
   "required": [
     "format",
     "id",
     "title",
-    "status",
-    "learningGoal",
     "root",
     "output",
     "model",
-    "marks",
     "audio",
     "cameras",
     "layers",
     "evidence",
-    "sourceCode",
-    "stills",
-    "clips",
     "chapters"
   ],
+  "additionalProperties": false,
   "$defs": {
     "slug": {
       "type": "string",
       "pattern": "^[a-z0-9-]+$"
     },
-    "ease": {
-      "enum": [
-        "linear",
-        "smooth",
-        "in",
-        "out",
-        "in-out"
-      ]
-    },
-    "color": {
-      "type": "string",
-      "pattern": "^#[0-9a-fA-F]{6}$"
+    "seconds": {
+      "title": "seconds",
+      "type": "number"
     },
     "spoken": {
+      "title": "spoken anchor",
       "type": "object",
       "properties": {
         "spoken": {
@@ -353,12 +301,13 @@
           "type": "number"
         }
       },
-      "additionalProperties": false,
       "required": [
         "spoken"
-      ]
+      ],
+      "additionalProperties": false
     },
     "spokenEnd": {
+      "title": "spokenEnd anchor",
       "type": "object",
       "properties": {
         "spokenEnd": {
@@ -369,12 +318,26 @@
           "type": "number"
         }
       },
-      "additionalProperties": false,
       "required": [
         "spokenEnd"
+      ],
+      "additionalProperties": false
+    },
+    "time": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/seconds"
+        },
+        {
+          "$ref": "#/$defs/spoken"
+        },
+        {
+          "$ref": "#/$defs/spokenEnd"
+        }
       ]
     },
-    "mark": {
+    "markAnchor": {
+      "title": "mark",
       "type": "object",
       "properties": {
         "mark": {
@@ -385,143 +348,26 @@
           "type": "number"
         }
       },
-      "additionalProperties": false,
       "required": [
         "mark"
-      ]
+      ],
+      "additionalProperties": false
     },
-    "videoTime": {
+    "modelSeconds": {
       "anyOf": [
         {
-          "type": "number",
-          "minimum": 0
+          "$ref": "#/$defs/seconds"
         },
         {
-          "$ref": "#/$defs/spoken"
-        },
-        {
-          "$ref": "#/$defs/spokenEnd"
+          "$ref": "#/$defs/markAnchor"
         }
       ]
     },
-    "modelTime": {
-      "anyOf": [
-        {
-          "type": "number",
-          "minimum": 0
-        },
-        {
-          "$ref": "#/$defs/mark"
-        }
-      ]
-    },
-    "entrance": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "enum": [
-            "fade",
-            "draw"
-          ]
-        },
-        "duration": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "ease": {
-          "$ref": "#/$defs/ease"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "duration"
-      ]
-    },
-    "exit": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "enum": [
-            "fade"
-          ]
-        },
-        "duration": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "ease": {
-          "$ref": "#/$defs/ease"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "duration"
-      ]
-    },
-    "part": {
-      "anyOf": [
-        {
-          "type": "string",
-          "minLength": 1
-        },
-        {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "minItems": 1
-        }
-      ]
-    },
-    "camera": {
-      "type": "object",
-      "properties": {
-        "position": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "target": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "up": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "fov": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "position",
-        "target",
-        "up",
-        "fov"
-      ]
-    },
-    "picture": {
+    "media": {
       "type": "object",
       "properties": {
         "file": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "credit": {
           "type": [
@@ -536,550 +382,40 @@
           ]
         },
         "upscale": {
-          "type": "number",
-          "exclusiveMinimum": 0
+          "type": "number"
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "file",
-        "credit",
-        "rights"
-      ]
+      "additionalProperties": false
     },
-    "simulation": {
-      "type": "object",
-      "properties": {
-        "from": {
-          "$ref": "#/$defs/modelTime"
+    "part": {
+      "anyOf": [
+        {
+          "title": "layer name",
+          "type": "string"
         },
-        "to": {
-          "$ref": "#/$defs/modelTime"
-        },
-        "keyframes": {
+        {
+          "title": "assembly path",
           "type": "array",
-          "minItems": 2,
           "items": {
-            "type": "object",
-            "properties": {
-              "at": {
-                "$ref": "#/$defs/videoTime"
-              },
-              "seconds": {
-                "$ref": "#/$defs/modelTime"
-              },
-              "ease": {
-                "$ref": "#/$defs/ease"
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "at",
-              "seconds"
-            ]
+            "type": "string"
           }
         }
-      },
-      "additionalProperties": false,
-      "required": [
-        "from",
-        "to"
-      ]
-    },
-    "cameraKey": {
-      "type": "object",
-      "properties": {
-        "at": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "preset": {
-          "type": "string",
-          "minLength": 1
-        },
-        "ease": {
-          "$ref": "#/$defs/ease"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "at",
-        "preset"
-      ]
-    },
-    "overlay": {
-      "type": "object",
-      "properties": {
-        "from": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "to": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
-        "position": {
-          "enum": [
-            "title",
-            "top",
-            "lower-third",
-            "center"
-          ]
-        },
-        "subtitle": {
-          "type": "string",
-          "minLength": 1
-        },
-        "enter": {
-          "$ref": "#/$defs/exit"
-        },
-        "leave": {
-          "$ref": "#/$defs/exit"
-        },
-        "reveal": {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "timing": {
-                  "const": "spoken"
-                },
-                "phrase": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "timing"
-              ]
-            },
-            {
-              "type": "object",
-              "properties": {
-                "timing": {
-                  "const": "even"
-                },
-                "duration": {
-                  "type": "number",
-                  "exclusiveMinimum": 0
-                },
-                "ease": {
-                  "$ref": "#/$defs/ease"
-                }
-              },
-              "additionalProperties": false,
-              "required": [
-                "timing",
-                "duration"
-              ]
-            }
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "from",
-        "to",
-        "text"
-      ]
-    },
-    "annotation": {
-      "type": "object",
-      "properties": {
-        "from": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "to": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "kind": {
-          "enum": [
-            "arrow",
-            "label",
-            "ring"
-          ]
-        },
-        "part": {
-          "$ref": "#/$defs/part"
-        },
-        "point": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
-        "place": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "offset": {
-          "type": "array",
-          "items": {
-            "type": "number"
-          },
-          "minItems": 2,
-          "maxItems": 2
-        },
-        "padding": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 0.25
-        },
-        "enter": {
-          "$ref": "#/$defs/entrance"
-        },
-        "leave": {
-          "$ref": "#/$defs/exit"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "from",
-        "to",
-        "kind"
-      ]
-    },
-    "highlight": {
-      "type": "object",
-      "properties": {
-        "from": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "to": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "parts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/part"
-          },
-          "minItems": 1
-        },
-        "others": {
-          "enum": [
-            "keep",
-            "dim",
-            "ghost"
-          ]
-        },
-        "color": {
-          "$ref": "#/$defs/color"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "from",
-        "to",
-        "parts"
-      ]
-    },
-    "code": {
-      "type": "object",
-      "properties": {
-        "snippet": {
-          "type": "string",
-          "minLength": 1
-        },
-        "typing": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "properties": {
-              "from": {
-                "$ref": "#/$defs/videoTime"
-              },
-              "to": {
-                "$ref": "#/$defs/videoTime"
-              },
-              "throughLine": {
-                "type": "integer",
-                "minimum": 1
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "from",
-              "to",
-              "throughLine"
-            ]
-          }
-        },
-        "emphasis": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "line": {
-                "type": "integer",
-                "minimum": 1
-              },
-              "phrase": {
-                "type": "string",
-                "minLength": 1
-              },
-              "words": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "minItems": 1
-              },
-              "hold": {
-                "type": "number",
-                "minimum": 0
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "line",
-              "phrase",
-              "words"
-            ]
-          }
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "snippet",
-        "typing"
-      ]
-    },
-    "pictureCue": {
-      "type": "object",
-      "properties": {
-        "from": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "to": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "still": {
-          "type": "string",
-          "minLength": 1
-        },
-        "clip": {
-          "type": "string",
-          "minLength": 1
-        },
-        "area": {
-          "enum": [
-            "stage",
-            "frame"
-          ]
-        },
-        "fit": {
-          "enum": [
-            "contain",
-            "cover"
-          ]
-        },
-        "enter": {
-          "$ref": "#/$defs/exit"
-        },
-        "leave": {
-          "$ref": "#/$defs/exit"
-        },
-        "inPoint": {
-          "type": "number",
-          "minimum": 0
-        },
-        "view": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "properties": {
-              "at": {
-                "$ref": "#/$defs/videoTime"
-              },
-              "center": {
-                "type": "array",
-                "items": {
-                  "type": "number"
-                },
-                "minItems": 2,
-                "maxItems": 2
-              },
-              "zoom": {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              "ease": {
-                "$ref": "#/$defs/ease"
-              }
-            },
-            "additionalProperties": false,
-            "required": [
-              "at",
-              "center",
-              "zoom"
-            ]
-          }
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "from",
-        "to"
-      ]
-    },
-    "transition": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "enum": [
-            "fade",
-            "dissolve",
-            "wipe",
-            "slide"
-          ]
-        },
-        "duration": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "ease": {
-          "$ref": "#/$defs/ease"
-        },
-        "direction": {
-          "enum": [
-            "left",
-            "right"
-          ]
-        },
-        "color": {
-          "$ref": "#/$defs/color"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "kind",
-        "duration"
       ]
     },
     "fade": {
       "type": "object",
       "properties": {
-        "duration": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "ease": {
-          "$ref": "#/$defs/ease"
-        },
-        "color": {
-          "$ref": "#/$defs/color"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "duration"
-      ]
-    },
-    "shot": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "$ref": "#/$defs/slug"
-        },
-        "set": {
-          "enum": [
-            "paper",
-            "paper-split",
-            "source-only"
-          ]
-        },
-        "until": {
-          "$ref": "#/$defs/videoTime"
-        },
-        "direction": {
+        "kind": {
           "type": "string"
         },
-        "simulation": {
-          "$ref": "#/$defs/simulation"
+        "duration": {
+          "type": "number"
         },
-        "camera": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "$ref": "#/$defs/cameraKey"
-          }
-        },
-        "hiddenLayers": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "overlays": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/overlay"
-          }
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "code": {
-          "$ref": "#/$defs/code"
-        },
-        "annotations": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/annotation"
-          }
-        },
-        "highlight": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/highlight"
-          }
-        },
-        "pictures": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/pictureCue"
-          }
-        },
-        "transition": {
-          "$ref": "#/$defs/transition"
-        },
-        "fadeIn": {
-          "$ref": "#/$defs/fade"
-        },
-        "fadeOut": {
-          "$ref": "#/$defs/fade"
+        "ease": {
+          "type": "string"
         }
       },
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "until",
-        "simulation",
-        "camera",
-        "hiddenLayers",
-        "overlays",
-        "evidence"
-      ]
+      "additionalProperties": false
     },
     "chapter": {
       "type": "object",
@@ -1089,11 +425,10 @@
         },
         "narration": {
           "type": "string",
-          "pattern": "\\S"
+          "minLength": 1
         },
         "speechOffset": {
-          "type": "number",
-          "minimum": 0
+          "type": "number"
         },
         "direction": {
           "type": "string"
@@ -1106,12 +441,403 @@
           }
         }
       },
-      "additionalProperties": false,
       "required": [
         "id",
         "narration",
         "shots"
-      ]
+      ],
+      "additionalProperties": false
+    },
+    "shot": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/slug"
+        },
+        "set": {
+          "type": "string"
+        },
+        "until": {
+          "$ref": "#/$defs/time"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "simulation": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/modelSeconds"
+            },
+            "to": {
+              "$ref": "#/$defs/modelSeconds"
+            },
+            "keyframes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "$ref": "#/$defs/time"
+                  },
+                  "seconds": {
+                    "$ref": "#/$defs/modelSeconds"
+                  },
+                  "ease": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "at",
+                  "seconds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "from",
+            "to"
+          ],
+          "additionalProperties": false
+        },
+        "camera": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/time"
+              },
+              "preset": {
+                "type": "string"
+              },
+              "ease": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "at",
+              "preset"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "hiddenLayers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "overlays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "text": {
+                "type": "string"
+              },
+              "position": {
+                "type": "string"
+              },
+              "reveal": {
+                "type": "object",
+                "properties": {
+                  "timing": {
+                    "type": "string"
+                  },
+                  "phrase": {
+                    "type": "string"
+                  },
+                  "duration": {
+                    "type": "number"
+                  },
+                  "ease": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "subtitle": {
+                "type": "string"
+              },
+              "enter": {
+                "$ref": "#/$defs/fade"
+              },
+              "leave": {
+                "$ref": "#/$defs/fade"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "code": {
+          "type": "object",
+          "properties": {
+            "snippet": {
+              "type": "string"
+            },
+            "typing": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "$ref": "#/$defs/time"
+                  },
+                  "to": {
+                    "$ref": "#/$defs/time"
+                  },
+                  "throughLine": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "emphasis": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "line": {
+                    "type": "integer"
+                  },
+                  "phrase": {
+                    "type": "string"
+                  },
+                  "words": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "hold": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "snippet",
+            "typing"
+          ],
+          "additionalProperties": false
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "part": {
+                "$ref": "#/$defs/part"
+              },
+              "point": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "text": {
+                "type": "string"
+              },
+              "place": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "offset": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "padding": {
+                "type": "number"
+              },
+              "enter": {
+                "$ref": "#/$defs/fade"
+              },
+              "leave": {
+                "$ref": "#/$defs/fade"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "highlight": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "parts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/part"
+                }
+              },
+              "others": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "pictures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/time"
+              },
+              "to": {
+                "$ref": "#/$defs/time"
+              },
+              "still": {
+                "type": "string"
+              },
+              "clip": {
+                "type": "string"
+              },
+              "area": {
+                "type": "string"
+              },
+              "fit": {
+                "type": "string"
+              },
+              "enter": {
+                "$ref": "#/$defs/fade"
+              },
+              "leave": {
+                "$ref": "#/$defs/fade"
+              },
+              "view": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "at": {
+                      "$ref": "#/$defs/time"
+                    },
+                    "center": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    },
+                    "zoom": {
+                      "type": "number"
+                    },
+                    "ease": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "inPoint": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "transition": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "number"
+            },
+            "ease": {
+              "type": "string"
+            },
+            "direction": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "fadeIn": {
+          "type": "object",
+          "properties": {
+            "duration": {
+              "type": "number"
+            },
+            "ease": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "fadeOut": {
+          "type": "object",
+          "properties": {
+            "duration": {
+              "type": "number"
+            },
+            "ease": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "until",
+        "simulation",
+        "camera",
+        "hiddenLayers",
+        "overlays",
+        "evidence"
+      ],
+      "additionalProperties": false
     }
   }
 }

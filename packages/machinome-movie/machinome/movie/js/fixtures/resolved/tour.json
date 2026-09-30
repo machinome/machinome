@@ -1,0 +1,695 @@
+{
+  "format": "machinome-video-draft/0.4",
+  "movie": "machinome-movie/0.1",
+  "audio": {
+    "direction": "Plain and unhurried.",
+    "model": "eleven_v3",
+    "outputFormat": "pcm_24000",
+    "provider": "elevenlabs",
+    "voice": "fixture-voice",
+    "voiceLabel": "Fixture",
+    "voiceSettings": {
+      "similarity_boost": 0.75,
+      "stability": 0.5
+    }
+  },
+  "cameras": {
+    "far": {
+      "fov": 37,
+      "position": [
+        400,
+        -600,
+        300
+      ],
+      "target": [
+        0,
+        0,
+        50
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    },
+    "near": {
+      "fov": 37,
+      "position": [
+        200,
+        -300,
+        150
+      ],
+      "target": [
+        0,
+        0,
+        50
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    },
+    "rolled": {
+      "fov": 42,
+      "position": [
+        -150,
+        250,
+        120
+      ],
+      "target": [
+        0,
+        0,
+        60
+      ],
+      "up": [
+        0.15,
+        0,
+        1
+      ]
+    },
+    "side": {
+      "fov": 30,
+      "position": [
+        0,
+        -500,
+        100
+      ],
+      "target": [
+        0,
+        0,
+        50
+      ],
+      "up": [
+        0,
+        0,
+        1
+      ]
+    }
+  },
+  "clips": {},
+  "credits": {
+    "copyright": "No copyright is claimed for this fixture",
+    "creator": "The Videomaker test suite",
+    "license": "None",
+    "licenseFile": "../../NOTICE",
+    "project": "Videomaker fixtures"
+  },
+  "evidence": {
+    "model": "../../models/seesaw.py"
+  },
+  "id": "tour",
+  "layers": {
+    "ground": [
+      [
+        "Base"
+      ]
+    ],
+    "load": [
+      [
+        "Beam",
+        "Plank"
+      ],
+      [
+        "Beam",
+        "Weight"
+      ]
+    ]
+  },
+  "learningGoal": "Exercise every construct the validation film uses.",
+  "model": {
+    "expectedDurationSeconds": 20,
+    "manifest": "../../export/seesaw/manifest.json",
+    "readiness": "Fixture export written by hand; nothing is simulated.",
+    "sourceRevision": "6bf22d069229248c0a3208ab7a70900a295afa50",
+    "timeMode": "normalized-loop"
+  },
+  "release": {
+    "descriptionTemplate": "description.md",
+    "simulationUrl": null,
+    "sourceUrl": null
+  },
+  "series": "VIDEOMAKER · FIXTURES",
+  "sourceCode": {
+    "declaration": {
+      "file": "../../models/seesaw.py",
+      "lines": [
+        22,
+        24
+      ]
+    }
+  },
+  "status": "rehearsal",
+  "stills": {
+    "plate": {
+      "credit": "Fixture drawing of a seesaw",
+      "file": "../../media/plate.png",
+      "rights": "Made for the Videomaker test suite",
+      "upscale": 1.5
+    }
+  },
+  "style": {
+    "accent": "#237c86",
+    "background": "#faf7ef",
+    "fontFamily": "DejaVu Sans, sans-serif",
+    "foreground": "#222222",
+    "safeInsetFraction": 0.08
+  },
+  "title": "Tour",
+  "output": {
+    "fps": 30,
+    "height": 720,
+    "width": 1280,
+    "durationSeconds": 19.1
+  },
+  "chapters": [
+    {
+      "id": "opening",
+      "narration": "A seesaw balances a beam on a stand. How does the weight tip it?",
+      "speechOffset": 0.2,
+      "start": 0,
+      "end": 4.766666666666667,
+      "shots": [
+        "hook",
+        "question"
+      ]
+    },
+    {
+      "id": "balance",
+      "narration": "A stand carries the plank. In the source, the beam rests on its pivot. The weight pushes one end down.",
+      "speechOffset": 0.2,
+      "start": 4.766666666666667,
+      "end": 11.633333333333333,
+      "shots": [
+        "holds",
+        "source",
+        "push"
+      ]
+    },
+    {
+      "id": "tip",
+      "narration": "Watch the plank rise and fall. On the way down, the stand takes the load. Up. Down. Explore the model.",
+      "speechOffset": 0.2,
+      "start": 11.633333333333333,
+      "end": 19.1,
+      "shots": [
+        "rise",
+        "rhythm",
+        "still",
+        "invitation"
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "id": "hook",
+      "start": 0,
+      "end": 2.433333333333333,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "far"
+        },
+        {
+          "at": 2.433333333333333,
+          "ease": "out",
+          "preset": "near"
+        }
+      ],
+      "evidence": [],
+      "fadeIn": {
+        "duration": 1
+      },
+      "hiddenLayers": [],
+      "overlays": [],
+      "simulation": {
+        "from": 0,
+        "to": 4
+      }
+    },
+    {
+      "id": "question",
+      "start": 2.433333333333333,
+      "end": 4.766666666666667,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "near"
+        }
+      ],
+      "evidence": [],
+      "hiddenLayers": [],
+      "overlays": [
+        {
+          "enter": {
+            "duration": 0.6,
+            "kind": "fade"
+          },
+          "from": 0,
+          "leave": {
+            "duration": 0.6,
+            "kind": "fade"
+          },
+          "position": "title",
+          "subtitle": "One beam, one stand",
+          "text": "SEESAW",
+          "to": 1.5333333333333337
+        }
+      ],
+      "simulation": {
+        "from": 4,
+        "to": 8
+      }
+    },
+    {
+      "id": "holds",
+      "start": 4.766666666666667,
+      "end": 6.6,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "side"
+        }
+      ],
+      "evidence": [],
+      "hiddenLayers": [
+        "ground"
+      ],
+      "overlays": [],
+      "simulation": {
+        "from": 8,
+        "to": 10
+      }
+    },
+    {
+      "id": "source",
+      "start": 6.6,
+      "end": 9.233333333333333,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "side"
+        }
+      ],
+      "code": {
+        "emphasis": [
+          {
+            "hold": 0,
+            "line": 24,
+            "phrase": "the beam rests on its pivot",
+            "words": [
+              "beam"
+            ]
+          }
+        ],
+        "snippet": "declaration",
+        "typing": [
+          {
+            "from": 0,
+            "throughLine": 24,
+            "to": 1.2
+          }
+        ]
+      },
+      "evidence": [],
+      "hiddenLayers": [
+        "ground"
+      ],
+      "highlight": [
+        {
+          "from": 1.1333333333333337,
+          "others": "ghost",
+          "parts": [
+            [
+              "Beam"
+            ]
+          ],
+          "to": 2.200000000000001
+        },
+        {
+          "from": 2.200000000000001,
+          "others": "ghost",
+          "parts": [
+            [
+              "Beam",
+              "pivot"
+            ]
+          ],
+          "to": 2.633333333333333
+        }
+      ],
+      "overlays": [],
+      "simulation": {
+        "from": 10,
+        "to": 12
+      },
+      "transition": {
+        "duration": 0.6,
+        "kind": "dissolve"
+      }
+    },
+    {
+      "id": "push",
+      "start": 9.233333333333333,
+      "end": 11.633333333333333,
+      "direction": "",
+      "annotations": [
+        {
+          "enter": {
+            "duration": 0.8,
+            "kind": "draw"
+          },
+          "from": 0,
+          "kind": "arrow",
+          "leave": {
+            "duration": 0.4,
+            "kind": "fade"
+          },
+          "part": [
+            "Beam",
+            "Weight"
+          ],
+          "place": [
+            0.2,
+            0.25
+          ],
+          "text": "Weight",
+          "to": 2.4000000000000004
+        }
+      ],
+      "camera": [
+        {
+          "at": 0,
+          "preset": "side"
+        },
+        {
+          "at": 1.8000000000000007,
+          "ease": "smooth",
+          "preset": "near"
+        }
+      ],
+      "evidence": [],
+      "hiddenLayers": [
+        "ground"
+      ],
+      "overlays": [],
+      "simulation": {
+        "from": 12,
+        "to": 16
+      },
+      "transition": {
+        "direction": "right",
+        "duration": 0.6,
+        "kind": "wipe"
+      }
+    },
+    {
+      "id": "rise",
+      "start": 11.633333333333333,
+      "end": 16.266666666666666,
+      "direction": "",
+      "annotations": [
+        {
+          "enter": {
+            "duration": 0.8,
+            "kind": "draw"
+          },
+          "from": 0.5666666666666664,
+          "kind": "ring",
+          "leave": {
+            "duration": 0.4,
+            "kind": "fade"
+          },
+          "part": [
+            "Beam",
+            "Plank"
+          ],
+          "to": 2.0666666666666664
+        },
+        {
+          "enter": {
+            "duration": 0.4,
+            "kind": "fade"
+          },
+          "from": 0.5666666666666664,
+          "kind": "label",
+          "leave": {
+            "duration": 0.4,
+            "kind": "fade"
+          },
+          "offset": [
+            0.12,
+            -0.08
+          ],
+          "part": [
+            "Beam",
+            "Plank"
+          ],
+          "text": "Plank",
+          "to": 2.0666666666666664
+        },
+        {
+          "enter": {
+            "duration": 0.8,
+            "kind": "draw"
+          },
+          "from": 3.0666666666666664,
+          "kind": "ring",
+          "part": [
+            "Stand"
+          ],
+          "to": 4.633333333333333
+        },
+        {
+          "enter": {
+            "duration": 0.4,
+            "kind": "fade"
+          },
+          "from": 3.0666666666666664,
+          "kind": "label",
+          "offset": [
+            0.12,
+            0.08
+          ],
+          "part": [
+            "Stand"
+          ],
+          "text": "Stand",
+          "to": 4.633333333333333
+        }
+      ],
+      "camera": [
+        {
+          "at": 0,
+          "preset": "near"
+        }
+      ],
+      "evidence": [],
+      "hiddenLayers": [
+        "ground"
+      ],
+      "highlight": [
+        {
+          "from": 0.5666666666666664,
+          "others": "ghost",
+          "parts": [
+            [
+              "Beam",
+              "Plank"
+            ],
+            [
+              "Beam",
+              "Weight"
+            ]
+          ],
+          "to": 2.0666666666666664
+        },
+        {
+          "from": 3.0666666666666664,
+          "others": "dim",
+          "parts": [
+            [
+              "Stand"
+            ]
+          ],
+          "to": 4.633333333333333
+        }
+      ],
+      "overlays": [
+        {
+          "from": 0,
+          "position": "top",
+          "text": "Rise",
+          "to": 2.0666666666666664
+        },
+        {
+          "from": 2.0666666666666664,
+          "position": "top",
+          "text": "Fall",
+          "to": 4.633333333333333
+        }
+      ],
+      "simulation": {
+        "from": 5,
+        "keyframes": [
+          {
+            "at": 0,
+            "seconds": 5
+          },
+          {
+            "at": 2.0666666666666664,
+            "ease": "out",
+            "seconds": 10
+          },
+          {
+            "at": 4.633333333333333,
+            "seconds": 15
+          }
+        ],
+        "to": 15
+      }
+    },
+    {
+      "id": "rhythm",
+      "start": 16.266666666666666,
+      "end": 16.866666666666667,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "near"
+        },
+        {
+          "at": 0.6000000000000014,
+          "ease": "smooth",
+          "preset": "rolled"
+        }
+      ],
+      "evidence": [],
+      "hiddenLayers": [
+        "ground"
+      ],
+      "overlays": [
+        {
+          "from": 0,
+          "position": "top",
+          "reveal": {
+            "timing": "spoken"
+          },
+          "text": "Up. Down.",
+          "to": 0.6000000000000014
+        }
+      ],
+      "simulation": {
+        "from": 16,
+        "to": 17
+      },
+      "transition": {
+        "duration": 0.6,
+        "kind": "dissolve"
+      }
+    },
+    {
+      "id": "still",
+      "start": 16.866666666666667,
+      "end": 17.366666666666667,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "rolled"
+        }
+      ],
+      "evidence": [],
+      "hiddenLayers": [
+        "ground"
+      ],
+      "overlays": [],
+      "pictures": [
+        {
+          "area": "frame",
+          "enter": {
+            "duration": 0.5,
+            "kind": "fade"
+          },
+          "fit": "contain",
+          "from": 0,
+          "leave": {
+            "duration": 0.5,
+            "kind": "fade"
+          },
+          "still": "plate",
+          "to": 0.5,
+          "view": [
+            {
+              "at": 0,
+              "center": [
+                0.5,
+                0.5
+              ],
+              "zoom": 1
+            },
+            {
+              "at": 0.3000000000000007,
+              "center": [
+                0.5,
+                0.42
+              ],
+              "ease": "in-out",
+              "zoom": 1.4
+            }
+          ]
+        }
+      ],
+      "simulation": {
+        "from": 17,
+        "to": 18
+      }
+    },
+    {
+      "id": "invitation",
+      "start": 17.366666666666667,
+      "end": 19.1,
+      "direction": "",
+      "camera": [
+        {
+          "at": 0,
+          "preset": "far"
+        }
+      ],
+      "evidence": [],
+      "fadeOut": {
+        "duration": 1.2
+      },
+      "hiddenLayers": [
+        "ground",
+        "load"
+      ],
+      "highlight": [
+        {
+          "from": 0,
+          "others": "dim",
+          "parts": [
+            [
+              "Beam"
+            ]
+          ],
+          "to": 1.7333333333333343
+        }
+      ],
+      "overlays": [],
+      "simulation": {
+        "from": 18,
+        "to": 19
+      },
+      "transition": {
+        "duration": 0.6,
+        "kind": "dissolve"
+      }
+    }
+  ]
+}

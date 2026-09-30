@@ -25,6 +25,10 @@ def check_document(document, manifest=None):
     """Refuse `document`, naming the chapter, the shot and the field, if it
     is not a valid movie document. `manifest`, the export's, lets part paths
     be checked too."""
+    declared = document.get('format') if isinstance(document, dict) else None
+    if declared != 'machinome-movie/0.1':
+        raise MovieError(f'Unsupported movie format: {declared}; this package writes and checks '
+                         f'machinome-movie/0.1')
     error = best_match(_VALIDATOR.iter_errors(document))
     if error is not None:
         raise MovieError(f'The movie document is invalid at {_where(document, error.absolute_path)}: '
@@ -71,23 +75,31 @@ class _Semantics:
     def check(self):
         document = self.document
         chapters, shots = set(), {}
+        film = [(chapter, shot) for chapter in document['chapters'] for shot in chapter['shots']]
         for chapter in document['chapters']:
             if chapter['id'] in chapters:
                 raise MovieError(f"Chapter {chapter['id']} appears twice; chapter ids are unique")
             chapters.add(chapter['id'])
-            for shot in chapter['shots']:
-                if shot['id'] in shots:
-                    raise MovieError(f"Shot {shot['id']} appears in chapters {shots[shot['id']]} and "
-                                     f"{chapter['id']}; shot ids are unique across a movie")
-                shots[shot['id']] = chapter['id']
-                self.shot(chapter, shot)
+        for index, (chapter, shot) in enumerate(film):
+            if shot['id'] in shots:
+                raise MovieError(f"Shot {shot['id']} appears in chapters {shots[shot['id']]} and "
+                                 f"{chapter['id']}; shot ids are unique across a movie")
+            shots[shot['id']] = chapter['id']
+            self.shot(chapter, shot, first=index == 0, last=index == len(film) - 1)
         for name, layer in document['layers'].items():
             for path in layer:
                 self.path(path, f'layer {name}')
 
-    def shot(self, chapter, shot):
+    def shot(self, chapter, shot, first=True, last=True):
         where = f"chapter {chapter['id']}, shot {shot['id']}"
         narration = chapter['narration']
+        until = shot['until']
+        if not isinstance(until, dict) and until <= 0:
+            raise MovieError(f'{where}, until: the shot ends at or before its start (until {until})')
+        if 'fadeIn' in shot and not first:
+            raise MovieError(f"{where}: fadeIn is accepted only on the film's first shot")
+        if 'fadeOut' in shot and not last:
+            raise MovieError(f"{where}: fadeOut is accepted only on the film's last shot")
         for field, value in self.times(shot):
             if isinstance(value, dict) and ('spoken' in value or 'spokenEnd' in value):
                 self.phrase(narration, value.get('spoken', value.get('spokenEnd')), where, field)
@@ -98,7 +110,7 @@ class _Semantics:
             if phrase is not None:
                 self.phrase(narration, phrase, where, f'overlays[{index}].reveal.phrase')
         simulation = shot['simulation']
-        marks = self.document['marks']
+        marks = self.document.get('marks', {})
         for field, value in self.model_times(simulation):
             if isinstance(value, dict) and value['mark'] not in marks:
                 declared = ', '.join(marks) or 'none'
@@ -120,15 +132,18 @@ class _Semantics:
             if name not in self.document['evidence']:
                 raise MovieError(f"{where}, evidence: unknown evidence '{name}'")
         chosen = shot.get('set', 'paper-split' if 'code' in shot else 'paper')
+        if chosen not in ('paper', 'paper-split', 'source-only'):
+            raise MovieError(f"{where}: unknown set '{chosen}'; a set is paper, paper-split or "
+                             f'source-only')
         if chosen == 'paper' and 'code' in shot:
             raise MovieError(f'{where}: the paper set shows the model alone, so it takes no code')
         if chosen != 'paper' and 'code' not in shot:
             raise MovieError(f'{where}: the {chosen} set shows source, so it needs code')
-        if 'code' in shot and shot['code']['snippet'] not in self.document['sourceCode']:
+        if 'code' in shot and shot['code']['snippet'] not in self.document.get('sourceCode', {}):
             raise MovieError(f"{where}, code.snippet: unknown source excerpt '{shot['code']['snippet']}'")
         for index, picture in enumerate(shot.get('pictures', [])):
             for kind, table in (('still', 'stills'), ('clip', 'clips')):
-                if kind in picture and picture[kind] not in self.document[table]:
+                if kind in picture and picture[kind] not in self.document.get(table, {}):
                     raise MovieError(f"{where}, pictures[{index}]: unknown {kind} '{picture[kind]}'")
         for index, annotation in enumerate(shot.get('annotations', [])):
             if 'part' in annotation:
@@ -143,8 +158,8 @@ class _Semantics:
             raise MovieError(f"{where}, {field}: the phrase '{phrase}' is absent from the "
                              f"chapter's narration")
         if found > 1:
-            raise MovieError(f"{where}, {field}: the phrase '{phrase}' occurs {found} times in "
-                             f"the chapter's narration")
+            raise MovieError(f"{where}, {field}: the phrase '{phrase}' is ambiguous in the "
+                             f"chapter's narration (it occurs {found} times)")
 
     def part(self, part, where, field):
         if isinstance(part, str):

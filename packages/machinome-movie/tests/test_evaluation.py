@@ -138,10 +138,10 @@ def test_split_shot_code_highlight_and_dissolve(tour):
         'snippet': 'declaration',
         'typing': [{'from': 0, 'to': 1.2, 'throughLine': 24}],
         'emphasis': [{'line': 24, 'phrase': 'the beam rests on its pivot',
-                      'words': ['beam'], 'hold': 0.9}]}
+                      'words': ['beam'], 'hold': 0}]}
     assert source['highlight'] == [
         {'from': {'spoken': 'beam'}, 'to': {'spoken': 'pivot'}, 'parts': [['Beam']], 'others': 'ghost'},
-        {'from': {'spoken': 'pivot'}, 'to': {'spokenEnd': 'rests on its pivot', 'plus': 0.9},
+        {'from': {'spoken': 'pivot'}, 'to': {'spoken': 'The weight'},
          'parts': [['Beam', 'pivot']], 'others': 'ghost'}]
 
 
@@ -194,7 +194,7 @@ def test_still_with_keyed_view_on_an_anchor(tour):
         'from': 0, 'to': {'spoken': 'the model'}, 'still': 'plate', 'area': 'frame', 'fit': 'contain',
         'enter': {'kind': 'fade', 'duration': 0.5}, 'leave': {'kind': 'fade', 'duration': 0.5},
         'view': [{'at': 0, 'center': [0.5, 0.5], 'zoom': 1},
-                 {'at': {'spoken': 'Explore', 'plus': -0.5}, 'center': [0.5, 0.42], 'zoom': 1.4,
+                 {'at': {'spoken': 'the model', 'plus': -0.2}, 'center': [0.5, 0.42], 'zoom': 1.4,
                   'ease': 'in-out'}]}]
 
 

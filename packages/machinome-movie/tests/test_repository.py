@@ -15,7 +15,7 @@ from importlib import resources
 import jsonschema
 import pytest
 
-from machinome_movie import dumps, evaluate, load_movie
+from machinome_movie import MovieError, dumps, evaluate, load_movie
 
 from conftest import FIXTURES, PROJECT, REPOSITORY, SCHEMA
 
@@ -36,7 +36,16 @@ def test_the_schema_is_a_2020_12_schema():
 @pytest.mark.parametrize('name', REGISTERED)
 def test_every_emitted_document_validates(name):
     schema = json.loads(SCHEMA.read_text())
-    document = json.loads(dumps(evaluate(load_movie(PROJECT, name), name=name)))
+    try:
+        movie = load_movie(PROJECT, name)
+    except MovieError as refusal:
+        # A document written by hand on the Node side has no movie to emit it
+        # from; it is validated as written.
+        if 'declares no movie' not in str(refusal):
+            raise
+        document = json.loads((FIXTURES / 'documents' / f'{name}.json').read_text(encoding='utf-8'))
+    else:
+        document = json.loads(dumps(evaluate(movie, name=name)))
     jsonschema.Draft202012Validator(schema).validate(document)
 
 

@@ -1,7 +1,7 @@
 # Videomaker
 
-Build narrated educational videos from a project's YAML screenplay and
-Machinome simulation. The first working consumer is Leonardo's hydraulic
+Build narrated educational videos from a project's YAML screenplay, or the
+movie document its declarations evaluate to, and its Machinome simulation. The first working consumer is Leonardo's hydraulic
 sawmill: an 84-second rehearsal with scripted cameras, assembly reveals,
 AI narration and aligned captions. The release-film source study adds real
 Python typing beside the animation and expressive feminine narration.
@@ -58,6 +58,18 @@ of the usual source/model split. Without the opt-in, both old layouts remain
 unchanged. The film's current style and chrome remain; this is not a dark-theme
 or multi-range source mode. Source-only refuses model-target annotations,
 highlights and covering pictures rather than silently hiding them.
+
+A project may give a movie document instead of a YAML episode: JSON data,
+`machinome-movie/0.1`, usually written by the project's declarations to
+`videos/<movie>/_build/movie.json`. See [the movie document](docs/movie-document.md).
+Its narration belongs to chapters, one take each spanning several shots, and
+its cuts, keys and cues may be anchored to spoken phrases and its model times
+to named marks. Every command below accepts it in place of `episode.yaml`.
+Run `speech` first: it generates one take per chapter from the narration
+alone, and `check`, `preview` and `render` resolve the anchors from the cached
+takes (refusing, naming the chapter, when one is missing) and write the
+resolution to `_build/movie-resolved.json` under the document's `root`.
+A movie's resolved length is on its own frame grid; render it at its own rate.
 
 From this repository in the development workspace:
 
@@ -147,7 +159,10 @@ Each episode's ignored `_build/` contains:
 - `rehearsal.srt`, `captions.srt` and `captions.json`: separate timed subtitles.
 - `narration.wav` and `audio/`: mixed audio, cached segments and alignments.
 - `thumbnail.png`, `storyboard.jpg`, `preview/`: presentation review assets.
-- `description.md`: draft release copy with missing public URLs explicitly marked.
+- `description.md`: draft release copy with missing public URLs explicitly marked
+  (not written for a movie document without `release.descriptionTemplate`).
+- `movie-resolved.json` (a movie document only): the document with every anchor
+  resolved to numbers, as the film is produced from it.
 - `rehearsal-manifest.json`: resolved screenplay/settings, model and viewer
   hashes, audio hashes, browser/encoder versions, font record, encoded checks,
   picture provenance/cadence with `pictureReleaseIssues`, and a versioned

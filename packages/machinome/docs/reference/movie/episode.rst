@@ -10,6 +10,14 @@ shots and keys (see "Format 0.4", "Easing", "Joining shots", "Rings" and
 The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
+The commands also accept a movie document, `machinome-movie/0.1`: JSON data a
+project's declarations evaluate to, whose narration belongs to chapters of
+several shots and whose times may be anchored to spoken phrases and marks.
+Its contract is [the movie document](movie-document.md). It resolves to a
+format 0.4 episode with chapters, so everything below about 0.4 shots, cues
+and refusals applies to its shots. A YAML episode behaves as a movie whose
+every shot is one chapter.
+
 ## Read the screenplay first
 
 `videos/<episode-id>/episode.yaml` is the entry point. Its `format` is

@@ -39,9 +39,9 @@ class Balance(Chapter):
                         Cue(lines.spoken("beam"), mill.highlight(Seesaw.beam, others="ghost"),
                             until=lines.spoken("pivot")),
                         Cue(lines.spoken("pivot"), mill.highlight(Seesaw.beam.pivot, others="ghost"),
-                            until=lines.spoken_end("rests on its pivot", plus=0.9)),
+                            until=lines.spoken("The weight")),
                         Cue(lines.spoken("the beam rests on its pivot"),
-                            code.emphasize("beam", hold=0.9))])
+                            code.emphasize("beam"))])
     push = Shot(Paper, {Paper.stage: mill}, until=lines.end(plus=0.6),
                 transition=Wipe(0.6, direction="right"), model=Playground.run(12, 16),
                 cues=[Cue(0, mill.move(Playground.near, ease="smooth", until=lines.end())),
@@ -82,7 +82,7 @@ class Tip(Chapter):
                  model=Playground.run(17, 18),
                  cues=[Cue(0, Playground.plate.show(area="frame", fit="contain", enter=0.5, leave=0.5,
                                                     view=[(0, (0.5, 0.5), 1.0),
-                                                          (lines.spoken("Explore", plus=-0.5),
+                                                          (lines.spoken("the model", plus=-0.2),
                                                            (0.5, 0.42), 1.4, "in-out")]),
                            until=lines.spoken("the model"))])
     invitation = Shot(Paper, {Paper.stage: wide}, until=lines.end(plus=1.2),

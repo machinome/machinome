@@ -1,10 +1,12 @@
 # The movie document — `machinome-movie/0.1`
 
-Status: draft contract, 30 September 2026, written for the declarative-python
-campaign. It becomes ratified through the `movie-document` OpenSpec change;
-until then the tool consumes only YAML episodes and this page is the target
-both sides of the campaign build against. Where the archived change's spec
-and this page disagree, the spec is right.
+Status: contract of `machinome-movie/0.1`, written 30 September 2026 for the
+declarative-python campaign. The Node tool loads it through the
+`movie-document` OpenSpec change (archived on the campaign branch; its
+integration is the pilot's); the Python declarations that emit it are a later
+change. Where the archived change's spec (`openspec/specs/movie-document/`)
+and this page disagree, the spec is right. "Implementation notes" at the end
+records where the implementation departs from the draft.
 
 ## What it is
 
@@ -156,3 +158,43 @@ naming the shot and the mark.
 document: field names, types and closed field lists. Both runtimes validate
 against this one file before any semantic check. `fixtures/` holds the
 documents both suites run; see `fixtures/README.md`.
+
+## Implementation notes
+
+What the `movie-document` change implemented differently from the draft
+above, and why (its `design.md`, D9 to D14):
+
+- **Picture view keys take anchors.** A picture's `view` key `at` accepts a
+  time anchor like the other shot-local times: the validation film's `still`
+  shot ends its push half a second before "Explore".
+- **Anchor fields are named by their path in the shot** in every refusal:
+  `until`, `camera[1].at`, `simulation.keyframes[2].at`,
+  `simulation.from`, `overlays[0].to`, `code.typing[0].from`,
+  `pictures[0].view[1].at`.
+- **Refused before any take, besides the draft's rules**: a camera key whose
+  preset is not in `cameras`; a model keyframe list whose last `at` is not the
+  shot's `until` (the same number or the same anchor, so the keys end at the
+  shot's end whatever the take); and, reading the export's manifest, a layer
+  path, a highlighted part or an annotated part the export does not contain,
+  or a layer name the document does not declare.
+- **Chapter and shot ids are slugs** (`^[a-z0-9-]+$`), since a chapter id
+  names its take's file and a shot id already had to be one.
+- **What may be left out.** A chapter's `speechOffset` (0.2 s) and
+  `direction`; a shot's `set`, `direction` (resolved as `""`) and every cue
+  list but `hiddenLayers`, `overlays` and `evidence`; the document's
+  `series`, `status`, `learningGoal`, `marks`, `sourceCode`, `stills`,
+  `clips`, `style` (resolved as `{}`), `credits` and `release`. A render
+  without `release.descriptionTemplate` writes no `description.md` and is
+  not release-ready.
+- **Closed lists outside the shot.** `audio` accepts `provider`, `model`,
+  `voice`, `voiceLabel`, `outputFormat`, `voiceSettings`, `replacements`
+  and `direction`; `style` its five fields; `release` `simulationUrl`,
+  `sourceUrl`, `descriptionTemplate` and `publish`; `credits` is open.
+- **Every command that loads a document writes `movie-resolved.json`**,
+  `speech` and `build` included, since they resolve after generating the
+  takes.
+- **The schema is checked by a small validator of the keywords it uses**
+  (`src/schema.mjs`), not by a dependency; a test keeps the two in step.
+- **A resolved film lasts a whole number of frames at its own rate**, not
+  necessarily at another: `render --fps` at a lower rate may be refused
+  (`Frame count is not integral`). Render movies at their own rate.

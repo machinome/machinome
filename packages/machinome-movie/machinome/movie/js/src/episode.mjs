@@ -1,5 +1,5 @@
 import {readFile, realpath} from 'node:fs/promises';
-import {resolve, dirname, relative, isAbsolute} from 'node:path';
+import {resolve, dirname, relative, isAbsolute, extname} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
 import {loadSourceCode,validateCode,validateCodeSource} from './code.mjs';
@@ -7,6 +7,7 @@ import {cameraAt,endRate,FORMATS,formatAtLeast} from './timeline.mjs';
 import {EASINGS,unknownEasing} from './easing.mjs';
 import {splitWords,validateSpokenPair,evenCount} from './words.mjs';
 import {validatePictureCues,loadPictures} from './pictures.mjs';
+import {narrationOf,shotChapters} from './chapters.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -162,7 +163,7 @@ function validateOverlays(e,s){
       const words=splitWords(cue.text).filter(p=>p.word);
       need(words.length>0,`Reveal needs words: ${where}`);
       if(reveal.timing==='spoken')validateSpokenPair({text:cue.text,phrase:reveal.phrase??cue.text,
-        narration:s.narration,replacements:e.audio?.replacements??{},shotId:s.id,index:i});
+        narration:narrationOf(e,s),replacements:e.audio?.replacements??{},shotId:s.id,index:i});
       else{
         need(finite(reveal.duration)&&reveal.duration>0&&cue.from+reveal.duration<=cue.to+1e-9,
           `Even reveal duration exceeds cue: ${where}`);
@@ -297,7 +298,9 @@ export function validateEpisode(e, manifest) {
   need(finite(e.model.expectedDurationSeconds) && e.model.expectedDurationSeconds > 0, 'Invalid model duration');
   for (const k of ['width','height','fps']) need(Number.isInteger(e.output[k]) && e.output[k] > 0, `Invalid output ${k}`);
   need(e.output.width%2===0 && e.output.height%2===0, 'Video dimensions must be even');
-  need(finite(e.output.durationSeconds) && e.output.durationSeconds > 0 && Number.isInteger(e.output.durationSeconds*e.output.fps), 'Video duration must be a whole number of frames');
+  // Whole within floating-point error, as a frame-grid end k/fps needs (movie-document D12).
+  const frames=e.output.durationSeconds*e.output.fps;
+  need(finite(e.output.durationSeconds) && e.output.durationSeconds > 0 && Math.abs(frames-Math.round(frames))<1e-6, 'Video duration must be a whole number of frames');
   for (const [name,c] of Object.entries(e.cameras)) {
     for (const k of ['position','target','up']) need(Array.isArray(c[k]) && c[k].length===3 && c[k].every(finite), `Invalid ${name}.${k}`);
     need(c.position.some((v,i)=>v!==c.target[i]), `Camera ${name} coincides with target`);
@@ -309,7 +312,8 @@ export function validateEpisode(e, manifest) {
     need(typeof s.id==='string' && /^[a-z0-9-]+$/.test(s.id) && !ids.has(s.id), 'Shot ids must be unique slugs');ids.add(s.id);
     closedFields(e,s,SHOT_FIELDS,key=>`Unknown shot field: ${key} (shot ${s.id})`);
     need(s.start===end && finite(s.end) && s.end>s.start, `Shots must be contiguous: ${s.id}`);end=s.end;
-    need(typeof s.narration==='string' && s.narration.trim() && typeof s.direction==='string', `Missing narration/direction: ${s.id}`);
+    // A movie's narration belongs to its chapters, validated below.
+    need((e.movie!==undefined||typeof s.narration==='string' && s.narration.trim()) && typeof s.direction==='string', `Missing narration/direction: ${s.id}`);
     need(s.speechOffset===undefined||(finite(s.speechOffset)&&s.speechOffset>=0&&s.speechOffset<s.end-s.start),`Invalid speech offset: ${s.id}`);
     if(s.layout!==undefined){
       need(formatOf(e)===V04,`Source-only layout needs format machinome-video-draft/0.4: shot ${s.id}`);
@@ -352,8 +356,26 @@ export function validateEpisode(e, manifest) {
   // After every shot is known to be sound: a transition reads the shots on both sides.
   for(const [index,s] of e.shots.entries())validateTransitions(e,s,index);
   need(end===e.output.durationSeconds,'Shots must cover the video duration');
+  if(e.movie!==undefined)validateChapters(e);
 }
+// A movie's chapters list its shots in order, span them exactly, carry
+// narration and place their take inside themselves (movie-document D2).
+function validateChapters(e){
+  need(Array.isArray(e.chapters)&&e.chapters.length>0,'No chapters');
+  const order=e.chapters.flatMap(c=>c.shots??[]);
+  need(order.length===e.shots.length&&order.every((id,i)=>id===e.shots[i].id),'Chapters must list every shot once, in order');
+  for(const c of e.chapters){
+    need(c.shots.length>0,`Chapter ${c.id} has no shots`);
+    const first=e.shots.find(s=>s.id===c.shots[0]),last=e.shots.find(s=>s.id===c.shots.at(-1));
+    need(typeof c.narration==='string'&&c.narration.trim(),`Missing narration: chapter ${c.id}`);
+    need(c.start===first.start&&c.end===last.end,`Chapter ${c.id} must span its shots`);
+    need(finite(c.speechOffset)&&c.speechOffset>=0&&c.speechOffset<c.end-c.start,`Invalid speech offset: chapter ${c.id}`);
+  }
+}
+// A .json source is a movie document (movie-document D1); anything else is a
+// YAML episode, loaded as before and given one chapter per shot.
 export async function loadEpisode(file) {
+  if(extname(file).toLowerCase()==='.json'){const {loadMovie}=await import('./movie.mjs');return loadMovie(file);}
   const episodePath=await realpath(file), base=dirname(episodePath);
   const script=parseSource(await readFile(episodePath,'utf8'));
   need(FORMATS.includes(script.format),'Unsupported episode format');
@@ -374,6 +396,7 @@ export async function loadEpisode(file) {
   e.sourceCode=await loadSourceCode(e);
   for(const shot of e.shots)validateCodeSource(e,shot);
   await loadPictures(e);
+  e.chapters=shotChapters(e);
   return e;
 }
 

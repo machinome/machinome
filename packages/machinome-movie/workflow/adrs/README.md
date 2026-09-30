@@ -37,8 +37,9 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 
 | ADR | Category | Title | Status |
 |---|---|---|---|
+| [ADR-001](SOURCE/ADR-001-movie-document-and-chapter-narration.md) | SOURCE | The movie document and chapter narration | Accepted |
 | [ADR-002](SOURCE/ADR-002-a-movie-is-a-python-tree-evaluated-once-to-the-movie-document.md) | SOURCE | A movie is a Python tree evaluated once to the movie document | Accepted |
 
-ADR-001 is left to the `movie-document` change. The twelve archived changes
-under `openspec/changes/archive/` carry their decisions in their `design.md`;
-a characterization pass may promote the load-bearing ones here.
+The twelve changes archived before ADR-001 carry their decisions in their
+`design.md` under `openspec/changes/archive/`; a characterization pass may
+promote the load-bearing ones here.

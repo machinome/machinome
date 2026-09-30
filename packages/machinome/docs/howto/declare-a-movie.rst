@@ -114,9 +114,9 @@ stage that would draw it does not exist.
                         Cue(lines.spoken("beam"), mill.highlight(Seesaw.beam, others="ghost"),
                             until=lines.spoken("pivot")),
                         Cue(lines.spoken("pivot"), mill.highlight(Seesaw.beam.pivot, others="ghost"),
-                            until=lines.spoken_end("rests on its pivot", plus=0.9)),
+                            until=lines.spoken("The weight")),
                         Cue(lines.spoken("the beam rests on its pivot"),
-                            code.emphasize("beam", hold=0.9))])
+                            code.emphasize("beam"))])
 ```
 
 - `Source.panel(excerpt)` shows a source excerpt the take declares. A shot
@@ -164,7 +164,7 @@ out. `Title(text, position=)` writes on the frame at `title`, `top`,
 ```python
                  cues=[Cue(0, Playground.plate.show(area="frame", fit="contain", enter=0.5, leave=0.5,
                                                     view=[(0, (0.5, 0.5), 1.0),
-                                                          (lines.spoken("Explore", plus=-0.5),
+                                                          (lines.spoken("the model", plus=-0.2),
                                                            (0.5, 0.42), 1.4, "in-out")]),
                            until=lines.spoken("the model"))])
 ```

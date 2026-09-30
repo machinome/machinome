@@ -4,7 +4,7 @@ import {readFile,realpath,mkdir,readdir,writeFile,stat} from 'node:fs/promises';
 import {resolve,dirname,relative,extname,isAbsolute} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {ease} from './easing.mjs';
-import {hash,fileHash,command,json} from './util.mjs';
+import {hash,fileHash,command,json,sourceBase} from './util.mjs';
 
 const need=(ok,message)=>{if(!ok)throw new Error(message);};
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
@@ -207,7 +207,7 @@ export function inspectClipProbe(data,name){
 }
 export async function loadPictures(e){
   if(!modern(e)){e.pictureMedia={stills:{},clips:{}};return e.pictureMedia;}
-  const root=e.paths.repository,base=dirname(e.paths.production),result={stills:{},clips:{}};
+  const root=e.paths.repository,base=sourceBase(e),result={stills:{},clips:{}};
   for(const [kind,map] of [['still',e.stills??{}],['clip',e.clips??{}]])for(const [name,entry] of Object.entries(map)){
     validateEntry(entry,name,kind);
     const ext=extname(entry.file).toLowerCase();

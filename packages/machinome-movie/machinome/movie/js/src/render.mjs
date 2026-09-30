@@ -6,7 +6,7 @@ import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
 import {frameAt,srt} from './timeline.mjs';
 import {contained,requiredViewerApi,viewerApiRefusal} from './episode.mjs';
-import {fileHash,hash,json,command} from './util.mjs';
+import {fileHash,hash,json,command,sourceBase} from './util.mjs';
 import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
 import {resolveWordTiming,validateWordFramesAtFps} from './words.mjs';
 import {readSpeechTake} from './speech.mjs';
@@ -740,17 +740,21 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
     for(const field of ['credit','rights'])if(media[field]===null)pictureReleaseIssues.push(`${kind} ${name} has unresolved ${field}`);
     if(!media.committed)pictureReleaseIssues.push(`${kind} ${name} is not committed at project HEAD`);
   }
-  const description=await readFile(resolve(dirname(e.paths.production),e.release.descriptionTemplate),'utf8');
-  if((usedStills.size||usedClips.size)&&!description.includes('{{pictureCredits}}'))
+  // A movie document may leave out release (movie-document D14): then no
+  // description is written and the film is not release-ready.
+  const template=e.release?.descriptionTemplate;
+  if(template===undefined)console.warn('No release.descriptionTemplate: description.md is not written');
+  const description=template===undefined?null:await readFile(resolve(sourceBase(e),template),'utf8');
+  if(description!==null&&(usedStills.size||usedClips.size)&&!description.includes('{{pictureCredits}}'))
     pictureReleaseIssues.push('Description template lacks {{pictureCredits}} for shown pictures');
   const pictureCredits=[...Array.from(usedStills,name=>({kind:'stills',name})),
     ...Array.from(usedClips,name=>({kind:'clips',name}))].map(({kind,name})=>{
     const media=e.pictureMedia[kind][name];
     return `${name}: ${media.credit??`[PICTURE CREDIT PENDING: ${name}]`}`;
   }).join('\n');
-  const releaseReady=Boolean(e.release.simulationUrl&&e.release.sourceUrl)&&pictureReleaseIssues.length===0;
+  const releaseReady=description!==null&&Boolean(e.release.simulationUrl&&e.release.sourceUrl)&&pictureReleaseIssues.length===0;
   const descriptionOutput=resolve(e.paths.build,'description.md'),pendingDescription=`${descriptionOutput}.pending-${publicationId}`;
-  await writeFile(pendingDescription,description
+  if(description!==null)await writeFile(pendingDescription,description
     .replaceAll('{{simulationUrl}}',e.release.simulationUrl??'[PUBLIC SIMULATION URL PENDING]')
     .replaceAll('{{sourceUrl}}',e.release.sourceUrl??'[PUBLIC SOURCE URL PENDING]')
     .replaceAll('{{pictureCredits}}',pictureCredits));
@@ -774,7 +778,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   await rename(pendingOutput,output);
   await rename(pendingThumbnail,thumbnail);
   if(pendingSubtitles)await rename(pendingSubtitles,subtitles);
-  await rename(pendingDescription,descriptionOutput);
+  if(description!==null)await rename(pendingDescription,descriptionOutput);
   await rename(pendingManifest,manifestOutput);
   if(backedUp)await unlink(previous).catch(error=>console.warn(`Previous-output backup remains: ${error.message}`));
   // The film transaction is complete. Review is an optional post-publication

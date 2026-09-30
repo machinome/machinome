@@ -7,6 +7,8 @@ import {hash} from './util.mjs';
 import {contained} from './episode.mjs';
 import {formatAtLeast} from './timeline.mjs';
 import {activeEmphasis} from './words.mjs';
+import {narrationOf} from './chapters.mjs';
+import {sourceBase} from './util.mjs';
 
 hljs.registerLanguage('python',api=>{
   const grammar=python(api);
@@ -20,7 +22,7 @@ export async function loadSourceCode(e){
   const snippets={};
   for(const [name,source] of Object.entries(e.sourceCode??{})){
     need(source&&typeof source.file==='string',`Missing Python source file: ${name}`);
-    const file=await realpath(resolve(dirname(e.paths.production),source.file));
+    const file=await realpath(resolve(sourceBase(e),source.file));
     need(contained(e.paths.repository,file)&&extname(file)==='.py',`Python source must be inside the project: ${name}`);
     const path=relative(e.paths.repository,file),bytes=await readFile(file);
     need(/^[a-f0-9]{40}$/.test(e.model.sourceRevision),'Source code needs a full pinned model revision');
@@ -62,8 +64,9 @@ export function validateCode(e,shot){
       need(cue&&typeof cue==='object'&&!Array.isArray(cue),`Invalid ${where}`);
       for(const key of Object.keys(cue))need(['line','phrase','words','hold'].includes(key),`Unknown emphasis field: ${key} (${where})`);
       need(Number.isInteger(cue.line)&&cue.line>=snippet.lines[0]&&cue.line<=snippet.lines[1],`Emphasis line outside snippet: ${where}`);
-      need(typeof cue.phrase==='string'&&cue.phrase.length>0&&shot.narration.includes(cue.phrase)&&
-        shot.narration.indexOf(cue.phrase)===shot.narration.lastIndexOf(cue.phrase),`Missing or ambiguous emphasis phrase: ${where}`);
+      const narration=narrationOf(e,shot);
+      need(typeof cue.phrase==='string'&&cue.phrase.length>0&&narration.includes(cue.phrase)&&
+        narration.indexOf(cue.phrase)===narration.lastIndexOf(cue.phrase),`Missing or ambiguous emphasis phrase: ${where}`);
       need(Array.isArray(cue.words)&&cue.words.length>0&&new Set(cue.words).size===cue.words.length&&
         cue.words.every(w=>typeof w==='string'&&/^[A-Za-z_]\w*$/.test(w)),`Invalid emphasis words: ${where}`);
       need(Number.isFinite(cue.hold)&&cue.hold>=0,`Invalid emphasis hold: ${where}`);
