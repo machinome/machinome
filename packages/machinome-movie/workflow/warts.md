@@ -50,7 +50,9 @@ decides each.
    a worktree finds no key until the primary checkout's file is sourced or
    linked. A path option or an environment-only lookup would avoid the trap.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `speech-key-lookup`.
+   `speech-key-lookup`; fixed the same day (5b5cd77): environment first,
+   then the checkout's `.env`, then the primary work tree's, and the
+   refusal names where it looked.
 7. **The narrator sets the film's length.** With every cut on a phrase and
    the chapter tails as the only slack, a 100-second shot list resolved to
    59 s once Jessica's takes were measured. That is the point of anchors, and
