@@ -15,7 +15,7 @@ dependencies = ["machinome", "jsonschema"]
 packages = ["machinome_movie"]
 
 [tool.setuptools.package-data]
-machinome_movie = ["machinome-movie-0.1.json"]
+machinome_movie = ["machinome-movie-0.2.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

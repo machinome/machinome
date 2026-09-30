@@ -1,9 +1,11 @@
-"""Check a movie document: its schema, then the refusals Python can make
-before speech exists.
+"""Check a machinome-movie/0.2 document: its schema, then every refusal
+Python can make before speech exists.
 
 Evaluation applies this to its own output; the shared invalid fixtures run
-through it. Anchors are not resolved here: a fault that needs the seconds
-of a spoken phrase is the renderer's to find.
+through it. Anchors are not resolved here: a fault that needs the seconds of
+a spoken phrase (an anchor before its shot, a token typed too late) is the
+renderer's to find. Given the export's manifest, part paths are checked;
+given the text of the source excerpts, emphasised tokens are.
 """
 
 import json
@@ -12,28 +14,62 @@ from importlib import resources
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
-from .names import MovieError
+from .names import EASES, MODULE_SUFFIXES, MovieError, prop_kind
+from .text import TOKEN, count_phrase, count_token, count_words
+
+FORMAT = 'machinome-movie/0.2'
 
 # Read once, with the code: the schema is part of the package, not an input
 # of an evaluation.
-SCHEMA = json.loads(resources.files(__package__).joinpath('machinome-movie-0.1.json')
+SCHEMA = json.loads(resources.files(__package__).joinpath('machinome-movie-0.2.json')
                     .read_text(encoding='utf-8'))
 _VALIDATOR = Draft202012Validator(SCHEMA)
 
+#: The sets the tool ships for movies, with their slots.
+SHIPPED_SETS = {'frame': ['stage'], 'split': ['left', 'right']}
+#: The sets the stage runtime keeps for YAML episodes only.
+EPISODE_SETS = ('paper', 'paper-split', 'source-only')
+#: The element kinds the tool ships: the fields a declaration requires and
+#: the fields it takes, `kind` aside.
+SHIPPED_ELEMENTS = {
+    'view': ({'camera'}, {'camera', 'hide'}),
+    'source': ({'source'}, {'source'}),
+    'title': ({'text'}, {'text', 'subtitle'}),
+    'picture': (set(), {'still', 'clip', 'fit', 'inPoint'}),
+}
+#: Each shipped element's actions: required and accepted fields, besides
+#: `element` and `action`.
+ACTIONS = {
+    'view': {'move': ({'camera', 'until'}, {'camera', 'until', 'ease'}),
+             'highlight': ({'parts'}, {'parts', 'others', 'color'}),
+             'ring': ({'part'}, {'part', 'padding', 'enter', 'leave'}),
+             'label': ({'part', 'text'}, {'part', 'text', 'offset', 'enter', 'leave'}),
+             'arrow': ({'place'}, {'part', 'point', 'text', 'place', 'enter', 'leave'})},
+    'source': {'type': ({'throughLine', 'over'}, {'throughLine', 'over'}),
+               'emphasize': ({'words'}, {'words', 'hold'})},
+    'title': {'show': (set(), {'enter', 'leave', 'reveal'})},
+    'picture': {'show': (set(), {'enter', 'leave', 'view'})},
+}
+#: Actions that end on their own; every other action spans its cue.
+UNSPANNED = ('move', 'type', 'emphasize')
+DRAWN = ('ring', 'arrow')
+TRANSITIONS = ('dissolve', 'fade', 'wipe', 'slide')
 
-def check_document(document, manifest=None):
+
+def check_document(document, manifest=None, sources=None):
     """Refuse `document`, naming the chapter, the shot and the field, if it
     is not a valid movie document. `manifest`, the export's, lets part paths
-    be checked too."""
+    be checked; `sources`, excerpt name -> the excerpt's text, lets
+    emphasised tokens be."""
     declared = document.get('format') if isinstance(document, dict) else None
-    if declared != 'machinome-movie/0.1':
+    if declared != FORMAT:
         raise MovieError(f'Unsupported movie format: {declared}; this package writes and checks '
-                         f'machinome-movie/0.1')
+                         f'{FORMAT}')
     error = best_match(_VALIDATOR.iter_errors(document))
     if error is not None:
         raise MovieError(f'The movie document is invalid at {_where(document, error.absolute_path)}: '
                          f'{error.message}')
-    _Semantics(document, manifest).check()
+    _Semantics(document, manifest, sources or {}).check()
 
 
 def _where(document, path):
@@ -58,41 +94,177 @@ def _where(document, path):
     return ', '.join(words) or 'the top level'
 
 
-def _count(text, phrase):
-    found, start = 0, 0
-    while True:
-        start = text.find(phrase, start)
-        if start < 0:
-            return found
-        found, start = found + 1, start + 1
-
-
 class _Semantics:
-    def __init__(self, document, manifest):
-        self.document = document
+    def __init__(self, document, manifest, sources):
+        self.document, self.sources = document, sources
         self.paths = None if manifest is None else _paths(manifest.get('root') or {})
+        self.stage = document['stage']
 
     def check(self):
         document = self.document
+        self.check_stage()
         chapters, shots = set(), {}
         film = [(chapter, shot) for chapter in document['chapters'] for shot in chapter['shots']]
         for chapter in document['chapters']:
             if chapter['id'] in chapters:
                 raise MovieError(f"Chapter {chapter['id']} appears twice; chapter ids are unique")
             chapters.add(chapter['id'])
-        for index, (chapter, shot) in enumerate(film):
+        for chapter, shot in film:
             if shot['id'] in shots:
                 raise MovieError(f"Shot {shot['id']} appears in chapters {shots[shot['id']]} and "
                                  f"{chapter['id']}; shot ids are unique across a movie")
             shots[shot['id']] = chapter['id']
-            self.shot(chapter, shot, first=index == 0, last=index == len(film) - 1)
         for name, layer in document['layers'].items():
             for path in layer:
                 self.path(path, f'layer {name}')
+        index = 0
+        for chapter in document['chapters']:
+            self.chapter(chapter)
+            completed = set()
+            for shot in chapter['shots']:
+                self.shot(chapter, shot, completed, first=index == 0, last=index == len(film) - 1)
+                index += 1
 
-    def shot(self, chapter, shot, first=True, last=True):
+    ##########################################
+    # The stage block
+
+    def check_stage(self):
+        stage = self.stage
+        seen = set()
+        for module in stage['modules']:
+            if module in seen:
+                raise MovieError(f'stage.modules lists {module} twice')
+            seen.add(module)
+            if module.startswith('/') or not module.endswith(MODULE_SUFFIXES):
+                raise MovieError(f'stage.modules: {module} is not a stage module; a module is a '
+                                 f'TypeScript or JavaScript file (.ts, .tsx, .js or .jsx) relative '
+                                 f'to root')
+        for kind, entry in stage['sets'].items():
+            where = f'stage.sets.{kind}'
+            if len(set(entry['slots'])) != len(entry['slots']):
+                raise MovieError(f'{where}: slots lists a slot twice')
+            if 'module' not in entry:
+                if kind not in SHIPPED_SETS:
+                    raise MovieError(f'{where}: {kind} has no module and is not a set the tool ships '
+                                     f'for movies (frame, split)')
+                if entry['slots'] != SHIPPED_SETS[kind]:
+                    raise MovieError(f"{where}: the shipped set {kind} has the slots "
+                                     f"{', '.join(SHIPPED_SETS[kind])}, not {', '.join(entry['slots']) or 'none'}")
+                if 'base' in entry:
+                    raise MovieError(f'{where}: a set the tool ships has no base')
+                continue
+            if kind in SHIPPED_SETS or kind in EPISODE_SETS:
+                raise MovieError(f'{where}: {kind} is a set the tool ships; a project set takes '
+                                 f'another kind')
+            self.module(entry['module'], where)
+            base, chain = entry.get('base'), [kind]
+            while base is not None:
+                if base in chain:
+                    raise MovieError(f"{where}: its base {base} derives from it "
+                                     f"({' -> '.join(chain + [base])})")
+                if base in SHIPPED_SETS and base not in stage['sets']:
+                    break
+                if base not in stage['sets']:
+                    raise MovieError(f'{where}: its base {base} is neither a set of stage.sets nor '
+                                     f'one the tool ships')
+                chain.append(base)
+                base = stage['sets'][base].get('base')
+        for kind, entry in stage['elements'].items():
+            where = f'stage.elements.{kind}'
+            if kind in SHIPPED_ELEMENTS:
+                raise MovieError(f'{where}: {kind} is an element the tool ships; a project element '
+                                 f'takes another kind')
+            self.module(entry['module'], where)
+
+    def module(self, module, where):
+        if module not in self.stage['modules']:
+            raise MovieError(f'{where}: its module {module} is not listed in stage.modules')
+
+    ##########################################
+    # Chapters and their elements
+
+    def chapter(self, chapter):
+        for key, element in chapter['elements'].items():
+            self.element(chapter, key, element)
+
+    def element(self, chapter, key, element):
+        where = f"chapter {chapter['id']}, elements.{key}"
+        kind = element['kind']
+        fields = set(element) - {'kind'}
+        if kind in SHIPPED_ELEMENTS:
+            required, accepted = SHIPPED_ELEMENTS[kind]
+        elif kind in self.stage['elements']:
+            required, accepted = {'props'}, {'props'}
+        else:
+            raise MovieError(f"{where}: unknown element kind '{kind}'; a kind is view, source, "
+                             f"title, picture or one of stage.elements")
+        self.fields(where, f'a {kind} element', fields, required, accepted)
+        if kind == 'view':
+            self.known(element['camera'], 'cameras', where, 'camera')
+            for layer in element.get('hide', []):
+                self.known(layer, 'layers', where, 'layer')
+        elif kind == 'source':
+            self.known(element['source'], 'sourceCode', where, 'source excerpt')
+        elif kind == 'picture':
+            if ('still' in element) == ('clip' in element):
+                raise MovieError(f'{where}: a picture shows one still or one clip')
+            if 'still' in element:
+                self.known(element['still'], 'stills', where, 'still')
+                if 'inPoint' in element:
+                    raise MovieError(f'{where}: inPoint belongs to a clip, not a still')
+            else:
+                self.known(element['clip'], 'clips', where, 'clip')
+            if element.get('fit', 'contain') not in ('contain', 'cover'):
+                raise MovieError(f"{where}: fit '{element['fit']}' must be contain or cover")
+        elif kind not in SHIPPED_ELEMENTS:
+            declared = self.stage['elements'][kind]['props']
+            given = element['props']
+            for name in sorted(set(declared) | set(given)):
+                if name not in given:
+                    raise MovieError(f'{where}: props: the {kind} element declares the prop {name}, '
+                                     f'and it is missing')
+                if name not in declared:
+                    raise MovieError(f'{where}: props: {name} is not a prop the {kind} element '
+                                     f'declares ({", ".join(declared) or "none"})')
+                if prop_kind(given[name]) != declared[name]:
+                    raise MovieError(f'{where}: props: {name} is a {prop_kind(given[name])}, and the '
+                                     f'{kind} element declares it a {declared[name]}')
+
+    def fields(self, where, what, fields, required, accepted):
+        for field in sorted(fields - accepted):
+            raise MovieError(f"{where}: {what} takes {', '.join(sorted(accepted)) or 'nothing'}, "
+                             f"not {field}")
+        for field in sorted(required - fields):
+            raise MovieError(f'{where}: {what} needs {field}')
+
+    def known(self, name, table, where, what):
+        if name not in self.document.get(table, {}):
+            raise MovieError(f"{where}: unknown {what} '{name}'")
+
+    ##########################################
+    # Shots
+
+    def shot(self, chapter, shot, completed, first=True, last=True):
         where = f"chapter {chapter['id']}, shot {shot['id']}"
         narration = chapter['narration']
+        sets = self.stage['sets']
+        if shot['set'] not in sets:
+            raise MovieError(f"{where}: unknown set '{shot['set']}'; the stage block declares the "
+                             f"sets {', '.join(sets) or 'none'}")
+        slots = sets[shot['set']]['slots']
+        placed = {}
+        for slot, key in shot['places'].items():
+            if slot not in slots:
+                raise MovieError(f"{where}, places.{slot}: the set {shot['set']} has no slot {slot}; "
+                                 f"its slots are {', '.join(slots)}")
+            if key not in chapter['elements']:
+                raise MovieError(f"{where}, places.{slot}: the chapter does not declare the "
+                                 f"element {key}")
+            if key in placed.values():
+                other = next(s for s, k in placed.items() if k == key)
+                raise MovieError(f'{where}: the element {key} is placed in two slots, {other} and '
+                                 f'{slot}; an element is in one place at a time')
+            placed[slot] = key
         until = shot['until']
         if not isinstance(until, dict) and until <= 0:
             raise MovieError(f'{where}, until: the shot ends at or before its start (until {until})')
@@ -100,60 +272,218 @@ class _Semantics:
             raise MovieError(f"{where}: fadeIn is accepted only on the film's first shot")
         if 'fadeOut' in shot and not last:
             raise MovieError(f"{where}: fadeOut is accepted only on the film's last shot")
+        self.joins(shot, where)
         for field, value in self.times(shot):
-            if isinstance(value, dict) and ('spoken' in value or 'spokenEnd' in value):
+            if isinstance(value, dict):
                 self.phrase(narration, value.get('spoken', value.get('spokenEnd')), where, field)
-        for index, emphasis in enumerate(shot.get('code', {}).get('emphasis', [])):
-            self.phrase(narration, emphasis['phrase'], where, f'code.emphasis[{index}].phrase')
-        for index, overlay in enumerate(shot['overlays']):
-            phrase = overlay.get('reveal', {}).get('phrase')
-            if phrase is not None:
-                self.phrase(narration, phrase, where, f'overlays[{index}].reveal.phrase')
-        simulation = shot['simulation']
-        marks = self.document.get('marks', {})
-        for field, value in self.model_times(simulation):
+        self.model(shot, where)
+        typed = {}
+        for index, cue in enumerate(shot['cues']):
+            self.cue(chapter, shot, placed, cue, f'{where}, cues[{index}]', typed, completed)
+        for slot, key in placed.items():
+            element = chapter['elements'][key]
+            if element['kind'] == 'source' and key not in completed:
+                last_line = self.document['sourceCode'][element['source']]['lines'][1]
+                raise MovieError(f'{where}, places.{slot}: the source panel {key} is placed and not '
+                                 f'complete: no typing of this shot or an earlier one of the '
+                                 f'chapter reaches its last line, {last_line}')
+
+    def joins(self, shot, where):
+        for field in ('transition', 'fadeIn', 'fadeOut'):
+            join = shot.get(field)
+            if join is None:
+                continue
+            kind = join.get('kind')
+            if field == 'transition' and kind not in TRANSITIONS:
+                raise MovieError(f"{where}, transition.kind: '{kind}' is not a transition; use "
+                                 f"dissolve, fade, wipe or slide")
+            if field != 'transition' and kind not in (None, 'fade'):
+                raise MovieError(f"{where}, {field}.kind: '{kind}' is not a fade")
+            if 'direction' in join and (kind not in ('wipe', 'slide')
+                                        or join['direction'] not in ('left', 'right')):
+                raise MovieError(f"{where}, {field}.direction: a direction is left or right, on a "
+                                 f"wipe or a slide")
+            if 'color' in join and kind not in (None, 'fade'):
+                raise MovieError(f'{where}, {field}.color: a colour belongs to a fade')
+            self.ease(join.get('ease'), where, f'{field}.ease')
+
+    def model(self, shot, where):
+        model, marks = shot['model'], self.document.get('marks', {})
+        for field, value in self.model_times(model):
             if isinstance(value, dict) and value['mark'] not in marks:
                 declared = ', '.join(marks) or 'none'
                 raise MovieError(f"{where}, {field}: unknown mark '{value['mark']}'; the "
                                  f"document's marks are {declared}")
-        keys = simulation.get('keyframes')
-        if keys is not None and not (keys[0]['at'] == 0 and keys[0]['seconds'] == simulation['from']
-                                     and keys[-1]['at'] == shot['until']
-                                     and keys[-1]['seconds'] == simulation['to']):
-            raise MovieError(f"{where}: model keyframes must start at the shot's start (at 0, "
-                             f"simulation.from) and end at its until (simulation.to)")
-        for index, key in enumerate(shot['camera']):
-            if key['preset'] not in self.document['cameras']:
-                raise MovieError(f"{where}, camera[{index}]: unknown camera '{key['preset']}'")
-        for name in shot['hiddenLayers']:
-            if name not in self.document['layers']:
-                raise MovieError(f"{where}, hiddenLayers: unknown layer '{name}'")
-        for name in shot['evidence']:
-            if name not in self.document['evidence']:
-                raise MovieError(f"{where}, evidence: unknown evidence '{name}'")
-        chosen = shot.get('set', 'paper-split' if 'code' in shot else 'paper')
-        if chosen not in ('paper', 'paper-split', 'source-only'):
-            raise MovieError(f"{where}: unknown set '{chosen}'; a set is paper, paper-split or "
-                             f'source-only')
-        if chosen == 'paper' and 'code' in shot:
-            raise MovieError(f'{where}: the paper set shows the model alone, so it takes no code')
-        if chosen != 'paper' and 'code' not in shot:
-            raise MovieError(f'{where}: the {chosen} set shows source, so it needs code')
-        if 'code' in shot and shot['code']['snippet'] not in self.document.get('sourceCode', {}):
-            raise MovieError(f"{where}, code.snippet: unknown source excerpt '{shot['code']['snippet']}'")
-        for index, picture in enumerate(shot.get('pictures', [])):
-            for kind, table in (('still', 'stills'), ('clip', 'clips')):
-                if kind in picture and picture[kind] not in self.document.get(table, {}):
-                    raise MovieError(f"{where}, pictures[{index}]: unknown {kind} '{picture[kind]}'")
-        for index, annotation in enumerate(shot.get('annotations', [])):
-            if 'part' in annotation:
-                self.part(annotation['part'], where, f'annotations[{index}].part')
-        for index, cue in enumerate(shot.get('highlight', [])):
-            for part in cue['parts']:
-                self.part(part, where, f'highlight[{index}].parts')
+        keys = model.get('keys')
+        if keys is None:
+            return
+        if keys[0]['at'] != 0:
+            raise MovieError(f"{where}, model.keys[0].at: model keys must start at the shot's "
+                             f"start, with a first key at 0")
+        if keys[-1]['at'] != shot['until']:
+            raise MovieError(f"{where}, model.keys[{len(keys) - 1}].at: model keys must end at the "
+                             f"shot's until, with a last key at the same time")
+        for index, key in enumerate(keys):
+            self.ease(key.get('ease'), where, f'model.keys[{index}].ease')
+
+    ##########################################
+    # Cues and actions
+
+    def cue(self, chapter, shot, placed, cue, where, typed, completed):
+        narration = chapter['narration']
+        for number, action in enumerate(cue['actions']):
+            here = f'{where}.actions[{number}]'
+            key, name = action['element'], action['action']
+            if key not in placed.values():
+                raise MovieError(f'{here}: {name} acts on {key}, which the shot does not place')
+            element = chapter['elements'][key]
+            kind = element['kind']
+            fields = set(action) - {'element', 'action'}
+            if kind in ACTIONS:
+                if name not in ACTIONS[kind]:
+                    raise MovieError(f"{here}: the {kind} element has no action {name}; it has "
+                                     f"{', '.join(ACTIONS[kind])}")
+                required, accepted = ACTIONS[kind][name]
+                self.fields(here, f'the action {name}', fields, required, accepted)
+            else:
+                declared = self.stage['elements'][kind]['actions']
+                if name not in declared:
+                    raise MovieError(f"{here}: the {kind} element has no action {name}; it declares "
+                                     f"{', '.join(declared) or 'none'}")
+                self.fields(here, f'the action {name}', fields, {'params'}, {'params'})
+                self.params(here, kind, name, declared[name], action['params'])
+            if name not in UNSPANNED and 'until' not in cue:
+                raise MovieError(f"{where}: {name} shows something for a span and needs the cue's "
+                                 f"until")
+            if kind == 'view':
+                self.view_action(action, here)
+            elif kind == 'source' and name == 'type':
+                self.typing(element, key, action, here, typed, completed)
+            elif kind == 'source' and name == 'emphasize':
+                self.emphasis(narration, element, cue, action, where, here)
+            elif kind == 'title':
+                self.entrances(action, here, name)
+                self.reveal(narration, element, action.get('reveal'), here)
+            elif kind == 'picture':
+                self.entrances(action, here, name)
+                for index, view in enumerate(action.get('view', [])):
+                    self.ease(view.get('ease'), here, f'view[{index}].ease')
+
+    def params(self, where, kind, name, declared, given):
+        for param in sorted(set(declared) | set(given)):
+            if param not in given:
+                raise MovieError(f'{where}: params: the {kind} action {name} declares the '
+                                 f'parameter {param}, and it is missing')
+            if param not in declared:
+                raise MovieError(f'{where}: params: {param} is not a parameter the {kind} action '
+                                 f'{name} declares ({", ".join(declared) or "none"})')
+            actual = prop_kind(given[param])
+            if actual != declared[param]:
+                raise MovieError(f'{where}: params: {param} is a {actual}, and the {kind} action '
+                                 f'{name} declares it a {declared[param]}')
+
+    def view_action(self, action, where):
+        name = action['action']
+        if name == 'move':
+            self.known(action['camera'], 'cameras', where, 'camera')
+            self.ease(action.get('ease'), where, 'ease')
+            return
+        if name == 'highlight':
+            for part in action['parts']:
+                self.part(part, where, 'parts')
+            if action.get('others', 'keep') not in ('keep', 'dim', 'ghost'):
+                raise MovieError(f"{where}: others '{action['others']}' must be keep, dim or ghost")
+            return
+        if name == 'arrow' and ('part' in action) == ('point' in action):
+            raise MovieError(f'{where}: an arrow points at one part or one point')
+        if 'part' in action:
+            self.part(action['part'], where, 'part')
+        self.entrances(action, where, name)
+
+    def entrances(self, action, where, name):
+        for field in ('enter', 'leave'):
+            entrance = action.get(field)
+            if entrance is None:
+                continue
+            kinds = ('fade', 'draw') if name in DRAWN else ('fade',)
+            if entrance['kind'] not in kinds:
+                raise MovieError(f"{where}, {field}.kind: '{entrance['kind']}' is not an entrance "
+                                 f"of a {name}; use {' or '.join(kinds)} (draw only on a ring or an "
+                                 f"arrow)")
+            self.ease(entrance.get('ease'), where, f'{field}.ease')
+
+    def typing(self, element, key, action, where, typed, completed):
+        first, last = self.document['sourceCode'][element['source']]['lines']
+        through = action['throughLine']
+        if key in completed and key not in typed:
+            raise MovieError(f'{where}: type: the source panel {key} was completed by an earlier '
+                             f'shot of the chapter and is already typed; it keeps its text')
+        if not first <= through <= last:
+            raise MovieError(f'{where}: throughLine {through} is outside the excerpt '
+                             f"{element['source']}, lines {first} to {last}")
+        if key in typed and through <= typed[key]:
+            raise MovieError(f'{where}: throughLine {through}: the panel {key} is already typed '
+                             f'through line {typed[key]}; typing runs forward')
+        typed[key] = through
+        if through == last:
+            completed.add(key)
+
+    def emphasis(self, narration, element, cue, action, cue_where, where):
+        at = cue['at']
+        if not (isinstance(at, dict) and 'spoken' in at and 'plus' not in at):
+            raise MovieError(f"{cue_where}.at: emphasize lights words where they are spoken, so "
+                             f"the cue's at is a spoken phrase with no plus")
+        phrase = at['spoken']
+        excerpt = element['source']
+        for index, word in enumerate(action['words']):
+            found = count_words(phrase, word['spoken'])
+            if found != 1:
+                state = 'absent from' if found == 0 else 'ambiguous in'
+                raise MovieError(f"{where}, words[{index}].spoken: the spoken words "
+                                 f"'{word['spoken']}' are {state} the cue's phrase '{phrase}' "
+                                 f"(found {found} times as whole words)")
+            token = word['token']
+            if not TOKEN.fullmatch(token):
+                raise MovieError(f"{where}, words[{index}].token: '{token}' is not a source token; "
+                                 f"a token is an identifier, dots included")
+            if excerpt in self.sources:
+                found = count_token(self.sources[excerpt], token)
+                if found != 1:
+                    state = 'absent from' if found == 0 else 'ambiguous in'
+                    raise MovieError(f"{where}, words[{index}].token: the token '{token}' is "
+                                     f"{state} the excerpt {excerpt} (found {found} times as a "
+                                     f"whole identifier)")
+
+    def reveal(self, narration, element, reveal, where):
+        if reveal is None:
+            return
+        if reveal['timing'] == 'spoken':
+            phrase = reveal.get('phrase', element['text'])
+            if phrase.split() != element['text'].split():
+                raise MovieError(f"{where}, reveal.phrase: '{phrase}' does not match the title's "
+                                 f"text '{element['text']}' word for word")
+            self.phrase(narration, phrase, where, 'reveal.phrase')
+            if 'duration' in reveal or 'ease' in reveal:
+                raise MovieError(f'{where}, reveal: a spoken reveal takes no duration or ease')
+        elif reveal['timing'] == 'even':
+            if not reveal.get('duration', 0) > 0:
+                raise MovieError(f'{where}, reveal.duration: an even reveal needs a duration')
+            if 'phrase' in reveal:
+                raise MovieError(f'{where}, reveal.phrase: an even reveal is not spoken')
+            self.ease(reveal.get('ease'), where, 'reveal.ease')
+        else:
+            raise MovieError(f"{where}, reveal.timing: '{reveal['timing']}' must be spoken or even")
+
+    ##########################################
+    # Shared rules
+
+    def ease(self, name, where, field):
+        if name is not None and name not in EASES:
+            raise MovieError(f"{where}, {field}: unknown easing '{name}'; use linear, smooth, in, "
+                             f"out or in-out")
 
     def phrase(self, narration, phrase, where, field):
-        found = _count(narration, phrase)
+        found = count_phrase(narration, phrase)
         if found == 0:
             raise MovieError(f"{where}, {field}: the phrase '{phrase}' is absent from the "
                              f"chapter's narration")
@@ -174,27 +504,28 @@ class _Semantics:
 
     @staticmethod
     def times(shot):
+        """Every time of the shot that may be an anchor, by its field."""
         yield 'until', shot['until']
-        for index, key in enumerate(shot['camera']):
-            yield f'camera[{index}].at', key['at']
-        for index, key in enumerate(shot['simulation'].get('keyframes', [])):
-            yield f'simulation.keyframes[{index}].at', key['at']
-        for field in ('overlays', 'annotations', 'highlight', 'pictures'):
-            for index, cue in enumerate(shot.get(field, [])):
-                yield f'{field}[{index}].from', cue['from']
-                yield f'{field}[{index}].to', cue['to']
-                for number, key in enumerate(cue.get('view', [])):
-                    yield f'{field}[{index}].view[{number}].at', key['at']
-        for index, cue in enumerate(shot.get('code', {}).get('typing', [])):
-            yield f'code.typing[{index}].from', cue['from']
-            yield f'code.typing[{index}].to', cue['to']
+        for index, key in enumerate(shot['model'].get('keys', [])):
+            yield f'model.keys[{index}].at', key['at']
+        for index, cue in enumerate(shot['cues']):
+            yield f'cues[{index}].at', cue['at']
+            if 'until' in cue:
+                yield f'cues[{index}].until', cue['until']
+            for number, action in enumerate(cue['actions']):
+                if 'until' in action:
+                    yield f'cues[{index}].actions[{number}].until', action['until']
+                for key_index, key in enumerate(action.get('view', [])):
+                    yield f'cues[{index}].actions[{number}].view[{key_index}].at', key['at']
 
     @staticmethod
-    def model_times(simulation):
-        yield 'simulation.from', simulation['from']
-        yield 'simulation.to', simulation['to']
-        for index, key in enumerate(simulation.get('keyframes', [])):
-            yield f'simulation.keyframes[{index}].seconds', key['seconds']
+    def model_times(model):
+        if 'keys' in model:
+            for index, key in enumerate(model['keys']):
+                yield f'model.keys[{index}].seconds', key['seconds']
+        else:
+            yield 'model.from', model['from']
+            yield 'model.to', model['to']
 
 
 def _paths(root):

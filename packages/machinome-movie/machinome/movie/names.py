@@ -14,7 +14,13 @@ class MovieError(Exception):
 
 _ATTRIBUTE = re.compile(r'[a-z0-9][a-z0-9_]*')
 
+#: Every id, kind, key and slot name in the document.
+SLUG = re.compile(r'[a-z][a-z0-9-]*')
+
 EASES = ('linear', 'smooth', 'in', 'out', 'in-out')
+
+#: What a stage module may be.
+MODULE_SUFFIXES = ('.ts', '.tsx', '.js', '.jsx')
 
 
 def slug(attribute, where, what):
@@ -26,6 +32,60 @@ def slug(attribute, where, what):
             f"a declaration is its name in the document, so it is written in "
             f"lower-case letters, digits and underscores")
     return attribute.replace('_', '-')
+
+
+def kind_of(class_name):
+    """The kind a class publishes: its name as a slug, a hyphen before each
+    capitalised word (`LeonardoSplit` is `leonardo-split`, `HTMLCard` is
+    `html-card`)."""
+    spaced = re.sub(r'([a-z0-9])([A-Z])', r'\1-\2', class_name)
+    spaced = re.sub(r'([A-Z]+)([A-Z][a-z])', r'\1-\2', spaced)
+    return spaced.replace('_', '-').lower()
+
+
+def json_value(value, where):
+    """`value` as JSON data, refused naming `where` if it is anything else:
+    text, a whole or finite number, true or false, null, a list or a mapping
+    with text keys, all the way down."""
+    if value is None or isinstance(value, (bool, str)):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if math.isfinite(value):
+            return value
+    elif isinstance(value, list):
+        return [json_value(item, where) for item in value]
+    elif isinstance(value, dict):
+        if all(isinstance(key, str) for key in value):
+            return {key: json_value(item, where) for key, item in value.items()}
+    raise MovieError(f"{where}: {value!r} is not a JSON value; a prop is text, a number, "
+                     f"True or False, None, a list or a dict of them")
+
+
+def prop_kind(value):
+    """The document's kind of a JSON value, or None for null."""
+    if isinstance(value, bool):
+        return 'boolean'
+    if isinstance(value, (int, float)):
+        return 'number'
+    if isinstance(value, str):
+        return 'string'
+    if isinstance(value, list):
+        return 'list'
+    if isinstance(value, dict):
+        return 'object'
+    return None
+
+
+def module_path(value, where):
+    """A stage module as written: a path ending in a TypeScript or
+    JavaScript extension."""
+    if not isinstance(value, str) or not value.endswith(MODULE_SUFFIXES):
+        raise MovieError(f"{where}: module {value!r} is not a stage module; name the "
+                         f"TypeScript or JavaScript file that draws it (.ts, .tsx, .js or .jsx), "
+                         f"relative to this file")
+    return value
 
 
 def ease(name, where):

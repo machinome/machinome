@@ -80,25 +80,26 @@
   },
   "chapters": [
     {
+      "elements": {
+        "view": {
+          "camera": "far",
+          "kind": "view"
+        }
+      },
       "id": "only",
       "narration": "A seesaw.",
       "shots": [
         {
-          "camera": [
-            {
-              "at": 0,
-              "preset": "far"
-            }
-          ],
-          "evidence": [],
-          "hiddenLayers": [],
+          "cues": [],
           "id": "whole",
-          "overlays": [],
-          "set": "paper",
-          "simulation": {
+          "model": {
             "from": 0,
             "to": 2
           },
+          "places": {
+            "stage": "view"
+          },
+          "set": "frame",
           "until": {
             "plus": 0.5,
             "spokenEnd": "seesaw"
@@ -109,7 +110,7 @@
   ],
   "clips": {},
   "evidence": {},
-  "format": "machinome-movie/0.1",
+  "format": "machinome-movie/0.2",
   "id": "minimal",
   "layers": {
     "ground": [
@@ -138,7 +139,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "6bf22d069229248c0a3208ab7a70900a295afa50",
+    "sourceRevision": "99219d36cd87e0ada0244a6c2e0eb532659cdda5",
     "timeMode": "normalized-loop"
   },
   "output": {
@@ -154,6 +155,17 @@
         22,
         24
       ]
+    }
+  },
+  "stage": {
+    "elements": {},
+    "modules": [],
+    "sets": {
+      "frame": {
+        "slots": [
+          "stage"
+        ]
+      }
     }
   },
   "status": "rehearsal",

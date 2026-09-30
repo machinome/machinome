@@ -1,11 +1,33 @@
-"""A tour of every construct the validation film uses, on the seesaw."""
+"""A tour of every construct the validation film uses, on the seesaw: the
+project's own template and card, drawn by stage.tsx beside this file."""
 
-from machinome_movie import (Arrow, Chapter, Credits, Cue, Dissolve, Evidence,
-    FadeIn, FadeOut, Format, Label, Movie, Narration, Narrator, Paper,
-    PaperSplit, Release, Reveal, Ring, Shot, Source, Title, View, Wipe)
+from machinome_movie import (Action, Chapter, Credits, Cue, Dissolve, Element, Evidence,
+    FadeIn, FadeOut, Format, Frame, Movie, Narration, Narrator, Picture, Release, Reveal,
+    Set, Shot, Slot, Source, Split, Style, Title, View, Wipe)
 
 from models.seesaw import Seesaw
 from videos.takes import Playground
+
+
+class Playbill(Set):
+    module = "stage.tsx"
+    series = "VIDEOMAKER · FIXTURES"
+    stage = Slot()
+    plate = Slot()
+    headline = Slot()
+    aside = Slot()
+
+
+class PlaybillSplit(Playbill):
+    left = Slot()
+    right = Slot()
+    headline = Slot()
+
+
+class Tally(Element):
+    module = "stage.tsx"
+    light = Action(item=str)
+
 
 fixture_voice = Narrator(provider="elevenlabs", model="eleven_v3", voice="fixture-voice",
                          label="Fixture", output="pcm_24000",
@@ -16,38 +38,41 @@ fixture_voice = Narrator(provider="elevenlabs", model="eleven_v3", voice="fixtur
 class Opening(Chapter):
     lines = Narration("A seesaw balances a beam on a stand. How does the weight tip it?")
     wide = View(Playground, camera=Playground.far)
-    hook = Shot(Paper, {Paper.stage: wide}, until=lines.spoken("How"), fade_in=FadeIn(1.0),
-                model=Playground.run(0, 4),
-                cues=[Cue(0, wide.move(Playground.near, ease="out", until=lines.spoken("How")))])
-    question = Shot(Paper, {Paper.stage: wide}, until=lines.end(plus=0.8),
-                    model=Playground.run(4, 8),
-                    cues=[Cue(0, Title("SEESAW", subtitle="One beam, one stand",
-                                       enter=0.6, leave=0.6), until=lines.end())])
+    card = Tally(items=["Balance", "Tip"])
+    title = Title("SEESAW", subtitle="One beam, one stand")
+    hook = Shot(Playbill, {Playbill.stage: wide, Playbill.aside: card}, until=lines.spoken("How"),
+                fade_in=FadeIn(1.0), model=Playground.run(0, 4),
+                cues=[Cue(0, wide.move(Playground.near, ease="out", until=lines.spoken("How"))),
+                      Cue(lines.spoken("balances"), card.light(item="Balance"), until=lines.spoken("How"))])
+    question = Shot(Playbill, {Playbill.stage: wide, Playbill.aside: card, Playbill.headline: title},
+                    until=lines.end(plus=0.8), model=Playground.run(4, 8),
+                    cues=[Cue(lines.spoken("tip it"), card.light(item="Tip"), until=lines.end(plus=0.8)),
+                          Cue(0, title.show(enter=0.6, leave=0.6), until=lines.end())])
 
 
 class Balance(Chapter):
-    lines = Narration("""A stand carries the plank. In the source, the beam rests
-                         on its pivot. The weight pushes one end down.""")
+    lines = Narration("""A stand carries the plank. In the source, the stand holds
+                         the beam. The weight pushes one end down.""")
     mill = View(Playground, camera=Playground.side, hide=[Playground.ground])
     code = Source.panel(Playground.declaration)
-    holds = Shot(Paper, {Paper.stage: mill}, until=lines.spoken("In the source"),
+    holds = Shot(Frame, {Frame.stage: mill}, until=lines.spoken("In the source"),
                  model=Playground.run(8, 10))
-    source = Shot(PaperSplit, {PaperSplit.left: code, PaperSplit.right: mill},
+    source = Shot(PlaybillSplit, {PlaybillSplit.left: code, PlaybillSplit.right: mill},
                   until=lines.spoken("The weight"), transition=Dissolve(0.6),
                   model=Playground.run(10, 12),
-                  cues=[Cue(0, code.type(through_line=24, over=1.2)),
-                        Cue(lines.spoken("beam"), mill.highlight(Seesaw.beam, others="ghost"),
-                            until=lines.spoken("pivot")),
-                        Cue(lines.spoken("pivot"), mill.highlight(Seesaw.beam.pivot, others="ghost"),
+                  cues=[Cue(0, code.type(through_line=24, over=0.8)),
+                        Cue(lines.spoken("the stand holds"), mill.highlight(Seesaw.stand, others="ghost"),
+                            until=lines.spoken("the beam")),
+                        Cue(lines.spoken("the beam"), mill.highlight(Seesaw.beam, others="ghost"),
                             until=lines.spoken("The weight")),
-                        Cue(lines.spoken("the beam rests on its pivot"),
-                            code.emphasize("beam"))])
-    push = Shot(Paper, {Paper.stage: mill}, until=lines.end(plus=0.6),
+                        Cue(lines.spoken("the stand holds the beam"),
+                            code.emphasize(("stand", "Stand"), "beam", hold=0.6))])
+    push = Shot(Split, {Split.left: code, Split.right: mill}, until=lines.end(plus=0.6),
                 transition=Wipe(0.6, direction="right"), model=Playground.run(12, 16),
                 cues=[Cue(0, mill.move(Playground.near, ease="smooth", until=lines.end())),
                       Cue(lines.spoken("The weight"),
-                          Arrow(Seesaw.beam.weight, "Weight", place=(0.2, 0.25),
-                                enter=("draw", 0.8), leave=("fade", 0.4)),
+                          mill.arrow(Seesaw.beam.weight, "Weight", place=(0.2, 0.25),
+                                     enter=("draw", 0.8), leave=("fade", 0.4)),
                           until=lines.end(plus=0.6))])
 
 
@@ -56,36 +81,36 @@ class Tip(Chapter):
                       "Up. Down. Explore the model.")
     close = View(Playground, camera=Playground.near, hide=[Playground.ground])
     wide = View(Playground, camera=Playground.far, hide=[Playground.ground, Playground.load])
-    rise = Shot(Paper, {Paper.stage: close}, until=lines.spoken("Up."),
+    heading = Title("Rise and fall")
+    beat = Title("Up. Down.")
+    plate = Picture(Playground.plate, fit="contain")
+    rise = Shot(Playbill, {Playbill.stage: close, Playbill.headline: heading}, until=lines.spoken("Up."),
                 model=Playground.keys({0: "rise", lines.spoken("On the way down"): ("top", "out"),
                                        lines.spoken("Up."): "fall"}),
-                cues=[Cue(0, Title("Rise", position="top"), until=lines.spoken("On the way down")),
+                cues=[Cue(0, heading.show(enter=0.4), until=lines.spoken("Up.")),
                       Cue(lines.spoken("the plank"),
-                          Ring(Seesaw.beam.plank, enter=("draw", 0.8), leave=("fade", 0.4)),
-                          Label(Seesaw.beam.plank, "Plank", offset=(0.12, -0.08),
-                                enter=("fade", 0.4), leave=("fade", 0.4)),
+                          close.ring(Seesaw.beam.plank, enter=("draw", 0.8), leave=("fade", 0.4)),
+                          close.label(Seesaw.beam.plank, "Plank", offset=(0.12, -0.08),
+                                      enter=("fade", 0.4), leave=("fade", 0.4)),
                           close.highlight(Seesaw.beam.plank, Seesaw.beam.weight, others="ghost"),
                           until=lines.spoken("On the way down")),
-                      Cue(lines.spoken("On the way down"), Title("Fall", position="top"),
-                          until=lines.spoken("Up.")),
                       Cue(lines.spoken("the stand"),
-                          Ring(Seesaw.stand, enter=("draw", 0.8)),
-                          Label(Seesaw.stand, "Stand", offset=(0.12, 0.08), enter=("fade", 0.4)),
+                          close.ring(Seesaw.stand, enter=("draw", 0.8)),
+                          close.label(Seesaw.stand, "Stand", offset=(0.12, 0.08), enter=("fade", 0.4)),
                           close.highlight(Seesaw.stand, others="dim"),
                           until=lines.spoken("Up."))])
-    rhythm = Shot(Paper, {Paper.stage: close}, until=lines.spoken("Explore"),
+    rhythm = Shot(Playbill, {Playbill.stage: close, Playbill.headline: beat}, until=lines.spoken("Explore"),
                   transition=Dissolve(0.6), model=Playground.run(16, 17),
                   cues=[Cue(0, close.move(Playground.rolled, ease="smooth", until=lines.spoken("Explore"))),
-                        Cue(0, Title("Up. Down.", position="top", reveal=Reveal.spoken()),
-                            until=lines.spoken("Explore"))])
-    still = Shot(Paper, {Paper.stage: close}, until=lines.spoken("the model"),
+                        Cue(0, beat.show(reveal=Reveal.spoken()), until=lines.spoken("Explore"))])
+    still = Shot(Playbill, {Playbill.stage: close, Playbill.plate: plate}, until=lines.spoken("the model"),
                  model=Playground.run(17, 18),
-                 cues=[Cue(0, Playground.plate.show(area="frame", fit="contain", enter=0.5, leave=0.5,
-                                                    view=[(0, (0.5, 0.5), 1.0),
-                                                          (lines.spoken("the model", plus=-0.2),
-                                                           (0.5, 0.42), 1.4, "in-out")]),
+                 cues=[Cue(0, plate.show(enter=0.5, leave=0.5,
+                                         view=[(0, (0.5, 0.5), 1.0),
+                                               (lines.spoken("the model", plus=-0.2), (0.5, 0.42), 1.4,
+                                                "in-out")]),
                            until=lines.spoken("the model"))])
-    invitation = Shot(Paper, {Paper.stage: wide}, until=lines.end(plus=1.2),
+    invitation = Shot(Frame, {Frame.stage: wide}, until=lines.end(plus=1.2),
                       transition=Dissolve(0.6), fade_out=FadeOut(1.2), model=Playground.run(18, 19),
                       cues=[Cue(0, wide.highlight(Seesaw.beam, others="dim"), until=lines.end(plus=1.2))])
 
@@ -97,8 +122,8 @@ class Tour(Movie):
     learning_goal = "Exercise every construct the validation film uses."
     format = Format(1280, 720, fps=30)
     narrator = fixture_voice
-    style = Paper.style(background="#faf7ef", foreground="#222222", accent="#237c86",
-                        font="DejaVu Sans, sans-serif", safe_inset=0.08)
+    style = Style(background="#faf7ef", foreground="#222222", accent="#237c86",
+                  font="DejaVu Sans, sans-serif", safe_inset=0.08)
     evidence = Evidence(model="../../models/seesaw.py")
     credits = Credits(project="Videomaker fixtures", creator="The Videomaker test suite",
                       copyright="No copyright is claimed for this fixture",

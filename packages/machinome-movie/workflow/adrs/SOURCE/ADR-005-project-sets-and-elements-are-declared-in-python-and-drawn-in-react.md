@@ -1,6 +1,6 @@
 # ADR-005: Project sets and elements are declared in Python and drawn in React
 
-Status: Proposed (OpenSpec change `declarative-stage`, 30 September 2026)
+Status: Accepted (OpenSpec change `declarative-stage`, 30 September 2026)
 
 Numbered 005 because ADR-003 and ADR-004 are taken by the parallel cycles of
 the react-stage campaign; a merge that reorders them renumbers.

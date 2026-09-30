@@ -1,0 +1,916 @@
+{
+  "name": "emphasis-anchor-not-spoken",
+  "document": {
+    "audio": {
+      "direction": "Plain and unhurried.",
+      "model": "eleven_v3",
+      "outputFormat": "pcm_24000",
+      "provider": "elevenlabs",
+      "voice": "fixture-voice",
+      "voiceLabel": "Fixture",
+      "voiceSettings": {
+        "similarity_boost": 0.75,
+        "stability": 0.5
+      }
+    },
+    "cameras": {
+      "far": {
+        "fov": 37,
+        "position": [
+          400,
+          -600,
+          300
+        ],
+        "target": [
+          0,
+          0,
+          50
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "near": {
+        "fov": 37,
+        "position": [
+          200,
+          -300,
+          150
+        ],
+        "target": [
+          0,
+          0,
+          50
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "rolled": {
+        "fov": 42,
+        "position": [
+          -150,
+          250,
+          120
+        ],
+        "target": [
+          0,
+          0,
+          60
+        ],
+        "up": [
+          0.15,
+          0,
+          1
+        ]
+      },
+      "side": {
+        "fov": 30,
+        "position": [
+          0,
+          -500,
+          100
+        ],
+        "target": [
+          0,
+          0,
+          50
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "chapters": [
+      {
+        "elements": {
+          "card": {
+            "kind": "tally",
+            "props": {
+              "items": [
+                "Balance",
+                "Tip"
+              ]
+            }
+          },
+          "title": {
+            "kind": "title",
+            "subtitle": "One beam, one stand",
+            "text": "SEESAW"
+          },
+          "wide": {
+            "camera": "far",
+            "kind": "view"
+          }
+        },
+        "id": "opening",
+        "narration": "A seesaw balances a beam on a stand. How does the weight tip it?",
+        "shots": [
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "move",
+                    "camera": "near",
+                    "ease": "out",
+                    "element": "wide",
+                    "until": {
+                      "spoken": "How"
+                    }
+                  }
+                ],
+                "at": 0
+              },
+              {
+                "actions": [
+                  {
+                    "action": "light",
+                    "element": "card",
+                    "params": {
+                      "item": "Balance"
+                    }
+                  }
+                ],
+                "at": {
+                  "spoken": "balances"
+                },
+                "until": {
+                  "spoken": "How"
+                }
+              }
+            ],
+            "fadeIn": {
+              "duration": 1
+            },
+            "id": "hook",
+            "model": {
+              "from": 0,
+              "to": 4
+            },
+            "places": {
+              "aside": "card",
+              "stage": "wide"
+            },
+            "set": "playbill",
+            "until": {
+              "spoken": "How"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "light",
+                    "element": "card",
+                    "params": {
+                      "item": "Tip"
+                    }
+                  }
+                ],
+                "at": {
+                  "spoken": "tip it"
+                },
+                "until": {
+                  "plus": 0.8,
+                  "spokenEnd": "it"
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "show",
+                    "element": "title",
+                    "enter": {
+                      "duration": 0.6,
+                      "kind": "fade"
+                    },
+                    "leave": {
+                      "duration": 0.6,
+                      "kind": "fade"
+                    }
+                  }
+                ],
+                "at": 0,
+                "until": {
+                  "spokenEnd": "it"
+                }
+              }
+            ],
+            "id": "question",
+            "model": {
+              "from": 4,
+              "to": 8
+            },
+            "places": {
+              "aside": "card",
+              "headline": "title",
+              "stage": "wide"
+            },
+            "set": "playbill",
+            "until": {
+              "plus": 0.8,
+              "spokenEnd": "it"
+            }
+          }
+        ]
+      },
+      {
+        "elements": {
+          "code": {
+            "kind": "source",
+            "source": "declaration"
+          },
+          "mill": {
+            "camera": "side",
+            "hide": [
+              "ground"
+            ],
+            "kind": "view"
+          }
+        },
+        "id": "balance",
+        "narration": "A stand carries the plank. In the source, the stand holds the beam. The weight pushes one end down.",
+        "shots": [
+          {
+            "cues": [],
+            "id": "holds",
+            "model": {
+              "from": 8,
+              "to": 10
+            },
+            "places": {
+              "stage": "mill"
+            },
+            "set": "frame",
+            "until": {
+              "spoken": "In the source"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "type",
+                    "element": "code",
+                    "over": 0.8,
+                    "throughLine": 24
+                  }
+                ],
+                "at": 0
+              },
+              {
+                "actions": [
+                  {
+                    "action": "highlight",
+                    "element": "mill",
+                    "others": "ghost",
+                    "parts": [
+                      [
+                        "Stand"
+                      ]
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "the stand holds"
+                },
+                "until": {
+                  "spoken": "the beam"
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "highlight",
+                    "element": "mill",
+                    "others": "ghost",
+                    "parts": [
+                      [
+                        "Beam"
+                      ]
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "the beam"
+                },
+                "until": {
+                  "spoken": "The weight"
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "emphasize",
+                    "element": "code",
+                    "hold": 0.6,
+                    "words": [
+                      {
+                        "spoken": "stand",
+                        "token": "Stand"
+                      },
+                      {
+                        "spoken": "beam",
+                        "token": "beam"
+                      }
+                    ]
+                  }
+                ],
+                "at": 1.5
+              }
+            ],
+            "id": "source",
+            "model": {
+              "from": 10,
+              "to": 12
+            },
+            "places": {
+              "left": "code",
+              "right": "mill"
+            },
+            "set": "playbill-split",
+            "transition": {
+              "duration": 0.6,
+              "kind": "dissolve"
+            },
+            "until": {
+              "spoken": "The weight"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "move",
+                    "camera": "near",
+                    "ease": "smooth",
+                    "element": "mill",
+                    "until": {
+                      "spokenEnd": "down"
+                    }
+                  }
+                ],
+                "at": 0
+              },
+              {
+                "actions": [
+                  {
+                    "action": "arrow",
+                    "element": "mill",
+                    "enter": {
+                      "duration": 0.8,
+                      "kind": "draw"
+                    },
+                    "leave": {
+                      "duration": 0.4,
+                      "kind": "fade"
+                    },
+                    "part": [
+                      "Beam",
+                      "Weight"
+                    ],
+                    "place": [
+                      0.2,
+                      0.25
+                    ],
+                    "text": "Weight"
+                  }
+                ],
+                "at": {
+                  "spoken": "The weight"
+                },
+                "until": {
+                  "plus": 0.6,
+                  "spokenEnd": "down"
+                }
+              }
+            ],
+            "id": "push",
+            "model": {
+              "from": 12,
+              "to": 16
+            },
+            "places": {
+              "left": "code",
+              "right": "mill"
+            },
+            "set": "split",
+            "transition": {
+              "direction": "right",
+              "duration": 0.6,
+              "kind": "wipe"
+            },
+            "until": {
+              "plus": 0.6,
+              "spokenEnd": "down"
+            }
+          }
+        ]
+      },
+      {
+        "elements": {
+          "beat": {
+            "kind": "title",
+            "text": "Up. Down."
+          },
+          "close": {
+            "camera": "near",
+            "hide": [
+              "ground"
+            ],
+            "kind": "view"
+          },
+          "heading": {
+            "kind": "title",
+            "text": "Rise and fall"
+          },
+          "plate": {
+            "fit": "contain",
+            "kind": "picture",
+            "still": "plate"
+          },
+          "wide": {
+            "camera": "far",
+            "hide": [
+              "ground",
+              "load"
+            ],
+            "kind": "view"
+          }
+        },
+        "id": "tip",
+        "narration": "Watch the plank rise and fall. On the way down, the stand takes the load. Up. Down. Explore the model.",
+        "shots": [
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "show",
+                    "element": "heading",
+                    "enter": {
+                      "duration": 0.4,
+                      "kind": "fade"
+                    }
+                  }
+                ],
+                "at": 0,
+                "until": {
+                  "spoken": "Up."
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "ring",
+                    "element": "close",
+                    "enter": {
+                      "duration": 0.8,
+                      "kind": "draw"
+                    },
+                    "leave": {
+                      "duration": 0.4,
+                      "kind": "fade"
+                    },
+                    "part": [
+                      "Beam",
+                      "Plank"
+                    ]
+                  },
+                  {
+                    "action": "label",
+                    "element": "close",
+                    "enter": {
+                      "duration": 0.4,
+                      "kind": "fade"
+                    },
+                    "leave": {
+                      "duration": 0.4,
+                      "kind": "fade"
+                    },
+                    "offset": [
+                      0.12,
+                      -0.08
+                    ],
+                    "part": [
+                      "Beam",
+                      "Plank"
+                    ],
+                    "text": "Plank"
+                  },
+                  {
+                    "action": "highlight",
+                    "element": "close",
+                    "others": "ghost",
+                    "parts": [
+                      [
+                        "Beam",
+                        "Plank"
+                      ],
+                      [
+                        "Beam",
+                        "Weight"
+                      ]
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "the plank"
+                },
+                "until": {
+                  "spoken": "On the way down"
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "ring",
+                    "element": "close",
+                    "enter": {
+                      "duration": 0.8,
+                      "kind": "draw"
+                    },
+                    "part": [
+                      "Stand"
+                    ]
+                  },
+                  {
+                    "action": "label",
+                    "element": "close",
+                    "enter": {
+                      "duration": 0.4,
+                      "kind": "fade"
+                    },
+                    "offset": [
+                      0.12,
+                      0.08
+                    ],
+                    "part": [
+                      "Stand"
+                    ],
+                    "text": "Stand"
+                  },
+                  {
+                    "action": "highlight",
+                    "element": "close",
+                    "others": "dim",
+                    "parts": [
+                      [
+                        "Stand"
+                      ]
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "the stand"
+                },
+                "until": {
+                  "spoken": "Up."
+                }
+              }
+            ],
+            "id": "rise",
+            "model": {
+              "keys": [
+                {
+                  "at": 0,
+                  "seconds": {
+                    "mark": "rise"
+                  }
+                },
+                {
+                  "at": {
+                    "spoken": "On the way down"
+                  },
+                  "ease": "out",
+                  "seconds": {
+                    "mark": "top"
+                  }
+                },
+                {
+                  "at": {
+                    "spoken": "Up."
+                  },
+                  "seconds": {
+                    "mark": "fall"
+                  }
+                }
+              ]
+            },
+            "places": {
+              "headline": "heading",
+              "stage": "close"
+            },
+            "set": "playbill",
+            "until": {
+              "spoken": "Up."
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "move",
+                    "camera": "rolled",
+                    "ease": "smooth",
+                    "element": "close",
+                    "until": {
+                      "spoken": "Explore"
+                    }
+                  }
+                ],
+                "at": 0
+              },
+              {
+                "actions": [
+                  {
+                    "action": "show",
+                    "element": "beat",
+                    "reveal": {
+                      "timing": "spoken"
+                    }
+                  }
+                ],
+                "at": 0,
+                "until": {
+                  "spoken": "Explore"
+                }
+              }
+            ],
+            "id": "rhythm",
+            "model": {
+              "from": 16,
+              "to": 17
+            },
+            "places": {
+              "headline": "beat",
+              "stage": "close"
+            },
+            "set": "playbill",
+            "transition": {
+              "duration": 0.6,
+              "kind": "dissolve"
+            },
+            "until": {
+              "spoken": "Explore"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "show",
+                    "element": "plate",
+                    "enter": {
+                      "duration": 0.5,
+                      "kind": "fade"
+                    },
+                    "leave": {
+                      "duration": 0.5,
+                      "kind": "fade"
+                    },
+                    "view": [
+                      {
+                        "at": 0,
+                        "center": [
+                          0.5,
+                          0.5
+                        ],
+                        "zoom": 1
+                      },
+                      {
+                        "at": {
+                          "plus": -0.2,
+                          "spoken": "the model"
+                        },
+                        "center": [
+                          0.5,
+                          0.42
+                        ],
+                        "ease": "in-out",
+                        "zoom": 1.4
+                      }
+                    ]
+                  }
+                ],
+                "at": 0,
+                "until": {
+                  "spoken": "the model"
+                }
+              }
+            ],
+            "id": "still",
+            "model": {
+              "from": 17,
+              "to": 18
+            },
+            "places": {
+              "plate": "plate",
+              "stage": "close"
+            },
+            "set": "playbill",
+            "until": {
+              "spoken": "the model"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "highlight",
+                    "element": "wide",
+                    "others": "dim",
+                    "parts": [
+                      [
+                        "Beam"
+                      ]
+                    ]
+                  }
+                ],
+                "at": 0,
+                "until": {
+                  "plus": 1.2,
+                  "spokenEnd": "model"
+                }
+              }
+            ],
+            "fadeOut": {
+              "duration": 1.2
+            },
+            "id": "invitation",
+            "model": {
+              "from": 18,
+              "to": 19
+            },
+            "places": {
+              "stage": "wide"
+            },
+            "set": "frame",
+            "transition": {
+              "duration": 0.6,
+              "kind": "dissolve"
+            },
+            "until": {
+              "plus": 1.2,
+              "spokenEnd": "model"
+            }
+          }
+        ]
+      }
+    ],
+    "clips": {},
+    "credits": {
+      "copyright": "No copyright is claimed for this fixture",
+      "creator": "The Videomaker test suite",
+      "license": "None",
+      "licenseFile": "../../NOTICE",
+      "project": "Videomaker fixtures"
+    },
+    "evidence": {
+      "model": "../../models/seesaw.py"
+    },
+    "format": "machinome-movie/0.2",
+    "id": "tour",
+    "layers": {
+      "ground": [
+        [
+          "Base"
+        ]
+      ],
+      "load": [
+        [
+          "Beam",
+          "Plank"
+        ],
+        [
+          "Beam",
+          "Weight"
+        ]
+      ]
+    },
+    "learningGoal": "Exercise every construct the validation film uses.",
+    "marks": {
+      "fall": 15,
+      "rise": 5,
+      "top": 10
+    },
+    "model": {
+      "expectedDurationSeconds": 20,
+      "manifest": "../../export/seesaw/manifest.json",
+      "readiness": "Fixture export written by hand; nothing is simulated.",
+      "sourceRevision": "99219d36cd87e0ada0244a6c2e0eb532659cdda5",
+      "timeMode": "normalized-loop"
+    },
+    "output": {
+      "fps": 30,
+      "height": 720,
+      "width": 1280
+    },
+    "release": {
+      "descriptionTemplate": "description.md",
+      "simulationUrl": null,
+      "sourceUrl": null
+    },
+    "root": "../../python/tests/fixtures/project/videos/tour",
+    "series": "VIDEOMAKER · FIXTURES",
+    "sourceCode": {
+      "declaration": {
+        "file": "../../models/seesaw.py",
+        "lines": [
+          22,
+          24
+        ]
+      }
+    },
+    "stage": {
+      "elements": {
+        "tally": {
+          "actions": {
+            "light": {
+              "item": "string"
+            }
+          },
+          "module": "stage.tsx",
+          "props": {
+            "items": "list"
+          }
+        }
+      },
+      "modules": [
+        "stage.tsx"
+      ],
+      "sets": {
+        "frame": {
+          "slots": [
+            "stage"
+          ]
+        },
+        "playbill": {
+          "module": "stage.tsx",
+          "props": {
+            "series": "VIDEOMAKER · FIXTURES"
+          },
+          "slots": [
+            "stage",
+            "plate",
+            "headline",
+            "aside"
+          ]
+        },
+        "playbill-split": {
+          "base": "playbill",
+          "module": "stage.tsx",
+          "props": {},
+          "slots": [
+            "left",
+            "right",
+            "headline"
+          ]
+        },
+        "split": {
+          "slots": [
+            "left",
+            "right"
+          ]
+        }
+      }
+    },
+    "status": "rehearsal",
+    "stills": {
+      "plate": {
+        "credit": "Fixture drawing of a seesaw",
+        "file": "../../media/plate.png",
+        "rights": "Made for the Videomaker test suite",
+        "upscale": 1.5
+      }
+    },
+    "style": {
+      "accent": "#237c86",
+      "background": "#faf7ef",
+      "fontFamily": "DejaVu Sans, sans-serif",
+      "foreground": "#222222",
+      "safeInsetFraction": 0.08
+    },
+    "title": "Tour"
+  },
+  "must_mention": [
+    "balance",
+    "source",
+    "cues[3].at",
+    "emphasize",
+    "spoken"
+  ]
+}

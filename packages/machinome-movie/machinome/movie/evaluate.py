@@ -1,21 +1,22 @@
-"""Evaluate a movie, once and purely, to the movie document.
+"""Evaluate a movie, once and purely, to the machinome-movie/0.2 document.
 
-The only files read are the export's `manifest.json` and
-`source-revision.txt`. Every path in the document is relative to `root`,
-the movie's directory as seen from where the document is written.
+The only files opened are the export's `manifest.json` and
+`source-revision.txt` and the source files of the excerpts an emphasis
+lights; the stage modules are checked to exist, not read. Every path in the
+document is relative to `root`, the movie's directory as seen from where the
+document is written.
 """
 
 import json
 import math
 import os
 
-from .document import _paths, check_document
+from .document import FORMAT, _paths, check_document
 from .movie import Credits, Evidence, Format, Movie, Narrator, Release
-from .names import MovieError, declaring_class, module_directory
+from .names import MovieError, declaring_class, module_directory, prop_kind
 from .stage import Style
 from .take import Camera, Layer, Loop, Source, Still
-
-FORMAT = 'machinome-movie/0.1'
+from .text import count_token
 
 
 def evaluate(movie, *, name, out=None):
@@ -51,6 +52,7 @@ def evaluate(movie, *, name, out=None):
     for layer_name, parts in loop._layer_paths.items():
         for written, names in parts:
             _check_path(paths, f'{loop.__name__}.{layer_name}', written, names, relative(export))
+    excerpts = _check_tokens(chapters)
 
     found = declared['found']
     document = {'format': FORMAT, 'id': name.replace('_', '-'), **declared['text'],
@@ -74,8 +76,10 @@ def evaluate(movie, *, name, out=None):
                            for s in loop.declarations(Still).values()},
                 'clips': {},
                 'evidence': {},
+                'stage': _stage(movie, chapters, directory, relative),
                 'chapters': [{'id': chapter_id, 'narration': compiled['narration'],
-                              'shots': compiled['shots']} for chapter_id, compiled in chapters]}
+                              'elements': compiled['elements'], 'shots': compiled['shots']}
+                             for chapter_id, compiled in chapters]}
     style = found[Style]
     if style is not None:
         document['style'] = style.document()
@@ -98,7 +102,8 @@ def evaluate(movie, *, name, out=None):
                                'sourceUrl': release.source_url,
                                'descriptionTemplate': relative(os.path.join(base, release.description))}
     document = _normal(document)
-    check_document(document, manifest)
+    check_document(document, manifest,
+                   sources={source.document_name(): text for source, text in excerpts.items()})
     return document
 
 
@@ -123,6 +128,126 @@ def _normal(value):
         return int(value)
     return value
 
+
+##############################################
+# The stage block
+
+def _stage(movie, chapters, directory, relative):
+    """The stage block: every set kind a shot uses and the project sets they
+    derive from, every project element kind a chapter declares, and their
+    modules."""
+    where = f'Movie {movie.__name__}'
+    project = _project_directory(directory)
+    used = []
+    for _, compiled in chapters:
+        for chosen in compiled['sets']:
+            # A project set's base is listed too, so `base` always names a
+            # kind of this table or one the tool ships.
+            while chosen is not None and chosen not in used:
+                used.append(chosen)
+                base = chosen.base() if chosen.project() else None
+                chosen = base if base is not None and base.project() else None
+    modules = set()
+
+    def module(declaration, what):
+        path = os.path.normpath(os.path.join(module_directory(declaration.module_owner()),
+                                             declaration.module))
+        _check_module(path, f'{where}: {what} {declaration.__name__}', declaration.module, project)
+        written = relative(path)
+        modules.add(written)
+        return written
+
+    sets = {}
+    for chosen in used:
+        if chosen.kind in sets:
+            other = next(c for c in used if c.kind == chosen.kind and c is not chosen)
+            raise MovieError(f'{where}: the sets {other.__qualname__} and {chosen.__qualname__} '
+                             f'both have the kind {chosen.kind}; a kind names one set')
+        entry = {'slots': list(chosen.slots())}
+        if chosen.project():
+            entry['module'] = module(chosen, 'set')
+            entry['props'] = chosen.props()
+            base = chosen.base()
+            if base is not None:
+                entry['base'] = base.kind
+        sets[chosen.kind] = entry
+    elements, classes = {}, {}
+    for _, compiled in chapters:
+        for key, element in compiled['project']:
+            kind = type(element)
+            if kind.kind in elements:
+                if classes[kind.kind] is not kind:
+                    raise MovieError(f'{where}: the elements {classes[kind.kind].__qualname__} and '
+                                     f'{kind.__qualname__} both have the kind {kind.kind}; a kind '
+                                     f'names one element')
+                continue
+            classes[kind.kind] = kind
+            elements[kind.kind] = {'module': module(kind, 'element'),
+                                   'props': {name: prop_kind(value) for name, value in element.props.items()},
+                                   'actions': kind.actions()}
+    return {'modules': sorted(modules), 'sets': sets, 'elements': elements}
+
+
+def _project_directory(directory):
+    """The project a movie belongs to: the nearest directory at or above the
+    movie's that holds a pyproject.toml, or None."""
+    here = directory
+    while True:
+        if os.path.isfile(os.path.join(here, 'pyproject.toml')):
+            return here
+        parent = os.path.dirname(here)
+        if parent == here:
+            return None
+        here = parent
+
+
+def _check_module(path, where, written, project):
+    if project is not None and os.path.commonpath([project, path]) != project:
+        raise MovieError(f'{where}: its module {written} resolves to {path}, outside the project '
+                         f'{project}; a stage module is the project\'s own file')
+    if not os.path.isfile(path):
+        raise MovieError(f'{where}: its module {written} does not exist (looked for {path})')
+
+
+##############################################
+# Tokens
+
+def _check_tokens(chapters):
+    """Refuse a token absent from or repeated in its excerpt. Returns the
+    excerpts read, source -> text."""
+    excerpts = {}
+    for _, compiled in chapters:
+        for here, source, token in compiled['tokens']:
+            if source not in excerpts:
+                excerpts[source] = _excerpt(source, here)
+            found = count_token(excerpts[source], token)
+            if found != 1:
+                state = 'absent from' if found == 0 else 'ambiguous in'
+                first, last = source.lines
+                raise MovieError(f"{here}: emphasize: the token '{token}' is {state} the excerpt "
+                                 f"{source.document_name()} ({source.file}, lines {first} to {last}; "
+                                 f"found {found} times); a token is a whole identifier, dots "
+                                 f"included, and occurs once")
+    return excerpts
+
+
+def _excerpt(source, where):
+    path = _declared_path(source)
+    first, last = source.lines
+    try:
+        with open(path, encoding='utf-8') as stream:
+            lines = stream.read().splitlines(True)
+    except FileNotFoundError:
+        raise MovieError(f'{where}: the excerpt {source.document_name()} names {source.file}, '
+                         f'which does not exist (looked for {path})')
+    if last > len(lines):
+        raise MovieError(f'{where}: the excerpt {source.document_name()} names lines {first} to '
+                         f'{last} of {source.file}, which has {len(lines)}')
+    return ''.join(lines[first - 1:last])
+
+
+##############################################
+# The rest
 
 def _attribute_of(movie, value):
     for klass in movie.__mro__:

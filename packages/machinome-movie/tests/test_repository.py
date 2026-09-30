@@ -17,14 +17,28 @@ import pytest
 
 from machinome_movie import MovieError, dumps, evaluate, load_movie
 
-from conftest import FIXTURES, PROJECT, REPOSITORY, SCHEMA
+from conftest import FIXTURES, PROJECT, PYTHON, REPOSITORY, SCHEMA
 
 REGISTERED = json.loads((FIXTURES / 'manifest.json').read_text())['documents']
 
 
 def test_the_package_ships_the_repository_schema():
-    packaged = resources.files('machinome_movie').joinpath('machinome-movie-0.1.json')
+    packaged = resources.files('machinome_movie').joinpath('machinome-movie-0.2.json')
     assert packaged.read_bytes() == SCHEMA.read_bytes()
+    assert json.loads(SCHEMA.read_text())['title'] == 'machinome-movie/0.2'
+
+
+def test_nothing_of_0_1_is_left_in_the_package_the_manual_or_the_fixtures():
+    # The pilot's ruling: 0.1 was a step, not a protocol; nothing of it is kept.
+    assert not (REPOSITORY / 'schema' / 'machinome-movie-0.1.json').exists()
+    places = [*(PYTHON / 'machinome_movie').iterdir(), PYTHON / 'README.md', PYTHON / 'pyproject.toml',
+              REPOSITORY / 'docs' / 'declaring-a-movie.md', FIXTURES / 'README.md', FIXTURES / 'manifest.json',
+              *(FIXTURES / 'documents').glob('*.json'), *(FIXTURES / 'invalid').glob('*.json')]
+    for path in places:
+        if path.is_file() and path.suffix in ('.py', '.md', '.json', '.toml'):
+            text = path.read_text(encoding='utf-8')
+            for stale in ('machinome-movie/0.1', 'machinome-movie-0.1'):
+                assert stale not in text, f'{path.relative_to(REPOSITORY)} still names {stale}'
 
 
 def test_the_schema_is_a_2020_12_schema():
@@ -84,6 +98,8 @@ PAGE = REPOSITORY / 'docs' / 'declaring-a-movie.md'
 def test_the_manual_page_exists_and_is_linked():
     assert PAGE.is_file()
     assert '](docs/declaring-a-movie.md)' in (REPOSITORY / 'README.md').read_text()
+    text = PAGE.read_text()
+    assert '](movie-document.md)' in text and 'machinome-movie/0.2' in text
 
 
 def test_the_manual_names_no_project_or_checkout():
@@ -107,3 +123,4 @@ def test_the_changelog_has_an_unreleased_section_with_this_change():
     text = (REPOSITORY / 'CHANGELOG.md').read_text()
     assert '## Unreleased' in text
     assert 'machinome-movie' in text
+    assert '(`declarative-stage`' in text

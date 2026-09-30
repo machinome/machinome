@@ -55,3 +55,10 @@ back into Python, and Python emits no markup.
   decisions. A project's set or element is refused until the stage exists.
 - The Python package and the Node renderer share one schema and one set of
   fixtures, so each side's suite fails when they drift.
+
+## Amendment (30 September 2026, `declarative-stage`)
+
+The consequence that a project's set or element is refused until the stage
+exists no longer holds: [ADR-005](ADR-005-project-sets-and-elements-are-declared-in-python-and-drawn-in-react.md)
+lets a project declare both, drawn by its stage module, and the document the
+tree evaluates to is `machinome-movie/0.2`. The decision above stands.

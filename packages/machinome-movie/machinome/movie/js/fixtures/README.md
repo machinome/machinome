@@ -5,18 +5,22 @@ sides of the movie document cannot drift from each other. A fixture is added
 once and paid for twice: a document one side does not handle fails that
 side's suite.
 
-- `documents/<name>.json` — valid `machinome-movie/0.1` documents. The Python
+- `documents/<name>.json` — valid `machinome-movie/0.2` documents. The Python
   suite asserts that evaluating the fixture movie of the same name (declared
   under that name in the fixture project's `[tool.machinome.movies]`, at
   `python/tests/fixtures/project/videos/<name>/movie.py`) yields exactly this
-  document, written for this file (`root` points back at the movie; compare the
-  parsed JSON; files are written with two-space indentation and a final
-  newline). The Node suite asserts that it validates against
-  `schema/machinome-movie-0.1.json`, passes the static checks, resolves
-  against its takes to exactly `resolved/<name>.json`, twice identically,
-  with every anchor on the frame grid. A document written by hand on the Node
-  side (`bare`, `two-chapters`) has no fixture movie; the Python suite asserts
-  instead that `check_document` accepts it.
+  document, written for this file (`root` points back at the movie; files are
+  written with two-space indentation and a final newline). The Node suite
+  asserts that it validates against `schema/machinome-movie-0.2.json`, passes
+  the static checks, resolves against its takes to exactly
+  `resolved/<name>.json`, twice identically, with every anchor on the frame
+  grid. `minimal` is one shot on the shipped `frame`; `tour` uses the fixture
+  project's own sets (`playbill`, `playbill-split`, drawn by
+  `videos/tour/stage.tsx`) and element (`tally`), the shipped `frame` and
+  `split`, and every shipped element and action the validation film uses. A
+  document written by hand on the Node side is named `node-<name>.json` and
+  has no fixture movie; the Python suite asserts instead that
+  `check_document` accepts it.
 - `takes/<name>/<chapter-id>.json` — the speech double: one per chapter whose
   anchors need a take (a chapter without spoken anchors may have one too). Its
   shape is the part of the speech cache record the resolver reads:
@@ -37,18 +41,24 @@ side's suite.
   `duration` at `_build/audio/<chapter-id>-<key16>.wav` beside a record with
   its checksum. A registered document whose anchors need a take this
   directory lacks fails the Node suite naming the file to add.
-- `resolved/<name>.json` — the numeric episode the Node resolver produces
-  from `documents/<name>.json` with `takes/<name>/`: format 0.4 shots with
-  `start` and `end`, and `chapters`. Pinned by the Node suite, reviewed by
-  hand when written; the Python suite does not read it.
+- `resolved/<name>.json` — the resolved document the Node resolver produces
+  from `documents/<name>.json` with `takes/<name>/` (see "Resolution" in
+  `docs/movie-document.md`). Pinned by the Node suite, reviewed by hand when
+  written; the Python suite does not read it.
 - `invalid/<name>.json` — `{"name", "document", "must_mention": [...]}`: a
   document that must be refused, with the substrings the refusal names.
   Both suites iterate every file here. Each is refusable without a take:
-  format, schema, a static rule (sets, fades, literal `until`, phrases in the
-  written narration, marks, camera presets, the last model keyframe at the
-  shot's `until`, duplicate ids), or the parts it names checked against its
-  export when the export is in the repository. The document's `root`
-  resolves from the fixture's own file, as a document's does from its file.
+  format, schema, the stage block (modules, shipped sets and their slots,
+  bases, kinds the tool ships), a chapter's elements (kinds, fields, cameras,
+  layers, excerpts, stills, a project element's props), a shot's set and
+  placements, fades, a literal `until`, phrases in the written narration,
+  marks, model keys, joins and easings, a cue's actions (placed elements,
+  actions a kind has, their fields and parameters, spans with an `until`,
+  entrances), typing and completion, emphasis anchors and spoken words, a
+  spoken reveal, duplicate ids; and, read through the document's `root`, the
+  parts it names checked against its export and the tokens it emphasises
+  checked against its excerpts. Each is one mutation of an evaluated fixture
+  document, rooted at the fixture project's movie from this directory.
 - `scripts/pin-resolved.mjs NAME...` writes `resolved/<name>.json` from the
   document and its takes, for a person to review before committing; never
   regenerate a pin to make a failing test pass.
@@ -61,8 +71,10 @@ so a new fixture is registered once and missed by neither side.
 `python/tests/fixtures/project/` is a tiny machinome project: a seesaw model
 (`models/seesaw.py`), a hand-written posed export (`export/seesaw/`), a still
 (`media/plate.png`), the take every fixture movie films (`videos/takes.py`)
-and the movies. Its `export/seesaw/source-revision.txt` is the commit of the
-project made this way, so that source pinned to it can be checked:
+and the movies, with the tour's stage module (`videos/tour/stage.tsx`): a
+placeholder whose path the Python suite checks and whose components are the
+stage's to write. Its `export/seesaw/source-revision.txt` is the commit of
+the project made this way, so that source pinned to it can be checked:
 
 1. copy every file of the project except `export/`, `_build/` and
    `__pycache__/` into an empty directory;
@@ -81,32 +93,18 @@ The substrings are locations, vocabulary and field names, chosen to be stable
 across languages, never a runtime's type names, quoting or number
 formatting. Both runtimes name:
 
-- the chapter and the shot by id, and an anchor's field by its path inside
-  the shot: `until`, `camera[1].at`, `simulation.from`,
-  `simulation.keyframes[2].seconds`, `overlays[0].to`, `code.typing[0].from`,
-  `pictures[0].view[1].at`;
-- the phrase or mark as written, and the vocabulary word of the rule:
+- the chapter and the shot by id, and a field by its path inside the shot:
+  `until`, `places.<slot>`, `model.from`, `model.keys[2].at`,
+  `model.keys[0].seconds`, `transition.kind`, `cues[1]`, `cues[1].at`,
+  `cues[0].actions[0]`, `words[1].token`, `reveal.phrase`, `enter.kind`;
+- a chapter's element as `elements.<key>`, and the stage block's entries as
+  `stage.modules`, `stage.sets.<kind>` and `stage.elements.<kind>`;
+- the phrase, mark, camera, layer, excerpt, still, slot, element, action,
+  parameter, prop or token as written, and the vocabulary word of the rule:
   `absent`, `ambiguous`, `at or before its start`, `first shot`,
-  `last shot`, `shot id`, the set's name and `code`;
+  `last shot`, `shot id`, `does not declare`, `does not place`,
+  `two slots`, `ships`, `base`, `missing`, `complete`, `already`,
+  `outside the excerpt`, `word for word`, and the kinds `string`, `number`,
+  `boolean`, `list`, `object`;
 - for a schema refusal, the field's name (an unknown `narration` on a shot is
   refused naming `narration`).
-
-The Node wording, for reference (`src/movie.mjs`):
-
-| fixture | refusal |
-|---|---|
-| unknown format | `Unsupported movie format: machinome-movie/9.9; this Videomaker reads machinome-movie/0.1` |
-| unknown set (`set-not-drawn`) | `Unknown set: stage (shot wheel in chapter opening); a set is paper, paper-split or source-only` |
-| `paper` with code | `Set paper has no source panel: shot wheel (chapter opening) has code; use paper-split or source-only` |
-| `paper-split` without code | `Set paper-split needs code: shot wheel (chapter opening)` |
-| absent phrase | `Spoken phrase is absent from the narration of chapter opening: the saw (until of shot wheel)` |
-| ambiguous phrase | `Spoken phrase is ambiguous in the narration of chapter opening: turns (until of shot wheel)` |
-| unknown mark (`mark-misspelled`) | `Unknown mark: pull_stat (simulation.from of shot wheel in chapter opening)` |
-| unknown camera preset | `Unknown camera preset: widest (camera[0] of shot wheel in chapter opening)` |
-| last keyframe before the end | `Model keyframes must end at the shot's until: shot wheel (chapter opening) has its last keyframe at 1 and until 2` |
-| unknown assembly path (needs the export) | `Missing assembly path: Beam/Plonk (highlight[0] of shot whole in chapter only)` |
-| `until` at the start | `Shot wheel ends at or before its start: until 0 (chapter opening)` |
-| `fadeIn` on a later shot | `fadeIn is accepted only on the film's first shot: shot hold (chapter opening)` |
-| `fadeOut` on an earlier shot | `fadeOut is accepted only on the film's last shot: shot wheel (chapter opening)` |
-| narration on a shot | `Unknown field: narration (chapters/0/shots/0)` |
-| duplicate shot id | `Duplicate shot id: wheel (chapter closing)` |

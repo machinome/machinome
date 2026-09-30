@@ -25,3 +25,18 @@ lands it.
   Schema is `schema/machinome-movie-0.1.json`, and the shared fixtures gain
   the `minimal` and `tour` documents and seven invalid documents
   (`declarative-movie`).
+- Movies declared in Python evaluate to `machinome-movie/0.2`, the document
+  that carries the stage's shape; nothing of 0.1 is emitted, checked or kept
+  (`schema/machinome-movie-0.1.json` is gone). A project declares its own
+  sets (`Set` subclasses with `module`, `Slot()`s and static props; a derived
+  set inherits the chrome, not the layout) and elements (`Element` subclasses
+  with `module` and typed `Action`s; an instance's keyword arguments are its
+  props), drawn by its stage module. The tool's sets are `Frame` and `Split`;
+  `Paper`, `PaperSplit`, `SourceOnly` and `Paper.style` leave the package for
+  `Style`. `View` carries the marks `ring`, `label` and `arrow`; `Title` and
+  `Picture` are elements shown on cue; `emphasize` pairs spoken words with
+  source tokens on any line of the excerpt, which evaluation now reads to
+  refuse a token absent or repeated; a source panel completed in a chapter
+  needs no typing in its later shots. The shared fixtures are rewritten as
+  0.2 documents, with 60 invalid documents naming every refusal
+  (`declarative-stage`, ADR-005).
