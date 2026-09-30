@@ -130,3 +130,8 @@ invented interface requirements merely to fill the campaign.
   edit 16.95 s versus 25.09 s cold, with 25 reused. These are local observations.
   Earlier failures and the original 46-second film remain untouched. Next is
   the bounded parallel investigation, not an assumed parallel product feature.
+- Shot-level incremental rendering is archived and committed at `24234d6`,
+  paired with tested viewer content `94cfcc0` and its pinned bundle above.
+  Both repositories' baseline specs validate strictly. The parallel experiment
+  plan is approved; its one-off Sol harness is under root safety/fidelity
+  review before execution. No author-facing parallel option exists yet.
