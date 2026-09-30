@@ -6,6 +6,6 @@
   "description": "Scripted educational films rendered from Machinome viewers",
   "engines": {"node": ">=22"},
   "bin": {"videomaker": "bin/videomaker.mjs"},
-  "scripts": {"test": "node --test", "video": "node bin/videomaker.mjs"},
+  "scripts": {"test": "node --test --test-concurrency=1 test/*.test.mjs experiments/dark-source/emphasis.test.mjs", "video": "node bin/videomaker.mjs"},
   "dependencies": {"highlight.js": "11.12.0", "playwright": "1.62.0", "yaml": "2.8.1"}
 }

@@ -71,8 +71,10 @@ the original delta or its 84-second evidence.
 2. `An author can inspect a local rehearsal`: retain still previews, requested
    size/duration/FPS, local narrated MP4 and reusable caption sidecars. Replace
    the fixed `2,520 frames / 84 seconds / on-screen captions / authored credits`
-   scenario with a format-neutral one: the existing global output grid uses
-   frame indices `0..ceil(duration × fps)-1` at the requested dimensions;
+   scenario with a format-neutral one: the existing global output grid
+   requires an integral `count = duration × render fps` and uses frame
+   indices `0..count-1` at the requested dimensions (shot boundaries may
+   still fall between those global frame instants);
    narration is in the MP4, SRT is
    beside it, and no transcript or credit is burned into the picture. Keep the
    silent preview/no-new-speech scenario. The exact 84-second facts remain in
@@ -136,6 +138,15 @@ suite totals to that scoped baseline, accounting for the explicitly added
 experiment file. Do **not** run the old unscoped `node --test` as a comparison:
 it can traverse nested worktrees. This is a test-runner correction, not a
 change in assertion thresholds or film behavior.
+
+The command correction has been applied and verified: source-only's completed
+serial `npm test` passed 158/158 (133 prior scoped tests, three retained
+dark-source tests and 22 source-only tests), with no nested-worktree discovery.
+Sol's pre-edit static command assertion failed; the corrected command and
+explicit roster passed. Root reviewed the command and roster and independently
+reran the 22 source-only tests. These are the completed source-only suite
+results, not a claim that subsequently added review-pack red tests pass before
+their implementation.
 
 ## Separate workspace skill correction, proposed edit list only
 
