@@ -1,3 +1,14 @@
+## Purpose
+
+Support project-authored, inspectable local narrated films of an existing
+posed Machinome simulation, with reproducible presentation and production
+evidence separate from publication.
+
+Administrative note (29 September 2026): This Purpose was added for baseline
+sync after the first rehearsal was implemented and adopted during
+implementation. It does not change the original requirements, scenarios,
+evidence, or adoption chronology, and does not claim prior ratification.
+
 ## ADDED Requirements
 
 ### Requirement: The author can inspect and edit one screenplay

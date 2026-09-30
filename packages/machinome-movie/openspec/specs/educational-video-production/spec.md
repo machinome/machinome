@@ -1,0 +1,147 @@
+# educational-video-production Specification
+
+## Purpose
+
+Support project-authored, inspectable local narrated films of an existing
+posed Machinome simulation, with reproducible presentation and production
+evidence separate from publication.
+
+Administrative note (29 September 2026): This Purpose was added for baseline
+sync after the first rehearsal was implemented and adopted during
+implementation. It does not change the original requirements, scenarios,
+evidence, or adoption chronology, and does not claim prior ratification.
+
+## Requirements
+
+### Requirement: The author can inspect and edit one screenplay
+
+An episode SHALL keep narration, visual intent and timed presentation cues in
+human-readable project-owned source, with technical presets separately readable.
+Reading an episode MUST NOT require executing program code.
+
+#### Scenario: Revise a lesson
+
+- **WHEN** the author opens the sawmill episode
+- **THEN** each shot shows its narration beside its visual direction and cues
+- **AND** those same sources are consumed by production without a second script.
+
+#### Scenario: Refuse ambiguous source
+
+- **WHEN** source contains duplicate keys, aliases or executable/custom types
+- **THEN** production fails with a source error rather than guessing intent.
+
+### Requirement: Invalid production inputs are refused before capture
+
+Production SHALL check episode timing, model duration and pinned source revision,
+named camera/layer references and evidence file existence before rendering.
+
+#### Scenario: Detect a stale sawmill export
+
+- **WHEN** the export duration or recorded model revision differs from production settings
+- **THEN** production fails before rendering frames from that export.
+
+#### Scenario: Detect incomplete direction
+
+- **WHEN** shots overlap or leave a gap, or reference an unknown layer or camera
+- **THEN** production identifies the invalid input rather than silently omitting it.
+
+### Requirement: Presentation follows the authored model state
+
+The film SHALL present the existing posed simulation at the authored times,
+viewpoints and visibility states, independently of capture speed. The tool MUST
+NOT create replacement mechanical behavior or imply support for stateful replay.
+
+#### Scenario: Explain a stroke slowly
+
+- **WHEN** a shot maps its video interval to a shorter model interval or explicit model-time keys
+- **THEN** frames follow that mapping without advancing by wall-clock time.
+
+#### Scenario: Restore the whole assembly
+
+- **WHEN** a reveal shot is followed by a shot with no hidden layers
+- **THEN** the previously hidden parts are visible again.
+
+#### Scenario: Revisit a pose
+
+- **WHEN** the tested renderer returns to an identical time and presentation after another shot
+- **THEN** it restores identical pixels in that same rendering environment.
+
+### Requirement: Narration is generated and reusable
+
+The author SHALL be able to generate synthetic narration using the configured
+ElevenLabs voice and reuse unchanged generated speech without another paid request.
+Credentials MUST remain outside project sources, browser content and build records.
+
+#### Scenario: Change camera timing only
+
+- **WHEN** presentation is revised but cached speech inputs are unchanged
+- **THEN** production reuses the verified cached segments and their alignment.
+
+#### Scenario: A sentence is too long
+
+- **WHEN** measured speech exceeds its available shot interval
+- **THEN** production reports the required duration and retains the generated segment
+- **AND** it does not truncate or silently stretch the narration.
+
+### Requirement: Captions and teaching cues follow the lesson
+
+The film SHALL show authored explanatory labels with the posed 3D animation.
+A narrated render SHALL provide a same-basename UTF-8 SRT beside the MP4,
+timed from verified speech alignment and retaining the written project name
+when a pronunciation alias is spoken. The narration transcript MUST NOT be
+burned into film frames or embedded in the MP4.
+
+#### Scenario: Explain cut and advance
+
+- **WHEN** the sawmill episode marks cut/advance phases around measured spoken words
+- **THEN** corresponding model poses and explanatory labels follow the authored phase mapping
+- **AND** the external SRT follows generated speech alignment rather than reading-speed estimates.
+
+### Requirement: An author can inspect a local rehearsal
+
+The workflow SHALL produce still previews and a narrated local MP4 at the
+requested dimensions, duration and render frame rate, with reusable caption
+sidecars. The global output grid requires an integral frame count
+`N = durationSeconds × render FPS`; its frames are indexed `0..N-1` at times
+`index / render FPS`. Shot boundaries may fall between these frame instants.
+
+#### Scenario: Render a valid episode
+
+- **WHEN** a valid screenplay authored without in-film credits and its cached narration are rendered
+- **THEN** the local MP4 has `N` frames at the requested dimensions and render FPS, with narration audio
+- **AND** a same-basename SRT sits beside it, while no narration transcript or authored credit appears in its picture.
+
+#### Scenario: Inspect before a full render
+
+- **WHEN** the author requests a still preview or reduced silent render
+- **THEN** the workflow produces review media without generating speech.
+
+### Requirement: Credits and publication gaps are explicit
+
+The author SHALL keep source-project attribution, copyright and licence text,
+and public simulation/source links in production-side credits and the draft
+or generated upload description, outside the film picture, narration and
+subtitle transcript. Unresolved public URLs SHALL remain marked placeholders
+and MUST NOT be replaced with invented links. Missing public URLs SHALL make
+`releaseReady` false. Shown-picture media also remain subject to the separate
+credit, rights, committed-file and `{{pictureCredits}}` description-template
+gates. Videomaker records these facts without judging rights or checking live
+links. Building a video MUST NOT upload or publish it.
+
+#### Scenario: Review a rehearsal before the simulation is public
+
+- **WHEN** public simulation or source URLs are unresolved
+- **THEN** a local rehearsal can still be produced, with attribution and licence text in its description rather than its picture, narration or subtitles
+- **AND** generated release copy marks missing links and `releaseReady` is false.
+
+### Requirement: Production leaves inspectable evidence
+
+Generated media SHALL stay outside committed source in the consuming project's
+build directory. Production SHALL record resolved source inputs, model/viewer and
+audio identities, output checks and rendering environment for the rehearsal.
+
+#### Scenario: Trace the first video
+
+- **WHEN** an author inspects the completed build manifest
+- **THEN** it identifies the screenplay, model revision, actual asset/audio hashes,
+  rendering settings and encoded media properties used for that build.

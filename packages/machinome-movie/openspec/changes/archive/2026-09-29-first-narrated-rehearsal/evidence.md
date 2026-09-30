@@ -2,7 +2,7 @@
 
 All six implementation/verification tasks are complete. Detailed evidence,
 historical red runs, environment, output identity and limitations are in
-[the first rehearsal record](../../../docs/first-rehearsal.md).
+[the first rehearsal record](../../../../docs/first-rehearsal.md).
 
 - `npm test`: 8 passing tests; no paid speech requests in the suite.
 - `check` against Leonardo: eight valid shots, 84-second video, 296-second model.

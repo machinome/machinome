@@ -1,4 +1,17 @@
-## ADDED Requirements
+# narrated-source-scenes Specification
+
+## Purpose
+
+Show export-pinned project Python beside Leonardo's model with deterministic
+typing, reviewable narration, and optional external subtitles, without
+presenting fabricated source or silently changing a mastered film.
+
+Administrative note (29 September 2026): This Purpose was added for baseline
+sync after the source-scenes change was planned and implemented. It does not
+change the original requirements, scenarios, or evidence, and does not
+backdate proposal or ratification.
+
+## Requirements
 
 ### Requirement: Source on screen is authentic
 
