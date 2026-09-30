@@ -6,6 +6,22 @@ lands it.
 
 ## Unreleased
 
+- `check` measures a movie's layout before speech. When a movie document
+  shows a picture, `check`, after bundling the stage and before reading any
+  take, poses each set its shots use once, empty, in one headless Chromium
+  served the bundle and a stub viewer (no `--viewer` needed), at the output
+  size, and prints a `Layout` line per set. A still or clip enlarged beyond
+  its allowance in its slot's measured box is refused before `speech` is
+  run, in the words a YAML episode's picture is refused in, naming the
+  slot's box and set; once the takes place the cues, a picture view that
+  leaves the picture is refused naming the shot and the video time; the
+  picture line prints the peak against the allowance instead of deferring
+  to preview. A slot whose box depends on what it holds is still judged by
+  preview and render. A YAML episode and a movie without pictures open no
+  browser. On the fixture tour `check` takes about a second longer (a median
+  1.96 s instead of 0.88 s on a loaded machine). The stage runtime and the
+  renderer are unchanged, so no film recaptures. (`check-measures-the-stage`,
+  ADR-009)
 - A film mounts no more viewer instances than one of its frames places
   views. Instances are leased: a view element keeps its instance while
   consecutive frames place it, an instance whose view a frame does not place

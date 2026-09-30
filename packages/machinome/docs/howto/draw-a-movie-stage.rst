@@ -372,6 +372,23 @@ files and its stylesheets.
   `reused` instead of `bundled` when the key is unchanged; `no TypeScript
   module, types not checked` for JavaScript modules alone. `preview` and
   `render` build or reuse the same bundle before opening the browser.
+- **`check` measures the sets' layout** when the movie shows a picture,
+  before it reads any take: it poses each set a shot uses, once, with no
+  element in its slots and no viewer mounted, in a headless page of the
+  output size served the bundle, and prints what it measured:
+
+      Layout playbill at 1280×720: stage 870.4×576 at 64,86.4; plate 870.4×576 at 64,86.4; aside 243.2×288 at 972.8,216; headline sized by what it holds
+      Picture still tip.plate (still plate): peak 1.40×; allowance 1.5×
+
+  A picture shown in a slot whose box stays put is judged there: `check`
+  refuses a still or clip enlarged beyond its allowance in that box, and a
+  view that leaves the picture, and prints its peak enlargement against its
+  allowance. A slot is **sized by what it holds** when its box changes once
+  the set's slots hold content (an auto height, a flex or grid track that
+  grows with its content or a sibling's); a picture there is judged by
+  `preview` and `render` against the box the stage reports. So a set must
+  draw with its slots empty, as it does for a slot a shot leaves empty, and
+  a slot meant for a picture is best given a box of its own.
 - A YAML episode is drawn by a bundle of the runtime alone, with its shipped
   sets.
 - The bundle's hashes are common inputs of every cached shot, so a changed

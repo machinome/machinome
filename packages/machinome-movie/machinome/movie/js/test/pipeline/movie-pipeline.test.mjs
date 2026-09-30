@@ -6,8 +6,8 @@ import {slowTest as test} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
 import {writeFile,readFile,readdir,appendFile,realpath} from 'node:fs/promises';
 import {join,basename,dirname} from 'node:path';
-import {execFileSync} from 'node:child_process';
-import {fileURLToPath} from 'node:url';
+import {execFileSync,spawnSync} from 'node:child_process';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import {loadEpisode} from '../../src/episode.mjs';
 import {speech,speechCacheEntry,spokenChapters} from '../../src/speech.mjs';
 import {frameAt,filmShots,shotActions} from '../../src/timeline.mjs';
@@ -38,6 +38,24 @@ const cli=(...args)=>{
     {encoding:'utf8',stdio:['ignore','pipe','pipe'],env:{...process.env,ELEVENLABS_API_KEY:''}})};}
   catch(error){return {code:error.status,out:String(error.stdout)+String(error.stderr)};}
 };
+// The command line as `cli` runs it, with every Chromium launch of its own
+// process counted: a hook imported before the command wraps the launch of
+// the one playwright module the command imports, and says so on stderr.
+const PLAYWRIGHT=pathToFileURL(join(here,'..','..','node_modules','playwright','index.mjs')).href;
+const COUNT_LAUNCHES='data:text/javascript,'+encodeURIComponent(`import {chromium} from ${JSON.stringify(PLAYWRIGHT)};`+
+  `const launch=chromium.launch;chromium.launch=function(...args){process.stderr.write('videomaker-test: Chromium launched\\n');return launch.apply(this,args);};`);
+const cliLaunches=(...args)=>{
+  const run=spawnSync(process.execPath,['--import',NO_FETCH,'--import',COUNT_LAUNCHES,join(here,'..','..','bin','videomaker.mjs'),...args],
+    {encoding:'utf8',env:{...process.env,ELEVENLABS_API_KEY:''}});
+  const launches=run.stderr.split('\n').filter(line=>line==='videomaker-test: Chromium launched').length;
+  return {code:run.status,out:run.stdout+run.stderr.replaceAll('videomaker-test: Chromium launched\n',''),launches};
+};
+// A fixture document, edited in place before the command reads it.
+async function editDocument(file,edit){
+  const doc=await readJson(file);edit(doc);
+  await writeFile(file,JSON.stringify(doc,null,2)+'\n');
+}
+const stillShow=doc=>doc.chapters.find(c=>c.id==='tip').shots.find(s=>s.id==='still').cues[0].actions[0];
 // What ffprobe reads of an encoded film: its video frames, size and rate, and
 // the kinds of stream it carries.
 function probe(file){
@@ -122,8 +140,16 @@ test('a YAML episode keeps its take keys, captions, measured words and frames',a
 test('the tour is checked, previewed, rendered twice and reviewed from the command line',async t=>{
   const calls=noNetwork(t);
   const {file,viewer,build}=await fixtureMovie(t,'tour');
-  const checked=cli('check',file,'--viewer',viewer);
+  const checked=cliLaunches('check',file,'--viewer',viewer);
   assert.equal(checked.code,0,checked.out);
+  // The tour shows a picture: check measures its sets, once each, in one
+  // Chromium, and prints the plate's peak against its allowance (wart 1 of
+  // the React stage, wart 6 of Cut and Advance version 2).
+  assert.equal(checked.launches,1,'check measures the layout in one Chromium');
+  assert.deepEqual(checked.out.match(/^Layout \S+ at 1280×720: /gm),
+    ['Layout playbill at 1280×720: ','Layout frame at 1280×720: ','Layout playbill-split at 1280×720: ','Layout split at 1280×720: ']);
+  assert.match(checked.out,/^Layout playbill at 1280×720: stage 870\.4×576 at 64,86\.4; plate 870\.4×576 at 64,86\.4; aside 243\.2×288 at 972\.8,216; headline sized by what it holds$/m);
+  assert.match(checked.out,/^Picture still tip\.plate \(still plate\): peak 1\.40×; allowance 1\.5×$/m);
   assert.match(checked.out,/^Tour: 3 chapters, 9 shots, 18\.9s; model 20s$/m);
   // Where the film's length comes from (wart 7 of Cut and Advance): each
   // chapter's take, its resolved length and its tail, after the summary line.
@@ -219,6 +245,38 @@ test('check refuses a stage module that does not type-check before it asks for t
   assert.equal(refused.code,1,refused.out);
   assert.match(refused.out,/Stage module stage\.tsx does not type-check against the movie's stage block/);
   assert.doesNotMatch(refused.out,/no cached narration take/);
+});
+
+test('check refuses a still enlarged beyond its allowance in a project set, before any take exists',async t=>{
+  const {file,viewer,build}=await fixtureMovie(t,'tour',{takes:false});
+  await editDocument(file,doc=>{doc.stills.plate.upscale=1.2;});
+  const refused=cliLaunches('check',file,'--viewer',viewer);
+  assert.equal(refused.code,1,refused.out);
+  assert.match(refused.out,/^Still plate would be enlarged 1\.40× in shot still \(864×576 source pixels in the 870\.4×576 box of slot plate of set playbill\); its upscale allowance is 1\.2\. Set upscale on the still, place it in a smaller slot, or use a larger source\.$/m);
+  assert.doesNotMatch(refused.out,/no cached narration take/,'refused before the takes are asked for');
+  assert.deepEqual(await readdir(join(build,'audio')).catch(()=>[]),[],'no take exists');
+  assert.equal(refused.launches,1);
+});
+
+test('check refuses a picture view that leaves the picture in a project set, naming the shot and the time',async t=>{
+  const {file,viewer}=await fixtureMovie(t,'tour');
+  // At zoom 1 the still underfills the plate's width; centred at 0.1 it
+  // leaves the box on the right from the cue's first frame, the shot's start.
+  await editDocument(file,doc=>{stillShow(doc).view[0].center=[0.1,0.5];});
+  const refused=cliLaunches('check',file,'--viewer',viewer);
+  assert.equal(refused.code,1,refused.out);
+  const start=(await readJson(join(fixtures,'resolved','tour.json'))).chapters.find(c=>c.id==='tip').shots.find(s=>s.id==='still').start;
+  assert.equal(start.toFixed(2),'16.67');
+  assert.match(refused.out,/^Picture view leaves the picture in shot still at 16\.67 s \(tip\.plate, plate\); keep the view inside the picture or zoom in$/m);
+});
+
+test('check of a movie that shows no picture launches no Chromium',async t=>{
+  const {file,viewer}=await fixtureMovie(t,'minimal');
+  const checked=cliLaunches('check',file,'--viewer',viewer);
+  assert.equal(checked.code,0,checked.out);
+  assert.match(checked.out,/^Stage: bundled /m);
+  assert.equal(checked.launches,0,'no picture, no browser');
+  assert.doesNotMatch(checked.out,/^Layout /m);
 });
 
 test('a movie document is refused before its takes, then speaks from cached takes and resolves to its pin',async t=>{
