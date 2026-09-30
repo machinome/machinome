@@ -274,8 +274,12 @@ everything it can reach (the modules it imports, what they serve and read,
 the test helpers) and the versions of Node, Chromium, FFmpeg, Git and the
 fonts; while none of that changes, the next run, in any worktree, reports it
 as "passed from the memo" instead of running it. `npm test -- --cold` runs
-everything and leaves the memo alone; run it before a change integrates. The
-Python package's suite is `python -m pytest` in `python/`.
+everything and leaves the memo alone; run it before a change integrates.
+With `VIDEOMAKER_VIEWER_BUNDLE=/path/to/machinome-viewer.js npm test` the
+suite also runs the viewer layer (`test/viewer/`) against that real
+machinome-viewer bundle; without it those tests are reported skipped, "no
+viewer bundle selected". The Python package's suite is `python -m pytest` in
+`python/`.
 The originating sawmill's browser preview exercises the real viewer and pixels.
 See [production evidence](docs/first-rehearsal.md) for the actual run.
 

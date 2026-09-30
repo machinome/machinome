@@ -10,7 +10,10 @@
 //    directory is every file under it except test files and what a build or
 //    Python leaves; a module path is a spawned command, followed through its
 //    own imports;
-// 3. always (ALWAYS): test/support/ (the global setup, setup file and
+// 3. a file outside the repository the maintainer selects in the environment
+//    for the tests of a directory (SELECTED: the viewer bundle of the viewer
+//    layer), which the memo keys by its bytes under the variable's name;
+// 4. always (ALWAYS): test/support/ (the global setup, setup file and
 //    reporter run around every slow test without being imported by it), the
 //    viewer double, package.json, package-lock.json, vitest.config.mjs; and
 //    the test's own file. The memo adds the toolchain record.
@@ -52,11 +55,27 @@ export const READS={
   'test/pipeline/movie-pipeline.test.mjs':['fixtures','bin/videomaker.mjs'],  // spawns the command line
   'test/pipeline/review-pack.test.mjs':['bin/videomaker.mjs'],                // spawns the command line
   'test/pipeline/source-scenes.test.mjs':['src/film.html'],
+  'test/viewer/real-viewer.test.mjs':['bin/videomaker.mjs'],                   // spawns the command line
 };
 // Always in a slow test's key, besides its own file and the toolchain record:
 // what the runner loads around a test (setup files, reporter, config) and the
 // dependency lock.
 export const ALWAYS=['test/support','test/viewer-double.mjs','package.json','package-lock.json','vitest.config.mjs'];
+// Files outside the repository a slow test reaches because the maintainer
+// selects them in the environment, by the directory of the tests that reach
+// them: the viewer layer (test/viewer/) poses the viewer bundle
+// VIDEOMAKER_VIEWER_BUNDLE names (ADR-008). The memo keys such a file by its
+// bytes under the variable's name, never by its path, which is the
+// neighbouring checkout's layout and differs between worktrees.
+export const SELECTED={'test/viewer/':['VIDEOMAKER_VIEWER_BUNDLE']};
+// [variable, absolute path] for each selected file `file` reaches; a variable
+// that is unset or empty selects nothing.
+export function selectedInputs(file,{root=REPOSITORY,env=process.env,selected=SELECTED}={}){
+  const rel=posix(relative(root,file)),out=[];
+  for(const [prefix,names] of Object.entries(selected))
+    if(rel.startsWith(prefix))for(const name of names)if(env[name])out.push([name,resolve(env[name])]);
+  return out;
+}
 const LEFT_BEHIND=new Set(['__pycache__','_build','node_modules']);
 
 async function exists(path){try{await lstat(path);return true;}catch{return false;}}

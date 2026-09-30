@@ -67,7 +67,7 @@ def test_model_block_and_paths_relative_to_root(tour):
         'expectedDurationSeconds': 20,
         'timeMode': 'normalized-loop',
         'sourceRevision': revision,
-        'readiness': 'Fixture export written by hand; nothing is simulated.'}
+        'readiness': 'Exported by machinome export; the beam tips on its pivot through the loop.'}
     assert tour['marks'] == {'rise': 5, 'top': 10, 'fall': 15}
     assert tour['sourceCode'] == {'declaration': {'file': '../../models/seesaw.py', 'lines': [22, 24]}}
     assert tour['stills'] == {'plate': {'file': '../../media/plate.png',

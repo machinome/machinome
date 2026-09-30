@@ -6,6 +6,23 @@ lands it.
 
 ## Unreleased
 
+- The suite has a viewer layer: `test/viewer/`, the `viewer` project, run
+  after the slow tests on the same Chromium with the machinome-viewer bundle
+  `VIDEOMAKER_VIEWER_BUNDLE` names by path. It asserts the Viewer API the
+  fixture tour needs from a mounted instance; proves that a view's canvas is
+  its box's size on a fresh mount, after a change of set and when the view
+  returns (the failure *Cut and Advance* met), that A, B, A gives identical
+  pixels across a camera move, a ghosted highlight, a hidden layer and a
+  leased instance, and that marks land on the real model; runs the tour
+  through `check`, `preview` and `render`; and records Chromium's memory
+  with one and two instances. Without the variable every test of the layer
+  is reported skipped, "no viewer bundle selected", by the memo report too;
+  a path that is not a viewer fails naming it. The bundle's bytes, never its
+  path, are in the memo key. The fixture project's export is now the one
+  `machinome export` writes (a 20 s loop in which the beam tips, blocks with
+  a colour a highlight can tint), replacing the hand-written manifest the
+  real viewer refused ("declares document version 4, which this viewer does
+  not render"). (`viewer-integration-layer`, ADR-008)
 - A film mounts no more viewer instances than one of its frames places
   views. Instances are leased: a view element keeps its instance while
   consecutive frames place it, an instance whose view a frame does not place

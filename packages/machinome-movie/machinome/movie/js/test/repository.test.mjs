@@ -6,7 +6,7 @@ import {join,dirname,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {SCHEMA_FILE,MOVIE_SCHEMA} from '../src/schema.mjs';
 import {slowTestInputs,REPOSITORY} from './support/memo.mjs';
-import config,{SLOW} from '../vitest.config.mjs';
+import config,{SLOW,VIEWER} from '../vitest.config.mjs';
 
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const exists=path=>access(join(root,path)).then(()=>true,()=>false);
@@ -53,10 +53,21 @@ test('no page source carries a brand or a series label',async()=>{
   }
 });
 
-test('the slow project is the browser and pipeline directories, and every test there is a slowTest',async()=>{
+test('the slow project is the browser and pipeline directories, the viewer project the viewer directory, and every test there is memoized',async()=>{
   assert.deepEqual(SLOW,['test/browser/**/*.test.mjs','test/pipeline/**/*.test.mjs']);
   const projects=Object.fromEntries(config.test.projects.map(p=>[p.test.name,p.test]));
-  assert.deepEqual(projects.slow.include,SLOW);assert.deepEqual(projects.pure.exclude,SLOW);
+  assert.deepEqual(projects.slow.include,SLOW);assert.deepEqual(projects.pure.exclude,[...SLOW,...VIEWER]);
+  // Layer 6 is its own project, after the slow one, on the same global setup (ADR-008).
+  assert.deepEqual(VIEWER,['test/viewer/**/*.test.mjs']);assert.deepEqual(projects.viewer.include,VIEWER);
+  assert.ok(projects.viewer.sequence.groupOrder>projects.slow.sequence.groupOrder);
+  assert.deepEqual(projects.viewer.globalSetup,projects.slow.globalSetup);assert.equal(projects.viewer.fileParallelism,false);
+  const viewer=(await files('test/viewer')).filter(p=>p.endsWith('.test.mjs'));
+  assert.ok(viewer.length>=1);
+  for(const path of viewer){
+    const text=await readFile(join(root,path),'utf8');
+    assert.match(text,/import \{viewerTest as test(,[^}]*)?\} from '\.\.\/support\/viewer-bundle\.mjs';/,`${path} registers viewerTests`);
+    assert.doesNotMatch(text,/import \{[^}]*\b(test|it)\b[^}]*\} from 'vitest'/,`${path} registers no plain vitest test`);
+  }
   const slow=[...await files('test/browser'),...await files('test/pipeline')].filter(p=>p.endsWith('.test.mjs'));
   assert.ok(slow.length>=9);
   for(const path of (await files('test',p=>/^test\/[^/]+\.test\.mjs$/.test(p))))
@@ -75,6 +86,7 @@ test('a slow test\'s verdict key reads the stage runtime and the fixture project
   const project=inputs.filter(p=>p.startsWith('python/tests/fixtures/project/'));
   for(const needed of ['models/seesaw.py','export/seesaw/manifest.json','videos/tour/stage.tsx','videos/tour/stage.css','media/plate.png'])
     assert.ok(project.includes(`python/tests/fixtures/project/${needed}`),needed);
+  assert.ok(project.some(p=>/^python\/tests\/fixtures\/project\/export\/seesaw\/.+\.stl$/.test(p)),'the export\'s mesh');
   assert.deepEqual(project.filter(p=>/(^|\/)(__pycache__|_build)(\/|$)/.test(p)),[]);
   for(const path of project)assert.ok((await lstat(join(REPOSITORY,path))).isFile()||(await lstat(join(REPOSITORY,path))).isSymbolicLink());
 });

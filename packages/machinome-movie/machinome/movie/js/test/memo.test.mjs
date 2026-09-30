@@ -361,13 +361,21 @@ describe('the verdict key covers what a slow test can reach',()=>{
   test('in this repository, every read of every slow test is declared and the stage is keyed for the browser tests',async()=>{
     const {slowTestInputs,undeclared}=await reachModule(),root=memoModule.REPOSITORY;
     const slow=[];
-    for(const dir of ['test/browser','test/pipeline'])
+    for(const dir of ['test/browser','test/pipeline','test/viewer'])
       for(const name of (await readdir(join(root,dir))).sort())if(name.endsWith('.test.mjs'))slow.push(join(root,dir,name));
     assert.ok(slow.length>=10);
     assert.deepEqual(await undeclared(slow,{root}),[],'a module reads a repository file the key does not declare');
     for(const file of slow.filter(f=>f.includes('/test/browser/'))){
       const inputs=await slowTestInputs(file,{root});
       for(const served of ['stage/shipped.tsx','stage/runtime.tsx','src/film.html','test/viewer-double.mjs'])
+        assert.ok(inputs.includes(join(root,served)),`${served} is an input of ${file}`);
+    }
+    // The viewer layer reaches the stage and the real export it poses.
+    const viewer=slow.filter(f=>f.includes('/test/viewer/'));
+    assert.ok(viewer.length>=1,'the viewer layer has tests');
+    for(const file of viewer){
+      const inputs=await slowTestInputs(file,{root});
+      for(const served of ['stage/runtime.tsx','src/film.html','python/tests/fixtures/project/export/seesaw/manifest.json'])
         assert.ok(inputs.includes(join(root,served)),`${served} is an input of ${file}`);
     }
     const speech=await slowTestInputs(join(root,'test/pipeline/speech.test.mjs'),{root});
@@ -414,5 +422,68 @@ describe('a cold run leaves nothing behind',()=>{
     assert.deepEqual((await readdir(join(memoDir,'artefacts'))).sort(),[`.staging-${live}-e5`,'film-0123456789abcdef']);
     assert.deepEqual((await readdir(join(memoDir,'verdicts'))).sort(),['k.json',`k.json.${live}.u2.pending`]);
     assert.deepEqual(await memoModule.sweep({dir:join(dir,'absent'),tmp:join(dir,'absent-tmp')}),[],'nothing to sweep is not an error');
+  });
+});
+
+// Layer 6's gate and key (ADR-008): the real viewer is proved through a bundle
+// the maintainer selects by path in VIDEOMAKER_VIEWER_BUNDLE, never assumed.
+describe('the viewer layer is gated on a selected bundle and keyed by its content',()=>{
+  const gate=()=>import('./support/viewer-bundle.mjs');
+
+  test('unset, the layer is skipped by name; a path with no file is refused naming it',async t=>{
+    const {selectedBundle,BUNDLE_VARIABLE,NOT_SELECTED}=await gate();
+    assert.equal(BUNDLE_VARIABLE,'VIDEOMAKER_VIEWER_BUNDLE');
+    assert.equal(NOT_SELECTED,'no viewer bundle selected');
+    assert.equal(await selectedBundle({}),null);
+    assert.equal(await selectedBundle({VIDEOMAKER_VIEWER_BUNDLE:''}),null);
+    const {dir}=await bench(t),absent=join(dir,'nowhere','machinome-viewer.js');
+    await assert.rejects(selectedBundle({VIDEOMAKER_VIEWER_BUNDLE:absent}),
+      error=>error.message===`The selected viewer bundle ${absent} does not exist (VIDEOMAKER_VIEWER_BUNDLE)`);
+    await assert.rejects(selectedBundle({VIDEOMAKER_VIEWER_BUNDLE:dir}),
+      new RegExp(`The selected viewer bundle ${dir} does not exist`),'a directory is not a bundle');
+    const file=join(dir,'viewer.js');await writeFile(file,'window.MachinomeViewer={mount(){}};\n');
+    assert.equal(await selectedBundle({VIDEOMAKER_VIEWER_BUNDLE:file}),file);
+  });
+
+  test('only the viewer layer reaches the selected bundle, named by its variable',async()=>{
+    const {selectedInputs}=await reachModule(),root=memoModule.REPOSITORY,env={VIDEOMAKER_VIEWER_BUNDLE:'/elsewhere/machinome-viewer.js'};
+    assert.deepEqual(selectedInputs(join(root,'test/viewer/real-viewer.test.mjs'),{root,env}),
+      [['VIDEOMAKER_VIEWER_BUNDLE','/elsewhere/machinome-viewer.js']]);
+    assert.deepEqual(selectedInputs(join(root,'test/browser/stage.test.mjs'),{root,env}),[],'the double\'s tests reach no bundle');
+    assert.deepEqual(selectedInputs(join(root,'test/viewer/real-viewer.test.mjs'),{root,env:{}}),[],'nothing selected, nothing reached');
+  });
+
+  test('a selected file is keyed by its bytes under its variable, never by its path',async t=>{
+    const {dir,tree,memo}=await bench(t),s=step();
+    await mkdir(join(dir,'a'));await mkdir(join(dir,'b'));
+    const here=join(dir,'a','machinome-viewer.js'),there=join(dir,'b','bundle.js');
+    await writeFile(here,'// viewer API 28\n');await writeFile(there,'// viewer API 28\n');
+    const id=bundle=>({test:'test/viewer/tiny.test.mjs > step',inputs:[tree],selected:[['VIDEOMAKER_VIEWER_BUNDLE',bundle]]});
+    assert.equal(await memo.verdict(id(here),s.body,task()),'ran');
+    assert.equal(await memo.verdict(id(there),s.body,task()),'memo','the same bytes at another path are the same input');
+    await writeFile(there,'// viewer API 29\n');
+    assert.equal(await memo.verdict(id(there),s.body,task()),'ran','other bytes miss');
+    assert.equal(await memo.verdict({...id(here),selected:[['ANOTHER_VARIABLE',here]]},s.body,task()),'ran','the variable names the input');
+    assert.equal(await memo.verdict({test:'test/viewer/tiny.test.mjs > step',inputs:[tree]},s.body,task()),'ran','no selected file is another key');
+    await assert.rejects(memo.verdict(id(join(dir,'gone.js')),s.body,task()),/gone\.js does not exist/);
+  });
+
+  test('the memo report lists a skipped test by its note, and counts it neither passed nor run',async()=>{
+    const {default:MemoReporter}=await import('./support/memo-reporter.mjs');
+    const reporter=new MemoReporter(),module={moduleId:join(process.cwd(),'test/viewer/real-viewer.test.mjs')};
+    const testCase=(fullName,state,{memo,note}={})=>({fullName,module,meta:()=>({...(memo?{memo}:{})}),result:()=>({state,...(note?{note}:{})})});
+    reporter.onTestCaseResult(testCase('the canvas fills its box','skipped',{note:'no viewer bundle selected'}));
+    reporter.onTestCaseResult(testCase('the tour renders','skipped',{note:'no viewer bundle selected'}));
+    reporter.onTestCaseResult(testCase('a pose','passed',{memo:MEMO_LABEL}));
+    reporter.onTestCaseResult(testCase('a pure test','passed'));
+    reporter.onTestCaseResult(testCase('an unnamed skip','skipped'));
+    const printed=[],log=console.log;console.log=(...a)=>printed.push(a.join(' '));
+    try{reporter.onTestRunEnd();}finally{console.log=log;}
+    assert.deepEqual(printed.join('\n').split('\n').filter(Boolean),[
+      'Test memo: 1 passed from the memo, 1 run',
+      '  passed from the memo: test/viewer/real-viewer.test.mjs > a pose',
+      'Skipped, no viewer bundle selected: 2',
+      '  skipped, no viewer bundle selected: test/viewer/real-viewer.test.mjs > the canvas fills its box',
+      '  skipped, no viewer bundle selected: test/viewer/real-viewer.test.mjs > the tour renders']);
   });
 });

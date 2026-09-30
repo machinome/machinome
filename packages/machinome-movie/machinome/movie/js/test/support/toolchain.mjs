@@ -1,7 +1,12 @@
-// Global setup of the slow project (vitest.config.mjs; ADR-003). Runs once per
-// run, in the main process:
+// Global setup of the slow project and of the viewer layer (vitest.config.mjs;
+// ADR-003, ADR-008). Runs in the main process, where vitest loads it once per
+// project, each with its own module instance; what it makes is therefore kept
+// on the main process's globalThis, made by the first setup of the run,
+// provided to every project that sets up, and closed by the last teardown:
 // - launches the one Chromium every browser test of the run shares
-//   (test/support/stage.mjs connects to it), with the command line's flags;
+//   (test/support/stage.mjs connects to it), with the command line's flags,
+//   and provides its endpoint and the PID of its browser process (the viewer
+//   layer reads the memory of its process tree);
 // - records the toolchain the memo keys on, each obtained by running it once:
 //   Node, Chromium, FFmpeg, ffprobe, Git, and the file and SHA-256 of every
 //   face render binds (DejaVu Sans and DejaVu Sans Mono, regular and bold);
@@ -22,12 +27,32 @@ const firstLine=(command,args)=>{
   catch{return null;}
 };
 
-let server=null,coldDir=null;
+const RUN=Symbol.for('videomaker.test-run');
 export async function setup(project){
+  const run=globalThis[RUN]??={users:0,ready:null};
+  run.users++;
+  run.ready??=open();
+  const {server,toolchain,cold,memoDir,coldDir}=await run.ready;
+  project.provide('toolchain',toolchain);
+  project.provide('browserEndpoint',server.wsEndpoint());
+  project.provide('browserPid',server.process().pid);
+  project.provide('cold',cold);
+  project.provide('memoDir',memoDir);
+  project.provide('coldDir',coldDir);
+}
+export async function teardown(){
+  const run=globalThis[RUN];
+  if(!run||--run.users>0)return;
+  delete globalThis[RUN];
+  const {server,coldDir}=await run.ready;
+  await server.close();
+  if(coldDir)await closeColdRun(coldDir);
+}
+async function open(){
   const cold=process.env.VIDEOMAKER_TEST_COLD==='1',memoDir=memoDirectory();
   await sweep({dir:cold?null:memoDir});
-  if(cold)coldDir=await openColdRun();
-  server=await chromium.launchServer({headless:true,args:CHROMIUM_ARGS});
+  const coldDir=cold?await openColdRun():null;
+  const server=await chromium.launchServer({headless:true,args:CHROMIUM_ARGS});
   const probe=await chromium.connect(server.wsEndpoint());
   const browserVersion=probe.version();await probe.close();
   const fonts=FACES.map(([family,style])=>{
@@ -37,13 +62,5 @@ export async function setup(project){
   const toolchain={node:process.version,chromium:browserVersion,
     ffmpeg:firstLine('ffmpeg',['-version']),ffprobe:firstLine('ffprobe',['-version']),
     git:firstLine('git',['--version']),fonts};
-  project.provide('toolchain',toolchain);
-  project.provide('browserEndpoint',server.wsEndpoint());
-  project.provide('cold',cold);
-  project.provide('memoDir',memoDir);
-  project.provide('coldDir',coldDir);
-}
-export async function teardown(){
-  await server?.close();server=null;
-  if(coldDir)await closeColdRun(coldDir);coldDir=null;
+  return {server,toolchain,cold,memoDir,coldDir};
 }

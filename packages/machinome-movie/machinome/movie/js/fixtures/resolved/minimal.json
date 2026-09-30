@@ -109,8 +109,8 @@
   "model": {
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
-    "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "58ed09a714c00008f3a3c770f6cf8426efa5e9ca",
+    "readiness": "Exported by machinome export; the beam tips on its pivot through the loop.",
+    "sourceRevision": "4619b17056c4c82081c665ddc7f12af01fd450ca",
     "timeMode": "normalized-loop"
   },
   "root": "../../python/tests/fixtures/project/videos/minimal",
