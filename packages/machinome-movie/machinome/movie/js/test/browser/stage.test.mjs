@@ -198,10 +198,11 @@ test('two views in one shot are two viewer instances, each posed as its own stat
   const request={shotId:'two-views',chapterId:'tip',set:'split',slots:{left:'tip.close',right:'tip.wide'},
     elements:{'tip.close':rise.elements['tip.close'],'tip.wide':wide},transition:null};
   const seen=await browserSession(film,viewer,WIDTH,[],async({page,pose})=>{
-    await page.evaluate(()=>{window.viewerCalls.length=0;});
+    // Only this frame's calls: the probe's instance is leased on to a view of it.
+    const from=await page.evaluate(()=>window.viewerInstances.map(i=>i.calls.length));
     const f=await pose(t,request);
     return {result:{observed:f.observed,views:await page.evaluate(()=>window.film.views()),
-      instances:await page.evaluate(()=>window.viewerInstances.map(i=>({selector:i.selector,views:i.calls.filter(c=>c[0]==='setView').map(c=>c[1])})))}};
+      instances:await page.evaluate(from=>window.viewerInstances.map((i,n)=>({selector:i.selector,views:i.calls.slice(from[n]??0).filter(c=>c[0]==='setView').map(c=>c[1])})),from)}};
   });
   const {observed,views,instances}=seen.result;
   const close_=observed.elements['tip.close'],wide_=observed.elements['tip.wide'];
@@ -235,7 +236,100 @@ test('a view keeps its viewer instance across the cuts inside its chapter',async
   assert.equal(new Set(out.map(x=>JSON.stringify(x.view.box))).size,3,'in three different boxes');
   for(const {view} of out)assert.ok(view.canvas.width>=view.box.width*.98&&view.canvas.height>=view.box.height*.98,'its canvas follows its box');
   assert.equal(views.filter(v=>v.key==='balance.mill').length,1);
-  assert.equal(mounts,2,'the session\'s first frame (opening.wide) and balance.mill, nothing more');
+  assert.equal(mounts,1,'the instance the session\'s first frame mounted for opening.wide, leased to balance.mill when it left');
+});
+
+test('a view that leaves frees its instance, and the next view is drawn on it as on a fresh one: highlight restored, layers shown again, canvas refilled',async()=>{
+  // Instances are leased per frame: balance.mill, with a highlight standing
+  // and the ground hidden, takes the instance opening.wide freed; then
+  // opening.wide, with neither, takes it back in another box; then
+  // balance.mill again. With a viewer that sizes its canvas on its own
+  // animation frame, so a host moved into another box is a resize.
+  const {film,double}=await theTour();
+  const late=await double('late-canvas.js',{lateCanvas:true});
+  const source=shotOf(film,'source'),fps=film.output.fps;
+  let a=null;
+  for(let n=Math.ceil(source.start*fps);n/fps<source.end&&a===null;n++)if(frameAt(film,n/fps).elements['balance.mill'].highlight)a=n/fps;
+  const b=middle(film,'hook'),A=frameAt(film,a).elements['balance.mill'],B=frameAt(film,b).elements['opening.wide'];
+  assert.ok(A.highlight&&!B.highlight,'a highlight stands on A and not on B');
+  assert.notDeepEqual(A.hidden,B.hidden,'A and B hide different layers');
+  const seen=await browserSession(film,late,WIDTH,[],async({page,pose})=>{
+    // The double records no setVisible; the instance's own method is wrapped
+    // in the page (window.film.viewer is the first instance mounted).
+    await page.evaluate(()=>{
+      const viewer=window.film.viewer,set=viewer.setVisible.bind(viewer);window.visibility=[];
+      viewer.setVisible=(path,visible)=>{window.visibility.push([path,visible]);set(path,visible);};
+    });
+    const posed=async(t,key)=>{
+      const from=await page.evaluate(()=>window.viewerInstances.map(i=>i.calls.length));
+      const f=await pose(t,{transition:null});
+      return {report:f.observed.elements[key],png:await page.screenshot(),
+        ...await page.evaluate(from=>({views:window.film.views(),mounts:window.viewerInstances.length,visibility:[...window.visibility],
+          calls:window.viewerInstances.map((i,n)=>i.calls.slice(from[n]??0).filter(c=>c[0]!=='setView'))}),from)};
+    };
+    return {result:[await posed(a,'balance.mill'),await posed(b,'opening.wide'),await posed(a,'balance.mill')]};
+  });
+  const [a1,b1,a2]=seen.result;
+  assert.equal(a2.mounts,1,'one instance serves both views');
+  assert.deepEqual(a2.views.map(v=>v.key),['balance.mill'],'views() lists the one instance and the view it serves');
+  assert.deepEqual([a1,b1,a2].map(x=>x.views[0].key),['balance.mill','opening.wide','balance.mill']);
+  assert.equal(new Set([a1,b1,a2].map(x=>x.report.instance)).size,1,'every report names the one instance');
+  // The lease applies each state against what the instance holds.
+  assert.deepEqual(a1.calls[0].map(c=>c[0]),['highlight'],'A applies its highlight');
+  assert.deepEqual(b1.calls[0].map(c=>c[0]),['restore'],'B restores the highlight A left standing, and applies none');
+  assert.deepEqual(a2.calls[0].map(c=>c[0]),['highlight'],'A applies its highlight again');
+  const hiddenAfter=calls=>{const hidden=new Set();for(const [path,visible] of calls){const k=JSON.stringify(path);if(visible)hidden.delete(k);else hidden.add(k);}return [...hidden].sort();};
+  const hiding=state=>state.hidden.map(p=>JSON.stringify(p)).sort();
+  assert.deepEqual(hiddenAfter(a1.visibility),hiding(A),'after A the instance hides A\'s layers');
+  assert.deepEqual(hiddenAfter(b1.visibility),hiding(B),'after B, B\'s: A\'s shown again');
+  assert.deepEqual(hiddenAfter(a2.visibility),hiding(A),'after A again, A\'s');
+  for(const x of [a1,b1,a2])assert.ok(x.report.canvas.width>=x.report.box.width*.98&&x.report.canvas.height>=x.report.box.height*.98,'the canvas fills its box after each lease');
+  assert.notDeepEqual(a1.report.box,b1.report.box,'the instance moved into another box');
+  assert.ok(a2.png.equals(a1.png),'A is drawn identically before and after B');
+  // B on the leased instance is B on a fresh one: a session whose instance
+  // was mounted for opening.wide and served nothing else.
+  const fresh=await browserSession(film,late,WIDTH,[],async({page,pose})=>{
+    await pose(b,{transition:null});return {result:{png:await page.screenshot(),mounts:await page.evaluate(()=>window.viewerInstances.length)}};
+  });
+  assert.equal(fresh.result.mounts,1);
+  assert.ok(b1.png.equals(fresh.result.png),'B on the instance A freed gives the pixels of B on a fresh instance');
+});
+
+test('no order of frames mounts more viewer instances than one frame places views, and each frame is drawn the same in every order',async()=>{
+  // A: tip.close alone (rise); B: tip.wide alone, highlighted (invitation);
+  // AB: both side by side on the shipped split. Each of the six orders in its
+  // own session, with a viewer that sizes its canvas on its own animation frame.
+  const {film,double}=await theTour();
+  const late=await double('late-canvas.js',{lateCanvas:true});
+  const tA=middle(film,'rise'),tB=middle(film,'invitation');
+  const wide=frameAt(film,tB).elements['tip.wide'];
+  assert.ok(wide.highlight&&!frameAt(film,tA).elements['tip.close'].highlight,'B carries a highlight and A none');
+  const frames={
+    A:[tA,{transition:null}],B:[tB,{transition:null}],
+    AB:[tA,{shotId:'two-views',chapterId:'tip',set:'split',slots:{left:'tip.close',right:'tip.wide'},
+      elements:{'tip.close':frameAt(film,tA).elements['tip.close'],'tip.wide':wide},transition:null}],
+  };
+  const orders=[['A','B','AB'],['A','AB','B'],['B','A','AB'],['B','AB','A'],['AB','A','B'],['AB','B','A']];
+  const runs=[];
+  for(const order of orders){
+    const seen=await browserSession(film,late,WIDTH,[],async({page,pose})=>{
+      const out={};
+      for(const name of order){
+        const f=await pose(...frames[name]);
+        out[name]={png:await page.screenshot(),instances:Object.fromEntries(Object.entries(f.observed.elements).filter(([,r])=>r.kind==='view').map(([k,r])=>[k,r.instance]))};
+      }
+      return {result:{out,mounts:await page.evaluate(()=>window.viewerInstances.length),views:await page.evaluate(()=>window.film.views())}};
+    });
+    runs.push({order,...seen.result});
+  }
+  for(const {order,out,mounts,views} of runs){
+    const where=order.join(', ');
+    assert.equal(mounts,2,`two instances in the order ${where}`);
+    assert.equal(views.length,2,`views() lists two in the order ${where}`);
+    assert.notEqual(out.AB.instances['tip.close'],out.AB.instances['tip.wide'],`two instances side by side in the order ${where}`);
+  }
+  for(const name of ['A','B','AB'])for(const run of runs.slice(1))
+    assert.ok(run.out[name].png.equals(runs[0].out[name].png),`${name} is drawn the same in the order ${run.order.join(', ')} as in ${runs[0].order.join(', ')}`);
 });
 
 test('a project element\'s state reaches its component: the tally lights the item its action names',async()=>{

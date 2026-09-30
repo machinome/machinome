@@ -401,8 +401,8 @@ headless Chromium by the renderer. Its contract with the renderer:
   included (finding 1 of the react-stage change).
 - `window.film` also has `project(key, points)`, which projects world
   points through the viewer of the view element `key`, and `views()`, which
-  lists the viewer instances with their element keys and whether each is
-  shown. `viewer` and `apiVersion` are those of the first view mounted, and
+  lists the viewer instances with the key of the view element each serves
+  (`null` when it is free) and whether each is shown. `viewer` and `apiVersion` are those of the first view mounted, and
   `null` before one is (finding 11 of the react-stage change).
 - `window.film.compose(request)` and `composeMarkBlend(pictures)` draw
   transition and blended frames over the page from same-instant captures,
@@ -426,10 +426,19 @@ headless Chromium by the renderer. Its contract with the renderer:
   the view's own camera; otherwise 21 (finding 8 of the react-stage
   change).
 - Components are pure in video time: no wall clock, no asynchronous state
-  between frames, no measurement that changes what is drawn. Each view
-  element's viewer instance mounts once, outside React's reconciliation, in
-  a host placed in the view element's box, and is kept across the shots of
-  its chapter; two views in one shot are two viewer instances.
+  between frames, no measurement that changes what is drawn. Viewer
+  instances mount outside React's reconciliation, each in a host placed in
+  the box of the view element it serves, and are leased: a view element
+  keeps its instance from one frame to the next while it stays placed; an
+  instance whose view element a frame does not place is free, and is leased
+  to another view element of that frame or a later one; a view element
+  without one takes a free instance, and a new instance mounts only when
+  none is free. Two views in one frame are two instances, and a film mounts
+  no more instances than the largest number of views one of its frames
+  places. A viewer below API 28 keeps the up and field of view it mounted
+  with, so its instance is leased only to a view element with that lens.
+  Each frame states each instance's whole state, applied against what the
+  instance holds, so a leased instance draws what a fresh one would.
 
 The authoring contract, [the stage](stage.md), says how a project writes a
 set or an element. The tool ships the sets `frame` (one slot, `stage`, the

@@ -8,7 +8,7 @@ import {afterEach,beforeAll,describe,expect,test} from 'vitest';
 import {Stage,type ReportSource,type StageContextValue} from './components';
 import {Chrome,Slot,defineElement,defineSet,useMovie,useReport} from './index';
 import {checkRegistry,registerSet} from './registry';
-import {measureElement} from './runtime';
+import {leaseViews,measureElement} from './runtime';
 import {SHIPPED_SLOTS,markSource,registerShipped} from './shipped';
 import type {ElementComponentProps,MovieInfo,ProjectElementState,SetComponentProps,StageConfig,StageFrame} from './types';
 
@@ -223,6 +223,50 @@ describe('registry',()=>{
     expect(String(draw(frameOf('nowhere',{},{})).caught[0])).toMatch(/Set kind nowhere of shot s1 is not registered/);
     expect(String(draw(frameOf('bill',{stage:'a.x'},{'a.x':{kind:'gizmo',props:{},actions:[]}})).caught[0]))
       .toMatch(/Element kind gizmo of element a\.x is not registered/);
+  });
+});
+
+describe('viewer lease',()=>{
+  // leaseViews(instances, placed): for each placed view, the index of the
+  // instance it is drawn on, or -1 when one must mount (ADR-007).
+  const free=(lens:string|null=null)=>({key:null,lens});
+  const held=(key:string,lens:string|null=null)=>({key,lens});
+  const at=(key:string,lens='L')=>({key,lens});
+  test('a placed view keeps its instance; a view without one takes the lowest free; one mounts only when none is free',()=>{
+    expect(leaseViews([held('a')],[at('a')])).toEqual([0]);
+    expect(leaseViews([held('x'),free(),held('y')],[at('b')])).toEqual([0]);
+    expect(leaseViews([held('b'),held('a')],[at('a'),at('b')])).toEqual([1,0]);
+    expect(leaseViews([held('a')],[at('a'),at('b')])).toEqual([0,-1]);
+    expect(leaseViews([held('a')],[at('b')])).toEqual([0]);
+    expect(leaseViews([],[at('a')])).toEqual([-1]);
+    expect(leaseViews([held('a'),held('b')],[])).toEqual([]);
+  });
+  test('below API 28 an instance is leased only to the lens it mounted with',()=>{
+    expect(leaseViews([free('37')],[at('b','42')])).toEqual([-1]);
+    expect(leaseViews([free('42'),free('37')],[at('b','37')])).toEqual([1]);
+    expect(leaseViews([held('a','37')],[at('a','37'),at('b','37')])).toEqual([0,-1]);
+    expect(leaseViews([free(null)],[at('b','42')])).toEqual([0]);
+  });
+  test('no sequence of frames mounts more instances than one frame places views, and a placed view keeps its instance',()=>{
+    const frames:{key:string;lens:string}[][]=[[at('A')],[at('B')],[at('A'),at('B')],[]];
+    const sequences=(n:number):number[][]=>n===0?[[]]:sequences(n-1).flatMap(s=>frames.map((_,i)=>[...s,i]));
+    let checked=0;
+    for(const sequence of sequences(5)){
+      const instances:{key:string|null;lens:string|null}[]=[];
+      let most=0,before:Record<string,number>={};
+      for(const i of sequence){
+        const placed=frames[i],chosen=leaseViews(instances,placed);
+        const given=chosen.map((c,n)=>c>=0?c:instances.push({key:placed[n].key,lens:null})-1);
+        expect(new Set(given).size).toBe(placed.length);
+        instances.forEach((instance,n)=>{instance.key=placed[given.indexOf(n)]?.key??null;});
+        for(const [n,{key}] of placed.entries())if(key in before)expect(given[n]).toBe(before[key]);
+        before=Object.fromEntries(placed.map(({key},n)=>[key,given[n]]));
+        most=Math.max(most,placed.length);
+        expect(instances.length).toBeLessThanOrEqual(most);
+        checked++;
+      }
+    }
+    expect(checked).toBe(4**5*5);
   });
 });
 

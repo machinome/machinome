@@ -1,8 +1,9 @@
 // The stage runtime: boots the page the renderer serves, mounts the set each
-// frame names, poses one viewer instance per view element, draws marks, and
-// returns what it measured (docs/movie-document.md, "The stage"). Imported
-// first by the bundle's entry, so the shipped kinds are registered before a
-// project's modules register theirs; the entry calls boot() last.
+// frame names, poses each placed view element on a viewer instance leased to
+// it for the frame (ADR-007), draws marks, and returns what it measured
+// (docs/movie-document.md, "The stage"). Imported first by the bundle's entry,
+// so the shipped kinds are registered before a project's modules register
+// theirs; the entry calls boot() last.
 //
 // Raster discipline (the earlier film page's, kept): a pose repaints the whole
 // page when what it draws outside the views' canvases changed since the last
@@ -37,7 +38,7 @@ export interface Film {
   readonly apiVersion:number|null;
   readonly viewer:ViewerInstance|null;
   project(key:string,points:Vec3[]):({x:number;y:number}|null)[];
-  views():{key:string;instance:number;visible:boolean}[];
+  views():{key:string|null;instance:number;visible:boolean}[];
   setFrame(frame:StageFrame):Promise<Observed>;
   compose(request:ComposeRequest):Promise<{chrome:Rect[]}>;
   composeMarkBlend(pictures:{src:string;weight:number}[]):Promise<{chrome:Rect[]}>;
@@ -69,10 +70,38 @@ if(typeof window!=='undefined')window.addEventListener('error',event=>{
   if(window.filmError===undefined)window.filmError=String(event.error??event.message);
 });
 
-interface PooledView {
-  key:string;instance:number;host:HTMLDivElement;marks:HTMLDivElement;viewer:ViewerInstance;
+// A mounted viewer instance as the lease sees it: the view element it serves,
+// or null when it is free, and the lens it keeps (its up and field of view)
+// when its viewer cannot be given another (below API 28), else null.
+export interface Tenancy {key:string|null;lens:string|null}
+// A mounted instance. What it holds (the layers it hides, the highlight
+// standing on it and its restore, its last box size) belongs to the instance
+// and travels with it from one view element to the next.
+interface PooledView extends Tenancy {
+  instance:number;host:HTMLDivElement;marks:HTMLDivElement;viewer:ViewerInstance;
   hidden:string[][];applied:string|null;restore:(()=>void)|null;size:{width:number;height:number}|null;
 }
+
+/**
+ * The lease (ADR-007): for each view element a frame places (in the frame's
+ * order, each once, with its lens), the index of the instance it is drawn on,
+ * or -1 when an instance must mount for it. A view whose key an instance
+ * serves keeps it; every other instance is free for this frame, and a view
+ * without one takes the lowest-numbered free instance that can take its lens.
+ * So the instances never outnumber the most views one frame has placed (per
+ * lens, for a viewer that keeps its lens).
+ */
+export function leaseViews(instances:readonly Tenancy[],placed:readonly {key:string;lens:string}[]):number[]{
+  const taken=new Set<number>();
+  const kept=placed.map(({key})=>{const i=instances.findIndex(t=>t.key===key);if(i>=0)taken.add(i);return i;});
+  return placed.map(({lens},n)=>{
+    if(kept[n]>=0)return kept[n];
+    const i=instances.findIndex((t,j)=>!taken.has(j)&&(t.lens===null||t.lens===lens));
+    if(i>=0)taken.add(i);
+    return i;
+  });
+}
+const lensOf=(state:ViewState)=>JSON.stringify([state.up??null,state.fov??null]);
 
 const frames=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
 const message=(error:unknown)=>error instanceof Error?error.message:String(error);
@@ -112,7 +141,8 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     onUncaughtError:error=>{caught.push(error);},
     onRecoverableError:error=>{caught.push(error);},
   });
-  const pool=new Map<string,PooledView>();
+  // The mounted instances, in the order they mounted.
+  const instances:PooledView[]=[];
   let first:PooledView|null=null,counter=0;
   const accent=movie.style.accent;
   const refusal=(declared:number)=>{
@@ -125,9 +155,9 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   function clearComposition(){
     transition.replaceChildren();
     document.body.classList.remove('in-transition','in-mark-blend');
-    for(const view of pool.values())if(view.host.isConnected)view.host.style.visibility='';
+    for(const view of instances)if(view.host.isConnected)view.host.style.visibility='';
   }
-  const hideViews=()=>{for(const view of pool.values())view.host.style.visibility='hidden';};
+  const hideViews=()=>{for(const view of instances)view.host.style.visibility='hidden';};
   // A whole-page repaint: Chromium rasters only what a change invalidates and
   // otherwise keeps antialiased glyph edges just outside a changed area.
   // After it, the pixels are a fresh raster of the page's content, which is
@@ -217,13 +247,18 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     if(!(viewer.apiVersion>=21)||typeof viewer.setView!=='function')refuse('Viewer API 21 with setView is required');
     const required=config.viewer?.required?.api;
     if(typeof required==='number'&&viewer.apiVersion<required)refuse(refusal(viewer.apiVersion));
-    const view:PooledView={key,instance,host,marks,viewer,hidden:[],applied:null,restore:null,size:null};
-    pool.set(key,view);first??=view;
+    // Below API 28 setView cannot change up or field of view: the instance
+    // keeps the lens it mounted with, and is leased only to that lens.
+    const view:PooledView={key,lens:viewer.apiVersion>=28?null:lensOf(state),instance,host,marks,viewer,
+      hidden:[],applied:null,restore:null,size:null};
+    instances.push(view);first??=view;
     return view;
   }
 
   // Highlight state follows the request, never the order frames are posed in:
-  // restore a standing highlight that differs, apply visibility, then the new one.
+  // restore a standing highlight that differs, apply visibility, then the new
+  // one. Each is diffed against what the instance holds, whichever view
+  // element it served before, so a leased instance ends in the frame's state.
   function pose(view:PooledView,state:ViewState,shotId:string){
     const {viewer}=view,wanted=state.highlight?JSON.stringify(state.highlight):null;
     try{
@@ -254,25 +289,34 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   const contains=(outer:Rect,inner:Rect)=>outer.x<=inner.x+.5&&outer.y<=inner.y+.5&&
     outer.x+outer.width>=inner.x+inner.width-.5&&outer.y+outer.height>=inner.y+inner.height-.5;
 
-  // Poses the frame's views and draws their marks; `resized` says a view was
-  // mounted, placed again or its box changed size, so the canvas wait ran.
+  // Leases the frame's views their instances, poses them and draws their
+  // marks; `resized` says a view was mounted, placed again (on its own
+  // instance or one another view freed) or its box changed size, so the
+  // canvas wait ran.
   async function poseViews(frame:StageFrame):Promise<{views:Record<string,Record<string,unknown>>;resized:boolean}>{
     const placed=[...new Set(Object.values(frame.slots))].filter(k=>frame.elements[k]?.kind==='view');
-    for(const view of pool.values())if(!placed.includes(view.key)){view.host.remove();view.host.style.visibility='hidden';}
-    const posed:[PooledView,ViewState,HTMLElement][]=[];
+    const leased=leaseViews(instances,placed.map(k=>({key:k,lens:lensOf(frame.elements[k] as ViewState)})));
+    // An instance no view of this frame is drawn on is free: its host leaves
+    // the page, as a view that left always did.
+    instances.forEach((view,i)=>{if(!leased.includes(i)){view.key=null;view.host.remove();view.host.style.visibility='hidden';}});
+    const posed:[PooledView,ViewState,HTMLElement,string][]=[];
     let resized=false;
-    for(const k of placed){
+    for(const [n,k] of placed.entries()){
       const state=frame.elements[k] as ViewState,box=boxOf(k);
       if(!box)throw new Error(`View ${k} in shot ${frame.shotId} has no box: set ${frame.set} draws no slot that holds it`);
-      let view=pool.get(k);
-      if(!view)view=await mountView(k,state,box,frame.shotId);
-      // A host detached while its view was off screen was observed at no size
-      // by the viewer, which shrank its canvas; re-attaching is a resize.
-      else if(view.host.parentElement!==box){box.append(view.host);resized=true;}
+      let view:PooledView;
+      if(leased[n]<0)view=await mountView(k,state,box,frame.shotId);
+      else{
+        view=instances[leased[n]];view.key=k;
+        // A host detached while it served no view was observed at no size by
+        // the viewer, which shrank its canvas; a host moved into another
+        // view's box is resized: either is a resize.
+        if(view.host.parentElement!==box){box.append(view.host);resized=true;}
+      }
       view.host.style.visibility='';
       const r=box.getBoundingClientRect();
       if(!view.size||view.size.width!==r.width||view.size.height!==r.height)resized=true;
-      posed.push([view,state,box]);
+      posed.push([view,state,box,k]);
     }
     // A viewer sizes its canvas from its host on its own animation frame,
     // after it mounts and after each resize, and a resize clears the canvas:
@@ -291,13 +335,13 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
       return s?.kind==='picture'&&(s as PictureState).shown&&(s as PictureState).opacity>=1;})
       .map(k=>boxOf(k)).filter((b):b is HTMLElement=>Boolean(b)).map(rectOf);
     const reports:Record<string,Record<string,unknown>>={};
-    for(const [view,state,box] of posed){
+    for(const [view,state,box,k] of posed){
       const r=rectOf(box);view.size={width:r.width,height:r.height};
       if(opaque.some(o=>contains(o,r)))view.host.style.visibility='hidden';
       const marks:MarkReport[]=drawMarks(view.marks,r,state.marks??[],view.viewer,
-        {accent,uid:String(view.instance),where:`view ${view.key} in shot ${frame.shotId}`});
+        {accent,uid:String(view.instance),where:`view ${k} in shot ${frame.shotId}`});
       const read=view.viewer.view(),canvas=view.host.querySelector('canvas');
-      reports[view.key]={kind:'view',box:r,instance:view.instance,canvas:canvas?rectOf(canvas):null,
+      reports[k]={kind:'view',box:r,instance:view.instance,canvas:canvas?rectOf(canvas):null,
         camera:read.camera.toArray(),target:read.target.toArray(),
         ...(view.viewer.apiVersion>=28?{up:read.up?.toArray(),fov:Number(read.fov)}:{}),
         navigation:view.viewer.navigation(),marks};
@@ -351,12 +395,13 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     return measure(frame,reports,views);
   }
 
-  const viewNamed=(k:string)=>{const view=pool.get(k);if(!view)throw new Error(`No viewer instance for view ${k}`);return view;};
+  // The instance the view element `k` holds: the last frame placed it.
+  const viewNamed=(k:string)=>{const view=instances.find(v=>v.key===k);if(!view)throw new Error(`No viewer instance for view ${k}`);return view;};
   return {
     get apiVersion(){return first?.viewer.apiVersion??null;},
     get viewer(){return first?.viewer??null;},
     project:(k,points)=>{const {viewer}=viewNamed(k);return points.map(p=>viewer.project(p));},
-    views:()=>[...pool.values()].map(v=>({key:v.key,instance:v.instance,visible:v.host.isConnected&&v.host.style.visibility!=='hidden'})),
+    views:()=>instances.map(v=>({key:v.key,instance:v.instance,visible:v.host.isConnected&&v.host.style.visibility!=='hidden'})),
     setFrame,compose,composeMarkBlend,
   };
 }

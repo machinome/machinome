@@ -56,9 +56,10 @@ The stage ([ADR-004](adrs/STAGE/ADR-004-the-stage-is-a-react-template-that-owns-
 `components.tsx` (`Slot`, `Chrome`, `useMovie`, `useReport`), `shipped.tsx`
 (the sets `frame`, `split`, `paper`, `paper-split` and `source-only`; the
 elements `view`, `source`, `title` and `picture`), `marks.ts` (rings, labels
-and arrows over a view), `runtime.tsx` (the boot, one viewer instance per
-view element hosted outside React, the transition layer and
-`window.film`) and `stage.css`. `src/film.html` holds three empty layers,
+and arrows over a view), `runtime.tsx` (the boot, the viewer instances
+hosted outside React and leased to the view elements each frame places
+([ADR-007](adrs/STAGE/ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md)),
+the transition layer and `window.film`) and `stage.css`. `src/film.html` holds three empty layers,
 the stage, the transitions and the chrome, and no colour, word or layout.
 `src/stage-build.mjs` bundles the runtime with a movie's stage modules into
 `_build/stage/stage.js` and `stage.css` with esbuild, generates `movie.d.ts`
@@ -103,7 +104,8 @@ element states, and decode the frames a person reviews.
    proofs, and nothing else is. No film draws a progress indicator: a
    viewer's place in a film is the player's to show.
 4. **The viewer is a separate product.** The stage mounts the bundle a
-   caller selects, one instance per view element, requires the API the
+   caller selects, no more instances than one frame places views, leased
+   to the view elements frame by frame (ADR-007), requires the API the
    movie needs (21, or 28 for marks, highlights or a change of lens or up)
    and refuses an older one when its first view mounts. The tool reaches the
    viewer only through its declared handle.
