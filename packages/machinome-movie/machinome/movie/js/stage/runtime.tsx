@@ -253,19 +253,25 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
       if(!box)throw new Error(`View ${k} in shot ${frame.shotId} has no box: set ${frame.set} draws no slot that holds it`);
       let view=pool.get(k);
       if(!view)view=await mountView(k,state,box,frame.shotId);
-      else if(view.host.parentElement!==box)box.append(view.host);
+      // A host detached while its view was off screen was observed at no size
+      // by the viewer, which shrank its canvas; re-attaching is a resize.
+      else if(view.host.parentElement!==box){box.append(view.host);resized=true;}
       view.host.style.visibility='';
       const r=box.getBoundingClientRect();
       if(!view.size||view.size.width!==r.width||view.size.height!==r.height)resized=true;
       posed.push([view,state,box]);
     }
-    // A viewer sizes its canvas from its host on its own animation frame, after
-    // it mounts and after each resize: wait for every posed canvas to fill its
-    // box, a bounded number of frames; the renderer refuses what still does not.
-    if(resized)for(let tries=0;tries<8;tries++){
+    // A viewer sizes its canvas from its host on its own animation frame,
+    // after it mounts and after each resize, and a resize clears the canvas:
+    // wait for every canvas to fill its box, a bounded number of frames, and
+    // only then pose, so the viewer renders into the sized canvas before
+    // anything is measured or a mark drawn. The renderer refuses a canvas that
+    // still does not fill.
+    if(resized)for(let tries=0;tries<30;tries++){
       await frames();
       if(posed.every(([view,,box])=>fills(view,box)))break;
     }
+    for(const [view,state] of posed)pose(view,state,frame.shotId);
     // A view under an opaque picture is posed but hidden, so its canvas does
     // not change how Chromium composites the text above it.
     const opaque=Object.values(frame.slots).filter(k=>{const s=frame.elements[k];
@@ -273,7 +279,6 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
       .map(k=>boxOf(k)).filter((b):b is HTMLElement=>Boolean(b)).map(rectOf);
     const reports:Record<string,Record<string,unknown>>={};
     for(const [view,state,box] of posed){
-      pose(view,state,frame.shotId);
       const r=rectOf(box);view.size={width:r.width,height:r.height};
       if(opaque.some(o=>contains(o,r)))view.host.style.visibility='hidden';
       const marks:MarkReport[]=drawMarks(view.marks,r,state.marks??[],view.viewer,

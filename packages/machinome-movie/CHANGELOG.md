@@ -6,11 +6,14 @@ lands it.
 
 ## Unreleased
 
-- The stage waits for a freshly mounted view's canvas to fill its box before
-  measuring it, as it did after a resize: the real viewer sizes its canvas on
-  its own animation frame, and the first frame of *Cut and Advance* was
-  refused for a canvas that had not grown yet. The viewer double gains a
-   option that behaves the same, and a browser test pins it.
+- The stage waits for a view's canvas to fill its box before measuring it:
+  on a fresh mount, after a change of set, and when a view placed again after
+  shots without it comes back (the real viewer sizes its canvas on its own
+  animation frame, and a host detached while its view was off screen had its
+  canvas shrunk to nothing; the first film on a project template was refused
+  for both). The viewer double gains a `lateCanvas` option that behaves the
+  same, and a browser test pins the three cases; the refusal now prints the
+  canvas and box sizes.
 
 - The commands accept a movie document, `machinome-movie/0.1` (JSON, contract
   `docs/movie-document.md`), beside YAML episodes: narration in chapters, one

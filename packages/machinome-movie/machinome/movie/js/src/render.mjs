@@ -229,7 +229,7 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
             if(!a.every((v,i)=>Math.abs(v-b[i])<=1e-6))throw new Error(`Viewer did not adopt the requested up direction: ${name}`);
           }
           const canvas=seen.canvas;
-          if(!canvas||canvas.height<seen.box.height*.98||canvas.width<seen.box.width*.98)throw new Error(`Viewer canvas does not fill its view: ${name}`);
+          if(!canvas||canvas.height<seen.box.height*.98||canvas.width<seen.box.width*.98)throw new Error(`Viewer canvas does not fill its view: ${name} (canvas ${canvas?`${canvas.width.toFixed(1)}×${canvas.height.toFixed(1)}`:'absent'}, box ${seen.box.width.toFixed(1)}×${seen.box.height.toFixed(1)})`);
           for(const mark of seen.marks){
             const cue=state.marks.find(m=>m.id===mark.id),label=`${f.shotId} ${markSubject(f.shotId,key,mark.id)}${cue?.text===undefined?` (${mark.kind})`:` '${cue.text}'`} at ${t.toFixed(2)} s`;
             const p=mark.anchor;
