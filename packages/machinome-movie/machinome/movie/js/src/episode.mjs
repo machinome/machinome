@@ -229,7 +229,7 @@ export function confirmViewerApi(required,bundleText) {
 }
 // Format 0.4 closes the field lists of a shot, its simulation, its model
 // keyframes and its camera keys; 0.2 and 0.3 keep ignoring unknown fields.
-const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','annotations','highlight','pictures','transition','fadeIn','fadeOut']);
+const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','layout','annotations','highlight','pictures','transition','fadeIn','fadeOut']);
 const SIMULATION_FIELDS=new Set(['from','to','keyframes']);
 const KEYFRAME_FIELDS=new Set(['at','seconds','ease']);
 const CAMERA_KEY_FIELDS=new Set(['at','preset','ease']);
@@ -311,6 +311,13 @@ export function validateEpisode(e, manifest) {
     need(s.start===end && finite(s.end) && s.end>s.start, `Shots must be contiguous: ${s.id}`);end=s.end;
     need(typeof s.narration==='string' && s.narration.trim() && typeof s.direction==='string', `Missing narration/direction: ${s.id}`);
     need(s.speechOffset===undefined||(finite(s.speechOffset)&&s.speechOffset>=0&&s.speechOffset<s.end-s.start),`Invalid speech offset: ${s.id}`);
+    if(s.layout!==undefined){
+      need(formatOf(e)===V04,`Source-only layout needs format machinome-video-draft/0.4: shot ${s.id}`);
+      need(s.layout==='source-only',`Unknown layout: ${s.layout} (shot ${s.id})`);
+      need(s.code,`Source-only layout needs pinned code in shot ${s.id}`);
+      for(const field of ['annotations','highlight','pictures'])
+        need(!s[field]?.length,`Source-only layout cannot use ${field} in shot ${s.id}`);
+    }
     validateCode(e,s);
     closedFields(e,s.simulation,SIMULATION_FIELDS,key=>`Unknown simulation field: ${key} (shot ${s.id})`);
     need(finite(s.simulation.from) && finite(s.simulation.to) && s.simulation.from>=0 && s.simulation.to>=s.simulation.from && s.simulation.to<=e.model.expectedDurationSeconds,`Invalid simulation range: ${s.id}`);

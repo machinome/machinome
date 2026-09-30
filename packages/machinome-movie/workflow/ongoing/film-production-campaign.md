@@ -150,3 +150,16 @@ invented interface requirements merely to fill the campaign.
   same-instant capture contract. No speculative shortcut was implemented.
   The source-only layout planning is committed at `73e97c0`; Sol is capturing
   compatibility baselines and genuine red tests before runtime edits.
+- Source-only layout passed root review and the complete real-film gate.
+  The scoped suite passed 158 tests; root independently reran its 22 focused
+  tests, rehashed all 13 legacy sampled PNG/request pairs, all 280 new-film
+  PNGs and four MP4/manifest bindings, and independently decoded the two
+  source-only films. The 70-frame edit reuses 25 frames and captures B+C's
+  45, matching a separate cold render exactly (including MP4 bytes):
+  10.797 s versus 18.064 s in this run. Root inspected the encoded source,
+  both fades and return. The source-only text-edge replay and preview-override
+  bugs found by the real viewer were fixed without relaxing tolerances;
+  an overwritten first red-image directory is disclosed, not called immutable.
+  The feature is synced and archived as `2026-09-29-source-only-shots`; all
+  nine main specs validate strictly. Automatic review packs follow, with
+  stable authored cue identities and renderer-selected fade sides.

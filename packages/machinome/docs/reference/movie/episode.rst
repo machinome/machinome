@@ -190,9 +190,33 @@ cue must complete the excerpt, and all cues must fit the shot. Align these cues
 after generating and measuring speech; automatic semantic matching is not
 claimed. This is an editorial reveal, not a live coding session.
 
-Code shots use a fixed split layout: highlighted Python left, actual 3D right.
-Shots without code keep the full model stage. Select a short excerpt and inspect
-the final aspect ratio; overflowing panels fail capture. Typing, cursor and
+By default code shots use the fixed split layout: highlighted Python left,
+actual 3D right. Shots without code keep the full model stage. In format 0.4
+only, a code shot may instead declare `layout: source-only` alongside `code`:
+
+```yaml
+  - id: drive-source
+    layout: source-only
+    code:
+      snippet: drive
+      typing: [{from: 0, to: 0.8, throughLine: 206}]
+    # Other required shot fields remain as for any model shot.
+```
+
+That shot's own picture shows the same pinned Python across the existing main
+content rectangle, with larger source type for that wider space and without a
+model pane beside it. Its simulation, camera,
+up and FOV are still posed and checked internally. The current episode style,
+masthead, series label, progress rule, overlays, captions and narration remain;
+this is not the private dark-source experiment's theme, a multi-range source
+collage or an initial-prefix syntax. A source-only shot needs `code`, accepts
+no nonempty `annotations`, `highlight` or `pictures` list, and must use format
+0.4. Any other `layout` value is refused. With `layout` omitted, old model and
+split pictures and frame requests remain unchanged. The opt-in adds no Viewer
+API requirement beyond the shot's existing camera and cue requirements.
+
+Select a short excerpt and inspect the final aspect ratio; overflowing panels
+fail capture, naming the source-only shot and frame time. Typing, cursor and
 syntax colors follow video time, so seeking/resuming preserves exact frames.
 Format 0.4 may also light source identifiers at measured speech onsets; see
 "Source words lit as they are spoken" below.
@@ -575,11 +599,12 @@ judgement on the stills, not an automated claim.
 ## Format 0.4
 
 `machinome-video-draft/0.4` accepts everything 0.3 does, with the same meaning:
-a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does,
-and a 0.4 episode that neither eases nor joins shots produces the same visible
-result it would produce declared 0.3 (its frame data also carries null
-`transition` and `picture`). It adds `ease` on camera keys and model keyframes,
-`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"), `pictures`
+a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does.
+A 0.4 episode using only 0.3 fields produces the same visible result as the
+same episode declared 0.3 (its frame data also carries null `transition` and
+`picture`). It adds `ease` on camera keys and model keyframes,
+`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"),
+`layout: source-only` on code shots (see "Actual Python beside the animation"), `pictures`
 on shots (see “Showing stills and clips”), text
 `reveal`, titles and source emphasis (see "Text animation"), and, on
 annotations, the kind `ring` with its `padding` and `enter` and `leave` on
@@ -595,7 +620,7 @@ as in 0.3.
   `Rings, entrances and exits need format machinome-video-draft/0.4: shot pawls (kind: ring in annotation #0)`.
 - In 0.4 the field lists are closed. A shot accepts `id`, `start`, `end`,
   `speechOffset`, `narration`, `direction`, `simulation`, `camera`,
-  `hiddenLayers`, `overlays`, `evidence`, `code`, `annotations`,
+  `hiddenLayers`, `overlays`, `evidence`, `code`, `layout`, `annotations`,
   `highlight`, `pictures`, `transition`, `fadeIn` and `fadeOut`; its `simulation` accepts
   `from`, `to` and `keyframes`; a model keyframe `at`, `seconds` and `ease`; a
   camera key `at`, `preset` and `ease`; a `transition` `kind`, `duration`,
@@ -624,7 +649,8 @@ as in 0.3.
   numbers the film page already sends, and a transition poses the viewer as
   every frame does. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
   uses (annotations, highlights, a change of lens or up); one that only eases
-  or joins shots or only animates text or shows pictures runs on Viewer API 21 or later. A ring is an annotation, so it
+  or joins shots or only animates text, shows pictures or selects source-only
+  layout runs on Viewer API 21 or later. A ring is an annotation, so it
   needs Viewer API 28 as every annotation does; entrances and exits add
   nothing.
 
@@ -802,7 +828,8 @@ continues rather than freezing:
   on; every other cue has ended. An annotation keeps following its part on the
   moving model, and is refused if the part leaves the frame; an annotation
   with a `leave` has left by the shot's end and does not stay;
-- its code panel shows the completed excerpt, without a cursor;
+- its code panel shows the completed excerpt, without a cursor, in its own
+  split or source-only presentation;
 - its own `hiddenLayers` apply.
 
 The outgoing shot is seen for the whole of a dissolve, wipe or slide, and for
@@ -837,8 +864,11 @@ Every kind acts on the picture, not on the film's chrome: the transition is
 drawn above the model, annotations, overlays and code panel, and below the
 masthead (`MACHINOME` and the series label) and the progress rule, which stay
 in place. A slide never pushes the masthead out of frame, and a fade shows the
-masthead and progress rule on the colour. A change of layout between a code
-shot and a model shot needs nothing special: each picture keeps its own.
+masthead and progress rule on the colour. A change between model, split and
+source-only shots needs nothing special: each incoming and outgoing picture
+keeps its own shot's presentation. Dissolve, wipe and slide may show the
+outgoing model while a source-only picture arrives; a fade passes through its
+colour plate and shows only one picture at a time.
 
 The default colour is `style.background`, which must then be a quoted
 `"#rrggbb"`. On a paper film a fade to the background reads as the picture

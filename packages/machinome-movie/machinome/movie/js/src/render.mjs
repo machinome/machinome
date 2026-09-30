@@ -129,7 +129,25 @@ export async function browserSession(e,viewer,width,captions,action) {
         if(!seen.every((v,i)=>Math.abs(v-asked[i])<=1e-6))throw new Error(`Viewer did not adopt the requested up direction: ${f.shotId} at ${t.toFixed(2)} s`);
       }
       const canvasSize=await page.locator('#stage canvas').boundingBox(),stageSize=await page.locator('#stage').boundingBox();
-      if(!canvasSize||canvasSize.height<stageSize.height*.98||canvasSize.width<stageSize.width*.98)throw new Error('Viewer canvas does not fill the film stage');
+      if(f.layout==='source-only'){
+        const where=`${f.shotId} at ${t.toFixed(2)} s`;
+        const visible=await page.locator('#source').evaluate(el=>{
+          const style=getComputedStyle(el),rect=el.getBoundingClientRect();
+          return {shown:style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)>0,
+            rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};
+        });
+        if(!visible.shown||!stageSize||stageSize.width<=0||stageSize.height<=0)
+          throw new Error(`Source panel is not visible: ${where}`);
+        const panel=visible.rect,expected=STAGE_AREAS.plain.map((v,i)=>v*(i%2?height:width));
+        if(panel.width<=0||panel.height<=0||
+          [panel.x-expected[0],panel.y-expected[1],panel.width-expected[2],panel.height-expected[3]]
+          .some(delta=>Math.abs(delta)>1))throw new Error(`Source panel is outside the picture area: ${where}`);
+        const viewportVisible=await page.locator('#viewport').evaluate(el=>{
+          const style=getComputedStyle(el);return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)>0;
+        });
+        if(viewportVisible)throw new Error(`Source-only model pane remains visible: ${where}`);
+      }else if(!canvasSize||canvasSize.height<stageSize.height*.98||canvasSize.width<stageSize.width*.98)
+        throw new Error('Viewer canvas does not fill the film stage');
       if(f.picture){
         const p=f.picture,seen=observed.picture,media=e.pictureMedia[p.kind==='still'?'stills':'clips'][p.name];
         if(!seen)throw new Error(`Picture did not reach the page: ${f.shotId} #${p.index} at ${t.toFixed(2)} s`);
@@ -154,7 +172,9 @@ export async function browserSession(e,viewer,width,captions,action) {
       }else if(observed.picture)throw new Error(`Picture remained on screen outside cue: ${f.shotId} at ${t.toFixed(2)} s`);
       if(f.code){
         const fits=await page.locator('#source').evaluate(el=>el.scrollHeight<=el.clientHeight&&el.scrollWidth<=el.clientWidth);
-        if(!fits)throw new Error(`Source excerpt overflows the panel: ${f.shotId}; select fewer lines`);
+        if(!fits)throw new Error(f.layout==='source-only'
+          ?`Source excerpt overflows the panel: ${f.shotId} at ${t.toFixed(2)} s; select fewer lines`
+          :`Source excerpt overflows the panel: ${f.shotId}; select fewer lines`);
         if(await page.locator('#source-code').textContent()!==f.code.text)throw new Error('Displayed code differs from source');
         if(f.code.emphasis){
           const expected=f.code.emphasis.map(c=>c.word),actual=observed.emphasis.map(c=>c.text);
@@ -232,6 +252,11 @@ export async function browserSession(e,viewer,width,captions,action) {
         if(prior&&cue.shown!==prior.shown)throw new Error(`Overlay word count differs from timeline: ${baseline.shotId} at ${t.toFixed(2)} s`);
       }
       const f={...baseline,progress:t/e.output.durationSeconds,...override};
+      // A preview comparison can replace the incoming request with the
+      // preceding shot's complete outgoing request. Absent layout on that
+      // older/model shot means absent, not the incoming source-only layout.
+      if(override.shotId&&override.shotId!==baseline.shotId&&!Object.hasOwn(override,'layout'))
+        delete f.layout;
       const x=f.transition;let observed;
       if(!x)observed=await showPicture(f,t,{pictureOnly,fresh});
       else{
@@ -573,6 +598,11 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     const cameraChecks=[];
     for(const shot of e.shots)for(const instant of lensChanges(e,shot)){
       const f=await pose(instant.time,{transition:null}),C=f.view.camera,T=f.view.target;
+      if(f.layout==='source-only'){
+        cameraChecks.push({shotId:shot.id,time:instant.time,fov:f.fov,up:f.up,
+          resolvedPose:true,sourceVisible:true,visibleProjection:false});
+        continue;
+      }
       const d=Math.hypot(...sub(T,C)),forward=unit(sub(T,C)),up=unit(f.up),right=unit(cross(forward,up)),s=.01*d;
       const [p0,p1,pu]=await page.evaluate(points=>window.film.project(points),[T,add(T,right,s),add(T,up,s)]);
       const H=(await page.locator('#stage canvas').boundingBox()).height;

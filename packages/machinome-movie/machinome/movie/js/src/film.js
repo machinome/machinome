@@ -10,7 +10,8 @@
   document.querySelector('#brand').style.color=style.accent;
   document.querySelector('#progress').style.background=style.accent;
   document.querySelector('#series').textContent=cfg.series;
-  document.body.classList.toggle('with-code',Boolean(cfg.initial.code));
+  document.body.classList.toggle('with-code',Boolean(cfg.initial.code)&&cfg.initial.layout!=='source-only');
+  document.body.classList.toggle('source-only',cfg.initial.layout==='source-only');
   const viewer=await MachinomeViewer.mount('#stage','/model/manifest.json',{
     renderMode:'on-demand',
     animation:'external',autoplay:false,driverControls:'none',partControls:'none',
@@ -103,11 +104,10 @@
     }
     return drawn;
   }
-  // A fresh pose ends with the whole page repainted. Chromium re-rasterizes only
-  // what changed, and the antialiased edge of text just outside the changed area
-  // keeps what an earlier pose left there, so without this a pose's pixels could
-  // depend on the poses before it. Transitions and their proofs pose fresh;
-  // every other frame is posed exactly as before.
+  // Fresh transition/proof poses, pictures and source-only text end with a
+  // whole-page repaint. Chromium otherwise keeps antialiased glyph edges just
+  // outside a changed area: the real source-only seek differed at seven such
+  // pixels. Plain model/split frames keep their former pose path.
   const frames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   async function repaint(){
     const background=document.body.style.background;
@@ -223,9 +223,11 @@
     clearComposition();
     // Picture-only captures leave out the film's own chrome (design D6).
     document.body.classList.toggle('picture-only',Boolean(frame.pictureOnly));
-    const split=Boolean(frame.code);
-    if(document.body.classList.contains('with-code')!==split){
+    const sourceOnly=frame.layout==='source-only',split=Boolean(frame.code)&&!sourceOnly;
+    if(document.body.classList.contains('with-code')!==split||
+      document.body.classList.contains('source-only')!==sourceOnly){
       document.body.classList.toggle('with-code',split);
+      document.body.classList.toggle('source-only',sourceOnly);
       await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     }
     // Highlight state follows the request, never the order frames are posed in:
@@ -275,7 +277,7 @@
     document.querySelector('#progress').style.width=`${frame.progress*100}%`;
     const annotations=drawAnnotations(frame);
     const picture=await drawPicture(frame.picture);
-    if(frame.fresh||frame.picture)await repaint();
+    if(frame.fresh||frame.picture||sourceOnly)await repaint();
     const view=viewer.view();
     return {camera:view.camera.toArray(),target:view.target.toArray(),navigation:viewer.navigation(),
       annotations,overlays:overlayReports,emphasis,picture,stage:plain(document.querySelector('#stage').getBoundingClientRect()),

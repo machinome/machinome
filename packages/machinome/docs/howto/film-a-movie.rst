@@ -47,6 +47,12 @@ The source study uses Jessica / `eleven_v3` with lossless `pcm_24000` input.
 Every consuming project owns `videos/<episode-id>/episode.yaml` and
 `production.yaml`. Read the screenplay directly: narration and plain-language
 directions appear together in each shot. See [the source contract](docs/FORMAT.md).
+In draft format 0.4, a shot with pinned `code` may opt into `layout: source-only`
+to fill the existing main picture area with that literal, typed source instead
+of the usual source/model split. Without the opt-in, both old layouts remain
+unchanged. The film's current style and chrome remain; this is not a dark-theme
+or multi-range source mode. Source-only refuses model-target annotations,
+highlights and covering pictures rather than silently hiding them.
 
 From this repository in the development workspace:
 
@@ -76,7 +82,9 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   It makes chargeable requests only for missing cached segments.
 - `preview` creates three stills per shot, a midpoint for each typing cue, and
   a contact sheet. It also
-  checks real-browser pixel replay, requested camera readback, canvas layout and
+  checks real-browser pixel replay, requested camera readback, visible canvas
+  layout on model/split shots and positive fitted source visibility on source-only
+  shots, without calling projection through a hidden canvas visible lens proof. It also checks
   invalid camera refusal. Annotated shots add stills at each arrow or label's
   start, quarters and end; every posed frame refuses an annotation whose part
   is off screen or whose text leaves the frame. Each highlight cue is posed

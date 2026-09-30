@@ -108,6 +108,7 @@ function shotFrame(e,shot,local){
     hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
     overlays,
     code:codeAt(e,shot,local)};
+  if(shot.layout==='source-only')frame.layout='source-only';
   // Format 0.2 frames keep their exact shape; 0.3 and later frames always carry the new cues.
   if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,on,local,past);frame.highlight=highlightAt(e,shot,on);}
   // 0.4 frames always carry transition; a frame posed on its own has none.
