@@ -1,0 +1,874 @@
+{
+  "schema": "videomaker-campaign-evidence/1",
+  "campaign": "film-motion",
+  "date": "2026-09-29",
+  "status": "completed-local-validation",
+  "project": "/mnt/data/machinome-projects/Leonardo",
+  "workflowContentCommit": "82125668e2acd6908f33a56a208992f65c11ad09",
+  "viewerContentCommit": "f040f45",
+  "finalFilm": {
+    "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/rehearsal.mp4",
+    "sha256": "c9b73b4a06893b3040be0c219109a4a44237d98bbd7fd9633f35e391699ae34e",
+    "frameIdentity": "7d4075c3c49fb565e1aef0314ae9d194dfdc03025a65bddc6da6cfac7e0f4c4c",
+    "count": 1380,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "browser": "151.0.7922.34",
+    "viewerApi": 28,
+    "requiredViewerApi": {
+      "api": 28,
+      "reasons": [
+        "annotations (shot attention)",
+        "highlight (shot attention)",
+        "annotations (shot camera)",
+        "camera up/field of view (shot camera)"
+      ]
+    },
+    "probe": {
+      "programs": [],
+      "streams": [
+        {
+          "index": 0,
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1920,
+          "height": 1080,
+          "pix_fmt": "yuv420p",
+          "r_frame_rate": "30/1",
+          "avg_frame_rate": "30/1",
+          "duration": "46.000000",
+          "nb_frames": "1380",
+          "nb_read_frames": "1380"
+        },
+        {
+          "index": 1,
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "sample_rate": "48000",
+          "channels": 2,
+          "channel_layout": "stereo",
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "duration": "46.000000",
+          "nb_frames": "2158",
+          "nb_read_frames": "2157"
+        }
+      ],
+      "format": {
+        "nb_streams": 2,
+        "duration": "46.000000",
+        "size": "5865144"
+      }
+    }
+  },
+  "inputProvenance": {
+    "workflowHead": "82125668e2acd6908f33a56a208992f65c11ad09",
+    "projectHead": "28b43bce1b88446995f0ff231dd9075d1a839ab3",
+    "font": {
+      "path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "sha256": "ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280"
+    },
+    "codeFont": {
+      "path": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+      "sha256": "c805f9436dbc268644c1d9584f01a601a653e028e08fd74b9b949f6cf8304d88"
+    },
+    "episodeSha256": "56dd1944e544dd1c4a311dc9fd804839cb77d73cead3154e5435e1bc98cd60cb",
+    "productionSha256": "3cd8ecdb097c3f105c3cf15972cba78fc5ec647bfe4c978e22178f985c673e1e",
+    "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers"
+  },
+  "servedAssets": {
+    "/viewer.js": "a3fe03f2db691ff46ed3e3624eee57c57445d526d29530835d0df1f00dda095c",
+    "/model/manifest.json": "92c3f1cb757dfa6d67c225bab89bbd4b096ea2b5469e5387e7aba7e60c3365b9",
+    "/film.js": "74a4ecb314aca8a5e1bfc6cbbd479632584e27b7b57e775e4f5b8093cf18024f",
+    "/": "21cdfe37ce977deb11fd897838cac4eed25991789f45dbd8a5a3f9b715437f9a",
+    "/pictures/stills/isometric": "42be08dab08feca8037428a7d44136b913bcd9888725d864e8b85c09a48ee386",
+    "/pictures/stills/beam-drawing": "a50d3774c639f678c8ca3ed3a97823199e58916af5afebe660f2af4404677911",
+    "/pictures/clips/overlay-detail": "cf8c9dea434d696a2db73088632567069595a94ef6c4d2f7a9705f661286510b"
+  },
+  "sourceFiles": [
+    {
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/episode.yaml",
+      "sha256": "56dd1944e544dd1c4a311dc9fd804839cb77d73cead3154e5435e1bc98cd60cb"
+    },
+    {
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/production.yaml",
+      "sha256": "3cd8ecdb097c3f105c3cf15972cba78fc5ec647bfe4c978e22178f985c673e1e"
+    },
+    {
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/description.md",
+      "sha256": "11b34b440dca8d2dc218287b65569aa7195f1a83ff7185562e1eeea75d6535a4"
+    }
+  ],
+  "manifests": [
+    {
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/rehearsal-manifest.json",
+      "sha256": "ebd88c977c39f19bdc62c1f4737f6d6f731a9192511a8fce1c02d1c8f1b5c75d"
+    },
+    {
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio-manifest.json",
+      "sha256": "a083a22e929a03a8022223afae08b86de512a19b7fb643f62dd491c7920cbee0"
+    },
+    {
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/preview/report.json",
+      "sha256": "ddb083f7642e7693e2460438d5a38ad821ac1c22223fcea512c7f79629b13b32"
+    }
+  ],
+  "audio": {
+    "provider": "elevenlabs",
+    "records": [
+      {
+        "id": "opening",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/opening-2b91e44bdf83799e.wav",
+        "sha256": "1fe2bd494c30b9e5f0868e5b1027631043518c29579550ddeb702028b185c0c2",
+        "duration": 3.2,
+        "offset": 0.2
+      },
+      {
+        "id": "attention",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/attention-0cb271aecc4554e7.wav",
+        "sha256": "51e052f918ad5ebd003a37033422307fea7b66004b5729fd8edd1b83de4b50a3",
+        "duration": 3.44,
+        "offset": 4.2
+      },
+      {
+        "id": "camera",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/camera-b7c6033c343135ed.wav",
+        "sha256": "577b170b361931c32511603aa86cf6aad2eff044354d0435eac1e8fe0d430be5",
+        "duration": 2.24,
+        "offset": 9.2
+      },
+      {
+        "id": "judgment",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/judgment-0708d55748c01ff3.wav",
+        "sha256": "f0b00e5e3acdcef08295d27034f5c0cd81e3741d74c6cc4ea007f3cb920fcc91",
+        "duration": 3.28,
+        "offset": 16
+      },
+      {
+        "id": "source",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/source-72b6eea39321423a.wav",
+        "sha256": "fbb90324145522ded0dde83554039c2063c5ac38141cdfa2c85d66f1c28373d8",
+        "duration": 2.24,
+        "offset": 23
+      },
+      {
+        "id": "still",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/still-37c19cda058ea49f.wav",
+        "sha256": "925dc10ab9cc1e01bf2ec23f3c03c1ed4106f29dbf0429abe6f331cb19ac0e5d",
+        "duration": 3.36,
+        "offset": 29.2
+      },
+      {
+        "id": "drawing",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/drawing-535c378192923adb.wav",
+        "sha256": "c43dbfdb8139f11d512f642a94394b7df98e1bff00e6042bc3757148dcf66be1",
+        "duration": 2.56,
+        "offset": 34.2
+      },
+      {
+        "id": "clip",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/clip-bd9bd90f1a3ac46b.wav",
+        "sha256": "a642f66b3673fb36f47da94e42dc84d98c90b76be987f062ca95ba109ba33571",
+        "duration": 3.04,
+        "offset": 37.2
+      },
+      {
+        "id": "closing",
+        "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/audio/closing-086b0c2df7ca5535.wav",
+        "sha256": "9db27a05b588d555576016f78048571ec6b0549edd6cc8c82c5b5e5f4c7772f5",
+        "duration": 4.08,
+        "offset": 41.2
+      }
+    ],
+    "mixSha256": "814c05cabacbebeb3cf0449b4d7f06e4ab14b1545848018e6e83047a662ab22a",
+    "voice": "Jessica",
+    "voiceId": "cgSgspJ2msm6clMCkdW9",
+    "model": "eleven_v3",
+    "format": "pcm_24000",
+    "newTakes": 7,
+    "reusedTakes": 2,
+    "newCharacters": 302,
+    "measuredMix": {
+      "sampleRate": 48000,
+      "channels": 2,
+      "samplesPerChannel": 2208000,
+      "seconds": 46,
+      "peakDbfs": -1.506932,
+      "rmsDbfs": -21.600164
+    },
+    "humanListeningReview": false
+  },
+  "subtitles": {
+    "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/rehearsal.srt",
+    "sha256": "daefeb48039d3427b50ea47849010119913189a0ac9f925c6767f3a973feb909",
+    "burnedIn": false
+  },
+  "pictures": {
+    "stills": {
+      "isometric": {
+        "path": "_evidence/hydraulic_sawmill/mates-isometric.png",
+        "sha256": "42be08dab08feca8037428a7d44136b913bcd9888725d864e8b85c09a48ee386",
+        "committed": false,
+        "credit": "Leonardo project render of the reconstructed sawmill",
+        "rights": "Project-owned reconstruction render, AGPL-3.0-only",
+        "upscale": 1.85,
+        "format": "png",
+        "width": 1200,
+        "height": 900,
+        "cues": [
+          {
+            "shotId": "still",
+            "index": 0,
+            "kind": "still",
+            "name": "isometric",
+            "peak": 1.7999999999999998,
+            "allowance": 1.85,
+            "width": 1200,
+            "height": 900
+          }
+        ]
+      },
+      "beam-drawing": {
+        "path": "videos/demo-stills-and-clips/media/beam-drawing.svg",
+        "sha256": "a50d3774c639f678c8ca3ed3a97823199e58916af5afebe660f2af4404677911",
+        "committed": false,
+        "credit": "Leonardo project-generated carpentry drawing of the reconstruction",
+        "rights": "Project-owned reconstruction drawing, AGPL-3.0-only",
+        "upscale": 1,
+        "format": "svg",
+        "width": 420,
+        "height": 240,
+        "viewBox": [
+          0,
+          0,
+          420,
+          240
+        ],
+        "cues": [
+          {
+            "shotId": "drawing",
+            "index": 0,
+            "kind": "still",
+            "name": "beam-drawing",
+            "peak": null,
+            "allowance": null,
+            "width": 420,
+            "height": 240
+          }
+        ]
+      }
+    },
+    "clips": {
+      "overlay-detail": {
+        "path": "videos/demo-stills-and-clips/media/overlay-detail.mp4",
+        "sha256": "8f9d91654f4cd304e4323aded85f4170fb65113f4d2ef85cf5838d931cab843d",
+        "committed": false,
+        "credit": "Model-stage crop of the Leonardo graphic-overlays demonstration",
+        "rights": "Project-owned reconstruction film, AGPL-3.0-only",
+        "upscale": 2,
+        "format": "mp4",
+        "codec": "h264",
+        "width": 864,
+        "height": 340,
+        "end": 15,
+        "averageRate": 30,
+        "frameCount": 450,
+        "audio": "not played",
+        "extraction": {
+          "key": "cf8c9dea434d696a2db73088632567069595a94ef6c4d2f7a9705f661286510b",
+          "dir": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/clips/cf8c9dea434d696a",
+          "start": 15,
+          "end": 152,
+          "ffmpegVersion": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+          "frameCount": 138
+        },
+        "cues": [
+          {
+            "shotId": "clip",
+            "index": 0,
+            "kind": "clip",
+            "name": "overlay-detail",
+            "peak": 2,
+            "allowance": 2,
+            "width": 864,
+            "height": 340,
+            "averageRate": 30,
+            "frameCount": 450,
+            "filmRate": 30,
+            "dropped": 0,
+            "repeated": 0
+          }
+        ]
+      }
+    },
+    "cues": [
+      {
+        "shotId": "still",
+        "index": 0,
+        "kind": "still",
+        "name": "isometric",
+        "peak": 1.7999999999999998,
+        "allowance": 1.85,
+        "width": 1200,
+        "height": 900
+      },
+      {
+        "shotId": "drawing",
+        "index": 0,
+        "kind": "still",
+        "name": "beam-drawing",
+        "peak": null,
+        "allowance": null,
+        "width": 420,
+        "height": 240
+      },
+      {
+        "shotId": "clip",
+        "index": 0,
+        "kind": "clip",
+        "name": "overlay-detail",
+        "peak": 2,
+        "allowance": 2,
+        "width": 864,
+        "height": 340,
+        "averageRate": 30,
+        "frameCount": 450,
+        "filmRate": 30,
+        "dropped": 0,
+        "repeated": 0
+      }
+    ]
+  },
+  "release": {
+    "ready": false,
+    "issues": [
+      "still isometric is not committed at project HEAD",
+      "still beam-drawing is not committed at project HEAD",
+      "clip overlay-detail is not committed at project HEAD"
+    ],
+    "declared": {
+      "simulationUrl": null,
+      "sourceUrl": null,
+      "descriptionTemplate": "./description.md",
+      "publish": false
+    },
+    "merged": false,
+    "pushed": false,
+    "published": false
+  },
+  "preview": {
+    "width": 960,
+    "height": 540,
+    "browser": "151.0.7922.34",
+    "viewerApi": 28,
+    "framesChecked": 402,
+    "pixelReplay": true,
+    "invalidCameraPreserved": true,
+    "samples": 147,
+    "checks": {
+      "highlightChecks": 2,
+      "cameraChecks": 2,
+      "transitionChecks": 7,
+      "entranceChecks": 31,
+      "revealChecks": 2,
+      "fadeChecks": 15,
+      "emphasisChecks": 1,
+      "pictureChecks": 3
+    },
+    "transitions": [
+      {
+        "shotId": "opening",
+        "field": "fadeIn",
+        "kind": "fade",
+        "largestDifference": 0.9375,
+        "replay": true
+      },
+      {
+        "shotId": "attention",
+        "field": "transition",
+        "kind": "dissolve",
+        "largestDifference": 0.5,
+        "replay": true
+      },
+      {
+        "shotId": "camera",
+        "field": "transition",
+        "kind": "wipe",
+        "largestDifference": 0,
+        "replay": true
+      },
+      {
+        "shotId": "judgment",
+        "field": "transition",
+        "kind": "fade",
+        "largestDifference": 0.5000000000005684,
+        "replay": true
+      },
+      {
+        "shotId": "source",
+        "field": "transition",
+        "kind": "slide",
+        "largestDifference": 0,
+        "replay": true
+      },
+      {
+        "shotId": "closing",
+        "field": "transition",
+        "kind": "dissolve",
+        "largestDifference": 0.5,
+        "replay": true
+      },
+      {
+        "shotId": "closing",
+        "field": "fadeOut",
+        "kind": "fade",
+        "largestDifference": 0.8450727377325791,
+        "replay": true
+      }
+    ],
+    "reveals": [
+      {
+        "shotId": "judgment",
+        "index": 1,
+        "timing": "even",
+        "pixelsDiffer": true,
+        "samples": [
+          {
+            "time": 13.4,
+            "shown": 1,
+            "expected": 1
+          },
+          {
+            "time": 14.3,
+            "shown": 2,
+            "expected": 2
+          },
+          {
+            "time": 15.2,
+            "shown": 3,
+            "expected": 3
+          }
+        ]
+      },
+      {
+        "shotId": "judgment",
+        "index": 2,
+        "timing": "spoken",
+        "pixelsDiffer": true,
+        "samples": [
+          {
+            "time": 16,
+            "shown": 1,
+            "expected": 1
+          },
+          {
+            "time": 17.314999999999998,
+            "shown": 2,
+            "expected": 2
+          },
+          {
+            "time": 18.63,
+            "shown": 3,
+            "expected": 3
+          }
+        ]
+      }
+    ],
+    "emphasis": [
+      {
+        "shotId": "source",
+        "index": 0,
+        "replay": true,
+        "samples": [
+          {
+            "phase": "before",
+            "time": 23.099666666666668,
+            "words": [],
+            "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/preview/96-source-emphasis-0-before.png"
+          },
+          {
+            "phase": "word-0",
+            "time": 23.133,
+            "words": [
+              "waterwheel"
+            ],
+            "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/preview/97-source-emphasis-0-word-0.png"
+          },
+          {
+            "phase": "word-1",
+            "time": 23.72,
+            "words": [
+              "waterwheel",
+              "drives"
+            ],
+            "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/preview/98-source-emphasis-0-word-1.png"
+          },
+          {
+            "phase": "word-2",
+            "time": 24.347,
+            "words": [
+              "waterwheel",
+              "drives",
+              "crankshaft"
+            ],
+            "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/preview/99-source-emphasis-0-word-2.png"
+          },
+          {
+            "phase": "clear",
+            "time": 26.14,
+            "words": [],
+            "file": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/preview/100-source-emphasis-0-clear.png"
+          }
+        ]
+      }
+    ],
+    "pictures": [
+      {
+        "shotId": "still",
+        "index": 0,
+        "kind": "still",
+        "replay": true,
+        "replayTime": 29.4,
+        "replayOpacity": 1,
+        "partialReplay": true,
+        "partialTime": 29.2,
+        "fades": [
+          {
+            "field": "enter",
+            "phase": "start",
+            "time": 29,
+            "equals": "absent"
+          },
+          {
+            "field": "enter",
+            "phase": "mid",
+            "time": 29.2,
+            "equals": "neither"
+          },
+          {
+            "field": "enter",
+            "phase": "end",
+            "time": 29.4,
+            "equals": "full"
+          }
+        ]
+      },
+      {
+        "shotId": "drawing",
+        "index": 0,
+        "kind": "still",
+        "replay": true,
+        "replayTime": 34.4,
+        "replayOpacity": 1,
+        "partialReplay": true,
+        "partialTime": 34.2,
+        "fades": [
+          {
+            "field": "enter",
+            "phase": "start",
+            "time": 34,
+            "equals": "absent"
+          },
+          {
+            "field": "enter",
+            "phase": "mid",
+            "time": 34.2,
+            "equals": "neither"
+          },
+          {
+            "field": "enter",
+            "phase": "end",
+            "time": 34.4,
+            "equals": "full"
+          },
+          {
+            "field": "leave",
+            "phase": "start",
+            "time": 36.6,
+            "equals": "full"
+          },
+          {
+            "field": "leave",
+            "phase": "mid",
+            "time": 36.8,
+            "equals": "neither"
+          }
+        ]
+      },
+      {
+        "shotId": "clip",
+        "index": 0,
+        "kind": "clip",
+        "replay": true,
+        "replayTime": 37.4,
+        "replayOpacity": 1,
+        "partialReplay": true,
+        "partialTime": 37.2,
+        "fades": [
+          {
+            "field": "enter",
+            "phase": "start",
+            "time": 37,
+            "equals": "absent"
+          },
+          {
+            "field": "enter",
+            "phase": "mid",
+            "time": 37.2,
+            "equals": "neither"
+          },
+          {
+            "field": "enter",
+            "phase": "end",
+            "time": 37.4,
+            "equals": "full"
+          }
+        ]
+      }
+    ]
+  },
+  "vision": {
+    "reviewer": "Codex root",
+    "source": "decoded final MP4, not the PNG frame cache",
+    "result": "passed",
+    "overviewFrames": [
+      0,
+      15,
+      30,
+      45,
+      60,
+      75,
+      90,
+      105,
+      120,
+      135,
+      150,
+      165,
+      180,
+      195,
+      210,
+      225,
+      240,
+      255,
+      270,
+      285,
+      300,
+      315,
+      330,
+      345,
+      360,
+      375,
+      390,
+      405,
+      420,
+      435,
+      450,
+      465,
+      480,
+      495,
+      510,
+      525,
+      540,
+      555,
+      570,
+      585,
+      600,
+      615,
+      630,
+      645,
+      660,
+      675,
+      690,
+      705,
+      720,
+      735,
+      750,
+      765,
+      780,
+      795,
+      810,
+      825,
+      840,
+      855,
+      870,
+      885,
+      900,
+      915,
+      930,
+      945,
+      960,
+      975,
+      990,
+      1005,
+      1020,
+      1035,
+      1050,
+      1065,
+      1080,
+      1095,
+      1110,
+      1125,
+      1140,
+      1155,
+      1170,
+      1185,
+      1200,
+      1215,
+      1230,
+      1245,
+      1260,
+      1275,
+      1290,
+      1305,
+      1320,
+      1335,
+      1350,
+      1365
+    ],
+    "spokenOnsetFrames": [
+      479,
+      480,
+      509,
+      510,
+      558,
+      559
+    ],
+    "sourceOnsetAndClearFrames": [
+      693,
+      694,
+      711,
+      712,
+      730,
+      731,
+      784,
+      785
+    ],
+    "joinAndEndFrames": [
+      0,
+      129,
+      279,
+      396,
+      402,
+      408,
+      639,
+      1239,
+      1379
+    ],
+    "files": [
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-sequence-01.jpg",
+        "sha256": "d5cf62a8f21a782c364c777f99fc67c9bdcaa30d58abf83d9e0d56560283b373"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-sequence-02.jpg",
+        "sha256": "74c4d0ef13b63d5ae4ca81c08088a9e1cc35602a4fd4450c1fae3c2366a82fae"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-sequence-03.jpg",
+        "sha256": "da0a84d90679fde05d1e48a31a1d19dd8e91b2c9d8c1c16b4cdd94e1e825221c"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-sequence-04.jpg",
+        "sha256": "b45da4d0fabd2b84845a2bf8e40ca725f2e700a23754fdbb021d797b28dcd6f1"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-spoken-onsets.png",
+        "sha256": "83b2470740cf86b9eafaff6e4b84dc7bbc552410c8cd5f2ef49116f9034ddf8b"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-source-onsets.png",
+        "sha256": "b18fb94b7b2059d36c3f3a599959853d41c43309f6ef60727baff06dd84d1320"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-all-features/_build/review-joins-and-ends.png",
+        "sha256": "2545172b6b026f691d83809bcafb90d489f113749f9b0b9b052bd8f64c8eda5e"
+      }
+    ],
+    "lastOverviewPaddingCells": 4,
+    "pilotAestheticApprovalClaimed": false
+  },
+  "featureFilms": [
+    {
+      "cycle": "keyframes-and-easing",
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-keyframes-and-easing-2/_build/silent-preview.mp4",
+      "sha256": "5f64f399b11ab015dee63a2d840e8d34f0c87b264f930687ab316ac0f10c47e5",
+      "recoveredFilmFreshlyReviewed": true
+    },
+    {
+      "cycle": "shot-transitions",
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-shot-transitions/_build/silent-preview.mp4",
+      "sha256": "db49786d411563f76d1d620c20a7c2a49964118e9028191194c3ee3e1669c3d8",
+      "recoveredFilmFreshlyReviewed": true
+    },
+    {
+      "cycle": "graphic-overlays",
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-graphic-overlays/_build/silent-preview.mp4",
+      "sha256": "73b68c0e403e0a2482113d43bfe02ddd6f75ae0976b7eff0752590e70cc36404",
+      "recoveredFilmFreshlyReviewed": false
+    },
+    {
+      "cycle": "text-animation",
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-text-animation/_build/rehearsal.mp4",
+      "sha256": "74fc594461fed3ada615a0775b8fa98af4ecf7c9c643c89dac28564ef17fd58b",
+      "recoveredFilmFreshlyReviewed": false
+    },
+    {
+      "cycle": "stills-and-clips",
+      "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-stills-and-clips/_build/silent-preview.mp4",
+      "sha256": "6312b7750f3a74047c118c8112c1627ee57d074d76a8ff8d7203a2f850bf43f1",
+      "recoveredFilmFreshlyReviewed": false
+    }
+  ],
+  "implementationSuite": {
+    "passed": 116,
+    "failed": 0,
+    "serial": true,
+    "evidence": "openspec/changes/archive/2026-09-29-stills-and-clips/root-review.md"
+  },
+  "compatibility": {
+    "baseline": "6417f97",
+    "pixelEquality": "byte-identical PNG files",
+    "episodes": {
+      "demo-legacy-02": 3,
+      "demo-annotate-a-part": 6,
+      "demo-feed-mechanism": 26
+    },
+    "total": 35,
+    "baselineRecords": [
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-legacy-02/_build/legacy-6417f97.json",
+        "sha256": "8b88647d5e6a52ed2677a72cb5c6cc6cc14012362f9938678dcc099d6161845a"
+      },
+      {
+        "path": "/mnt/data/machinome-projects/Leonardo/videos/demo-graphic-overlays/_build/legacy-6417f97.json",
+        "sha256": "5f6b1dc15630013ae6b8ea33969f195ff602f0c66700479c25c7e69b2d923a4a"
+      }
+    ]
+  },
+  "specs": {
+    "strictValidationPassed": 9,
+    "strictValidationFailed": 0,
+    "baselineCapabilities": 7,
+    "preExistingOtherActiveChanges": 2
+  },
+  "nativeClosingProof": {
+    "width": 1920,
+    "height": 1080,
+    "time": 41.3,
+    "largestDifference": 0.5,
+    "unmasked": true,
+    "replayExact": true,
+    "record": "openspec/changes/archive/2026-09-29-stills-and-clips/root-review.md"
+  },
+  "limits": [
+    "Sampled agent vision, not human full-film viewing or listening.",
+    "Local demonstrations remain untracked; public URLs and media commitment gate publication.",
+    "Test-order exceptions and historical pilot-only choices are disclosed in report.md."
+  ],
+  "cleanup": {
+    "temporaryBaselineCheckoutRemoved": "/tmp/videomaker-legacy.tQKNxD",
+    "forceUsed": false,
+    "productionWorktreesAndCachesPreserved": true
+  }
+}

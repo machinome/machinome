@@ -9,6 +9,14 @@ stated in the craft's terms; the tools named in the next section were
 surveyed only to decide the licence question, and no design here is drawn
 from them (see the rule in `AGENTS.md`).
 
+Completion note, 29 September 2026: this is the historical wishlist, not a
+current capability inventory. The ratified subset of items 5–9 is now
+implemented and demonstrated; see
+[`film-motion` delivery](../archive/film-motion-2026-09-29/report.md).
+Broader wishes such as springs, boxes/scale entrances and burned-in captions
+were not included. Other items and those unratified extensions remain here;
+the baseline specs, not the older “today” descriptions below, govern behavior.
+
 ## Why not adopt a framework
 
 The films of AGPL simulations should be rebuildable from free software. That

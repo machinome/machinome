@@ -1,5 +1,12 @@
 # Film motion campaign — roadmap items 5 to 9
 
+Archive status: completed 29 September 2026. The original provisional plan
+and chronological updates below are preserved as history. All five cycles
+are implemented, synced and archived; the 46-second combined narrated film
+is encoded and visually reviewed. See `report.md`, `PROGRESS.md` and
+`evidence.json` here for the final disposition, commits and artifact hashes.
+This completion applies to the ratified subset, not every roadmap wish.
+
 Status: provisional plan, 29 September 2026. The pilot set the goal: implement
 roadmap items 5, 6, 7, 8 and 9 with the same discipline as the annotations
 campaign (an opus agent proposes, the orchestrating agent reviews as the
@@ -135,6 +142,16 @@ demonstrated.
   The record discloses the accepted test-order exception rather than claiming
   the whole expanded matrix was red before code. The final combined film's
   measured narration fits 46 seconds; its final preview/mastering remains.
+
+- 29 Sep, final delivery: the combined film is complete at 1920×1080, 30 fps,
+  46 seconds, with nine measured narration takes. MP4 SHA-256
+  `c9b73b4a06893b3040be0c219109a4a44237d98bbd7fd9633f35e391699ae34e`.
+  The complete preview passes 402 pose checks and 147 samples; Codex inspected
+  92 decoded half-second frames and exact word/join/end frames from the final
+  MP4. All five cycles are synced and archived; the suite is 116/116 and
+  35 legacy images match the recovery baseline. No merge, push or publication
+  occurred. Human listening and pilot aesthetic/adoption choices are not
+  claimed. The completed campaign now lives in this archive directory.
 
 ## Combined demonstration, resumed commission
 
