@@ -1,6 +1,6 @@
 # Bounded parallel rendering investigation
 
-Status: provisional benchmark plan, 29 September 2026. This is a read-only planning record for the commissioned second film-production cycle, not an OpenSpec product proposal, a measured speedup, or permission to run concurrent browsers. The prior virtiofs file-descriptor exhaustion is a resource constraint, not evidence that parallel rendering helps. Root must grant an exclusive browser/resource lease before any experiment. Default rendering remains one session even if a later bounded option is justified.
+Status: closed with **no product change and no valid speed comparison**, 29 September 2026. The three attempts below never completed a paired trial. The required resource observation failed; this is not evidence that parallel rendering is slow. The experiment lease is withdrawn. The original plan and failures remain as evidence; no permanent parallel option is justified.
 
 ## Consumer and question
 
@@ -137,3 +137,29 @@ The sampler's 100 ms is a requested interval, not an achieved real-time
 guarantee (the successful reference observed 99–203 ms). Recorded peaks can
 miss shorter spikes; compare them with the conservative unchanged thresholds
 and report this measurement limit in any result.
+
+## Final attempt and closure
+
+The third attempt, `parallel-benchmark-jiH0ao/`, completed a cold reference
+and one baseline seed, then stopped while the second seed finished, before
+any edited serial/parallel pair. The corrected monitor could not attest a
+safe-to-skip identity at `EACCES` reading `/proc/1063934/fd`. No configured
+threshold had been exceeded. Its 245 observations recorded aggregate RSS
+1,012,620 KiB, aggregate FDs 257, maximum per-process FDs 68 and minimum
+available memory 11,832,204 KiB, with actual gaps of 99–204 ms. Those are
+incomplete-run observations, not evidence that a two-browser arm is safe.
+
+Root independently checked the report SHA-256
+`996dad27107f81c21026e0fcdd0af5c95146e32e146778c54014ae83ae0578f8`
+and seed resource record SHA-256
+`128c93c7d962be01f44cbbb8afd014c5f92082028cf535fe4b950a940e05bbc5`,
+zero completed pairs, clean recorded shutdown and absence of all eight
+sampled owned PIDs. The denied process's precise state at denial remains
+unknown. The consuming project's `parallel-benchmark-stop.md` records all
+three attempts; every output root is retained.
+
+The investigation closes without another retry, privilege escalation,
+relaxed observation gate or product change. The default remains serial.
+There is **no valid measured speedup, slowdown or parallel pixel proof**.
+The campaign continues with its separate single-browser compositing profile.
+This closed record stays beside the ongoing campaign until campaign archival.

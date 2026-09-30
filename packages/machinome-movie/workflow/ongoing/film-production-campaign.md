@@ -135,3 +135,10 @@ invented interface requirements merely to fill the campaign.
   Both repositories' baseline specs validate strictly. The parallel experiment
   plan is approved; its one-off Sol harness is under root safety/fidelity
   review before execution. No author-facing parallel option exists yet.
+- The bounded parallel investigation is closed with **no product change**.
+  Three preserved attempts completed no serial/parallel pair. After fixing
+  two narrow measurement-harness defects, the resource monitor still could
+  not attest an FD-read denial as safe to skip. Root verified the final raw
+  failure and process cleanup; no speed conclusion is drawn and no further
+  retry is authorized. Rendering remains serial. Next is the independent
+  single-browser compositing profile.
