@@ -84,3 +84,34 @@ reference/seeds/comparator and exactly two concurrent browsers only in the
 two approved parallel arms. No other browser tests/renders may overlap.
 Thresholds above remain unchanged. Any resource/pixel error stops the
 experiment and returns to review; do not retry past it or raise limits.
+
+## First execution held; monitor correction
+
+The first cold-reference run stopped for a sampling error, not a measured
+resource-limit breach: `EACCES` reading `/proc/1058844/fd`. No timed pair
+completed and no speed conclusion follows. Its report, resources, log and
+partial output remain in Leonardo's
+`videos/demo-incremental-rendering/_build/parallel-benchmark-yBLzwB/`.
+Recorded peaks were 1,022,628 KiB aggregate RSS, 266 aggregate FDs, 70 FDs
+in one process and 11,864,416 KiB minimum available memory. Actual sample
+gaps were 99–205 ms. These are observations before a failed run, not a
+successful resource proof. Identity-scoped shutdown left no owned survivor.
+
+Root read the raw record: the denied PID had been sampled successfully as a
+browser descendant, the worker log had reached encoding, and cleanup found
+only the worker still live. This suggests process teardown racing the metric
+read, but the failed record cannot establish its exact state at the denial.
+The harness now rechecks identity on a denied/missing metric read: it skips
+only a now-absent PID, a zombie, or a changed starttime, and records that
+attestation. A same-identity live denial or unreadable attestation remains
+fatal; thresholds and product code are unchanged. Snapshot-known zombies
+are not asked for live process metrics.
+
+Sol's six-case mocked monitor check passed; root independently reran it at
+`parallel-benchmark-monitor-yVyWfo/report.json`. In particular, live EACCES
+and unavailable attestation still refuse, while verified gone/zombie/reused
+identities are recorded. This is a measurement-harness correction, not a
+retroactive diagnosis or a waived live resource error. Root authorizes one
+new complete benchmark in a new output root with these checks; preserve
+the failed original and stop again for any live denial, resource or pixel
+failure.

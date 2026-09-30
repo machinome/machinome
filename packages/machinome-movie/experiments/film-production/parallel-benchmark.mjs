@@ -375,24 +375,57 @@ function rememberOwned(processes,rootPid,owned){
   for(const p of processes)if(tree.has(p.pid))owned.set(p.pid,{pid:p.pid,ppid:p.ppid,starttime:p.starttime});
   return processes.filter(p=>tree.has(p.pid)&&owned.get(p.pid)?.starttime===p.starttime);
 }
+const realProcIo={
+  stat:pid=>readFile(`/proc/${pid}/stat`,'utf8'),
+  status:pid=>readFile(`/proc/${pid}/status`,'utf8'),
+  fds:pid=>readdir(`/proc/${pid}/fd`),
+  limits:pid=>readFile(`/proc/${pid}/limits`,'utf8')};
+async function readOwnedMetrics(processRecord,io=realProcIo){
+  const {pid,ppid,starttime,state}=processRecord;
+  // A zombie retains its PID/stat identity but no longer has a meaningful FD
+  // table or resident browser workload. Do not ask /proc/<pid>/fd for it.
+  if(state==='Z')return {knownZombie:{pid,ppid,starttime}};
+  try{
+    const [status,fds,soft]=await Promise.all([
+      io.status(pid),io.fds(pid),io.limits(pid)]);
+    const rssKiB=Number(status.match(/^VmRSS:\s+(\d+) kB/m)?.[1]??0);
+    const softFd=soft.match(/^Max open files\s+(\S+)/m)?.[1]??null;
+    return {row:{pid,ppid,starttime,rssKiB,fds:fds.length,softFd}};
+  }catch(error){
+    if(!['ENOENT','ESRCH','EACCES','EPERM'].includes(error.code))throw error;
+    // Denial alone is never a waiver. The exact PID and starttime must now
+    // attest a teardown race; a still-live denied identity remains fatal.
+    let current;
+    try{current=parseProcStat(await io.stat(pid));}
+    catch(statError){
+      if(statError.code==='ENOENT'||statError.code==='ESRCH')
+        return {teardownRace:{pid,ppid,starttime,metricError:error.code,attested:'gone'}};
+      throw error;
+    }
+    if(!current)throw error;
+    if(current.starttime!==starttime)
+      return {teardownRace:{pid,ppid,starttime,metricError:error.code,attested:'identity-changed',
+        observedStarttime:current.starttime}};
+    if(current.state==='Z')
+      return {teardownRace:{pid,ppid,starttime,metricError:error.code,attested:'zombie'}};
+    throw error;
+  }
+}
 async function procSample(rootPid,owned){
   const processes=await procSnapshot();
   const current=rememberOwned(processes,rootPid,owned);
-  const rows=[];
-  for(const {pid,ppid,starttime} of current){
-    try{
-      const [status,fds,soft]=await Promise.all([
-        readFile(`/proc/${pid}/status`,'utf8'),readdir(`/proc/${pid}/fd`),
-        readFile(`/proc/${pid}/limits`,'utf8')]);
-      const rssKiB=Number(status.match(/^VmRSS:\s+(\d+) kB/m)?.[1]??0);
-      const softFd=soft.match(/^Max open files\s+(\S+)/m)?.[1]??null;
-      rows.push({pid,ppid,starttime,rssKiB,fds:fds.length,softFd});
-    }catch(error){if(error.code!=='ENOENT'&&error.code!=='ESRCH')throw error;}
+  const rows=[],teardownRaces=[],knownZombies=[];
+  for(const processRecord of current){
+    const result=await readOwnedMetrics(processRecord);
+    if(result.row)rows.push(result.row);
+    if(result.teardownRace)teardownRaces.push(result.teardownRace);
+    if(result.knownZombie)knownZombies.push(result.knownZombie);
   }
   const meminfo=await readFile('/proc/meminfo','utf8');
   const availableKiB=Number(meminfo.match(/^MemAvailable:\s+(\d+) kB/m)?.[1]);
   assert(Number.isFinite(availableKiB),'Cannot read MemAvailable');
-  return {at:Date.now(),rootPid,processes:rows,treeRssKiB:rows.reduce((n,r)=>n+r.rssKiB,0),
+  return {at:Date.now(),rootPid,processes:rows,teardownRaces,knownZombies,
+    treeRssKiB:rows.reduce((n,r)=>n+r.rssKiB,0),
     treeFds:rows.reduce((n,r)=>n+r.fds,0),processFds:Math.max(0,...rows.map(r=>r.fds)),availableKiB};
 }
 const pause=milliseconds=>new Promise(r=>setTimeout(r,milliseconds));
@@ -483,7 +516,7 @@ async function runWorker(mode,build){
   let stdout='',stderr='',sampling=false,stopReason=null,stopDetails=null;
   let terminationPromise,safetyTimer,safetyResolve,lastSampleStart;
   const safetyDeadline=new Promise(resolveDeadline=>{safetyResolve=resolveDeadline;});
-  const owned=new Map(),sampleTimes=[];
+  const owned=new Map(),sampleTimes=[],teardownRaces=[],knownZombies=[];
   const peaks={treeRssKiB:0,treeFds:0,processFds:0,minAvailableKiB:Infinity,
     byProcess:{},softFdLimits:{}};
   child.stdout.on('data',chunk=>{stdout+=chunk;});
@@ -503,6 +536,8 @@ async function runWorker(mode,build){
     try{
       const startAt=Date.now(),started=now();
       const s=await procSample(child.pid,owned);
+      teardownRaces.push(...s.teardownRaces.map(r=>({at:startAt,...r})));
+      knownZombies.push(...s.knownZombies.map(r=>({at:startAt,...r})));
       sampleTimes.push({at:startAt,gapMs:lastSampleStart===undefined?null:startAt-lastSampleStart,
         durationMs:ms(started)});
       lastSampleStart=startAt;
@@ -559,6 +594,7 @@ async function runWorker(mode,build){
   const resource={samples:sampleTimes.length,requestedSampleIntervalMs:100,
     actualMaxGapMs:Math.max(0,...gaps),actualMinGapMs:gaps.length?Math.min(...gaps):null,
     maxSampleDurationMs:Math.max(0,...sampleTimes.map(s=>s.durationMs)),sampleTimes,
+    teardownRaces,knownZombies,
     availableBeforeKiB,peaks,stopReason,stopDetails,pipeClose,limits,outerWallMs,
     caveat:'100 ms is the requested timer interval; actual gaps and durations above are measured, not guaranteed.'};
   await writeFile(resolve(build,`resource-${mode}.json`),JSON.stringify(resource,null,2)+'\n');
@@ -735,6 +771,52 @@ async function safetySelfTest(){
   }
 }
 
+async function monitorRaceSelfTest(){
+  const parent=resolve(fixture,'_build');await mkdir(parent,{recursive:true});
+  const dir=await mkdtemp(resolve(parent,'parallel-benchmark-monitor-'));
+  const record={status:'running',dir,cases:[]};
+  const save=()=>json(resolve(dir,'report.json'),record);
+  await save();
+  const processRecord={pid:12345,ppid:123,starttime:'111',state:'S'};
+  const denied=code=>Object.assign(new Error(`mock ${code}`),{code});
+  const stat=(state,starttime)=>
+    `12345 (dummy) ${state} 123 123 ${Array(16).fill('0').join(' ')} ${starttime}\n`;
+  const io=(metricError,statRead)=>({
+    status:async()=>{if(metricError.at==='status')throw denied(metricError.code);return 'VmRSS: 10 kB\n';},
+    fds:async()=>{if(metricError.at==='fds')throw denied(metricError.code);return ['0','1'];},
+    limits:async()=> 'Max open files            65535                65535                files\n',
+    stat:statRead});
+  try{
+    const knownZombie=await readOwnedMetrics({...processRecord,state:'Z'},new Proxy({},
+      {get:()=>{throw new Error('Known zombie touched /proc metrics');}}));
+    assert(knownZombie.knownZombie?.pid===12345,'Known zombie was not skipped before metric reads');
+    record.cases.push({name:'known-zombie',result:'skipped without metric reads'});
+    const gone=await readOwnedMetrics(processRecord,io({at:'fds',code:'EACCES'},
+      async()=>{throw denied('ENOENT');}));
+    assert(gone.teardownRace?.attested==='gone','Gone identity did not attest teardown race');
+    record.cases.push({name:'fd-EACCES-then-gone',result:gone.teardownRace});
+    const zombie=await readOwnedMetrics(processRecord,io({at:'fds',code:'EPERM'},
+      async()=>stat('Z','111')));
+    assert(zombie.teardownRace?.attested==='zombie','Zombie identity did not attest teardown race');
+    record.cases.push({name:'fd-EPERM-then-zombie',result:zombie.teardownRace});
+    const changed=await readOwnedMetrics(processRecord,io({at:'status',code:'EACCES'},
+      async()=>stat('S','222')));
+    assert(changed.teardownRace?.attested==='identity-changed',
+      'Reused PID did not attest identity change');
+    record.cases.push({name:'status-EACCES-then-reused-PID',result:changed.teardownRace});
+    for(const [name,statRead] of [['same-live-identity',async()=>stat('S','111')],
+      ['unreadable-attestation',async()=>{throw denied('EACCES');}]]){
+      let failedCode=null;
+      try{await readOwnedMetrics(processRecord,io({at:'fds',code:'EACCES'},statRead));}
+      catch(error){failedCode=error.code;}
+      assert(failedCode==='EACCES',`${name} incorrectly waived live FD denial`);
+      record.cases.push({name,result:'refused EACCES'});
+    }
+    record.status='complete';await save();
+    console.log(`Monitor race rehearsal: ${resolve(dir,'report.json')}`);
+  }catch(error){record.status='failed';record.error=String(error.stack??error);await save();throw error;}
+}
+
 try{
   if(process.argv[2]==='dummy-child'){
     process.on('SIGTERM',()=>{});
@@ -747,6 +829,8 @@ try{
     setInterval(()=>{},1000);
   }else if(process.argv[2]==='safety-self-test'){
     await safetySelfTest();
+  }else if(process.argv[2]==='monitor-race-self-test'){
+    await monitorRaceSelfTest();
   }else if(process.argv[2]==='worker'){
     const [mode,build,resultFile]=process.argv.slice(3);
     assert(['seed','cold','serial','parallel','product'].includes(mode)&&build&&resultFile,
