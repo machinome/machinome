@@ -1129,3 +1129,32 @@ description template without `{{pictureCredits}}` makes `releaseReady` false
 and appears in `pictureReleaseIssues`. Rehearsals still proceed. The placeholder
 becomes one `name: credit` line per shown picture, or a marked pending line
 for a null credit; Videomaker records rights but does not judge them.
+
+`render` caches complete shot generations under `_build/shot-cache/shot-v1/`.
+Its output frames still use the film-wide `n / fps` clock, including progress
+and an outgoing picture during an incoming transition. Each generation has an
+index published only after all its frames are captured. Reuse verifies the
+index, every PNG checksum and dimensions; missing, interrupted or damaged
+generations are recaptured as whole shots. The output manifest records the
+cache schema, common key, each shot's frame counts/key/generation/original
+capture provenance, and the encoded MP4 checksum. A reused shot retains its
+original capture provenance. The old `_build/frames/` cache is not imported or
+deleted. A first render with this schema is cold.
+
+The common key binds the first mounted frame, model/viewer/page/runtime,
+the known regular/bold film and mono font faces in the tested environment,
+global chrome/style, browser, viewport, FPS and film
+duration. A first-shot edit may therefore invalidate all shots. A later edit
+normally invalidates its shot and any following shot whose incoming transition
+uses it as outgoing, not distant shots. Reached still bytes and selected clip
+frame bytes/timestamps are per-shot; unused picture declarations, release
+metadata, and external captions are not visual inputs. Spoken visual cues bind
+their verified cached take and resolved timing; an even reveal does not.
+Preflight validation and measured-take checks rerun before any cache hit is
+used. A reused shot inherits frame-level browser pose checks from its
+identical-input, attested capture. Audio and SRT are rebuilt for the current
+render without generating speech. If an
+interrupted publication leaves an old manifest beside a newer MP4, its output
+checksum will not match: verify `outputSha256` against `output` before treating
+it as a completed render. The prior MP4 remains recoverable at
+`<label>.mp4.previous-<id>` until a successful publication removes that backup.

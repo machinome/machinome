@@ -1,7 +1,8 @@
 import {createServer} from 'node:http';
-import {readFile,writeFile,mkdir,copyFile,stat,rename} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,copyFile,rename,link,unlink} from 'node:fs/promises';
 import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
 import {frameAt,srt} from './timeline.mjs';
 import {contained,requiredViewerApi,viewerApiRefusal} from './episode.mjs';
@@ -10,6 +11,8 @@ import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pi
 import {resolveWordTiming,validateWordFramesAtFps} from './words.mjs';
 import {readSpeechTake} from './speech.mjs';
 import {STAGE_AREAS,extractClips,validatePictureSizing,pictureReports,clipCadenceForCue} from './pictures.mjs';
+import {SHOT_CACHE_SCHEMA,outputShotUnits,fingerprintShotUnits,shotCacheRoot,
+  findShotGeneration,captureShotGeneration,assembleShotFrames} from './shot-cache.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
@@ -605,43 +608,82 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
 }
 
 export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,audio=null,label='rehearsal'}) {
-  if(!e.wordTiming)await resolveWordTiming(e,shot=>readSpeechTake(e,shot));
+  // Re-read measured takes even when the caller resolved them earlier: a
+  // cache hit must not launder a removed or changed speech take in a reused e.
+  await resolveWordTiming(e,shot=>readSpeechTake(e,shot));
   validateWordFramesAtFps(e,fps);
   const captions=audio?.captions??[];
+  const fontFile=async(name,style='Regular')=>{
+    const path=await command('fc-match',['-f','%{file}',`${name}:style=${style}`]).catch(()=>null);
+    return path?{path,sha256:await fileHash(path)}:null;
+  };
+  const fontRecord=await fontFile(e.style.fontFamily??'DejaVu Sans');
+  const filmBold=await fontFile(e.style.fontFamily??'DejaVu Sans','Bold');
+  const codeFontRecord=await fontFile('DejaVu Sans Mono');
+  const codeBold=await fontFile('DejaVu Sans Mono','Bold');
+  const fontFaces={film:{regular:fontRecord,bold:filmBold},code:{regular:codeFontRecord,bold:codeBold}};
   const report=await browserSession(e,viewer,width,captions,async({page,pose,info})=>{
-    const identity=hash(JSON.stringify({episode:e,hashes:info.hashes,browser:info.browser,width,fps,captions,
+    const sharedHashes=Object.fromEntries(Object.entries(info.hashes).filter(([url])=>!url.startsWith('/pictures/')));
+    const commonKey=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,hashes:sharedHashes,browser:info.browser,
+      viewerApi:info.viewerApi,width,height:info.height,fps,
+      duration:e.output.durationSeconds,format:e.format,style:e.style,series:e.series??e.title,
+      initial:frameAt(e,0,captions),fonts:fontFaces,
       renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
       pictures:await fileHash(resolve(here,'pictures.mjs')),
       easing:await fileHash(resolve(here,'easing.mjs')),
       words:await fileHash(resolve(here,'words.mjs')),
       pixels:await fileHash(resolve(here,'pixels.mjs')),
-      sourceRenderer:await fileHash(resolve(here,'code.mjs')),dependencies:await fileHash(resolve(here,'../package-lock.json'))}));
-    const dir=resolve(e.paths.build,'frames',identity.slice(0,16));await mkdir(dir,{recursive:true});
-    const count=e.output.durationSeconds*fps;
-    if(!Number.isInteger(count))throw new Error('Frame count is not integral');
+      sourceRenderer:await fileHash(resolve(here,'code.mjs')),
+      shotCache:await fileHash(resolve(here,'shot-cache.mjs')),
+      dependencies:await fileHash(resolve(here,'../package-lock.json'))}));
+    const {count,units}=outputShotUnits(e,fps,captions);
+    await fingerprintShotUnits(e,units,commonKey);
+    const root=shotCacheRoot(e.paths.build),selections=new Map(),shotReports=[];
+    const captureProvenance={workflowHead:(await command('git',['rev-parse','HEAD'],{cwd:resolve(here,'..')})).trim(),
+      projectHead:(await command('git',['rev-parse','HEAD'],{cwd:e.paths.repository})).trim(),
+      episodeSha256:await fileHash(e.paths.episode),productionSha256:await fileHash(e.paths.production),
+      viewerSha256:sharedHashes['/viewer.js'],modelSha256:sharedHashes['/model/manifest.json'],
+      browser:info.browser,commonKey};
     const started=Date.now();
-    for(let i=0;i<count;i++){
-      const file=resolve(dir,`${String(i).padStart(6,'0')}.png`);
-      try{if((await stat(file)).size>0)continue;}catch(error){if(error.code!=='ENOENT')throw error;}
-      await pose(i/fps);
-      await writeFile(file+'.tmp',await page.screenshot());
-      await rename(file+'.tmp',file);
-      if(i%90===0)console.log(`Frames ${i+1}/${count} · ${((Date.now()-started)/1000).toFixed(0)}s elapsed`);
+    let capturedFrames=0,reusedFrames=0;
+    for(const unit of units){
+      let selected=await findShotGeneration(root,unit,commonKey,width,info.height);
+      const reused=Boolean(selected);
+      if(!selected){
+        selected=await captureShotGeneration(root,unit,commonKey,width,info.height,async frame=>{
+          await pose(frame.time);
+          const bytes=await page.screenshot();capturedFrames++;
+          if(frame.index%90===0)console.log(`Frames ${frame.index+1}/${count} · ${((Date.now()-started)/1000).toFixed(0)}s elapsed`);
+          return bytes;
+        },{...captureProvenance,shotKey:unit.key});
+      }else reusedFrames+=unit.frames.length;
+      selections.set(unit.shotId,selected);
+      shotReports.push({shotId:unit.shotId,start:unit.start,end:unit.end,
+        indices:unit.frames.map(frame=>frame.index),key:unit.key,
+        captured:reused?0:unit.frames.length,reused:reused?unit.frames.length:0,
+        generation:selected.generation,indexSha256:await fileHash(resolve(selected.generation,'index.json')),
+        origin:selected.index.provenance});
     }
-    return {identity,dir,count};
+    const dir=await assembleShotFrames(root,units,selections,count);
+    const identity=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,commonKey,shots:shotReports.map(s=>s.key)}));
+    return {identity,dir,count,cache:{schema:SHOT_CACHE_SCHEMA,commonKey,capturedFrames,reusedFrames,shots:shotReports}};
   });
   const output=resolve(e.paths.build,`${label}.mp4`);
+  const publicationId=randomUUID(),pendingOutput=resolve(e.paths.build,`${label}.pending-${publicationId}.mp4`);
   const args=['-y','-v','error','-framerate',String(fps),'-start_number','0','-i',resolve(report.dir,'%06d.png')];
   if(audio)args.push('-i',audio.mix,'-map','0:v:0','-map','1:a:0','-c:a','aac','-b:a','192k');
-  args.push('-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart','-t',String(e.output.durationSeconds),output);
+  args.push('-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p','-movflags','+faststart','-t',String(e.output.durationSeconds),pendingOutput);
   console.log('Encoding '+output);await command('ffmpeg',args);
-  const probe=JSON.parse(await command('ffprobe',['-v','error','-count_frames','-show_streams','-show_format','-of','json',output]));
+  const probe=JSON.parse(await command('ffprobe',['-v','error','-count_frames','-show_streams','-show_format','-of','json',pendingOutput]));
   const video=probe.streams.find(s=>s.codec_type==='video');
   if(Number(video.nb_read_frames)!==report.count||video.width!==report.width||video.height!==report.height)throw new Error('Encoded video does not match requested frames/dimensions');
   if(audio&&!probe.streams.some(s=>s.codec_type==='audio'))throw new Error('Encoded video has no audio');
-  await copyFile(resolve(report.dir,`${String(Math.min(report.count-1,Math.floor(Math.min(10,e.output.durationSeconds*.5)*fps))).padStart(6,'0')}.png`),resolve(e.paths.build,'thumbnail.png'));
+  if(probe.format)probe.format.filename=output;
+  const thumbnail=resolve(e.paths.build,'thumbnail.png'),pendingThumbnail=`${thumbnail}.pending-${publicationId}`;
+  await copyFile(resolve(report.dir,`${String(Math.min(report.count-1,Math.floor(Math.min(10,e.output.durationSeconds*.5)*fps))).padStart(6,'0')}.png`),pendingThumbnail);
   const subtitles=audio?resolve(e.paths.build,`${label}.srt`):null;
-  if(subtitles)await writeFile(subtitles,srt(captions));
+  const pendingSubtitles=subtitles?`${subtitles}.pending-${publicationId}`:null;
+  if(pendingSubtitles)await writeFile(pendingSubtitles,srt(captions));
   const usedStills=new Set(),usedClips=new Set(),pictureCues=[];
   for(const shot of e.shots)for(const [index,cue] of (shot.pictures??[]).entries()){
     const kind=cue.still!==undefined?'still':'clip',name=cue[kind],media=e.pictureMedia[kind==='still'?'stills':'clips'][name];
@@ -673,22 +715,33 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
     return `${name}: ${media.credit??`[PICTURE CREDIT PENDING: ${name}]`}`;
   }).join('\n');
   const releaseReady=Boolean(e.release.simulationUrl&&e.release.sourceUrl)&&pictureReleaseIssues.length===0;
-  await writeFile(resolve(e.paths.build,'description.md'),description
+  const descriptionOutput=resolve(e.paths.build,'description.md'),pendingDescription=`${descriptionOutput}.pending-${publicationId}`;
+  await writeFile(pendingDescription,description
     .replaceAll('{{simulationUrl}}',e.release.simulationUrl??'[PUBLIC SIMULATION URL PENDING]')
     .replaceAll('{{sourceUrl}}',e.release.sourceUrl??'[PUBLIC SOURCE URL PENDING]')
     .replaceAll('{{pictureCredits}}',pictureCredits));
   const gitHead=async cwd=>(await command('git',['rev-parse','HEAD'],{cwd})).trim();
   const workflow=await gitHead(resolve(here,'..'));
   const project=await gitHead(e.paths.repository);
-  const font=await command('fc-match',['-f','%{file}','DejaVu Sans']).catch(()=>null);
-  const fontRecord=font?{path:font,sha256:await fileHash(font)}:null;
-  const codeFont=await command('fc-match',['-f','%{file}','DejaVu Sans Mono']).catch(()=>null);
-  const codeFontRecord=codeFont?{path:codeFont,sha256:await fileHash(codeFont)}:null;
-  await json(resolve(e.paths.build,`${label}-manifest.json`),{...report,fps,output,outputSha256:await fileHash(output),
-    audio:audio?.records??[],subtitles:subtitles?{file:subtitles,sha256:await fileHash(subtitles),burnedIn:false}:null,
+  const manifestOutput=resolve(e.paths.build,`${label}-manifest.json`),pendingManifest=`${manifestOutput}.pending-${publicationId}`;
+  const outputSha256=await fileHash(pendingOutput);
+  const manifest={...report,fps,output,outputSha256,
+    audio:audio?.records??[],subtitles:pendingSubtitles?{file:subtitles,sha256:await fileHash(pendingSubtitles),burnedIn:false}:null,
     episode:e,probe,pictures,pictureReleaseIssues,releaseReady,
-    provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,codeFont:codeFontRecord,
+    provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,codeFont:codeFontRecord,fontFaces,
       episodeSha256:await fileHash(e.paths.episode),productionSha256:await fileHash(e.paths.production),
-      ffmpeg:(await command('ffmpeg',['-version'])).split('\n')[0]}});
+      ffmpeg:(await command('ffmpeg',['-version'])).split('\n')[0]}};
+  await writeFile(pendingManifest,JSON.stringify(manifest,null,2)+'\n');
+  // A failed encode has not touched the prior output. Through the publication
+  // window its old bytes remain reachable; a crash after the MP4 replacement
+  // leaves the old manifest visibly stale by its output SHA-256.
+  const previous=`${output}.previous-${publicationId}`;let backedUp=false;
+  try{await link(output,previous);backedUp=true;}catch(error){if(error.code!=='ENOENT')throw error;}
+  await rename(pendingOutput,output);
+  await rename(pendingThumbnail,thumbnail);
+  if(pendingSubtitles)await rename(pendingSubtitles,subtitles);
+  await rename(pendingDescription,descriptionOutput);
+  await rename(pendingManifest,manifestOutput);
+  if(backedUp)await unlink(previous).catch(error=>console.warn(`Previous-output backup remains: ${error.message}`));
   return output;
 }

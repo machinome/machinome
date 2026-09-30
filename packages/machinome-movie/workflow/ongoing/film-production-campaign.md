@@ -36,9 +36,10 @@ promise red before implementation. No retrospective red-first claims.
    otherwise archive the investigation as no change. A controlled parallel
    experiment requires root's explicit browser/resource lease.
 3. **Compositing performance.** The `demo-graphic-overlays` record measures
-   103.08 seconds between first/last capture for 450 frames, with two
-   simultaneous partial fades on 130 frames. Profile current costs and retain
-   exact old pixels; correctness proofs are not weakened for speed.
+   103.08 seconds between first/last capture for 450 frames. Root enumerated
+   the consumer's actual 30 fps timeline: 105 frames have one partial fade,
+   25 have two, and 320 have none. Profile current costs and retain exact old
+   pixels; correctness proofs are not weakened for speed.
 4. **Supported source/model layouts.** Leonardo's dark-source experiments
    left the public format to alternate full-screen source and the model.
    Serve those evidenced layouts, not a general layout engine. Use pinned
@@ -65,9 +66,13 @@ invented interface requirements merely to fill the campaign.
 - Tool code, tests, specs and development evidence belong to Videomaker.
   Episode sources/media and generated films belong to Leonardo. Do not stage
   a consuming project's files here or modify mechanical source/export.
-- Use `/home/asa/devel/machinome/machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js`.
-  Its SHA-256 is `a3fe03f2db691ff46ed3e3624eee57c57445d526d29530835d0df1f00dda095c`.
-  API 28 is integrated source capability, not a published-release claim.
+- The initial viewer was main's API-28 bundle, SHA-256
+  `a3fe03f2db691ff46ed3e3624eee57c57445d526d29530835d0df1f00dda095c`.
+  After the evidenced prerequisite, use
+  `/home/asa/devel/machinome/machinome-viewer/WTs/film-production-order/machinome_viewer/widget/dist/machinome-viewer.js`,
+  SHA-256 `5280a86be7cbe532dabac8cfc99d4b78822275686c8f6fe1356c796148bcc413`,
+  built from viewer branch commit `94cfcc0`. API 28 is source capability,
+  not a published-release claim; the correction is not integrated to main.
 - One browser/render/testing owner at a time, except a deliberately leased
   parallel-render benchmark. Unit/read-only work can run alongside it.
 - Reuse cached narration or silent evidence. No paid generation is presently
@@ -87,5 +92,41 @@ invented interface requirements merely to fill the campaign.
   the edit recaptured all 80 although only frames 21–42 changed. Root checked
   every frame hash and decoded the edited MP4 for inspection. The approved
   whole-shot target is 40 reused / 40 captured, with exact cold equivalence.
-- Shot-level incremental rendering is entering red-first implementation.
-  Deferred items remain deferred. No new campaign work is integrated to main.
+- Shot-level incremental rendering is implemented but **not closed**. Sol's
+  serial scoped suite passed 133 tests; root independently reran five critical
+  cases plus three experiment tests. The 80-frame real consumer now reuses
+  40 frames after its local edit, and root verified all 80 PNGs and the MP4
+  exactly match a separately cold render. Sol measured 20.22 s incremental
+  versus 31.34 s cold for that variant.
+- The second real consumer exposed an existing-capture determinism limit:
+  its 70-frame fractional/source film has one differing model pixel in
+  frame 10 between independent cold browser mounts. Two additional cold
+  trials reproduced both values; repeated poses within one mount were stable.
+  The expected 25 reused / 45 captured counts are correct, but exact cold
+  equivalence is not proven. Preserve the failure and investigate its cause;
+  do not relax equality, select only matching runs, or archive the cycle.
+  Parallel/compositing product work has not started. Deferred items remain
+  deferred. No new campaign work is integrated to main.
+- A controlled two-surface ABBA diagnostic proves the viewer can choose a
+  different visible overlapping surface when STL downloads finish in a
+  different order. Root independently reproduced all four mounts. A narrow
+  viewer prerequisite, `deterministic-asset-load-order`, has its planning
+  commit `63a9465` in the independent `film-production-order` worktree from
+  `f040f45`, under the same delegated review discipline. It is
+  limited to eliminating asynchronous load-order dependence without changing
+  geometry, materials, the public API or film format. The actual Leonardo
+  all-frame gate must still pass; the diagnostic alone does not close it.
+  Root excluded pre-existing aggregate load-failure cleanup from this narrow
+  correction. Sol has reproduced five unit failures before runtime edits
+  and is adding the viewer-owned exact-image browser regression.
+- The viewer prerequisite passed its red/green regressions, root's independent
+  ABBA replay, and both fixed-viewer real-film matrices; it is archived and
+  committed at `94cfcc0` in its own branch. The held 70-frame gate now passes
+  every PNG against three separate cold mounts, including the former frame-10
+  difference. Root verified all 290 edited/cold PNG pairs across the two
+  consumers, saved MP4/manifest hashes and generation origins, and inspected
+  encoded review frames. The first Videomaker cycle is accepted for closure:
+  80-frame edit 21.84 s versus 34.68 s cold, with 40 frames reused; 70-frame
+  edit 16.95 s versus 25.09 s cold, with 25 reused. These are local observations.
+  Earlier failures and the original 46-second film remain untouched. Next is
+  the bounded parallel investigation, not an assumed parallel product feature.

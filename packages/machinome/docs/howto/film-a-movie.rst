@@ -132,10 +132,30 @@ Each episode's ignored `_build/` contains:
   and picture provenance/cadence with `pictureReleaseIssues`.
 - `clips/<content-hash>/`: lossless extracted source frames and their index;
   unchanged source files and decoder settings reuse an extraction.
-- `frames/<content-hash>/`: reusable frames; rerunning an unchanged render
-  resumes capture. Inputs include the model assets, viewer, screenplay, captions
-  and renderer, including picture media hashes and clip-decoder identity.
-  Changing visual inputs starts a new frame cache.
+- `shot-cache/shot-v1/`: complete, integrity-checked shot generations, plus
+  assembled global-frame sequences for encoding. A first render captures every
+  shot. Later renders reuse complete shots whose actual frame requests and
+  reached visual inputs are unchanged; a changed shot and a following shot
+  that composites it as outgoing may be recaptured. The manifest's `cache`
+  record lists each shot's key, generation, originating capture and frame
+  counts. A hit verifies every PNG's hash and dimensions before reuse. An
+  interrupted or damaged shot is recaptured whole, while other completed shots
+  remain reusable. Old `frames/<content-hash>/` directories are left untouched
+  but are not imported into this cache.
+
+The shared cache key includes the mounted first frame, so changing the first
+shot can conservatively recapture all shots. It also includes the model, viewer,
+film page, rendering code, browser, the known regular/bold film and mono font
+faces in the tested environment, style, dimensions, FPS and duration. Only
+media actually reached by a shot enters that shot's key;
+unused stills/clips and release copy do not force a visual recapture. Captions
+remain external, so SRT/audio-only changes reuse PNGs and produce a fresh MP4.
+The output manifest is authoritative only when its `outputSha256` matches the
+MP4 at `output`; a publication interrupted between those two paths leaves a
+visible hash mismatch and a recoverable prior film at
+`<label>.mp4.previous-<id>`. Preflight and measured-take checks rerun on
+every render; a reused shot inherits its frame-level browser pose checks from
+its identical-input, attested capture.
 
 The final encode is checked for its frame count, dimensions and audio stream.
 Generated media stays out of Git. Missing public URLs make `releaseReady`
