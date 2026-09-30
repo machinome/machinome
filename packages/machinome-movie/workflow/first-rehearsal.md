@@ -84,7 +84,12 @@ The pilot requested OpenSpec while implementation was underway. The
 `first-narrated-rehearsal` change records that fact explicitly and captures
 requirements, design, implementation verification and limitations. It is not
 represented as a retroactive proposal/ratification. Future behavioral changes
-start with OpenSpec; baseline promotion and archive await the pilot's decision.
+start with OpenSpec. The historical change was archived on 29 September 2026
+at [first-narrated-rehearsal](../openspec/changes/archive/2026-09-29-first-narrated-rehearsal/proposal.md);
+the [current educational-video-production baseline](../openspec/specs/educational-video-production/spec.md)
+incorporates later external-subtitle and off-film-credit decisions. This
+archival update does not claim a new review or release approval of the
+84-second master.
 
 Public simulation and source URLs remain unset. Generated description copy
 marks both gaps and `releaseReady` is false. No upload or publication occurred.

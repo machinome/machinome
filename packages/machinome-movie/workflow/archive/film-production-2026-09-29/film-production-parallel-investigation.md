@@ -163,3 +163,6 @@ relaxed observation gate or product change. The default remains serial.
 There is **no valid measured speedup, slowdown or parallel pixel proof**.
 The campaign continues with its separate single-browser compositing profile.
 This closed record stays beside the ongoing campaign until campaign archival.
+
+Archived with the film-production campaign on 29 September 2026. The three
+attempts remain evidence of an uncompleted comparison, not a speed result.

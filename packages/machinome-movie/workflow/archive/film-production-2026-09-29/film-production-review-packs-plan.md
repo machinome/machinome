@@ -74,3 +74,15 @@ film-good/pack-failed separation. Then test a real Leonardo render: every
 pack image must match the independently decoded MP4 frame at its recorded
 index, including joins, word/emphasis edges and last frame. Root performs
 actual visual review; pack generation cannot approve itself.
+
+## Resolution — 29 September 2026
+
+The `automatic-visual-review-packs` change is implemented, synced and
+archived at
+`openspec/changes/archive/2026-09-29-automatic-visual-review-packs/`,
+with implementation commit `7acd2c4`. The final Leonardo proof includes
+standalone reuse through the catalogue alias and exact decoded-frame checks;
+its retained report and limits are indexed in the campaign evidence. The
+full scoped suite passed 188/188 before the alias-path correction; the final
+focused review-pack suite passed 31/31. Generated packs and root's sampled
+AI visual inspection are not human aesthetic approval or audio review.

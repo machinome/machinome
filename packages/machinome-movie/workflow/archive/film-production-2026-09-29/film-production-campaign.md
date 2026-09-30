@@ -163,3 +163,23 @@ invented interface requirements merely to fill the campaign.
   The feature is synced and archived as `2026-09-29-source-only-shots`; all
   nine main specs validate strictly. Automatic review packs follow, with
   stable authored cue identities and renderer-selected fade sides.
+
+## Final disposition — 29 September 2026
+
+Automatic visual-review packs passed the final Leonardo encoded-film and
+catalogue-alias gates. Root independently checked 96 selected PNGs, nine
+sheets and 153 thumbnail cells, then synced and archived the change at
+`2026-09-29-automatic-visual-review-packs`; implementation commit `7acd2c4`.
+The full scoped suite passed 188/188 before the later alias-path correction;
+the corrected focused pack suite passed 31/31. No final full-suite rerun is
+claimed. These are generated review artifacts and root's sampled AI visual
+inspection of a silent film, not human approval or an audio review.
+
+The historical first rehearsal and source-scene changes were reconciled into
+current baselines and archived under their dated 29 September paths without
+rewriting their original requirements or the first film's evidence. All 12
+current baseline specs passed strict validation. The bounded parallel and
+compositing investigations closed with no product change. Audio diagnostics,
+stronger general regression coverage and a reproducibility audit remain
+deferred; live preview belongs to future Studio work requiring the pilot.
+All delivery remains on local branches, with no main merge, push or publication.

@@ -189,3 +189,15 @@ at workspace `ba0a39c`. Metadata, no-credit policy and narration-cache wording
 are unchanged. Skill-creator guidance kept this a focused existing-skill
 correction, without new metadata or campaign features. The branch is clean;
 workspace main remains untouched and no merge/push is implied.
+
+## Resolution — 29 September 2026
+
+The scoped test command is committed at `9dbdded`. The two historical deltas
+received dated Purpose addenda, and root seeded their current baselines with
+the reviewed three-block educational supersession. The original requirements,
+scenarios and 84-second evidence remain in their dated archives; both closure
+notes explain the reconciliation. All 12 current baseline specs passed strict
+validation. The README archive link and first-rehearsal status now point to
+the dated record and current baseline. The separate workspace guidance fix
+remains on its own local branch at `ba0a39c`. No historical master was
+rerendered, rereviewed or approved for release by this cleanup.

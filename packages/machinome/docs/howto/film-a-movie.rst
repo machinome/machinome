@@ -216,7 +216,7 @@ The originating sawmill's browser preview exercises the real viewer and pixels.
 See [production evidence](docs/first-rehearsal.md) for the actual run.
 
 Behavioral changes use this repository's OpenSpec records. The inaugural
-[`first-narrated-rehearsal`](openspec/changes/first-narrated-rehearsal/proposal.md)
+[`first-narrated-rehearsal`](openspec/changes/archive/2026-09-29-first-narrated-rehearsal/proposal.md)
 change was adopted during implementation at the pilot's request. It records
 what was already built and how it was verified, not prior spec-first approval.
 Future behavioral changes start with a proposal before implementation.

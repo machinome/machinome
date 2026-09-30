@@ -17,6 +17,17 @@ Broader wishes such as springs, boxes/scale entrances and burned-in captions
 were not included. Other items and those unratified extensions remain here;
 the baseline specs, not the older “today” descriptions below, govern behavior.
 
+Film-production closure note, 29 September 2026: shot-level incremental
+rendering, the evidenced source-only layout and automatic visual-review packs
+are implemented on the local `film-production` branch; see the
+[campaign report](../archive/film-production-2026-09-29/report.md) for evidence
+and limits. The bounded parallel investigation completed no paired speed
+comparison and created no product option; the single-browser compositing
+profile justified no optimization. Audio diagnostics, stronger general
+regression coverage and a reproducibility audit remain deferred. Live preview
+is future Studio work requiring the pilot. This note does not schedule another
+roadmap item or imply main integration, publication or aesthetic approval.
+
 ## Why not adopt a framework
 
 The films of AGPL simulations should be rebuildable from free software. That

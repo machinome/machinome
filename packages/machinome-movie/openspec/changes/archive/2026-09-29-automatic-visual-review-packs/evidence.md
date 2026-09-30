@@ -195,9 +195,9 @@ and manifest SHA-256
 remained unchanged. This green legacy refusal is later than, and does not
 replace, the pre-implementation `Unknown command: review` red.
 
-The real Leonardo consumer's encoded-frame, sheet and human visual gate in
-task 3.1 is root/empirical-owned; synthetic tests and sheets are not a visual
-approval of that film.
+The real Leonardo consumer's encoded-frame, sheet and root visual-inspection
+gate in task 3.1 is root/empirical-owned; synthetic tests and sheets are not
+human review or visual approval of that film.
 
 ## Post-empirical catalogue-symlink correction
 

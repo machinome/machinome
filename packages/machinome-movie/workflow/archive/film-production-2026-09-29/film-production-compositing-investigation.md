@@ -110,3 +110,7 @@ rounding order risks exact pixels for little eligible work. No browser run,
 runtime edit, OpenSpec optimization change, or speed claim follows this
 decision. The measured report remains available if a later named film exposes
 a different, substantial bottleneck.
+
+Archived with the film-production campaign on 29 September 2026. The one
+controlled exact-pixel profile supports the recorded no-change decision, not
+a repeatable speed claim.

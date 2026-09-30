@@ -24,3 +24,13 @@ One contiguous, export-pinned excerpt is enough to prove the requested model →
 ## Future proof before adoption
 
 The later OpenSpec cycle should put refusals and visual distinctions red first, then demonstrate a short project-owned film at current source pin with visible animated model → source-only line 415 → visible animated model, plus one incoming and one outgoing join that exercise both layout directions. Compare old episodes with the option absent for exact unchanged frames; check source literal text, syntax/emphasis, panel fit and no model canvas in source-only pixels; prove model-only and split frames still fill their stage; verify chrome/progress, replay and exact transition pixels under the current browser/viewer. Intentionally long source, missing `code`, and source-only target/picture declarations must refuse by name. Root reviews the encoded film visually; tests do not declare the aesthetic approved. No new speech purchase or change to Leonardo's mechanical source/export is implied by this plan.
+
+## Resolution — 29 September 2026
+
+The `source-only-shots` change selected the narrow format-0.4 layout and is
+implemented, synced and archived at
+`openspec/changes/archive/2026-09-29-source-only-shots/`. Root verified the
+real Leonardo films and exact cold/incremental output; see the campaign
+report for the measured scope. The earlier experimental collage and dark
+styling were not promoted. This plan remains the pre-spec record; the
+archived change and current baseline own the accepted contract.
