@@ -20,7 +20,8 @@ need Viewer API 28, available in the machinome-viewer source checkout but not
 yet declared by a published release; `check`, `preview` and `render` refuse them against an
 older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
 and transitions between shots run on Viewer API 21, and rings, being
-annotations, need Viewer API 28 as annotations do. Linux/Chromium software rendering is the tested environment.
+annotations, need Viewer API 28 as annotations do. Text animation is page-only
+and adds no viewer requirement. Linux/Chromium software rendering is the tested environment.
 
 ```sh
 npm ci
@@ -61,7 +62,10 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
 
 - `check` validates YAML, timelines, named cameras/layers/evidence, the real model
   duration, and the export's source revision. For a 0.3 episode that needs
-  Viewer API 28 it also reads the selected bundle's `viewer API` banner.
+  Viewer API 28 it also reads the selected bundle's `viewer API` banner. An
+  episode with spoken reveals or source emphasis needs its cached speech first:
+  run `speech` before `check`. `check` reads the verified alignment but never
+  generates speech.
 - `speech` generates narration through ElevenLabs, caches each segment and its
   character timestamps, checks it fits, then mixes audio and writes captions.
   It makes chargeable requests only for missing cached segments.
@@ -84,10 +88,15 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   predicts within 2 levels, a draw-on's midpoint shows part of its stroke and
   not the rest, an entrance starts from nothing, its end and an exit's start
   are the mark drawn plainly, and a half-drawn instant replays exactly. No
-  speech generation occurs.
+  speech generation occurs. Format 0.4 text animation also reports
+  `revealChecks`, `fadeChecks` and `emphasisChecks`: it verifies drawn word
+  counts, same-instant title fade states over the moving model, source marks,
+  title bounds and exact replay.
 - `render` requires cached speech and renders the film. Add
-  `--width 960 --fps 10 --silent` for a quick silent video. A frame inside a
-  transition is composed from captures of the same instant: a fade costs one
+  `--width 960 --fps 10 --silent` for a quick silent video. Measured text still
+  requires the cached take with `--silent`; neither render
+  nor silent build purchases speech. An FPS override that skips a revealed word
+  is refused. A frame inside a transition is composed from captures of the same instant: a fade costs one
   pose and capture, a dissolve, wipe or slide two, each several times a plain
   frame's time. A picture with `n` simultaneous partly faded annotations needs
   `2^n` same-instant captures to preserve exact text pixels; schedule review

@@ -4,6 +4,7 @@ import {resolve} from 'node:path';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {hash,fileHash,json,command,duration} from './util.mjs';
 import {captionsFromAlignment,srt} from './timeline.mjs';
+import {validateAlignment,resolveWordTiming} from './words.mjs';
 
 export function speechRequest(e,spoken,i){
   const v3=e.audio.model==='eleven_v3';
@@ -11,6 +12,32 @@ export function speechRequest(e,spoken,i){
     voice_settings:e.audio.voiceSettings??(v3?{stability:.5,similarity_boost:.75}:{stability:.65,similarity_boost:.75,style:0,use_speaker_boost:true,speed:1}),seed:4217};
   if(!v3){request.previous_text=spoken[i-1];request.next_text=spoken[i+1];}
   return request;
+}
+const spokenShots=e=>e.shots.map(s=>{
+  let text=s.narration;
+  for(const [term,replacement]of Object.entries(e.audio.replacements??{}))text=text.replaceAll(term,replacement);
+  return text;
+});
+// One key calculation for generation and for cache-only measured timing.
+export function speechCacheEntry(e,spoken,i){
+  const format=e.audio.outputFormat??'mp3_44100_128',request=speechRequest(e,spoken,i);
+  const cache=hash(JSON.stringify({voice:e.audio.voice,request,format}));
+  const file=resolve(e.paths.build,'audio',`${e.shots[i].id}-${cache.slice(0,16)}.${format.startsWith('pcm_')?'wav':'mp3'}`);
+  return {format,request,cache,file,meta:file+'.json'};
+}
+export async function readSpeechTake(e,shot){
+  const i=e.shots.indexOf(shot);
+  if(i<0)throw new Error(`Unknown shot for word timing: ${shot?.id}`);
+  const {file,meta}=speechCacheEntry(e,spokenShots(e),i);
+  let record;
+  try{record=JSON.parse(await readFile(meta,'utf8'));}
+  catch(error){if(error.code==='ENOENT')throw new Error(`Word timing needs cached speech for shot ${shot.id}; run the speech command first (check, preview and render never generate speech)`);throw error;}
+  let digest;
+  try{digest=await fileHash(file);}
+  catch(error){if(error.code==='ENOENT')throw new Error(`Word timing needs cached speech for shot ${shot.id}; run the speech command first (check, preview and render never generate speech)`);throw error;}
+  if(record.sha256!==digest)throw new Error('Audio cache checksum mismatch');
+  validateAlignment(record.alignment,`shot ${shot.id}`);
+  return {file,sha256:digest,alignment:record.alignment,record};
 }
 
 // ElevenLabs PCM is mono signed 16-bit little-endian, without a container.
@@ -42,16 +69,10 @@ export async function speech(e,{generate=false}={}) {
     if(!key)throw new Error('Set ELEVENLABS_API_KEY in Videomaker .env');
   }
   const files=[],captions=[],records=[];let overflow=[];
-  const spoken=e.shots.map(s=>{
-    let text=s.narration;
-    for(const [term,replacement]of Object.entries(e.audio.replacements??{}))text=text.replaceAll(term,replacement);
-    return text;
-  });
+  const spoken=spokenShots(e);
   for(let i=0;i<e.shots.length;i++){
     const shot=e.shots[i];
-    const request=speechRequest(e,spoken,i);
-    const cache=hash(JSON.stringify({voice:e.audio.voice,request,format}));
-    const file=resolve(dir,`${shot.id}-${cache.slice(0,16)}.${format.startsWith('pcm_')?'wav':'mp3'}`),meta=file+'.json';
+    const {request,cache,file,meta}=speechCacheEntry(e,spoken,i);
     let record;
     try{record=JSON.parse(await readFile(meta,'utf8'));if(record.sha256!==await fileHash(file))throw new Error('Audio cache checksum mismatch');}
     catch(error){
@@ -82,6 +103,9 @@ export async function speech(e,{generate=false}={}) {
   if(overflow.length)throw new Error('Narration exceeds shot timing; revise YAML (audio is cached):\n'+overflow.join('\n'));
   await json(resolve(e.paths.build,'captions.json'),captions);
   await writeFile(resolve(e.paths.build,'captions.srt'),srt(captions));
+  // Captions and the generated take stay cached if measured words reveal a
+  // mismatch; the mix/manifest are not claimed as complete on that refusal.
+  await resolveWordTiming(e,shot=>readSpeechTake(e,shot));
   const mix=resolve(e.paths.build,'narration.wav');
   await mixSpeech(files,e.output.durationSeconds,mix);
   await json(resolve(e.paths.build,'audio-manifest.json'),{provider:e.audio.provider,records,mixSha256:await fileHash(mix)});

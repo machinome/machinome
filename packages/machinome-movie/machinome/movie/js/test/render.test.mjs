@@ -9,6 +9,7 @@ import {pcmWav} from '../src/speech.mjs';
 import {validateEpisode} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
 import {decodePng,hexColor} from '../src/pixels.mjs';
+import {resolveWordTiming} from '../src/words.mjs';
 
 // A minimal viewer double exercises film composition/encoding only. The real
 // sawmill preview separately proves the public viewer and mechanical pixels.
@@ -114,6 +115,42 @@ async function filmFixture(t){
   const viewer=async(name,options)=>{const file=join(dir,name);await writeFile(file,viewerDouble(options));return file;};
   return {dir,viewer};
 }
+
+test('text animation preview proves measured/even words, title fade and source emphasis on a moving model',async t=>{
+  const {dir,viewer}=await filmFixture(t),speech='One Two Three wheel';
+  const alignment={characters:Array.from(speech),character_start_times_seconds:Array.from(speech,(_,i)=>i*.05),
+    character_end_times_seconds:Array.from(speech,(_,i)=>(i+1)*.05)};
+  const e=filmEpisode(dir,{narration:speech,speechOffset:.2,
+    overlays:[
+      {from:0,to:1.8,text:'One Two Three',position:'top',reveal:{timing:'spoken'}},
+      {from:0,to:1.8,text:'A B C',position:'lower-third',reveal:{timing:'even',duration:1.2}},
+      {from:0,to:1.8,text:'Moving model',subtitle:'Still visible',position:'title',
+        enter:{kind:'fade',duration:.4},leave:{kind:'fade',duration:.4}}],
+    code:{snippet:'test',typing:[{from:0,to:.1,throughLine:1}],
+      emphasis:[{line:1,phrase:'wheel',words:['wheel'],hold:.2}]}}
+  );
+  e.format='machinome-video-draft/0.4';e.output.fps=30;e.audio={replacements:{}};e.model.timeMode='normalized-loop';
+  e.sourceCode={test:{file:'machine.py',lines:[1,1],text:'"<&"; wheel'}};
+  validateEpisode(e,{animation:{loop:2}});
+  await assert.rejects(preview(e,{viewer:'unused',width:640}),/Word timing needs cached speech.*run the speech command first/);
+  await assert.rejects(render(e,{viewer:'unused',width:640,audio:null}),/Word timing needs cached speech.*run the speech command first/);
+  await resolveWordTiming(e,async()=>({sha256:'fixture',alignment}));
+  const moving=await viewer('moving.js',{timeColor:true});
+  const report=await preview(e,{viewer:moving,width:640});
+  assert.equal(report.pixelReplay,true);
+  assert.equal(report.revealChecks.length,2);
+  assert.deepEqual(report.revealChecks[0].samples.map(s=>s.shown),[1,2,3]);
+  assert.equal(report.fadeChecks.length,5);
+  assert.ok(report.emphasisChecks[0].samples.some(s=>s.phase==='word-0'&&s.words[0]==='wheel'));
+  assert.equal(report.samples.filter(s=>s.reveal!==undefined||s.title!==undefined||s.emphasis!==undefined).length,14);
+  await assert.rejects(browserSession(e,moving,640,[],async({pose})=>{
+    const frame=frameAt(e,.4);
+    await pose(.4,{overlays:frame.overlays.map((cue,i)=>i===0?{...cue,shown:cue.shown+1}:cue)});
+  }),/Overlay word count differs from timeline/);
+  const overflow=structuredClone(e);
+  overflow.shots[0].overlays[2].text=Array(30).fill('TOO TALL').join('\n');
+  await assert.rejects(browserSession(overflow,moving,640,[],async({pose})=>{await pose(.5);}),/Title leaves the frame/);
+});
 
 test('an arrow follows a moving part and a label rides a world point, reproducibly',async t=>{
   const {dir,viewer}=await filmFixture(t);

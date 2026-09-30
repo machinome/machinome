@@ -5,6 +5,8 @@ import hljs from 'highlight.js/lib/core';
 import python from 'highlight.js/lib/languages/python';
 import {hash} from './util.mjs';
 import {contained} from './episode.mjs';
+import {formatAtLeast} from './timeline.mjs';
+import {activeEmphasis} from './words.mjs';
 
 hljs.registerLanguage('python',api=>{
   const grammar=python(api);
@@ -39,16 +41,50 @@ export async function loadSourceCode(e){
 
 export function validateCode(e,shot){
   if(!shot.code)return;
+  const modern=formatAtLeast(e,'machinome-video-draft/0.4');
+  if(!modern&&shot.code.emphasis!==undefined)throw new Error(`Text animation needs format machinome-video-draft/0.4: shot ${shot.id}`);
+  if(modern)for(const key of Object.keys(shot.code))need(['snippet','typing','emphasis'].includes(key),`Unknown code field: ${key} (shot ${shot.id})`);
   const snippet=e.sourceCode?.[shot.code.snippet];
   need(snippet,`Unknown code snippet: ${shot.code.snippet}`);
   const cues=shot.code.typing;
   need(Array.isArray(cues)&&cues.length>0,`Missing typing schedule: ${shot.id}`);
   let time=0,line=snippet.lines[0]-1;
-  for(const cue of cues){
+  for(const [index,cue] of cues.entries()){
+    if(modern)for(const key of Object.keys(cue))need(['from','to','throughLine'].includes(key),`Unknown typing cue field: ${key} (typing cue #${index} in shot ${shot.id})`);
     need(Number.isFinite(cue.from)&&Number.isFinite(cue.to)&&cue.from>=time&&cue.to>cue.from&&cue.to<=shot.end-shot.start&&Number.isInteger(cue.throughLine)&&cue.throughLine>line&&cue.throughLine<=snippet.lines[1],`Invalid typing cue: ${shot.id}`);
     time=cue.to;line=cue.throughLine;
   }
   need(line===snippet.lines[1],`Typing must complete the source excerpt: ${shot.id}`);
+  if(shot.code.emphasis!==undefined){
+    need(Array.isArray(shot.code.emphasis),`Emphasis must be a list: shot ${shot.id}`);
+    for(const [index,cue] of shot.code.emphasis.entries()){
+      const where=`emphasis cue #${index} in shot ${shot.id}`;
+      need(cue&&typeof cue==='object'&&!Array.isArray(cue),`Invalid ${where}`);
+      for(const key of Object.keys(cue))need(['line','phrase','words','hold'].includes(key),`Unknown emphasis field: ${key} (${where})`);
+      need(Number.isInteger(cue.line)&&cue.line>=snippet.lines[0]&&cue.line<=snippet.lines[1],`Emphasis line outside snippet: ${where}`);
+      need(typeof cue.phrase==='string'&&cue.phrase.length>0&&shot.narration.includes(cue.phrase)&&
+        shot.narration.indexOf(cue.phrase)===shot.narration.lastIndexOf(cue.phrase),`Missing or ambiguous emphasis phrase: ${where}`);
+      need(Array.isArray(cue.words)&&cue.words.length>0&&new Set(cue.words).size===cue.words.length&&
+        cue.words.every(w=>typeof w==='string'&&/^[A-Za-z_]\w*$/.test(w)),`Invalid emphasis words: ${where}`);
+      need(Number.isFinite(cue.hold)&&cue.hold>=0,`Invalid emphasis hold: ${where}`);
+      for(const word of cue.words){
+        const occurrences=[...cue.phrase.matchAll(new RegExp(`\\b${word}\\b`,'g'))];
+        need(occurrences.length===1,`Missing or ambiguous spoken token ${word}: ${where}`);
+      }
+    }
+  }
+}
+
+export function validateCodeSource(e,shot){
+  if(!shot.code?.emphasis?.length)return;
+  const snippet=e.sourceCode[shot.code.snippet],lines=snippet.text.split('\n');
+  for(const [index,cue] of shot.code.emphasis.entries()){
+    const line=lines[cue.line-snippet.lines[0]],where=`emphasis cue #${index} in shot ${shot.id}`;
+    need(typeof line==='string',`Emphasis line outside snippet: ${where}`);
+    for(const word of cue.words)
+      need([...line.matchAll(new RegExp(`\\b${word}\\b`,'g'))].length===1,
+        `Missing or ambiguous source token ${word}: ${where}`);
+  }
 }
 
 export function codeAt(e,shot,local){
@@ -63,7 +99,13 @@ export function codeAt(e,shot,local){
     prior=end;
   }
   const text=Array.from(snippet.text).slice(0,count).join('');
-  return {file:snippet.file,firstLine:snippet.lines[0],lastLine:snippet.lines[1],text,
+  const frame={file:snippet.file,firstLine:snippet.lines[0],lastLine:snippet.lines[1],text,
     html:hljs.highlight(text,{language:'python',ignoreIllegals:true}).value,
     cursor:count<Array.from(snippet.text).length&&Math.floor(local*2)%2===0};
+  if(shot.code.emphasis!==undefined){
+    const cues=e.wordTiming?.[shot.id]?.emphasis;
+    if(!cues)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
+    frame.emphasis=cues.flatMap(c=>activeEmphasis(c.cues,local)).map(({word,line,start,end})=>({word,line,start,end}));
+  }
+  return frame;
 }

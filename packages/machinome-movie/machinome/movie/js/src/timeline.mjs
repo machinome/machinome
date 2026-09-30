@@ -1,6 +1,7 @@
 // Pure time mapping: no wall clock, browser state or mechanical equations.
 import {codeAt} from './code.mjs';
 import {ease,endSlope,keyedValue} from './easing.mjs';
+import {splitWords,evenCount,fadeOpacity} from './words.mjs';
 // Accepted episode formats, oldest first. Each accepts everything the one before
 // it does, with the same meaning; an episode without a format is a 0.2 episode.
 export const FORMATS=['machinome-video-draft/0.2','machinome-video-draft/0.3','machinome-video-draft/0.4'];
@@ -82,10 +83,29 @@ function shotFrame(e,shot,local){
   const keys=shot.simulation.keyframes??[{at:0,seconds:shot.simulation.from},{at:duration,seconds:shot.simulation.to}];
   const modelSeconds=past?shot.simulation.to+endRate(shot)*(local-duration)
     :keyedValue(keys.map(k=>({at:k.at,value:k.seconds,ease:k.ease})),local,'linear');
+  const overlayOn=cue=>{
+    const animated=formatAtLeast(e,FORMATS[2])&&(cue.reveal||cue.position==='title'&&(cue.subtitle!==undefined||cue.enter||cue.leave));
+    return animated?local>=cue.from-1e-9&&(local<cue.to-1e-9||(past&&cue.to===duration)):on(cue);
+  };
+  const overlays=shot.overlays.filter(overlayOn).map(cue=>{
+    if(!formatAtLeast(e,FORMATS[2])||(!cue.reveal&&!cue.enter&&!cue.leave))return cue;
+    const index=shot.overlays.indexOf(cue),draw={...cue};
+    if(cue.reveal){
+      draw.words=splitWords(cue.text);
+      const count=draw.words.filter(p=>p.word).length;
+      if(cue.reveal.timing==='spoken'){
+        const onsets=e.wordTiming?.[shot.id]?.overlays?.[index]?.onsets;
+        if(!onsets)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
+        draw.shown=onsets.filter(t=>local>=Math.max(cue.from,t)-1e-9).length;
+      }else draw.shown=evenCount(count,local,cue.from,cue.reveal.duration,cue.reveal.ease??'linear');
+    }
+    if(cue.enter||cue.leave)draw.opacity=fadeOpacity(cue,local);
+    return draw;
+  });
   const frame={shotId:shot.id,time:modelSeconds/e.model.expectedDurationSeconds,
     view:camera.view,up:camera.up,fov:camera.fov,
     hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
-    overlays:shot.overlays.filter(on),
+    overlays,
     code:codeAt(e,shot,local)};
   // Format 0.2 frames keep their exact shape; 0.3 and later frames always carry the new cues.
   if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,on,local,past);frame.highlight=highlightAt(e,shot,on);}

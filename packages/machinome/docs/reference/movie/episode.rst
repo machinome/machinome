@@ -127,7 +127,7 @@ In format 0.3 a `highlight` (below) composes with it: hidden parts stay hidden
 while the others are kept, dimmed or ghosted, and highlighting a hidden part is refused.
 
 Overlay `from`/`to` values are shot-local, half-open intervals. Positions are
-`top`, `lower-third`, or `center`. Overlays are screen labels, fixed on the frame;
+`top`, `lower-third`, or `center`, plus `title` in format 0.4. Overlays are screen labels, fixed on the frame;
 in format 0.3, `annotations` (below) point at parts and follow them. Narration captions are external SRT files, never film pixels.
 Framing and text placement need visual review at the final aspect ratio.
 
@@ -190,6 +190,8 @@ Code shots use a fixed split layout: highlighted Python left, actual 3D right.
 Shots without code keep the full model stage. Select a short excerpt and inspect
 the final aspect ratio; overflowing panels fail capture. Typing, cursor and
 syntax colors follow video time, so seeking/resuming preserves exact frames.
+Format 0.4 may also light source identifiers at measured speech onsets; see
+"Source words lit as they are spoken" below.
 
 ## Format 0.3 and the viewer it needs
 
@@ -572,7 +574,8 @@ judgement on the stills, not an automated claim.
 a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does,
 and a 0.4 episode that neither eases nor joins shots produces the frames it
 would produce declared 0.3. It adds `ease` on camera keys and model keyframes,
-`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"), and, on
+`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"), text
+`reveal`, titles and source emphasis (see "Text animation"), and, on
 annotations, the kind `ring` with its `padding` and `enter` and `leave` on
 every kind (see "Rings" and "Entrances and exits"). A 0.4 annotation that uses
 none of `padding`, `enter` or `leave` and is an arrow or label is drawn exactly
@@ -594,7 +597,12 @@ as in 0.3.
   and `color`. An annotation, whose list was closed in every format already,
   accepts `from`, `to`, `kind`, `part`, `point`, `text`, `place`, `offset`,
   `padding`, `enter` and `leave`; an `enter` or `leave` accepts `kind`,
-  `duration` and `ease`.
+  `duration` and `ease`. An overlay accepts `from`, `to`, `text`, `position`,
+  `reveal`, `subtitle`, `enter` and `leave`; `reveal` accepts `timing` and
+  `phrase` when spoken, or `timing`, `duration` and `ease` when even. A title's
+  `enter` or `leave` accepts `kind`, `duration` and `ease`. `code` accepts
+  `snippet`, `typing` and `emphasis`; a typing cue accepts `from`, `to` and
+  `throughLine`; an emphasis cue accepts `line`, `phrase`, `words` and `hold`.
   Anything else is refused, naming the field and the shot:
   `Unknown camera key field: eas (key #1 in shot genome)`,
   `Unknown model keyframe field: speed (keyframe #1 in shot genome)`,
@@ -606,7 +614,7 @@ as in 0.3.
   numbers the film page already sends, and a transition poses the viewer as
   every frame does. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
   uses (annotations, highlights, a change of lens or up); one that only eases
-  or joins shots runs on Viewer API 21 or later. A ring is an annotation, so it
+  or joins shots or only animates text runs on Viewer API 21 or later. A ring is an annotation, so it
   needs Viewer API 28 as every annotation does; entrances and exits add
   nothing.
 
@@ -894,6 +902,106 @@ composes it from poses of that instant alone, capturing each picture it is made
 of without the masthead and progress rule and drawing the captures again inside
 the page under them, so a resumed render reproduces it exactly. A fade frame
 therefore poses the viewer once, and a dissolve, wipe or slide frame twice.
+
+## Text animation
+
+Format 0.4 adds word reveals and titles to overlays, and measured emphasis to
+the source panel. All cues still use shot-local, half-open `from`/`to` times.
+`reveal`, `subtitle`, `enter`, `leave`, `position: title` and `code.emphasis`
+require 0.4; in 0.2 or 0.3 they are refused with
+`Text animation needs format machinome-video-draft/0.4: shot judgment`.
+An ordinary 0.4 overlay without these fields draws as it did in 0.3.
+
+### Words that appear as they are spoken
+
+```yaml
+overlays:
+  - from: 3
+    to: 7.8
+    position: top
+    text: Propose. Inspect. Correct.
+    reveal: {timing: spoken}
+```
+
+Words are maximal non-whitespace runs; spaces and newlines retain their exact
+layout. Unshown words are invisible in place, so the text never reflows. A
+lower-third's plate remains visible even before its first word. `phrase` may
+name a passage of this shot's written narration when it differs from `text`
+only in case or edge punctuation. It must occur exactly once in the narration,
+and its spoken form exactly once in the cached character alignment. Displayed
+and spoken words pair one-to-one after lowercasing and removing edge
+punctuation. Punctuation-only words and ambiguous or missing phrases are
+refused. `audio.replacements` affect the spoken phrase as they do the recorded
+take; a replacement spanning words is refused.
+
+Each word appears at its first spoken letter or digit, plus `speechOffset`
+(default 0.2 s). A word spoken a whole output frame or more before the cue,
+or with no global output frame before its end, is refused. `speech` must cache
+the take before `check`; `check`, `preview`, `render`, and `render --silent`
+only read its verified alignment. They never generate speech. If it is absent,
+run `speech` first. A different `render --fps` must still give every word a
+frame; otherwise that render is refused.
+
+### Words at an even pace
+
+```yaml
+overlays:
+  - {from: 0.4, to: 2.7, position: lower-third,
+     text: Pause. Inspect. Test., reveal: {timing: even, duration: 1.8}}
+```
+
+The first word appears at `from`; the rest share the positive `duration`,
+which must fit inside the cue. At progress `p = ease(name, elapsed/duration)`,
+the count is `min(n, floor(n × p) + 1)`. The default curve is `linear`; an
+optional `ease` names any of the five 0.4 curves. Every word must appear on
+at least one delivered output frame, including with `render --fps`.
+
+### Titles
+
+```yaml
+overlays:
+  - {from: 2.941, to: 8.5, position: title, text: REVOLUTIONS,
+     enter: {kind: fade, duration: 1}}
+  - {from: 9, to: 12, position: title, text: REVOLUTIONS,
+     subtitle: Digital reconstruction of a later museum interpretation,
+     enter: {kind: fade, duration: 0.6},
+     leave: {kind: fade, duration: 0.6, ease: in}}
+```
+
+`title` is an overlay over the running model, not a covering card. Its optional
+non-empty `subtitle` sits beneath it. Two titles in one shot cannot overlap.
+Only titles take `subtitle`, `enter` or `leave`; the latter accept `kind: fade`
+with positive durations fitting together within the cue, and optional 0.4
+easing (`smooth` by default). One opacity applies to title and subtitle.
+At every posed frame a title leaving the picture is refused; preview compares
+its fade to fully drawn and absent titles at that same moving-model instant.
+
+### Source words lit as they are spoken
+
+```yaml
+code:
+  snippet: coupling
+  typing: [{from: 0, to: 0.8, throughLine: 415}]
+  emphasis:
+    - {line: 415, phrase: The waterwheel drives the crankshaft.,
+       words: [waterwheel, drives, crankshaft], hold: 0.9}
+```
+
+The source line is absolute within the pinned excerpt; each distinct ASCII
+identifier must occur once in that line and once in the phrase, in spoken
+order. The phrase must occur once in the written narration and, after any
+`audio.replacements`, once in the cached alignment. Identifiers light from
+their measured onsets until the phrase's last character plus non-negative
+`hold`; the marks accumulate and clear together. A word not yet typed when
+spoken, a clear after shot end, overlapping emphasis intervals, or a missing
+or ambiguous source token is refused. The mark keeps syntax colour and adds
+the episode's accent tint and underline. Source characters, including `<`,
+`&` and quotes, remain literal and safely escaped; source code is never run.
+
+`preview` reports `revealChecks`, `fadeChecks` and `emphasisChecks` and verifies
+visible word counts, title geometry, measured marks and exact replay. These
+proofs establish that the cues reached pixels; pacing and readability still
+need review of the rendered film.
 
 ## Optional subtitles
 

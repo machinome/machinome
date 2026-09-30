@@ -2,9 +2,10 @@ import {readFile, realpath} from 'node:fs/promises';
 import {resolve, dirname, relative, isAbsolute} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
-import {loadSourceCode,validateCode} from './code.mjs';
+import {loadSourceCode,validateCode,validateCodeSource} from './code.mjs';
 import {cameraAt,endRate,FORMATS,formatAtLeast} from './timeline.mjs';
 import {EASINGS,unknownEasing} from './easing.mjs';
+import {splitWords,validateSpokenPair,evenCount} from './words.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -121,6 +122,61 @@ function validateAnnotations(e,s,known){
 }
 const HIGHLIGHT_FIELDS=new Set(['from','to','parts','others','color']);
 export const COLOR=/^#[0-9a-fA-F]{6}$/;
+const OVERLAY_FIELDS=new Set(['from','to','text','position','reveal','subtitle','enter','leave']);
+const REVEAL_SPOKEN=new Set(['timing','phrase']),REVEAL_EVEN=new Set(['timing','duration','ease']);
+const TEXT_FADE_FIELDS=new Set(['kind','duration','ease']);
+function validateOverlays(e,s){
+  const modern=formatAtLeast(e,V04),duration=s.end-s.start,uses=[];
+  for(const [i,cue] of s.overlays.entries()){
+    const where=`overlay #${i} in shot ${s.id}`;
+    need(cue&&typeof cue==='object'&&!Array.isArray(cue),`Invalid overlay: ${s.id}`);
+    if(!modern&&(['reveal','subtitle','enter','leave'].some(key=>cue[key]!==undefined)||cue.position==='title'))
+      throw new Error(`Text animation needs format machinome-video-draft/0.4: shot ${s.id}`);
+    if(modern)for(const key of Object.keys(cue))need(OVERLAY_FIELDS.has(key),`Unknown overlay field: ${key} (${where})`);
+    need(finite(cue.from)&&finite(cue.to)&&cue.from>=0&&cue.to>cue.from&&cue.to<=duration&&
+      typeof cue.text==='string'&&['top','lower-third','center',...(modern?['title']:[])].includes(cue.position),`Invalid overlay: ${s.id}`);
+    if(!modern)continue;
+    if(cue.position==='title'){
+      need(cue.subtitle===undefined||(typeof cue.subtitle==='string'&&cue.subtitle.trim()),`Invalid subtitle on title: ${where}`);
+      for(const prior of uses)need(cue.from>=prior.to||cue.to<=prior.from,`Titles overlap in shot ${s.id}`);
+      uses.push(cue);
+    }else need(cue.subtitle===undefined&&cue.enter===undefined&&cue.leave===undefined,
+      `Only a title may have subtitle, enter or leave: ${where}`);
+    for(const field of ['enter','leave']){
+      const fade=cue[field];if(fade===undefined)continue;
+      need(fade&&typeof fade==='object'&&!Array.isArray(fade),`Invalid ${field}: ${where}`);
+      for(const key of Object.keys(fade))need(TEXT_FADE_FIELDS.has(key),`Unknown ${field==='enter'?'entrance':'exit'} field: ${key} (${where})`);
+      need(fade.kind==='fade',`Only fade is supported for title ${field}: ${where}`);
+      need(finite(fade.duration)&&fade.duration>0&&fade.duration<=cue.to-cue.from,`Title ${field} needs a positive duration within its cue: ${where}`);
+      if(fade.ease!==undefined)need(EASINGS.includes(fade.ease),`${unknownEasing(fade.ease)} (${field} of ${where})`);
+    }
+    need((cue.enter?.duration??0)+(cue.leave?.duration??0)<=cue.to-cue.from+1e-9,
+      `Title entrance and exit overlap or exceed cue: ${where}`);
+    if(cue.reveal!==undefined){
+      const reveal=cue.reveal;
+      need(reveal&&typeof reveal==='object'&&!Array.isArray(reveal),`Invalid reveal: ${where}`);
+      need(['spoken','even'].includes(reveal.timing),`Invalid reveal timing: ${where}`);
+      const fields=reveal.timing==='spoken'?REVEAL_SPOKEN:REVEAL_EVEN;
+      for(const key of Object.keys(reveal))need(fields.has(key),`Unknown reveal field: ${key} (${where})`);
+      const words=splitWords(cue.text).filter(p=>p.word);
+      need(words.length>0,`Reveal needs words: ${where}`);
+      if(reveal.timing==='spoken')validateSpokenPair({text:cue.text,phrase:reveal.phrase??cue.text,
+        narration:s.narration,replacements:e.audio?.replacements??{},shotId:s.id,index:i});
+      else{
+        need(finite(reveal.duration)&&reveal.duration>0&&cue.from+reveal.duration<=cue.to+1e-9,
+          `Even reveal duration exceeds cue: ${where}`);
+        if(reveal.ease!==undefined)need(EASINGS.includes(reveal.ease),`${unknownEasing(reveal.ease)} (${where})`);
+        // Every word must have one global film frame with that count visible.
+        let shown=0;
+        for(let frame=Math.ceil((s.start+cue.from)*e.output.fps-1e-9);
+          frame/e.output.fps<s.start+cue.to-1e-9;frame++)
+          shown=Math.max(shown,evenCount(words.length,frame/e.output.fps-s.start,cue.from,reveal.duration,reveal.ease??'linear'));
+        need(shown>=words.length,
+          `Even reveal word ${words.at(-1).text} appears on no output frame: ${where}`);
+      }
+    }
+  }
+}
 function validateHighlight(e,s,known){
   if(s.highlight===undefined)return;
   need(formatAtLeast(e,V03),`Highlights need format machinome-video-draft/0.3: shot ${s.id}`);
@@ -279,7 +335,7 @@ export function validateEpisode(e, manifest) {
     if(formatAtLeast(e,V03)&&s.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(e.cameras[s.camera[0].preset].up)))
       validateUpAlongShot(e,s);
     for(const name of s.hiddenLayers)need(e.layers[name],`Unknown layer: ${name}`);
-    for(const cue of s.overlays)need(finite(cue.from)&&finite(cue.to)&&cue.from>=0&&cue.to>cue.from&&cue.to<=s.end-s.start&&typeof cue.text==='string'&&['top','lower-third','center'].includes(cue.position),`Invalid overlay: ${s.id}`);
+    validateOverlays(e,s);
     for(const name of s.evidence)need(e.evidence[name],`Unknown evidence: ${name}`);
     validateAnnotations(e,s,known);
     validateHighlight(e,s,known);
@@ -307,6 +363,7 @@ export async function loadEpisode(file) {
   need(e.model.sourceRevision===sourceRevision,'Pin model.sourceRevision to the export source-revision.txt before rendering');
   e.paths={episode:episodePath,production:productionPath,manifest:manifestPath,repository,build:resolve(base,'_build')};
   e.sourceCode=await loadSourceCode(e);
+  for(const shot of e.shots)validateCodeSource(e,shot);
   return e;
 }
 

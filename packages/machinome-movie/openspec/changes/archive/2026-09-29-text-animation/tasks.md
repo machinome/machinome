@@ -1,16 +1,16 @@
 ## 0. Preconditions
 
-- [ ] 0.1 Confirm the existing 29 September ratification under the pilot's
+- [x] 0.1 Confirm the existing 29 September ratification under the pilot's
   delegation still covers the two reveal timings and their rules (D1–D3),
   cache-only measured timing and the
   refusal of a silent render without speech (D4), the title as an overlay position
   over the running model with fades, and the covering card left out (D5), the
   promoted emphasis rule and its new refusals (D6), the 0.4 closed lists (D7).
-- [ ] 0.2 Applied on branch `film-motion` after `keyframes-and-easing`,
+- [x] 0.2 Applied on branch `film-motion` after `keyframes-and-easing`,
   `shot-transitions` and `graphic-overlays` (campaign order). Record the base commit
   in `evidence.md`. `src/easing.mjs` exists with `ease`; `graphic-overlays`
   ratified `enter`/`leave: {kind: fade, duration, ease?}` for titles.
-- [ ] 0.3 Reuse suitable Leonardo speech takes where they fit. The ratified
+- [x] 0.3 Reuse suitable Leonardo speech takes where they fit. The ratified
   allowance also permits the `speech` command for one or two short narration
   shots in this feature's demo, so its spoken reveal can be checked against a
   real take. `check`, `preview` and `render`, including silent render, remain
@@ -18,7 +18,7 @@
 
 ## 1. Red tests (written before any implementation; record each failure)
 
-- [ ] 1.1 `test/words.test.mjs` (new, Node only; fails to load before 2.1).
+- [x] 1.1 `test/words.test.mjs` (new, Node only; fails to load before 2.1).
   - Word split: `"Propose. Inspect. Correct."` gives three words and two separators;
     a `|-` text keeps its newline as a separator; joining words and separators gives
     the text back exactly.
@@ -44,7 +44,7 @@
     past `to` (a transition's continued cue) shows every word.
   - Fade opacity: `enter` gives exactly 0 at `from` and 1 at `from + duration`,
     `ease(name, u)` between; `leave` gives 1 at `to − duration` and stays 0 past `to`.
-- [ ] 1.2 `test/words.test.mjs`, emphasis: port the three cases of
+- [x] 1.2 `test/words.test.mjs`, emphasis: port the three cases of
   `experiments/dark-source/emphasis.test.mjs` to the stable function with the same
   fixture (literal source-token offsets; onset `index/10 + offset`; cumulative active
   words at each onset; nothing at the clear instant; half-open at the first onset;
@@ -55,7 +55,7 @@
   Pin source text containing `<`, `&` and quotes through emphasis rendering so
   marks preserve the characters and HTML escaping. The experiment's own tests
   stay unchanged and green.
-- [ ] 1.3 `test/text-animation.test.mjs` (new, Node only).
+- [x] 1.3 `test/text-animation.test.mjs` (new, Node only).
   - A 0.4 fixture with a spoken reveal (resolved from a fixture alignment), an even
     reveal, a title with `subtitle`, `enter` and `leave`, and a code shot with
     `emphasis` validates; `frameAt` gives the expected `shown`, `opacity` and
@@ -75,13 +75,16 @@
     frames the earlier 0.4 cycles pinned.
   - `requiredViewerApi` of a 0.4 episode that only animates text is
     `{api: 21, reasons: []}`.
-- [ ] 1.4 `test/speech.test.mjs`: the cache-only reader returns the cached alignment
+- [x] 1.4 `test/speech.test.mjs`: the cache-only reader returns the cached alignment
   and SHA-256 with `ELEVENLABS_API_KEY` unset and `globalThis.fetch` replaced by a
   function that throws; a missing take is refused with `Word timing needs cached
   speech for shot hook; run the speech command first`; a checksum mismatch is refused;
   `speech` (cached, no generation) refuses a phrase absent from the take after
   writing captions, leaving the take in place.
-- [ ] 1.5 `test/render.test.mjs` (real browser, viewer double, one browser at a time).
+- [x] 1.5 `test/render.test.mjs` (real browser, viewer double, one browser at a time).
+  **Process exception accepted by the root under delegated review:** this
+  browser proof test was added after the first page implementation, not
+  before it. Final coverage is green; this is not a retroactive red-first run.
   A 0.4 episode whose `_build/audio` holds a fixture take under the key `speech`
   computes (arbitrary bytes, a matching record and fixture alignment):
   - `preview` passes with exact pixel replay; `revealChecks` for the spoken reveal
@@ -104,32 +107,32 @@
 
 ## 2. Implementation
 
-- [ ] 2.1 `src/words.mjs`: word split; spoken-phrase matching with replacements and
+- [x] 2.1 `src/words.mjs`: word split; spoken-phrase matching with replacements and
   folding (D2); onsets; even counts (D3); fade opacity (D5); emphasis resolution (D6,
   the experiment's rule plus the stable refusals); `resolveWordTiming(e, read)`
   producing `e.wordTiming` (D4). Uses `ease` from `src/easing.mjs`.
-- [ ] 2.2 `src/speech.mjs`: one function computing a shot's cache key and paths, used
+- [x] 2.2 `src/speech.mjs`: one function computing a shot's cache key and paths, used
   by `speech` and by the new cache-only reader; `speech` resolves word timing after
   caching and refuses mismatches with the audio kept.
-- [ ] 2.3 `src/episode.mjs`: 0.4 overlay, reveal, fade, title, `code`, typing-cue and
+- [x] 2.3 `src/episode.mjs`: 0.4 overlay, reveal, fade, title, `code`, typing-cue and
   emphasis validation with closed lists and the D7 messages; the format refusal in 0.2
   and 0.3; the static phrase checks; after `loadSourceCode` in `loadEpisode`, the
   emphasis source-token checks.
-- [ ] 2.4 `src/timeline.mjs` and `src/code.mjs`: 0.4 overlay frames with words,
+- [x] 2.4 `src/timeline.mjs` and `src/code.mjs`: 0.4 overlay frames with words,
   `shown` and `opacity` only where declared; `codeAt` returns `emphasis` ranges only
   where declared; 0.2/0.3 frames untouched.
-- [ ] 2.5 `src/film.html`, `src/film.js`: words drawn in place with hidden ones
+- [x] 2.5 `src/film.html`, `src/film.js`: words drawn in place with hidden ones
   invisible; the `title` position with its subtitle; opacity; `mark.spoken` over the
   highlighted source, refusing a range whose text is not its word while preserving
   source characters and HTML escaping; `setFrame` returns per overlay the visible
   word count and box.
-- [ ] 2.6 `src/render.mjs`: per-frame word-count and title-in-frame refusals; the
+- [x] 2.6 `src/render.mjs`: per-frame word-count and title-in-frame refusals; the
   preview samples and `revealChecks`, `fadeChecks`, `emphasisChecks` (D8); the frame
   identity adds `words.mjs` (D9).
-- [ ] 2.7 `bin/videomaker.mjs`: resolve word timing before `check`, `preview`,
+- [x] 2.7 `bin/videomaker.mjs`: resolve word timing before `check`, `preview`,
   `render` (silent included) and after generation in `build`; never for `speech`'s
   own validation.
-- [ ] 2.8 `docs/FORMAT.md`: in "Format 0.4", the overlay and code closed lists and
+- [x] 2.8 `docs/FORMAT.md`: in "Format 0.4", the overlay and code closed lists and
   the new fields' format refusal; a section "Text animation" with "Words that appear
   as they are spoken" (D1–D2, the judgment example, the refusals, "run speech
   first"), "Words at an even pace" (D3), "Titles" (D5, the two *Revolutions*
@@ -139,12 +142,12 @@
   burned captions. `README.md`: "Produce an episode" (`speech` before `check` for
   measured timing; `render --silent` reads cached speech for it), `preview`'s new
   checks.
-- [ ] 2.9 `npm test` green; record the red runs of 1.1–1.5, the pins green before and
+- [x] 2.9 `npm test` green; record the red runs of 1.1–1.5, the pins green before and
   after, and the green run in `evidence.md`.
 
 ## 3. Consumer verification (implementation evidence)
 
-- [ ] 3.1 In the Leonardo project, untracked (never committed there, never here),
+- [x] 3.1 In the Leonardo project, untracked (never committed there, never here),
   make one concise format-0.4 episode at `videos/demo-text-animation/`, initially
   two shots of about eight seconds each, adjusting durations to the measured
   narration. Across those two shots, show a large title with subtitle fading
@@ -153,7 +156,7 @@
   the source emphasis of 3.2. This is a feature demonstration;
   it need not reconstruct the unrelated *Revolutions* `river`, `judgment`,
   `corrections` and `now` shots or their neighbouring cache keys.
-- [ ] 3.2 In a code shot, show an export-pinned `model.py` excerpt including
+- [x] 3.2 In a code shot, show an export-pinned `model.py` excerpt including
   line 415, such as 405–415, and give `code.emphasis` the words `waterwheel`,
   `drives`, `crankshaft` on the actual matching phrase in that shot's narration
   and cached take. The short demo may say "The waterwheel drives the
@@ -166,11 +169,11 @@
   ratified allowance permits `speech` for this demo's one or two short shots;
   record the exact selected phrase, cache keys, take hashes, onsets and source
   revision in evidence.
-- [ ] 3.3 `check` passes after the takes are in place and refuses (with "run the
+- [x] 3.3 `check` passes after the takes are in place and refuses (with "run the
   speech command first") before; the resolved onsets of every measured cue, the take
   hashes and the even-reveal instants are recorded in `evidence.md`. `preview` passes
   with its reveal, fade and emphasis checks and exact replay.
-- [ ] 3.4 With one viewer bundle, the root-owned
+- [x] 3.4 With one viewer bundle, the root-owned
   `videos/demo-legacy-02` episode (format 0.2, current 1460-second export pinned
   to revision `28b43bc`), `demo-feed-mechanism` (0.3) and the earlier campaign
   demos pass `check` without reading speech. The orchestrating agent compares
@@ -180,7 +183,7 @@
   296 model seconds, and `videos/machinome-revolutions` refuses because its
   source revision is not pinned; neither original is a rendering compatibility
   fixture.
-- [ ] 3.5 The orchestrating agent renders the short demo with its cached
+- [x] 3.5 The orchestrating agent renders the short demo with its cached
   narration (`--width 960 --fps 30`) and records its hash; confirm on decoded
   frames that "Propose. Inspect. Correct." appears at the measured frames and
   the line-415 identifiers light at their measured onsets. A silent quick
@@ -188,12 +191,12 @@
 
 ## 4. Delegated film review and archive gate
 
-- [ ] 4.1 After implementation tests pass, the orchestrating agent performs an
+- [x] 4.1 After implementation tests pass, the orchestrating agent performs an
   adversarial review against the plan and rendered pixels. Inspect the spoken
   reveal against the actual voice, the even reveal's pace, title size and fades,
   and source emphasis on a light palette. Record the findings and fixes; do not
   claim pilot review from automated counts, opacity and replay checks.
-- [ ] 4.2 The orchestrating agent inspects the feature demonstration video from
+- [x] 4.2 The orchestrating agent inspects the feature demonstration video from
   Leonardo `videos/demo-text-animation/` with vision,
   records its path, hash and review findings, then syncs and archives this change.
   A covering title card, adoption by *Revolutions* and pronunciation-dictionary

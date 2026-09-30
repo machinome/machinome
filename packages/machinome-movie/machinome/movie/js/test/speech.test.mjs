@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp, mkdir, writeFile, readFile, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {speech} from '../src/speech.mjs';
+import {speech,readSpeechTake} from '../src/speech.mjs';
 import {hash} from '../src/util.mjs';
 
 async function fixture(t, {cached=true, checksum=true}={}) {
@@ -42,4 +42,34 @@ test('cache-only rendering refuses missing speech instead of generating it',asyn
 test('corrupt cached speech is refused instead of silently regenerated',async t=>{
   const {episode}=await fixture(t,{checksum:false});
   await assert.rejects(speech(episode),/Audio cache checksum mismatch/);
+});
+
+test('word timing reads only the exact cached take and verifies its checksum without a key or network',async t=>{
+  const {episode,file,bytes}=await fixture(t);
+  const before=process.env.ELEVENLABS_API_KEY,fetch=globalThis.fetch;
+  delete process.env.ELEVENLABS_API_KEY;
+  globalThis.fetch=()=>{throw new Error('Network was called for cache-only word timing');};
+  try{
+    const take=await readSpeechTake(episode,episode.shots[0]);
+    assert.equal(take.sha256,hash(bytes));
+    assert.deepEqual(take.alignment.characters,[...'Hello.']);
+    assert.equal(take.file,file);
+    const missing=await fixture(t,{cached:false});
+    await assert.rejects(readSpeechTake(missing.episode,missing.episode.shots[0]),
+      /Word timing needs cached speech for shot hook; run the speech command first/);
+    const corrupt=await fixture(t,{checksum:false});
+    await assert.rejects(readSpeechTake(corrupt.episode,corrupt.episode.shots[0]),/Audio cache checksum mismatch/);
+  }finally{globalThis.fetch=fetch;if(before===undefined)delete process.env.ELEVENLABS_API_KEY;else process.env.ELEVENLABS_API_KEY=before;}
+});
+
+test('speech leaves its cached take and written captions when measured text differs from the take',async t=>{
+  const {episode,file,bytes}=await fixture(t);
+  const meta=JSON.parse(await readFile(file+'.json','utf8'));
+  meta.duration=.4;meta.alignment.characters=[...'Hallo.'];
+  await writeFile(file+'.json',JSON.stringify(meta));
+  episode.output.fps=30;
+  episode.shots[0].overlays=[{from:0,to:1,position:'top',text:'Hello.',reveal:{timing:'spoken'}}];
+  await assert.rejects(speech(episode),/Missing spoken phrase in recorded speech.*hook/);
+  assert.deepEqual(await readFile(file),bytes);
+  assert.match(await readFile(join(episode.paths.build,'captions.srt'),'utf8'),/Hallo\./);
 });

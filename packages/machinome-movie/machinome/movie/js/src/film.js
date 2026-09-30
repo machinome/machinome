@@ -4,6 +4,7 @@
   const style=cfg.style;
   document.body.style.background=style.background;
   document.documentElement.style.setProperty('--film-background',style.background);
+  document.documentElement.style.setProperty('--film-accent',style.accent);
   document.body.style.color=style.foreground;
   document.body.style.fontFamily=style.fontFamily;
   document.querySelector('#brand').style.color=style.accent;
@@ -166,6 +167,26 @@
   }
   const rect=selector=>plain(document.querySelector(selector).getBoundingClientRect());
   const chrome=()=>['#brand','#series','#rule'].map(rect);
+  function markSource(code,source){
+    if(!code?.emphasis?.length)return [];
+    if(source.textContent!==code.text)throw new Error(`Highlighted source text differs from the typed excerpt in shot ${code.shotId??'current'}`);
+    const marks=[];
+    // Range boundaries are UTF-16 offsets, the same offsets recorded in Node.
+    // Work backwards so wrapping one range cannot disturb an earlier offset.
+    for(const cue of [...code.emphasis].sort((a,b)=>b.start-a.start)){
+      if(code.text.slice(cue.start,cue.end)!==cue.word)throw new Error(`Source emphasis range differs from ${cue.word}`);
+      const walker=document.createTreeWalker(source,NodeFilter.SHOW_TEXT),nodes=[];let node,offset=0;
+      while((node=walker.nextNode())){nodes.push({node,start:offset,end:offset+node.length});offset+=node.length;}
+      const first=nodes.find(n=>cue.start>=n.start&&cue.start<n.end);
+      const last=nodes.find(n=>cue.end>n.start&&cue.end<=n.end);
+      if(!first||!last)throw new Error(`Source emphasis range is outside typed text: ${cue.word}`);
+      const range=document.createRange();range.setStart(first.node,cue.start-first.start);range.setEnd(last.node,cue.end-last.start);
+      if(range.toString()!==cue.word)throw new Error(`Source emphasis mark differs from ${cue.word}`);
+      const mark=document.createElement('mark');mark.className='spoken';mark.dataset.word=cue.word;
+      mark.append(range.extractContents());range.insertNode(mark);marks.unshift({word:cue.word,text:mark.textContent});
+    }
+    return marks;
+  }
   window.film={viewer,apiVersion:viewer.apiVersion,
     // Preview's lens check: viewport positions of world points for the current pose.
     project:points=>points.map(p=>viewer.project(p)),
@@ -203,17 +224,35 @@
     if(viewer.apiVersion>=28)viewer.setView({camera:frame.view.camera,target:frame.view.target,up:frame.up,fov:frame.fov});
     else viewer.setView(frame.view);
     const overlays=document.querySelector('#overlays');overlays.replaceChildren();
-    for(const cue of frame.overlays){const el=document.createElement('div');el.className='overlay '+cue.position;el.textContent=cue.text;overlays.append(el);}
+    const overlayReports=[];
+    for(const cue of frame.overlays){
+      const el=document.createElement('div');el.className='overlay '+cue.position;
+      if(cue.opacity!==undefined)el.style.opacity=String(cue.opacity);
+      if(cue.words){let visible=0;
+        for(const part of cue.words){
+          if(!part.word){el.append(document.createTextNode(part.text));continue;}
+          const span=document.createElement('span');span.className='reveal-word';span.textContent=part.text;
+          if(visible>=cue.shown)span.style.visibility='hidden';
+          el.append(span);visible++;
+        }
+      }else el.textContent=cue.text;
+      if(cue.subtitle!==undefined){const sub=document.createElement('span');sub.className='subtitle';sub.textContent=cue.subtitle;el.append(sub);}
+      overlays.append(el);
+      overlayReports.push({shown:cue.words?[...el.querySelectorAll('.reveal-word')]
+        .filter(span=>getComputedStyle(span).visibility!=='hidden').length:null,
+        box:plain(el.getBoundingClientRect()),position:cue.position});
+    }
     document.querySelector('#source-file').textContent=frame.code?`${frame.code.file} · L${frame.code.firstLine}–${frame.code.lastLine}`:'';
     // Markup is escaped by the server-side Python highlighter; source is never executed.
-    document.querySelector('#source-code').innerHTML=frame.code?.html??'';
+    const source=document.querySelector('#source-code');source.innerHTML=frame.code?.html??'';
+    const emphasis=markSource(frame.code,source);
     document.querySelector('#source-cursor').style.visibility=frame.code?.cursor?'visible':'hidden';
     document.querySelector('#progress').style.width=`${frame.progress*100}%`;
     const annotations=drawAnnotations(frame);
     if(frame.fresh)await repaint();
     const view=viewer.view();
     return {camera:view.camera.toArray(),target:view.target.toArray(),navigation:viewer.navigation(),
-      annotations,stage:plain(document.querySelector('#stage').getBoundingClientRect()),
+      annotations,overlays:overlayReports,emphasis,stage:plain(document.querySelector('#stage').getBoundingClientRect()),
       frame:{width:window.innerWidth,height:window.innerHeight},
       chrome:chrome(),
       ...(viewer.apiVersion>=28?{up:view.up.toArray(),fov:Number(view.fov)}:{})};

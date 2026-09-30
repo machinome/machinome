@@ -111,6 +111,18 @@ demonstrated.
   `root-review.md` keeps the independent video evidence. Text animation and
   stills/clips remain, followed by the all-features film.
 
+- 29 Sep, resumed run: `text-animation` completed and archived after the
+  delegated review: 98 tests pass, with an explicitly accepted exception that
+  the main browser proof was added after implementation, not red-first.
+  All 35 fresh legacy 0.2/0.3 images match `6417f97`. The two-take narrated
+  Leonardo demo is 16 s at 960×540, 30 fps, SHA-256
+  `74fc594461fed3ada615a0775b8fa98af4ecf7c9c643c89dac28564ef17fd58b`.
+  Root inspected 32 decoded overview frames and exact before/after pairs for
+  every spoken word, source word and clear. Reframing made the title/subtitle
+  legible; no covering card was added. The archived `root-review.md` records
+  timing, cache hashes, regressions and compatibility. Stills/clips is next,
+  then the single combined narrated film.
+
 ## Combined demonstration, resumed commission
 
 The final episode is a concise feature study in Leonardo, not a revision of
