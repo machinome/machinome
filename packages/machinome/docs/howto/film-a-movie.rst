@@ -122,7 +122,15 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   TypeScript modules against the types generated from the document, and
   prints the bundle it built or reused:
   `Stage: bundled <path>/stage.js (sha256 <prefix>) from stage.tsx; types checked`.
-  It does not extract clip frames or start a browser.
+  When a movie shows a picture, it then measures, before reading any take,
+  the layout of each set the movie uses in one headless Chromium served that
+  bundle (no viewer is mounted and no `--viewer` is needed for it), prints a
+  `Layout` line per set, refuses a picture enlarged beyond its allowance in
+  its slot's measured box before `speech` is run, and, once the takes place
+  the cues, a picture view that leaves the picture; a slot whose box depends
+  on what it holds is left to `preview` and `render`. A YAML episode, whose
+  paper sets' boxes are known, and a movie without pictures open no
+  browser. It does not extract clip frames.
 - `speech` generates narration through ElevenLabs, caches each segment and its
   character timestamps, checks it fits, then mixes audio and writes captions.
   It makes chargeable requests only for missing cached segments.

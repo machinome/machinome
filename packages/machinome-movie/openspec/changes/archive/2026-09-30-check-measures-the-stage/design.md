@@ -129,9 +129,8 @@ gives it, and an empty frame depends on no time.
   interpolated between the keys' zooms, so the largest key is the peak. An
   SVG still has no limit. The media are probed with `loadPictures` before
   the takes (paths, formats, sizes, committed status), and again by
-  `loadEpisode` as today. The refusal is the YAML message built by one
-  function in `src/pictures.mjs`, with the measured box for the area and the
-  document's remedy:
+  `loadEpisode` as today. The refusal is the YAML message, with the measured
+  box for the area and the document's remedy (D7 says where it is written):
 
       Still plate would be enlarged 1.40× in shot still (864×576 source pixels in the 870.4×576 box of slot plate of set playbill); its upscale allowance is 1.2. Set upscale on the still, place it in a smaller slot, or use a larger source.
 
@@ -144,8 +143,7 @@ gives it, and an empty frame depends on no time.
   resolved with `frameAt` (the state the stage is given), and the view's
   rectangle computed with `pictureRect` in the measured box; the rule is
   YAML's: a rectangle that overfills an axis must cover the box on it, one
-  that underfills must stay inside it. The refusal, built by one function in
-  `src/pictures.mjs` with YAML's:
+  that underfills must stay inside it. The refusal, in YAML's words:
 
       Picture view leaves the picture in shot still at 16.67 s (tip.plate, plate); keep the view inside the picture or zoom in
 
@@ -160,7 +158,7 @@ gives it, and an empty frame depends on no time.
 After the `Stage:` line, one line per measured set, in the order the shots
 first use them:
 
-    Layout playbill at 1280×720: stage 870.4×576 at 64,86.4; plate 870.4×576 at 64,86.4; headline sized by what it holds; aside 243.2×288 at 972.8,216
+    Layout playbill at 1280×720: stage 870.4×576 at 64,86.4; plate 870.4×576 at 64,86.4; aside 243.2×288 at 972.8,216; headline sized by what it holds
 
 and for each picture shown, `peak P×; allowance A×` when its slot is
 trusted, `vector, no enlargement limit` for an SVG, and, for a slot sized by
@@ -181,11 +179,19 @@ box already judges every frame there. Left out, recorded in the evidence.
 `src/layout.mjs`: `picturesShown(doc)` (the shown pictures, from an
 unresolved or a resolved document), `measureLayouts(doc, bundle,
 {browser, assets})`, `layoutLines(layouts)`, `checkEnlargements(doc, media,
-layouts)` and `checkPictureViews(film, layouts)`. `src/pictures.mjs`:
-`enlargementRefusal(...)` and `viewLeavesRefusal(...)`, used by the YAML
-checks and by `src/layout.mjs`. `bin/videomaker.mjs` calls them on the
-document path. `test/support/reach.mjs` declares that `src/layout.mjs`
-reads `src/film.html`.
+layouts)` and `checkPictureViews(film, layouts)`. `bin/videomaker.mjs` calls
+them on the document path. `test/support/reach.mjs` declares that
+`src/layout.mjs` reads `src/film.html`.
+
+Implementation note (30 September 2026): the plan put the two refusals'
+words in one function each in `src/pictures.mjs`, shared with the YAML
+checks. `src/pictures.mjs` is hashed into the common key of every cached
+shot (`render.mjs`, the render's `commonKey`), so that refactor would have
+recaptured every film for nothing drawn. The words are written in
+`src/layout.mjs` instead, in the YAML wording (the same sentence, the
+measured box standing for the area, the slot and set for `choose area:
+stage`, the element key for the picture's index), and `src/pictures.mjs` is
+unchanged. The finding is recorded in the evidence.
 
 ## Risks / Trade-offs
 

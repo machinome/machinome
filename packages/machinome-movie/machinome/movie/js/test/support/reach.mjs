@@ -42,6 +42,7 @@ const FIXTURE_PROJECT='python/tests/fixtures/project';
 // that decides a verdict, and why is written beside it.
 export const READS={
   'src/render.mjs':['stage','src/film.html'],        // the page and the stage bundle it serves
+  'src/layout.mjs':['src/film.html'],                 // the page the layout probe serves
   'src/stage-build.mjs':['stage'],                    // bundles the runtime from stage/
   'src/schema.mjs':['schema'],                        // the movie document schema
   'src/speech.mjs':[],                                // the .env files of keyFiles(): a test names a throwaway checkout, never this one

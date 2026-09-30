@@ -13,7 +13,7 @@
 
 ## 1. Layer 8, red first
 
-- [ ] 1.1 In `test/pipeline/movie-pipeline.test.mjs`: the tour with its
+- [x] 1.1 In `test/pipeline/movie-pipeline.test.mjs`: the tour with its
   still's allowance lowered to 1.2 and no take cached is refused by `check`
   naming the still, the shot `still`, the peak 1.40× and the allowance, and
   no take is read; the tour with the still's first view key centred at
@@ -26,21 +26,23 @@
 
 ## 2. The probe and the command
 
-- [ ] 2.1 `src/pictures.mjs`: `enlargementRefusal` and `viewLeavesRefusal`,
-  the YAML checks built on them with their wording unchanged.
-- [ ] 2.2 `src/layout.mjs`: `picturesShown`, `measureLayouts` (the page, the
+- [x] 2.1 ~~`src/pictures.mjs`: `enlargementRefusal` and `viewLeavesRefusal`,
+  the YAML checks built on them with their wording unchanged.~~ Not done:
+  `src/pictures.mjs` is a shot-cache key input (design D7, implementation
+  note); the words are written in `src/layout.mjs` in the YAML wording.
+- [x] 2.2 `src/layout.mjs`: `picturesShown`, `measureLayouts` (the page, the
   stub viewer, the empty frame per set, the three measurements of D3),
   `layoutLines`, `checkEnlargements`, `checkPictureViews`.
-- [ ] 2.3 `bin/videomaker.mjs`: on a document that shows a picture, measure
+- [x] 2.3 `bin/videomaker.mjs`: on a document that shows a picture, measure
   after the bundle and refuse enlargements before `loadEpisode`; after it,
   refuse a view that leaves the picture; print the `Layout` lines and each
   picture's peak and allowance. The comments that say `check` has no
   browser say what is true.
-- [ ] 2.4 `test/support/reach.mjs`: `src/layout.mjs` reads `src/film.html`.
+- [x] 2.4 `test/support/reach.mjs`: `src/layout.mjs` reads `src/film.html`.
 
 ## 3. Layer 5
 
-- [ ] 3.1 `test/browser/layout.test.mjs`: on the run's one Chromium, the
+- [x] 3.1 `test/browser/layout.test.mjs`: on the run's one Chromium, the
   probe's boxes for `frame`, `split`, `playbill` and `playbill-split` at the
   tour's 1280×720 equal what a posed frame of each set reports at the same
   size (every trusted slot's box, and for `plate` the picture element's
@@ -49,17 +51,21 @@
 
 ## 4. Proof
 
-- [ ] 4.1 The whole Node suite (`npm test`) and the Python suite on the
+- [x] 4.1 The whole Node suite (`npm test`) and the Python suite on the
   final content, summaries quoted; the changed slow files run cold once.
-- [ ] 4.2 `check` of the tour before (0.2) and after, in seconds.
+- [x] 4.2 `check` of the tour before (0.2) and after, in seconds.
 
 ## 5. Records
 
-- [ ] 5.1 ADR-009 (STAGE): `check` measures a set's layout before speech;
+- [x] 5.1 ADR-009 (STAGE): `check` measures a set's layout before speech;
   the ADR index.
-- [ ] 5.2 `docs/movie-document.md` (the frame's picture paragraph and the
+- [x] 5.2 `docs/movie-document.md` (the frame's picture paragraph and the
   resolution steps), `docs/stage.md` (what `check` builds and measures),
   `README.md` (`check`), `docs/architecture-overview.md`, `CHANGELOG.md`
   under `Unreleased`.
-- [ ] 5.3 Sync the baseline specs and archive the change with the CLI;
+- [x] 5.3 Sync the baseline specs and archive the change with the CLI;
   `evidence.md` in the archived change.
+
+Implementation note (30 September 2026): 0.3 is left open: the planning
+commit was made for the orchestrator's review before implementation, and
+that review, the campaign's gate, is not claimed here.

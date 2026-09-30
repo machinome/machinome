@@ -105,8 +105,8 @@ None.
 ## Impact
 
 Code: a new `src/layout.mjs`; `bin/videomaker.mjs` (the `check` path);
-`src/pictures.mjs` (the two refusal messages built by one function each,
-the YAML wording unchanged); a comment in `src/episode.mjs`;
+a comment in `src/episode.mjs`; `src/pictures.mjs` unchanged (design D7,
+implementation note);
 `test/support/reach.mjs` (the new module reads `src/film.html`). The stage
 runtime, the renderer, the timeline, the formats, the schema and the Python
 package do not change, so no stage bundle and no cached shot changes. A

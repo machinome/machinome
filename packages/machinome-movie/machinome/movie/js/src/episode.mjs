@@ -219,7 +219,8 @@ export function filmSubject(film) {return film?.source==='movie'?'movie':'episod
 export function viewerApiRefusal(required,declared,subject='episode') {
   return `This ${subject} needs Viewer API ${required.api} for ${required.reasons.join(', ')}; the selected viewer declares API ${declared}. Select a newer machinome-viewer bundle with --viewer.`;
 }
-// check has no browser: it reads the "viewer API <n>" banner of the selected bundle.
+// check mounts no viewer (its layout page, when it opens one, has a stub): it
+// reads the "viewer API <n>" banner of the selected bundle.
 export function viewerApiFromBanner(text) {
   const match=/\bviewer API (\d+)\b/.exec(String(text).slice(0,4096));
   return match?Number(match[1]):null;

@@ -22,6 +22,9 @@ the real model through the machinome viewer and never invents a pose.
         │  a YAML episode: every rule of its format,     src/episode.mjs
         │    converted to the resolved document in the paper sets
         │  a document: format, schema, static checks,    src/movie.mjs, src/schema.mjs
+        │    at check its stage bundled and, if it shows    src/stage-build.mjs,
+        │    a picture, its sets' layout measured on the    src/layout.mjs
+        │    stage and enlargements refused, before takes;
         │    anchors resolved from the cached takes
         │  both: validated against the export and project
         ▼
@@ -80,7 +83,13 @@ the anchors that place cuts and cues are resolved from those takes.
 source panel's typed text and markup; `src/text.mjs` holds the counting
 rules for phrases, words and tokens; `src/style.mjs` the style's defaults;
 `src/pictures.mjs` probes stills and clips and computes a picture's
-rectangle; `src/easing.mjs` is the five-curve vocabulary;
+rectangle; `src/layout.mjs` is the layout `check` measures for a movie
+document that shows a picture: each set its shots use posed once, empty, on
+the renderer's page with a stub viewer, at the output size, each slot's box,
+the box a picture gets there and whether the slot is sized by what it holds,
+and the enlargement and view refusals against the boxes that stay put
+([ADR-009](adrs/STAGE/ADR-009-check-measures-a-sets-layout-before-speech.md));
+`src/easing.mjs` is the five-curve vocabulary;
 `src/review-samples.mjs` and `src/review-pack.mjs` choose, from the
 element states, and decode the frames a person reviews.
 

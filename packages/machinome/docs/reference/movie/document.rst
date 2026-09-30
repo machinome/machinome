@@ -298,7 +298,12 @@ Refusals name an anchor's field by its path in the shot: `until`,
 3. `check`, `preview`, `render` and `build` resolve every anchor against the
    cached takes. A document with spoken anchors and no cached take for a
    chapter is refused, naming the chapter and asking for `speech` first;
-   `check` never generates speech.
+   `check` never generates speech. Before it reads a take, `check` bundles
+   the stage and, when the document shows a picture, measures the layout of
+   every set its shots use on the stage itself (see "The stage"), and
+   refuses a raster picture enlarged beyond its allowance in its slot's
+   measured box; once the takes resolve the times, it refuses a picture
+   view that leaves the picture at any output frame of its cue.
 4. A resolved anchor is snapped to the output frame grid (nearest frame).
    Literal numbers are kept as written. A shot whose `until` resolves at or
    before its start is refused, naming the shot and the anchor.
@@ -366,10 +371,11 @@ encodes and the shot cache hashes:
   words are visible). `picture` state: `shown`, `media` (`still` or
   `clip`), `name`, `fit`, `opacity`, `view` (`{"center", "zoom"}`), and for
   a clip `frame` and `clipSeconds`. The picture's rectangle is not in the
-  frame: a slot's box is the set's layout, known only in the stage, which
+  frame: a slot's box is the set's layout, drawn only by the stage, which
   draws the picture by its fit and view inside the box and reports the
   rectangle it drew (finding 1 of the react-stage change; `kind` is the
-  element's kind, as on every element). A project element's state: `props`
+  element's kind, as on every element). `check` reads the boxes from the
+  stage before any take (ADR-009, "The stage" below). A project element's state: `props`
   and `actions`, the active actions as `{action, params, since, until,
   progress}` with `since` and `until` shot-local and `progress` in
   [0, 1].
@@ -399,6 +405,15 @@ headless Chromium by the renderer. Its contract with the renderer:
   and the time; a picture's drawn rectangle is checked against the one its
   fit and view give for the box the stage reports, enlargement and framing
   included (finding 1 of the react-stage change).
+- `check` measures a set's layout on the same page, once per set kind the
+  shots use, at the output size, when the document shows a picture: it
+  poses each set with `setFrame` and no element placed, the viewer a stub
+  whose `mount` is never called, and measures each slot's box, the box a
+  picture element placed there gets, and whether the slot's box changes
+  when every slot holds content larger than the frame. A slot whose box
+  does not change is judged at `check`; one sized by what it holds is
+  judged by preview and render against the box the stage reports. A
+  document that shows no picture opens no browser at `check`.
 - `window.film` also has `project(key, points)`, which projects world
   points through the viewer of the view element `key`, and `views()`, which
   lists the viewer instances with the key of the view element each serves
