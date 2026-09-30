@@ -72,7 +72,7 @@ frames a person reviews.
 6. **Nothing is published by the tool.** Release fields left null block a
    release bundle and never default to an address.
 
-7. **The movie document is the contract at the top of the pipeline**
+7. **The movie document is the seam at the top of the pipeline for this step**
    ([ADR-001](adrs/SOURCE/ADR-001-movie-document-and-chapter-narration.md)):
    one JSON Schema (`schema/machinome-movie-0.1.json`) both runtimes check,
    one set of shared fixtures (`fixtures/`), and a resolution written to
@@ -115,8 +115,10 @@ document:
 ## What is changing
 
 The declarative-python campaign (`workflow/ongoing/declarative-python-api.md`,
-`docs/movie-document.md`) made the movie document the explicit contract at
-the top of the pipeline: Python declarations in the project evaluate to it,
+`docs/movie-document.md`) made the movie document the seam at the top of
+the pipeline for this step, a step and not a protocol by the pilot's ruling
+of 30 September 2026 (the stage will replace its shape without preserving
+it, and no format is a protocol before a release): Python declarations in the project evaluate to it,
 YAML episodes load into its resolved shape, and narration moved to the
 chapter with anchors resolved against the take. The React stage that
 replaces the fixed film page, takes recorded from running and clocked

@@ -8,6 +8,12 @@ change. Where the archived change's spec (`openspec/specs/movie-document/`)
 and this page disagree, the spec is right. "Implementation notes" at the end
 records where the implementation departs from the draft.
 
+The pilot's ruling of 30 September 2026: this document is a step of the
+declarative-python campaign, not a protocol. When the React stage arrives the
+document will carry sets, slots and elements as the declarations do, and this
+shape will not be preserved; no compatibility with it is owed or maintained,
+and no format becomes a protocol before the pilot makes a release.
+
 ## What it is
 
 The seam between the declarations a project writes and the renderer. The
@@ -95,8 +101,9 @@ and `release` keep the meaning `docs/FORMAT.md` gives them in
   require `code`; `paper` refuses it. When `set` is omitted it is `paper`
   without `code` and `paper-split` with it, which is today's rule. These are
   the three layouts the film page draws; a set the page does not have is
-  refused by name. The document grows slots and elements when the React
-  stage arrives.
+  refused by name. The Python declarations have sets with slots and
+  elements; evaluation flattens them into these fields for this step, and
+  the stage will not preserve this shape (see the ruling above).
 - `fadeIn` is accepted only on the film's first shot and `fadeOut` only on
   its last, across chapters.
 

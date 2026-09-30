@@ -65,3 +65,15 @@ by marks.
   project's cached takes remain valid.
 - The schema is validated in Node by a small validator of the keywords it uses
   (`src/schema.mjs`), not a dependency; a test keeps the two in step.
+
+## Amendment (30 September 2026)
+
+The pilot ruled, the day this ADR was accepted, that `machinome-movie/0.1`
+is a step of the declarative-python campaign and not a protocol. The
+document flattens the declarations' sets, slots and elements into the
+renderer's present fields because the React stage does not exist yet. When
+the stage arrives the document will carry the declarations' shape, this
+shape will not be preserved, and no compatibility with it is owed or
+maintained. No format becomes a protocol before the pilot makes a release.
+The decision above stands for this step; its consequences do not extend
+past it.

@@ -22,6 +22,18 @@ produce a film from Python on today's renderer and leaves the rest:
   author-declared marks is the only take), the browser page element, the
   studio preview, several formats, sound design.
 
+## Steps, not protocols
+
+The pilot's ruling of 30 September 2026: the movie document of this campaign
+(`machinome-movie/0.1`) is a step, not a protocol. The Python declarations
+carry sets, slots and elements; evaluation flattens them into the renderer's
+present fields because the React stage does not exist yet. When the stage
+arrives, the document will carry the declarations' shape and this one will
+not be preserved; no compatibility with it is owed or maintained. The full
+scope ships in one release, and no format becomes a protocol before the
+pilot makes that release. A deferral in this plan is the orchestrator's cut
+of the work, never a choice of the pilot's.
+
 ## The empirical validation
 
 `projects/Leonardo/videos/cut-and-advance/spec.md`: a film of about 100

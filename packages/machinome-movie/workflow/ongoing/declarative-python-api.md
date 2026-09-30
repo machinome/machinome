@@ -338,7 +338,10 @@ place in the tree when an episode asks for it.
 Each step leaves a working tool behind it; the Leonardo film is the evidence
 for steps 3 and 4.
 
-1. Make the movie document the explicit contract. Today's YAML episodes load
+1. Make the movie document the seam between declarations and renderer for
+   this step. It is not a protocol: the pilot ruled on 30 September 2026 that
+   the shapes of mid-campaign steps are not preserved and that no format is a
+   protocol before a release. Today's YAML episodes load
    into it unchanged.
 2. Port the film page to the React stage with sets, slots and an element
    registry. Its current behaviour becomes the `Paper` set and the `View`,
