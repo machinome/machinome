@@ -11,7 +11,7 @@ import pytest
 from machinome_movie import (Action, Camera, Chapter, Cue, Element, Format, Frame, Loop,
                              Movie, MovieError, Narration, Narrator, Picture, Reveal, Set,
                              Shot, Slot, Source, Split, Style, Title, View)
-from machinome_movie.text import count_token, count_words
+from machinome_movie.text import excerpt_line, count_token, count_words
 
 from models.seesaw import Seesaw
 from videos.takes import Playground
@@ -78,7 +78,8 @@ def test_a_derived_set_has_its_own_slots_its_base_and_its_bases_module():
     assert list(BillSplit.slots()) == ['left', 'right', 'headline']
     assert list(Bill.slots()) == ['stage', 'headline', 'aside']
     assert BillSplit.base() is Bill and Bill.base() is None
-    assert BillSplit.props() == {} and Bill.props() == {'series': 'FIXTURE SERIES'}
+    # A derived set inherits its base's props, so the chrome it inherits reads them.
+    assert BillSplit.props() == {'series': 'FIXTURE SERIES'} == Bill.props()
 
 
 def test_the_shipped_sets():
@@ -518,16 +519,24 @@ def test_a_token_is_an_identifier():
 def test_words_and_tokens_are_bounded():
     assert count_words("the beam rests on the beams", "beam") == 1
     assert count_words("Up. Down.", "Up.") == 1
+    # A dot is a boundary: a word inside a dotted path is a token, and a
+    # dotted path is one token; an underscore or a digit binds.
     excerpt = ("cycle.drives(water_drive.waterwheel.spin)\n"
                "water_drive.waterwheel.spin.drives(water_drive.crankshaft.spin)\n"
-               "(feed.pawl.turn, feed.pawl.shift_x, 3feed)")
-    assert count_token(excerpt, 'waterwheel') == 0
-    assert count_token(excerpt, 'drives') == 0
-    assert count_token(excerpt, 'water_drive.waterwheel.spin') == 1
+               "(feed.pawl.turn, feed.pawl.shift_x, 3feed, pawl_mount)")
+    assert count_token(excerpt, 'waterwheel') == 2
+    assert count_token(excerpt, 'drives') == 2
+    assert count_token(excerpt, 'crankshaft') == 1
+    assert count_token(excerpt, 'water_drive.waterwheel.spin') == 2
     assert count_token(excerpt, 'water_drive.waterwheel.spin.drives') == 1
     assert count_token(excerpt, 'feed.pawl.turn') == 1
-    assert count_token(excerpt, 'feed.pawl') == 0
-    assert count_token(excerpt, 'feed') == 0
+    assert count_token(excerpt, 'feed.pawl') == 2
+    assert count_token(excerpt, 'pawl') == 2
+    assert count_token(excerpt, 'feed') == 2
+    assert count_token(excerpt, 'shift') == 0
+    # Counting on one line of the excerpt, by file line number.
+    assert count_token(excerpt_line(excerpt, 413, 414), 'waterwheel') == 1
+    assert excerpt_line(excerpt, 413, 416) is None
 
 
 ##############################################

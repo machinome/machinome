@@ -50,14 +50,20 @@ Findings met while making the `machinome_movie` package evaluate to
 Advance* version 2 source against it. Triage: none yet; the pilot decides
 each.
 
-1. **A spoken concept cannot light a segment of a dotted path.** The token
+1. **A spoken concept cannot light a segment of a dotted path.** *Triage
+   (orchestrator, 30 September 2026): ruled the other way before the merge; a
+   dot is a boundary, so `waterwheel` is a token inside
+   `water_drive.waterwheel.spin`, and an emphasis may name its `line` when a
+   token repeats in the excerpt. The film keeps its words.* The token
    rule counts whole identifiers, dots included, so in the film's coupling
    excerpt (`water_drive.waterwheel.spin.drives(water_drive.crankshaft.spin)`)
    neither `waterwheel`, `drives` nor `crankshaft` is a token; the source was
    respelled to light the whole calls. A film that wants the one word lit
    inside a path needs a sub-token spelling, which no episode has asked for
    beyond this one.
-2. **The contract's token example cannot hold.** It says *the driving pawl*
+2. **The contract's token example cannot hold.** *Triage (orchestrator,
+   30 September 2026): resolved with wart 1; the contract now states the
+   boundary rule in words and its example is `feed.pawl.turn`.* It says *the driving pawl*
    may light `feed.pawl`; under the rule stated in the same sentence,
    `feed.pawl` never occurs where the source says `feed.pawl.turn`. Recorded
    as a contract finding in the change's evidence.

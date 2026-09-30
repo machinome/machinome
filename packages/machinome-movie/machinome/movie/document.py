@@ -15,7 +15,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
 from .names import EASES, MODULE_SUFFIXES, MovieError, prop_kind
-from .text import TOKEN, count_phrase, count_token, count_words
+from .text import TOKEN, count_phrase, count_token, count_words, excerpt_line
 
 FORMAT = 'machinome-movie/0.2'
 
@@ -46,7 +46,7 @@ ACTIONS = {
              'label': ({'part', 'text'}, {'part', 'text', 'offset', 'enter', 'leave'}),
              'arrow': ({'place'}, {'part', 'point', 'text', 'place', 'enter', 'leave'})},
     'source': {'type': ({'throughLine', 'over'}, {'throughLine', 'over'}),
-               'emphasize': ({'words'}, {'words', 'hold'})},
+               'emphasize': ({'words'}, {'words', 'hold', 'line'})},
     'title': {'show': (set(), {'enter', 'leave', 'reveal'})},
     'picture': {'show': (set(), {'enter', 'leave', 'view'})},
 }
@@ -405,10 +405,11 @@ class _Semantics:
             entrance = action.get(field)
             if entrance is None:
                 continue
-            kinds = ('fade', 'draw') if name in DRAWN else ('fade',)
+            kinds = ('fade', 'draw') if name in DRAWN and field == 'enter' else ('fade',)
             if entrance['kind'] not in kinds:
-                raise MovieError(f"{where}, {field}.kind: '{entrance['kind']}' is not an entrance "
-                                 f"of a {name}; use {' or '.join(kinds)} (draw only on a ring or an "
+                raise MovieError(f"{where}, {field}.kind: '{entrance['kind']}' is not an "
+                                 f"{'entrance' if field == 'enter' else 'exit'} of a {name}; use "
+                                 f"{' or '.join(kinds)} (draw only on the entrance of a ring or an "
                                  f"arrow)")
             self.ease(entrance.get('ease'), where, f'{field}.ease')
 
@@ -435,6 +436,11 @@ class _Semantics:
                              f"the cue's at is a spoken phrase with no plus")
         phrase = at['spoken']
         excerpt = element['source']
+        first, last = self.document['sourceCode'][excerpt]['lines']
+        line = action.get('line')
+        if line is not None and not first <= line <= last:
+            raise MovieError(f'{where}, line: line {line} is outside the excerpt {excerpt}, '
+                             f'lines {first} to {last}')
         for index, word in enumerate(action['words']):
             found = count_words(phrase, word['spoken'])
             if found != 1:
@@ -445,14 +451,17 @@ class _Semantics:
             token = word['token']
             if not TOKEN.fullmatch(token):
                 raise MovieError(f"{where}, words[{index}].token: '{token}' is not a source token; "
-                                 f"a token is an identifier, dots included")
+                                 f"a token is an identifier or a dotted path")
             if excerpt in self.sources:
-                found = count_token(self.sources[excerpt], token)
+                text = (self.sources[excerpt] if line is None
+                        else excerpt_line(self.sources[excerpt], first, line))
+                found = count_token(text, token)
                 if found != 1:
                     state = 'absent from' if found == 0 else 'ambiguous in'
+                    place = f'the excerpt {excerpt}' if line is None else f'line {line} of the excerpt {excerpt}'
                     raise MovieError(f"{where}, words[{index}].token: the token '{token}' is "
-                                     f"{state} the excerpt {excerpt} (found {found} times as a "
-                                     f"whole identifier)")
+                                     f"{state} {place} (found {found} times, bounded by anything "
+                                     f"but a letter, a digit or an underscore)")
 
     def reveal(self, narration, element, reveal, where):
         if reveal is None:

@@ -16,7 +16,7 @@ from .movie import Credits, Evidence, Format, Movie, Narrator, Release
 from .names import MovieError, declaring_class, module_directory, prop_kind
 from .stage import Style
 from .take import Camera, Layer, Loop, Source, Still
-from .text import count_token
+from .text import count_token, excerpt_line
 
 
 def evaluate(movie, *, name, out=None):
@@ -217,17 +217,20 @@ def _check_tokens(chapters):
     excerpts read, source -> text."""
     excerpts = {}
     for _, compiled in chapters:
-        for here, source, token in compiled['tokens']:
+        for here, source, token, line in compiled['tokens']:
             if source not in excerpts:
                 excerpts[source] = _excerpt(source, here)
-            found = count_token(excerpts[source], token)
+            first, last = source.lines
+            text = excerpts[source] if line is None else excerpt_line(excerpts[source], first, line)
+            found = count_token(text, token)
             if found != 1:
                 state = 'absent from' if found == 0 else 'ambiguous in'
-                first, last = source.lines
-                raise MovieError(f"{here}: emphasize: the token '{token}' is {state} the excerpt "
-                                 f"{source.document_name()} ({source.file}, lines {first} to {last}; "
-                                 f"found {found} times); a token is a whole identifier, dots "
-                                 f"included, and occurs once")
+                where = (f'the excerpt {source.document_name()} ({source.file}, lines {first} to {last})'
+                         if line is None else f'line {line} of the excerpt {source.document_name()} ({source.file})')
+                raise MovieError(f"{here}: emphasize: the token '{token}' is {state} {where}; found "
+                                 f"{found} times; a token is an identifier or a dotted path, bounded "
+                                 f"by anything but a letter, a digit or an underscore, and occurs "
+                                 f"once{'' if line is not None else ' (name line= to choose a line)'}")
     return excerpts
 
 

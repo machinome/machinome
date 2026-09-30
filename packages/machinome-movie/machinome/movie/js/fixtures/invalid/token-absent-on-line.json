@@ -1,5 +1,5 @@
 {
-  "name": "token-segment-of-a-dotted-path",
+  "name": "token-absent-on-line",
   "document": {
     "audio": {
       "direction": "Plain and unhurried.",
@@ -262,7 +262,7 @@
                     "action": "type",
                     "element": "code",
                     "over": 0.8,
-                    "throughLine": 19
+                    "throughLine": 24
                   }
                 ],
                 "at": 0
@@ -315,14 +315,11 @@
                     "hold": 0.6,
                     "words": [
                       {
-                        "spoken": "beam",
-                        "token": "Seesaw.beam.plank"
-                      },
-                      {
                         "spoken": "stand",
-                        "token": "Seesaw.beam"
+                        "token": "Stand"
                       }
-                    ]
+                    ],
+                    "line": 22
                   }
                 ],
                 "at": {
@@ -827,13 +824,13 @@
       "sourceUrl": null
     },
     "root": "../../python/tests/fixtures/project/videos/tour",
-    "series": "VIDEOMAKER · FIXTURES",
+    "series": "VIDEOMAKER \u00b7 FIXTURES",
     "sourceCode": {
       "declaration": {
-        "file": "../takes.py",
+        "file": "../../models/seesaw.py",
         "lines": [
-          18,
-          19
+          22,
+          24
         ]
       }
     },
@@ -863,7 +860,7 @@
         "playbill": {
           "module": "stage.tsx",
           "props": {
-            "series": "VIDEOMAKER · FIXTURES"
+            "series": "VIDEOMAKER \u00b7 FIXTURES"
           },
           "slots": [
             "stage",
@@ -911,8 +908,11 @@
   "must_mention": [
     "balance",
     "source",
-    "words[1].token",
-    "Seesaw.beam",
-    "absent"
+    "cues[3].actions[0]",
+    "words[0].token",
+    "Stand",
+    "absent",
+    "line 22",
+    "declaration"
   ]
 }

@@ -184,14 +184,18 @@ class Opening(Chapter):
   that line, in `over` seconds from the cue's anchor. A shot that places the
   panel types it through its last line, unless an earlier shot of the
   chapter did: `push` places the completed panel again and types nothing.
-- `emphasize(*words, hold=)` lights tokens of the excerpt as the narrator
-  speaks their words in the cue's phrase, and holds them `hold` seconds after
-  it. A word is a token spoken as it is spelled, `"beam"`, or a pair of the
-  spoken words and the token they light, `("stand", "Stand")`, on any line of
-  the excerpt. The cue's anchor is a spoken phrase with no `plus`; each
-  spoken part occurs exactly once in it, as whole words; each token occurs
-  exactly once in the excerpt, as a whole identifier, dots included, so
-  `feed.pawl.turn` is one token and `pawl` does not occur in it.
+- `emphasize(*words, hold=, line=)` lights tokens of the excerpt as the
+  narrator speaks their words in the cue's phrase, and holds them `hold`
+  seconds after it. A word is a token spoken as it is spelled, `"beam"`, or a
+  pair of the spoken words and the token they light, `("stand", "Stand")`,
+  on any line of the excerpt. The cue's anchor is a spoken phrase with no
+  `plus`; each spoken part occurs exactly once in it, as whole words. A
+  token is an identifier or a dotted path, bounded by anything but a letter,
+  a digit or an underscore: a dot is a boundary, so `waterwheel` occurs
+  inside `water_drive.waterwheel.spin` and `feed.pawl.turn` is one token,
+  while `pawl` does not occur in `pawl_mount`. Each token occurs exactly once
+  in the excerpt, or, when the action names `line=`, exactly once on that
+  line: `push` lights `Block` on line 22, where the excerpt spells it twice.
 - `hide=` on a view names the take's layers; `highlight(*parts, others=)`
   tints parts and keeps, dims or ghosts the rest.
 - One anchor can drive two elements: the source and the model light together.

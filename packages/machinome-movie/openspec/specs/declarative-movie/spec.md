@@ -215,10 +215,16 @@ set's slots, not actions.
 
 `emphasize` SHALL take words, each either a token spelled as the narrator
 says it or a pair of the spoken words and the source token they light, on any
-line of the excerpt. Its cue's anchor MUST be a spoken phrase without offset;
-each spoken part MUST occur exactly once in that phrase, word-bounded; each
-token MUST occur exactly once in the whole excerpt, identifier-bounded, so a
-dotted path such as `feed.pawl.turn` is one token.
+line of the excerpt, and an optional `line`. Its cue's anchor MUST be a spoken
+phrase without offset; each spoken part MUST occur exactly once in that
+phrase, word-bounded (not preceded or followed by an ASCII letter, digit or
+underscore). A token is an identifier or a dotted path of identifiers and
+occurs where its text is word-bounded the same way, a dot being a boundary:
+`waterwheel` occurs in `water_drive.waterwheel.spin`, `feed.pawl.turn` is one
+token, `pawl` does not occur in `pawl_mount`. Each token MUST occur exactly
+once in the whole excerpt or, when `line` names a file line inside the
+excerpt, exactly once on that line; a `line` outside the excerpt MUST be
+refused naming it.
 
 #### Scenario: A concept spelled differently in the source
 - **WHEN** a cue anchored on "the rocker pulls a hook, the driving pawl, and
@@ -227,10 +233,16 @@ dotted path such as `feed.pawl.turn` is one token.
   "feed.pawl.turn"}`, and evaluation accepts it because the token occurs once
   in the excerpt.
 
-#### Scenario: A segment of a dotted path
-- **WHEN** the token is `waterwheel` and the excerpt spells it only inside
-  `water_drive.waterwheel.spin`
-- **THEN** evaluation refuses, naming `waterwheel`, `absent` and the excerpt.
+#### Scenario: A word inside a dotted path, chosen by line
+- **WHEN** the excerpt spells `waterwheel` inside `water_drive.waterwheel.spin`
+  on two of its lines and the action names `line=415`
+- **THEN** evaluation accepts `waterwheel` as a token occurring once on that
+  line and writes `"line": 415` on the action; without `line` it refuses,
+  naming `waterwheel`, `ambiguous` and the excerpt.
+
+#### Scenario: A token absent from the named line
+- **WHEN** the token occurs in the excerpt but not on the `line` the action names
+- **THEN** evaluation refuses, naming the token, `absent` and `line`.
 
 ### Requirement: An element keeps its state across its chapter
 

@@ -70,6 +70,8 @@ class Balance(Chapter):
     push = Shot(Split, {Split.left: code, Split.right: mill}, until=lines.end(plus=0.6),
                 transition=Wipe(0.6, direction="right"), model=Playground.run(12, 16),
                 cues=[Cue(0, mill.move(Playground.near, ease="smooth", until=lines.end())),
+                      Cue(lines.spoken("pushes one end down"),
+                          code.emphasize(("one end", "Block"), line=22, hold=0.4)),
                       Cue(lines.spoken("The weight"),
                           mill.arrow(Seesaw.beam.weight, "Weight", place=(0.2, 0.25),
                                      enter=("draw", 0.8), leave=("fade", 0.4)),

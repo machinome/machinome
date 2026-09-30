@@ -187,7 +187,7 @@ class _Compiler:
         elif action.name == 'type':
             self.type(element, fields['throughLine'], key, here, typed)
         elif action.name == 'emphasize':
-            self.emphasize(element, fields['words'], start, here)
+            self.emphasize(element, fields['words'], start, here, fields.get('line'))
         elif action.name == 'show' and isinstance(element, Title) and 'reveal' in fields:
             found = count_phrase(self.narration.text, element.text)
             if found != 1:
@@ -218,7 +218,7 @@ class _Compiler:
         if through == last:
             self.completed.add(id(panel))
 
-    def emphasize(self, panel, words, start, here):
+    def emphasize(self, panel, words, start, here, line=None):
         if not (isinstance(start, Anchor) and start.kind == 'spoken' and not start.plus):
             raise MovieError(f"{here}: emphasize lights words where they are spoken, so the cue's "
                              f"anchor must be a spoken phrase, lines.spoken(...), with no plus")
@@ -229,7 +229,7 @@ class _Compiler:
                 raise MovieError(f"{here}: emphasize: the spoken words '{word['spoken']}' are "
                                  f"{state} the cue's phrase '{start.phrase}' (found {found} times "
                                  f"as whole words)")
-            self.tokens.append((here, panel.source, word['token']))
+            self.tokens.append((here, panel.source, word['token'], line))
 
     def placements(self, shot, chosen, where):
         if not isinstance(shot.placements, dict):

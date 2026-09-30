@@ -107,7 +107,7 @@ def test_the_stage_block(tour):
             'playbill': {'module': 'stage.tsx', 'slots': ['stage', 'plate', 'headline', 'aside'],
                          'props': {'series': 'VIDEOMAKER · FIXTURES'}},
             'playbill-split': {'module': 'stage.tsx', 'base': 'playbill',
-                               'slots': ['left', 'right', 'headline'], 'props': {}},
+                               'slots': ['left', 'right', 'headline'], 'props': {'series': 'VIDEOMAKER · FIXTURES'}},
             'frame': {'slots': ['stage']},
             'split': {'slots': ['left', 'right']}},
         'elements': {
@@ -182,8 +182,12 @@ def test_a_completed_panel_on_the_shipped_split_and_an_arrow(tour):
     push = shot(tour, 'push')
     assert push['set'] == 'split' and push['places'] == {'left': 'code', 'right': 'mill'}
     assert push['transition'] == {'kind': 'wipe', 'duration': 0.6, 'direction': 'right'}
-    assert [a['action'] for c in push['cues'] for a in c['actions']] == ['move', 'arrow']
-    assert push['cues'][1] == {
+    assert [a['action'] for c in push['cues'] for a in c['actions']] == ['move', 'emphasize', 'arrow']
+    # An emphasis on a completed panel, its token chosen on one line of the excerpt.
+    assert push['cues'][1] == {'at': {'spoken': 'pushes one end down'},
+                               'actions': [{'element': 'code', 'action': 'emphasize', 'hold': 0.4, 'line': 22,
+                                            'words': [{'spoken': 'one end', 'token': 'Block'}]}]}
+    assert push['cues'][2] == {
         'at': {'spoken': 'The weight'}, 'until': {'spokenEnd': 'down', 'plus': 0.6},
         'actions': [{'element': 'mill', 'action': 'arrow', 'part': ['Beam', 'Weight'],
                      'text': 'Weight', 'place': [0.2, 0.25],
@@ -487,7 +491,7 @@ def test_a_derived_sets_base_is_listed_though_no_shot_uses_it():
     sets = evaluate(one_chapter_movie(Only), name='sheet')['stage']['sets']
     assert sets == {
         'sheet-split': {'module': 'fixtures/project/videos/tour/stage.tsx', 'base': 'sheet2',
-                        'slots': ['left', 'right'], 'props': {}},
+                        'slots': ['left', 'right'], 'props': {'title': 'Sheet'}},
         'sheet2': {'module': 'fixtures/project/videos/tour/stage.tsx', 'slots': ['stage'],
                    'props': {'title': 'Sheet'}}}
 

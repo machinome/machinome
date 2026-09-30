@@ -222,3 +222,32 @@ is proposed. The schema was not edited.
   them; the Node suite was not run.
 - The film itself, its speech, preview and render: the campaign's film step.
 - Slow layers (5 to 8) do not exist for Python and were not run.
+
+## Ratification rulings (orchestrator, 30 September 2026)
+
+Made on the contract findings above before the merge into `react-stage`, and
+applied in the follow-up commit on this branch:
+
+1. **Token boundaries.** A token is an identifier or a dotted path; it occurs
+   where its text is not preceded or followed by an ASCII letter, digit or
+   underscore, so a dot is a boundary: `waterwheel` occurs in
+   `water_drive.waterwheel.spin`, `feed.pawl` in `feed.pawl.turn`. The cycle's
+   stricter reading would have forced the film to light whole calls where the
+   pilot asked for the words. An emphasis may name `line=` to choose one line
+   when a token repeats in the excerpt; the film's coupling shot names line
+   415. The fixture `token-segment-of-a-dotted-path` (valid under the
+   ruling) is replaced by `token-absent-on-line` and
+   `emphasis-line-outside-the-excerpt`, the tour's `push` shot exercises
+   `line`, and the fixture revision is re-pinned.
+2. **Word-bounded** is the ASCII rule the cycle took; stated in the contract.
+3. **Evaluation reads the emphasised excerpts**; stated in the contract.
+4. **`stage.sets` lists the project sets a used set derives from**; stated.
+5. **Prop kinds from instances** is accepted for this step and stays a wart
+   for the pilot's triage (declared props would type a reusable element).
+6. **A derived set's `props` are merged** over its base chain, own
+   overriding, so the inherited chrome reads them from the derived set's own
+   entry; implemented (`Set.props()`), documents re-evaluated.
+7. **A spoken reveal's phrase occurs once in the narration**; stated.
+8. `props` stays optional in the schema; absent means empty.
+9. **`draw` is an entrance only**, of a ring or an arrow; an exit is a fade;
+   `check_document` now refuses a drawn exit.

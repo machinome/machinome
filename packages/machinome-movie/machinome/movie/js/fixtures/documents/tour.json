@@ -365,6 +365,25 @@
             {
               "actions": [
                 {
+                  "action": "emphasize",
+                  "element": "code",
+                  "hold": 0.4,
+                  "line": 22,
+                  "words": [
+                    {
+                      "spoken": "one end",
+                      "token": "Block"
+                    }
+                  ]
+                }
+              ],
+              "at": {
+                "spoken": "pushes one end down"
+              }
+            },
+            {
+              "actions": [
+                {
                   "action": "arrow",
                   "element": "mill",
                   "enter": {
@@ -811,7 +830,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "99219d36cd87e0ada0244a6c2e0eb532659cdda5",
+    "sourceRevision": "b4855f67225ea4f2c1eeecfe3f88c116df58d2cd",
     "timeMode": "normalized-loop"
   },
   "output": {
@@ -873,7 +892,9 @@
       "playbill-split": {
         "base": "playbill",
         "module": "stage.tsx",
-        "props": {},
+        "props": {
+          "series": "VIDEOMAKER · FIXTURES"
+        },
         "slots": [
           "left",
           "right",

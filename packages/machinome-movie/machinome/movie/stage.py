@@ -89,7 +89,10 @@ class Set:
                                  f"set does not know what it holds, so a slot is Slot()")
             value.name = slug(name, f'{where}.{name}', 'slot')
             cls._slots[value.name] = value
-        cls._props = {}
+        # A derived set inherits its base's props and may override them: the
+        # chrome it inherits reads them from the derived set's own entry.
+        parent = cls.base()
+        cls._props = dict(getattr(parent, '_props', {}) or {})
         if _shipped(cls):
             return
         if cls.kind in SHIPPED_SETS:
@@ -429,12 +432,21 @@ class SourcePanel(Element):
         return Cued(self, 'type', fields={'throughLine': through_line,
                                           'over': number(over, 'type: over', positive=True)})
 
-    def emphasize(self, *words, hold=None):
+    def emphasize(self, *words, hold=None, line=None):
         """Light tokens of the excerpt as their words are spoken in the cue's
         phrase, and hold them `hold` seconds after it ends. A word is a
-        token spelled as it is spoken, or `(spoken words, token)`."""
+        token spelled as it is spoken, or `(spoken words, token)`. Each token
+        occurs once in the excerpt, or once on `line` when a line is named."""
         if not words:
             raise MovieError('emphasize names the words to light')
+        if line is not None:
+            first, last = self.source.lines
+            if isinstance(line, bool) or not isinstance(line, int):
+                raise MovieError(f'emphasize: line={line!r} is not a line number')
+            if not first <= line <= last:
+                raise MovieError(f'emphasize: line {line} is outside the excerpt '
+                                 f'{self.source.name or self.source.document_name()}, '
+                                 f'lines {first} to {last}')
         pairs = []
         for word in words:
             if isinstance(word, str):
@@ -446,11 +458,13 @@ class SourcePanel(Element):
             spoken, token = word
             if not TOKEN.fullmatch(token):
                 raise MovieError(f"emphasize: '{token}' is not a source token; a token is an "
-                                 f"identifier, dots included, as feed.pawl.turn")
+                                 f"identifier or a dotted path, as waterwheel or feed.pawl.turn")
             pairs.append({'spoken': spoken, 'token': token})
         fields = {'words': pairs}
         if hold is not None:
             fields['hold'] = number(hold, 'emphasize: hold')
+        if line is not None:
+            fields['line'] = line
         return Cued(self, 'emphasize', fields=fields)
 
 
