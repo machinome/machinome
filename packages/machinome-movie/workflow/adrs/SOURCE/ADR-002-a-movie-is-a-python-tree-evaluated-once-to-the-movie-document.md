@@ -1,6 +1,6 @@
 # ADR-002: A movie is a Python tree evaluated once to the movie document
 
-Status: Proposed (OpenSpec change `declarative-movie`, 30 September 2026)
+Status: Accepted (OpenSpec change `declarative-movie`, 30 September 2026)
 
 Numbered 002 to leave 001 to the parallel `movie-document` change, whose
 decision is the document itself; a merge that reorders them renumbers.

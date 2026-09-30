@@ -44,6 +44,11 @@ The source study uses Jessica / `eleven_v3` with lossless `pcm_24000` input.
 
 ## Produce an episode
 
+A movie can also be declared in Python and evaluated to the movie document:
+see [Declaring a movie in Python](docs/declaring-a-movie.md). The package that
+does it, `machinome-movie`, lives in `python/` and is installed into the
+workspace's Python environment with `pip install -e python`.
+
 Every consuming project owns `videos/<episode-id>/episode.yaml` and
 `production.yaml`. Read the screenplay directly: narration and plain-language
 directions appear together in each shot. See [the source contract](docs/FORMAT.md).

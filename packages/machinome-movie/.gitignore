@@ -4,3 +4,6 @@ _build/
 .env.*
 !.env.example
 *.log
+*.egg-info/
+__pycache__/
+.pytest_cache/

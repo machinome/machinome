@@ -23,7 +23,7 @@ repository once both halves are merged.
 
 - A new Python package, `machinome-movie` (import `machinome_movie`), under
   `python/`, version 0.0.0, licence unselected like the rest of the
-  repository, depending on `machinome`.
+  repository, depending on `machinome` and `jsonschema`.
 - Declarations with the spellings of the film's draft source: `Movie`,
   `Chapter`, `Shot`, `Narration`, `Cue`, the take `Loop` with `Camera`,
   `Layer`, `Source` and `Still`, the elements `View` and `Source.panel`, the
@@ -49,8 +49,8 @@ repository once both halves are merged.
   line: `python -m machinome_movie evaluate <project> <movie> [--out FILE]`
   and `python -m machinome_movie list <project>`.
 - The document's JSON Schema `schema/machinome-movie-0.1.json`, written here
-  because the Node side has not yet written it in this worktree, and a Python
-  check of a document (schema and the refusals Python can make before
+  because the Node side has not yet written it in this worktree and validated
+  with `jsonschema`, and a Python check of a document (schema and the refusals Python can make before
   speech) that evaluation applies to its own output and the shared invalid
   fixtures exercise.
 - A fixture project and two fixture movies registered in `fixtures/`.
@@ -74,7 +74,8 @@ New: `python/` (package, tests, fixture project), `schema/`, the fixture
 documents under `fixtures/`, `docs/declaring-a-movie.md`, ADR-002,
 `CHANGELOG.md`. Changed: `README.md` (a pointer), `docs/architecture-overview.md`
 (the Python side), `docs/adrs/README.md` (the index), `fixtures/README.md`
-(where the Python fixture movies live). The workspace venv gains an editable
+(where the Python fixture movies live, and the fixture project's revision
+recipe), `AGENTS.md` (the status line and the test-layer sentence). The workspace venv gains an editable
 install of `python/`. No framework, viewer, studio or project repository
 changes; the film's `movie.py` is written in the Leonardo repository by the
 campaign's cycle C.

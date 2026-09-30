@@ -234,17 +234,17 @@ name, with the reason, in the test.
 
 The Node side has not written `schema/machinome-movie-0.1.json` in this
 worktree, so this change writes it from the contract page (JSON Schema
-2020-12, closed field lists); the Node side may replace it. `jsonschema` is
-not installed in the workspace venv and cannot be installed without the
-network, so the package validates with a small validator of exactly the
-keywords the schema uses (`type`, `properties`, `required`,
-`additionalProperties`, `items`, `minItems`, `maxItems`, `enum`, `const`,
-`pattern`, `minimum`, `exclusiveMinimum`, `minLength`, `anyOf`, `$ref`,
-`$defs`), which refuses a schema using any other. A layer 9 test compares its
-verdicts with a full implementation when one is importable by some interpreter
-on the machine, and says it was skipped otherwise. The schema ships inside
-the package through a symbolic link to the repository file, so there is one
-schema file.
+2020-12, closed field lists); the Node side may replace it. The package
+depends on `jsonschema` and validates with its 2020-12 validator; the
+schema ships inside the package through a symbolic link to the repository
+file, so there is one schema file.
+
+Amended 30 September 2026 at the orchestrator's review of the planning
+commit: the first version of this decision wrote a subset validator, because
+`jsonschema` was not installed and the no-network rule was read as covering
+`pip`. The rule covers the package's code and its tests, not installing a
+declared dependency; `jsonschema` is installed and the subset validator and
+its cross-check test are dropped.
 
 ### D14. Command line and project table
 
@@ -273,7 +273,8 @@ contract page does not give the speech cache's record shape.
 ## Spellings that differ from the draft source
 
 - `carriage_shot`: the inline `View(...)` and `View.highlight(...)` become a
-  declared `wide` view and `wide.highlight(...)` (D3).
+  declared `wide` view and `wide.highlight(...)` (D3). The film's spec has
+  since been updated with this spelling.
 - Shot ids come from attributes: `coupling_shot`, `pawls_shot` and
   `carriage_shot` give `coupling-shot`, `pawls-shot` and `carriage-shot`. To
   get the shot list's `coupling`, `pawls` and `carriage`, the source spells
@@ -293,9 +294,6 @@ contract page does not give the speech cache's record shape.
 
 ## Risks / Trade-offs
 
-- A subset validator can disagree with JSON Schema on a keyword it
-  implements wrongly; the cross-check test exists for that and is skipped
-  where no full implementation is present.
 - Substring counting refuses some phrases a word-level rule would accept;
   it is the stricter reading and the refusal names the phrase.
 - Emphasis on the excerpt's last line only: a film that needs another line

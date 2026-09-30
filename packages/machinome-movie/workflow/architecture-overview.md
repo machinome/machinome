@@ -65,12 +65,46 @@ frames a person reviews.
 6. **Nothing is published by the tool.** Release fields left null block a
    release bundle and never default to an address.
 
+## Movies declared in Python
+
+A project can declare a movie in Python and evaluate it to the movie
+document ([Declaring a movie in Python](declaring-a-movie.md), ADR-002); the
+renderer's reading of that document is the Node side's. The
+`machinome_movie` package under `python/` is the Python side of the movie
+document:
+
+    movie.py in the project (Movie, Chapter, Shot, Loop, ...)
+        │  class creation: found by type, named by attribute, refused by name
+        ▼                                         python/machinome_movie/movie.py
+    compiled chapters (shots in document form, parts to check)
+        │  evaluate(movie, name=, out=): reads the export's manifest and
+        ▼  source revision only                    python/machinome_movie/evaluate.py
+    movie document, canonical JSON, checked       python/machinome_movie/document.py
+        │  against schema/machinome-movie-0.1.json
+        ▼
+    <movie dir>/_build/movie.json  →  the Node side
+
+- `names.py` holds the refusal type and the naming rule (an attribute's
+  underscores become hyphens); `anchors.py` the narration and its symbolic
+  anchors; `take.py` the `Loop` and what it declares, model time, and the
+  resolution of a model's declaration paths to export names; `stage.py` the
+  three sets, the view and source-panel elements, actions and joins;
+  `movie.py` the chapter and movie trees; `project.py` and `__main__.py` the
+  `[tool.machinome.movies]` table and the command line.
+- Chapters check themselves and compile their shots when their class is
+  created, where every class is known; evaluation adds only what needs the
+  export (part paths, the model block) and is a pure function of the
+  declarations, the manifest and the revision. Two evaluations are
+  byte-identical.
+- The schema is one file, `schema/machinome-movie-0.1.json`, shipped in the
+  package through a link; the shared `fixtures/` pin what Python emits.
+
 ## What is changing
 
 The declarative-python campaign (`workflow/ongoing/declarative-python-api.md`,
 `docs/movie-document.md`) introduces the movie document as the explicit
 contract at the top of the pipeline: Python declarations in the project
-evaluate to it, YAML episodes load into its resolved shape, and narration
+evaluate to it (built, above), YAML episodes load into its resolved shape, and narration
 moves to the chapter with anchors resolved against the take. The React stage
 that replaces the fixed film page, takes recorded from running and clocked
 scenarios, and the studio's live preview are later steps of the same
