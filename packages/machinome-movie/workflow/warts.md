@@ -30,7 +30,9 @@ decides each.
    (`moment`, `stroke`, `progress`, `blade`, `description`). It works and is
    fragile in principle; a `narrationEnd` anchor form would say what is meant.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `narration-end-anchor`.
+   `narration-end-anchor`; fixed the same day (7e0aa12): `{"narrationEnd":
+   true}` is the end of the take's last letter or digit, and `lines.end()`
+   emits it; every existing cut keeps its frame.
 3. **Source emphasis lights only the excerpt's last line.** Enough for the
    film's three-line excerpt; a film that lights a word on another line has no
    spelling for it (`emphasize` takes no `line=`).
@@ -59,7 +61,9 @@ decides each.
    an author needs to know it before estimating durations.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
    `narration-end-anchor` (the manual says it; the commands print each
-   chapter's take beside its resolved length).
+   chapter's take beside its resolved length); done the same day (7e0aa12):
+   `check` prints `take … chapter … tail …` per chapter, and
+   `docs/declaring-a-movie.md` says the narrator sets the film's length.
 
 ## The test suite (one-runner cycle, 30 September 2026)
 

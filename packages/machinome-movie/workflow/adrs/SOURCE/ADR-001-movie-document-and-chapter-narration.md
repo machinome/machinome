@@ -105,6 +105,8 @@ existing end-of-narration cut one or two frames later (measured in the
 change's evidence). The orchestrator's ruling named the last character; the
 change keeps the ruling's stated invariant, that the tail's end and the
 narration's end are one instant, and records the departure for review.
+The orchestrator accepted it at the merge into `fix-warts` (30 September
+2026): the last letter or digit is the instant.
 
 A consequence stated in the original Consequences is now shown to the
 author: a document's length follows its takes, and `check` prints each
