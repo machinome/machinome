@@ -52,3 +52,39 @@ is descriptive, not a two-browser capacity gate. Missing observations must
 remain explicit and stop progression after the current arm. No other
 browser test or render may overlap. Root will independently verify the
 all-frame comparison and review the measurements before any optimization.
+
+## Measured profile and independent verification
+
+The single approved run completed both cold arms in Leonardo's
+`videos/demo-graphic-overlays/_build/compositing-profile-2026-09-29T18-04-36-441Z/`.
+The raw report SHA-256 is
+`433faaf77be4fe2e98d5bd7344c8ffce4c4329c6e538c5c5b96da7330217cb25`.
+Sol's project narrative is `videos/demo-graphic-overlays/compositing-profile-evidence.md`.
+Root independently rehashed all 900 PNG files and both manifests/MP4s,
+compared all 450 frame pairs, and independently decoded both complete MP4s
+to frame hashes. All match. Each arm captured 450 frames with zero reuse;
+both outputs are 960×540, 30 fps, 15 seconds, with MP4 SHA-256
+`11919c2d610f702b7b845883efab4445bcf6771940720c211ca794cf5d84bd88`.
+
+Plain render wall time was 120.060 s; instrumented was 121.996 s, a
+1.936 s / 1.61% difference in this single pair, not a repeated overhead
+estimate. Instrumented first-to-last final capture was 118.453 s and the
+capture-through-final-frame-write span was 119.024 s. Actual call counts:
+760 setFrame, 310 repaint waits, 310 annotation-subset screenshots,
+450 final screenshots, 130 annotation blends.
+
+Distinct Node spans within the frame loop total: final screenshots 40.624 s,
+subset screenshots 33.677 s, awaited setFrame 25.188 s, layout checks
+9.351 s, awaited blend 9.287 s, and PNG write/hash below 0.75 s.
+The 8.344 s page blend and 11.565 s repaint waits are nested inside those
+awaits, not additional costs. The weighted arithmetic itself took 3.167 s;
+it is not the dominant cost. Frame totals for the 320/105/25 no-/one-/two-fade
+groups were 46.882 / 50.876 / 21.239 s.
+
+Both resource samplers completed without reported unreadable identities or
+sample errors (240/243 observations). Observed aggregate RSS peaks were
+1,758,584 / 1,818,988 KiB, aggregate FD peaks 360 / 360. These are sampled
+observations, not true-peak guarantees or two-browser evidence. The lease
+is released. Root requested Sol's smallest justified optimization candidate
+or a no-change recommendation; no runtime change is yet justified by these
+measurements alone.
