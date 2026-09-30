@@ -6,6 +6,16 @@ lands it.
 
 ## Unreleased
 
+- The speech command finds its ElevenLabs key when it runs from another work
+  tree of the repository: it takes `ELEVENLABS_API_KEY` from the environment,
+  then from the `.env` of the checkout it runs from, then from the `.env` of
+  the repository's primary work tree (found through Git's common directory;
+  a copy inside another repository, or a `GIT_DIR` a caller sets, is never
+  followed). A film made from a work tree found no key until the primary's
+  file was sourced. The refusal names every place it looked, in order, and
+  never prints a key; the lookup no longer copies the key into the process
+  environment, so nothing the command launches inherits it.
+
 - The stage waits for a view's canvas to fill its box before measuring it:
   on a fresh mount, after a change of set, and when a view placed again after
   shots without it comes back (the real viewer sizes its canvas on its own
