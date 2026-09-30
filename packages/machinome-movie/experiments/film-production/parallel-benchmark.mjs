@@ -298,6 +298,12 @@ async function verifyStartingState(e,seedKey){
 }
 
 async function worker(mode,build,resultFile){
+  if(mode==='smoke'){
+    const started=now();
+    await pause(400); // enough for several real 100 ms parent /proc samples
+    await writeFile(resultFile,JSON.stringify({mode,smoke:true,pid:process.pid,wallMs:ms(started)},null,2)+'\n');
+    return;
+  }
   await assertPins();
   const started=now(),e=await load(mode==='seed'?baseline:variant,build);
   const preflightMs=ms(started);
@@ -600,7 +606,7 @@ async function runWorker(mode,build){
   await writeFile(resolve(build,`resource-${mode}.json`),JSON.stringify(resource,null,2)+'\n');
   await writeFile(resolve(build,`worker-${mode}.log`),stdout+stderr);
   assert(!stopDetails?.survivors?.length,
-    `${mode} left owned descendant survivors: ${JSON.stringify(stopDetails.survivors)}`);
+    `${mode} left owned descendant survivors: ${JSON.stringify(stopDetails?.survivors??[])}`);
   assert(!stopReason,`${mode} stopped for resource safety: ${stopReason}`);
   if(exit.error)throw exit.error;
   assert(exit.code===0,`${mode} worker exited ${exit.code??exit.signal}: ${stderr.slice(-2000)}`);
@@ -817,6 +823,27 @@ async function monitorRaceSelfTest(){
   }catch(error){record.status='failed';record.error=String(error.stack??error);await save();throw error;}
 }
 
+async function workerSmokeTest(){
+  const parent=resolve(fixture,'_build');await mkdir(parent,{recursive:true});
+  const dir=await mkdtemp(resolve(parent,'parallel-benchmark-smoke-'));
+  const report={status:'running',dir};
+  const save=()=>json(resolve(dir,'report.json'),report);
+  await save();
+  try{
+    const result=await runWorker('smoke',dir);
+    assert(result.smoke===true&&Number.isInteger(result.pid),'Smoke worker result was not returned');
+    assert(result.resource.samples>=2,'Successful worker did not receive repeated resource samples');
+    assert(result.resource.stopReason===null&&result.resource.stopDetails===null,
+      'Successful worker took the resource-stop path');
+    assert(result.resource.pipeClose?.code===0&&result.resource.pipeClose?.signal===null,
+      'Successful worker did not exit and close its pipes cleanly');
+    assert(result.resource.peaks.byProcess[result.pid],
+      'Real worker PID was not tracked in the sampled process tree');
+    report.status='complete';report.result=result;await save();
+    console.log(`Worker smoke rehearsal: ${resolve(dir,'report.json')}`);
+  }catch(error){report.status='failed';report.error=String(error.stack??error);await save();throw error;}
+}
+
 try{
   if(process.argv[2]==='dummy-child'){
     process.on('SIGTERM',()=>{});
@@ -831,9 +858,11 @@ try{
     await safetySelfTest();
   }else if(process.argv[2]==='monitor-race-self-test'){
     await monitorRaceSelfTest();
+  }else if(process.argv[2]==='worker-smoke-self-test'){
+    await workerSmokeTest();
   }else if(process.argv[2]==='worker'){
     const [mode,build,resultFile]=process.argv.slice(3);
-    assert(['seed','cold','serial','parallel','product'].includes(mode)&&build&&resultFile,
+    assert(['seed','cold','serial','parallel','product','smoke'].includes(mode)&&build&&resultFile,
       'Invalid internal benchmark worker invocation');
     await worker(mode,build,resultFile);
   }else{

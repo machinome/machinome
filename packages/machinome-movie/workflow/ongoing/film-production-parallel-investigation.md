@@ -31,7 +31,9 @@ about 12,713,204 kB available at inspection, and a soft per-process FD limit
 of 65,535. The current session and its cgroup parents report no memory limit;
 the underlying virtiofs host limit is not exposed by these checks.
 
-Recheck before the experiment. Sample at least every 100 ms and stop the
+Recheck before the experiment. Request a sample every 100 ms, record the
+effective gaps and read durations rather than promise real-time scheduling,
+and stop the
 parallel arm if aggregate process-tree RSS exceeds 4 GiB, host available
 memory falls below 4 GiB, any process exceeds 1,024 open FDs, or the tree
 exceeds 4,096 open FDs. Any resource error also stops it. These conservative
@@ -115,3 +117,23 @@ retroactive diagnosis or a waived live resource error. Root authorizes one
 new complete benchmark in a new output root with these checks; preserve
 the failed original and stop again for any live denial, resource or pixel
 failure.
+
+The next attempt (`parallel-benchmark-6jJU8w/`) completed and published its
+cold reference, with no resource stop and every tracked process subsequently
+absent, but the coordinator then dereferenced a null `stopDetails` while
+formatting a successful assertion's unused error message. No pair ran.
+The complete reference, resource record and coordinator failure are preserved;
+this is a harness reporting defect, not a failed render or speed result.
+Sol made the diagnostic null-safe and added a no-browser smoke of the real
+`runWorker` success path, including sampling, exit, survivor check, bounded
+pipe closure and result/report reads. Root independently passed it at
+`parallel-benchmark-smoke-xD2M9K/report.json`.
+
+The approved corrected harness SHA-256 is
+`aec2446a65b09768fd0763e1df9304f03cedccacb9bb246ca01ebfe2c88c6c08`.
+Root authorizes one fresh full attempt after this complete worker-path check.
+The previous failures remain distinct; neither is counted among paired trials.
+The sampler's 100 ms is a requested interval, not an achieved real-time
+guarantee (the successful reference observed 99–203 ms). Recorded peaks can
+miss shorter spikes; compare them with the conservative unchanged thresholds
+and report this measurement limit in any result.
