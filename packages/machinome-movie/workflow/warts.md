@@ -184,7 +184,10 @@ Findings met while building the `react-stage` change (the Node side of
    `viewer-instances` (the count) and `viewer-integration-layer` (the
    measurement). The count landed the same day (2f24b66, ADR-007): view
    elements lease instances frame by frame, so a film mounts no more than
-   the most views one frame places; *Cut and Advance* mounts one.
+   the most views one frame places; *Cut and Advance* mounts one. The
+   measurement landed with layer 6 (eab6b4f): on the fixture seesaw an
+   instance costs 5 to 6 MB of resident memory; the sawmill's is measured
+   on the re-render that closes the campaign.
 6. **Three YAML refusals are not applied to movie documents** because the
    Python side emits documents that break them and the contract does not state
    them: an emphasis hold running past its shot's end (it now ends with the
@@ -244,7 +247,9 @@ Findings met while producing the film on the React stage
    the viewer double gained `lateCanvas` so a browser test pins it. Layer 6,
    the real viewer, still has no test; this is what it would have caught.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `viewer-integration-layer`.
+   `viewer-integration-layer`; done the same day (eab6b4f, ADR-008): layer 6
+   exists, gated on `VIDEOMAKER_VIEWER_BUNDLE`, and its canvas test fails
+   with the wait removed, as this finding would have.
 2. **A mark's offset is a fraction of the view's box, so a split container
    changes where a label lands.** The holding-pawl label written for the
    full-width view left the frame in the split's 43 % container; the offset
