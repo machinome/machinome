@@ -66,6 +66,8 @@ node bin/videomaker.mjs preview ../projects/Leonardo/videos/hydraulic-sawmill/ep
 
 node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/episode.yaml \
   --viewer ../machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js
+
+node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_build/rehearsal-manifest.json
 ```
 
 - `check` validates YAML, timelines, named cameras/layers/evidence, the real model
@@ -119,6 +121,12 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   same-instant captures. `render --width` rechecks any authored `upscale`
   allowance before opening the browser.
 - `build` combines speech generation/cache reuse and final rendering.
+- `review` uses only a compatible published manifest and its hash-matching MP4;
+  it never reopens the episode, model, speech, viewer or browser. A render
+  attempts this encoded-film pack automatically after the film is published.
+  If pack generation fails, the film still succeeds and prints a distinct
+  warning with this standalone retry command. Older manifests without a
+  recorded review plan need a rerender before automatic event review.
 
 Without `--viewer`, the bundle beside the model manifest is used. Older
 exports must be regenerated with the new viewer or use the explicit bundle.
@@ -137,7 +145,13 @@ Each episode's ignored `_build/` contains:
 - `description.md`: draft release copy with missing public URLs explicitly marked.
 - `rehearsal-manifest.json`: resolved screenplay/settings, model and viewer
   hashes, audio hashes, browser/encoder versions, font record, encoded checks,
-  and picture provenance/cadence with `pictureReleaseIssues`.
+  picture provenance/cadence with `pictureReleaseIssues`, and a versioned
+  resolved visual-review sample plan.
+- `review-packs/<generation>/`: exact selected full-frame PNGs decoded from
+  the published MP4, bounded overview/event sheets and an integrity-checked
+  `index.json` with frame indices and actual encoded PTS. A complete index
+  says `generated, not reviewed`; it is not an aesthetic, audio, rights or
+  publication approval. Old complete generations are preserved.
 - `clips/<content-hash>/`: lossless extracted source frames and their index;
   unchanged source files and decoder settings reuse an extraction.
 - `shot-cache/shot-v1/`: complete, integrity-checked shot generations, plus

@@ -58,6 +58,19 @@ function annotationsAt(e,shot,on,local,past){
     return [cue];
   });
 }
+// Keep authored indices beside the renderer's active overlay choice without
+// putting them in frameAt's public request. Duplicate descriptions are legal.
+export function activeOverlayEntries(e,shot,local){
+  const duration=shot.end-shot.start,past=local>=duration;
+  const on=cue=>local>=cue.from&&(local<cue.to||(past&&cue.to===duration));
+  return shot.overlays.flatMap((cue,index)=>{
+    const animated=formatAtLeast(e,FORMATS[2])&&(cue.reveal||cue.position==='title'&&
+      (cue.subtitle!==undefined||cue.enter||cue.leave));
+    const active=animated?local>=cue.from-1e-9&&
+      (local<cue.to-1e-9||(past&&cue.to===duration)):on(cue);
+    return active?[{index,cue}]:[];
+  });
+}
 // The active highlight cue as data, with every choice explicit, or null.
 function highlightAt(e,shot,on){
   const cue=(shot.highlight??[]).find(on);
@@ -84,13 +97,9 @@ function shotFrame(e,shot,local){
   const keys=shot.simulation.keyframes??[{at:0,seconds:shot.simulation.from},{at:duration,seconds:shot.simulation.to}];
   const modelSeconds=past?shot.simulation.to+endRate(shot)*(local-duration)
     :keyedValue(keys.map(k=>({at:k.at,value:k.seconds,ease:k.ease})),local,'linear');
-  const overlayOn=cue=>{
-    const animated=formatAtLeast(e,FORMATS[2])&&(cue.reveal||cue.position==='title'&&(cue.subtitle!==undefined||cue.enter||cue.leave));
-    return animated?local>=cue.from-1e-9&&(local<cue.to-1e-9||(past&&cue.to===duration)):on(cue);
-  };
-  const overlays=shot.overlays.filter(overlayOn).map(cue=>{
+  const overlays=activeOverlayEntries(e,shot,local).map(({index,cue})=>{
     if(!formatAtLeast(e,FORMATS[2])||(!cue.reveal&&!cue.enter&&!cue.leave))return cue;
-    const index=shot.overlays.indexOf(cue),draw={...cue};
+    const draw={...cue};
     if(cue.reveal){
       draw.words=splitWords(cue.text);
       const count=draw.words.filter(p=>p.word).length;

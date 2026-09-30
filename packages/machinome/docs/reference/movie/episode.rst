@@ -1171,6 +1171,37 @@ capture provenance, and the encoded MP4 checksum. A reused shot retains its
 original capture provenance. The old `_build/frames/` cache is not imported or
 deleted. A first render with this schema is cold.
 
+The manifest also carries `reviewSamples` (`review-samples-v1`): resolved
+global output-frame indices for joins, word/source-emphasis changes, shot and
+film ends, and transition midpoint/last-active pictures. Shared events keep
+all labels on one pair. A fade samples only its selected outgoing or incoming
+picture; a dissolve, wipe or slide may report both candidate sides. These
+labels describe resolved candidate state, not proof that a word or mark is
+perceptually visible through an occluding transition. The plan is recorded
+even when every shot frame comes from cache; no review metadata is added to
+`frameAt` requests or shot-cache fingerprint inputs. A changed renderer or
+timeline runtime still invalidates old generations through the existing
+common-key binding.
+
+After publishing a hash-valid MP4 and manifest, `render` attempts an encoded-
+film review pack. `videomaker review _build/<label>-manifest.json` repeats
+that step from the manifest and MP4 alone: it does not reopen the episode,
+source, speech, model or viewer, and a legacy manifest without a compatible
+plan asks for a rerender. The command verifies both live hashes, makes stable
+input snapshots, checks every decoded display-frame count, dimension and
+actual integer PTS/time base, then rechecks the live files before success.
+An altered input or incomplete/corrupt prior generation cannot be reused.
+The selected full-resolution PNGs come from the decoded MP4, never preview
+or the shot cache; bounded overview and event sheets have at most 24 cells,
+keep adjacent pairs together, and mark padding explicitly. Full cue labels,
+selected zero-based indices, PTS ticks with rational time base, input hashes,
+decoder versions and artifact hashes live in an immutable generation's
+`review-pack-v1` index. Its status is `generated, not reviewed`: the sheets
+help a person inspect the film, but do not judge aesthetics, audio, rights or
+publication readiness. Pack failure after film publication prints `review
+pack failed; film published` and a standalone retry path without changing the
+film's success status or its manifest.
+
 The common key binds the first mounted frame, model/viewer/page/runtime,
 the known regular/bold film and mono font faces in the tested environment,
 global chrome/style, browser, viewport, FPS and film

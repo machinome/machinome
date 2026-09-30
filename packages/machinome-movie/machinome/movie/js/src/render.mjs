@@ -13,6 +13,8 @@ import {readSpeechTake} from './speech.mjs';
 import {STAGE_AREAS,extractClips,validatePictureSizing,pictureReports,clipCadenceForCue} from './pictures.mjs';
 import {SHOT_CACHE_SCHEMA,outputShotUnits,fingerprintShotUnits,shotCacheRoot,
   findShotGeneration,captureShotGeneration,assembleShotFrames} from './shot-cache.mjs';
+import {buildReviewSamplePlan} from './review-samples.mjs';
+import {reviewManifest} from './review-pack.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
@@ -667,6 +669,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
       shotCache:await fileHash(resolve(here,'shot-cache.mjs')),
       dependencies:await fileHash(resolve(here,'../package-lock.json'))}));
     const {count,units}=outputShotUnits(e,fps,captions);
+    const reviewSamples=buildReviewSamplePlan(e,units,fps);
     await fingerprintShotUnits(e,units,commonKey);
     const root=shotCacheRoot(e.paths.build),selections=new Map(),shotReports=[];
     const captureProvenance={workflowHead:(await command('git',['rev-parse','HEAD'],{cwd:resolve(here,'..')})).trim(),
@@ -696,7 +699,8 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
     }
     const dir=await assembleShotFrames(root,units,selections,count);
     const identity=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,commonKey,shots:shotReports.map(s=>s.key)}));
-    return {identity,dir,count,cache:{schema:SHOT_CACHE_SCHEMA,commonKey,capturedFrames,reusedFrames,shots:shotReports}};
+    return {identity,dir,count,reviewSamples,
+      cache:{schema:SHOT_CACHE_SCHEMA,commonKey,capturedFrames,reusedFrames,shots:shotReports}};
   });
   const output=resolve(e.paths.build,`${label}.mp4`);
   const publicationId=randomUUID(),pendingOutput=resolve(e.paths.build,`${label}.pending-${publicationId}.mp4`);
@@ -773,5 +777,13 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   await rename(pendingDescription,descriptionOutput);
   await rename(pendingManifest,manifestOutput);
   if(backedUp)await unlink(previous).catch(error=>console.warn(`Previous-output backup remains: ${error.message}`));
+  // The film transaction is complete. Review is an optional post-publication
+  // artifact from its encoded bytes; failure never rewrites or fails the film.
+  try{
+    const pack=await reviewManifest(manifestOutput);
+    console.log(`Review pack: ${pack.generation}${pack.reused?' (verified reuse)':''}`);
+  }catch(error){
+    console.warn(`review pack failed; film published: ${error.message}; retry: node bin/videomaker.mjs review ${manifestOutput}`);
+  }
   return output;
 }
