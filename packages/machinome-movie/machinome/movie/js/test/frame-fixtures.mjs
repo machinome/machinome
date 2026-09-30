@@ -1,5 +1,8 @@
 // Fixtures of the 0.2 and 0.3 frame pins (workflow.test.mjs) and of their
-// 0.4 copies (keyframes.test.mjs). Not a test file: it registers no tests.
+// 0.4 copies (keyframes.test.mjs), with the helpers that read a YAML episode's
+// frames through its conversion. Not a test file: it registers no tests.
+import {episodeFilm} from '../src/episode.mjs';
+import {frameAt} from '../src/timeline.mjs';
 export const base02=()=>({output:{width:1280,height:720,fps:30,durationSeconds:4},
   model:{expectedDurationSeconds:296,timeMode:'normalized-loop'},
   cameras:{a:{position:[0,0,10],target:[0,0,0],up:[0,1,0],fov:37},
@@ -37,3 +40,16 @@ export const cues03=()=>({format:'machinome-video-draft/0.3',
     highlight:[{from:0,to:2,parts:['pawls'],others:'ghost'}]})]});
 export const cuesManifest={animation:{loop:296},root:{name:'Mill',children:[
   {name:'Feed mechanism',children:[{name:'Driving pawl'},{name:'Holding pawl'}]}]}};
+
+// A YAML episode's frames through the conversion the loader makes
+// (episodeFilm, design D3 of the react-stage change): one chapter per shot, so
+// a shot's synthesized elements are keyed `<shot id>.view`, `.code`,
+// `.overlay-<i>` and `.picture-<i>`.
+export const yamlFrame=(e,t)=>frameAt(episodeFilm(e),t);
+export const element=(frame,key)=>frame?.elements[`${frame.chapterId}.${key}`];
+export const viewAt=(e,t)=>element(yamlFrame(e,t),'view');
+// Where a safe-area place of a YAML arrow lands in the view's box (fractions).
+export const placeInBox=([x,y],inset,[bx,by,bw,bh])=>[(inset+x*(1-2*inset)-bx)/bw,(inset+y*(1-2*inset)-by)/bh];
+// A label's safe-area offset, and a ring's padding, as fractions of the view's box.
+export const offsetInBox=([x,y],inset,[,,bw,bh])=>[x*(1-2*inset)/bw,y*(1-2*inset)/bh];
+export const paddingInBox=(padding,inset,[,,bw])=>padding*(1-2*inset)/bw;

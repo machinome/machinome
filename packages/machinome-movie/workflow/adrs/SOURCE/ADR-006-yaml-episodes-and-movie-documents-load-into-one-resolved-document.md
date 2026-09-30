@@ -1,6 +1,6 @@
 # ADR-006: YAML episodes and movie documents load into one resolved document
 
-Status: Proposed (OpenSpec change `react-stage`, 30 September 2026). Amends
+Status: Accepted (OpenSpec change `react-stage`, 30 September 2026). Amends
 [ADR-001](ADR-001-movie-document-and-chapter-narration.md), decision 1.
 
 ## Context

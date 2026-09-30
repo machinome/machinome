@@ -10,6 +10,15 @@ This is a local production tool, not a publishing service. It supports posed
 models with a normalized animation timeline; running/clocked machines are
 refused. The viewer executes the actual mechanical model.
 
+Every frame is drawn by a React stage: a **set**, a template that owns the
+whole screen, with **elements** in its slots (views of the model, source
+panels, titles, pictures, or anything the project draws). A movie declared
+by a project is drawn by the project's own template, its stage module
+beside the movie; see [the stage](docs/stage.md). A YAML episode is drawn by
+three sets the tool ships, which keep the film page every episode has had,
+its layouts and its masthead. No film draws a progress indicator; showing a
+viewer's place in a film is the player's job.
+
 ## Set up
 
 Requires Node 22+, FFmpeg/ffprobe, and a Machinome Viewer API 21 bundle with
@@ -60,8 +69,10 @@ or multi-range source mode. Source-only refuses model-target annotations,
 highlights and covering pictures rather than silently hiding them.
 
 A project may give a movie document instead of a YAML episode: JSON data,
-`machinome-movie/0.1`, usually written by the project's declarations to
+`machinome-movie/0.2`, usually written by the project's declarations to
 `videos/<movie>/_build/movie.json`. See [the movie document](docs/movie-document.md).
+Its shots place the chapter's elements in the slots of sets the project's
+stage module draws ([the stage](docs/stage.md)).
 Its narration belongs to chapters, one take each spanning several shots, and
 its cuts, keys and cues may be anchored to spoken phrases and its model times
 to named marks. Every command below accepts it in place of `episode.yaml`.
@@ -70,6 +81,9 @@ alone, and `check`, `preview` and `render` resolve the anchors from the cached
 takes (refusing, naming the chapter, when one is missing) and write the
 resolution to `_build/movie-resolved.json` under the document's `root`.
 A movie's resolved length is on its own frame grid; render it at its own rate.
+The stage module is bundled with the tool's stage runtime into
+`_build/stage/` under the document's `root`: once per movie, again only when
+the content of what it reads changes.
 
 From this repository in the development workspace:
 
@@ -94,8 +108,12 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   run `speech` before `check`. `check` reads the verified alignment but never
   generates speech. For format 0.4 pictures it also reads the project media,
   refuses unsafe or unfilmable assets, and prints each peak enlargement and
-  allowance plus clip rate and dropped/repeated cadence. It does not extract
-  clip frames or start a browser.
+  allowance plus clip rate and dropped/repeated cadence. It bundles the stage
+  (the tool's runtime and, for a movie, its stage modules), type-checks
+  TypeScript modules against the types generated from the document, and
+  prints the bundle it built or reused:
+  `Stage: bundled <path>/stage.js (sha256 <prefix>) from stage.tsx; types checked`.
+  It does not extract clip frames or start a browser.
 - `speech` generates narration through ElevenLabs, caches each segment and its
   character timestamps, checks it fits, then mixes audio and writes captions.
   It makes chargeable requests only for missing cached segments.
@@ -103,7 +121,8 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   a contact sheet. It also
   checks real-browser pixel replay, requested camera readback, visible canvas
   layout on model/split shots and positive fitted source visibility on source-only
-  shots, without calling projection through a hidden canvas visible lens proof. It also checks
+  shots, without calling projection through a hidden canvas visible lens proof.
+  Every check reads what the stage reports for each element it drew. It also checks
   invalid camera refusal. Annotated shots add stills at each arrow or label's
   start, quarters and end; every posed frame refuses an annotation whose part
   is off screen or whose text leaves the frame. Each highlight cue is posed
@@ -113,7 +132,7 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   pictures it is made of: a dissolve blends them within 2 levels, a wipe and a
   slide reproduce them exactly, a fade reaches exactly its colour, and a
   revisited instant replays exactly. A ring (format 0.4) is refused on any
-  frame where its part is not wholly on the model stage or the ring leaves the
+  frame where its part is not wholly on its view or the ring leaves the
   frame. Each annotation's entrance and exit adds stills at its first frame,
   midpoint and end while the cue is active, and is proved in pixels against the same instant with the
   mark drawn plainly and not drawn: a fade's midpoint is the blend its easing
@@ -149,7 +168,8 @@ Without `--viewer`, the bundle beside the model manifest is used. Older
 exports must be regenerated with the new viewer or use the explicit bundle.
 Paths are arguments, not assumptions about a neighboring workspace. The
 loopback asset server exposes the selected model assets, film page and, for
-format 0.4 pictures, the referenced project media and extracted clip frames.
+format 0.4 pictures, the referenced project media and extracted clip frames,
+and the movie's stage bundle.
 
 ## Output
 
@@ -164,7 +184,8 @@ Each episode's ignored `_build/` contains:
 - `movie-resolved.json` (a movie document only): the document with every anchor
   resolved to numbers, as the film is produced from it.
 - `rehearsal-manifest.json`: resolved screenplay/settings, model and viewer
-  hashes, audio hashes, browser/encoder versions, font record, encoded checks,
+  hashes, the stage bundle's `stageSha256`, audio hashes, browser/encoder
+  versions, font record, encoded checks,
   picture provenance/cadence with `pictureReleaseIssues`, and a versioned
   resolved visual-review sample plan.
 - `review-packs/<generation>/`: exact selected full-frame PNGs decoded from
@@ -187,7 +208,8 @@ Each episode's ignored `_build/` contains:
 
 The shared cache key includes the mounted first frame, so changing the first
 shot can conservatively recapture all shots. It also includes the model, viewer,
-film page, rendering code, browser, the known regular/bold film and mono font
+film page, stage bundle (so a changed template recaptures every shot),
+rendering code, browser, the known regular/bold film and mono font
 faces in the tested environment, style, dimensions, FPS and duration. Only
 media actually reached by a shot enters that shot's key;
 unused stills/clips and release copy do not force a visual recapture. Captions
@@ -230,11 +252,13 @@ from actual synthesized speech, not estimated reading speed.
 
 ## Validation and boundaries
 
-`npm test` runs the Node suite under vitest: the pure tests (parsing
-refusals, stale model duration, timeline continuity, camera interpolation,
-visibility reset, model keyframes, speech timestamps, the movie document) in
-parallel, then the browser and pipeline tests one at a time on one headless
-Chromium. A slow test that passed is remembered in the ignored `.test-memo/`
+`npm test` runs the Node suite under vitest: the pure tests under `test/`
+(parsing refusals, stale model duration, timeline continuity, camera
+interpolation, visibility reset, model keyframes, speech timestamps, the
+movie document, the generated stage types) and the stage's component tests
+beside its sources (`stage/**/*.test.tsx`, under jsdom) in parallel, then the
+browser tests (`test/browser/`) and the pipeline tests (`test/pipeline/`) one
+at a time on one headless Chromium. A slow test that passed is remembered in the ignored `.test-memo/`
 under the content of everything it read and the versions of Node, Chromium,
 FFmpeg, Git and the fonts; while none of that changes, the next run reports
 it as "passed from the memo" instead of running it. `npm test -- --cold` runs

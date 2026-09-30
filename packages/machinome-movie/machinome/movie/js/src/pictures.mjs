@@ -205,8 +205,9 @@ export function inspectClipProbe(data,name){
   return {codec:stream.codec_name,width:stream.width,height:stream.height,
     timestamps,end,averageRate,frameCount:timestamps.length,audio:'not played'};
 }
-export async function loadPictures(e){
-  if(!modern(e)){e.pictureMedia={stills:{},clips:{}};return e.pictureMedia;}
+// Probe every still and clip the source names: paths inside the project,
+// formats, sizes, timestamps, hashes and committed status.
+async function probeMedia(e){
   const root=e.paths.repository,base=sourceBase(e),result={stills:{},clips:{}};
   for(const [kind,map] of [['still',e.stills??{}],['clip',e.clips??{}]])for(const [name,entry] of Object.entries(map)){
     validateEntry(entry,name,kind);
@@ -216,7 +217,7 @@ export async function loadPictures(e){
     const file=await realpath(resolve(base,entry.file));
     need(inside(root,file),`${kind[0].toUpperCase()+kind.slice(1)} ${name} is outside the project repository`);
     const info={file,path:relative(root,file),sha256:await fileHash(file),committed:committed(root,file),
-      credit:entry.credit,rights:entry.rights,upscale:entry.upscale??1};
+      credit:entry.credit??null,rights:entry.rights??null,upscale:entry.upscale??1};
     if(kind==='still'){
       if(ext==='.svg')Object.assign(info,{format:'svg',...svgSize(await readFile(file,'utf8'),name)});
       else{
@@ -233,9 +234,17 @@ export async function loadPictures(e){
       result.clips[name]=info;
     }
   }
-  e.pictureMedia=result;
-  validateLoadedPictures(e);
   return result;
+}
+// A YAML episode's pictures (format 0.4 only), checked as they always were;
+// a movie's media, whose geometry is checked against the slot's box the stage
+// reports (design D8).
+export async function loadPictures(e){
+  if(e.source==='movie'){e.pictureMedia=await probeMedia(e);return e.pictureMedia;}
+  if(!modern(e)){e.pictureMedia={stills:{},clips:{}};return e.pictureMedia;}
+  e.pictureMedia=await probeMedia(e);
+  validateLoadedPictures(e);
+  return e.pictureMedia;
 }
 
 const areaPixels=(e,shot,cue,width=e.output.width)=>{
@@ -257,6 +266,9 @@ export function validatePictureSizing(e,width=e.output.width){
       `${cue.still!==undefined?'Still':'Clip'} ${cue.still??cue.clip} would be enlarged ${peak.toFixed(2)}× in shot ${shot.id} (${media.width}×${media.height} source pixels in the ${area[2]}×${area[3]} ${cue.area??'stage'} area); its upscale allowance is ${allowance}. Set upscale on the ${cue.still!==undefined?'still':'clip'}, choose area: stage, or use a larger source.`);
   }
 }
+// How much a picture drawn at `drawn` CSS pixels wide from a source `natural`
+// pixels wide is enlarged at output width `outputWidth` for a page `width` wide.
+export const drawnEnlargement=(drawnWidth,naturalWidth,pageWidth,outputWidth)=>drawnWidth/naturalWidth*(outputWidth/pageWidth);
 export function pictureReports(e,width=e.output.width){
   return e.shots.flatMap(shot=>(shot.pictures??[]).map((cue,index)=>{
     const {peak,allowance,media}=enlargement(e,shot,cue,width);
@@ -316,18 +328,15 @@ export function pictureAt(e,shot,local){
 }
 
 const ffmpegVersion=async()=>(await command('ffmpeg',['-version'])).split('\n')[0];
-export async function extractClips(e){
-  if(!modern(e))return;
+// Decode each clip's frames the film shows, once, into the build directory.
+// `uses` are [{name, inPoint, span}] (span includes a transition's continuation).
+export async function extractClips(e,uses=episodeClipUses(e)){
+  if(!Object.keys(e.pictureMedia?.clips??{}).length)return;
   const version=await ffmpegVersion();
   for(const [name,media] of Object.entries(e.pictureMedia?.clips??{})){
-    const uses=e.shots.flatMap((shot,shotIndex)=>(shot.pictures??[]).filter(c=>c.clip===name).map(c=>{
-      const next=e.shots[shotIndex+1]?.transition;
-      const continuation=near(c.to,shot.end-shot.start)&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
-      return [clipFrameAt(media.timestamps,c.inPoint??0),
-        clipFrameBefore(media.timestamps,(c.inPoint??0)+c.to-c.from+continuation)];
-    }));
-    if(!uses.length)continue;
-    const start=Math.min(...uses.map(x=>x[0])),end=Math.max(...uses.map(x=>x[1]));
+    const ranges=uses.filter(u=>u.name===name).map(u=>[clipFrameAt(media.timestamps,u.inPoint),clipFrameBefore(media.timestamps,u.inPoint+u.span)]);
+    if(!ranges.length)continue;
+    const start=Math.min(...ranges.map(x=>x[0])),end=Math.max(...ranges.map(x=>x[1]));
     const filter=`select=between(n\\,${start}\\,${end})`,args=['-i',media.file,'-vf',filter,'-vsync','0'];
     const key=hash(JSON.stringify({sha256:media.sha256,start,end,args,version}));
     const dir=resolve(e.paths.build,'clips',key.slice(0,16));await mkdir(dir,{recursive:true});
@@ -344,4 +353,12 @@ export async function extractClips(e){
     }
     media.extraction={key,dir,start,end,ffmpegVersion:version,frames:listed};
   }
+}
+// The clip spans a YAML episode's picture cues show.
+function episodeClipUses(e){
+  return (e.shots??[]).flatMap((shot,shotIndex)=>(shot.pictures??[]).filter(c=>c.clip!==undefined).map(c=>{
+    const next=e.shots[shotIndex+1]?.transition;
+    const continuation=near(c.to,shot.end-shot.start)&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+    return {name:c.clip,inPoint:c.inPoint??0,span:c.to-c.from+continuation};
+  }));
 }

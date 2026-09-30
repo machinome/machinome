@@ -1,7 +1,7 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {validateEpisode,requiredViewerApi,viewerApiFromBanner,confirmViewerApi} from '../src/episode.mjs';
-import {frameAt} from '../src/timeline.mjs';
+import {validateEpisode,requiredViewerApi,viewerApiFromBanner,confirmViewerApi,PAPER_STAGE} from '../src/episode.mjs';
+import {viewAt,placeInBox,offsetInBox} from './frame-fixtures.mjs';
 
 const manifest={animation:{loop:296},root:{name:'Mill',children:[
   {name:'Feed mechanism',children:[{name:'Driving pawl'},{name:'Holding pawl'},{name:'Ratchet to reduction shaft'}]},
@@ -20,17 +20,22 @@ export const annotated=()=>({format:'machinome-video-draft/0.3',
     shot('plain',2,4)]});
 const valid=e=>validateEpisode(e,manifest);
 
+// An annotation is a mark of the shot's view (design D3): its safe-area place
+// and offset converted to fractions of the view's box in the paper set.
+const box=PAPER_STAGE.paper,marks=(e,t)=>viewAt(e,t).marks;
 test('a 0.3 arrow on a path and a label on a layer are emitted only while active',()=>{
   const e=annotated();valid(e);
-  assert.deepEqual(frameAt(e,.25).annotations.map(a=>a.text),['Rope 1']);
-  const both=frameAt(e,1).annotations;
+  assert.deepEqual(marks(e,.25).map(a=>a.text),['Rope 1']);
+  const both=marks(e,1);
   assert.deepEqual(both.map(a=>a.kind),['arrow','label']);
-  assert.deepEqual(both[0],{index:0,kind:'arrow',text:'Pulls one tooth',target:{paths:[['Feed mechanism','Driving pawl']]},place:[.18,.22],safeInset:.08});
-  assert.deepEqual(both[1],{index:1,kind:'label',text:'Rope 1',target:{paths:[['Feed mechanism','Ratchet to reduction shaft']]},offset:[.04,-.05],safeInset:.08});
-  assert.deepEqual(frameAt(e,1.5).annotations.map(a=>a.index),[1]);
-  assert.deepEqual(frameAt(e,2).annotations,[],'the cut removes every annotation');
+  assert.deepEqual(both[0],{id:'cues[0].actions[0]',kind:'arrow',text:'Pulls one tooth',target:{paths:[['Feed mechanism','Driving pawl']]},
+    place:placeInBox([.18,.22],.08,box),opacity:1,drawn:1});
+  assert.deepEqual(both[1],{id:'cues[1].actions[0]',kind:'label',text:'Rope 1',target:{paths:[['Feed mechanism','Ratchet to reduction shaft']]},
+    offset:offsetInBox([.04,-.05],.08,box),opacity:1,drawn:1});
+  assert.deepEqual(marks(e,1.5).map(a=>a.id),['cues[1].actions[0]']);
+  assert.deepEqual(marks(e,2),[],'the cut removes every annotation');
   e.shots[0].annotations[1]={from:0,to:1,kind:'label',point:[1,2,3],text:'Here'};valid(e);
-  assert.deepEqual(frameAt(e,0).annotations[0],{index:1,kind:'label',text:'Here',target:{point:[1,2,3]},offset:[0,0],safeInset:.08});
+  assert.deepEqual(marks(e,0)[0],{id:'cues[1].actions[0]',kind:'label',text:'Here',target:{point:[1,2,3]},offset:[0,0],opacity:1,drawn:1});
 });
 
 test('invalid annotations are refused before rendering, naming the shot',()=>{

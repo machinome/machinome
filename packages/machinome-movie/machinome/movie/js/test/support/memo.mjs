@@ -6,7 +6,9 @@
 // - The verdict memo keeps a slow test's pass. `slowTest(name, fn)` is a
 //   vitest `test` whose key is the SHA-256 of the test's name and file, the
 //   content fingerprint of everything a slow test can read (`src/`, `bin/`,
-//   `fixtures/`, `schema/`, every non-test module under `test/` — the helpers,
+//   `fixtures/`, `schema/`, `stage/`, the fixture project under
+//   `python/tests/fixtures/project` without its `__pycache__` and `_build`
+//   directories, every non-test module under `test/` — the helpers,
 //   the viewer double, these support modules —, the test's own file,
 //   `package.json`, `package-lock.json`, `vitest.config.mjs`) and the
 //   toolchain record: the versions of Node, Chromium, FFmpeg, ffprobe and Git
@@ -191,18 +193,26 @@ function runMemo(){
     cold:inject('cold')??process.env.VIDEOMAKER_TEST_COLD==='1'});
 }
 
-// Everything a slow test can read, for its verdict key.
-async function helpers(dir,out=[]){
+// Everything a slow test can read, for its verdict key: every file under
+// `dir` for which `keep(name, isDirectory)` holds, sorted.
+async function listed(dir,keep,out=[]){
   for(const entry of (await readdir(dir,{withFileTypes:true})).sort((a,b)=>a.name<b.name?-1:1)){
     const path=join(dir,entry.name);
-    if(entry.isDirectory())await helpers(path,out);
-    else if(!entry.name.endsWith('.test.mjs'))out.push(path);
+    if(!keep(entry.name,entry.isDirectory()))continue;
+    if(entry.isDirectory())await listed(path,keep,out);
+    else out.push(path);
   }
   return out;
 }
+// The fixture project a browser or pipeline test copies, without what Python
+// or a build leaves in it.
+export const FIXTURE_PROJECT=join(REPOSITORY,'python','tests','fixtures','project');
+const LEFT_BEHIND=new Set(['__pycache__','_build']);
 export async function slowTestInputs(file){
-  return [...['src','bin','fixtures','schema','package.json','package-lock.json','vitest.config.mjs']
-    .map(p=>join(REPOSITORY,p)),...await helpers(join(REPOSITORY,'test')),file];
+  return [...['src','bin','fixtures','schema','stage','package.json','package-lock.json','vitest.config.mjs']
+    .map(p=>join(REPOSITORY,p)),
+    ...await listed(FIXTURE_PROJECT,(name,directory)=>!(directory&&LEFT_BEHIND.has(name))),
+    ...await listed(join(REPOSITORY,'test'),(name,directory)=>directory||!name.endsWith('.test.mjs')),file];
 }
 function fullName(task){
   const names=[];

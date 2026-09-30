@@ -1,8 +1,9 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
-import {frameAt,cameraAt} from '../src/timeline.mjs';
+import {validateEpisode,requiredViewerApi,episodeFilm} from '../src/episode.mjs';
+import {frameAt as filmFrameAt,cameraAt} from '../src/timeline.mjs';
 import {EASINGS,ease,endSlope} from '../src/easing.mjs';
+import {element} from './frame-fixtures.mjs';
 
 // Five shots joined by every kind (design D1): the first a code shot fading in,
 // a linear dissolve, a fade through the paper, a slide right, a wipe (default
@@ -37,6 +38,10 @@ const D=296,fps=30;
 const frames=e=>Array.from({length:e.output.durationSeconds*fps},(_,i)=>i/fps);
 const plain=()=>{const e=joined();for(const s of e.shots){delete s.transition;delete s.fadeIn;delete s.fadeOut;}return e;};
 const without=({transition,...rest})=>rest;
+// A YAML episode's frame through its conversion (react-stage D3), converted once per episode object.
+const films=new WeakMap();
+const frameAt=(e,t)=>{if(!films.has(e))films.set(e,episodeFilm(e));return filmFrameAt(films.get(e),t);};
+const view=f=>element(f,'view'),panel=f=>element(f,'code');
 // Shot-local time is video time minus the shot's start, which is not exact in binary.
 const close=(actual,expected,what)=>assert.ok(Math.abs(actual-expected)<=1e-12,`${what??''} ${actual} is not ${expected}`);
 
@@ -68,32 +73,32 @@ test('the outgoing shot continues past its end: model at its end rate, camera he
   for(const u of [0,.25,.5,.9]){
     const out=frameAt(e,4+u).transition.outgoing;
     assert.equal(out.shotId,'code');
-    close(out.time,(12+1*u)/D,`model at u = ${u}`);
-    assert.deepEqual(out.view,{camera:[0,-10,0],target:[0,0,0]});
-    assert.equal(out.code.text,'wheel = Wheel()\nwheel.drives(saw)');assert.equal(out.code.cursor,false);
-    assert.deepEqual(out.hidden,[['Frame']]);
+    close(view(out).time,(12+1*u)/D,`model at u = ${u}`);
+    assert.deepEqual(view(out).view,{camera:[0,-10,0],target:[0,0,0]});
+    assert.equal(panel(out).text,'wheel = Wheel()\nwheel.drives(saw)');assert.equal(panel(out).cursor,false);
+    assert.deepEqual(view(out).hidden,[['Frame']]);
     assert.equal(out.transition,null,'the outgoing frame is a plain frame');
   }
   // The shot eased in to its end runs on at three times its last segment's average rate (ratification).
   const fading=frameAt(e,9.3).transition;
   assert.equal(fading.outgoingShotId,'whole');
-  close(fading.outgoing.time,(14+3*1*.3)/D,'in: slope 3');
-  assert.deepEqual(fading.outgoing.view,{camera:[4,-10,2],target:[0,0,0]},'the camera holds its last key');
+  close(view(fading.outgoing).time,(14+3*1*.3)/D,'in: slope 3');
+  assert.deepEqual(view(fading.outgoing).view,{camera:[4,-10,2],target:[0,0,0]},'the camera holds its last key');
   // The overlay, highlight and arrow that run to the end stay; the earlier ones do not.
   const out=frameAt(e,13.4).transition.outgoing;
-  assert.equal(out.shotId,'pawls');close(out.time,(18+.4)/D);
-  assert.deepEqual(out.overlays.map(o=>o.text),['Runs to the cut']);
-  assert.deepEqual(out.highlight,{paths:[['Feed mechanism','Driving pawl']],others:'ghost',color:'#bf531f'});
-  assert.deepEqual(out.annotations.map(a=>a.text),['Pawl']);
-  assert.deepEqual(out.hidden,[['Frame']]);
-  assert.deepEqual(out.view,cameraAt(e,e.shots[2],4).view);
-  assert.equal(out.code,null);
+  assert.equal(out.shotId,'pawls');close(view(out).time,(18+.4)/D);
+  assert.deepEqual(['overlay-0','overlay-1'].map(k=>[element(out,k).text,element(out,k).shown]),[['Runs to the cut',true],['Ends early',false]]);
+  assert.deepEqual(view(out).highlight,{paths:[['Feed mechanism','Driving pawl']],others:'ghost',color:'#bf531f'});
+  assert.deepEqual(view(out).marks.map(a=>a.text),['Pawl']);
+  assert.deepEqual(view(out).hidden,[['Frame']]);
+  assert.deepEqual(view(out).view,cameraAt(e,e.shots[2],4).view);
+  assert.equal(panel(out),undefined,'the shot places no source panel');
   // A held shot stays held.
-  for(const u of [0,.3,.7])assert.equal(frameAt(e,16+u).transition.outgoing.time,18/D);
+  for(const u of [0,.3,.7])assert.equal(view(frameAt(e,16+u).transition.outgoing).time,18/D);
   // An outgoing shot eased out to rest, or smoothly, holds.
   for(const name of ['out','smooth','in-out']){
     const eased=joined();eased.shots[1].simulation.keyframes[2].ease=name;valid(eased);
-    assert.equal(frameAt(eased,9.3).transition.outgoing.time,14/D,name);
+    assert.equal(view(frameAt(eased,9.3).transition.outgoing).time,14/D,name);
   }
 });
 
@@ -184,7 +189,7 @@ test('an outgoing model that would run past the export is refused; a held one at
     e=>{e.shots[closing].simulation={from:292,to:296};},
   ]){const e=joined();edit(e);assert.doesNotThrow(()=>valid(e));}
   const e=joined();e.shots[code].simulation={from:296,to:296};valid(e);
-  assert.equal(frameAt(e,4.5).transition.outgoing.time,1,'held at the export end');
+  assert.equal(view(frameAt(e,4.5).transition.outgoing).time,1,'held at the export end');
 });
 
 test('transitions raise no viewer requirement',()=>{

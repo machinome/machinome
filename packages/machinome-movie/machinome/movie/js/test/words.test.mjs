@@ -2,12 +2,21 @@ import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {splitWords,spokenOnsets,evenCount,fadeOpacity,resolveEmphasis,activeEmphasis,resolveWordTiming,validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
+import {episodeFilm} from '../src/episode.mjs';
+import {frameAt} from '../src/timeline.mjs';
+import {element} from './frame-fixtures.mjs';
 
 const phrase='Propose. Inspect. Correct.';
 const spoken='Intro. '+phrase+' Outro.';
 const alignment=text=>({characters:Array.from(text),
   character_start_times_seconds:Array.from(text,(_,i)=>i/10),
   character_end_times_seconds:Array.from(text,(_,i)=>(i+1)/10)});
+// A YAML episode of the given shots as the resolved document (react-stage D3):
+// word timing is filled on its actions by resolveWordTiming.
+const yaml=(shots,more={})=>episodeFilm({output:{fps:30},audio:{replacements:{}},
+  cameras:{a:{position:[0,-1,0],target:[0,0,0],up:[0,0,1],fov:37}},model:{expectedDurationSeconds:10},...more,
+  shots:shots.map(s=>({simulation:{from:0,to:0},camera:[{at:0,preset:'a'}],overlays:[],...s}))});
+const actionsOf=(film,shotId)=>film.chapters.flatMap(c=>c.shots).find(s=>s.id===shotId).cues.flatMap(c=>c.actions);
 const reveal=(extra={})=>({text:phrase,phrase,narration:spoken,alignment:alignment(spoken),
   replacements:{},offset:.2,from:0,to:7,shotStart:0,fps:30,shotId:'judgment',index:0,...extra});
 
@@ -76,12 +85,16 @@ test('emphasis follows spoken phrase replacement without replacing identifiers',
 
 test('an astral source character before a token does not make an already typed word appear untyped',async()=>{
   const source='"😀"; waterwheel';
-  const e={audio:{replacements:{}},output:{fps:30},sourceCode:{example:{text:source,lines:[1,1]}},
-    shots:[{id:'source',start:0,end:4,narration:'waterwheel',speechOffset:1,
-      overlays:[],code:{snippet:'example',typing:[{from:0,to:.1,throughLine:1}],
-        emphasis:[{line:1,phrase:'waterwheel',words:['waterwheel'],hold:0}]}}]};
-  const timing=await resolveWordTiming(e,async()=>({sha256:'take',alignment:alignment('waterwheel')}));
-  assert.equal(timing.source.emphasis[0].cues[0].word,'waterwheel');
+  const film=yaml([{id:'source',start:0,end:4,narration:'waterwheel',speechOffset:1,
+    code:{snippet:'example',typing:[{from:0,to:.1,throughLine:1}],
+      emphasis:[{line:1,phrase:'waterwheel',words:['waterwheel'],hold:0}]}}],
+    {sourceCode:{example:{file:'m.py',text:source,lines:[1,1]}}});
+  const timing=await resolveWordTiming(film,async()=>({sha256:'take',alignment:alignment('waterwheel')}));
+  assert.deepEqual(timing,{source:{sha256:'take'}});
+  const emphasis=actionsOf(film,'source').find(a=>a.action==='emphasize');
+  assert.equal(emphasis.words[0].at,1);assert.equal(emphasis.until,1+1);
+  // Lit in UTF-16 offsets, as the stage's ranges count: the emoji is two units.
+  assert.deepEqual(element(frameAt(film,1.5),'code').emphasis,[{token:'waterwheel',start:6,end:16}]);
 });
 
 test('even reveals share eased progress and settle with all words shown',()=>{
@@ -91,29 +104,30 @@ test('even reveals share eased progress and settle with all words shown',()=>{
 });
 
 test('a lower render fps refuses words with no delivered frame',()=>{
-  const e={output:{fps:30},shots:[{id:'short',start:0,end:1,overlays:[
-    {from:.03,to:.15,text:'One Two Three',reveal:{timing:'even',duration:.11}}]}]};
+  const e=yaml([{id:'short',start:0,end:1,overlays:[
+    {from:.03,to:.15,text:'One Two Three',position:'top',reveal:{timing:'even',duration:.11}}]}]);
   validateWordFramesAtFps(e,30);
-  assert.throws(()=>validateWordFramesAtFps(e,10),/Word.*fps output frame.*short/);
-  const together={output:{fps:30},shots:[{id:'together',start:0,end:1,overlays:[
-    {from:0,to:.15,text:'One Two Three',reveal:{timing:'even',duration:.12}}]}]};
+  assert.throws(()=>validateWordFramesAtFps(e,10),/^Error: Word Three appears on no 10 fps output frame: overlay #0 in shot short$/);
+  const together=yaml([{id:'together',start:0,end:1,overlays:[
+    {from:0,to:.15,text:'One Two Three',position:'top',reveal:{timing:'even',duration:.12}}]}]);
   validateWordFramesAtFps(together,10); // words two and three may arrive together
 });
 
 test('silent build reads measured timing from cache and refuses a missing take without generation',async()=>{
-  const make=()=>({audio:{replacements:{}},output:{fps:30},shots:[{id:'hook',start:0,end:1,
-    narration:'Hello.',speechOffset:.2,overlays:[{from:0,to:1,text:'Hello.',reveal:{timing:'spoken'}}]}]});
+  const make=()=>yaml([{id:'hook',start:0,end:1,
+    narration:'Hello.',speechOffset:.2,overlays:[{from:0,to:1,text:'Hello.',position:'top',reveal:{timing:'spoken'}}]}]);
+  const onsets=film=>actionsOf(film,'hook')[0].reveal.onsets;
   const cached=make();let reads=0;
   await prepareWordTimingForCommand(cached,{command:'build',silent:true},async()=>{
     reads++;return {sha256:'take',alignment:alignment('Hello.')};});
-  assert.equal(reads,1);assert.deepEqual(cached.wordTiming.hook.overlays[0].onsets,[.2]);
+  assert.equal(reads,1);assert.deepEqual(onsets(cached),[.2]);assert.deepEqual(cached.wordTiming,{hook:{sha256:'take'}});
   const missing=make();
   await assert.rejects(prepareWordTimingForCommand(missing,{command:'build',silent:true},async()=>{
     throw new Error('Word timing needs cached speech for shot hook; run the speech command first');
   }),/run the speech command first/);
   const narrated=make();
   await prepareWordTimingForCommand(narrated,{command:'build',silent:false},async()=>{throw new Error('narrated build must wait for speech');});
-  assert.equal(narrated.wordTiming,undefined);
+  assert.deepEqual(narrated.wordTiming,{});assert.equal(onsets(narrated),undefined);
 });
 
 test('a measured onset at a fractional global instant is active, and its clear remains exclusive',()=>{
@@ -160,13 +174,17 @@ test('stable emphasis refuses malformed identifiers, source ambiguity, order and
 
 test('resolved emphasis refuses a word not typed at onset and overlapping cues',async()=>{
   const text='waterwheel.drives(crankshaft)',phrase='waterwheel drives crankshaft';
-  const base=()=>({audio:{replacements:{}},output:{fps:30},sourceCode:{example:{text,lines:[1,1]}},
-    shots:[{id:'source',start:0,end:10,narration:phrase,speechOffset:1,overlays:[],
-      code:{snippet:'example',typing:[{from:0,to:.1,throughLine:1}],
-        emphasis:[{line:1,phrase,words:['waterwheel'],hold:0}]}}]});
+  const base=()=>({id:'source',start:0,end:10,narration:phrase,speechOffset:1,
+    code:{snippet:'example',typing:[{from:0,to:.1,throughLine:1}],
+      emphasis:[{line:1,phrase,words:['waterwheel'],hold:0}]}});
+  const film=shot=>yaml([shot],{sourceCode:{example:{file:'m.py',text,lines:[1,1]}}});
   const read=async()=>({sha256:'take',alignment:alignment(phrase)});
-  const late=base();late.shots[0].code.typing[0].to=8;
-  await assert.rejects(resolveWordTiming(late,read),/not yet typed.*waterwheel|waterwheel.*not yet typed/i);
-  const overlap=base();overlap.shots[0].code.emphasis.push({line:1,phrase,words:['drives'],hold:0});
-  await assert.rejects(resolveWordTiming(overlap,read),/overlap/i);
+  const late=base();late.code.typing[0].to=8;
+  await assert.rejects(resolveWordTiming(film(late),read),/^Error: Source word waterwheel is not yet typed at its onset: shot source$/);
+  const overlap=base();overlap.code.emphasis.push({line:1,phrase,words:['drives'],hold:0});
+  await assert.rejects(resolveWordTiming(film(overlap),read),/^Error: Emphasis cues overlap in shot source$/);
+  // Resolved: each word lit from its onset to the phrase's end plus the hold.
+  const good=film(base());await resolveWordTiming(good,read);
+  const emphasis=actionsOf(good,'source').find(a=>a.action==='emphasize');
+  assert.equal(emphasis.words[0].at,1);assert.equal(emphasis.until,1+phrase.length/10);
 });

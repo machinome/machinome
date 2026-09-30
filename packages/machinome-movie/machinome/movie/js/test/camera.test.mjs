@@ -1,7 +1,7 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
-import {frameAt} from '../src/timeline.mjs';
+import {viewAt} from './frame-fixtures.mjs';
 
 const manifest={animation:{loop:296}};
 const shot=(id,start,end,camera)=>({id,start,end,narration:'Words.',direction:'Look.',
@@ -21,19 +21,24 @@ const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
 
 test('field of view eases between presets and holds after the last key',()=>{
   const e=moving();validateEpisode(e,manifest);
-  assert.equal(frameAt(e,1).fov,28.5);
-  assert.equal(frameAt(e,.5).fov,37-17*.15625);
-  assert.equal(frameAt(e,2.5).fov,20);
-  assert.deepEqual(frameAt(e,1).view,{camera:[0,-10,0],target:[0,0,0]});
+  assert.equal(viewAt(e,1).fov,28.5);
+  assert.equal(viewAt(e,.5).fov,37-17*.15625);
+  assert.equal(viewAt(e,2.5).fov,20);
+  assert.deepEqual(viewAt(e,1).view,{camera:[0,-10,0],target:[0,0,0]});
+  // The next shot holds the narrowed lens exactly.
+  assert.equal(viewAt(e,4).fov,20);assert.deepEqual(viewAt(e,4).up,[0,0,1]);
 });
 
 test('up interpolates by direction and is always a unit vector',()=>{
   const e=moving();e.shots[0].camera[1].preset='rolled';validateEpisode(e,manifest);
-  assert.ok(close(frameAt(e,0).up,[0,0,1]));
-  assert.ok(close(frameAt(e,2).up,unit([1,0,1])));
+  assert.ok(close(viewAt(e,0).up,[0,0,1]));
+  assert.ok(close(viewAt(e,2).up,unit([1,0,1])));
   const ease=.5,mid=unit([0+(Math.SQRT1_2-0)*ease,0,1+(Math.SQRT1_2-1)*ease]);
-  assert.ok(close(frameAt(e,1).up,mid));
-  for(const t of [.2,.7,1.3,1.9])assert.ok(Math.abs(Math.hypot(...frameAt(e,t).up)-1)<1e-12);
+  assert.ok(close(viewAt(e,1).up,mid));
+  for(const t of [.2,.7,1.3,1.9,2,2.5])assert.ok(Math.abs(Math.hypot(...viewAt(e,t).up)-1)<1e-12);
+  // A shot whose up does not change carries the preset's up as written.
+  const held=moving();held.shots[1].camera=[{at:0,preset:'rolled'}];validateEpisode(held,manifest);
+  assert.deepEqual(viewAt(held,4).up,[1,0,1]);
 });
 
 test('impossible or unsupported camera moves are refused, naming the shot',()=>{

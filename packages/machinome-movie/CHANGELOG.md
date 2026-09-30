@@ -50,3 +50,26 @@ lands it.
   needs no typing in its later shots. The shared fixtures are rewritten as
   0.2 documents, with 60 invalid documents naming every refusal
   (`declarative-stage`, ADR-005).
+- The commands read `machinome-movie/0.2` and refuse any other format, 0.1
+  included, by name; a document is checked against the schema, then
+  statically, then resolved against the cached takes to the resolved
+  document in `_build/movie-resolved.json`, into which YAML episodes (0.2,
+  0.3, 0.4) load too, one chapter per shot, keeping every rule of their
+  format. A React stage (`stage/`, contract `docs/stage.md`) replaces the
+  fixed film page: the set a shot names, the project's own template or one
+  the tool ships, owns the screen, with elements in its slots and its
+  chrome marked by `Chrome`; `defineSet`, `defineElement`, `Slot`,
+  `useMovie` and `useReport` are its authoring API; a view is one viewer
+  instance kept across its chapter. Each movie gets one bundle, the runtime
+  and its stage modules, with `movie.d.ts` generated from the stage block,
+  TypeScript modules checked with `tsc --noEmit` by `check`, rebuilt only
+  when its inputs' content changes, and hashed into the shot cache and the
+  manifest (`stageSha256`). YAML episodes are drawn by the shipped sets
+  `paper`, `paper-split` and `source-only`, which keep their layouts and
+  masthead, the masthead's words now props; up to eight overlays or
+  pictures of one position in a shot. No film draws a progress rule. Every
+  readback check and pixel proof now reads what the stage reports per
+  element and masks the chrome it reports; every film's pixels change once.
+  Browser and pipeline tests move to `test/browser/` and `test/pipeline/`,
+  and the stage's component tests sit beside it (`react-stage`, ADR-004,
+  ADR-006).

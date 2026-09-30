@@ -3,11 +3,11 @@ import {resolve, dirname, relative, isAbsolute, extname} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {parseDocument, visit, isAlias, isScalar, isMap} from 'yaml';
 import {loadSourceCode,validateCode,validateCodeSource} from './code.mjs';
-import {cameraAt,endRate,FORMATS,formatAtLeast} from './timeline.mjs';
+import {cameraAt,FORMATS,formatAtLeast} from './timeline.mjs';
+import {endSlope} from './easing.mjs';
 import {EASINGS,unknownEasing} from './easing.mjs';
 import {splitWords,validateSpokenPair,evenCount} from './words.mjs';
 import {validatePictureCues,loadPictures} from './pictures.mjs';
-import {narrationOf,shotChapters} from './chapters.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -163,7 +163,7 @@ function validateOverlays(e,s){
       const words=splitWords(cue.text).filter(p=>p.word);
       need(words.length>0,`Reveal needs words: ${where}`);
       if(reveal.timing==='spoken')validateSpokenPair({text:cue.text,phrase:reveal.phrase??cue.text,
-        narration:narrationOf(e,s),replacements:e.audio?.replacements??{},shotId:s.id,index:i});
+        narration:s.narration,replacements:e.audio?.replacements??{},shotId:s.id,index:i});
       else{
         need(finite(reveal.duration)&&reveal.duration>0&&cue.from+reveal.duration<=cue.to+1e-9,
           `Even reveal duration exceeds cue: ${where}`);
@@ -285,9 +285,16 @@ function validateTransitions(e,s,index){
   // must not ask the viewer for a model second the export does not have.
   if(s.transition){
     const shown=s.transition.kind==='fade'?s.transition.duration/2:s.transition.duration;
-    const reach=prior.simulation.to+endRate(prior)*shown,limit=e.model.expectedDurationSeconds;
+    const reach=prior.simulation.to+episodeEndRate(prior)*shown,limit=e.model.expectedDurationSeconds;
     need(reach<=limit,`Shot ${prior.id} cannot continue ${shown} s into the ${s.transition.kind} to shot ${s.id}: its model would reach ${reach.toFixed(2)} s, past the export's ${limit} s; end its simulation earlier or shorten the transition`);
   }
+}
+// Model seconds per video second at a YAML shot's end (its simulation's last
+// segment's average rate times its curve's end slope).
+function episodeEndRate(shot){
+  const s=shot.simulation,keys=s.keyframes??[{at:0,seconds:s.from},{at:shot.end-shot.start,seconds:s.to}];
+  const a=keys.at(-2),b=keys.at(-1);
+  return (b.seconds-a.seconds)/(b.at-a.at)*endSlope(b.ease??'linear');
 }
 export function validateEpisode(e, manifest) {
   need(FORMATS.includes(formatOf(e)),'Unsupported episode format');
@@ -372,8 +379,9 @@ function validateChapters(e){
     need(finite(c.speechOffset)&&c.speechOffset>=0&&c.speechOffset<c.end-c.start,`Invalid speech offset: chapter ${c.id}`);
   }
 }
-// A .json source is a movie document (movie-document D1); anything else is a
-// YAML episode, loaded as before and given one chapter per shot.
+// A .json source is a movie document; anything else is a YAML episode,
+// validated as it always was, then converted to the resolved movie document
+// the rest of the tool draws (design D3 of the react-stage change).
 export async function loadEpisode(file) {
   if(extname(file).toLowerCase()==='.json'){const {loadMovie}=await import('./movie.mjs');return loadMovie(file);}
   const episodePath=await realpath(file), base=dirname(episodePath);
@@ -396,8 +404,100 @@ export async function loadEpisode(file) {
   e.sourceCode=await loadSourceCode(e);
   for(const shot of e.shots)validateCodeSource(e,shot);
   await loadPictures(e);
-  e.chapters=shotChapters(e);
-  return e;
+  return episodeFilm(e);
+}
+
+// The masthead the film page drew for every YAML episode, now data the paper
+// sets draw from their props (design D3). No page or set source carries it.
+export const PAPER_BRAND='MACHINOME';
+// Several overlays (or pictures) of one position in one shot are separate
+// elements in indexed slots at the same place: top, top-2 … top-8.
+export const PAPER_SLOT_COUNT=8;
+const indexed=(name,n)=>n===1?name:`${name}-${n}`;
+const positions=name=>Array.from({length:PAPER_SLOT_COUNT},(_,i)=>indexed(name,i+1));
+const TEXT_SLOTS=['title','top','lower-third','center'].flatMap(positions);
+export const PAPER_SETS=Object.freeze({
+  paper:['stage',...positions('plate'),...positions('full'),...TEXT_SLOTS],
+  'paper-split':['left','right',...positions('plate'),...positions('full'),...TEXT_SLOTS],
+  'source-only':['source',...TEXT_SLOTS],
+});
+// The model stage's box in each paper set, as fractions of the frame: where
+// a YAML safe-area place lands in the view's box (the film page's geometry).
+export const PAPER_STAGE=Object.freeze({paper:[.05,.16,.90,.63],'paper-split':[.56,.20,.42,.65]});
+
+// A validated YAML episode (with its loaded excerpts and pictures) as the
+// resolved movie document: one chapter per shot, in the shipped paper sets.
+// Word timing is filled later from the cached takes (resolveWordTiming).
+export function episodeFilm(e){
+  const inset=e.style?.safeInsetFraction??0,safe=1-2*inset,used=new Set();
+  const chapters=e.shots.map(s=>{
+    const set=s.layout==='source-only'?'source-only':s.code?'paper-split':'paper',elements={},places={},cues=[];
+    used.add(set);
+    const box=PAPER_STAGE[set];
+    if(set!=='source-only'){
+      elements.view={kind:'view',camera:s.camera[0].preset,...(s.hiddenLayers?.length?{hide:[...s.hiddenLayers]}:{})};
+      places[set==='paper'?'stage':'right']='view';
+      for(let k=1;k<s.camera.length;k++)cues.push({at:s.camera[k-1].at,actions:[{element:'view',action:'move',
+        camera:s.camera[k].preset,until:s.camera[k].at,...(s.camera[k].ease!==undefined?{ease:s.camera[k].ease}:{})}]});
+    }
+    if(s.code){
+      elements.code={kind:'source',source:s.code.snippet};
+      places[set==='source-only'?'source':'left']='code';
+    }
+    const count=new Map(),slotFor=(name,what)=>{
+      const n=(count.get(name)??0)+1;count.set(name,n);
+      need(n<=PAPER_SLOT_COUNT,`Shot ${s.id} has more than ${PAPER_SLOT_COUNT} ${what} at ${name}; the paper sets hold ${PAPER_SLOT_COUNT}`);
+      return indexed(name,n);
+    };
+    (s.overlays??[]).forEach((o,i)=>{
+      const key=`overlay-${i}`;
+      elements[key]={kind:'title',text:o.text,...(o.subtitle!==undefined?{subtitle:o.subtitle}:{})};
+      places[slotFor(o.position,'overlays')]=key;
+      const reveal=o.reveal===undefined?undefined:o.reveal.timing==='spoken'
+        ?{timing:'spoken',...(o.reveal.phrase!==undefined?{phrase:o.reveal.phrase}:{})}
+        :{timing:'even',duration:o.reveal.duration,...(o.reveal.ease!==undefined?{ease:o.reveal.ease}:{})};
+      cues.push({at:o.from,until:o.to,actions:[{element:key,action:'show',...(o.enter?{enter:o.enter}:{}),
+        ...(o.leave?{leave:o.leave}:{}),...(reveal?{reveal}:{}),overlay:i}]});
+    });
+    (s.pictures??[]).forEach((c,i)=>{
+      const key=`picture-${i}`,media=c.still!==undefined?'still':'clip';
+      elements[key]={kind:'picture',[media]:c[media],...(c.fit!==undefined?{fit:c.fit}:{}),...(c.inPoint!==undefined?{inPoint:c.inPoint}:{})};
+      places[slotFor((c.area??'stage')==='frame'?'full':'plate','pictures')]=key;
+      cues.push({at:c.from,until:c.to,actions:[{element:key,action:'show',...(c.enter?{enter:c.enter}:{}),
+        ...(c.leave?{leave:c.leave}:{}),...(c.view?{view:c.view.map(v=>({...v}))}:{}),picture:i}]});
+    });
+    (s.highlight??[]).forEach((c,i)=>cues.push({at:c.from,until:c.to,actions:[{element:'view',action:'highlight',
+      parts:c.parts,...(c.others!==undefined?{others:c.others}:{}),...(c.color!==undefined?{color:c.color}:{}),highlight:i}]}));
+    (s.annotations??[]).forEach((a,i)=>{
+      // The safe area's places and sizes, as fractions of the view's box.
+      const action={element:'view',action:a.kind,...(a.part!==undefined?{part:a.part}:{point:a.point}),
+        ...(a.text!==undefined?{text:a.text}:{})};
+      if(a.kind==='arrow')action.place=[(inset+a.place[0]*safe-box[0])/box[2],(inset+a.place[1]*safe-box[1])/box[3]];
+      else if(a.kind==='label')action.offset=[(a.offset?.[0]??0)*safe/box[2],(a.offset?.[1]??0)*safe/box[3]];
+      else action.padding=(a.padding??.01)*safe/box[2];
+      if(a.enter)action.enter=a.enter;if(a.leave)action.leave=a.leave;
+      action.annotation=i;
+      cues.push({at:a.from,until:a.to,actions:[action]});
+    });
+    for(const t of s.code?.typing??[])cues.push({at:t.from,actions:[{element:'code',action:'type',throughLine:t.throughLine,over:t.to-t.from}]});
+    (s.code?.emphasis??[]).forEach((c,i)=>cues.push({at:{spoken:c.phrase},actions:[{element:'code',action:'emphasize',
+      words:c.words.map(w=>({spoken:w,token:w})),line:c.line,hold:c.hold,emphasis:i,phrase:c.phrase}]}));
+    const sim=s.simulation;
+    const shot={id:s.id,start:s.start,end:s.end,set,places,until:s.end-s.start,...(s.direction!==undefined?{direction:s.direction}:{}),
+      model:sim.keyframes?{keys:sim.keyframes.map(k=>({at:k.at,seconds:k.seconds,...(k.ease!==undefined?{ease:k.ease}:{})}))}:{from:sim.from,to:sim.to},
+      ...(s.transition?{transition:s.transition}:{}),...(s.fadeIn?{fadeIn:s.fadeIn}:{}),...(s.fadeOut?{fadeOut:s.fadeOut}:{}),cues};
+    return {id:s.id,narration:s.narration,speechOffset:s.speechOffset??.2,...(s.direction!==undefined?{direction:s.direction}:{}),
+      start:s.start,end:s.end,elements,shots:[shot]};
+  });
+  const series=e.series??e.title;
+  const sets=Object.fromEntries([...used].sort().map(kind=>[kind,{slots:[...PAPER_SETS[kind]],props:{brand:PAPER_BRAND,series}}]));
+  const film={format:e.format??FORMATS[0],resolved:true,id:e.id,title:e.title,...(e.series!==undefined?{series:e.series}:{}),
+    status:e.status,learningGoal:e.learningGoal,output:{...e.output},model:{...e.model},audio:e.audio,style:e.style??{},
+    cameras:e.cameras,layers:e.layers??{},evidence:e.evidence??{},sourceCode:Object.fromEntries(Object.entries(e.sourceCode??{}).map(([k,v])=>[k,{file:v.file,lines:v.lines}])),
+    stills:e.stills??{},clips:e.clips??{},credits:e.credits,release:e.release,stage:{modules:[],sets,elements:{}},chapters};
+  Object.assign(film,{source:'yaml',paths:e.paths,excerpts:e.sourceCode??{},pictureMedia:e.pictureMedia??{stills:{},clips:{}},
+    viewerApi:requiredViewerApi(e),wordTiming:{}});
+  return film;
 }
 
 export function contained(root,path) {

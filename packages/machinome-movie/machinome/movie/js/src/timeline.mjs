@@ -1,172 +1,307 @@
-// Pure time mapping: no wall clock, browser state or mechanical equations.
-import {codeAt} from './code.mjs';
+// The frame: a pure function of the resolved document and video time (design
+// D4 of the react-stage change; docs/movie-document.md, "The frame"). No wall
+// clock, browser state or mechanical equations. `film` is the resolved
+// document with what its load attached: the excerpts' pinned text
+// (`excerpts`) and the pictures' probes (`pictureMedia`).
+import {sourceState} from './code.mjs';
 import {ease,endSlope,keyedValue} from './easing.mjs';
-import {splitWords,evenCount,fadeOpacity} from './words.mjs';
-import {pictureAt} from './pictures.mjs';
-// Accepted episode formats, oldest first. Each accepts everything the one before
-// it does, with the same meaning; an episode without a format is a 0.2 episode.
+import {splitWords,evenCount} from './words.mjs';
+import {viewAt,clipFrameAt} from './pictures.mjs';
+import {effectiveStyle} from './style.mjs';
+import {boundedMatches} from './text.mjs';
+import {typedCount} from './words.mjs';
+
+// Accepted YAML episode formats, oldest first (docs/FORMAT.md). Each accepts
+// everything the one before it does, with the same meaning; an episode without
+// a format is a 0.2 episode.
 export const FORMATS=['machinome-video-draft/0.2','machinome-video-draft/0.3','machinome-video-draft/0.4'];
 export const formatAtLeast=(e,format)=>FORMATS.indexOf(e.format??FORMATS[0])>=FORMATS.indexOf(format);
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
-// Camera keys ease position, target and field of view along the curve named by
-// the key the move ends at (smooth unless it says otherwise). In a shot whose
-// keys share one up, it is carried exactly as authored; in a shot whose up
-// changes, up is always a unit vector: the two keys' unit directions mixed with
-// the same weight and normalized again (a hold normalizes the held direction).
+const near=(a,b)=>Math.abs(a-b)<1e-9;
+// Normalized progress through an entrance or exit or a transition, settled at
+// its ends so the rounding of video time cannot leave it a hair short.
+const settled=x=>Math.abs(x)<1e-9?0:Math.abs(x-1)<1e-9?1:x;
+const settle=(x,k)=>Math.abs(x-k)<1e-9?k:x;
+
+// A YAML camera key list as the old timeline read it, kept for the episode's
+// own checks (validateEpisode): camera at shot-local time.
 export function cameraAt(e,shot,local){
   let a=shot.camera[0],b=a;
   for(const key of shot.camera){if(key.at<=local)a=key;else{b=key;break;}b=a;}
   const ca=e.cameras[a.preset],cb=e.cameras[b.preset];
   const u=b.at===a.at?0:Math.min(1,(local-a.at)/(b.at-a.at));
-  const w=ease(b.ease??'smooth',u);
+  return between(ca,cb,ease(b.ease??'smooth',u),shot.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(ca.up)));
+}
+// Position, target and field of view mixed by the eased weight w; up carried
+// exactly when the two cameras share it, otherwise their unit directions mixed
+// and normalized again.
+function between(ca,cb,w,upChanges=JSON.stringify(ca.up)!==JSON.stringify(cb.up)){
   const mix=k=>ca[k].map((v,i)=>v+(cb[k][i]-v)*w);
   const fov=ca.fov===cb.fov?ca.fov:ca.fov+(cb.fov-ca.fov)*w;
   let up=ca.up;
-  const upChanges=shot.camera.some(k=>JSON.stringify(e.cameras[k.preset].up)!==JSON.stringify(ca.up));
   if(upChanges){const ua=unit(ca.up),ub=unit(cb.up);up=unit(ua.map((v,i)=>v+(ub[i]-v)*w));}
   return {view:{camera:mix('position'),target:mix('target')},up,fov};
-}
-// Normalized progress through an entrance or exit, settled at its ends so the
-// rounding of video time cannot leave a mark a hair short of plain (as transitions).
-const settled=x=>Math.abs(x)<1e-9?0:Math.abs(x-1)<1e-9?1:x;
-// Active annotations as data. Screen positions exist only in the posed page.
-// Past the shot's end (a transition's continuation) a cue with an exit has left.
-function annotationsAt(e,shot,on,local,past){
-  return (shot.annotations??[]).flatMap((a,index)=>{
-    // Subtracting a nonzero shot start can put a new mark's written cue
-    // boundary just below `from` (10.2 - 10 < 0.2). Settle comparisons only
-    // for the new 0.4 mark features: older and plain 0.4 cues keep their
-    // original frame behavior. `to` remains exclusive at its rounded value.
-    const newMark=a.kind==='ring'||a.padding!==undefined||a.enter!==undefined||a.leave!==undefined;
-    const active=newMark?local>=a.from-1e-9&&(local<a.to-1e-9||(past&&a.to===shot.end-shot.start)):on(a);
-    if(!active||(past&&a.leave))return [];
-    const target=a.point?{point:a.point}:{paths:typeof a.part==='string'?e.layers[a.part]:[a.part]};
-    const cue={index,kind:a.kind,text:a.text,target};
-    if(a.text===undefined)delete cue.text;
-    if(a.kind==='arrow')cue.place=a.place;else if(a.kind==='ring')cue.padding=a.padding??.01;else cue.offset=a.offset??[0,0];
-    cue.safeInset=e.style.safeInsetFraction;
-    // Opacity and drawn fraction (graphic-overlays D4), only for a cue that
-    // declares an entrance or exit: every other cue keeps its exact shape.
-    if(a.enter||a.leave){
-      const x=a.enter,y=a.leave;
-      const eIn=x?ease(x.ease??'smooth',settled((local-a.from)/x.duration)):1;
-      const fadeIn=x?.kind==='fade'?eIn:1;
-      const fadeOut=y?1-ease(y.ease??'smooth',settled((local-(a.to-y.duration))/y.duration)):1;
-      cue.opacity=Math.min(fadeIn,fadeOut);
-      cue.drawn=x?.kind==='draw'?eIn:1;
-    }
-    return [cue];
-  });
-}
-// Keep authored indices beside the renderer's active overlay choice without
-// putting them in frameAt's public request. Duplicate descriptions are legal.
-export function activeOverlayEntries(e,shot,local){
-  const duration=shot.end-shot.start,past=local>=duration;
-  const on=cue=>local>=cue.from&&(local<cue.to||(past&&cue.to===duration));
-  return shot.overlays.flatMap((cue,index)=>{
-    const animated=formatAtLeast(e,FORMATS[2])&&(cue.reveal||cue.position==='title'&&
-      (cue.subtitle!==undefined||cue.enter||cue.leave));
-    const active=animated?local>=cue.from-1e-9&&
-      (local<cue.to-1e-9||(past&&cue.to===duration)):on(cue);
-    return active?[{index,cue}]:[];
-  });
-}
-// The active highlight cue as data, with every choice explicit, or null.
-function highlightAt(e,shot,on){
-  const cue=(shot.highlight??[]).find(on);
-  if(!cue)return null;
-  return {paths:cue.parts.flatMap(part=>typeof part==='string'?e.layers[part]:[part]),
-    others:cue.others??'keep',color:cue.color??e.style.accent};
 }
 // Model seconds per video second at a shot's end: the last segment's average
 // rate times its curve's end slope, so a segment easing to rest, or a hold, holds.
 export function endRate(shot){
-  const s=shot.simulation,keys=s.keyframes??[{at:0,seconds:s.from},{at:shot.end-shot.start,seconds:s.to}];
+  const duration=shot.end-shot.start,m=shot.model;
+  const keys=m.keys??[{at:0,seconds:m.from},{at:duration,seconds:m.to}];
   const a=keys.at(-2),b=keys.at(-1);
   return (b.seconds-a.seconds)/(b.at-a.at)*endSlope(b.ease??'linear');
 }
-// The frame of one shot at shot-local time. Past the shot's end, while a
-// transition still shows it, the shot continues: its model runs on at its end
-// rate, its camera holds its last key, the cues that ran to its end stay, and
-// its code panel holds the completed excerpt.
-function shotFrame(e,shot,local){
-  const duration=shot.end-shot.start,past=local>=duration;
-  const on=c=>local>=c.from&&(local<c.to||(past&&c.to===duration));
-  const camera=cameraAt(e,shot,local);
+export function modelSecondsAt(shot,local){
+  const duration=shot.end-shot.start,m=shot.model;
+  const keys=m.keys??[{at:0,seconds:m.from},{at:duration,seconds:m.to}];
+  if(local>=duration)return keys.at(-1).seconds+endRate(shot)*(local-duration);
   // Model keyframes are linear unless the key a segment ends at names a curve.
-  const keys=shot.simulation.keyframes??[{at:0,seconds:shot.simulation.from},{at:duration,seconds:shot.simulation.to}];
-  const modelSeconds=past?shot.simulation.to+endRate(shot)*(local-duration)
-    :keyedValue(keys.map(k=>({at:k.at,value:k.seconds,ease:k.ease})),local,'linear');
-  const overlays=activeOverlayEntries(e,shot,local).map(({index,cue})=>{
-    if(!formatAtLeast(e,FORMATS[2])||(!cue.reveal&&!cue.enter&&!cue.leave))return cue;
-    const draw={...cue};
-    if(cue.reveal){
-      draw.words=splitWords(cue.text);
-      const count=draw.words.filter(p=>p.word).length;
-      if(cue.reveal.timing==='spoken'){
-        const onsets=e.wordTiming?.[shot.id]?.overlays?.[index]?.onsets;
-        if(!onsets)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
-        draw.shown=onsets.filter(t=>local>=Math.max(cue.from,t)-1e-9).length;
-      }else draw.shown=evenCount(count,local,cue.from,cue.reveal.duration,cue.reveal.ease??'linear');
-    }
-    if(cue.enter||cue.leave)draw.opacity=fadeOpacity(cue,local);
-    return draw;
-  });
-  const frame={shotId:shot.id,time:modelSeconds/e.model.expectedDurationSeconds,
-    view:camera.view,up:camera.up,fov:camera.fov,
-    hidden:shot.hiddenLayers.flatMap(k=>e.layers[k]),
-    overlays,
-    code:codeAt(e,shot,local)};
-  if(shot.layout==='source-only')frame.layout='source-only';
-  // Format 0.2 frames keep their exact shape; 0.3 and later frames always carry the new cues.
-  if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,on,local,past);frame.highlight=highlightAt(e,shot,on);}
-  // 0.4 frames always carry transition; a frame posed on its own has none.
-  if(formatAtLeast(e,FORMATS[2])){frame.transition=null;frame.picture=pictureAt(e,shot,local);}
-  return frame;
+  return keyedValue(keys.map(k=>({at:k.at,value:k.seconds,ease:k.ease})),local,'linear');
 }
-// Normalized progress through a transition, allowing for the rounding of video
-// time at the instants whose value must be exact (a midpoint, an end).
-const settle=(x,k)=>Math.abs(x-k)<1e-9?k:x;
-// The transition at video time t, or null (design D2, D4, D6). A transition
-// occupies the first seconds of the shot that declares it and fadeOut the last;
-// their bounds are compared in video time, as the shots' own are.
-function transitionAt(e,index,t){
-  const shot=e.shots[index],duration=shot.end-shot.start,local=t-shot.start;
+
+// Derived, per film, once: every shot with its chapter and index, and where
+// each view's camera stands when each shot starts (its last move's camera in
+// an earlier shot of the chapter). Pure; cached by the film object.
+const derived=new WeakMap();
+function index(film){
+  let d=derived.get(film);if(d)return d;
+  const shots=[],cameraAtStart=new Map();
+  for(const chapter of film.chapters){
+    const standing=new Map();
+    for(const [key,element] of Object.entries(chapter.elements))if(element.kind==='view')standing.set(key,element.camera);
+    for(const shot of chapter.shots){
+      shots.push({chapter,shot,index:shots.length});
+      for(const [key,camera] of standing)cameraAtStart.set(`${shot.id}/${key}`,camera);
+      for(const {action,cue} of actionsOf(shot).filter(x=>x.action.action==='move').sort((a,b)=>a.cue.at-b.cue.at))
+        standing.set(action.element,action.camera);
+    }
+  }
+  d={shots,cameraAtStart};derived.set(film,d);return d;
+}
+// Every action of a shot with its cue and its place (cues[i].actions[j]).
+function actionsOf(shot){
+  return shot.cues.flatMap((cue,i)=>cue.actions.map((action,j)=>({cue,action,id:`cues[${i}].actions[${j}]`})));
+}
+// A spanning action is on from its at, inclusive, to its until, exclusive;
+// past the shot's end (a transition's continuation) one that ran to the end stays.
+const on=(from,to,local,duration,past)=>local>=from-1e-9&&(local<to-1e-9||(past&&near(to,duration)));
+function fade(action,from,to,local){
+  const x=action.enter,y=action.leave;
+  const first=x?ease(x.ease??'smooth',settled((local-from)/x.duration)):1;
+  const last=y?1-ease(y.ease??'smooth',settled((local-(to-y.duration))/y.duration)):1;
+  return {first,last};
+}
+const pathsOf=(film,part)=>typeof part==='string'?film.layers[part]:[part];
+
+function viewState(film,chapter,shot,key,element,local,past){
+  const duration=shot.end-shot.start,own=actionsOf(shot).filter(x=>x.action.element===key);
+  // The camera: where the view stood when the shot began, then its moves.
+  let current=index(film).cameraAtStart.get(`${shot.id}/${key}`)??element.camera,camera=null;
+  const moves=own.filter(x=>x.action.action==='move').sort((a,b)=>a.cue.at-b.cue.at);
+  // In a shot whose moves change the view's up, up is always a unit vector,
+  // held or moving (docs/FORMAT.md, "camera"); otherwise it is carried exactly.
+  const upOf=name=>JSON.stringify(film.cameras[name].up);
+  const upChanges=moves.some(({action})=>upOf(action.camera)!==upOf(current));
+  for(const {cue,action} of moves){
+    if(local<cue.at)break;
+    if(local<action.until){
+      const u=Math.min(1,(local-cue.at)/(action.until-cue.at));
+      camera=between(film.cameras[current],film.cameras[action.camera],ease(action.ease??'smooth',u),upChanges);break;
+    }
+    current=action.camera;
+  }
+  if(!camera){const c=film.cameras[current];camera={view:{camera:[...c.position],target:[...c.target]},up:upChanges?unit(c.up):c.up,fov:c.fov};}
+  const highlight=own.find(x=>x.action.action==='highlight'&&on(x.cue.at,x.cue.until,local,duration,past));
+  const style=effectiveStyle(film.style);
+  const marks=own.flatMap(({cue,action,id})=>{
+    if(!['ring','label','arrow'].includes(action.action))return [];
+    if(!on(cue.at,cue.until,local,duration,past)||(past&&action.leave))return [];
+    const mark={id,kind:action.action,target:action.point?{point:action.point}:{paths:pathsOf(film,action.part)}};
+    if(action.text!==undefined)mark.text=action.text;
+    if(action.action==='arrow')mark.place=action.place;
+    else if(action.action==='ring')mark.padding=action.padding??.01;
+    else mark.offset=action.offset??[0,0];
+    const {first,last}=fade(action,cue.at,cue.until,local);
+    mark.opacity=Math.min(action.enter?.kind==='fade'?first:1,last);
+    mark.drawn=action.enter?.kind==='draw'?first:1;
+    return [mark];
+  });
+  return {kind:'view',time:modelSecondsAt(shot,local)/film.model.expectedDurationSeconds,
+    view:camera.view,up:camera.up,fov:camera.fov,
+    hidden:(element.hide??[]).flatMap(name=>film.layers[name]),
+    highlight:highlight?{paths:highlight.action.parts.flatMap(p=>pathsOf(film,p)),
+      others:highlight.action.others??'keep',color:highlight.action.color??style.accent}:null,
+    marks};
+}
+function titleState(shot,key,element,local,past){
+  const duration=shot.end-shot.start;
+  const shown=actionsOf(shot).find(x=>x.action.element===key&&x.action.action==='show'&&on(x.cue.at,x.cue.until,local,duration,past));
+  const base={kind:'title',shown:Boolean(shown),text:element.text,...(element.subtitle!==undefined?{subtitle:element.subtitle}:{})};
+  if(!shown)return {...base,opacity:0};
+  const {cue,action}=shown,{first,last}=fade(action,cue.at,cue.until,local),state={...base,opacity:Math.min(first,last)};
+  const reveal=action.reveal;
+  if(reveal){
+    state.words=splitWords(element.text);
+    if(reveal.timing==='spoken'){
+      if(!reveal.onsets)throw new Error(`Word timing is not resolved: shot ${shot.id}`);
+      state.revealed=reveal.onsets.filter(t=>local>=Math.max(cue.at,t)-1e-9).length;
+    }else state.revealed=evenCount(state.words.filter(p=>p.word).length,local,cue.at,reveal.duration,reveal.ease??'linear');
+  }
+  return state;
+}
+function pictureState(film,shot,key,element,local,past){
+  const duration=shot.end-shot.start,media=element.still!==undefined?'still':'clip',name=element[media];
+  const shown=actionsOf(shot).find(x=>x.action.element===key&&x.action.action==='show'&&on(x.cue.at,x.cue.until,local,duration,past));
+  const base={kind:'picture',shown:Boolean(shown),media,name,fit:element.fit??'contain'};
+  if(!shown)return {...base,opacity:0};
+  const {cue,action}=shown,{first,last}=fade(action,cue.at,cue.until,local);
+  const state={...base,opacity:past&&action.leave?0:Math.min(first,last)};
+  if(media==='still')state.view=viewAt(action.view,local);
+  else{
+    const probe=film.pictureMedia?.clips?.[name];
+    if(!probe)throw new Error(`Picture media is not resolved: ${name} in shot ${shot.id}`);
+    state.view={center:[.5,.5],zoom:1};
+    state.clipSeconds=(element.inPoint??0)+Math.max(0,local-cue.at);
+    state.frame=clipFrameAt(probe.timestamps,state.clipSeconds);
+  }
+  return state;
+}
+function projectState(shot,key,element,local,past){
+  const duration=shot.end-shot.start;
+  const actions=actionsOf(shot).filter(x=>x.action.element===key&&on(x.cue.at,x.cue.until,local,duration,past))
+    .map(({cue,action})=>({action:action.action,params:action.params,since:cue.at,until:cue.until,
+      progress:Math.min(1,Math.max(0,settled((local-cue.at)/(cue.until-cue.at))))}));
+  return {kind:element.kind,props:element.props,actions};
+}
+
+// The frame of one shot at shot-local time. Past the shot's end, while a
+// transition still shows it, the shot continues (design D4).
+function shotFrame(film,chapter,shot,local,time){
+  const past=local>=shot.end-shot.start,slots={},elements={};
+  for(const [slot,key] of Object.entries(shot.places)){
+    const element=chapter.elements[key],id=`${chapter.id}.${key}`;
+    slots[slot]=id;
+    elements[id]=element.kind==='view'?viewState(film,chapter,shot,key,element,local,past)
+      :element.kind==='source'?sourceState(film,chapter,shot,key,element,local)
+      :element.kind==='title'?titleState(shot,key,element,local,past)
+      :element.kind==='picture'?pictureState(film,shot,key,element,local,past)
+      :projectState(shot,key,element,local,past);
+  }
+  return {time,chapterId:chapter.id,shotId:shot.id,set:shot.set,slots,elements,transition:null};
+}
+// The transition at video time t, or null. A transition occupies the first
+// seconds of the shot that declares it and fadeOut the last.
+function transitionAt(film,at,t){
+  const {chapter,shot,index:i}=at,duration=shot.end-shot.start,local=t-shot.start,style=effectiveStyle(film.style);
   const base=(field,spec,kind)=>({field,kind,shotId:shot.id,duration:spec.duration,ease:spec.ease??'smooth'});
-  const plate=(field,spec,opacity)=>({...base(field,spec,'fade'),color:spec.color??e.style.background,plate:opacity,picture:'incoming',outgoing:null});
+  const plate=(field,spec,opacity)=>({...base(field,spec,'fade'),color:spec.color??style.background,plate:opacity,picture:'incoming',outgoing:null});
   if(shot.fadeIn&&t<shot.start+shot.fadeIn.duration){
     const f=shot.fadeIn;return plate('fadeIn',f,1-ease(f.ease??'smooth',local/f.duration));
   }
   const x=shot.transition;
   if(x&&t<shot.start+x.duration){
-    const prior=e.shots[index-1],u=local,d=x.duration,name=x.ease??'smooth';
-    const outgoing=()=>shotFrame(e,prior,prior.end-prior.start+u);
-    const join={...base('transition',x,x.kind),outgoingShotId:prior.id,start:shot.start};
+    const prior=index(film).shots[i-1],u=local,d=x.duration,name=x.ease??'smooth';
+    const outgoing=()=>shotFrame(film,prior.chapter,prior.shot,prior.shot.end-prior.shot.start+u,t);
+    const join={...base('transition',x,x.kind),outgoingShotId:prior.shot.id,start:shot.start};
     if(x.kind==='fade'){
       // Through the colour: the outgoing picture under a rising plate, then the incoming under a falling one.
       const h=settle(2*u/d,1);
-      return h<1?{...join,color:x.color??e.style.background,plate:ease(name,h),picture:'outgoing',outgoing:outgoing()}
-        :{...join,color:x.color??e.style.background,plate:1-ease(name,h-1),picture:'incoming',outgoing:null};
+      return h<1?{...join,color:x.color??style.background,plate:ease(name,h),picture:'outgoing',outgoing:outgoing()}
+        :{...join,color:x.color??style.background,plate:1-ease(name,h-1),picture:'incoming',outgoing:null};
     }
-    const t={...join,progress:ease(name,u/d)};
-    if(x.kind!=='dissolve')t.direction=x.direction??'left';
-    t.outgoing=outgoing();
-    return t;
+    const result={...join,progress:ease(name,u/d)};
+    if(x.kind!=='dissolve')result.direction=x.direction??'left';
+    result.outgoing=outgoing();
+    return result;
   }
   const f=shot.fadeOut;
   if(f&&t>=shot.end-f.duration){
     // Complete on the film's last frame, at end - 1/fps.
-    const r=settle((local-(duration-f.duration))/(f.duration-1/e.output.fps),1);
+    const r=settle((local-(duration-f.duration))/(f.duration-1/film.output.fps),1);
     return plate('fadeOut',f,ease(f.ease??'smooth',Math.min(1,r)));
   }
   return null;
 }
-export function frameAt(e, t, captions=[]) {
-  const index=e.shots.findIndex(s=>t>=s.start && t<s.end);
-  if(index<0)throw new Error(`Frame time ${t} is outside the episode`);
-  const shot=e.shots[index],frame=shotFrame(e,shot,t-shot.start);
-  if(formatAtLeast(e,FORMATS[2]))frame.transition=transitionAt(e,index,t);
+export function frameAt(film,t){
+  const at=index(film).shots.find(({shot})=>t>=shot.start&&t<shot.end);
+  if(!at)throw new Error(`Frame time ${t} is outside the film`);
+  const frame=shotFrame(film,at.chapter,at.shot,t-at.shot.start,t);
+  frame.transition=transitionAt(film,at,t);
   return frame;
+}
+// Every shot of the film in order with its chapter and index.
+export const filmShots=film=>index(film).shots;
+export const shotActions=actionsOf;
+
+// Where each emphasised token is in its excerpt's text (UTF-16 offsets, as
+// the stage's ranges count), on its line when the action names one.
+export function tokenRange(snippet,token,line){
+  const text=snippet.text;
+  if(line===undefined){const [start]=boundedMatches(text,token);return {start,end:start+token.length};}
+  const lines=text.split('\n'),index=line-snippet.lines[0];
+  const lineStart=lines.slice(0,index).reduce((n,s)=>n+s.length+1,0);
+  const [within]=boundedMatches(lines[index],token);
+  return {start:lineStart+within,end:lineStart+within+token.length};
+}
+
+// The checks of a loaded movie that need its excerpts, its media or its
+// frames (design D2.4). A YAML film is checked by validateEpisode instead.
+export function checkFilm(film){
+  const {shots}=index(film),fps=film.output.fps;
+  for(const {chapter,shot,index:i} of shots){
+    const where=`chapter ${chapter.id}, shot ${shot.id}`,duration=shot.end-shot.start;
+    for(const {cue,action,id} of actionsOf(shot)){
+      const element=chapter.elements[action.element];
+      if(action.action==='emphasize'){
+        const snippet=film.excerpts[element.source],cps=text=>Array.from(text).length;
+        action.words.forEach((word,k)=>{
+          const range=tokenRange(snippet,word.token,action.line);
+          const typed=typedAt(film,chapter,shot,action.element,word.at);
+          if(cps(snippet.text.slice(0,range.end))>typed)
+            throw new Error(`${where}, ${id}, words[${k}].token: the token '${word.token}' is not yet typed when '${word.spoken}' is spoken (${(shot.start+word.at).toFixed(2)} s)`);
+        });
+      }
+      if(element.kind==='picture'&&element.clip!==undefined){
+        const media=film.pictureMedia.clips[element.clip],next=shots[i+1]?.shot.transition;
+        const continuation=near(cue.until,duration)&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+        const required=(element.inPoint??0)+(cue.until-cue.at)+continuation;
+        if(required>media.end+1e-9)throw new Error(`${where}, ${id}: clip ${element.clip} ends at ${media.end.toFixed(2)} s, before the ${required.toFixed(2)} s the cue and its continuation need`);
+      }
+    }
+    // Every output frame keeps a view's up at least about half a degree away
+    // from its view direction, before a viewer would refuse it mid-render.
+    for(const [slot,key] of Object.entries(shot.places)){
+      if(chapter.elements[key].kind!=='view')continue;
+      for(let n=Math.ceil(shot.start*fps-1e-9);n/fps<shot.end-1e-9;n++){
+        const state=viewState(film,chapter,shot,key,chapter.elements[key],n/fps-shot.start,false);
+        const forward=unit(state.view.target.map((v,k)=>v-state.view.camera[k]));
+        const cos=Math.abs(forward.reduce((s,v,k)=>s+v*unit(state.up)[k],0));
+        if(!(cos<Math.cos(.5*Math.PI/180)))throw new Error(`Camera up lies along the view direction in shot ${shot.id} (places.${slot}) at ${(n/fps).toFixed(2)} s`);
+      }
+    }
+  }
+}
+// Characters a source panel has typed at shot-local `local`, across its chapter.
+export function typedAt(film,chapter,shot,key,local){
+  const element=chapter.elements[key],snippet=film.excerpts[element.source];
+  const lines=snippet.text.split('\n'),upTo=through=>Array.from(lines.slice(0,through-snippet.lines[0]+1).join('\n')).length;
+  let prior=0;
+  for(const s of chapter.shots){
+    if(s===shot)break;
+    for(const {action} of actionsOf(s))if(action.element===key&&action.action==='type')prior=Math.max(prior,upTo(action.throughLine));
+  }
+  const typings=actionsOf(shot).filter(x=>x.action.element===key&&x.action.action==='type')
+    .map(({cue,action})=>({at:cue.at,over:action.over,throughLine:action.throughLine}));
+  if(!typings.length)return prior;
+  // Continue from where the chapter's typing stopped.
+  let count=prior,from=prior;
+  for(const cue of typings){
+    const end=upTo(cue.throughLine);
+    if(local<cue.at)break;
+    count=from+Math.floor((end-from)*Math.min(1,(local-cue.at)/cue.over));
+    if(local<cue.at+cue.over)break;
+    from=end;
+  }
+  return count;
 }
 
 export function captionsFromAlignment(a, offset=0) {

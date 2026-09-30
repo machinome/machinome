@@ -1,6 +1,6 @@
 {
-  "format": "machinome-video-draft/0.4",
-  "movie": "machinome-movie/0.1",
+  "format": "machinome-movie/0.2",
+  "resolved": true,
   "audio": {
     "direction": "Plain and unhurried.",
     "model": "eleven_v3",
@@ -117,11 +117,16 @@
     ]
   },
   "learningGoal": "Exercise every construct the validation film uses.",
+  "marks": {
+    "fall": 15,
+    "rise": 5,
+    "top": 10
+  },
   "model": {
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Fixture export written by hand; nothing is simulated.",
-    "sourceRevision": "6bf22d069229248c0a3208ab7a70900a295afa50",
+    "sourceRevision": "6aebe87e9cd5a55724225917e771e8357ee7d3cf",
     "timeMode": "normalized-loop"
   },
   "release": {
@@ -129,6 +134,7 @@
     "simulationUrl": null,
     "sourceUrl": null
   },
+  "root": "../../python/tests/fixtures/project/videos/tour",
   "series": "VIDEOMAKER · FIXTURES",
   "sourceCode": {
     "declaration": {
@@ -137,6 +143,61 @@
         22,
         24
       ]
+    }
+  },
+  "stage": {
+    "elements": {
+      "tally": {
+        "actions": {
+          "light": {
+            "item": "string"
+          }
+        },
+        "module": "stage.tsx",
+        "props": {
+          "items": "list"
+        }
+      }
+    },
+    "modules": [
+      "stage.tsx"
+    ],
+    "sets": {
+      "frame": {
+        "slots": [
+          "stage"
+        ]
+      },
+      "playbill": {
+        "module": "stage.tsx",
+        "props": {
+          "series": "VIDEOMAKER · FIXTURES"
+        },
+        "slots": [
+          "stage",
+          "plate",
+          "headline",
+          "aside"
+        ]
+      },
+      "playbill-split": {
+        "base": "playbill",
+        "module": "stage.tsx",
+        "props": {
+          "series": "VIDEOMAKER · FIXTURES"
+        },
+        "slots": [
+          "left",
+          "right",
+          "headline"
+        ]
+      },
+      "split": {
+        "slots": [
+          "left",
+          "right"
+        ]
+      }
     }
   },
   "status": "rehearsal",
@@ -160,7 +221,7 @@
     "fps": 30,
     "height": 720,
     "width": 1280,
-    "durationSeconds": 19.1
+    "durationSeconds": 18.9
   },
   "chapters": [
     {
@@ -169,527 +230,653 @@
       "speechOffset": 0.2,
       "start": 0,
       "end": 4.766666666666667,
+      "elements": {
+        "card": {
+          "kind": "tally",
+          "props": {
+            "items": [
+              "Balance",
+              "Tip"
+            ]
+          }
+        },
+        "title": {
+          "kind": "title",
+          "subtitle": "One beam, one stand",
+          "text": "SEESAW"
+        },
+        "wide": {
+          "camera": "far",
+          "kind": "view"
+        }
+      },
       "shots": [
-        "hook",
-        "question"
+        {
+          "id": "hook",
+          "start": 0,
+          "end": 2.433333333333333,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "move",
+                  "camera": "near",
+                  "ease": "out",
+                  "element": "wide",
+                  "until": 2.433333333333333
+                }
+              ],
+              "at": 0
+            },
+            {
+              "actions": [
+                {
+                  "action": "light",
+                  "element": "card",
+                  "params": {
+                    "item": "Balance"
+                  }
+                }
+              ],
+              "at": 0.7333333333333333,
+              "until": 2.433333333333333
+            }
+          ],
+          "fadeIn": {
+            "duration": 1
+          },
+          "model": {
+            "from": 0,
+            "to": 4
+          },
+          "places": {
+            "aside": "card",
+            "stage": "wide"
+          },
+          "set": "playbill",
+          "until": 2.433333333333333
+        },
+        {
+          "id": "question",
+          "start": 2.433333333333333,
+          "end": 4.766666666666667,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "light",
+                  "element": "card",
+                  "params": {
+                    "item": "Tip"
+                  }
+                }
+              ],
+              "at": 1.2000000000000002,
+              "until": 2.3333333333333335
+            },
+            {
+              "actions": [
+                {
+                  "action": "show",
+                  "element": "title",
+                  "enter": {
+                    "duration": 0.6,
+                    "kind": "fade"
+                  },
+                  "leave": {
+                    "duration": 0.6,
+                    "kind": "fade"
+                  }
+                }
+              ],
+              "at": 0,
+              "until": 1.5333333333333337
+            }
+          ],
+          "model": {
+            "from": 4,
+            "to": 8
+          },
+          "places": {
+            "aside": "card",
+            "headline": "title",
+            "stage": "wide"
+          },
+          "set": "playbill",
+          "until": 2.3333333333333335
+        }
       ]
     },
     {
       "id": "balance",
-      "narration": "A stand carries the plank. In the source, the beam rests on its pivot. The weight pushes one end down.",
+      "narration": "A stand carries the plank. In the source, the stand holds the beam. The weight pushes one end down.",
       "speechOffset": 0.2,
       "start": 4.766666666666667,
-      "end": 11.633333333333333,
+      "end": 11.433333333333334,
+      "elements": {
+        "code": {
+          "kind": "source",
+          "source": "declaration"
+        },
+        "mill": {
+          "camera": "side",
+          "hide": [
+            "ground"
+          ],
+          "kind": "view"
+        }
+      },
       "shots": [
-        "holds",
-        "source",
-        "push"
+        {
+          "id": "holds",
+          "start": 4.766666666666667,
+          "end": 6.6,
+          "cues": [],
+          "model": {
+            "from": 8,
+            "to": 10
+          },
+          "places": {
+            "stage": "mill"
+          },
+          "set": "frame",
+          "until": 1.833333333333333
+        },
+        {
+          "id": "source",
+          "start": 6.6,
+          "end": 9.033333333333333,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "type",
+                  "element": "code",
+                  "over": 0.8,
+                  "throughLine": 24
+                }
+              ],
+              "at": 0
+            },
+            {
+              "actions": [
+                {
+                  "action": "highlight",
+                  "element": "mill",
+                  "others": "ghost",
+                  "parts": [
+                    [
+                      "Stand"
+                    ]
+                  ]
+                }
+              ],
+              "at": 0.9000000000000004,
+              "until": 1.833333333333334
+            },
+            {
+              "actions": [
+                {
+                  "action": "highlight",
+                  "element": "mill",
+                  "others": "ghost",
+                  "parts": [
+                    [
+                      "Beam"
+                    ]
+                  ]
+                }
+              ],
+              "at": 1.833333333333334,
+              "until": 2.4333333333333336
+            },
+            {
+              "actions": [
+                {
+                  "action": "emphasize",
+                  "element": "code",
+                  "hold": 0.6,
+                  "words": [
+                    {
+                      "spoken": "stand",
+                      "token": "Stand",
+                      "at": 1.126666666666667
+                    },
+                    {
+                      "spoken": "beam",
+                      "token": "beam",
+                      "at": 2.0866666666666673
+                    }
+                  ],
+                  "until": 2.4333333333333336
+                }
+              ],
+              "at": 0.9000000000000004
+            }
+          ],
+          "model": {
+            "from": 10,
+            "to": 12
+          },
+          "places": {
+            "left": "code",
+            "right": "mill"
+          },
+          "set": "playbill-split",
+          "transition": {
+            "duration": 0.6,
+            "kind": "dissolve"
+          },
+          "until": 2.4333333333333336
+        },
+        {
+          "id": "push",
+          "start": 9.033333333333333,
+          "end": 11.433333333333334,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "move",
+                  "camera": "near",
+                  "ease": "smooth",
+                  "element": "mill",
+                  "until": 1.8000000000000007
+                }
+              ],
+              "at": 0
+            },
+            {
+              "actions": [
+                {
+                  "action": "emphasize",
+                  "element": "code",
+                  "hold": 0.4,
+                  "line": 22,
+                  "words": [
+                    {
+                      "spoken": "one end",
+                      "token": "Block",
+                      "at": 1.0933333333333337
+                    }
+                  ],
+                  "until": 2.2133333333333334
+                }
+              ],
+              "at": 0.6666666666666661
+            },
+            {
+              "actions": [
+                {
+                  "action": "arrow",
+                  "element": "mill",
+                  "enter": {
+                    "duration": 0.8,
+                    "kind": "draw"
+                  },
+                  "leave": {
+                    "duration": 0.4,
+                    "kind": "fade"
+                  },
+                  "part": [
+                    "Beam",
+                    "Weight"
+                  ],
+                  "place": [
+                    0.2,
+                    0.25
+                  ],
+                  "text": "Weight"
+                }
+              ],
+              "at": 0,
+              "until": 2.4000000000000004
+            }
+          ],
+          "model": {
+            "from": 12,
+            "to": 16
+          },
+          "places": {
+            "left": "code",
+            "right": "mill"
+          },
+          "set": "split",
+          "transition": {
+            "direction": "right",
+            "duration": 0.6,
+            "kind": "wipe"
+          },
+          "until": 2.4000000000000004
+        }
       ]
     },
     {
       "id": "tip",
       "narration": "Watch the plank rise and fall. On the way down, the stand takes the load. Up. Down. Explore the model.",
       "speechOffset": 0.2,
-      "start": 11.633333333333333,
-      "end": 19.1,
-      "shots": [
-        "rise",
-        "rhythm",
-        "still",
-        "invitation"
-      ]
-    }
-  ],
-  "shots": [
-    {
-      "id": "hook",
-      "start": 0,
-      "end": 2.433333333333333,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "far"
+      "start": 11.433333333333334,
+      "end": 18.9,
+      "elements": {
+        "beat": {
+          "kind": "title",
+          "text": "Up. Down."
         },
-        {
-          "at": 2.433333333333333,
-          "ease": "out",
-          "preset": "near"
-        }
-      ],
-      "evidence": [],
-      "fadeIn": {
-        "duration": 1
-      },
-      "hiddenLayers": [],
-      "overlays": [],
-      "simulation": {
-        "from": 0,
-        "to": 4
-      }
-    },
-    {
-      "id": "question",
-      "start": 2.433333333333333,
-      "end": 4.766666666666667,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "near"
-        }
-      ],
-      "evidence": [],
-      "hiddenLayers": [],
-      "overlays": [
-        {
-          "enter": {
-            "duration": 0.6,
-            "kind": "fade"
-          },
-          "from": 0,
-          "leave": {
-            "duration": 0.6,
-            "kind": "fade"
-          },
-          "position": "title",
-          "subtitle": "One beam, one stand",
-          "text": "SEESAW",
-          "to": 1.5333333333333337
-        }
-      ],
-      "simulation": {
-        "from": 4,
-        "to": 8
-      }
-    },
-    {
-      "id": "holds",
-      "start": 4.766666666666667,
-      "end": 6.6,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "side"
-        }
-      ],
-      "evidence": [],
-      "hiddenLayers": [
-        "ground"
-      ],
-      "overlays": [],
-      "simulation": {
-        "from": 8,
-        "to": 10
-      }
-    },
-    {
-      "id": "source",
-      "start": 6.6,
-      "end": 9.233333333333333,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "side"
-        }
-      ],
-      "code": {
-        "emphasis": [
-          {
-            "hold": 0,
-            "line": 24,
-            "phrase": "the beam rests on its pivot",
-            "words": [
-              "beam"
-            ]
-          }
-        ],
-        "snippet": "declaration",
-        "typing": [
-          {
-            "from": 0,
-            "throughLine": 24,
-            "to": 1.2
-          }
-        ]
-      },
-      "evidence": [],
-      "hiddenLayers": [
-        "ground"
-      ],
-      "highlight": [
-        {
-          "from": 1.1333333333333337,
-          "others": "ghost",
-          "parts": [
-            [
-              "Beam"
-            ]
+        "close": {
+          "camera": "near",
+          "hide": [
+            "ground"
           ],
-          "to": 2.200000000000001
+          "kind": "view"
         },
-        {
-          "from": 2.200000000000001,
-          "others": "ghost",
-          "parts": [
-            [
-              "Beam",
-              "pivot"
-            ]
-          ],
-          "to": 2.633333333333333
-        }
-      ],
-      "overlays": [],
-      "simulation": {
-        "from": 10,
-        "to": 12
-      },
-      "transition": {
-        "duration": 0.6,
-        "kind": "dissolve"
-      }
-    },
-    {
-      "id": "push",
-      "start": 9.233333333333333,
-      "end": 11.633333333333333,
-      "direction": "",
-      "annotations": [
-        {
-          "enter": {
-            "duration": 0.8,
-            "kind": "draw"
-          },
-          "from": 0,
-          "kind": "arrow",
-          "leave": {
-            "duration": 0.4,
-            "kind": "fade"
-          },
-          "part": [
-            "Beam",
-            "Weight"
-          ],
-          "place": [
-            0.2,
-            0.25
-          ],
-          "text": "Weight",
-          "to": 2.4000000000000004
-        }
-      ],
-      "camera": [
-        {
-          "at": 0,
-          "preset": "side"
+        "heading": {
+          "kind": "title",
+          "text": "Rise and fall"
         },
-        {
-          "at": 1.8000000000000007,
-          "ease": "smooth",
-          "preset": "near"
-        }
-      ],
-      "evidence": [],
-      "hiddenLayers": [
-        "ground"
-      ],
-      "overlays": [],
-      "simulation": {
-        "from": 12,
-        "to": 16
-      },
-      "transition": {
-        "direction": "right",
-        "duration": 0.6,
-        "kind": "wipe"
-      }
-    },
-    {
-      "id": "rise",
-      "start": 11.633333333333333,
-      "end": 16.266666666666666,
-      "direction": "",
-      "annotations": [
-        {
-          "enter": {
-            "duration": 0.8,
-            "kind": "draw"
-          },
-          "from": 0.5666666666666664,
-          "kind": "ring",
-          "leave": {
-            "duration": 0.4,
-            "kind": "fade"
-          },
-          "part": [
-            "Beam",
-            "Plank"
-          ],
-          "to": 2.0666666666666664
-        },
-        {
-          "enter": {
-            "duration": 0.4,
-            "kind": "fade"
-          },
-          "from": 0.5666666666666664,
-          "kind": "label",
-          "leave": {
-            "duration": 0.4,
-            "kind": "fade"
-          },
-          "offset": [
-            0.12,
-            -0.08
-          ],
-          "part": [
-            "Beam",
-            "Plank"
-          ],
-          "text": "Plank",
-          "to": 2.0666666666666664
-        },
-        {
-          "enter": {
-            "duration": 0.8,
-            "kind": "draw"
-          },
-          "from": 3.0666666666666664,
-          "kind": "ring",
-          "part": [
-            "Stand"
-          ],
-          "to": 4.633333333333333
-        },
-        {
-          "enter": {
-            "duration": 0.4,
-            "kind": "fade"
-          },
-          "from": 3.0666666666666664,
-          "kind": "label",
-          "offset": [
-            0.12,
-            0.08
-          ],
-          "part": [
-            "Stand"
-          ],
-          "text": "Stand",
-          "to": 4.633333333333333
-        }
-      ],
-      "camera": [
-        {
-          "at": 0,
-          "preset": "near"
-        }
-      ],
-      "evidence": [],
-      "hiddenLayers": [
-        "ground"
-      ],
-      "highlight": [
-        {
-          "from": 0.5666666666666664,
-          "others": "ghost",
-          "parts": [
-            [
-              "Beam",
-              "Plank"
-            ],
-            [
-              "Beam",
-              "Weight"
-            ]
-          ],
-          "to": 2.0666666666666664
-        },
-        {
-          "from": 3.0666666666666664,
-          "others": "dim",
-          "parts": [
-            [
-              "Stand"
-            ]
-          ],
-          "to": 4.633333333333333
-        }
-      ],
-      "overlays": [
-        {
-          "from": 0,
-          "position": "top",
-          "text": "Rise",
-          "to": 2.0666666666666664
-        },
-        {
-          "from": 2.0666666666666664,
-          "position": "top",
-          "text": "Fall",
-          "to": 4.633333333333333
-        }
-      ],
-      "simulation": {
-        "from": 5,
-        "keyframes": [
-          {
-            "at": 0,
-            "seconds": 5
-          },
-          {
-            "at": 2.0666666666666664,
-            "ease": "out",
-            "seconds": 10
-          },
-          {
-            "at": 4.633333333333333,
-            "seconds": 15
-          }
-        ],
-        "to": 15
-      }
-    },
-    {
-      "id": "rhythm",
-      "start": 16.266666666666666,
-      "end": 16.866666666666667,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "near"
-        },
-        {
-          "at": 0.6000000000000014,
-          "ease": "smooth",
-          "preset": "rolled"
-        }
-      ],
-      "evidence": [],
-      "hiddenLayers": [
-        "ground"
-      ],
-      "overlays": [
-        {
-          "from": 0,
-          "position": "top",
-          "reveal": {
-            "timing": "spoken"
-          },
-          "text": "Up. Down.",
-          "to": 0.6000000000000014
-        }
-      ],
-      "simulation": {
-        "from": 16,
-        "to": 17
-      },
-      "transition": {
-        "duration": 0.6,
-        "kind": "dissolve"
-      }
-    },
-    {
-      "id": "still",
-      "start": 16.866666666666667,
-      "end": 17.366666666666667,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "rolled"
-        }
-      ],
-      "evidence": [],
-      "hiddenLayers": [
-        "ground"
-      ],
-      "overlays": [],
-      "pictures": [
-        {
-          "area": "frame",
-          "enter": {
-            "duration": 0.5,
-            "kind": "fade"
-          },
+        "plate": {
           "fit": "contain",
-          "from": 0,
-          "leave": {
-            "duration": 0.5,
-            "kind": "fade"
-          },
-          "still": "plate",
-          "to": 0.5,
-          "view": [
+          "kind": "picture",
+          "still": "plate"
+        },
+        "wide": {
+          "camera": "far",
+          "hide": [
+            "ground",
+            "load"
+          ],
+          "kind": "view"
+        }
+      },
+      "shots": [
+        {
+          "id": "rise",
+          "start": 11.433333333333334,
+          "end": 16.066666666666666,
+          "cues": [
             {
-              "at": 0,
-              "center": [
-                0.5,
-                0.5
+              "actions": [
+                {
+                  "action": "show",
+                  "element": "heading",
+                  "enter": {
+                    "duration": 0.4,
+                    "kind": "fade"
+                  }
+                }
               ],
-              "zoom": 1
+              "at": 0,
+              "until": 4.633333333333333
             },
             {
-              "at": 0.3000000000000007,
-              "center": [
-                0.5,
-                0.42
+              "actions": [
+                {
+                  "action": "ring",
+                  "element": "close",
+                  "enter": {
+                    "duration": 0.8,
+                    "kind": "draw"
+                  },
+                  "leave": {
+                    "duration": 0.4,
+                    "kind": "fade"
+                  },
+                  "part": [
+                    "Beam",
+                    "Plank"
+                  ]
+                },
+                {
+                  "action": "label",
+                  "element": "close",
+                  "enter": {
+                    "duration": 0.4,
+                    "kind": "fade"
+                  },
+                  "leave": {
+                    "duration": 0.4,
+                    "kind": "fade"
+                  },
+                  "offset": [
+                    0.12,
+                    -0.08
+                  ],
+                  "part": [
+                    "Beam",
+                    "Plank"
+                  ],
+                  "text": "Plank"
+                },
+                {
+                  "action": "highlight",
+                  "element": "close",
+                  "others": "ghost",
+                  "parts": [
+                    [
+                      "Beam",
+                      "Plank"
+                    ],
+                    [
+                      "Beam",
+                      "Weight"
+                    ]
+                  ]
+                }
               ],
-              "ease": "in-out",
-              "zoom": 1.4
+              "at": 0.5666666666666664,
+              "until": 2.0666666666666664
+            },
+            {
+              "actions": [
+                {
+                  "action": "ring",
+                  "element": "close",
+                  "enter": {
+                    "duration": 0.8,
+                    "kind": "draw"
+                  },
+                  "part": [
+                    "Stand"
+                  ]
+                },
+                {
+                  "action": "label",
+                  "element": "close",
+                  "enter": {
+                    "duration": 0.4,
+                    "kind": "fade"
+                  },
+                  "offset": [
+                    0.12,
+                    0.08
+                  ],
+                  "part": [
+                    "Stand"
+                  ],
+                  "text": "Stand"
+                },
+                {
+                  "action": "highlight",
+                  "element": "close",
+                  "others": "dim",
+                  "parts": [
+                    [
+                      "Stand"
+                    ]
+                  ]
+                }
+              ],
+              "at": 3.0666666666666664,
+              "until": 4.633333333333333
             }
-          ]
-        }
-      ],
-      "simulation": {
-        "from": 17,
-        "to": 18
-      }
-    },
-    {
-      "id": "invitation",
-      "start": 17.366666666666667,
-      "end": 19.1,
-      "direction": "",
-      "camera": [
-        {
-          "at": 0,
-          "preset": "far"
-        }
-      ],
-      "evidence": [],
-      "fadeOut": {
-        "duration": 1.2
-      },
-      "hiddenLayers": [
-        "ground",
-        "load"
-      ],
-      "highlight": [
-        {
-          "from": 0,
-          "others": "dim",
-          "parts": [
-            [
-              "Beam"
-            ]
           ],
-          "to": 1.7333333333333343
+          "model": {
+            "keys": [
+              {
+                "at": 0,
+                "seconds": 5
+              },
+              {
+                "at": 2.0666666666666664,
+                "ease": "out",
+                "seconds": 10
+              },
+              {
+                "at": 4.633333333333333,
+                "seconds": 15
+              }
+            ]
+          },
+          "places": {
+            "headline": "heading",
+            "stage": "close"
+          },
+          "set": "playbill",
+          "until": 4.633333333333333
+        },
+        {
+          "id": "rhythm",
+          "start": 16.066666666666666,
+          "end": 16.666666666666668,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "move",
+                  "camera": "rolled",
+                  "ease": "smooth",
+                  "element": "close",
+                  "until": 0.6000000000000014
+                }
+              ],
+              "at": 0
+            },
+            {
+              "actions": [
+                {
+                  "action": "show",
+                  "element": "beat",
+                  "reveal": {
+                    "timing": "spoken",
+                    "onsets": [
+                      0.006666666666666821,
+                      0.24666666666666615
+                    ]
+                  }
+                }
+              ],
+              "at": 0,
+              "until": 0.6000000000000014
+            }
+          ],
+          "model": {
+            "from": 16,
+            "to": 17
+          },
+          "places": {
+            "headline": "beat",
+            "stage": "close"
+          },
+          "set": "playbill",
+          "transition": {
+            "duration": 0.6,
+            "kind": "dissolve"
+          },
+          "until": 0.6000000000000014
+        },
+        {
+          "id": "still",
+          "start": 16.666666666666668,
+          "end": 17.166666666666668,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "show",
+                  "element": "plate",
+                  "enter": {
+                    "duration": 0.5,
+                    "kind": "fade"
+                  },
+                  "leave": {
+                    "duration": 0.5,
+                    "kind": "fade"
+                  },
+                  "view": [
+                    {
+                      "at": 0,
+                      "center": [
+                        0.5,
+                        0.5
+                      ],
+                      "zoom": 1
+                    },
+                    {
+                      "at": 0.29999999999999716,
+                      "center": [
+                        0.5,
+                        0.42
+                      ],
+                      "ease": "in-out",
+                      "zoom": 1.4
+                    }
+                  ]
+                }
+              ],
+              "at": 0,
+              "until": 0.5
+            }
+          ],
+          "model": {
+            "from": 17,
+            "to": 18
+          },
+          "places": {
+            "plate": "plate",
+            "stage": "close"
+          },
+          "set": "playbill",
+          "until": 0.5
+        },
+        {
+          "id": "invitation",
+          "start": 17.166666666666668,
+          "end": 18.9,
+          "cues": [
+            {
+              "actions": [
+                {
+                  "action": "highlight",
+                  "element": "wide",
+                  "others": "dim",
+                  "parts": [
+                    [
+                      "Beam"
+                    ]
+                  ]
+                }
+              ],
+              "at": 0,
+              "until": 1.7333333333333307
+            }
+          ],
+          "fadeOut": {
+            "duration": 1.2
+          },
+          "model": {
+            "from": 18,
+            "to": 19
+          },
+          "places": {
+            "stage": "wide"
+          },
+          "set": "frame",
+          "transition": {
+            "duration": 0.6,
+            "kind": "dissolve"
+          },
+          "until": 1.7333333333333307
         }
-      ],
-      "overlays": [],
-      "simulation": {
-        "from": 18,
-        "to": 19
-      },
-      "transition": {
-        "duration": 0.6,
-        "kind": "dissolve"
-      }
+      ]
     }
   ]
 }

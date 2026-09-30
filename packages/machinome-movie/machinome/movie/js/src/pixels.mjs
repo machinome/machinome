@@ -32,9 +32,10 @@ export function decodePng(buffer){
   return {width,height,rgb};
 }
 export const hexColor=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
-// Pixels to leave out of a comparison: the film's chrome (masthead and progress
-// rule, drawn above every transition), each rectangle widened by `margin` pixels
-// so antialiased edges fall inside it.
+// Pixels to leave out of a comparison: the film's chrome (whatever the set
+// marks with Chrome, drawn above every transition and blend and reported by
+// the stage), each rectangle widened by `margin` pixels so antialiased edges
+// fall inside it. Every pixel proof leaves it out, and nothing else.
 export function chromeMask(width,height,rects,margin=2){
   const mask=new Uint8Array(width*height);
   for(const r of rects){
@@ -71,8 +72,9 @@ function aroundDifference(a,b,p){
 // leave-start or leave (the midpoint); info names the check (`where`), the
 // entrance kind, the frame's opacity, and the reported inside and outside
 // stroke points and text box. Returns what the report records, or throws.
-export function proveMark(phase,{composed,full,without},{where,entrance,opacity,inside,outside,text}={}){
-  const vacuous=full.rgb.equals(without.rgb),same=(a,b,mask)=>largestDifference(a,(x,y,k)=>at(b,x,y,k),mask);
+export function proveMark(phase,{composed,full,without},{where,entrance,opacity,inside,outside,text,chrome=[]}={}){
+  const vacuous=full.rgb.equals(without.rgb),mask=chromeMask(composed.width,composed.height,chrome);
+  const same=(a,b,extra=[])=>largestDifference(a,(x,y,k)=>at(b,x,y,k),extra.length?chromeMask(a.width,a.height,[...chrome,...extra]):mask);
   let largest;
   if(phase==='enter'&&entrance==='draw'){
     largest=aroundDifference(composed,without,outside);
@@ -80,11 +82,11 @@ export function proveMark(phase,{composed,full,without},{where,entrance,opacity,
     if(aroundDifference(full,without,outside)<=2)throw new Error(`Annotation draw-on proof shows nothing: the complete stroke does not reach the outside point: ${where}`);
     if(aroundDifference(composed,without,inside)<=2)throw new Error(`Annotation draw-on shows none of its stroke: ${where} (inside point)`);
   }else if(phase==='enter'||phase==='leave'){
-    largest=largestDifference(composed,(x,y,k)=>(1-opacity)*at(without,x,y,k)+opacity*at(full,x,y,k));
+    largest=largestDifference(composed,(x,y,k)=>(1-opacity)*at(without,x,y,k)+opacity*at(full,x,y,k),mask);
     if(largest>2)throw new Error(`Annotation fade does not blend as its easing predicts: ${where} (largest difference ${largest} levels)`);
   }else if(phase==='enter-start'&&entrance==='draw'&&text){
     // A draw-on arrow shows its words from the start, and nothing else of itself.
-    largest=same(composed,without,chromeMask(composed.width,composed.height,[text]));
+    largest=same(composed,without,[text]);
     if(largest>0)throw new Error(`Annotation draw-on does not start from its words alone: ${where} (largest difference ${largest} levels outside its text)`);
   }else if(phase==='enter-start'){
     largest=same(composed,without);

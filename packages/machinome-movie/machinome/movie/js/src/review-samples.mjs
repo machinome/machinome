@@ -1,15 +1,14 @@
-// Render-only identities for the already resolved global output requests.
-// Nothing from this sidecar is inserted into frameAt or a shot-cache key.
-import {activeOverlayEntries} from './timeline.mjs';
-import {activeEmphasis} from './words.mjs';
+// Render-only identities for the already resolved global output requests,
+// read from their element states (design D8): a title's revealed words and a
+// source panel's lit tokens, by shot, element and cue. Nothing from this
+// sidecar is inserted into frameAt or a shot-cache key.
+import {filmShots,shotActions,tokenRange} from './timeline.mjs';
 
 export const REVIEW_SAMPLES_SCHEMA='review-samples-v1';
 const candidate='resolved candidate, not reviewed';
-const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const pair=index=>index>0?[index-1,index]:[index];
 const key=indices=>indices.join(',');
-const wordKey=(shotId,index)=>`${shotId}/overlay/${index}`;
-const emphasisKey=(shotId,index,ordinal)=>`${shotId}/emphasis/${index}/${ordinal}`;
+const live=(from,to,local,duration)=>local>=from-1e-9&&(local<to-1e-9||(local>=duration&&Math.abs(to-duration)<1e-9));
 
 function selectedPictures(request){
   const transition=request.transition;
@@ -19,46 +18,39 @@ function selectedPictures(request){
   return [{side:'outgoing',frame:transition.outgoing},{side:'incoming',frame:request}];
 }
 
-function stateFor(e,record){
-  const {index,time,request}=record,states=new Map();
+function stateFor(film,record){
+  const {index,time,request}=record,states=new Map(),shots=filmShots(film);
   for(const {side,frame} of selectedPictures(request)){
-    const shot=e.shots.find(s=>s.id===frame.shotId);
-    if(!shot)throw new Error(`Review sample frame ${index} names unknown shot ${frame.shotId}`);
-    const local=time-shot.start,entries=activeOverlayEntries(e,shot,local);
-    if(entries.length!==frame.overlays.length)
-      throw new Error(`Review overlay sidecar differs from frame ${index} in shot ${shot.id}`);
-    entries.forEach(({index:authoredIndex,cue},position)=>{
-      const drawn=frame.overlays[position];
-      if(!same([drawn.text,drawn.from,drawn.to,drawn.position],
-        [cue.text,cue.from,cue.to,cue.position]))
-        throw new Error(`Review overlay sidecar differs from frame ${index} in shot ${shot.id}`);
-      if(cue.reveal){
-        const shown=drawn.shown;
-        if(!Number.isInteger(shown)||shown<0)
+    const at=shots.find(x=>x.shot.id===frame.shotId);
+    if(!at)throw new Error(`Review sample frame ${index} names unknown shot ${frame.shotId}`);
+    const {chapter,shot}=at,local=time-shot.start,duration=shot.end-shot.start,actions=shotActions(shot);
+    for(const [elementKey,state] of Object.entries(frame.elements)){
+      const own=actions.filter(x=>`${chapter.id}.${x.action.element}`===elementKey);
+      if(state.kind==='title'&&state.shown&&state.words){
+        const x=own.find(x=>x.action.action==='show'&&live(x.cue.at,x.cue.until,local,duration));
+        if(!x||!Number.isInteger(state.revealed)||state.revealed<0)
           throw new Error(`Review word count differs from frame ${index} in shot ${shot.id}`);
-        states.set(wordKey(shot.id,authoredIndex),{kind:'overlay',shotId:shot.id,
-          authoredIndex,side,shown,description:cue.text});
+        states.set(`${shot.id}/overlay/${x.id}`,{kind:'overlay',shotId:shot.id,element:elementKey,
+          authoredIndex:x.action.overlay??shot.cues.indexOf(x.cue),cue:x.id,side,shown:state.revealed,description:chapter.elements[x.action.element].text});
       }
-    });
-    if(shot.code?.emphasis!==undefined){
-      const measured=e.wordTiming?.[shot.id]?.emphasis;
-      if(!Array.isArray(measured))throw new Error(`Review source emphasis is unresolved: shot ${shot.id}`);
-      const active=measured.flatMap(entry=>entry.cues.flatMap((cue,ordinal)=>
-        activeEmphasis([cue],local).map(()=>({authoredIndex:entry.index,ordinal,cue}))));
-      const seen=frame.code?.emphasis??[];
-      if(!same(active.map(({cue})=>({word:cue.word,line:cue.line,start:cue.start,end:cue.end})),seen))
-        throw new Error(`Review source emphasis sidecar differs from frame ${index} in shot ${shot.id}`);
-      for(const {authoredIndex,ordinal,cue} of active){
-        states.set(emphasisKey(shot.id,authoredIndex,ordinal),{kind:'emphasis',shotId:shot.id,
-          authoredIndex,wordOrdinal:ordinal,side,word:cue.word,line:cue.line,
-          start:cue.start,end:cue.end,description:shot.code.emphasis[authoredIndex]?.phrase??cue.word});
+      if(state.kind==='source'){
+        const snippet=film.excerpts[chapter.elements[own[0]?.action.element??'']?.source]??null;
+        const active=own.filter(x=>x.action.action==='emphasize').flatMap(x=>x.action.words.flatMap((word,ordinal)=>
+          local>=word.at-1e-9&&local<x.action.until-1e-9?[{x,word,ordinal,...tokenRange(snippet,word.token,x.action.line)}]:[]));
+        const seen=state.emphasis.map(e=>`${e.token}@${e.start}`).sort(),mine=active.map(a=>`${a.word.token}@${a.start}`).sort();
+        if(JSON.stringify(seen)!==JSON.stringify(mine))
+          throw new Error(`Review source emphasis sidecar differs from frame ${index} in shot ${shot.id}`);
+        for(const {x,word,ordinal,start,end} of active)
+          states.set(`${shot.id}/emphasis/${x.id}/${ordinal}`,{kind:'emphasis',shotId:shot.id,element:elementKey,
+            authoredIndex:x.action.emphasis??shot.cues.indexOf(x.cue),cue:x.id,wordOrdinal:ordinal,side,word:word.token,line:x.action.line??snippet.lines[0]+(snippet.text.slice(0,start).match(/\n/g)?.length??0),start,end,
+            description:x.action.phrase??x.action.words.map(w=>w.spoken).join(' ')});
       }
     }
   }
   return states;
 }
 
-export function buildReviewSamplePlan(e,units,fps){
+export function buildReviewSamplePlan(film,units,fps){
   const frames=units.flatMap(unit=>unit.frames).toSorted((a,b)=>a.index-b.index),count=frames.length;
   if(!Number.isInteger(fps)||fps<1||frames.some((frame,i)=>frame.index!==i))
     throw new Error('Review sample plan needs a contiguous global output grid');
@@ -80,7 +72,7 @@ export function buildReviewSamplePlan(e,units,fps){
     run=[];runIdentity=null;
   };
   for(const record of frames){
-    const {index,request}=record,states=stateFor(e,record),selected=selectedPictures(request);
+    const {index,request}=record,states=stateFor(film,record),selected=selectedPictures(request);
     const priorPictures=previous?selectedPictures(previous.request):[];
     if(previous&&request.shotId!==previous.request.shotId)
       add(pair(index),{kind:'join',shotId:request.shotId,
@@ -88,7 +80,7 @@ export function buildReviewSamplePlan(e,units,fps){
         sides:selected.map(x=>x.side),description:`${previous.request.shotId} to ${request.shotId}`});
     for(const [id,current] of states){
       const old=previousStates.get(id),base={shotId:current.shotId,
-        authoredIndex:current.authoredIndex,side:current.side,description:current.description};
+        authoredIndex:current.authoredIndex,...(current.cue?{cue:current.cue}:{}),...(current.element?{element:current.element}:{}),side:current.side,description:current.description};
       const wasSelected=priorPictures.some(x=>x.frame.shotId===current.shotId);
       const fadeEntry=!wasSelected&&current.side==='incoming'&&
         (request.transition?.kind==='fade'||
@@ -119,7 +111,7 @@ export function buildReviewSamplePlan(e,units,fps){
       // not a timed emphasis clear. A continuing selected side can clear.
       const selectedSide=selected.find(x=>x.frame.shotId===old.shotId)?.side;
       if(selectedSide){
-        const cueKey=`${old.shotId}/${old.authoredIndex}`;
+        const cueKey=`${old.shotId}/${old.element}/${old.authoredIndex}`;
         const clear=clears.get(cueKey)??{kind:'source-emphasis-clear',shotId:old.shotId,
           authoredIndex:old.authoredIndex,side:selectedSide,description:old.description,words:[]};
         clear.words.push({wordOrdinal:old.wordOrdinal,word:old.word,line:old.line,

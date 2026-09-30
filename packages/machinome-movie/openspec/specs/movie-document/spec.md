@@ -3,40 +3,49 @@
 ## Purpose
 
 Let a project's declarations drive a film through a data document,
-`machinome-movie/0.1`: narration in chapters of one take each, times anchored
-to spoken phrases and marks and resolved from the cached takes, the sets the
-film page draws, one schema and one set of fixtures shared with the Python
-side. Created by the `movie-document` change (30 September 2026).
-
+`machinome-movie/0.2`: sets with slots, elements and cues of actions,
+narration in chapters of one take each, times anchored to spoken phrases and
+marks and resolved from the cached takes to one resolved document that YAML
+episodes load into too, one schema and one set of fixtures shared with the
+Python side. Created by the `movie-document` change and rewritten for 0.2 by
+the `react-stage` change (30 September 2026).
 ## Requirements
 ### Requirement: A movie document is a source the tool produces from
 
 `check`, `speech`, `preview`, `render` and `build` SHALL accept a
-`machinome-movie/0.1` JSON document wherever they accept a YAML episode, and
-SHALL produce from it exactly as from an episode: the same validation of every
-format 0.4 field, the same proofs, the same outputs. The document SHALL be
-data: its relative paths resolve against its `root`, and the tool's outputs go
-to `<root>/_build/`. A document in any other format MUST be refused, naming the
-format, before anything else is read.
+`machinome-movie/0.2` JSON document wherever they accept a YAML episode, and
+SHALL produce from it with the same checks of the export, the pinned
+revision, the source excerpts, the pictures and the evidence files, the same
+proofs and the same outputs. The document SHALL be data: its relative paths
+resolve against its `root`, and the tool's outputs go to `<root>/_build/`. A
+document in any other format, `machinome-movie/0.1` included, MUST be refused
+naming its format and the format this build reads, before anything else is
+read.
 
 #### Scenario: The validation film from its document
-- **WHEN** the author runs `check` on `videos/cut_and_advance/_build/movie.json`
-  after `speech`
-- **THEN** the document is checked against the export, the pinned revision, the
-  source excerpts and the pictures as an episode is, and preview and render
-  produce the film from it.
+- **WHEN** the author runs `check` on
+  `videos/cut_and_advance/_build/movie.json` after `speech`
+- **THEN** the document is checked against the export, the pinned revision,
+  the source excerpts and the pictures, its stage is bundled, and `preview`
+  and `render` produce the film from it.
+
+#### Scenario: A document of the previous format
+- **WHEN** a document says `"format": "machinome-movie/0.1"`
+- **THEN** it is refused naming `machinome-movie/0.1` and
+  `machinome-movie/0.2`, and nothing else is checked.
 
 #### Scenario: A document of a later format
-- **WHEN** a document says `"format": "machinome-movie/0.2"`
-- **THEN** it is refused naming `machinome-movie/0.2` and the format this build
-  reads, and nothing else is checked.
+- **WHEN** a document says `"format": "machinome-movie/9.9"`
+- **THEN** it is refused naming `machinome-movie/9.9` and the format this
+  build reads, and nothing else is checked.
 
 ### Requirement: The document is checked against its schema first
 
 The tool SHALL validate an unresolved document against
-`schema/machinome-movie-0.1.json` before any other rule: field names, types,
-required fields and closed field lists. A field the schema does not know, on
-the document, a chapter, a shot, a key or a cue, MUST be refused naming the
+`schema/machinome-movie-0.2.json` before any other rule: field names, types,
+required fields, closed field lists and the fields each shipped action
+takes. A field the schema does not know, on the document, its stage block, a
+chapter, an element, a shot, a cue or an action, MUST be refused naming the
 field and where it is, so a misspelling or a field of a later build is never
 silently dropped. Both runtimes validate against this one file.
 
@@ -45,18 +54,23 @@ silently dropped. Both runtimes validate against this one file.
 - **THEN** it is refused naming `narration` and the shot's place in the
   document, because narration belongs to the chapter.
 
+#### Scenario: A misspelled field on an action
+- **WHEN** a `ring` action of a cue carries `paddin`
+- **THEN** it is refused naming the field and the cue's place in the shot,
+  rather than drawing the ring with its default padding.
+
 ### Requirement: A chapter's narration is one take
 
 A document SHALL group shots into chapters, each with its own narration,
-optional speech offset (default 0.2 s) and optional direction. `speech` SHALL
-generate one take per chapter from the narration alone, before anything in
-the document is resolved, and place it at the chapter's start plus its speech
-offset. The take MUST fit its chapter, ending at least 0.1 s before the
-chapter's last shot does; a take that does not is refused after caching,
-naming the chapter and its measurement. Captions SHALL follow the chapter's
-recorded alignment. A spoken reveal or source emphasis in a shot SHALL read
-its chapter's narration and take, at the instant the take starts relative to
-that shot.
+optional speech offset (default 0.2 s), optional direction and its own
+elements. `speech` SHALL generate one take per chapter from the narration
+alone, before anything in the document is resolved, and place it at the
+chapter's start plus its speech offset. The take MUST fit its chapter, ending
+at least 0.1 s before the chapter's last shot does; a take that does not is
+refused after caching, naming the chapter and its measurement. Captions SHALL
+follow the chapter's recorded alignment. A spoken reveal or source emphasis
+in a shot SHALL read its chapter's narration and take, at the instant the
+take starts relative to that shot.
 
 #### Scenario: A paragraph across a cut
 - **WHEN** the `drive` chapter's narration spans the shots `wheel`, `coupling`
@@ -65,47 +79,57 @@ that shot.
   its captions follow the one take.
 
 #### Scenario: Emphasis in a later shot of the chapter
-- **WHEN** `coupling`, the second shot of `drive`, lights `waterwheel`,
-  `drives` and `crankshaft` as they are spoken
-- **THEN** each word lights at its measured onset in the chapter's take,
-  counted from the shot's own start.
+- **WHEN** `coupling`, the second shot of `drive`, emphasizes `waterwheel`,
+  `drives` and `crankshaft` on the source panel as they are spoken
+- **THEN** each token lights at its word's measured onset in the chapter's
+  take, counted from the shot's own start.
 
 ### Requirement: Cuts, keys and cues can be anchored to spoken words
 
-Wherever a shot takes shot-local seconds (its `until`, a camera key's `at`, a
-model keyframe's `at`, a cue's `from` and `to`, a typing cue's `from` and `to`,
-a picture view key's `at`), the author SHALL be able to write a number or an
-anchor: `spoken` (the instant the narrator begins a phrase: the onset of the
-first letter or digit of its first word) or `spokenEnd` (the instant its last
-character ends), each with an optional `plus` in seconds, positive or
-negative. A number keeps its meaning (for `until`, the shot's duration). An
-anchor SHALL resolve to the chapter's start plus its speech offset plus the
-phrase's time in the cached take plus `plus`, snapped to the nearest frame of
-the output rate; shots then run in order from zero, each starting where the
-one before ended, and the film lasts until the last shot's end.
+Wherever a shot takes a time (its `until`, a cue's `at` and `until`, a
+`move`'s `until`, a model key's `at`, a picture view key's `at`), the author
+SHALL be able to write a number or an anchor: `spoken` (the instant the
+narrator begins a phrase: the onset of the first letter or digit of its first
+word) or `spokenEnd` (the instant its last character ends), each with an
+optional `plus` in seconds, positive or negative. A number is shot-local
+seconds (for `until`, the shot's duration). An anchor SHALL resolve to the
+chapter's start plus its speech offset plus the phrase's time in the cached
+take plus `plus`, snapped to the nearest frame of the output rate; shots then
+run in order from zero, each starting where the one before ended, and the
+film lasts until the last shot's end.
 
 The phrase MUST occur exactly once in the chapter's written narration and its
 spoken form (after `audio.replacements`) exactly once in the chapter's take;
-otherwise the document is refused naming the chapter, the shot, the field and
-the phrase. A shot whose `until` resolves at or before its start, and a cue or
-key anchored before its shot's start or after its end, MUST be refused naming
-the shot and the anchor.
+otherwise the document is refused naming the chapter, the shot, the field by
+its path in the shot (`until`, `cues[1].at`, `cues[0].actions[0].until`,
+`model.keys[2].at`, `cues[3].actions[0].view[1].at`) and the phrase. A shot
+whose `until` resolves at or before its start, a cue or key anchored before
+its shot's start or after its end, a spanning action whose `until` is at or
+before its `at`, and a `move` whose `until` is at or before its `at` MUST be
+refused naming the shot and the anchor.
 
 #### Scenario: A cut on a spoken phrase
 - **WHEN** `coupling` has `until: {"spoken": "A crank"}`
-- **THEN** the cut to `stroke` falls on the output frame nearest the instant the
-  narrator begins "A crank" in the cached take, and moves with it when the take
-  is regenerated.
+- **THEN** the cut to `stroke` falls on the output frame nearest the instant
+  the narrator begins "A crank" in the cached take, and moves with it when the
+  take is regenerated.
+
+#### Scenario: A highlight from one word to another
+- **WHEN** a cue of `coupling` is `at: {"spoken": "waterwheel"}` and
+  `until: {"spoken": "crankshaft"}` and highlights the waterwheel on `mill`
+- **THEN** the highlight begins on the frame nearest the onset of
+  "waterwheel" and is gone from the frame nearest the onset of "crankshaft".
 
 #### Scenario: A phrase the narration does not contain
-- **WHEN** an anchor names "the saw" in a chapter whose narration never says it
-- **THEN** the document is refused, naming the chapter, the shot, the field and
-  "the saw", before any take is read.
+- **WHEN** an anchor names "the saw" in a chapter whose narration never says
+  it
+- **THEN** the document is refused, naming the chapter, the shot, the field
+  and "the saw", before any take is read.
 
 #### Scenario: An ambiguous phrase
 - **WHEN** an anchor names a phrase said twice in its chapter
-- **THEN** the document is refused as ambiguous, naming the chapter, the shot,
-  the field and the phrase.
+- **THEN** the document is refused as ambiguous, naming the chapter, the
+  shot, the field and the phrase.
 
 #### Scenario: A cut before its own start
 - **WHEN** a shot's `until` names a phrase spoken before the shot begins
@@ -114,49 +138,54 @@ the shot and the anchor.
 ### Requirement: Model seconds can name a mark
 
 A document SHALL be able to name instants of the machine in `marks`, and
-wherever it takes model seconds (`simulation.from`, `simulation.to`, a model
-keyframe's `seconds`) the author SHALL be able to write a number or a mark
-with an optional `plus`, resolved to the mark's model seconds plus `plus`. An
-unknown mark MUST be refused naming the shot and the mark.
+wherever it takes model seconds (`model.from`, `model.to`, a model key's
+`seconds`) the author SHALL be able to write a number or a mark with an
+optional `plus`, resolved to the mark's model seconds plus `plus`. An unknown
+mark MUST be refused naming the shot and the mark.
 
 #### Scenario: The pull settles on the return
 - **WHEN** `pawls` keys `pull_start` at the cut, `return_start` with `out`
   easing at the spoken "On the return", and `cycle_end` at the shot's end
-- **THEN** the model runs from 436 to 438 and eases into the hold on the words,
-  and from 438 to 440 to the end.
+- **THEN** the model runs from 436 to 438 and eases into the hold on the
+  words, and from 438 to 440 to the end.
 
 #### Scenario: A misspelled mark
 - **WHEN** a shot names mark `pull_stat`
 - **THEN** it is refused naming the shot and `pull_stat`.
 
-### Requirement: A shot is drawn in one of three sets
-
-A shot SHALL name its `set`: `paper` (the model stage alone), `paper-split`
-(source beside the model) or `source-only`, the three layouts the film page
-draws. `paper-split` and `source-only` MUST have `code`, and `paper` MUST NOT;
-a shot without `set` is `paper` without `code` and `paper-split` with it. Any
-other set MUST be refused by name. `fadeIn` SHALL be accepted only on the
-film's first shot and `fadeOut` only on its last, across chapters.
-
-#### Scenario: The coupling beside its source
-- **WHEN** `coupling` is `paper-split` with the pinned lines 413–415 typed
-- **THEN** it is drawn as today's split: source left, model right.
-
-#### Scenario: A set the page cannot draw
-- **WHEN** a shot names the set `stage`
-- **THEN** it is refused naming `stage`, the shot and its chapter.
-
 ### Requirement: What a document names is checked before any take
 
-Before reading any take, the tool SHALL refuse, naming the shot, its chapter
-and the name: a camera key whose preset the document does not declare; a
-layer, highlighted part or annotated part that the export does not contain
-or the document does not declare; and a model keyframe list whose last key is
-not at the shot's `until`, written as the same number or the same anchor, so
-that the keys end at the shot's end whatever the take.
+Before reading any take, the tool SHALL check everything the document names
+and MUST refuse, naming the chapter, the shot and the thing at fault: in the
+stage block, a stage module that is not a TypeScript or JavaScript file
+inside the project repository, a set or element whose module
+`stage.modules` does not list, a shipped set
+listed with other slots or a base, a project set without a module or under a
+kind the tool ships, a base that is neither listed nor shipped, and a
+project element under a shipped kind; a set kind a shot uses that the stage
+block does not list; a slot the shot's set does not declare; an element the
+chapter does not declare, or placed in two slots of one shot; an element of
+a kind neither shipped nor listed, a field its kind does not take, or props
+that do not match its kind's declared props; a camera, layer, source excerpt,
+still or clip the document does not declare; a layer, highlighted part or
+marked part the export does not contain; a model key list that does not start
+at the shot's start or whose last key is not at the shot's `until`, written
+as the same number or the same anchor; an action on an element the shot does
+not place, an action its element's kind does not have, and a project
+action's parameter missing, unknown or of the wrong kind; an emphasis whose
+tokens are absent or ambiguous in the excerpt it lights; and a placed source
+panel whose typing does not complete its excerpt when no earlier shot of the
+chapter completed it.
+
+A token SHALL be an identifier or a dotted path of identifiers, and SHALL
+occur where its text is not preceded or followed by an ASCII letter, digit or
+underscore, a dot being a boundary. Each token MUST occur exactly once in the
+whole excerpt, on any line, or, when the action names a `line` inside the
+excerpt, exactly once on that line; tokens are read from the excerpt's source
+file at the pinned revision.
 
 #### Scenario: A misspelled preset
-- **WHEN** a camera key names preset `faraway` and the document declares none
+- **WHEN** a `move` names the camera `faraway` and the document declares none
 - **THEN** it is refused naming `faraway` and the shot, before `speech` is
   needed.
 
@@ -164,14 +193,29 @@ that the keys end at the shot's end whatever the take.
 - **WHEN** a highlight names the assembly path `Beam/Plonk`
 - **THEN** it is refused naming `Beam/Plonk` and the shot.
 
+#### Scenario: A token inside a longer identifier
+- **WHEN** an emphasis lights `pawl` and the excerpt holds only `pawl_mount`
+  and `feed.pawl.turn` once each
+- **THEN** it lights `pawl` in `feed.pawl.turn`, because a dot is a
+  boundary, and not in `pawl_mount`; an excerpt holding `feed.pawl` twice on
+  different lines is refused as ambiguous unless the action names the line.
+
+#### Scenario: A stage module outside the project
+- **WHEN** `stage.modules` names `../../elsewhere/stage.tsx`, outside the
+  project repository
+- **THEN** it is refused naming the module before anything is bundled.
+
 ### Requirement: Anchors are resolved only from cached takes
 
 `check`, `preview` and `render` SHALL resolve spoken anchors from the takes
 `speech` cached and MUST NOT generate or purchase speech. A document with
 spoken anchors in a chapter whose take is not cached MUST be refused, naming
-the chapter and asking for `speech` to be run first. Each of them SHALL write
-the resolved document, every anchor a number, to
-`<root>/_build/movie-resolved.json` before rendering anything.
+the chapter and asking for `speech` to be run first. Each of them SHALL
+write the **resolved document** to `<root>/_build/movie-resolved.json`
+before rendering anything: the document itself, in its field order, with
+`"resolved": true`, the film's duration, `start` and `end` on every chapter
+and shot, and every time and every model second numeric, shot-local where the
+document wrote it shot-local.
 
 #### Scenario: Checked before speech
 - **WHEN** `check` runs on a new document with spoken anchors
@@ -180,21 +224,153 @@ the resolved document, every anchor a number, to
 
 #### Scenario: Inspecting the resolution
 - **WHEN** `check` passes
-- **THEN** `_build/movie-resolved.json` holds the chapters with their resolved
-  starts, ends and offsets and every shot with numeric times, and resolving the
-  same document against the same takes again writes the same file.
+- **THEN** `_build/movie-resolved.json` holds the chapters with their
+  resolved starts, ends and offsets and every shot, cue, action and key with
+  numeric times, and resolving the same document against the same takes
+  again writes the same file.
 
 ### Requirement: Both runtimes share the fixtures
 
-The repository SHALL keep valid documents, their take doubles and their pinned
-resolutions, and invalid documents with the words their refusal must contain,
-under `fixtures/`, indexed so that a fixture is registered once. The Node
-suite MUST load, validate and resolve every registered document against its
-takes to exactly its pinned resolution, and refuse every invalid document with
-every listed word, so a fixture the other runtime adds is tested here too.
+The repository SHALL keep valid `machinome-movie/0.2` documents, their take
+doubles and their pinned resolutions, and invalid documents with the words
+their refusal must contain, under `fixtures/`, indexed so that a fixture is
+registered once. The Node suite MUST load, check and resolve every registered
+document against its takes to exactly its pinned resolution, twice
+identically, and refuse every invalid document with every listed word, so a
+fixture the other runtime adds is tested here too.
 
 #### Scenario: A fixture added by the Python side
 - **WHEN** the Python side adds an invalid document to `fixtures/invalid/`
 - **THEN** the Node suite refuses it and asserts its listed words, with no
   change to the Node tests.
+
+### Requirement: A shot is drawn in a set, with its chapter's elements in its slots
+
+A shot SHALL name its `set`, a kind the document's stage block lists, and
+SHALL place elements its chapter declares in slots that set declares, each
+element in at most one slot of the shot; a slot the shot does not name is
+empty. A set kind the stage block does not list, a slot the set does not
+declare, an element the chapter does not declare, and an element placed in
+two slots of one shot MUST be refused, naming the chapter, the shot and the
+slot or element. `fadeIn` SHALL be accepted only on the film's first shot and
+`fadeOut` only on its last, across chapters.
+
+#### Scenario: The coupling beside its source
+- **WHEN** `coupling` is drawn in `leonardo-split` with `{"left": "code",
+  "right": "mill"}`
+- **THEN** the source panel is drawn in the set's `left` box and the view in
+  its `right` box, and the set's `headline` is left empty.
+
+#### Scenario: A slot the set does not declare
+- **WHEN** a shot in `leonardo-split` places `mill` in `stage`
+- **THEN** it is refused naming the chapter, the shot, `stage` and
+  `leonardo-split`.
+
+#### Scenario: One element in two places
+- **WHEN** a shot on `split` places `mill` in both `left` and `right`
+- **THEN** it is refused naming the shot and `mill`.
+
+#### Scenario: A fade-in on a later chapter
+- **WHEN** the first shot of the second chapter declares `fadeIn`
+- **THEN** it is refused naming the shot, because only the film's first shot
+  fades in.
+
+### Requirement: Elements act on cue
+
+A cue SHALL fire, at its `at`, actions on elements the shot places: a view's
+`move`, `highlight`, `ring`, `label` and `arrow`; a source panel's `type` and
+`emphasize`; a title's and a picture's `show`; and a project element's
+declared actions with their parameters. An action that spans SHALL last until
+the cue's `until`, which it MUST have; `type` and `move` finish on their own.
+An `emphasize` SHALL be anchored at a spoken phrase without `plus`, and each
+of its `words` SHALL pair a word spoken exactly once in that phrase,
+word-bounded, with a token of the excerpt; each token SHALL light from its
+word's onset until the phrase ends plus `hold`, and MUST already be typed when
+its word is spoken. The typing cues of a shot SHALL run in order, each from
+where the chapter's previous typing stopped, and MUST complete the excerpt
+before the shot ends unless an earlier shot of the chapter completed it. Two
+moves, two highlights, or two overlapping `show`s of one element in one shot
+MUST NOT overlap in time; an entrance or exit shorter than two frames or
+longer than its span MUST be refused; an entrance and an exit that together
+exceed a short span overlap, the element drawn at the lesser of the two. Each
+refusal MUST name the chapter, the shot, the element and the action or field.
+
+#### Scenario: A span without an end
+- **WHEN** a cue fires `highlight` on `mill` and has no `until`
+- **THEN** it is refused naming the shot, the cue and `until`.
+
+#### Scenario: A project action with a wrong parameter
+- **WHEN** a cue fires `light` on the `Jobs` element with `job: 2` and the
+  stage block declares `job` a `string`
+- **THEN** it is refused naming `jobs`, `light`, `job` and `string`.
+
+#### Scenario: The driving pawl lights its call
+- **WHEN** an emphasis at `{"spoken": "the driving pawl turns"}` pairs the
+  spoken "driving pawl" with the token `feed.pawl.turn`
+- **THEN** `feed.pawl.turn` lights at the onset of "driving" and clears after
+  "turns" ends plus the hold.
+
+#### Scenario: An emphasis anchored with an offset
+- **WHEN** an emphasis cue is `at: {"spoken": "waterwheel", "plus": 0.2}`
+- **THEN** it is refused naming the shot and the cue's `at`.
+
+### Requirement: An element keeps its state across its chapter's shots
+
+An element SHALL be one element across every shot of its chapter that places
+it: a view SHALL start each shot at the camera where its last move in an
+earlier shot of the chapter ended, or at its declared camera if it has not
+moved, and a source panel SHALL keep the text typed in earlier shots of the
+chapter and continue typing from there. Elements of two chapters SHALL never
+share state, whatever their keys.
+
+#### Scenario: Typing across a cut
+- **WHEN** the chapter `drive` types lines 413 and 414 of its excerpt in
+  `coupling` and line 415 in `stroke`
+- **THEN** `stroke` opens with lines 413 and 414 already typed and types line
+  415 from there.
+
+#### Scenario: The same key in another chapter
+- **WHEN** the chapters `drive` and `feed` each declare a view `mill`
+- **THEN** the view of `feed` starts at its own declared camera, not where
+  `drive`'s view was left.
+
+### Requirement: A frame is a pure function of the resolved document and video time
+
+The tool SHALL resolve each output instant to one frame from the resolved
+document and the pinned files the load read, and from nothing else: the set,
+the element in each slot, each placed element's complete state for that
+instant, and the transition in progress with the outgoing shot's frame. A
+frame MUST NOT depend on the frames resolved or posed before it, and MUST NOT
+carry any film-wide position: how far through the film an instant lies is
+not part of what is drawn. A title or picture that is placed and not shown
+SHALL appear in the frame as not shown.
+
+#### Scenario: The same instant twice
+- **WHEN** the frame at 12.4 s of *Cut and Advance* is resolved, then the
+  frame at 30 s, then 12.4 s again
+- **THEN** the two frames at 12.4 s are identical.
+
+#### Scenario: A film made longer
+- **WHEN** a chapter is added after the last one
+- **THEN** the frames of the earlier chapters are resolved exactly as
+  before, because nothing in a frame depends on the film's duration.
+
+### Requirement: A YAML episode loads into the same resolved shape
+
+A YAML episode in formats `machinome-video-draft/0.2`, `0.3` and `0.4` SHALL
+keep every validation, refusal and timing rule of its format, and SHALL load
+into the same resolved shape as a movie document: one chapter per shot, with
+the shot's narration and speech offset, and the shot's view, source panel,
+overlays, pictures, marks, highlight and typing as elements and actions
+placed in the shipped sets `paper` (a shot without code), `paper-split` (a
+shot with code) and `source-only` (a shot with `layout: source-only`), whose
+masthead shows the brand and the episode's series. More overlays of one
+position or pictures of one area in one shot than those sets have slots for
+MUST be refused naming the shot.
+
+#### Scenario: The sawmill rehearsal after the stage
+- **WHEN** Leonardo's `one-wheel-two-jobs` episode is checked and previewed
+- **THEN** it passes every rule it passed before, its shots are drawn in the
+  paper sets with the masthead `MACHINOME` and its series label, its cached
+  takes are reused, and no progress rule is drawn.
 

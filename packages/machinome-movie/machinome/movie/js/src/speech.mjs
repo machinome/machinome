@@ -38,7 +38,7 @@ export async function cachedTake(e,i){
   return {file,sha256:digest,alignment:record.alignment,record};
 }
 export async function readSpeechTake(e,shot){
-  const chapter=chapterOf(e,shot),i=chaptersOf(e).findIndex(c=>c.id===chapter.id);
+  const chapter=chapterOf(e,shot.id),i=chaptersOf(e).findIndex(c=>c.id===chapter.id);
   if(i<0)throw new Error(`Unknown shot for word timing: ${shot?.id}`);
   const take=await cachedTake(e,i),name=chapter.id===shot.id?`shot ${shot.id}`:`shot ${shot.id} (chapter ${chapter.id})`;
   if(!take)throw new Error(`Word timing needs cached speech for ${name}; run the speech command first (check, preview and render never generate speech)`);
@@ -131,7 +131,7 @@ export async function speech(e,{generate=false}={}) {
     captions.push(...cues);files.push({file,offset});records.push({id:chapter.id,file,sha256:record.sha256,duration:record.duration,offset});
     console.log(`Narration ${chapter.id}: ${record.duration.toFixed(2)}s`);
   }
-  if(overflow.length)throw new Error((e.movie?'Narration exceeds chapter timing; revise the movie (audio is cached):\n'
+  if(overflow.length)throw new Error((e.source==='movie'?'Narration exceeds chapter timing; revise the movie (audio is cached):\n'
     :'Narration exceeds shot timing; revise YAML (audio is cached):\n')+overflow.join('\n'));
   await json(resolve(e.paths.build,'captions.json'),captions);
   await writeFile(resolve(e.paths.build,'captions.srt'),srt(captions));

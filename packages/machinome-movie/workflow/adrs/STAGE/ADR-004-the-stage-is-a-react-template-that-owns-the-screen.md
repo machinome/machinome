@@ -1,6 +1,6 @@
 # ADR-004: The stage is a React template that owns the screen
 
-Status: Proposed (OpenSpec change `react-stage`, 30 September 2026)
+Status: Accepted (OpenSpec change `react-stage`, 30 September 2026)
 
 ## Context
 

@@ -1,22 +1,33 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {base02,cues03} from './frame-fixtures.mjs';
+import {base02,cues03,element} from './frame-fixtures.mjs';
 import {frameAt} from '../src/timeline.mjs';
+import {episodeFilm} from '../src/episode.mjs';
 import {outputShotUnits,fingerprintShotUnits} from '../src/shot-cache.mjs';
 import {hash} from '../src/util.mjs';
+import {buildReviewSamplePlan} from '../src/review-samples.mjs';
 
-// The module does not exist before this change. Keep the behavior assertions
-// written now, but describe any missing-import failures as one blocked seam,
-// not as independent proof that each later assertion ran red.
-const planModule=await import('../src/review-samples.mjs').catch(error=>{
-  if(error.code==='ERR_MODULE_NOT_FOUND')return null;
-  throw error;
-});
+// An episode is planned as the resolved document it converts to (react-stage
+// D3); `timing` fills what resolveWordTiming would have measured, by shot.
+function filmOf(e){
+  const film=episodeFilm(e);
+  for(const [shotId,{onsets={},emphasis={}}] of Object.entries(e.timing??{})){
+    const shot=film.chapters.flatMap(c=>c.shots).find(s=>s.id===shotId);
+    for(const cue of shot.cues)for(const action of cue.actions){
+      if(action.overlay!==undefined&&onsets[action.overlay])action.reveal.onsets=onsets[action.overlay];
+      if(action.emphasis!==undefined&&emphasis[action.emphasis]){
+        const {at,until}=emphasis[action.emphasis];
+        action.words.forEach((word,k)=>{word.at=at[k];});action.until=until;cue.at=at[0];
+      }
+    }
+    film.wordTiming[shotId]={sha256:`take-${shotId}`};
+  }
+  return film;
+}
 function planFor(e,fps=e.output.fps){
-  assert.equal(typeof planModule?.buildReviewSamplePlan,'function',
-    'resolved review-samples-v1 builder is absent before implementation');
-  const {count,units}=outputShotUnits(e,fps),before=JSON.stringify(units.map(u=>u.frames));
-  const plan=planModule.buildReviewSamplePlan(e,units,fps);
+  const film=filmOf(e);
+  const {count,units}=outputShotUnits(film,fps),before=JSON.stringify(units.map(u=>u.frames));
+  const plan=buildReviewSamplePlan(film,units,fps);
   assert.equal(JSON.stringify(units.map(u=>u.frames)),before,
     'render-only cue identities must not mutate frame requests or shot-cache inputs');
   assert.equal(plan.schema,'review-samples-v1');
@@ -43,37 +54,36 @@ function measuredEpisode(){
   b.overlays=[{from:.1,to:2,position:'top',text:'wheel shaft',reveal:{timing:'spoken'}}];
   b.code={snippet:'drive',typing:[{from:0,to:.2,throughLine:415}],
     emphasis:[{line:415,phrase:'wheel shaft',words:['wheel','shaft'],hold:.2}]};
-  e.wordTiming={B:{sha256:'resolved-test-take',overlays:{0:{onsets:[.3,.55]}},
-    emphasis:[{index:0,from:.3,to:.9,cues:[
-      {word:'wheel',line:415,start:0,end:5,from:.3,to:.9},
-      {word:'shaft',line:415,start:6,end:11,from:.55,to:.9}]}]}};
+  e.timing={B:{onsets:{0:[.3,.55]},emphasis:{0:{at:[.3,.55],until:.9}}}};
   return e;
 }
 
-test('old 0.2, 0.3 and default 0.4 request JSON and shot keys stay pinned',async()=>{
+// The review sidecar is render-only: planning reads the frames and never
+// changes them or the shot keys computed from them, and both are deterministic.
+test('frame requests and shot keys are deterministic and untouched by planning',async()=>{
   const a=base02(),b=cues03(),c=base02(),d=base02();
   c.format=d.format='machinome-video-draft/0.4';
   d.sourceCode={drive:{file:'model.py',lines:[415,415],text:'water_drive.spin()'}};
   d.shots[1].code={snippet:'drive',typing:[{from:0,to:.8,throughLine:415}]};
-  const cases=[
-    [a,1.5,'1fed579fc3ce613c0c4132a814b34061936499b4bf5bb3259f7367946cbde9ca','82661d79ee9e84e7913649ac16539e33a5b5bb5f286da19c80b0f2c245eb3910'],
-    [b,1,'5a9cab01729eef8eee5bbc666ad36b73a541ca6dee308ec32407a2aebf537b5b','65721db3719629f0bdf2bb142f9087789ebfe7d21c6303a0257cd6e53805e682'],
-    [c,1.5,'a0f6e963009a2d63265268a48d42c82631fb7839799d796da4bd3981e2a2fcf8','6446204ba55908e036ef6874e52fd438b6409cffbf93045c4a4905cab90c449b'],
-    [d,2.5,'814bcc8a4af501099dc206b8f2bb8ec275acc7cf4aaa8de3b20733b904ebaea3','6d88ef5e061e4baaadf35ef9c23aff03dca33ac45af9b7548b6dbfda217e051d']];
-  for(const [e,time,requestHash,keysHash] of cases){
-    assert.equal(hash(JSON.stringify(frameAt(e,time))),requestHash);
-    const {units}=outputShotUnits(e,e.output.fps);
-    await fingerprintShotUnits(e,units,'review-prechange-common');
-    assert.equal(hash(JSON.stringify(units.map(u=>u.key))),keysHash);
+  for(const [e,time] of [[a,1.5],[b,1],[c,1.5],[d,2.5]]){
+    const keys=async(plan)=>{
+      const film=episodeFilm(e),{units}=outputShotUnits(film,e.output.fps);
+      await fingerprintShotUnits(film,units,'review-common');
+      if(plan)buildReviewSamplePlan(film,units,e.output.fps);
+      return {request:hash(JSON.stringify(frameAt(film,time))),keys:units.map(u=>u.key),frames:JSON.stringify(units.map(u=>u.frames))};
+    };
+    const once=await keys(false),twice=await keys(true);
+    assert.deepEqual(twice,once);
+    assert.equal(once.request,hash(JSON.stringify(frameAt(episodeFilm(e),time))));
   }
 });
 
 test('fractional global requests pair a join, measured word, source token and clearing exactly',()=>{
   const e=measuredEpisode(),{plan,units}=planFor(e);
   assert.deepEqual(units.map(u=>u.frames[0]?.index),[0,6,14]);
-  assert.equal(frameAt(e,1.5).shotId,'B');
-  assert.deepEqual(frameAt(e,1.75).code.emphasis.map(({word,line,start,end})=>({word,line,start,end})),
-    [{word:'wheel',line:415,start:0,end:5}]);
+  const film=filmOf(e);
+  assert.equal(frameAt(film,1.5).shotId,'B');
+  assert.deepEqual(element(frameAt(film,1.75),'code').emphasis,[{token:'wheel',start:0,end:5}]);
   assert.equal(labels(plan,[5,6],'join').length,1);
   const word=labels(plan,[6,7],'word-onset');
   assert.equal(word.length,1);assert.equal(word[0].shotId,'B');
@@ -82,6 +92,9 @@ test('fractional global requests pair a join, measured word, source token and cl
   assert.equal(source.length,1);assert.deepEqual(
     [source[0].shotId,source[0].authoredIndex,source[0].wordOrdinal,source[0].word,source[0].line,source[0].start,source[0].end],
     ['B',0,0,'wheel',415,0,5]);
+  // Labels name the cue and the element as well as the authored index.
+  assert.deepEqual([word[0].cue,word[0].element],['cues[0].actions[0]','B.overlay-0']);
+  assert.deepEqual([source[0].cue,source[0].element],['cues[2].actions[0]','B.code']);
   assert.equal(labels(plan,[7,8],'word-onset')[0].wordOrdinal,1);
   assert.equal(labels(plan,[7,8],'source-emphasis-onset')[0].wordOrdinal,1);
   assert.equal(labels(plan,[9,10],'source-emphasis-clear').length,1);
@@ -94,13 +107,21 @@ test('fractional global requests pair a join, measured word, source token and cl
   assert.equal(sample(plan,[6,7]).labels.length>=2,true,'co-occurring labels stay on one pair');
 });
 
+test('a document\'s cue, which has no YAML authored index, is labelled by its index in its shot',()=>{
+  const film=filmOf(measuredEpisode());
+  for(const cue of film.chapters[1].shots[0].cues)for(const action of cue.actions){delete action.emphasis;delete action.overlay;}
+  const {units}=outputShotUnits(film,4),plan=buildReviewSamplePlan(film,units,4);
+  assert.equal(labels(plan,[6,7],'source-emphasis-onset')[0].authoredIndex,2);
+  assert.equal(labels(plan,[6,7],'word-onset')[0].authoredIndex,0);
+});
+
 test('identical even descriptions retain two authored overlay identities, not text-based identity',()=>{
   const e=episode(),b=e.shots[1];
   b.overlays=[{from:.1,to:2,position:'top',text:'ONE TWO',reveal:{timing:'even',duration:.6}},
     {from:.1,to:2,position:'top',text:'ONE TWO',reveal:{timing:'even',duration:.6}}];
   const {plan}=planFor(e),first=labels(plan,[6,7],'word-onset');
-  assert.deepEqual(first.map(l=>[l.shotId,l.authoredIndex,l.wordOrdinal,l.shown]),
-    [['B',0,0,1],['B',1,0,1]]);
+  assert.deepEqual(first.map(l=>[l.shotId,l.authoredIndex,l.wordOrdinal,l.shown,l.element]),
+    [['B',0,0,1,'B.overlay-0'],['B',1,0,1,'B.overlay-1']]);
   const second=labels(plan,[7,8],'word-onset');
   assert.deepEqual(second.map(l=>[l.shotId,l.authoredIndex,l.wordOrdinal,l.shown]),
     [['B',0,1,2],['B',1,1,2]]);
@@ -123,7 +144,7 @@ test('different shots keep cue index zero distinct across a join and unchanged a
 test('two measured words resolved onto one global frame retain two ordinals on one pair',()=>{
   const e=episode();e.shots[1].overlays=[{from:.1,to:2,position:'top',text:'ONE TWO',
     reveal:{timing:'spoken'}}];
-  e.wordTiming={B:{sha256:'two-on-one-frame',overlays:{0:{onsets:[.26,.27]}},emphasis:[]}};
+  e.timing={B:{onsets:{0:[.26,.27]}}};
   const {plan}=planFor(e);
   assert.deepEqual(labels(plan,[6,7],'word-onset').map(l=>[l.shotId,l.authoredIndex,l.wordOrdinal,l.shown]),
     [['B',0,0,2],['B',0,1,2]],'both timed words remain, even though the rendered count jumps 0 to 2');
@@ -202,8 +223,7 @@ test('emphasis clearing on continued outgoing shot labels its selected outgoing 
   a.code={snippet:'drive',typing:[{from:0,to:.1,throughLine:415}],
     emphasis:[{line:415,phrase:'wheel',words:['wheel'],hold:0}]};
   a.narration='wheel';
-  e.wordTiming={A:{sha256:'outgoing-clear',overlays:{},emphasis:[{index:0,from:1,to:1.4,
-    cues:[{word:'wheel',line:415,start:0,end:5,from:1,to:1.4}]}]}};
+  e.timing={A:{emphasis:{0:{at:[1],until:1.4}}}};
   const {plan}=planFor(e);
   const clear=labels(plan,[5,6],'source-emphasis-clear')[0];
   assert.equal(clear?.shotId,'A');assert.equal(clear?.side,'outgoing');

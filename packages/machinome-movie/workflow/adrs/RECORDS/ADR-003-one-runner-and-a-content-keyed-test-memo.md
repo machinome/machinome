@@ -104,3 +104,11 @@ doubled before it could be memoized.
 - Test files stay at the top of `test/`; moving browser and pipeline tests to
   `test/browser/` and `test/pipeline/` is left to a later cycle, and the slow
   list in the config names them until then.
+
+## Amendment (30 September 2026, `react-stage`)
+
+The browser and pipeline tests moved to `test/browser/` and `test/pipeline/`,
+and the slow project selects them by directory instead of a list. The stage's
+component tests (`stage/**/*.test.tsx`) run under jsdom in a third project,
+`stage`, beside `pure`. The verdict key also reads `stage/` and the fixture
+project. The decision above stands.

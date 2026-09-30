@@ -1,7 +1,7 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
-import {frameAt} from '../src/timeline.mjs';
+import {viewAt} from './frame-fixtures.mjs';
 
 const manifest={animation:{loop:296},root:{name:'Mill',children:[
   {name:'Feed mechanism',children:[{name:'Driving pawl'},{name:'Holding pawl'},{name:'Ratchet'}]},{name:'Frame'}]}};
@@ -21,10 +21,10 @@ const valid=e=>validateEpisode(e,manifest);
 
 test('the active highlight is emitted with explicit others and colour, and ends at its cue or cut',()=>{
   const e=highlighted();valid(e);
-  assert.deepEqual(frameAt(e,1).highlight,{paths:[['Feed mechanism','Driving pawl'],['Feed mechanism','Holding pawl'],['Feed mechanism','Ratchet']],others:'ghost',color:'#bf531f'});
-  assert.deepEqual(frameAt(e,2).highlight,{paths:[['Feed mechanism','Holding pawl']],others:'keep',color:'#237c86'});
-  assert.equal(frameAt(e,3.5).highlight,null);
-  assert.equal(frameAt(e,4).highlight,null,'a cut restores');
+  assert.deepEqual(viewAt(e,1).highlight,{paths:[['Feed mechanism','Driving pawl'],['Feed mechanism','Holding pawl'],['Feed mechanism','Ratchet']],others:'ghost',color:'#bf531f'});
+  assert.deepEqual(viewAt(e,2).highlight,{paths:[['Feed mechanism','Holding pawl']],others:'keep',color:'#237c86'});
+  assert.equal(viewAt(e,3.5).highlight,null);
+  assert.equal(viewAt(e,4).highlight,null,'a cut restores');
 });
 
 test('invalid highlights are refused before rendering, naming the shot',()=>{

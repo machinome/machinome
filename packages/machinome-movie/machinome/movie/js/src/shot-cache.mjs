@@ -3,7 +3,7 @@
 import {randomUUID} from 'node:crypto';
 import {link,mkdir,readFile,readdir,rename,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import {frameAt} from './timeline.mjs';
+import {frameAt,filmShots} from './timeline.mjs';
 import {fileHash,hash,json} from './util.mjs';
 
 export const SHOT_CACHE_SCHEMA='shot-v1';
@@ -11,21 +11,32 @@ const pngName=index=>`${String(index).padStart(6,'0')}.png`;
 const pngSignature=Buffer.from([137,80,78,71,13,10,26,10]);
 const missing=error=>error?.code==='ENOENT'||error?.code==='ENOTDIR';
 
-export function outputShotUnits(e,fps,captions=[]){
-  // Whole within floating-point error: 31/30 × 30 is 31.000000000000004 (movie-document D12).
-  const frames=e.output.durationSeconds*fps,count=Math.round(frames);
+export function outputShotUnits(film,fps){
+  // Whole within floating-point error: 31/30 × 30 is 31.000000000000004.
+  const frames=film.output.durationSeconds*fps,count=Math.round(frames);
   if(!(Math.abs(frames-count)<1e-6))throw new Error('Frame count is not integral');
-  const byId=new Map(e.shots.map(shot=>[shot.id,{shotId:shot.id,start:shot.start,end:shot.end,frames:[]}]));
+  const shots=filmShots(film).map(({shot})=>shot);
+  const byId=new Map(shots.map(shot=>[shot.id,{shotId:shot.id,start:shot.start,end:shot.end,frames:[]}]));
   for(let index=0;index<count;index++){
-    const time=index/fps,request=frameAt(e,time,captions),unit=byId.get(request.shotId);
+    // A frame record carries no film-wide position (remove-progress-rule D2).
+    const time=index/fps,request=frameAt(film,time),unit=byId.get(request.shotId);
     if(!unit)throw new Error(`Frame ${index} has no shot unit`);
-    unit.frames.push({index,time,progress:time/e.output.durationSeconds,request});
+    unit.frames.push({index,time,request});
   }
-  return {count,units:e.shots.map(shot=>byId.get(shot.id))};
+  return {count,units:shots.map(shot=>byId.get(shot.id))};
 }
 
+// The measured actions of a shot as resolved from its take: each spoken
+// reveal and emphasis with its cue's instants.
+function measuredActions(film,shotId){
+  const shot=filmShots(film).find(s=>s.shot.id===shotId)?.shot;
+  return (shot?.cues??[]).flatMap(cue=>cue.actions.filter(a=>a.action==='emphasize'||a.reveal?.timing==='spoken')
+    .map(action=>({at:cue.at,until:cue.until,action})));
+}
+// The pictures a frame shows: its own and its outgoing picture's.
 function reachedPictures(frame){
-  return [frame.picture,frame.transition?.outgoing?.picture].filter(Boolean);
+  return [frame,frame.transition?.outgoing].filter(Boolean)
+    .flatMap(f=>Object.values(f.elements).filter(state=>state.kind==='picture'&&state.shown));
 }
 
 export async function fingerprintShotUnits(e,units,commonKey){
@@ -33,14 +44,14 @@ export async function fingerprintShotUnits(e,units,commonKey){
   for(const unit of units){
     const media=[];
     for(const {request} of unit.frames)for(const picture of reachedPictures(request)){
-      const family=picture.kind==='still'?'stills':'clips';
+      const family=picture.media==='still'?'stills':'clips';
       const item=e.pictureMedia?.[family]?.[picture.name];
-      if(!item)throw new Error(`Missing ${picture.kind} ${picture.name} for shot cache`);
+      if(!item)throw new Error(`Missing ${picture.media} ${picture.name} for shot cache`);
       const id=`${family}/${picture.name}`;
       if(!sourceHashes.has(id))sourceHashes.set(id,await fileHash(item.file));
-      const record={kind:picture.kind,name:picture.name,sourceSha256:sourceHashes.get(id),
+      const record={kind:picture.media,name:picture.name,sourceSha256:sourceHashes.get(id),
         format:item.format,codec:item.codec,width:item.width,height:item.height,upscale:item.upscale};
-      if(picture.kind==='clip'){
+      if(picture.media==='clip'){
         const path=resolve(item.extraction.dir,pngName(picture.frame));
         if(!decodedHashes.has(path))decodedHashes.set(path,await fileHash(path));
         Object.assign(record,{frame:picture.frame,timestamp:item.timestamps[picture.frame],
@@ -48,10 +59,13 @@ export async function fingerprintShotUnits(e,units,commonKey){
       }
       media.push(record);
     }
+    // The verified take a shot's measured words were read from, and the
+    // instants resolved from it (spoken reveals' onsets, emphasised words'
+    // onsets and ends), even where a change falls between output frames.
     const measured=[...new Set(unit.frames.flatMap(({request})=>[request.shotId,request.transition?.outgoing?.shotId].filter(Boolean)))]
       .flatMap(shotId=>{
         const timing=e.wordTiming?.[shotId];
-        return timing?.sha256?[{shotId,sha256:timing.sha256,timingSha256:hash(JSON.stringify(timing))}]:[];
+        return timing?.sha256?[{shotId,sha256:timing.sha256,timingSha256:hash(JSON.stringify({timing,resolved:measuredActions(e,shotId)}))}]:[];
       });
     unit.media=media;unit.measured=measured;
     unit.key=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,commonKey,shotId:unit.shotId,

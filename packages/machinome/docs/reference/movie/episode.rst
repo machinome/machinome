@@ -10,13 +10,20 @@ shots and keys (see "Format 0.4", "Easing", "Joining shots", "Rings" and
 The user reads and edits the same YAML that the production tool consumes.
 No executable episode code, imports, expressions or generated screenplay copy.
 
-The commands also accept a movie document, `machinome-movie/0.1`: JSON data a
+The commands also accept a movie document, `machinome-movie/0.2`: JSON data a
 project's declarations evaluate to, whose narration belongs to chapters of
-several shots and whose times may be anchored to spoken phrases and marks.
-Its contract is [the movie document](movie-document.md). It resolves to a
-format 0.4 episode with chapters, so everything below about 0.4 shots, cues
-and refusals applies to its shots. A YAML episode behaves as a movie whose
-every shot is one chapter.
+several shots, whose shots place elements in the slots of the project's own
+sets, and whose times may be anchored to spoken phrases and marks. Its
+contract is [the movie document](movie-document.md). A YAML episode loads
+into the same resolved document, as a movie whose every shot is one chapter,
+drawn through three sets the tool ships for episodes: `paper` for a shot
+without code, `paper-split` for a shot with code and `source-only` for a
+shot with `layout: source-only`. They draw the film page every episode has
+had: its model stage, its source panel, its overlay positions and its
+masthead, `MACHINOME` and the series label, which are the sets' props. Every
+validation, refusal and timing rule below keeps its meaning. No film draws a
+progress rule: showing how far through a film a viewer is belongs to the
+player, not to the frames.
 
 ## Read the screenplay first
 
@@ -82,9 +89,9 @@ Narration lives only inside each shot; there is no separate script to keep in sy
   optional raster `upscale` allowance (default 1). See “Showing stills and
   clips”. Older episode formats ignore these maps.
 - `style`: background, foreground, accent, font and safe inset.
-  Background, foreground, accent and font are applied by the current renderer;
-  safe inset is an editorial hint for its fixed layout,
-  not independently implemented layout controls.
+  Background, foreground, accent and font are applied by the stage;
+  safe inset places annotations (below) and is not a layout control: the
+  paper sets' layout is fixed.
 - `cameras`: named world-space `position`, `target`, `up` and `fov`.
 - `layers`: named lists of root-relative assembly paths. Each path is a list
   of exact sibling names, excluding the document root's name.
@@ -139,7 +146,10 @@ In format 0.3 a `highlight` (below) composes with it: hidden parts stay hidden
 while the others are kept, dimmed or ghosted, and highlighting a hidden part is refused.
 
 Overlay `from`/`to` values are shot-local, half-open intervals. Positions are
-`top`, `lower-third`, or `center`, plus `title` in format 0.4. Overlays are screen labels, fixed on the frame;
+`top`, `lower-third`, or `center`, plus `title` in format 0.4. A shot may
+place up to eight overlays at one position; each is drawn in its own copy
+of the position, at the same place, and a ninth is refused naming the shot.
+Overlays are screen labels, fixed on the frame;
 in format 0.3, `annotations` (below) point at parts and follow them. Narration captions are external SRT files, never film pixels.
 Framing and text placement need visual review at the final aspect ratio.
 
@@ -213,9 +223,10 @@ only, a code shot may instead declare `layout: source-only` alongside `code`:
 
 That shot's own picture shows the same pinned Python across the existing main
 content rectangle, with larger source type for that wider space and without a
-model pane beside it. Its simulation, camera,
-up and FOV are still posed and checked internally. The current episode style,
-masthead, series label, progress rule, overlays, captions and narration remain;
+model pane beside it. Its simulation, camera, up and FOV are still validated
+and count toward the Viewer API the episode needs, but no model is posed for
+it: the shot places no view. The current episode style,
+masthead, series label, overlays, captions and narration remain;
 this is not the private dark-source experiment's theme, a multi-range source
 collage or an initial-prefix syntax. A source-only shot needs `code`, accepts
 no nonempty `annotations`, `highlight` or `pictures` list, and must use format
@@ -282,6 +293,12 @@ world point, which follow it on screen every frame.
   `style.safeInsetFraction`.
 - `offset` (label, optional, default `[0, 0]`): `[dx, dy]` in safe-area units from
   the target's anchor to the label's centre, each within `[-1, 1]`.
+
+A mark belongs to the view it points into, and the stage places marks as
+fractions of the view's box. An episode's safe-area `place`, `offset` and
+`padding` (below) are converted to the view's box of the paper set the shot is
+drawn in, so each mark sits at the same position on screen as the safe area
+gives.
 
 An episode using annotations must declare `style.safeInsetFraction` in `[0, 0.5)`;
 this is its first operational use, and no default is invented. Other fields in
@@ -609,8 +626,7 @@ judgement on the stills, not an automated claim.
 `machinome-video-draft/0.4` accepts everything 0.3 does, with the same meaning:
 a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does.
 A 0.4 episode using only 0.3 fields produces the same visible result as the
-same episode declared 0.3 (its frame data also carries null `transition` and
-`picture`). It adds `ease` on camera keys and model keyframes,
+same episode declared 0.3 on the same sets. It adds `ease` on camera keys and model keyframes,
 `transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"),
 `layout: source-only` on code shots (see "Actual Python beside the animation"), `pictures`
 on shots (see “Showing stills and clips”), text
@@ -654,7 +670,7 @@ as in 0.3.
   field that a later build of Videomaker defines and this one does not, is
   never silently dropped. 0.2 and 0.3 episodes keep ignoring unknown fields.
 - Easing and transitions need no newer viewer: easing changes only the
-  numbers the film page already sends, and a transition poses the viewer as
+  numbers the stage already sends, and a transition poses the viewer as
   every frame does. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
   uses (annotations, highlights, a change of lens or up); one that only eases
   or joins shots or only animates text, shows pictures or selects source-only
@@ -870,9 +886,9 @@ With `p` the eased progress, running from 0 on the transition's first frame
 
 Every kind acts on the picture, not on the film's chrome: the transition is
 drawn above the model, annotations, overlays and code panel, and below the
-masthead (`MACHINOME` and the series label) and the progress rule, which stay
-in place. A slide never pushes the masthead out of frame, and a fade shows the
-masthead and progress rule on the colour. A change between model, split and
+masthead (`MACHINOME` and the series label), which stays in place. A slide
+never pushes the masthead out of frame, and a fade shows the masthead on the
+colour. A change between model, split and
 source-only shots needs nothing special: each incoming and outgoing picture
 keeps its own shot's presentation. Dissolve, wipe and slide may show the
 outgoing model while a source-only picture arrives; a fade passes through its
@@ -926,11 +942,11 @@ pixel by pixel:
   of 255 on every channel of every pixel;
 - a wipe's midpoint is exactly the outgoing picture on one side of the edge
   and exactly the incoming one on the other;
-- a slide's midpoint, outside the masthead and progress rule, is exactly the
-  two pictures at their offsets;
+- a slide's midpoint, outside the masthead, is exactly the two pictures at
+  their offsets;
 - a fade blends its colour with the picture as its easing predicts within 2
   levels at a quarter of each half, and is exactly the colour, outside the
-  masthead and progress rule, at its midpoint; `fadeIn` on the film's first
+  masthead, at its midpoint; `fadeIn` on the film's first
   frame and `fadeOut` on its last are exactly the colour there too;
 - posing the midpoint, another instant and the midpoint again gives identical
   pixels.
@@ -945,10 +961,9 @@ checks pose their shot with its transition removed, so a cue under an outgoing
 picture is still proved on its own shot. Whether a kind reads well in motion is
 for review.
 
-A frame inside a transition depends only on its video time: the film page
+A frame inside a transition depends only on its video time: the stage
 composes it from poses of that instant alone, capturing each picture it is made
-of without the masthead and progress rule and drawing the captures again inside
-the page under them, so a resumed render reproduces it exactly. A fade frame
+of without the masthead and drawing the captures again beneath it, so a resumed render reproduces it exactly. A fade frame
 therefore poses the viewer once, and a dissolve, wipe or slide frame twice.
 
 ## Text animation
@@ -1073,7 +1088,8 @@ pictures:
 Exactly one of `still` and `clip` is required. Cues in a shot cannot overlap;
 gaps uncover the continuously posed model. `area: stage` is the default: the
 model stage is 90% × 63% of a plain frame, or 42% × 65% beside source code.
-`area: frame` covers the whole frame below the masthead and progress rule.
+`area: frame` covers the whole frame below the masthead. A shot may place
+up to eight pictures in each area, one after another.
 The picture's background-coloured plate and image cover the area together;
 text overlays remain above them, and film transitions remain above both.
 Annotations or highlights overlapping a picture are refused because they
@@ -1106,7 +1122,7 @@ fade together, composited from same-instant opaque and absent captures so
 their pixels replay exactly.
 
 Clips have `inPoint` (default 0), no keyed `view`, and no sound in the film.
-At film second `T`, the page shows the source frame whose presentation
+At film second `T`, the stage shows the source frame whose presentation
 timestamp is latest at or before `inPoint + T − cue start`. Clip timestamps
 come from integer presentation ticks and the stream's time base, normalized
 to the first frame. This samples and holds: faster clips drop frames, slower
@@ -1147,7 +1163,7 @@ old mastered files stay unchanged; new renders use external subtitles only.
 The film stage mounts Viewer API 21 or later (28 for format 0.3 cues) with
 external, paused, on-demand rendering and no interactive controls. The viewer's setters pose/render synchronously;
 Playwright captures the composed frame. A rendered frame does not advance
-the model by wall-clock time. Below Viewer API 28 the page gives the viewer an up
+the model by wall-clock time. Below Viewer API 28 the stage gives the viewer an up
 and field of view once, at mount; from API 28 it sets them on every frame.
 
 ## Evidence and provenance
@@ -1169,8 +1185,8 @@ becomes one `name: credit` line per shown picture, or a marked pending line
 for a null credit; Videomaker records rights but does not judge them.
 
 `render` caches complete shot generations under `_build/shot-cache/shot-v1/`.
-Its output frames still use the film-wide `n / fps` clock, including progress
-and an outgoing picture during an incoming transition. Each generation has an
+Its output frames still use the film-wide `n / fps` clock, including an
+outgoing picture during an incoming transition. Each generation has an
 index published only after all its frames are captured. Reuse verifies the
 index, every PNG checksum and dimensions; missing, interrupted or damaged
 generations are recaptured as whole shots. The output manifest records the
@@ -1210,7 +1226,8 @@ publication readiness. Pack failure after film publication prints `review
 pack failed; film published` and a standalone retry path without changing the
 film's success status or its manifest.
 
-The common key binds the first mounted frame, model/viewer/page/runtime,
+The common key binds the first mounted frame, model/viewer/page/runtime, the
+stage bundle,
 the known regular/bold film and mono font faces in the tested environment,
 global chrome/style, browser, viewport, FPS and film
 duration. A first-shot edit may therefore invalidate all shots. A later edit

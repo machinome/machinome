@@ -1,7 +1,7 @@
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
-import {validateEpisode,requiredViewerApi} from '../src/episode.mjs';
-import {frameAt} from '../src/timeline.mjs';
+import {validateEpisode,requiredViewerApi,PAPER_STAGE} from '../src/episode.mjs';
+import {yamlFrame,element,viewAt,placeInBox,offsetInBox,paddingInBox} from './frame-fixtures.mjs';
 import {EASINGS,ease} from '../src/easing.mjs';
 import {fadeSubsets} from '../src/render.mjs';
 
@@ -30,30 +30,40 @@ const overlays=()=>({format:V04,
       {from:0,to:2,kind:'label',part:HOLDING,offset:[.12,-.03],text:'Holding pawl',enter:{kind:'fade',duration:.5},leave:{kind:'fade',duration:.4}}]}),
     shot('plain',2,4)]});
 const valid=e=>validateEpisode(e,manifest);
-const cue=(e,t,index)=>frameAt(e,t).annotations.find(a=>a.index===index);
+// Annotation #i of the shot is the view's mark cues[i].actions[0] (the shot has
+// one camera key, so no move comes before its annotations' cues), with its
+// safe-area place, offset and padding in the view's box.
+const box=PAPER_STAGE.paper,id=index=>`cues[${index}].actions[0]`;
+const cue=(e,t,index)=>viewAt(e,t).marks.find(a=>a.id===id(index));
 
 test('simultaneous fades preserve an opaque intervening label and compose overlapping marks at their authored opacities',()=>{
-  const marks=[{index:0,kind:'label',opacity:.25,drawn:1},{index:1,kind:'label'},
-    {index:2,kind:'label',opacity:.6,drawn:1}];
-  const variants=fadeSubsets(marks);
-  assert.deepEqual(variants.map(v=>v.annotations.map(a=>a.index)),[[1],[0,1],[1,2],[0,1,2]]);
+  const mark=(id,opacity)=>({id,kind:'label',target:{point:[0,0,0]},text:id,offset:[0,0],opacity,drawn:1});
+  const frame={time:0,chapterId:'c',shotId:'s',set:'paper',slots:{stage:'c.view'},transition:null,
+    elements:{'c.view':{kind:'view',time:0,view:{camera:[0,0,1],target:[0,0,0]},up:[0,1,0],fov:37,hidden:[],highlight:null,
+      marks:[mark('m0',.25),mark('m1',1),mark('m2',.6)]}}};
+  const variants=fadeSubsets(frame);
+  const drawn=v=>v.elements['c.view'].marks;
+  assert.deepEqual(variants.map(v=>drawn(v).map(a=>a.id)),[['m1'],['m0','m1'],['m1','m2'],['m0','m1','m2']]);
   assert.deepEqual(variants.map(v=>v.weight),[.75*.4,.25*.4,.75*.6,.25*.6]);
   assert.equal(variants.reduce((sum,v)=>sum+v.weight,0),1);
-  for(const v of variants)for(const a of v.annotations.filter(a=>a.index!==1)){
-    assert.equal('opacity' in a,false);assert.equal('drawn' in a,false);
-  }
+  // Each subset draws its marks whole: the blend, not the mark, carries the opacity.
+  for(const v of variants)for(const a of drawn(v)){assert.equal(a.opacity,1);assert.equal(a.drawn,1);}
+  assert.deepEqual(frame.elements['c.view'].marks.map(m=>m.opacity),[.25,1,.6],'the frame itself is not changed');
   // One overlapping pixel: the middle, opaque label hides mark 0. Mark 2
   // remains above it. The subset blend must equal that draw order exactly.
-  const pixel=chosen=>chosen.reduce((under,a)=>a.index===0?100:a.index===1?180:30,20);
-  const mixed=variants.reduce((sum,v)=>sum+v.weight*pixel(v.annotations),0);
+  const pixel=chosen=>chosen.reduce((under,a)=>a.id==='m0'?100:a.id==='m1'?180:30,20);
+  const mixed=variants.reduce((sum,v)=>sum+v.weight*pixel(drawn(v)),0);
   assert.ok(Math.abs(mixed-(.6*30+.4*180))<1e-12);
+  // A frame with nothing fading has no subsets.
+  const plain=structuredClone(frame);for(const m of plain.elements['c.view'].marks)m.opacity=1;
+  assert.equal(fadeSubsets(plain),null);
 });
 
 test('a 0.4 episode with rings, a drawn arrow and a fading label validates, and rings are emitted with explicit padding',()=>{
   const e=overlays();
   assert.doesNotThrow(()=>valid(e));
-  assert.deepEqual(cue(e,.5,0),{index:0,kind:'ring',target:{paths:[DRIVING]},padding:.01,safeInset:.08});
-  assert.deepEqual(cue(e,1.5,1),{index:1,kind:'ring',target:{paths:[DRIVING,HOLDING]},padding:.02,safeInset:.08});
+  assert.deepEqual(cue(e,.5,0),{id:id(0),kind:'ring',target:{paths:[DRIVING]},padding:paddingInBox(.01,.08,box),opacity:1,drawn:1});
+  assert.deepEqual(cue(e,1.5,1),{id:id(1),kind:'ring',target:{paths:[DRIVING,HOLDING]},padding:paddingInBox(.02,.08,box),opacity:1,drawn:1});
   assert.equal(cue(e,1,0),undefined,'a ring ends at its to');
 });
 
@@ -78,30 +88,31 @@ test('opacity and drawn fraction follow the entrance and exit through their easi
     assert.equal(cue(eased,.125,3).opacity,ease(name,.25),name);
   }
   // The whole cue as emitted: the mark's own fields, then opacity and drawn.
-  assert.deepEqual(arrow(.9),{index:2,kind:'arrow',text:'Driving pawl',target:{paths:[DRIVING]},place:[.1,.3],safeInset:.08,opacity:1,drawn:.875});
-  assert.deepEqual(label(.5),{index:3,kind:'label',text:'Holding pawl',target:{paths:[HOLDING]},offset:[.12,-.03],safeInset:.08,opacity:1,drawn:1});
+  assert.deepEqual(arrow(.9),{id:id(2),kind:'arrow',text:'Driving pawl',target:{paths:[DRIVING]},place:placeInBox([.1,.3],.08,box),opacity:1,drawn:.875});
+  assert.deepEqual(label(.5),{id:id(3),kind:'label',text:'Holding pawl',target:{paths:[HOLDING]},offset:offsetInBox([.12,-.03],.08,box),opacity:1,drawn:1});
 });
 
-test('a 0.4 cue without enter, leave or padding is emitted exactly as the same cue in 0.3',()=>{
+test('a 0.4 cue without enter, leave or padding is emitted exactly as the same cue in 0.3, whole and at full strength',()=>{
   const plain=format=>{const e=overlays();e.format=format;const a=e.shots[0].annotations;
     a.splice(0,2);delete a[0].enter;delete a[1].enter;delete a[1].leave;return e;};
   const old=plain(V03),next=plain(V04);valid(old);valid(next);
   for(const t of [0,.5,1,1.5,1.9]){
-    assert.deepEqual(frameAt(next,t).annotations,frameAt(old,t).annotations,`at ${t}`);
-    for(const a of frameAt(next,t).annotations){assert.equal('opacity' in a,false);assert.equal('drawn' in a,false);}
+    assert.deepEqual(yamlFrame(next,t),yamlFrame(old,t),`at ${t}`);
+    for(const a of viewAt(next,t).marks){assert.equal(a.opacity,1);assert.equal(a.drawn,1);}
   }
 });
 
 test('into a transition, a cue that leaves is gone, and one that does not continues at full strength',()=>{
   const e=overlays();e.shots[1].transition={kind:'dissolve',duration:1};valid(e);
+  const outgoing=(e,t)=>element(yamlFrame(e,t).transition.outgoing,'view').marks;
   for(const t of [2,2.5,2.9]){
-    const out=frameAt(e,t).transition.outgoing.annotations;
-    assert.deepEqual(out.map(a=>a.index),[1,2],`only the cues without leave at ${t}`);
-    assert.deepEqual(out[0],{index:1,kind:'ring',target:{paths:[DRIVING,HOLDING]},padding:.02,safeInset:.08},'no opacity field');
+    const out=outgoing(e,t);
+    assert.deepEqual(out.map(a=>a.id),[id(1),id(2)],`only the cues without leave at ${t}`);
+    assert.deepEqual(out[0],{id:id(1),kind:'ring',target:{paths:[DRIVING,HOLDING]},padding:paddingInBox(.02,.08,box),opacity:1,drawn:1});
     assert.equal(out[1].opacity,1);assert.equal(out[1].drawn,1);
   }
   const kept=overlays();delete kept.shots[0].annotations[3].leave;kept.shots[1].transition={kind:'dissolve',duration:1};valid(kept);
-  const label=frameAt(kept,2.5).transition.outgoing.annotations.find(a=>a.index===3);
+  const label=outgoing(kept,2.5).find(a=>a.id===id(3));
   assert.equal(label.opacity,1);assert.equal(label.drawn,1);
 });
 
@@ -161,8 +172,8 @@ test('rings and entrances need no newer viewer than annotations do',()=>{
 });
 
 // Pins, green by design before and after (tasks 1.2): the annotated fixture of
-// annotations.test.mjs, its whole frames literally from the base 6417f97, in 0.3
-// and declared 0.4 (which adds only transition: null).
+// annotations.test.mjs, its view's model time pinned literally from the base
+// 6417f97, its marks as converted; 0.3 and 0.4 give the same frames.
 const annotated=()=>({format:V03,
   output:{width:1280,height:720,fps:30,durationSeconds:4},
   model:{expectedDurationSeconds:296,timeMode:'normalized-loop'},
@@ -174,14 +185,16 @@ const annotated=()=>({format:V03,
       {from:0,to:2,kind:'label',part:'rope-1',offset:[.04,-.05],text:'Rope 1'}]}),
     shot('plain',2,4)]});
 test('the annotated 0.3 frames, and the same fixture in 0.4, are unchanged',()=>{
-  const arrow={"index":0,"kind":"arrow","text":"Pulls one tooth","target":{"paths":[["Feed mechanism","Driving pawl"]]},"place":[0.18,0.22],"safeInset":0.08};
-  const label={"index":1,"kind":"label","text":"Rope 1","target":{"paths":[["Feed mechanism","Ratchet to reduction shaft"]]},"offset":[0.04,-0.05],"safeInset":0.08};
-  const frame=(time,annotations)=>({"shotId":"pawls","time":time,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"overlays":[],"code":null,"annotations":annotations,"highlight":null});
-  const pinned={"0.25":frame(0.02787162162162162,[label]),"1":frame(0.030405405405405407,[arrow,label]),"1.5":frame(0.03209459459459459,[label])};
+  const arrow={"id":"cues[0].actions[0]","kind":"arrow","text":"Pulls one tooth","target":{"paths":[["Feed mechanism","Driving pawl"]]},"place":placeInBox([0.18,0.22],.08,box),"opacity":1,"drawn":1};
+  const label={"id":"cues[1].actions[0]","kind":"label","text":"Rope 1","target":{"paths":[["Feed mechanism","Ratchet to reduction shaft"]]},"offset":offsetInBox([0.04,-0.05],.08,box),"opacity":1,"drawn":1};
+  const view=(time,marks)=>({"kind":"view","time":time,"view":{"camera":[0,0,10],"target":[0,0,0]},"up":[0,1,0],"fov":37,"hidden":[],"highlight":null,"marks":marks});
+  const pinned={"0.25":view(0.02787162162162162,[label]),"1":view(0.030405405405405407,[arrow,label]),"1.5":view(0.03209459459459459,[label])};
   const old=annotated(),next={...annotated(),format:V04};valid(old);valid(next);
-  for(const [t,f] of Object.entries(pinned)){
-    assert.deepEqual(frameAt(old,Number(t)),f,`0.3 at ${t}`);
-    assert.deepEqual(frameAt(next,Number(t)),{...f,transition:null,picture:null},`0.4 at ${t}`);
+  for(const [t,v] of Object.entries(pinned)){
+    const f=yamlFrame(old,Number(t));
+    assert.equal(f.shotId,'pawls');assert.deepEqual(Object.keys(f.elements),['pawls.view']);
+    assert.deepEqual(element(f,'view'),v,`0.3 at ${t}`);
+    assert.deepEqual(yamlFrame(next,Number(t)),f,`0.4 at ${t}`);
   }
 });
 

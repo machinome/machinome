@@ -6,14 +6,20 @@ point and follow it on screen, drawn only where the target truly is.
 ## Requirements
 ### Requirement: An arrow or label follows its target
 
-The author SHALL add timed `arrow` and `label` annotations to a shot, each aimed
-at one part (a production layer name or one assembly path) or one world point,
-with shot-local `from`/`to` seconds. While an annotation is active, every frame
-SHALL draw it at the target's on-screen position for that frame's model pose and
-camera: an arrow runs from text fixed at an authored place in the safe area to a
-tip on the target; a label's text sits at an authored offset from the target.
-Annotations MUST be drawn over the model and MUST NOT change the model, the
-camera or the visibility of any part.
+The author SHALL add timed `arrow` and `label` marks to a view, each aimed at
+one part (a production layer name or one assembly path) or one world point:
+in an episode, annotations of a shot with shot-local `from`/`to` seconds; in
+a movie document, `arrow` and `label` actions on a view element the shot
+places, lasting from their cue's `at` to its `until`. Each mark belongs to its
+view. While a mark is active, every frame SHALL draw it at the target's
+on-screen position for that frame's model pose and that view's camera: an
+arrow runs from text fixed at an authored `place` to a tip on the target; a
+label's text sits at an authored `offset` from the target. In a movie
+document `place` and `offset` SHALL be fractions of the view element's box,
+wherever the set puts it. In an episode they SHALL keep their safe-area
+units, and the paper sets SHALL draw them at the same positions on screen as
+the safe area gives. Marks MUST be drawn over their view and MUST NOT change
+the model, the camera or the visibility of any part.
 
 #### Scenario: Point at a moving pawl
 - **WHEN** the *Revolutions* pawls shot adds an arrow from the words "Pulls one
@@ -27,8 +33,15 @@ camera or the visibility of any part.
 - **THEN** the label travels with the rope's on-screen position through the cue.
 
 #### Scenario: Annotation ends on time
-- **WHEN** video time reaches the annotation's `to`, or the shot cuts
+- **WHEN** video time reaches the annotation's `to`, or its cue's `until`, or
+  the shot cuts
 - **THEN** the annotation is gone from that frame.
+
+#### Scenario: An arrow on a view in the split
+- **WHEN** a shot of *Cut and Advance* places `mill` in `LeonardoSplit`'s
+  `right` and an arrow on `mill` has `place: [0.1, 0.2]`
+- **THEN** the arrow's words sit a tenth of the way across and a fifth of the
+  way down the right-hand view's box, not the frame's.
 
 ### Requirement: Annotated frames are reproducible
 
@@ -42,12 +55,16 @@ away and back, or resuming an interrupted render, SHALL yield identical pixels.
 
 ### Requirement: Invalid annotations are refused before rendering
 
-`check`, `preview` and `render` MUST refuse, naming the shot, an annotation with
+`check`, `preview` and `render` MUST refuse, naming the shot: an annotation with
 an unknown kind; with both or neither of a part and a point; naming a layer that
 production does not define or an assembly path the exported model does not
 contain; with times outside the shot or not increasing; an arrow without a place
 in the safe area or with a place outside it; a label without text; a target the
 same shot hides; and an episode using annotations without a declared safe inset.
+In a movie document they MUST refuse the same faults of a mark action, naming the
+chapter, the shot, the view and the action: an arrow with both or neither of a
+part and a point, or without a `place`; a label without text; a part the export
+does not contain or the view hides; and a mark on an element that is not a view.
 
 #### Scenario: Misspelled part
 - **WHEN** an annotation names `[Feed mechanism, Drving pawl]`
@@ -60,8 +77,9 @@ same shot hides; and an episode using annotations without a declared safe inset.
 ### Requirement: An annotation never points at nothing
 
 `preview` and `render` MUST refuse a frame on which an active annotation's target
-is not on screen, or whose text leaves the frame, naming the shot, the
-annotation, its text and the video time. They MUST NOT drop the annotation silently.
+is not on screen within its view's box, or whose text leaves the frame, naming
+the shot, the annotation, its text and the video time. They MUST NOT drop the
+annotation silently.
 
 #### Scenario: Part leaves the frame
 - **WHEN** a moving part leaves the camera's view while its arrow is active
@@ -70,10 +88,11 @@ annotation, its text and the video time. They MUST NOT drop the annotation silen
 
 ### Requirement: Older episodes and older viewers are handled explicitly
 
-Episodes in format `machinome-video-draft/0.2` SHALL parse and render exactly as
-before, with any Viewer API 21 or later. Annotations SHALL require format
-`machinome-video-draft/0.3` and Viewer API 28. `check`, `preview` and `render`
-MUST refuse an episode using annotations against a viewer declaring an older API,
+Episodes in format `machinome-video-draft/0.2` SHALL parse and render with any
+Viewer API 21 or later. Annotations SHALL require format
+`machinome-video-draft/0.3` and Viewer API 28, and a movie document's marks
+SHALL require Viewer API 28. `check`, `preview` and `render` MUST refuse an
+episode or movie using annotations against a viewer declaring an older API,
 with a message naming the field, the shot, the required and the declared API.
 
 #### Scenario: Old episode, old viewer
@@ -94,10 +113,13 @@ with a message naming the field, the shot, the required and the declared API.
 
 In a format 0.4 episode, the author SHALL be able to add an annotation of kind
 `ring` aimed at a part (a production layer name or one assembly path), with
-shot-local `from`/`to` seconds and an optional `padding` in safe-area widths.
-While it is active, every frame SHALL draw a ring in the accent colour that
-encloses the part's whole on-screen rectangle, grown by the padding, following
-the part as it moves and as the camera moves. A layer holding several parts
+shot-local `from`/`to` seconds and an optional `padding` in safe-area widths;
+in a movie document, a `ring` action on a view, with an optional `padding` in
+widths of the view element's box. While it is active, every frame SHALL draw
+a ring in the accent colour that encloses the part's whole on-screen
+rectangle, grown by the padding, following the part as it moves and as the
+camera moves. An episode's padding SHALL grow the ring by the same pixels
+through the paper sets as the safe area gives. A layer holding several parts
 SHALL be ringed as one. A ring MUST carry no words and MUST NOT change the
 model, the camera or the visibility of any part.
 
@@ -205,7 +227,11 @@ five; a draw-on on a label; an entrance or exit shorter than two frames or
 longer than the cue; an entrance and exit that together exceed the cue; and any
 of `ring`, `padding`, `enter` or `leave` in a 0.2 or 0.3 episode, which MUST be
 asked to change its format rather than be rendered without them. A ring on a
-part the shot hides MUST be refused as an arrow's target is.
+part the shot hides MUST be refused as an arrow's target is. A movie
+document's `ring`, `label` and `arrow` actions MUST be refused for the same
+faults of their fields, entrances and exits, naming the chapter, the shot, the
+view and the action, except that an entrance and an exit may together exceed
+a short cue: the mark's opacity is then the lesser of the two.
 
 #### Scenario: A draw-on on a label
 - **WHEN** a label says `enter: {kind: draw, duration: 0.5}`
@@ -223,12 +249,12 @@ part the shot hides MUST be refused as an arrow's target is.
 ### Requirement: A ring never encloses what is not there
 
 `preview` and `render` MUST refuse a frame on which an active ring's part is not
-wholly on the model stage, or on which the ring leaves the frame, naming the
+wholly on its view's box, or on which the ring leaves the frame, naming the
 shot, the annotation and the video time, including frames where the ring is
 entering or leaving. They MUST NOT clip or drop the ring silently.
 
 #### Scenario: A ringed part moves out of view
-- **WHEN** a ringed part moves partly past the edge of the stage during its cue
+- **WHEN** a ringed part moves partly past the edge of its view during its cue
 - **THEN** preview or render stops with the shot, the ring and the time, and the
   author shortens the cue or reframes.
 
@@ -237,14 +263,23 @@ entering or leaving. They MUST NOT clip or drop the ring silently.
 - **THEN** preview or render stops, naming the ring, and the author reduces the
   padding.
 
+#### Scenario: A ring on a view in half the frame
+- **WHEN** a ringed part is inside the frame but outside the box of the view
+  in `LeonardoSplit`'s `right`
+- **THEN** preview or render stops, naming the ring, rather than drawing it
+  over the source panel beside the view.
+
 ### Requirement: Older episodes and plain 0.4 marks are unchanged
 
-Episodes in formats 0.2 and 0.3 SHALL produce exactly the frames and pixels they
-produced before this change, and a 0.4 arrow or label declaring none of `padding`,
-`enter` or `leave` SHALL be drawn exactly as the same annotation in 0.3. Rings
-and entrances MUST NOT raise the Viewer API an annotated episode needs.
+Episodes in formats 0.2 and 0.3 SHALL be drawn with the marks their format
+allows and no other, and a 0.4 arrow or label declaring none of `padding`,
+`enter` or `leave` SHALL be drawn exactly as the same annotation in 0.3 on the
+same sets. Rings and entrances MUST NOT raise the Viewer API an annotated
+episode needs.
 
 #### Scenario: The 0.3 demos are unchanged
 - **WHEN** `demo-annotate-a-part` and `demo-feed-mechanism` are previewed with
-  the same viewer bundle before and after this change
+  the same viewer bundle, once as written in 0.3 and once with their format
+  changed to 0.4 and nothing else
 - **THEN** their stills are byte-for-byte identical.
+
