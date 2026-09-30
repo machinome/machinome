@@ -151,7 +151,9 @@ Findings met while building the `react-stage` change (the Node side of
    A layout measured once per set when `check` bundles the stage would move
    the refusal before speech.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `check-measures-the-stage`.
+   `check-measures-the-stage`; done the same day (8b0beae, ADR-009): `check`
+   measures each set's slots in a headless page and refuses the enlargement
+   before any take is read; a slot sized by what it holds is still preview's.
 2. **One element per slot per shot.** The YAML paper sets carry indexed slots
    (`top`, `top-2` … `top-8`, and so on) so that several captions of one
    position in one shot stay separate elements; a project template that wants
@@ -274,4 +276,5 @@ Findings met while producing the film on the React stage
    "The React stage"): the still over a full-frame plate slot passed at
    preview and render; `check` could not say so before speech.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `check-measures-the-stage`.
+   `check-measures-the-stage`; done the same day (8b0beae): `check` prints
+   the film's peak and allowance from the measured plate box, before speech.
