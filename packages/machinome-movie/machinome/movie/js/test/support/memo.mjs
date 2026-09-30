@@ -1,16 +1,17 @@
 // The test memo (AGENTS.md, "Memoization of slow tests"; ADR-003).
 //
-// Two memos, both keyed on content and both kept in the ignored `.test-memo/`
-// at the repository root, never committed:
+// Two memos, both keyed on content and both kept in one store every worktree
+// of the repository shares, never committed: `videomaker-test-memo/` beside
+// the common Git directory (`memoDirectory`), or `.test-memo/` at the root
+// outside a Git work tree. Fingerprints are relative to the checkout's root,
+// so equal content in two worktrees gives equal keys.
 //
 // - The verdict memo keeps a slow test's pass. `slowTest(name, fn)` is a
 //   vitest `test` whose key is the SHA-256 of the test's name and file, the
-//   content fingerprint of everything a slow test can read (`src/`, `bin/`,
-//   `fixtures/`, `schema/`, `stage/`, the fixture project under
-//   `python/tests/fixtures/project` without its `__pycache__` and `_build`
-//   directories, every non-test module under `test/` — the helpers,
-//   the viewer double, these support modules —, the test's own file,
-//   `package.json`, `package-lock.json`, `vitest.config.mjs`) and the
+//   content fingerprint of everything the test can reach (test/support/reach.mjs:
+//   its import graph, what the reached modules serve or read, the command line
+//   when a test runs it, test/support/, the viewer double, the test's own
+//   file, `package.json`, `package-lock.json`, `vitest.config.mjs`) and the
 //   toolchain record: the versions of Node, Chromium, FFmpeg, ffprobe and Git
 //   and the fonts the stage uses, obtained once per run by the global setup
 //   (`test/support/toolchain.mjs`). A verified entry for the key is a hit: the
@@ -36,9 +37,14 @@
 //   part and before the rename into place; on every reuse the directory must
 //   hold exactly the indexed files with those hashes, or it is removed and
 //   produced again whole.
+// - Two suites (two worktrees) may write the store at once. Temporary names
+//   carry the writer's PID; a writer that finds an entry published first by
+//   another uses it when it verifies; a damaged entry is renamed aside before
+//   it is removed. `sweep` removes what a process that is gone left.
 // - The cold switch (`npm test -- --cold`, carried as VIDEOMAKER_TEST_COLD=1)
 //   ignores the memo entirely: nothing is read from it or written to it, and
-//   an artefact is produced in a temporary directory outside it.
+//   an artefact is produced inside the run's cold directory (`openColdRun`),
+//   which the global teardown removes.
 // - A step that reaches a network or reads a clock for its verdict is not
 //   memoizable and is doubled instead. The slow tests' remaining reads outside
 //   the key (the repository's Git HEAD recorded as provenance, a clock read
@@ -46,16 +52,29 @@
 //   directories, loopback sockets) decide no verdict; see ADR-003.
 import {createHash,randomUUID} from 'node:crypto';
 import {readFile,readdir,lstat,readlink,mkdir,writeFile,rename,rm,mkdtemp} from 'node:fs/promises';
-import {rmSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
-import {join,relative,dirname,sep} from 'node:path';
+import {join,relative,dirname,sep,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {test,inject} from 'vitest';
+import {slowTestInputs} from './reach.mjs';
 
 export const MEMO_LABEL='passed from the memo';
 export const REPOSITORY=join(dirname(fileURLToPath(import.meta.url)),'..','..');
-export const MEMO_DIR=join(REPOSITORY,'.test-memo');
-const VERDICT_SCHEMA='verdict-memo-v1',ARTEFACT_SCHEMA='artefact-memo-v1',INDEX='index.json';
+const VERDICT_SCHEMA='verdict-memo-v2',ARTEFACT_SCHEMA='artefact-memo-v1',INDEX='index.json';
+const STORE='videomaker-test-memo',FALLBACK='.test-memo';
+
+// The one store every worktree of the repository shares: beside the common
+// Git directory of `root` (the `.git` of the primary checkout, which every
+// linked worktree names), or `.test-memo/` at `root` outside a Git work tree.
+export function memoDirectory(root=REPOSITORY){
+  let common;
+  try{
+    common=execFileSync('git',['rev-parse','--path-format=absolute','--git-common-dir'],
+      {cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
+  }catch{return join(root,FALLBACK);}
+  return join(resolve(root,common),STORE);
+}
 
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const sorted=value=>Array.isArray(value)?value.map(sorted)
@@ -95,30 +114,80 @@ async function files(dir,prefix='',out=[]){
   return out;
 }
 
+// Written to a name of its own and renamed: a reader never sees a partial
+// entry, and two writers of one key write equal bytes. The PID in the name
+// lets a later run remove what a killed one left (sweep).
 async function writeWhole(file,text){
   await mkdir(dirname(file),{recursive:true});
-  const pending=`${file}.${randomUUID()}.pending`;
-  await writeFile(pending,text);await rename(pending,file);
+  const pending=`${file}.${process.pid}.${randomUUID()}.pending`;
+  try{await writeFile(pending,text);await rename(pending,file);}
+  catch(error){await rm(pending,{force:true});throw error;}
 }
+// A damaged entry is renamed aside before it is removed, so a writer never
+// removes an entry another has just published under the same name.
+async function discard(entry){
+  const aside=join(dirname(entry),`.trash-${process.pid}-${randomUUID()}`);
+  try{await rename(entry,aside);}catch(error){if(error.code==='ENOENT')return;throw error;}
+  await rm(aside,{recursive:true,force:true});
+}
+const exists=path=>lstat(path).then(()=>true,()=>false);
 
-const coldDirs=new Set();
-let coldCleanup=false;
+// The cold run's own directory under the system's temporary directory: the
+// slow project's global setup opens it, every cold product of the run is made
+// inside it, and the global teardown closes it. The PID in its name lets the
+// next run remove it when the run was killed (sweep).
+const COLD_RUN='videomaker-cold-run-';
+export function openColdRun(tmp=tmpdir()){return mkdtemp(join(tmp,`${COLD_RUN}${process.pid}-`));}
+export function closeColdRun(dir){return rm(dir,{recursive:true,force:true});}
+
+// What a killed run left: cold run directories under `tmp`, and staging
+// directories, entries put aside and pending verdict writes in the store,
+// each carrying the PID of the process that made it. Removes those whose
+// process is gone and returns their paths; a live process's (a suite running
+// in another worktree) are left alone, and so is anything without a PID
+// (the old code's `videomaker-cold-<name>-*`, which may belong to a suite
+// still running it).
+const alive=pid=>{
+  try{process.kill(pid,0);return true;}catch(error){return error.code==='EPERM';}
+};
+// With `dir` null (a cold run, which writes nothing to the store) only `tmp`
+// is swept.
+export async function sweep({dir=memoDirectory(),tmp=tmpdir()}={}){
+  const places=[[tmp,new RegExp(`^${COLD_RUN}(\\d+)-`)],
+    ...(dir?[[join(dir,'artefacts'),/^\.(?:staging|trash)-(\d+)-/],
+      [join(dir,'verdicts'),/^(?:\.trash-(\d+)-|.*\.json\.(\d+)\.[^.]+\.pending$)/]]:[])];
+  const removed=[];
+  for(const [place,pattern] of places){
+    let names;
+    try{names=await readdir(place);}catch(error){if(error.code==='ENOENT')continue;throw error;}
+    for(const name of names.sort()){
+      const match=pattern.exec(name);
+      if(!match)continue;
+      const pid=Number(match[1]??match[2]);
+      if(alive(pid))continue;
+      await rm(join(place,name),{recursive:true,force:true});removed.push(join(place,name));
+    }
+  }
+  return removed;
+}
 
 // A memo over `dir` with the run's toolchain record. `log` receives the
 // "passed from the memo" lines.
-export function openMemo({dir=MEMO_DIR,toolchain,cold=false,log=console.log}){
+// Fingerprints are relative to `root`, so two checkouts with equal content
+// compute equal keys and share `dir`.
+export function openMemo({dir=memoDirectory(),root=REPOSITORY,toolchain,cold=false,coldDir=null,log=console.log}){
   if(!toolchain||typeof toolchain!=='object')throw new Error('The test memo needs the toolchain record of test/support/toolchain.mjs');
 
   async function readVerdict(file,key,name){
     let entry;
     try{entry=JSON.parse(await readFile(file,'utf8'));}catch(error){
       if(error.code==='ENOENT')return false;
-      await rm(file,{force:true});return false;
+      await discard(file);return false;
     }
     const {check,...rest}=entry??{};
     const good=entry&&typeof entry==='object'&&rest.schema===VERDICT_SCHEMA&&rest.key===key&&rest.test===name
       &&rest.verdict==='pass'&&check===sha256(canonical(rest));
-    if(!good)await rm(file,{force:true});
+    if(!good)await discard(file);
     return good;
   }
 
@@ -126,14 +195,14 @@ export function openMemo({dir=MEMO_DIR,toolchain,cold=false,log=console.log}){
   // Returns 'memo', 'ran' or 'cold'; a failing body rejects and records nothing.
   async function verdict({test:name,inputs},body,task){
     if(cold){await body();return 'cold';}
-    const read=await fingerprint(inputs);
+    const read=await fingerprint(inputs,{base:root});
     const key=sha256(canonical({schema:VERDICT_SCHEMA,test:name,inputs:read,toolchain}));
     const file=join(dir,'verdicts',`${key}.json`);
     if(await readVerdict(file,key,name)){
       task.meta.memo=MEMO_LABEL;log(`${MEMO_LABEL}: ${name}`);return 'memo';
     }
     await body();
-    if(await fingerprint(inputs)!==read){log(`not memoized, its inputs changed while it ran: ${name}`);return 'ran';}
+    if(await fingerprint(inputs,{base:root})!==read){log(`not memoized, its inputs changed while it ran: ${name}`);return 'ran';}
     const entry={schema:VERDICT_SCHEMA,key,test:name,verdict:'pass'};
     await writeWhole(file,JSON.stringify({...entry,check:sha256(canonical(entry))},null,2)+'\n');
     return 'ran';
@@ -158,18 +227,17 @@ export function openMemo({dir=MEMO_DIR,toolchain,cold=false,log=console.log}){
   async function artefact(name,{params={},files:inputs=[]}={},produce){
     const safe=name.replace(/[^A-Za-z0-9._-]/g,'-');
     const key=sha256(canonical({schema:ARTEFACT_SCHEMA,name,params,
-      files:inputs.length?await fingerprint(inputs):null,producer:produce.toString(),toolchain}));
+      files:inputs.length?await fingerprint(inputs,{base:root}):null,producer:produce.toString(),toolchain}));
     if(cold){
-      const out=await mkdtemp(join(tmpdir(),`videomaker-cold-${safe}-`));
-      coldDirs.add(out);
-      if(!coldCleanup){coldCleanup=true;process.on('exit',()=>{for(const d of coldDirs)rmSync(d,{recursive:true,force:true});});}
+      if(!coldDir)throw new Error(`The cold artefact ${name} needs the run's cold directory (openColdRun), which the global setup provides`);
+      const out=await mkdtemp(join(coldDir,`${safe}-`));
       await produce(out);return out;
     }
-    const root=join(dir,'artefacts'),entry=join(root,`${safe}-${key.slice(0,16)}`);
+    const store=join(dir,'artefacts'),entry=join(store,`${safe}-${key.slice(0,16)}`);
     if(await verified(entry,key))return entry;
-    await rm(entry,{recursive:true,force:true});
-    await mkdir(root,{recursive:true});
-    const staging=await mkdtemp(join(root,'.staging-'));
+    if(await exists(entry))await discard(entry);
+    await mkdir(store,{recursive:true});
+    const staging=await mkdtemp(join(store,`.staging-${process.pid}-`));
     try{
       await produce(staging);
       const made=await files(staging);
@@ -178,7 +246,17 @@ export function openMemo({dir=MEMO_DIR,toolchain,cold=false,log=console.log}){
       const listed=[];
       for(const path of made){const bytes=await readFile(join(staging,path));listed.push({path,size:bytes.length,sha256:sha256(bytes)});}
       await writeFile(join(staging,INDEX),JSON.stringify({schema:ARTEFACT_SCHEMA,key,name,files:listed},null,2)+'\n');
-      await rename(staging,entry);
+      // Another writer (a suite in another worktree) may publish the same
+      // entry first: its verified entry is used and this one dropped; a
+      // damaged one is put aside and this one published in its place, once.
+      for(let attempt=0;;attempt++){
+        try{await rename(staging,entry);break;}catch(error){
+          if(error.code!=='ENOTEMPTY'&&error.code!=='EEXIST')throw error;
+          if(await verified(entry,key)){await rm(staging,{recursive:true,force:true});break;}
+          if(attempt)throw new Error(`Artefact ${name} could not be published: another writer keeps a damaged entry at ${entry}`);
+          await discard(entry);
+        }
+      }
     }catch(error){await rm(staging,{recursive:true,force:true});throw error;}
     return entry;
   }
@@ -189,31 +267,12 @@ export function openMemo({dir=MEMO_DIR,toolchain,cold=false,log=console.log}){
 // The run's memo, from the toolchain record the global setup provides.
 let run=null;
 function runMemo(){
-  return run??=openMemo({toolchain:inject('toolchain'),
-    cold:inject('cold')??process.env.VIDEOMAKER_TEST_COLD==='1'});
+  return run??=openMemo({dir:inject('memoDir')??memoDirectory(),toolchain:inject('toolchain'),
+    cold:inject('cold')??process.env.VIDEOMAKER_TEST_COLD==='1',coldDir:inject('coldDir')});
 }
 
-// Everything a slow test can read, for its verdict key: every file under
-// `dir` for which `keep(name, isDirectory)` holds, sorted.
-async function listed(dir,keep,out=[]){
-  for(const entry of (await readdir(dir,{withFileTypes:true})).sort((a,b)=>a.name<b.name?-1:1)){
-    const path=join(dir,entry.name);
-    if(!keep(entry.name,entry.isDirectory()))continue;
-    if(entry.isDirectory())await listed(path,keep,out);
-    else out.push(path);
-  }
-  return out;
-}
-// The fixture project a browser or pipeline test copies, without what Python
-// or a build leaves in it.
-export const FIXTURE_PROJECT=join(REPOSITORY,'python','tests','fixtures','project');
-const LEFT_BEHIND=new Set(['__pycache__','_build']);
-export async function slowTestInputs(file){
-  return [...['src','bin','fixtures','schema','stage','package.json','package-lock.json','vitest.config.mjs']
-    .map(p=>join(REPOSITORY,p)),
-    ...await listed(FIXTURE_PROJECT,(name,directory)=>!(directory&&LEFT_BEHIND.has(name))),
-    ...await listed(join(REPOSITORY,'test'),(name,directory)=>directory||!name.endsWith('.test.mjs')),file];
-}
+// Everything a slow test can reach, for its verdict key (test/support/reach.mjs).
+export {slowTestInputs} from './reach.mjs';
 function fullName(task){
   const names=[];
   for(let t=task;t&&!t.filepath;t=t.suite)names.unshift(t.name);

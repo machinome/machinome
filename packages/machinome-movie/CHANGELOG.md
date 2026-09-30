@@ -73,3 +73,19 @@ lands it.
   Browser and pipeline tests move to `test/browser/` and `test/pipeline/`,
   and the stage's component tests sit beside it (`react-stage`, ADR-004,
   ADR-006).
+- The test memo is one store for the whole repository, beside its common Git
+  directory (`<git common dir>/videomaker-test-memo/`, found with
+  `git rev-parse --git-common-dir`; `.test-memo/` at the root outside a Git
+  work tree), so a worktree reuses the passes and products another worktree
+  recorded for the same content, and two suites may write it at once. A slow
+  test's key covers what it can reach: the modules its file imports,
+  followed transitively, the files those modules serve or read (the stage
+  sources and page the browser is served, the schema, the fixtures, the
+  fixture project), the command line when a test runs it, and always the test
+  support modules, the viewer double and the lock; a module that reads a
+  repository file without declaring it fails the suite. A cold run keeps its
+  products in one temporary directory it removes at the end, and the next run
+  removes what a killed run left. A viewer refusal calls a movie a movie
+  ("This movie needs Viewer API 28 ..."); an episode's is unchanged.
+  `src/render.mjs` changed, so shot caches are recaptured once.
+  (`test-memo-sharing`, ADR-003 amended)

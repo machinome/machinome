@@ -154,5 +154,12 @@ Findings met while building the `react-stage` change (the Node side of
     exit, which vitest's workers never reach; some two hundred directories had
     gathered by the end of this cycle. The global setup's teardown could
     remove them.
+    Triaged 30 September 2026: fixed by `test-memo-sharing`; a cold run's
+    products live in one run directory the global teardown removes, and the
+    next run removes a killed run's. The old code's leftovers are the pilot's
+    to delete.
 11. **A viewer refusal says "episode" for a movie** (`viewerApiRefusal`): the
     wording predates movie documents.
+    Triaged 30 September 2026: fixed by `test-memo-sharing`; the refusal says
+    "This movie needs" for a movie document and "This episode needs", as
+    before, for a YAML episode.

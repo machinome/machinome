@@ -70,7 +70,8 @@ test('the slow project is the browser and pipeline directories, and every test t
 
 test('a slow test\'s verdict key reads the stage runtime and the fixture project, not what Python or a build leaves there',async()=>{
   const inputs=(await slowTestInputs(join(root,'test','browser','stage.test.mjs'))).map(p=>relative(REPOSITORY,p));
-  assert.ok(inputs.includes('stage'),'stage/');
+  for(const served of ['stage/runtime.tsx','stage/shipped.tsx','stage/stage.css','src/film.html'])assert.ok(inputs.includes(served),served);
+  assert.ok(!inputs.includes('stage/stage.test.tsx'),'a stage component test is not served');
   const project=inputs.filter(p=>p.startsWith('python/tests/fixtures/project/'));
   for(const needed of ['models/seesaw.py','export/seesaw/manifest.json','videos/tour/stage.tsx','videos/tour/stage.css','media/plate.png'])
     assert.ok(project.includes(`python/tests/fixtures/project/${needed}`),needed);

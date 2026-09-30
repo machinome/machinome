@@ -22,7 +22,7 @@ MUST NOT enter a key. A failure MUST NOT be recorded.
 - **THEN** the second run reports each slow test as passed from the memo, by
   name, without running its body.
 
-#### Scenario: A changed source reruns the tests that reach it
+#### Scenario: A changed source reruns the tests
 
 - **WHEN** a file under `src/` that a slow test imports, directly or through
   another module, changes between two runs

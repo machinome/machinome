@@ -1,6 +1,7 @@
 # ADR-003: One runner, and a content-keyed memo of the slow proofs
 
-Status: Accepted (OpenSpec change `one-runner`, 30 September 2026)
+Status: Accepted (OpenSpec change `one-runner`, 30 September 2026); amended
+in place by `react-stage` and `test-memo-sharing` (30 September 2026)
 
 Filed under `RECORDS`: the decision is how the repository keeps and reuses
 its own proofs. A memoized verdict is a record that a proof held for given
@@ -38,7 +39,8 @@ persistent verdict store.
    them, as from the command line, a session launches and closes its own
    browser and server as before. A setup file counts launches and fails a
    file that launched undeclared.
-3. **Two memos in `.test-memo/`** (ignored, never committed), both in
+3. **Two memos in `.test-memo/`** (ignored, never committed; moved beside
+   the common Git directory by the `test-memo-sharing` amendment), both in
    `test/support/memo.mjs`:
    - the **verdict memo**: every test of a slow file is a `slowTest`, whose
      pass is recorded under the SHA-256 of its name and file, the content of
@@ -112,3 +114,66 @@ and the slow project selects them by directory instead of a list. The stage's
 component tests (`stage/**/*.test.tsx`) run under jsdom in a third project,
 `stage`, beside `pure`. The verdict key also reads `stage/` and the fixture
 project. The decision above stands.
+
+## Amendment (30 September 2026, `test-memo-sharing`)
+
+The pilot, watching the react-stage campaign: "Make sure memoization and
+caching is making process faster." Two parts of decision 3 kept the memo
+from speeding up development, and are replaced; everything else stands.
+
+**Where the memo lives.** The store is no longer `.test-memo/` at each
+checkout's root but one directory every worktree of the repository shares:
+`<common dir>/videomaker-test-memo/`, where `<common dir>` is
+`git rev-parse --path-format=absolute --git-common-dir` at the root (the
+`.git` of the primary checkout, which every linked worktree names). Outside a
+Git work tree it falls back to `.test-memo/` at the root. The slow project's
+global setup finds it once per run. Chosen over
+`$XDG_CACHE_HOME/videomaker/test-memo/` because it is scoped to the repository
+whose proofs it records, is found with no configuration, goes with the clone,
+is never inside a working tree, and survives a worktree's removal; a
+user-level cache would also share between clones, which no one asked for,
+and would write outside the repository. Keys were already content-only; the
+fingerprints are now relative to the root of the checkout the suite runs in,
+so equal content in two worktrees gives equal keys. Two suites may write the
+store at once: verdicts are written to a name carrying the writer's PID and
+renamed; an artefact is staged in a directory carrying the PID and renamed,
+and a writer that finds the entry published first by another uses it when it
+verifies; a damaged entry is renamed aside before it is removed. The next
+run's global setup removes the staging directories, entries put aside and
+pending writes of processes that are gone.
+
+**What a verdict's key covers.** No longer everything a slow test could
+read, but what it can reach (`test/support/reach.mjs`): the import graph of
+its file (relative static imports, re-exports and `import()` of a literal
+path, followed transitively); what a reached module serves or reads without
+importing it, declared in one table (`src/render.mjs` serves `src/film.html`
+and the stage bundle built from `stage/`; `src/schema.mjs` reads `schema/`;
+the fixture movie helper copies the fixture project and reads `fixtures/`;
+two pipeline tests spawn the command line, which is followed through its own
+imports); and always `test/support/`, the viewer double, the test's own file,
+`package.json`, `package-lock.json`, `vitest.config.mjs` and the toolchain
+record. Test files are never part of a served directory. A pure test refuses,
+by name, a reached module that locates a repository file by path and has no
+entry in the table, so the table cannot silently fall behind the code. The
+schema of a verdict is `verdict-memo-v2`.
+
+The evidence (the change's `evidence.md`): the base run of a fresh worktree
+whose `.test-memo/` held 108 verdicts copied from the campaign worktree
+reused all 108 (10.6 s), so only the memo's place stopped two worktrees
+sharing. Measured before adoption, the browser tests and the render pipeline
+reach 30 of the 33 files under `src/`, `stage/` and `bin/` (`src/episode.mjs`
+imports `src/movie.mjs`, which reaches most of `src/`), so an edit to
+`src/speech.mjs` or `src/timeline.mjs` still reruns every slow file; but a
+fixture movie or the fixture project's stage now reruns only `stage` and
+`movie-pipeline`, a stage or render-side edit leaves `pictures`,
+`source-scenes` and `speech` warm, and the command line reruns only the two
+files that spawn it. The option "key each test on only the files it imports"
+was rejected above because an import graph misses fixtures, the served stage
+and child processes; the declared table and its tripwire are what make it
+honest.
+
+**Cold products.** A cold run's artefacts are made inside one run directory,
+`<tmp>/videomaker-cold-run-<pid>-<random>/`, which the global setup opens and
+its teardown removes; the next run removes a killed run's. They were made in
+one temporary directory each and removed on a process exit that vitest's
+workers never reach (wart 10 of the React stage).
