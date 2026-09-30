@@ -181,7 +181,7 @@ test('the annotated 0.3 frames, and the same fixture in 0.4, are unchanged',()=>
   const old=annotated(),next={...annotated(),format:V04};valid(old);valid(next);
   for(const [t,f] of Object.entries(pinned)){
     assert.deepEqual(frameAt(old,Number(t)),f,`0.3 at ${t}`);
-    assert.deepEqual(frameAt(next,Number(t)),{...f,transition:null},`0.4 at ${t}`);
+    assert.deepEqual(frameAt(next,Number(t)),{...f,transition:null,picture:null},`0.4 at ${t}`);
   }
 });
 

@@ -6,6 +6,7 @@ import {loadSourceCode,validateCode,validateCodeSource} from './code.mjs';
 import {cameraAt,endRate,FORMATS,formatAtLeast} from './timeline.mjs';
 import {EASINGS,unknownEasing} from './easing.mjs';
 import {splitWords,validateSpokenPair,evenCount} from './words.mjs';
+import {validatePictureCues,loadPictures} from './pictures.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -228,7 +229,7 @@ export function confirmViewerApi(required,bundleText) {
 }
 // Format 0.4 closes the field lists of a shot, its simulation, its model
 // keyframes and its camera keys; 0.2 and 0.3 keep ignoring unknown fields.
-const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','annotations','highlight','transition','fadeIn','fadeOut']);
+const SHOT_FIELDS=new Set(['id','start','end','speechOffset','narration','direction','simulation','camera','hiddenLayers','overlays','evidence','code','annotations','highlight','pictures','transition','fadeIn','fadeOut']);
 const SIMULATION_FIELDS=new Set(['from','to','keyframes']);
 const KEYFRAME_FIELDS=new Set(['at','seconds','ease']);
 const CAMERA_KEY_FIELDS=new Set(['at','preset','ease']);
@@ -339,6 +340,7 @@ export function validateEpisode(e, manifest) {
     for(const name of s.evidence)need(e.evidence[name],`Unknown evidence: ${name}`);
     validateAnnotations(e,s,known);
     validateHighlight(e,s,known);
+    validatePictureCues(e,s);
   }
   // After every shot is known to be sound: a transition reads the shots on both sides.
   for(const [index,s] of e.shots.entries())validateTransitions(e,s,index);
@@ -364,6 +366,7 @@ export async function loadEpisode(file) {
   e.paths={episode:episodePath,production:productionPath,manifest:manifestPath,repository,build:resolve(base,'_build')};
   e.sourceCode=await loadSourceCode(e);
   for(const shot of e.shots)validateCodeSource(e,shot);
+  await loadPictures(e);
   return e;
 }
 

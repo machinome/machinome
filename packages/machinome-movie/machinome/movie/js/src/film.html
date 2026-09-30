@@ -9,6 +9,13 @@ body{background:#faf7ef;color:#222;font-family:'DejaVu Sans',sans-serif}
 #stage{width:100%;height:100%}
 #overlays{position:absolute;inset:0;pointer-events:none}
 #annotations{position:absolute;inset:0;pointer-events:none}
+#pictures{display:none;position:absolute;overflow:hidden;pointer-events:none}
+#picture-plate{position:absolute;inset:0;background:var(--film-background,#faf7ef)}
+#picture-image{position:absolute;max-width:none;max-height:none;image-orientation:none}
+.has-picture #pictures{display:block;z-index:1}
+.has-picture #overlays{z-index:2}
+.has-picture #transition{z-index:3}
+.has-picture #brand,.has-picture #series,.has-picture #rule{z-index:4}
 #annotations svg{position:absolute;left:0;top:0;overflow:visible}
 .annotation-text{position:absolute;width:max-content;max-width:30vw;white-space:pre-line;font-weight:600;font-size:1.25vw;line-height:1.3;padding:.25em .55em;background:var(--film-background,#faf7ef)}
 .overlay{position:absolute;left:6%;right:6%;text-align:center;white-space:pre-line;font-weight:600;line-height:1.45}
@@ -38,12 +45,14 @@ mark.spoken{background:color-mix(in srgb,var(--film-accent,#bf531f) 18%,transpar
 #transition>*{position:absolute;top:0}
 .in-mark-blend #transition{z-index:2}
 .in-transition #brand,.in-transition #series,.in-transition #rule{z-index:1}
+.has-picture.in-transition #brand,.has-picture.in-transition #series,.has-picture.in-transition #rule{z-index:4}
 .picture-only #brand,.picture-only #series,.picture-only #rule{visibility:hidden}
 #progress{height:100%;background:#237c86;width:0}
 </style></head><body>
 <div id="brand">MACHINOME</div><div id="series">LEONARDO · HOW IT WORKS</div>
 <div id="viewport"><div id="stage"></div></div><div id="annotations"></div><div id="overlays"></div>
 <section id="source"><div id="source-file"></div><pre><code id="source-code"></code><span id="source-cursor"></span></pre></section>
+<div id="pictures"><div id="picture-plate"></div><img id="picture-image" alt=""></div>
 <div id="transition"></div>
 <div id="rule"><div id="progress"></div></div>
 <script src="/viewer.js"></script><script src="/film.js"></script>

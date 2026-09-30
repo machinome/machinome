@@ -2,6 +2,7 @@
 import {codeAt} from './code.mjs';
 import {ease,endSlope,keyedValue} from './easing.mjs';
 import {splitWords,evenCount,fadeOpacity} from './words.mjs';
+import {pictureAt} from './pictures.mjs';
 // Accepted episode formats, oldest first. Each accepts everything the one before
 // it does, with the same meaning; an episode without a format is a 0.2 episode.
 export const FORMATS=['machinome-video-draft/0.2','machinome-video-draft/0.3','machinome-video-draft/0.4'];
@@ -110,7 +111,7 @@ function shotFrame(e,shot,local){
   // Format 0.2 frames keep their exact shape; 0.3 and later frames always carry the new cues.
   if(formatAtLeast(e,FORMATS[1])){frame.annotations=annotationsAt(e,shot,on,local,past);frame.highlight=highlightAt(e,shot,on);}
   // 0.4 frames always carry transition; a frame posed on its own has none.
-  if(formatAtLeast(e,FORMATS[2]))frame.transition=null;
+  if(formatAtLeast(e,FORMATS[2])){frame.transition=null;frame.picture=pictureAt(e,shot,local);}
   return frame;
 }
 // Normalized progress through a transition, allowing for the rounding of video

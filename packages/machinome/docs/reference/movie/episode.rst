@@ -69,6 +69,10 @@ Narration lives only inside each shot; there is no separate script to keep in sy
   written terms to spoken aliases. Captions restore the written spelling.
 - `series`: optional short series label for the top corner; defaults to the title.
 - `sourceCode`: optional named Python excerpts, described below.
+- `stills` and `clips` (format 0.4): named pictures with a project-relative
+  `file`, required `credit` and `rights` keys (non-empty text or `null`), and
+  optional raster `upscale` allowance (default 1). See “Showing stills and
+  clips”. Older episode formats ignore these maps.
 - `style`: background, foreground, accent, font and safe inset.
   Background, foreground, accent and font are applied by the current renderer;
   safe inset is an editorial hint for its fixed layout,
@@ -572,9 +576,11 @@ judgement on the stills, not an automated claim.
 
 `machinome-video-draft/0.4` accepts everything 0.3 does, with the same meaning:
 a 0.4 shot may annotate, highlight and change lens exactly as a 0.3 shot does,
-and a 0.4 episode that neither eases nor joins shots produces the frames it
-would produce declared 0.3. It adds `ease` on camera keys and model keyframes,
-`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"), text
+and a 0.4 episode that neither eases nor joins shots produces the same visible
+result it would produce declared 0.3 (its frame data also carries null
+`transition` and `picture`). It adds `ease` on camera keys and model keyframes,
+`transition`, `fadeIn` and `fadeOut` on shots (see "Joining shots"), `pictures`
+on shots (see “Showing stills and clips”), text
 `reveal`, titles and source emphasis (see "Text animation"), and, on
 annotations, the kind `ring` with its `padding` and `enter` and `leave` on
 every kind (see "Rings" and "Entrances and exits"). A 0.4 annotation that uses
@@ -590,7 +596,7 @@ as in 0.3.
 - In 0.4 the field lists are closed. A shot accepts `id`, `start`, `end`,
   `speechOffset`, `narration`, `direction`, `simulation`, `camera`,
   `hiddenLayers`, `overlays`, `evidence`, `code`, `annotations`,
-  `highlight`, `transition`, `fadeIn` and `fadeOut`; its `simulation` accepts
+  `highlight`, `pictures`, `transition`, `fadeIn` and `fadeOut`; its `simulation` accepts
   `from`, `to` and `keyframes`; a model keyframe `at`, `seconds` and `ease`; a
   camera key `at`, `preset` and `ease`; a `transition` `kind`, `duration`,
   `ease`, `direction` and `color`; a `fadeIn` or `fadeOut` `duration`, `ease`
@@ -603,6 +609,10 @@ as in 0.3.
   `enter` or `leave` accepts `kind`, `duration` and `ease`. `code` accepts
   `snippet`, `typing` and `emphasis`; a typing cue accepts `from`, `to` and
   `throughLine`; an emphasis cue accepts `line`, `phrase`, `words` and `hold`.
+  A picture accepts `from`, `to`, `still`, `clip`, `area`, `fit`, `enter`,
+  `leave`, `view` and `inPoint`; a view key accepts `at`, `center`, `zoom` and
+  `ease`; a picture entrance or exit accepts `kind`, `duration` and `ease`.
+  A still or clip entry accepts `file`, `credit`, `rights` and `upscale`.
   Anything else is refused, naming the field and the shot:
   `Unknown camera key field: eas (key #1 in shot genome)`,
   `Unknown model keyframe field: speed (keyframe #1 in shot genome)`,
@@ -614,7 +624,7 @@ as in 0.3.
   numbers the film page already sends, and a transition poses the viewer as
   every frame does. A 0.4 episode needs Viewer API 28 only for the 0.3 cues it
   uses (annotations, highlights, a change of lens or up); one that only eases
-  or joins shots or only animates text runs on Viewer API 21 or later. A ring is an annotation, so it
+  or joins shots or only animates text or shows pictures runs on Viewer API 21 or later. A ring is an annotation, so it
   needs Viewer API 28 as every annotation does; entrances and exits add
   nothing.
 
@@ -1003,6 +1013,90 @@ visible word counts, title geometry, measured marks and exact replay. These
 proofs establish that the cues reached pixels; pacing and readability still
 need review of the rendered film.
 
+## Showing stills and clips
+
+Format 0.4 names media in `production.yaml` and places it with half-open,
+shot-local `pictures` cues. For example:
+
+```yaml
+# production.yaml
+stills:
+  sawmill: {file: media/sawmill.png, credit: Own reconstruction render, rights: Own work, upscale: 1.25}
+clips:
+  controls: {file: media/controls.mp4, credit: Own screen recording, rights: Own work}
+
+# episode.yaml, under one shot
+pictures:
+  - {from: 0, to: 4, still: sawmill, area: frame, fit: contain,
+     enter: {kind: fade, duration: 0.4}}
+  - {from: 5, to: 8, clip: controls, inPoint: 1.5, area: stage}
+```
+
+Exactly one of `still` and `clip` is required. Cues in a shot cannot overlap;
+gaps uncover the continuously posed model. `area: stage` is the default: the
+model stage is 90% × 63% of a plain frame, or 42% × 65% beside source code.
+`area: frame` covers the whole frame below the masthead and progress rule.
+The picture's background-coloured plate and image cover the area together;
+text overlays remain above them, and film transitions remain above both.
+Annotations or highlights overlapping a picture are refused because they
+target a covered model: `Annotation #0 overlaps picture #1 in shot studied`.
+Use an existing lower-third overlay for visible picture words; a picture has
+no `caption` field.
+
+`fit: contain` (default) shows the whole image, with bands of
+`style.background` where the aspect differs. `fit: cover` fills and may crop.
+A still's optional `view` keys move through it:
+`{at: 1, center: [0.5, 0.5], zoom: 1}` followed by
+`{at: 3, center: [0.5, 0.27], zoom: 1.9, ease: in-out}`. `at` is shot-local,
+strictly increasing and inside the cue; the first view holds before its key,
+the last after its key. The ending key names the easing of its incoming
+segment. Zoom is multiplicative and the centre follows the fixed point of the
+two keyed views, so a push toward a detail does not drift away before
+arriving. At every output frame the picture must either fit wholly inside its
+area or cover it wholly on each axis. A view exposing a gap or cropping an
+underfilled image is refused, naming the shot, cue and second.
+
+The raster enlargement factor is output pixels per source pixel at the
+largest keyed zoom. `check` refuses a factor above `upscale` (default 1) and
+prints the peak and allowance; `render --width` checks again for its actual
+width. An SVG is resolution-independent and must not declare `upscale`.
+Each picture may `enter` and `leave` with `{kind: fade, duration, ease?}`;
+only `fade` is supported, each fade lasts at least two output frames, and
+their durations cannot overlap. Its first fade-in frame is the uncovered
+model; the picture is absent at its exclusive `to`. The whole plate and image
+fade together, composited from same-instant opaque and absent captures so
+their pixels replay exactly.
+
+Clips have `inPoint` (default 0), no keyed `view`, and no sound in the film.
+At film second `T`, the page shows the source frame whose presentation
+timestamp is latest at or before `inPoint + T − cue start`. Clip timestamps
+come from integer presentation ticks and the stream's time base, normalized
+to the first frame. This samples and holds: faster clips drop frames, slower
+ones repeat them; neither blends nor invents a frame. `check` reports source
+rate, film rate, dropped and repeated counts. It refuses missing or
+non-increasing timestamps, interlacing, non-square pixels, rotation tags and
+a clip too short for its cue or its outgoing-transition continuation.
+The cadence count uses the film's actual global frame grid, including a cue
+whose `from` falls between frames and any outgoing-transition continuation.
+An audio stream in a clip is accepted but never played; the film's soundtrack
+remains its narration.
+
+Raster stills must be one decoded PNG, JPEG or WebP frame matching their
+extension; animated stills and GIF are refused. SVG stills need a `viewBox`
+with positive size; a missing one with declared `width` and `height` gets a
+suggested `viewBox` in the refusal. Scripts, `foreignObject`, SVG or CSS
+animation and external references are refused. Every file resolves inside
+the project Git repository, even after following symlinks. Both `credit` and
+`rights` must be present; `null` allows a rehearsal but blocks release.
+
+`preview` saves each picture's entrance, keyed views, fade midpoints and last
+visible frame. It checks measured stage/drawn geometry and natural size,
+exact source clip frame, enlargement and exact replay. At a fade it captures
+the authored, fully opaque and absent states at one instant, proving the
+first/end pixels and a visibly intermediate midpoint. A failed proof retains
+its PNGs for inspection. `preview/report.json` records every picture check;
+the storyboard includes its samples.
+
 ## Optional subtitles
 
 Narration produces `captions.json` and UTF-8 `captions.srt`. A narrated render
@@ -1025,3 +1119,13 @@ or visual intent; they do not certify the current model. Before final rendering,
 pin the tested model revision and record the export, viewer version, episode
 revision, audio settings, generated audio hashes and output settings in a build
 manifest. Cached audio is the reproducible input; regeneration may differ.
+The manifest also records each still's and clip's project-relative path,
+SHA-256, dimensions, source codec/rate, committed status, credit, rights,
+allowance and per-cue peak. Clips add their extracted frame span, decoder key,
+FFmpeg version and dropped/repeated cadence; `audio` is `not played`.
+`_build/clips/<key>/` holds the lossless source-frame PNGs used in preview and
+render. A picture's unresolved credit or rights, uncommitted file, or a
+description template without `{{pictureCredits}}` makes `releaseReady` false
+and appears in `pictureReleaseIssues`. Rehearsals still proceed. The placeholder
+becomes one `name: credit` line per shown picture, or a marked pending line
+for a null credit; Videomaker records rights but does not judge them.

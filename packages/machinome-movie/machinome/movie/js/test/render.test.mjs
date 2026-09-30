@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,mkdir,stat,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -10,6 +10,7 @@ import {validateEpisode} from '../src/episode.mjs';
 import {frameAt} from '../src/timeline.mjs';
 import {decodePng,hexColor} from '../src/pixels.mjs';
 import {resolveWordTiming} from '../src/words.mjs';
+import {loadPictures} from '../src/pictures.mjs';
 
 // A minimal viewer double exercises film composition/encoding only. The real
 // sawmill preview separately proves the public viewer and mechanical pixels.
@@ -152,6 +153,196 @@ test('text animation preview proves measured/even words, title fade and source e
   await assert.rejects(browserSession(overflow,moving,640,[],async({pose})=>{await pose(.5);}),/Title leaves the frame/);
 });
 
+test('a still and clip reach real browser pixels at their authored geometry and timestamps',async t=>{
+  const {dir,viewer}=await filmFixture(t);
+  execFileSync('git',['init','-q'],{cwd:dir});
+  await writeFile(join(dir,'episode.yaml'),'picture fixture');
+  await writeFile(join(dir,'production.yaml'),'picture fixture');
+  await writeFile(join(dir,'description.md'),'Credits: {{pictureCredits}}');
+  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','nullsrc=s=256x256',
+    '-vf','geq=r=X:g=Y:b=0','-frames:v','1',join(dir,'ramp.png')]);
+  await mkdir(join(dir,'clip-frames'));
+  for(let n=0;n<9;n++){
+    const c=(16*n).toString(16).padStart(2,'0');
+    execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i',`color=c=0x${c}${c}${c}:s=160x120`,
+      '-frames:v','1',join(dir,'clip-frames',`frame${String(n).padStart(3,'0')}.png`)]);
+  }
+  const pictures=join(dir,'clip-frames','frame%03d.png');
+  execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-f','lavfi','-i','sine=frequency=440:duration=3',
+    '-shortest','-c:v','libx264','-qp','0','-pix_fmt','yuv444p','-c:a','aac',join(dir,'clip.mp4')]);
+  execFileSync('ffmpeg',['-y','-v','error','-framerate','3','-i',pictures,'-c:v','libvpx-vp9','-lossless','1',join(dir,'clip.webm')]);
+  execFileSync('git',['add','.'],{cwd:dir});
+  execFileSync('git',['-c','user.name=Test','-c','user.email=test@example.invalid','commit','-qm','picture fixture'],{cwd:dir});
+  const e=filmEpisode(dir,{narration:'Pictures.',pictures:[
+    {from:0,to:1,still:'ramp',area:'frame',fit:'contain',
+      view:[{at:0,center:[.5,.5],zoom:1},{at:.8,center:[.5,.6],zoom:2,ease:'linear'}]},
+    {from:1,to:2,clip:'clip',inPoint:1,area:'stage',enter:{kind:'fade',duration:.5}}],
+    overlays:[{from:0,to:2,position:'top',text:'Above picture'}]});
+  e.format='machinome-video-draft/0.4';e.output.fps=4;e.model.timeMode='normalized-loop';
+  e.stills={ramp:{file:'ramp.png',credit:'Test gradient',rights:'Own work',upscale:3}};
+  e.clips={clip:{file:'clip.mp4',credit:null,rights:null,upscale:3}};
+  await loadPictures(e);
+  validateEpisode(e,{animation:{loop:2}});
+  const p=await preview(e,{viewer:await viewer('pictures.js',{timeColor:true}),width:640});
+  assert.equal(p.pictureChecks.length,2);
+  assert.ok(p.pictureChecks.every(c=>c.replay));
+  const first=p.pictureChecks[0].samples[0],ramp=decodePng(await readFile(first.file));
+  const i=(Math.round(180)*ramp.width+Math.round(320))*3;
+  assert.ok(Math.abs(ramp.rgb[i]-128)<=1&&Math.abs(ramp.rgb[i+1]-128)<=1);
+  assert.equal(p.pictureChecks[1].samples[0].frame,e.pictureMedia.clips.clip.timestamps.findIndex(t=>t>=1));
+  assert.ok(p.pictureChecks[1].replayOpacity>.01);
+  assert.deepEqual(p.pictureChecks[1].samples.map(s=>s.frame),[3,3,4,5]);
+  for(const sample of p.pictureChecks[1].samples.filter(s=>s.time>=1.5)){
+    const screen=decodePng(await readFile(sample.file));
+    const source=decodePng(await readFile(join(e.pictureMedia.clips.clip.extraction.dir,
+      `${String(sample.frame).padStart(6,'0')}.png`)));
+    const screenAt=(180*screen.width+320)*3,sourceAt=(60*source.width+80)*3;
+    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-source.rgb[sourceAt+k])<=1);
+  }
+  const key=e.pictureMedia.clips.clip.extraction.key,indexPath=join(e.pictureMedia.clips.clip.extraction.dir,'index.json');
+  const written=(await stat(indexPath)).mtimeMs;
+  const extractedPng=join(e.pictureMedia.clips.clip.extraction.dir,'000005.png');
+  const decodedWritten=(await stat(extractedPng)).mtimeMs;
+  const priorPicture=await readFile(p.pictureChecks[1].samples.at(-1).file);
+  const originalFull=decodePng(await readFile(p.pictureChecks[1].samples.find(s=>s.time>=1.5).file));
+  const originalFullColor=[0,1,2].map(k=>originalFull.rgb[(180*originalFull.width+320)*3+k]);
+  const repeated=await preview(e,{viewer:await viewer('pictures-reuse.js',{timeColor:true}),width:640});
+  assert.equal(e.pictureMedia.clips.clip.extraction.key,key);
+  assert.equal((await stat(indexPath)).mtimeMs,written);
+  assert.equal((await stat(extractedPng)).mtimeMs,decodedWritten);
+  assert.ok(priorPicture.equals(await readFile(repeated.pictureChecks[1].samples.at(-1).file)));
+  await browserSession(e,await viewer('picture-pixels.js',{timeColor:true}),640,[],async({page,pose})=>{
+    const at=async t=>{await pose(t);return decodePng(await page.screenshot());};
+    const rgb=(picture,x,y)=>[0,1,2].map(k=>picture.rgb[(y*picture.width+x)*3+k]);
+    const start=await at(0),middle=await at(.4),end=await at(.8);
+    assert.deepEqual(rgb(start,10,180),[245,241,232]);
+    assert.ok(Math.abs(rgb(start,320,180)[0]-128)<=1);
+    assert.ok(Math.abs(rgb(start,360,180)[0]-(128+40/(360/256)))<=1);
+    assert.ok(Math.abs(rgb(end,320,180)[1]-153)<=1);
+    assert.ok(Math.abs(rgb(end,360,180)[0]-(128+40/(720/256)))<=1);
+    assert.ok(Math.abs(rgb(middle,320,252)[1]-179)<=1);
+    const startPose=await pose(0),withStartPicture=decodePng(await page.screenshot());
+    await pose(0,{picture:null});const withoutStartPicture=decodePng(await page.screenshot());
+    let unchangedMastheadPixels=0;
+    for(const box of startPose.observed.chrome.slice(0,2)){
+      for(let y=Math.floor(box.y);y<Math.ceil(box.y+box.height);y++)
+        for(let x=Math.floor(box.x);x<Math.ceil(box.x+box.width);x++){
+          const i=(y*withStartPicture.width+x)*3;
+          for(let k=0;k<3;k++)assert.equal(withStartPicture.rgb[i+k],withoutStartPicture.rgb[i+k],`masthead at ${x},${y}`);
+          unchangedMastheadPixels++;
+        }
+    }
+    assert.ok(unchangedMastheadPixels>100);
+    const pictured=await pose(.4),withPicture=decodePng(await page.screenshot());
+    await pose(.4,{picture:null});const withoutPicture=decodePng(await page.screenshot());
+    assert.ok(!withPicture.rgb.equals(withoutPicture.rgb),'the picture changes non-chrome pixels');
+    const rule=pictured.observed.chrome[2];let rulePixels=0;
+    for(let y=Math.floor(rule.y);y<Math.ceil(rule.y+rule.height);y++)
+      for(let x=Math.floor(rule.x);x<Math.ceil(rule.x+rule.width);x++){
+        const i=(y*withPicture.width+x)*3;
+        for(let k=0;k<3;k++)assert.equal(withPicture.rgb[i+k],withoutPicture.rgb[i+k],`rule at ${x},${y}`);
+        rulePixels++;
+      }
+    assert.ok(rulePixels>100);
+    await pose(.4,{overlays:[]});const withoutText=decodePng(await page.screenshot());
+    await pose(.4);const withText=decodePng(await page.screenshot());
+    const box=await page.locator('.top').boundingBox();let textPixels=0;
+    for(let y=Math.floor(box.y);y<Math.ceil(box.y+box.height);y++)
+      for(let x=Math.floor(box.x);x<Math.ceil(box.x+box.width);x++){
+        const i=(y*withText.width+x)*3;
+        if([0,1,2].some(k=>withText.rgb[i+k]!==withoutText.rgb[i+k]))textPixels++;
+      }
+    assert.ok(textPixels>50,'the top overlay reaches pixels above the full-frame picture');
+  });
+  const low=structuredClone(e);low.output.fps=2;delete low.shots[0].pictures[1].enter;
+  validateEpisode(low,{animation:{loop:2}});
+  const lowReport=await preview(low,{viewer:await viewer('pictures-3-into-2.js',{timeColor:true}),width:640});
+  assert.deepEqual(lowReport.pictureChecks[1].samples.map(s=>s.frame),[3,4]);
+  for(const sample of lowReport.pictureChecks[1].samples){
+    const screen=decodePng(await readFile(sample.file));
+    const source=decodePng(await readFile(join(low.pictureMedia.clips.clip.extraction.dir,
+      `${String(sample.frame).padStart(6,'0')}.png`)));
+    const screenAt=(180*screen.width+320)*3,sourceAt=(60*source.width+80)*3;
+    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-source.rgb[sourceAt+k])<=1);
+  }
+  const cut=structuredClone(e);cut.shots[0].pictures[0].to=.75;
+  cut.shots[0].pictures[0].view=[{at:0,center:[.5,.5],zoom:1}];
+  validateEpisode(cut,{animation:{loop:2}});
+  await browserSession(cut,await viewer('picture-cut.js',{timeColor:true}),640,[],async({page,pose})=>{
+    const forced=frameAt(cut,.74).picture;
+    await pose(.75,{picture:forced});const full=await page.screenshot();
+    await pose(.75);const absent=await page.screenshot();
+    await pose(.75,{picture:null});const plain=await page.screenshot();
+    assert.ok(!full.equals(absent),'the picture is nonvacuous immediately before its exclusive end');
+    assert.ok(absent.equals(plain),'at cue.to the continuing model is exactly the plain frame');
+  });
+  await assert.rejects(browserSession(e,await viewer('picture-layout.js',{timeColor:true}),640,[],async({page,pose})=>{
+    await page.addStyleTag({content:'#viewport{left:6% !important}'});
+    await pose(0);
+  }),/Film stage layout differs from the picture geometry/);
+  const webm=structuredClone(e);webm.clips.clip.file='clip.webm';await loadPictures(webm);
+  const alternate=await preview(webm,{viewer:await viewer('pictures-webm.js',{timeColor:true}),width:640});
+  assert.deepEqual(alternate.pictureChecks[1].samples.map(s=>s.frame),[3,3,4,5]);
+  const colours=[];
+  for(const sample of alternate.pictureChecks[1].samples.filter(s=>s.time>=1.5)){
+    const screen=decodePng(await readFile(sample.file));
+    const source=decodePng(await readFile(join(webm.pictureMedia.clips.clip.extraction.dir,
+      `${String(sample.frame).padStart(6,'0')}.png`)));
+    const screenAt=(180*screen.width+320)*3,sourceAt=(60*source.width+80)*3;
+    for(let k=0;k<3;k++)assert.ok(Math.abs(screen.rgb[screenAt+k]-source.rgb[sourceAt+k])<=1);
+    colours.push(screen.rgb[screenAt]);
+  }
+  assert.ok(colours[1]>colours[0]);
+  const narration=join(dir,'narration.wav');await writeFile(narration,pcmWav(Buffer.alloc(24000*2*2),24000));
+  const out=await render(e,{viewer:await viewer('pictures.js',{timeColor:true}),width:640,fps:4,
+    audio:{mix:narration,records:[],captions:[]},label:'pictures'});
+  const record=JSON.parse(await readFile(join(dir,'_build','pictures-manifest.json'),'utf8'));
+  assert.equal(record.releaseReady,false);
+  assert.ok(record.pictureReleaseIssues.some(s=>/clip.*credit/.test(s)));
+  assert.equal(record.pictures.stills.ramp.sha256,e.pictureMedia.stills.ramp.sha256);
+  assert.equal(record.pictures.stills.ramp.committed,true);
+  assert.equal(record.pictures.clips.clip.audio,'not played');
+  assert.equal(record.pictures.clips.clip.extraction.key,e.pictureMedia.clips.clip.extraction.key);
+  assert.ok(record.pictures.clips.clip.extraction.ffmpegVersion.startsWith('ffmpeg version'));
+  assert.match(await readFile(join(dir,'_build','description.md'),'utf8'),/ramp: Test gradient/);
+  const streams=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-of','json',out],{encoding:'utf8'})).streams;
+  assert.deepEqual(streams.map(s=>s.codec_type),['video','audio']);
+  const clipStreams=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-of','json',join(dir,'clip.mp4')],{encoding:'utf8'})).streams;
+  assert.deepEqual(clipStreams.map(s=>s.codec_type),['video','audio']);
+  const collision=structuredClone(e);
+  collision.clips.ramp={...collision.clips.clip,credit:'Distinct clip credit'};delete collision.clips.clip;
+  collision.pictureMedia.clips.ramp={...collision.pictureMedia.clips.clip,credit:'Distinct clip credit'};
+  delete collision.pictureMedia.clips.clip;collision.shots[0].pictures[1].clip='ramp';
+  await render(collision,{viewer:await viewer('pictures-collision.js',{timeColor:true}),width:640,fps:4,
+    audio:null,label:'collision'});
+  assert.match(await readFile(join(dir,'_build','description.md'),'utf8'),/ramp: Test gradient\nramp: Distinct clip credit/);
+  const unready=structuredClone(collision);
+  unready.pictureMedia.clips.ramp.rights=null;unready.pictureMedia.clips.ramp.committed=false;
+  unready.clips.ramp.rights=null;
+  await writeFile(join(dir,'description.md'),'No picture-credit placeholder.');
+  await render(unready,{viewer:await viewer('pictures-unready.js',{timeColor:true}),width:640,fps:4,
+    audio:null,label:'unready'});
+  const unreadyReport=JSON.parse(await readFile(join(dir,'_build','unready-manifest.json'),'utf8'));
+  assert.ok(unreadyReport.pictureReleaseIssues.some(s=>/unresolved rights/.test(s)));
+  assert.ok(unreadyReport.pictureReleaseIssues.some(s=>/not committed/.test(s)));
+  assert.ok(unreadyReport.pictureReleaseIssues.some(s=>/lacks \{\{pictureCredits\}\}/.test(s)));
+  await assert.rejects(render(e,{viewer:'/no-viewer-needed-for-this-refusal',width:3840,fps:4,audio:null}),
+    /Still ramp would be enlarged/);
+  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=160x120:r=3',
+    '-t','3','-c:v','libx264','-pix_fmt','yuv420p',join(dir,'clip.mp4')]);
+  await loadPictures(e);
+  const replaced=await preview(e,{viewer:await viewer('pictures-replaced.js',{timeColor:true}),width:640});
+  assert.notEqual(e.pictureMedia.clips.clip.extraction.key,key);
+  const replacement=replaced.pictureChecks[1].samples.find(s=>s.time>=1.5);
+  const changed=decodePng(await readFile(replacement.file));
+  const color=[0,1,2].map(k=>changed.rgb[(180*changed.width+320)*3+k]);
+  assert.notDeepEqual(color,originalFullColor);
+  assert.ok(color[2]>color[0],'replacement frame is blue, unlike the original luma frame');
+  const changedSource=decodePng(await readFile(join(e.pictureMedia.clips.clip.extraction.dir,
+    `${String(replacement.frame).padStart(6,'0')}.png`)));
+  for(let k=0;k<3;k++)assert.ok(Math.abs(color[k]-changedSource.rgb[(60*changedSource.width+80)*3+k])<=1);
+});
+
 test('an arrow follows a moving part and a label rides a world point, reproducibly',async t=>{
   const {dir,viewer}=await filmFixture(t);
   const e=filmEpisode(dir,{annotations:[
@@ -285,6 +476,30 @@ function joinedFilm(dir){
     shot(4,'code4',{code,transition:{kind:'fade',duration:1},fadeOut:{duration:.5,color:'#000000'}})];
   return e;
 }
+
+test('a dissolve from a continued clip into a fading title keeps film chrome unblended',async t=>{
+  const {dir,viewer}=await transitionFixture(t);
+  execFileSync('ffmpeg',['-y','-v','error','-f','lavfi','-i','color=c=blue:s=160x120:r=4',
+    '-t','3','-c:v','libx264','-pix_fmt','yuv420p',join(dir,'joined.mp4')]);
+  const e=filmEpisode(dir,{pictures:[{from:0,to:2,clip:'joined',area:'stage'}],
+    overlays:[{from:0,to:2,text:'Outgoing clip',position:'top'}]},
+    {format:'machinome-video-draft/0.4',output:{width:640,height:360,fps:4,durationSeconds:4},
+      model:{expectedDurationSeconds:20,timeMode:'normalized-loop'},
+      clips:{joined:{file:'joined.mp4',credit:'Own',rights:'Own',upscale:2}}});
+  e.shots.push({...structuredClone(e.shots[0]),id:'closing',start:2,end:4,
+    simulation:{from:2,to:4},pictures:[],transition:{kind:'dissolve',duration:1},
+    overlays:[{from:.2,to:2,text:'CLOSING',position:'title',enter:{kind:'fade',duration:.6}}]});
+  await loadPictures(e);
+  validateEpisode(e,{animation:{loop:20}});
+  const p=await preview(e,{viewer:await viewer('joined-picture.js',{timeColor:true}),width:640});
+  assert.ok(p.transitionChecks[0].largestDifference<=2);
+  const incoming=structuredClone(e);
+  incoming.shots[0].pictures=[];
+  incoming.shots[1].pictures=[{from:0,to:2,clip:'joined',area:'stage'}];
+  await loadPictures(incoming);
+  const q=await preview(incoming,{viewer:await viewer('incoming-picture.js',{timeColor:true}),width:640});
+  assert.ok(q.transitionChecks[0].largestDifference<=2);
+});
 
 test('shots joined by every kind pass preview with each transition proved in pixels, and render reproducibly',async t=>{
   const {dir,viewer}=await transitionFixture(t);

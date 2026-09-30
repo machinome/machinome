@@ -9,6 +9,7 @@ import {fileHash,hash,json,command} from './util.mjs';
 import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
 import {resolveWordTiming,validateWordFramesAtFps} from './words.mjs';
 import {readSpeechTake} from './speech.mjs';
+import {STAGE_AREAS,extractClips,validatePictureSizing,pictureReports,clipCadenceForCue} from './pictures.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
@@ -61,16 +62,30 @@ async function stage(e,viewer) {
     if(!contained(dirname(e.paths.manifest),file))throw new Error(`Model asset escapes export: ${asset}`);
     paths.set('/model/'+asset,file);
   }
-  const hashes={};for(const [url,file]of paths)hashes[url]=await fileHash(file);
+  for(const [name,media] of Object.entries(e.pictureMedia?.stills??{}))
+    paths.set(`/pictures/stills/${name}`,media.file);
+  for(const [name,media] of Object.entries(e.pictureMedia?.clips??{}))
+    for(const n of media.extraction?.frames??[])
+      paths.set(`/pictures/clips/${name}/${String(n).padStart(6,'0')}.png`,
+        resolve(media.extraction.dir,`${String(n).padStart(6,'0')}.png`));
+  const hashes={};for(const [url,file]of paths){
+    if(url.startsWith('/pictures/clips/'))continue;
+    hashes[url]=await fileHash(file);
+  }
+  for(const [name,media] of Object.entries(e.pictureMedia?.clips??{}))
+    if(media.extraction)hashes[`/pictures/clips/${name}`]=media.extraction.key;
   return {paths,hashes};
 }
 
 export async function browserSession(e,viewer,width,captions,action) {
+  validatePictureSizing(e,width);
+  await extractClips(e);
   const {paths,hashes}=await stage(e,viewer);
   const height=Math.round(e.output.height*width/e.output.width/2)*2;
   const initial=frameAt(e,0,captions);
   const required=requiredViewerApi(e);
-  const cfg={style:e.style,series:e.series??e.title,initial,requiredViewerApi:required,viewerRefusal:viewerApiRefusal(required,'{declared}')};
+  const cfg={style:e.style,series:e.series??e.title,initial,requiredViewerApi:required,
+    pictureStills:Object.keys(e.pictureMedia?.stills??{}),viewerRefusal:viewerApiRefusal(required,'{declared}')};
   const errors=[];
   const server=createServer(async(req,res)=>{
     try{
@@ -78,7 +93,7 @@ export async function browserSession(e,viewer,width,captions,action) {
       if(path==='/config.json'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(cfg));return;}
       if(path==='/favicon.ico'){res.writeHead(204);res.end();return;}
       const file=paths.get(path);if(!file){res.writeHead(404);res.end('Not found');return;}
-      res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg'}[extname(file)])??'application/octet-stream');
+      res.setHeader('Content-Type',({'.js':'text/javascript','.html':'text/html','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'}[extname(file)])??'application/octet-stream');
       res.end(await readFile(file));
     }catch(error){errors.push(String(error));res.writeHead(500);res.end('Asset error');}
   });
@@ -112,6 +127,28 @@ export async function browserSession(e,viewer,width,captions,action) {
       }
       const canvasSize=await page.locator('#stage canvas').boundingBox(),stageSize=await page.locator('#stage').boundingBox();
       if(!canvasSize||canvasSize.height<stageSize.height*.98||canvasSize.width<stageSize.width*.98)throw new Error('Viewer canvas does not fill the film stage');
+      if(f.picture){
+        const p=f.picture,seen=observed.picture,media=e.pictureMedia[p.kind==='still'?'stills':'clips'][p.name];
+        if(!seen)throw new Error(`Picture did not reach the page: ${f.shotId} #${p.index} at ${t.toFixed(2)} s`);
+        const viewport=STAGE_AREAS[f.code?'code':'plain'].map((v,i)=>v*(i%2?height:width));
+        if([observed.stage.x,observed.stage.y,observed.stage.width,observed.stage.height]
+          .some((v,i)=>Math.abs(v-viewport[i])>1))throw new Error(`Film stage layout differs from the picture geometry: shot ${f.shotId}`);
+        const area=p.area==='frame'?[0,0,width,height]:STAGE_AREAS[f.code?'code':'plain'].map((v,i)=>v*(i%2?height:width));
+        if(p.area==='stage'&&[seen.area.x,seen.area.y,seen.area.width,seen.area.height]
+          .some((v,i)=>Math.abs(v-area[i])>1))throw new Error(`Film stage layout differs from the picture geometry: shot ${f.shotId}`);
+        const rect=[area[0]+p.rect[0]*area[2],area[1]+p.rect[1]*area[3],p.rect[2]*area[2],p.rect[3]*area[3]];
+        if([seen.drawn.x,seen.drawn.y,seen.drawn.width,seen.drawn.height].some((v,i)=>Math.abs(v-rect[i])>.5))
+          throw new Error(`Picture geometry differs from timeline: ${f.shotId} #${p.index} at ${t.toFixed(2)} s`);
+        if(media.format==='svg'){
+          if(Math.abs(seen.natural.width/seen.natural.height-media.width/media.height)>media.width/media.height*.001)
+            throw new Error(`SVG picture aspect differs from viewBox: ${f.shotId} #${p.index}`);
+        }else if(seen.natural.width!==media.width||seen.natural.height!==media.height)
+          throw new Error(`Picture natural size differs from probe: ${f.shotId} #${p.index}`);
+        if(p.kind==='clip'&&seen.frame!==p.frame)throw new Error(`Clip frame differs from timeline: ${f.shotId} #${p.index}`);
+        const scale=seen.drawn.width/seen.natural.width*(e.output.width/width);
+        if(media.format!=='svg'&&scale>media.upscale+1e-9)
+          throw new Error(`Picture drawn larger than its upscale allowance: ${f.shotId} #${p.index}`);
+      }else if(observed.picture)throw new Error(`Picture remained on screen outside cue: ${f.shotId} at ${t.toFixed(2)} s`);
       if(f.code){
         const fits=await page.locator('#source').evaluate(el=>el.scrollHeight<=el.clientHeight&&el.scrollWidth<=el.clientWidth);
         if(!fits)throw new Error(`Source excerpt overflows the panel: ${f.shotId}; select fewer lines`);
@@ -149,6 +186,17 @@ export async function browserSession(e,viewer,width,captions,action) {
       return observed;
     }
     async function showPicture(f,t,options={}){
+      if(f.picture&&f.picture.opacity<1){
+        const observed=await show(f,t,options),opacity=f.picture.opacity;
+        if(opacity<=0){await show({...f,picture:null},t,{...options,fresh:true});return observed;}
+        const captures=[];
+        for(const [picture,weight] of [[{...f.picture,opacity:1},opacity],[null,1-opacity]]){
+          await show({...f,picture},t,{...options,fresh:true});
+          captures.push({src:'data:image/png;base64,'+(await page.screenshot()).toString('base64'),weight});
+        }
+        Object.assign(observed,await page.evaluate(p=>window.film.composeMarkBlend(p),captures));
+        return observed;
+      }
       const variants=fadeSubsets(f.annotations);
       if(!variants)return show(f,t,options);
       // Each screenshot is the same instant with a subset of the faded marks
@@ -385,6 +433,68 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
         if(!firstImage.equals(await page.screenshot()))throw new Error(`Source emphasis replay is not deterministic: ${shot.id}`);}
       emphasisChecks.push({shotId:shot.id,index:cue.index,samples:records,replay:Boolean(firstImage)});
     }
+    const pictureChecks=[];
+    for(const shot of e.shots)for(const [index,cue] of (shot.pictures??[]).entries()){
+      const end=shot.start+cue.to,last=(Math.ceil(end*e.output.fps-1e-9)-1)/e.output.fps;
+      const locals=[cue.from,...(cue.view??[]).map(k=>Math.min(k.at,last-shot.start)),
+        ...(cue.enter?[cue.from+cue.enter.duration/2,cue.from+cue.enter.duration]:[]),
+        ...(cue.leave?[cue.to-cue.leave.duration,cue.to-cue.leave.duration/2]:[]),Math.max(cue.from,last-shot.start)];
+      const records=[];
+      for(const local of [...new Set(locals)].filter(t=>t>=cue.from-1e-9&&t<cue.to-1e-9).sort((a,b)=>a-b)){
+        const time=shot.start+local,posed=await pose(time),shown=posed.observed.picture;
+        if(!shown)throw new Error(`Picture proof has no active cue: ${shot.id} #${index} at ${time.toFixed(2)} s`);
+        const file=resolve(dir,`${String(samples.length).padStart(2,'0')}-${shot.id}-picture-${index}-${records.length}.png`);
+        await page.screenshot({path:file});samples.push({time,file,picture:index});
+        records.push({time,file,kind:posed.picture.kind,rect:posed.picture.rect,
+          area:shown.area,drawn:shown.drawn,natural:shown.natural,
+          ...(posed.picture.kind==='clip'?{frame:shown.frame,clipSeconds:posed.picture.clipSeconds}:{})});
+      }
+      const replayTime=records.find(r=>frameAt(e,r.time,captions).picture?.opacity>=1-1e-9)?.time??
+        records.find(r=>frameAt(e,r.time,captions).picture?.opacity>.01)?.time??records[0].time;
+      await pose(replayTime);const before=await page.screenshot();
+      await pose((replayTime+e.output.durationSeconds/2)%e.output.durationSeconds);
+      await pose(replayTime);const after=await page.screenshot();
+      if(!before.equals(after)){
+        const name=`picture-${shot.id}-${index}-replay`;
+        await writeFile(resolve(dir,`${name}-before.png`),before);await writeFile(resolve(dir,`${name}-after.png`),after);
+        throw new Error(`Picture replay is not deterministic: ${shot.id} #${index}; inspect preview/${name}-{before,after}.png`);
+      }
+      const partialTime=records.find(r=>{
+        const a=frameAt(e,r.time,captions).picture?.opacity;return a>.01&&a<1-.01;
+      })?.time;
+      if(partialTime!==undefined){
+        await pose(partialTime);const before=await page.screenshot();
+        await pose((partialTime+e.output.durationSeconds/2)%e.output.durationSeconds);
+        await pose(partialTime);const after=await page.screenshot();
+        if(!before.equals(after)){
+          const name=`picture-${shot.id}-${index}-partial-replay`;
+          await writeFile(resolve(dir,`${name}-before.png`),before);await writeFile(resolve(dir,`${name}-after.png`),after);
+          throw new Error(`Partial picture replay is not deterministic: ${shot.id} #${index} at ${partialTime.toFixed(2)} s; inspect preview/${name}-{before,after}.png`);
+        }
+      }
+      const fades=[];
+      for(const field of ['enter','leave'])if(cue[field]){
+        const duration=cue[field].duration,checks=field==='enter'?
+          [['start',cue.from],['mid',cue.from+duration/2],['end',cue.from+duration]]:
+          [['start',cue.to-duration],['mid',cue.to-duration/2]];
+        for(const [phase,local] of checks){
+          if(local>=cue.to-1e-9){fades.push({field,phase,skipped:'cue ends at this exclusive boundary'});continue;}
+          const time=shot.start+local,frame=frameAt(e,time,captions),full={...frame.picture,opacity:1};
+          const grab=async picture=>{await pose(time,{transition:null,picture},{fresh:true});return page.screenshot();};
+          const composed=await grab(frame.picture),whole=await grab(full),absent=await grab(null);
+          const reference=field==='enter'&&phase==='start'?'absent':phase==='mid'?'neither':'full';
+          const passed=reference==='neither'?!composed.equals(whole)&&!composed.equals(absent):
+            composed.equals(reference==='full'?whole:absent);
+          const name=`picture-${shot.id}-${index}-${field}-${phase}`;
+          for(const [label,bytes] of [['composed',composed],['full',whole],['without',absent]])
+            await writeFile(resolve(dir,`${name}-${label}.png`),bytes);
+          if(!passed)throw new Error(`Picture fade proof failed: ${shot.id} #${index} ${field}-${phase}; inspect preview/${name}-{composed,full,without}.png`);
+          fades.push({field,phase,time,equals:reference});
+        }
+      }
+      pictureChecks.push({shotId:shot.id,index,kind:cue.still!==undefined?'still':'clip',samples:records,replay:true,replayTime,
+        replayOpacity:frameAt(e,replayTime,captions).picture?.opacity,partialReplay:partialTime!==undefined,partialTime,fades});
+    }
     // Each transition: stills at its first frame, quarters, midpoint and last frame
     // (a fade in or out: first, middle, last), and proofs from the plain pictures
     // of the same instant (design D8).
@@ -486,7 +596,7 @@ export async function preview(e,{viewer,width=960,captions=[]}) {
     return {samples,pixelReplay:true,invalidCameraPreserved:true,...(highlightChecks.length?{highlightChecks}:{}),...(cameraChecks.length?{cameraChecks}:{}),
       ...(transitionChecks.length?{transitionChecks}:{}),...(entranceChecks.length?{entranceChecks}:{}),
       ...(revealChecks.length?{revealChecks}:{}),...(fadeChecks.length?{fadeChecks}:{}),
-      ...(emphasisChecks.length?{emphasisChecks}:{})};
+      ...(emphasisChecks.length?{emphasisChecks}:{}),...(pictureChecks.length?{pictureChecks}:{})};
   });
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.
@@ -501,6 +611,7 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const report=await browserSession(e,viewer,width,captions,async({page,pose,info})=>{
     const identity=hash(JSON.stringify({episode:e,hashes:info.hashes,browser:info.browser,width,fps,captions,
       renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
+      pictures:await fileHash(resolve(here,'pictures.mjs')),
       easing:await fileHash(resolve(here,'easing.mjs')),
       words:await fileHash(resolve(here,'words.mjs')),
       pixels:await fileHash(resolve(here,'pixels.mjs')),
@@ -531,11 +642,41 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   await copyFile(resolve(report.dir,`${String(Math.min(report.count-1,Math.floor(Math.min(10,e.output.durationSeconds*.5)*fps))).padStart(6,'0')}.png`),resolve(e.paths.build,'thumbnail.png'));
   const subtitles=audio?resolve(e.paths.build,`${label}.srt`):null;
   if(subtitles)await writeFile(subtitles,srt(captions));
-  const releaseReady=Boolean(e.release.simulationUrl&&e.release.sourceUrl);
+  const usedStills=new Set(),usedClips=new Set(),pictureCues=[];
+  for(const shot of e.shots)for(const [index,cue] of (shot.pictures??[]).entries()){
+    const kind=cue.still!==undefined?'still':'clip',name=cue[kind],media=e.pictureMedia[kind==='still'?'stills':'clips'][name];
+    (kind==='still'?usedStills:usedClips).add(name);
+    const record={...pictureReports(e,width).find(r=>r.shotId===shot.id&&r.index===index)};
+    if(kind==='clip'){
+      const cadence=clipCadenceForCue(e,shot,cue,media,fps);
+      Object.assign(record,{filmRate:fps,dropped:cadence.dropped,repeated:cadence.repeated});
+    }
+    pictureCues.push(record);
+  }
+  const publicMedia=media=>{const {file,...record}=media;return record;};
+  const pictures={stills:Object.fromEntries(Object.entries(e.pictureMedia?.stills??{}).map(([name,media])=>[name,{...publicMedia(media),
+      cues:pictureCues.filter(c=>c.kind==='still'&&c.name===name)}])),
+    clips:Object.fromEntries(Object.entries(e.pictureMedia?.clips??{}).map(([name,media])=>[name,{...publicMedia(media),
+      cues:pictureCues.filter(c=>c.kind==='clip'&&c.name===name)}])),cues:pictureCues};
+  const pictureReleaseIssues=[];
+  for(const [kind,names] of [['still',usedStills],['clip',usedClips]])for(const name of names){
+    const media=e.pictureMedia[kind==='still'?'stills':'clips'][name];
+    for(const field of ['credit','rights'])if(media[field]===null)pictureReleaseIssues.push(`${kind} ${name} has unresolved ${field}`);
+    if(!media.committed)pictureReleaseIssues.push(`${kind} ${name} is not committed at project HEAD`);
+  }
   const description=await readFile(resolve(dirname(e.paths.production),e.release.descriptionTemplate),'utf8');
+  if((usedStills.size||usedClips.size)&&!description.includes('{{pictureCredits}}'))
+    pictureReleaseIssues.push('Description template lacks {{pictureCredits}} for shown pictures');
+  const pictureCredits=[...Array.from(usedStills,name=>({kind:'stills',name})),
+    ...Array.from(usedClips,name=>({kind:'clips',name}))].map(({kind,name})=>{
+    const media=e.pictureMedia[kind][name];
+    return `${name}: ${media.credit??`[PICTURE CREDIT PENDING: ${name}]`}`;
+  }).join('\n');
+  const releaseReady=Boolean(e.release.simulationUrl&&e.release.sourceUrl)&&pictureReleaseIssues.length===0;
   await writeFile(resolve(e.paths.build,'description.md'),description
     .replaceAll('{{simulationUrl}}',e.release.simulationUrl??'[PUBLIC SIMULATION URL PENDING]')
-    .replaceAll('{{sourceUrl}}',e.release.sourceUrl??'[PUBLIC SOURCE URL PENDING]'));
+    .replaceAll('{{sourceUrl}}',e.release.sourceUrl??'[PUBLIC SOURCE URL PENDING]')
+    .replaceAll('{{pictureCredits}}',pictureCredits));
   const gitHead=async cwd=>(await command('git',['rev-parse','HEAD'],{cwd})).trim();
   const workflow=await gitHead(resolve(here,'..'));
   const project=await gitHead(e.paths.repository);
@@ -544,7 +685,8 @@ export async function render(e,{viewer,width=e.output.width,fps=e.output.fps,aud
   const codeFont=await command('fc-match',['-f','%{file}','DejaVu Sans Mono']).catch(()=>null);
   const codeFontRecord=codeFont?{path:codeFont,sha256:await fileHash(codeFont)}:null;
   await json(resolve(e.paths.build,`${label}-manifest.json`),{...report,fps,output,outputSha256:await fileHash(output),
-    audio:audio?.records??[],subtitles:subtitles?{file:subtitles,sha256:await fileHash(subtitles),burnedIn:false}:null,episode:e,probe,releaseReady,
+    audio:audio?.records??[],subtitles:subtitles?{file:subtitles,sha256:await fileHash(subtitles),burnedIn:false}:null,
+    episode:e,probe,pictures,pictureReleaseIssues,releaseReady,
     provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,codeFont:codeFontRecord,
       episodeSha256:await fileHash(e.paths.episode),productionSha256:await fileHash(e.paths.production),
       ffmpeg:(await command('ffmpeg',['-version'])).split('\n')[0]}});

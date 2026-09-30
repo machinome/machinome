@@ -20,6 +20,9 @@
   // Refuse on mount rather than render a film with its new cues missing.
   if(viewer.apiVersion<cfg.requiredViewerApi.api)throw new Error(cfg.viewerRefusal.replace('{declared}',String(viewer.apiVersion)));
   await document.fonts.ready;
+  await Promise.all((cfg.pictureStills??[]).map(async name=>{
+    const image=new Image();image.src=`/pictures/stills/${encodeURIComponent(name)}`;await image.decode();
+  }));
   let hidden=[],applied=null,restore=null;
   const layer=document.querySelector('#annotations'),svgNS='http://www.w3.org/2000/svg';
   const plain=r=>({x:r.x,y:r.y,width:r.width,height:r.height});
@@ -167,6 +170,28 @@
   }
   const rect=selector=>plain(document.querySelector(selector).getBoundingClientRect());
   const chrome=()=>['#brand','#series','#rule'].map(rect);
+  const pictures=document.querySelector('#pictures'),pictureImage=document.querySelector('#picture-image');
+  async function drawPicture(picture){
+    document.body.classList.toggle('has-picture',Boolean(picture));
+    if(!picture){viewport.style.visibility='';pictureImage.removeAttribute('src');return null;}
+    // The opaque plate covers this model stage, but the viewer still poses it.
+    // Hiding only its composited canvas avoids changing the film chrome's text
+    // raster as Chromium switches between WebGL and image layers.
+    viewport.style.visibility=picture.opacity>=1?'hidden':'';
+    const area=picture.area==='frame'?{left:0,top:0,width:window.innerWidth,height:window.innerHeight}:
+      plain(document.querySelector('#viewport').getBoundingClientRect());
+    Object.assign(pictures.style,{left:`${area.left??area.x}px`,top:`${area.top??area.y}px`,
+      width:`${area.width}px`,height:`${area.height}px`,opacity:String(picture.opacity)});
+    const src=picture.kind==='still'?`/pictures/stills/${encodeURIComponent(picture.name)}`:
+      `/pictures/clips/${encodeURIComponent(picture.name)}/${String(picture.frame).padStart(6,'0')}.png`;
+    pictureImage.src=src;
+    await pictureImage.decode();
+    const [x,y,w,h]=picture.rect;
+    Object.assign(pictureImage.style,{left:`${x*100}%`,top:`${y*100}%`,width:`${w*100}%`,height:`${h*100}%`});
+    return {area:plain(pictures.getBoundingClientRect()),drawn:plain(pictureImage.getBoundingClientRect()),
+      natural:{width:pictureImage.naturalWidth,height:pictureImage.naturalHeight},
+      ...(picture.kind==='clip'?{frame:Number(/\/(\d{6})\.png$/.exec(new URL(pictureImage.currentSrc).pathname)?.[1])}:{})};
+  }
   function markSource(code,source){
     if(!code?.emphasis?.length)return [];
     if(source.textContent!==code.text)throw new Error(`Highlighted source text differs from the typed excerpt in shot ${code.shotId??'current'}`);
@@ -249,10 +274,11 @@
     document.querySelector('#source-cursor').style.visibility=frame.code?.cursor?'visible':'hidden';
     document.querySelector('#progress').style.width=`${frame.progress*100}%`;
     const annotations=drawAnnotations(frame);
-    if(frame.fresh)await repaint();
+    const picture=await drawPicture(frame.picture);
+    if(frame.fresh||frame.picture)await repaint();
     const view=viewer.view();
     return {camera:view.camera.toArray(),target:view.target.toArray(),navigation:viewer.navigation(),
-      annotations,overlays:overlayReports,emphasis,stage:plain(document.querySelector('#stage').getBoundingClientRect()),
+      annotations,overlays:overlayReports,emphasis,picture,stage:plain(document.querySelector('#stage').getBoundingClientRect()),
       frame:{width:window.innerWidth,height:window.innerHeight},
       chrome:chrome(),
       ...(viewer.apiVersion>=28?{up:view.up.toArray(),fov:Number(view.fov)}:{})};

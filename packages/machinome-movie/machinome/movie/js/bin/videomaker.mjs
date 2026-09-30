@@ -7,6 +7,7 @@ import {speech} from '../src/speech.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
 import {preview,render} from '../src/render.mjs';
+import {pictureReports,clipCadenceForCue} from '../src/pictures.mjs';
 
 try{
   const {positionals,values}=parseArgs({allowPositionals:true,options:{viewer:{type:'string'},width:{type:'string'},fps:{type:'string'},silent:{type:'boolean'},help:{type:'boolean'}}});
@@ -26,6 +27,16 @@ try{
     if(required.api>21){
       const declared=confirmViewerApi(required,await readFile(options.viewer,'utf8').catch(()=>null));
       console.log(`Viewer API ${required.api} required for ${required.reasons.join(', ')}; ${options.viewer} declares API ${declared}`);
+    }
+    for(const report of pictureReports(e)){
+      console.log(`Picture ${report.shotId} #${report.index} (${report.kind} ${report.name}): `+
+        (report.peak===null?'vector, no enlargement limit':`peak ${report.peak.toFixed(2)}×; allowance ${report.allowance}×`));
+      if(report.kind==='clip'){
+        const shot=e.shots.find(s=>s.id===report.shotId),cue=shot.pictures[report.index],media=e.pictureMedia.clips[report.name];
+        const cadence=clipCadenceForCue(e,shot,cue,media);
+        console.log(`  source ${media.averageRate.toFixed(3)} fps into film ${e.output.fps} fps: `+
+          `${cadence.dropped} dropped, ${cadence.repeated} repeated; audio not played`);
+      }
     }
     process.exit(0);
   }

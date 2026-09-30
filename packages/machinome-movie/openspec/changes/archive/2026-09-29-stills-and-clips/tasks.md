@@ -1,21 +1,28 @@
 ## 0. Preconditions
 
-- [ ] 0.1 Confirm the existing 29 September ratification under the pilot's
+- [x] 0.1 Confirm the existing 29 September ratification under the pilot's
   delegation still covers the field shapes (D1, D2), full-area pictures with the model posed
   beneath and annotations/highlights refused (D3), stacking under the masthead
   (D3), the fixed-point pan-and-zoom (D5), refuse-with-allowance enlargement
   (D6), sample-and-hold clips with the refusals of D7, the SVG rules (D10),
   release gating (D11), and the settled defaults recorded under Ratification.
-- [ ] 0.2 `keyframes-and-easing`, `shot-transitions`, `graphic-overlays` and
+- [x] 0.2 `keyframes-and-easing`, `shot-transitions`, `graphic-overlays` and
   `text-animation` are applied on `film-motion` before this change, which is
   the campaign's last cycle. Record the base commit in `evidence.md`. Re-read
   the applied `film.html`/`film.js` stacking and the 0.4 closed lists. If the
   transition layer or a later overlay layer sits where D3 cannot put pictures
   beneath it, stop and reconcile before writing tests.
 
-## 1. Red tests (written before any implementation; record each failure)
+## 1. Red tests and coverage
 
-- [ ] 1.1 `test/pictures.test.mjs` (new, Node only; fixtures are generated in a
+The initial missing-module and first valid browser proof ran red before their
+implementations. The whole matrix was not written before any implementation:
+the pure module was started before the later refusal/geometry assertions, and
+some browser assertions were expanded after the first page work. The root
+accepted this honest sequencing exception, conditional on complete final
+coverage. `evidence.md` records actual failures rather than backdating them.
+
+- [x] 1.1 `test/pictures.test.mjs` (new, Node only; fixtures are generated in a
   temporary Git repository with ffmpeg: a PNG, a JPEG, a WebP, an SVG with and
   without `viewBox`, an animated PNG, an MP4 and a WebM, a clip with an audio
   stream). It fails to load before 2.1.
@@ -59,8 +66,9 @@
     amended `keyframes-and-easing` and `shot-transitions` 0.4 frame
     comparisons expect `picture: null`; 0.2 and 0.3 frames stay literally as
     pinned; `requiredViewerApi` is unchanged by pictures.
-- [ ] 1.2 `test/render.test.mjs` (real browser, the API 28 viewer double;
-  one browser at a time). Red before 2.3–2.5.
+- [x] 1.2 `test/render.test.mjs` (real browser, the API 28 viewer double;
+  one browser at a time). The first valid browser proof was red before
+  2.3–2.5; later coverage assertions followed page work, as noted above.
   - Synthetic still: a 256×256 PNG generated with ffmpeg `geq` where red is x
     and green is y, shown `area: frame`, `fit: contain`, `upscale: 3`, keys
     `{center [.5,.5], zoom 1}` → `{center [.5,.6], zoom 2, ease: linear}`. At
@@ -97,32 +105,32 @@
 
 ## 2. Implementation
 
-- [ ] 2.1 `src/pictures.mjs`: stage constants (D4); loading and probing with
+- [x] 2.1 `src/pictures.mjs`: stage constants (D4); loading and probing with
   ffprobe, SVG `viewBox` and scan, containment and `committed` (D1, D10);
   structural validation for `validateEpisode` and media validation after
   loading (framing sweep, enlargement, clip coverage including transition
   continuation) (D5–D7); the pure `pictureAt(e, shot, local)` using `ease` and
   the key rules of `keyframes-and-easing` (D5, D9, D12); clip frame choice
   (D7); extraction and its index (D11).
-- [ ] 2.2 `src/episode.mjs`: the 0.4 shot field list gains `pictures`;
+- [x] 2.2 `src/episode.mjs`: the 0.4 shot field list gains `pictures`;
   `loadEpisode` loads and validates stills and clips of 0.4 episodes after the
   structural check; the refusals of D2, D3 and D8 with the messages given.
-- [ ] 2.3 `src/timeline.mjs`: 0.4 frames carry `picture`, and the continued
+- [x] 2.3 `src/timeline.mjs`: 0.4 frames carry `picture`, and the continued
   outgoing frame of `shot-transitions` carries it as D12 says.
-- [ ] 2.4 `src/film.html`, `src/film.js`: a `#pictures` layer stacked as D3;
+- [x] 2.4 `src/film.html`, `src/film.js`: a `#pictures` layer stacked as D3;
   stills preloaded and decoded at mount; clip frames loaded and decoded before
   `setFrame` returns; plate, picture (`image-orientation: none`) and
   opacity rebuilt from the frame every time; `setFrame` returns the area,
   drawn rectangle, natural size and clip frame index.
-- [ ] 2.5 `src/render.mjs`: serve pictures and clip frames at fixed paths
+- [x] 2.5 `src/render.mjs`: serve pictures and clip frames at fixed paths
   (content types for `.jpeg`, `.webp`); extract before posing; `pose` refuses
   geometry, frame and enlargement mismatches (D13); preview samples and replay
   per picture; render-width enlargement check; frame identity additions,
   manifest `pictures`, `pictureReleaseIssues`, `releaseReady` and
   `{{pictureCredits}}` (D11).
-- [ ] 2.6 `bin/videomaker.mjs`: `check` prints each picture's peak enlargement
+- [x] 2.6 `bin/videomaker.mjs`: `check` prints each picture's peak enlargement
   and allowance, and each clip's rate and cadence.
-- [ ] 2.7 `docs/FORMAT.md`: "Production settings" gains `stills` and `clips`;
+- [x] 2.7 `docs/FORMAT.md`: "Production settings" gains `stills` and `clips`;
   "Format 0.4" lists `pictures` and the new closed lists; a new section
   "Showing stills and clips" (the two areas and fits, the covering plate, the
   model beneath, view keys and the fixed-point zoom, the enlargement rule, clip
@@ -133,12 +141,12 @@
   picture samples), "Output" (`_build/clips/`, manifest `pictures`,
   `{{pictureCredits}}`), "Set up" (ffprobe and ffmpeg read pictures; no newer
   viewer).
-- [ ] 2.8 `npm test` green; record the red runs of 1.1 and 1.2, the green run and
+- [x] 2.8 Full serial test suite green; record the red runs of 1.1 and 1.2, the green run and
   the amended 0.4 frame comparisons in `evidence.md`.
 
 ## 3. Consumer verification (implementation evidence)
 
-- [ ] 3.1 In the Leonardo project, as an untracked demo episode as the earlier
+- [x] 3.1 In the Leonardo project, as an untracked demo episode as the earlier
   demos were (nothing committed there), `videos/demo-stills-and-clips/` in
   format 0.4 uses only the project's own renders and drawings. Pan and zoom
   across an own render to exercise the keyed view, hold another own render in
@@ -147,15 +155,15 @@
   Use a Videomaker render of an earlier demo as the clip, from an in-point.
   Do not show the watermarked *Codex* copy or the museum photograph in this demo;
   their use and rights remain the pilot's decision.
-- [ ] 3.2 `check` passes and prints each enlargement. Remove the explicit
+- [x] 3.2 `check` passes and prints each enlargement. Remove the explicit
   `upscale` allowance from an own-render cue that needs it and confirm refusal
   with the D6 message. The tracked 640×360
   `screenshots/hydraulic_sawmill.png` in the stage area is refused as an
   enlargement. Record both messages.
-- [ ] 3.3 `preview` passes with exact replay and every picture sample's
+- [x] 3.3 `preview` passes with exact replay and every picture sample's
   geometry. Record the samples, the clip's rate and cadence, and the
   extraction key.
-- [ ] 3.4 With one viewer bundle, the root-owned
+- [x] 3.4 With one viewer bundle, the root-owned
   `videos/demo-legacy-02` episode (format 0.2, current 1460-second export pinned
   to revision `28b43bc`) and `demo-feed-mechanism` (0.3) pass `check`. The
   orchestrating agent compares this 0.2 fixture's preview still hashes on
@@ -165,18 +173,18 @@
   and `videos/machinome-revolutions` refuses because its source revision is
   not pinned; neither original is a rendering compatibility fixture. One
   browser at a time.
-- [ ] 3.5 The orchestrating agent renders a short silent clip of the demo
+- [x] 3.5 The orchestrating agent renders a short silent clip of the demo
   (`--width 960 --fps 30 --silent`) and records its hash and manifest's
   `pictureReleaseIssues`.
 
 ## 4. Delegated film review and archive gate
 
-- [ ] 4.1 After implementation tests pass, the orchestrating agent performs an
+- [x] 4.1 After implementation tests pass, the orchestrating agent performs an
   adversarial review against the plan and rendered pixels. Inspect whether the
   pan and zoom reads as a steady approach, the clip cadence, and the masthead
   over a full-frame picture. Record the findings and fixes without claiming
   pilot review or rights clearance from geometry and replay checks.
-- [ ] 4.2 The orchestrating agent inspects the feature demonstration video from
+- [x] 4.2 The orchestrating agent inspects the feature demonstration video from
   Leonardo `videos/demo-stills-and-clips/` with vision,
   records its path, hash and review findings, then syncs and archives this change.
   Research-copy rights, adoption by *Revolutions v2*, publication and pushing

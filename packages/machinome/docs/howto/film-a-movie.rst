@@ -21,7 +21,9 @@ yet declared by a published release; `check`, `preview` and `render` refuse them
 older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
 and transitions between shots run on Viewer API 21, and rings, being
 annotations, need Viewer API 28 as annotations do. Text animation is page-only
-and adds no viewer requirement. Linux/Chromium software rendering is the tested environment.
+and adds no viewer requirement. Stills and clips are page-only too; FFprobe
+checks their frames and timestamps, while FFmpeg extracts clip frames for
+preview and render. Linux/Chromium software rendering is the tested environment.
 
 ```sh
 npm ci
@@ -65,7 +67,10 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   Viewer API 28 it also reads the selected bundle's `viewer API` banner. An
   episode with spoken reveals or source emphasis needs its cached speech first:
   run `speech` before `check`. `check` reads the verified alignment but never
-  generates speech.
+  generates speech. For format 0.4 pictures it also reads the project media,
+  refuses unsafe or unfilmable assets, and prints each peak enlargement and
+  allowance plus clip rate and dropped/repeated cadence. It does not extract
+  clip frames or start a browser.
 - `speech` generates narration through ElevenLabs, caches each segment and its
   character timestamps, checks it fits, then mixes audio and writes captions.
   It makes chargeable requests only for missing cached segments.
@@ -91,7 +96,9 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   speech generation occurs. Format 0.4 text animation also reports
   `revealChecks`, `fadeChecks` and `emphasisChecks`: it verifies drawn word
   counts, same-instant title fade states over the moving model, source marks,
-  title bounds and exact replay.
+  title bounds and exact replay. Its `pictureChecks` save keyed still views and
+  clip frames, verify page geometry and source frame identity, replay a visible
+  still/clip exactly, and compare picture fades at the same model instant.
 - `render` requires cached speech and renders the film. Add
   `--width 960 --fps 10 --silent` for a quick silent video. Measured text still
   requires the cached take with `--silent`; neither render
@@ -100,13 +107,16 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   pose and capture, a dissolve, wipe or slide two, each several times a plain
   frame's time. A picture with `n` simultaneous partly faded annotations needs
   `2^n` same-instant captures to preserve exact text pixels; schedule review
-  renders accordingly.
+  renders accordingly. Picture fades similarly compose opaque and absent
+  same-instant captures. `render --width` rechecks any authored `upscale`
+  allowance before opening the browser.
 - `build` combines speech generation/cache reuse and final rendering.
 
 Without `--viewer`, the bundle beside the model manifest is used. Older
 exports must be regenerated with the new viewer or use the explicit bundle.
 Paths are arguments, not assumptions about a neighboring workspace. The
-loopback asset server exposes the selected model assets and film page only.
+loopback asset server exposes the selected model assets, film page and, for
+format 0.4 pictures, the referenced project media and extracted clip frames.
 
 ## Output
 
@@ -118,14 +128,22 @@ Each episode's ignored `_build/` contains:
 - `thumbnail.png`, `storyboard.jpg`, `preview/`: presentation review assets.
 - `description.md`: draft release copy with missing public URLs explicitly marked.
 - `rehearsal-manifest.json`: resolved screenplay/settings, model and viewer
-  hashes, audio hashes, browser/encoder versions, font record and encoded checks.
+  hashes, audio hashes, browser/encoder versions, font record, encoded checks,
+  and picture provenance/cadence with `pictureReleaseIssues`.
+- `clips/<content-hash>/`: lossless extracted source frames and their index;
+  unchanged source files and decoder settings reuse an extraction.
 - `frames/<content-hash>/`: reusable frames; rerunning an unchanged render
   resumes capture. Inputs include the model assets, viewer, screenplay, captions
-  and renderer. Changing visual inputs starts a new frame cache.
+  and renderer, including picture media hashes and clip-decoder identity.
+  Changing visual inputs starts a new frame cache.
 
 The final encode is checked for its frame count, dimensions and audio stream.
 Generated media stays out of Git. Missing public URLs make `releaseReady`
 false but do not prevent a rehearsal. Nothing uploads or publishes.
+Shown pictures whose credit or rights are unresolved, whose files are not
+committed, or whose description template lacks `{{pictureCredits}}` also make
+`releaseReady` false. The placeholder expands to `name: credit` lines (with
+an explicit pending marker for missing credit); it is not a rights judgement.
 
 ## Timing and revisions
 

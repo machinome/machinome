@@ -123,6 +123,19 @@ demonstrated.
   timing, cache hashes, regressions and compatibility. Stills/clips is next,
   then the single combined narrated film.
 
+- 29 Sep, resumed run: `stills-and-clips` implemented, reviewed, synced and
+  archived with ten baseline requirements. The final suite is 116/116; all
+  35 fresh legacy preview PNGs remain byte-identical to `6417f97`. Root's
+  sixteen-second silent feature film is 960×540 at 30 fps, SHA-256
+  `6312b7750f3a74047c118c8112c1627ee57d074d76a8ff8d7203a2f850bf43f1`.
+  Root inspected its decoded sequence, exact boundaries and fade midpoints.
+  Real-film findings corrected presentation-timestamp rounding, partial-fade
+  replay and picture/transition masthead compositing; final native-size
+  closing-dissolve proof differs by at most 0.5 level and replays exactly.
+  The record discloses the accepted test-order exception rather than claiming
+  the whole expanded matrix was red before code. The final combined film's
+  measured narration fits 46 seconds; its final preview/mastering remains.
+
 ## Combined demonstration, resumed commission
 
 The final episode is a concise feature study in Leonardo, not a revision of
