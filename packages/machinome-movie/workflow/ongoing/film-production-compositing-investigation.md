@@ -1,6 +1,6 @@
 # Compositing performance investigation
 
-Status: provisional profiling plan, 29 September 2026. This is workflow evidence planning for the commissioned film-production campaign, not an OpenSpec product proposal, measured current performance, or authority to run a browser while another agent holds its lease. It proposes no renderer behavior or episode-format change.
+Status: closed with **no product optimization**, 29 September 2026. The original plan, measured exact-pixel profile, root verification and no-change decision follow. This is evidence from one controlled run, not a repeatability claim or a new renderer/format promise. It stays beside the ongoing campaign until campaign archival.
 
 ## Consumer and question
 
@@ -88,3 +88,25 @@ observations, not true-peak guarantees or two-browser evidence. The lease
 is released. Root requested Sol's smallest justified optimization candidate
 or a no-change recommendation; no runtime change is yet justified by these
 measurements alone.
+
+## Decision after profile: no compositing product change
+
+Sol proposal review and root accept **no product optimization in this cycle**.
+The 74.301 s of awaited screenshots (40.624 s final plus 33.677 s subset)
+dominate this one 121.996 s instrumented cold render, but their browser
+capture/PNG encode/transfer costs are not isolated, and same-instant captures
+are part of the exact fade and replay contract. Awaited `setFrame` is 25.188 s;
+its 11.565 s repaint waits are nested and protect pose-history independence.
+The whole page-side blend is 8.344 s, with only 3.167 s in weighted arithmetic:
+even eliminating that arithmetic entirely would bound ideal savings to about
+2.6% of the instrumented wall time before replacement costs, below a credible
+material gain from this single paired measurement.
+
+Do not replace Float64 blending, skip fresh repaints/refusals, use lossy
+captures, or reduce subset count on this evidence. The proposed three-subset
+shortcut for the 25 two-fade frames is rejected as an experiment: proving
+absent overlap can itself require the fourth capture, and a new algebraic
+rounding order risks exact pixels for little eligible work. No browser run,
+runtime edit, OpenSpec optimization change, or speed claim follows this
+decision. The measured report remains available if a later named film exposes
+a different, substantial bottleneck.

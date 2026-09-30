@@ -142,3 +142,11 @@ invented interface requirements merely to fill the campaign.
   failure and process cleanup; no speed conclusion is drawn and no further
   retry is authorized. Rendering remains serial. Next is the independent
   single-browser compositing profile.
+- The compositing profile completed and is closed with **no product
+  optimization**. Root independently verified all 450 PNG pairs and both
+  decoded MP4 streams; the plain/instrumented runs took 120.060/121.996 s.
+  Screenshot awaits dominate (74.301 s); weighted arithmetic accounts for
+  only 3.167 s. No small material saving is established that preserves the
+  same-instant capture contract. No speculative shortcut was implemented.
+  The source-only layout planning is committed at `73e97c0`; Sol is capturing
+  compatibility baselines and genuine red tests before runtime edits.
