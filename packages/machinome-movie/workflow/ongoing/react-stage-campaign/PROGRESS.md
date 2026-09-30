@@ -13,3 +13,5 @@
 | 30 Sep | Cycle P `declarative-stage` ratified (planning 121a86c, implementation f5eb59f; ADR-005; 185 pytest) with the orchestrator's rulings on its nine contract findings (1782192: a dot bounds a token, `line=` on an emphasis, merged set props, draw is an entrance only; 186 pytest) and merged into `react-stage` | b109fd3, `openspec/changes/archive/2026-09-30-declarative-stage/evidence.md` |
 | 30 Sep | Leonardo spec: the coupling emphasis names line 415 | Leonardo aa3f762 |
 | 30 Sep | Between P and S the Node suite of `react-stage` is red on the removed 0.1 schema and fixtures, as P's wart 4 records; cycle S starts from b109fd3 | this commit |
+| 30 Sep | Worktree `WTs/react-stage-runtime` (branch `react-stage-runtime`) at 502ef71; cycle S running on an opus agent | this repository |
+| 30 Sep | Leonardo: `movie.py` version 2 written from the spec and evaluated to 0.2 (5 chapters, 12 shots, sets `leonardo` and `leonardo-split`, element `jobs`, emphasis on lines 413–415 by line 415, 425–435, 472–486); `stage.tsx` a placeholder until the runtime lands | Leonardo (commit after aa3f762) |
