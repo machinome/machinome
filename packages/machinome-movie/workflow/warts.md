@@ -170,7 +170,11 @@ Findings met while building the `react-stage` change (the Node side of
    fixture tour captures 567 frames at 1280×720 in about two minutes with the
    viewer double. A long 1080p film pays it on every frame.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
-   `pose-repaints`.
+   `pose-repaints`; done the same day (77f3a98): a pose repaints only for a
+   proof pose, a mounted, replaced or resized view, or content that differs
+   from the last repaint's (ADR-004 amended); the tour captures at 5.3–5.4
+   frames a second from 4.8–4.9; the film's number is measured after the
+   campaign.
 5. **One viewer per view element.** The contract's rule; *Cut and Advance*
    would mount six sawmill viewers in one page. Memory with the real viewer is
    unmeasured (layer 6 has no test).
@@ -259,7 +263,9 @@ Findings met while producing the film on the React stage
    itself is where a film's time goes now.
    Triaged 30 September 2026 (orchestrator, fix-warts campaign): cycle
    `pose-repaints`; the bundle stays a common key, since a template change
-   may change every frame.
+   may change every frame. The cycle landed the same day (77f3a98); the
+   film's re-render with the real viewer is the campaign's closing
+   evidence.
 6. **The picture's enlargement is checked only in the browser** (wart 1 of
    "The React stage"): the still over a full-frame plate slot passed at
    preview and render; `check` could not say so before speech.
