@@ -46,8 +46,9 @@ change only the mark's opacity; a draw-on SHALL reveal a ring's stroke around
 the ring from its top, clockwise, and an arrow's stroke from its words to its
 tip, the words shown from the start. At the entrance's first frame nothing of a
 faded mark, and none of a drawn stroke, SHALL be visible. An entrance or exit
-MUST NOT change where the mark is: from the entrance's end, and at the exit's
-start, the mark SHALL be drawn exactly as it is without one. The mark SHALL keep
+MUST NOT change where the mark is: from the entrance's end when that instant is
+inside the cue, and at the exit's start, the mark SHALL be drawn exactly as it
+is without one. The mark SHALL keep
 following its part throughout.
 
 #### Scenario: One ring leaves as the next is drawn
@@ -86,11 +87,15 @@ yield identical pixels.
 ### Requirement: Preview proves entrances and exits in pixels
 
 `preview` SHALL sample every entrance and exit at its first frame, midpoint and
-end, save those stills, and prove: that a fade's midpoint is the blend of the
-mark drawn in full and not drawn that its easing predicts, within 2 levels of
-255 on every pixel; that a draw-on's midpoint shows part of the stroke and not
-the rest; that a faded or drawn entrance starts from nothing; and that the
-entrance's end and the exit's start equal the mark drawn without them. A failed
+end when that instant lies inside the half-open cue, save those stills, and
+prove: that a fade's midpoint is the blend of same-instant opaque full-mark
+and absent-mark raster captures that its easing predicts, with every other cue
+held as authored, within 2 levels of 255 on every pixel; that a draw-on's
+midpoint shows part of the stroke and not the rest; that a faded or drawn
+entrance starts from nothing; and that an active entrance end and the exit's
+start equal the mark drawn without them. If `enter.duration` equals the cue's
+duration, preview MUST record the `enter-end` check as skipped because it falls
+at the exclusive `to` boundary, while checking the valid in-cue samples. A failed
 proof MUST stop preview, naming the shot, the annotation, the check and the
 time, and keep the compared images.
 

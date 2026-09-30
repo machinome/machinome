@@ -1,11 +1,11 @@
 ## 0. Preconditions
 
-- [ ] 0.1 The orchestrator, as ratification gate, and the pilot ratify this
-  proposal: the field shapes (D1, D2), full-area pictures with the model posed
+- [ ] 0.1 Confirm the existing 29 September ratification under the pilot's
+  delegation still covers the field shapes (D1, D2), full-area pictures with the model posed
   beneath and annotations/highlights refused (D3), stacking under the masthead
   (D3), the fixed-point pan-and-zoom (D5), refuse-with-allowance enlargement
   (D6), sample-and-hold clips with the refusals of D7, the SVG rules (D10),
-  release gating (D11), and the Open Questions' defaults.
+  release gating (D11), and the settled defaults recorded under Ratification.
 - [ ] 0.2 `keyframes-and-easing`, `shot-transitions`, `graphic-overlays` and
   `text-animation` are applied on `film-motion` before this change, which is
   the campaign's last cycle. Record the base commit in `evidence.md`. Re-read
@@ -33,9 +33,10 @@
     `fit`/`area` outside their words; `view` on a clip and `inPoint` on a still;
     view keys that are not increasing, lie outside `[from, to]`, have a centre
     outside `[0, 1]` or zoom below 1, carry an unknown easing, or put `ease` on
-    the first key; fades shorter than two frames or together longer than the
-    interval; an annotation and a highlight overlapping a picture;
-    unknown picture, view-key and fade fields. 0.2 and 0.3 episodes whose
+    the first key; `enter`/`leave` with a kind other than `fade`, fades shorter
+    than two frames or together longer than the interval; an annotation and a
+    highlight overlapping a picture; unknown picture, view-key, entrance and
+    exit fields. `fadeIn`/`fadeOut` on a picture are unknown fields. 0.2 and 0.3 episodes whose
     production declares `stills`/`clips` validate unchanged.
   - Geometry (pure): the D5 rectangle for `contain` and `cover`, in both areas
     and both layouts, as literal numbers; `w === 0`/`1` give the keys exactly;
@@ -51,7 +52,8 @@
     2 fps film (non-integer ratio), a variable-rate list, and instants exactly
     on a timestamp; `inPoint` coverage refusal with the message of D7; the
     continuation refusal when the next shot has a `shot-transitions` dissolve
-    and a fade (half duration); interlaced, rotated and non-increasing
+    and a fade (half duration), both with and without a picture `leave` fade;
+    interlaced, rotated and non-increasing
     timestamp clips refused; the dropped and repeated counts.
   - Frames: every 0.4 frame carries `picture` (`null` outside one); the
     amended `keyframes-and-easing` and `shot-transitions` 0.4 frame
@@ -61,12 +63,14 @@
   one browser at a time). Red before 2.3–2.5.
   - Synthetic still: a 256×256 PNG generated with ffmpeg `geq` where red is x
     and green is y, shown `area: frame`, `fit: contain`, `upscale: 3`, keys
-    `{center [.5,.5], zoom 1}` → `{center [.25,.75], zoom 2, ease: linear}`. At
+    `{center [.5,.5], zoom 1}` → `{center [.5,.6], zoom 2, ease: linear}`. At
     each key the preview still's pixel at the area centre decodes to the keyed
     centre within one source pixel, and a pixel 40 output pixels right of it
     decodes to the point `40/(s0·z)` further. At a mid-segment instant the
     pixel at the fixed point's area position decodes to the fixed point. Outside
-    the picture, in the contain bands, the pixel is `style.background`.
+    the picture, in the contain bands, the pixel is `style.background`. The
+    alternative ending `{center: [.25,.75], zoom: 2}` is refused because it
+    exposes the plate at the left edge at 640×360.
   - Synthetic clip: a 3 fps H.264 clip made losslessly from frames of uniform
     luma `16·n` (and the same as VP9 WebM), shown from `inPoint: 1` in a 2 fps
     film. At each posed instant the centre pixel identifies the frame D7
@@ -79,8 +83,10 @@
     is refused with `Film stage layout differs`; exact replay of a picture
     instant passes.
   - A fade-in's midpoint differs from both the plain model and the full
-    picture, its first frame equals the plain model frame exactly, and the
-    frame at `to` equals the plain model frame exactly.
+    picture at the same model and video instant; its first frame equals the
+    absent-picture capture at that instant exactly, and the frame at `to`
+    equals the plain model frame exactly. Use a moving model so changing model
+    pixels cannot make a broken fade pass.
   - A `frame` picture leaves the masthead and progress rule pixels unchanged,
     and a text overlay over a picture is drawn above it.
   - Render: the manifest's `pictures` records (hashes, `committed`, credit,
@@ -134,36 +140,37 @@
 
 - [ ] 3.1 In the Leonardo project, as an untracked demo episode as the earlier
   demos were (nothing committed there), `videos/demo-stills-and-clips/` in
-  format 0.4 restages the evidence. The folio push-in onto the saw sketch uses
-  the *Codex* research copy (frame area; peak enlargement ≤ 1 at 1080p). The
-  held full-frame museum photograph (`upscale: 1.4`) cuts to the model
-  mid-shot, as `question-and-feedback` asks. An own SVG carpentry drawing is
-  copied beside the episode with a `viewBox` added, in the stage area. A clip is
-  a real browser recording of the exported interactive simulation
-  (`export/hydraulic_sawmill/index.html`) being paused and scrubbed, made
-  outside Videomaker and saved as WebM beside the episode, from an in-point.
-  Credits and rights of the research copies stay `null`. If the pilot does not
-  want the research copies shown even privately (design Open Questions), use
-  the project's own renders in their place.
-- [ ] 3.2 `check` passes and prints each enlargement. The same episode without
-  the museum allowance is refused with the D6 message, and the tracked
-  640×360 `screenshots/hydraulic_sawmill.png` in the stage area is refused as
-  an enlargement. Record both messages.
+  format 0.4 uses only the project's own renders and drawings. Pan and zoom
+  across an own render to exercise the keyed view, hold another own render in
+  the full frame and cut back to the continuously posed model mid-shot, and
+  show an own carpentry SVG copied beside the episode with a `viewBox` added.
+  Use a Videomaker render of an earlier demo as the clip, from an in-point.
+  Do not show the watermarked *Codex* copy or the museum photograph in this demo;
+  their use and rights remain the pilot's decision.
+- [ ] 3.2 `check` passes and prints each enlargement. Remove the explicit
+  `upscale` allowance from an own-render cue that needs it and confirm refusal
+  with the D6 message. The tracked 640×360
+  `screenshots/hydraulic_sawmill.png` in the stage area is refused as an
+  enlargement. Record both messages.
 - [ ] 3.3 `preview` passes with exact replay and every picture sample's
   geometry. Record the samples, the clip's rate and cadence, and the
   extraction key.
 - [ ] 3.4 With one viewer bundle, the sawmill rehearsal (0.2) and
   `demo-feed-mechanism` (0.3) pass `check`, and their preview stills are
   byte-identical before and after this change. One browser at a time.
-- [ ] 3.5 Render a short silent clip of the demo (`--width 960 --fps 30
-  --silent`) and record its hash and manifest's `pictureReleaseIssues`.
+- [ ] 3.5 The orchestrating agent renders a short silent clip of the demo
+  (`--width 960 --fps 30 --silent`) and records its hash and manifest's
+  `pictureReleaseIssues`.
 
-## 4. Human review (not claimed by automation)
+## 4. Delegated film review and archive gate
 
-- [ ] 4.1 The pilot judges whether the push-in reads as a steady approach, the
-  clip's cadence, the masthead over a full-frame picture, and the
-  Open Questions' defaults. Automated checks prove geometry, frame choice,
-  enlargement and reproducibility, not how the pictures read.
-- [ ] 4.2 The rights and credits of every picture, whether *Revolutions v2*
-  adopts pictures, and any publication, pushing or release render need the
-  pilot's explicit decision. Nothing here clears an image.
+- [ ] 4.1 After implementation tests pass, the orchestrating agent performs an
+  adversarial review against the plan and rendered pixels. Inspect whether the
+  pan and zoom reads as a steady approach, the clip cadence, and the masthead
+  over a full-frame picture. Record the findings and fixes without claiming
+  pilot review or rights clearance from geometry and replay checks.
+- [ ] 4.2 The orchestrating agent inspects the feature demonstration video from
+  Leonardo `videos/demo-stills-and-clips/` with vision,
+  records its path, hash and review findings, then syncs and archives this change.
+  Research-copy rights, adoption by *Revolutions v2*, publication and pushing
+  remain separate pilot decisions outside this campaign.

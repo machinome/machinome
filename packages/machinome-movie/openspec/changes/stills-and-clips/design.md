@@ -22,15 +22,15 @@ The rulings this change builds on:
   `keyedValue`, `ease` on a key naming the segment that ends there (D3), the
   first key refusing `ease`, and 0.4 closed field lists that later cycles
   extend (D7).
-- `shot-transitions`: `fadeIn`/`fadeOut` spelled `{duration, ease?}` with
-  `ease` defaulting to `smooth`, durations of at least two frames; the outgoing
+- `shot-transitions`: film head and tail `fadeIn`/`fadeOut` use `{duration, ease?}`
+  with `ease` defaulting to `smooth`, durations of at least two frames; the outgoing
   shot continues past its end during a transition, and a cue whose `to` equals
   the shot's duration stays on through that continuation (D3). The continuation
   is `d` for a dissolve, wipe or slide and `d/2` for a fade (D7). Every 0.4 frame
   carries `transition`.
-- `graphic-overlays` and `text-animation` are being proposed in parallel. This
-  change needs only one thing from them: whatever they draw over the picture
-  (graphics, titles, captions) stays above pictures, as text overlays do.
+- `graphic-overlays` ratified `enter`/`leave` for every 0.4 cue's arrival and
+  departure; pictures use that spelling. Whatever `graphic-overlays` and
+  `text-animation` draw over a picture stays above it, as text overlays do.
 
 What the project holds (read-only survey, 29 September 2026):
 `_reference/hydraulic_sawmill/` (ignored): `atlanticus-1078r.jpg` 1427×2048,
@@ -112,7 +112,8 @@ something shown on screen. The same file may appear in both.
   - id: question-and-feedback
     ...
     pictures:
-      - {from: 0, to: 6.2, still: museum, area: frame, fadeOut: {duration: 0.6}}
+      - {from: 0, to: 6.2, still: museum, area: frame,
+         leave: {kind: fade, duration: 0.6}}
       # match-cut to the reconstruction at 6.2 s; the model has kept its timeline
       - from: 9
         to: 15
@@ -125,7 +126,7 @@ something shown on screen. The same file may appear in both.
         to: 9
         still: codex-1078r
         area: frame
-        fadeIn: {duration: 0.8}
+        enter: {kind: fade, duration: 0.8}
         view:
           - {at: 1, center: [0.5, 0.5], zoom: 1}
           - {at: 8, center: [0.5, 0.27], zoom: 1.9, ease: in-out}   # onto the saw sketch
@@ -139,13 +140,13 @@ something shown on screen. The same file may appear in both.
   (fills the area, cropping the excess). `contain` is the default because the
   evidence asks for "fitted without cropping", and a default that cropped would
   hide part of a historical document without the author choosing it.
-- `fadeIn`, `fadeOut` (optional): `{duration, ease?}` (D9).
+- `enter`, `leave` (optional): `{kind: fade, duration, ease?}` (D9).
 - `view` (still only): pan-and-zoom keys (D5). Without it the still shows
   fitted and centred (`center: [0.5, 0.5]`, `zoom: 1`).
 - `inPoint` (clip only, default 0): the clip second shown at `from` (D7).
-- Closed list: `from, to, still, clip, area, fit, fadeIn, fadeOut,
-  view, inPoint`. A view key accepts `at, center, zoom, ease`, and a fade
-  accepts `duration, ease`. The 0.4 shot field list gains `pictures`.
+- Closed list: `from, to, still, clip, area, fit, enter, leave,
+  view, inPoint`. A view key accepts `at, center, zoom, ease`, and an entrance
+  or exit accepts `kind, duration, ease`. The 0.4 shot field list gains `pictures`.
 
 The word is "picture" because the field holds both kinds, and the craft calls
 both pictures. `center` is spelled as the overlay position `center` already is.
@@ -341,26 +342,21 @@ Clip sound is not played. The film's soundtrack is narration only until roadmap
 item 10. A clip with an audio stream is accepted, and the manifest records
 `audio: "not played"`.
 
-### D8. The caption line (withdrawn at ratification; see below)
+### D8. No picture caption field
 
-`caption` is drawn where and as the frame's `lower-third` overlay is drawn
-(same position, size, colour and background plate, and the code-layout variant
-in a code shot). It is part of the picture, so it appears and fades with it and
-names what is shown ("Leonardo, Codex Atlanticus f. 1078r"). It is refused if it
-contains a line break or is empty. If a `lower-third` overlay of the same shot
-overlaps the picture's interval, it is refused too, since the two would sit in
-one place: `Picture #0 caption overlaps a lower-third overlay in shot studied`.
-`preview` refuses a caption wider than its area. The caption is not the
-credit. Attribution goes to the release description (D11), following the
-Leonardo films' rule that creator, licence and photo attribution belong there.
+The proposed `caption` field was withdrawn at ratification. A line naming a
+picture is an existing `lower-third` overlay; attribution belongs to the release
+description (D11). There is no picture-specific caption field or overlap rule
+for a lower-third overlay.
 
 ### D9. Fades
 
-`fadeIn` and `fadeOut` are `{duration, ease?}`, with `ease` one of the five
-names and defaulting to `smooth`. This is the spelling and default of
-`shot-transitions`. For `fadeIn`, the layer's opacity at `local` is
-`ease((local − from)/d)` until `from + d`. For `fadeOut` it is
-`1 − ease((local − (to − d))/d)` from `to − d`. The opacity is the smaller of
+`enter` and `leave` are `{kind: fade, duration, ease?}`, with `ease` one of the
+five names and defaulting to `smooth`, as ratified for 0.4 cues by
+`graphic-overlays`. Only `fade` is accepted; unknown fields are refused as
+`Unknown entrance field` or `Unknown exit field`. For `enter`, the layer's
+opacity at `local` is `ease((local − from)/d)` until `from + d`. For `leave` it
+is `1 − ease((local − (to − d))/d)` from `to − d`. The opacity is the smaller of
 the two, and 1 between them. The first frame of a fade-in shows the plain model
 (opacity 0). The frame at `to` has no picture. A duration must be finite and
 at least two frames at `output.fps`, and the two durations together must not
@@ -461,7 +457,7 @@ rehearsal proceeds with all of them, as with null release URLs.
   same function, so a picture whose `to` equals its shot's duration stays on
   through the continuation (D3 of that change). A still holds its last view, a
   clip keeps playing (D7 checks that it can), and the opacity holds its value at
-  `to`, which is 0 after a `fadeOut`. An incoming shot's picture is seen through
+  `to`, which is 0 after a `leave`. An incoming shot's picture is seen through
   the transition at its authored times. The transition proofs of that change
   apply unchanged to frames with pictures.
 - No Viewer API is required. The viewer receives the same calls.
@@ -489,6 +485,14 @@ The report records each sample's picture data and measurements. In tests (task
 1.4), pixels prove what the geometry claims on a synthetic still and clip.
 `preview` in production cannot decode meaning from a photograph, so it proves
 geometry and frame identity, and the pixel proof lives in the test.
+
+For each picture fade, preview also captures the same model and video instant
+with the picture as authored (composed), fully opaque (full), and absent
+(without). Its first entrance frame equals without; a visible midpoint differs
+from both full and without; the entrance end and exit start equal full. The
+comparison uses one instant for all three captures, so model motion cannot
+stand in for evidence that the fade reached the pixels. A failed comparison
+keeps the images and names the picture, shot, phase and time.
 
 ## Risks / Trade-offs
 
@@ -528,23 +532,14 @@ parses and renders unchanged. Production `stills`/`clips` are ignored by 0.2 and
 0.3 episodes. Reverting the tool commit makes an episode with `pictures`
 refused (unknown shot field in 0.4), never rendered without its pictures.
 
-## Open Questions
+## Resolved questions and later choices
 
-- Should a `frame` picture cover the masthead and progress rule? Proposed: no,
-  because it is forced by `shot-transitions` D4. *Revolutions v2* says "full
-  screen", which the pilot may read strictly.
-- Default `area`: `stage` (the briefing's reading) or `frame` (what both
-  *Revolutions v2* scenes ask for)?
-- Keep `caption` (D8), or drop it and let authors use a `lower-third` overlay,
-  which does not fade with the picture?
-- Is sample-and-hold with recorded cadence (D7) acceptable, or should `check`
-  refuse sources slower than the film that do not divide its rate evenly? The
-  proposal argues that refusing would push authors to launder the same judder
-  through a conversion.
-- The demo's use of the watermarked *Codex* copy and the unverified museum
-  photograph, even privately (Risks).
-- Release gating by `committed` and credits (D11) extends `releaseReady`. The
-  pilot may prefer the gate to be only recorded.
+The ratification below settled the masthead stacking, `stage` default, lack
+of a picture `caption` field, sample-and-hold cadence, release-readiness gate,
+and use of only project-owned media in this campaign's demo. These are not
+implementation choices to reopen. A later pilot decision would be needed to
+show the watermarked *Codex* or unverified museum copy, or to change their
+rights or credit records; this change makes no such claim.
 
 ## Ratification (29 September 2026)
 

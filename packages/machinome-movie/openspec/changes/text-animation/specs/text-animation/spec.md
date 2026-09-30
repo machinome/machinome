@@ -37,7 +37,7 @@ punctuation, or in number; when a displayed word cannot be spoken (punctuation o
 when the phrase is not in the recorded speech of that shot exactly once; when the
 recorded timing is malformed or its words do not follow in order; when a word is
 spoken a frame or more before the overlay begins; and when a word would appear on no
-frame before the overlay ends.
+global output frame before the overlay ends.
 
 #### Scenario: Words the narrator does not say
 - **WHEN** *Revolutions* `genome` asks for "Pause. Inspect. Test." to appear as
@@ -102,7 +102,9 @@ and visibility exactly as the shot declares. The first frame of a fade-in MUST s
 no title, and a title that has faded out MUST stay out. Two titles of one shot MUST
 NOT overlap in time, fades MUST fit within the title's interval, and a title whose
 text leaves the frame MUST be refused at the frame where it does, naming the shot and
-time.
+time. Preview MUST compare a fading title as authored, fully drawn and absent at
+the same model and video instant; model motion between frames MUST NOT stand in
+for evidence that the fade reached the pixels.
 
 #### Scenario: The title arrives after the first sentence
 - **WHEN** *Revolutions* `revolution`, restaged in 0.4, sets "REVOLUTIONS" as a title
@@ -124,11 +126,13 @@ together a stated hold after the phrase ends. Each word MUST be an identifier fo
 exactly once in that line of the shown excerpt and exactly once in the spoken phrase,
 the phrase MUST be spoken exactly once in the shot, the words MUST follow the order
 in which they are spoken, and each MUST already be typed on screen when it is spoken.
-The source text MUST NOT change; only its words are marked.
+The source text MUST NOT change; only its words are marked. Marking MUST
+preserve every source character and safe HTML escaping.
 
 #### Scenario: The waterwheel drives the crankshaft
-- **WHEN** a 0.4 code shot showing `model.py` line 376 lights `waterwheel`, `drives`
-  and `crankshaft` on "The waterwheel drives the crankshaft." with a 0.9-second hold
+- **WHEN** a 0.4 code shot showing export-pinned `model.py` line 415 lights
+  `waterwheel`, `drives` and `crankshaft` on "Here, the waterwheel drives the
+  crankshaft." with a 0.9-second hold
 - **THEN** `waterwheel` lights as it is said, `drives` and `crankshaft` join it as
   they are said, and all three clear together 0.9 seconds after "crankshaft." ends.
 
@@ -137,7 +141,7 @@ The source text MUST NOT change; only its words are marked.
 - **THEN** loading the episode refuses it, naming the word, the line and the shot.
 
 #### Scenario: Lit before it is typed
-- **WHEN** typing reaches line 376 only after "waterwheel" is spoken
+- **WHEN** typing reaches line 415 only after "waterwheel" is spoken
 - **THEN** the emphasis is refused, naming the word and the time.
 
 ### Requirement: Animated text is reproducible and proven in preview

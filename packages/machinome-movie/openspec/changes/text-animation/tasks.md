@@ -1,19 +1,20 @@
 ## 0. Preconditions
 
-- [ ] 0.1 The orchestrator, as ratification gate, and the pilot ratify this proposal:
-  the two reveal timings and their rules (D1–D3), cache-only measured timing and the
+- [ ] 0.1 Confirm the existing 29 September ratification under the pilot's
+  delegation still covers the two reveal timings and their rules (D1–D3),
+  cache-only measured timing and the
   refusal of a silent render without speech (D4), the title as an overlay position
   over the running model with fades, and the covering card left out (D5), the
   promoted emphasis rule and its new refusals (D6), the 0.4 closed lists (D7).
 - [ ] 0.2 Applied on branch `film-motion` after `keyframes-and-easing`,
   `shot-transitions` and `graphic-overlays` (campaign order). Record the base commit
-  in `evidence.md`. `src/easing.mjs` exists with `ease`; if `graphic-overlays`
-  ratified an entrance/exit spelling other than `enter`/`leave:
-  {kind: fade, duration, ease}`, use it for titles and record the change here and in
-  `design.md` (Open Questions) before writing tests.
-- [ ] 0.3 No speech is purchased by this change. The consumer verification (3.x)
-  reuses takes already in the Leonardo speech caches; if none fits, stop and ask the
-  pilot before any generation.
+  in `evidence.md`. `src/easing.mjs` exists with `ease`; `graphic-overlays`
+  ratified `enter`/`leave: {kind: fade, duration, ease?}` for titles.
+- [ ] 0.3 Reuse suitable Leonardo speech takes where they fit. The ratified
+  allowance also permits the `speech` command for one or two short narration
+  shots in this feature's demo, so its spoken reveal can be checked against a
+  real take. `check`, `preview` and `render`, including silent render, remain
+  cache-only and never purchase speech. No other campaign demo generates speech.
 
 ## 1. Red tests (written before any implementation; record each failure)
 
@@ -34,7 +35,8 @@
     (`·`); a replacement spanning two words; alignment arrays of unequal length,
     non-finite, negative or decreasing times; equal onsets for two words; a word
     spoken more than a frame before `from`; one spoken less than a frame before
-    `from` appears at `from`; a word that appears on no output frame before `to`.
+    `from` appears at `from`; a word that appears on no global output frame before
+    `to`, including fractional shot and cue starts that are not multiples of `1/fps`.
   - Even counts: three words over 2.4 s `linear` show 1, 1, 2, 2, 3, 3 at
     `0, 0.79, 0.81, 1.59, 1.61, 2.4` s after `from` (away from the exact thresholds,
     where floating point decides the frame); `in` delays the second word past its
@@ -50,7 +52,9 @@
   phrase `the`, an invalid alignment). Add: a non-identifier word (`48.0`),
   duplicate words, words out of spoken order, `line` outside the snippet, a word not
   yet typed at its onset, a clear instant past the shot's end, two overlapping cues.
-  The experiment's own tests stay unchanged and green.
+  Pin source text containing `<`, `&` and quotes through emphasis rendering so
+  marks preserve the characters and HTML escaping. The experiment's own tests
+  stay unchanged and green.
 - [ ] 1.3 `test/text-animation.test.mjs` (new, Node only).
   - A 0.4 fixture with a spoken reveal (resolved from a fixture alignment), an even
     reveal, a title with `subtitle`, `enter` and `leave`, and a code shot with
@@ -59,8 +63,8 @@
     throws `Word timing is not resolved`.
   - Refusals, each naming the shot: every new field and `position: title` in a 0.3
     and in a 0.2 episode (`Text animation needs format machinome-video-draft/0.4`);
-    in 0.4 unknown overlay, reveal (including a field of the other timing), fade,
-    code, typing cue and emphasis fields; `subtitle`, `enter` or `leave` on a
+    in 0.4 unknown overlay, reveal (including a field of the other timing),
+    entrance, exit, code, typing cue and emphasis fields; `subtitle`, `enter` or `leave` on a
     non-title; `kind` other than `fade`; non-positive durations; fades longer than the
     cue together; overlapping titles; an even span past `to`; an easing name outside
     the vocabulary.
@@ -85,7 +89,10 @@
     the counts of its rule; start and end captures differ.
   - `fadeChecks`: the title's first entrance frame is pixel-identical to the same
     instant posed without it; its entrance midpoint differs from both that capture
-    and the full title.
+    and the full title at the same model and video instant. Use a moving model in
+    the fixture; assert the title absent/full/composed captures isolate title
+    opacity from model motion at each checked instant, including exit start and
+    midpoint.
   - `emphasisChecks`: no mark before the first onset, marks equal to the words at each
     onset, none at the clear instant, exact replay.
   - A page that draws a different word count (the timeline's count altered through
@@ -113,8 +120,9 @@
   where declared; 0.2/0.3 frames untouched.
 - [ ] 2.5 `src/film.html`, `src/film.js`: words drawn in place with hidden ones
   invisible; the `title` position with its subtitle; opacity; `mark.spoken` over the
-  highlighted source, refusing a range whose text is not its word; `setFrame` returns
-  per overlay the visible word count and box.
+  highlighted source, refusing a range whose text is not its word while preserving
+  source characters and HTML escaping; `setFrame` returns per overlay the visible
+  word count and box.
 - [ ] 2.6 `src/render.mjs`: per-frame word-count and title-in-frame refusals; the
   preview samples and `revealChecks`, `fadeChecks`, `emphasisChecks` (D8); the frame
   identity adds `words.mjs` (D9).
@@ -136,23 +144,28 @@
 
 ## 3. Consumer verification (implementation evidence)
 
-- [ ] 3.1 In the Leonardo project, untracked (never committed there, never here), the
-  demo episode `demo-text-animation` in format 0.4 on the *Revolutions* production:
-  "REVOLUTIONS" as a title fading in after the first sentence; the `river` title and
-  line with fades; "Pause. Inspect. Test." revealed evenly; and `judgment`'s "Propose.
-  Inspect. Correct." revealed as spoken. The measured shot reuses *Revolutions*'
-  cached `judgment` take (`judgment-e9b1571c54ead143.mp3`) by keeping its narration,
-  voice settings and, because `eleven_multilingual_v2` keys include neighbouring
-  text, the narration of the shots before and after it (`corrections`, `now`); copy
-  the take and its record into the demo's `_build/audio`. Copying is not a purchase.
-- [ ] 3.2 A code shot with `code.emphasis` on `model.py` line 376 in a demo episode
-  that reuses a take the stable cache already holds. The syntax study's keyed take
-  `source-973ff8f8ff64fa6a.wav` fits (its key was recomputed while proposing): keep
-  the study's narration and `eleven_v3` / `pcm_24000` settings and add the replacement
-  that produced it, `Machinome: Masheenome`; the phrase is then "Here, the waterwheel
-  drives the crankshaft." (the draft's "The waterwheel drives the crankshaft." is not
-  in this take). Pin the source to the export's revision and confirm line 376 there.
-  If no cached take fits, stop and ask the pilot (0.3).
+- [ ] 3.1 In the Leonardo project, untracked (never committed there, never here),
+  make one concise format-0.4 episode at `videos/demo-text-animation/`, initially
+  two shots of about eight seconds each, adjusting durations to the measured
+  narration. Across those two shots, show a large title with subtitle fading
+  over the moving model, an even reveal such as "Pause. Inspect. Test.",
+  "Propose. Inspect. Correct." appearing at its measured spoken onsets, and
+  the source emphasis of 3.2. This is a feature demonstration;
+  it need not reconstruct the unrelated *Revolutions* `river`, `judgment`,
+  `corrections` and `now` shots or their neighbouring cache keys.
+- [ ] 3.2 In a code shot, show an export-pinned `model.py` excerpt including
+  line 415, such as 405–415, and give `code.emphasis` the words `waterwheel`,
+  `drives`, `crankshaft` on the actual matching phrase in that shot's narration
+  and cached take. The short demo may say "The waterwheel drives the
+  crankshaft."; the earlier cached study says "Here, the waterwheel drives the
+  crankshaft." The current export revision has
+  `water_drive.waterwheel.spin.drives(water_drive.crankshaft.spin)` at line 415;
+  confirm the selected revision again before rendering and complete typing
+  before those words are spoken. Prefer a fitting existing cached take, but do
+  not force the original script or its neighbouring shots to preserve one. The
+  ratified allowance permits `speech` for this demo's one or two short shots;
+  record the exact selected phrase, cache keys, take hashes, onsets and source
+  revision in evidence.
 - [ ] 3.3 `check` passes after the takes are in place and refuses (with "run the
   speech command first") before; the resolved onsets of every measured cue, the take
   hashes and the even-reveal instants are recorded in `evidence.md`. `preview` passes
@@ -160,17 +173,22 @@
 - [ ] 3.4 With one viewer bundle, the sawmill rehearsal (0.2), `demo-feed-mechanism`
   (0.3) and the earlier campaign demos pass `check` without reading speech, and their
   preview stills before (base commit) and after this change are byte-identical.
-- [ ] 3.5 Render short silent clips of the demos (`--width 960 --fps 30 --silent`) and
-  record their hashes; confirm on decoded frames that the judgment words appear on the
-  recorded frames.
+- [ ] 3.5 The orchestrating agent renders the short demo with its cached
+  narration (`--width 960 --fps 30`) and records its hash; confirm on decoded
+  frames that "Propose. Inspect. Correct." appears at the measured frames and
+  the line-415 identifiers light at their measured onsets. A silent quick
+  render may be used first, but the film review includes the narrated result.
 
-## 4. Human review (not claimed by automation)
+## 4. Delegated film review and archive gate
 
-- [ ] 4.1 The pilot judges the reveals' pace against the voice, the title's size and
-  fades, and the emphasis tint on a light palette. Automated checks prove counts,
-  instants, opacity reaching the pixels and replay, not legibility or taste.
-- [ ] 4.2 The pilot decides whether a covering title card is wanted (design D5) and
-  whether *Revolutions* or its draft adopts any of this. Restaging the syntax study
-  with its approved take needs speech to forward pronunciation dictionaries, a
-  separate change (design Risks).
-- [ ] 4.3 Publication, pushing and release renders need the pilot's explicit request.
+- [ ] 4.1 After implementation tests pass, the orchestrating agent performs an
+  adversarial review against the plan and rendered pixels. Inspect the spoken
+  reveal against the actual voice, the even reveal's pace, title size and fades,
+  and source emphasis on a light palette. Record the findings and fixes; do not
+  claim pilot review from automated counts, opacity and replay checks.
+- [ ] 4.2 The orchestrating agent inspects the feature demonstration video from
+  Leonardo `videos/demo-text-animation/` with vision,
+  records its path, hash and review findings, then syncs and archives this change.
+  A covering title card, adoption by *Revolutions* and pronunciation-dictionary
+  support remain separate pilot decisions or changes. Publication and pushing
+  remain outside this campaign.

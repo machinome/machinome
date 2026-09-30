@@ -5,7 +5,7 @@ Three Leonardo episodes ask for more, and one of them had to leave the supported
 format to get it:
 
 - The syntax study (`projects/Leonardo/videos/machinome-syntax-study`) commissioned
-  source-word emphasis: in line 376 of the sawmill's `model.py`, `waterwheel`,
+  source-word emphasis: on line 415 of the export-pinned sawmill `model.py`, `waterwheel`,
   `drives` and `crankshaft` light up as the narrator says "Here, the waterwheel
   drives the crankshaft", accumulate, hold briefly and clear. It exists only in the
   disposable renderer `experiments/dark-source/` (`emphasis.mjs`), which proved the

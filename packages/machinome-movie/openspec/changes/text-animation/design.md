@@ -130,7 +130,10 @@ narration speaks them.
   by one output frame (`1/output.fps`) or more is refused: it would appear later than
   it is said. A word spoken less than one frame early appears at `from`. Every word
   must appear on at least one output frame before the cue's `to`; otherwise it is
-  refused, naming the word.
+  refused, naming the word. This uses the film's global output-frame grid
+  (`frameIndex / output.fps`), intersected with the shot and cue intervals;
+  shot-local or cue-local multiples of `1/fps` are not necessarily output frames
+  when their starts are fractional.
 
 Word `k` (1-based) is shown from its onset (or `from`, if later) to the cue's end.
 For `judgment` above: nothing from 3.5 s (a `top` overlay has no plate), "Propose."
@@ -238,9 +241,10 @@ mixed from. Nothing but `speech` and `build` ever calls the provider.
   (the first frame shows no title) and, when `shot-transitions` continues a title that
   runs to its shot's end past that end, a title that fades out stays faded out. The
   whole title (text and subtitle, shown or hidden words) takes the one opacity.
-  `kind: fade` is the only kind. If `graphic-overlays`, applied before this change,
-  ratifies a different spelling for entrances and exits, the title uses that spelling
-  (one spelling in 0.4; Open Questions).
+  `kind: fade` is the only kind. This is the spelling already ratified by
+  `graphic-overlays`, applied before this change.
+  The positive-duration rule is deliberate: title fades may be shorter than two
+  output frames. Annotation entrances and exits retain their own two-frame minimum.
 - **Refusal at the posed frame.** A title whose drawn box leaves the frame is refused
   in `preview` and `render`, naming the shot, the overlay and the time, as an
   annotation's text is (`Title leaves the frame: river #0 at 11.80 s`).
@@ -258,12 +262,12 @@ mixed from. Nothing but `speech` and `build` ever calls the provider.
 # format machinome-video-draft/0.4 — Revolutions v2 the-same-in-python (the syntax
 # study's phrase is "Here, the waterwheel drives the crankshaft.")
     code:
-      snippet: mill-class           # model.py lines 366–376
+      snippet: mill-class           # export-pinned model.py lines 405–415
       typing:
-        - {from: 0.4, to: 3, throughLine: 376}
+        - {from: 0.4, to: 3, throughLine: 415}
       emphasis:
-        - line: 376
-          phrase: The waterwheel drives the crankshaft.
+        - line: 415
+          phrase: Here, the waterwheel drives the crankshaft.
           words: [waterwheel, drives, crankshaft]
           hold: 0.9
 ```
@@ -314,7 +318,8 @@ The experiment's rule, unchanged in substance, on the stable code panel:
   `line, phrase, words, hold`. Anything else is refused, naming the cue and shot:
   `Unknown overlay field: revael (overlay #0 in shot judgment)`,
   `Unknown reveal field: duration (overlay #0 in shot judgment)` for a field of the
-  other timing, and likewise `Unknown fade field`, `Unknown code field`,
+  other timing, and likewise `Unknown entrance field`, `Unknown exit field`,
+  `Unknown code field`,
   `Unknown typing cue field`, `Unknown emphasis field`. 0.2 and 0.3 keep ignoring
   unknown overlay and code fields, so no existing episode can break. No shot field is
   added.
@@ -342,11 +347,14 @@ timeline's and a title box outside the frame.
   decrease across the three, and the last must be all the words; for two or more
   words the start and end captures must differ in pixels. Reported as
   `revealChecks: [{shotId, index, timing, samples: [{time, shown, expected}]}]`.
-- **Each title fade**: the entrance's first instant must be pixel-identical to the
-  same instant posed with that title removed (opacity 0 reaches the pixels as
-  nothing), and the entrance's midpoint must differ from both that capture and the
-  capture after the entrance (the title is partly there). The same for an exit's
-  midpoint against its start. Reported as `fadeChecks`.
+- **Each title fade**: pose the same model and video instant with the title as
+  authored (composed), with that title fully drawn (full), and with that title
+  removed (without). At the entrance's first instant composed equals without;
+  at an entrance or exit midpoint composed differs from both full and without
+  when the title has visible pixels; at the entrance's end and exit's start
+  composed equals full. Compare these images at the same instant, including in
+  a shot whose model moves, so a changing model cannot make a broken fade pass.
+  Report the comparisons as `fadeChecks` and keep the images on failure.
 - **Each emphasis cue**: just before its first onset (no marks), at every word's
   onset (the words so far, each mark's text equal to its word), and at its clear
   instant (no marks); re-posing the first onset after the clear reproduces its
@@ -356,7 +364,7 @@ timeline's and a title box outside the frame.
   also saved as a still for the contact sheet.
 
 These checks prove what is drawn and that it replays; whether a reveal's pace, a
-title's size or a fade reads well is the pilot's review.
+title's size or a fade reads well is judged in the delegated film review.
 
 ### D9. Frame cache and provenance
 
@@ -420,19 +428,13 @@ needs no speech for `check`, `preview` or a silent render. Reverting the tool co
 makes an episode that uses the fields refused by its closed lists, never rendered
 with its reveals missing.
 
-## Open Questions
+## Resolved questions and later choices
 
-- **The entrance spelling** is shared with `graphic-overlays`, which is applied
-  first. This design writes `enter`/`leave: {kind: fade, duration, ease}`; the
-  implementation adopts whatever `graphic-overlays` ratified, so 0.4 has one spelling.
-- **The covering card** (D5): left out for lack of an episode. The orchestrator or the
-  pilot may name a shot and add `cover` at ratification; the semantics are written
-  above.
-- **The even reveal's evidence** is weaker than the spoken one's: it serves text that
-  is not spoken as written (`genome`), and no draft names an even reveal. Kept because
-  it is the only reveal such text can have, and it shares the machinery.
-- **Title and emphasis looks** (sizes, the accent tint) are proposals for the pilot's
-  review on the demo stills; they are page styles, not format.
+The ratification below settled the shared `enter`/`leave` spelling, kept the
+even reveal for words not spoken as written, and left a covering title card
+out of scope. Title size and emphasis tint are checked in the delegated film
+review. A covering card or adoption in *Revolutions* remains a later pilot
+choice.
 
 ## Ratification (29 September 2026)
 

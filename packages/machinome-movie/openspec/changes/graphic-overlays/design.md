@@ -34,11 +34,10 @@
     preview proofs decode captures and compare pixels (a dissolve's midpoint is
     the blend within 2 levels of 255).
   - `text-animation` (applied after this change): titles take
-    `enter`/`leave: {kind: fade, duration, ease}`, default `smooth`, and adopt
-    whatever spelling this change ratifies, so that 0.4 has one.
+    `enter`/`leave: {kind: fade, duration, ease}`, default `smooth`.
   - `stills-and-clips` (applied after this change): a picture refuses any
-    annotation of the same shot that overlaps it; pictures fade with
-    `fadeIn`/`fadeOut: {duration, ease}`.
+    annotation of the same shot that overlaps it; pictures fade with the same
+    `enter`/`leave: {kind: fade, duration, ease}` spelling.
 - The evidence (proposal, Why): *Revolutions* `pawls`, *Revolutions v2*
   `two-rope-reduction` and `whole-machine`, and the campaign demo
   `demo-feed-mechanism` `name-the-pawls`. Every mark those shots ask for is aimed
@@ -151,10 +150,9 @@ off-screen refusals and the drawing layer that annotations already have.
   `[to − leave.duration, to)`. Both lie inside the cue: `from` and `to` keep
   their meaning, so a mark that fades out is gone at `to` exactly as a mark
   without an exit is.
-- **Spelling.** `enter`/`leave` with `kind` is the spelling `text-animation`
-  proposed and defers to this change for; ratifying it here gives 0.4 one
-  spelling for "how a cue arrives and leaves". Pictures' `fadeIn`/`fadeOut`
-  (`stills-and-clips`) are a second spelling of a cue's fade; see Open Questions.
+- **Spelling.** `enter`/`leave` with `kind` is the spelling ratified for every
+  0.4 cue that arrives or leaves, including titles and pictures. The film's
+  head and tail alone use `fadeIn`/`fadeOut` (Ratification below).
 - No presets in `production.yaml`: an entrance is three short words, and its
   duration belongs to the screenplay's timing, which is read beside the
   narration (the reasoning `shot-transitions` gives for its own fields).
@@ -173,8 +171,9 @@ argument to `[0, 1]`):
   else 1.
 
 So a fade-in's first frame (`uIn = 0`) shows nothing of the mark, a draw-on's
-first frame shows none of its stroke, and from `from + enter.duration` on the
-mark is drawn exactly as it would be without an entrance; an exit's first
+first frame shows none of its stroke, and from `from + enter.duration` on, if
+that instant is still inside the cue, the mark is drawn exactly as it would
+be without an entrance; an exit's first
 instant shows the mark exactly as without an exit, and its opacity then falls to
 reach 0 at `to`, where the cue ends in any case. `ease` is exactly 1 at 1, and
 `1 − ease(name, 0)` is exactly 1, so these identities hold in floating point.
@@ -222,20 +221,28 @@ is neither drawn nor resolved there. A cue without `leave` continues as
 - **Rings.** `drawAnnotations` draws a ring as an SVG path (two half-ellipse arcs
   from the top point, clockwise) with the D2 geometry, `fill: none`,
   `stroke: style.accent`, width `W·0.0024`.
-- **Opacity.** Each cue that carries `opacity` has its strokes drawn in one SVG
-  group with that group opacity, and its text plate given the same CSS opacity.
-  Group opacity composites the group as one layer, so where the shaft meets the
-  head, or where a ring crosses its own antialiasing, the faded mark is exactly
-  the blend of the mark drawn in full and not drawn, which is what D8 proves.
-  The plate and the strokes do not overlap (the shaft leaves the plate's edge).
+- **Opacity.** For an animated fade, capture opaque raster pictures of the
+  same posed instant with that cue absent and fully drawn, then weight them by
+  `1 − a` and `a` from D4. When fades overlap, capture the needed subsets of
+  fully drawn or absent fading cues, keeping non-fading cues and draw-on
+  fractions as authored; weight each subset by the product of its cues'
+  `a` or `1 − a` terms. Every subset retains annotation order. Thus two
+  overlapping fades have four opaque subsets, and neither cue's fade silently
+  takes precedence. This keeps opaque text and stroke rasterization, including
+  where an arrow's shaft meets its head, in the pictures being mixed. No element CSS
+  opacity is applied to an opaque HTML text plate: Chromium may rasterize that
+  text with grayscale antialiasing instead of its legacy subpixel pixels, an
+  observed difference as large as 40 channel levels. D8 checks the composed
+  result against independently computed easing. This is an implementation
+  direction for the observed browser behavior, pending its pixel tests.
 - **Draw-on.** A ring is revealed with a dash over its path's own length (the
   path given a unit length, a dash of `f` and a gap of 1, butt caps, so `f = 0`
   draws nothing). An arrow's strokes are revealed by a clip to the half-plane
   within `f·L` of the tail along the shaft.
 - **Unchanged cues are drawn by today's code, unchanged.** A cue without the new
-  fields is drawn exactly as now (no group, no opacity attribute), so 0.3 and
-  plain 0.4 pixels are unchanged; a cue at `a = 1`, `f = 1` is drawn in a group
-  at opacity 1 whose pixels D8 proves equal to the plain drawing.
+  fields is drawn exactly as now, so 0.3 and plain 0.4 pixels are unchanged.
+  At `a = 1`, `f = 1`, an animated cue uses the same opaque mark pixels as
+  the plain drawing; at `a = 0` it contributes no pixels.
 - **Report.** `setFrame` adds to each drawn annotation, where they apply: the
   ring `{cx, cy, rx, ry}`, `opacity`, `drawn`, and, while `0 < f < 1`, two
   stroke points measured on the drawn path: `inside`, at half the drawn length,
@@ -292,14 +299,18 @@ fading in is still a claim about where the part is.
 
 For each annotation with an entrance or exit, `preview` samples and saves as
 stills: the entrance's first frame (`from`), midpoint and end
-(`from + enter.duration`); the exit's start (`to − leave.duration`), midpoint and
-last output frame before `to`. These join the existing annotation samples (the
-cue's start, quarters, midpoint and last frame).
+(`from + enter.duration`) when that end lies inside the cue; the exit's start
+(`to − leave.duration`), midpoint and last output frame before `to`. These join
+the existing annotation samples (the cue's start, quarters, midpoint and last
+frame). If `enter.duration == to − from`, its end is `to`, outside the half-open
+cue, so `preview` records `enter-end` as skipped with reason
+`cue ends at this exclusive boundary`. It does not
+invent a visible endpoint; its other in-cue samples and pixel checks still run.
 
 Then, posing each instant of a check with the cue as authored ("composed"), with
 that one cue's `enter` and `leave` removed ("full") and with that one cue removed
-("without"), and comparing decoded pixels with the comparison `shot-transitions`
-uses:
+("without"), holding every other cue as authored in all three captures, and
+comparing decoded pixels with the comparison `shot-transitions` uses:
 
 - **Fade midpoint** (entrance or exit): every channel of every pixel of composed
   is within 2 levels of 255 of `(1 − a)·without + a·full`, with `a` the frame's
@@ -314,8 +325,10 @@ uses:
   first frame shows nothing of the mark); for a draw-on on a ring likewise; for a
   draw-on on an arrow with text, composed differs from without only inside the
   reported text box.
-- **Entrance end and exit start**: composed equals full exactly (the entrance
-  never changes where the mark ends up; the exit starts from the mark as drawn).
+- **Entrance end and exit start**: composed equals full exactly at every active
+  end or start sample (the entrance never changes where the mark ends up; the
+  exit starts from the mark as drawn). The entrance-end comparison is skipped
+  when that instant equals `to`, because the cue is no longer active.
 - **Replay**: the existing exact replay check is unchanged; in addition, the
   entrance's midpoint is posed, then another instant, then the midpoint again,
   and the two captures of the midpoint must be identical.
@@ -324,11 +337,12 @@ A failure keeps `entrance-<shot>-<index>-<check>-{composed,full,without}.png` in
 `preview/` and names the shot, annotation, check and time, e.g.
 `Annotation fade does not blend as its easing predicts: pawls #0 leave at 45.07 s (largest difference 9 levels); inspect preview/entrance-pawls-0-leave-{composed,full,without}.png`.
 The report gains `entranceChecks: [{shotId, index, phase, kind, time, opacity,
-drawn, largestDifference, vacuous}]`.
+drawn, largestDifference, vacuous}]`; a skipped `enter-end` records its reason
+instead of claiming a pixel comparison passed.
 
 These checks prove what is drawn and that it replays. Whether a ring reads well,
-whether a draw-on is too quick, and whether a fade is soft enough are the
-pilot's review on the stills and the demo clip.
+whether a draw-on is too quick, and whether a fade is soft enough are judged in
+the delegated film review of the stills and demo clip.
 
 ### D9. What is left out, and what each would mean
 
@@ -371,11 +385,12 @@ Each is a small addition once a named shot asks for it; none is built now.
 
 ## Risks / Trade-offs
 
-- **Exact pixel proofs of group opacity and dashes.** D8's fade proof relies on
-  the whole mark compositing as one layer; if Chromium blends a group's elements
-  separately, the proof fails at the shaft-head seam. The implementer stops and
-  brings the finding back rather than widening the tolerance, as
-  `shot-transitions` requires of its proofs.
+- **Raster composition of overlapping marks.** D8's fade proof relies on full
+  and absent captures of the same posed instant, with every other cue fixed.
+  Chromium's HTML text antialiasing differs under CSS opacity, so the opaque
+  captures are also what preserve the old text pixels. If browser capture or
+  overlap produces a mismatch, the implementer records the finding and
+  reconciles it before changing the 2-level tolerance.
 - **The ellipse can be large.** For a part seen along a diagonal, the
   rectangle is much larger than the part and the ring larger still; the frame
   refusal catches a ring that leaves the frame, but not one that is merely too
@@ -388,8 +403,8 @@ Each is a small addition once a named shot asks for it; none is built now.
   the stage edge, where an arrow would still pass. That is the truthful rule for
   a mark that claims to enclose the part; preview samples every cue's quarters,
   so most failures surface there.
-- **Two spellings of a cue's fade in 0.4** if pictures keep `fadeIn`/`fadeOut`
-  (Open Questions).
+- **Shared cue spelling.** Pictures and titles use the same `enter`/`leave`
+  shape as annotations; film head and tail fades have their separate spelling.
 
 ## Migration Plan
 
@@ -399,30 +414,13 @@ identical frames and pixels. Reverting the tool commit makes an episode that
 uses rings or entrances refused (unknown kind or annotation field), never
 rendered without them.
 
-## Open Questions
+## Resolved questions and later choices
 
-- **One spelling for a cue's fade.** This change ratifies
-  `enter`/`leave: {kind, duration, ease}` for annotations, and `text-animation`
-  adopts it for titles. `stills-and-clips` (ratified, applied later) spells a
-  picture's fade `fadeIn`/`fadeOut: {duration, ease}`, the spelling
-  `shot-transitions` uses for the film's head and tail. The film's head and tail
-  are not cues, but a picture is: the orchestrator may want pictures to take
-  `enter`/`leave: {kind: fade, ...}` so that 0.4 has one spelling for a cue's
-  fade, keeping `fadeIn`/`fadeOut` for the film's head and tail only. This change
-  does not touch pictures.
-- **Message wording for the shared shape.** `text-animation` wrote
-  `Unknown fade field` for its `enter`/`leave`; this change writes
-  `Unknown entrance field` / `Unknown exit field`. One wording is better; the
-  orchestrator picks.
-- **The arrow's look.** The pilot found the present arrow plain (a thin shaft and
-  a small head). Its restyle is not this change's to make; it would be a separate
-  small change, and rings take the shaft's width and colour, so they would follow
-  it.
-- **Ring defaults.** The ellipse through the grown rectangle's corners, the
-  default padding of 0.01 safe-area widths and the start of a draw-on at the top,
-  clockwise, are proposals for the pilot's review on the demo.
-- **`box`, fixed places, `line`, `scale`** (D9): left out for lack of a shot. The
-  pilot may name one at ratification; the semantics are written above.
+The ratification below settled the cue spelling and refusal wording. The
+ring defaults are retained for the delegated film review, which may identify
+an implementation or presentation defect. Restyling the arrow, adding `box`,
+fixed-place marks, `line` or `scale`, and adopting rings in a release episode
+are later pilot choices outside this change.
 
 ## Ratification (29 September 2026)
 

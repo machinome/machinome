@@ -34,7 +34,7 @@ gap:
 
 Roadmap item 9 (stills and clips) is the last cycle of the film motion
 campaign. It builds on `keyframes-and-easing` for its keys and easing names and
-on `shot-transitions` for the spelling of its fades.
+uses the cue entrance and exit spelling ratified with `graphic-overlays`.
 
 ## What Changes
 
@@ -45,8 +45,8 @@ on `shot-transitions` for the spelling of its fades.
 - A 0.4 shot gains `pictures`: timed cues that show one still or clip for a
   shot-local interval over the model `stage` (the default) or the whole
   `frame`, with `fit: contain` (the default) or `cover`, and optional
-  `fadeIn`/`fadeOut` spelled as `shot-transitions`
-  spells them (`{duration, ease?}`). A still may carry `view` keys
+  `enter`/`leave` fades spelled as every 0.4 cue spells them
+  (`{kind: fade, duration, ease?}`). A still may carry `view` keys
   (`{at, center, zoom, ease?}`) for a pan-and-zoom, eased with the campaign's
   names and interpolated so that the zoom's fixed point stays still on screen.
   A clip carries an `inPoint`.
@@ -87,7 +87,7 @@ on `shot-transitions` for the spelling of its fades.
 
 ### Modified Capabilities
 
-None in baseline. `keyframe-easing` (unarchived, ratified) is used as it
+None in baseline. `keyframe-easing` (implemented and archived) is used as it
 stands. The 0.4 frame shape gains `picture`, as `shot-transitions` added
 `transition`.
 

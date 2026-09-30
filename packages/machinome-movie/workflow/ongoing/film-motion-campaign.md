@@ -9,6 +9,28 @@ demonstrating everything done so far. This note claims nothing about the
 episode format; each item becomes an OpenSpec change under `openspec/changes/`,
 and the spec is the authority once archived.
 
+## Resumed commission — 29 September 2026
+
+The pilot resumed the interrupted campaign with GPT-6 Sol assigned separately
+to proposal and implementation, and Codex as the adversarial reviewer and video
+operator. For each remaining cycle, review the recovered proposal, finish the
+implementation, render a demonstration, inspect decoded video frames with vision,
+and only then sync its baseline specs and archive it. No claim of pilot visual
+approval is made. The final deliverable is a concise demonstration of all features
+together; it need not follow the original release-film script.
+
+The recovery starts on `film-motion` at `6417f97`, preserving its uncommitted
+graphic-overlays work. Independently rerun on recovery: 70 tests pass, three new
+browser tests fail because ring drawing and entrance/exit proof integration are
+unfinished. The earlier transitions and easing implementations pass. The source
+Viewer API 28 bundle is in the viewer's `WTs/film-annotations` at `f040f45`, SHA-256
+`a3fe03f2db691ff46ed3e3624eee57c57445d526d29530835d0df1f00dda095c`.
+
+The videos live inside the Leonardo repository under `videos/`; this checkout
+records tool evidence only. Keep one browser run at a time. Local production,
+review and archival are commissioned; integration into primary branches, pushing
+and publication are not part of this work.
+
 ## Order and dependencies
 
     6 general keyframes and easing   (foundation; first)
@@ -77,4 +99,3 @@ demonstrated.
   transitions, existing films' pixels kept), and the masthead loses subpixel
   antialiasing over a live WebGL canvas, so a transition frame is composed
   entirely from captures of the same instant.
-

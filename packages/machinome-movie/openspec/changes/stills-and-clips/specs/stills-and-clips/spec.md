@@ -94,11 +94,12 @@ While a picture is shown, the model SHALL keep being posed at the model time,
 camera and visibility its shot's timeline gives for each frame. Annotations and
 highlights of the same shot MUST NOT overlap a picture's interval; `check`
 refuses the overlap naming both cues. A picture MAY fade in and out over the
-model with `fadeIn` and `fadeOut`, each a duration of at least two frames and an
-optional easing name (default `smooth`).
+model with `enter` and `leave`, each `{kind: fade, duration, ease?}`, a duration
+of at least two frames and an optional easing name (default `smooth`). Other
+kinds and unknown entrance or exit fields MUST be refused.
 
 #### Scenario: Dissolve from the model into a drawing
-- **WHEN** a picture has `fadeIn: {duration: 0.8}`
+- **WHEN** a picture has `enter: {kind: fade, duration: 0.8}`
 - **THEN** over its first 0.8 s the drawing and its background dissolve in over
   the still-moving model, the first frame showing the model alone.
 
@@ -161,7 +162,9 @@ each fade's midpoint and at its last frame, and of each clip at its first and
 last frames, and MUST refuse, naming the shot and time, a drawn picture whose
 area, position or size differs from what the episode specifies, a clip whose
 displayed frame is not the one the clip's timestamps select, or an enlargement
-beyond the allowance.
+beyond the allowance. Fade proof MUST compare the picture as authored, fully
+drawn and absent at the same model and video instant; model motion between
+frames MUST NOT stand in for evidence that the fade reached the pixels.
 
 #### Scenario: A synthetic ramp moves as its keys say
 - **WHEN** a test still whose colours encode each pixel's coordinates is keyed
