@@ -14,7 +14,7 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {assetServer,stageConfig,CHROMIUM_ARGS} from './render.mjs';
 import {pictureRect} from './pictures.mjs';
-import {frameAt} from './timeline.mjs';
+import {frameAt,movingViews} from './timeline.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const PAGE=resolve(here,'film.html');
@@ -39,6 +39,56 @@ export function picturesShown(doc){
       slot:Object.keys(shot.places).find(slot=>shot.places[slot]===action.element),key:`${chapter.id}.${action.element}`});
   }
   return out;
+}
+
+// Every reframe of a document, unresolved or resolved: the shot, the shot
+// before it, and the view elements it moves with the slot holding each in
+// either set (the reframe-join change, ADR-010).
+export function reframesOf(doc){
+  const out=[];let previous=null;
+  for(const chapter of doc.chapters)for(const shot of chapter.shots){
+    if(shot.transition?.kind==='reframe'&&previous)
+      out.push({chapter,shot,outgoing:previous.shot,views:movingViews(previous.chapter,previous.shot,chapter,shot)});
+    previous={chapter,shot};
+  }
+  return out;
+}
+// The set kinds a document's reframes move views between, in order.
+export const reframeSets=doc=>[...new Set(reframesOf(doc).flatMap(r=>r.views.flatMap(v=>[v.from.set,v.to.set])))];
+
+// The boxes a reframe's frames are drawn from, the film's `reframes`: for each
+// reframed shot, each moving view's outgoing and incoming slot with its box
+// as fractions of the frame, from a layout measured on the stage
+// ({width, height, sets}). A slot sized by what it holds has no box before it
+// is drawn with its content, so a reframe through one is refused, naming the
+// shot, the view, the set and the slot.
+export function reframeBoxes(doc,layouts){
+  const out={};
+  for(const {shot,views} of reframesOf(doc)){
+    const boxes={};
+    for(const view of views){
+      const end=({set,slot},word)=>{
+        const slots=layouts.sets[set];
+        need(slots,`Shot ${shot.id} comes in by a reframe ${word==='into'?'into':'out of'} set ${set}, whose layout was not measured`);
+        const measured=slots.find(s=>s.slot===slot);
+        need(measured,`Shot ${shot.id} comes in by a reframe that moves ${view.key} ${word} slot ${slot} of set ${set}, which the set does not draw`);
+        need(measured.fixed,`Shot ${shot.id} comes in by a reframe that moves ${view.key} ${word} slot ${slot} of set ${set}, which is sized by what it holds; a reframe moves a view between slots whose boxes stay put`);
+        need(measured.box[2]>0&&measured.box[3]>0,`Shot ${shot.id} comes in by a reframe that moves ${view.key} ${word} slot ${slot} of set ${set}, which has no box`);
+        const [x,y,w,h]=measured.box;
+        return {set,slot,box:[x/layouts.width,y/layouts.height,w/layouts.width,h/layouts.height]};
+      };
+      boxes[view.key]={from:end(view.from,'out of'),to:end(view.to,'into')};
+    }
+    out[shot.id]=boxes;
+  }
+  return out;
+}
+// What `check` prints: one line per reframe, each view with its two slots'
+// measured boxes.
+export function reframeLines(doc,layouts){
+  const at=(set,slot)=>{const s=layouts.sets[set].find(x=>x.slot===slot);return `${set} ${slot} ${size(s.box)} at ${number(s.box[0])},${number(s.box[1])}`;};
+  return reframesOf(doc).map(({shot,views})=>`Reframe into ${shot.id}: `+
+    views.map(v=>`${v.key} from ${at(v.from.set,v.from.slot)} to ${at(v.to.set,v.to.slot)}`).join('; '));
 }
 
 // In the page: pose the emptied frame of a set, then measure each slot's box,
@@ -97,17 +147,29 @@ export async function measureLayouts(doc,bundle,{browser:givenBrowser,assets:giv
     await page.goto(`${assets.origin}/`);
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw refuse(error);
-    const sets={};
-    for(const [kind,at] of first){
-      try{sets[kind]=await page.evaluate(measureSet,{time:0,...at,set:kind,slots:{},elements:{},transition:null});}
-      catch(error){throw refuse(`set ${kind}: ${error.message.replace(/^page\.evaluate: (Error: )?/,'')}`);}
-      if(errors.length)throw refuse(errors.join('\n'));
-    }
-    return {width,height,sets};
+    return await measureSetsOn(page,doc,[...first.keys()],{width,height,refuse,errors});
   }finally{
     if(givenBrowser)await page?.close();else await browser?.close();
     release();if(!givenAssets)await assets.close();
   }
+}
+
+// The layout of the set kinds `kinds` on a page that already serves the
+// movie's stage (the probe's, or a renderer session's), at that page's size:
+// {width, height, sets}. Each set is posed empty at the first shot that uses
+// it. The renderer's sessions measure the sets their reframes use this way,
+// on their own page, before their first frame.
+export async function measureSetsOn(page,doc,kinds,{width,height,refuse=e=>new Error(`Measuring the stage's layout: ${e}`),errors=[]}){
+  const first=new Map();
+  for(const chapter of doc.chapters)for(const shot of chapter.shots)
+    if(!first.has(shot.set))first.set(shot.set,{chapterId:chapter.id,shotId:shot.id});
+  const sets={};
+  for(const kind of kinds){
+    try{sets[kind]=await page.evaluate(measureSet,{time:0,...first.get(kind),set:kind,slots:{},elements:{},transition:null});}
+    catch(error){throw refuse(`set ${kind}: ${error.message.replace(/^page\.evaluate: (Error: )?/,'')}`);}
+    if(errors.length)throw refuse(errors.join('\n'));
+  }
+  return {width,height,sets};
 }
 
 // What `check` prints: one line per measured set.

@@ -208,11 +208,15 @@
             "to": 8
           },
           "places": {
-            "aside": "card",
             "headline": "title",
-            "stage": "wide"
+            "left": "card",
+            "right": "wide"
           },
-          "set": "playbill",
+          "set": "playbill-split",
+          "transition": {
+            "duration": 0.8,
+            "kind": "reframe"
+          },
           "until": {
             "narrationEnd": true,
             "plus": 0.8
@@ -830,7 +834,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Exported by machinome export; the beam tips on its pivot through the loop.",
-    "sourceRevision": "80da5915b97a8dc2397ecf6693bff4a19b41ac99",
+    "sourceRevision": "10b189d1516c880a7fdab7370fa9d32866945db6",
     "timeMode": "normalized-loop"
   },
   "output": {

@@ -9,8 +9,8 @@ mark, the camera.
 import pytest
 
 from machinome_movie import (Action, Camera, Chapter, Cue, Element, Format, Frame, Loop,
-                             Movie, MovieError, Narration, Narrator, Picture, Reveal, Set,
-                             Shot, Slot, Source, Split, Style, Title, View)
+                             Movie, MovieError, Narration, Narrator, Picture, Reframe, Reveal,
+                             Set, Shot, Slot, Source, Split, Style, Title, View)
 from machinome_movie.text import excerpt_line, count_token, count_words
 
 from models.seesaw import Seesaw
@@ -687,3 +687,63 @@ def test_an_elements_props_have_one_kind_in_a_movie():
         two = Shot(Bill, {Bill.aside: card}, until=lines.end(), model=Playground.run(1, 2))
     with refused('Untitled', 'card', 'items', 'list', 'string', 'one', 'two'):
         movie(one=One(), two=Two())
+
+
+##############################################
+# The reframe: a join that moves a view's box and fades the rest
+
+def test_a_reframe_is_a_join_of_a_duration_and_an_easing():
+    assert Reframe(0.8).document() == {'kind': 'reframe', 'duration': 0.8}
+    assert Reframe(1.2, ease="in-out").document() == {'kind': 'reframe', 'duration': 1.2,
+                                                      'ease': 'in-out'}
+    with refused('Reframe', '0'):
+        Reframe(0)
+    with refused('sideways', 'Reframe'):
+        Reframe(0.8, ease="sideways")
+    # Only a wipe or a slide has a direction and only a fade a colour.
+    with pytest.raises(TypeError):
+        Reframe(0.8, direction="left")
+    with pytest.raises(TypeError):
+        Reframe(0.8, color="#000000")
+
+
+def test_a_reframe_moves_a_view_both_shots_place():
+    class Shrink(Chapter):
+        lines = Narration("A seesaw. Then its declaration.")
+        view = View(Playground, camera=Playground.far)
+        code = Source.panel(Playground.declaration)
+        whole = Shot(Frame, {Frame.stage: view}, until=lines.spoken("Then"),
+                     model=Playground.run(0, 2))
+        split = Shot(Split, {Split.left: code, Split.right: view}, until=lines.end(),
+                     model=Playground.run(2, 4), transition=Reframe(0.8),
+                     cues=[Cue(0, code.type(through_line=24, over=1))])
+    assert Shrink._compiled['shots'][1]['transition'] == {'kind': 'reframe', 'duration': 0.8}
+
+
+def test_a_reframe_without_a_view_in_both_shots_is_refused_naming_both():
+    with refused('Lone', 'read', 'watch', 'transition', 'no view element in both'):
+        class Lone(Chapter):
+            lines = Narration("Watch it. Then read.")
+            view = View(Playground, camera=Playground.far)
+            code = Source.panel(Playground.declaration)
+            watch = Shot(Frame, {Frame.stage: view}, until=lines.spoken("Then"),
+                         model=Playground.run(0, 2))
+            read = Shot(Frame, {Frame.stage: code}, until=lines.end(), model=Playground.run(2, 4),
+                        transition=Reframe(0.8), cues=[Cue(0, code.type(through_line=24, over=1))])
+
+
+def test_a_chapter_that_opens_with_a_reframe_is_refused_by_its_movie():
+    class Before(Chapter):
+        lines = Narration("A seesaw.")
+        view = View(Playground, camera=Playground.far)
+        before = Shot(Frame, {Frame.stage: view}, until=lines.end(), model=Playground.run(0, 2))
+
+    class After(Chapter):
+        lines = Narration("Again.")
+        view = View(Playground, camera=Playground.far)
+        after = Shot(Frame, {Frame.stage: view}, until=lines.end(), model=Playground.run(2, 4),
+                     transition=Reframe(0.5))
+    # The chapter alone is sound: its first shot's previous shot is not its own.
+    assert After._compiled['shots'][0]['transition'] == {'kind': 'reframe', 'duration': 0.5}
+    with refused('Untitled', 'after', 'before', 'no view element in both'):
+        movie(first=Before(), second=After())

@@ -33,7 +33,8 @@ the real model through the machinome viewer and never invents a pose.
         │  frameAt(film, t): pure                          src/timeline.mjs
         ▼
     frame: set, the element in each slot, each placed element's state,
-           the transition with its outgoing frame
+           the transition with its outgoing frame, or a reframe with
+           each moving view's box (measured slot boxes, ADR-010)
         │  window.film.setFrame(frame) on the React stage  stage/
         │  bundled per movie with the project's modules    src/stage-build.mjs
         ▼
@@ -62,7 +63,10 @@ elements `view`, `source`, `title` and `picture`), `marks.ts` (rings, labels
 and arrows over a view), `runtime.tsx` (the boot, the viewer instances
 hosted outside React and leased to the view elements each frame places
 ([ADR-007](adrs/STAGE/ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md)),
-the transition layer and `window.film`) and `stage.css`. `src/film.html` holds three empty layers,
+the transition layer and `window.film`) and `stage.css`. Four joins are
+composed in the transition layer from same-instant captures; a reframe is
+drawn live, its moving views' hosts over the boxes the frame gives them and
+the incoming shot's other elements at its progress as opacity (ADR-010). `src/film.html` holds three empty layers,
 the stage, the transitions and the chrome, and no colour, word or layout.
 `src/stage-build.mjs` bundles the runtime with a movie's stage modules into
 `_build/stage/stage.js` and `stage.css` with esbuild, generates `movie.d.ts`
@@ -84,11 +88,17 @@ source panel's typed text and markup; `src/text.mjs` holds the counting
 rules for phrases, words and tokens; `src/style.mjs` the style's defaults;
 `src/pictures.mjs` probes stills and clips and computes a picture's
 rectangle; `src/layout.mjs` is the layout `check` measures for a movie
-document that shows a picture: each set its shots use posed once, empty, on
-the renderer's page with a stub viewer, at the output size, each slot's box,
-the box a picture gets there and whether the slot is sized by what it holds,
-and the enlargement and view refusals against the boxes that stay put
+document that shows a picture or comes in by a reframe: each set its shots
+use posed once, empty, on the renderer's page with a stub viewer, at the
+output size, each slot's box, the box a picture gets there and whether the
+slot is sized by what it holds, and the enlargement and view refusals
+against the boxes that stay put
 ([ADR-009](adrs/STAGE/ADR-009-check-measures-a-sets-layout-before-speech.md));
+it also turns a measured layout into the film's `reframes`, the slot boxes
+each reframe moves its views between, which `check` and every renderer
+session (on its own page, before its first frame) attach to the film for
+the timeline
+([ADR-010](adrs/STAGE/ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md));
 `src/easing.mjs` is the five-curve vocabulary;
 `src/review-samples.mjs` and `src/review-pack.mjs` choose, from the
 element states, and decode the frames a person reviews.
@@ -165,7 +175,7 @@ is the Python side of the movie document:
   `stage.py` the sets and slots (`Frame`, `Split`, the project's), the
   elements (`View` with its marks, the source panel, `Title`, `Picture`, the
   project's, with their `Action`s), the actions a cue performs and the
-  joins; `movie.py` the chapter and movie trees; `project.py` and
+  joins (`Dissolve`, `Fade`, `Wipe`, `Slide`, `Reframe`); `movie.py` the chapter and movie trees; `project.py` and
   `__main__.py` the `[tool.machinome.movies]` table and the command line.
 - A set is a layout and does not know what it holds; an element is content
   and does not know where it is placed. A project's set or element is a

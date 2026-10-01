@@ -17,6 +17,7 @@ import {loadPictures} from './pictures.mjs';
 import {EASINGS,endSlope,ease} from './easing.mjs';
 import {TOKEN,countPhrase,countWords,countToken,excerptLine,propKind,spokenForm} from './text.mjs';
 import {effectiveStyle,COLOR} from './style.mjs';
+import {joinShows,movingViews,noViewInBoth} from './timeline.mjs';
 
 export const MOVIE_FORMAT='machinome-movie/0.2';
 // The sets the tool ships for movies, with their slots; the ones it keeps for
@@ -37,7 +38,7 @@ export const ACTIONS={
 };
 // Actions that end on their own; every other action spans its cue.
 export const UNSPANNED=['move','type','emphasize'];
-const DRAWN=['ring','arrow'],TRANSITIONS=['dissolve','fade','wipe','slide'],MODULE=/\.(ts|tsx|js|jsx)$/;
+const DRAWN=['ring','arrow'],TRANSITIONS=['dissolve','fade','wipe','slide','reframe'],MODULE=/\.(ts|tsx|js|jsx)$/;
 const need=(ok,message)=>{if(!ok)throw new Error(message);};
 const isAnchor=v=>v!==null&&typeof v==='object';
 const phraseOf=a=>a.spoken??a.spokenEnd;
@@ -107,12 +108,24 @@ class Semantics{
       shots.set(shot.id,chapter.id);
     }
     for(const [name,layer] of Object.entries(doc.layers))for(const path of layer)this.path(path,`layer ${name}`);
-    let index=0;
+    let index=0,previous=null;
     for(const chapter of doc.chapters){
       for(const [key,element] of Object.entries(chapter.elements))this.element(chapter,key,element);
       const completed=new Set();
-      for(const shot of chapter.shots){this.shot(chapter,shot,completed,index===0,index===film.length-1);index++;}
+      for(const shot of chapter.shots){
+        this.shot(chapter,shot,completed,index===0,index===film.length-1);
+        this.reframe(previous,chapter,shot);
+        previous=[chapter,shot];index++;
+      }
     }
+  }
+  // A reframe moves a view element the shot and the one before it both
+  // place; a view element belongs to its chapter. (A reframe on the film's
+  // first shot is refused with every join's, once the shots are timed.)
+  reframe(previous,chapter,shot){
+    if(shot.transition?.kind!=='reframe'||!previous)return;
+    const [outgoingChapter,outgoing]=previous;
+    need(movingViews(outgoingChapter,outgoing,chapter,shot).length,`chapter ${chapter.id}, shot ${shot.id}, transition: ${noViewInBoth(outgoing.id,shot.id)}`);
   }
   checkStage(){
     const stage=this.stage,seen=new Set();
@@ -215,7 +228,7 @@ class Semantics{
     for(const field of ['transition','fadeIn','fadeOut']){
       const join=shot[field];if(join===undefined)continue;
       const kind=join.kind;
-      if(field==='transition')need(TRANSITIONS.includes(kind),`${where}, transition.kind: '${kind}' is not a transition; use dissolve, fade, wipe or slide`);
+      if(field==='transition')need(TRANSITIONS.includes(kind),`${where}, transition.kind: '${kind}' is not a transition; use dissolve, fade, wipe, slide or reframe`);
       else need(kind===undefined||kind==='fade',`${where}, ${field}.kind: '${kind}' is not a fade`);
       if(join.direction!==undefined)need(['wipe','slide'].includes(kind)&&['left','right'].includes(join.direction),
         `${where}, ${field}.direction: a direction is left or right, on a wipe or a slide`);
@@ -480,8 +493,9 @@ function checkResolved(film){
         // The outgoing shot continues past its end for as long as it is seen,
         // however short it was (finding: the tour fixture joins a 0.5 s shot
         // by a 0.6 s dissolve; a YAML episode keeps its refusal).
+        // A reframe draws nothing of the outgoing shot past its end.
         const [,prior]=shots[index-1];
-        const shown=x.kind==='fade'?x.duration/2:x.duration,reach=lastSeconds(prior.model)+endRate(prior)*shown;
+        const shown=joinShows(x),reach=lastSeconds(prior.model)+endRate(prior)*shown;
         need(reach<=film.model.expectedDurationSeconds+1e-9,`Shot ${prior.id} cannot continue ${shown} s into the ${x.kind} to shot ${shot.id}: its model would reach ${reach.toFixed(2)} s, past the export's ${film.model.expectedDurationSeconds} s; end its model earlier or shorten the transition`);
       }
     }

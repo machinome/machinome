@@ -14,7 +14,7 @@ from importlib import resources
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
-from .names import EASES, MODULE_SUFFIXES, MovieError, prop_kind
+from .names import EASES, MODULE_SUFFIXES, MovieError, no_view_in_both, prop_kind, shared_views
 from .text import TOKEN, count_phrase, count_token, count_words, excerpt_line
 
 FORMAT = 'machinome-movie/0.2'
@@ -58,7 +58,7 @@ TIME_MODES = ('normalized-loop', 'take')
 #: not refused for a float's last digit.
 TOLERANCE = 1e-9
 DRAWN = ('ring', 'arrow')
-TRANSITIONS = ('dissolve', 'fade', 'wipe', 'slide')
+TRANSITIONS = ('dissolve', 'fade', 'wipe', 'slide', 'reframe')
 
 
 def check_document(document, manifest=None, sources=None):
@@ -125,13 +125,28 @@ class _Semantics:
         for name, layer in document['layers'].items():
             for path in layer:
                 self.path(path, f'layer {name}')
-        index = 0
+        index, previous = 0, None
         for chapter in document['chapters']:
             self.chapter(chapter)
             completed = set()
             for shot in chapter['shots']:
                 self.shot(chapter, shot, completed, first=index == 0, last=index == len(film) - 1)
+                self.reframe(previous, chapter, shot)
+                previous = (chapter, shot)
                 index += 1
+
+    def reframe(self, previous, chapter, shot):
+        """A reframe moves a view element the shot and the one before it both
+        place; a view element belongs to its chapter. (A reframe on the film's
+        first shot is refused with every join's, once the shots are timed.)"""
+        if shot.get('transition', {}).get('kind') != 'reframe' or previous is None:
+            return
+        outgoing_chapter, outgoing = previous
+        views = ({key for key, element in chapter['elements'].items() if element['kind'] == 'view'}
+                 if outgoing_chapter is chapter else set())
+        if not shared_views(outgoing, shot, views):
+            raise MovieError(f"chapter {chapter['id']}, shot {shot['id']}, transition: "
+                             f"{no_view_in_both(outgoing['id'], shot['id'])}")
 
     ##########################################
     # The stage block
@@ -407,7 +422,7 @@ class _Semantics:
             kind = join.get('kind')
             if field == 'transition' and kind not in TRANSITIONS:
                 raise MovieError(f"{where}, transition.kind: '{kind}' is not a transition; use "
-                                 f"dissolve, fade, wipe or slide")
+                                 f"dissolve, fade, wipe, slide or reframe")
             if field != 'transition' and kind not in (None, 'fade'):
                 raise MovieError(f"{where}, {field}.kind: '{kind}' is not a fade")
             if 'direction' in join and (kind not in ('wipe', 'slide')

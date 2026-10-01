@@ -147,8 +147,11 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   // the React stage, wart 6 of Cut and Advance version 2).
   assert.equal(checked.launches,1,'check measures the layout in one Chromium');
   assert.deepEqual(checked.out.match(/^Layout \S+ at 1280×720: /gm),
-    ['Layout playbill at 1280×720: ','Layout frame at 1280×720: ','Layout playbill-split at 1280×720: ','Layout split at 1280×720: ']);
+    ['Layout playbill at 1280×720: ','Layout playbill-split at 1280×720: ','Layout frame at 1280×720: ','Layout split at 1280×720: ']);
   assert.match(checked.out,/^Layout playbill at 1280×720: stage 870\.4×576 at 64,86\.4; plate 870\.4×576 at 64,86\.4; aside 243\.2×288 at 972\.8,216; headline sized by what it holds$/m);
+  // The reframe into question moves the view between the two slots' boxes
+  // that same measurement gives (the reframe-join change).
+  assert.match(checked.out,/^Reframe into question: opening\.wide from playbill stage 870\.4×576 at 64,86\.4 to playbill-split right 563\.2×489\.6 at 652\.8,158\.4$/m);
   assert.match(checked.out,/^Picture still tip\.plate \(still plate\): peak 1\.40×; allowance 1\.5×$/m);
   assert.match(checked.out,/^Tour: 3 chapters, 9 shots, 18\.9s; model 20s$/m);
   // Where the film's length comes from (wart 7 of Cut and Advance): each
@@ -163,6 +166,16 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   assert.equal(previewed.code,0,previewed.out);
   const report=await readJson(join(build,'preview','report.json'));
   assert.equal(report.pixelReplay,true);assert.equal(report.stage.sha256,bundle);
+  // Preview proves the reframe: the view in its outgoing slot's box at the
+  // first frame and in its incoming slot's at the end, the rest at the eased
+  // progress at the midpoint, the end equal to the incoming frame, the replay.
+  const reframe=report.transitionChecks.find(c=>c.shotId==='question');
+  assert.equal(reframe?.kind,'reframe');
+  const moved=reframe.views['opening.wide'];
+  assert.deepEqual([moved.from.set,moved.from.slot,moved.to.set,moved.to.slot],['playbill','stage','playbill-split','right']);
+  assert.deepEqual(Object.keys(reframe.opacities).sort(),['opening.card','opening.title']);
+  assert.ok(Object.values(reframe.opacities).every(o=>Math.abs(o-reframe.progress)<=1e-3),JSON.stringify(reframe));
+  assert.equal(reframe.endEqualsIncoming,true);assert.equal(reframe.replay,true);
   assert.ok((await readFile(join(build,'storyboard.jpg'))).length>0);
   const rendered=cli('render',file,'--viewer',viewer,'--width','640');
   assert.equal(rendered.code,0,rendered.out);
@@ -268,6 +281,20 @@ test('check refuses a picture view that leaves the picture in a project set, nam
   const start=(await readJson(join(fixtures,'resolved','tour.json'))).chapters.find(c=>c.id==='tip').shots.find(s=>s.id==='still').start;
   assert.equal(start.toFixed(2),'16.67');
   assert.match(refused.out,/^Picture view leaves the picture in shot still at 16\.67 s \(tip\.plate, plate\); keep the view inside the picture or zoom in$/m);
+});
+
+test('check refuses a reframe into a slot sized by what it holds, before any take exists',async t=>{
+  const {file,viewer,build}=await fixtureMovie(t,'tour',{takes:false});
+  // The view moves into PlaybillSplit's headline, a band as tall as what it holds.
+  await editDocument(file,doc=>{
+    doc.chapters.find(c=>c.id==='opening').shots.find(s=>s.id==='question').places={headline:'wide',left:'card',right:'title'};
+  });
+  const refused=cliLaunches('check',file,'--viewer',viewer);
+  assert.equal(refused.code,1,refused.out);
+  assert.match(refused.out,/^Shot question comes in by a reframe that moves opening\.wide into slot headline of set playbill-split, which is sized by what it holds; a reframe moves a view between slots whose boxes stay put$/m);
+  assert.doesNotMatch(refused.out,/no cached narration take/,'refused before the takes are asked for');
+  assert.deepEqual(await readdir(join(build,'audio')).catch(()=>[]),[],'no take exists');
+  assert.equal(refused.launches,1);
 });
 
 test('check of a movie that shows no picture launches no Chromium',async t=>{

@@ -2,8 +2,8 @@
 project's own template and card, drawn by stage.tsx beside this file."""
 
 from machinome_movie import (Action, Chapter, Credits, Cue, Dissolve, Element, Evidence,
-    FadeIn, FadeOut, Format, Frame, Movie, Narration, Narrator, Picture, Release, Reveal,
-    Set, Shot, Slot, Source, Split, Style, Title, View, Wipe)
+    FadeIn, FadeOut, Format, Frame, Movie, Narration, Narrator, Picture, Reframe, Release,
+    Reveal, Set, Shot, Slot, Source, Split, Style, Title, View, Wipe)
 
 from models.seesaw import Seesaw
 from videos.takes import Playground
@@ -44,8 +44,9 @@ class Opening(Chapter):
                 fade_in=FadeIn(1.0), model=Playground.run(0, 4),
                 cues=[Cue(0, wide.move(Playground.near, ease="out", until=lines.spoken("How"))),
                       Cue(lines.spoken("balances"), card.light(item="Balance"), until=lines.spoken("How"))])
-    question = Shot(Playbill, {Playbill.stage: wide, Playbill.aside: card, Playbill.headline: title},
-                    until=lines.end(plus=0.8), model=Playground.run(4, 8),
+    question = Shot(PlaybillSplit, {PlaybillSplit.right: wide, PlaybillSplit.left: card,
+                                    PlaybillSplit.headline: title},
+                    until=lines.end(plus=0.8), transition=Reframe(0.8), model=Playground.run(4, 8),
                     cues=[Cue(lines.spoken("tip it"), card.light(item="Tip"), until=lines.end(plus=0.8)),
                           Cue(0, title.show(enter=0.6, leave=0.6), until=lines.end())])
 

@@ -286,10 +286,15 @@ element kinds and their declarations:
   same number or the same anchor). Segments are linear unless the key a
   segment ends at names a curve (`linear`, `smooth`, `in`, `out`,
   `in-out`). Every view of the shot sees this time.
-- `transition` (`dissolve`, `fade`, `wipe`, `slide`, with `duration`,
-  optional `ease`, `direction` on a wipe or slide, `color` on a fade) is how
-  the shot comes in from the one before it; `fadeIn` is accepted only on the
-  film's first shot and `fadeOut` only on its last, across chapters.
+- `transition` (`dissolve`, `fade`, `wipe`, `slide`, `reframe`, with
+  `duration`, optional `ease`, `direction` on a wipe or slide, `color` on a
+  fade) is how the shot comes in from the one before it; a `reframe` needs a
+  view element placed in both shots, is drawn live on the incoming set, and
+  moves each such view from its outgoing slot's box to its incoming slot's
+  while the incoming shot's other elements fade in (its frame carries the
+  progress and each moving view's box as fractions of the frame); `fadeIn`
+  is accepted only on the film's first shot and `fadeOut` only on its last,
+  across chapters.
 
 ### Cues and actions
 

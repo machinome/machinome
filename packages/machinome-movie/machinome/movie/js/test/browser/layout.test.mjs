@@ -22,7 +22,7 @@ test('the boxes check measures for a set are the boxes a posed frame of that set
   const film=await loadEpisode(file),{doc}=await readMovie(file);
   const layouts=await measureLayouts(doc,await buildFilmStage(film),await sharedStage());
   assert.deepEqual([layouts.width,layouts.height],[1280,720]);
-  assert.deepEqual(Object.keys(layouts.sets),['playbill','frame','playbill-split','split'],'every set the tour uses, once, in the order its shots first use them');
+  assert.deepEqual(Object.keys(layouts.sets),['playbill','playbill-split','frame','split'],'every set the tour uses, once, in the order its shots first use them');
   // The title band is as tall as the title it holds: sized by what it holds,
   // so check leaves it to the live box.
   for(const kind of ['playbill','playbill-split'])
@@ -43,11 +43,11 @@ test('the boxes check measures for a set are the boxes a posed frame of that set
       compared++;
     }
   }
-  assert.equal(compared,3+3+1+2+2+3,'every trusted slot of every posed frame');
+  assert.equal(compared,3+2+1+2+2+3,'every trusted slot of every posed frame');
   const plate=layouts.sets.playbill.find(s=>s.slot==='plate');
   assert.ok(same(posed.result.still.observed.elements['tip.plate'].box,plate.picture),'the still is drawn in the box measured for a picture in plate');
   // What the headline would have been judged by: the question's title makes
   // its box, which the empty set does not have.
-  const headline=posed.result.question.observed.slots.headline,empty=layouts.sets.playbill.find(s=>s.slot==='headline').box;
+  const headline=posed.result.question.observed.slots.headline,empty=layouts.sets['playbill-split'].find(s=>s.slot==='headline').box;
   assert.ok(headline.height>0&&!same(headline,empty),`headline with its title ${JSON.stringify(headline)}, empty ${empty}`);
 });

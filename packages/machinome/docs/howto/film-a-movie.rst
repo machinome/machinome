@@ -151,7 +151,12 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   quarters, midpoint and last frame, and is proved in pixels against the plain
   pictures it is made of: a dissolve blends them within 2 levels, a wipe and a
   slide reproduce them exactly, a fade reaches exactly its colour, and a
-  revisited instant replays exactly. A ring (format 0.4) is refused on any
+  revisited instant replays exactly. A movie's reframe is proved live: every
+  posed frame of it draws each moving view within a pixel of the box its
+  frame gives and every other element at the join's progress as opacity;
+  its first frame draws the view in its outgoing slot's box, its end at full
+  progress is exactly the incoming frame, and its midpoint replays exactly.
+  A ring (format 0.4) is refused on any
   frame where its part is not wholly on its view or the ring leaves the
   frame. Each annotation's entrance and exit adds stills at its first frame,
   midpoint and end while the cue is active, and is proved in pixels against the same instant with the
@@ -171,7 +176,8 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   nor silent build purchases speech. An FPS override that skips a revealed word
   is refused. A frame inside a transition is composed from captures of the same instant: a fade costs one
   pose and capture, a dissolve, wipe or slide two, each several times a plain
-  frame's time. A picture with `n` simultaneous partly faded annotations needs
+  frame's time; a reframe's frame is posed live, but waits each time for the
+  view's canvas to fill its moving box. A picture with `n` simultaneous partly faded annotations needs
   `2^n` same-instant captures to preserve exact text pixels; schedule review
   renders accordingly. Picture fades similarly compose opaque and absent
   same-instant captures. `render --width` rechecks any authored `upscale`

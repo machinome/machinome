@@ -58,7 +58,8 @@ side's suite.
   bases, kinds the tool ships), a chapter's elements (kinds, fields, cameras,
   layers, excerpts, stills, a project element's props), a shot's set and
   placements, fades, a literal `until`, phrases in the written narration,
-  marks, model keys, joins and easings, a cue's actions (placed elements,
+  marks, model keys, joins and easings (a reframe whose shots share no
+  view), a cue's actions (placed elements,
   actions a kind has, their fields and parameters, spans with an `until`,
   entrances), typing and completion, emphasis anchors and spoken words, a
   spoken reveal, duplicate ids, a take document's `take` block and its
@@ -138,7 +139,8 @@ formatting. Both runtimes name:
   `absent`, `ambiguous`, `at or before its start`, `first shot`,
   `last shot`, `shot id`, `does not declare`, `does not place`,
   `two slots`, `ships`, `base`, `missing`, `complete`, `already`,
-  `outside the excerpt`, `word for word`, `outside the take`, and the kinds
+  `outside the excerpt`, `word for word`, `outside the take`, `no view
+  element in both` (a reframe whose two shots share no view), and the kinds
   `string`, `number`, `boolean`, `list`, `object`;
 - for a take document, its fields by their path: `model.timeMode`,
   `take.steps[0]` with the step's id (`step-1`) and its field (`input`),

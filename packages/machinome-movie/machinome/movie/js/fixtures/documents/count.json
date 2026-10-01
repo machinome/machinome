@@ -168,7 +168,7 @@
     "expectedDurationSeconds": 8,
     "manifest": "../../export/counter/manifest.json",
     "readiness": "Exported by machinome export; the drums count the crank's turns and carry.",
-    "sourceRevision": "80da5915b97a8dc2397ecf6693bff4a19b41ac99",
+    "sourceRevision": "10b189d1516c880a7fdab7370fa9d32866945db6",
     "timeMode": "take"
   },
   "output": {

@@ -656,6 +656,18 @@ class Slide(Transition):
         super().__init__(duration, ease=ease, direction=direction)
 
 
+class Reframe(Transition):
+    """The view elements both shots place move, live, from their slots' boxes
+    in the outgoing set to their slots' boxes in the incoming set, their
+    cameras and takes running on; whatever else the incoming shot places
+    fades in. The two shots place at least one view element in both."""
+
+    kind = 'reframe'
+
+    def __init__(self, duration, *, ease=None):
+        super().__init__(duration, ease=ease)
+
+
 class FadeIn(_Join):
     """The film fades up from a colour at its head."""
 
