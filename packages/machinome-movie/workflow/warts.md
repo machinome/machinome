@@ -372,3 +372,121 @@ by the orchestrator. Triage: none yet unless stated; the pilot decides each.
     fix, since the stage does not meet the cause; the wart under "The test
     suite" is closed for the picture replay and stays open for the
     incremental frame, which a future failure must keep as the report says.
+
+## Addition (Curta, 1 October 2026): the first film on a clocked take
+
+
+
+Findings met while producing the curta-video campaign's film
+
+(`projects/Calculators/Curta-Type-I-3x/videos/addition/`: `takes.py`,
+
+`movie.py`, `stage.tsx`, `stage.css`) and while building the cycles it
+
+needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
+
+`on-demand-clocked`). Triage: none yet unless stated; the pilot decides each.
+
+
+
+1. **`preview` and `render` serve every `.stl` or image string in the
+
+   manifest as an export asset and fail with a bare `ENOENT`.** `stage()` in
+
+   `src/render.mjs` walks the whole manifest; the framework's `pieces[].sources`
+
+   paths are provenance relative to the project, not files in the export.
+
+   The refusal names neither the field nor the cause; the film worked around
+
+   it with a symlink in the untracked export. The smallest fix collects
+
+   assets from the model fields only, or tolerates source files the viewer
+
+   never reads.
+
+2. **The highlight proof cannot tell the right part from the wrong one.** A
+
+   highlight on the bevel tips at the top of the shafts passed changed,
+
+   restored and reapplied exactly as the one on the input pinions beside the
+
+   drum does; the wrong part was caught by looking.
+
+3. **A shot's continuation through a join is refused only when it leaves the
+
+   take.** `read_23` ran into the next step (a slide moving) during its
+
+   dissolve and nothing said so; a `check` line when a continuation crosses
+
+   a mark would have.
+
+4. **No proof or check line says when a title wraps or code is too small.**
+
+   `check` reports a headline "sized by what it holds" and the fit proof
+
+   passed at 0.82 vw; both were found by looking.
+
+5. **Render provenance records `projectHead` for a dirty tree.** The film's
+
+   source was uncommitted at render time and the manifest names the last
+
+   commit as if it were the content rendered.
+
+6. **`check`'s `Stage:` line hashes only `stage.js`**; a stylesheet change
+
+   leaves it identical, though the manifest carries `cssSha256`.
+
+7. **Mark times drift when `over` durations are summed in floats** (moves of
+
+   1.2 s gave marks like 12.599999999999998); the film chose binary-exact
+
+   1.25 s. Evaluation could sum on the frame grid or in exact arithmetic.
+
+8. **A step owns `at < t ≤ at + duration`, and the input at `f = 1` is `end`
+
+   itself**: two corrections the pose-a-take change made to the contract
+
+   (written into "The take" at the merge). Triaged 1 October 2026
+
+   (orchestrator): fixed; no cycle.
+
+9. **The take's identity cannot be read from `Sim`**, so evaluation compares
+
+   the bank's ids with the export and leaves the identity to the viewer's
+
+   `restore`; filed as a framework finding (its `workflow/warts.md`,
+
+   1 October 2026), with `Sim` failing through a symlinked project path and
+
+   `machinome export` writing no `source-revision.txt`.
+
+10. **Marks on a take with the viewer double stay put**: the double's part
+
+    rectangles move with a loop's time, not a bank, so a mark on a clocked
+
+    take is proved only at layer 6.
+
+11. **A reframe through a slot sized by what it holds is refused**, since the
+
+    slot has no box until its content is drawn; the tour's headline is such
+
+    a slot. A film that wants to reframe into one needs a fixed box.
+
+12. **A reframe frame costs one canvas wait more** (about 33 ms at 640 px),
+
+    since a moving host is a resize every frame.
+
+13. **The on-demand viewer blanks its canvas on a resize until the next
+
+    explicit render**; the stage's `setView` after the canvas wait is what
+
+    redraws it. Older than this campaign; recorded by the viewer cycle.
+
+14. **The film is 126 s** for 278 words: the take's steps were drawn at the
+
+    narration's pace, and the render cost 63 min at about a second a frame
+
+    on the real viewer (3 787 frames). The pose itself is 14 ms; the
+
+    screenshot is the cost.
