@@ -422,7 +422,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    dissolve and nothing said so; a `check` line when a continuation crosses
 
    a mark would have.
-    Triage, 1 October 2026 (orchestrator): cycle `check-the-continuation` (wave 2): a `check` report line, not a refusal.
+    Triage, 1 October 2026 (orchestrator): fixed by `check-the-continuation` (archived 2026-10-01, merged the same day, ADR-014): resolution follows a shot through its outgoing join on the output frames and, when its take time crosses a mark, the shot's `model.crossing` names join, mark and step, and `check` prints the sentence after its take line; a report, never a refusal.
 
 4. **No proof or check line says when a title wraps or code is too small.**
 
@@ -516,4 +516,7 @@ Recorded at the merges; triage by the orchestrator unless stated.
 20. **Playwright's default launch flags and `--disable-gpu` give different bytes from the stage's flags** (1 958 pixels a frame by at most 2 levels) with no speed change; the flags reach the shot cache's key through `render.mjs`. Found by `render-cost`. Recorded.
 21. **Each capture session pays 10 to 15 s of warm-up on its first Curta frame**, and the stage's repaint costs 45 to 60 ms on frames whose page content changed. Found by `render-cost`. Recorded.
 22. **The viewer's multisampled WebGL context is about 70 % of the software raster** (a Curta frame 1.18 s against 0.36 s without it; every picture changes). The viewer's; filed in its log at the campaign's close.
+23. **The film as rendered crosses two marks it never meant to:** `set-23` runs 0.35 s (about 21°) into the first crank stroke and `set-145` 0.23 s (about 14°) into the second, under their dissolves; `read-23`'s crossing was the one caught by eye. Found by `check-the-continuation` on the film's own resolved document. Film work for its author, not the tool's.
+24. **The take block does not record a trigger's instruction name**, so a trigger's step is reported as "moves crank_rotation by 360" rather than "Turn crank". The smallest correction is an optional `instruction` on a trigger's step in the contract. Found by `check-the-continuation`. Recorded; no cycle until a film wants the name on screen.
+25. **Neither runtime refuses `from > to` on a take's shot**, and a backward continuation would not be reported. Found by `check-the-continuation`. Recorded; no film runs a take backwards.
 
