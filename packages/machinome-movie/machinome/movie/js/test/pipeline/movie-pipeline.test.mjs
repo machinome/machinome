@@ -153,6 +153,14 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   // that same measurement gives (the reframe-join change).
   assert.match(checked.out,/^Reframe into question: opening\.wide from playbill stage 870\.4×576 at 64,86\.4 to playbill-split right 563\.2×489\.6 at 652\.8,158\.4$/m);
   assert.match(checked.out,/^Picture still tip\.plate \(still plate\): peak 1\.40×; allowance 1\.5×$/m);
+  // The text each shot shows, measured by the same probe (wart 4 of
+  // Addition): the code's size at the output size, each title's lines.
+  assert.deepEqual(checked.out.match(/^Shot \S+: .*$/gm),[
+    'Shot question: title opening.title in headline on 1 line, its subtitle on 1 line',
+    'Shot source: source balance.code in left at 13.1 px (1.02 vw)',
+    'Shot push: source balance.code in left at 13.1 px (1.02 vw)',
+    'Shot rise: title tip.heading in headline on 1 line',
+    'Shot rhythm: title tip.beat in headline on 1 line']);
   assert.match(checked.out,/^Tour: 3 chapters, 9 shots, 18\.9s; model 20s$/m);
   // Where the film's length comes from (wart 7 of Cut and Advance): each
   // chapter's take, its resolved length and its tail, after the summary line.
@@ -214,6 +222,8 @@ test('the clocked take count is checked, previewed and rendered twice from the c
   const checked=cliLaunches('check',file,'--viewer',viewer);
   assert.equal(checked.code,0,checked.out);
   assert.equal(checked.launches,0,'no picture and no reframe: check opens no browser');
+  assert.match(checked.out,/^Text not measured: check measures a movie's stage only when it shows a picture or comes in by a reframe; read the sizes and the lines on preview's stills$/m);
+  assert.doesNotMatch(checked.out,/^Shot /m);
   assert.match(checked.out,/^Count: 1 chapters, 3 shots, 11\.4s; model 8s$/m);
   assert.match(checked.out,/^ {2}counting: take [\d.]+ s, chapter 11\.40 s, tail [\d.]+ s\nTake: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark$/m);
   assert.match(checked.out,new RegExp(`^Viewer API 29 required for clocked take, highlight \\(shot carry\\); ${viewer.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')} declares API 29$`,'m'));
@@ -223,6 +233,14 @@ test('the clocked take count is checked, previewed and rendered twice from the c
   assert.deepEqual(report.takeReplay,{steps:3,matched:true},'the take was replayed on the viewer before the first frame');
   assert.equal(report.pixelReplay,true);
   assert.deepEqual(report.highlightChecks.map(c=>c.shotId),['carry']);
+  // Where the highlight landed, named by its part (wart 2 of Addition).
+  const [lit]=report.highlightChecks,stem='highlights/carry-cue2-action0-tens_drum';
+  assert.deepEqual(Object.keys(report.highlights),['tens_drum']);
+  // It ghosts the rest: the part's place is read with the rest kept.
+  assert.deepEqual(lit.images,{lit:`${stem}-lit.png`,unlit:`${stem}-unlit.png`,partsLit:`${stem}-parts-lit.png`,difference:`${stem}-difference.png`});
+  const [x,y,w,h]=lit.changedBox;
+  assert.ok(lit.changedPixels>0&&lit.changedPixels<=w*h,JSON.stringify(lit));
+  assert.match(previewed.out,new RegExp(`^Highlight carry cues\\[2\\]\\.actions\\[0\\] lights tens_drum: ${lit.changedPixels} pixels changed within ${w}×${h} at ${x},${y}; see preview/${stem}-difference\\.png$`,'m'));
   assert.deepEqual(report.transitionChecks.map(c=>[c.shotId,c.kind]),[['carry','dissolve']]);
   const rendered=cli('render',file,'--viewer',viewer);
   assert.equal(rendered.code,0,rendered.out);
@@ -313,6 +331,19 @@ test('check refuses a picture view that leaves the picture in a project set, nam
   const start=(await readJson(join(fixtures,'resolved','tour.json'))).chapters.find(c=>c.id==='tip').shots.find(s=>s.id==='still').start;
   assert.equal(start.toFixed(2),'16.67');
   assert.match(refused.out,/^Picture view leaves the picture in shot still at 16\.67 s \(tip\.plate, plate\); keep the view inside the picture or zoom in$/m);
+});
+
+test('check reports a headline that wraps in its lines, measured in its one Chromium, and refuses nothing',async t=>{
+  // Wart 4 of Addition: the headline wrapped and nothing said so. Too narrow
+  // for two words beside each other, every word is on its own line.
+  const {file,viewer,movie}=await fixtureMovie(t,'tour');
+  await appendFile(join(movie,'stage.css'),'\n.playbill-headline { width: 1%; }\n');
+  const checked=cliLaunches('check',file,'--viewer',viewer);
+  assert.equal(checked.code,0,checked.out);
+  assert.equal(checked.launches,1,'the text is measured by the layout probe, in its one Chromium');
+  assert.match(checked.out,/^Shot question: title opening\.title in headline on 1 line, its subtitle on 4 lines$/m);
+  assert.match(checked.out,/^Shot rise: title tip\.heading in headline on 3 lines$/m);
+  assert.match(checked.out,/^Shot rhythm: title tip\.beat in headline on 2 lines$/m);
 });
 
 test('check refuses a reframe into a slot sized by what it holds, before any take exists',async t=>{

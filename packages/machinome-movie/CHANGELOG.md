@@ -6,6 +6,31 @@ lands it.
 
 ## Unreleased
 
+- The look is laid out where a proof cannot judge it. `preview` keeps, for
+  every highlight cue, the unlit and the lit capture its proof compares at
+  the cue's midpoint and a difference (the unlit frame in grey, every
+  changed pixel in red) under `preview/highlights/`, emptied at each
+  preview, as `<shot>-<cue>-<parts>-{lit,unlit,difference}.png`; a cue that
+  dims or ghosts the rest is posed once more with its parts lit and the
+  rest kept (`-parts-lit.png`, never in the film), and its difference is
+  taken against that, so the red marks the named parts and not the whole
+  model; `preview/report.json` lists them under `highlights` by each part's name
+  (a layer's, or an assembly path's names joined with `/`), and each
+  `highlightChecks` entry gains `parts`, `paths`, `images` (with
+  `partsLit` for a dimmed or ghosted rest),
+  `changedPixels` and `changedBox`. `preview` prints a `Highlight` line
+  per cue naming the parts, the pixels changed with their box and the
+  difference image. A highlight on the wrong part still passes the proof,
+  since only a person knows the part meant; now it is seen at once. `check`,
+  when it measures a movie's layout, also poses each shot's source panels
+  and shown titles wholly shown on the same page and prints a `Shot` line
+  per shot: the code's size in pixels and vw at the output size, and the
+  lines each title and its subtitle wrap to. No threshold, no refusal. A
+  movie whose layout `check` does not measure says `Text not measured`.
+  The shipped source panel reports `fontSize`, a shown title `lines` and
+  `subtitleLines`. Every film's shot cache is recaptured once, since the
+  stage runtime and the renderer are part of its key.
+  (`proofs-report-the-look`, ADR-017)
 - A take's time is summed exactly. Evaluation adds a `Take`'s durations as
   the decimals written (a move's `over=`, an instruction's `duration`), in
   exact arithmetic, and writes each step's `at`, every mark and the length

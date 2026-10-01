@@ -7,6 +7,8 @@
 // for a picture there.
 import {slowTest as test} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
+import {appendFile} from 'node:fs/promises';
+import {join} from 'node:path';
 import {browserSession,sharedStage} from '../support/stage.mjs';
 import {fixtureMovie} from '../support/fixture-movie.mjs';
 import {loadEpisode} from '../../src/episode.mjs';
@@ -20,7 +22,7 @@ const same=(rect,box)=>[rect.x,rect.y,rect.width,rect.height].every((v,i)=>Math.
 test('the boxes check measures for a set are the boxes a posed frame of that set reports',async t=>{
   const {file,viewer}=await fixtureMovie(t,'tour');
   const film=await loadEpisode(file),{doc}=await readMovie(file);
-  const layouts=await measureLayouts(doc,await buildFilmStage(film),await sharedStage());
+  const layouts=await measureLayouts(doc,await buildFilmStage(film),{...await sharedStage(),excerpts:film.excerpts});
   assert.deepEqual([layouts.width,layouts.height],[1280,720]);
   assert.deepEqual(Object.keys(layouts.sets),['playbill','playbill-split','frame','split'],'every set the tour uses, once, in the order its shots first use them');
   // The title band is as tall as the title it holds: sized by what it holds,
@@ -50,4 +52,30 @@ test('the boxes check measures for a set are the boxes a posed frame of that set
   // its box, which the empty set does not have.
   const headline=posed.result.question.observed.slots.headline,empty=layouts.sets['playbill-split'].find(s=>s.slot==='headline').box;
   assert.ok(headline.height>0&&!same(headline,empty),`headline with its title ${JSON.stringify(headline)}, empty ${empty}`);
+});
+
+// Wart 4 of Addition: nothing said a headline wrapped or how small the code
+// was. The probe measures, at the output size, each shot's source panels and
+// shown titles wholly shown (the proofs-report-the-look change, ADR-017).
+test('the probe measures each shot\'s code size and title lines, and a narrowed headline wraps',async t=>{
+  const {file,movie}=await fixtureMovie(t,'tour');
+  const film=await loadEpisode(file),{doc}=await readMovie(file);
+  const measure=async()=>(await measureLayouts(doc,await buildFilmStage(film),{...await sharedStage(),excerpts:film.excerpts})).text;
+  const code=1.02*1280/100;
+  const shape=text=>text.map(({shotId,elements})=>[shotId,elements.map(e=>e.kind==='source'
+    ?[e.key,e.slot,Math.abs(e.fontSize-code)<.01]:[e.key,e.slot,e.lines,e.subtitleLines])]);
+  // Every shot that places a source panel or shows a title, in shot order;
+  // the code at the stage's 1.02 vw, every title on one line at 1280×720.
+  assert.deepEqual(shape(await measure()),[
+    ['question',[['opening.title','headline',1,1]]],
+    ['source',[['balance.code','left',true]]],
+    ['push',[['balance.code','left',true]]],
+    ['rise',[['tip.heading','headline',1,undefined]]],
+    ['rhythm',[['tip.beat','headline',1,undefined]]]]);
+  // A headline too narrow for two words beside each other: every word on its
+  // own line, measured, not refused.
+  await appendFile(join(movie,'stage.css'),'\n.playbill-headline { width: 1%; }\n');
+  const narrowed=Object.fromEntries((await measure()).map(({shotId,elements})=>[shotId,elements]));
+  assert.deepEqual([narrowed.question[0].lines,narrowed.question[0].subtitleLines,narrowed.rise[0].lines,narrowed.rhythm[0].lines],[1,4,3,2],
+    'SEESAW; One beam, one stand; Rise and fall; Up. Down.');
 });

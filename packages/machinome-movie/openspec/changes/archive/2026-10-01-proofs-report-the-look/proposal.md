@@ -42,7 +42,10 @@ instead of estimated from a render.
   (the unlit and the lit frame of one instant) and writes their difference
   image, the unlit frame in grey with every pixel that differs in red, into
   `preview/highlights/`, emptied at each preview, as
-  `<shot>-<cue>-<parts>-{lit,unlit,difference}.png`.
+  `<shot>-<cue>-<parts>-{lit,unlit,difference}.png`. (Added in
+  implementation, design D4a: a cue that dims or ghosts the rest changes
+  every part, so it is posed once more with its parts lit and the rest
+  kept, `-parts-lit.png`, and its difference is taken against that.)
   `preview/report.json` gains a `highlights` index keyed by each
   highlighted part's name (a layer by its name, an assembly path by its
   names joined with `/`), and each `highlightChecks` entry gains the parts,

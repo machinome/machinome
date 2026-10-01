@@ -4,7 +4,7 @@
 // `picture-<i>` (a YAML shot is one chapter).
 import {slowTest as test,artefact} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
-import {writeFile,readFile,stat,copyFile,mkdir} from 'node:fs/promises';
+import {writeFile,readFile,readdir,stat,copyFile,mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {preview,render,browserSession} from '../support/stage.mjs';
@@ -332,6 +332,36 @@ test('a highlight is applied and restored by requested state, and preview proves
   const p=await preview(e,{viewer:good,width:640});
   assert.equal(p.pixelReplay,true);
   assert.deepEqual(p.highlightChecks.map(c=>[c.shotId,c.index,c.changed,c.restored,c.reapplied]),[['pawls',0,true,true,true]]);
+  // The proof's two captures, kept with their difference and indexed under
+  // the part the highlight lights (wart 2 of Addition): the reviewer sees
+  // where it landed without choosing a still.
+  // The highlight ghosts the rest, so where its part is comes from the same
+  // instant lit with the rest kept, `partsLit`, against the unlit capture.
+  const base='highlights/pawls-highlight-0-pawl';
+  const images={lit:`${base}-lit.png`,unlit:`${base}-unlit.png`,partsLit:`${base}-parts-lit.png`,difference:`${base}-difference.png`};
+  const [check]=p.highlightChecks;
+  assert.deepEqual([check.parts,check.paths,check.images],[['pawl'],[['Feed','Pawl']],images]);
+  assert.deepEqual(Object.keys(p.highlights),['pawl'],'indexed under the layer the author named');
+  assert.deepEqual(p.highlights.pawl,[{shotId:'pawls',cue:check.cue,element:'pawls.view',time:1,paths:[['Feed','Pawl']],
+    ...images,changedPixels:check.changedPixels,changedBox:check.changedBox}]);
+  const dir=join(e.paths.build,'preview'),png=async name=>decodePng(await readFile(join(dir,name)));
+  const lit=await png(images.partsLit),unlit=await png(images.unlit),difference=await png(images.difference);
+  assert.ok(!(await png(images.lit)).rgb.equals(unlit.rgb),'the film\'s lit frame differs from the unlit one');
+  assert.deepEqual([lit.width,lit.height,unlit.width,difference.height],[640,360,640,360]);
+  let changed=0,red=0,box=[Infinity,Infinity,-1,-1];
+  for(let i=0;i<640*360;i++){
+    const differs=[0,1,2].some(k=>lit.rgb[i*3+k]!==unlit.rgb[i*3+k]);
+    const marked=difference.rgb[i*3]===255&&difference.rgb[i*3+1]===0&&difference.rgb[i*3+2]===0;
+    if(differs){changed++;const x=i%640,y=Math.floor(i/640);box=[Math.min(box[0],x),Math.min(box[1],y),Math.max(box[2],x),Math.max(box[3],y)];}
+    if(marked)red++;
+    assert.equal(marked,differs,`pixel ${i%640},${Math.floor(i/640)}: red exactly where the captures differ`);
+  }
+  assert.ok(changed>0);assert.equal(red,changed);assert.equal(check.changedPixels,changed);
+  assert.deepEqual(check.changedBox,[box[0],box[1],box[2]-box[0]+1,box[3]-box[1]+1]);
+  assert.deepEqual((await readdir(join(dir,'highlights'))).sort(),Object.values(images).map(f=>f.slice('highlights/'.length)).sort());
+  // Only this preview's images: without the highlight, the directory is empty.
+  await preview(await project.film(filmEpisode()),{viewer:good,width:640});
+  assert.deepEqual(await readdir(join(dir,'highlights')),[]);
   const calls=await browserSession(e,good,640,[],async({page,pose})=>{
     for(const time of [0,.6,1,1.6,.6,0])await pose(time);
     return {result:await page.evaluate(()=>window.viewerCalls.filter(c=>c[0]!=='setView'))};

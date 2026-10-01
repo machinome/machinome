@@ -494,21 +494,50 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   };
 }
 
+/**
+ * The lines the text of `nodes`, the children of `element`, occupies: from
+ * the client rectangles of its inline boxes, the distance from the first
+ * box's centre to the last's in line heights, plus one, so an empty line of
+ * a `pre-line` title counts; with a line height of `normal`, the distinct
+ * centres. Null where the page has no layout (ADR-017).
+ */
+export function linesOf(element:Element,nodes:readonly Node[]):number|null{
+  if(!nodes.length)return 0;
+  const range=document.createRange();
+  if(typeof range.getClientRects!=='function')return null;
+  range.setStartBefore(nodes[0]);range.setEndAfter(nodes[nodes.length-1]);
+  const centres=[...range.getClientRects()].filter(r=>r.height>0).map(r=>r.top+r.height/2).sort((a,b)=>a-b);
+  if(!centres.length)return null;
+  const height=parseFloat(getComputedStyle(element).lineHeight);
+  if(Number.isFinite(height)&&height>0)return Math.round((centres[centres.length-1]-centres[0])/height)+1;
+  let lines=1;
+  for(let i=1;i<centres.length;i++)if(centres[i]-centres[i-1]>1)lines++;
+  return lines;
+}
+
 /** What the stage reports for a shipped element other than a view (the view is the runtime's). */
 export function measureElement(box:HTMLElement,state:{kind:string}):Record<string,unknown>{
   switch(state.kind){
     case 'source':{
       const s=state as SourceState,panel=box.querySelector<HTMLElement>('.vm-source'),code=box.querySelector('code'),
-        cursor=box.querySelector('.vm-source-cursor');
+        cursor=box.querySelector('.vm-source-cursor'),pre=box.querySelector('.vm-source pre');
+      // The size the code is drawn at, in CSS pixels (ADR-017).
+      const size=pre?parseFloat(getComputedStyle(pre).fontSize):NaN;
       return {kind:'source',text:code?.textContent??'',
         fits:panel?panel.scrollHeight<=panel.clientHeight&&panel.scrollWidth<=panel.clientWidth:false,
         emphasis:[...box.querySelectorAll<HTMLElement>('mark.spoken')].map(m=>({token:m.dataset.token,text:m.textContent})),
-        cursor:cursor?getComputedStyle(cursor).visibility!=='hidden':s.cursor};
+        cursor:cursor?getComputedStyle(cursor).visibility!=='hidden':s.cursor,
+        fontSize:Number.isFinite(size)&&size>0?size:null};
     }
     case 'title':{
       const text=box.querySelector('.vm-title'),words=text?[...text.querySelectorAll('.vm-reveal-word')]:[];
+      // The lines its text and its subtitle wrap to (ADR-017).
+      const subtitle=text?.querySelector('.vm-title-subtitle')??null;
+      const own=text?[...text.childNodes].filter(n=>n!==subtitle):[];
       return {kind:'title',text:text?rectOf(text):null,
-        revealed:words.length?words.filter(w=>getComputedStyle(w).visibility!=='hidden').length:null};
+        revealed:words.length?words.filter(w=>getComputedStyle(w).visibility!=='hidden').length:null,
+        ...(text?{lines:linesOf(text,own)}:{}),
+        ...(subtitle?{subtitleLines:linesOf(subtitle,[...subtitle.childNodes])}:{})};
     }
     case 'picture':{
       const s=state as PictureState,img=box.querySelector<HTMLImageElement>('img.vm-picture-img');

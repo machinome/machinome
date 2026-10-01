@@ -10,10 +10,11 @@ import {chaptersOf,chapterTakeLines} from '../src/chapters.mjs';
 import {generateMovieTakes} from '../src/movie.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
-import {preview,render,readTrees} from '../src/render.mjs';
+import {preview,render,readTrees,highlightLine} from '../src/render.mjs';
 import {clipCadence,loadPictures} from '../src/pictures.mjs';
+import {loadSourceCode} from '../src/code.mjs';
 import {picturesShown,measureLayouts,layoutLines,checkEnlargements,checkPictureViews,
-  reframesOf,reframeBoxes,reframeLines} from '../src/layout.mjs';
+  reframesOf,reframeBoxes,reframeLines,textLines,showsText,TEXT_NOT_MEASURED} from '../src/layout.mjs';
 import {reviewManifest} from '../src/review-pack.mjs';
 import {takeLine} from '../src/take.mjs';
 
@@ -39,7 +40,9 @@ try{
   // allowance in its slot's box, or a reframe through a slot sized by what it
   // holds, is refused before any take is read. A document without either,
   // and a YAML episode, whose paper sets' boxes are known, open no browser.
-  let early=null,layouts=null,enlargements=null;
+  // The same probe measures the text each shot shows, wholly shown, from the
+  // pinned excerpts (ADR-017); a document it does not measure says so.
+  let early=null,layouts=null,enlargements=null,textUnmeasured=false;
   if(command==='check'&&extname(source).toLowerCase()==='.json'){
     const {readMovie}=await import('../src/movie.mjs');
     const {doc,documentPath,base,build}=await readMovie(source);
@@ -50,9 +53,11 @@ try{
     // layout is measured for it too, and a slot sized by what it holds is
     // refused before any take.
     const pictures=picturesShown(doc).length>0,reframes=reframesOf(doc).length>0;
+    textUnmeasured=!pictures&&!reframes&&showsText(doc);
     if(pictures||reframes){
       const media=pictures?await loadPictures({source:'movie',stills:doc.stills,clips:doc.clips,paths:{repository,base}}):null;
-      layouts=await measureLayouts(doc,early);
+      const excerpts=await loadSourceCode({sourceCode:doc.sourceCode,model:doc.model,paths:{base,repository}});
+      layouts=await measureLayouts(doc,early,{excerpts});
       reframeBoxes(doc,layouts);
       if(pictures)enlargements=checkEnlargements(doc,media,layouts);
     }
@@ -92,7 +97,8 @@ try{
     // Both hashes: a stylesheet change leaves the script's bytes as they were.
     console.log(`Stage: ${bundle.reused?'reused':'bundled'} ${bundle.js} (sha256 ${bundle.sha256.slice(0,12)}) and ${basename(bundle.css)} (sha256 ${bundle.cssSha256.slice(0,12)}) from ${modules}; `+
       (bundle.typechecked?'types checked':e.stage.modules.length?'no TypeScript module, types not checked':'no module to type-check'));
-    if(layouts)for(const line of [...layoutLines(layouts),...reframeLines(e,layouts)])console.log(line);
+    if(layouts)for(const line of [...layoutLines(layouts),...reframeLines(e,layouts),...textLines(layouts)])console.log(line);
+    if(textUnmeasured)console.log(TEXT_NOT_MEASURED);
     const shots=filmShots(e),fps=e.output.fps;
     for(const [i,{chapter,shot}] of shots.entries())for(const {cue,action} of shotActions(shot)){
       const element=chapter.elements[action.element];
@@ -127,7 +133,12 @@ try{
     process.exit(0);
   }
   if(command==='speech'){await speech(e,{generate:true});process.exit(0);}
-  if(command==='preview'){await preview(e,options);console.log('Storyboard: '+resolve(e.paths.build,'storyboard.jpg'));process.exit(0);}
+  if(command==='preview'){
+    const report=await preview(e,options);
+    // Where each highlight landed, by its parts (ADR-017).
+    for(const h of report.highlightChecks??[])console.log(highlightLine(h));
+    console.log('Storyboard: '+resolve(e.paths.build,'storyboard.jpg'));process.exit(0);
+  }
   const audio=values.silent?null:await speech(e,{generate:command==='build'});
   if(command==='build'&&!values.silent)validateWordFramesAtFps(e,options.fps??e.output.fps);
   const output=await render(e,{...options,audio,label:values.silent?'silent-preview':'rehearsal'});

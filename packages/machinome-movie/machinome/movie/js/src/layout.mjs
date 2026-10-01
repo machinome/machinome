@@ -7,13 +7,18 @@
 // refuse: a picture enlarged beyond its allowance, before any take is read,
 // and a picture view that leaves the picture, once the takes resolve its
 // times, in the words a YAML episode's pictures are refused in
-// (src/pictures.mjs). Nothing memoizes it: it runs once per `check`.
+// (src/pictures.mjs). On the same page it also measures the text each shot
+// shows, wholly shown: the size of a source panel's code and the lines of a
+// title and its subtitle, which `check` reports and never judges (the
+// proofs-report-the-look change, ADR-017). Nothing memoizes it: it runs once
+// per `check`.
 import {readFile} from 'node:fs/promises';
 import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {assetServer,stageConfig,CHROMIUM_ARGS} from './render.mjs';
 import {pictureRect} from './pictures.mjs';
+import {wholeSource} from './code.mjs';
 import {frameAt,movingViews} from './timeline.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -112,12 +117,71 @@ async function measureSet(frame){
   return held.map((h,i)=>({...h,fixed:h.box.every((v,k)=>Math.abs(v-filled[i][k])<1e-6)}));
 }
 
+// The text a shot shows, wholly shown, by shot (ADR-017): every source panel
+// it places, its whole excerpt typed (`excerpts`, the pinned excerpts by
+// name), and every title one of its cues shows, with all its words; each in
+// its slot, in the order the shot places them. Views, pictures and project
+// elements are not placed: the probe mounts no viewer and serves no media.
+export function textFrames(doc,excerpts){
+  const out=[];
+  for(const chapter of doc.chapters)for(const shot of chapter.shots){
+    const slots={},elements={},kinds={};
+    for(const [slot,key] of Object.entries(shot.places)){
+      const element=chapter.elements[key],id=`${chapter.id}.${key}`;
+      const shown=element?.kind==='title'&&(shot.cues??[]).some(cue=>cue.actions.some(a=>a.element===key&&a.action==='show'));
+      if(element?.kind==='source')elements[id]=wholeSource(excerpts,element.source);
+      else if(shown)elements[id]={kind:'title',shown:true,opacity:1,text:element.text,...(element.subtitle!==undefined?{subtitle:element.subtitle}:{})};
+      else continue;
+      slots[slot]=id;kinds[id]={slot,kind:element.kind};
+    }
+    if(Object.keys(slots).length)out.push({shotId:shot.id,kinds,
+      frame:{time:0,chapterId:chapter.id,shotId:shot.id,set:shot.set,slots,elements,transition:null}});
+  }
+  return out;
+}
+// Poses each shot's text frame on a page that serves the movie's stage and
+// reads what the stage measured: [{shotId, elements: [{key, kind, slot,
+// fontSize} or {key, kind, slot, lines, subtitleLines?}]}].
+export async function measureTextOn(page,doc,excerpts,{refuse=e=>new Error(`Measuring the stage's text: ${e}`),errors=[]}={}){
+  const out=[];
+  for(const {shotId,kinds,frame} of textFrames(doc,excerpts)){
+    let seen;
+    try{seen=await page.evaluate(async f=>(await window.film.setFrame(f)).elements,frame);}
+    catch(error){throw refuse(`shot ${shotId}: ${error.message.replace(/^page\.evaluate: (Error: )?/,'')}`);}
+    if(errors.length)throw refuse(errors.join('\n'));
+    out.push({shotId,elements:Object.entries(kinds).map(([key,{slot,kind}])=>{
+      const r=seen[key]??{};
+      return kind==='source'?{key,kind,slot,fontSize:r.fontSize??null}
+        :{key,kind,slot,lines:r.lines??null,...(r.subtitleLines!==undefined?{subtitleLines:r.subtitleLines}:{})};
+    })});
+  }
+  return out;
+}
+// What `check` prints: one line per shot whose text was measured, a source
+// panel's size in CSS pixels and in vw of the output width, a title's lines.
+// No threshold: the numbers are the author's to judge.
+export function textLines(layouts){
+  const lines=n=>n===null?'unmeasured lines':`${n} line${n===1?'':'s'}`;
+  return (layouts.text??[]).map(({shotId,elements})=>`Shot ${shotId}: `+elements.map(e=>e.kind==='source'
+    ?`source ${e.key} in ${e.slot} at `+(e.fontSize===null?'an unmeasured size':`${e.fontSize.toFixed(1)} px (${(e.fontSize/layouts.width*100).toFixed(2)} vw)`)
+    :`title ${e.key} in ${e.slot} on ${lines(e.lines)}`+(e.subtitleLines!==undefined?`, its subtitle on ${lines(e.subtitleLines)}`:'')).join('; '));
+}
+// Whether a document's shots place a source panel or show a title: the text
+// `check` reports as not measured when it opens no browser.
+export const showsText=doc=>doc.chapters.some(chapter=>chapter.shots.some(shot=>Object.values(shot.places).some(key=>{
+  const element=chapter.elements[key];
+  return element?.kind==='source'||element?.kind==='title'&&(shot.cues??[]).some(cue=>cue.actions.some(a=>a.element===key&&a.action==='show'));
+})));
+export const TEXT_NOT_MEASURED='Text not measured: check measures a movie\'s stage only when it shows a picture or comes in by a reframe; read the sizes and the lines on preview\'s stills';
+
 // The layout of every set kind the movie's shots use, at the output size:
-// {width, height, sets: {kind: [{slot, box, picture, fixed}]}}, the sets in
-// the order the shots first use them and their slots in the page's order. A
-// browser and an asset server may be given (a test run shares one of each);
-// otherwise it launches Chromium and makes a server, and closes both.
-export async function measureLayouts(doc,bundle,{browser:givenBrowser,assets:givenAssets}={}){
+// {width, height, sets: {kind: [{slot, box, picture, fixed}]}, text}, the
+// sets in the order the shots first use them and their slots in the page's
+// order, and the text each shot shows (`measureTextOn`; `excerpts` are the
+// pinned excerpts its source panels show). A browser and an asset server may
+// be given (a test run shares one of each); otherwise it launches Chromium
+// and makes a server, and closes both.
+export async function measureLayouts(doc,bundle,{browser:givenBrowser,assets:givenAssets,excerpts={}}={}){
   const {width,height}=doc.output,first=new Map();
   for(const chapter of doc.chapters)for(const shot of chapter.shots)
     if(!first.has(shot.set))first.set(shot.set,{chapterId:chapter.id,shotId:shot.id});
@@ -147,7 +211,8 @@ export async function measureLayouts(doc,bundle,{browser:givenBrowser,assets:giv
     await page.goto(`${assets.origin}/`);
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw refuse(error);
-    return await measureSetsOn(page,doc,[...first.keys()],{width,height,refuse,errors});
+    const layouts=await measureSetsOn(page,doc,[...first.keys()],{width,height,refuse,errors});
+    return {...layouts,text:await measureTextOn(page,doc,excerpts,{refuse,errors})};
   }finally{
     if(givenBrowser)await page?.close();else await browser?.close();
     release();if(!givenAssets)await assets.close();

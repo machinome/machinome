@@ -102,6 +102,25 @@ is recognisable and every red mark stands out) with each changed pixel pure
 red. `changedPixels` counts them; `changedBox` is `[x, y, width, height]`
 of the smallest rectangle holding them, in pixels of the preview's width.
 
+### D4a. Where the parts are, when the rest is dimmed or ghosted (implementation evidence)
+
+Added during implementation, from the film proof. The first preview of
+*Addition* with D4 as planned gave, for the pinion highlight (`others:
+ghost`), 58 795 changed pixels within 232×416, and for the drum alone
+59 865 within 232×417: the difference marked the whole machine red in both,
+because a ghost or a dim changes every part of the view. The image said
+nothing about where the named parts were, which is the finding.
+
+So for a highlight whose `others` is `dim` or `ghost`, `preview` poses the
+same instant once more with the same highlight keeping the rest
+(`others: keep`), a review capture the film never draws, keeps it as
+`<stem>-parts-lit.png` (`images.partsLit`), and takes the difference, the
+changed pixels and their box against it: they mark the named parts alone.
+For a `keep` highlight the lit frame is that capture already and nothing
+more is posed. The lit frame the film draws is still kept as `-lit.png`.
+How a highlight is drawn in the film does not change; the extra pose
+applies and restores a highlight exactly as the proof's poses do.
+
 ### D5. Preview's line
 
 One line per highlight, after the proofs, before the storyboard:

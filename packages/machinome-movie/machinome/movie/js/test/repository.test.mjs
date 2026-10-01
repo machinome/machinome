@@ -119,3 +119,16 @@ test('the manual and the records say what provenance records of a dirty tree, an
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)'),'the ADR index');
   assert.ok((await readFile(join(root,'.gitignore'),'utf8')).split('\n').includes('/WTs/'),'.gitignore: the worktrees, as AGENTS.md says');
 });
+
+test('the manual and the records say where a highlight landed and what check measured of the text (proofs-report-the-look)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md'),stage=await read('docs/stage.md');
+  assert.ok(readme.includes('`preview/highlights/<shot>-<cue>-<parts>-{lit,unlit,difference}.png`'),'README: the highlight images');
+  assert.ok(readme.includes('`Shot source: source balance.code in left at 13.1 px (1.02 vw)`'),'README: check\'s text line');
+  assert.ok(readme.includes('`Text not measured: …`'),'README: the text check did not measure');
+  assert.ok(stage.includes('Shot question: title opening.title in headline on 1 line, its subtitle on 1 line'),'stage.md: check\'s text line');
+  assert.ok(stage.includes('`fontSize`')&&stage.includes('`subtitleLines`'),'stage.md: what the shipped elements report');
+  assert.ok((await read('docs/FORMAT.md')).includes('`preview/highlights/<shot>-highlight-<i>-<parts>-{unlit,lit,difference}.png`'),'FORMAT.md: the highlight images');
+  assert.ok((await read('CHANGELOG.md')).includes('(`proofs-report-the-look`, ADR-017)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md)'),'the ADR index');
+});

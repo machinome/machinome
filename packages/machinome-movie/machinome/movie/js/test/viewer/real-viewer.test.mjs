@@ -18,6 +18,7 @@ import {browserSession,sharedStage} from '../support/stage.mjs';
 import {fixtureMovie} from '../support/fixture-movie.mjs';
 import {loadEpisode} from '../../src/episode.mjs';
 import {stageConfig} from '../../src/render.mjs';
+import {decodePng} from '../../src/pixels.mjs';
 import {frameAt,filmShots} from '../../src/timeline.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
@@ -219,6 +220,25 @@ test('the tour is checked, previewed and rendered with the real viewer',async(t,
   const report=JSON.parse(await readFile(join(movie.build,'preview','report.json'),'utf8'));
   assert.equal(report.pixelReplay,true);
   assert.deepEqual(report.highlightChecks.map(c=>c.shotId),['source','source','rise','rise','invitation']);
+  // The real viewer's highlights laid out by part (wart 2 of Addition): the
+  // lit and unlit captures and their difference, where pixels changed.
+  assert.deepEqual(Object.fromEntries(Object.entries(report.highlights).map(([part,list])=>[part,list.map(h=>h.shotId)])),
+    {Stand:['source','rise'],Beam:['source','invitation'],'Beam/Plank':['rise'],'Beam/Weight':['rise']});
+  for(const check of report.highlightChecks){
+    assert.ok(check.changedPixels>0&&check.changedBox[2]*check.changedBox[3]>=check.changedPixels,JSON.stringify(check));
+    // Every tour highlight dims or ghosts the rest: its parts are found lit
+    // with the rest kept, a capture the film never draws.
+    assert.ok(check.images.partsLit,`${check.shotId} ${check.cue} has its parts lit with the rest kept`);
+    const png=async name=>decodePng(await readFile(join(movie.build,'preview',name)));
+    const [lit,unlit]=[await png(check.images.lit),await png(check.images.unlit)];
+    let whole=0;for(let i=0;i<lit.rgb.length;i+=3)if(lit.rgb[i]!==unlit.rgb[i]||lit.rgb[i+1]!==unlit.rgb[i+1]||lit.rgb[i+2]!==unlit.rgb[i+2])whole++;
+    assert.ok(check.changedPixels<whole,`${check.shotId} ${check.cue}: the parts change ${check.changedPixels} pixels, the film's lit frame ${whole}`);
+    for(const file of Object.values(check.images)){
+      const image=execFileSync('ffprobe',['-v','error','-show_entries','stream=width,height','-of','csv=p=0',join(movie.build,'preview',file)],{encoding:'utf8'}).trim();
+      assert.equal(image,`${WIDTH},360`,file);
+    }
+  }
+  assert.match(previewed.out,/^Highlight rise cues\[1\]\.actions\[2\] lights Beam\/Plank, Beam\/Weight: \d+ pixels changed within \d+×\d+ at \d+,\d+; see preview\/highlights\/rise-cue1-action2-Plank\+Weight-difference\.png$/m);
   for(const kind of ['entranceChecks','fadeChecks','emphasisChecks','pictureChecks','transitionChecks','cameraChecks'])
     assert.ok(report[kind]?.length>0,`the report lists ${kind}`);
   const rendered=cli('render',movie.file,'--viewer',bundle,'--width',String(WIDTH));
