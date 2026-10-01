@@ -131,8 +131,9 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   allowance plus clip rate and dropped/repeated cadence. It bundles the stage
   (the tool's runtime and, for a movie, its stage modules), type-checks
   TypeScript modules against the types generated from the document, and
-  prints the bundle it built or reused:
-  `Stage: bundled <path>/stage.js (sha256 <prefix>) from stage.tsx; types checked`.
+  prints the bundle it built or reused, with the hash of its script and of
+  its stylesheet, so a change to either shows:
+  `Stage: bundled <path>/stage.js (sha256 <prefix>) and stage.css (sha256 <prefix>) from stage.tsx; types checked`.
   When a movie shows a picture, it then measures, before reading any take,
   the layout of each set the movie uses in one headless Chromium served that
   bundle (no viewer is mounted and no `--viewer` is needed for it), prints a
@@ -202,6 +203,15 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   warning with this standalone retry command. Older manifests without a
   recorded review plan need a rerender before automatic event review.
 
+`check`, `preview` and `render` each print what they know of the two Git
+trees a render names the heads of, the project's and Videomaker's own:
+`Project tree: clean at <head>`, or, when Git lists a changed tracked file
+or an untracked file it does not ignore,
+`Project tree: dirty at render, 1 path differs from its head <head> (notes.txt); the manifest's projectHead is not the content rendered, and the film is not release-ready`,
+and the same for `Videomaker tree`. `preview` and `render` read both trees
+once, before the first frame. Nothing is refused: a dirty tree still makes
+a rehearsal, and the records say it was dirty.
+
 Without `--viewer`, the bundle beside the model manifest is used. Older
 exports must be regenerated with the new viewer or use the explicit bundle.
 Paths are arguments, not assumptions about a neighboring workspace. The
@@ -222,10 +232,14 @@ Each episode's ignored `_build/` contains:
 - `movie-resolved.json` (a movie document only): the document with every anchor
   resolved to numbers, as the film is produced from it.
 - `rehearsal-manifest.json`: resolved screenplay/settings, model and viewer
-  hashes, the stage bundle's `stageSha256`, audio hashes, browser/encoder
-  versions, font record, encoded checks,
-  picture provenance/cadence with `pictureReleaseIssues`, and a versioned
-  resolved visual-review sample plan.
+  hashes, the stage bundle's `stageSha256` and `stageCssSha256`, the
+  project's and Videomaker's heads (`projectHead`, `workflowHead`), each
+  beside whether its tree was dirty (`projectDirty`, `workflowDirty`), audio
+  hashes, browser/encoder versions, font record, encoded checks,
+  picture provenance/cadence with `pictureReleaseIssues`, `releaseIssues`
+  (every reason `releaseReady` is false, in words), and a versioned
+  resolved visual-review sample plan. `preview/report.json` records the
+  same heads and their dirt.
 - `review-packs/<generation>/`: exact selected full-frame PNGs decoded from
   the published MP4, bounded overview/event sheets and an integrity-checked
   `index.json` with frame indices and actual encoded PTS. A complete index
@@ -248,7 +262,9 @@ The shared cache key includes the mounted first frame, so changing the first
 shot can conservatively recapture all shots. It also includes the model, viewer,
 film page, stage bundle (so a changed template recaptures every shot),
 rendering code, browser, the known regular/bold film and mono font
-faces in the tested environment, style, dimensions, FPS and duration. Only
+faces in the tested environment, style, dimensions, FPS and duration; whether
+a Git tree was dirty is provenance, not a key, so a dirty tree reuses the
+frames of a clean one and the reverse. Only
 media actually reached by a shot enters that shot's key;
 unused stills/clips and release copy do not force a visual recapture. Captions
 remain external, so SRT/audio-only changes reuse PNGs and produce a fresh MP4.
@@ -266,6 +282,10 @@ Shown pictures whose credit or rights are unresolved, whose files are not
 committed, or whose description template lacks `{{pictureCredits}}` also make
 `releaseReady` false. The placeholder expands to `name: credit` lines (with
 an explicit pending marker for missing credit); it is not a rights judgement.
+A film rendered while the project's tree or Videomaker's was dirty is not
+release-ready either: its heads are not what made it. Each reason is a line
+of the manifest's `releaseIssues`, and `releaseReady` is true exactly when
+that list is empty.
 
 ## Timing and revisions
 

@@ -104,7 +104,14 @@ the timeline
 ([ADR-010](adrs/STAGE/ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md));
 `src/easing.mjs` is the five-curve vocabulary;
 `src/review-samples.mjs` and `src/review-pack.mjs` choose, from the
-element states, and decode the frames a person reviews.
+element states, and decode the frames a person reviews;
+`src/provenance.mjs` reads a Git work tree's head and whether it is dirty,
+and words it: `check`, `preview` and `render` print the project's and
+Videomaker's own, `preview` and `render` reading them once before the first
+frame and recording each head beside its dirt in the preview report, every
+captured shot generation and the manifest, whose `releaseIssues` name a
+dirty tree; the dirt is never a cache key
+([ADR-015](adrs/PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)).
 
 ## Commitments
 

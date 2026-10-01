@@ -389,9 +389,11 @@ files and its stylesheets.
 - **`check` builds it** after the document has loaded and before anything
   is rendered, and prints it:
 
-      Stage: bundled <root>/_build/stage/stage.js (sha256 <12 hex digits>) from stage.tsx; types checked
+      Stage: bundled <root>/_build/stage/stage.js (sha256 <12 hex digits>) and stage.css (sha256 <12 hex digits>) from stage.tsx; types checked
 
-  `reused` instead of `bundled` when the key is unchanged; `no TypeScript
+  The script's hash and the stylesheet's, since a change to the stylesheet
+  alone leaves the script's bytes as they were; `reused` instead of
+  `bundled` when the key is unchanged; `no TypeScript
   module, types not checked` for JavaScript modules alone. `preview` and
   `render` build or reuse the same bundle before opening the browser.
 - **`check` measures the sets' layout** when the movie shows a picture or

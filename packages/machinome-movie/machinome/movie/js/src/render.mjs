@@ -24,8 +24,20 @@ import {reviewManifest} from './review-pack.mjs';
 import {effectiveStyle} from './style.mjs';
 import {buildFilmStage} from './stage-build.mjs';
 import {measureSetsOn,reframeBoxes,reframeSets} from './layout.mjs';
+import {treeState,treeLine,treeReleaseIssue} from './provenance.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
+// The two trees a film's records name a head of, the project's and
+// Videomaker's own checkout, read and printed in the command's words
+// (ADR-015): by preview and render once before the first frame, by check
+// after its other lines.
+export async function readTrees(film,commandName){
+  const trees={project:await treeState(film.paths.repository),workflow:await treeState(resolve(here,'..'))};
+  for(const tree of ['project','workflow'])console.log(treeLine(tree,trees[tree],commandName));
+  return trees;
+}
+const treeProvenance=trees=>({workflowHead:trees.workflow.head,workflowDirty:trees.workflow.dirty,
+  projectHead:trees.project.head,projectDirty:trees.project.dirty});
 // Headless Chromium with software WebGL: the browser every session renders in.
 export const CHROMIUM_ARGS=['--use-angle=swiftshader','--enable-unsafe-swiftshader'];
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
@@ -461,6 +473,7 @@ export async function preview(film,{viewer,width=960,captions=[],browser,assets}
   if(film.source!=='movie'&&!Object.keys(film.wordTiming??{}).length)await resolveWordTiming(film,shot=>readSpeechTake(film,shot));
   const dir=resolve(film.paths.build,'preview');await mkdir(dir,{recursive:true});
   const fps=film.output.fps,duration=film.output.durationSeconds;
+  const trees=await readTrees(film,'preview');
   const result=await browserSession(film,viewer,width,captions,async({page,pose})=>{
     const shots=filmShots(film);
     const grabBytes=async()=>page.screenshot();
@@ -818,6 +831,7 @@ export async function preview(film,{viewer,width=960,captions=[],browser,assets}
       ...(revealChecks.length?{revealChecks}:{}),...(fadeChecks.length?{fadeChecks}:{}),
       ...(emphasisChecks.length?{emphasisChecks}:{}),...(pictureChecks.length?{pictureChecks}:{})};
   },{browser,assets});
+  result.provenance=treeProvenance(trees);
   await json(resolve(dir,'report.json'),result);
   // A contact sheet for quickly inspecting the chosen shots, then individual PNGs.
   await command('ffmpeg',['-y','-v','error','-pattern_type','glob','-i',resolve(dir,'*.png'),'-vf',`scale=480:-1,tile=3x${Math.ceil(result.samples.length/3)}`,'-frames:v','1',resolve(film.paths.build,'storyboard.jpg')]);
@@ -872,6 +886,7 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
   const codeBold=await fontFile('DejaVu Sans Mono','Bold');
   const fontFaces={film:{regular:fontRecord,bold:filmBold},code:{regular:codeFontRecord,bold:codeBold}};
   const peaks=new Map();
+  const trees=await readTrees(film,'render');
   const report=await browserSession(film,viewer,width,captions,async({page,pose,info})=>{
     // Every page file (the stage bundle, its CSS, the page, the viewer, the
     // model) is a common input: a changed one recaptures every shot.
@@ -895,8 +910,8 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
     const reviewSamples=buildReviewSamplePlan(film,units,fps);
     await fingerprintShotUnits(film,units,commonKey);
     const root=shotCacheRoot(film.paths.build),selections=new Map(),shotReports=[];
-    const captureProvenance={workflowHead:(await command('git',['rev-parse','HEAD'],{cwd:resolve(here,'..')})).trim(),
-      projectHead:(await command('git',['rev-parse','HEAD'],{cwd:film.paths.repository})).trim(),
+    // The trees' heads and dirt are provenance, never a key (ADR-015).
+    const captureProvenance={...treeProvenance(trees),
       episodeSha256:await fileHash(film.paths.episode),productionSha256:await fileHash(film.paths.production),
       viewerSha256:sharedHashes['/viewer.js'],modelSha256:sharedHashes['/model/manifest.json'],
       stageSha256:sharedHashes['/stage.js'],browser:info.browser,commonKey};
@@ -970,21 +985,23 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
     const media=film.pictureMedia[kind][name];
     return `${name}: ${media.credit??`[PICTURE CREDIT PENDING: ${name}]`}`;
   }).join('\n');
-  const releaseReady=description!==null&&Boolean(film.release?.simulationUrl&&film.release?.sourceUrl)&&pictureReleaseIssues.length===0;
+  // Every reason the film is not release-ready, in words (ADR-015).
+  const releaseIssues=[...(description===null?['no release.descriptionTemplate: description.md is not written']:[]),
+    ...['simulationUrl','sourceUrl'].filter(field=>!film.release?.[field]).map(field=>`release.${field} is unresolved`),
+    ...pictureReleaseIssues,
+    ...['project','workflow'].map(tree=>treeReleaseIssue(tree,trees[tree])).filter(Boolean)];
+  const releaseReady=releaseIssues.length===0;
   const descriptionOutput=resolve(film.paths.build,'description.md'),pendingDescription=`${descriptionOutput}.pending-${publicationId}`;
   if(description!==null)await writeFile(pendingDescription,description
     .replaceAll('{{simulationUrl}}',film.release.simulationUrl??'[PUBLIC SIMULATION URL PENDING]')
     .replaceAll('{{sourceUrl}}',film.release.sourceUrl??'[PUBLIC SOURCE URL PENDING]')
     .replaceAll('{{pictureCredits}}',pictureCredits));
-  const gitHead=async cwd=>(await command('git',['rev-parse','HEAD'],{cwd})).trim();
-  const workflow=await gitHead(resolve(here,'..'));
-  const project=await gitHead(film.paths.repository);
   const manifestOutput=resolve(film.paths.build,`${label}-manifest.json`),pendingManifest=`${manifestOutput}.pending-${publicationId}`;
   const outputSha256=await fileHash(pendingOutput);
   const manifest={...report,fps,output,outputSha256,stageSha256:report.stage.sha256,
     audio:audio?.records??[],subtitles:pendingSubtitles?{file:subtitles,sha256:await fileHash(pendingSubtitles),burnedIn:false}:null,
-    episode:film,probe,pictures,pictureReleaseIssues,releaseReady,
-    provenance:{workflowHead:workflow,projectHead:project,font:fontRecord,codeFont:codeFontRecord,fontFaces,
+    episode:film,probe,pictures,pictureReleaseIssues,releaseIssues,releaseReady,
+    provenance:{...treeProvenance(trees),font:fontRecord,codeFont:codeFontRecord,fontFaces,
       episodeSha256:await fileHash(film.paths.episode),productionSha256:await fileHash(film.paths.production),
       stageSha256:report.stage.sha256,stageCssSha256:report.stage.cssSha256,
       ffmpeg:(await command('ffmpeg',['-version'])).split('\n')[0]}};

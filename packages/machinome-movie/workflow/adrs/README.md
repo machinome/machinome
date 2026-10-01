@@ -49,6 +49,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-010](STAGE/ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md) | STAGE | A reframe is a join that moves a view's box and fades the rest | Accepted |
 | [ADR-011](SOURCE/ADR-011-a-clocked-take-is-the-frameworks-requests-recorded-once-by-evaluation.md) | SOURCE | A clocked take is the framework's requests, recorded once by evaluation | Accepted |
 | [ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md) | STAGE | A view on a take is posed by restoring the machine's bank, and the viewer is held to the take | Accepted |
+| [ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md) | PIPELINE | Provenance records whether each tree was dirty, and a dirty tree is not release-ready | Accepted |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may
