@@ -43,7 +43,8 @@ qualifier (``package.module:Class``), a file path, or a file path plus
 class (``path/to/file.py:Class``). With no reference, a command operates
 on the project's default model, declared in ``[tool.machinome]`` in the
 nearest ancestor ``pyproject.toml``, which is also how the project root
-is found, so every command behaves the same from any directory.
+is found, so every command behaves the same from any directory and
+through any symbolic link to the project.
 
 A bare path resolves to the single node class defined in that file. When
 a file defines several, the path is ambiguous and fails naming the

@@ -50,6 +50,17 @@ loaded by path, the boundary of a node's tracked source closure, and the
 project's build root. A command SHALL therefore resolve the same node, the
 same source closure, and the same artifact paths from any directory.
 
+The discovered root and every source path measured against it — a node's own
+source file, the directory its artifacts mirror, and its tracked source
+closure — SHALL be resolved paths, with every symbolic link followed,
+whichever path the module was imported through. No artifact path SHALL be
+computed between a resolved path and an unresolved one. A project reached
+through a symbolic link SHALL therefore have the same root, the same source
+closure and the same artifact paths as the project reached by its resolved
+path, so an artifact built through either is current through the other, and
+a node constructed through any path — by a command or by a Python caller such
+as `Sim` — SHALL place its build directory under its project's build root.
+
 When no ancestor `pyproject.toml` carries the table, a command that needs a
 node SHALL fail with an actionable error naming the origin it searched from.
 
@@ -60,6 +71,18 @@ node SHALL fail with an actionable error naming the origin it searched from.
 - **THEN** the project root is discovered from that manifest
 - **AND** the node's tracked source closure is the same set it would be from
   the project root
+
+#### Scenario: A project reached through a symbolic link
+
+- **WHEN** a Python caller imports a project's node class through a path that
+  contains a symbolic link to the project, with the working directory on that
+  path and `SOLID_BUILD_DIR` unset, and constructs the node and a `Sim` over
+  it
+- **THEN** construction succeeds and the node's build directory lies under
+  the project's build root, `<resolved project root>/_build`
+- **AND** it equals the build directory of the same node class imported
+  through the project's resolved path
+- **AND** nothing is created outside the project's build root
 
 #### Scenario: A path outside the working directory's project
 
@@ -1336,3 +1359,4 @@ directory; the two files SHALL NOT be required to hold the same text.
   and the model is built
 - **THEN** each leaf artifact is imported by its bare basename, exactly as
   before this rule was stated
+

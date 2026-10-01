@@ -698,8 +698,18 @@ class AbstractBaseNode(metaclass=NodeMeta):
         self.checkpoint = None
 
         # The source file for this Node is stored and used as
-        # a base for scad and stl file paths
-        self.src = self.get_source_file()
+        # a base for scad and stl file paths.
+        #
+        # Resolved, because every path it is measured against is: the
+        # project root is discovered as a resolved path, and the source
+        # closure, the content digest and the adapters' own sources all
+        # resolve. `inspect.getfile` is the module's `__file__` as it was
+        # imported, so a project reached through a symbolic link (a
+        # symlinked PYTHONPATH) would measure the build directory from the
+        # link to the resolved root and climb out of the build root. One
+        # resolved anchor also gives both spellings the same build
+        # directory (OpenSpec change ``sim-through-a-symlink``).
+        self.src = os.path.realpath(self.get_source_file())
 
         # Local import avoids the loader -> node.base import cycle, the same
         # way sources.py reaches project discovery.

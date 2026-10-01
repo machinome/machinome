@@ -1832,7 +1832,11 @@ descend into a model's directory. Every command selects before it loads:
 the selection turns a name, or the default, into the concrete reference
 and the directory it owns, anchored for the process and inherited by the
 fresh interpreters it starts. Within a build directory artifacts mirror
-the source layout, basename `<script>-<uniq_id>`.
+the source layout, basename `<script>-<uniq_id>`. Every side of that
+mirror is a resolved path: the project root is discovered resolved, and
+a node's own source file is resolved where it enters the node, so a
+project reached through a symbolic link builds in the same directory as
+through its real path (change `sim-through-a-symlink`).
 
 A rigid node that declares markings writes one more artifact per
 marking, `<basename>.marking-<attribute>.stl`, beside its own `.stl`:

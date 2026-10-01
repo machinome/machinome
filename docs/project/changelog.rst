@@ -24,6 +24,17 @@ Unreleased
   whose 22 tests took 1255.9 s in a fresh process and now take 27.8 s in
   the next one, with the same 16 passed and 6 failed, and of a Strandbeest
   walking demo, 163.5 s then 10.6 s.
+* **A project reached through a symbolic link builds in its own build
+  root:** a node whose module was imported through a path containing a
+  symbolic link, such as a symlinked ``PYTHONPATH``, measured its build
+  directory from the link to the project's resolved root and landed
+  outside the build root, or failed to create it. A node's source is now
+  taken as a resolved path, like the project root and every tracked
+  source, so both spellings of a project share one build directory and
+  what is built through one is current through the other. Born of
+  filming the clocked Curta, whose ``Sim`` raised ``PermissionError`` on
+  ``/mnt/home`` when the project was reached through the workspace's
+  symlinked ``projects/`` directory.
 
 Machinome 0.7.1
 ---------------
