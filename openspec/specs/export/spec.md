@@ -62,7 +62,10 @@ machine time one turn of `$t` covers, and SHALL omit the key otherwise; the
 browser-snapshot document SHALL publish `loop` under the same rule. `loop` is
 additive within the current schema version — a consumer that does not read
 it plays `frames / fps` as before — and `--fps` / `--frames` keep their
-meaning as the timeline's playback resolution. A rigid node SHALL emit one
+meaning as the timeline's playback resolution. When the exported node's
+project root is inside a Git work tree with a commit checked out the manifest
+SHALL also carry a top-level `source` object, the record of the revision the
+export was made from, and SHALL omit the key otherwise. A rigid node SHALL emit one
 `model` reference and
 stop recursion; a non-rigid node whose render result is a list or tuple SHALL
 recurse into its children; a flexible leaf SHALL emit one `flexible` object
@@ -152,6 +155,32 @@ on, to offset it, or to light it — without inspecting the part the decal
 belongs to, and SHALL NOT be required to infer a side from the part's geometry.
 This is a promise about the ARTIFACT, not an offset: the surface still sits on
 the nominal cylinder or plane with no separation of its own.
+
+The `source` object SHALL carry exactly two keys: `revision`, the full object
+name of the commit checked out in the work tree containing the project root —
+the root `project_root` gives for the exported node, on which the build
+directory is anchored — as `git rev-parse --verify HEAD` prints it, whether
+`HEAD` is a branch or detached; and `dirty`, a boolean that SHALL be true
+exactly when `git status --porcelain --untracked-files=normal` run at that
+root lists anything: a tracked file modified, staged, deleted or renamed, or
+an untracked file that is not ignored. A file the repository ignores SHALL
+NOT make the record dirty. The record SHALL be taken once, when the export
+starts and before it builds, so the export's own build artifacts cannot mark
+it dirty, and Git SHALL be asked without writing anything in the repository.
+The export SHALL NOT refuse, and SHALL NOT warn about, a dirty tree: exporting
+work in progress is normal, and the marker leaves the decision to the
+consumer. The key SHALL be ABSENT, with no warning, when the root is not
+inside a Git work tree, when the repository has no commit checked out, or when
+Git cannot be run; nothing beyond the revision and the marker is recorded.
+
+The `source` object SHALL be treated as ADDITIVE and SHALL NOT bump `version`.
+A consumer that ignores it renders exactly the picture it renders today,
+because a source record adds no solid, enters no operation, no binding and no
+program, and describes nothing the existing fields describe differently —
+which is the `piece` precedent, and the standing rule that a producer emits
+the lowest version its content needs. An export whose project root is not
+inside a Git work tree SHALL therefore be byte-identical to the document
+published before the source record existed.
 
 #### Scenario: A running root's document declares version 5
 
@@ -279,6 +308,46 @@ the nominal cylinder or plane with no separation of its own.
   extra
 - **THEN** it renders exactly as the same model without the markings, and
   neither the build nor the render fails
+
+#### Scenario: An export of a committed project records its revision
+
+- **WHEN** a project whose root is a Git work tree with one commit and
+  nothing modified or untracked is exported
+- **THEN** `manifest.json` carries `source` with `revision` equal to that
+  commit's full hash and `dirty` false, and declares the version its content
+  already needed
+
+#### Scenario: A modified tracked file marks the record dirty
+
+- **WHEN** a tracked source file of that project is modified and the project
+  is exported again
+- **THEN** `source.revision` is the same commit and `source.dirty` is true,
+  and the export is written
+
+#### Scenario: An untracked file marks the record dirty
+
+- **WHEN** a file that is neither tracked nor ignored is added to the
+  committed project and it is exported
+- **THEN** `source.dirty` is true
+
+#### Scenario: An ignored file leaves the record clean
+
+- **WHEN** the committed project holds only files its `.gitignore` ignores
+  beside its tracked ones, including the build directory of an earlier export
+- **THEN** `source.dirty` is false
+
+#### Scenario: An export outside a repository is unchanged in every byte
+
+- **WHEN** a project whose root is not inside any Git work tree is exported
+- **THEN** `manifest.json` has no `source` key, nothing warns, and its bytes
+  equal the manifest the same project exported before the source record
+  existed
+
+#### Scenario: No commit and no Git record nothing
+
+- **WHEN** the project root is a Git repository with no commit yet, or the
+  `git` executable cannot be found
+- **THEN** no source record is taken and nothing warns
 
 ### Requirement: Model deduplication
 
@@ -2263,6 +2332,7 @@ only the producer has been tested.
 - **WHEN** the framework fixtures pass but no matching viewer replay has run
 - **THEN** the implementation report identifies the separate viewer
   dependency and does not report browser or whole-project completion
+
 ### Requirement: A selected placement is complete and ordered
 
 Publication of a selected joint placement SHALL refuse a missing, truncated,
@@ -2328,3 +2398,4 @@ A published running program containing Follow SHALL carry an edge with `kind: "f
 #### Scenario: Envelope change invalidates a snapshot
 - **WHEN** either Follow envelope expression or the order of its sources changes after a snapshot was captured
 - **THEN** the program identity changes and restoring that snapshot is refused
+

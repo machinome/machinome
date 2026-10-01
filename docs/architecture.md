@@ -2482,6 +2482,20 @@ ordinary atomic copy rather than through the piece inventory, which
 serves only registered pieces; the browser-snapshot capture stages them
 beside the models it links.
 
+**An export records the revision it was made from** (ADR-158). Before it
+builds, `export_node` asks Git at the node's project root (`project_root`,
+the root the build directory is anchored on) for `rev-parse --verify HEAD`
+and `status --porcelain --untracked-files=normal`, with
+`GIT_OPTIONAL_LOCKS=0` so nothing in `.git` is rewritten, and appends
+`source: {revision, dirty}` as the manifest's last key, `dirty` being
+whether the status listed anything. Any failure — no work tree, no commit,
+no `git` — leaves the key absent, silently, and the manifest byte-identical
+to the one published before the record existed; a dirty tree is exported.
+The key is producer-owned like `pieces`, written by the export alone (not
+by `document_body`, so `viewer.json` and the browser snapshot do not carry
+it), and ADDITIVE: it moves no version and the viewer reads nothing new.
+This is the framework's only read of version control.
+
 **The handle also drives the document** (ADR-056 stage 3b). A document
 whose `drivers` table is non-empty loads and renders at the pose its
 expressions evaluate to under the declared defaults; what is refused is

@@ -1,0 +1,39 @@
+{
+  "format": "machinome-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 360
+  },
+  "drivers": {},
+  "instructions": {},
+  "root": {
+    "name": "Part",
+    "type": "LeafNode",
+    "color": null,
+    "mtime": 1700000000.0,
+    "operations": [],
+    "model": "models/design/part-Part-8570a2e1669f.stl",
+    "piece": "bf92c475bae3"
+  },
+  "pieces": [
+    {
+      "id": "bf92c475bae3",
+      "name": "Part",
+      "sources": [
+        "design/part.py"
+      ],
+      "models": [
+        "models/design/part-Part-8570a2e1669f.stl"
+      ],
+      "count": 1,
+      "size": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "volume": 1.0,
+      "watertight": true
+    }
+  ]
+}
