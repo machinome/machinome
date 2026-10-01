@@ -133,6 +133,8 @@ test('the manual and the records say a continuation that crosses a mark is repor
   assert.ok((await read('docs/declaring-a-movie.md')).includes('`check` reports each shot whose continuation crosses a mark, without refusing it'),'declaring-a-movie.md: the join');
   assert.ok((await read('CHANGELOG.md')).includes('(`check-the-continuation`, ADR-014)'),'the changelog bullet');
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-014](TIMELINE/ADR-014-a-continuation-that-crosses-a-mark-is-reported-from-the-frames-the-join-poses.md)'),'the ADR index');
+});
+
 test('the manual and the records say the stage bundle is the same bytes from any checkout (stable-stage-bundle)',async()=>{
   const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
   const stage=await read('docs/stage.md');
