@@ -4412,7 +4412,7 @@ from it.
 
 
 
-**Status (as filed): recorded; triage open.**
+**Status: finding 1 fixed by the change `sim-through-a-symlink` (archived 2026-10-01, merged on bench `curta-findings` the same day: a node's source is a resolved path, as the root is, so both spellings of a project share one build directory; no ADR). Findings 2 and 3 in progress on the same bench (`sim-identity`, `export-records-its-revision`); triage by the orchestrator, 1 October 2026, under the pilot's rulings in `workflow/ongoing/curta-film-findings/plan.md`.**
 
 
 
