@@ -4412,7 +4412,7 @@ from it.
 
 
 
-**Status: finding 1 fixed by the change `sim-through-a-symlink` (archived 2026-10-01, merged on bench `curta-findings` the same day: a node's source is a resolved path, as the root is, so both spellings of a project share one build directory; no ADR). Finding 2 fixed by `sim-identity` (archived 2026-10-01, merged the same day: a read-only `Sim.identity`, the string the export carries as `clocked.identity`; refused by name over a root that is not clocked; no ADR, ADR-128 already decides what the identity is). Finding 3 in progress on the same bench (`export-records-its-revision`); triage by the orchestrator, 1 October 2026, under the pilot's rulings in `workflow/ongoing/curta-film-findings/plan.md`.**
+**Status: finding 1 fixed by the change `sim-through-a-symlink` (archived 2026-10-01, merged on bench `curta-findings` the same day: a node's source is a resolved path, as the root is, so both spellings of a project share one build directory; no ADR). Finding 2 fixed by `sim-identity` (archived 2026-10-01, merged the same day: a read-only `Sim.identity`, the string the export carries as `clocked.identity`; refused by name over a root that is not clocked; no ADR, ADR-128 already decides what the identity is). Finding 3 fixed by `export-records-its-revision` (archived 2026-10-01, merged the same day, ADR-158): `manifest.json` carries `source: {revision, dirty}` when the project root is inside a Git work tree with a commit, taken once before the build with `GIT_OPTIONAL_LOCKS=0`, additive, no version bump; the pilot's ruling). Triage by the orchestrator, 1 October 2026, under the pilot's rulings in `workflow/ongoing/curta-film-findings/plan.md`.**
 
 
 
@@ -4496,3 +4496,17 @@ on 23 + 145. Three frictions met on the way, each a framework matter:
    `HISTORY.rst` is release notes only and the unreleased changelog is
    `docs/project/changelog.rst`. Not a defect; recorded so a brief does not
    send a bullet to the wrong file again. Found by `sim-identity`.
+8. **An export written inside the project and not ignored makes every later
+   export there dirty.** The Curta's `export/` is untracked, so its record
+   says `dirty: true` for untracked files that are no model source. Whether
+   projects ignore their export directories, or the marker excludes the
+   output directory, is the pilot's; the ruling as written was kept. Found
+   by `export-records-its-revision`.
+9. **Whether `viewer.json` and the browser snapshot should carry `source`**
+   is open; no consumer has asked. The committed tutorial exports under
+   `docs/_exports/` will carry the framework's own revision when next
+   regenerated. Found by `export-records-its-revision`.
+10. **`exclude_build_from_git` does nothing in a Git worktree**, so a project
+    checked out as a worktree whose `.gitignore` lacks `_build*` sees its
+    exports marked dirty after the first. Existing behaviour, recorded.
+    Found by `export-records-its-revision`.
