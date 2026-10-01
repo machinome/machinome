@@ -8,6 +8,7 @@ import {endSlope} from './easing.mjs';
 import {EASINGS,unknownEasing} from './easing.mjs';
 import {splitWords,validateSpokenPair,evenCount} from './words.mjs';
 import {validatePictureCues,loadPictures} from './pictures.mjs';
+import {exportSource,pinnedRevision} from './provenance.mjs';
 
 export function parseSource(source) {
   const doc = parseDocument(source, {version:'1.2', uniqueKeys:true});
@@ -397,18 +398,20 @@ export async function loadEpisode(file) {
   const manifestPath=await realpath(resolve(dirname(productionPath),p.model.manifest));
   const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
   validateEpisode(e,manifest);
+  // The revision the export records it was made from (ADR-019), once the
+  // episode's model block is known to be whole.
+  const exported=exportSource(manifest,manifestPath);
+  pinnedRevision(e.model.sourceRevision,exported,manifestPath);
   const paths=assemblyPaths(manifest.root);
   for(const layer of Object.values(e.layers)) for(const path of layer) need(paths.has(JSON.stringify(path)),`Missing assembly path: ${path.join('/')}`);
   for(const path of Object.values(e.evidence)) await readFile(resolve(dirname(productionPath),path));
   const repository=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:base,encoding:'utf8'}).trim();
   need(!relative(repository,base).startsWith('..'),'Episode must live inside its project repository');
-  const sourceRevision=(await readFile(resolve(dirname(manifestPath),'source-revision.txt'),'utf8')).trim();
-  need(e.model.sourceRevision===sourceRevision,'Pin model.sourceRevision to the export source-revision.txt before rendering');
   e.paths={episode:episodePath,production:productionPath,manifest:manifestPath,repository,build:resolve(base,'_build')};
   e.sourceCode=await loadSourceCode(e);
   for(const shot of e.shots)validateCodeSource(e,shot);
   await loadPictures(e);
-  return episodeFilm(e);
+  return Object.assign(episodeFilm(e),{exportSource:exported});
 }
 
 // The masthead the film page drew for every YAML episode, now data the paper

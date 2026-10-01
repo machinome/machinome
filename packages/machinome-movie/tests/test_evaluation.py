@@ -1,6 +1,6 @@
 """Layer 1: a movie evaluates to the machinome-movie/0.2 document, twice
-identically, opening nothing but the export's manifest and source revision
-and the excerpts an emphasis lights.
+identically, opening nothing but the export's manifest, whose `source`
+record gives the model's revision, and the excerpts an emphasis lights.
 
 The mapping assertions read the tour fixture movie, which uses every
 construct the validation film uses; each assertion names the construct.
@@ -61,7 +61,8 @@ def test_top_level(tour):
 
 
 def test_model_block_and_paths_relative_to_root(tour):
-    revision = (EXPORT / 'source-revision.txt').read_text().strip()
+    # The revision the framework recorded in the export's manifest.
+    revision = json.loads((EXPORT / 'manifest.json').read_text())['source']['revision']
     assert tour['model'] == {
         'manifest': '../../export/seesaw/manifest.json',
         'expectedDurationSeconds': 20,
@@ -285,7 +286,7 @@ def test_root_follows_where_the_document_is_written():
     assert document['stage']['modules'] == ['stage.tsx']
 
 
-def test_evaluation_opens_only_the_manifest_revision_and_emphasised_excerpts(monkeypatch):
+def test_evaluation_opens_only_the_manifest_and_emphasised_excerpts(monkeypatch):
     opened = []
     real_open = builtins.open
 
@@ -306,10 +307,10 @@ def test_evaluation_opens_only_the_manifest_revision_and_emphasised_excerpts(mon
     evaluate(Tour, name='tour')
     evaluate(Minimal, name='minimal')
     monkeypatch.undo()
-    assert set(opened) == {EXPORT / 'manifest.json', EXPORT / 'source-revision.txt', SOURCE}
+    assert set(opened) == {EXPORT / 'manifest.json', SOURCE}
 
 
-def stale_export(tmp_path, drop=None, revision=True, loop=20.0):
+def stale_export(tmp_path, drop=None, source=True, loop=20.0):
     target = tmp_path / 'export'
     shutil.copytree(EXPORT, target)
     manifest = json.loads((target / 'manifest.json').read_text())
@@ -318,9 +319,13 @@ def stale_export(tmp_path, drop=None, revision=True, loop=20.0):
         beam['children'] = [c for c in beam['children'] if c['name'] != drop]
     if loop is None:
         del manifest['animation']['loop']
+    if source is not True:
+        # No source record (an export made before the framework recorded
+        # it, or outside Git), or the one given.
+        manifest.pop('source', None)
+        if source is not None:
+            manifest['source'] = source
     (target / 'manifest.json').write_text(json.dumps(manifest))
-    if not revision:
-        (target / 'source-revision.txt').unlink()
     return target
 
 
@@ -356,9 +361,33 @@ def test_part_path_the_export_lacks(tmp_path):
         assert name in message, message
 
 
-def test_export_without_a_revision_is_unpinned(tmp_path):
-    document = evaluate(movie_on(stale_export(tmp_path, revision=False)), name='stale')
-    assert document['model']['sourceRevision'] is None
+def test_export_without_a_source_is_refused_by_name(tmp_path):
+    # Whatever lies beside the manifest: a sidecar naming the revision is
+    # not read (the framework never wrote one).
+    target = stale_export(tmp_path, source=None)
+    (target / 'source-revision.txt').write_text('10b189d1516c880a7fdab7370fa9d32866945db6\n')
+    with pytest.raises(MovieError) as refusal:
+        evaluate(movie_on(target), name='stale')
+    message = str(refusal.value)
+    for name in ('Movie Untitled', 'manifest.json', 'records no source', 'source.revision',
+                 'export the model again', 'Git'):
+        assert name in message, message
+
+
+def test_export_whose_source_revision_is_not_a_commit_is_refused(tmp_path):
+    with pytest.raises(MovieError) as refusal:
+        evaluate(movie_on(stale_export(tmp_path, source={'revision': 'abc', 'dirty': False})),
+                 name='stale')
+    message = str(refusal.value)
+    for name in ('manifest.json', 'source.revision', 'abc', 'full commit hash'):
+        assert name in message, message
+
+
+def test_a_dirty_export_is_evaluated_from_its_revision(tmp_path):
+    revision = 'ab' * 20
+    document = evaluate(movie_on(stale_export(tmp_path, source={'revision': revision, 'dirty': True})),
+                        name='stale')
+    assert document['model']['sourceRevision'] == revision
 
 
 def test_export_that_is_not_a_posed_loop(tmp_path):

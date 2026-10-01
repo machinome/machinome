@@ -4,7 +4,7 @@
 // and through the functions it calls.
 import {slowTest as test} from '../support/memo.mjs';
 import assert from 'node:assert/strict';
-import {writeFile,readFile,readdir,appendFile,realpath} from 'node:fs/promises';
+import {writeFile,readFile,readdir,appendFile,realpath,rm} from 'node:fs/promises';
 import {join,basename,dirname} from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {fileURLToPath,pathToFileURL} from 'node:url';
@@ -388,6 +388,40 @@ test('preview and render serve the files the viewer reads: a provenance source i
     assert.ok(refused.out.split('\n').includes(refusal),refused.out);
     assert.equal(refused.launches,0,`${command} refuses before a browser opens`);
   }
+  assert.deepEqual(calls,[]);
+});
+
+// Wart 9 of the Curta film Addition (read-the-exports-source, ADR-019): the
+// model's revision is the one the framework recorded in its export's
+// manifest, `source.revision`. A sidecar beside the manifest is not read, an
+// export that records no source is refused by name, a malformed record by
+// its field, and a pin that differs naming both revisions.
+test('check reads the revision from the export\'s source: none is refused by name, a malformed one by its field, a differing pin naming both',async t=>{
+  const calls=noNetwork(t);
+  const {dir,file,viewer,document:doc}=await fixtureMovie(t,'minimal');
+  const manifest=join(dir,'export','seesaw','manifest.json'),path=await realpath(manifest),pinned=doc.model.sourceRevision;
+  await writeFile(join(dir,'export','seesaw','source-revision.txt'),pinned+'\n');
+  const refusedWith=async(edit,words)=>{
+    await editDocument(manifest,edit);
+    const refused=cli('check',file,'--viewer',viewer);
+    assert.equal(refused.code,1,refused.out);
+    assert.ok(refused.out.split('\n').includes(words),refused.out);
+  };
+  await refusedWith(m=>{delete m.source;},
+    `The export ${path} records no source, the revision it was made from (manifest field source.revision); export the model again with a machinome that records it, from the project's Git repository with a commit: a project outside Git cannot be filmed with a pinned revision`);
+  await refusedWith(m=>{m.source={revision:'abc',dirty:false};},
+    `The export ${path} records source.revision "abc", which is not a full commit hash; export the model again`);
+  await refusedWith(m=>{m.source={revision:pinned,dirty:'yes'};},
+    `The export ${path} records source.dirty "yes", which is not true or false; export the model again`);
+  const other='0123456789abcdef0123456789abcdef01234567';
+  await refusedWith(m=>{m.source={revision:other,dirty:false};},
+    `model.sourceRevision is ${pinned}, and the export ${path} was made from source.revision ${other}; pin the revision the export records (evaluate a movie again), or export the model again from ${pinned}`);
+  // The revision it records, the sidecar removed: checked.
+  await rm(join(dir,'export','seesaw','source-revision.txt'));
+  await editDocument(manifest,m=>{m.source={revision:pinned,dirty:false};});
+  const checked=cli('check',file,'--viewer',viewer);
+  assert.equal(checked.code,0,checked.out);
+  assert.match(checked.out,new RegExp(`^Export: made from ${pinned.slice(0,12)}, clean$`,'m'));
   assert.deepEqual(calls,[]);
 });
 

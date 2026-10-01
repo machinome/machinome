@@ -11,8 +11,12 @@
 // old in-memory tests wrote it), with file references (sourceCode, stills,
 // clips, evidence, release.descriptionTemplate) relative to the project root.
 // The helper writes the episode as JSON (YAML 1.2 reads it), points its model
-// at the project's export and pins the export's revision. `project.commit()`
+// at the project's export and pins the export's revision: the export's
+// manifest records the project's commit as its `source`, clean, as the
+// framework's export made at that commit records it. `project.commit()`
 // commits every file but the export and the build directories, and re-pins.
+// `project.setManifest(value)` writes the export's manifest with that source,
+// unless `value` names its own `source` (undefined leaves it out).
 import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,relative,dirname} from 'node:path';
@@ -36,16 +40,21 @@ export async function yamlProject(t,{manifest=PAWL_MANIFEST,files={}}={}){
     await mkdir(dirname(join(dir,name)),{recursive:true});await writeFile(join(dir,name),content);
   }
   const exportDir=join(dir,'export','model'),manifestFile=join(exportDir,'manifest.json');
+  let written=manifest;
   const project={dir,git,revision:null,manifest:manifestFile,
-    // Commits every file but the export and build directories; the export pins the new revision.
+    // Commits every file but the export and build directories; the export records the new revision.
     async commit(message='fixture'){
       git('add','-A');
       git('commit','-q','--allow-empty','-m',message);
       project.revision=git('rev-parse','HEAD');
-      await writeFile(join(exportDir,'source-revision.txt'),project.revision+'\n');
+      await project.setManifest(written);
       return project.revision;
     },
-    async setManifest(value){await writeFile(manifestFile,JSON.stringify(value));},
+    async setManifest(value){
+      written=value;
+      const source='source' in value||!project.revision?{}:{source:{revision:project.revision,dirty:false}};
+      await writeFile(manifestFile,JSON.stringify({...value,...source}));
+    },
     // Writes the episode at <dir>/<at>/episode.yaml and loads it.
     async write(e,{at='.'}={}){
       const base=join(dir,at),up=p=>relative(base,join(dir,p));

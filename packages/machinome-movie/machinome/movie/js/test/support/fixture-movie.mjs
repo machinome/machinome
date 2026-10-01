@@ -41,8 +41,10 @@ export async function fixtureProjectCopy(t){
   git('add','-A','--',':!export');
   git('commit','-q','-m','Fixture project');
   const revision=git('rev-parse','HEAD');
-  const pinned=(await readFile(join(dir,'export','seesaw','source-revision.txt'),'utf8')).trim();
-  if(revision!==pinned)throw new Error(`The fixture project's commit is ${revision}, and export/seesaw/source-revision.txt pins ${pinned}; re-pin it by the recipe in fixtures/README.md`);
+  // The framework recorded the commit each export was made from in its
+  // manifest's source (scripts/pin-fixture-project.mjs exports from it).
+  const pinned=(await readJson(join(dir,'export','seesaw','manifest.json'))).source?.revision;
+  if(revision!==pinned)throw new Error(`The fixture project's commit is ${revision}, and export/seesaw/manifest.json records source.revision ${pinned}; re-pin it by the recipe in fixtures/README.md`);
   return {dir,git};
 }
 

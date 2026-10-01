@@ -19,6 +19,7 @@ import {TOKEN,countPhrase,countWords,countToken,excerptLine,propKind,spokenForm}
 import {effectiveStyle,COLOR} from './style.mjs';
 import {joinShows,movingViews,noViewInBoth,modelSecondsAt} from './timeline.mjs';
 import {checkTakeBanks,takeTimes} from './take.mjs';
+import {exportSource,pinnedRevision} from './provenance.mjs';
 // Seconds within which a model time the reader adds itself, a mark plus its
 // `plus`, is still inside the take (the Python side's TOLERANCE). The take's
 // own sums are exact and held with no tolerance (ADR-016).
@@ -677,6 +678,10 @@ export async function loadMovie(file){
   const {doc,documentPath,base,build}=await readMovie(file);
   const manifestPath=await realpath(resolve(base,doc.model.manifest));
   const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
+  // The revision the export records it was made from, before any take
+  // (ADR-019).
+  const exported=exportSource(manifest,manifestPath);
+  pinnedRevision(doc.model.sourceRevision,exported,manifestPath);
   checkMovie(doc,{manifest,sources:await excerptSources(doc,base)});
   const repository=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:base,encoding:'utf8'}).trim();
   need(contained(repository,base),'Movie root must live inside its project repository');
@@ -700,10 +705,9 @@ export async function loadMovie(file){
   const film=structuredClone(resolved);
   checkProject(film,manifest);
   for(const path of Object.values(film.evidence))await readFile(resolve(base,path));
-  const sourceRevision=(await readFile(resolve(dirname(manifestPath),'source-revision.txt'),'utf8')).trim();
-  need(film.model.sourceRevision===sourceRevision,'Pin model.sourceRevision to the export source-revision.txt before rendering');
   film.paths={episode:documentPath,production:documentPath,base,manifest:manifestPath,repository,build};
   film.source='movie';
+  film.exportSource=exported;
   film.wordTiming=wordTiming;
   film.excerpts=await loadSourceCode({sourceCode:film.sourceCode,model:film.model,paths:film.paths});
   await loadPictures(film);

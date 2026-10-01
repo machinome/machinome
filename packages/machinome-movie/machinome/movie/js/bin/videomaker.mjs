@@ -126,7 +126,8 @@ try{
       }
     }
     // The trees a render would name the heads of, and whether they are dirty
-    // now (ADR-015): the project's and this checkout's.
+    // now (ADR-015): the project's and this checkout's; then the revision the
+    // export was made from and whether the project was dirty then (ADR-019).
     await readTrees(e,'check');
     process.exit(0);
   }

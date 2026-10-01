@@ -12,14 +12,14 @@
     "name": "Seesaw",
     "type": "AssemblyNode",
     "color": null,
-    "mtime": 1790802578.936274,
+    "mtime": 1790847256.942394,
     "operations": [],
     "children": [
       {
         "name": "Base",
         "type": "LeafNode",
         "color": "#8f9aa3",
-        "mtime": 1790802578.936274,
+        "mtime": 1790847256.942394,
         "operations": [
           [
             "t",
@@ -37,7 +37,7 @@
         "name": "Stand",
         "type": "LeafNode",
         "color": "#8f9aa3",
-        "mtime": 1790802578.936274,
+        "mtime": 1790847256.942394,
         "operations": [
           [
             "r",
@@ -64,7 +64,7 @@
         "name": "Beam",
         "type": "AssemblyNode",
         "color": null,
-        "mtime": 1790802578.936274,
+        "mtime": 1790847256.942394,
         "operations": [
           [
             "r",
@@ -89,7 +89,7 @@
             "name": "Plank",
             "type": "LeafNode",
             "color": "#8f9aa3",
-            "mtime": 1790802578.936274,
+            "mtime": 1790847256.942394,
             "operations": [
               [
                 "t",
@@ -107,7 +107,7 @@
             "name": "Weight",
             "type": "LeafNode",
             "color": "#8f9aa3",
-            "mtime": 1790802578.936274,
+            "mtime": 1790847256.942394,
             "operations": [
               [
                 "t",
@@ -125,7 +125,7 @@
             "name": "pivot",
             "type": "LeafNode",
             "color": "#8f9aa3",
-            "mtime": 1790802578.936274,
+            "mtime": 1790847256.942394,
             "operations": [
               [
                 "r",
@@ -163,5 +163,9 @@
       "volume": 4000.0,
       "watertight": true
     }
-  ]
+  ],
+  "source": {
+    "revision": "10b189d1516c880a7fdab7370fa9d32866945db6",
+    "dirty": false
+  }
 }

@@ -467,7 +467,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    1 October 2026), with `Sim` failing through a symlinked project path and
 
    `machinome export` writing no `source-revision.txt`.
-    Triage, 1 October 2026 (orchestrator): the framework side is fixed on the bench `curta-findings` (`sim-identity`, a read-only `Sim.identity`); Videomaker reads it in a later cycle once that bench is in the framework's `main`.
+    Triage, 1 October 2026 (orchestrator): the framework side fixed (`sim-identity`, a read-only `Sim.identity`, in the framework's `main` 096217f with `export-records-its-revision`, ADR-158); the revision half consumed by `read-the-exports-source` (archived 2026-10-01, merged the same day, ADR-019): both runtimes take `model.sourceRevision` from the manifest's `source.revision`, refuse an export without one by name, and carry the export's dirt as provenance (`Export:` line, `exportRevision`/`exportDirty`, a `releaseIssues` entry); nothing reads `source-revision.txt`. The identity half is cycle `take-identity`.
 
 10. **Marks on a take with the viewer double stay put**: the double's part
 
@@ -524,4 +524,8 @@ Recorded at the merges; triage by the orchestrator unless stated.
 28. **The Curta project moved under the campaign:** its `main` advanced to f2ad951 ("Rename Curta models to posed, mechanistic and event-driven") at 09:04 while the campaign's cycles ran their film proofs, so the film's evaluated document (`_build/movie.json`, 03:15) is stale against its sources and `check` refuses from every checkout (`the token 'Driver' is absent from line 52 of the excerpt drivers`). Found by `stable-stage-bundle`. Project work at the campaign's close: evaluate, export and prove the film again on the renamed project.
 29. **The real viewer's rectangle for a turned drum changes size more than place** (its centre moves about 2 px between units 0 and 1): a ring shows the change, a label barely would. The viewer's; recorded. Found by `double-poses-a-bank`.
 30. **The fixture counter's marks are whole crank turns**, so the real viewer draws the handle alike at every mark, and only the take's start and the mark `one` share a box; a fixture that wants a mark-to-mark proof needs a mark mid-turn. Found by `double-poses-a-bank`. Recorded.
+31. **`speech` generates missing takes, which are paid, before it loads the film**, so an unrecorded or mismatched export is refused only after paying. Pre-existing. Found by `read-the-exports-source`. Recorded; the smallest fix loads and refuses first.
+32. **A fixture export's revision cannot be Videomaker's HEAD**: the fixture movies' source panels run `git show <revision>:…` in the recipe's own repository, and Videomaker's tree is dirty while a change is made; `scripts/pin-fixture-project.mjs --machinome` therefore exports inside the recipe commit (10b189d1516c…, clean). Found by `read-the-exports-source`; the brief had assumed otherwise. Settled.
+33. **Exporting two models from one checkout records the second dirty unless `_build/` is ignored**, since the first build is left untracked; the pin recipe ignores it in `.git/info/exclude`. The Curta ignores neither `_build/` nor `export/` (finding 17). Found by `read-the-exports-source`.
+34. **The schema allowed `"sourceRevision": null`**, which nothing produced or accepted; the orchestrator tightened it to a string at the merge of `read-the-exports-source`. `docs/FORMAT.md`'s "A null revision marks unpinned source" was corrected by the cycle.
 

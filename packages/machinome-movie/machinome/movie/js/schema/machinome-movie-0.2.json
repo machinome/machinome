@@ -61,10 +61,7 @@
           "type": "string"
         },
         "sourceRevision": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "readiness": {
           "type": "string"

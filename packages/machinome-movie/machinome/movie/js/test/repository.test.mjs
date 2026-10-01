@@ -145,3 +145,18 @@ test('the manual and the records say the stage bundle is the same bytes from any
   assert.ok((await read('CHANGELOG.md')).includes('(`stable-stage-bundle`, ADR-013)'),'the changelog bullet');
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-013](PIPELINE/ADR-013-the-stage-bundle-names-its-files-by-the-tool-and-the-project.md)'),'the ADR index');
 });
+
+test('the manual reads the revision from the export\'s source and names no sidecar (read-the-exports-source)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const pages=['README.md','docs/FORMAT.md','docs/declaring-a-movie.md','docs/movie-document.md','docs/stage.md',
+    'docs/architecture-overview.md','fixtures/README.md'];
+  for(const page of pages)assert.ok(!(await read(page)).includes('source-revision.txt'),`${page} names no sidecar`);
+  const readme=await read('README.md');
+  assert.ok(readme.includes('`Export: made from <revision>, clean`'),'README: the Export line');
+  for(const field of ['`source.revision`','`exportRevision`','`exportDirty`'])assert.ok(readme.includes(field),`README: ${field}`);
+  assert.ok((await read('docs/declaring-a-movie.md')).includes('`source.revision`'),'declaring-a-movie.md: where the revision comes from');
+  assert.ok((await read('docs/FORMAT.md')).includes('`source.revision`'),'FORMAT.md: the production model block');
+  assert.ok((await read('CHANGELOG.md')).includes('(`read-the-exports-source`, ADR-019)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md)'),'the ADR index');
+  for(const name of ['seesaw','counter'])assert.ok(!await exists(`python/tests/fixtures/project/export/${name}/source-revision.txt`),`export/${name} has no sidecar`);
+});

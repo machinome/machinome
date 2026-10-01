@@ -90,9 +90,14 @@ def test_the_fixture_revision_is_a_reproducible_commit_of_the_project(tmp_path):
                           capture_output=True, text=True).stdout.strip()
     exports = sorted(path.parent.name for path in (PROJECT / 'export').glob('*/manifest.json'))
     assert exports == ['counter', 'seesaw']
+    # Each export was made by the framework from that commit, which its
+    # manifest records clean (scripts/pin-fixture-project.mjs); no sidecar
+    # beside it names the revision.
     for name in exports:
-        pinned = (PROJECT / 'export' / name / 'source-revision.txt').read_text().strip()
-        assert head == pinned, f'export/{name}/source-revision.txt should read {head}'
+        recorded = json.loads((PROJECT / 'export' / name / 'manifest.json').read_text()).get('source')
+        assert recorded == {'revision': head, 'dirty': False}, \
+            f'export/{name}/manifest.json should record source {{revision: {head}, dirty: false}}'
+        assert not (PROJECT / 'export' / name / 'source-revision.txt').exists()
 
 
 def test_the_counter_is_the_framework_tutorials_clocked_export():

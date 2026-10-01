@@ -1,8 +1,8 @@
 """Evaluate a movie, once and purely, to the machinome-movie/0.2 document.
 
-The only files opened are the export's `manifest.json` and
-`source-revision.txt` and the source files of the excerpts an emphasis
-lights; the stage modules are checked to exist, not read. A movie that
+The only files opened are the export's `manifest.json`, whose `source`
+record gives the model's revision, and the source files of the excerpts an
+emphasis lights; the stage modules are checked to exist, not read. A movie that
 films a clocked `Take` also records the take: the framework's simulation of
 the declared model, constructed once, makes the steps, and what it returned
 is written verbatim; the simulation reads the model's own project files and
@@ -14,6 +14,7 @@ import json
 import math
 import numbers
 import os
+import re
 
 from .document import FORMAT, _paths, check_document
 from .movie import Credits, Evidence, Format, Movie, Narrator, Release
@@ -44,6 +45,7 @@ def evaluate(movie, *, name, out=None):
     loop = _one_loop(where, chapters)
     export = loop.export_directory()
     manifest = _read_json(os.path.join(export, 'manifest.json'), where)
+    revision = _source_revision(manifest, relative(os.path.join(export, 'manifest.json')), where)
     if issubclass(loop, Take):
         take = _record(loop, manifest, relative(export))
         seconds, mode, marks = loop.length, 'take', dict(loop.marks)
@@ -55,7 +57,6 @@ def evaluate(movie, *, name, out=None):
                              f'films a posed model\'s normalized loop, and a clocked machine is '
                              f'filmed through a Take')
         mode, marks = 'normalized-loop', dict(loop.marks)
-    revision = _read_revision(os.path.join(export, 'source-revision.txt'))
     paths = _paths(manifest.get('root') or {})
     for chapter_id, compiled in chapters:
         for here, written, names in compiled['parts']:
@@ -397,12 +398,29 @@ def _read_json(path, where):
         raise MovieError(f'{where}: there is no export manifest at {path}; export the model first')
 
 
-def _read_revision(path):
-    try:
-        with open(path, encoding='utf-8') as stream:
-            return stream.read().strip() or None
-    except FileNotFoundError:
-        return None
+_FULL_HASH = re.compile(r'(?:[0-9a-f]{40}|[0-9a-f]{64})')
+
+
+def _source_revision(manifest, path, where):
+    """The revision the export records it was made from: the manifest's
+    `source.revision`, as the framework writes it (ADR-019). Nothing beside
+    the manifest is read for it; an export without it is refused."""
+    if 'source' not in manifest:
+        raise MovieError(f"{where}: the export {path} records no source, the revision it was made "
+                         f"from (manifest field source.revision); export the model again with a "
+                         f"machinome that records it, from the project's Git repository with a "
+                         f"commit: a project outside Git cannot be filmed with a pinned revision")
+    source = manifest['source']
+    revision = source.get('revision') if isinstance(source, dict) else None
+    if not isinstance(revision, str) or not _FULL_HASH.fullmatch(revision):
+        raise MovieError(f'{where}: the export {path} records source.revision '
+                         f'{json.dumps(revision)}, which is not a full commit hash; '
+                         f'export the model again')
+    if not isinstance(source.get('dirty'), bool):
+        raise MovieError(f'{where}: the export {path} records source.dirty '
+                         f'{json.dumps(source.get("dirty"))}, which is not true or false; '
+                         f'export the model again')
+    return revision
 
 
 def _check_path(paths, where, written, names, export):

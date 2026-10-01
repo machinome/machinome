@@ -24,21 +24,25 @@ import {reviewManifest} from './review-pack.mjs';
 import {effectiveStyle} from './style.mjs';
 import {buildFilmStage} from './stage-build.mjs';
 import {measureSetsOn,reframeBoxes,reframeSets} from './layout.mjs';
-import {treeState,treeLine,treeReleaseIssue} from './provenance.mjs';
+import {treeState,treeLine,treeReleaseIssue,exportLine,exportReleaseIssue,exportProvenance,withoutSource} from './provenance.mjs';
 import {exportFiles} from './export.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 // The two trees a film's records name a head of, the project's and
 // Videomaker's own checkout, read and printed in the command's words
 // (ADR-015): by preview and render once before the first frame, by check
-// after its other lines.
+// after its other lines. After them, the revision the model's export was
+// made from and whether the project was dirty then, as the export's manifest
+// records it and the film's load read it (ADR-019).
 export async function readTrees(film,commandName){
-  const trees={project:await treeState(film.paths.repository),workflow:await treeState(resolve(here,'..'))};
+  const trees={project:await treeState(film.paths.repository),workflow:await treeState(resolve(here,'..')),
+    export:film.exportSource};
   for(const tree of ['project','workflow'])console.log(treeLine(tree,trees[tree],commandName));
+  console.log(exportLine(trees.export,commandName));
   return trees;
 }
 const treeProvenance=trees=>({workflowHead:trees.workflow.head,workflowDirty:trees.workflow.dirty,
-  projectHead:trees.project.head,projectDirty:trees.project.dirty});
+  projectHead:trees.project.head,projectDirty:trees.project.dirty,...exportProvenance(trees.export)});
 // Headless Chromium with software WebGL: the browser every session renders in.
 export const CHROMIUM_ARGS=['--use-angle=swiftshader','--enable-unsafe-swiftshader'];
 const unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
@@ -884,7 +888,11 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
     // Every page file (the stage bundle, its CSS, the page, the viewer, the
     // model) is a common input: a changed one recaptures every shot.
     const sharedHashes=Object.fromEntries(Object.entries(info.hashes).filter(([url])=>!url.startsWith('/pictures/')));
-    const commonKey=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,hashes:sharedHashes,browser:info.browser,
+    // The model's manifest is keyed without its source record, which is
+    // provenance and no picture input (ADR-019); it is served as it is.
+    const keyedHashes={...sharedHashes,'/model/manifest.json':
+      hash(JSON.stringify(withoutSource(JSON.parse(await readFile(film.paths.manifest,'utf8')))))};
+    const commonKey=hash(JSON.stringify({schema:SHOT_CACHE_SCHEMA,hashes:keyedHashes,browser:info.browser,
       viewerApi:info.viewerApi,width,height:info.height,fps,
       // Film duration stays a common input, deliberately conservative
       // (remove-progress-rule D4): no drawn element reads it any more.
@@ -903,7 +911,8 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
     const reviewSamples=buildReviewSamplePlan(film,units,fps);
     await fingerprintShotUnits(film,units,commonKey);
     const root=shotCacheRoot(film.paths.build),selections=new Map(),shotReports=[];
-    // The trees' heads and dirt are provenance, never a key (ADR-015).
+    // The trees' heads and dirt, and the export's revision and dirt, are
+    // provenance, never a key (ADR-015, ADR-019).
     const captureProvenance={...treeProvenance(trees),
       episodeSha256:await fileHash(film.paths.episode),productionSha256:await fileHash(film.paths.production),
       viewerSha256:sharedHashes['/viewer.js'],modelSha256:sharedHashes['/model/manifest.json'],
@@ -982,7 +991,8 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
   const releaseIssues=[...(description===null?['no release.descriptionTemplate: description.md is not written']:[]),
     ...['simulationUrl','sourceUrl'].filter(field=>!film.release?.[field]).map(field=>`release.${field} is unresolved`),
     ...pictureReleaseIssues,
-    ...['project','workflow'].map(tree=>treeReleaseIssue(tree,trees[tree])).filter(Boolean)];
+    ...['project','workflow'].map(tree=>treeReleaseIssue(tree,trees[tree])).filter(Boolean),
+    ...[exportReleaseIssue(trees.export)].filter(Boolean)];
   const releaseReady=releaseIssues.length===0;
   const descriptionOutput=resolve(film.paths.build,'description.md'),pendingDescription=`${descriptionOutput}.pending-${publicationId}`;
   if(description!==null)await writeFile(pendingDescription,description

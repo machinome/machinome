@@ -78,7 +78,10 @@ Narration lives only inside each shot; there is no separate script to keep in sy
 
 - `output`: `width`, `height`, `fps`, `durationSeconds`.
 - `model`: relative `manifest`, `expectedDurationSeconds`, `timeMode`,
-  `sourceRevision` and `readiness`. A null revision marks unpinned source.
+  `sourceRevision` and `readiness`. `sourceRevision` is the full commit hash
+  the export's manifest records it was made from, its `source.revision`
+  (written by `machinome export`); a revision that differs, and an export
+  whose manifest records no `source`, are refused.
 - `audio`: provider/model/voice, direction, pronunciation notes and timing notes;
   optional `voiceSettings` passed to ElevenLabs and `replacements` mapping
   written terms to spoken aliases. Captions restore the written spelling.
@@ -186,7 +189,7 @@ sourceCode:
 
 The inclusive, one-based range must exist in a `.py` file inside the consuming
 Git repository. The entire file must match `model.sourceRevision`, a full commit
-hash matching the export. Missing, modified or external files are refused.
+hash matching the export's `source.revision`. Missing, modified or external files are refused.
 Only common leading spaces are removed; source is never evaluated. File path,
 revision, range, dedent and file/excerpt SHA-256 values enter the build manifest.
 

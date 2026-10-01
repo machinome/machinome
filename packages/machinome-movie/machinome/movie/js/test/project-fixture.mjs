@@ -31,8 +31,8 @@ export async function fixtureProject(t){
   git('-c','commit.gpgsign=false','commit','-qm','fixture model');
   const revision=git('rev-parse','HEAD');
   await mkdir(join(dir,'export','fixture'),{recursive:true});
-  await writeFile(join(dir,'export','fixture','manifest.json'),JSON.stringify(MANIFEST));
-  await writeFile(join(dir,'export','fixture','source-revision.txt'),revision+'\n');
+  // The export records the commit it was made from, as the framework does.
+  await writeFile(join(dir,'export','fixture','manifest.json'),JSON.stringify({...MANIFEST,source:{revision,dirty:false}}));
   return {dir,revision};
 }
 
