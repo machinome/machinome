@@ -1,0 +1,2189 @@
+{
+ "mode": "alternatives",
+ "source": "/home/asa/devel/machinome/projects/Calculators/Curta-Type-I-3x/videos/addition/_build/movie.json",
+ "shot": "add-23",
+ "width": 1920,
+ "movieResolved": {
+  "before": "b159b2fb8d6602aac18da9803b57da8bd6d6c1a2e52e110a80ca0d83ce787ec1",
+  "after": "b159b2fb8d6602aac18da9803b57da8bd6d6c1a2e52e110a80ca0d83ce787ec1"
+ },
+ "started": "2026-10-01T08:31:59.591Z",
+ "load1Start": 10.92,
+ "runs": [
+  {
+   "variant": "stage",
+   "rows": [
+    {
+     "index": 648,
+     "time": 21.6,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 10.92,
+       "pose": 100.95184299999983,
+       "rafCount": 6,
+       "ms": 10397.002181,
+       "cpu": {
+        "browser": 60,
+        "zygote": 0,
+        "gpu-process": 117720,
+        "utility": 0,
+        "renderer": 10,
+        "node": 17.144999999999982
+       },
+       "size": 167143,
+       "sha256": "6fecf5c91002d665b831b3f0b71437a0b73fcec5202af74c9bb813bdf4d09c76",
+       "pixels": "793e9742b90c12056bab6ed3b3967e3b4f41c6fd115b1eb543f39d9ccd585814"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.05,
+       "pose": 16.459421999999904,
+       "rafCount": 0,
+       "ms": 89.88553900000261,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.923999999999978
+       },
+       "firstMs": 985.647503000002,
+       "size": 167143,
+       "sha256": "6fecf5c91002d665b831b3f0b71437a0b73fcec5202af74c9bb813bdf4d09c76",
+       "pixels": "793e9742b90c12056bab6ed3b3967e3b4f41c6fd115b1eb543f39d9ccd585814"
+      },
+      {
+       "name": "png",
+       "load1": 12.05,
+       "pose": 14.4200720000008,
+       "rafCount": 0,
+       "ms": 1163.739329,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10960,
+        "utility": 0,
+        "renderer": 0,
+        "node": 74.18199999999979
+       },
+       "size": 167143,
+       "sha256": "6fecf5c91002d665b831b3f0b71437a0b73fcec5202af74c9bb813bdf4d09c76",
+       "pixels": "793e9742b90c12056bab6ed3b3967e3b4f41c6fd115b1eb543f39d9ccd585814"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.05,
+       "pose": 18.328896999999415,
+       "rafCount": 0,
+       "ms": 85.05268199999773,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 90,
+        "utility": 0,
+        "renderer": 10,
+        "node": 12.083999999999833
+       },
+       "firstMs": 1090.5351960000007,
+       "size": 167143,
+       "sha256": "6fecf5c91002d665b831b3f0b71437a0b73fcec5202af74c9bb813bdf4d09c76",
+       "pixels": "793e9742b90c12056bab6ed3b3967e3b4f41c6fd115b1eb543f39d9ccd585814"
+      },
+      {
+       "name": "png2",
+       "load1": 12.05,
+       "pose": 24.34400900000037,
+       "rafCount": 0,
+       "ms": 1060.3686339999986,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10860,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.856999999999971
+       },
+       "size": 167143,
+       "sha256": "6fecf5c91002d665b831b3f0b71437a0b73fcec5202af74c9bb813bdf4d09c76",
+       "pixels": "793e9742b90c12056bab6ed3b3967e3b4f41c6fd115b1eb543f39d9ccd585814"
+      }
+     ]
+    },
+    {
+     "index": 651,
+     "time": 21.7,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 12.05,
+       "pose": 30.74343399999998,
+       "rafCount": 0,
+       "ms": 1138.679089000001,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10880,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.536000000000058
+       },
+       "size": 167003,
+       "sha256": "a9eded7ee4dab5ad880cccb7eedc8cd84b6fce6df39f7890be275c05477bcd25",
+       "pixels": "f4e76a823cfd0753771d0051c5edc1fb06c6e407e850e0c3a605a74d4a23735c"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 11.24,
+       "pose": 25.805265999999392,
+       "rafCount": 0,
+       "ms": 139.93678600000203,
+       "cpu": {
+        "browser": 60,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.490999999999985
+       },
+       "firstMs": 1070.2967310000022,
+       "size": 167003,
+       "sha256": "a9eded7ee4dab5ad880cccb7eedc8cd84b6fce6df39f7890be275c05477bcd25",
+       "pixels": "f4e76a823cfd0753771d0051c5edc1fb06c6e407e850e0c3a605a74d4a23735c"
+      },
+      {
+       "name": "png",
+       "load1": 11.24,
+       "pose": 17.887394000001223,
+       "rafCount": 0,
+       "ms": 1097.7621739999995,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 11040,
+        "utility": 0,
+        "renderer": 0,
+        "node": 37.46499999999969
+       },
+       "size": 167003,
+       "sha256": "a9eded7ee4dab5ad880cccb7eedc8cd84b6fce6df39f7890be275c05477bcd25",
+       "pixels": "f4e76a823cfd0753771d0051c5edc1fb06c6e407e850e0c3a605a74d4a23735c"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 11.24,
+       "pose": 14.004829999998037,
+       "rafCount": 0,
+       "ms": 84.70797500000117,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 13.363000000000284
+       },
+       "firstMs": 1135.418303999999,
+       "size": 167003,
+       "sha256": "a9eded7ee4dab5ad880cccb7eedc8cd84b6fce6df39f7890be275c05477bcd25",
+       "pixels": "f4e76a823cfd0753771d0051c5edc1fb06c6e407e850e0c3a605a74d4a23735c"
+      },
+      {
+       "name": "png2",
+       "load1": 10.58,
+       "pose": 27.677575999998226,
+       "rafCount": 0,
+       "ms": 1047.1862,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10450,
+        "utility": 0,
+        "renderer": 10,
+        "node": 15.262000000000171
+       },
+       "size": 167003,
+       "sha256": "a9eded7ee4dab5ad880cccb7eedc8cd84b6fce6df39f7890be275c05477bcd25",
+       "pixels": "f4e76a823cfd0753771d0051c5edc1fb06c6e407e850e0c3a605a74d4a23735c"
+      }
+     ]
+    },
+    {
+     "index": 654,
+     "time": 21.8,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 10.58,
+       "pose": 30.827754999998433,
+       "rafCount": 0,
+       "ms": 1091.7727859999977,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10910,
+        "utility": 0,
+        "renderer": 30,
+        "node": 60.45500000000038
+       },
+       "size": 167403,
+       "sha256": "c9e632f4b32cc0a39824fe8cf48533a2012d3d8a6598b6e0e1ddca2eb1d248d8",
+       "pixels": "305035e29f7509e84cee611b5b7688ab419a6c44057b8dbbf10652f6844879aa"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 10.58,
+       "pose": 17.178744000000734,
+       "rafCount": 0,
+       "ms": 77.50828300000285,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 10,
+        "node": 10.472999999999956
+       },
+       "firstMs": 1010.870300999999,
+       "size": 167403,
+       "sha256": "c9e632f4b32cc0a39824fe8cf48533a2012d3d8a6598b6e0e1ddca2eb1d248d8",
+       "pixels": "305035e29f7509e84cee611b5b7688ab419a6c44057b8dbbf10652f6844879aa"
+      },
+      {
+       "name": "png",
+       "load1": 10.58,
+       "pose": 17.12543100000039,
+       "rafCount": 0,
+       "ms": 1075.2477930000023,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 11130,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.554999999999836
+       },
+       "size": 167403,
+       "sha256": "c9e632f4b32cc0a39824fe8cf48533a2012d3d8a6598b6e0e1ddca2eb1d248d8",
+       "pixels": "305035e29f7509e84cee611b5b7688ab419a6c44057b8dbbf10652f6844879aa"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 10.58,
+       "pose": 17.053194000000076,
+       "rafCount": 0,
+       "ms": 76.14179800000056,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 120,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.208000000000538
+       },
+       "firstMs": 942.9997799999983,
+       "size": 167403,
+       "sha256": "c9e632f4b32cc0a39824fe8cf48533a2012d3d8a6598b6e0e1ddca2eb1d248d8",
+       "pixels": "305035e29f7509e84cee611b5b7688ab419a6c44057b8dbbf10652f6844879aa"
+      },
+      {
+       "name": "png2",
+       "load1": 12.38,
+       "pose": 24.030140000002575,
+       "rafCount": 0,
+       "ms": 906.4344339999989,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10310,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.777000000000044
+       },
+       "size": 167403,
+       "sha256": "c9e632f4b32cc0a39824fe8cf48533a2012d3d8a6598b6e0e1ddca2eb1d248d8",
+       "pixels": "305035e29f7509e84cee611b5b7688ab419a6c44057b8dbbf10652f6844879aa"
+      }
+     ]
+    },
+    {
+     "index": 657,
+     "time": 21.9,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 12.38,
+       "pose": 29.92708599999969,
+       "rafCount": 0,
+       "ms": 1066.8083809999953,
+       "cpu": {
+        "browser": 60,
+        "zygote": 0,
+        "gpu-process": 11190,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.342000000000553
+       },
+       "size": 167133,
+       "sha256": "2c570b412d944c56f0fe65c552d790b2dd1ebeb07f4dad94d436f20e4c615b05",
+       "pixels": "bcd5e292bacc5420cdef2720de393a4eba5a35279a3114666d35201ada740dd2"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.38,
+       "pose": 15.622045000003709,
+       "rafCount": 0,
+       "ms": 85.2890830000033,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.068000000000211
+       },
+       "firstMs": 1067.0470669999995,
+       "size": 167133,
+       "sha256": "2c570b412d944c56f0fe65c552d790b2dd1ebeb07f4dad94d436f20e4c615b05",
+       "pixels": "bcd5e292bacc5420cdef2720de393a4eba5a35279a3114666d35201ada740dd2"
+      },
+      {
+       "name": "png",
+       "load1": 12.38,
+       "pose": 17.55622299999959,
+       "rafCount": 0,
+       "ms": 1064.947414000002,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11090,
+        "utility": 0,
+        "renderer": 0,
+        "node": 43.71600000000035
+       },
+       "size": 167133,
+       "sha256": "2c570b412d944c56f0fe65c552d790b2dd1ebeb07f4dad94d436f20e4c615b05",
+       "pixels": "bcd5e292bacc5420cdef2720de393a4eba5a35279a3114666d35201ada740dd2"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.83,
+       "pose": 26.66639899999427,
+       "rafCount": 0,
+       "ms": 80.7591339999999,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 20,
+        "node": 10.685999999999694
+       },
+       "firstMs": 1057.9060260000042,
+       "size": 167133,
+       "sha256": "2c570b412d944c56f0fe65c552d790b2dd1ebeb07f4dad94d436f20e4c615b05",
+       "pixels": "bcd5e292bacc5420cdef2720de393a4eba5a35279a3114666d35201ada740dd2"
+      },
+      {
+       "name": "png2",
+       "load1": 12.83,
+       "pose": 29.320511000005354,
+       "rafCount": 0,
+       "ms": 1028.9300640000001,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.17699999999968
+       },
+       "size": 167133,
+       "sha256": "2c570b412d944c56f0fe65c552d790b2dd1ebeb07f4dad94d436f20e4c615b05",
+       "pixels": "bcd5e292bacc5420cdef2720de393a4eba5a35279a3114666d35201ada740dd2"
+      }
+     ]
+    },
+    {
+     "index": 660,
+     "time": 22,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 12.83,
+       "pose": 24.980843999997887,
+       "rafCount": 0,
+       "ms": 982.5137190000023,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10720,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.77600000000075
+       },
+       "size": 167255,
+       "sha256": "d60e0f5d7ae2a0d3619e40bd362c4756d198e961f47dd25c72b99c8a9b6fd7cc",
+       "pixels": "fb8467004ff9c8f74eb21f694038b4c903a40a47a280aada784a7d30ca128ce9"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.83,
+       "pose": 10.211405000001832,
+       "rafCount": 0,
+       "ms": 96.5129700000034,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 105.34799999999996
+       },
+       "firstMs": 1056.8546639999986,
+       "size": 167255,
+       "sha256": "d60e0f5d7ae2a0d3619e40bd362c4756d198e961f47dd25c72b99c8a9b6fd7cc",
+       "pixels": "fb8467004ff9c8f74eb21f694038b4c903a40a47a280aada784a7d30ca128ce9"
+      },
+      {
+       "name": "png",
+       "load1": 12.04,
+       "pose": 25.4166550000009,
+       "rafCount": 0,
+       "ms": 1290.8284429999985,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10600,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.13799999999992
+       },
+       "size": 167255,
+       "sha256": "d60e0f5d7ae2a0d3619e40bd362c4756d198e961f47dd25c72b99c8a9b6fd7cc",
+       "pixels": "fb8467004ff9c8f74eb21f694038b4c903a40a47a280aada784a7d30ca128ce9"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.04,
+       "pose": 12.156896000000415,
+       "rafCount": 0,
+       "ms": 78.70868399999745,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 13.469999999999345
+       },
+       "firstMs": 1201.5118490000023,
+       "size": 167255,
+       "sha256": "d60e0f5d7ae2a0d3619e40bd362c4756d198e961f47dd25c72b99c8a9b6fd7cc",
+       "pixels": "fb8467004ff9c8f74eb21f694038b4c903a40a47a280aada784a7d30ca128ce9"
+      },
+      {
+       "name": "png2",
+       "load1": 12.04,
+       "pose": 21.308759999999893,
+       "rafCount": 0,
+       "ms": 1106.1395049999992,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 11500,
+        "utility": 0,
+        "renderer": 70,
+        "node": 11.945999999999913
+       },
+       "size": 167255,
+       "sha256": "d60e0f5d7ae2a0d3619e40bd362c4756d198e961f47dd25c72b99c8a9b6fd7cc",
+       "pixels": "fb8467004ff9c8f74eb21f694038b4c903a40a47a280aada784a7d30ca128ce9"
+      }
+     ]
+    },
+    {
+     "index": 663,
+     "time": 22.1,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 12.04,
+       "pose": 42.52554599999712,
+       "rafCount": 0,
+       "ms": 1033.8159000000014,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11030,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.247000000000298
+       },
+       "size": 167251,
+       "sha256": "da67a204340edf69a06ef68f284480a0cbebf858f7c9c04b61e073c209137680",
+       "pixels": "d11c94fa0844c8d36309366f09be4667cc154b5f0d20a73ef7fe061d1c981e6c"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.56,
+       "pose": 17.17987600000197,
+       "rafCount": 0,
+       "ms": 91.89964300000429,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 11.417999999999665
+       },
+       "firstMs": 1054.776647999999,
+       "size": 167251,
+       "sha256": "da67a204340edf69a06ef68f284480a0cbebf858f7c9c04b61e073c209137680",
+       "pixels": "d11c94fa0844c8d36309366f09be4667cc154b5f0d20a73ef7fe061d1c981e6c"
+      },
+      {
+       "name": "png",
+       "load1": 13.56,
+       "pose": 19.70350899999903,
+       "rafCount": 0,
+       "ms": 1024.0427819999968,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10560,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.444000000000415
+       },
+       "size": 167251,
+       "sha256": "da67a204340edf69a06ef68f284480a0cbebf858f7c9c04b61e073c209137680",
+       "pixels": "d11c94fa0844c8d36309366f09be4667cc154b5f0d20a73ef7fe061d1c981e6c"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.56,
+       "pose": 16.398725999999442,
+       "rafCount": 0,
+       "ms": 87.89217900000222,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 12.353000000000065
+       },
+       "firstMs": 1026.5383430000002,
+       "size": 167251,
+       "sha256": "da67a204340edf69a06ef68f284480a0cbebf858f7c9c04b61e073c209137680",
+       "pixels": "d11c94fa0844c8d36309366f09be4667cc154b5f0d20a73ef7fe061d1c981e6c"
+      },
+      {
+       "name": "png2",
+       "load1": 13.56,
+       "pose": 11.999113999998372,
+       "rafCount": 0,
+       "ms": 1016.8479640000005,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10900,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.648000000000138
+       },
+       "size": 167251,
+       "sha256": "da67a204340edf69a06ef68f284480a0cbebf858f7c9c04b61e073c209137680",
+       "pixels": "d11c94fa0844c8d36309366f09be4667cc154b5f0d20a73ef7fe061d1c981e6c"
+      }
+     ]
+    },
+    {
+     "index": 666,
+     "time": 22.2,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 13.56,
+       "pose": 38.915500000002794,
+       "rafCount": 0,
+       "ms": 1050.6872430000003,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 11410,
+        "utility": 10,
+        "renderer": 10,
+        "node": 64.79100000000017
+       },
+       "size": 167160,
+       "sha256": "2d509b93a3ebb235578687bcaaefddd7a6643531a95d73fb4da8a396c40a0c6d",
+       "pixels": "b0bec5a785c8b9dd77ef67d0c4e847c9b4f3fef327b6e901bbdd314607ef2dc4"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.63,
+       "pose": 18.231571000003896,
+       "rafCount": 0,
+       "ms": 93.73877100000391,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 10,
+        "node": 85.09600000000046
+       },
+       "firstMs": 981.542349000003,
+       "size": 167160,
+       "sha256": "2d509b93a3ebb235578687bcaaefddd7a6643531a95d73fb4da8a396c40a0c6d",
+       "pixels": "b0bec5a785c8b9dd77ef67d0c4e847c9b4f3fef327b6e901bbdd314607ef2dc4"
+      },
+      {
+       "name": "png",
+       "load1": 12.63,
+       "pose": 21.81814299999678,
+       "rafCount": 0,
+       "ms": 1017.022017999996,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10950,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.152000000000044
+       },
+       "size": 167160,
+       "sha256": "2d509b93a3ebb235578687bcaaefddd7a6643531a95d73fb4da8a396c40a0c6d",
+       "pixels": "b0bec5a785c8b9dd77ef67d0c4e847c9b4f3fef327b6e901bbdd314607ef2dc4"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 12.63,
+       "pose": 11.098768000003474,
+       "rafCount": 0,
+       "ms": 93.35663200000272,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 90,
+        "utility": 0,
+        "renderer": 0,
+        "node": 112.39300000000003
+       },
+       "firstMs": 1099.713972999998,
+       "size": 167160,
+       "sha256": "2d509b93a3ebb235578687bcaaefddd7a6643531a95d73fb4da8a396c40a0c6d",
+       "pixels": "b0bec5a785c8b9dd77ef67d0c4e847c9b4f3fef327b6e901bbdd314607ef2dc4"
+      },
+      {
+       "name": "png2",
+       "load1": 12.63,
+       "pose": 15.094990000005055,
+       "rafCount": 0,
+       "ms": 1160.9077350000007,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10960,
+        "utility": 0,
+        "renderer": 10,
+        "node": 105.25500000000011
+       },
+       "size": 167160,
+       "sha256": "2d509b93a3ebb235578687bcaaefddd7a6643531a95d73fb4da8a396c40a0c6d",
+       "pixels": "b0bec5a785c8b9dd77ef67d0c4e847c9b4f3fef327b6e901bbdd314607ef2dc4"
+      }
+     ]
+    },
+    {
+     "index": 669,
+     "time": 22.3,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 13.38,
+       "pose": 30.344904999998107,
+       "rafCount": 0,
+       "ms": 1158.8886649999986,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10470,
+        "utility": 0,
+        "renderer": 0,
+        "node": 68.38699999999972
+       },
+       "size": 167094,
+       "sha256": "0b3d1aa08205a970d60c95cb71901e997668921cd5403e4537dbdcfe355577aa",
+       "pixels": "9f0ff4fb26c1ba2a97c1e6d3ce4b5ec3ba17f0d04b9fb4c9d3281da51338291f"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.38,
+       "pose": 12.816784999995434,
+       "rafCount": 0,
+       "ms": 99.48975000000064,
+       "cpu": {
+        "browser": 30,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 33.314000000000306
+       },
+       "firstMs": 1073.2732060000053,
+       "size": 167094,
+       "sha256": "0b3d1aa08205a970d60c95cb71901e997668921cd5403e4537dbdcfe355577aa",
+       "pixels": "9f0ff4fb26c1ba2a97c1e6d3ce4b5ec3ba17f0d04b9fb4c9d3281da51338291f"
+      },
+      {
+       "name": "png",
+       "load1": 13.38,
+       "pose": 17.201928000002226,
+       "rafCount": 0,
+       "ms": 1039.1760280000017,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10850,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.184000000000196
+       },
+       "size": 167094,
+       "sha256": "0b3d1aa08205a970d60c95cb71901e997668921cd5403e4537dbdcfe355577aa",
+       "pixels": "9f0ff4fb26c1ba2a97c1e6d3ce4b5ec3ba17f0d04b9fb4c9d3281da51338291f"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.38,
+       "pose": 15.749096999999892,
+       "rafCount": 0,
+       "ms": 105.24962499999674,
+       "cpu": {
+        "browser": 60,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.337999999999738
+       },
+       "firstMs": 1137.7116590000005,
+       "size": 167094,
+       "sha256": "0b3d1aa08205a970d60c95cb71901e997668921cd5403e4537dbdcfe355577aa",
+       "pixels": "9f0ff4fb26c1ba2a97c1e6d3ce4b5ec3ba17f0d04b9fb4c9d3281da51338291f"
+      },
+      {
+       "name": "png2",
+       "load1": 13.83,
+       "pose": 16.411520000001474,
+       "rafCount": 0,
+       "ms": 1081.3352479999958,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10900,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.570999999999913
+       },
+       "size": 167094,
+       "sha256": "0b3d1aa08205a970d60c95cb71901e997668921cd5403e4537dbdcfe355577aa",
+       "pixels": "9f0ff4fb26c1ba2a97c1e6d3ce4b5ec3ba17f0d04b9fb4c9d3281da51338291f"
+      }
+     ]
+    },
+    {
+     "index": 672,
+     "time": 22.4,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 13.83,
+       "pose": 46.133677999998326,
+       "rafCount": 0,
+       "ms": 1141.863470999997,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10480,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.192999999999302
+       },
+       "size": 167269,
+       "sha256": "ae32b7655cb5e7f4bbdf208b397683036258a0aa54f89adee6049cae2517c92e",
+       "pixels": "06ffa3927068251bde4657d5e180cb2c473c8b7f1bbfbecc904223e25f2e4fe7"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.83,
+       "pose": 14.985009000003629,
+       "rafCount": 0,
+       "ms": 82.23828800000047,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 120,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.079999999999927
+       },
+       "firstMs": 1058.0962970000037,
+       "size": 167269,
+       "sha256": "ae32b7655cb5e7f4bbdf208b397683036258a0aa54f89adee6049cae2517c92e",
+       "pixels": "06ffa3927068251bde4657d5e180cb2c473c8b7f1bbfbecc904223e25f2e4fe7"
+      },
+      {
+       "name": "png",
+       "load1": 13.83,
+       "pose": 17.825156999999308,
+       "rafCount": 0,
+       "ms": 1153.6132120000038,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10950,
+        "utility": 0,
+        "renderer": 0,
+        "node": 107.84699999999975
+       },
+       "size": 167269,
+       "sha256": "ae32b7655cb5e7f4bbdf208b397683036258a0aa54f89adee6049cae2517c92e",
+       "pixels": "06ffa3927068251bde4657d5e180cb2c473c8b7f1bbfbecc904223e25f2e4fe7"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.33,
+       "pose": 18.33780399999523,
+       "rafCount": 0,
+       "ms": 114.80610200000228,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 10,
+        "node": 11.851000000000568
+       },
+       "firstMs": 1142.3896169999935,
+       "size": 167269,
+       "sha256": "ae32b7655cb5e7f4bbdf208b397683036258a0aa54f89adee6049cae2517c92e",
+       "pixels": "06ffa3927068251bde4657d5e180cb2c473c8b7f1bbfbecc904223e25f2e4fe7"
+      },
+      {
+       "name": "png2",
+       "load1": 14.33,
+       "pose": 18.55434800000512,
+       "rafCount": 0,
+       "ms": 1145.4477620000107,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11090,
+        "utility": 0,
+        "renderer": 0,
+        "node": 30.363999999999578
+       },
+       "size": 167269,
+       "sha256": "ae32b7655cb5e7f4bbdf208b397683036258a0aa54f89adee6049cae2517c92e",
+       "pixels": "06ffa3927068251bde4657d5e180cb2c473c8b7f1bbfbecc904223e25f2e4fe7"
+      }
+     ]
+    },
+    {
+     "index": 675,
+     "time": 22.5,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 14.33,
+       "pose": 25.576049000010244,
+       "rafCount": 0,
+       "ms": 1053.3873830000084,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10640,
+        "utility": 0,
+        "renderer": 0,
+        "node": 45.61499999999978
+       },
+       "size": 167520,
+       "sha256": "bf0ae5cf2b8b11a4893816fcf18abe838026acea13dce9ef520cbfd0adf1889e",
+       "pixels": "2c3f80dd64b27536abbca822e7fc5eb7d736118d5777943450496cf03116208b"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.33,
+       "pose": 16.341397999989567,
+       "rafCount": 0,
+       "ms": 98.36539500000072,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.847999999999956
+       },
+       "firstMs": 1054.901801999993,
+       "size": 167520,
+       "sha256": "bf0ae5cf2b8b11a4893816fcf18abe838026acea13dce9ef520cbfd0adf1889e",
+       "pixels": "2c3f80dd64b27536abbca822e7fc5eb7d736118d5777943450496cf03116208b"
+      },
+      {
+       "name": "png",
+       "load1": 15.42,
+       "pose": 13.121105000012903,
+       "rafCount": 0,
+       "ms": 1088.5402389999945,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11130,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.451999999999316
+       },
+       "size": 167520,
+       "sha256": "bf0ae5cf2b8b11a4893816fcf18abe838026acea13dce9ef520cbfd0adf1889e",
+       "pixels": "2c3f80dd64b27536abbca822e7fc5eb7d736118d5777943450496cf03116208b"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.42,
+       "pose": 16.947323000000324,
+       "rafCount": 0,
+       "ms": 98.81484399999317,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 12.154000000000451
+       },
+       "firstMs": 1215.1223429999955,
+       "size": 167520,
+       "sha256": "bf0ae5cf2b8b11a4893816fcf18abe838026acea13dce9ef520cbfd0adf1889e",
+       "pixels": "2c3f80dd64b27536abbca822e7fc5eb7d736118d5777943450496cf03116208b"
+      },
+      {
+       "name": "png2",
+       "load1": 15.42,
+       "pose": 19.75501800001075,
+       "rafCount": 0,
+       "ms": 1014.220776999995,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10650,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.706000000000131
+       },
+       "size": 167520,
+       "sha256": "bf0ae5cf2b8b11a4893816fcf18abe838026acea13dce9ef520cbfd0adf1889e",
+       "pixels": "2c3f80dd64b27536abbca822e7fc5eb7d736118d5777943450496cf03116208b"
+      }
+     ]
+    },
+    {
+     "index": 678,
+     "time": 22.6,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 15.42,
+       "pose": 42.87558500000159,
+       "rafCount": 0,
+       "ms": 1050.9961270000058,
+       "cpu": {
+        "browser": 60,
+        "zygote": 0,
+        "gpu-process": 10230,
+        "utility": 0,
+        "renderer": 0,
+        "node": 29.933000000000902
+       },
+       "size": 167359,
+       "sha256": "85382f5ffa68b713a2365a8abc175c9f45858d771f10dbea98a4a91b971a3ac5",
+       "pixels": "251c555ae7ecf03a89044f6e82026e4f423ee47b1bf697b4864ab68071c415a5"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.95,
+       "pose": 20.78422000000137,
+       "rafCount": 0,
+       "ms": 117.13508500000171,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.692999999999302
+       },
+       "firstMs": 930.9741369999974,
+       "size": 167359,
+       "sha256": "85382f5ffa68b713a2365a8abc175c9f45858d771f10dbea98a4a91b971a3ac5",
+       "pixels": "251c555ae7ecf03a89044f6e82026e4f423ee47b1bf697b4864ab68071c415a5"
+      },
+      {
+       "name": "png",
+       "load1": 15.95,
+       "pose": 15.248703999997815,
+       "rafCount": 0,
+       "ms": 985.6994419999974,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10590,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.546000000000276
+       },
+       "size": 167359,
+       "sha256": "85382f5ffa68b713a2365a8abc175c9f45858d771f10dbea98a4a91b971a3ac5",
+       "pixels": "251c555ae7ecf03a89044f6e82026e4f423ee47b1bf697b4864ab68071c415a5"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.95,
+       "pose": 17.743880999987596,
+       "rafCount": 0,
+       "ms": 92.72740400000475,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 120,
+        "utility": 0,
+        "renderer": 10,
+        "node": 11.593000000000757
+       },
+       "firstMs": 1036.0598129999998,
+       "size": 167359,
+       "sha256": "85382f5ffa68b713a2365a8abc175c9f45858d771f10dbea98a4a91b971a3ac5",
+       "pixels": "251c555ae7ecf03a89044f6e82026e4f423ee47b1bf697b4864ab68071c415a5"
+      },
+      {
+       "name": "png2",
+       "load1": 15.95,
+       "pose": 14.765119999996386,
+       "rafCount": 0,
+       "ms": 1011.2646030000033,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10440,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.029000000000451
+       },
+       "size": 167359,
+       "sha256": "85382f5ffa68b713a2365a8abc175c9f45858d771f10dbea98a4a91b971a3ac5",
+       "pixels": "251c555ae7ecf03a89044f6e82026e4f423ee47b1bf697b4864ab68071c415a5"
+      }
+     ]
+    },
+    {
+     "index": 681,
+     "time": 22.7,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 14.91,
+       "pose": 23.612523999996483,
+       "rafCount": 0,
+       "ms": 1023.4907139999996,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10840,
+        "utility": 0,
+        "renderer": 0,
+        "node": 53.259000000000015
+       },
+       "size": 167404,
+       "sha256": "6221c54d74f909e4df340c3b656b670c018062e09011ba3879a0c84de7c9cf94",
+       "pixels": "938d17722fa43bd8c4fe470f73bc23693d4eae4657be4624df1b846195ec3aa6"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.91,
+       "pose": 15.811046000002534,
+       "rafCount": 0,
+       "ms": 78.72161300000153,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 10,
+        "node": 10.511000000000422
+       },
+       "firstMs": 1011.0419919999986,
+       "size": 167404,
+       "sha256": "6221c54d74f909e4df340c3b656b670c018062e09011ba3879a0c84de7c9cf94",
+       "pixels": "938d17722fa43bd8c4fe470f73bc23693d4eae4657be4624df1b846195ec3aa6"
+      },
+      {
+       "name": "png",
+       "load1": 14.91,
+       "pose": 28.279616999992868,
+       "rafCount": 0,
+       "ms": 995.0660630000057,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10440,
+        "utility": 0,
+        "renderer": 10,
+        "node": 11.781000000000859
+       },
+       "size": 167404,
+       "sha256": "6221c54d74f909e4df340c3b656b670c018062e09011ba3879a0c84de7c9cf94",
+       "pixels": "938d17722fa43bd8c4fe470f73bc23693d4eae4657be4624df1b846195ec3aa6"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.91,
+       "pose": 37.80127700000594,
+       "rafCount": 0,
+       "ms": 91.96256600000197,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 90,
+        "utility": 0,
+        "renderer": 10,
+        "node": 11.918999999999869
+       },
+       "firstMs": 1082.8367739999958,
+       "size": 167404,
+       "sha256": "6221c54d74f909e4df340c3b656b670c018062e09011ba3879a0c84de7c9cf94",
+       "pixels": "938d17722fa43bd8c4fe470f73bc23693d4eae4657be4624df1b846195ec3aa6"
+      },
+      {
+       "name": "png2",
+       "load1": 14.91,
+       "pose": 13.415496999994502,
+       "rafCount": 0,
+       "ms": 1102.1099539999996,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11390,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.104999999999563
+       },
+       "size": 167404,
+       "sha256": "6221c54d74f909e4df340c3b656b670c018062e09011ba3879a0c84de7c9cf94",
+       "pixels": "938d17722fa43bd8c4fe470f73bc23693d4eae4657be4624df1b846195ec3aa6"
+      }
+     ]
+    },
+    {
+     "index": 684,
+     "time": 22.8,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 15.24,
+       "pose": 35.97625700000208,
+       "rafCount": 0,
+       "ms": 1169.4878119999921,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10800,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.569000000001324
+       },
+       "size": 167292,
+       "sha256": "7bdbd17727af2c3c5ccfd06cbc2c2c8b3d954ef8ac376f557e969222f912937c",
+       "pixels": "8f7ccf73095b1167e84557c486d3108360a2dca9670fd3fe1b8fdac98daeaf5f"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.24,
+       "pose": 13.935537999990629,
+       "rafCount": 0,
+       "ms": 86.06810299999779,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 78.99099999999999
+       },
+       "firstMs": 1027.5026510000025,
+       "size": 167292,
+       "sha256": "7bdbd17727af2c3c5ccfd06cbc2c2c8b3d954ef8ac376f557e969222f912937c",
+       "pixels": "8f7ccf73095b1167e84557c486d3108360a2dca9670fd3fe1b8fdac98daeaf5f"
+      },
+      {
+       "name": "png",
+       "load1": 15.24,
+       "pose": 17.939855000004172,
+       "rafCount": 0,
+       "ms": 996.3293969999941,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10720,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.774000000001251
+       },
+       "size": 167292,
+       "sha256": "7bdbd17727af2c3c5ccfd06cbc2c2c8b3d954ef8ac376f557e969222f912937c",
+       "pixels": "8f7ccf73095b1167e84557c486d3108360a2dca9670fd3fe1b8fdac98daeaf5f"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.24,
+       "pose": 24.735146000006353,
+       "rafCount": 0,
+       "ms": 86.44381100000464,
+       "cpu": {
+        "browser": 30,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.381999999999607
+       },
+       "firstMs": 1024.201297000007,
+       "size": 167292,
+       "sha256": "7bdbd17727af2c3c5ccfd06cbc2c2c8b3d954ef8ac376f557e969222f912937c",
+       "pixels": "8f7ccf73095b1167e84557c486d3108360a2dca9670fd3fe1b8fdac98daeaf5f"
+      },
+      {
+       "name": "png2",
+       "load1": 15.7,
+       "pose": 15.700214000011329,
+       "rafCount": 0,
+       "ms": 1235.1655620000092,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10670,
+        "utility": 0,
+        "renderer": 10,
+        "node": 85.17100000000028
+       },
+       "size": 167292,
+       "sha256": "7bdbd17727af2c3c5ccfd06cbc2c2c8b3d954ef8ac376f557e969222f912937c",
+       "pixels": "8f7ccf73095b1167e84557c486d3108360a2dca9670fd3fe1b8fdac98daeaf5f"
+      }
+     ]
+    },
+    {
+     "index": 687,
+     "time": 22.9,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 15.7,
+       "pose": 28.91371700000309,
+       "rafCount": 0,
+       "ms": 1182.4351219999953,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10250,
+        "utility": 0,
+        "renderer": 10,
+        "node": 45.20800000000054
+       },
+       "size": 167232,
+       "sha256": "054475d4fade99a96c09eaedd6659f03f0394537f498426dca6b2dbd5d3b499b",
+       "pixels": "f882ed6f974fa2d436a08fffc99a64d774c282862ae07306b8e997fd59ab748e"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.7,
+       "pose": 16.809871000004932,
+       "rafCount": 0,
+       "ms": 108.67696599999908,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.520000000000437
+       },
+       "firstMs": 1142.8611360000068,
+       "size": 167232,
+       "sha256": "054475d4fade99a96c09eaedd6659f03f0394537f498426dca6b2dbd5d3b499b",
+       "pixels": "f882ed6f974fa2d436a08fffc99a64d774c282862ae07306b8e997fd59ab748e"
+      },
+      {
+       "name": "png",
+       "load1": 15.7,
+       "pose": 18.427154999997583,
+       "rafCount": 0,
+       "ms": 1098.8868470000016,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10200,
+        "utility": 0,
+        "renderer": 0,
+        "node": 59.40899999999965
+       },
+       "size": 167232,
+       "sha256": "054475d4fade99a96c09eaedd6659f03f0394537f498426dca6b2dbd5d3b499b",
+       "pixels": "f882ed6f974fa2d436a08fffc99a64d774c282862ae07306b8e997fd59ab748e"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.97,
+       "pose": 20.29445700001088,
+       "rafCount": 0,
+       "ms": 88.2677190000104,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.655000000000655
+       },
+       "firstMs": 1067.754700000005,
+       "size": 167232,
+       "sha256": "054475d4fade99a96c09eaedd6659f03f0394537f498426dca6b2dbd5d3b499b",
+       "pixels": "f882ed6f974fa2d436a08fffc99a64d774c282862ae07306b8e997fd59ab748e"
+      },
+      {
+       "name": "png2",
+       "load1": 15.97,
+       "pose": 17.009751999998116,
+       "rafCount": 0,
+       "ms": 1159.9602129999985,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10910,
+        "utility": 0,
+        "renderer": 0,
+        "node": 25.746000000001004
+       },
+       "size": 167232,
+       "sha256": "054475d4fade99a96c09eaedd6659f03f0394537f498426dca6b2dbd5d3b499b",
+       "pixels": "f882ed6f974fa2d436a08fffc99a64d774c282862ae07306b8e997fd59ab748e"
+      }
+     ]
+    },
+    {
+     "index": 690,
+     "time": 23,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 15.97,
+       "pose": 30.82522099999187,
+       "rafCount": 0,
+       "ms": 1134.068763000003,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10250,
+        "utility": 0,
+        "renderer": 0,
+        "node": 116.22099999999955
+       },
+       "size": 167137,
+       "sha256": "fdce85b6f811d3f19556d4130ff1ba18cf9251876212a3ff5105e4576d477d4c",
+       "pixels": "93fc59f3a26d46a83ac73cb14b4717bc9e2bc67dfd2ff91af4496ecea888d7b8"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.97,
+       "pose": 16.887880000009318,
+       "rafCount": 0,
+       "ms": 90.61450700000569,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.904999999998836
+       },
+       "firstMs": 1086.3760210000037,
+       "size": 167137,
+       "sha256": "fdce85b6f811d3f19556d4130ff1ba18cf9251876212a3ff5105e4576d477d4c",
+       "pixels": "93fc59f3a26d46a83ac73cb14b4717bc9e2bc67dfd2ff91af4496ecea888d7b8"
+      },
+      {
+       "name": "png",
+       "load1": 15.17,
+       "pose": 16.8762379999971,
+       "rafCount": 0,
+       "ms": 1015.6582639999979,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10810,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.93499999999949
+       },
+       "size": 167137,
+       "sha256": "fdce85b6f811d3f19556d4130ff1ba18cf9251876212a3ff5105e4576d477d4c",
+       "pixels": "93fc59f3a26d46a83ac73cb14b4717bc9e2bc67dfd2ff91af4496ecea888d7b8"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.17,
+       "pose": 11.597618999992847,
+       "rafCount": 0,
+       "ms": 75.59167300000263,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 120,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.149000000001251
+       },
+       "firstMs": 1060.4544630000019,
+       "size": 167137,
+       "sha256": "fdce85b6f811d3f19556d4130ff1ba18cf9251876212a3ff5105e4576d477d4c",
+       "pixels": "93fc59f3a26d46a83ac73cb14b4717bc9e2bc67dfd2ff91af4496ecea888d7b8"
+      },
+      {
+       "name": "png2",
+       "load1": 15.17,
+       "pose": 25.387210000000778,
+       "rafCount": 0,
+       "ms": 1166.9134210000047,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10630,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.59100000000035
+       },
+       "size": 167137,
+       "sha256": "fdce85b6f811d3f19556d4130ff1ba18cf9251876212a3ff5105e4576d477d4c",
+       "pixels": "93fc59f3a26d46a83ac73cb14b4717bc9e2bc67dfd2ff91af4496ecea888d7b8"
+      }
+     ]
+    },
+    {
+     "index": 693,
+     "time": 23.1,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 15.17,
+       "pose": 29.755881999997655,
+       "rafCount": 0,
+       "ms": 1245.334812999994,
+       "cpu": {
+        "browser": 60,
+        "zygote": 0,
+        "gpu-process": 11330,
+        "utility": 0,
+        "renderer": 10,
+        "node": 10.484000000000378
+       },
+       "size": 167398,
+       "sha256": "def50e1fab4f77b66cc8af1b8b5c32490563ffa74ceed515262470b4019e6a75",
+       "pixels": "083bc96c6909dfbfb704c94b87dfacb3b992ab536787539e961e1fffc0e6c9d3"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.4,
+       "pose": 21.034379000004265,
+       "rafCount": 0,
+       "ms": 85.46709799999371,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.317999999999302
+       },
+       "firstMs": 1147.0457909999968,
+       "size": 167398,
+       "sha256": "def50e1fab4f77b66cc8af1b8b5c32490563ffa74ceed515262470b4019e6a75",
+       "pixels": "083bc96c6909dfbfb704c94b87dfacb3b992ab536787539e961e1fffc0e6c9d3"
+      },
+      {
+       "name": "png",
+       "load1": 15.4,
+       "pose": 32.53209799999604,
+       "rafCount": 0,
+       "ms": 1249.6482840000099,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10920,
+        "utility": 0,
+        "renderer": 0,
+        "node": 13.626000000000204
+       },
+       "size": 167398,
+       "sha256": "def50e1fab4f77b66cc8af1b8b5c32490563ffa74ceed515262470b4019e6a75",
+       "pixels": "083bc96c6909dfbfb704c94b87dfacb3b992ab536787539e961e1fffc0e6c9d3"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 15.4,
+       "pose": 25.834222000004956,
+       "rafCount": 0,
+       "ms": 93.25627600000007,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 13.471999999999753
+       },
+       "firstMs": 1110.349602999995,
+       "size": 167398,
+       "sha256": "def50e1fab4f77b66cc8af1b8b5c32490563ffa74ceed515262470b4019e6a75",
+       "pixels": "083bc96c6909dfbfb704c94b87dfacb3b992ab536787539e961e1fffc0e6c9d3"
+      },
+      {
+       "name": "png2",
+       "load1": 14.32,
+       "pose": 12.242220000000088,
+       "rafCount": 0,
+       "ms": 1068.0963759999868,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10970,
+        "utility": 0,
+        "renderer": 0,
+        "node": 59.413000000000466
+       },
+       "size": 167398,
+       "sha256": "def50e1fab4f77b66cc8af1b8b5c32490563ffa74ceed515262470b4019e6a75",
+       "pixels": "083bc96c6909dfbfb704c94b87dfacb3b992ab536787539e961e1fffc0e6c9d3"
+      }
+     ]
+    },
+    {
+     "index": 696,
+     "time": 23.2,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 14.32,
+       "pose": 58.108198999994784,
+       "rafCount": 0,
+       "ms": 1097.7247269999934,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11220,
+        "utility": 0,
+        "renderer": 0,
+        "node": 98.9340000000011
+       },
+       "size": 167168,
+       "sha256": "39971ec0375d4005f24ce9118f37c169c882934b78beb8ee10044b8924dd333f",
+       "pixels": "4a61f3cc36d70027558b89c34d28d6f83c907b67a252f993c752aae3e5c8cf34"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.32,
+       "pose": 18.405935999995563,
+       "rafCount": 0,
+       "ms": 93.8510399999941,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.276000000001659
+       },
+       "firstMs": 1128.6097440000012,
+       "size": 167168,
+       "sha256": "39971ec0375d4005f24ce9118f37c169c882934b78beb8ee10044b8924dd333f",
+       "pixels": "4a61f3cc36d70027558b89c34d28d6f83c907b67a252f993c752aae3e5c8cf34"
+      },
+      {
+       "name": "png",
+       "load1": 14.32,
+       "pose": 16.20621000000392,
+       "rafCount": 0,
+       "ms": 1059.2863769999967,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10880,
+        "utility": 0,
+        "renderer": 0,
+        "node": 29.531999999999243
+       },
+       "size": 167168,
+       "sha256": "39971ec0375d4005f24ce9118f37c169c882934b78beb8ee10044b8924dd333f",
+       "pixels": "4a61f3cc36d70027558b89c34d28d6f83c907b67a252f993c752aae3e5c8cf34"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.32,
+       "pose": 14.863878999996814,
+       "rafCount": 0,
+       "ms": 77.02499900000112,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.768000000000029
+       },
+       "firstMs": 1105.5737700000027,
+       "size": 167168,
+       "sha256": "39971ec0375d4005f24ce9118f37c169c882934b78beb8ee10044b8924dd333f",
+       "pixels": "4a61f3cc36d70027558b89c34d28d6f83c907b67a252f993c752aae3e5c8cf34"
+      },
+      {
+       "name": "png2",
+       "load1": 13.74,
+       "pose": 12.7848449999874,
+       "rafCount": 0,
+       "ms": 1252.0016909999977,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10770,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.628000000000611
+       },
+       "size": 167168,
+       "sha256": "39971ec0375d4005f24ce9118f37c169c882934b78beb8ee10044b8924dd333f",
+       "pixels": "4a61f3cc36d70027558b89c34d28d6f83c907b67a252f993c752aae3e5c8cf34"
+      }
+     ]
+    },
+    {
+     "index": 699,
+     "time": 23.3,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 13.74,
+       "pose": 22.304500999991433,
+       "rafCount": 0,
+       "ms": 1307.2207430000126,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10470,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.358000000000175
+       },
+       "size": 167282,
+       "sha256": "0773b520089a680b9d8d6e05179f19dd795a09577433a2c8992b5d82beda5d8b",
+       "pixels": "1626ec78c877a88893e7a3146988e73eb201cc71bfd29ca8f7344cc56f547f05"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.74,
+       "pose": 16.29815499999677,
+       "rafCount": 0,
+       "ms": 142.73934400000144,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 130,
+        "utility": 0,
+        "renderer": 10,
+        "node": 13.683000000000902
+       },
+       "firstMs": 1346.6542140000092,
+       "size": 167282,
+       "sha256": "0773b520089a680b9d8d6e05179f19dd795a09577433a2c8992b5d82beda5d8b",
+       "pixels": "1626ec78c877a88893e7a3146988e73eb201cc71bfd29ca8f7344cc56f547f05"
+      },
+      {
+       "name": "png",
+       "load1": 13.84,
+       "pose": 17.683548000000883,
+       "rafCount": 0,
+       "ms": 1098.285846999992,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10950,
+        "utility": 0,
+        "renderer": 0,
+        "node": 12.070999999999913
+       },
+       "size": 167282,
+       "sha256": "0773b520089a680b9d8d6e05179f19dd795a09577433a2c8992b5d82beda5d8b",
+       "pixels": "1626ec78c877a88893e7a3146988e73eb201cc71bfd29ca8f7344cc56f547f05"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 13.84,
+       "pose": 14.664109000004828,
+       "rafCount": 0,
+       "ms": 92.93273000000045,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 13.073999999998705
+       },
+       "firstMs": 1335.0515469999955,
+       "size": 167282,
+       "sha256": "0773b520089a680b9d8d6e05179f19dd795a09577433a2c8992b5d82beda5d8b",
+       "pixels": "1626ec78c877a88893e7a3146988e73eb201cc71bfd29ca8f7344cc56f547f05"
+      },
+      {
+       "name": "png2",
+       "load1": 13.84,
+       "pose": 16.22979500000656,
+       "rafCount": 0,
+       "ms": 1128.059374999997,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11150,
+        "utility": 0,
+        "renderer": 10,
+        "node": 39.70800000000054
+       },
+       "size": 167282,
+       "sha256": "0773b520089a680b9d8d6e05179f19dd795a09577433a2c8992b5d82beda5d8b",
+       "pixels": "1626ec78c877a88893e7a3146988e73eb201cc71bfd29ca8f7344cc56f547f05"
+      }
+     ]
+    },
+    {
+     "index": 702,
+     "time": 23.4,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 13.84,
+       "pose": 27.907028000001446,
+       "rafCount": 0,
+       "ms": 1202.9447340000042,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11290,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.65899999999965
+       },
+       "size": 167418,
+       "sha256": "7bb0b34a2e2bab5bcddb48017417c68e5e3510ea7fdd38aa77090c347a594b5b",
+       "pixels": "68a1800025a1c2dfca62879fe577fb6fb3d3eb3833a3908347a07b00e1ce25e7"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.17,
+       "pose": 11.629801999995834,
+       "rafCount": 0,
+       "ms": 77.54402899999695,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.04200000000128
+       },
+       "firstMs": 1036.2158460000064,
+       "size": 167418,
+       "sha256": "7bb0b34a2e2bab5bcddb48017417c68e5e3510ea7fdd38aa77090c347a594b5b",
+       "pixels": "68a1800025a1c2dfca62879fe577fb6fb3d3eb3833a3908347a07b00e1ce25e7"
+      },
+      {
+       "name": "png",
+       "load1": 14.17,
+       "pose": 19.152158999990206,
+       "rafCount": 0,
+       "ms": 1051.6185340000084,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 10660,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.433000000000902
+       },
+       "size": 167418,
+       "sha256": "7bb0b34a2e2bab5bcddb48017417c68e5e3510ea7fdd38aa77090c347a594b5b",
+       "pixels": "68a1800025a1c2dfca62879fe577fb6fb3d3eb3833a3908347a07b00e1ce25e7"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.17,
+       "pose": 16.454524000000674,
+       "rafCount": 0,
+       "ms": 75.13251900000614,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 10,
+        "node": 10.679000000000087
+       },
+       "firstMs": 1114.3050380000059,
+       "size": 167418,
+       "sha256": "7bb0b34a2e2bab5bcddb48017417c68e5e3510ea7fdd38aa77090c347a594b5b",
+       "pixels": "68a1800025a1c2dfca62879fe577fb6fb3d3eb3833a3908347a07b00e1ce25e7"
+      },
+      {
+       "name": "png2",
+       "load1": 14.17,
+       "pose": 16.182193999993615,
+       "rafCount": 0,
+       "ms": 1076.6007539999991,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 11170,
+        "utility": 0,
+        "renderer": 0,
+        "node": 57.04100000000108
+       },
+       "size": 167418,
+       "sha256": "7bb0b34a2e2bab5bcddb48017417c68e5e3510ea7fdd38aa77090c347a594b5b",
+       "pixels": "68a1800025a1c2dfca62879fe577fb6fb3d3eb3833a3908347a07b00e1ce25e7"
+      }
+     ]
+    },
+    {
+     "index": 705,
+     "time": 23.5,
+     "transition": null,
+     "probes": [
+      {
+       "name": "png",
+       "load1": 14.4,
+       "pose": 54.27784399999655,
+       "rafCount": 0,
+       "ms": 974.992218000014,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 11200,
+        "utility": 0,
+        "renderer": 10,
+        "node": 10.106999999999971
+       },
+       "size": 167867,
+       "sha256": "98334f27855bb4afa663b182e0b9a5970f5c270e92dbe75b2043dda37c3784e4",
+       "pixels": "89b95ad18f3ce47ff668b72cd6e121c1fcb37c5f28215a75ac5e580c8325a252"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.4,
+       "pose": 15.583902999991551,
+       "rafCount": 0,
+       "ms": 92.03455700000632,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 100,
+        "utility": 0,
+        "renderer": 0,
+        "node": 11.700000000000728
+       },
+       "firstMs": 1057.9481110000052,
+       "size": 167867,
+       "sha256": "98334f27855bb4afa663b182e0b9a5970f5c270e92dbe75b2043dda37c3784e4",
+       "pixels": "89b95ad18f3ce47ff668b72cd6e121c1fcb37c5f28215a75ac5e580c8325a252"
+      },
+      {
+       "name": "png",
+       "load1": 14.4,
+       "pose": 14.324611999996705,
+       "rafCount": 0,
+       "ms": 937.6561599999841,
+       "cpu": {
+        "browser": 30,
+        "zygote": 0,
+        "gpu-process": 11020,
+        "utility": 0,
+        "renderer": 0,
+        "node": 10.547999999998865
+       },
+       "size": 167867,
+       "sha256": "98334f27855bb4afa663b182e0b9a5970f5c270e92dbe75b2043dda37c3784e4",
+       "pixels": "89b95ad18f3ce47ff668b72cd6e121c1fcb37c5f28215a75ac5e580c8325a252"
+      },
+      {
+       "name": "pngAgain",
+       "load1": 14.4,
+       "pose": 17.411479000002146,
+       "rafCount": 0,
+       "ms": 80.28384599997662,
+       "cpu": {
+        "browser": 50,
+        "zygote": 0,
+        "gpu-process": 110,
+        "utility": 0,
+        "renderer": 10,
+        "node": 10.849000000001979
+       },
+       "firstMs": 1015.0161580000131,
+       "size": 167867,
+       "sha256": "98334f27855bb4afa663b182e0b9a5970f5c270e92dbe75b2043dda37c3784e4",
+       "pixels": "89b95ad18f3ce47ff668b72cd6e121c1fcb37c5f28215a75ac5e580c8325a252"
+      },
+      {
+       "name": "png2",
+       "load1": 14.61,
+       "pose": 27.171945000009146,
+       "rafCount": 0,
+       "ms": 1021.6112589999975,
+       "cpu": {
+        "browser": 40,
+        "zygote": 0,
+        "gpu-process": 10650,
+        "utility": 0,
+        "renderer": 10,
+        "node": 13.385000000002037
+       },
+       "size": 167867,
+       "sha256": "98334f27855bb4afa663b182e0b9a5970f5c270e92dbe75b2043dda37c3784e4",
+       "pixels": "89b95ad18f3ce47ff668b72cd6e121c1fcb37c5f28215a75ac5e580c8325a252"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "environment": {
+  "chromium": "151.0.7922.34",
+  "viewerApi": 29,
+  "width": 1920,
+  "height": 1080,
+  "webgl": {
+   "view": {
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "vendor": "Google Inc. (Google)",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "attributes": {
+     "alpha": true,
+     "antialias": true,
+     "depth": true,
+     "desynchronized": false,
+     "failIfMajorPerformanceCaveat": false,
+     "powerPreference": "default",
+     "premultipliedAlpha": true,
+     "preserveDrawingBuffer": false,
+     "stencil": true,
+     "xrCompatible": false
+    }
+   },
+   "fresh": {
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "vendor": "Google Inc. (Google)",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "attributes": {
+     "alpha": true,
+     "antialias": true,
+     "depth": true,
+     "desynchronized": false,
+     "failIfMajorPerformanceCaveat": false,
+     "powerPreference": "default",
+     "premultipliedAlpha": true,
+     "preserveDrawingBuffer": false,
+     "stencil": false,
+     "xrCompatible": false
+    }
+   },
+   "canvases": [
+    {
+     "width": 1766,
+     "height": 929
+    }
+   ]
+  },
+  "processes": [
+   {
+    "type": "browser",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --use-angle=swiftshader --enable-unsafe-swiftshader --user-data-dir=/home/asa/devel/machinome/videomaker/WTs/render-cost/workflow/ongoing/addition-warts-campaign/render-cost/_build/tmp/playwright_chromiumdev_profile-Myp9Oj --remote-debugging-pipe --no-startup-window "
+   },
+   {
+    "type": "zygote",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-zygote-sandbox --no-sandbox --headless "
+   },
+   {
+    "type": "zygote",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-sandbox --headless "
+   },
+   {
+    "type": "gpu-process",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=gpu-process --no-sandbox --disable-dev-shm-usage --disable-breakpad --headless --ozone-platform=headless --use-angle=swiftshader --enable-unsafe-swiftshader --gpu-preferences=YAAAAAAAAAAgAAAEAAAAAAAAAAAAAGAASAAAAAAAAAABAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAMAAAAAQAAAAAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAA== --shared-files --field-trial-handle=3,i,5511801942536832035,18274049332321154389,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,5134612132093266533,17192855319487267615,4 --trace-process-track-uuid=3190708988185955192 "
+   },
+   {
+    "type": "utility",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --mute-audio --headless=old --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,5511801942536832035,18274049332321154389,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,5134612132093266533,17192855319487267615,4 --trace-process-track-uuid=3190708989122997041 "
+   },
+   {
+    "type": "renderer",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=renderer --headless=old --no-sandbox --disable-dev-shm-usage --disable-back-forward-cache --disable-background-timer-throttling --disable-breakpad --force-color-profile=srgb --remote-debugging-pipe --allow-pre-commit-input --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --ozone-platform=headless --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=4 --time-ticks-at-unix-epoch=-1790589212949046 --launch-time-ticks=254307043161 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,5511801942536832035,18274049332321154389,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,5134612132093266533,17192855319487267615,4 --trace-process-track-uuid=3190708990060038890 "
+   }
+  ],
+  "node": "v24.11.1",
+  "cpus": 16,
+  "viewerSha256": "b5fcdb8613aceb3936c09d755af41f1ceb9ad1125e4f5bc4e671a568a0920107",
+  "stageSha256": "50f37c454411a75c3b18375236a38834b137ba4d6a497edce860d9159006d700",
+  "takeReplay": {
+   "steps": 7,
+   "matched": true
+  }
+ },
+ "fps": 30,
+ "shotFrames": 581,
+ "frameCount": 20,
+ "frames": [
+  {
+   "index": 648,
+   "time": 21.6,
+   "transition": null
+  },
+  {
+   "index": 651,
+   "time": 21.7,
+   "transition": null
+  },
+  {
+   "index": 654,
+   "time": 21.8,
+   "transition": null
+  },
+  {
+   "index": 657,
+   "time": 21.9,
+   "transition": null
+  },
+  {
+   "index": 660,
+   "time": 22,
+   "transition": null
+  },
+  {
+   "index": 663,
+   "time": 22.1,
+   "transition": null
+  },
+  {
+   "index": 666,
+   "time": 22.2,
+   "transition": null
+  },
+  {
+   "index": 669,
+   "time": 22.3,
+   "transition": null
+  },
+  {
+   "index": 672,
+   "time": 22.4,
+   "transition": null
+  },
+  {
+   "index": 675,
+   "time": 22.5,
+   "transition": null
+  },
+  {
+   "index": 678,
+   "time": 22.6,
+   "transition": null
+  },
+  {
+   "index": 681,
+   "time": 22.7,
+   "transition": null
+  },
+  {
+   "index": 684,
+   "time": 22.8,
+   "transition": null
+  },
+  {
+   "index": 687,
+   "time": 22.9,
+   "transition": null
+  },
+  {
+   "index": 690,
+   "time": 23,
+   "transition": null
+  },
+  {
+   "index": 693,
+   "time": 23.1,
+   "transition": null
+  },
+  {
+   "index": 696,
+   "time": 23.2,
+   "transition": null
+  },
+  {
+   "index": 699,
+   "time": 23.3,
+   "transition": null
+  },
+  {
+   "index": 702,
+   "time": 23.4,
+   "transition": null
+  },
+  {
+   "index": 705,
+   "time": 23.5,
+   "transition": null
+  }
+ ],
+ "wallMs": 136031.38012,
+ "load1End": 14.61,
+ "finished": "2026-10-01T08:34:15.623Z"
+}
