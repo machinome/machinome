@@ -152,8 +152,14 @@ describe('API_VERSION', () => {
   // world point stand on screen, a highlight that keeps, dims or ghosts
   // the rest, and an up direction and field of view per view change.
   // The document list does not move: none of them reads a new field.
-  it('declares film annotations as API 28', () => {
-    expect(API_VERSION).toBe(28);
+  // API 29 (OpenSpec `on-demand-clocked`, design D6): an on-demand mount
+  // accepts a clocked machine, poses it by request and draws it without
+  // a frame loop, and refuses by name the two clocked verbs that need
+  // one. A build at 28 refuses the same mount, so a film host asks
+  // before it mounts. The document list does not move: no field is
+  // read anew.
+  it('declares on-demand clocked capture as API 29', () => {
+    expect(API_VERSION).toBe(29);
   });
 });
 

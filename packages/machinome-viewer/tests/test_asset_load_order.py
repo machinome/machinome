@@ -138,8 +138,8 @@ class AssetLoadOrderTest(unittest.TestCase):
                                 page = context.new_page()
                                 page.goto(url, wait_until='load')
                                 mounted = page.evaluate('''async () => {
-                                  if (MachinomeViewer.apiVersion !== 28)
-                                    throw Error('Expected Viewer API 28');
+                                  if (MachinomeViewer.apiVersion !== 29)
+                                    throw Error('Expected Viewer API 29');
                                   window.viewer = await MachinomeViewer.mount(
                                     '#host', '/manifest.json', {
                                       renderMode: 'on-demand', animation: 'external',
@@ -153,7 +153,7 @@ class AssetLoadOrderTest(unittest.TestCase):
                                   window.viewer.setTime(0.25);
                                   return window.viewer.apiVersion;
                                 }''')
-                                self.assertEqual(mounted, 28)
+                                self.assertEqual(mounted, 29)
                                 with lock:
                                     order = tuple(completions)
                                 expected = ('red', 'blue') if delayed == 'blue' else ('blue', 'red')

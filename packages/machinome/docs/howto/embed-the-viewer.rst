@@ -133,5 +133,6 @@ lets the host supply their CSS. See :doc:`reference/layouts`.
 
 For an externally posed still, ``renderMode: 'on-demand'`` removes the
 background frame loop. It requires external animation and all interactive
-controls disabled, and rejects running/clocked documents and instructions.
+controls disabled. It accepts a clocked machine posed by request (API 29),
+and rejects a running program and a posed document with instructions.
 It is not the mode for an interactive machine. See :doc:`reference/mount`.

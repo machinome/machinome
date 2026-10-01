@@ -59,6 +59,8 @@ Request and inspect motion
    viewer **draws** that transition over the instruction's declared duration.
    Unlike ``move()``, this method deliberately starts a drawing. It returns no
    completion promise. Another request/session action first lands that drawing.
+   Refused on a ``renderMode: 'on-demand'`` viewer, before any request is made
+   (see :ref:`clocked-on-demand`).
 
 Request result
 --------------
@@ -149,6 +151,8 @@ Elapsed clock
    Start/stop clock transport and return ``void``. Refused when the model
    declares no clock. Frames advance that clock in seconds, scaled by
    ``viewer.setSpeed()``. Pausing leaves the committed bank where it stands.
+   Starting it is refused on a ``renderMode: 'on-demand'`` viewer, which runs
+   no frames; stopping it is accepted.
 
 To advance a declared clock explicitly:
 
@@ -162,6 +166,52 @@ To advance a declared clock explicitly:
 
 Backward clock requests are refused. ``viewer.setTime(0.5)`` changes the
 ordinary timeline, not this elapsed clock.
+
+.. _clocked-on-demand:
+
+On-demand capture
+=================
+
+Since API 29 a clocked machine mounts with ``renderMode: 'on-demand'``,
+under the four options that mode requires (see
+:js:attr:`ViewerOptions.renderMode`). No frame loop runs, so the host poses
+each frame and captures it:
+
+* ``move()``, ``restore()`` and ``reset()`` pose the model and draw it before
+  they return, exactly as in continuous mode. ``restore()`` accepts a bank
+  whose input stands anywhere along a request's path, so a transition is
+  posed bank by bank: take the request's ``origin``, ``end`` and the
+  ``targets`` of each commit whose ``fraction`` has been reached.
+* ``viewer.setView()`` draws too, and re-fits the near and far clipping
+  planes to the posed model. To redraw without changing the view, call
+  ``viewer.setView(viewer.view())``. A capture taken after posing and then
+  ``setView`` depends only on the bank and the view: posing the same bank
+  again draws the same frame. A capture taken after the pose alone shows the
+  new bank, but keeps the clipping planes of the last framing.
+* ``trigger()`` is refused, naming ``renderMode 'on-demand'``, before any
+  request is made: the transition it draws is advanced over wall seconds by
+  the frame loop. The bank and the frame are unchanged.
+* ``setClockPlaying(true)`` is refused for the same reason. Advance a
+  declared clock with ``move(clock, { by: seconds })``.
+* No clocked panel, part control or full-screen control is drawn.
+
+.. code-block:: javascript
+
+   const viewer = await MachinomeViewer.mount('#still', 'export/manifest.json', {
+     renderMode: 'on-demand',
+     animation: 'external',
+     autoplay: false,
+     driverControls: 'none',
+     partControls: 'none',
+   });
+   const machine = viewer.machine();
+   machine.move('operand', { to: 4 });
+   const origin = machine.snapshot();
+   // The crank a quarter of the way through its stroke, before any commit.
+   machine.restore({ identity: origin.identity,
+                     bank: { ...origin.bank, crank: origin.bank.crank + 90 } });
+   viewer.setView(viewer.view());
+   // Capture/read the rendered canvas, then pose the next frame.
 
 Refused cadence verbs
 =====================

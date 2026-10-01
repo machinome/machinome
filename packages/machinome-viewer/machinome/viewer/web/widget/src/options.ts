@@ -93,6 +93,49 @@ export interface ControlPlan {
   hostDriven: boolean;
 }
 
+/** What an on-demand mount accepts of the DOCUMENT (OpenSpec
+ * `on-demand-clocked`, design D1). The options cannot answer it: they are
+ * resolved before the document is loaded, so the mount asks this at the
+ * load and at every republish.
+ *
+ * Without a frame loop, a running PROGRAM cannot advance (its ticks are
+ * the loop's), and a posed document's instructions are driver ramps the
+ * loop advances. A CLOCKED machine needs neither: each request poses and
+ * draws before it returns, and its two verbs that draw over wall seconds
+ * refuse themselves (`assertFrameLoop`). */
+export function assertOnDemandDocument(
+  renderMode: 'continuous' | 'on-demand',
+  document: { program?: unknown; clocked?: unknown;
+              instructions?: Record<string, unknown> },
+): void {
+  if (renderMode !== 'on-demand') return;
+  if ('program' in document) {
+    throw new Error(
+      'on-demand rendering cannot run a program: a running machine '
+      + 'advances in ticks the frame loop drives; mount it with '
+      + "renderMode 'continuous'");
+  }
+  if ('clocked' in document) return;
+  if (Object.keys(document.instructions ?? {}).length > 0) {
+    throw new Error('on-demand rendering requires a posed document without instructions');
+  }
+}
+
+/** Refuse, under on-demand rendering, a verb that draws over WALL
+ * SECONDS -- a played instruction, a running clock -- which only the
+ * frame loop advances and an on-demand viewer does not run (design D4).
+ * Called before the verb changes anything. */
+export function assertFrameLoop(
+  renderMode: 'continuous' | 'on-demand',
+  verb: string,
+  advice: string,
+): void {
+  if (renderMode !== 'on-demand') return;
+  throw new Error(
+    `${verb} needs the frame loop, which a renderMode 'on-demand' viewer `
+    + `does not run. ${advice}`);
+}
+
 export function resolveOptions(
   options: ViewerOptions = {},
 ): ResolvedViewerOptions {

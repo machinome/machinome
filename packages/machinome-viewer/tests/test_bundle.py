@@ -56,8 +56,10 @@ class BundleLookupTest(TestCase):
         # INSTRUCTIONS -- one request solved before the first frame and
         # its transition drawn over the declared duration, where a build
         # at 18 lists the same button and refuses it (OpenSpec
-        # `play-the-instruction`) -- is the one after that.
-        self.assertEqual(bundle.api_version(), 28)
+        # `play-the-instruction`) -- is the one after that. API 28 is the
+        # film annotations (`track-a-part-on-screen`); API 29 is an
+        # on-demand mount of a clocked machine (`on-demand-clocked`).
+        self.assertEqual(bundle.api_version(), 29)
 
     def test_declares_the_document_versions_this_build_reads(self):
         self.assertEqual(bundle.document_versions(),

@@ -11,6 +11,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  assertFrameLoop, assertOnDemandDocument,
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
   showsPartControls, showsRunControls,
 } from './options';
@@ -22,6 +23,10 @@ describe('resolveOptions', () => {
     expect(resolveOptions(options).renderMode).toBe('on-demand');
     expect(() => resolveOptions({...options, autoplay: true})).toThrow(/on-demand/);
     expect(() => resolveOptions({...options, animation: 'inline'})).toThrow(/on-demand/);
+    // OpenSpec `on-demand-clocked`: a film mounting a clocked machine
+    // uses exactly these four, and each of them is still required.
+    expect(() => resolveOptions({...options, driverControls: 'inline'})).toThrow(/on-demand/);
+    expect(() => resolveOptions({...options, partControls: 'inline'})).toThrow(/on-demand/);
   });
   it('reproduces the published export behavior when given nothing', () => {
     const resolved = resolveOptions();
@@ -327,5 +332,62 @@ describe('showsPartControls', () => {
 
   it('presents nothing when the host asked for none', () => {
     expect(showsPartControls('none', true)).toBe(false);
+  });
+});
+
+// What an on-demand mount accepts of the DOCUMENT (OpenSpec
+// `on-demand-clocked`, design D1). The options cannot answer it: they
+// are resolved before the document is loaded.
+describe('assertOnDemandDocument', () => {
+  const clocked = { identity: 'x', commits: [], bounds: [] };
+  const instructions = { 'Turn crank': { by: { crank: 360 }, duration: 6 } };
+
+  it('accepts a clocked machine, with or without instructions', () => {
+    expect(() => assertOnDemandDocument('on-demand', { clocked })).not.toThrow();
+    expect(() => assertOnDemandDocument('on-demand', { clocked, instructions }))
+      .not.toThrow();
+  });
+
+  it('accepts a posed document without instructions, as before', () => {
+    expect(() => assertOnDemandDocument('on-demand', {})).not.toThrow();
+    expect(() => assertOnDemandDocument('on-demand', { instructions: {} }))
+      .not.toThrow();
+  });
+
+  it('still refuses a posed document with instructions, by the same message', () => {
+    expect(() => assertOnDemandDocument('on-demand', { instructions }))
+      .toThrow('on-demand rendering requires a posed document without instructions');
+  });
+
+  it('refuses a running program, naming the program and the mode', () => {
+    expect(() => assertOnDemandDocument('on-demand', { program: {} }))
+      .toThrow(/on-demand rendering cannot run a program.*renderMode 'continuous'/);
+    // A program is checked first: a document claiming both is a program.
+    expect(() => assertOnDemandDocument('on-demand', { program: {}, clocked }))
+      .toThrow(/cannot run a program/);
+  });
+
+  it('accepts everything in continuous mode', () => {
+    for (const document of [{ program: {} }, { clocked, instructions },
+                            { instructions }, {}]) {
+      expect(() => assertOnDemandDocument('continuous', document)).not.toThrow();
+    }
+  });
+});
+
+// The clocked verbs that draw over wall seconds need the frame loop an
+// on-demand viewer does not run (design D4).
+describe('assertFrameLoop', () => {
+  it('is silent in continuous mode', () => {
+    expect(() => assertFrameLoop('continuous', "machine().trigger('Stroke')", ''))
+      .not.toThrow();
+  });
+
+  it('refuses on demand, naming the verb, the mode and what to do instead', () => {
+    expect(() => assertFrameLoop('on-demand', "machine().trigger('Stroke')",
+                                 'Pose the transition with machine().restore().'))
+      .toThrow("machine().trigger('Stroke') needs the frame loop, which a "
+        + "renderMode 'on-demand' viewer does not run. Pose the transition "
+        + 'with machine().restore().');
   });
 });

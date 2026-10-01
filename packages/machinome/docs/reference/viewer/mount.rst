@@ -134,9 +134,18 @@ accept these too, with the additions/defaults in :doc:`layouts`.
    ``'continuous'`` (default) or ``'on-demand'``. On-demand renders explicitly
    without a background animation-frame loop and requires **all four**:
    ``animation: 'external'``, ``autoplay: false``, ``driverControls: 'none'``,
-   ``partControls: 'none'``. It accepts only externally posed documents without
-   instructions, a running program or a clocked machine. Invalid combinations
-   reject the mount. Use it for controlled stills, not interactive simulation.
+   ``partControls: 'none'``. Invalid combinations reject the mount. Use it for
+   controlled stills and frame-by-frame captures, not interactive simulation.
+
+   On-demand rendering accepts an externally posed document without
+   instructions, and, since API 29, accepts a clocked machine (version 8),
+   whether or not it declares instructions: each request and ``setView``
+   draws before it returns, and the two clocked verbs that draw over wall
+   seconds are refused (see :ref:`clocked-on-demand`). It refuses a running
+   program (``on-demand rendering cannot run a program``) and a posed document
+   that declares instructions (``on-demand rendering requires a posed document
+   without instructions``). An on-demand viewer draws no control of its own
+   and no full-screen control.
 
 Running options
 ===============

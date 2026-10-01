@@ -38,9 +38,13 @@ def test_the_manual_states_the_release():
         assert 'not yet published' not in text.lower(), page
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     sections = re.split(r'^## ', changelog, flags=re.M)
-    # 0.7.1 ships the current source: no pending section sits above it.
+    # A change writes its changelog entry when it lands (the pilot's
+    # ruling of 29 September 2026), under ONE `Unreleased` section above
+    # the release; the release is the first section after it.
     release_sections = sections[1:]
-    assert not release_sections[0].startswith('Unreleased'), release_sections[0][:40]
+    if release_sections[0].startswith('Unreleased'):
+        release_sections = release_sections[1:]
+    assert not any(one.startswith('Unreleased') for one in release_sections)
     current = ' '.join(release_sections[0].split())
     assert current.startswith('0.7.1 — 27 September 2026'), current[:40]
     assert 'unreleased' not in current.lower()
@@ -135,7 +139,6 @@ def test_profile_contact_is_documented_as_part_of_the_release():
     assert 'released-viewer-api' not in compatibility
     assert 'pointwise' in running.lower()
     assert 'continuous' in running.lower()
-    assert '## Unreleased' not in changelog
     release = changelog.split('## 0.7.0 — 23 September 2026')[1].split('\n## ')[0]
     assert 'profileOverlap' in release
     assert 'API 26 and\n  version 13 by finite profile contact' in release
@@ -147,7 +150,8 @@ def test_film_annotations_are_documented_as_current_source():
     API 28 after 0.7.1, in no published release, and the recorded 0.7.1
     facts stay at API 27."""
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
-    assert widget['machinomeViewerApi'] == 28
+    # 28 or later: `on-demand-clocked` declares 29 on top of it.
+    assert widget['machinomeViewerApi'] >= 28
     assert widget['machinomeDocumentVersions'] == list(range(1, 14))
     compatibility = ' '.join((ROOT / 'docs/compatibility.rst').read_text().split())
     assert 'The 0.7.1 release declares:' in compatibility
@@ -159,8 +163,9 @@ def test_film_annotations_are_documented_as_current_source():
     assert 'declares viewer API 27 and reads document versions' in index
     assert 'viewer API **27**' in (ROOT / 'README.md').read_text()
     changelog = (ROOT / 'CHANGELOG.md').read_text()
-    assert '## Unreleased' not in changelog
-    assert 'API 28' not in changelog
+    # The released records stay at API 27, whatever `Unreleased` says.
+    released = changelog.split('## 0.7.1 — 27 September 2026')[1]
+    assert 'API 28' not in released
     handle = (ROOT / 'docs/reference/viewer-handle.rst').read_text()
     assert '.. js:method:: ViewerHandle.partOnScreen(path)' in handle
     assert '.. js:method:: ViewerHandle.project(world)' in handle
@@ -176,3 +181,27 @@ def test_film_annotations_are_documented_as_current_source():
         text = page.read_text().lower()
         for word in ('videomaker', 'revolutions', 'leonardo', ' film'):
             assert word not in text, (page, word)
+
+
+def test_on_demand_clocked_capture_is_documented():
+    """OpenSpec `on-demand-clocked`: the source declares API 29, the
+    manual states the on-demand rules for a clocked machine, and the
+    change's changelog entry sits under `Unreleased`."""
+    widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
+    assert widget['machinomeViewerApi'] == 29
+    assert widget['machinomeDocumentVersions'] == list(range(1, 14))
+    flat = lambda path: ' '.join((ROOT / path).read_text().split())  # noqa: E731
+    mount = flat('docs/reference/mount.rst')
+    assert 'accepts a clocked machine' in mount
+    assert 'refuses a running program' in mount
+    assert 'no full-screen control' in mount
+    clocked = flat('docs/reference/clocked.rst')
+    assert 'On-demand capture' in clocked
+    assert 'setView(viewer.view())' in clocked
+    assert "renderMode 'on-demand'" in clocked
+    compatibility = flat('docs/compatibility.rst')
+    assert 'API 29 adds' in compatibility
+    changelog = (ROOT / 'CHANGELOG.md').read_text()
+    pending = changelog.split('## Unreleased')[1].split('\n## ')[0]
+    assert 'viewer API 29' in ' '.join(pending.split())
+    assert changelog.index('## Unreleased') < changelog.index('## 0.7.1')

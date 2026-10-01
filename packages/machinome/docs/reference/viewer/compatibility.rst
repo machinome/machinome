@@ -20,7 +20,9 @@ which tell a host where any part and any world point stand on screen, and
 :js:meth:`ViewerHandle.highlight`, which tints named parts and keeps, dims or
 ghosts the rest; and :js:meth:`ViewerHandle.setView` takes an up direction and
 a field of view, which :js:meth:`ViewerHandle.view` reports. A host relying on them checks for API 28 or later; a bundle
-reporting 27 has none of them.
+reporting 27 has none of them. API 29 adds an on-demand mount of a clocked
+machine (:js:attr:`ViewerOptions.renderMode`, :ref:`clocked-on-demand`): a
+bundle reporting 28 refuses that mount.
 
 A host requiring separately named handles for two ``Turn`` controls on one
 part must check the viewer API, not only the document version: the document
@@ -118,7 +120,8 @@ controls on one part selecting different joints, without changing the
 document schema or the ``controls()`` shape. API 26 refuses that pair at
 load. API 28, in the source after 0.7.1, adds screen positions for any part
 and world point, a reversible highlight, and an up direction and field of
-view per view change. A host that needs a feature can check the declared API before using
+view per view change. API 29 mounts a clocked machine with on-demand
+rendering, posed by request and drawn without a frame loop. A host that needs a feature can check the declared API before using
 it. Do not assume an old pinned bundle implements the
 current manual.
 

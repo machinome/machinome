@@ -14,6 +14,7 @@ import {
   AssemblyNavigationState,
 } from './assembly';
 import {
+  assertFrameLoop, assertOnDemandDocument,
   controlPlan, resolveBaseUrl, resolveOptions, showsDriverChrome,
   showsPartControls, showsRunControls,
 } from './options';
@@ -130,7 +131,9 @@ export interface ViewInput {
 }
 
 export interface ViewerOptions {
-  /** On-demand capture: no background render loop; externally posed documents only. */
+  /** On-demand capture: no background render loop. Accepts an externally
+   * posed document without instructions or a clocked machine (API 29),
+   * never a running program. */
   renderMode?: 'continuous' | 'on-demand';
   baseUrl?: string;
   animation?: AnimationMode;
@@ -1521,6 +1524,14 @@ export async function mount(
         + 'elapsed time base; this one banks its drivers and its states and '
         + 'stands until a request moves one.');
     }
+    // The transport advances in the frame loop (`clockFrame`), so on
+    // demand a playing clock would never move (OpenSpec
+    // `on-demand-clocked`, design D4). Stopping it is always accepted.
+    if (playing) {
+      assertFrameLoop(resolved.renderMode, 'setClockPlaying(true)',
+        `Advance the clock with machine().move('${started.clock()}', `
+        + '{ by: seconds }).');
+    }
     if (playing) clockRefusal = null;
     clockPlaying = playing;
     rebuildClockedChrome();
@@ -1682,11 +1693,11 @@ export async function mount(
     notifyAssemblyChange();
   };
 
+  // A clocked machine is accepted on demand (OpenSpec `on-demand-clocked`,
+  // design D1): its requests pose and draw through the machine's own
+  // hook, with no frame between.
   function assertCaptureDocument(document: Manifest): void {
-    if (resolved.renderMode === 'on-demand' &&
-        ('program' in document || 'clocked' in document || Object.keys(document.instructions ?? {}).length > 0)) {
-      throw new Error('on-demand rendering requires a posed document without instructions');
-    }
+    assertOnDemandDocument(resolved.renderMode, document);
   }
 
   const refreshControls = (document: Manifest) => {
@@ -2169,8 +2180,16 @@ export async function mount(
         },
         // PLAYING an instruction, from the handle exactly as from the
         // button: one request, made once, and its transition drawn over
-        // the declared duration.
-        trigger: (name: string) => clockedPlay(name),
+        // the declared duration. Refused on demand BEFORE the request
+        // (OpenSpec `on-demand-clocked`, design D4): the drawing is
+        // advanced by the frame loop, so without one the transition's
+        // origin would stand on screen while the bank stood at its end.
+        trigger: (name: string) => {
+          assertFrameLoop(resolved.renderMode, `machine().trigger('${name}')`,
+            'Pose the transition bank by bank with machine().restore(), '
+            + "or mount with renderMode 'continuous'.");
+          return clockedPlay(name);
+        },
         restore: (state) => {
           landDrawing();
           started.restore(state);

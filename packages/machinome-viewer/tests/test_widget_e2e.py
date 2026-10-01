@@ -14,16 +14,18 @@ import io
 import json
 import math
 import os
+import shutil
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import run
 from unittest import TestCase
 
-from machinome_viewer.bundle import api_version
+from machinome_viewer.bundle import api_version, bundle_path
 
 from .support import (
-    CHROME, HAS_PIL, HAS_PLAYWRIGHT, export_calculator, export_marked,
+    CALCULATOR, CHROME, HAS_PIL, HAS_PLAYWRIGHT, PASCALINE, REGULATOR,
+    export_calculator, export_marked,
     export_touched, export_with_widget, needs_bundle, needs_chrome, needs_pil,
     needs_playwright, serve_directory, strip_markings,
 )
@@ -245,8 +247,10 @@ class ViewerMountApiTest(TestCase):
         # does NOT move with it either. OpenSpec `track-a-part-on-screen`
         # declares 28 once for three film-annotation capabilities -- part
         # and point tracking, highlighting, and a per-view up and field of
-        # view -- with the document list unchanged.
-        self.assertEqual(result['bundle'], 28)
+        # view -- with the document list unchanged. OpenSpec
+        # `on-demand-clocked` declares 29: an on-demand mount of a clocked
+        # machine, with the document list unchanged again.
+        self.assertEqual(result['bundle'], 29)
         # And a document carrying no program has no run and no machine,
         # which is what a host asking one question is answered with.
         self.assertIsNone(result['run'])
@@ -2040,3 +2044,214 @@ class FullscreenE2ETest(TestCase):
             frame.wait_for_selector('.machinome-fullscreen')
             self.assertEqual(frame.locator('.machinome-fullscreen').count(), 1)
             self.assertEqual(errors, [])
+
+
+# The calculator's bank at the start of a stroke (operand set to 4) and
+# the same bank with the crank half a turn and a bit in, the shape of a
+# film frame posed mid-stroke: no commit has fired, the crank has moved.
+# 190 degrees, not 180, so a dial with an even symmetry cannot hide it.
+ON_DEMAND_BANKS = """() => {
+  const machine = viewer.machine();
+  machine.reset();
+  machine.move('operand', { to: 4 });
+  const origin = machine.snapshot();
+  const mid = { identity: origin.identity,
+                bank: { ...origin.bank, crank: origin.bank.crank + 190 } };
+  window.origin = origin;
+  window.mid = mid;
+  return { origin, mid };
+}"""
+
+
+@needs_bundle
+@needs_playwright
+@needs_pil
+class OnDemandClockedTest(TestCase):
+    """OpenSpec `on-demand-clocked`: a film host mounts a CLOCKED machine
+    on demand, poses each frame by request and captures it, with no
+    frame loop running; the two verbs that draw over wall seconds are
+    refused by name."""
+
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tempdir.cleanup)
+        root = Path(self.tempdir.name) / 'root'
+        root.mkdir()
+        shutil.copytree(CALCULATOR, root / 'calculator')
+        shutil.copytree(REGULATOR, root / 'regulator')
+        shutil.copytree(PASCALINE, root / 'pascaline')
+        shutil.copy2(bundle_path(), root / 'machinome-viewer.js')
+        (root / 'harness.html').write_text(HARNESS_PAGE)
+        server = serve_directory(root)
+        base = server.__enter__()
+        self.addCleanup(server.__exit__, None, None, None)
+        self.harness_url = f'{base}/harness.html'
+
+    @contextmanager
+    def harness(self):
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(args=[
+                '--no-sandbox', '--disable-gpu', '--use-angle=swiftshader',
+            ])
+            try:
+                page = browser.new_page(viewport={'width': 800, 'height': 600})
+                page.set_default_timeout(120_000)
+                errors = []
+                page.on('pageerror', lambda error: errors.append(str(error)))
+                page.goto(self.harness_url)
+                page.wait_for_function('typeof MachinomeViewer !== "undefined"')
+                yield page
+                self.assertEqual(errors, [], f'uncaught page errors: {errors}')
+            finally:
+                browser.close()
+
+    def mount(self, page, document, options=FILM_MOUNT):
+        """Mount `document` and keep the handle as `window.viewer`; return
+        the refusal's message, or None when the mount succeeded."""
+        return page.evaluate("""async () => {
+          const host = document.getElementById('host');
+          try {
+            window.viewer = await MachinomeViewer.mount(host, 'DOCUMENT', OPTIONS);
+            return null;
+          } catch (error) {
+            return String(error.message);
+          }
+        }""".replace('DOCUMENT', document).replace('OPTIONS', options))
+
+    def mount_calculator(self, page):
+        refused = self.mount(page, 'calculator/viewer.json')
+        self.assertIsNone(refused, 'the on-demand mount refused the clocked machine')
+
+    def shot(self, page):
+        return page.locator('#host').screenshot()
+
+    def test_a_clocked_machine_mounts_on_demand_and_poses_by_restore(self):
+        with self.harness() as page:
+            self.mount_calculator(page)
+            banks = page.evaluate(ON_DEMAND_BANKS)
+            page.evaluate('() => { viewer.machine().restore(origin); viewer.setView(viewer.view()); }')
+            at_origin = self.shot(page)
+            # Restore alone: the request draws itself.
+            mid_state = page.evaluate('() => { viewer.machine().restore(mid); return viewer.machine().state(); }')
+            restored = self.shot(page)
+            # Then the explicit render a host already has: the same view.
+            page.evaluate('() => viewer.setView(viewer.view())')
+            mid_frame = self.shot(page)
+            # Away and back: posing the same bank draws the same frame.
+            page.evaluate('() => { viewer.machine().restore(origin); viewer.setView(viewer.view()); }')
+            back = self.shot(page)
+            page.evaluate('() => { viewer.machine().restore(mid); viewer.setView(viewer.view()); }')
+            again = self.shot(page)
+            loop = page.evaluate('() => viewer.machine().clockPlaying()')
+        self.assertEqual(mid_state, banks['mid']['bank'], 'restore did not take the bank given')
+        self.assertNotEqual(at_origin, mid_frame, 'the restored crank did not reach the frame')
+        self.assertEqual(back, at_origin, 'returning to the origin did not redraw it')
+        self.assertEqual(again, mid_frame, 'the same bank drew a different frame')
+        self.assertFalse(loop)
+
+        # Restore ALONE already draws the new pose: against the origin it
+        # differs as much as the setView frame does, and from the setView
+        # frame only where `setView` re-fits the near and far planes to
+        # the posed bounds (design D3; evidence.md). A frame that depends
+        # on the bank and the view alone is the one after `setView`.
+        def changed(a, b):
+            difference = ImageChops.difference(
+                Image.open(io.BytesIO(a)).convert('L'),
+                Image.open(io.BytesIO(b)).convert('L'))
+            return difference.width * difference.height - difference.histogram()[0]
+        moved, refit = changed(at_origin, restored), changed(restored, mid_frame)
+        print(f'\nrestore alone: {moved} pixels from the origin, {refit} from the setView frame')
+        self.assertGreater(moved, 0.9 * changed(at_origin, mid_frame))
+        self.assertLess(refit * 20, moved, 'restore alone left a stale frame')
+
+    def test_on_demand_requests_answer_as_continuous(self):
+        script = """() => {
+          const machine = viewer.machine();
+          machine.reset();
+          const answers = [
+            machine.move('operand', { to: 4 }),
+            machine.move('crank', { by: 1100 }),
+            machine.move('setting', { by: 1 }),
+            machine.move('crank', { by: -30 }),
+            machine.move('ring', { by: 500 }),
+          ];
+          return { answers: JSON.parse(JSON.stringify(answers)),
+                   bank: machine.state() };
+        }"""
+        with self.harness() as page:
+            self.mount_calculator(page)
+            on_demand = page.evaluate(script)
+            page.evaluate('() => viewer.dispose()')
+            self.assertIsNone(self.mount(page, 'calculator/viewer.json', '{}'))
+            continuous = page.evaluate(script)
+        self.assertEqual(on_demand, continuous)
+        # And the requests did something: the stroke committed.
+        self.assertGreater(len(on_demand['answers'][1]['commits']), 0)
+
+    def test_trigger_is_refused_on_demand(self):
+        with self.harness() as page:
+            self.mount_calculator(page)
+            page.evaluate(ON_DEMAND_BANKS)
+            page.evaluate('() => { viewer.machine().restore(origin); viewer.setView(viewer.view()); }')
+            before_frame = self.shot(page)
+            result = page.evaluate("""() => {
+              const machine = viewer.machine();
+              const before = machine.state();
+              let refused = null;
+              try { machine.trigger('Stroke'); } catch (error) { refused = String(error.message); }
+              return { refused, before, after: machine.state() };
+            }""")
+            after_frame = self.shot(page)
+        self.assertIsNotNone(result['refused'], 'trigger was accepted on demand')
+        self.assertIn("machine().trigger('Stroke')", result['refused'])
+        self.assertIn("renderMode 'on-demand'", result['refused'])
+        self.assertIn('restore', result['refused'])
+        self.assertEqual(result['after'], result['before'])
+        self.assertEqual(after_frame, before_frame)
+
+    def test_a_clock_does_not_play_on_demand(self):
+        with self.harness() as page:
+            refused = self.mount(page, 'regulator/viewer.json')
+            self.assertIsNone(refused, 'the on-demand mount refused the regulator')
+            result = page.evaluate("""() => {
+              const machine = viewer.machine();
+              const clock = machine.clock();
+              let refused = null;
+              try { machine.setClockPlaying(true); } catch (error) { refused = String(error.message); }
+              const playing = machine.clockPlaying();
+              machine.setClockPlaying(false);
+              const answered = machine.move(clock, { by: 0.5 });
+              return { clock, refused, playing, admitted: answered.admitted,
+                       elapsed: machine.state()[clock] };
+            }""")
+        self.assertIsNotNone(result['refused'], 'the clock was started on demand')
+        self.assertIn('setClockPlaying(true)', result['refused'])
+        self.assertIn("renderMode 'on-demand'", result['refused'])
+        self.assertFalse(result['playing'])
+        self.assertEqual(result['admitted'], 0.5)
+        self.assertEqual(result['elapsed'], 0.5)
+
+    def test_an_on_demand_clocked_mount_shows_no_control(self):
+        with self.harness() as page:
+            self.mount_calculator(page)
+            found = page.evaluate("""() => {
+              const host = document.getElementById('host');
+              return {
+                canvases: host.querySelectorAll('canvas').length,
+                controls: Array.from(host.querySelectorAll(
+                  'button, input, select, textarea, .clocked-controls, '
+                  + '.machinome-fullscreen, .animation-controls, .run-transport'))
+                  .map((element) => element.outerHTML.slice(0, 80)),
+                fullscreen: document.querySelectorAll('.machinome-fullscreen').length,
+              };
+            }""")
+        self.assertEqual(found['canvases'], 1)
+        self.assertEqual(found['controls'], [])
+        self.assertEqual(found['fullscreen'], 0)
+
+    def test_a_program_is_still_refused_on_demand(self):
+        with self.harness() as page:
+            refused = self.mount(page, 'pascaline/viewer.json')
+        self.assertIsNotNone(refused, 'a running program mounted on demand')
+        self.assertIn('on-demand rendering cannot run a program', refused)
+        self.assertIn("renderMode 'continuous'", refused)

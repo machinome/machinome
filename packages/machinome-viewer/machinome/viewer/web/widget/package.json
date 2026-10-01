@@ -1,7 +1,7 @@
 {
   "name": "@machinome/viewer",
   "version": "0.7.1",
-  "machinomeViewerApi": 28,
+  "machinomeViewerApi": 29,
   "machinomeDocumentVersions": [
     1,
     2,

@@ -3,6 +3,23 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased
+
+The source declares viewer API 29 and still reads document versions 1
+through 13.
+
+- **A clocked machine captured on demand.** `renderMode: 'on-demand'` now
+  mounts a clocked (version 8) document, with or without declared
+  instructions, under the same four options that mode already required.
+  `machine().move`, `restore` and `reset` pose the model and draw it before
+  they return, and `setView(viewer.view())` redraws without changing the
+  view, so a host poses a stroke bank by bank and captures each frame with
+  no frame loop running. `machine().trigger` and
+  `machine().setClockPlaying(true)` draw over wall seconds and are refused
+  there, naming the mode. A running program stays refused, now with a
+  message of its own; a posed document with instructions stays refused as
+  before. No control and no full-screen button is drawn. This is API 29.
+
 ## 0.7.1 — 27 September 2026
 
 Released with Machinome 0.7.1 and numbered with it. The viewer is the
