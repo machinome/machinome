@@ -4510,3 +4510,22 @@ on 23 + 145. Three frictions met on the way, each a framework matter:
     checked out as a worktree whose `.gitignore` lacks `_build*` sees its
     exports marked dirty after the first. Existing behaviour, recorded.
     Found by `export-records-its-revision`.
+
+# A machine's identity depends on the module its model is imported from (1 October 2026, found by Videomaker's take-identity change)
+
+**Status (as filed): recorded; triage open.**
+
+The clocked machine's identity, published as the export's `clocked.identity`
+and now as `Sim.identity`, includes the model class's module name: the same
+`counter.py` gives the export's identity when imported as `models.counter`
+and another identity under another module name. A consumer that records a
+take through `Sim` over a model imported through a different `PYTHONPATH`
+spelling is therefore refused as another machine, which is correct for what
+the identity promises and surprising for the author, who changed nothing in
+the model. Videomaker names the model as `module:Class` in its refusal and
+lists the import module among the causes (its archived change
+`take-identity`, 2026-10-01, finding 1). Ask: say in the identity's
+definition (export spec, ADR-128) that the import module is part of it, or
+anchor the identity on the project-relative module as the manifest's
+`[tool.machinome.models]` names it, so the spelling of `PYTHONPATH` cannot
+change a machine.
