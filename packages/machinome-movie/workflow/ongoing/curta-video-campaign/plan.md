@@ -26,6 +26,17 @@ Nothing here is ratified; each cycle ratifies its own change under
 delegated ("make sure you follow the subagent orchestration discipline").
 Integration of `curta-video` into `main` is the pilot's.
 
+Done, 1 October 2026 (small hours): the spike, `declare-a-take`
+(ADR-011), `pose-a-take` (ADR-012) and `reframe-join` (ADR-010) are merged
+on `curta-video`; the viewer cycle `on-demand-clocked` (its ADR-077, API 29)
+is done on the machinome-viewer branch of that name and waits for the
+pilot's merge there; *Addition* is rendered in the Curta project
+(`videos/addition/_build/rehearsal.mp4`, 3 787 frames, 126.23 s, every
+proof green, the take replayed on the viewer). `PROGRESS.md` has every
+commit and run; the findings are in `warts.md` under "Addition". What
+waits for the pilot: the two integrations, the film's licence statement in
+`description.md`, the release addresses, and watching the film.
+
 ## What the film needs that the tool lacks
 
 1. **A clocked machine on screen.** The commands refuse anything but a
