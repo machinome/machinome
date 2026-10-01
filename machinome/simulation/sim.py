@@ -267,6 +267,23 @@ class Sim:
         return self._clocked is not None
 
     @property
+    def identity(self):
+        """The clocked machine's identity, the string every document
+        producer publishes as `clocked.identity` for the same model.
+
+        A consumer recording requests through this simulation compares it
+        with an export's `clocked.identity`, and so refuses a recording
+        made over a machine that differs from the one the export carries.
+        It describes the MACHINE and not the bank: `state=`, a request,
+        `restore` and `reset` leave it as it was. The producers compile
+        their machine by constructing a simulation, so the two strings are
+        one value by construction.
+
+        Refused by name over a root that is not clocked.
+        """
+        return self._clocked_only('identity').identity
+
+    @property
     def tick(self):
         """The integer tick this simulation stands at.
 
@@ -292,6 +309,22 @@ class Sim:
             f'and sim.trigger(name) for the one an instruction states -- '
             f'and every event on a request path is solved exactly. '
             f'Read sim.state, sim.commits and the request they return.')
+
+    def _clocked_only(self, what):
+        """The clocked machine, or `what` refused by name over a root that
+        is not clocked."""
+        if self._clocked is not None:
+            return self._clocked
+        message = (
+            f'{what} belongs to a CLOCKED simulation, and '
+            f'{type(self.node).__name__} is not clocked: nothing in its '
+            f'tree declares a State, so it compiles no clocked machine and '
+            f'its document carries no clocked.identity.')
+        if self._run is not None:
+            message += (
+                ' Under Time.running() the compiled program carries its '
+                'own identity: sim.program.identity.')
+        raise TypeError(message)
 
     def _running(self, what):
         self._not_clocked(what)

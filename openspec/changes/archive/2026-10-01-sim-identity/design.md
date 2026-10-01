@@ -131,18 +131,17 @@ exposes.
 
 ### 6. The changelog entry
 
-The brief puts the entry under a new `Unreleased` section of `HISTORY.rst`,
-above 0.7.1. The repository keeps a second record, the manual's
-`docs/project/changelog.rst`, which already has an `Unreleased` section
-(written by `persistent-verdict-memo`). The workspace's write-the-manual
-discipline requires a reader-facing change to write its bullet there in
-the same cycle. The entry therefore goes under `Unreleased` in both
-records, each in its own style. `tests/test_release_records.py` currently
-refuses any `unreleased` text above the released section of `HISTORY.rst`.
-The skill names a pin like that as a defect, and the changelog's twin of it
-was already corrected. It is corrected the same way here: one `Unreleased`
-section may precede the released one, and the released section itself
-still says nothing is unreleased.
+The entry goes under the existing `Unreleased` section of the manual's
+changelog, `docs/project/changelog.rst`, where `persistent-verdict-memo`
+put its own. `HISTORY.rst` is not touched.
+
+*Corrected during implementation.* The planning commit put the entry in
+both records, with a new `Unreleased` section in `HISTORY.rst`, because the
+cycle brief named `HISTORY.rst`. The orchestrator then corrected the brief:
+the entry belongs in `docs/project/changelog.rst` alone, as in the
+precedent and in the sibling cycle. The `HISTORY.rst` section, and the
+correction of the two pins it had turned red, were removed before the
+implementation commit.
 
 ## Risks / Trade-offs
 
@@ -151,7 +150,3 @@ still says nothing is unreleased.
   changes every identity, as it already does for the document. That is the
   intended meaning: a take and an export made by different compilers are
   not known to describe one machine.
-- [The two changelog records drift] → Each carries the same bullet in this
-  cycle. That `HISTORY.rst`'s new `Unreleased` section lacks the
-  verdict-store entry, which `persistent-verdict-memo` wrote only to the
-  manual's changelog, is recorded as a finding and not repaired here.

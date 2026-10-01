@@ -391,8 +391,9 @@ scenario tests.
 
 .. autoclass:: machinome.simulation.Sim
    :members: at, every, trigger, run, state, time, trajectory, crossings,
-             stops, running, move, rate, commands, snapshot, restore,
-             reset, initial, program, cadence_costs, assertion_stats
+             stops, running, identity, move, rate, commands, snapshot,
+             restore, reset, initial, program, cadence_costs,
+             assertion_stats
 
 Running simulation
 ------------------
@@ -460,6 +461,11 @@ constructed.
 
 ``sim.trigger(name)`` under such a root is one request — the one the
 named instruction states — and returns it.
+
+``sim.identity`` is the machine's identity, the string an export of the
+same model carries as ``clocked.identity`` whatever the bank holds, so a
+recording made through ``Sim`` can be refused against an export whose
+machine differs; under any other root it is refused by name.
 
 .. autoclass:: machinome.simulation.clocked.Clocked
    :members: move, state, commits, stops, snapshot, restore, reset

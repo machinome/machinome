@@ -24,6 +24,13 @@ Unreleased
   whose 22 tests took 1255.9 s in a fresh process and now take 27.8 s in
   the next one, with the same 16 passed and 6 failed, and of a Strandbeest
   walking demo, 163.5 s then 10.6 s.
+* **A clocked simulation names its machine:** ``sim.identity`` is the
+  machine's identity, the string an export of the same model carries as
+  ``clocked.identity``, whatever the bank holds, so a recording made
+  through ``Sim`` can be refused against an export whose machine differs;
+  a ``Sim`` that is not clocked refuses it by name
+  (:doc:`/reference/api`). Born of a film of a clocked calculator whose
+  take could read the identity only from a private attribute.
 
 Machinome 0.7.1
 ---------------
