@@ -1436,7 +1436,10 @@ A project is a package with a `pyproject.toml` whose `[tool.machinome]
 model = "package.module:Class"` names the root. The project root is the
 nearest ancestor manifest, discovered from a referenced path or the
 working directory, so every command behaves identically from any
-directory. A node **reference** is `package.module:Class`, `path/to/file.py`
+directory and through any symbolic link to the project: the root and
+every source path measured against it are resolved paths, so a project
+reached through a link builds in the same `_build` as through its real
+path. A node **reference** is `package.module:Class`, `path/to/file.py`
 or `path/to/file.py:Class`; a directory is not a reference. A bare path
 resolves only when the file defines exactly one node class; otherwise it
 raises `AmbiguousNodeError` listing the candidates, and `machinome build`,
@@ -2103,7 +2106,12 @@ qualified id — and, under `Time.elapsed()`, `time`. Joint coordinates and
 ports are NOT in that bank: they are what the ordinary enumeration
 recomputes from it on every pose. `state={...}` overrides declared drivers
 AND declared states by qualified id, in native units; `sim.clocked` is
-true and `sim.running` false.
+true and `sim.running` false. `sim.identity` is the machine's identity:
+the string an export of the same model carries as `clocked.identity`,
+whatever the bank holds, so a recording made through `Sim` can be
+refused against an export whose machine differs; a `Sim` that is not
+clocked refuses it by name (a running root's identity is
+`sim.program.identity`).
 
 **A request, not a tick.** `sim.move(input_id, by=travel)` or
 `sim.move(input_id, to=value)` takes exactly one of `by`/`to` and names
@@ -2530,6 +2538,13 @@ own; regenerate only by removing them.
 `machinome-viewer` package; without that package, export with
 `--no-widget` or the command fails naming the `viewer` extra. Exports
 carry drivers, instructions and animation and never freeze a pose.
+When the project root is inside a Git work tree with a commit checked
+out, `manifest.json` also carries a top-level `source: {revision,
+dirty}`: the full commit hash and whether `git status --porcelain`
+listed anything when the export started (a changed tracked file or an
+untracked file the project does not ignore). It is absent outside a
+work tree, without a commit or without `git`; it is additive, moves no
+document version, and a dirty tree is exported all the same.
 
 ## Build directory
 
