@@ -43,15 +43,16 @@ below.
 
 | # | change | findings | ADR reserved | wave |
 |---|---|---|---|---|
-| 1 | `serve-what-the-viewer-reads` | 1 | ADR-013 (PIPELINE) | 1 |
+| 1 | `serve-what-the-viewer-reads` | 1 | none used; ADR-013 reassigned to cycle 10 | 1 |
 | 2 | `honest-provenance` | 5, 6 | ADR-015 (PIPELINE) | 1 |
 | 3 | `exact-take-times` | 7 | ADR-016 (SOURCE) | 1 |
-| 4 | `render-cost`: investigation, one commit, no product change | 14 | none | 1 |
+| 4 | `render-cost`: investigation, one commit, no product change; done 1 Oct: 88 % of a frame is the software raster, wart 14 **deferred** | 14 | none | 1 |
 | 5 | `check-the-continuation` | 3 | ADR-014 (TIMELINE) | 2 |
 | 6 | `proofs-report-the-look` | 2, 4 | ADR-017 (PIPELINE) | 2 |
 | 7 | `double-poses-a-bank` | 10 | ADR-018 (PIPELINE), or a dated section of ADR-008 | 2 |
 | 8 | `read-the-exports-source`: `model.sourceRevision` pinned from the manifest's `source` instead of `source-revision.txt`, the dirty marker read into provenance; the Curta's hand-typed file deleted and Leonardo's gallery script relieved of writing it (project work, direct) | 9 and the ruling above | to assign | 3, after the framework bench is in its `main` |
-| 9 | the render fix `render-cost` proposes, if it proposes one | 14 | to assign | 3 |
+| 9 | struck 1 Oct: `render-cost` proposes no fix; only a GPU removes the second | 14 | — | — |
+| 10 | `stable-stage-bundle`: a stage bundle built from the same sources is the same bytes from any checkout (finding 15) | 15 | ADR-013 (PIPELINE) | 2 |
 
 An ADR number is reserved per cycle and used only for an architectural
 decision; a number not used is released, and the orchestrator renumbers

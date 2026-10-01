@@ -404,6 +404,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    assets from the model fields only, or tolerates source files the viewer
 
    never reads.
+    Triage, 1 October 2026 (orchestrator): fixed by `serve-what-the-viewer-reads` (archived 2026-10-01, merged the same day): the renderer serves exactly the `model` files the manifest's `root` tree and its markings name, and refuses a lost or escaping one before Chromium launches, naming field, node and path; no ADR. The film's symlink workaround is removed when the campaign lands.
 
 2. **The highlight proof cannot tell the right part from the wrong one.** A
 
@@ -412,6 +413,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    restored and reapplied exactly as the one on the input pinions beside the
 
    drum does; the wrong part was caught by looking.
+    Triage, 1 October 2026 (orchestrator): cycle `proofs-report-the-look` (wave 2): the review pack carries lit, unlit and difference images per highlight, named by the part; no proof can know the intended part.
 
 3. **A shot's continuation through a join is refused only when it leaves the
 
@@ -420,28 +422,33 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    dissolve and nothing said so; a `check` line when a continuation crosses
 
    a mark would have.
+    Triage, 1 October 2026 (orchestrator): cycle `check-the-continuation` (wave 2): a `check` report line, not a refusal.
 
 4. **No proof or check line says when a title wraps or code is too small.**
 
    `check` reports a headline "sized by what it holds" and the fit proof
 
    passed at 0.82 vw; both were found by looking.
+    Triage, 1 October 2026 (orchestrator): cycle `proofs-report-the-look` (wave 2): measured code sizes and headline line counts in `check`, no threshold.
 
 5. **Render provenance records `projectHead` for a dirty tree.** The film's
 
    source was uncommitted at render time and the manifest names the last
 
    commit as if it were the content rendered.
+    Triage, 1 October 2026 (orchestrator): fixed by `honest-provenance` (archived 2026-10-01, merged the same day, ADR-015): `projectDirty` and `workflowDirty` beside the heads, `Project tree:` and `Videomaker tree:` lines, `releaseIssues` in words; a dirty tree is not release-ready and is never refused.
 
 6. **`check`'s `Stage:` line hashes only `stage.js`**; a stylesheet change
 
    leaves it identical, though the manifest carries `cssSha256`.
+    Triage, 1 October 2026 (orchestrator): fixed by `honest-provenance`: the `Stage:` line carries the stylesheet's hash beside the script's.
 
 7. **Mark times drift when `over` durations are summed in floats** (moves of
 
    1.2 s gave marks like 12.599999999999998); the film chose binary-exact
 
    1.25 s. Evaluation could sum on the frame grid or in exact arithmetic.
+    Triage, 1 October 2026 (orchestrator): fixed by `exact-take-times` (archived 2026-10-01, merged the same day, ADR-016): take time is the exact sum of the written decimals in both runtimes; a document summed in floats is refused by field; a mark is posed on its recorded bank exactly.
 
 8. **A step owns `at < t ≤ at + duration`, and the input at `f = 1` is `end`
 
@@ -460,28 +467,33 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    1 October 2026), with `Sim` failing through a symlinked project path and
 
    `machinome export` writing no `source-revision.txt`.
+    Triage, 1 October 2026 (orchestrator): the framework side is fixed on the bench `curta-findings` (`sim-identity`, a read-only `Sim.identity`); Videomaker reads it in a later cycle once that bench is in the framework's `main`.
 
 10. **Marks on a take with the viewer double stay put**: the double's part
 
     rectangles move with a loop's time, not a bank, so a mark on a clocked
 
     take is proved only at layer 6.
+    Triage, 1 October 2026 (orchestrator): cycle `double-poses-a-bank` (wave 2).
 
 11. **A reframe through a slot sized by what it holds is refused**, since the
 
     slot has no box until its content is drawn; the tour's headline is such
 
     a slot. A film that wants to reframe into one needs a fixed box.
+    Triage, 1 October 2026 (orchestrator): no cycle: no film needs it.
 
 12. **A reframe frame costs one canvas wait more** (about 33 ms at 640 px),
 
     since a moving host is a resize every frame.
+    Triage, 1 October 2026 (orchestrator): no cycle: a measurement.
 
 13. **The on-demand viewer blanks its canvas on a resize until the next
 
     explicit render**; the stage's `setView` after the canvas wait is what
 
     redraws it. Older than this campaign; recorded by the viewer cycle.
+    Triage, 1 October 2026 (orchestrator): no cycle: the viewer's, recorded in its log by its cycle.
 
 14. **The film is 126 s** for 278 words: the take's steps were drawn at the
 
@@ -490,3 +502,18 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
     on the real viewer (3 787 frames). The pose itself is 14 ms; the
 
     screenshot is the cost.
+    Triage, 1 October 2026 (orchestrator): the pace is the screenplay's (pilot). The render cost was investigated (`render-cost`, merged 2026-10-01, report under `workflow/ongoing/addition-warts-campaign/render-cost.md`): 88 % of a Curta frame is SwiftShader rasterizing the viewer's WebGL draw in Chromium's GPU process, capture proper is 90 ms, the pose 35 ms, Node 2 ms, and no capture alternative moved the frame. **Deferred** by the pilot's ruling: only a GPU removes it, and the GPU is on the virtual machine's host. Data kept for that decision: the viewer's multisampled context is about 70 % of the raster; two concurrent sessions give 1.4× throughput with identical bytes.
+
+### Findings met by the campaign's cycles (1 October 2026)
+
+Recorded at the merges; triage by the orchestrator unless stated.
+
+15. **The stage bundle's hash depends on the checkout that built it.** esbuild writes a path comment per module and the paths embed the checkout (`WTs/<name>/…`); the Curta film has three `stageSha256` values (`e5c7bccec003`, `c82a3718550a`, `6298cd57909a`) for bundles byte-identical once the prefix is masked, and `/stage.js` is in the shot cache's common key, so a render from another checkout recaptures every shot. The stage build's own key hashes absolute runtime paths too, so another checkout rebuilds rather than reuses. Found by `serve-what-the-viewer-reads` and `honest-provenance`. Triage: cycle `stable-stage-bundle` (ADR-013 reserved).
+16. **The film's `_build/` is shared by concurrent agents**: while one cycle previewed the Curta film another rebuilt its `_build/stage/` and a third rewrote `movie-resolved.json`. Process, not tool: a campaign's proofs on a real film run one at a time, or on copies. No cycle.
+17. **The Curta project leaves `export/`, `CREDITS`, `curta-2x-files/`, a reference video and a screenshot untracked and not ignored**, so every render of the film is reported dirty until the project ignores or commits them. Project work; `export/` is a build product the orchestrator ignores at the campaign's close, the rest is the pilot's.
+18. **A `{mark, plus}` model time is still a float sum on the Node side**, range-checked with the remaining 1e-9 tolerance; no declaration writes one and no film has one. Found by `exact-take-times`. Recorded; the same exact sum in the resolver if a film ever needs it.
+19. **The old `markAt` tolerance could only match instants the pose rule does not put on the mark's bank**, which would have been refused as "Viewer bank differs from the take at mark". Latent since pose-a-take; fixed by `exact-take-times` making the match exact.
+20. **Playwright's default launch flags and `--disable-gpu` give different bytes from the stage's flags** (1 958 pixels a frame by at most 2 levels) with no speed change; the flags reach the shot cache's key through `render.mjs`. Found by `render-cost`. Recorded.
+21. **Each capture session pays 10 to 15 s of warm-up on its first Curta frame**, and the stage's repaint costs 45 to 60 ms on frames whose page content changed. Found by `render-cost`. Recorded.
+22. **The viewer's multisampled WebGL context is about 70 % of the software raster** (a Curta frame 1.18 s against 0.36 s without it; every picture changes). The viewer's; filed in its log at the campaign's close.
+
