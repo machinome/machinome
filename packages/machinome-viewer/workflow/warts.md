@@ -455,3 +455,34 @@ record.
   selection and scroll position on every request, and ADR-064 already chose a
   narrow per-frame writer over a per-frame rebuild for exactly that reason.
   The per-REQUEST rebuild is what remains, and shrinking it is its own cycle.
+
+## The Curta drawing tests find the Curta's builds by the checkout's depth
+
+Found 1 October 2026 while running the suite on the primary checkout after
+`on-demand-clocked` was fast-forwarded into `main`.
+
+- **What happened.** `tests/test_curta_drawing.py` locates the Curta's
+  builds at `ROOT.parents[2] / 'projects' / 'Calculators' / 'Curta-Type-I-3x'
+  / '_build'` unless `MACHINOME_CURTA_BUILDS` is set. From a worktree
+  (`machinome-viewer/WTs/<name>/`) that is the workspace; from the primary
+  checkout it is `/home/asa`, so the two tests skip there (`242 passed,
+  2 skipped`) and run in every worktree (`244 passed`). With the variable
+  set they pass from the primary in 96 s.
+- **Triage.** Recorded. The smallest fix walks up to the workspace by a
+  marker (its `projects/` directory) instead of a fixed depth, or documents
+  the variable as the only way.
+
+## A multisampled context is about 70 % of a software frame
+
+Found 1 October 2026 by Videomaker's `render-cost` investigation (its report
+under the addition-warts campaign of that repository), measuring the Curta
+film's frames in headless Chromium without a GPU (ANGLE on SwiftShader).
+
+- **What was measured.** A 1920×1080 frame of the clocked Curta costs about
+  1.1 s, 88 % of it SwiftShader rasterizing the viewer's WebGL draw in the
+  GPU process; with the context's multisampling forced off the same frame
+  costs 0.35 to 0.37 s (3.2 against about 11 CPU-seconds), but every
+  picture changes (60 796 pixels a frame, by up to 223 levels).
+- **Triage.** Recorded as data for the pilot's decision about a GPU for
+  filming; the viewer's antialiasing is a drawing decision, not a
+  performance switch, and nothing is proposed here.
