@@ -122,7 +122,8 @@ class _Compiler:
         until = self.anchor(time_value(shot.until, f'{where}: until'), f'{where}: until')
         if not isinstance(shot.model, Simulation):
             raise MovieError(f'{where}: the shot has no model time; give it '
-                             f'model=<Loop>.run(start, end) or model=<Loop>.keys({{...}})')
+                             f'model=<take>.run(start, end) or model=<take>.keys({{...}}), on '
+                             f'its Loop or Take')
         shot.model.check(until, self.narration, where)
         self.loops.append((f'{where}: model', shot.model.loop))
 

@@ -336,10 +336,11 @@ class View(Element):
         self.loop, self.camera, self.hide = loop, camera, list(hide)
 
     def check(self, where):
-        from .take import Loop
+        from .take import _Take
 
-        if not (isinstance(self.loop, type) and issubclass(self.loop, Loop)):
-            raise MovieError(f'{where}: a View looks at a Loop, not {self.loop!r}')
+        if not (isinstance(self.loop, type) and issubclass(self.loop, _Take)
+                and '_what' not in vars(self.loop)):
+            raise MovieError(f'{where}: a View looks at a Loop or a Take, not {self.loop!r}')
         check_camera(self.camera, self.loop, where)
         for layer in self.hide:
             if not isinstance(layer, Layer) or not layer.declared_for(self.loop):
@@ -417,7 +418,8 @@ class SourcePanel(Element):
 
     def __init__(self, source):
         if not isinstance(source, Source) or source.loop is None:
-            raise MovieError(f'Source.panel shows a Source declared on a Loop, not {source!r}')
+            raise MovieError(f'Source.panel shows a Source declared on a Loop or a Take, not '
+                             f'{source!r}')
         self.source = source
         self.loop = source.loop
 
@@ -521,7 +523,7 @@ class Picture(Element):
 
     def __init__(self, still, *, fit=None):
         if not isinstance(still, Still) or still.loop is None:
-            raise MovieError(f'A Picture shows a Still declared on a Loop, not {still!r}')
+            raise MovieError(f'A Picture shows a Still declared on a Loop or a Take, not {still!r}')
         if fit not in (None, 'contain', 'cover'):
             raise MovieError(f'Picture {still.name}: fit {fit!r} must be contain or cover')
         self.still, self.fit, self.loop = still, fit, still.loop

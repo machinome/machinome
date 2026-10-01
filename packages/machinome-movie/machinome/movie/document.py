@@ -52,6 +52,11 @@ ACTIONS = {
 }
 #: Actions that end on their own; every other action spans its cue.
 UNSPANNED = ('move', 'type', 'emphasize')
+#: How a document's model time runs: a posed loop, or a clocked take.
+TIME_MODES = ('normalized-loop', 'take')
+#: Seconds within which a take's sums agree, so a hand-written document is
+#: not refused for a float's last digit.
+TOLERANCE = 1e-9
 DRAWN = ('ring', 'arrow')
 TRANSITIONS = ('dissolve', 'fade', 'wipe', 'slide')
 
@@ -96,13 +101,16 @@ def _where(document, path):
 
 class _Semantics:
     def __init__(self, document, manifest, sources):
-        self.document, self.sources = document, sources
+        self.document, self.sources, self.manifest = document, sources, manifest
         self.paths = None if manifest is None else _paths(manifest.get('root') or {})
         self.stage = document['stage']
+        #: The take's length in take seconds, for a take document.
+        self.length = None
 
     def check(self):
         document = self.document
         self.check_stage()
+        self.check_take()
         chapters, shots = set(), {}
         film = [(chapter, shot) for chapter in document['chapters'] for shot in chapter['shots']]
         for chapter in document['chapters']:
@@ -179,6 +187,108 @@ class _Semantics:
     def module(self, module, where):
         if module not in self.stage['modules']:
             raise MovieError(f'{where}: its module {module} is not listed in stage.modules')
+
+    ##########################################
+    # A clocked take (docs/movie-document.md, "The take")
+
+    def check_take(self):
+        document = self.document
+        mode, take = document['model']['timeMode'], document.get('take')
+        if mode not in TIME_MODES:
+            raise MovieError(f"model.timeMode '{mode}' is not a time mode; a document films a "
+                             f"normalized-loop or a take")
+        if mode == 'normalized-loop':
+            if take is not None:
+                raise MovieError('take: a normalized-loop document carries no take block; a take '
+                                 'block belongs to a document whose model.timeMode is take')
+            return
+        if take is None:
+            raise MovieError('model.timeMode is take, and the take block is missing; a take '
+                             'document carries the steps it films and what the machine did')
+        drivers = known = None
+        if self.manifest is not None:
+            clocked = self.manifest.get('clocked')
+            if not isinstance(clocked, dict):
+                raise MovieError('model.timeMode is take, and the export publishes no clocked '
+                                 'machine (its manifest has no clocked block)')
+            if take['identity'] != clocked.get('identity'):
+                raise MovieError(f"take.identity {take['identity']} differs from the machine the "
+                                 f"export publishes, clocked.identity {clocked.get('identity')}; "
+                                 f"the document was recorded against another machine")
+            drivers = set(self.manifest.get('drivers') or {})
+            if clocked.get('clock'):
+                drivers.add(clocked['clock'])
+            known = drivers | set(self.manifest.get('states') or {})
+        seen, ends, end = {}, [], 0
+        for index, step in enumerate(take['steps']):
+            here = f"take.steps[{index}] ({step['id']})"
+            if step['id'] in seen:
+                raise MovieError(f"{here}: the step id {step['id']} is used twice, by "
+                                 f"take.steps[{seen[step['id']]}] and take.steps[{index}]")
+            seen[step['id']] = index
+            if ('to' in step) == ('by' in step):
+                raise MovieError(f'{here}: a step has exactly one of to and by')
+            if abs(step['at'] - end) > TOLERANCE:
+                raise MovieError(f"{here}: at is {step['at']} s, and the steps before it end at "
+                                 f"{end} s; steps play end to end from 0")
+            if drivers is not None and step['input'] not in drivers:
+                raise MovieError(f"{here}: input '{step['input']}' is not a driver the export "
+                                 f"declares ({', '.join(sorted(drivers)) or 'none'})")
+            end = step['at'] + step['duration']
+            ends.append(end)
+        declared = document['model']['expectedDurationSeconds']
+        if abs(declared - end) > TOLERANCE:
+            raise MovieError(f"model.expectedDurationSeconds is {declared} s, and the take's steps "
+                             f"end at {end} s; a take document lasts its take")
+        initial = take['initial']
+        if known is not None:
+            for name in sorted(known - set(initial)):
+                raise MovieError(f"take.initial lacks '{name}', a driver or state the export "
+                                 f"declares; the take was recorded against another machine")
+            for name in sorted(set(initial) - known):
+                raise MovieError(f"take.initial holds '{name}', which is not a driver or state of "
+                                 f"the export; the take was recorded against another machine")
+        # The step each mark follows: -1 for the initial bank, at 0.
+        follows = {}
+        for name, seconds in document.get('marks', {}).items():
+            if abs(seconds) <= TOLERANCE:
+                follows[name] = -1
+                continue
+            index = next((i for i, at in enumerate(ends) if abs(at - seconds) <= TOLERANCE), None)
+            if index is None:
+                raise MovieError(f'marks.{name}: {seconds} s is neither 0 nor the end of a step; a '
+                                 f'mark of a take is the instant after the step before it')
+            follows[name] = index
+        banks = take['banks']
+        for name in follows:
+            if name not in banks:
+                raise MovieError(f'take.banks: the bank of the mark {name} is missing; every mark '
+                                 f'of a take has its recorded bank')
+        for name in banks:
+            if name not in follows:
+                raise MovieError(f"take.banks: {name} is not one of the marks "
+                                 f"({', '.join(follows) or 'none'})")
+        # The replay: the bank before a step is the one the step before it
+        # ended with; a step ends with its input at `end` and every commit's
+        # targets written.
+        bank, replayed = dict(initial), {-1: dict(initial)}
+        for index, step in enumerate(take['steps']):
+            bank[step['input']] = step['end']
+            for commit in step['commits']:
+                bank.update(commit['targets'])
+            replayed[index] = dict(bank)
+        missing = object()
+        for name, index in follows.items():
+            expected, recorded = replayed[index], banks[name]
+            for key in sorted(set(expected) | set(recorded)):
+                if expected.get(key, missing) != recorded.get(key, missing):
+                    def shown(value):
+                        return 'nothing' if value is missing else value
+                    raise MovieError(f'take.banks.{name}: the bank recorded at the mark {name} '
+                                     f'differs from the replay of the steps at {key}: recorded '
+                                     f'{shown(recorded.get(key, missing))}, replayed '
+                                     f'{shown(expected.get(key, missing))}')
+        self.length = end
 
     ##########################################
     # Chapters and their elements
@@ -315,6 +425,12 @@ class _Semantics:
                 declared = ', '.join(marks) or 'none'
                 raise MovieError(f"{where}, {field}: unknown mark '{value['mark']}'; the "
                                  f"document's marks are {declared}")
+            if self.length is not None:
+                seconds = (marks[value['mark']] + value.get('plus', 0) if isinstance(value, dict)
+                           else value)
+                if not -TOLERANCE <= seconds <= self.length + TOLERANCE:
+                    raise MovieError(f'{where}, {field}: take time {seconds} s is outside the take, '
+                                     f'0 to {self.length} s')
         keys = model.get('keys')
         if keys is None:
             return

@@ -6,6 +6,24 @@ lands it.
 
 ## Unreleased
 
+- A movie declared in Python can record a clocked machine's take. `Take`,
+  beside `Loop`, declares the steps the machine is asked to make,
+  `Move(input, to=|by=, over=)` and `Trigger(instruction)`, each drawn over
+  its seconds, and the `Mark`s its shots cut on; its class refuses by name a
+  step it cannot film, an input or instruction the model does not declare,
+  a mark named twice or at another's instant, and a shot's model time
+  outside the take. Evaluation constructs the framework's simulation of the
+  model once, makes the steps through its own requests and writes the
+  document's `take` block (`model.timeMode: "take"`): each request as the
+  framework returned it, the bank before the first step and at every mark,
+  the identity the export publishes; a request the framework refuses or
+  stops before it moves is refused in the framework's words. Python's
+  document check holds a take document to its export and to the replay of
+  its steps. The fixture project gains the framework tutorial's clocked
+  counter, exported for real, its take and the movie `count`, with five
+  invalid take documents. The commands do not read a take document yet and
+  the Node suite refuses the new fixtures until they do (`pose-a-take`).
+  A loop's evaluation is unchanged. (`declare-a-take`, ADR-011)
 - The chrome stays on screen while a picture or a mark fades. A frame with a
   fading picture or mark is composed from picture-only captures, and the
   stage left the page in its picture-only state after the blend, so the set's

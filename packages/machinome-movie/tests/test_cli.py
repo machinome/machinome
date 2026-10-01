@@ -28,7 +28,8 @@ def test_list_prints_the_table_in_order(copy):
     result = run('list', copy)
     assert result.returncode == 0, result.stderr
     assert result.stdout == ('minimal\tvideos.minimal.movie:Minimal\n'
-                             'tour\tvideos.tour.movie:Tour\n')
+                             'tour\tvideos.tour.movie:Tour\n'
+                             'count\tvideos.count.movie:Count\n')
 
 
 def test_evaluate_writes_beside_the_movie(copy):

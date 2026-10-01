@@ -1,8 +1,10 @@
-"""The seesaw before the camera: the posed loop, its marks, cameras, layers,
-source excerpt and picture. Declared once, used by every fixture movie."""
+"""The fixture machines before the camera: the seesaw's posed loop, its
+marks, cameras, layers, source excerpt and picture, and the counter's
+clocked take. Declared once, used by every fixture movie."""
 
-from machinome_movie import Camera, Layer, Loop, Source, Still
+from machinome_movie import Camera, Layer, Loop, Mark, Move, Source, Still, Take, Trigger
 
+from models.counter import Counter
 from models.seesaw import Seesaw
 
 
@@ -20,3 +22,14 @@ class Playground(Loop):
     declaration = Source("../models/seesaw.py", lines=(22, 24))
     plate = Still("../media/plate.png", credit="Fixture drawing of a seesaw",
                   rights="Made for the Videomaker test suite", upscale=1.5)
+
+
+class Turns(Take):
+    model = Counter
+    export = "../export/counter"
+    readiness = "Exported by machinome export; the drums count the crank's turns and carry."
+    steps = [Trigger("Turn once"), Mark("one"),
+             Move(Counter.crank, to=3240, over=4), Mark("nine"),
+             Trigger("Turn once"), Mark("ten")]
+    front = Camera(position=(160, -260, 140), target=(0, 0, 20), fov=37)
+    relations = Source("../models/counter.py", lines=(150, 153))

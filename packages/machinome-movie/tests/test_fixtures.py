@@ -24,8 +24,16 @@ INVALID = sorted((FIXTURES / 'invalid').glob('*.json'))
 RESOLVER_ONLY = {}
 
 
-def test_both_fixture_movies_are_registered():
-    assert {'minimal', 'tour'} <= set(REGISTERED)
+def test_the_fixture_movies_are_registered():
+    assert {'minimal', 'tour', 'count'} <= set(REGISTERED)
+
+
+def test_the_take_fixtures_are_there():
+    # The clocked take's refusals both runtimes make (docs/movie-document.md,
+    # "The take"), one invalid document each.
+    names = {path.stem for path in INVALID}
+    assert {'take-step-input-unknown', 'take-model-time-past-the-end', 'take-block-missing',
+            'take-bank-differs', 'take-identity-differs'} <= names
 
 
 @pytest.mark.parametrize('name', REGISTERED)

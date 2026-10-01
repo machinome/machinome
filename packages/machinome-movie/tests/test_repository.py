@@ -88,8 +88,23 @@ def test_the_fixture_revision_is_a_reproducible_commit_of_the_project(tmp_path):
         subprocess.run(['git', *command], cwd=copy, env=FIXED, check=True)
     head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=copy, env=FIXED, check=True,
                           capture_output=True, text=True).stdout.strip()
-    pinned = (PROJECT / 'export' / 'seesaw' / 'source-revision.txt').read_text().strip()
-    assert head == pinned, f'export/seesaw/source-revision.txt should read {head}'
+    exports = sorted(path.parent.name for path in (PROJECT / 'export').glob('*/manifest.json'))
+    assert exports == ['counter', 'seesaw']
+    for name in exports:
+        pinned = (PROJECT / 'export' / name / 'source-revision.txt').read_text().strip()
+        assert head == pinned, f'export/{name}/source-revision.txt should read {head}'
+
+
+def test_the_counter_is_the_framework_tutorials_clocked_export():
+    # The fixture's clocked machine is copied, not invented, and exported for
+    # real: its manifest is a clocked root's, document version 8.
+    source = (PROJECT / 'models' / 'counter.py').read_text()
+    assert 'docs/tutorial/counter/' in source and 'Apache-2.0' in source
+    manifest = json.loads((PROJECT / 'export' / 'counter' / 'manifest.json').read_text())
+    assert manifest['version'] == 8 and manifest['clocked']['identity']
+    assert set(manifest['drivers']) == {'crank'} and set(manifest['states']) == {'units', 'tens'}
+    notice = (PROJECT / 'NOTICE').read_text()
+    assert 'models/counter.py' in notice and 'Apache-2.0' in notice
 
 
 PAGE = REPOSITORY / 'docs' / 'declaring-a-movie.md'
@@ -134,3 +149,26 @@ def test_the_changelog_has_an_unreleased_section_with_this_change():
     assert '## Unreleased' in text
     assert 'machinome-movie' in text
     assert '(`declarative-stage`' in text
+    assert '(`declare-a-take`' in text
+
+
+def test_the_manual_teaches_the_clocked_take():
+    text = PAGE.read_text()
+    assert '\n## The take, clocked\n' in text
+    assert text.index('\n## The take\n') < text.index('\n## The take, clocked\n') \
+        < text.index('\n## The template: sets\n')
+    words = ' '.join(text.split())
+    for sentence in (
+            'A clocked machine has no loop: it stands at a bank of values and moves when asked.',
+            '`Move(input, to=, over=)` or `Move(input, by=, over=)`',
+            '`Trigger(instruction)` is drawn over the duration its instruction declares',
+            'A frame is a pure function of take time.',
+            'Evaluation runs the steps once through the framework\'s simulation of the model',
+            '`readiness` says what the export does and does not show'):
+        assert sentence in words, sentence
+
+
+def test_the_status_line_names_what_is_filmable():
+    text = ' '.join((REPOSITORY / 'README.md').read_text().split())
+    assert 'running machines are refused' in text
+    assert 'a clocked machine\'s take' in text

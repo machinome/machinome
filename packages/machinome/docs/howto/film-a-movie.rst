@@ -6,9 +6,12 @@ sawmill: an 84-second rehearsal with scripted cameras, assembly reveals,
 AI narration and aligned captions. The release-film source study adds real
 Python typing beside the animation and expressive feminine narration.
 
-This is a local production tool, not a publishing service. It supports posed
-models with a normalized animation timeline; running/clocked machines are
-refused. The viewer executes the actual mechanical model.
+This is a local production tool, not a publishing service. It films posed
+models with a normalized animation timeline. A movie declared in Python can
+record a clocked machine's take (`Take`, in
+[Declaring a movie in Python](docs/declaring-a-movie.md)), and the commands
+refuse its document: they do not film a clocked machine yet, and running
+machines are refused. The viewer executes the actual mechanical model.
 
 Every frame is drawn by a React stage: a **set**, a template that owns the
 whole screen, with **elements** in its slots (views of the model, source

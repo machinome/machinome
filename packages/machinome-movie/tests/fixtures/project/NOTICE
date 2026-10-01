@@ -1,2 +1,6 @@
 Fixture project of the Videomaker test suite. It grants nothing and carries
 no licence of its own; it exists so the tests have a project to read.
+
+models/counter.py and models/digits.svg are copied from the machinome
+framework's tutorial (docs/tutorial/counter/, chapters 3, 4, 8 and 9), which
+is licensed Apache-2.0; they keep that licence.

@@ -2,20 +2,24 @@
 
 The only files opened are the export's `manifest.json` and
 `source-revision.txt` and the source files of the excerpts an emphasis
-lights; the stage modules are checked to exist, not read. Every path in the
-document is relative to `root`, the movie's directory as seen from where the
-document is written.
+lights; the stage modules are checked to exist, not read. A movie that
+films a clocked `Take` also records the take: the framework's simulation of
+the declared model, constructed once, makes the steps, and what it returned
+is written verbatim; the simulation reads the model's own project files and
+nothing else. Every path in the document is relative to `root`, the movie's
+directory as seen from where the document is written.
 """
 
 import json
 import math
+import numbers
 import os
 
 from .document import FORMAT, _paths, check_document
 from .movie import Credits, Evidence, Format, Movie, Narrator, Release
 from .names import MovieError, declaring_class, module_directory, prop_kind
 from .stage import Style
-from .take import Camera, Layer, Loop, Source, Still
+from .take import Camera, Layer, Loop, Source, Still, Take, _Take
 from .text import count_token, excerpt_line
 
 
@@ -40,10 +44,17 @@ def evaluate(movie, *, name, out=None):
     loop = _one_loop(where, chapters)
     export = loop.export_directory()
     manifest = _read_json(os.path.join(export, 'manifest.json'), where)
-    seconds = (manifest.get('animation') or {}).get('loop')
-    if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not seconds > 0:
-        raise MovieError(f'{where}: the export {relative(export)} has no animation.loop; only a '
-                         f'posed model with a normalized loop is filmable')
+    if issubclass(loop, Take):
+        take = _record(loop, manifest, relative(export))
+        seconds, mode, marks = loop.length, 'take', dict(loop.marks)
+    else:
+        take = None
+        seconds = (manifest.get('animation') or {}).get('loop')
+        if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or not seconds > 0:
+            raise MovieError(f'{where}: the export {relative(export)} has no animation.loop; a Loop '
+                             f'films a posed model\'s normalized loop, and a clocked machine is '
+                             f'filmed through a Take')
+        mode, marks = 'normalized-loop', dict(loop.marks)
     revision = _read_revision(os.path.join(export, 'source-revision.txt'))
     paths = _paths(manifest.get('root') or {})
     for chapter_id, compiled in chapters:
@@ -60,10 +71,10 @@ def evaluate(movie, *, name, out=None):
                 'output': found[Format].document(),
                 'model': {'manifest': relative(os.path.join(export, 'manifest.json')),
                           'expectedDurationSeconds': seconds,
-                          'timeMode': 'normalized-loop',
+                          'timeMode': mode,
                           'sourceRevision': revision,
                           'readiness': loop.readiness},
-                'marks': dict(loop.marks),
+                'marks': marks,
                 'audio': found[Narrator].document(),
                 'cameras': {c.document_name(): c.document()
                             for c in loop.declarations(Camera).values()},
@@ -80,6 +91,8 @@ def evaluate(movie, *, name, out=None):
                 'chapters': [{'id': chapter_id, 'narration': compiled['narration'],
                               'elements': compiled['elements'], 'shots': compiled['shots']}
                              for chapter_id, compiled in chapters]}
+    if take is not None:
+        document['take'] = take
     style = found[Style]
     if style is not None:
         document['style'] = style.document()
@@ -281,9 +294,99 @@ def _one_loop(where, chapters):
         names = ', '.join(f'{loop.__name__} ({here})' for loop, here in seen.items())
         raise MovieError(f'{where}: a movie films one take, and this one uses {len(seen)}: {names}')
     loop = next(iter(seen))
-    if not issubclass(loop, Loop):
-        raise MovieError(f'{where}: {loop!r} is not a Loop')
+    if not issubclass(loop, _Take):
+        raise MovieError(f'{where}: {loop!r} is not a Loop or a Take')
     return loop
+
+
+##############################################
+# A clocked take, recorded
+
+def _record(take, manifest, export):
+    """The `take` block of a clocked take: the framework's simulation of the
+    declared model, constructed once, asked for each step in order, and
+    what it returned, verbatim."""
+    where = f'Take {take.__name__}'
+    clocked = manifest.get('clocked')
+    if not isinstance(clocked, dict) or not isinstance(clocked.get('identity'), str):
+        raise MovieError(f'{where}: the export {export} publishes no clocked machine (its manifest '
+                         f'has no clocked block); a Take films a clocked machine, exported by '
+                         f'machinome export')
+    # Imported here: a movie of a posed loop never loads the simulation.
+    from machinome.simulation import Sim
+
+    model = take.model.__name__
+    try:
+        sim = Sim(take.model())
+    except Exception as refusal:
+        raise MovieError(f'{where}: the framework does not simulate {model} as a clocked '
+                         f'machine: {_words(refusal)}') from None
+    if not sim.clocked:
+        raise MovieError(f'{where}: {model} is not a clocked machine: its tree declares no State, '
+                         f'so it has no request to record')
+    initial = _bank(sim)
+    banks = {name: initial for name, index in take._after.items() if index < 0}
+    steps = []
+    for index, planned in enumerate(take.schedule):
+        here = f'{where}, {planned.id}, {planned.written}'
+        try:
+            if planned.kind == 'move':
+                request = sim.move(planned.input, to=planned.to, by=planned.by)
+            else:
+                request = sim.trigger(planned.instruction)
+        except Exception as refusal:
+            raise MovieError(f'{here}: the framework refused the request: {_words(refusal)}') from None
+        if request.stops and request.admitted == 0:
+            stops = '; '.join(repr(stop) for stop in request.stops)
+            raise MovieError(f'{here}: the machine stopped the request before it travelled '
+                             f'({stops}); a step the machine refuses to make is not filmed')
+        step = {'id': planned.id, 'at': planned.at, 'duration': planned.duration,
+                'input': request.input}
+        if request.to is not None:
+            step['to'] = _plain(request.to)
+        else:
+            step['by'] = _plain(request.by)
+        step.update({
+            'origin': _plain(request.origin), 'end': _plain(request.end),
+            'admitted': _plain(request.admitted),
+            'commits': [{'fraction': _plain(commit.fraction), 'value': _plain(commit.value),
+                         'targets': {key: _plain(value) for key, value in commit.targets.items()},
+                         'relations': list(commit.relations)}
+                        for commit in request.commits],
+            'stops': [{'coordinate': stop.coordinate, 'side': stop.side,
+                       'bound': _plain(stop.bound), 'value': _plain(stop.value),
+                       'input': _plain(stop.input), 'fraction': _plain(stop.fraction)}
+                      for stop in request.stops]})
+        steps.append(step)
+        after = [name for name, mark in take._after.items() if mark == index]
+        if after:
+            bank = _bank(sim)
+            banks.update({name: bank for name in after})
+    return {'kind': 'clocked', 'identity': clocked['identity'], 'initial': initial,
+            'steps': steps, 'banks': {name: banks[name] for name in take.marks}}
+
+
+def _bank(sim):
+    return {key: _plain(value) for key, value in sorted(sim.snapshot().values.items())}
+
+
+def _plain(value):
+    """A number as JSON writes it: the framework's integers and floats,
+    whatever numeric type they arrive in."""
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, numbers.Real):
+        return float(value)
+    return value
+
+
+def _words(refusal):
+    """What the framework said: a KeyError's message without its quotes."""
+    if isinstance(refusal, KeyError) and refusal.args:
+        return str(refusal.args[0])
+    return str(refusal)
 
 
 def _read_json(path, where):
