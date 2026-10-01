@@ -89,6 +89,28 @@ test('a reframe moves the view from its outgoing slot\'s box to its incoming slo
   assert.ok(ends,'the reframe at progress 1 is the incoming frame without a join, pixel for pixel');
 });
 
+test('a canvas that follows a shrinking box several frames late is waited for; one that never shrinks is refused',async()=>{
+  // The reframe shrinks the view's box on every frame of the join (the
+  // spike's finding, ADR-012): a canvas still at the larger size passes "fills
+  // its box" and must not be posed into. The stage waits until the canvas is
+  // the box's size within a pixel; the renderer refuses one that exceeds it.
+  const {film,double}=await theTour();
+  const q=shotOf(film,'question'),fps=film.output.fps,d=q.transition.duration;
+  const frames=[];for(let n=Math.ceil(q.start*fps-1e-9);n/fps<q.start+d-1e-9;n++)frames.push(n/fps);
+  const seen=await browserSession(film,await double('later-canvas.js',{lateCanvas:4}),WIDTH,[],async({pose})=>{
+    await pose(shotOf(film,'hook').start+.1);
+    const out=[];for(const t of frames){const r=(await pose(t)).observed.elements['opening.wide'];out.push({t,canvas:r.canvas,box:r.box});}
+    return {result:out};
+  });
+  const off=seen.result.filter(({canvas,box})=>Math.abs(canvas.width-box.width)>1||Math.abs(canvas.height-box.height)>1);
+  assert.deepEqual(off.map(({t,canvas,box})=>`${t.toFixed(2)} s: canvas ${canvas.width}×${canvas.height} in ${box.width}×${box.height}`),[],
+    'every frame of the shrinking join is posed into a canvas of its box\'s size');
+  await assert.rejects(browserSession(film,await double('stuck-canvas.js',{stuckCanvas:true}),WIDTH,[],async({pose})=>{
+    await pose(shotOf(film,'hook').start+.1);
+    for(const t of frames)await pose(t);
+  }),/Viewer canvas exceeds its view: opening\.wide in question at \d+\.\d\d s \(canvas \d+\.\d×\d+\.\d, box \d+\.\d×\d+\.\d\)/);
+});
+
 test('with a viewer that sizes its canvas late, every frame of a reframe waits for its canvas; the cost per frame',async()=>{
   // A moving host is a resize every frame: the stage waits for the canvas to
   // fill the new box before it poses (the late-canvas double sizes it on its

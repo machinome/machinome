@@ -10,6 +10,7 @@ import {viewAt,clipFrameAt} from './pictures.mjs';
 import {effectiveStyle} from './style.mjs';
 import {boundedMatches} from './text.mjs';
 import {typedCount} from './words.mjs';
+import {bankAt} from './take.mjs';
 
 // Accepted YAML episode formats, oldest first (docs/FORMAT.md). Each accepts
 // everything the one before it does, with the same meaning; an episode without
@@ -125,7 +126,11 @@ function viewState(film,chapter,shot,key,element,local,past){
     mark.drawn=action.enter?.kind==='draw'?first:1;
     return [mark];
   });
-  return {kind:'view',time:modelSecondsAt(shot,local)/film.model.expectedDurationSeconds,
+  // A view on a clocked take carries the machine's whole bank at its take
+  // time (src/take.mjs, ADR-012); a view on a posed loop, the loop's time.
+  const seconds=modelSecondsAt(shot,local);
+  const pose=film.model.timeMode==='take'?{bank:bankAt(film.take,seconds)}:{time:seconds/film.model.expectedDurationSeconds};
+  return {kind:'view',...pose,
     view:camera.view,up:camera.up,fov:camera.fov,
     hidden:(element.hide??[]).flatMap(name=>film.layers[name]),
     highlight:highlight?{paths:highlight.action.parts.flatMap(p=>pathsOf(film,p)),

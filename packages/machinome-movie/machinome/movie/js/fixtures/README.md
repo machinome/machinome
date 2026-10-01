@@ -21,9 +21,10 @@ side's suite.
   `count` films the clocked counter's take `Turns` (`model.timeMode`
   `take`, the `take` block of the framework's recorded requests and banks)
   in three shots on `frame` and `split`, with a typed source panel, an
-  emphasis and a highlight. The Node suite refuses `count` until it reads
-  take documents (the `pose-a-take` change), and it has no resolved pin
-  until then. A
+  emphasis and a highlight; both runtimes check its take against the export
+  and replay its steps to its recorded banks, and the Node suite poses it
+  with the viewer double's machine (layer 5) and with a selected bundle
+  (layer 6). A
   document written by hand on the Node side is named `node-<name>.json` and
   has no fixture movie; the Python suite asserts instead that
   `check_document` accepts it.

@@ -348,7 +348,7 @@ is the player's job.
 
 | kind | draws | reads |
 |---|---|---|
-| `view` | the model through its camera, with its highlight and marks, on a viewer instance leased to the element while frames place it and freed for another view element when one does not, hosted in the element's box (during a reframe, over the box the frame gives it); a film mounts no more instances than one of its frames places views (with a viewer below API 28, which keeps the up and field of view it mounted with, no more for each such lens) | `--vm-accent` for marks, `--vm-background` for the plate behind a mark's words |
+| `view` | the model through its camera, with its highlight and marks, on a viewer instance leased to the element while frames place it and freed for another view element when one does not, hosted in the element's box (during a reframe, over the box the frame gives it); a film mounts no more instances than one of its frames places views (with a viewer below API 28, which keeps the up and field of view it mounted with, no more for each such lens); a view on a posed loop is posed at the loop's time, a view on a clocked take by restoring the machine's bank the frame gives it on the viewer's machine, with the take's identity, before its camera is set | `--vm-accent` for marks, `--vm-background` for the plate behind a mark's words |
 | `source` | a pinned excerpt, typed, highlighted as Python, its lit tokens marked in `mark.spoken`, the cursor while typing; its file and lines above it | `--vm-source-size`, `--vm-source-line`, `--vm-source-color`, `--vm-source-padding`, `--vm-source-rule`, `--vm-source-file-size`, `--vm-source-file-color`, `--vm-source-file-gap`, `--vm-source-cursor-color`, `--vm-accent` |
 | `title` | its text and subtitle while shown, at its opacity; with a reveal, each word as it arrives, the unrevealed ones keeping their place | `--vm-title-size`, `--vm-title-weight`, `--vm-title-line`, `--vm-title-spacing`, `--vm-title-align`, `--vm-title-color`, `--vm-title-background`, `--vm-title-padding`, `--vm-subtitle-size` |
 | `picture` | a still or a clip's frame while shown, fitted to the element's box (`contain` or `cover`) through its view's centre and zoom, on a plate of the background colour | `--vm-background` |
@@ -439,9 +439,13 @@ fault, and `preview` and `render` stop before capturing:
 - a viewer bundle that does not define the viewer, and a still that does not
   decode.
 
-A viewer whose API is below what the movie needs (21, or 28 for marks,
-highlights or a change of lens or up) is refused, naming both APIs, when the
-first view is mounted. While drawing a frame, the stage refuses a set that
+A viewer whose API is below what the movie needs (21, 28 for marks,
+highlights or a change of lens or up, 29 for a clocked take) is refused,
+naming both APIs, when the first view is mounted; a viewer below 29 refuses
+to mount a clocked machine itself, and the stage names the view and quotes
+it. A view on a clocked take is refused when it mounts, naming the view and
+the shot, if the viewer gives no machine handle, or a machine whose identity
+is not the take's (naming both and `take.identity`). While drawing a frame, the stage refuses a set that
 draws no slot for an element the shot places in it, a picture whose size is
 unknown, and a source panel whose lit token is not the text at its range.
 
@@ -457,9 +461,15 @@ and the video time:
   frame gives it, and every other element at the join's progress as
   opacity;
 - a view adopted the camera and target asked for (and from Viewer API 28 the
-  field of view and up), its canvas fills its box, and every mark was drawn:
-  each mark's target is on the view's box, its words inside the frame, a
-  ring's part wholly on the view's box and the ring inside the frame;
+  field of view and up), its canvas fills its box and exceeds it by no more
+  than a pixel (`Viewer canvas exceeds its view`: the stage waits for a
+  canvas to shrink with its box as it waits for one to grow), and every mark
+  was drawn: each mark's target is on the view's box, its words inside the
+  frame, a ring's part wholly on the view's box and the ring inside the
+  frame;
+- a view on a clocked take holds exactly the bank its frame asked for, and
+  at an instant that is a mark of the take, exactly the bank the take
+  recorded there, naming the mark and the first id that differs;
 - a source panel shows exactly the typed text, fits its box without
   overflowing, and marks exactly the lit tokens;
 - a title shows as many words as the frame revealed and stays inside the
@@ -472,7 +482,11 @@ and the video time:
   paper page puts them.
 
 A project element is checked for reaching the stage; what it reports is not
-compared with anything. `preview` then proves the pixels: posing an
+compared with anything. Before the first frame of a film of a clocked take,
+each `preview` and `render` session replays every step of the take on the
+viewer's machine, from the bank recorded before it, and refuses a request
+that differs from the record in its `origin`, its `end` or any commit's
+`fraction`, `value` or `targets`, naming the step and the field. `preview` then proves the pixels: posing an
 instant, another and the first again gives identical pixels, and each
 highlight, mark entrance and exit, title fade, picture fade and transition
 is proved against the same instant drawn with and without it, leaving out

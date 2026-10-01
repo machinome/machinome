@@ -1,7 +1,8 @@
 // The scripted MachinomeViewer double shared by the browser tests. Not a test
 // file: it registers no tests.
 // A configurable API 28 viewer double. Its canvas is one flat colour; a part's
-// on-screen rect moves with model time; project() is a pinhole camera. Every
+// on-screen rect moves with model time; project() is a pinhole camera; with
+// `machine` it has a clocked machine (below). Every
 // instance of a page records its calls in the one list window.viewerCalls, in
 // order; window.viewerInstances lists each mount ({selector, calls}).
 export function viewerDouble(options={}){
@@ -11,12 +12,18 @@ export function viewerDouble(options={}){
     const canvas=document.createElement('canvas');canvas.style.background=o.color;
     const host=document.querySelector(selector);host.append(canvas);
     // lateCanvas: size the canvas from the host on the next animation frame,
-    // after mount and after each resize, as the real viewer does; otherwise
-    // the canvas fills its host at once.
-    if(o.lateCanvas){
+    // after mount and after each resize, as the real viewer does (a number:
+    // that many animation frames after the resize); stuckCanvas: as
+    // lateCanvas, but a canvas never shrinks once sized; otherwise the canvas
+    // fills its host at once.
+    if(o.lateCanvas||o.stuckCanvas){
       canvas.style.width='1px';canvas.style.height='1px';
-      const fit=()=>{const b=host.getBoundingClientRect();canvas.style.width=b.width+'px';canvas.style.height=b.height+'px';};
-      requestAnimationFrame(fit);new ResizeObserver(()=>requestAnimationFrame(fit)).observe(host);
+      const late=typeof o.lateCanvas==='number'?o.lateCanvas:1;
+      const after=(n,fn)=>requestAnimationFrame(()=>n>1?after(n-1,fn):fn());
+      const fit=()=>{const b=host.getBoundingClientRect(),c=canvas.getBoundingClientRect();
+        const w=o.stuckCanvas?Math.max(b.width,c.width):b.width,h=o.stuckCanvas?Math.max(b.height,c.height):b.height;
+        canvas.style.width=w+'px';canvas.style.height=h+'px';};
+      after(late,fit);new ResizeObserver(()=>after(late,fit)).observe(host);
     }else{canvas.style.width='100%';canvas.style.height='100%';}
     let view={camera:options.view.camera,target:options.view.target,up:options.up,fov:options.fov},time=options.time??0,lit=null,drifted=0;
     const calls=window.viewerCalls??=[],own=[];
@@ -26,7 +33,35 @@ export function viewerDouble(options={}){
     const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
     const norm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l);};
     const vec=a=>({toArray:()=>[...a]});
-    return {apiVersion:o.api,setVisible(){},navigation(){return {};},
+    // machine: {identity, initial, requests}: a clocked machine whose move()
+    // answers from the requests (a take's steps, or a table a test forges),
+    // found by the input, the to or by, and the origin the bank holds. Its
+    // bank is drawn as an inset outline of the canvas, a colour of the whole
+    // bank, so a pose change reaches the pixels and a highlight's tint stays.
+    const m=o.machine;
+    let bank=m?{...m.initial}:null;
+    const paint=()=>{let h=7;for(const c of JSON.stringify(bank))h=(h*31+c.charCodeAt(0))%16777213;
+      canvas.style.outline='12px solid rgb('+(h>>16&255)+','+(h>>8&255)+','+(h&255)+')';canvas.style.outlineOffset='-12px';};
+    if(m)paint();
+    const machine=!m?null:{
+      identity:()=>m.identity,order:()=>Object.keys(m.initial),state:()=>({...bank}),
+      snapshot:()=>({identity:m.identity,bank:{...bank}}),
+      reset(){record(['reset']);bank={...m.initial};paint();},
+      restore(s){record(['restore',s.bank]);
+        if(s.identity!==m.identity)throw new Error('restore: '+s.identity+' is not the identity of this machine, '+m.identity);
+        // skew: a machine that holds other values than those restored on it.
+        bank={...s.bank,...(m.skew??{})};paint();},
+      move(input,args){record(['move',input,args]);
+        const r=m.requests.find(q=>q.input===input&&(args.to!==undefined?q.to===args.to:q.by===args.by)&&q.origin===bank[input]);
+        if(!r)throw new Error('the double has no request for '+input+' '+JSON.stringify(args)+' from '+bank[input]);
+        bank={...bank,[input]:r.end};for(const c of r.commits)Object.assign(bank,c.targets);paint();
+        return {input,...(r.to!==undefined?{to:r.to}:{by:r.by}),origin:r.origin,end:r.end,admitted:r.admitted,
+          commits:JSON.parse(JSON.stringify(r.commits)),stops:JSON.parse(JSON.stringify(r.stops??[]))};},
+      // Drawing an instruction needs the frame loop, which on-demand rendering does not run.
+      trigger(name){if(options.renderMode==='on-demand')throw new Error('trigger('+name+') needs the frame loop; on-demand rendering refuses it');
+        throw new Error('the double draws no instruction');},
+    };
+    return {apiVersion:o.api,setVisible(){},navigation(){return {};},machine(){return machine;},
       setTime(t){if(o.recordTime)record(['setTime',t]);time=t;
         if(o.timeColor)canvas.style.background='rgb('+Math.round(255*t)+',96,160)';},
       setView(v){record(['setView',v]);if(!v.camera.every(Number.isFinite))throw new Error('invalid camera');

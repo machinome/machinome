@@ -546,10 +546,12 @@ headless Chromium by the renderer. Its contract with the renderer:
   name, a set or element kind the bundle does not register, a set whose
   registered slots differ from the document's, and a kind registered twice;
   when its first view mounts, a viewer whose API is below what the movie
-  needs. A document needs Viewer API 28 when a view carries a mark or a
-  highlight, or moves to a camera whose field of view or up differs from
-  the view's own camera; otherwise 21 (finding 8 of the react-stage
-  change).
+  needs. A document needs Viewer API 29 when it films a clocked take (a
+  clocked document under on-demand rendering, posed through its machine;
+  the `pose-a-take` change); otherwise Viewer API 28 when a view carries a
+  mark or a highlight, or moves to a camera whose field of view or up
+  differs from the view's own camera; otherwise 21 (finding 8 of the
+  react-stage change).
 - Components are pure in video time: no wall clock, no asynchronous state
   between frames, no measurement that changes what is drawn. Viewer
   instances mount outside React's reconciliation, each in a host placed in

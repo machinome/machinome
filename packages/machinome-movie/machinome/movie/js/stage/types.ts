@@ -35,9 +35,17 @@ export interface MarkState {
   drawn:number;
 }
 export interface HighlightState {paths:string[][];others?:string;color?:string}
+/** A clocked machine's drivers and states by qualified id, in native units. */
+export type Bank=Record<string,number>;
+/**
+ * A view's state: on a posed loop its normalized loop `time`; on a clocked
+ * take, instead, the machine's whole `bank` at the view's take time, which
+ * the stage restores on the viewer's machine (ADR-012).
+ */
 export interface ViewState {
   kind:'view';
-  time:number;
+  time?:number;
+  bank?:Bank;
   view:{camera:Vec3;target:Vec3};
   up?:Vec3;
   fov?:number;
@@ -119,6 +127,8 @@ export interface StageConfig {
   stage:{sets:Record<string,{slots:string[];props?:Record<string,unknown>}>;elements?:string[]};
   media?:{stills?:Record<string,{width:number;height:number}>;clips?:Record<string,{width:number;height:number}>};
   viewer?:{required?:{api:number;reasons?:string[]};refusal?:string};
+  /** A take document's machine identity, which a view on the take restores with. */
+  take?:{identity:string};
 }
 
 // The per-movie registry, augmented by the generated movie.d.ts:
