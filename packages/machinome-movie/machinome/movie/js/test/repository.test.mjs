@@ -119,3 +119,14 @@ test('the manual and the records say what provenance records of a dirty tree, an
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)'),'the ADR index');
   assert.ok((await readFile(join(root,'.gitignore'),'utf8')).split('\n').includes('/WTs/'),'.gitignore: the worktrees, as AGENTS.md says');
 });
+
+test('the manual and the records say the stage bundle is the same bytes from any checkout (stable-stage-bundle)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const stage=await read('docs/stage.md');
+  assert.ok(stage.includes('**The same bytes from any checkout.**'),'stage.md: the bullet');
+  for(const name of ['`videomaker/stage/<file>`','`videomaker/node_modules/<file>`','`project/<path in the repository>`'])
+    assert.ok(stage.includes(name),`stage.md: ${name}`);
+  assert.ok((await read('README.md')).includes('the same template bundled from another checkout of the tool does not'),'README: the cache key');
+  assert.ok((await read('CHANGELOG.md')).includes('(`stable-stage-bundle`, ADR-013)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-013](PIPELINE/ADR-013-the-stage-bundle-names-its-files-by-the-tool-and-the-project.md)'),'the ADR index');
+});

@@ -386,6 +386,17 @@ files and its stylesheets.
   versions of esbuild, TypeScript, React and React DOM. An equal key, with
   outputs that still hash as recorded, reuses the bundle; a modification
   time never rebuilds it.
+- **The same bytes from any checkout.** The bundle names every file it read
+  by the tool or by the project repository, never by where either lies on
+  the machine: the runtime as `videomaker/stage/<file>`, React and React DOM
+  as `videomaker/node_modules/<file>`, a project file as `project/<path in
+  the repository>`. Those names are what the script's and the stylesheet's
+  comments carry and what the key is computed over, so two checkouts of the
+  tool with the same content, building the same project content, write the
+  same `stage.js` and `stage.css` with the same hashes, and a checkout
+  reuses a bundle another one built. A file a module imports from outside
+  both the tool and the repository keeps a name relative to
+  `_build/stage/`, which depends on where it lies.
 - **`check` builds it** after the document has loaded and before anything
   is rendered, and prints it:
 

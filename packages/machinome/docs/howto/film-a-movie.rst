@@ -265,8 +265,10 @@ Each episode's ignored `_build/` contains:
 
 The shared cache key includes the mounted first frame, so changing the first
 shot can conservatively recapture all shots. It also includes the model, viewer,
-film page, stage bundle (so a changed template recaptures every shot),
-rendering code, browser, the known regular/bold film and mono font
+film page, stage bundle (so a changed template recaptures every shot, and
+the same template bundled from another checkout of the tool does not, since
+the bundle names its files by the tool and the project, never by the
+machine's paths), rendering code, browser, the known regular/bold film and mono font
 faces in the tested environment, style, dimensions, FPS and duration; whether
 a Git tree was dirty is provenance, not a key, so a dirty tree reuses the
 frames of a clean one and the reverse. Only

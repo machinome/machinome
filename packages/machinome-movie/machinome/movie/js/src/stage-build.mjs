@@ -22,14 +22,29 @@
 // Written under <build>/stage/: entry.tsx (imports the runtime, each module in
 // order, then boots), stage.js (IIFE, production React, no source maps),
 // stage.css (every imported stylesheet; empty when none), movie.d.ts,
-// tsconfig.json (for `tsc --noEmit`), metafile.json (esbuild's) and inputs.json
-// ({key, inputs, bundleSha256, cssSha256, dtsSha256, typechecked, versions}).
+// tsconfig.json (for `tsc --noEmit`), metafile.json (esbuild's, with this
+// machine's paths) and inputs.json ({key, inputs: [{path (a name), sha256}],
+// bundleSha256, cssSha256, dtsSha256, typechecked, versions}).
+//
+// Names, not paths (ADR-013): every file the bundle names is named by the tool
+// or the project repository, never by the machine's directories, so the same
+// tool content and project content bundle to the same bytes from any checkout
+// and any copy of the project. A file in the output directory keeps esbuild's
+// name (`entry.tsx`); the runtime is `videomaker/stage/<file>`, the tool's
+// packages `videomaker/node_modules/<file>`, a project file `project/<path in
+// the repository>`; anything else keeps esbuild's name, relative to the output
+// directory. esbuild prints its own names, relative to the output directory
+// through the checkout, in three places, and the outputs are rewritten there
+// before they are written: a `// <name>` line before each module, a wrapper's
+// `"<name>"(…) {` line for each CommonJS or lazily initialised module, and a
+// `/* <name> */` line before each stylesheet.
 //
 // The key is the SHA-256 of the runtime's sources (every file under stage/
 // but its tests), each module's bytes, every input the previous build read (so
-// a module's own imports count), the stage block, and the versions of esbuild,
-// TypeScript and React. An equal key whose outputs still hash as recorded is
-// reused without building; never an mtime.
+// a module's own imports count), each under its name, the stage block, and
+// the versions of esbuild, TypeScript and React. An equal key whose outputs
+// still hash as recorded is reused without building; never an mtime, never a
+// path of the machine, so a second checkout reuses the first one's bundle.
 import {execFile} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {mkdir,readFile,readdir,realpath,rm,stat,writeFile} from 'node:fs/promises';
@@ -167,17 +182,72 @@ async function checkModules(root,project,modules){
   return checked;
 }
 
-async function computeKey({runtime,modules,previous,stageBlock,versions:v}){
-  const inputs=[];
-  for(const file of runtime)inputs.push({path:file,sha256:await sha(file)});
-  for(const m of modules)inputs.push({path:m.file,sha256:m.sha256});
-  const seen=new Set(inputs.map(i=>i.path));
-  for(const file of [...previous].sort())if(!seen.has(file)){seen.add(file);inputs.push({path:file,sha256:await sha(file)});}
+// ----- names (ADR-013) -----
+
+const realOr=path=>realpath(path).catch(()=>resolve(path));
+
+/** The names of one build: a bundled file by the root it lies in, and back. */
+async function buildNames(out,project){
+  // esbuild names files by their real paths relative to the real output
+  // directory; a worktree's node_modules is a link to another checkout's.
+  const outReal=await realOr(out);
+  const roots=[[await realOr(STAGE),'videomaker/stage'],[await realOr(NODE_MODULES),'videomaker/node_modules'],
+    [await realOr(project),'project']];
+  const nameOf=file=>{
+    if(inside(outReal,file))return relative(outReal,file);
+    for(const [root,prefix] of roots)if(inside(root,file))return `${prefix}/${relative(root,file)}`;
+    return relative(outReal,file);
+  };
+  const fileOf=name=>{
+    for(const [root,prefix] of roots)if(name.startsWith(`${prefix}/`))return join(root,name.slice(prefix.length+1));
+    return resolve(outReal,name);
+  };
+  return {
+    nameOf,fileOf,
+    // A file of the output directory is generated from the inputs (the entry
+    // holds this checkout's absolute paths): never a key input.
+    generated:name=>inside(outReal,fileOf(name)),
+    // esbuild's name for a file (relative to the output directory) -> ours.
+    renamed:esbuildName=>nameOf(resolve(outReal,esbuildName)),
+  };
+}
+
+// A JavaScript string literal as esbuild prints a name: either quote, and the
+// escapes it writes for a character outside ASCII.
+const ESCAPES={n:'\n',r:'\r',t:'\t',b:'\b',f:'\f',v:'\v',0:'\0'};
+const unquote=literal=>literal.slice(1,-1).replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|([^]))/g,
+  (_,point,unit,byte,char)=>point?String.fromCodePoint(parseInt(point,16)):unit?String.fromCharCode(parseInt(unit,16)):
+    byte?String.fromCharCode(parseInt(byte,16)):ESCAPES[char]??char);
+const quote=name=>JSON.stringify(name).replace(/[^\x00-\x7e]/g,c=>`\\u${c.charCodeAt(0).toString(16).padStart(4,'0')}`);
+const JS_COMMENT=/^(\s*)\/\/ (.+)$/,JS_WRAPPER=/^(\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')(\([^()]*\) \{)$/,CSS_COMMENT=/^\/\* (.+) \*\/$/;
+
+/** An output of esbuild with each name it printed replaced by ours (design D2). */
+export function renameOutput(text,kind,names){
+  const ours=name=>names.has(name)?names.get(name):null;
+  return text.split('\n').map(line=>{
+    let m;
+    if(kind==='css'){
+      if((m=CSS_COMMENT.exec(line))&&ours(m[1])!==null)return `/* ${ours(m[1])} */`;
+      return line;
+    }
+    if((m=JS_COMMENT.exec(line))&&ours(m[2])!==null)return `${m[1]}// ${ours(m[2])}`;
+    if((m=JS_WRAPPER.exec(line))&&ours(unquote(m[2]))!==null)return `${m[1]}${quote(ours(unquote(m[2])))}${m[3]}`;
+    return line;
+  }).join('\n');
+}
+
+async function computeKey({names,runtime,modules,previous,stageBlock,versions:v}){
+  const inputs=[],seen=new Set();
+  const add=async(name,file,sha256)=>{
+    if(seen.has(name)||names.generated(name))return;
+    seen.add(name);inputs.push({path:name,sha256:sha256??await sha(file)});
+  };
+  for(const file of runtime)await add(`videomaker/stage/${relative(STAGE,file)}`,file);
+  for(const m of modules)await add(names.nameOf(m.file),m.file,m.sha256);
+  for(const name of [...previous].sort())await add(name,names.fileOf(name));
   const key=hash(JSON.stringify({inputs,modules:modules.map(m=>m.path),stageBlock:stageBlock??null,versions:v}));
   return {key,inputs};
 }
-
-const metafileInputs=(metafile,cwd)=>Object.keys(metafile?.inputs??{}).map(p=>resolve(cwd,p));
 
 export async function buildStage({root,modules=[],stageBlock=null,build,project=root}){
   if(!root||!isAbsolute(root))throw new Error('buildStage needs an absolute root');
@@ -192,11 +262,12 @@ export async function buildStage({root,modules=[],stageBlock=null,build,project=
   const result=(record,reused)=>({js:files.js,css:files.css,dts:files.dts,sha256:record.bundleSha256,cssSha256:record.cssSha256,
     reused,typechecked:record.typechecked,modules:checked.map(({path,file,sha256})=>({path,file,sha256}))});
 
-  // Reuse: the key over the previous build's inputs, and outputs as recorded.
+  // Reuse: the key over the previous build's inputs, by their names, read from
+  // this checkout; and outputs as recorded.
   const recorded=await readOrNull(files.record).then(b=>b&&JSON.parse(String(b))).catch(()=>null);
-  const previousMeta=await readOrNull(files.metafile).then(b=>b&&JSON.parse(String(b))).catch(()=>null);
-  if(recorded&&previousMeta){
-    const {key}=await computeKey({runtime,modules:checked,previous:metafileInputs(previousMeta,out),stageBlock,versions:v});
+  if(recorded&&Array.isArray(recorded.inputs)){
+    const names=await buildNames(out,project);
+    const {key}=await computeKey({names,runtime,modules:checked,previous:recorded.inputs.map(i=>i.path),stageBlock,versions:v});
     if(key===recorded.key&&(!typed.length||recorded.typechecked)&&
       await sha(files.js)===recorded.bundleSha256&&await sha(files.css)===recorded.cssSha256&&
       await sha(files.dts)===recorded.dtsSha256)
@@ -226,7 +297,7 @@ export async function buildStage({root,modules=[],stageBlock=null,build,project=
   let built;
   try{
     built=await esbuild.build({
-      entryPoints:[files.entry],bundle:true,format:'iife',outfile:files.js,write:true,platform:'browser',
+      entryPoints:[files.entry],bundle:true,format:'iife',outfile:files.js,write:false,platform:'browser',
       target:'es2022',define:{'process.env.NODE_ENV':'"production"'},sourcemap:false,legalComments:'none',
       jsx:'automatic',nodePaths:[NODE_MODULES],alias:{'videomaker/stage':join(STAGE,'index.ts')},
       metafile:true,absWorkingDir:out,logLevel:'silent',
@@ -236,9 +307,17 @@ export async function buildStage({root,modules=[],stageBlock=null,build,project=
     const named=checked.filter(m=>messages.some(t=>t.includes(m.file)||t.includes(relative(out,m.file))));
     throw new Error(`The stage bundle does not build${named.length?` (stage module ${named.map(m=>m.path).join(', ')})`:''}:\n${messages.join('\n')||error.message}`);
   }
+  // esbuild's names through this machine's directories, replaced by ours
+  // before anything is written.
+  const names=await buildNames(out,project),esbuildNames=Object.keys(built.metafile.inputs);
+  const renames=new Map(esbuildNames.map(name=>[name,names.renamed(name)]).filter(([from,to])=>from!==to));
+  for(const output of built.outputFiles){
+    const kind=extname(output.path)==='.css'?'css':extname(output.path)==='.js'?'js':null;
+    await writeFile(output.path,kind?renameOutput(output.text,kind,renames):output.contents);
+  }
   if(await readOrNull(files.css)===null)await writeFile(files.css,'');
   await json(files.metafile,built.metafile);
-  const {key,inputs}=await computeKey({runtime,modules:checked,previous:metafileInputs(built.metafile,out),stageBlock,versions:v});
+  const {key,inputs}=await computeKey({names,runtime,modules:checked,previous:esbuildNames.map(names.renamed),stageBlock,versions:v});
   const record={key,inputs,bundleSha256:await sha(files.js),cssSha256:await sha(files.css),dtsSha256:await sha(files.dts),
     typechecked:typed.length>0,versions:v};
   await json(files.record,record);
