@@ -140,14 +140,15 @@ ADR-002, ADR-005); the renderer's reading of that document and the stage that
 draws it are the Node side's. The `machinome_movie` package under `python/`
 is the Python side of the movie document:
 
-    movie.py in the project (Movie, Chapter, Shot, Loop, Set, Element, ...)
+    movie.py in the project (Movie, Chapter, Shot, Loop, Take, Set, Element, ...)
         │  class creation: found by type, named by attribute, refused by name
         ▼                                         python/machinome_movie/movie.py
     compiled chapters (elements and shots in document form,
         │              parts, tokens and sets to check)
         │  evaluate(movie, name=, out=): opens the export's manifest and
-        ▼  source revision and the emphasised excerpts   .../evaluate.py
-    movie document, canonical JSON, with its stage block,
+        │  source revision and the emphasised excerpts; a Take's steps are
+        ▼  made once by the framework's Sim and recorded   .../evaluate.py
+    movie document, canonical JSON, with its stage block (and take block),
         │  checked against schema/machinome-movie-0.2.json   .../document.py
         ▼
     <movie dir>/_build/movie.json  →  the Node side and the project's stage module
@@ -156,8 +157,11 @@ is the Python side of the movie document:
   underscores become hyphens; a class's kind is its name as a slug) and JSON
   props; `text.py` the three counting rules (a phrase in the narration,
   words in a phrase, a token in an excerpt); `anchors.py` the narration and
-  its symbolic anchors; `take.py` the `Loop` and what it declares, model
-  time, and the resolution of a model's declaration paths to export names;
+  its symbolic anchors; `take.py` the takes and what they declare (the
+  posed `Loop`; the clocked `Take` with its `Move`, `Trigger` and `Mark`
+  steps, resolved at class creation to the framework's names, take seconds
+  and marks), model time, and the resolution of a model's declaration paths
+  to export names;
   `stage.py` the sets and slots (`Frame`, `Split`, the project's), the
   elements (`View` with its marks, the source panel, `Title`, `Picture`, the
   project's, with their `Action`s), the actions a cue performs and the
@@ -173,6 +177,14 @@ is the Python side of the movie document:
   needs a file (part paths against the export, tokens against their
   excerpts, stage modules on disk, the model block) and is a pure function
   of the declarations and those files. Two evaluations are byte-identical.
+- A clocked take is recorded, not computed (ADR-011): evaluation constructs
+  the framework's `Sim` over the declared model once, makes the steps with
+  its own requests and writes what they returned, verbatim, with the bank
+  before the first step and at every mark and the identity the export
+  publishes. `document.py` holds a take document to its export (identity,
+  inputs, the bank's ids) and to the replay of its steps, the rule both
+  runtimes share; the Node side reads take documents from the `pose-a-take`
+  change on.
 - The schema is one file, `schema/machinome-movie-0.2.json`, shipped in the
   package through a link; the shared `fixtures/` pin what Python emits and
   every refusal both runtimes must make.
@@ -185,6 +197,8 @@ the pipeline, a step and not a protocol by the pilot's ruling of
 30 September 2026 (no format is a protocol before a release). Python
 declarations in the project evaluate to `machinome-movie/0.2`, the commands
 read it, and the React stage draws every film, a project's movie on its own
-template and a YAML episode on the shipped paper sets. Takes recorded from
-running and clocked scenarios, the page element and the studio's live
-preview are later steps of the same direction and are not built.
+template and a YAML episode on the shipped paper sets. The curta-video
+campaign adds machine takes: a clocked take is declared and recorded in
+Python (`declare-a-take`), and the commands are to read and pose it next
+(`pose-a-take`). Running machines' takes, the page element and the studio's
+live preview are later steps of the same direction and are not built.

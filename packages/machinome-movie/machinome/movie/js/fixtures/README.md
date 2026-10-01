@@ -17,7 +17,13 @@ side's suite.
   grid. `minimal` is one shot on the shipped `frame`; `tour` uses the fixture
   project's own sets (`playbill`, `playbill-split`, drawn by
   `videos/tour/stage.tsx`) and element (`tally`), the shipped `frame` and
-  `split`, and every shipped element and action the validation film uses. A
+  `split`, and every shipped element and action the validation film uses;
+  `count` films the clocked counter's take `Turns` (`model.timeMode`
+  `take`, the `take` block of the framework's recorded requests and banks)
+  in three shots on `frame` and `split`, with a typed source panel, an
+  emphasis and a highlight. The Node suite refuses `count` until it reads
+  take documents (the `pose-a-take` change), and it has no resolved pin
+  until then. A
   document written by hand on the Node side is named `node-<name>.json` and
   has no fixture movie; the Python suite asserts instead that
   `check_document` accepts it.
@@ -55,10 +61,13 @@ side's suite.
   marks, model keys, joins and easings, a cue's actions (placed elements,
   actions a kind has, their fields and parameters, spans with an `until`,
   entrances), typing and completion, emphasis anchors and spoken words, a
-  spoken reveal, duplicate ids; and, read through the document's `root`, the
-  parts it names checked against its export and the tokens it emphasises
-  checked against its excerpts. Each is one mutation of an evaluated fixture
-  document, rooted at the fixture project's movie from this directory.
+  spoken reveal, duplicate ids, a take document's `take` block and its
+  model time; and, read through the document's `root`, the parts it names
+  checked against its export, the tokens it emphasises checked against its
+  excerpts, and a take's identity and inputs checked against its export and
+  its banks against the replay of its steps. Each is one mutation of an
+  evaluated fixture document, rooted at the fixture project's movie from
+  this directory.
 - `scripts/pin-resolved.mjs NAME...` writes `resolved/<name>.json` from the
   document and its takes, for a person to review before committing; never
   regenerate a pin to make a failing test pass.
@@ -72,15 +81,20 @@ so a new fixture is registered once and missed by neither side.
 (`models/seesaw.py`, a declared 20 s loop through which the beam tips), its
 posed export (`export/seesaw/`, which the framework's command writes from the
 project directory, `machinome export seesaw -o export/seesaw --fps 30
---frames 600 --no-widget`, and which the viewer layer poses), a still
-(`media/plate.png`), the take every fixture movie films (`videos/takes.py`)
-and the movies, with the tour's template (`videos/tour/stage.tsx` and
+--frames 600 --no-widget`, and which the viewer layer poses), a clocked
+counter (`models/counter.py` and `models/digits.svg`, copied from the
+framework tutorial's chapter 9 with the pieces it imports, Apache-2.0 as
+the project's `NOTICE` says) and its clocked export (`export/counter/`,
+`machinome export counter -o export/counter --no-widget`), a still
+(`media/plate.png`), the takes the fixture movies film (`videos/takes.py`:
+the seesaw's loop `Playground` and the counter's take `Turns`) and the
+movies, with the tour's template (`videos/tour/stage.tsx` and
 `stage.css`). The still is drawn by `scripts/draw-fixture-still.mjs`, 864 by
 576 pixels of flat shapes with no text, the size at which the tour's plate,
 over its stage at 1280 by 720, draws it whole at its own size; a pure test
-asserts that the committed file is that drawing. Its
-`export/seesaw/source-revision.txt` is the commit of the project made this
-way, so that source pinned to it can be checked:
+asserts that the committed file is that drawing. The `source-revision.txt`
+of each export (`export/seesaw/`, `export/counter/`) is the commit of the
+project made this way, so that source pinned to it can be checked:
 
 1. copy every file of the project except `export/`, `_build/` and
    `__pycache__/` into an empty directory;
@@ -98,8 +112,8 @@ to it are re-pinned together, by one command:
 node scripts/pin-fixture-project.mjs --python <python>
 ```
 
-It makes the commit by the recipe, writes its hash to
-`export/seesaw/source-revision.txt`, evaluates every document `manifest.json`
+It makes the commit by the recipe, writes its hash to the
+`source-revision.txt` of every export, evaluates every document `manifest.json`
 registers whose movie the project declares into `documents/` (with
 `PYTHONPATH` set to this repository's `python/`; `<python>`, by default
 `python3`, needs the package's dependencies) and prints what changed. It
@@ -124,7 +138,11 @@ formatting. Both runtimes name:
   `absent`, `ambiguous`, `at or before its start`, `first shot`,
   `last shot`, `shot id`, `does not declare`, `does not place`,
   `two slots`, `ships`, `base`, `missing`, `complete`, `already`,
-  `outside the excerpt`, `word for word`, and the kinds `string`, `number`,
-  `boolean`, `list`, `object`;
+  `outside the excerpt`, `word for word`, `outside the take`, and the kinds
+  `string`, `number`, `boolean`, `list`, `object`;
+- for a take document, its fields by their path: `model.timeMode`,
+  `take.steps[0]` with the step's id (`step-1`) and its field (`input`),
+  `take.banks.<mark>` with the mark and the first id that differs from the
+  replay, `take.identity` beside the export's `clocked.identity`;
 - for a schema refusal, the field's name (an unknown `narration` on a shot is
   refused naming `narration`).

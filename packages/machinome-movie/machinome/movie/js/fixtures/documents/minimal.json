@@ -139,7 +139,7 @@
     "expectedDurationSeconds": 20,
     "manifest": "../../export/seesaw/manifest.json",
     "readiness": "Exported by machinome export; the beam tips on its pivot through the loop.",
-    "sourceRevision": "4619b17056c4c82081c665ddc7f12af01fd450ca",
+    "sourceRevision": "80da5915b97a8dc2397ecf6693bff4a19b41ac99",
     "timeMode": "normalized-loop"
   },
   "output": {

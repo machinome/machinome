@@ -1,0 +1,217 @@
+{
+  "name": "take-block-missing",
+  "document": {
+    "audio": {
+      "model": "eleven_v3",
+      "provider": "elevenlabs",
+      "voice": "fixture-voice"
+    },
+    "cameras": {
+      "front": {
+        "fov": 37,
+        "position": [
+          160,
+          -260,
+          140
+        ],
+        "target": [
+          0,
+          0,
+          20
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "chapters": [
+      {
+        "elements": {
+          "code": {
+            "kind": "source",
+            "source": "relations"
+          },
+          "view": {
+            "camera": "front",
+            "kind": "view"
+          }
+        },
+        "id": "counting",
+        "narration": "Turn the crank once and the units drum shows one. Eight more turns bring it to nine. On the tenth turn the counter commits a carry: the units return to zero and the tens show one.",
+        "shots": [
+          {
+            "cues": [],
+            "id": "once",
+            "model": {
+              "from": 0,
+              "to": {
+                "mark": "one"
+              }
+            },
+            "places": {
+              "stage": "view"
+            },
+            "set": "frame",
+            "until": {
+              "spoken": "Eight more"
+            }
+          },
+          {
+            "cues": [],
+            "id": "nine",
+            "model": {
+              "from": {
+                "mark": "one"
+              },
+              "to": {
+                "mark": "nine"
+              }
+            },
+            "places": {
+              "stage": "view"
+            },
+            "set": "frame",
+            "until": {
+              "spoken": "On the tenth turn"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "type",
+                    "element": "code",
+                    "over": 1,
+                    "throughLine": 153
+                  }
+                ],
+                "at": 0
+              },
+              {
+                "actions": [
+                  {
+                    "action": "emphasize",
+                    "element": "code",
+                    "hold": 0.5,
+                    "words": [
+                      {
+                        "spoken": "commits",
+                        "token": "commits"
+                      }
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "commits a carry"
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "highlight",
+                    "element": "view",
+                    "others": "ghost",
+                    "parts": [
+                      [
+                        "tens_drum"
+                      ]
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "the tens show one"
+                },
+                "until": {
+                  "narrationEnd": true
+                }
+              }
+            ],
+            "id": "carry",
+            "model": {
+              "from": {
+                "mark": "nine"
+              },
+              "to": {
+                "mark": "ten"
+              }
+            },
+            "places": {
+              "left": "code",
+              "right": "view"
+            },
+            "set": "split",
+            "transition": {
+              "duration": 0.5,
+              "kind": "dissolve"
+            },
+            "until": {
+              "narrationEnd": true,
+              "plus": 0.5
+            }
+          }
+        ]
+      }
+    ],
+    "clips": {},
+    "evidence": {},
+    "format": "machinome-movie/0.2",
+    "id": "count",
+    "layers": {},
+    "learningGoal": "Film a clocked take: a counter counts its turns and carries.",
+    "marks": {
+      "nine": 6,
+      "one": 2,
+      "ten": 8
+    },
+    "model": {
+      "expectedDurationSeconds": 8,
+      "manifest": "../../export/counter/manifest.json",
+      "readiness": "Exported by machinome export; the drums count the crank's turns and carry.",
+      "sourceRevision": "80da5915b97a8dc2397ecf6693bff4a19b41ac99",
+      "timeMode": "take"
+    },
+    "output": {
+      "fps": 10,
+      "height": 360,
+      "width": 640
+    },
+    "root": "../../python/tests/fixtures/project/videos/count",
+    "sourceCode": {
+      "relations": {
+        "file": "../../models/counter.py",
+        "lines": [
+          150,
+          153
+        ]
+      }
+    },
+    "stage": {
+      "elements": {},
+      "modules": [],
+      "sets": {
+        "frame": {
+          "slots": [
+            "stage"
+          ]
+        },
+        "split": {
+          "slots": [
+            "left",
+            "right"
+          ]
+        }
+      }
+    },
+    "status": "rehearsal",
+    "stills": {},
+    "title": "Count"
+  },
+  "must_mention": [
+    "model.timeMode",
+    "take",
+    "missing"
+  ]
+}

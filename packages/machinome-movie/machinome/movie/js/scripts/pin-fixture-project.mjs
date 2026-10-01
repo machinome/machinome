@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Re-pins the fixture project after any of its files changed, in one command
 // (fixtures/README.md, "The fixture project"): it makes the project's commit by
-// the recipe, writes its hash to export/seesaw/source-revision.txt, evaluates
+// the recipe, writes its hash to the source-revision.txt of every export of the
+// project (export/<model>/, each holding a manifest.json), evaluates
 // every document fixtures/manifest.json registers whose movie the project
 // declares into fixtures/documents/, and prints what changed. It never writes
 // fixtures/resolved/: a person runs scripts/pin-resolved.mjs for the documents
@@ -9,7 +10,7 @@
 // Usage: node scripts/pin-fixture-project.mjs [--python PYTHON]
 // PYTHON (default python3) runs the machinome_movie package of this
 // repository's python/ directory and must have its dependencies installed.
-import {cp,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
+import {cp,mkdtemp,readFile,readdir,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,dirname,relative,sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -17,7 +18,15 @@ import {fileURLToPath} from 'node:url';
 
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
 const project=join(root,'python','tests','fixtures','project'),fixtures=join(root,'fixtures');
-const pin=join(project,'export','seesaw','source-revision.txt');
+// Every export of the project pins the one revision: each directory of
+// export/ that holds a manifest.json.
+async function pins(){
+  const exports=join(project,'export'),found=[];
+  for(const entry of (await readdir(exports,{withFileTypes:true})).sort((a,b)=>a.name<b.name?-1:1))
+    if(entry.isDirectory()&&await read(join(exports,entry.name,'manifest.json'))!==null)
+      found.push(join(exports,entry.name,'source-revision.txt'));
+  return found;
+}
 // The recipe's identity, date and message, and no global or system Git
 // configuration; nothing of the caller's Git environment is inherited.
 const FIXED={GIT_AUTHOR_NAME:'Videomaker fixture',GIT_AUTHOR_EMAIL:'fixture@videomaker.invalid',
@@ -47,9 +56,12 @@ try{
   const env={...process.env,PYTHONPATH:[join(root,'python'),process.env.PYTHONPATH].filter(Boolean).join(':')};
   const movie=(...rest)=>execFileSync(python,['-m','machinome_movie',...rest],{cwd:root,env,encoding:'utf8',stdio:['ignore','pipe','inherit']});
 
-  const now=await revision(),before=(await read(pin))?.trim()??null;
-  if(before===now)console.log(`Revision: ${now}, unchanged.`);
-  else{await writeFile(pin,now+'\n');console.log(`Revision: ${before??'none'} -> ${now}, written to ${relative(root,pin)}.`);}
+  const now=await revision();
+  for(const pin of await pins()){
+    const before=(await read(pin))?.trim()??null;
+    if(before===now)console.log(`Revision: ${now}, unchanged in ${relative(root,pin)}.`);
+    else{await writeFile(pin,now+'\n');console.log(`Revision: ${before??'none'} -> ${now}, written to ${relative(root,pin)}.`);}
+  }
 
   const declared=new Set(movie('list',project).split('\n').filter(Boolean).map(line=>line.split('\t')[0]));
   const {documents}=JSON.parse(await readFile(join(fixtures,'manifest.json'),'utf8')),changed=[];

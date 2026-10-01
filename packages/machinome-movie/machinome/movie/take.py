@@ -1,6 +1,10 @@
-"""The take a movie films: the posed loop of a machinome model, with its
-marks, and what is declared beside it for the camera: cameras, layers,
-source excerpts and stills.
+"""The take a movie films, and what is declared beside it for the camera:
+cameras, layers, source excerpts and stills.
+
+A take is a `Loop`, the posed loop of a machinome model with its marks (the
+trivial take), or a `Take`, the steps a clocked machine is asked to make
+with the seconds each is drawn over and the marks its shots cut on, which
+evaluation records through the framework's simulation.
 
 A part is named by the model class's own declarations (`Mill.feed.pawl`)
 and resolved here to the names the export gives it.
@@ -53,8 +57,8 @@ def _export_name(declaration, attribute):
 
 
 class _Declared:
-    """Something declared on a Loop: it belongs to the first loop that
-    holds it and is named by that loop's attribute."""
+    """Something declared on a take (a Loop or a Take): it belongs to the
+    first take that holds it and is named by that take's attribute."""
 
     kind = 'declaration'
     loop = None
@@ -164,6 +168,12 @@ class Simulation:
                 declared = ', '.join(known) or 'no marks'
                 raise MovieError(f"{where}: model: unknown mark '{mark}' of "
                                  f"{self.loop.__name__}, which declares {declared}")
+        if issubclass(self.loop, Take):
+            values = [self.start, self.end] if self.keys is None else [v for _, v, _ in self.keys]
+            for value in values:
+                if not isinstance(value, str) and not 0 <= value <= self.loop.length:
+                    raise MovieError(f"{where}: model: take time {value} s is outside the take "
+                                     f"{self.loop.__name__}, 0 to {self.loop.length} s")
         if self.keys is None:
             return
         for index, (at, _, _) in enumerate(self.keys):
@@ -199,13 +209,20 @@ def _same_time(a, b):
     return a == b
 
 
-class Loop:
-    """The posed loop of a model: the trivial take. A subclass carries
-    `model`, `export`, `marks`, `readiness` and its camera declarations."""
+class _Take:
+    """What every take declares and checks alike: `model`, `export`,
+    `readiness` and its camera declarations, owned by the take that holds
+    them. `Loop` and `Take` add their own time."""
+
+    #: The word a refusal names the take's kind by.
+    _what = 'take'
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        where = f'Loop {cls.__name__}'
+        if '_what' in vars(cls):
+            # Loop and Take themselves: the kinds, not a take.
+            return
+        where = f'{cls._what} {cls.__name__}'
         for attribute in ('model', 'export', 'readiness'):
             if getattr(cls, attribute, None) is None:
                 raise MovieError(f'{where} needs {attribute}')
@@ -215,13 +232,7 @@ class Loop:
             raise MovieError(f'{where}: export is the path of the export directory')
         if not isinstance(cls.readiness, str) or not cls.readiness.strip():
             raise MovieError(f'{where}: readiness says what the export does and does not show')
-        marks = getattr(cls, 'marks', None) or {}
-        for name, seconds in marks.items():
-            if not isinstance(name, str) or not _MARK.fullmatch(name):
-                raise MovieError(f"{where}: mark {name!r} is not a name; a mark is named "
-                                 f"with letters, digits and underscores, as pull_start")
-            number(seconds, f'{where}: mark {name}')
-        cls.marks = dict(marks)
+        cls._time(where)
         for name, value in vars(cls).items():
             if isinstance(value, _Declared) and value.loop is not cls:
                 raise MovieError(
@@ -234,11 +245,15 @@ class Loop:
                                       for part in layer.parts]
 
     @classmethod
+    def _time(cls, where):
+        """Check and derive the take's time: its marks, and a Take's steps."""
+
+    @classmethod
     def declarations(cls, kind):
-        """What the loop declares of `kind`, by attribute, bases first."""
+        """What the take declares of `kind`, by attribute, bases first."""
         found = {}
         for klass in reversed(cls.__mro__):
-            if klass is Loop or not issubclass(klass, Loop):
+            if not issubclass(klass, _Take) or '_what' in vars(klass):
                 continue
             for name, value in vars(klass).items():
                 if isinstance(value, kind):
@@ -253,7 +268,7 @@ class Loop:
     @classmethod
     def run(cls, start, end):
         """Model time running linearly from `start` to `end` over the shot:
-        model seconds, or mark names."""
+        model seconds of a loop or take seconds of a take, or mark names."""
         where = f'{cls.__name__}.run'
         for value in (start, end):
             if not isinstance(value, str):
@@ -280,3 +295,193 @@ class Loop:
                 number(value, where)
             written.append((at, value, curve))
         return Simulation(cls, keys=written)
+
+
+class Loop(_Take):
+    """The posed loop of a model: the trivial take. A subclass carries
+    `model`, `export`, `marks`, `readiness` and its camera declarations."""
+
+    _what = 'Loop'
+
+    @classmethod
+    def _time(cls, where):
+        marks = getattr(cls, 'marks', None) or {}
+        for name, seconds in marks.items():
+            if not isinstance(name, str) or not _MARK.fullmatch(name):
+                raise MovieError(f"{where}: mark {name!r} is not a name; a mark is named "
+                                 f"with letters, digits and underscores, as pull_start")
+            number(seconds, f'{where}: mark {name}')
+        cls.marks = dict(marks)
+
+
+##############################################
+# A clocked take
+
+class Move:
+    """A step of a take: move one input of the machine to a value (`to=`) or
+    by a travel (`by=`), in design units, drawn over `over` seconds."""
+
+    def __init__(self, input, *, to=None, by=None, over=None):
+        self.input, self.to, self.by, self.over = input, to, by, over
+
+
+class Trigger:
+    """A step of a take: make the request an instruction of the model
+    states, drawn over the duration the instruction declares."""
+
+    def __init__(self, instruction):
+        self.instruction = instruction
+
+
+class Mark:
+    """A name for the instant after the step before it (0 before every
+    step), which shots cut on."""
+
+    def __init__(self, name):
+        self.name = name
+
+
+class Planned:
+    """A step of a take as its class resolved it: its document `id`, its
+    `at` and `duration` in take seconds, what the framework is asked
+    (`input` with `to` or `by` for a move, `instruction` for a trigger),
+    and the step as written, for refusals."""
+
+    def __init__(self, kind, written, duration, *, input=None, to=None, by=None,
+                 instruction=None):
+        self.kind, self.written, self.duration = kind, written, duration
+        self.input, self.to, self.by, self.instruction = input, to, by, instruction
+        self.id = self.at = None
+
+
+class Take(_Take):
+    """The take of a clocked machine: the steps it is asked to make, each
+    drawn over its seconds, and the marks the shots cut on. A subclass
+    carries `model`, `export`, `readiness`, `steps` and its camera
+    declarations; its class derives `schedule` (the steps resolved),
+    `length` (take seconds) and `marks`. Evaluation records what the machine
+    did through the framework's simulation."""
+
+    _what = 'Take'
+
+    @classmethod
+    def _time(cls, where):
+        if 'marks' in vars(cls):
+            raise MovieError(f"{where}: a Take writes no marks; its marks are its Mark(...) "
+                             f"steps, each the instant after the step before it")
+        steps = getattr(cls, 'steps', None)
+        if steps is None:
+            raise MovieError(f'{where} needs steps')
+        if not isinstance(steps, (list, tuple)):
+            raise MovieError(f'{where}: steps is a list of Move, Trigger and Mark, not {steps!r}')
+        schedule, marks, after = [], {}, {}
+        at, pending = 0, None
+        for index, step in enumerate(steps):
+            here = f'{where}: steps[{index}]'
+            if isinstance(step, Mark):
+                written = f'Mark({step.name!r})'
+                if not isinstance(step.name, str) or not _MARK.fullmatch(step.name):
+                    raise MovieError(f"{here}, {written}: a mark is named with letters, digits and "
+                                     f"underscores, as set_23")
+                if step.name in marks:
+                    raise MovieError(f"{here}, {written}: the mark '{step.name}' is named twice")
+                if pending is not None:
+                    raise MovieError(f"{here}, {written}: the marks '{pending}' and '{step.name}' "
+                                     f"name one instant; a mark is the instant after the step "
+                                     f"before it, so put a step between them or keep one")
+                marks[step.name], after[step.name], pending = at, len(schedule) - 1, step.name
+                continue
+            pending = None
+            if isinstance(step, Move):
+                planned = cls._move(step, here)
+            elif isinstance(step, Trigger):
+                planned = cls._trigger(step, here)
+            else:
+                raise MovieError(f'{here}, {step!r}, is not a step; a step is a Move, a Trigger '
+                                 f'or a Mark')
+            planned.id, planned.at = f'step-{len(schedule) + 1}', at
+            schedule.append(planned)
+            at = at + planned.duration
+        if not schedule:
+            raise MovieError(f'{where} has no steps; a take makes at least one Move or Trigger')
+        cls.schedule, cls.length, cls.marks = tuple(schedule), at, marks
+        # The index of the step each mark follows, -1 for the initial bank.
+        cls._after = after
+
+    @classmethod
+    def _attribute(cls, value):
+        """The attribute that holds `value` on the model or a base, or None."""
+        for klass in cls.model.__mro__:
+            for name, held in vars(klass).items():
+                if held is value:
+                    return name
+        return None
+
+    @classmethod
+    def _move(cls, step, here):
+        from machinome.simulation import Driver
+
+        model = cls.model.__name__
+        attribute = None if isinstance(step.input, str) else cls._attribute(step.input)
+        named = (repr(step.input) if attribute is None else f'{model}.{attribute}')
+        written = 'Move(' + ', '.join([named] + [f'{key}={value!r}' for key, value in
+                                                 (('to', step.to), ('by', step.by), ('over', step.over))
+                                                 if value is not None]) + ')'
+        if (step.to is None) == (step.by is None):
+            raise MovieError(f'{here}, {written}: a move gives exactly one of to= (where the input '
+                             f'lands) and by= (how far it travels), in design units')
+        for key, value in (('to', step.to), ('by', step.by)):
+            if value is not None and not _finite(value):
+                raise MovieError(f'{here}, {written}: {key}={value!r} is not a number')
+        if not _finite(step.over) or step.over <= 0:
+            raise MovieError(f'{here}, {written}: over={step.over!r} is not a positive number of '
+                             f'seconds; a move is drawn over the seconds over= gives')
+        if isinstance(step.input, str) and step.input:
+            input = step.input
+        elif isinstance(step.input, Driver):
+            if attribute is None:
+                raise MovieError(f'{here}, {written}: this Driver is not a driver {model} declares; '
+                                 f'name the model\'s own, as {model}.<driver>, or its qualified id')
+            input = attribute
+        elif attribute is not None:
+            raise MovieError(f'{here}, {written}: {model}.{attribute} is a '
+                             f'{type(step.input).__name__}, not a driver; a move moves a driver '
+                             f'the model declares')
+        else:
+            raise MovieError(f'{here}, {written}: {step.input!r} is not a driver; name the model\'s '
+                             f'own, as {model}.<driver>, or its qualified id')
+        return Planned('move', written, step.over, input=input, to=step.to, by=step.by)
+
+    @classmethod
+    def _trigger(cls, step, here):
+        from machinome.simulation import Instruction
+
+        model = cls.model.__name__
+        table = getattr(cls.model, 'instructions', None)
+        table = table if isinstance(table, dict) else {}
+        value = step.instruction
+        if isinstance(value, str):
+            name, written = value, f'Trigger({value!r})'
+            if name not in table:
+                raise MovieError(f"{here}, {written}: '{name}' is not an instruction of {model}'s "
+                                 f"instructions table, which declares {', '.join(table) or 'none'}")
+        elif isinstance(value, Instruction):
+            name = next((key for key, held in table.items() if held is value), None)
+            if name is None:
+                raise MovieError(f"{here}, Trigger({value!r}): this Instruction is not one "
+                                 f"{model}'s instructions table holds; name it by its key")
+            written = f'Trigger({model}.instructions[{name!r}])'
+        else:
+            raise MovieError(f"{here}, Trigger({value!r}): a trigger names an instruction of "
+                             f"{model}'s instructions table")
+        duration = table[name].duration
+        if not _finite(duration) or duration <= 0:
+            raise MovieError(f"{here}, {written}: the instruction '{name}' declares a duration of "
+                             f"{duration} s; a trigger is drawn over its instruction's duration, "
+                             f"so it must be positive")
+        return Planned('trigger', written, duration, instruction=name)
+
+
+def _finite(value):
+    return (not isinstance(value, bool) and isinstance(value, (int, float))
+            and math.isfinite(value))

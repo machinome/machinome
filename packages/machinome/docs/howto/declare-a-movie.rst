@@ -4,8 +4,8 @@ A movie is declared in Python, in the project that owns the model, and
 evaluated to the [movie document](movie-document.md), `machinome-movie/0.2`.
 The declarations say what is on screen and when; the project's stage module,
 a TypeScript or JavaScript file beside the movie, says how it looks. This
-page teaches the declarations on a small example, a seesaw, whose complete
-source is the test suite's fixture project. The declarations are provided by
+page teaches the declarations on two small examples, a seesaw and a counter,
+whose complete source is the test suite's fixture project. The declarations are provided by
 the `machinome_movie` package in this repository's `python/` directory; its
 status is Videomaker's, stated in the [README](../README.md). What the tool
 does with the document, and whether it draws it yet, is stated on
@@ -27,7 +27,10 @@ A movie is a tree of classes, written the way a machinome model is:
   **element** is content: a view of the model, a source panel, a title, a
   picture, or anything the project draws;
 - a **`Loop`** is the take the camera films: the model's posed loop, with its
-  **marks**, **cameras**, **layers**, source excerpts and stills.
+  **marks**, **cameras**, **layers**, source excerpts and stills; a
+  **`Take`** is the take of a clocked machine, the **steps** it is asked to
+  make and the marks between them, declared with the same cameras, layers,
+  excerpts and stills.
 
 Nothing is found by its spelling. A chapter finds its narration, elements and
 shots by their type, in the order they are written; a movie finds its
@@ -64,6 +67,66 @@ class Playground(Loop):
   child `plank` of the child `beam`. It is checked where it is written, so a
   misspelling fails at that line, and it is resolved to the names the export
   gives the parts when the movie is evaluated.
+
+## The take, clocked
+
+A clocked machine has no loop: it stands at a bank of values and moves when
+asked. Each request moves one input along a straight path, and the machine
+writes its states at the events the path crosses: a counter's drums advance
+as its crank completes a turn. To film one, declare a `Take` beside the
+model: the steps the machine is asked to make, the seconds each is drawn
+over on screen, and the marks the shots cut on.
+
+```python
+class Turns(Take):
+    model = Counter
+    export = "../export/counter"
+    readiness = "Exported by machinome export; the drums count the crank's turns and carry."
+    steps = [Trigger("Turn once"), Mark("one"),
+             Move(Counter.crank, to=3240, over=4), Mark("nine"),
+             Trigger("Turn once"), Mark("ten")]
+    front = Camera(position=(160, -260, 140), target=(0, 0, 20), fov=37)
+    relations = Source("../models/counter.py", lines=(150, 153))
+```
+
+- `model`, `export`, cameras, layers, source excerpts and stills are
+  declared as on a `Loop`, and `readiness` says what the export does and
+  does not show. The export is the model's, written by `machinome export`.
+- `Move(input, to=, over=)` or `Move(input, by=, over=)` asks the machine to
+  move one input to a value or by a travel, in design units, and is drawn
+  over `over` seconds. The input is the model's own driver, `Counter.crank`,
+  or the qualified id the framework's simulation names it by, `"crank"`; a
+  driver declared on a part is named only that way.
+- `Trigger(instruction)` is drawn over the duration its instruction declares:
+  it makes the one request an instruction of the model's `instructions`
+  table states, named by its key, `"Turn once"`, or as the table holds it,
+  `Counter.instructions["Turn once"]`.
+- `Mark(name)` names the instant after the step before it; a mark before
+  every step is the instant 0. Take time is the sum of the durations:
+  `Turns` lasts 8 s, with `one` at 2, `nine` at 6 and `ten` at 8.
+
+A shot runs take time as it runs a loop's model time, between marks or take
+seconds, and a view looks at the take as at a loop:
+
+```python
+    view = View(Turns, camera=Turns.front)
+    nine = Shot(Frame, {Frame.stage: view}, until=lines.spoken("On the tenth turn"),
+                model=Turns.run("one", "nine"))
+```
+
+Evaluation runs the steps once through the framework's simulation of the
+model and records what the machine did: for each step, the request as the
+framework returned it (where the input started and ended, how much of the
+travel the machine admitted, each event on the path with what it wrote, and
+any stop it met), the bank of every input and state before the first step
+and at every mark, and the identity of the machine the export publishes.
+The record is the document's `take` block ([the movie
+document](movie-document.md), "The take"). A frame is a pure function of
+take time. Within a step, the input is where the step's fraction puts it on
+its path, with the states written by every event the path has crossed, and
+the viewer is held to the same answer. A step the machine refuses, or stops
+before it moves at all, is refused with the framework's own words. Whether
+the commands film a take is stated in the [README](../README.md).
 
 ## The template: sets
 
@@ -303,10 +366,12 @@ With the workspace's Python environment:
 `evaluate` imports the movie from the project and writes
 `_build/movie.json` beside the movie's module, or the `--out` file. It opens
 only the export's manifest and source revision and the source files of the
-excerpts an emphasis lights, and checks that each stage module exists: no
-clock, no randomness, no network, and no CAD is built, so two evaluations
-write the same bytes. The anchors stay phrases and marks; the tool measures
-them in the recorded speech.
+excerpts an emphasis lights, and checks that each stage module exists; a
+movie on a `Take` also runs the framework's simulation of the model once,
+which reads the model's own project files. No clock, no randomness, no
+network, and no CAD is built, so two evaluations write the same bytes. The
+anchors stay phrases and marks; the tool measures them in the recorded
+speech.
 
 The document's `stage` block lists what the stage bundles: the stage
 modules, every set a shot uses (with the project sets they derive from),
@@ -338,9 +403,18 @@ thing at fault. When the class is created:
   of the chapter completes;
 - a spoken reveal whose title the narration does not say exactly once;
 - a movie without a format, a narrator or a chapter, a shot id used twice,
-  and elements of one kind whose props disagree.
+  and elements of one kind whose props disagree;
+- in a `Take`, naming the step by its place in `steps`: a step that is not
+  a `Move`, a `Trigger` or a `Mark`, a move with both `to=` and `by=` or
+  neither or without a positive `over=`, an input that is not a driver of
+  the model, an instruction its `instructions` table does not hold or that
+  lasts no time, a mark that is not a name, is named twice or names the
+  instant of another mark, a take without a move or a trigger, and `marks`
+  written on a take; and a shot whose model time lies outside its take.
 
 When the movie is evaluated: a part the export does not contain (the export is
 older than the model), a token absent from or repeated in its excerpt, a stage
-module that does not exist or lies outside the project, an export that is not
-a posed loop, and a movie that films more than one take.
+module that does not exist or lies outside the project, a `Loop` whose export
+is not a posed loop, a `Take` whose export publishes no clocked machine or
+does not hold the model's inputs and states, a step the framework refuses or
+stops before it moves, and a movie that films more than one take.

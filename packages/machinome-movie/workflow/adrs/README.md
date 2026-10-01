@@ -46,6 +46,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-007](STAGE/ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md) | STAGE | Viewer instances are leased to view elements per frame | Accepted |
 | [ADR-008](RECORDS/ADR-008-the-real-viewer-is-proved-through-a-selected-bundle.md) | RECORDS | The real viewer is proved through a bundle selected by path, never assumed | Accepted |
 | [ADR-009](STAGE/ADR-009-check-measures-a-sets-layout-before-speech.md) | STAGE | `check` measures a set's layout before speech | Accepted |
+| [ADR-011](SOURCE/ADR-011-a-clocked-take-is-the-frameworks-requests-recorded-once-by-evaluation.md) | SOURCE | A clocked take is the framework's requests, recorded once by evaluation | Accepted |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may
