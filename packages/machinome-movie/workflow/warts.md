@@ -356,13 +356,19 @@ by the orchestrator. Triage: none yet unless stated; the pilot decides each.
     (`chrome-through-blends`, 53a788c; the blend request now says whether the
     frame is picture-only, and a browser test proves a blended frame differs
     from its picture-only capture in the chrome and nowhere else).
-15. **The two intermittent pixel proofs were not reproduced** in forty cold
-    runs under load (twenty on the stage, twenty on the old film page where
-    they were seen); the one condition the two recorded failures shared, a
-    screenshot after a document change with no repaint, no longer occurs on
-    the stage. The investigation's report is
-    `workflow/ongoing/fix-warts-campaign/flaky-pixel-proofs.md` on its
-    branch; it says what a future failure must keep (`KEEP_VIDEOMAKER_TEST`,
-    a surviving `TMPDIR`, the before/after PNGs, the load). Triaged 1 October
-    2026 (orchestrator): no cycle; the wart under "The test suite" stays
-    open until a failure is kept.
+15. **The two intermittent pixel proofs: one cause found, on the old page
+    only.** Twenty cold runs on the stage under load passed; twenty on the
+    old film page reproduced `Partial picture replay is not deterministic`
+    twice, word for word, and the failing pairs are byte-identical across
+    runs: 453 pixels one level apart inside the still's detail, two discrete
+    renderings. The old page sized a picture only after decoding it, and
+    Chromium 151's GPU rasterization draws an image shown at about half its
+    size or less one of two ways, chosen per page; the stage sizes its
+    pictures in CSS before they load and drew one way in every page tried.
+    The incremental frame-1 failure did not reproduce in forty runs and stays
+    unexplained. Report, run tables, the failing pair, the difference map and
+    a reproduction script: `workflow/ongoing/fix-warts-campaign/flaky-pixel-proofs.md`
+    and the directory beside it. Triaged 1 October 2026 (orchestrator): no
+    fix, since the stage does not meet the cause; the wart under "The test
+    suite" is closed for the picture replay and stays open for the
+    incremental frame, which a future failure must keep as the report says.
