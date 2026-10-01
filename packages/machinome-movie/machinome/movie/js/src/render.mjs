@@ -289,8 +289,10 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
         await show({...g,elements},t,{pictureOnly:true,fresh:true});
         pictures.push({src:png(await page.screenshot()),weight});
       }
-      Object.assign(observed,await page.evaluate(p=>window.film.composeMarkBlend(p),pictures));
-      if(options.pictureOnly)await page.evaluate(()=>document.body.classList.add('picture-only'));
+      // The blended frame is picture-only only when this pose is: the stage
+      // sets the page's state before its repaint, so the chrome is drawn
+      // over the blend as over any other frame.
+      Object.assign(observed,await page.evaluate(r=>window.film.composeMarkBlend(r),{pictures,pictureOnly:Boolean(options.pictureOnly)}));
       return observed;
     }
     // A picture of this instant without the film's chrome, posed and checked.

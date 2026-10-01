@@ -419,9 +419,11 @@ headless Chromium by the renderer. Its contract with the renderer:
   lists the viewer instances with the key of the view element each serves
   (`null` when it is free) and whether each is shown. `viewer` and `apiVersion` are those of the first view mounted, and
   `null` before one is (finding 11 of the react-stage change).
-- `window.film.compose(request)` and `composeMarkBlend(pictures)` draw
+- `window.film.compose(request)` and `composeMarkBlend(request)` draw
   transition and blended frames over the page from same-instant captures,
-  as today, in a layer above every set's content and below its chrome.
+  as today, in a layer above every set's content and below its chrome; each
+  request says with `pictureOnly` whether the frame is a picture-only
+  capture, so the chrome is drawn over a blended frame as over any other.
 - **Chrome** is what a set draws above pictures and transitions: a masthead,
   a series label, whatever the template decides. A set marks it with the
   runtime's `Chrome` component; the stage lifts it above the transition

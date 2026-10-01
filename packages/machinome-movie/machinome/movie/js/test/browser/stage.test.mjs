@@ -191,6 +191,39 @@ test('a picture-only capture leaves out the chrome, and only the chrome',async()
   assert.equal(outside,0,'nothing but the chrome differs');
 });
 
+// A frame with a fading picture or mark is a blend of picture-only captures;
+// the live chrome is drawn over the blend as over any other frame, and a
+// picture-only capture of the same instant leaves it out and nothing else.
+test('a frame with a fading picture keeps the chrome above the blend',async()=>{
+  const {film,viewer}=await theTour();
+  const shot=shotOf(film,'still'),fps=film.output.fps;
+  let t=null;
+  for(let frame=Math.ceil(shot.start*fps-1e-9);frame/fps<shot.end-1e-9;frame++){
+    const opacity=frameAt(film,frame/fps).elements['tip.plate']?.opacity??0;
+    if(opacity>.05&&opacity<.95){t=frame/fps;break;}
+  }
+  assert.ok(t!==null,'the tour fades its still in');
+  const seen=await browserSession(film,viewer,WIDTH,[],async({page,pose})=>{
+    const live=await pose(t,{transition:null});const liveImage=decodePng(await page.screenshot());
+    const liveHidden=await page.evaluate(()=>getComputedStyle(document.getElementById('chrome')).visibility);
+    await pose(t,{transition:null},{pictureOnly:true});const bare=decodePng(await page.screenshot());
+    const bareHidden=await page.evaluate(()=>getComputedStyle(document.getElementById('chrome')).visibility);
+    return {result:{chrome:live.observed.chrome,opacity:live.elements['tip.plate'].opacity,liveImage,bare,liveHidden,bareHidden}};
+  });
+  const {chrome,opacity,liveImage,bare,liveHidden,bareHidden}=seen.result;
+  assert.ok(opacity>0&&opacity<1,`the still is mid-fade at ${t} s`);
+  assert.equal(liveHidden,'visible','the chrome is visible over the blend');assert.equal(bareHidden,'hidden');
+  assert.equal(chrome.length,2);
+  const inside=(x,y)=>chrome.some(r=>x>=r.x-2&&x<r.x+r.width+2&&y>=r.y-2&&y<r.y+r.height+2);
+  let differing=0,outside=0;
+  for(let y=0;y<bare.height;y++)for(let x=0;x<bare.width;x++){
+    const i=(y*bare.width+x)*3,same=[0,1,2].every(k=>bare.rgb[i+k]===liveImage.rgb[i+k]);
+    if(inside(x,y)){if(!same)differing++;}else if(!same)outside++;
+  }
+  assert.ok(differing>50,'the chrome was drawn over the blended frame');
+  assert.equal(outside,0,'nothing but the chrome differs between the blended frame and its picture-only capture');
+});
+
 test('two views in one shot are two viewer instances, each posed as its own state asks',async()=>{
   const {film,viewer}=await theTour();
   // A frame built by hand on the shipped split: the tip chapter's two views side by side.
