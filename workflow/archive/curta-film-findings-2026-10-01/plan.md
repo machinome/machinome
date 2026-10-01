@@ -1,7 +1,11 @@
 # Curta film findings — plan
 
-Status: working plan, 1 October 2026, on bench `curta-findings` (worktree
-`machinome/WTs/curta-findings`), cut from `main` at 8a8a267. Nothing here
+Status: done, 1 October 2026. The three cycles are archived under
+`openspec/changes/archive/2026-10-01-*` and the bench `curta-findings`
+(cut from `main` at 8a8a267) was fast-forwarded into `main` the same day;
+this directory is the campaign's record, kept as it was planned. Written as a
+working plan on bench `curta-findings` (worktree `machinome/WTs/curta-findings`),
+cut from `main` at 8a8a267. Nothing here
 is ratified: each cycle ratifies its own change under
 `skills/framework-change/SKILL.md`, the orchestrator's adversarial review
 being the gate the pilot delegated. The bench fast-forwards into `main`
