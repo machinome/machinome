@@ -1,14 +1,18 @@
 // The scripted MachinomeViewer double shared by the browser tests. Not a test
 // file: it registers no tests.
 // A configurable API 28 viewer double. Its canvas is one flat colour; a part's
-// on-screen rect moves with model time; project() is a pinhole camera; with
-// `machine` it has a clocked machine (below). Every
+// on-screen rect moves with model time, or with `machine` with the bank its
+// clocked machine holds (below); project() is a pinhole camera. Every
 // instance of a page records its calls in the one list window.viewerCalls, in
 // order; window.viewerInstances lists each mount ({selector, calls}).
 export function viewerDouble(options={}){
   const o={api:28,color:'#6f8fa8',...options};
   return `window.MachinomeViewer={async mount(selector,url,options){
     const o=${JSON.stringify(o)};
+    // A machine names the input its part rects follow, one its bank holds.
+    if(o.machine){const ids=Object.keys(o.machine.initial).join(', '),input=o.machine.follows?.input;
+      if(input===undefined)throw new Error('the double\\'s machine follows no input; name one of '+ids+' in machine.follows');
+      if(!Object.hasOwn(o.machine.initial,input))throw new Error('the double\\'s machine follows '+input+', which its bank does not hold ('+ids+')');}
     const canvas=document.createElement('canvas');canvas.style.background=o.color;
     const host=document.querySelector(selector);host.append(canvas);
     // lateCanvas: size the canvas from the host on the next animation frame,
@@ -33,11 +37,14 @@ export function viewerDouble(options={}){
     const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
     const norm=a=>{const l=Math.hypot(...a);return a.map(v=>v/l);};
     const vec=a=>({toArray:()=>[...a]});
-    // machine: {identity, initial, requests}: a clocked machine whose move()
-    // answers from the requests (a take's steps, or a table a test forges),
-    // found by the input, the to or by, and the origin the bank holds. Its
-    // bank is drawn as an inset outline of the canvas, a colour of the whole
-    // bank, so a pose change reaches the pixels and a highlight's tint stays.
+    // machine: {identity, initial, requests, follows}: a clocked machine
+    // whose move() answers from the requests (a take's steps, or a table a
+    // test forges), found by the input, the to or by, and the origin the bank
+    // holds. Its bank is drawn as an inset outline of the canvas, a colour of
+    // the whole bank, so a pose change reaches the pixels and a highlight's
+    // tint stays; follows: {input, range: [low, high]} places the part rects
+    // at that input's fraction of its range where a loop's time places them
+    // without a machine, so a mark follows its part from bank to bank.
     const m=o.machine;
     let bank=m?{...m.initial}:null;
     const paint=()=>{let h=7;for(const c of JSON.stringify(bank))h=(h*31+c.charCodeAt(0))%16777213;
@@ -77,11 +84,14 @@ export function viewerDouble(options={}){
         if(known!=='*'&&!known.includes(name))throw new Error('Unknown assembly path: '+name);
         if(o.vanishAfter!==undefined&&time>o.vanishAfter)return null;
         const b0=canvas.getBoundingClientRect();
+        // Where along its row: the loop's time, or the followed input's
+        // fraction of its range in the bank the machine holds.
+        const f=m?.follows,at=m?(bank[f.input]-f.range[0])/(f.range[1]-f.range[0]):time;
         let h=0;for(const c of name)h=(h*31+c.charCodeAt(0))%997;
         const b=name==='Feed/Pawl'?b0:{left:b0.left,top:b0.top+b0.height*((h%7)-3)*.06,width:b0.width,height:b0.height};
         // rectSize: the same centre, another size (off by default).
-        if(o.rectSize){const [w,h]=o.rectSize;return {rect:{x:b.left+b.width*(.35+.3*time)+12-w/2,y:b.top+b.height*.5-h/2,width:w,height:h},point:null};}
-        return {rect:{x:b.left+b.width*(.35+.3*time),y:b.top+b.height*.5-10,width:24,height:20},point:null};
+        if(o.rectSize){const [w,h]=o.rectSize;return {rect:{x:b.left+b.width*(.35+.3*at)+12-w/2,y:b.top+b.height*.5-h/2,width:w,height:h},point:null};}
+        return {rect:{x:b.left+b.width*(.35+.3*at),y:b.top+b.height*.5-10,width:24,height:20},point:null};
       },
       project(p){
         const f=norm(sub(view.target,view.camera)),r=norm(cross(f,view.up)),u=cross(r,f),d=sub(p,view.camera),z=dot(d,f);

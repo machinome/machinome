@@ -23,8 +23,10 @@ const FIXED={GIT_AUTHOR_NAME:'Videomaker fixture',GIT_AUTHOR_EMAIL:'fixture@vide
 const readJson=async file=>JSON.parse(await readFile(file,'utf8'));
 const exists=file=>access(file).then(()=>true,()=>false);
 // The viewer double's machine for a take: its identity, its initial bank and
-// its steps as the requests the double answers.
-export const takeMachine=take=>({machine:{identity:take.identity,initial:take.initial,requests:take.steps}});
+// its steps as the requests the double answers. Its part rects follow the
+// counter's units, 0 to 9, the input whose drum the take turns.
+export const FOLLOWS={input:'units',range:[0,9]};
+export const takeMachine=take=>({machine:{identity:take.identity,initial:take.initial,requests:take.steps,follows:FOLLOWS}});
 
 // A copy of the fixture project, committed as the recipe says. `t` (a vitest
 // context) removes it after the test unless KEEP_VIDEOMAKER_TEST is set.

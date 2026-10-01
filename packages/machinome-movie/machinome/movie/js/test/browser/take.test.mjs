@@ -14,6 +14,7 @@ import {fixtureMovie,takeMachine} from '../support/fixture-movie.mjs';
 import {loadEpisode} from '../../src/episode.mjs';
 import {frameAt,filmShots} from '../../src/timeline.mjs';
 import {viewerDouble} from '../viewer-double.mjs';
+import {assertMarkFollowsTheBank} from '../support/mark-on-a-take.mjs';
 
 let count=null;
 const cleanup=[];
@@ -71,6 +72,21 @@ test('posing one bank, then another, then the first gives identical pixels; a ma
   assert.deepEqual(b1.bank,doc.take.banks.one);
 });
 
+test('a ring on the units drum follows it from the take\'s start to the mark one, and back (the assertion layer 6 makes)',async()=>{
+  const {film,viewer}=await theCount();
+  await assertMarkFollowsTheBank(film,viewer);
+});
+
+test('a double whose machine follows no input, or one its bank does not hold, is refused at mount, naming it',async()=>{
+  const {film,double,document:doc}=await theCount();
+  const first=shotOf(film,'once').start,session=file=>browserSession(film,file,WIDTH,[],async({pose})=>{await pose(first);});
+  const {follows:_,...still}=takeMachine(doc.take).machine;
+  await assert.rejects(session(await double('follows-nothing.js',{machine:still})),
+    /the double's machine follows no input; name one of crank, tens, units in machine\.follows/);
+  await assert.rejects(session(await double('follows-crank-arm.js',{machine:{...still,follows:{input:'crank_arm',range:[0,360]}}})),
+    /the double's machine follows crank_arm, which its bank does not hold \(crank, tens, units\)/);
+});
+
 test('a viewer below API 29, without a machine, or with another machine is refused at mount, naming the view',async()=>{
   const {film,double,document:doc}=await theCount();
   const first=shotOf(film,'once').start,session=file=>browserSession(film,file,WIDTH,[],async({pose})=>{await pose(first);});
@@ -86,14 +102,14 @@ test('a viewer below API 29, without a machine, or with another machine is refus
 test('a viewer that answers a step otherwise than the take is refused before the first frame, naming the step and the field',async()=>{
   const {film,double,document:doc}=await theCount();
   const forged=structuredClone(doc.take.steps);forged[1].commits[0].targets.units=7;
-  const file=await double('forged.js',{machine:{identity:doc.take.identity,initial:doc.take.initial,requests:forged}});
+  const file=await double('forged.js',{machine:{...takeMachine(doc.take).machine,requests:forged}});
   let posed=0;
   await assert.rejects(browserSession(film,file,WIDTH,[],async({pose})=>{posed++;await pose(shotOf(film,'once').start);}),
     /The viewer does not reproduce the take: step step-2 \(take\.steps\[1\]\), commits\[0\]\.targets\.units: the viewer gives 7, the take records 2/);
   assert.equal(posed,0,'refused before the session\'s first frame');
   // Another origin, another number of commits.
   const shifted=structuredClone(doc.take.steps);shifted[2].commits.push({...shifted[2].commits[0],fraction:1});
-  await assert.rejects(browserSession(film,await double('extra-commit.js',{machine:{identity:doc.take.identity,initial:doc.take.initial,requests:shifted}}),
+  await assert.rejects(browserSession(film,await double('extra-commit.js',{machine:{...takeMachine(doc.take).machine,requests:shifted}}),
     WIDTH,[],async()=>{}),/step step-3 \(take\.steps\[2\]\), commits: the viewer gives 2 commits, the take records 1/);
 });
 
