@@ -9,7 +9,8 @@ import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
-import {frameAt,srt,filmShots,shotActions,joinShows,reframeAt} from './timeline.mjs';
+import {frameAt,srt,filmShots,shotActions,joinShows,reframeAt,modelSecondsAt} from './timeline.mjs';
+import {replayTake,markAt} from './take.mjs';
 import {contained,viewerApiRefusal,filmSubject,PAPER_STAGE} from './episode.mjs';
 import {fileHash,hash,json,command,sourceBase} from './util.mjs';
 import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
@@ -129,7 +130,55 @@ export function stageConfig(film){
       elements:[...kinds].sort()},
     media:{stills:Object.fromEntries(Object.entries(film.pictureMedia?.stills??{}).map(([n,m])=>[n,size(m)])),
       clips:Object.fromEntries(Object.entries(film.pictureMedia?.clips??{}).map(([n,m])=>[n,size(m)]))},
-    viewer:{required,refusal:viewerApiRefusal(required,'{declared}',filmSubject(film))}};
+    viewer:{required,refusal:viewerApiRefusal(required,'{declared}',filmSubject(film))},
+    // A view on a clocked take restores its bank with the take's identity (ADR-012).
+    ...(film.model?.timeMode==='take'?{take:{identity:film.take.identity}}:{})};
+}
+
+// The first id (sorted) at which two banks differ, or null.
+function bankDifference(held,wanted){
+  for(const id of [...new Set([...Object.keys(held??{}),...Object.keys(wanted)])].sort())
+    if(!Object.is(held?.[id],wanted[id]))return id;
+  return null;
+}
+const valueOf=v=>v===undefined?'nothing':JSON.stringify(v);
+// The take time a frame's views are posed at: its shot's model time at the
+// frame's instant (an outgoing shot's past its end, through a join).
+function takeTimeOf(film,f){
+  const shot=filmShots(film).find(s=>s.shot.id===f.shotId).shot;
+  return modelSecondsAt(shot,f.time-shot.start);
+}
+
+// Replays every step of the take on the viewer's machine of the view element
+// `key` (design D6 of the pose-a-take change, ADR-012): the bank before the
+// step restored, the same move asked, and the request the viewer returns
+// compared exactly with the record. Refuses on the first difference, naming
+// the step and the field. The next frame restores its own whole bank.
+async function replayTakeOnViewer(page,film,key){
+  const {before}=replayTake(film.take);
+  const answers=await page.evaluate(([key,identity,steps,before])=>{
+    const machine=window.film.machine(key);
+    if(!machine||typeof machine.move!=='function')return {error:`the viewer of ${key} gives no machine that moves`};
+    return {requests:steps.map((step,i)=>{
+      machine.restore({identity,bank:before[i]});
+      const r=machine.move(step.input,step.to!==undefined?{to:step.to}:{by:step.by});
+      return {origin:r.origin,end:r.end,commits:r.commits.map(c=>({fraction:c.fraction,value:c.value,targets:c.targets}))};
+    })};
+  },[key,film.take.identity,film.take.steps.map(({input,to,by})=>({input,to,by})),before]);
+  const refuse=(step,i,field,given,recorded)=>{throw new Error(`The viewer does not reproduce the take: step ${step.id} (take.steps[${i}]), ${field}: the viewer gives ${given}, the take records ${recorded}`);};
+  if(answers.error)throw new Error(`The viewer does not reproduce the take: ${answers.error}`);
+  film.take.steps.forEach((step,i)=>{
+    const r=answers.requests[i];
+    for(const field of ['origin','end'])if(!Object.is(r[field],step[field]))refuse(step,i,field,valueOf(r[field]),valueOf(step[field]));
+    if(r.commits.length!==step.commits.length)refuse(step,i,'commits',`${r.commits.length} commits`,`${step.commits.length}`);
+    step.commits.forEach((commit,j)=>{
+      const given=r.commits[j];
+      for(const field of ['fraction','value'])if(!Object.is(given[field],commit[field]))refuse(step,i,`commits[${j}].${field}`,valueOf(given[field]),valueOf(commit[field]));
+      const id=bankDifference(given.targets,commit.targets);
+      if(id!==null)refuse(step,i,`commits[${j}].targets.${id}`,valueOf(given.targets[id]),valueOf(commit.targets[id]));
+    });
+  });
+  return {steps:film.take.steps.length,matched:true};
 }
 // The clip spans a film shows: each picture's cue, and the continuation a
 // transition shows past its shot's end.
@@ -239,8 +288,19 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
             const a=unit(seen.up),b=unit(state.up);
             if(!a.every((v,i)=>Math.abs(v-b[i])<=1e-6))throw new Error(`Viewer did not adopt the requested up direction: ${name}`);
           }
-          const canvas=seen.canvas;
-          if(!canvas||canvas.height<seen.box.height*.98||canvas.width<seen.box.width*.98)throw new Error(`Viewer canvas does not fill its view: ${name} (canvas ${canvas?`${canvas.width.toFixed(1)}×${canvas.height.toFixed(1)}`:'absent'}, box ${seen.box.width.toFixed(1)}×${seen.box.height.toFixed(1)})`);
+          const canvas=seen.canvas,sizes=()=>`canvas ${canvas?`${canvas.width.toFixed(1)}×${canvas.height.toFixed(1)}`:'absent'}, box ${seen.box.width.toFixed(1)}×${seen.box.height.toFixed(1)}`;
+          if(!canvas||canvas.height<seen.box.height*.98||canvas.width<seen.box.width*.98)throw new Error(`Viewer canvas does not fill its view: ${name} (${sizes()})`);
+          // A canvas left larger by a shrinking box is a stale picture (ADR-012).
+          if(canvas.width>seen.box.width+1||canvas.height>seen.box.height+1)throw new Error(`Viewer canvas exceeds its view: ${name} (${sizes()})`);
+          // A view on a take holds the bank its frame asked for, and at a
+          // mark the bank the take recorded there (ADR-012).
+          if(state.bank){
+            const id=bankDifference(seen.bank,state.bank);
+            if(id!==null)throw new Error(`Viewer bank differs from the frame: ${name}, ${id}: the viewer holds ${valueOf(seen.bank?.[id])}, the frame asks for ${valueOf(state.bank[id])}`);
+            const mark=markAt(film,takeTimeOf(film,f));
+            const other=mark===null?null:bankDifference(seen.bank,film.take.banks[mark]);
+            if(other!==null)throw new Error(`Viewer bank differs from the take at mark ${mark}: ${name}, ${other}: the viewer holds ${valueOf(seen.bank?.[other])}, the take records ${valueOf(film.take.banks[mark][other])}`);
+          }
           for(const mark of seen.marks){
             const cue=state.marks.find(m=>m.id===mark.id),label=`${f.shotId} ${markSubject(f.shotId,key,mark.id)}${cue?.text===undefined?` (${mark.kind})`:` '${cue.text}'`} at ${t.toFixed(2)} s`;
             const p=mark.anchor;
@@ -359,7 +419,12 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
     // checks, and is not counted as one.
     const firstView=filmShots(film).find(({chapter,shot})=>Object.values(shot.places).some(k=>chapter.elements[k].kind==='view'));
     await pose(firstView?firstView.shot.start:0);frames=0;
+    // A film of a clocked take holds the viewer to the record before its
+    // first frame, on the instance that probe mounted (ADR-012).
+    const takeReplay=film.model.timeMode==='take'&&firstView?await replayTakeOnViewer(page,film,
+      `${firstView.chapter.id}.${Object.values(firstView.shot.places).find(k=>firstView.chapter.elements[k].kind==='view')}`):null;
     const info={width,height,browser:browser.version(),viewerApi,hashes,requiredViewerApi:film.viewerApi,
+      ...(takeReplay?{takeReplay}:{}),
       stage:{sha256:bundle.sha256,cssSha256:bundle.cssSha256,modules:bundle.modules??film.stage.modules}};
     const result=await action({page,pose,info});
     if(errors.length)throw new Error(errors.join('\n'));
@@ -818,6 +883,7 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
       duration:film.output.durationSeconds,format:film.format,style,stage:{sets:film.stage.sets,elements:film.stage.elements},
       fonts:fontFaces,
       renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
+      take:await fileHash(resolve(here,'take.mjs')),
       pictures:await fileHash(resolve(here,'pictures.mjs')),
       easing:await fileHash(resolve(here,'easing.mjs')),
       words:await fileHash(resolve(here,'words.mjs')),

@@ -206,6 +206,38 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   assert.deepEqual(calls,[]);
 });
 
+test('the clocked take count is checked, previewed and rendered twice from the command line',async t=>{
+  // The fixture counter's take (the pose-a-take change, ADR-012), with the
+  // viewer double's machine answering the take's own requests.
+  const calls=noNetwork(t);
+  const {file,viewer,build,document:doc}=await fixtureMovie(t,'count');
+  const checked=cliLaunches('check',file,'--viewer',viewer);
+  assert.equal(checked.code,0,checked.out);
+  assert.equal(checked.launches,0,'no picture and no reframe: check opens no browser');
+  assert.match(checked.out,/^Count: 1 chapters, 3 shots, 11\.4s; model 8s$/m);
+  assert.match(checked.out,/^ {2}counting: take [\d.]+ s, chapter 11\.40 s, tail [\d.]+ s\nTake: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark$/m);
+  assert.match(checked.out,new RegExp(`^Viewer API 29 required for clocked take, highlight \\(shot carry\\); ${viewer.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')} declares API 29$`,'m'));
+  const previewed=cli('preview',file,'--viewer',viewer);
+  assert.equal(previewed.code,0,previewed.out);
+  const report=await readJson(join(build,'preview','report.json'));
+  assert.deepEqual(report.takeReplay,{steps:3,matched:true},'the take was replayed on the viewer before the first frame');
+  assert.equal(report.pixelReplay,true);
+  assert.deepEqual(report.highlightChecks.map(c=>c.shotId),['carry']);
+  assert.deepEqual(report.transitionChecks.map(c=>[c.shotId,c.kind]),[['carry','dissolve']]);
+  const rendered=cli('render',file,'--viewer',viewer);
+  assert.equal(rendered.code,0,rendered.out);
+  const manifest=await readJson(join(build,'rehearsal-manifest.json')),frames=Math.round(11.4*10);
+  assert.equal(manifest.count,frames);
+  assert.deepEqual(probe(manifest.output),{frames,width:640,height:360,rate:ffprobeRate(10),kinds:['audio','video']},
+    'every frame, the size and the rate, one audio stream and no subtitle stream');
+  assert.equal(manifest.cache.capturedFrames,frames);
+  const again=cli('render',file,'--viewer',viewer);
+  assert.equal(again.code,0,again.out);
+  assert.equal((await readJson(join(build,'rehearsal-manifest.json'))).cache.capturedFrames,0,'a second render captures nothing');
+  assert.equal(doc.model.timeMode,'take');
+  assert.deepEqual(calls,[]);
+});
+
 test('the YAML fixture episode is checked, previewed, rendered twice and reviewed',async t=>{
   const calls=noNetwork(t);
   const {file,viewer}=await yamlFixture(t);

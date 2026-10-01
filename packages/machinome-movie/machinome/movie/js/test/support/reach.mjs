@@ -57,6 +57,7 @@ export const READS={
   'test/pipeline/review-pack.test.mjs':['bin/videomaker.mjs'],                // spawns the command line
   'test/pipeline/source-scenes.test.mjs':['src/film.html'],
   'test/viewer/real-viewer.test.mjs':['bin/videomaker.mjs'],                   // spawns the command line
+  'test/viewer/take.test.mjs':['bin/videomaker.mjs'],                          // spawns the command line
 };
 // Always in a slow test's key, besides its own file and the toolchain record:
 // what the runner loads around a test (setup files, reporter, config) and the

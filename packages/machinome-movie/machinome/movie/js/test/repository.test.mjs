@@ -90,3 +90,19 @@ test('a slow test\'s verdict key reads the stage runtime and the fixture project
   assert.deepEqual(project.filter(p=>/(^|\/)(__pycache__|_build)(\/|$)/.test(p)),[]);
   for(const path of project)assert.ok((await lstat(join(REPOSITORY,path))).isFile()||(await lstat(join(REPOSITORY,path))).isSymbolicLink());
 });
+
+test('the manual, the contract and the records say how a clocked take is filmed (pose-a-take)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md');
+  assert.ok(readme.includes('and clocked machines through a take'),'README: what is filmable');
+  assert.ok(readme.includes('running machines are refused'),'README: running machines');
+  assert.ok(readme.includes('A movie on a clocked take needs Viewer API 29'),'README: the viewer it needs');
+  assert.ok(readme.includes('`Take: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark`'),'README: check\'s take line');
+  const stage=await read('docs/stage.md');
+  assert.ok(stage.includes('a view on a clocked take by restoring the machine\'s bank the frame gives it on the viewer\'s machine, with the take\'s identity, before its camera is set'),'stage.md: the view row');
+  assert.ok(stage.includes('`Viewer canvas exceeds its view`'),'stage.md: the canvas larger than its view');
+  assert.ok((await read('docs/movie-document.md')).includes('A document needs Viewer API 29 when it films a clocked take'),'movie-document.md: the API');
+  assert.ok((await read('CHANGELOG.md')).includes('(`pose-a-take`, ADR-012)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md)'),'the ADR index');
+  assert.doesNotMatch(await read('AGENTS.md'),/Only posed models with a normalized loop are filmable/);
+});

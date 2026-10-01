@@ -6,6 +6,25 @@ lands it.
 
 ## Unreleased
 
+- The commands film a clocked machine's take. A movie document with
+  `model.timeMode: "take"` loads; Node checks its `take` block against the
+  export and replays its steps to the recorded banks, refusing the five
+  take fixtures with Python's words, before any take of speech; a clocked
+  export filmed as a loop and a running program are refused by name. A view
+  on a take carries the machine's whole bank at its take time (the
+  contract's rule, `src/take.mjs`) instead of a loop time; the stage
+  restores it on the viewer's machine with the take's identity and sets the
+  camera, refuses at mount a viewer with no machine or another, and reports
+  the bank it posed. A movie on a take needs Viewer API 29. Before the first
+  frame `preview` and `render` replay every step on the viewer and refuse a
+  request that differs from the record, naming the step and the field; each
+  posed frame refuses a view whose bank differs from its frame's, or at a
+  mark from the take's. `check` prints the take's steps, marks and length.
+  The stage waits for a view's canvas to shrink with its box as it waits
+  for one to grow, and the renderer refuses a canvas larger than its view
+  (`Viewer canvas exceeds its view`). The fixture `count` is resolved,
+  posed with the viewer double's machine and, with a selected bundle, on
+  the real viewer. (`pose-a-take`, ADR-012)
 - A movie declared in Python can record a clocked machine's take. `Take`,
   beside `Loop`, declares the steps the machine is asked to make,
   `Move(input, to=|by=, over=)` and `Trigger(instruction)`, each drawn over

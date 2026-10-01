@@ -7,11 +7,12 @@ AI narration and aligned captions. The release-film source study adds real
 Python typing beside the animation and expressive feminine narration.
 
 This is a local production tool, not a publishing service. It films posed
-models with a normalized animation timeline. A movie declared in Python can
-record a clocked machine's take (`Take`, in
-[Declaring a movie in Python](docs/declaring-a-movie.md)), and the commands
-refuse its document: they do not film a clocked machine yet, and running
-machines are refused. The viewer executes the actual mechanical model.
+models with a normalized animation timeline, and clocked machines through a
+take: a movie declared in Python records a clocked machine's take (`Take`,
+in [Declaring a movie in Python](docs/declaring-a-movie.md)), and the
+commands film it, every frame posing on the viewer the bank the take gives
+that instant, the viewer held to the recorded requests; running machines are
+refused. The viewer executes the actual mechanical model.
 
 Every frame is drawn by a React stage: a **set**, a template that owns the
 whole screen, with **elements** in its slots (views of the model, source
@@ -32,7 +33,10 @@ need Viewer API 28, available in the machinome-viewer source checkout but not
 yet declared by a published release; `check`, `preview` and `render` refuse them against an
 older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
 and transitions between shots run on Viewer API 21, and rings, being
-annotations, need Viewer API 28 as annotations do. Text animation is page-only
+annotations, need Viewer API 28 as annotations do. A movie on a clocked take
+needs Viewer API 29, which mounts a clocked machine under on-demand
+rendering and poses a restored bank; no published release declares it yet.
+Text animation is page-only
 and adds no viewer requirement. Stills and clips are page-only too; FFprobe
 checks their frames and timestamps, while FFmpeg extracts clip frames for
 preview and render. Linux/Chromium software rendering is the tested environment.
@@ -114,7 +118,11 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   one line per chapter from the cached takes, which is where a film's length
   comes from: `  drive: take 5.68 s, chapter 7.20 s, tail 1.32 s` (the take's
   measured length, the chapter's resolved length, and the tail after its
-  speech offset and take), or `no cached take`. For a 0.3 episode that needs
+  speech offset and take), or `no cached take`. A movie on a clocked take
+  adds one line, after the take's document checks and the replay of its
+  steps against its recorded banks have passed:
+  `Take: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark`.
+  For a 0.3 episode that needs
   Viewer API 28 it also reads the selected bundle's `viewer API` banner. An
   episode with spoken reveals or source emphasis needs its cached speech first:
   run `speech` before `check`. `check` reads the verified alignment but never
@@ -156,6 +164,10 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   frame gives and every other element at the join's progress as opacity;
   its first frame draws the view in its outgoing slot's box, its end at full
   progress is exactly the incoming frame, and its midpoint replays exactly.
+  A movie on a clocked take first replays every step on the viewer's
+  machine and refuses a request that differs from the recorded one, naming
+  the step and the field; every posed frame then refuses a view whose
+  machine holds another bank than its frame's, or at a mark than the take's.
   A ring (format 0.4) is refused on any
   frame where its part is not wholly on its view or the ring leaves the
   frame. Each annotation's entrance and exit adds stills at its first frame,

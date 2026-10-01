@@ -15,6 +15,7 @@ import {clipCadence,loadPictures} from '../src/pictures.mjs';
 import {picturesShown,measureLayouts,layoutLines,checkEnlargements,checkPictureViews,
   reframesOf,reframeBoxes,reframeLines} from '../src/layout.mjs';
 import {reviewManifest} from '../src/review-pack.mjs';
+import {takeLine} from '../src/take.mjs';
 
 try{
   const {positionals,values}=parseArgs({allowPositionals:true,options:{viewer:{type:'string'},width:{type:'string'},fps:{type:'string'},silent:{type:'boolean'},help:{type:'boolean'}}});
@@ -67,6 +68,9 @@ try{
   if(command==='check'){
     const takes=await Promise.all(chaptersOf(e).map((_,i)=>cachedTake(e,i)));
     for(const line of chapterTakeLines(e,takes.map(take=>take?.record)))console.log(line);
+    // A clocked take: its steps, marks and length, and the replay its load
+    // checked against the recorded banks (ADR-012).
+    if(e.model.timeMode==='take')console.log(takeLine(e));
   }
   await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
   if(command==='check'){

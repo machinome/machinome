@@ -26,13 +26,16 @@ the real model through the machinome viewer and never invents a pose.
         │    a picture, its sets' layout measured on the    src/layout.mjs
         │    stage and enlargements refused, before takes;
         │    anchors resolved from the cached takes
+        │    a clocked take: held to its export and to    src/take.mjs
+        │    the replay of its steps, before any take
         │  both: validated against the export and project
         ▼
     resolved movie document (numeric times, chapters, sets, slots, elements)
         │  written to <root>/_build/movie-resolved.json for a document
         │  frameAt(film, t): pure                          src/timeline.mjs
         ▼
-    frame: set, the element in each slot, each placed element's state,
+    frame: set, the element in each slot, each placed element's state
+           (a view: a loop's time, or a clocked take's bank, ADR-012),
            the transition with its outgoing frame, or a reframe with
            each moving view's box (measured slot boxes, ADR-010)
         │  window.film.setFrame(frame) on the React stage  stage/
@@ -125,9 +128,14 @@ element states, and decode the frames a person reviews.
 4. **The viewer is a separate product.** The stage mounts the bundle a
    caller selects, no more instances than one frame places views, leased
    to the view elements frame by frame (ADR-007), requires the API the
-   movie needs (21, or 28 for marks, highlights or a change of lens or up)
-   and refuses an older one when its first view mounts. The tool reaches the
-   viewer only through its declared handle.
+   movie needs (21, 28 for marks, highlights or a change of lens or up, 29
+   for a clocked take) and refuses an older one when its first view mounts.
+   The tool reaches the viewer only through its declared handle. A view on
+   a clocked take is posed by restoring its frame's bank on the viewer's
+   machine, and the viewer is held to the take: before the first frame each
+   step is replayed on it and compared exactly with the record, and every
+   frame's bank, at a mark the recorded one, is read back
+   ([ADR-012](adrs/STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md)).
 5. **Speech is measured, never assumed.** Timing that depends on the voice
    is read from the cached alignment. Narration is never truncated or
    stretched; a take that does not fit is refused with its measurement.
@@ -193,8 +201,8 @@ is the Python side of the movie document:
   before the first step and at every mark and the identity the export
   publishes. `document.py` holds a take document to its export (identity,
   inputs, the bank's ids) and to the replay of its steps, the rule both
-  runtimes share; the Node side reads take documents from the `pose-a-take`
-  change on.
+  runtimes share; `src/take.mjs` is the Node side of it, and the pose rule
+  the frame reads (ADR-012).
 - The schema is one file, `schema/machinome-movie-0.2.json`, shipped in the
   package through a link; the shared `fixtures/` pin what Python emits and
   every refusal both runtimes must make.
@@ -209,6 +217,7 @@ declarations in the project evaluate to `machinome-movie/0.2`, the commands
 read it, and the React stage draws every film, a project's movie on its own
 template and a YAML episode on the shipped paper sets. The curta-video
 campaign adds machine takes: a clocked take is declared and recorded in
-Python (`declare-a-take`), and the commands are to read and pose it next
-(`pose-a-take`). Running machines' takes, the page element and the studio's
-live preview are later steps of the same direction and are not built.
+Python (`declare-a-take`, ADR-011), and the commands read it and pose it on
+the viewer's machine, held to the record (`pose-a-take`, ADR-012). Running
+machines' takes, the page element and the studio's live preview are later
+steps of the same direction and are not built.

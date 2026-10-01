@@ -18,8 +18,11 @@ import {EASINGS,endSlope,ease} from './easing.mjs';
 import {TOKEN,countPhrase,countWords,countToken,excerptLine,propKind,spokenForm} from './text.mjs';
 import {effectiveStyle,COLOR} from './style.mjs';
 import {joinShows,movingViews,noViewInBoth} from './timeline.mjs';
+import {checkTakeBanks,TOLERANCE} from './take.mjs';
 
 export const MOVIE_FORMAT='machinome-movie/0.2';
+// How a document's model time runs: a posed loop, or a clocked take.
+export const TIME_MODES=['normalized-loop','take'];
 // The sets the tool ships for movies, with their slots; the ones it keeps for
 // YAML episodes only; the element kinds it ships, with the fields a
 // declaration requires and takes (`kind` aside); each shipped element's
@@ -93,12 +96,15 @@ export function checkMovie(doc,{manifest=null,sources={}}={}){
 
 class Semantics{
   constructor(doc,manifest,sources){
-    this.doc=doc;this.sources=sources;this.stage=doc.stage;
+    this.doc=doc;this.sources=sources;this.stage=doc.stage;this.manifest=manifest;
     this.paths=manifest?assemblyPaths(manifest.root??{}):null;
+    // The take's length in take seconds, for a take document.
+    this.length=null;
   }
   check(){
     const doc=this.doc;
     this.checkStage();
+    this.checkTake();
     const chapters=new Set(),shots=new Map(),film=doc.chapters.flatMap(c=>c.shots.map(s=>[c,s]));
     for(const chapter of doc.chapters){
       need(!chapters.has(chapter.id),`Chapter ${chapter.id} appears twice; chapter ids are unique`);chapters.add(chapter.id);
@@ -160,6 +166,47 @@ class Semantics{
     }
   }
   module(module,where){need(this.stage.modules.includes(module),`${where}: its module ${module} is not listed in stage.modules`);}
+  // A clocked take (docs/movie-document.md, "The take"): the rules and the
+  // words of the Python side's check_take, the replay included (src/take.mjs).
+  checkTake(){
+    const doc=this.doc,mode=doc.model.timeMode,take=doc.take;
+    need(TIME_MODES.includes(mode),`model.timeMode '${mode}' is not a time mode; a document films a normalized-loop or a take`);
+    if(mode==='normalized-loop'){
+      need(take===undefined,'take: a normalized-loop document carries no take block; a take block belongs to a document whose model.timeMode is take');
+      return;
+    }
+    need(take!==undefined,'model.timeMode is take, and the take block is missing; a take document carries the steps it films and what the machine did');
+    let drivers=null,known=null;
+    if(this.manifest){
+      const clocked=this.manifest.clocked;
+      need(clocked!==null&&typeof clocked==='object'&&!Array.isArray(clocked),'model.timeMode is take, and the export publishes no clocked machine (its manifest has no clocked block)');
+      need(take.identity===clocked.identity,`take.identity ${take.identity} differs from the machine the export publishes, clocked.identity ${clocked.identity}; the document was recorded against another machine`);
+      drivers=new Set(Object.keys(this.manifest.drivers??{}));
+      if(clocked.clock)drivers.add(clocked.clock);
+      known=new Set([...drivers,...Object.keys(this.manifest.states??{})]);
+    }
+    const seen=new Map();let end=0;
+    take.steps.forEach((step,index)=>{
+      const here=`take.steps[${index}] (${step.id})`;
+      need(!seen.has(step.id),`${here}: the step id ${step.id} is used twice, by take.steps[${seen.get(step.id)}] and take.steps[${index}]`);
+      seen.set(step.id,index);
+      need((step.to!==undefined)!==(step.by!==undefined),`${here}: a step has exactly one of to and by`);
+      need(Math.abs(step.at-end)<=TOLERANCE,`${here}: at is ${step.at} s, and the steps before it end at ${end} s; steps play end to end from 0`);
+      need(!drivers||drivers.has(step.input),`${here}: input '${step.input}' is not a driver the export declares (${list(sorted(drivers??[]))})`);
+      end=step.at+step.duration;
+    });
+    const declared=doc.model.expectedDurationSeconds;
+    need(Math.abs(declared-end)<=TOLERANCE,`model.expectedDurationSeconds is ${declared} s, and the take's steps end at ${end} s; a take document lasts its take`);
+    if(known){
+      const ids=new Set(Object.keys(take.initial));
+      for(const id of sorted([...known].filter(id=>!ids.has(id))))
+        throw new Error(`take.initial lacks '${id}', a driver or state the export declares; the take was recorded against another machine`);
+      for(const id of sorted([...ids].filter(id=>!known.has(id))))
+        throw new Error(`take.initial holds '${id}', which is not a driver or state of the export; the take was recorded against another machine`);
+    }
+    checkTakeBanks(doc);
+    this.length=end;
+  }
   element(chapter,key,element){
     const where=`chapter ${chapter.id}, elements.${key}`,kind=element.kind;
     const fields=Object.keys(element).filter(f=>f!=='kind');
@@ -241,6 +288,10 @@ class Semantics{
     for(const {field,obj,key} of modelTimes(model)){
       const value=obj[key];
       if(isAnchor(value))need(Object.hasOwn(marks,value.mark),`${where}, ${field}: unknown mark '${value.mark}'; the document's marks are ${list(Object.keys(marks))}`);
+      if(this.length!==null){
+        const seconds=isAnchor(value)?marks[value.mark]+(value.plus??0):value;
+        need(seconds>=-TOLERANCE&&seconds<=this.length+TOLERANCE,`${where}, ${field}: take time ${seconds} s is outside the take, 0 to ${this.length} s`);
+      }
     }
     const keys=model.keys;if(!keys)return;
     need(keys[0].at===0,`${where}, model.keys[0].at: model keys must start at the shot's start, with a first key at 0`);
@@ -547,10 +598,13 @@ export async function excerptSources(doc,base){
   return sources;
 }
 
-// The view elements' cameras that need Viewer API 28: a mark or a highlight,
-// or a lens or up other than the one the view mounts with.
+// What a movie needs of the viewer: API 29 to film a clocked take (a clocked
+// document under on-demand rendering, posed through its machine; ADR-012);
+// API 28 for a view's mark or highlight, or a lens or up other than the one
+// the view mounts with; otherwise 21.
 export function movieViewerApi(film){
-  const reasons=[],unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
+  const take=film.model?.timeMode==='take';
+  const reasons=take?['clocked take']:[],unit=v=>{const l=Math.hypot(...v);return v.map(x=>x/l);};
   const differs=(c,d)=>c.fov!==d.fov||unit(c.up).some((v,i)=>Math.abs(v-unit(d.up)[i])>1e-12);
   for(const chapter of film.chapters)for(const shot of chapter.shots){
     for(const cue of shot.cues)for(const action of cue.actions){
@@ -561,7 +615,7 @@ export function movieViewerApi(film){
     }
   }
   const unique=[...new Set(reasons)];
-  return {api:unique.length?28:21,reasons:unique};
+  return {api:take?29:unique.length?28:21,reasons:unique};
 }
 
 // Load, check, resolve against the cached takes, write the resolved document,
@@ -606,11 +660,20 @@ export async function loadMovie(file){
   return film;
 }
 
-// What validateEpisode checks of the model and output, for a document.
-function checkProject(film,manifest){
+// What validateEpisode checks of the model and output, for a document,
+// against its export's manifest.
+export function checkProject(film,manifest){
   const finite=n=>typeof n==='number'&&Number.isFinite(n);
-  need(manifest.animation?.loop===film.model.expectedDurationSeconds,'Model duration differs from production settings; recheck the exported simulation');
-  need(film.model.timeMode==='normalized-loop'&&!manifest.program&&!manifest.clocked,'Only posed normalized-loop models are supported');
+  // A running machine advances in ticks of its own program: no take of it is
+  // recorded, and nothing films it (ADR-012).
+  need(!manifest.program,'The export publishes a running program (its manifest has a program block); a running machine is not filmable');
+  if(film.model.timeMode==='normalized-loop'){
+    need(!manifest.clocked,'model.timeMode is normalized-loop, and the export publishes a clocked machine (its manifest has a clocked block); a clocked machine is filmed through a take, model.timeMode take');
+    need(manifest.animation?.loop===film.model.expectedDurationSeconds,'Model duration differs from production settings; recheck the exported simulation');
+  }else{
+    // checkMovie, given the manifest, held the take to its export.
+    need(film.model.timeMode==='take'&&manifest.clocked,`model.timeMode is ${film.model.timeMode}, and the export publishes no clocked machine`);
+  }
   need(finite(film.model.expectedDurationSeconds)&&film.model.expectedDurationSeconds>0,'Invalid model duration');
   for(const k of ['width','height','fps'])need(Number.isInteger(film.output[k])&&film.output[k]>0,`Invalid output ${k}`);
   need(film.output.width%2===0&&film.output.height%2===0,'Video dimensions must be even');

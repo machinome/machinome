@@ -22,6 +22,9 @@ const FIXED={GIT_AUTHOR_NAME:'Videomaker fixture',GIT_AUTHOR_EMAIL:'fixture@vide
   GIT_CONFIG_GLOBAL:'/dev/null',GIT_CONFIG_NOSYSTEM:'1'};
 const readJson=async file=>JSON.parse(await readFile(file,'utf8'));
 const exists=file=>access(file).then(()=>true,()=>false);
+// The viewer double's machine for a take: its identity, its initial bank and
+// its steps as the requests the double answers.
+export const takeMachine=take=>({machine:{identity:take.identity,initial:take.initial,requests:take.steps}});
 
 // A copy of the fixture project, committed as the recipe says. `t` (a vitest
 // context) removes it after the test unless KEEP_VIDEOMAKER_TEST is set.
@@ -44,9 +47,12 @@ export async function fixtureProjectCopy(t){
 // A fixture document (fixtures/documents/<name>.json) written where the
 // Python side writes it, <movie dir>/_build/movie.json with root "..", and
 // its takes cached; returns the document's path and the project copy.
-export async function fixtureMovie(t,name='tour',{takes=true,viewer={parts:'*',tintHighlight:true}}={}){
+export async function fixtureMovie(t,name='tour',{takes=true,viewer:given}={}){
   const {dir,git}=await fixtureProjectCopy(t);
   const doc=await readJson(join(FIXTURES,'documents',`${name}.json`));
+  // A movie on a clocked take is drawn by a Viewer API 29 double whose machine
+  // answers the take's own requests.
+  const viewer=given??(doc.take?{parts:'*',tintHighlight:true,api:29,...takeMachine(doc.take)}:{parts:'*',tintHighlight:true});
   const movie=join(dir,'videos',name),build=join(movie,'_build'),file=join(build,'movie.json');
   await mkdir(build,{recursive:true});
   await writeFile(file,JSON.stringify({...doc,root:'..'},null,2)+'\n');
