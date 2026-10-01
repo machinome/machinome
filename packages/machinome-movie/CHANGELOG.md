@@ -37,6 +37,17 @@ lands it.
   `stageSha256` and the same shot cache key, where it rebuilt the bundle
   and recaptured every shot before. Every film's `stage.js` changes bytes
   once with this change. (`stable-stage-bundle`, ADR-013)
+- A mark on a take is proved in the browser layer. The viewer double's
+  clocked machine names the input its part rectangles follow,
+  `follows: {input, range}`, and places them by that input's value in the
+  bank it holds, as it places them by the loop's time without a machine; a
+  double's machine that follows nothing, or an input its bank does not
+  hold, is refused at mount naming the input. One assertion, a ring on the
+  fixture counter's units drum posed at the take's start, at the mark `one`
+  and at the start again, moving with the bank and returning exactly, runs
+  in the browser layer on the double and in the viewer layer on the
+  selected bundle; until now no layer posed a mark on a take. Tests only.
+  (`double-poses-a-bank`)
 - A take's time is summed exactly. Evaluation adds a `Take`'s durations as
   the decimals written (a move's `over=`, an instruction's `duration`), in
   exact arithmetic, and writes each step's `at`, every mark and the length

@@ -474,7 +474,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
     rectangles move with a loop's time, not a bank, so a mark on a clocked
 
     take is proved only at layer 6.
-    Triage, 1 October 2026 (orchestrator): cycle `double-poses-a-bank` (wave 2).
+    Triage, 1 October 2026 (orchestrator): fixed by `double-poses-a-bank` (archived 2026-10-01, merged the same day): the double's part rectangles follow the input its machine names (`follows: {input, range}`), refused by name when it names none or one the bank lacks; one shared assertion (`test/support/mark-on-a-take.mjs`) proves a ring on the units drum moves between the take's start and the mark `one` and returns exactly, at layer 5 on the double and at layer 6 on the bundle; no ADR (ADR-018 released).
 
 11. **A reframe through a slot sized by what it holds is refused**, since the
 
@@ -522,4 +522,6 @@ Recorded at the merges; triage by the orchestrator unless stated.
 26. **A stage module that imports a file from outside both the tool and the project repository** still gets a bundle name that depends on the machine; no film does it; documented, not refused. Found by `stable-stage-bundle`.
 27. **The bundle's names are rewritten in esbuild's output** (the `//` module line, the module wrapper's string, the `/* */` stylesheet line), so the rewrite depends on esbuild's output shape; the lockfile pins esbuild and the two-checkout test pins the bytes. Orchestrator's note at the merge: a plugin that names modules at resolve time was rejected in the change's design; if esbuild's output changes, the two-checkout test says so first.
 28. **The Curta project moved under the campaign:** its `main` advanced to f2ad951 ("Rename Curta models to posed, mechanistic and event-driven") at 09:04 while the campaign's cycles ran their film proofs, so the film's evaluated document (`_build/movie.json`, 03:15) is stale against its sources and `check` refuses from every checkout (`the token 'Driver' is absent from line 52 of the excerpt drivers`). Found by `stable-stage-bundle`. Project work at the campaign's close: evaluate, export and prove the film again on the renamed project.
+29. **The real viewer's rectangle for a turned drum changes size more than place** (its centre moves about 2 px between units 0 and 1): a ring shows the change, a label barely would. The viewer's; recorded. Found by `double-poses-a-bank`.
+30. **The fixture counter's marks are whole crank turns**, so the real viewer draws the handle alike at every mark, and only the take's start and the mark `one` share a box; a fixture that wants a mark-to-mark proof needs a mark mid-turn. Found by `double-poses-a-bank`. Recorded.
 

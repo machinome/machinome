@@ -19,6 +19,7 @@ import {loadEpisode} from '../../src/episode.mjs';
 import {stageConfig} from '../../src/render.mjs';
 import {frameAt,filmShots} from '../../src/timeline.mjs';
 import {replayTake} from '../../src/take.mjs';
+import {assertMarkFollowsTheBank} from '../support/mark-on-a-take.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const WIDTH=640,VIEW='counting.view';
@@ -122,6 +123,11 @@ test('posing one bank, then another, then the first gives identical pixels; the 
   assert.deepEqual(a1.report.bank,frameAt(film,a).elements[VIEW].bank,'the viewer holds the bank it was given');
   assert.deepEqual(marks,{one:film.take.banks.one,nine:film.take.banks.nine});
   assert.equal(controls,0,'the film shows no viewer control');
+});
+
+test('a ring on the units drum follows it from the take\'s start to the mark one, and back (the assertion layer 5 makes)',async(t,bundle)=>{
+  const {film}=await theCount();
+  await assertMarkFollowsTheBank(film,bundle);
 });
 
 test('a copy of the take with one commit\'s target forged is refused before the first frame, naming the step and the field',async(t,bundle)=>{

@@ -23,8 +23,9 @@ side's suite.
   in three shots on `frame` and `split`, with a typed source panel, an
   emphasis and a highlight; both runtimes check its take against the export
   and replay its steps to its recorded banks, and the Node suite poses it
-  with the viewer double's machine (layer 5) and with a selected bundle
-  (layer 6). A
+  with the viewer double's machine (layer 5), whose part rectangles follow
+  the bank's `units`, and with a selected bundle (layer 6), a ring on the
+  units drum moving between the initial bank and the mark `one` in both. A
   document written by hand on the Node side is named `node-<name>.json` and
   has no fixture movie; the Python suite asserts instead that
   `check_document` accepts it.
