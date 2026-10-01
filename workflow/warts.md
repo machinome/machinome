@@ -4412,7 +4412,7 @@ from it.
 
 
 
-**Status: finding 1 fixed by the change `sim-through-a-symlink` (archived 2026-10-01, merged on bench `curta-findings` the same day: a node's source is a resolved path, as the root is, so both spellings of a project share one build directory; no ADR). Findings 2 and 3 in progress on the same bench (`sim-identity`, `export-records-its-revision`); triage by the orchestrator, 1 October 2026, under the pilot's rulings in `workflow/ongoing/curta-film-findings/plan.md`.**
+**Status: finding 1 fixed by the change `sim-through-a-symlink` (archived 2026-10-01, merged on bench `curta-findings` the same day: a node's source is a resolved path, as the root is, so both spellings of a project share one build directory; no ADR). Finding 2 fixed by `sim-identity` (archived 2026-10-01, merged the same day: a read-only `Sim.identity`, the string the export carries as `clocked.identity`; refused by name over a root that is not clocked; no ADR, ADR-128 already decides what the identity is). Finding 3 in progress on the same bench (`export-records-its-revision`); triage by the orchestrator, 1 October 2026, under the pilot's rulings in `workflow/ongoing/curta-film-findings/plan.md`.**
 
 
 
@@ -4473,3 +4473,26 @@ on 23 + 145. Three frictions met on the way, each a framework matter:
    project's revision when the project is a Git repository, in the manifest or
 
    beside it, so a consumer can hold a film to the model it filmed.
+
+**Findings met by the bench's cycles (1 October 2026; recorded, triage open):**
+
+4. **The framework's clocked snapshot carries no identity, the viewer's does.**
+   `ClockedSnapshot` holds `model` (the bare class name with the sorted bank
+   ids) and `values`, and `Clocked.restore` compares `model` only, so the
+   framework restores a snapshot from a machine whose law or range changed
+   under the same ids, or from a same-named class in another module; the
+   export spec says the identity exists precisely to refuse that, and a
+   running `RunSnapshot` does carry and check `program.identity`. Found by
+   `sim-identity` (its `evidence.md`, finding 1).
+5. **The strict manual build is not a gate.** `sphinx -W` fails on `main` with
+   five warnings in untouched lines (`docs/reference/api.rst` 23, 35, 76 and
+   the `Sim.initial` and `Sim.state` docstrings). Found by `sim-identity`.
+6. **A stale known gap in `docs/architecture.md`:** "A clocked model is
+   published but not yet VIEWED" predates viewer 0.7.0, which reads document
+   versions 1 to 13. Found by `sim-identity`.
+7. **Two pins forbid an `Unreleased` section in `HISTORY.rst`**
+   (`test_release_records.py::test_the_history_top_entry_is_the_released_version`,
+   `test_profile_documentation.py::test_released_status_changelog_and_history`):
+   `HISTORY.rst` is release notes only and the unreleased changelog is
+   `docs/project/changelog.rst`. Not a defect; recorded so a brief does not
+   send a bullet to the wrong file again. Found by `sim-identity`.
