@@ -88,6 +88,132 @@
         "type": "number"
       }
     },
+    "take": {
+      "title": "take",
+      "description": "A clocked take: the steps the machine was asked to make, the framework's requests recorded, and the banks at the marks. See docs/movie-document.md, \"The take\".",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "clocked"
+          ]
+        },
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "initial": {
+          "$ref": "#/$defs/bank"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0
+              },
+              "duration": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "input": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to": {
+                "type": "number"
+              },
+              "by": {
+                "type": "number"
+              },
+              "origin": {
+                "type": "number"
+              },
+              "end": {
+                "type": "number"
+              },
+              "admitted": {
+                "type": "number"
+              },
+              "commits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fraction": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "value": {
+                      "type": "number"
+                    },
+                    "targets": {
+                      "$ref": "#/$defs/bank"
+                    },
+                    "relations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "fraction",
+                    "value",
+                    "targets",
+                    "relations"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "stops": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "at",
+              "duration",
+              "input",
+              "origin",
+              "end",
+              "admitted",
+              "commits",
+              "stops"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "banks": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/bank"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "identity",
+        "initial",
+        "steps",
+        "banks"
+      ],
+      "additionalProperties": false
+    },
     "audio": {
       "type": "object",
       "properties": {
@@ -289,6 +415,18 @@
   ],
   "additionalProperties": false,
   "$defs": {
+    "bank": {
+      "title": "bank",
+      "description": "A clocked machine's drivers and states by qualified id, in native units.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"
+      },
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
     "slug": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"

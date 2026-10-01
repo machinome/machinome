@@ -62,7 +62,12 @@ written before the stage keep producing.
 
 - `output` carries no duration: the film's length is the last shot's
   resolved end.
-- `marks` names model seconds of the posed loop, the trivial take.
+- `model.timeMode` is `normalized-loop` for a posed model whose loop is
+  the trivial take, or `take` for a clocked machine filmed through a
+  recorded take (below); `expectedDurationSeconds` is the loop's period or
+  the take's length.
+- `marks` names instants of the take: model seconds of the posed loop, or
+  take seconds of a clocked take.
 - `audio`, `cameras`, `layers`, `evidence`, `sourceCode`, `stills`, `clips`,
   `credits` and `release` keep the meaning `docs/FORMAT.md` gives them. A
   camera is `{"position", "target", "up", "fov"}`; a layer is a list of
@@ -73,6 +78,93 @@ written before the stage keep producing.
   defaults and reports them. It is not layout: layout is the set's.
 - Every id, kind, key and slot name in the document is a slug,
   `^[a-z][a-z0-9-]*$`.
+
+## The take
+
+Status: the orchestrator's contract for the curta-video campaign, written
+1 October 2026 before its cycles `declare-a-take` (Python) and
+`pose-a-take` (Node and the stage); the spec is right where they disagree.
+
+A clocked machine has no loop: it stands at a bank of values and moves
+when asked, one request at a time, committing its states at the events
+the request crosses (the framework's clocked machines, document version
+8). To film one, a movie declares a **take**: the steps the machine is
+asked to make, each with the seconds it takes on screen, and the marks the
+shots cut on. Evaluation runs the steps once through the framework's
+simulation and records what the machine did; the document carries the
+record; every frame is then a pure function of take time, and the viewer
+is held to the same answer.
+
+```json
+"model": {"manifest": "../../export/clocked_curta/manifest.json",
+          "expectedDurationSeconds": 14.6, "timeMode": "take",
+          "sourceRevision": "…", "readiness": "…"},
+"marks": {"set_23": 0.8, "added_23": 6.8, "set_145": 8.0, "added_145": 14.0},
+"take": {
+  "kind": "clocked",
+  "identity": "<the identity the export's clocked block publishes>",
+  "initial": {"digit_1": 0, "digit_2": 0, "crank_rotation": 0, "result_0.value": 0, …},
+  "steps": [
+    {"id": "set-3", "at": 0, "duration": 0.4, "input": "digit_1", "to": 3,
+     "origin": 0, "end": 3, "admitted": 3, "commits": [], "stops": []},
+    {"id": "set-2", "at": 0.4, "duration": 0.4, "input": "digit_2", "to": 2,
+     "origin": 0, "end": 2, "admitted": 2, "commits": [], "stops": []},
+    {"id": "stroke-23", "at": 0.8, "duration": 6, "input": "crank_rotation", "by": 360,
+     "origin": 0, "end": 360, "admitted": 360,
+     "commits": [{"fraction": 0.5, "value": 180,
+                  "targets": {"result_0.value": 3, "result_1.value": 2, "turns_0.value": 1},
+                  "relations": ["…"]}],
+     "stops": []}
+  ],
+  "banks": {"set_23": {…}, "added_23": {…}, "set_145": {…}, "added_145": {…}}
+}
+```
+
+- `take.kind` is `clocked`; the posed loop declares no `take` block and
+  stays the trivial take. `identity` is the machine identity the export's
+  manifest publishes; a document whose identity differs from its
+  manifest's is refused naming both.
+- `initial` is the bank before the first step: every driver and state of
+  the machine by qualified id, in native units, as the framework's
+  snapshot gives it.
+- `steps` play in order. Each has a slug `id`, its `at` in take seconds
+  (the sum of the durations before it), its `duration` (the seconds it is
+  drawn over: what the declaration wrote for a move, the instruction's
+  declared duration for a trigger), the `input` it moves by qualified id,
+  exactly one of `to` (design units) or `by` (design units), and the
+  request the framework returned, verbatim: `origin` and `end` (native
+  units), `admitted` (design units), `commits` in path order (each with
+  `fraction` of the path, the input's native `value` there, the `targets`
+  it wrote by qualified id and the `relations` that fired) and `stops`.
+- `marks` names take seconds, each the instant after the step before it
+  (a mark at 0 is the initial bank). `banks` holds the bank at every mark,
+  recorded, so that a replay can be checked against it.
+- The take's length is the last step's `at` plus its `duration`; a shot's
+  `model` time (`from`, `to`, `keys`) is in take seconds or marks, within
+  the take, checked as a loop's is against its period.
+
+**The pose at a take time.** For a take time `t` inside a step, with
+`f = (t − at) / duration`: the bank before the step, with the input at
+`origin + f · (end − origin)` and the targets of every commit whose
+`fraction ≤ f` written. Between steps, and after the last, the bank is the
+one the previous step ended with (its input at `end`, every commit
+written). The bank before a step is the bank the previous step ended with,
+starting from `initial`. This is the rule the viewer draws an instruction
+by (its ADR-064), so the stage and the viewer's own playback agree. The
+resolved frame carries the view's `bank`; the stage restores it on the
+viewer's machine and sets the camera; `setTime` is not called for a view
+on a take.
+
+**Parity is proved, not assumed.** Both runtimes replay the steps from
+`initial` by the rule above and refuse a document whose `banks` differ
+from the replay at any mark, naming the mark and the first differing id.
+On the real viewer, preview and render check, once per take before the
+first frame, that the viewer's machine restored to each step's bank before
+and asked for the same move returns the same `origin`, `end` and commits
+(`fraction`, `value`, `targets`), and refuse the film naming the step and
+the field otherwise; and at every frame posed on a mark, that the
+machine's bank equals the recorded one. Layer 6 proves the same over the
+fixture counter.
 
 ## The stage block
 
@@ -186,8 +278,9 @@ element kinds and their declarations:
   slot not named is empty. A slot the set does not declare, an element the
   chapter does not declare, and an element placed in two slots of one shot
   are refused by name.
-- `model` is the loop's time over the shot: `{"from", "to"}` in model
-  seconds (a number or `{"mark": name, "plus"?: seconds}`), or
+- `model` is the take's time over the shot (model seconds of the loop, or
+  take seconds of a clocked take): `{"from", "to"}` (a number or
+  `{"mark": name, "plus"?: seconds}`), or
   `{"keys": [{"at": time, "seconds": model-time, "ease"?: curve}, …]}`
   whose first key is at 0 and whose last key is at the shot's `until` (the
   same number or the same anchor). Segments are linear unless the key a
@@ -363,6 +456,9 @@ encodes and the shot cache hashes:
 
 - An element key is `<chapter id>.<element key>`, so a chapter's element is
   one instance across its shots and two chapters' elements never collide.
+- A view on a clocked take carries `bank` instead of a loop `time`: the
+  machine's whole bank at this instant by the rule in "The take", which the
+  stage restores on the viewer's machine before it sets the camera.
 - Only placed elements appear, each with its complete state for this
   instant; nothing is carried from the frame before. A `title` or `picture`
   that is placed and not shown appears with `"shown": false`.
@@ -414,6 +510,13 @@ headless Chromium by the renderer. Its contract with the renderer:
   does not change is judged at `check`; one sized by what it holds is
   judged by preview and render against the box the stage reports. A
   document that shows no picture opens no browser at `check`.
+- A view whose state carries a `bank` is posed through the viewer's
+  machine handle: `restore({identity, bank})` with the document's take
+  identity, then the camera; a viewer whose document is clocked and
+  declares no machine handle, or whose identity differs, is refused at
+  mount naming the view. The stage reports the machine's bank beside the
+  camera, so the renderer can hold it to the take's at every mark ("The
+  take").
 - `window.film` also has `project(key, points)`, which projects world
   points through the viewer of the view element `key`, and `views()`, which
   lists the viewer instances with the key of the view element each serves
