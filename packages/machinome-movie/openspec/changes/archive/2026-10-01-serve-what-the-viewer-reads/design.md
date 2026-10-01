@@ -95,12 +95,19 @@ refusal.
 ### D3. No change to the key beyond serving fewer files
 
 The URL of a served file, its hash and the composition of the common key
-are unchanged. The common key changes only for a film whose export's
+are unchanged. The served set changes only for a film whose export's
 manifest held a provenance or data string ending in one of the old
-extensions; the Curta film's does (its six source STLs leave `hashes`), so
-its 760 MB shot cache is recaptured once when it is next rendered. The
+extensions; the Curta film's does (its six source STLs leave `hashes`). The
 fixture exports and any export whose `pieces[].sources` name no `.stl` or
-image keep their key.
+image keep their `hashes` byte for byte.
+
+Implementation note (1 October 2026): the common key also holds the hash of
+`src/render.mjs` (`renderer`), which this change edits, so every film's
+common key changes once whatever its export, the Curta's included: its
+760 MB shot cache is recaptured when the film is next rendered. That was
+not stated when this design was proposed; it follows from editing the
+module the defect lives in, and `src/export.mjs` is not added to the key,
+since what it decides reaches the key as the served files' own hashes.
 
 ### D4. No ADR
 

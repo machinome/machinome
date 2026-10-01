@@ -14,7 +14,7 @@ outside the export directory, SHALL be refused naming its field path in the
 manifest, the node it belongs to and the path the field gives, and saying
 that the model must be exported again. The URLs served for an export whose
 manifest holds no other file-like string SHALL be those served before, in
-the same order, so that its films keep their shot-cache identity.
+the same order, with the same hashes.
 
 #### Scenario: A provenance source the export does not hold
 

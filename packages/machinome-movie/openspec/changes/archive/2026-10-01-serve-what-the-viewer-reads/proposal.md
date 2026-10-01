@@ -45,10 +45,11 @@ field, the file, and that the model must be exported again.
   exist changes nothing.
 - **The served set is otherwise what it was.** The files are collected in
   the manifest's order, each once, so an export with no provenance file
-  string serves the same URLs in the same order and its films keep their
-  shot-cache common key; an export whose provenance strings were served
-  before (the Curta's six source STLs) serves fewer files, so its common key
-  changes once.
+  string serves the same URLs in the same order with the same hashes; an
+  export whose provenance strings were served before (the Curta's six
+  source STLs) serves fewer files. (The shot-cache common key also hashes
+  `src/render.mjs`, which this change edits, so every film recaptures once;
+  design D3, implementation note.)
 - **Proofs**: a pure test of the collection over the fixture project's real
   exports and edited copies (layer 2's neighbour, no browser); layer 8 runs
   the fixture movie `minimal` through `preview` and `render` with a
@@ -74,8 +75,9 @@ Code: `src/export.mjs` (new: what the viewer reads from an export),
 `src/render.mjs` (`stage()` calls it); tests `test/export.test.mjs` (new) and
 `test/pipeline/movie-pipeline.test.mjs`. No change to the movie document,
 its schema, the stage, the Python side, the viewer or the framework. The
-shot-cache common key changes only for an export whose manifest held a
-provenance string ending in a served extension.
+served `hashes` change only for an export whose manifest held a provenance
+string ending in a served extension; the shot-cache common key changes for
+every film once, because it hashes `src/render.mjs`.
 
 ## Non-goals
 
