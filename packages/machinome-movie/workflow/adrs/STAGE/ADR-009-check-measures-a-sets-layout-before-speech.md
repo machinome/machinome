@@ -85,3 +85,13 @@ React stage", wart 6 of "Cut and Advance, version 2", `workflow/warts.md`,
   `frame` and `split` and the fixture tour's two sets.
 - A set component must draw with no element in its slots, which the stage
   already requires of a slot a shot leaves empty.
+
+## Amendment, 1 October 2026 (`reframe-join`, ADR-010)
+
+A movie that comes in by a reframe is measured at `check` as one that shows
+a picture is, and a reframe through a slot sized by what it holds is
+refused there. Decision 5 is refined: preview and render still judge every
+picture against the live box, and each of their sessions now measures, with
+the same in-page function on its own page before its first frame, the slots
+a reframe moves views between, whose boxes the reframe's frames carry
+([ADR-010](ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md)).

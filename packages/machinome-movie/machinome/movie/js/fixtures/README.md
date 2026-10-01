@@ -52,7 +52,8 @@ side's suite.
   bases, kinds the tool ships), a chapter's elements (kinds, fields, cameras,
   layers, excerpts, stills, a project element's props), a shot's set and
   placements, fades, a literal `until`, phrases in the written narration,
-  marks, model keys, joins and easings, a cue's actions (placed elements,
+  marks, model keys, joins and easings (a reframe whose shots share no
+  view), a cue's actions (placed elements,
   actions a kind has, their fields and parameters, spans with an `until`,
   entrances), typing and completion, emphasis anchors and spoken words, a
   spoken reveal, duplicate ids; and, read through the document's `root`, the
@@ -124,7 +125,8 @@ formatting. Both runtimes name:
   `absent`, `ambiguous`, `at or before its start`, `first shot`,
   `last shot`, `shot id`, `does not declare`, `does not place`,
   `two slots`, `ships`, `base`, `missing`, `complete`, `already`,
-  `outside the excerpt`, `word for word`, and the kinds `string`, `number`,
+  `outside the excerpt`, `word for word`, `no view element in both` (a
+  reframe whose two shots share no view), and the kinds `string`, `number`,
   `boolean`, `list`, `object`;
 - for a schema refusal, the field's name (an unknown `narration` on a shot is
   refused naming `narration`).

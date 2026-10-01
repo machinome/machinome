@@ -13,6 +13,7 @@ import {readFile,readdir,rm} from 'node:fs/promises';
 import {join,dirname,extname} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {performance} from 'node:perf_hooks';
 import {browserSession,sharedStage} from '../support/stage.mjs';
 import {fixtureMovie} from '../support/fixture-movie.mjs';
 import {loadEpisode} from '../../src/episode.mjs';
@@ -130,6 +131,38 @@ test('posing A, then B, then A gives identical pixels across a camera move, a gh
     await pose(b,{transition:null});return {result:await page.screenshot()};
   });
   assert.ok(b1.png.equals(fresh.result),'B on the instance A freed gives the pixels of B on a fresh instance');
+});
+
+test('every frame of a reframe fills its moving box with the real viewer\'s canvas, and the midpoint replays; the cost per frame',async(t,bundle)=>{
+  // The tour's question comes in from hook by Reframe(0.8) (ADR-010): the
+  // host of opening.wide changes size every frame, and the real viewer sizes
+  // its canvas on its own animation frame after each resize, so the stage's
+  // canvas wait runs on every frame of the join.
+  const {film}=await theTour();
+  const q=shotOf(film,'question'),fps=film.output.fps,d=q.transition.duration,mid=q.start+d/2;
+  const join=[];for(let n=Math.ceil(q.start*fps-1e-9);n/fps<q.start+d-1e-9;n++)join.push(n/fps);
+  const after=join.map(x=>x+d).filter(x=>x<q.end-1e-9);
+  const seen=await browserSession(film,bundle,WIDTH,[],async({page,pose})=>{
+    const out={join:[],after:[]};
+    for(const [name,times] of [['join',join],['after',after]])for(const at of times){
+      const started=performance.now();
+      try{const f=await pose(at);out[name].push({at,ms:performance.now()-started,report:f.observed.elements['opening.wide']});}
+      catch(error){out[name].push({at,error:error.message.split('\n')[0]});}
+    }
+    await pose(mid);const first=await page.screenshot();
+    await pose(middle(film,'push'));
+    await pose(mid);const again=await page.screenshot();
+    return {result:{...out,replays:first.equals(again)}};
+  });
+  const {join:inside,after:plain,replays}=seen.result;
+  const size=r=>`${r.width.toFixed(1)}×${r.height.toFixed(1)}`;
+  assert.deepEqual([...inside,...plain].flatMap(({at,error,report})=>error?[`${at.toFixed(2)} s: ${error}`]
+    :fits(report)?[]:[`${at.toFixed(2)} s: canvas ${report.canvas?size(report.canvas):'absent'} in a box ${size(report.box)}`]),[],
+  'every frame of the join and after it is posed, its canvas its moving box\'s size');
+  assert.ok(replays,'the midpoint, another instant and the midpoint again give identical pixels');
+  const median=list=>{const s=list.map(f=>f.ms).sort((a,b)=>a-b);return s[Math.floor(s.length/2)];};
+  // Logged for the evidence; the clock decides nothing here.
+  console.log(`Reframe cost with the real viewer at ${WIDTH} px: median ${median(inside).toFixed(1)} ms per frame of the join (${inside.length} frames), ${median(plain).toFixed(1)} ms per frame after it (${plain.length} frames)`);
 });
 
 test('a label\'s target is on screen through the real partOnScreen and project, and its text inside the frame',async(t,bundle)=>{

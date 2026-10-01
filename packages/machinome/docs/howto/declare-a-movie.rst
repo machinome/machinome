@@ -136,8 +136,9 @@ class Opening(Chapter):
                 fade_in=FadeIn(1.0), model=Playground.run(0, 4),
                 cues=[Cue(0, wide.move(Playground.near, ease="out", until=lines.spoken("How"))),
                       Cue(lines.spoken("balances"), card.light(item="Balance"), until=lines.spoken("How"))])
-    question = Shot(Playbill, {Playbill.stage: wide, Playbill.aside: card, Playbill.headline: title},
-                    until=lines.end(plus=0.8), model=Playground.run(4, 8),
+    question = Shot(PlaybillSplit, {PlaybillSplit.right: wide, PlaybillSplit.left: card,
+                                    PlaybillSplit.headline: title},
+                    until=lines.end(plus=0.8), transition=Reframe(0.8), model=Playground.run(4, 8),
                     cues=[Cue(lines.spoken("tip it"), card.light(item="Tip"), until=lines.end(plus=0.8)),
                           Cue(0, title.show(enter=0.6, leave=0.6), until=lines.end())])
 ```
@@ -159,7 +160,11 @@ class Opening(Chapter):
 - **Elements** are declared on the chapter and placed by its shots,
   `{Playbill.stage: wide, Playbill.aside: card}`. An element is one instance
   across the chapter's shots: `hook` moves `wide` to `near`, so `question`
-  starts there.
+  starts there, in another set and another slot.
+- `question` comes in by `Reframe(0.8)`: for 0.8 s, `wide` moves from
+  `Playbill`'s `stage` to `PlaybillSplit`'s `right`, its camera and its take
+  running on, while the tally and the title fade in where `PlaybillSplit`
+  puts them ("Titles, pictures and joins" below).
 - A **shot** names its set, places elements in that set's own slots, lasts
   `until` an anchor, and gives the model's time, `Playground.run(start, end)`.
 - A **cue** makes placed elements act at an anchor, optionally `until`
@@ -253,8 +258,21 @@ otherwise.
   `cover`; `show(enter=, leave=, view=)` shows it, each view key `(at,
   center, zoom)` with an optional easing, `at` a time or an anchor.
 - A shot comes in with `transition=Dissolve(d)`, `Fade(d)`, `Wipe(d,
-  direction=)` or `Slide(d, direction=)`; the film's first shot may
-  `fade_in=FadeIn(d)` and its last `fade_out=FadeOut(d)`.
+  direction=)` or `Slide(d, direction=)`, which join two still pictures of
+  the same instant, or `Reframe(d)`, which is drawn live; the film's first
+  shot may `fade_in=FadeIn(d)` and its last `fade_out=FadeOut(d)`. Each takes
+  `ease=`, `smooth` unless written.
+- `Reframe(d)` moves a view: the shot and the shot before it place at least
+  one view element in both, and for `d` seconds each such view is drawn in a
+  box that moves from its slot in the outgoing set to its slot in the
+  incoming one, by the join's eased progress, its camera and its model time
+  the incoming shot's (a `move` cue may run under it). Everything else the
+  incoming shot places fades in by the same progress; what only the outgoing
+  shot placed is gone at the cut, so fade it out with its own `leave` before
+  the cut if it should leave gently. The incoming set's chrome is shown
+  throughout. A reframe moves views between slots whose boxes do not depend
+  on what they hold: `check` measures both on the stage and refuses one that
+  does.
 
 ## The movie
 
@@ -337,6 +355,9 @@ thing at fault. When the class is created:
   its excerpt, backwards or again once complete, and a placed panel no shot
   of the chapter completes;
 - a spoken reveal whose title the narration does not say exactly once;
+- a reframe whose shot and the shot before it place no view element in
+  both, by the chapter when both shots are its own and by the movie when the
+  shot opens its chapter;
 - a movie without a format, a narrator or a chapter, a shot id used twice,
   and elements of one kind whose props disagree.
 

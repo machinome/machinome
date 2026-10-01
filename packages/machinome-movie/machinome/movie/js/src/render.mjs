@@ -9,7 +9,7 @@ import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
-import {frameAt,srt,filmShots,shotActions} from './timeline.mjs';
+import {frameAt,srt,filmShots,shotActions,joinShows,reframeAt} from './timeline.mjs';
 import {contained,viewerApiRefusal,filmSubject,PAPER_STAGE} from './episode.mjs';
 import {fileHash,hash,json,command,sourceBase} from './util.mjs';
 import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
@@ -22,6 +22,7 @@ import {buildReviewSamplePlan} from './review-samples.mjs';
 import {reviewManifest} from './review-pack.mjs';
 import {effectiveStyle} from './style.mjs';
 import {buildFilmStage} from './stage-build.mjs';
+import {measureSetsOn,reframeBoxes,reframeSets} from './layout.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 // Headless Chromium with software WebGL: the browser every session renders in.
@@ -137,8 +138,7 @@ function clipUses(film){
   return shots.flatMap(({chapter,shot},i)=>shotActions(shot).flatMap(({cue,action})=>{
     const element=chapter.elements[action.element];
     if(element?.kind!=='picture'||element.clip===undefined)return [];
-    const next=shots[i+1]?.shot.transition;
-    const continuation=near(cue.until,shot.end-shot.start)&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+    const continuation=near(cue.until,shot.end-shot.start)?joinShows(shots[i+1]?.shot.transition):0;
     return [{name:element.clip,inPoint:element.inPoint??0,span:cue.until-cue.at+continuation}];
   }));
 }
@@ -195,6 +195,12 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
     await page.goto(`${assets.origin}/`);
     await page.waitForFunction(()=>window.film||window.filmError,{},{timeout:60000});
     const error=await page.evaluate(()=>window.filmError);if(error)throw new Error(error);
+    // The boxes a reframe moves its views between are the sets' layout,
+    // measured on this page at its own size before the first frame and
+    // attached to the film (ADR-010); a slot sized by what it holds is refused.
+    const reframed=reframeSets(film);
+    if(reframed.length)film.reframes=reframeBoxes(film,await measureSetsOn(page,film,reframed,
+      {width,height,errors,refuse:e=>new Error(`Measuring the slots a reframe moves views between: ${e}`)}));
     let frames=0,viewerApi=null;
     const where=(f,t)=>`${f.shotId} at ${t.toFixed(2)} s`;
     // A mark is named as its author wrote it: a YAML annotation by its index
@@ -210,7 +216,11 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
     async function show(f,t,{pictureOnly=false,fresh=false}={}){
       if(errors.length)throw new Error(errors.join('\n'));
       const {transition,...request}=f;
-      const observed=await page.evaluate(f=>window.film.setFrame(f),{...request,pictureOnly,fresh});
+      // A reframe is drawn live from the frame (ADR-010); the other joins
+      // reach the stage as compositions, never on the frame.
+      const reframe=transition?.kind==='reframe'?transition:null;
+      const live=reframe?{transition:{kind:'reframe',progress:reframe.progress,boxes:reframe.boxes}}:{};
+      const observed=await page.evaluate(f=>window.film.setFrame(f),{...request,...live,pictureOnly,fresh});
       viewerApi??=await page.evaluate(()=>window.film.apiVersion);
       const frameBox={x:0,y:0,width:observed.frame.width,height:observed.frame.height};
       for(const [key,state] of Object.entries(f.elements)){
@@ -275,6 +285,17 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
           seen.enlargement=scale;
         }
       }
+      // A reframe frame: each moving view is drawn in the frame's box, within
+      // a pixel, and every other element at the join's progress as opacity.
+      if(reframe)for(const [key,seen] of Object.entries(observed.elements)){
+        const name=`${key} in ${where(f,t)}`,box=reframe.boxes[key];
+        if(box){
+          const wanted=box.map((v,i)=>v*(i%2?observed.frame.height:observed.frame.width)),drawn=[seen.box.x,seen.box.y,seen.box.width,seen.box.height];
+          if(drawn.some((v,i)=>Math.abs(v-wanted[i])>1))
+            throw new Error(`Reframe box differs from the timeline: ${name} (drawn ${drawn.map(v=>v.toFixed(1)).join(', ')}, the frame's ${wanted.map(v=>v.toFixed(1)).join(', ')})`);
+        }else if(!(Math.abs(seen.opacity-reframe.progress)<=1e-3))
+          throw new Error(`Reframe fade differs from the timeline: ${name} (opacity ${seen.opacity} instead of ${reframe.progress})`);
+      }
       return observed;
     }
     const png=bytes=>'data:image/png;base64,'+bytes.toString('base64');
@@ -310,7 +331,8 @@ export async function browserSession(film,viewer,width,captions,action,{browser:
       const baseline=frameAt(film,t);
       const f={...baseline,...override,elements:{...(override.shotId&&override.shotId!==baseline.shotId?{}:baseline.elements),...(override.elements??{})}};
       const x=f.transition;let observed;
-      if(!x)observed=await showPicture(f,t,{pictureOnly,fresh});
+      // A reframe frame is a live frame: no capture, no composition.
+      if(!x||x.kind==='reframe')observed=await showPicture(f,t,{pictureOnly,fresh});
       else{
         const outgoing=x.outgoing;
         let request;
@@ -618,7 +640,38 @@ export async function preview(film,{viewer,width=960,captions=[],browser,assets}
         throw new Error(`Transition proof failed: ${kind} ${field==='transition'?'into':field==='fadeIn'?'fading in':'fading out'} shot ${shot.id} at ${time.toFixed(2)} s (largest difference ${largest}, allowed ${limit}); inspect preview/${name}-{${Object.keys(kept).join(',')}}.png`);
       };
       const check={shotId:shot.id,field,kind,instants,stills};
-      if(kind!=='fade'){
+      if(kind==='reframe'){
+        // A live join (ADR-010): every posed frame of it has had its moving
+        // boxes and its fade checked against the timeline (show); here, the
+        // ends. At its first frame each moving view is in its outgoing slot's
+        // measured box; at its end, the reframe at progress 1 is the incoming
+        // frame without a join, pixel for pixel, each view in its incoming
+        // slot's box. The midpoint's opacities are recorded.
+        const measured=film.reframes[shot.id],views={},opacities={};
+        const drawnBox=(posed,key)=>{const b=posed.observed.elements[key].box;return [b.x,b.y,b.width,b.height];};
+        const inPixels=(posed,box)=>box.map((v,i)=>v*(i%2?posed.observed.frame.height:posed.observed.frame.width));
+        const differs=(a,b)=>a.some((v,i)=>Math.abs(v-b[i])>1);
+        const fail=async(message,kept)=>{
+          for(const [k,v] of Object.entries(kept))await writeFile(resolve(dir,`${name}-${k}.png`),v.bytes);
+          throw new Error(`Reframe proof failed: ${message}; inspect preview/${name}-{${Object.keys(kept).join(',')}}.png`);
+        };
+        const first=await grab(start);
+        for(const [key,{from,to}] of Object.entries(measured)){
+          const drawn=drawnBox(first.posed,key),wanted=inPixels(first.posed,from.box);
+          if(differs(drawn,wanted))await fail(`at its first frame (${start.toFixed(2)} s) the view ${key} of shot ${shot.id} is drawn at ${drawn.map(v=>v.toFixed(1)).join(', ')}, not in the box of slot ${from.slot} of set ${from.set}, ${wanted.map(v=>v.toFixed(1)).join(', ')}`,{first});
+          views[key]={from:{set:from.set,slot:from.slot,box:wanted},to:{set:to.set,slot:to.slot},first:drawn};
+        }
+        const mid=await grab(middle);
+        for(const [key,seen] of Object.entries(mid.posed.observed.elements))if(!measured[key])opacities[key]=seen.opacity;
+        const end=Math.min(start+d,(Math.ceil(shot.end*fps-1e-9)-1)/fps),ending=await grab(end,{transition:reframeAt(film,shot.id,d)}),incoming=await grab(end,{transition:null});
+        for(const [key,{to}] of Object.entries(measured)){
+          const drawn=drawnBox(ending.posed,key),wanted=inPixels(ending.posed,to.box);
+          if(differs(drawn,wanted))await fail(`at its end (${end.toFixed(2)} s) the view ${key} of shot ${shot.id} is drawn at ${drawn.map(v=>v.toFixed(1)).join(', ')}, not in the box of slot ${to.slot} of set ${to.set}, ${wanted.map(v=>v.toFixed(1)).join(', ')}`,{end:ending});
+          Object.assign(views[key].to,{box:wanted});views[key].end=drawn;
+        }
+        if(!ending.bytes.equals(incoming.bytes))await fail(`at its end (${end.toFixed(2)} s) the reframe into shot ${shot.id} is not the incoming frame without a join`,{end:ending,incoming});
+        Object.assign(check,{progress:mid.posed.transition.progress,views,opacities,endEqualsIncoming:true});
+      }else if(kind!=='fade'){
         const composed=await grab(middle),x=composed.posed.transition,p=x.progress,s=composed.posed.observed.offset;
         const incoming=await grab(middle,{transition:null}),outgoing=await grab(middle,{...x.outgoing,transition:null});
         // The live chrome is the incoming set's; the plain frames compared
@@ -730,8 +783,7 @@ function pictureRecords(film,fps,peaks){
       width:probe.width,height:probe.height,averageRate:probe.averageRate,frameCount:probe.frameCount};
     if(media==='clip'){
       const globalStart=shot.start+cue.at,first=Math.ceil(globalStart*fps-1e-9)/fps,phase=Math.max(0,first-globalStart),start=element.inPoint??0;
-      const next=shots[i+1]?.shot.transition;
-      const continuation=near(cue.until,shot.end-shot.start)&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+      const continuation=near(cue.until,shot.end-shot.start)?joinShows(shots[i+1]?.shot.transition):0;
       const cadence=clipCadence(probe.timestamps,start,start+cue.until-cue.at+continuation,fps,phase);
       Object.assign(record,{filmRate:fps,dropped:cadence.dropped,repeated:cadence.repeated});
     }

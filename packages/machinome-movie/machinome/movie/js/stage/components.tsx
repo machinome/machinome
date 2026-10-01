@@ -5,7 +5,13 @@
 import {createContext,useContext,useLayoutEffect,type CSSProperties,type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {elementOf,setOf} from './registry';
-import type {MovieInfo,StageConfig,StageFrame} from './types';
+import type {MovieInfo,ReframeTransition,StageConfig,StageFrame} from './types';
+
+/** The reframe a frame carries, or null (ADR-010). */
+export function reframeOf(frame:StageFrame):ReframeTransition|null{
+  const x=frame.transition as {kind?:unknown}|null|undefined;
+  return x&&typeof x==='object'&&x.kind==='reframe'?x as ReframeTransition:null;
+}
 
 export type Report=Record<string,unknown>;
 export type ReportSource=Report|(()=>Report);
@@ -66,9 +72,13 @@ export function Slot({name,className,style}:SlotProps){
     const registered=elementOf(state.kind);
     if(!registered)throw new Error(`Element kind ${state.kind} of element ${key} is not registered by the stage modules`);
     const Component=registered.component;
+    // During a reframe every element but the moving views fades in by the
+    // join's progress; at its end nothing is written, as without a join.
+    const reframe=reframeOf(frame);
+    const fade=reframe&&!Object.hasOwn(reframe.boxes,key)&&reframe.progress<1?{opacity:reframe.progress}:undefined;
     content=(
       <ElementKeyContext.Provider key={key} value={key}>
-        <div className={`vm-element vm-element-${state.kind}`} data-element={key}>
+        <div className={`vm-element vm-element-${state.kind}`} data-element={key} style={fade}>
           <Component state={state}/>
         </div>
       </ElementKeyContext.Provider>

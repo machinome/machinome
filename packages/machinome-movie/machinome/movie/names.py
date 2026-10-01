@@ -146,3 +146,17 @@ def declaring_class(klass, attribute):
         if attribute in vars(candidate):
             return candidate
     return None
+
+
+def shared_views(outgoing, incoming, views):
+    """The view elements two shots, in document form, both place: the keys
+    of `views` in both shots' places, in the incoming shot's order."""
+    held = set(outgoing['places'].values())
+    return [key for key in incoming['places'].values() if key in views and key in held]
+
+
+def no_view_in_both(outgoing, incoming):
+    """The words a reframe without a view element in both shots is refused
+    in, by the declarations and by both runtimes' document checks."""
+    return (f'a reframe from shot {outgoing} into shot {incoming} moves a view element both '
+            f'shots place, and there is no view element in both')

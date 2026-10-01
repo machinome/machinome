@@ -15,7 +15,7 @@
 import {flushSync} from 'react-dom';
 import {createRoot,type Root} from 'react-dom/client';
 import './stage.css';
-import {Stage,type ReportSource,type StageContextValue} from './components';
+import {Stage,reframeOf,type ReportSource,type StageContextValue} from './components';
 import {drawMarks,plain,type MarkReport} from './marks';
 import {checkRegistry} from './registry';
 import {registerShipped} from './shipped';
@@ -108,6 +108,22 @@ export function leaseViews(instances:readonly Tenancy[],placed:readonly {key:str
   });
 }
 const lensOf=(state:ViewState)=>JSON.stringify([state.up??null,state.fov??null]);
+
+/**
+ * The inline box of a view's host during a reframe (ADR-010): the frame's box
+ * for the view, `[x, y, width, height]` in fractions of the page, in pixels
+ * of the page rounded to the layout's unit of 1/64 pixel, relative to the
+ * view's element (the host's containing block), whose rectangle is
+ * `element`. Without a box, the empty strings that clear it, so the
+ * stylesheet's `inset: 0` fills the element again.
+ */
+export function reframeHost(element:Rect,page:{width:number;height:number},box:readonly number[]|null|undefined)
+  :{left:string;top:string;width:string;height:string;right:string;bottom:string}{
+  if(!box)return {left:'',top:'',width:'',height:'',right:'',bottom:''};
+  const snap=(v:number)=>Math.round(v*64)/64;
+  return {left:`${snap(box[0]*page.width)-element.x}px`,top:`${snap(box[1]*page.height)-element.y}px`,
+    width:`${snap(box[2]*page.width)}px`,height:`${snap(box[3]*page.height)}px`,right:'auto',bottom:'auto'};
+}
 
 const frames=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
 const message=(error:unknown)=>error instanceof Error?error.message:String(error);
@@ -292,8 +308,10 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   }
   const key=(view:PooledView)=>view.key;
 
-  const fills=(view:PooledView,box:HTMLElement)=>{
-    const canvas=view.host.querySelector('canvas'),b=box.getBoundingClientRect();
+  // The host is the view's drawn box: its element's box, or the frame's box
+  // during a reframe.
+  const fills=(view:PooledView)=>{
+    const canvas=view.host.querySelector('canvas'),b=view.host.getBoundingClientRect();
     if(!canvas)return false;const c=canvas.getBoundingClientRect();
     return c.width>=b.width*.98&&c.height>=b.height*.98;
   };
@@ -306,6 +324,7 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   // canvas wait ran.
   async function poseViews(frame:StageFrame):Promise<{views:Record<string,Record<string,unknown>>;resized:boolean}>{
     const placed=[...new Set(Object.values(frame.slots))].filter(k=>frame.elements[k]?.kind==='view');
+    const reframe=reframeOf(frame),page={width:window.innerWidth,height:window.innerHeight};
     const leased=leaseViews(instances,placed.map(k=>({key:k,lens:lensOf(frame.elements[k] as ViewState)})));
     // An instance no view of this frame is drawn on is free: its host leaves
     // the page, as a view that left always did.
@@ -325,7 +344,11 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
         if(view.host.parentElement!==box){box.append(view.host);resized=true;}
       }
       view.host.style.visibility='';
-      const r=box.getBoundingClientRect();
+      // A view a reframe moves is drawn over the frame's box, inside its
+      // element so the set's stacking order holds; every other is drawn
+      // over its element's box. A moving host changes size every frame.
+      Object.assign(view.host.style,reframeHost(rectOf(box),page,reframe?.boxes[k]));
+      const r=view.host.getBoundingClientRect();
       if(!view.size||view.size.width!==r.width||view.size.height!==r.height)resized=true;
       posed.push([view,state,box,k]);
     }
@@ -337,7 +360,7 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     // still does not fill.
     if(resized)for(let tries=0;tries<30;tries++){
       await frames();
-      if(posed.every(([view,,box])=>fills(view,box)))break;
+      if(posed.every(([view])=>fills(view)))break;
     }
     for(const [view,state] of posed)pose(view,state,frame.shotId);
     // A view under an opaque picture is posed but hidden, so its canvas does
@@ -346,8 +369,8 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
       return s?.kind==='picture'&&(s as PictureState).shown&&(s as PictureState).opacity>=1;})
       .map(k=>boxOf(k)).filter((b):b is HTMLElement=>Boolean(b)).map(rectOf);
     const reports:Record<string,Record<string,unknown>>={};
-    for(const [view,state,box,k] of posed){
-      const r=rectOf(box);view.size={width:r.width,height:r.height};
+    for(const [view,state,,k] of posed){
+      const r=rectOf(view.host);view.size={width:r.width,height:r.height};
       if(opaque.some(o=>contains(o,r)))view.host.style.visibility='hidden';
       const marks:MarkReport[]=drawMarks(view.marks,r,state.marks??[],view.viewer,
         {accent,uid:String(view.instance),where:`view ${k} in shot ${frame.shotId}`});
@@ -364,12 +387,14 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   function measure(frame:StageFrame,reports:Map<string,ReportSource>,views:Record<string,Record<string,unknown>>):Observed{
     const slots:Record<string,Rect>={};
     for(const slot of stageRoot.querySelectorAll<HTMLElement>('.vm-slot'))slots[slot.dataset.slot as string]=rectOf(slot);
-    const elements:Record<string,Record<string,unknown>>={};
+    const elements:Record<string,Record<string,unknown>>={},reframe=reframeOf(frame);
     for(const k of new Set(Object.values(frame.slots))){
       const state=frame.elements[k],box=boxOf(k);
       if(!state||!box)continue;
       const source=reports.get(k),reported=typeof source==='function'?source():source??{};
-      elements[k]={...reported,kind:state.kind,box:rectOf(box),...(views[k]??measureElement(box,state))};
+      elements[k]={...reported,kind:state.kind,box:rectOf(box),...(views[k]??measureElement(box,state)),
+        // During a reframe, the opacity each element is drawn at.
+        ...(reframe?{opacity:Number(getComputedStyle(box).opacity)}:{})};
     }
     return {frame:{width:window.innerWidth,height:window.innerHeight},chrome:chrome(),slots,elements};
   }
@@ -393,6 +418,9 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     flushSync(()=>root.render(<Stage movie={movie} stage={stage}/>));
     if(caught.length)throw new Error(`Shot ${frame.shotId} at ${frame.time} s: ${message(caught[0])}`);
     if(errors.length)throw errors[0];
+    // A reframe's fade, once over, leaves React's emptied style attribute on
+    // an element's box; removed, so the page's content is the frame's alone.
+    for(const box of stageRoot.querySelectorAll('.vm-element[style=""]'))box.removeAttribute('style');
     for(const [slot,k] of Object.entries(frame.slots))
       if(!stageRoot.querySelector(`.vm-slot[data-slot="${escape(slot)}"]`))
         throw new Error(`Set ${frame.set} draws no slot ${slot}, where shot ${frame.shotId} places ${k}`);

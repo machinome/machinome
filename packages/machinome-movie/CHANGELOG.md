@@ -6,6 +6,28 @@ lands it.
 
 ## Unreleased
 
+- A shot can come in by a **reframe**: `transition=Reframe(d)` in Python,
+  `{"kind": "reframe", "duration"}` in the movie document. For the join's
+  duration the incoming shot is drawn live on its own set: each view element
+  both shots place moves from its slot's box in the outgoing set to its
+  slot's box in the incoming set, by the eased progress, its camera and its
+  take running on (a `move` may run under it), while everything else the
+  incoming shot places fades in; what only the outgoing shot placed is gone
+  at the cut. A reframe whose two shots share no view element is refused
+  before any take, by the declarations and by both runtimes, naming both
+  shots and `no view element in both`. The slot boxes come from the stage:
+  `check` now measures the layout of a movie with a reframe (as of one with
+  a picture), prints a `Reframe` line per join and refuses a reframe through
+  a slot sized by what it holds; every preview and render session measures
+  them on its own page before its first frame. Every posed reframe frame is
+  checked (the view within a pixel of its box, the rest at the progress),
+  and `preview` proves its first frame, its end, which is exactly the
+  incoming frame, and its replay. Each frame of a reframe waits for the
+  view's canvas: about 100 ms a frame at 640 px against about 67 ms just
+  after the join, with the real viewer as with the late-canvas double. The
+  fixture tour's `question` now reframes from `Playbill` into
+  `PlaybillSplit`. The stage runtime changes, so every film recaptures once.
+  (`reframe-join`, ADR-010, for the Curta film's turn to its code)
 - The chrome stays on screen while a picture or a mark fades. A frame with a
   fading picture or mark is composed from picture-only captures, and the
   stage left the page in its picture-only state after the blend, so the set's

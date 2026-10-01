@@ -188,6 +188,40 @@ function shotFrame(film,chapter,shot,local,time){
   }
   return {time,chapterId:chapter.id,shotId:shot.id,set:shot.set,slots,elements,transition:null};
 }
+// The seconds a join shows its outgoing shot past that shot's end: half of a
+// fade, the whole of a dissolve, wipe or slide, none of a reframe, whose
+// outgoing shot is not drawn.
+export const joinShows=join=>!join?0:join.kind==='fade'?join.duration/2:join.kind==='reframe'?0:join.duration;
+// The view elements a reframe moves: those its shot and the shot before it
+// both place (a view element belongs to its chapter, so two chapters' shots
+// share none), each with its frame key and the slot holding it in either set.
+export function movingViews(outgoingChapter,outgoing,chapter,shot){
+  if(outgoingChapter.id!==chapter.id)return [];
+  const slotOf=(places,key)=>Object.keys(places).find(slot=>places[slot]===key);
+  return Object.entries(shot.places).filter(([,key])=>chapter.elements[key]?.kind==='view'&&slotOf(outgoing.places,key)!==undefined)
+    .map(([slot,key])=>({key:`${chapter.id}.${key}`,element:key,from:{set:outgoing.set,slot:slotOf(outgoing.places,key)},to:{set:shot.set,slot}}));
+}
+// The words a reframe without a view element in both shots is refused in, by
+// both runtimes (python/machinome_movie/names.py says the same).
+export const noViewInBoth=(outgoing,incoming)=>`a reframe from shot ${outgoing} into shot ${incoming} moves a view element both shots place, and there is no view element in both`;
+
+// The reframe into a shot, `local` seconds after it starts (clamped to the
+// join): the incoming shot is drawn live; each view element both shots place
+// is drawn in a box (fractions of the frame) between its slot's box in the
+// outgoing set and its slot's box in the incoming set, by the eased progress,
+// and every other element at the progress as opacity. The boxes are the
+// film's measured `reframes` (src/layout.mjs); none is ever guessed.
+export function reframeAt(film,shotId,local){
+  const {shots}=index(film),at=shots.find(s=>s.shot.id===shotId);
+  if(!at||at.shot.transition?.kind!=='reframe')throw new Error(`Shot ${shotId} does not come in by a reframe`);
+  const {shot,index:i}=at,x=shot.transition,measured=film.reframes?.[shot.id];
+  if(!measured)throw new Error(`Shot ${shot.id} comes in by a reframe whose slot boxes are not measured; check and every browser session measure them on the stage`);
+  const p=settled(ease(x.ease??'smooth',Math.min(local,x.duration)/x.duration));
+  const boxes=Object.fromEntries(Object.entries(measured).map(([key,{from,to}])=>[key,from.box.map((v,k)=>(1-p)*v+p*to.box[k])]));
+  return {field:'transition',kind:'reframe',shotId:shot.id,duration:x.duration,ease:x.ease??'smooth',
+    outgoingShotId:shots[i-1].shot.id,start:shot.start,progress:p,outgoing:null,boxes};
+}
+
 // The transition at video time t, or null. A transition occupies the first
 // seconds of the shot that declares it and fadeOut the last.
 function transitionAt(film,at,t){
@@ -199,6 +233,7 @@ function transitionAt(film,at,t){
   }
   const x=shot.transition;
   if(x&&t<shot.start+x.duration){
+    if(x.kind==='reframe')return reframeAt(film,shot.id,local);
     const prior=index(film).shots[i-1],u=local,d=x.duration,name=x.ease??'smooth';
     const outgoing=()=>shotFrame(film,prior.chapter,prior.shot,prior.shot.end-prior.shot.start+u,t);
     const join={...base('transition',x,x.kind),outgoingShotId:prior.shot.id,start:shot.start};
@@ -262,7 +297,7 @@ export function checkFilm(film){
       }
       if(element.kind==='picture'&&element.clip!==undefined){
         const media=film.pictureMedia.clips[element.clip],next=shots[i+1]?.shot.transition;
-        const continuation=near(cue.until,duration)&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+        const continuation=near(cue.until,duration)?joinShows(next):0;
         const required=(element.inPoint??0)+(cue.until-cue.at)+continuation;
         if(required>media.end+1e-9)throw new Error(`${where}, ${id}: clip ${element.clip} ends at ${media.end.toFixed(2)} s, before the ${required.toFixed(2)} s the cue and its continuation need`);
       }

@@ -120,6 +120,28 @@ function PlaybillChrome({series}: {series: string}) {
   wipes, slides and fades with it, and the proofs compare it like the rest.
   Nothing is chrome unless a set marks it.
 
+## A reframe
+
+A shot that comes in by a reframe is drawn live, on its own set, for the
+whole join: no picture of the shot before it is composed. Each view element
+both shots place is drawn over a box that moves, frame by frame, from the
+box of its slot in the outgoing set to the box of its slot in the incoming
+set; the frame gives that box, and the stage puts the view's viewer there,
+still inside the element of the slot that holds it, so whatever the set
+draws above that slot (a headline, a caption band) stays above the moving
+view. Every other element of the incoming shot is drawn at the join's
+progress as opacity on its element box, from transparent to opaque; the
+set's chrome is the incoming set's from the first frame.
+
+So a template that reframes a view:
+
+- gives both slots boxes that do not depend on what they hold (`check`
+  measures them on the stage and refuses one sized by what it holds);
+- lets the view leave its slot's box during the join: a slot that clips its
+  content (`overflow: hidden`) clips the moving view;
+- draws nothing that depends on a view's box being its slot's: a view's
+  marks are drawn over the box it is drawn in.
+
 ## A derived set
 
 A set declared in Python as a subclass of another inherits its base's chrome
@@ -326,7 +348,7 @@ is the player's job.
 
 | kind | draws | reads |
 |---|---|---|
-| `view` | the model through its camera, with its highlight and marks, on a viewer instance leased to the element while frames place it and freed for another view element when one does not, hosted in the element's box; a film mounts no more instances than one of its frames places views (with a viewer below API 28, which keeps the up and field of view it mounted with, no more for each such lens) | `--vm-accent` for marks, `--vm-background` for the plate behind a mark's words |
+| `view` | the model through its camera, with its highlight and marks, on a viewer instance leased to the element while frames place it and freed for another view element when one does not, hosted in the element's box (during a reframe, over the box the frame gives it); a film mounts no more instances than one of its frames places views (with a viewer below API 28, which keeps the up and field of view it mounted with, no more for each such lens) | `--vm-accent` for marks, `--vm-background` for the plate behind a mark's words |
 | `source` | a pinned excerpt, typed, highlighted as Python, its lit tokens marked in `mark.spoken`, the cursor while typing; its file and lines above it | `--vm-source-size`, `--vm-source-line`, `--vm-source-color`, `--vm-source-padding`, `--vm-source-rule`, `--vm-source-file-size`, `--vm-source-file-color`, `--vm-source-file-gap`, `--vm-source-cursor-color`, `--vm-accent` |
 | `title` | its text and subtitle while shown, at its opacity; with a reveal, each word as it arrives, the unrevealed ones keeping their place | `--vm-title-size`, `--vm-title-weight`, `--vm-title-line`, `--vm-title-spacing`, `--vm-title-align`, `--vm-title-color`, `--vm-title-background`, `--vm-title-padding`, `--vm-subtitle-size` |
 | `picture` | a still or a clip's frame while shown, fitted to the element's box (`contain` or `cover`) through its view's centre and zoom, on a plate of the background colour | `--vm-background` |
@@ -372,13 +394,19 @@ files and its stylesheets.
   `reused` instead of `bundled` when the key is unchanged; `no TypeScript
   module, types not checked` for JavaScript modules alone. `preview` and
   `render` build or reuse the same bundle before opening the browser.
-- **`check` measures the sets' layout** when the movie shows a picture,
-  before it reads any take: it poses each set a shot uses, once, with no
-  element in its slots and no viewer mounted, in a headless page of the
-  output size served the bundle, and prints what it measured:
+- **`check` measures the sets' layout** when the movie shows a picture or
+  comes in by a reframe, before it reads any take: it poses each set a shot
+  uses, once, with no element in its slots and no viewer mounted, in a
+  headless page of the output size served the bundle, and prints what it
+  measured:
 
       Layout playbill at 1280×720: stage 870.4×576 at 64,86.4; plate 870.4×576 at 64,86.4; aside 243.2×288 at 972.8,216; headline sized by what it holds
+      Reframe into question: opening.wide from playbill stage 870.4×576 at 64,86.4 to playbill-split right 563.2×489.6 at 652.8,158.4
       Picture still tip.plate (still plate): peak 1.40×; allowance 1.5×
+
+  A reframe through a slot sized by what it holds is refused there. Each
+  `preview` and `render` session measures the slots its reframes use the
+  same way, on its own page, before its first frame.
 
   A picture shown in a slot whose box stays put is judged there: `check`
   refuses a still or clip enlarged beyond its allowance in that box, and a
@@ -425,6 +453,9 @@ and the video time:
 
 - every placed element reached the stage; a view, a source panel and a
   shown title or picture has a box;
+- during a reframe, each moving view is drawn within a pixel of the box the
+  frame gives it, and every other element at the join's progress as
+  opacity;
 - a view adopted the camera and target asked for (and from Viewer API 28 the
   field of view and up), its canvas fills its box, and every mark was drawn:
   each mark's target is on the view's box, its words inside the frame, a
@@ -445,5 +476,7 @@ compared with anything. `preview` then proves the pixels: posing an
 instant, another and the first again gives identical pixels, and each
 highlight, mark entrance and exit, title fade, picture fade and transition
 is proved against the same instant drawn with and without it, leaving out
-the chrome rectangles and nothing else. Whether the template reads well is for a
+the chrome rectangles and nothing else; a reframe's first frame draws each
+moving view in its outgoing slot's box, and its end, at full progress,
+draws exactly the incoming shot's frame. Whether the template reads well is for a
 person looking at the stills and the film.

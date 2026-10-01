@@ -414,7 +414,10 @@ test('the tour previews: every proof holds and the report lists each kind of che
     assert.ok(report[kind]?.length>0,`the report lists ${kind}`);
   assert.deepEqual(report.highlightChecks.map(c=>c.shotId),['source','source','rise','rise','invitation']);
   assert.deepEqual([...new Set(report.transitionChecks.map(c=>`${c.shotId}:${c.field}`))].sort(),
-    ['hook:fadeIn','invitation:fadeOut','invitation:transition','push:transition','rhythm:transition','source:transition']);
+    ['hook:fadeIn','invitation:fadeOut','invitation:transition','push:transition','question:transition','rhythm:transition','source:transition']);
+  const reframe=report.transitionChecks.find(c=>c.shotId==='question');
+  assert.equal(reframe.kind,'reframe');
+  assert.ok(reframe.endEqualsIncoming&&reframe.replay);
   assert.ok(report.entranceChecks.every(c=>c.skipped||c.vacuous===false));
   assert.ok(report.pictureChecks.every(c=>c.replay));
 });

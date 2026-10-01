@@ -10,9 +10,9 @@ export's part paths, the excerpts an emphasis lights, the stage modules.
 """
 
 from .anchors import Anchor, Narration, time_document, time_value
-from .names import MovieError, prop_kind, slug
-from .stage import (Cued, Element, FadeIn, FadeOut, Placement, Set, SourcePanel, Style,
-                    Title, Transition, View, check_camera)
+from .names import MovieError, no_view_in_both, prop_kind, shared_views, slug
+from .stage import (Cued, Element, FadeIn, FadeOut, Placement, Reframe, Set, SourcePanel,
+                    Style, Title, Transition, View, check_camera)
 from .take import Simulation, part_path
 from .text import count_phrase, count_words
 
@@ -81,6 +81,8 @@ class _Compiler:
         self.tokens = []     # (where, source, token) for the excerpt check
         self.sets = []       # the set classes the shots use, in order
         self.completed = set()   # the source panels typed through their last line
+        self.written = []    # the shots compiled so far, in document form
+        self.views = set()   # the keys of the chapter's view elements
 
     def compile(self):
         cname = self.chapter.__name__
@@ -93,7 +95,11 @@ class _Compiler:
                 self.loops.append((where, element.loop))
             self.keys[id(element)] = key
             declared[key] = element.document()
-        written = [self.shot(name, shot) for name, shot in self.shots]
+            if isinstance(element, View):
+                self.views.add(key)
+        for name, shot in self.shots:
+            self.written.append(self.shot(name, shot))
+        written = self.written
         project = [(self.keys[id(e)], e) for e in self.elements.values() if e.project()]
         return {'narration': self.narration.text, 'elements': declared, 'shots': written,
                 'parts': self.parts, 'loops': self.loops, 'tokens': self.tokens,
@@ -159,6 +165,13 @@ class _Compiler:
                 if not isinstance(value, kind):
                     raise MovieError(f'{where}: {key} is a {kind.__name__}, not {value!r}')
                 document[key] = value.document()
+        # A reframe moves a view element both shots place; the shot before
+        # this one is known here when it is the chapter's own (a chapter's
+        # first shot is the movie's to check).
+        if isinstance(shot.transition, Reframe) and self.written:
+            prior = self.written[-1]
+            if not shared_views(prior, document, self.views):
+                raise MovieError(f"{where}: transition: {no_view_in_both(prior['id'], shot_id)}")
         return document
 
     def action(self, action, placed, start, end, here, typed):
@@ -373,7 +386,26 @@ class Movie:
                 seen[shot['id']] = chapter_id
             ordered.append((chapter_id, type(chapter)))
         _check_props(where, ordered)
+        _check_reframes(where, ordered)
         cls._movie = {'chapters': ordered, 'text': text, 'found': found}
+
+
+def _check_reframes(where, chapters):
+    """A chapter's first shot comes in from the last shot of the chapter
+    before; a view element belongs to its chapter, so the two never place
+    one in both and a reframe between them is refused. (A reframe between
+    two shots of one chapter was checked when the chapter was created.)"""
+    previous = None
+    for chapter_id, klass in chapters:
+        shots = klass._compiled['shots']
+        first = shots[0] if shots else None
+        if previous is not None and first and first.get('transition', {}).get('kind') == 'reframe':
+            raise MovieError(f"{where}: chapter {chapter_id}, shot {first['id']}, transition: "
+                             f"{no_view_in_both(previous[1], first['id'])}: shot {previous[1]} "
+                             f"is chapter {previous[0]}'s, and a view element belongs to its "
+                             f"chapter")
+        if shots:
+            previous = (chapter_id, shots[-1]['id'])
 
 
 def _check_props(where, chapters):

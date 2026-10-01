@@ -3,7 +3,7 @@ import {parseArgs} from 'node:util';
 import {resolve,dirname,extname} from 'node:path';
 import {readFile} from 'node:fs/promises';
 import {loadEpisode,confirmViewerApi,filmSubject,PAPER_STAGE} from '../src/episode.mjs';
-import {filmShots,shotActions} from '../src/timeline.mjs';
+import {filmShots,shotActions,joinShows} from '../src/timeline.mjs';
 import {buildFilmStage} from '../src/stage-build.mjs';
 import {speech,cachedTake} from '../src/speech.mjs';
 import {chaptersOf,chapterTakeLines} from '../src/chapters.mjs';
@@ -12,7 +12,8 @@ import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
 import {preview,render} from '../src/render.mjs';
 import {clipCadence,loadPictures} from '../src/pictures.mjs';
-import {picturesShown,measureLayouts,layoutLines,checkEnlargements,checkPictureViews} from '../src/layout.mjs';
+import {picturesShown,measureLayouts,layoutLines,checkEnlargements,checkPictureViews,
+  reframesOf,reframeBoxes,reframeLines} from '../src/layout.mjs';
 import {reviewManifest} from '../src/review-pack.mjs';
 
 try{
@@ -31,11 +32,12 @@ try{
   // check bundles and type-checks a document's stage before anything that
   // needs a take, so a template that does not match the declarations is
   // refused before speech is bought.
-  // A document that shows a picture has its sets' layout measured next, in a
-  // headless page served the bundle (src/layout.mjs, ADR-009), and a picture
-  // enlarged beyond its allowance in its slot's box is refused before any take
-  // is read. A document without a picture, and a YAML episode, whose paper
-  // sets' boxes are known, open no browser.
+  // A document that shows a picture or comes in by a reframe has its sets'
+  // layout measured next, in a headless page served the bundle
+  // (src/layout.mjs, ADR-009, ADR-010), and a picture enlarged beyond its
+  // allowance in its slot's box, or a reframe through a slot sized by what it
+  // holds, is refused before any take is read. A document without either,
+  // and a YAML episode, whose paper sets' boxes are known, open no browser.
   let early=null,layouts=null,enlargements=null;
   if(command==='check'&&extname(source).toLowerCase()==='.json'){
     const {readMovie}=await import('../src/movie.mjs');
@@ -43,10 +45,15 @@ try{
     const {execFileSync}=await import('node:child_process');
     const repository=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:base,encoding:'utf8'}).trim();
     early=await buildFilmStage({stage:doc.stage,paths:{base,build,repository,episode:documentPath}});
-    if(picturesShown(doc).length){
-      const media=await loadPictures({source:'movie',stills:doc.stills,clips:doc.clips,paths:{repository,base}});
+    // A reframe moves its views between slots' measured boxes (ADR-010): the
+    // layout is measured for it too, and a slot sized by what it holds is
+    // refused before any take.
+    const pictures=picturesShown(doc).length>0,reframes=reframesOf(doc).length>0;
+    if(pictures||reframes){
+      const media=pictures?await loadPictures({source:'movie',stills:doc.stills,clips:doc.clips,paths:{repository,base}}):null;
       layouts=await measureLayouts(doc,early);
-      enlargements=checkEnlargements(doc,media,layouts);
+      reframeBoxes(doc,layouts);
+      if(pictures)enlargements=checkEnlargements(doc,media,layouts);
     }
   }
   const e=await loadEpisode(source);
@@ -63,6 +70,8 @@ try{
   }
   await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
   if(command==='check'){
+    // The reframes' boxes, from the measured layout, before any frame is posed.
+    if(layouts&&reframesOf(e).length)e.reframes=reframeBoxes(e,layouts);
     // A view that leaves its picture, in the measured box, at a frame the
     // takes have now placed.
     if(layouts)checkPictureViews(e,layouts);
@@ -78,7 +87,7 @@ try{
     const modules=e.stage.modules.length?e.stage.modules.join(', '):'the runtime alone';
     console.log(`Stage: ${bundle.reused?'reused':'bundled'} ${bundle.js} (sha256 ${bundle.sha256.slice(0,12)}) from ${modules}; `+
       (bundle.typechecked?'types checked':e.stage.modules.length?'no TypeScript module, types not checked':'no module to type-check'));
-    if(layouts)for(const line of layoutLines(layouts))console.log(line);
+    if(layouts)for(const line of [...layoutLines(layouts),...reframeLines(e,layouts)])console.log(line);
     const shots=filmShots(e),fps=e.output.fps;
     for(const [i,{chapter,shot}] of shots.entries())for(const {cue,action} of shotActions(shot)){
       const element=chapter.elements[action.element];
@@ -101,7 +110,7 @@ try{
       console.log(`Picture ${shot.id} ${chapter.id}.${action.element} (${media} ${name}): ${text}`);
       if(media==='clip'){
         const globalStart=shot.start+cue.at,phase=Math.max(0,Math.ceil(globalStart*fps-1e-9)/fps-globalStart),start=element.inPoint??0;
-        const next=shots[i+1]?.shot.transition,continuation=Math.abs(cue.until-(shot.end-shot.start))<1e-9&&next?(next.kind==='fade'?next.duration/2:next.duration):0;
+        const continuation=Math.abs(cue.until-(shot.end-shot.start))<1e-9?joinShows(shots[i+1]?.shot.transition):0;
         const cadence=clipCadence(probe.timestamps,start,start+cue.until-cue.at+continuation,fps,phase);
         console.log(`  source ${probe.averageRate.toFixed(3)} fps into film ${fps} fps: `+
           `${cadence.dropped} dropped, ${cadence.repeated} repeated; audio not played`);

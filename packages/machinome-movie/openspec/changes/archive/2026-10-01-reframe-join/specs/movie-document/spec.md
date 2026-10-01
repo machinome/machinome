@@ -58,7 +58,7 @@ first frame, the slot boxes its reframes move views between.
 - **THEN** `check` refuses it naming the shot `still`, the time 16.67 s,
   the element `tip.plate` and the still `plate`.
 
-#### Scenario: No picture, no reframe, no browser
+#### Scenario: No picture, no browser
 - **WHEN** `check` runs on a movie document whose shots show no picture and
   have no reframe
 - **THEN** it launches no browser and prints no layout.

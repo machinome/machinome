@@ -152,13 +152,22 @@ def test_a_shot_on_a_project_set_with_a_move_a_project_action_and_fade_in(tour):
 
 def test_a_title_in_a_slot_and_the_end_of_the_narration(tour):
     question = shot(tour, 'question')
-    assert question['places'] == {'stage': 'wide', 'aside': 'card', 'headline': 'title'}
+    assert question['places'] == {'right': 'wide', 'left': 'card', 'headline': 'title'}
     assert question['until'] == {'narrationEnd': True, 'plus': 0.8}
     assert question['cues'][1] == {
         'at': 0, 'until': {'narrationEnd': True},
         'actions': [{'element': 'title', 'action': 'show',
                      'enter': {'kind': 'fade', 'duration': 0.6},
                      'leave': {'kind': 'fade', 'duration': 0.6}}]}
+
+
+def test_a_reframe_from_the_project_set_into_its_split(tour):
+    # The view `wide` is in both shots: in Playbill's stage in hook, in
+    # PlaybillSplit's right in question; the reframe moves its box.
+    hook, question = shot(tour, 'hook'), shot(tour, 'question')
+    assert (hook['set'], hook['places']['stage']) == ('playbill', 'wide')
+    assert (question['set'], question['places']['right']) == ('playbill-split', 'wide')
+    assert question['transition'] == {'kind': 'reframe', 'duration': 0.8}
 
 
 def test_source_beside_the_model_with_emphasis_pairs_on_two_lines(tour):

@@ -8,7 +8,7 @@ import {afterEach,beforeAll,describe,expect,test} from 'vitest';
 import {Stage,type ReportSource,type StageContextValue} from './components';
 import {Chrome,Slot,defineElement,defineSet,useMovie,useReport} from './index';
 import {checkRegistry,registerSet} from './registry';
-import {leaseViews,measureElement} from './runtime';
+import {leaseViews,measureElement,reframeHost} from './runtime';
 import {SHIPPED_SLOTS,markSource,registerShipped} from './shipped';
 import type {ElementComponentProps,MovieInfo,ProjectElementState,SetComponentProps,StageConfig,StageFrame} from './types';
 
@@ -267,6 +267,44 @@ describe('viewer lease',()=>{
       }
     }
     expect(checked).toBe(4**5*5);
+  });
+});
+
+describe('reframe',()=>{
+  // A frame of a reframe (ADR-010): the incoming set drawn as for any frame,
+  // every element but the moving views at the progress as opacity, and the
+  // moving view's host over the frame's box (the runtime's reframeHost).
+  const card={kind:'card',props:{items:['Balance','Tip']},actions:[]};
+  const reframe=(progress:number)=>({...frameOf('bill',{stage:'a.mill',aside:'a.card'},{'a.mill':view,'a.card':card}),
+    transition:{kind:'reframe',progress,boxes:{'a.mill':[.25,.1,.5,.8]}}});
+  test('every element but the moving views is drawn at the progress as opacity, and none at its end or without one',()=>{
+    const draw=mount();
+    draw(reframe(.4));
+    expect(element('a.card').style.opacity).toBe('0.4');
+    expect(element('a.mill').style.opacity).toBe('');
+    draw(reframe(0));
+    expect(element('a.card').style.opacity).toBe('0');
+    // React leaves an emptied style attribute behind; the runtime removes it
+    // after each commit, so the page's content is the frame's alone.
+    draw(reframe(1));
+    expect(element('a.card').style.opacity).toBe('');
+    draw(frameOf('bill',{stage:'a.mill',aside:'a.card'},{'a.mill':view,'a.card':card}));
+    expect(element('a.card').style.opacity).toBe('');
+    // The slots keep the boxes the set gives them.
+    expect(stageRoot().querySelector('.vm-slot-stage')?.getAttribute('style')).toBeNull();
+  });
+  test('the moving host\'s inline box is the frame\'s, in pixels of the page, to the layout\'s 1/64 pixel, relative to its element',()=>{
+    const page={width:1280,height:720},inSlot={x:640,y:72,width:512,height:576};
+    expect(reframeHost(inSlot,page,[.25,.1,.5,.8])).toEqual({left:'-320px',top:'0px',width:'640px',height:'576px',right:'auto',bottom:'auto'});
+    // 0.27 of 1280 is 345.6, which the layout holds as 22118/64 pixels.
+    expect(reframeHost({x:0,y:0,width:1,height:1},page,[.27,.17,.56,.74]))
+      .toEqual({left:`${22118/64}px`,top:`${7834/64}px`,width:`${45875/64}px`,height:`${34099/64}px`,right:'auto',bottom:'auto'});
+    expect(reframeHost(inSlot,page,null)).toEqual({left:'',top:'',width:'',height:'',right:'',bottom:''});
+    const host=document.createElement('div');
+    Object.assign(host.style,reframeHost(inSlot,page,[.25,.1,.5,.8]));
+    expect([host.style.left,host.style.width,host.style.right]).toEqual(['-320px','640px','auto']);
+    Object.assign(host.style,reframeHost(inSlot,page,null));
+    expect(host.getAttribute('style')).toBe('');
   });
 });
 

@@ -89,6 +89,18 @@ export interface ProjectElementState<P=Record<string,unknown>,A extends ProjectA
 export type ShippedElementState=ViewState|SourceState|TitleState|PictureState;
 export type ElementState=ShippedElementState|ProjectElementState;
 
+/**
+ * The join a frame carries when its shot comes in by a reframe (ADR-010): the
+ * eased progress, which every element but the moving views is drawn at as
+ * opacity, and the box each moving view is drawn in, `[x, y, width, height]`
+ * as fractions of the frame. The other joins are composed by the renderer
+ * and reach the stage as compositions, not on the frame.
+ */
+export interface ReframeTransition {
+  kind:'reframe';
+  progress:number;
+  boxes:Record<string,readonly number[]>;
+}
 export interface StageFrame {
   time:number;
   chapterId:string;
@@ -96,7 +108,7 @@ export interface StageFrame {
   set:string;
   slots:Record<string,string>;
   elements:Record<string,ElementState>;
-  transition?:unknown;
+  transition?:ReframeTransition|null|unknown;
   pictureOnly?:boolean;
   fresh?:boolean;
 }
