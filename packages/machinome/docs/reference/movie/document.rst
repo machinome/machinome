@@ -146,7 +146,11 @@ is held to the same answer.
 **The pose at a take time.** For a take time `t` inside a step, with
 `f = (t − at) / duration`: the bank before the step, with the input at
 `origin + f · (end − origin)` and the targets of every commit whose
-`fraction ≤ f` written. Between steps, and after the last, the bank is the
+`fraction ≤ f` written. A step owns the instants `at < t ≤ at + duration`,
+so the instant where one step ends and the next begins belongs to the step
+that ends there, and a mark poses exactly its recorded bank; at `f = 1` the
+input is `end` itself, never the interpolation's float (findings 1 and 2 of
+the pose-a-take change). Between steps, and after the last, the bank is the
 one the previous step ended with (its input at `end`, every commit
 written). The bank before a step is the bank the previous step ended with,
 starting from `initial`. This is the rule the viewer draws an instruction

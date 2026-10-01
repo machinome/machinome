@@ -40,9 +40,9 @@ lands it.
   document check holds a take document to its export and to the replay of
   its steps. The fixture project gains the framework tutorial's clocked
   counter, exported for real, its take and the movie `count`, with five
-  invalid take documents. The commands do not read a take document yet and
-  the Node suite refuses the new fixtures until they do (`pose-a-take`).
-  A loop's evaluation is unchanged. (`declare-a-take`, ADR-011)
+  invalid take documents; the commands read a take document since
+  `pose-a-take`. A loop's evaluation is unchanged. (`declare-a-take`,
+  ADR-011)
 - A shot can come in by a **reframe**: `transition=Reframe(d)` in Python,
   `{"kind": "reframe", "duration"}` in the movie document. For the join's
   duration the incoming shot is drawn live on its own set: each view element
