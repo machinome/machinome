@@ -1,7 +1,12 @@
 # Addition-warts campaign — plan
 
-Status: working plan, 1 October 2026, opened on branch `addition-warts`
-(worktree `WTs/addition-warts`) from `main` at 54d64d8, which holds the
+Status: done, 1 October 2026. Nine cycles and one investigation merged on
+`addition-warts`, its closing cold suite green (Node 408, Python 291), the
+branch fast-forwarded into `main` the same day and this directory moved to
+`workflow/archive/`; what the table below calls wave 3 is done too, except
+the film's re-render, recorded in PROGRESS. Written as a working plan,
+1 October 2026, on branch `addition-warts` (worktree `WTs/addition-warts`)
+from `main` at 54d64d8, which holds the
 curta-video campaign (ADR-010 to ADR-012, the Curta film *Addition*) and
 the fix-warts campaign before it, both integrated that morning. Nothing
 here is ratified: each cycle ratifies its own change under `AGENTS.md`,
