@@ -385,13 +385,25 @@ With the workspace's Python environment:
 
 `evaluate` imports the movie from the project and writes
 `_build/movie.json` beside the movie's module, or the `--out` file. It opens
-only the export's manifest and source revision and the source files of the
-excerpts an emphasis lights, and checks that each stage module exists; a
+only the export's manifest and the source files of the excerpts an emphasis
+lights, and checks that each stage module exists; a
 movie on a `Take` also runs the framework's simulation of the model once,
 which reads the model's own project files. No clock, no randomness, no
 network, and no CAD is built, so two evaluations write the same bytes. The
 anchors stay phrases and marks; the tool measures them in the recorded
 speech.
+
+The document's `model.sourceRevision`, the commit its source excerpts are
+read at, is the revision the export records it was made from:
+`machinome export` writes it in the manifest's `source` record
+(`source.revision`, beside `source.dirty`, whether Git listed any change in
+the project when it exported). An export whose manifest has no `source`,
+made by a framework that did not record it or from a project outside Git,
+is refused naming the manifest and `source.revision`: export the model
+again from the project's Git repository with a commit. Nothing beside the
+manifest is read for the revision. A movie evaluated from one export and
+filmed from another made at a different commit is refused by `check`,
+naming both revisions: evaluate it again.
 
 The document's `stage` block lists what the stage bundles: the stage
 modules, every set a shot uses (with the project sets they derive from),
@@ -435,7 +447,9 @@ thing at fault. When the class is created:
   instant of another mark, a take without a move or a trigger, and `marks`
   written on a take; and a shot whose model time lies outside its take.
 
-When the movie is evaluated: a part the export does not contain (the export is
+When the movie is evaluated: an export whose manifest records no `source`,
+or a `source.revision` that is not a full commit hash, a part the export
+does not contain (the export is
 older than the model), a token absent from or repeated in its excerpt, a stage
 module that does not exist or lies outside the project, a `Loop` whose export
 is not a posed loop, a `Take` whose export publishes no clocked machine or

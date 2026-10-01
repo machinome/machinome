@@ -114,7 +114,8 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
 ```
 
 - `check` validates YAML, timelines, named cameras/layers/evidence, the real model
-  duration, and the export's source revision. After its summary line it prints
+  duration, and the revision the export's manifest records it was made from
+  (`source.revision`) against the film's pin. After its summary line it prints
   one line per chapter from the cached takes, which is where a film's length
   comes from: `  drive: take 5.68 s, chapter 7.20 s, tail 1.32 s` (the take's
   measured length, the chapter's resolved length, and the tail after its
@@ -212,6 +213,22 @@ and the same for `Videomaker tree`. `preview` and `render` read both trees
 once, before the first frame. Nothing is refused: a dirty tree still makes
 a rehearsal, and the records say it was dirty.
 
+After the tree lines comes what the model's export records of where it was
+made from: `machinome export` writes, in the export's `manifest.json`, a
+`source` record with the commit the project was at (`source.revision`) and
+whether Git listed any change in the project then (`source.dirty`). The
+line is `Export: made from <revision>, clean`, or
+`Export: made from <revision>, dirty: Git listed changes in the project when the model was exported; …`
+with what that means for the command's record. A dirty export is not
+refused either. The film's `model.sourceRevision` must equal
+`source.revision`: a movie's evaluation writes it from the manifest, and a
+YAML episode pins it in its production settings; a pin that differs is
+refused naming both revisions. An export whose manifest records no
+`source`, made by a framework that did not record it or from a project
+outside Git, is refused by name: export the model again, from the
+project's Git repository with a commit. No file beside the manifest is
+read for the revision.
+
 Without `--viewer`, the bundle beside the model manifest is used. Older
 exports must be regenerated with the new viewer or use the explicit bundle.
 Paths are arguments, not assumptions about a neighboring workspace. The
@@ -239,12 +256,17 @@ Each episode's ignored `_build/` contains:
 - `rehearsal-manifest.json`: resolved screenplay/settings, model and viewer
   hashes, the stage bundle's `stageSha256` and `stageCssSha256`, the
   project's and Videomaker's heads (`projectHead`, `workflowHead`), each
-  beside whether its tree was dirty (`projectDirty`, `workflowDirty`), audio
+  beside whether its tree was dirty (`projectDirty`, `workflowDirty`), the
+  revision the export records it was made from and whether the project was
+  dirty then (`exportRevision`, `exportDirty`), audio
   hashes, browser/encoder versions, font record, encoded checks,
   picture provenance/cadence with `pictureReleaseIssues`, `releaseIssues`
   (every reason `releaseReady` is false, in words), and a versioned
   resolved visual-review sample plan. `preview/report.json` records the
-  same heads and their dirt.
+  same heads and their dirt, and the export's. None of them is a cache key:
+  the shot cache keys the export's manifest without its `source`, so an
+  export made again with only another revision or another dirt reuses
+  every shot.
 - `review-packs/<generation>/`: exact selected full-frame PNGs decoded from
   the published MP4, bounded overview/event sheets and an integrity-checked
   `index.json` with frame indices and actual encoded PTS. A complete index
@@ -288,7 +310,9 @@ committed, or whose description template lacks `{{pictureCredits}}` also make
 `releaseReady` false. The placeholder expands to `name: credit` lines (with
 an explicit pending marker for missing credit); it is not a rights judgement.
 A film rendered while the project's tree or Videomaker's was dirty is not
-release-ready either: its heads are not what made it. Each reason is a line
+release-ready either: its heads are not what made it; nor is a film whose
+export was made from a dirty project, whose `exportRevision` is not what
+was exported. Each reason is a line
 of the manifest's `releaseIssues`, and `releaseReady` is true exactly when
 that list is empty.
 

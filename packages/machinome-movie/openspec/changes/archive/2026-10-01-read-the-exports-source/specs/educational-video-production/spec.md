@@ -8,7 +8,7 @@ manifest's `source` record (`source.revision`, the full commit hash, and
 started), as the framework writes it, and SHALL read no other file for it:
 no `source-revision.txt` beside the manifest is read, and nothing falls
 back to one. `check`, `speech`, `preview`, `render` and `build` SHALL
-refuse, before any take, picture or browser is used:
+refuse, when they load the film and before any frame is posed:
 
 - an export whose manifest has no `source`, naming the manifest, the
   missing field `source.revision`, and the remedy: export the model again

@@ -67,8 +67,14 @@ it to the sidecar.
 third revision a film's records name: `exportSource(manifest,
 manifestPath)` returns `{revision, dirty}` or refuses (D2), and
 `pinnedRevision(declared, source, manifestPath)` refuses a differing pin
-(D3). Both are pure; the loaders call them after reading the manifest they
-already read, before any take, picture or browser.
+(D3). Both are pure. `loadMovie` calls them right after reading the
+manifest, after the document's static checks and before its checks
+against the manifest, the takes, the excerpts and the pictures;
+`loadEpisode` right after the episode's own validation, which checks its
+model block whole. Both are in the same load that read the sidecar. (`check` of a movie
+that shows a picture measures its layout before loading the film, and
+`speech` of a movie generates missing takes before loading it, as before;
+the refusal comes where the load is.)
 
 ### D2. An export without a source is refused by name, in both runtimes
 

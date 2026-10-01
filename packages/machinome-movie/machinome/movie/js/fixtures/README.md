@@ -81,22 +81,25 @@ so a new fixture is registered once and missed by neither side.
 
 `python/tests/fixtures/project/` is a tiny machinome project: a seesaw model
 (`models/seesaw.py`, a declared 20 s loop through which the beam tips), its
-posed export (`export/seesaw/`, which the framework's command writes from the
-project directory, `machinome export seesaw -o export/seesaw --fps 30
---frames 600 --no-widget`, and which the viewer layer poses), a clocked
+posed export (`export/seesaw/`, which the framework's command writes,
+`machinome export seesaw --fps 30 --frames 600 --no-widget`, and which the
+viewer layer poses), a clocked
 counter (`models/counter.py` and `models/digits.svg`, copied from the
 framework tutorial's chapter 9 with the pieces it imports, Apache-2.0 as
 the project's `NOTICE` says) and its clocked export (`export/counter/`,
-`machinome export counter -o export/counter --no-widget`), a still
+`machinome export counter --no-widget`), a still
 (`media/plate.png`), the takes the fixture movies film (`videos/takes.py`:
 the seesaw's loop `Playground` and the counter's take `Turns`) and the
 movies, with the tour's template (`videos/tour/stage.tsx` and
 `stage.css`). The still is drawn by `scripts/draw-fixture-still.mjs`, 864 by
 576 pixels of flat shapes with no text, the size at which the tour's plate,
 over its stage at 1280 by 720, draws it whole at its own size; a pure test
-asserts that the committed file is that drawing. The `source-revision.txt`
-of each export (`export/seesaw/`, `export/counter/`) is the commit of the
-project made this way, so that source pinned to it can be checked:
+asserts that the committed file is that drawing.
+
+The project's revision is not a commit of this repository, whose head moves
+with every change and whose tree is dirty while one is made: it is the
+commit of the project made by a recipe, so that source pinned to it can be
+checked:
 
 1. copy every file of the project except `export/`, `_build/` and
    `__pycache__/` into an empty directory;
@@ -105,23 +108,35 @@ project made this way, so that source pinned to it can be checked:
    both dated `2026-09-30T00:00:00+00:00`, and no global or system Git
    configuration.
 
-The Python suite makes that commit and asserts its hash, and the Node suite
-refuses a fixture movie whose copy does not commit to it. Changing any file
-of the project changes the hash, so the revision and every document pinned
-to it are re-pinned together, by one command:
+Each export (`export/seesaw/`, `export/counter/`) is made by the framework's
+command run in that commit, so its `manifest.json` records it as the
+framework records any export's origin: `source`, with the recipe commit as
+`revision` and `dirty` false (the copy ignores its `_build/` in its own
+exclude file, outside the commit, and writes no bytecode, so nothing makes
+the record dirty). Every fixture document pins that revision as its
+`model.sourceRevision`. No file beside an export names the revision. The
+Python suite makes the commit and asserts that both manifests record it,
+clean; the Node suite refuses a fixture movie whose copy does not commit to
+the seesaw manifest's `source.revision`. No test depends on the revision's
+value beyond that equality. Changing any file of the project changes the
+hash, so the exports and every document pinned to it are made again
+together, by one command:
 
 ```sh
-node scripts/pin-fixture-project.mjs --python <python>
+node scripts/pin-fixture-project.mjs --python <python> --machinome <machinome>
 ```
 
-It makes the commit by the recipe, writes its hash to the
-`source-revision.txt` of every export, evaluates every document `manifest.json`
-registers whose movie the project declares into `documents/` (with
-`PYTHONPATH` set to this repository's `python/`; `<python>`, by default
-`python3`, needs the package's dependencies) and prints what changed. It
-does not write `resolved/`: run `scripts/pin-resolved.mjs` for the documents
-it names and review the pins before committing. A document written by hand
-is not evaluated; the command prints the revision it pins.
+It makes the commit by the recipe, exports every model from it with
+`<machinome>` (by default `machinome`, the framework's command line) into a
+temporary directory, refuses unless each manifest records the recipe commit
+clean, replaces `export/<model>/` with what the command wrote, evaluates
+every document `manifest.json` registers whose movie the project declares
+into `documents/` (with `PYTHONPATH` set to this repository's `python/`;
+`<python>`, by default `python3`, needs the package's dependencies) and
+prints what changed. An export made again differs at least by its parts'
+`mtime`. It does not write `resolved/`: run `scripts/pin-resolved.mjs` for
+the documents it names and review the pins before committing. A document
+written by hand is not evaluated; the command prints the revision it pins.
 
 ## Refusal words
 

@@ -6,6 +6,28 @@ lands it.
 
 ## Unreleased
 
+- The model's revision is the one its export records. `machinome export`
+  now writes, in the export's `manifest.json`, a `source` record: the
+  commit the project was at (`source.revision`) and whether Git listed any
+  change in it then (`source.dirty`). Both runtimes read the revision
+  there, and nothing reads `source-revision.txt` any more: evaluation
+  writes `source.revision` as the document's `model.sourceRevision`, and
+  `check`, `speech`, `preview`, `render` and `build` refuse a film whose
+  pin differs, naming both revisions. An export whose manifest records no
+  `source` (made before the framework recorded it, or outside Git) is
+  refused by name in both runtimes, naming the manifest and
+  `source.revision` and saying to export the model again; evaluation no
+  longer writes a `null` revision. The export's dirt is provenance: the
+  commands print an `Export:` line after the tree lines (`made from
+  <revision>, clean`, or `dirty` and what that means), the render
+  manifest, every captured shot generation and the preview report record
+  `exportRevision` and `exportDirty`, and an export made from a dirty tree
+  is a `releaseIssues` entry, never a refusal. The shot cache keys the
+  manifest without its `source`, so an export made again with only another
+  revision or dirt reuses every shot. The fixture project's exports are
+  made again from its recipe commit, which their manifests now record, by
+  `scripts/pin-fixture-project.mjs` (new `--machinome` option); their
+  sidecars are gone. (`read-the-exports-source`, ADR-019)
 - A take's time is summed exactly. Evaluation adds a `Take`'s durations as
   the decimals written (a move's `over=`, an instruction's `duration`), in
   exact arithmetic, and writes each step's `at`, every mark and the length

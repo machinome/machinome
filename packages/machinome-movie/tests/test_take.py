@@ -258,7 +258,7 @@ def test_the_model_block_and_the_marks(count):
         'manifest': '../../export/counter/manifest.json',
         'expectedDurationSeconds': 8,
         'timeMode': 'take',
-        'sourceRevision': (EXPORT / 'source-revision.txt').read_text().strip(),
+        'sourceRevision': json.loads((EXPORT / 'manifest.json').read_text())['source']['revision'],
         'readiness': "Exported by machinome export; the drums count the crank's turns and carry."}
     assert count['marks'] == {'one': 2, 'nine': 6, 'ten': 8}
 
@@ -328,7 +328,7 @@ def test_recording_reads_no_clock_randomness_network_or_cad(monkeypatch):
     monkeypatch.undo()
     # The evaluation's own reads, and the model's project files the
     # framework's simulation reads; nothing else.
-    allowed = {EXPORT / 'manifest.json', EXPORT / 'source-revision.txt',
+    allowed = {EXPORT / 'manifest.json',
                PROJECT / 'models' / 'counter.py', PROJECT / 'pyproject.toml',
                PROJECT / 'models' / 'pyproject.toml'}
     assert set(opened) <= allowed, set(opened) - allowed

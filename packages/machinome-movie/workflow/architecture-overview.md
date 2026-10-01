@@ -118,6 +118,13 @@ frame and recording each head beside its dirt in the preview report, every
 captured shot generation and the manifest, whose `releaseIssues` name a
 dirty tree; the dirt is never a cache key
 ([ADR-015](adrs/PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)).
+It also reads the third revision a film names, the one the model's export
+records in its manifest's `source` (`revision`, `dirty`): both loaders take
+the film's pinned revision from it and refuse an export without it or a
+pin that differs, the commands print it as an `Export:` line, the records
+keep it beside the heads (`exportRevision`, `exportDirty`), a dirty export
+is a release issue, and the shot cache keys the manifest without it
+([ADR-019](adrs/SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md)).
 
 ## Commitments
 
@@ -176,8 +183,8 @@ is the Python side of the movie document:
         ▼                                         python/machinome_movie/movie.py
     compiled chapters (elements and shots in document form,
         │              parts, tokens and sets to check)
-        │  evaluate(movie, name=, out=): opens the export's manifest and
-        │  source revision and the emphasised excerpts; a Take's steps are
+        │  evaluate(movie, name=, out=): opens the export's manifest (its
+        │  source.revision pins the model) and the emphasised excerpts; a Take's steps are
         ▼  made once by the framework's Sim and recorded   .../evaluate.py
     movie document, canonical JSON, with its stage block (and take block),
         │  checked against schema/machinome-movie-0.2.json   .../document.py

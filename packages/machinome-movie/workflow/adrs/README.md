@@ -51,6 +51,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md) | STAGE | A view on a take is posed by restoring the machine's bank, and the viewer is held to the take | Accepted |
 | [ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md) | PIPELINE | Provenance records whether each tree was dirty, and a dirty tree is not release-ready | Accepted |
 | [ADR-016](SOURCE/ADR-016-take-seconds-are-the-exact-sums-of-the-written-durations.md) | SOURCE | Take seconds are the exact sums of the written durations | Accepted |
+| [ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md) | SOURCE | The model's revision is the one its export records | Accepted |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may
