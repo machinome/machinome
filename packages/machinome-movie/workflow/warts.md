@@ -344,3 +344,25 @@ by the orchestrator. Triage: none yet unless stated; the pilot decides each.
     so Chromium and FFmpeg inherited it; fixed in passing by
     `speech-key-lookup`, which parses the file instead. Triaged 30 September
     2026 (orchestrator): fixed; no cycle.
+14. **The set's chrome vanished during every picture or mark fade.** A frame
+    with a fading picture or mark is blended from picture-only captures, and
+    the stage left the page's picture-only state set after the blend, so the
+    masthead was missing from 47 of the fixture tour's 567 frames and from
+    the still's fade-in of *Cut and Advance* (frame at 51.72 s, inspected);
+    no proof saw it, since the fade proofs only ask that the blended frame
+    differ from its references. Found by the `flaky-pixel-proofs`
+    investigation reading the kept tour frames. Triaged 1 October 2026
+    (orchestrator): fixed the same night as a narrow adjustment
+    (`chrome-through-blends`, 53a788c; the blend request now says whether the
+    frame is picture-only, and a browser test proves a blended frame differs
+    from its picture-only capture in the chrome and nowhere else).
+15. **The two intermittent pixel proofs were not reproduced** in forty cold
+    runs under load (twenty on the stage, twenty on the old film page where
+    they were seen); the one condition the two recorded failures shared, a
+    screenshot after a document change with no repaint, no longer occurs on
+    the stage. The investigation's report is
+    `workflow/ongoing/fix-warts-campaign/flaky-pixel-proofs.md` on its
+    branch; it says what a future failure must keep (`KEEP_VIDEOMAKER_TEST`,
+    a surviving `TMPDIR`, the before/after PNGs, the load). Triaged 1 October
+    2026 (orchestrator): no cycle; the wart under "The test suite" stays
+    open until a failure is kept.
