@@ -202,6 +202,7 @@ that way.
 
 - [ADR-138](EXPORT/ADR-138-source-timing-is-a-semantic-version-gate.md) — Running v11 and semantic snapshot identity protect corrected source timing — **Accepted**, amends 110/121/122/133
 - [ADR-145](EXPORT/ADR-145-piece-identity-digests-canonical-triangle-content.md) — Piece identity digests canonical oriented-triangle content, not raw STL bytes — **Accepted**, amends 043/085
+- [ADR-158](EXPORT/ADR-158-an-export-records-the-revision-it-was-made-from.md) — An export records the revision it was made from: an additive `source: {revision, dirty}` in `manifest.json` from the project root's Git work tree, absent and byte-identical outside one; a dirty tree is never refused — **Accepted**, cites 034/043/051/068/119
 
 ADR-019 (the solid-builder agent system) predates the shop and lives
 with the agent tooling's own history, not in this framework log.

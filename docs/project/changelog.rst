@@ -42,6 +42,16 @@ Unreleased
   a ``Sim`` that is not clocked refuses it by name
   (:doc:`/reference/api`). Born of a film of a clocked calculator whose
   take could read the identity only from a private attribute.
+* **An export records its revision:** when the project is a Git
+  repository with a commit, ``machinome export`` writes a ``source``
+  object into ``manifest.json``, the full hash of the commit checked out
+  and ``dirty``, true when ``git status`` lists a changed tracked file or
+  an untracked file the project does not ignore. A dirty project is
+  exported all the same. Outside a repository, or without ``git``, the
+  manifest is unchanged; the record moves no document version and a
+  viewer needs nothing new (:doc:`/concepts/publishing`, ADR-158). Born of
+  filming a mechanical calculator, whose film is held to the model it
+  shows by that revision and had to write it beside the export by hand.
 
 Machinome 0.7.1
 ---------------

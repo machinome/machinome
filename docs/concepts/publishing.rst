@@ -32,7 +32,8 @@ The document
 
 ``{format: "machinome-export", version, animation: {fps, frames, loop?},
 drivers, instructions, controls?, states?, bindings?, program?, clocked?,
-root, pieces}``. Each tree node carries ``name``, ``type``, ``color``,
+root, pieces, source?}``, where ``source`` is written by ``machinome
+export`` alone (see `An export`_). Each tree node carries ``name``, ``type``, ``color``,
 ``mtime``, ``operations``, and either ``children``, a rigid node's
 ``model`` path with its ``piece`` id (plus ``markings`` when it declares
 any), or a flexible leaf's ``flexible`` shape specification. Operations
@@ -146,6 +147,24 @@ them, which is the only way to export without the viewer installed and
 the form this manual's committed exports take. ``--fps`` and ``--frames``
 govern the ``$t`` timeline of a model without a declared ``Time``;
 drivers have no frame grid. An export never freezes a pose.
+
+When the project is a Git repository with a commit, the manifest records
+the revision it was made from in its ``source`` object:
+
+.. code-block:: json
+
+    {"revision": "9c1e0f4b2a7d5e38c6b1f0a9d2e47b35c8a61f02", "dirty": false}
+
+``revision`` is the full hash of the commit checked out at the project
+root. ``dirty`` is true when ``git status`` lists anything there when the
+export starts: a changed tracked file, or an untracked file the project
+does not ignore. A dirty project is exported all the same; ``dirty`` lets
+whoever reads the export decide whether it can be traced to that commit.
+An export written inside the project is itself untracked unless the
+project ignores it, so the next export there is dirty. Outside a
+repository, or without ``git`` installed, ``source`` is absent and the
+manifest is unchanged. The record adds nothing a viewer reads, so it does
+not change the document version.
 
 The page's URL options select an initial state: ``?t=0.25&autoplay=0`` a
 paused timeline pose, ``?layout=inspector&sidebar=open`` the assembly

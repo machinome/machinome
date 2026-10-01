@@ -256,6 +256,11 @@ class LockParticipantsTest(TestCase):
     def test_export_releases_the_lock_after_building(self):
         from machinome.core.export import export_node
         node = Mock()
+        # A node has a source in a project: export asks the project root
+        # for its revision before it builds (ADR-158).
+        with open(os.path.join(self.root.name, 'pyproject.toml'), 'w') as fh:
+            fh.write('[tool.machinome]\nmodel = "model:Model"\n')
+        node.src = os.path.join(self.root.name, 'model.py')
         observed = {}
         node.build_stls.side_effect = lambda: observed.update(
             held=lock_is_held(self.build_dir))

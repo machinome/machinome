@@ -307,8 +307,9 @@ machinome export
 Builds the node's STL meshes and writes a static, self-contained
 directory that renders the model — animations and driver controls
 included — in any browser, with no server-side code. The manifest
-carries the document schema version and the machine's driver and
-instruction tables. See :doc:`/concepts/publishing` for what the output contains
+carries the document schema version, the machine's driver and
+instruction tables and, in a Git repository, the revision the project was
+exported from. See :doc:`/concepts/publishing` for what the output contains
 and how to use it.
 
 .. code-block:: bash

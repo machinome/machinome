@@ -21,9 +21,11 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import tempfile
 
 from machinome._artifact import ArtifactChanged
+from machinome.manifest import project_root
 from .serializer import (
     DOCUMENT_FORMAT, DOCUMENT_VERSION, compiled_clocked, compiled_controls,
     compiled_program, document_body,
@@ -116,8 +118,15 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
     export needs no frozen document: the widget's ?t= and ?autoplay=0
     options render any instant of an animated one.
 
+    The manifest also records the revision it was made from, as
+    `source: {revision, dirty}`, when the project root is inside a Git
+    work tree with a commit checked out; see `_source_record`. It is
+    taken here, before the build, so the export's own artifacts cannot
+    mark it dirty.
+
     Returns the manifest dict."""
     node.clear_keyframe()
+    source = _source_record(project_root(node.src))
 
     with project_build_lock():
         node.build_stls()
@@ -173,6 +182,11 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                     clocked=clocked)
                 manifest['root'] = root
                 manifest['pieces'] = inventory.pieces()
+                if source is not None:
+                    # Last, and absent outside a repository, so a
+                    # document without it is byte-identical to one
+                    # published before the record existed.
+                    manifest['source'] = source
                 _warn_unreadable(manifest['version'])
 
                 os.makedirs(output_dir, exist_ok=True)
@@ -199,6 +213,43 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
         _copy_widget(output_dir)
 
     return manifest
+
+
+def _source_record(root):
+    """The revision `root`'s work tree has checked out, and whether the
+    tree differs from it: `{'revision': <full hash>, 'dirty': <bool>}`.
+
+    `dirty` is true when `git status --porcelain` lists anything: a
+    tracked file changed, or an untracked file that is not ignored.
+    `--untracked-files=normal` is explicit so a user's
+    `status.showUntrackedFiles=no` cannot hide one. Status covers the
+    whole work tree, because the revision names the whole repository's
+    commit. Git runs with `GIT_OPTIONAL_LOCKS=0`, so `status` does not
+    refresh the index: recording the revision writes nothing in `.git`.
+
+    None, silently, whenever Git cannot answer: `root` outside a work
+    tree, a repository with no commit, or no `git` to run. An export
+    outside version control is normal, and its document must be the one
+    published before this record existed. A dirty tree is never refused.
+    """
+    environment = dict(os.environ, GIT_OPTIONAL_LOCKS='0')
+
+    def git(*arguments):
+        return subprocess.run(
+            ['git', *arguments], cwd=root, env=environment,
+            stdin=subprocess.DEVNULL, capture_output=True, text=True,
+        )
+
+    try:
+        head = git('rev-parse', '--verify', '--quiet', 'HEAD')
+        if head.returncode != 0:
+            return None
+        status = git('status', '--porcelain', '--untracked-files=normal')
+        if status.returncode != 0:
+            return None
+    except OSError:
+        return None
+    return {'revision': head.stdout.strip(), 'dirty': bool(status.stdout)}
 
 
 def _warn_unreadable(version):
