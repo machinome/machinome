@@ -491,8 +491,12 @@ request the framework returned verbatim (`origin`, `end`, `admitted`,
 `expectedDurationSeconds` SHALL be the take's length, the last step's `at`
 plus its `duration`; its `marks` SHALL name take seconds, each 0 or the end
 of a step; a shot's model time (`from`, `to`, a key's `seconds`, a mark
-with its `plus`) SHALL be take seconds within the take. A posed loop's
-document says `normalized-loop` and carries no `take` block.
+with its `plus`) SHALL be take seconds within the take. Every one of these
+sums SHALL be exact: each duration is the decimal its shortest form writes,
+and a step's `at`, the length and a mark are the number nearest the exact
+sum of the durations before it (an integer when the sum is whole), so three
+steps of 1.2 s end at 3.6. A posed loop's document says `normalized-loop`
+and carries no `take` block.
 
 Before any take of speech is read, both runtimes MUST refuse, naming what
 is at fault: a `timeMode` that is neither `normalized-loop` nor `take`; a
@@ -506,7 +510,9 @@ states; steps that do not play end to end from 0, a step with both or
 neither of `to` and `by`, a step id used twice; a length that is not the
 take's; a mark that is not 0 or the end of a step, or that has no bank; and
 a shot whose model time is outside the take, naming the chapter, the shot,
-the field and `outside the take`.
+the field and `outside the take`. A step's `at`, the length and a mark
+MUST equal the exact sum they stand for, with no tolerance: a document
+whose sums were made in floats is refused naming the field.
 
 #### Scenario: The counter's document
 - **WHEN** the fixture movie `count` evaluates
@@ -535,6 +541,12 @@ the field and `outside the take`.
   `clocked` block publishes
 - **THEN** both runtimes refuse it naming `take.identity` and
   `clocked.identity`.
+
+#### Scenario: A mark summed in floats
+- **WHEN** a take document's three steps last 1.2 s each, start at 0, 1.2
+  and 2.4, its length is 3.6, and its last mark `ten` is written
+  `3.5999999999999996`, the float sum
+- **THEN** both runtimes refuse it naming `marks.ten` and `end of a step`.
 
 ### Requirement: Both runtimes replay a take and hold its banks to the record
 
@@ -596,8 +608,10 @@ for `t` at or before 0; otherwise, for the step with `at < t ≤ at +
 duration` and `f = (t − at) / duration`, the bank before that step with its
 input at `origin + f · (end − origin)` (exactly `end` at `f = 1`) and the
 `targets` of every commit whose `fraction ≤ f` written; past the last step,
-the bank it ended with. The bank SHALL be computed from the document alone,
-the same instant twice giving the same bank.
+the bank it ended with. A step's end, `at + duration`, SHALL be read as the
+document writes it, the next step's `at` or, for the last step, the take's
+length, never added again in floats. The bank SHALL be computed from the
+document alone, the same instant twice giving the same bank.
 
 #### Scenario: Inside a step
 - **WHEN** the counter's frame is resolved at take time 4, half-way through
@@ -615,17 +629,29 @@ the same instant twice giving the same bank.
 - **THEN** no target of it is written before the step's end, and at its end
   every one is.
 
+#### Scenario: A mark the float sum would miss
+- **WHEN** a take's third step of 1.2 s starts at 2.4 and ends at the mark
+  3.6, and its fourth step has a commit at fraction 0
+- **THEN** the bank at take time 3.6 is the one the third step ended with,
+  and the fourth step's commit is not written until the instant after.
+
 ### Requirement: `check` reports the take
 
 For a take document, `check` SHALL print, after the chapters' lines, one
 line giving the take's number of steps, each mark with its take seconds,
-the take's length, and that the replay of its steps gives the recorded bank
-at every mark.
+the take's length as the document writes it, and that the replay of its
+steps gives the recorded bank at every mark.
 
 #### Scenario: The counter's take
 - **WHEN** `check` passes on the fixture movie `count`
 - **THEN** it prints `Take: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s
   long; the replay of its steps gives the recorded bank at every mark`.
+
+#### Scenario: A take of decimal durations
+- **WHEN** `check` passes on a take whose three steps last 1.2 s each, with
+  a mark after each
+- **THEN** its take line gives the marks at 1.2, 2.4 and 3.6 s and the
+  length `3.6 s long`.
 
 ### Requirement: Preview and render hold the viewer to the take
 

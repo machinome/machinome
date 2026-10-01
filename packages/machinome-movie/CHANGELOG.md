@@ -6,6 +6,20 @@ lands it.
 
 ## Unreleased
 
+- A take's time is summed exactly. Evaluation adds a `Take`'s durations as
+  the decimals written (a move's `over=`, an instruction's `duration`), in
+  exact arithmetic, and writes each step's `at`, every mark and the length
+  as the number nearest the exact sum: three moves of 1.2 s end at 3.6, not
+  at 3.5999999999999996. Both runtimes hold a take document's sums to the
+  written durations with no tolerance and refuse one summed in floats,
+  naming the field (`take.steps[i]` and `at`,
+  `model.expectedDurationSeconds`, or `marks.<name>` and `end of a step`;
+  the invalid fixture `take-mark-summed-in-floats`). The Node side reads a
+  step's end as written, the next step's `at` or the take's length, so a
+  mark is posed on its recorded bank without a tolerance, a frame is on a
+  mark only at its take time exactly, and `check`'s take line gives the
+  length as written; `bankAt` takes the document. (`exact-take-times`,
+  ADR-016)
 - The commands film a clocked machine's take. A movie document with
   `model.timeMode: "take"` loads; Node checks its `take` block against the
   export and replays its steps to the recorded banks, refusing the five

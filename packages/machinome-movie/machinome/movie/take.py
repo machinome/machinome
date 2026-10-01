@@ -18,8 +18,8 @@ from machinome.motion.couplings import PathRef
 from machinome.node.declarative import ChildDeclaration, declared_children
 
 from .anchors import Anchor, time_value
-from .names import (MovieError, declaring_class, ease, module_directory, number,
-                    slug)
+from .names import (MovieError, declaring_class, ease, exact_seconds, module_directory, number,
+                    seconds_written, slug)
 
 
 _MARK = re.compile(r'[A-Za-z_][A-Za-z0-9_]*')
@@ -375,7 +375,10 @@ class Take(_Take):
         if not isinstance(steps, (list, tuple)):
             raise MovieError(f'{where}: steps is a list of Move, Trigger and Mark, not {steps!r}')
         schedule, marks, after = [], {}, {}
-        at, pending = 0, None
+        # Take time is the exact sum of the durations as written (ADR-016):
+        # `total` is a fraction, and `at`, a mark and the length are written
+        # from it, never from a running sum of floats.
+        total, pending = exact_seconds(0), None
         for index, step in enumerate(steps):
             here = f'{where}: steps[{index}]'
             if isinstance(step, Mark):
@@ -389,7 +392,7 @@ class Take(_Take):
                     raise MovieError(f"{here}, {written}: the marks '{pending}' and '{step.name}' "
                                      f"name one instant; a mark is the instant after the step "
                                      f"before it, so put a step between them or keep one")
-                marks[step.name], after[step.name], pending = at, len(schedule) - 1, step.name
+                marks[step.name], after[step.name], pending = seconds_written(total), len(schedule) - 1, step.name
                 continue
             pending = None
             if isinstance(step, Move):
@@ -399,12 +402,12 @@ class Take(_Take):
             else:
                 raise MovieError(f'{here}, {step!r}, is not a step; a step is a Move, a Trigger '
                                  f'or a Mark')
-            planned.id, planned.at = f'step-{len(schedule) + 1}', at
+            planned.id, planned.at = f'step-{len(schedule) + 1}', seconds_written(total)
             schedule.append(planned)
-            at = at + planned.duration
+            total += exact_seconds(planned.duration)
         if not schedule:
             raise MovieError(f'{where} has no steps; a take makes at least one Move or Trigger')
-        cls.schedule, cls.length, cls.marks = tuple(schedule), at, marks
+        cls.schedule, cls.length, cls.marks = tuple(schedule), seconds_written(total), marks
         # The index of the step each mark follows, -1 for the initial bank.
         cls._after = after
 

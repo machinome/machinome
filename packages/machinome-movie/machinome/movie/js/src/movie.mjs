@@ -18,7 +18,11 @@ import {EASINGS,endSlope,ease} from './easing.mjs';
 import {TOKEN,countPhrase,countWords,countToken,excerptLine,propKind,spokenForm} from './text.mjs';
 import {effectiveStyle,COLOR} from './style.mjs';
 import {joinShows,movingViews,noViewInBoth} from './timeline.mjs';
-import {checkTakeBanks,TOLERANCE} from './take.mjs';
+import {checkTakeBanks,takeTimes} from './take.mjs';
+// Seconds within which a model time the reader adds itself, a mark plus its
+// `plus`, is still inside the take (the Python side's TOLERANCE). The take's
+// own sums are exact and held with no tolerance (ADR-016).
+const TOLERANCE=1e-9;
 
 export const MOVIE_FORMAT='machinome-movie/0.2';
 // How a document's model time runs: a posed loop, or a clocked take.
@@ -185,18 +189,19 @@ class Semantics{
       if(clocked.clock)drivers.add(clocked.clock);
       known=new Set([...drivers,...Object.keys(this.manifest.states??{})]);
     }
-    const seen=new Map();let end=0;
+    // Each step's at and the length are the exact sums of the written
+    // durations, held with no tolerance (ADR-016).
+    const seen=new Map(),{starts,length:end}=takeTimes(take.steps);
     take.steps.forEach((step,index)=>{
       const here=`take.steps[${index}] (${step.id})`;
       need(!seen.has(step.id),`${here}: the step id ${step.id} is used twice, by take.steps[${seen.get(step.id)}] and take.steps[${index}]`);
       seen.set(step.id,index);
       need((step.to!==undefined)!==(step.by!==undefined),`${here}: a step has exactly one of to and by`);
-      need(Math.abs(step.at-end)<=TOLERANCE,`${here}: at is ${step.at} s, and the steps before it end at ${end} s; steps play end to end from 0`);
+      need(step.at===starts[index],`${here}: at is ${step.at} s, and the steps before it end at ${starts[index]} s; steps play end to end from 0`);
       need(!drivers||drivers.has(step.input),`${here}: input '${step.input}' is not a driver the export declares (${list(sorted(drivers??[]))})`);
-      end=step.at+step.duration;
     });
     const declared=doc.model.expectedDurationSeconds;
-    need(Math.abs(declared-end)<=TOLERANCE,`model.expectedDurationSeconds is ${declared} s, and the take's steps end at ${end} s; a take document lasts its take`);
+    need(declared===end,`model.expectedDurationSeconds is ${declared} s, and the take's steps end at ${end} s; a take document lasts its take`);
     if(known){
       const ids=new Set(Object.keys(take.initial));
       for(const id of sorted([...known].filter(id=>!ids.has(id))))

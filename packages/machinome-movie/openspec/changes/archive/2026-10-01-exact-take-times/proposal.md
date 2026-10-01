@@ -72,7 +72,7 @@ None.
 
 ## Impact
 
-Code: `python/machinome_movie/names.py` (the exact sum), `take.py`
+Code: `python/machinome_movie/names.py` (`exact_seconds`, `seconds_written`), `take.py`
 (`Take._time`), `document.py` (`check_take`); `src/take.mjs` (the exact sum,
 the written ends, `bankAt`, `markSteps`, `markAt`, `takeLine`),
 `src/movie.mjs` (`checkTake`), `src/timeline.mjs` (`bankAt` takes the

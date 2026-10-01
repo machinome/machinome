@@ -14,7 +14,8 @@ from importlib import resources
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import best_match
 
-from .names import EASES, MODULE_SUFFIXES, MovieError, no_view_in_both, prop_kind, shared_views
+from .names import (EASES, MODULE_SUFFIXES, MovieError, exact_seconds, no_view_in_both,
+                    prop_kind, seconds_written, shared_views)
 from .text import TOKEN, count_phrase, count_token, count_words, excerpt_line
 
 FORMAT = 'machinome-movie/0.2'
@@ -54,8 +55,9 @@ ACTIONS = {
 UNSPANNED = ('move', 'type', 'emphasize')
 #: How a document's model time runs: a posed loop, or a clocked take.
 TIME_MODES = ('normalized-loop', 'take')
-#: Seconds within which a take's sums agree, so a hand-written document is
-#: not refused for a float's last digit.
+#: Seconds within which a model time the reader adds itself, a mark plus its
+#: `plus`, is still inside the take. The take's own sums (each step's at, the
+#: length, the marks) are exact and held with no tolerance (ADR-016).
 TOLERANCE = 1e-9
 DRAWN = ('ring', 'arrow')
 TRANSITIONS = ('dissolve', 'fade', 'wipe', 'slide', 'reframe')
@@ -234,7 +236,10 @@ class _Semantics:
             if clocked.get('clock'):
                 drivers.add(clocked['clock'])
             known = drivers | set(self.manifest.get('states') or {})
-        seen, ends, end = {}, [], 0
+        # Take time is the exact sum of the written durations (ADR-016): each
+        # step's at, the length and every mark are held to it with no
+        # tolerance.
+        seen, ends, total = {}, [], exact_seconds(0)
         for index, step in enumerate(take['steps']):
             here = f"take.steps[{index}] ({step['id']})"
             if step['id'] in seen:
@@ -243,16 +248,17 @@ class _Semantics:
             seen[step['id']] = index
             if ('to' in step) == ('by' in step):
                 raise MovieError(f'{here}: a step has exactly one of to and by')
-            if abs(step['at'] - end) > TOLERANCE:
+            if step['at'] != seconds_written(total):
                 raise MovieError(f"{here}: at is {step['at']} s, and the steps before it end at "
-                                 f"{end} s; steps play end to end from 0")
+                                 f"{seconds_written(total)} s; steps play end to end from 0")
             if drivers is not None and step['input'] not in drivers:
                 raise MovieError(f"{here}: input '{step['input']}' is not a driver the export "
                                  f"declares ({', '.join(sorted(drivers)) or 'none'})")
-            end = step['at'] + step['duration']
-            ends.append(end)
+            total += exact_seconds(step['duration'])
+            ends.append(seconds_written(total))
+        end = seconds_written(total)
         declared = document['model']['expectedDurationSeconds']
-        if abs(declared - end) > TOLERANCE:
+        if declared != end:
             raise MovieError(f"model.expectedDurationSeconds is {declared} s, and the take's steps "
                              f"end at {end} s; a take document lasts its take")
         initial = take['initial']
@@ -266,10 +272,10 @@ class _Semantics:
         # The step each mark follows: -1 for the initial bank, at 0.
         follows = {}
         for name, seconds in document.get('marks', {}).items():
-            if abs(seconds) <= TOLERANCE:
+            if seconds == 0:
                 follows[name] = -1
                 continue
-            index = next((i for i, at in enumerate(ends) if abs(at - seconds) <= TOLERANCE), None)
+            index = next((i for i, at in enumerate(ends) if at == seconds), None)
             if index is None:
                 raise MovieError(f'marks.{name}: {seconds} s is neither 0 nor the end of a step; a '
                                  f'mark of a take is the instant after the step before it')

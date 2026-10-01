@@ -146,6 +146,8 @@ formatting. Both runtimes name:
 - for a take document, its fields by their path: `model.timeMode`,
   `take.steps[0]` with the step's id (`step-1`) and its field (`input`),
   `take.banks.<mark>` with the mark and the first id that differs from the
-  replay, `take.identity` beside the export's `clocked.identity`;
+  replay, `take.identity` beside the export's `clocked.identity`, and
+  `marks.<mark>` with `end of a step` for a mark that is not exactly 0 or
+  a step's end (a take's sums are exact, so a mark summed in floats is one);
 - for a schema refusal, the field's name (an unknown `narration` on a shot is
   refused naming `narration`).

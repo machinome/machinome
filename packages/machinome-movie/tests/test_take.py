@@ -76,6 +76,29 @@ def test_the_counters_take():
     assert Turns.schedule[1].to == 3240 and Turns.schedule[1].by is None
 
 
+def decimal_steps():
+    """Three moves of 1.2 s with a mark after each: summed as floats, the
+    third mark is 3.5999999999999996 (finding 7 of the Curta film)."""
+    return take(Move(Counter.crank, by=360, over=1.2), Mark('first'),
+                Move(Counter.crank, by=360, over=1.2), Mark('second'),
+                Move(Counter.crank, by=360, over=1.2), Mark('third'), front=camera())
+
+
+def test_take_time_is_the_exact_sum_of_the_written_durations():
+    trial = decimal_steps()
+    assert [repr(p.at) for p in trial.schedule] == ['0', '1.2', '2.4']
+    assert {name: repr(at) for name, at in trial.marks.items()} == {
+        'first': '1.2', 'second': '2.4', 'third': '3.6'}
+    assert repr(trial.length) == '3.6'
+
+
+def test_an_instructions_duration_is_summed_exactly_with_the_moves():
+    trial = take(Move(Counter.crank, by=360, over=0.1), Move(Counter.crank, by=360, over=0.2),
+                 Mark('moved'), Trigger('Turn once'), Mark('turned'), front=camera())
+    assert {name: repr(at) for name, at in trial.marks.items()} == {'moved': '0.3',
+                                                                      'turned': '2.3'}
+
+
 def test_an_input_is_the_models_driver_or_the_frameworks_id():
     by_name = take(Move('crank', by=360, over=1))
     assert by_name.schedule[0].input == 'crank' and by_name.schedule[0].by == 360
@@ -356,6 +379,17 @@ def test_a_step_stopped_part_way_is_recorded_with_its_stop():
                               'value': 36, 'input': 36, 'fraction': pytest.approx(14 / 30)}]
 
 
+def test_the_document_carries_the_exact_sums():
+    document = evaluate(movie_of(decimal_steps()), name='trial')
+    written = json.loads(dumps(document))
+    assert [step['at'] for step in written['take']['steps']] == [0, 1.2, 2.4]
+    assert [step['duration'] for step in written['take']['steps']] == [1.2, 1.2, 1.2]
+    assert written['marks'] == {'first': 1.2, 'second': 2.4, 'third': 3.6}
+    assert written['model']['expectedDurationSeconds'] == 3.6
+    assert '3.5999999999999996' not in dumps(document)
+    check_document(document, manifest=MANIFEST)
+
+
 def test_a_take_on_an_export_with_no_clocked_machine():
     trial = take(Trigger('Turn once'), export='fixtures/project/export/seesaw', front=camera())
     with refused('Take Trial', 'clocked', 'export'):
@@ -437,6 +471,12 @@ def test_the_evaluated_take_document_is_accepted(count):
     (lambda d: d['model'].update(expectedDurationSeconds=9),
      ['model.expectedDurationSeconds', 'take']),
     (lambda d: d['marks'].update(nine=5), ['marks.nine', 'step']),
+    # The sums are exact: a hair off is off (finding 7 of the Curta film).
+    (lambda d: d['take']['steps'][1].update(at=2.0000000000000004),
+     ['take.steps[1]', 'step-2', 'at']),
+    (lambda d: d['model'].update(expectedDurationSeconds=7.999999999999999),
+     ['model.expectedDurationSeconds', 'take']),
+    (lambda d: d['marks'].update(nine=6.000000000000001), ['marks.nine', 'end of a step']),
     (lambda d: d['take']['banks'].pop('nine'), ['take.banks', 'nine', 'missing']),
     (lambda d: d['take']['banks'].update(eleven={}), ['take.banks', 'eleven', 'marks']),
     (lambda d: d['take']['banks']['ten'].update(units=1), ['take.banks.ten', 'ten', 'units']),

@@ -129,7 +129,7 @@ function viewState(film,chapter,shot,key,element,local,past){
   // A view on a clocked take carries the machine's whole bank at its take
   // time (src/take.mjs, ADR-012); a view on a posed loop, the loop's time.
   const seconds=modelSecondsAt(shot,local);
-  const pose=film.model.timeMode==='take'?{bank:bankAt(film.take,seconds)}:{time:seconds/film.model.expectedDurationSeconds};
+  const pose=film.model.timeMode==='take'?{bank:bankAt(film,seconds)}:{time:seconds/film.model.expectedDurationSeconds};
   return {kind:'view',...pose,
     view:camera.view,up:camera.up,fov:camera.fov,
     hidden:(element.hide??[]).flatMap(name=>film.layers[name]),

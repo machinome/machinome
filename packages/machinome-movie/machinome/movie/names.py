@@ -5,6 +5,7 @@ import math
 import os
 import re
 import sys
+from fractions import Fraction
 
 
 class MovieError(Exception):
@@ -101,6 +102,24 @@ def number(value, where, *, positive=False):
         kind = 'a positive number' if positive else 'a number of seconds, zero or more'
         raise MovieError(f"{where}: {value!r} is not {kind}")
     return value
+
+
+def exact_seconds(seconds):
+    """A number of seconds as the decimal its author wrote, exactly: read
+    through its shortest form, so `1.2` is 6/5 and not the binary double
+    nearest it (ADR-016). Sums of these are exact; `seconds_written` gives
+    them back."""
+    if isinstance(seconds, float):
+        return Fraction(repr(float(seconds)))
+    return Fraction(int(seconds))
+
+
+def seconds_written(total):
+    """An exact sum of seconds as the document writes it: the integer when it
+    is whole, otherwise the double nearest it, whose shortest form is the
+    sum's decimal (three steps of 1.2 s end at 3.6, never at
+    3.5999999999999996)."""
+    return int(total) if total.denominator == 1 else float(total)
 
 
 def pair(value, where):

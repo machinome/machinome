@@ -41,7 +41,7 @@ the sum is whole, otherwise `float(sum)`, which Python rounds correctly, so
 the double written is the one whose shortest form is the sum's decimal
 whenever the sum has at most fifteen significant digits (every take a
 person writes). Two helpers in `names.py`, beside the other number rules:
-`exact(seconds)` and `written(total)`.
+`exact_seconds(seconds)` and `seconds_written(total)`.
 
 Why `Fraction` rather than `decimal.Decimal`: both are exact for the sum of
 a few decimals, but `Decimal` arithmetic runs in a context whose precision
@@ -87,7 +87,8 @@ shortest decimal; the formats differ only in where they switch to an
 exponent, which the parser accepts either way); the digits become a
 `BigInt` scaled by a power of ten, the sums are integer sums, and
 `Number('<digits>e<exponent>')` rounds the exact sum to the nearest double,
-as `float(Fraction)` does. The two runtimes therefore produce the same
+as `float(Fraction)` does (`takeTimes(steps)` in `src/take.mjs`). The two
+runtimes therefore produce the same
 double for the same written durations, and compare with `===` and `==`.
 
 The 1e-9 tolerance leaves `src/take.mjs`. It stays where a reader adds a
@@ -99,7 +100,8 @@ Python declaration writes and this change does not touch.
 
 The end of step `i` is the next step's `at`, and the end of the last step
 the take's length, `model.expectedDurationSeconds`, as the document writes
-them (D2 has held them to the exact sums). `src/take.mjs` reads them:
+them (D2 has held them to the exact sums). `src/take.mjs` reads them
+(`stepEnds(doc)`):
 
 - `bankAt(doc, t)` takes the document instead of its `take` block, since
   the last step's end is the take's length. The owning step is the first

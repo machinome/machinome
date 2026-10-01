@@ -199,7 +199,9 @@ is the Python side of the movie document:
   the framework's `Sim` over the declared model once, makes the steps with
   its own requests and writes what they returned, verbatim, with the bank
   before the first step and at every mark and the identity the export
-  publishes. `document.py` holds a take document to its export (identity,
+  publishes; the steps' `at`, the marks and the length are the exact sums
+  of the declared durations, which both runtimes compare without a
+  tolerance and Node reads rather than adds (ADR-016). `document.py` holds a take document to its export (identity,
   inputs, the bank's ids) and to the replay of its steps, the rule both
   runtimes share; `src/take.mjs` is the Node side of it, and the pose rule
   the frame reads (ADR-012).

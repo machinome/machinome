@@ -103,7 +103,9 @@ class Turns(Take):
   `Counter.instructions["Turn once"]`.
 - `Mark(name)` names the instant after the step before it; a mark before
   every step is the instant 0. Take time is the sum of the durations:
-  `Turns` lasts 8 s, with `one` at 2, `nine` at 6 and `ten` at 8.
+  `Turns` lasts 8 s, with `one` at 2, `nine` at 6 and `ten` at 8. The sum
+  is exact, of the decimals as written: three moves `over=1.2` end at 3.6,
+  so a step may be drawn over any number of seconds.
 
 A shot runs take time as it runs a loop's model time, between marks or take
 seconds, and a view looks at the take as at a loop:

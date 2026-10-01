@@ -142,6 +142,11 @@ is held to the same answer.
 - The take's length is the last step's `at` plus its `duration`; a shot's
   `model` time (`from`, `to`, `keys`) is in take seconds or marks, within
   the take, checked as a loop's is against its period.
+- These sums are exact: a duration is the decimal its shortest form writes,
+  and each step's `at`, each mark and the length are the number nearest the
+  exact decimal sum of the durations before it (three steps of 1.2 s end at
+  3.6, never 3.5999999999999996), which both runtimes compare with what is
+  written without a tolerance.
 
 **The pose at a take time.** For a take time `t` inside a step, with
 `f = (t − at) / duration`: the bank before the step, with the input at
