@@ -102,6 +102,12 @@ each reframe moves its views between, which `check` and every renderer
 session (on its own page, before its first frame) attach to the film for
 the timeline
 ([ADR-010](adrs/STAGE/ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md));
+`src/export.mjs` is what the renderer serves from the model's export: the
+files the viewer reads, each part's `model` and each marking's under the
+manifest's `root` as the framework's export document defines them, each
+refused by its field in the manifest when the export does not hold it, and
+nothing else of the manifest (the piece inventory's sources are
+provenance);
 `src/easing.mjs` is the five-curve vocabulary;
 `src/review-samples.mjs` and `src/review-pack.mjs` choose, from the
 element states, and decode the frames a person reviews;

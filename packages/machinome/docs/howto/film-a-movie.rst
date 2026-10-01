@@ -215,9 +215,14 @@ a rehearsal, and the records say it was dirty.
 Without `--viewer`, the bundle beside the model manifest is used. Older
 exports must be regenerated with the new viewer or use the explicit bundle.
 Paths are arguments, not assumptions about a neighboring workspace. The
-loopback asset server exposes the selected model assets, film page and, for
-format 0.4 pictures, the referenced project media and extracted clip frames,
-and the movie's stage bundle.
+loopback asset server exposes the export's manifest and the files the viewer
+reads from it (each part's `model` and each marking's under the manifest's
+`root`, nothing else: the piece inventory's source files are provenance and
+are neither served nor opened), the film page and, for format 0.4 pictures,
+the referenced project media and extracted clip frames, and the movie's
+stage bundle. A file the viewer reads that the export does not hold is
+refused before a browser opens, naming its field in the manifest; export
+the model again.
 
 ## Output
 

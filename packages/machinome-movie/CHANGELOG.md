@@ -37,6 +37,19 @@ lands it.
   line carries the stylesheet's hash beside the script's, so a change to
   `stage.css` alone shows. `WTs/` is ignored, as `AGENTS.md` said it was.
   (`honest-provenance`, ADR-015)
+- `preview` and `render` serve from a model's export exactly the files the
+  viewer reads, as the framework's export document defines them: each
+  part's `model` and each marking's under the manifest's `root`. They no
+  longer serve every manifest string that ends in `.stl` or an image
+  extension, so the piece inventory's `sources`, provenance paths relative
+  to the project, are neither served nor opened, and an export that names
+  source files it does not hold is filmed without a workaround. A file the
+  viewer reads that the export does not hold, or that lies outside it, is
+  refused before a browser opens, naming its field in the manifest
+  (`root.children[2].children[0].model`), its node and its path, and saying
+  to export the model again, where a bare `ENOENT` stopped the command
+  before. Every film's shot cache is recaptured once, since the renderer's
+  module is part of its key. (`serve-what-the-viewer-reads`)
 - The commands film a clocked machine's take. A movie document with
   `model.timeMode: "take"` loads; Node checks its `take` block against the
   export and replays its steps to the recorded banks, refusing the five

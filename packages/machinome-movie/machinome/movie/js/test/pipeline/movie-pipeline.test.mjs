@@ -357,6 +357,32 @@ test('check of a movie that shows no picture launches no Chromium',async t=>{
   assert.doesNotMatch(checked.out,/^Layout /m);
 });
 
+// Wart 1 of the Curta film Addition (serve-what-the-viewer-reads): the
+// pieces' sources are provenance relative to the project, not files of the
+// export; the stage serves the files the viewer reads and refuses a lost one
+// by its field, before a browser opens.
+test('preview and render serve the files the viewer reads: a provenance source is ignored, a lost model refused by its field',async t=>{
+  const calls=noNetwork(t);
+  const {dir,file,viewer,build}=await fixtureMovie(t,'minimal');
+  const exported=join(dir,'export','seesaw'),manifest=join(exported,'manifest.json');
+  await editDocument(manifest,doc=>{doc.pieces[0].sources=['STLs/absent.stl'];});
+  const previewed=cli('preview',file,'--viewer',viewer);
+  assert.equal(previewed.code,0,previewed.out);
+  const rendered=cli('render',file,'--viewer',viewer);
+  assert.equal(rendered.code,0,rendered.out);
+  const made=await readJson(join(build,'rehearsal-manifest.json'));
+  assert.ok(Object.keys(made.hashes).every(url=>!url.includes('STLs')),'the provenance source is not served');
+  await editDocument(manifest,doc=>{doc.root.children[2].children[0].model='models/models/lost.stl';});
+  const refusal=`Export file missing: root.children[2].children[0].model (Plank) names models/models/lost.stl, which the export ${await realpath(exported)} does not hold; export the model again so the export holds every file its manifest names`;
+  for(const command of ['preview','render']){
+    const refused=cliLaunches(command,file,'--viewer',viewer);
+    assert.equal(refused.code,1,refused.out);
+    assert.ok(refused.out.split('\n').includes(refusal),refused.out);
+    assert.equal(refused.launches,0,`${command} refuses before a browser opens`);
+  }
+  assert.deepEqual(calls,[]);
+});
+
 test('a movie document is refused before its takes, then speaks from cached takes and resolves to its pin',async t=>{
   const calls=noNetwork(t);
   const {file,viewer,build}=await fixtureMovie(t,'tour',{takes:false});

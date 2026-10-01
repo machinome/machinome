@@ -11,7 +11,7 @@ import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
 import {frameAt,srt,filmShots,shotActions,joinShows,reframeAt,modelSecondsAt} from './timeline.mjs';
 import {replayTake,markAt} from './take.mjs';
-import {contained,viewerApiRefusal,filmSubject,PAPER_STAGE} from './episode.mjs';
+import {viewerApiRefusal,filmSubject,PAPER_STAGE} from './episode.mjs';
 import {fileHash,hash,json,command,sourceBase} from './util.mjs';
 import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
 import {resolveWordTiming,validateWordFramesAtFps} from './words.mjs';
@@ -25,6 +25,7 @@ import {effectiveStyle} from './style.mjs';
 import {buildFilmStage} from './stage-build.mjs';
 import {measureSetsOn,reframeBoxes,reframeSets} from './layout.mjs';
 import {treeState,treeLine,treeReleaseIssue} from './provenance.mjs';
+import {exportFiles} from './export.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 // The two trees a film's records name a head of, the project's and
@@ -106,17 +107,9 @@ function knownSlotBox(set,slot){
 }
 
 async function stage(film,viewer,bundle) {
-  const manifest=JSON.parse(await readFile(film.paths.manifest,'utf8'));
-  const assets=new Set();
-  function walk(value){if(typeof value==='string'&&/\.(stl|png|jpg|jpeg|webp|svg)$/i.test(value))assets.add(value);else if(value&&typeof value==='object')Object.values(value).forEach(walk);}
-  walk(manifest);
   const paths=new Map([['/viewer.js',resolve(viewer)],['/model/manifest.json',film.paths.manifest],
-    ['/stage.js',bundle.js],['/stage.css',bundle.css],['/',resolve(here,'film.html')]]);
-  for(const asset of assets){
-    const file=resolve(dirname(film.paths.manifest),asset);
-    if(!contained(dirname(film.paths.manifest),file))throw new Error(`Model asset escapes export: ${asset}`);
-    paths.set('/model/'+asset,file);
-  }
+    ['/stage.js',bundle.js],['/stage.css',bundle.css],['/',resolve(here,'film.html')],
+    ...await exportFiles(film.paths.manifest)]);
   for(const [name,media] of Object.entries(film.pictureMedia?.stills??{}))
     paths.set(`/pictures/stills/${name}`,media.file);
   for(const [name,media] of Object.entries(film.pictureMedia?.clips??{}))
