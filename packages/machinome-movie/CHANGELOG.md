@@ -6,6 +6,16 @@ lands it.
 
 ## Unreleased
 
+- The chrome stays on screen while a picture or a mark fades. A frame with a
+  fading picture or mark is composed from picture-only captures, and the
+  stage left the page in its picture-only state after the blend, so the set's
+  masthead vanished for every frame of every such fade (47 of the fixture
+  tour's 567 frames; the still's fade-in of *Cut and Advance*). The blend
+  request now says whether the frame is picture-only, like a transition's,
+  and a browser test proves a blended frame differs from its picture-only
+  capture in the chrome and nowhere else. Every film's stage bundle changes,
+  so every film recaptures once. (`chrome-through-blends`, found by the
+  `flaky-pixel-proofs` investigation)
 - `check` measures a movie's layout before speech. When a movie document
   shows a picture, `check`, after bundling the stage and before reading any
   take, poses each set its shots use once, empty, in one headless Chromium

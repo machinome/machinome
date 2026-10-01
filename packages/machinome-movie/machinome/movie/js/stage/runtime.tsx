@@ -41,7 +41,13 @@ export interface Film {
   views():{key:string|null;instance:number;visible:boolean}[];
   setFrame(frame:StageFrame):Promise<Observed>;
   compose(request:ComposeRequest):Promise<{chrome:Rect[]}>;
-  composeMarkBlend(pictures:{src:string;weight:number}[]):Promise<{chrome:Rect[]}>;
+  composeMarkBlend(request:MarkBlendRequest):Promise<{chrome:Rect[]}>;
+}
+// The picture-only captures a fading frame is blended from, each with its
+// weight, and whether the blended frame itself is a picture-only capture.
+export interface MarkBlendRequest {
+  pictures:{src:string;weight:number}[];
+  pictureOnly?:boolean;
 }
 export interface ComposeRequest {
   images:{src:string;x:number;columns?:[number,number];opacity?:number}[];
@@ -209,8 +215,13 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
   // HTML glyphs from subpixel to grayscale antialiasing under CSS opacity;
   // blending captures of the plain drawing keeps its pixels and the authored
   // opacity.
-  async function composeMarkBlend(pictures:{src:string;weight:number}[]){
+  async function composeMarkBlend(request:MarkBlendRequest){
+    const {pictures}=request;
     clearComposition();document.body.classList.add('in-mark-blend');
+    // The captures were posed picture-only; the blended frame is picture-only
+    // only when the request says so, as a transition's is, so the live chrome
+    // is drawn over a fading picture or mark as over any other frame.
+    document.body.classList.toggle('picture-only',Boolean(request.pictureOnly));
     hideViews();
     const W=window.innerWidth,H=window.innerHeight,canvas=document.createElement('canvas');
     canvas.width=W;canvas.height=H;canvas.style.width=`${W}px`;canvas.style.height=`${H}px`;
