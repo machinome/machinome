@@ -2,7 +2,7 @@
 
 Dum-E's native FreeCAD assembly already owns its grounded occurrences, fixed and revolute connections, connector frames and mechanical limits. The pilot needs to simulate it without maintaining a second mechanical definition, and a limits-only native edit must change running admission even when geometry is unchanged.
 
-The originating evidence, source hashes and 2026-10-01 interface/package ratification are in `workflow/ongoing/dume-native-freecad.md`. MakersAsylumIndia/Dum-E is pinned at `1b317d2dc80165d0112c9444739476593fba3e48`. Native loading and provisional limits tests passed, but adversarial review finding 14 exposed an inconsistent native Fixed `Joint002` that the adapter wrongly admitted. The pilot has approved stricter constraint admission and correction of a project-owned native copy; the untouched original becomes expected-refusal evidence and the transparently repaired native copy becomes the primary positive motion proof.
+The originating evidence, source hashes and 2026-10-01 interface/package ratification are in `workflow/archive/native-freecad-assembly/dume-native-freecad.md`. MakersAsylumIndia/Dum-E is pinned at `1b317d2dc80165d0112c9444739476593fba3e48`. Native loading and provisional limits tests passed, but adversarial review finding 14 exposed an inconsistent native Fixed `Joint002` that the adapter wrongly admitted. The pilot has approved stricter constraint admission and correction of a project-owned native copy; the untouched original becomes expected-refusal evidence and the transparently repaired native copy becomes the primary positive motion proof.
 
 ## What Changes
 

@@ -1,10 +1,10 @@
 # Dum-E: reuse native FreeCAD joints in simulation
 
-Status: interface ratified by the pilot on 2026-10-01; implementation and
-empirical validation authorized, not yet completed. Static inspection establishes
-the native data below; it does not establish runtime compatibility or motion
-parity. The OpenSpec change will own the implementation contract. This workflow
-record preserves the originating evidence, ratification, and cycle discipline.
+Status: interface ratified and implementation empirically accepted on 2026-10-01
+after the approved project-owned native correction. Unreleased and not integrated
+into adapter main. Original planning, static findings and failed checkpoints
+remain below as history; the final section records the completed outcome.
+The package-owned OpenSpec record owns the implementation contract.
 
 ## Package boundary ratified on 2026-10-01
 
@@ -282,3 +282,84 @@ mechanics.
 Open questions are the FreeCAD runtime and packaging boundary, angle/placement
 parity after recomputation, declaration binding timing, and fixture licensing.
 None requires the pilot to re-author the native joints as the proposed solution.
+
+## Historical empirical checkpoint before correction — 1 October 2026
+
+The optional LGPL adapter and public interface are implemented in the
+`native-freecad-assembly` worktree. Proposal and implementation were assigned
+to separate Sol 6.1 agents; the primary performed adversarial review, followed
+by one independent Sol 6.1 author of the Dum-E simulation. The Apache core is
+unchanged. The adapter suite passes 52 tests; relevant core regressions pass
+578 tests with 2 skips and 730 subtests. The package builds and smokes outside
+the repository against prepared local Machinome 0.7.1.
+
+The originating limits-only experiment passes: one unchanged wrapper reaches
+150 degrees with native maximum 180, then blocks at 120 after changing only
+the native maximum. All nine exact solids and saved placements remain
+equivalent. Four physical joint coordinates are imported, with no project
+replacement axes, frames or bounds. The geometry-only STEP control requires
+its separately copied mechanics and a manual maximum edit.
+
+Acceptance is nevertheless **incomplete**. Both headless and GUI-initialized
+FreeCAD 1.1.4 motion runs reach the turntable target but do not preserve the
+native Fixed `Joint002` connection between `Turn_table` and `Shoulder`: a
+move from the saved 39.7391947543-degree turntable coordinate to zero changes
+their relative orientation by about 39.7391947543 degrees. Native status 0
+and six frames are therefore not sufficient proof. Post-frame recomputation
+changes the target as well and is not an accepted correction. The native
+connector frames of that fixed joint have an approximately 90-degree relative
+orientation at the source pose; its cause/convention requires reconciliation,
+not a silent project or importer workaround.
+
+The review subsequently confirmed an adapter admission defect: the pinned
+native Fixed constraint does not accept this arbitrary connector quarter-turn,
+but checking solver status and saved-pose stability alone lets the source
+through. The passing limit observations are therefore provisional, not proof
+of a valid native machine. Add fail-closed residual validation as part of the
+reconciled design; do not work around the bad source by silently freezing its
+saved pose. See review finding 14 for the native source and measured residual.
+
+The independent project keeps its numerical records and reproductions under
+`simulation/`; upstream CAD and the pinned submodule remain unchanged.
+[The primary review](native-freecad-adversarial-review.md) separates passing
+gates from this unresolved full-motion gate. No baseline sync, archival,
+completed implementation commit or accepted-architecture promotion is made.
+Implementation remains uncommitted after each repository's planning commit.
+
+The next pilot decision is whether to authorize diagnosis and, if required,
+repair of a clearly identified **project-owned native copy** while retaining
+the upstream source and failed baseline, or retain the current acceptance scope
+and leave the cycle open for a valid untouched-source native reference. A repair
+would change the experiment's source contract and must be ratified explicitly.
+
+## Approved correction and completed empirical cycle — 1 October 2026
+
+The pilot approved that project-owned correction and required an issue register
+inside Dum-E. Both existing OpenSpec plans were revised and their planning-only
+commits amended before implementation resumed. The adapter now checks native
+Fixed/Revolute connector constraints after authoritative recomputation and
+again after solve, with valid opposite-axis branches retained. The untouched
+upstream is refused for `Joint002`; no runtime or upstream file was changed.
+
+The project's native preparation tool derives only `Joint002.Offset2` from the
+measured connector frames, preserving every saved pose, coordinate and solid.
+Its thin production wrapper still declares only the native source, selectors
+and operating intent. One independent Sol 6.1 author proved all nine occurrences
+at eight moving poses, four physical coordinates, fixed/ground invariants and
+exact geometry. Maximum native/adapter pose errors are 5.1539e-13 mm and
+2.41484e-6 degrees. The unchanged wrapper completes at 150 under native maximum
+180 and blocks at 120 after changing only that maximum. The actual STEP control
+retains its stale 180 declaration until manually edited to 120.
+
+Primary review and independent reruns confirm 82 adapter tests, seven project
+tests and the full empirical CLI; frozen core regressions pass 578 tests with
+two skips and 730 subtests. Exact commands, ordinary build/export, and visually
+inspected rest/posed/axis snapshots pass. See the adjacent
+[primary review](native-freecad-adversarial-review.md) and
+[implementation evidence](implementation-evidence.md) for details. Dum-E owns
+`docs/issues.md` and `simulation/evidence/`, preserving failed and repaired
+generations separately. Studio/`vet` adoption, Wrist mesh watertightness and
+licence provenance remain explicit limitations; none licenses a safety claim.
+
+This closes the ratified implementation experiment, not a FreeCAD fork,
+publication or Git integration. No wider FreeCAD feature campaign is authorized.
