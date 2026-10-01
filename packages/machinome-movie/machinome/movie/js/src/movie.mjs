@@ -203,12 +203,15 @@ class Semantics{
     });
     const declared=doc.model.expectedDurationSeconds;
     need(declared===end,`model.expectedDurationSeconds is ${declared} s, and the take's steps end at ${end} s; a take document lasts its take`);
+    // The identity is checked above, so a bank that is not the machine's
+    // drivers and states is a damaged record, not another machine's
+    // (ADR-011, amended).
     if(known){
       const ids=new Set(Object.keys(take.initial));
       for(const id of sorted([...known].filter(id=>!ids.has(id))))
-        throw new Error(`take.initial lacks '${id}', a driver or state the export declares; the take was recorded against another machine`);
+        throw new Error(`take.initial lacks '${id}', a driver or state of the machine the export publishes; a take's bank holds every driver and state of its machine and nothing else`);
       for(const id of sorted([...ids].filter(id=>!known.has(id))))
-        throw new Error(`take.initial holds '${id}', which is not a driver or state of the export; the take was recorded against another machine`);
+        throw new Error(`take.initial holds '${id}', which is not a driver or state of the machine the export publishes; a take's bank holds every driver and state of its machine and nothing else`);
     }
     checkTakeBanks(doc);
     this.length=end;

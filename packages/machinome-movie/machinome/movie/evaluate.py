@@ -4,9 +4,9 @@ The only files opened are the export's `manifest.json`, whose `source`
 record gives the model's revision, and the source files of the excerpts an
 emphasis lights; the stage modules are checked to exist, not read. A movie that
 films a clocked `Take` also records the take: the framework's simulation of
-the declared model, constructed once, makes the steps, and what it returned
-is written verbatim; the simulation reads the model's own project files and
-nothing else. Every path in the document is relative to `root`, the movie's
+the declared model, constructed once and refused unless its identity is the
+export's, makes the steps, and what it returned is written verbatim; the
+simulation reads the model's own project files and nothing else. Every path in the document is relative to `root`, the movie's
 directory as seen from where the document is written.
 """
 
@@ -305,8 +305,8 @@ def _one_loop(where, chapters):
 
 def _record(take, manifest, export):
     """The `take` block of a clocked take: the framework's simulation of the
-    declared model, constructed once, asked for each step in order, and
-    what it returned, verbatim."""
+    declared model, constructed once, its identity held to the export's,
+    asked for each step in order, and what it returned, verbatim."""
     where = f'Take {take.__name__}'
     clocked = manifest.get('clocked')
     if not isinstance(clocked, dict) or not isinstance(clocked.get('identity'), str):
@@ -325,6 +325,18 @@ def _record(take, manifest, export):
     if not sim.clocked:
         raise MovieError(f'{where}: {model} is not a clocked machine: its tree declares no State, '
                          f'so it has no request to record')
+    # The machine that makes the record is the one the export carries, or
+    # nothing is recorded (ADR-011, amended): the identity is the
+    # simulation's, compared before the first step.
+    identity = sim.identity
+    if identity != clocked['identity']:
+        raise MovieError(f'{where}: the model {take.model.__module__}:{take.model.__qualname__} is '
+                         f'not the machine the export {export} publishes: the framework\'s '
+                         f'simulation of the model has the identity {identity}, and the export\'s '
+                         f'clocked.identity is {clocked["identity"]}; the model changed since it was '
+                         f'exported, or the take declares another model than the export was made '
+                         f'from: export the model again, or declare the model the export was made '
+                         f'from')
     initial = _bank(sim)
     banks = {name: initial for name, index in take._after.items() if index < 0}
     steps = []
@@ -363,7 +375,7 @@ def _record(take, manifest, export):
         if after:
             bank = _bank(sim)
             banks.update({name: bank for name in after})
-    return {'kind': 'clocked', 'identity': clocked['identity'], 'initial': initial,
+    return {'kind': 'clocked', 'identity': identity, 'initial': initial,
             'steps': steps, 'banks': {name: banks[name] for name in take.marks}}
 
 

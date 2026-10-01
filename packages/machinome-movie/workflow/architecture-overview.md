@@ -234,15 +234,16 @@ is the Python side of the movie document:
 - A clocked take is recorded, not computed (ADR-011): evaluation constructs
   the framework's `Sim` over the declared model once, makes the steps with
   its own requests and writes what they returned, verbatim, with the bank
-  before the first step and at every mark and the identity the export
-  publishes; the steps' `at`, the marks and the length are the exact sums
+  before the first step and at every mark and the machine's identity as
+  the `Sim` reports it, refused before the first step when it is not the
+  identity the export publishes; the steps' `at`, the marks and the length are the exact sums
   of the declared durations, which both runtimes compare without a
   tolerance and Node reads rather than adds (ADR-016). Resolution, in
   `src/movie.mjs` and outside the modules the shot cache hashes, follows a
   shot a join shows past its end through the join's frames and records on
   its model, for `check` to print, a mark its take time runs past and the
   step it runs into: a report, never a refusal (ADR-014). `document.py` holds a take document to its export (identity,
-  inputs, the bank's ids) and to the replay of its steps, the rule both
+  inputs, an initial bank of every driver and state) and to the replay of its steps, the rule both
   runtimes share; `src/take.mjs` is the Node side of it, and the pose rule
   the frame reads (ADR-012).
 - The schema is one file, `schema/machinome-movie-0.2.json`, shipped in the

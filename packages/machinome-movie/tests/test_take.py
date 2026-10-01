@@ -14,8 +14,11 @@ import copy
 import io
 import json
 import random
+import re
 import shutil
 import socket
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -426,15 +429,52 @@ def test_a_loop_on_a_clocked_export_is_refused():
         evaluate(Trial, name='trial')
 
 
-def test_an_export_older_than_the_model(tmp_path):
-    stale = tmp_path / 'counter'
-    shutil.copytree(EXPORT, stale)
-    manifest = json.loads((stale / 'manifest.json').read_text())
-    del manifest['states']['tens']
-    (stale / 'manifest.json').write_text(json.dumps(manifest))
-    trial = take(Trigger('Turn once'), export=str(stale), front=camera())
-    with refused('take.initial', 'tens'):
-        evaluate(movie_of(trial), name='trial')
+#: Two edits of the counter made after its export: a law changed with the
+#: same drivers and states, and a state renamed.
+CHANGED_SINCE_THE_EXPORT = {
+    'law': lambda text: text.replace('(units + 1) % 10,', '(units + 2) % 10,', 1),
+    'state': lambda text: re.sub(r'\btens\b', 'decades', text),
+}
+
+
+def run_in(directory, *args):
+    """The workspace Python run in `directory` with nothing of the caller's
+    environment but the command path."""
+    return subprocess.run([sys.executable, *map(str, args)], cwd=directory, capture_output=True,
+                          text=True, env={'PATH': '/usr/bin:/bin', 'PYTHONDONTWRITEBYTECODE': '1'})
+
+
+@pytest.mark.parametrize('change', sorted(CHANGED_SINCE_THE_EXPORT))
+def test_a_model_changed_since_its_export_is_refused_naming_both_identities(tmp_path, change):
+    # A copy of the fixture project, its export included, whose counter is
+    # edited after the export was made; evaluated by the command line, so
+    # the model is imported under its project name as a project's is.
+    copy = tmp_path / 'project'
+    shutil.copytree(PROJECT, copy, ignore=shutil.ignore_patterns('_build', '__pycache__'))
+    model = copy / 'models' / 'counter.py'
+    edited = CHANGED_SINCE_THE_EXPORT[change](model.read_text())
+    assert edited != model.read_text()
+    model.write_text(edited)
+    probe = run_in(copy, '-c', 'import sys; sys.path.insert(0, "."); '
+                               'from machinome.simulation import Sim; '
+                               'from models.counter import Counter; print(Sim(Counter()).identity)')
+    assert probe.returncode == 0, probe.stderr
+    changed = probe.stdout.strip()
+    assert re.fullmatch(r'[0-9a-f]{64}', changed) and changed != IDENTITY
+    result = run_in(Path(__file__).resolve().parents[1], '-m', 'machinome_movie', 'evaluate', copy,
+                    'count', '--out', tmp_path / 'count.json')
+    assert result.returncode == 1, result.stderr
+    for name in ('Take Turns', 'models.counter:Counter', '../../export/counter', IDENTITY,
+                 changed, 'export the model again', 'declare the model the export was made from'):
+        assert name in result.stderr, f'{name!r} not named in: {result.stderr}'
+    assert not (tmp_path / 'count.json').exists()
+
+
+def test_the_take_is_recorded_with_the_simulations_identity(count):
+    # The framework's simulation of the counter reports the identity its
+    # export publishes; the document carries it.
+    from machinome.simulation import Sim
+    assert Sim(Counter()).identity == IDENTITY == count['take']['identity']
 
 
 ##############################################
