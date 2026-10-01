@@ -121,14 +121,23 @@ model and records what the machine did: for each step, the request as the
 framework returned it (where the input started and ended, how much of the
 travel the machine admitted, each event on the path with what it wrote, and
 any stop it met), the bank of every input and state before the first step
-and at every mark, and the identity of the machine the export publishes.
-The record is the document's `take` block ([the movie
+and at every mark, and the identity of the machine, as the simulation
+reports it. The record is the document's `take` block ([the movie
 document](movie-document.md), "The take"). A frame is a pure function of
 take time. Within a step, the input is where the step's fraction puts it on
 its path, with the states written by every event the path has crossed, and
 the viewer is held to the same answer. A step the machine refuses, or stops
 before it moves at all, is refused with the framework's own words. Whether
 the commands film a take is stated in the [README](../README.md).
+
+The take is recorded against the machine the export carries. Before the
+first step, evaluation compares the simulation's identity with the
+`clocked.identity` the export publishes, and refuses the take when they
+differ, naming the model as `module:Class`, the export and both
+identities: the model changed since it was exported (a law, a driver, a
+state, or the module it is imported from), or the take declares another
+model than the export was made from. Export the model again, or declare
+the model the export was made from.
 
 ## The template: sets
 

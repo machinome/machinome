@@ -1,6 +1,7 @@
 # ADR-011: A clocked take is the framework's requests, recorded once by evaluation
 
-Status: Accepted (OpenSpec change `declare-a-take`, 1 October 2026)
+Status: Accepted (OpenSpec change `declare-a-take`, 1 October 2026);
+amended in place by `take-identity` (1 October 2026)
 
 Numbered 011 by the curta-video campaign's plan; ADR-010 is another cycle's
 of the same campaign. A merge that reorders them renumbers.
@@ -82,3 +83,42 @@ the framework's words, naming the take and the step.
   replay compares them exactly, and a hand-edited document must copy them.
 - An instruction declared on a part, rather than on the model's root, cannot
   be triggered yet; a move can name that part's driver by its qualified id.
+
+## Amendment (1 October 2026, `take-identity`)
+
+The option rejected above, reading the simulation's identity, is now the
+decision. The framework publishes it (its `main` 096217f, the requirement
+"A clocked simulation publishes its machine's identity"):
+`Sim(model).identity` is the compiled clocked machine's identity, the string an
+export of the same model carries as `clocked.identity`, whatever the bank
+holds. Before this amendment the take block's `identity` was copied from
+the export's manifest, so the document named the machine the export
+carries, never the one that made the record; a model whose law changed
+since its export, with the same drivers and states, was recorded without a
+word (wart 9 of the Curta film *Addition*).
+
+- **The take's identity is the simulation's**, read once after the
+  simulation is constructed and found clocked, and compared with the
+  export's `clocked.identity` **before the first step**. When they differ,
+  evaluation is refused naming the take, the model as `module:Class` (the
+  identity depends on the module the model is imported from as well as on
+  its tree), the export, both identities and what to do: export the model
+  again, or declare the model the export was made from. The comparison is
+  made in evaluation, in the declaration's terms, before the steps of
+  another machine can fail in words about a step; the document check keeps
+  comparing a document's `take.identity` with its export's, as the
+  contract's rule in both runtimes.
+- **The bank's ids stop standing in for the identity.** The document
+  check's rule that `take.initial` holds the drivers and states of the
+  machine the export publishes stays in both runtimes, because it refuses
+  what the identity cannot: a document whose identity is right and whose
+  bank lacks a driver or state, or holds a name that is none (a damaged or
+  hand-edited record, which the replay does not see, since it compares
+  recorded banks key by key). Since the identity is checked before it, its
+  words no longer say the take was recorded against another machine: they
+  say a take's bank holds every driver and state of its machine and
+  nothing else.
+- The Node commands do not run the simulation: a document evaluated before
+  this amendment from a changed model carries the export's identity and is
+  caught by the viewer's `restore` at preview, as before; evaluating the
+  movie again catches it at evaluation.

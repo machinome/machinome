@@ -47,7 +47,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-008](RECORDS/ADR-008-the-real-viewer-is-proved-through-a-selected-bundle.md) | RECORDS | The real viewer is proved through a bundle selected by path, never assumed | Accepted |
 | [ADR-009](STAGE/ADR-009-check-measures-a-sets-layout-before-speech.md) | STAGE | `check` measures a set's layout before speech | Accepted (amended 1 October 2026) |
 | [ADR-010](STAGE/ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md) | STAGE | A reframe is a join that moves a view's box and fades the rest | Accepted |
-| [ADR-011](SOURCE/ADR-011-a-clocked-take-is-the-frameworks-requests-recorded-once-by-evaluation.md) | SOURCE | A clocked take is the framework's requests, recorded once by evaluation | Accepted |
+| [ADR-011](SOURCE/ADR-011-a-clocked-take-is-the-frameworks-requests-recorded-once-by-evaluation.md) | SOURCE | A clocked take is the framework's requests, recorded once by evaluation | Accepted (amended 1 October 2026) |
 | [ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md) | STAGE | A view on a take is posed by restoring the machine's bank, and the viewer is held to the take | Accepted |
 | [ADR-013](PIPELINE/ADR-013-the-stage-bundle-names-its-files-by-the-tool-and-the-project.md) | PIPELINE | The stage bundle names its files by the tool and the project, never by the machine | Accepted |
 | [ADR-014](TIMELINE/ADR-014-a-continuation-that-crosses-a-mark-is-reported-from-the-frames-the-join-poses.md) | TIMELINE | A continuation that crosses a mark is reported, from the frames the join poses | Accepted |

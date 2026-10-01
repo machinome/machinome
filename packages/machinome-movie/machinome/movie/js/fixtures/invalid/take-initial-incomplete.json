@@ -1,0 +1,393 @@
+{
+  "name": "take-initial-incomplete",
+  "document": {
+    "audio": {
+      "model": "eleven_v3",
+      "provider": "elevenlabs",
+      "voice": "fixture-voice"
+    },
+    "cameras": {
+      "front": {
+        "fov": 37,
+        "position": [
+          160,
+          -260,
+          140
+        ],
+        "target": [
+          0,
+          0,
+          20
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "chapters": [
+      {
+        "elements": {
+          "code": {
+            "kind": "source",
+            "source": "relations"
+          },
+          "view": {
+            "camera": "front",
+            "kind": "view"
+          }
+        },
+        "id": "counting",
+        "narration": "Turn the crank once and the units drum shows one. Eight more turns bring it to nine. On the tenth turn the counter commits a carry: the units return to zero and the tens show one.",
+        "shots": [
+          {
+            "cues": [],
+            "id": "once",
+            "model": {
+              "from": 0,
+              "to": {
+                "mark": "one"
+              }
+            },
+            "places": {
+              "stage": "view"
+            },
+            "set": "frame",
+            "until": {
+              "spoken": "Eight more"
+            }
+          },
+          {
+            "cues": [],
+            "id": "nine",
+            "model": {
+              "from": {
+                "mark": "one"
+              },
+              "to": {
+                "mark": "nine"
+              }
+            },
+            "places": {
+              "stage": "view"
+            },
+            "set": "frame",
+            "until": {
+              "spoken": "On the tenth turn"
+            }
+          },
+          {
+            "cues": [
+              {
+                "actions": [
+                  {
+                    "action": "type",
+                    "element": "code",
+                    "over": 1,
+                    "throughLine": 153
+                  }
+                ],
+                "at": 0
+              },
+              {
+                "actions": [
+                  {
+                    "action": "emphasize",
+                    "element": "code",
+                    "hold": 0.5,
+                    "words": [
+                      {
+                        "spoken": "commits",
+                        "token": "commits"
+                      }
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "commits a carry"
+                }
+              },
+              {
+                "actions": [
+                  {
+                    "action": "highlight",
+                    "element": "view",
+                    "others": "ghost",
+                    "parts": [
+                      [
+                        "tens_drum"
+                      ]
+                    ]
+                  }
+                ],
+                "at": {
+                  "spoken": "the tens show one"
+                },
+                "until": {
+                  "narrationEnd": true
+                }
+              }
+            ],
+            "id": "carry",
+            "model": {
+              "from": {
+                "mark": "nine"
+              },
+              "to": {
+                "mark": "ten"
+              }
+            },
+            "places": {
+              "left": "code",
+              "right": "view"
+            },
+            "set": "split",
+            "transition": {
+              "duration": 0.5,
+              "kind": "dissolve"
+            },
+            "until": {
+              "narrationEnd": true,
+              "plus": 0.5
+            }
+          }
+        ]
+      }
+    ],
+    "clips": {},
+    "evidence": {},
+    "format": "machinome-movie/0.2",
+    "id": "count",
+    "layers": {},
+    "learningGoal": "Film a clocked take: a counter counts its turns and carries.",
+    "marks": {
+      "nine": 6,
+      "one": 2,
+      "ten": 8
+    },
+    "model": {
+      "expectedDurationSeconds": 8,
+      "manifest": "../../export/counter/manifest.json",
+      "readiness": "Exported by machinome export; the drums count the crank's turns and carry.",
+      "sourceRevision": "10b189d1516c880a7fdab7370fa9d32866945db6",
+      "timeMode": "take"
+    },
+    "output": {
+      "fps": 10,
+      "height": 360,
+      "width": 640
+    },
+    "root": "../../python/tests/fixtures/project/videos/count",
+    "sourceCode": {
+      "relations": {
+        "file": "../../models/counter.py",
+        "lines": [
+          150,
+          153
+        ]
+      }
+    },
+    "stage": {
+      "elements": {},
+      "modules": [],
+      "sets": {
+        "frame": {
+          "slots": [
+            "stage"
+          ]
+        },
+        "split": {
+          "slots": [
+            "left",
+            "right"
+          ]
+        }
+      }
+    },
+    "status": "rehearsal",
+    "stills": {},
+    "take": {
+      "banks": {
+        "nine": {
+          "crank": 3240,
+          "tens": 0,
+          "units": 9
+        },
+        "one": {
+          "crank": 360,
+          "tens": 0,
+          "units": 1
+        },
+        "ten": {
+          "crank": 3600,
+          "tens": 1,
+          "units": 0
+        }
+      },
+      "identity": "d46d4f1ee76199bce9aa9924e34a97020fd28bd3073939a2a85ec0eceb1111d6",
+      "initial": {
+        "crank": 0,
+        "units": 0
+      },
+      "kind": "clocked",
+      "steps": [
+        {
+          "admitted": 360,
+          "at": 0,
+          "by": 360,
+          "commits": [
+            {
+              "fraction": 1,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 1
+              },
+              "value": 360
+            }
+          ],
+          "duration": 2,
+          "end": 360,
+          "id": "step-1",
+          "input": "crank",
+          "origin": 0,
+          "stops": []
+        },
+        {
+          "admitted": 2880,
+          "at": 2,
+          "commits": [
+            {
+              "fraction": 0.125,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 2
+              },
+              "value": 720
+            },
+            {
+              "fraction": 0.25,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 3
+              },
+              "value": 1080
+            },
+            {
+              "fraction": 0.375,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 4
+              },
+              "value": 1440
+            },
+            {
+              "fraction": 0.5,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 5
+              },
+              "value": 1800
+            },
+            {
+              "fraction": 0.625,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 6
+              },
+              "value": 2160
+            },
+            {
+              "fraction": 0.75,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 7
+              },
+              "value": 2520
+            },
+            {
+              "fraction": 0.875,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 8
+              },
+              "value": 2880
+            },
+            {
+              "fraction": 1,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 0,
+                "units": 9
+              },
+              "value": 3240
+            }
+          ],
+          "duration": 4,
+          "end": 3240,
+          "id": "step-2",
+          "input": "crank",
+          "origin": 360,
+          "stops": [],
+          "to": 3240
+        },
+        {
+          "admitted": 360,
+          "at": 6,
+          "by": 360,
+          "commits": [
+            {
+              "fraction": 1,
+              "relations": [
+                "(crank, units, tens) commits (units, tens)"
+              ],
+              "targets": {
+                "tens": 1,
+                "units": 0
+              },
+              "value": 3600
+            }
+          ],
+          "duration": 2,
+          "end": 3600,
+          "id": "step-3",
+          "input": "crank",
+          "origin": 3240,
+          "stops": []
+        }
+      ]
+    },
+    "title": "Count"
+  },
+  "must_mention": [
+    "take.initial",
+    "tens",
+    "every driver and state"
+  ]
+}

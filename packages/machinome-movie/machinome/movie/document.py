@@ -263,12 +263,17 @@ class _Semantics:
                              f"end at {end} s; a take document lasts its take")
         initial = take['initial']
         if known is not None:
+            # The identity is checked above, so a bank that is not the
+            # machine's drivers and states is a damaged record, not another
+            # machine's (ADR-011, amended).
             for name in sorted(known - set(initial)):
-                raise MovieError(f"take.initial lacks '{name}', a driver or state the export "
-                                 f"declares; the take was recorded against another machine")
+                raise MovieError(f"take.initial lacks '{name}', a driver or state of the machine "
+                                 f"the export publishes; a take's bank holds every driver and state "
+                                 f"of its machine and nothing else")
             for name in sorted(set(initial) - known):
                 raise MovieError(f"take.initial holds '{name}', which is not a driver or state of "
-                                 f"the export; the take was recorded against another machine")
+                                 f"the machine the export publishes; a take's bank holds every "
+                                 f"driver and state of its machine and nothing else")
         # The step each mark follows: -1 for the initial bank, at 0.
         follows = {}
         for name, seconds in document.get('marks', {}).items():

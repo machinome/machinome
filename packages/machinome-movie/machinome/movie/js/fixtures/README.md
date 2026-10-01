@@ -70,7 +70,8 @@ side's suite.
   spoken reveal, duplicate ids, a take document's `take` block and its
   model time; and, read through the document's `root`, the parts it names
   checked against its export, the tokens it emphasises checked against its
-  excerpts, and a take's identity and inputs checked against its export and
+  excerpts, and a take's identity, inputs and initial bank (every driver
+  and state of the machine, nothing else) checked against its export and
   its banks against the replay of its steps. Each is one mutation of an
   evaluated fixture document, rooted at the fixture project's movie from
   this directory.

@@ -6,6 +6,23 @@ lands it.
 
 ## Unreleased
 
+- A take is recorded against the machine the export carries, or not at
+  all. Evaluation reads the take's `identity` from the framework's
+  simulation of the declared model (`Sim(model).identity`), the simulation
+  it makes the steps through, where it copied the export's
+  `clocked.identity` before; and before the first step it refuses a take
+  whose identity differs from the export's, naming the take, the model as
+  `module:Class`, the export, both identities and what to do: `export the
+  model again, or declare the model the export was made from`. A model
+  whose law changed since its export with the same drivers and states was
+  recorded without a word, and is now refused; one whose drivers or states
+  changed was refused in words about `take.initial`, and is now refused
+  for its identity. The document check's rule that `take.initial` holds
+  every driver and state of the machine and nothing else stays, in both
+  runtimes, in words that name the rule rather than "another machine"; a
+  new invalid fixture, `take-initial-incomplete`, holds both runtimes to
+  them. A document evaluated from a matching export is unchanged.
+  (`take-identity`, ADR-011 amended)
 - `check` reports a continuation that crosses a mark. On a take, a shot
   that a dissolve, a wipe, a slide or the first half of a fade still shows
   past its end keeps running its take time at the rate it ended with;
