@@ -1,0 +1,24 @@
+== curta-capture-again-1080.json: mode alternatives, shot add-23, 20 frames (648..705), 1920×1080, wall 136.0 s, load1 10.92 → 14.61
+first frame excluded; 19 frames, probes in this order per frame, each after its own pose: png, pngAgain, png2
+probe (ms)                             mean   median      p10      p90      min      max  vs png
+png                                    1111     1098     1015     1211      975     1307  1.00×
+  png: cpu gpu-process                10822    10840    10250    11298    10230    11410
+  png: cpu browser                     47.9     50.0     40.0     60.0     40.0     60.0
+  png: cpu renderer                     3.7      0.0      0.0     10.0      0.0     30.0
+  png: cpu node                        36.6     12.6     10.4     74.5     10.1      116
+  png: bytes equal to baseline 19/19, decoded pixels equal 19/19, size median 163 KiB
+pngAgain                               96.7     92.0     78.5      122     77.5      143  0.08×
+  pngAgain: the first capture before it     1071     1058     1005     1144      931     1347
+  pngAgain: cpu gpu-process             107      110      100      112      100      130
+  pngAgain: cpu browser                46.8     50.0     40.0     50.0     30.0     60.0
+  pngAgain: cpu renderer                3.2      0.0      0.0     10.0      0.0     10.0
+  pngAgain: cpu node                   25.0     11.8     10.5     80.2     10.0      105
+  pngAgain: bytes equal to baseline 19/19, decoded pixels equal 19/19, size median 163 KiB
+png2                                   1091     1081     1014     1181      906     1252  0.99×
+  png2: cpu gpu-process               10875    10900    10448    11214    10310    11500
+  png2: cpu browser                    47.9     50.0     40.0     50.0     40.0     50.0
+  png2: cpu renderer                    6.3      0.0      0.0     10.0      0.0     70.0
+  png2: cpu node                       28.9     12.6     11.4     64.6     10.0      105
+  png2: bytes equal to baseline 19/19, decoded pixels equal 19/19, size median 163 KiB
+load1 over the probes: median 14.2 (10.6–16.0)
+

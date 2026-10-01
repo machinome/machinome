@@ -1,0 +1,3169 @@
+{
+ "mode": "phases",
+ "source": "/home/asa/devel/machinome/projects/Calculators/Curta-Type-I-3x/videos/addition/_build/movie.json",
+ "shot": "add-23",
+ "width": 1920,
+ "movieResolved": {
+  "before": "b159b2fb8d6602aac18da9803b57da8bd6d6c1a2e52e110a80ca0d83ce787ec1",
+  "after": "b159b2fb8d6602aac18da9803b57da8bd6d6c1a2e52e110a80ca0d83ce787ec1"
+ },
+ "started": "2026-10-01T08:15:44.779Z",
+ "load1Start": 16.97,
+ "runs": [
+  {
+   "variant": "stage",
+   "rows": [
+    {
+     "index": 647,
+     "time": 21.566666666666666,
+     "transition": null,
+     "load1": 18.49,
+     "setFrame": 124.03855199999998,
+     "checks": 0.20505099999991216,
+     "pose": 124.48807800000031,
+     "screenshot": 14145.927701999999,
+     "pngCheck": 0.052791999998589745,
+     "write": 3.40368700000181,
+     "rename": 0.2929989999975078,
+     "sha256": "b492aedfaab26a1dfdec28d68206eb693de5bab9859198817e7167dba97cd66e",
+     "hash": 0.17397199999686563,
+     "link": 0.7629640000013751,
+     "bytes": 167210,
+     "ok": true,
+     "page": {
+      "setFrame": 109.5,
+      "restore": 25.700000017881393,
+      "setView": 6.9000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 6,
+      "rafWait": 49.20000001788139,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 10,
+      "zygote": 0,
+      "gpu-process": 1040,
+      "utility": 0,
+      "renderer": 80,
+      "node": 38.15000000000009
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 101030,
+      "utility": 0,
+      "renderer": 10,
+      "node": 24.061999999999898
+     },
+     "bank": "84a503512a8e"
+    },
+    {
+     "index": 648,
+     "time": 21.6,
+     "transition": null,
+     "load1": 23.42,
+     "setFrame": 36.332940000000235,
+     "checks": 0.2065729999994801,
+     "pose": 36.72744299999977,
+     "screenshot": 1526.194489999998,
+     "pngCheck": 0.050526999999419786,
+     "write": 1.0979729999999108,
+     "rename": 0.2811860000001616,
+     "sha256": "6fecf5c91002d665b831b3f0b71437a0b73fcec5202af74c9bb813bdf4d09c76",
+     "hash": 0.13072900000042864,
+     "link": 0.3858350000009523,
+     "bytes": 167143,
+     "ok": true,
+     "page": {
+      "setFrame": 29.100000023841858,
+      "restore": 24,
+      "setView": 4,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 40,
+      "node": 18.577999999999975
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9690,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.449999999999818
+     },
+     "bank": "1d1a3a43b53c"
+    },
+    {
+     "index": 649,
+     "time": 21.633333333333333,
+     "transition": null,
+     "load1": 23.42,
+     "setFrame": 35.32435899999837,
+     "checks": 0.2730809999993653,
+     "pose": 35.800145000001066,
+     "screenshot": 1775.3049980000033,
+     "pngCheck": 0.042039999996632105,
+     "write": 2.892342999999528,
+     "rename": 0.329358000002685,
+     "sha256": "209dae259646a6807863e7dcd8d6d01d607356809efdb26277b7c08e09a970fd",
+     "hash": 0.12459799999851384,
+     "link": 0.37837999999828753,
+     "bytes": 167297,
+     "ok": true,
+     "page": {
+      "setFrame": 29.400000005960464,
+      "restore": 22.5,
+      "setView": 6,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 60,
+      "node": 18.457000000000335
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10060,
+      "utility": 0,
+      "renderer": 10,
+      "node": 12.090999999999894
+     },
+     "bank": "b6b1ac264d1c"
+    },
+    {
+     "index": 650,
+     "time": 21.666666666666668,
+     "transition": null,
+     "load1": 23.42,
+     "setFrame": 35.21254599999884,
+     "checks": 0.3778710000005958,
+     "pose": 35.78631899999891,
+     "screenshot": 1970.1513109999978,
+     "pngCheck": 0.06452300000091782,
+     "write": 1.296991999999591,
+     "rename": 0.4564399999981106,
+     "sha256": "f00dd53e9e183328f474112588186d2fd8bdbe15a2f3e1d920393486ce4f038d",
+     "hash": 0.17838099999789847,
+     "link": 0.40516200000274694,
+     "bytes": 167020,
+     "ok": true,
+     "page": {
+      "setFrame": 25.400000005960464,
+      "restore": 18.900000005960464,
+      "setView": 5.699999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 100,
+      "utility": 0,
+      "renderer": 30,
+      "node": 17.340000000000146
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10270,
+      "utility": 0,
+      "renderer": 10,
+      "node": 13.972999999999956
+     },
+     "bank": "0ade983a8ed9"
+    },
+    {
+     "index": 651,
+     "time": 21.7,
+     "transition": null,
+     "load1": 23.7,
+     "setFrame": 33.412444999998115,
+     "checks": 0.21662300000025425,
+     "pose": 33.84736400000111,
+     "screenshot": 1927.2573090000005,
+     "pngCheck": 0.0546649999996589,
+     "write": 4.331315999999788,
+     "rename": 0.293508999999176,
+     "sha256": "a9eded7ee4dab5ad880cccb7eedc8cd84b6fce6df39f7890be275c05477bcd25",
+     "hash": 0.15928400000120746,
+     "link": 0.47092699999848264,
+     "bytes": 167003,
+     "ok": true,
+     "page": {
+      "setFrame": 27.799999982118607,
+      "restore": 19.799999982118607,
+      "setView": 7.200000017881393,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 40,
+      "node": 17.615999999999985
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9690,
+      "utility": 0,
+      "renderer": 10,
+      "node": 13.722000000000207
+     },
+     "bank": "9596bfed4500"
+    },
+    {
+     "index": 652,
+     "time": 21.733333333333334,
+     "transition": null,
+     "load1": 23.7,
+     "setFrame": 34.51087799999732,
+     "checks": 0.14869199999884586,
+     "pose": 34.801142999996955,
+     "screenshot": 1626.460504999999,
+     "pngCheck": 0.11602200000197627,
+     "write": 5.339919000001828,
+     "rename": 0.23842599999989034,
+     "sha256": "b08d989aced7b4d19f47799413e3f20010da7220ccefae8ea5814e2a3ab7ce63",
+     "hash": 0.16869100000258186,
+     "link": 0.4605580000024929,
+     "bytes": 167146,
+     "ok": true,
+     "page": {
+      "setFrame": 29.69999998807907,
+      "restore": 23.5,
+      "setView": 5.299999982118607,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 17.287000000000262
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10130,
+      "utility": 0,
+      "renderer": 50,
+      "node": 14.429000000000087
+     },
+     "bank": "3dc529cd7ec8"
+    },
+    {
+     "index": 653,
+     "time": 21.766666666666666,
+     "transition": null,
+     "load1": 23.7,
+     "setFrame": 28.052357999997184,
+     "checks": 0.1042489999999816,
+     "pose": 28.36023700000078,
+     "screenshot": 2145.4703389999995,
+     "pngCheck": 0.040847000000212574,
+     "write": 1.08100000000195,
+     "rename": 0.2890709999992396,
+     "sha256": "081f5683c65183ad72f99a55ca67390e1fb70501831453e104ab5b50bf3ba7db",
+     "hash": 0.12121099999785656,
+     "link": 0.29867899999953806,
+     "bytes": 167235,
+     "ok": true,
+     "page": {
+      "setFrame": 22.69999998807907,
+      "restore": 18.599999994039536,
+      "setView": 3.2000000178813934,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 20,
+      "utility": 0,
+      "renderer": 30,
+      "node": 15.617999999999938
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10690,
+      "utility": 0,
+      "renderer": 20,
+      "node": 15.29300000000012
+     },
+     "bank": "c48d6d157cef"
+    },
+    {
+     "index": 654,
+     "time": 21.8,
+     "transition": null,
+     "load1": 23.17,
+     "setFrame": 32.597852000002604,
+     "checks": 0.14645999999993364,
+     "pose": 33.56044800000018,
+     "screenshot": 1742.970672000003,
+     "pngCheck": 0.07433199999650242,
+     "write": 0.927758999998332,
+     "rename": 0.21707400000013877,
+     "sha256": "c9e632f4b32cc0a39824fe8cf48533a2012d3d8a6598b6e0e1ddca2eb1d248d8",
+     "hash": 0.12151100000482984,
+     "link": 0.2437149999968824,
+     "bytes": 167403,
+     "ok": true,
+     "page": {
+      "setFrame": 27.5,
+      "restore": 21.599999994039536,
+      "setView": 5.0999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 22.864000000000033
+     },
+     "cpuScreenshot": {
+      "browser": 40,
+      "zygote": 0,
+      "gpu-process": 9860,
+      "utility": 0,
+      "renderer": 10,
+      "node": 18.09400000000005
+     },
+     "bank": "5c8fce1501c0"
+    },
+    {
+     "index": 655,
+     "time": 21.833333333333332,
+     "transition": null,
+     "load1": 23.17,
+     "setFrame": 36.14938200000324,
+     "checks": 0.1283739999998943,
+     "pose": 36.45355200000631,
+     "screenshot": 1616.4508790000036,
+     "pngCheck": 0.04547699999966426,
+     "write": 1.0198939999972936,
+     "rename": 0.19478100000560516,
+     "sha256": "dc3aa84ff536afb3775e1b8726a9ba6d82de646eb49df8f48eef2a0572b7e9af",
+     "hash": 0.14194200000201818,
+     "link": 0.24625899999955436,
+     "bytes": 167214,
+     "ok": true,
+     "page": {
+      "setFrame": 30.399999976158142,
+      "restore": 22.900000005960464,
+      "setView": 6.5,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 40,
+      "utility": 0,
+      "renderer": 30,
+      "node": 29.644000000000233
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9580,
+      "utility": 0,
+      "renderer": 10,
+      "node": 16.208999999999833
+     },
+     "bank": "5342856df382"
+    },
+    {
+     "index": 656,
+     "time": 21.866666666666667,
+     "transition": null,
+     "load1": 24.28,
+     "setFrame": 35.39658799999597,
+     "checks": 0.09665499999391614,
+     "pose": 35.622339000001375,
+     "screenshot": 1905.3599289999984,
+     "pngCheck": 0.08727700000599725,
+     "write": 1.4979160000002594,
+     "rename": 0.2705050000004121,
+     "sha256": "e8af85329bed0076a2fb0a0e321c07ba0b3a4de07d176367e8ec502e8ff95ced",
+     "hash": 0.13500700000440702,
+     "link": 0.2993419999984326,
+     "bytes": 167487,
+     "ok": true,
+     "page": {
+      "setFrame": 28.600000023841858,
+      "restore": 22.80000001192093,
+      "setView": 5.0999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 50,
+      "node": 16.490000000000236
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10140,
+      "utility": 0,
+      "renderer": 10,
+      "node": 15.871000000000095
+     },
+     "bank": "afe46b10753f"
+    },
+    {
+     "index": 657,
+     "time": 21.9,
+     "transition": null,
+     "load1": 24.28,
+     "setFrame": 43.56649099999777,
+     "checks": 0.11899699999776203,
+     "pose": 43.849999999998545,
+     "screenshot": 1763.6006590000034,
+     "pngCheck": 0.04724999999598367,
+     "write": 1.2291130000012345,
+     "rename": 0.3827999999994063,
+     "sha256": "2c570b412d944c56f0fe65c552d790b2dd1ebeb07f4dad94d436f20e4c615b05",
+     "hash": 0.14211000000068452,
+     "link": 0.3478130000003148,
+     "bytes": 167133,
+     "ok": true,
+     "page": {
+      "setFrame": 37.60000002384186,
+      "restore": 28.30000001192093,
+      "setView": 8.599999994039536,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 110,
+      "node": 36.215000000000146
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10200,
+      "utility": 0,
+      "renderer": 0,
+      "node": 20.103000000000065
+     },
+     "bank": "f1c035ff18f4"
+    },
+    {
+     "index": 658,
+     "time": 21.933333333333334,
+     "transition": null,
+     "load1": 24.28,
+     "setFrame": 37.94813100000465,
+     "checks": 0.16285099999367958,
+     "pose": 38.30492200000299,
+     "screenshot": 2030.7499190000017,
+     "pngCheck": 0.03940500000317115,
+     "write": 1.1284010000017588,
+     "rename": 1.9212220000044908,
+     "sha256": "30f56d1e8a4935fb757760eac311e0df4e5c7f4726bf7ea0fa9a7ff86419dda3",
+     "hash": 0.17796000000089407,
+     "link": 0.5683219999991707,
+     "bytes": 167053,
+     "ok": true,
+     "page": {
+      "setFrame": 31.900000005960464,
+      "restore": 25.799999982118607,
+      "setView": 5.5,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 70,
+      "node": 17.97699999999986
+     },
+     "cpuScreenshot": {
+      "browser": 70,
+      "zygote": 0,
+      "gpu-process": 9680,
+      "utility": 0,
+      "renderer": 0,
+      "node": 16.243000000000393
+     },
+     "bank": "b8e429795895"
+    },
+    {
+     "index": 659,
+     "time": 21.966666666666665,
+     "transition": null,
+     "load1": 25.29,
+     "setFrame": 62.39727400000265,
+     "checks": 0.1085769999990589,
+     "pose": 62.629956999997376,
+     "screenshot": 2005.4633880000038,
+     "pngCheck": 0.019748000006075017,
+     "write": 3.653593999995792,
+     "rename": 0.5603789999950095,
+     "sha256": "8f2ebdc9f29aea2ebad95a8ae4bf5924cc4876c3d780ba66244c78ea26dbf768",
+     "hash": 0.14537700000073528,
+     "link": 0.3536549999989802,
+     "bytes": 167230,
+     "ok": true,
+     "page": {
+      "setFrame": 41.900000005960464,
+      "restore": 32.099999994039536,
+      "setView": 9.299999982118607,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 30,
+      "utility": 0,
+      "renderer": 20,
+      "node": 15.288000000000011
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10190,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.414000000000215
+     },
+     "bank": "b161cee0dd5d"
+    },
+    {
+     "index": 660,
+     "time": 22,
+     "transition": null,
+     "load1": 25.29,
+     "setFrame": 66.31454200000007,
+     "checks": 0.07607500000449363,
+     "pose": 66.50126699999964,
+     "screenshot": 2287.993150000002,
+     "pngCheck": 0.03104900000471389,
+     "write": 1.5121030000009341,
+     "rename": 0.6264340000052471,
+     "sha256": "d60e0f5d7ae2a0d3619e40bd362c4756d198e961f47dd25c72b99c8a9b6fd7cc",
+     "hash": 0.12914599999930942,
+     "link": 0.2839920000042184,
+     "bytes": 167255,
+     "ok": true,
+     "page": {
+      "setFrame": 62.099999994039536,
+      "restore": 48,
+      "setView": 13.199999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 60,
+      "node": 16.65599999999995
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10900,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.708999999999833
+     },
+     "bank": "e09d034706e8"
+    },
+    {
+     "index": 661,
+     "time": 22.033333333333335,
+     "transition": null,
+     "load1": 26.23,
+     "setFrame": 33.10849900000176,
+     "checks": 0.11976900000445312,
+     "pose": 33.36880399999791,
+     "screenshot": 1798.1226370000004,
+     "pngCheck": 0.019156000002112705,
+     "write": 1.656107000002521,
+     "rename": 0.21221399999922141,
+     "sha256": "b2159a9e5743ce51fa42141d5ffa097b3fa10aed0e0ffb6a9c816ef6b5118cb3",
+     "hash": 0.12087999999494059,
+     "link": 0.5398090000016964,
+     "bytes": 167090,
+     "ok": true,
+     "page": {
+      "setFrame": 27.400000005960464,
+      "restore": 19.599999994039536,
+      "setView": 7.200000017881393,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 40,
+      "node": 14.647999999999683
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9580,
+      "utility": 0,
+      "renderer": 0,
+      "node": 12.213000000000193
+     },
+     "bank": "84e91163f2eb"
+    },
+    {
+     "index": 662,
+     "time": 22.066666666666666,
+     "transition": null,
+     "load1": 26.23,
+     "setFrame": 28.64257599999837,
+     "checks": 0.09378899999865098,
+     "pose": 28.850622000005387,
+     "screenshot": 1892.241568999998,
+     "pngCheck": 0.03764199999568518,
+     "write": 2.159588000002259,
+     "rename": 0.409018999998807,
+     "sha256": "428e4873d33e1e942c829028bed78a76c56ca2e8647958a04fe0e10377e4022e",
+     "hash": 0.12771400000201538,
+     "link": 0.33931800000573276,
+     "bytes": 167322,
+     "ok": true,
+     "page": {
+      "setFrame": 22.599999994039536,
+      "restore": 17.900000005960464,
+      "setView": 4,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 20,
+      "node": 14.225999999999658
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10220,
+      "utility": 0,
+      "renderer": 10,
+      "node": 12.34100000000035
+     },
+     "bank": "2df208d3e826"
+    },
+    {
+     "index": 663,
+     "time": 22.1,
+     "transition": null,
+     "load1": 26.23,
+     "setFrame": 34.68774800000392,
+     "checks": 0.11782300000049872,
+     "pose": 34.92964899999788,
+     "screenshot": 2022.1365979999973,
+     "pngCheck": 0.04017600000224775,
+     "write": 1.0082119999933639,
+     "rename": 0.1990490000025602,
+     "sha256": "da67a204340edf69a06ef68f284480a0cbebf858f7c9c04b61e073c209137680",
+     "hash": 0.12424800000007963,
+     "link": 0.23849499999778345,
+     "bytes": 167251,
+     "ok": true,
+     "page": {
+      "setFrame": 28.099999994039536,
+      "restore": 23.700000017881393,
+      "setView": 3.5999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 80,
+      "utility": 0,
+      "renderer": 30,
+      "node": 17.403000000000247
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10110,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.473999999999705
+     },
+     "bank": "e4ff15825d04"
+    },
+    {
+     "index": 664,
+     "time": 22.133333333333333,
+     "transition": null,
+     "load1": 27.09,
+     "setFrame": 34.42023799999879,
+     "checks": 0.42740399999456713,
+     "pose": 34.9924600000013,
+     "screenshot": 2174.0743749999965,
+     "pngCheck": 0.022914000001037493,
+     "write": 0.9875620000020717,
+     "rename": 0.2016040000016801,
+     "sha256": "d3274abc4e4b50834f49df87db7f731bba9590211d2e27545cab72fb23686a30",
+     "hash": 0.1278039999961038,
+     "link": 0.2722289999946952,
+     "bytes": 167216,
+     "ok": true,
+     "page": {
+      "setFrame": 28.5,
+      "restore": 21.600000023841858,
+      "setView": 6.299999982118607,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.668999999999869
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10220,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.154000000000451
+     },
+     "bank": "d188aeb81b27"
+    },
+    {
+     "index": 665,
+     "time": 22.166666666666668,
+     "transition": null,
+     "load1": 27.09,
+     "setFrame": 29.98874199999409,
+     "checks": 0.09858800000074552,
+     "pose": 30.176690000000235,
+     "screenshot": 2053.4404179999983,
+     "pngCheck": 0.03659000000334345,
+     "write": 1.1269270000047982,
+     "rename": 1.1095649999988382,
+     "sha256": "b31446b5334059c0a2951d85347286dcf02938ca9c30867d94114bc3de65a1ab",
+     "hash": 0.15445299999555573,
+     "link": 0.43153300000267336,
+     "bytes": 167288,
+     "ok": true,
+     "page": {
+      "setFrame": 25.5,
+      "restore": 20.399999976158142,
+      "setView": 4.4000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 60,
+      "node": 18.43899999999985
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10160,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.983999999999924
+     },
+     "bank": "6ac75feb5229"
+    },
+    {
+     "index": 666,
+     "time": 22.2,
+     "transition": null,
+     "load1": 27.81,
+     "setFrame": 45.66070600000239,
+     "checks": 0.20532100000127684,
+     "pose": 46.07083599999896,
+     "screenshot": 1858.4194380000044,
+     "pngCheck": 0.03470699999888893,
+     "write": 1.194407000002684,
+     "rename": 0.25544699999591103,
+     "sha256": "2d509b93a3ebb235578687bcaaefddd7a6643531a95d73fb4da8a396c40a0c6d",
+     "hash": 0.13579899999604095,
+     "link": 0.3801149999999325,
+     "bytes": 167160,
+     "ok": true,
+     "page": {
+      "setFrame": 37.69999998807907,
+      "restore": 32,
+      "setView": 5.200000017881393,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 40,
+      "node": 17.58199999999988
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9670,
+      "utility": 0,
+      "renderer": 0,
+      "node": 16.833999999999833
+     },
+     "bank": "9ab60460cee6"
+    },
+    {
+     "index": 667,
+     "time": 22.233333333333334,
+     "transition": null,
+     "load1": 27.81,
+     "setFrame": 30.530524999994668,
+     "checks": 0.08731599999737227,
+     "pose": 30.744011999995564,
+     "screenshot": 1875.336645999996,
+     "pngCheck": 0.03220100000180537,
+     "write": 1.8488949999955366,
+     "rename": 0.2640430000028573,
+     "sha256": "1df801a261bbb5b76b60d07f0a0abae30f56e89269cbce8cb3a7037f7aad91be",
+     "hash": 0.13163999999960652,
+     "link": 0.3662289999992936,
+     "bytes": 166982,
+     "ok": true,
+     "page": {
+      "setFrame": 25.599999994039536,
+      "restore": 20.299999982118607,
+      "setView": 4.700000017881393,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.85400000000027
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10030,
+      "utility": 0,
+      "renderer": 10,
+      "node": 15.115999999999985
+     },
+     "bank": "4586d7535e88"
+    },
+    {
+     "index": 668,
+     "time": 22.266666666666666,
+     "transition": null,
+     "load1": 27.81,
+     "setFrame": 30.521678999997675,
+     "checks": 0.11469899999792688,
+     "pose": 30.80055999999604,
+     "screenshot": 1852.0680659999998,
+     "pngCheck": 0.026571000002149958,
+     "write": 1.4588600000060978,
+     "rename": 0.3515590000024531,
+     "sha256": "061389e8e8efa22797e691d50919916893177d2682758bdfb576bb43feb40e52",
+     "hash": 0.12749199999962002,
+     "link": 0.35961699999461416,
+     "bytes": 167130,
+     "ok": true,
+     "page": {
+      "setFrame": 18.900000005960464,
+      "restore": 14.799999982118607,
+      "setView": 3.7000000178813934,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 10,
+      "zygote": 0,
+      "gpu-process": 180,
+      "utility": 0,
+      "renderer": 30,
+      "node": 18.583999999999833
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9800,
+      "utility": 0,
+      "renderer": 0,
+      "node": 16.177999999999884
+     },
+     "bank": "3c33d344b867"
+    },
+    {
+     "index": 669,
+     "time": 22.3,
+     "transition": null,
+     "load1": 27.34,
+     "setFrame": 35.18517799999972,
+     "checks": 0.09999099999549799,
+     "pose": 35.42364400000224,
+     "screenshot": 2134.749303000004,
+     "pngCheck": 0.04971500000101514,
+     "write": 1.861207000001741,
+     "rename": 0.5391779999990831,
+     "sha256": "0b3d1aa08205a970d60c95cb71901e997668921cd5403e4537dbdcfe355577aa",
+     "hash": 0.2636029999994207,
+     "link": 0.40970199999719625,
+     "bytes": 167094,
+     "ok": true,
+     "page": {
+      "setFrame": 28.200000017881393,
+      "restore": 21.599999994039536,
+      "setView": 5.9000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 40,
+      "node": 17.422000000000025
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10720,
+      "utility": 0,
+      "renderer": 0,
+      "node": 16.25
+     },
+     "bank": "7916cac45931"
+    },
+    {
+     "index": 670,
+     "time": 22.333333333333332,
+     "transition": null,
+     "load1": 27.34,
+     "setFrame": 72.03726599999936,
+     "checks": 0.23075000000244472,
+     "pose": 74.58931999999913,
+     "screenshot": 1889.7912899999938,
+     "pngCheck": 0.01979800000844989,
+     "write": 0.9299829999945359,
+     "rename": 0.19340899999951944,
+     "sha256": "591532a1a6b5a9b79eab91023011db73d80828cd0f1695f5f2cf57b0ba33691c",
+     "hash": 0.11778500000946224,
+     "link": 0.24051800000597723,
+     "bytes": 166823,
+     "ok": true,
+     "page": {
+      "setFrame": 56.900000005960464,
+      "restore": 45.20000001788139,
+      "setView": 10.899999976158142,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 50,
+      "node": 17.518999999999778
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10250,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.097999999999956
+     },
+     "bank": "ddebb9482f62"
+    },
+    {
+     "index": 671,
+     "time": 22.366666666666667,
+     "transition": null,
+     "load1": 27.88,
+     "setFrame": 41.0552580000076,
+     "checks": 0.08478199999080971,
+     "pose": 41.24882599999546,
+     "screenshot": 1397.8907460000046,
+     "pngCheck": 0.05756999998993706,
+     "write": 1.3204660000046715,
+     "rename": 0.31622299998707604,
+     "sha256": "db0e67f7e1ac0911e453978ecda1bdcb14fd65f52bf5eccaaf83437a48bcbdef",
+     "hash": 0.13924600000609644,
+     "link": 0.3510680000035791,
+     "bytes": 167050,
+     "ok": true,
+     "page": {
+      "setFrame": 34.900000005960464,
+      "restore": 25.100000023841858,
+      "setView": 6.299999982118607,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 40,
+      "utility": 0,
+      "renderer": 30,
+      "node": 13.684000000000196
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9470,
+      "utility": 0,
+      "renderer": 10,
+      "node": 16.38799999999992
+     },
+     "bank": "8214b7f62eef"
+    },
+    {
+     "index": 672,
+     "time": 22.4,
+     "transition": null,
+     "load1": 27.88,
+     "setFrame": 32.30186200000753,
+     "checks": 0.2631309999997029,
+     "pose": 32.73669199999131,
+     "screenshot": 2166.5320400000055,
+     "pngCheck": 0.03623900000820868,
+     "write": 1.7757859999983339,
+     "rename": 0.25406500000099186,
+     "sha256": "ae32b7655cb5e7f4bbdf208b397683036258a0aa54f89adee6049cae2517c92e",
+     "hash": 0.13107899999886286,
+     "link": 0.32079199999861885,
+     "bytes": 167269,
+     "ok": true,
+     "page": {
+      "setFrame": 26.299999982118607,
+      "restore": 20.100000023841858,
+      "setView": 5.5999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 80,
+      "utility": 0,
+      "renderer": 40,
+      "node": 18.934000000000196
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9970,
+      "utility": 0,
+      "renderer": 0,
+      "node": 16.222999999999956
+     },
+     "bank": "dc8c3c572194"
+    },
+    {
+     "index": 673,
+     "time": 22.433333333333334,
+     "transition": null,
+     "load1": 27.88,
+     "setFrame": 48.1765630000009,
+     "checks": 0.11481900000944734,
+     "pose": 48.454773999998,
+     "screenshot": 1995.2038230000035,
+     "pngCheck": 0.014367000010679476,
+     "write": 1.6914450000040233,
+     "rename": 0.2557269999961136,
+     "sha256": "27e5f9d9f4ce58dd3b54cc5951465e3ce775c85c958b81ed7924414bcc5c5cf4",
+     "hash": 0.17320099999778904,
+     "link": 0.2575910000014119,
+     "bytes": 167082,
+     "ok": true,
+     "page": {
+      "setFrame": 42,
+      "restore": 35.60000002384186,
+      "setView": 5.699999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 30,
+      "node": 129.1590000000001
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10410,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.364000000000033
+     },
+     "bank": "3ef83bb1864f"
+    },
+    {
+     "index": 674,
+     "time": 22.466666666666665,
+     "transition": null,
+     "load1": 28.29,
+     "setFrame": 37.56257100000221,
+     "checks": 0.09018199999991339,
+     "pose": 37.77796199999284,
+     "screenshot": 1742.3493480000034,
+     "pngCheck": 0.023584999988088384,
+     "write": 1.1149960000038845,
+     "rename": 0.41114299999026116,
+     "sha256": "23fa7c0b2a1d56cd2a7ef3cd13ce0720b29dffd6f1d9c54c0f57ec8e86cb69af",
+     "hash": 0.1781090000004042,
+     "link": 0.4199300000036601,
+     "bytes": 167176,
+     "ok": true,
+     "page": {
+      "setFrame": 32.80000001192093,
+      "restore": 26.5,
+      "setView": 5.5999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 40,
+      "node": 16.531000000000404
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9890,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.668999999999869
+     },
+     "bank": "5e6c9ec03530"
+    },
+    {
+     "index": 675,
+     "time": 22.5,
+     "transition": null,
+     "load1": 28.29,
+     "setFrame": 27.045754000006127,
+     "checks": 0.08560400000715163,
+     "pose": 27.264230999993742,
+     "screenshot": 1755.9823259999976,
+     "pngCheck": 0.0308589999913238,
+     "write": 2.7815319999936037,
+     "rename": 0.29742699999769684,
+     "sha256": "bf0ae5cf2b8b11a4893816fcf18abe838026acea13dce9ef520cbfd0adf1889e",
+     "hash": 0.14294299999892246,
+     "link": 0.2986289999971632,
+     "bytes": 167520,
+     "ok": true,
+     "page": {
+      "setFrame": 22.900000005960464,
+      "restore": 18.299999982118607,
+      "setView": 4,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 30,
+      "node": 16.416000000000167
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10330,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.248999999999796
+     },
+     "bank": "5c2ea581af69"
+    },
+    {
+     "index": 676,
+     "time": 22.533333333333335,
+     "transition": null,
+     "load1": 28.18,
+     "setFrame": 30.028519999992568,
+     "checks": 0.10417900000174996,
+     "pose": 30.48293700000795,
+     "screenshot": 2238.240531000003,
+     "pngCheck": 0.043363000004319474,
+     "write": 1.1803300000028685,
+     "rename": 0.26357399999687914,
+     "sha256": "fcc633ff057ebfcffdf861a26baa191ce7aea1cc5ad67230b0ee0b53a2028588",
+     "hash": 0.1307690000103321,
+     "link": 0.7174779999913881,
+     "bytes": 167385,
+     "ok": true,
+     "page": {
+      "setFrame": 22.80000001192093,
+      "restore": 16.299999982118607,
+      "setView": 5.699999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 100,
+      "utility": 0,
+      "renderer": 40,
+      "node": 15.1550000000002
+     },
+     "cpuScreenshot": {
+      "browser": 70,
+      "zygote": 0,
+      "gpu-process": 10700,
+      "utility": 0,
+      "renderer": 10,
+      "node": 14.914999999999964
+     },
+     "bank": "fd9873908fe0"
+    },
+    {
+     "index": 677,
+     "time": 22.566666666666666,
+     "transition": null,
+     "load1": 28.18,
+     "setFrame": 37.42444800000521,
+     "checks": 0.25258000000030734,
+     "pose": 37.819140999999945,
+     "screenshot": 1812.7059870000085,
+     "pngCheck": 0.042119999998249114,
+     "write": 4.4937060000083875,
+     "rename": 0.21291699999710545,
+     "sha256": "d8665c2dffce5fe3d8b431f1b72581a260cdcf2d36b3ec5bdd7881801c92743d",
+     "hash": 0.11528899999393616,
+     "link": 0.2481629999965662,
+     "bytes": 167451,
+     "ok": true,
+     "page": {
+      "setFrame": 32,
+      "restore": 23,
+      "setView": 8.199999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 40,
+      "node": 16.0949999999998
+     },
+     "cpuScreenshot": {
+      "browser": 40,
+      "zygote": 0,
+      "gpu-process": 10690,
+      "utility": 0,
+      "renderer": 0,
+      "node": 12.533000000000357
+     },
+     "bank": "106ccb469965"
+    },
+    {
+     "index": 678,
+     "time": 22.6,
+     "transition": null,
+     "load1": 28.18,
+     "setFrame": 41.13785800000187,
+     "checks": 0.08010300000023562,
+     "pose": 41.45210700000462,
+     "screenshot": 2169.035532000009,
+     "pngCheck": 0.04186899999331217,
+     "write": 1.1899290000001201,
+     "rename": 0.22790399999939837,
+     "sha256": "85382f5ffa68b713a2365a8abc175c9f45858d771f10dbea98a4a91b971a3ac5",
+     "hash": 0.14361499999358784,
+     "link": 0.23431600000185426,
+     "bytes": 167359,
+     "ok": true,
+     "page": {
+      "setFrame": 32.099999994039536,
+      "restore": 27.900000005960464,
+      "setView": 3.699999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 40,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.396999999999935
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10670,
+      "utility": 0,
+      "renderer": 10,
+      "node": 14.533000000000357
+     },
+     "bank": "53bb17326ede"
+    },
+    {
+     "index": 679,
+     "time": 22.633333333333333,
+     "transition": null,
+     "load1": 28.81,
+     "setFrame": 29.349818000002415,
+     "checks": 0.16583600000012666,
+     "pose": 29.710424999997485,
+     "screenshot": 2032.440598000001,
+     "pngCheck": 0.023736000002827495,
+     "write": 0.9843970000074478,
+     "rename": 0.42065200000070035,
+     "sha256": "985e98fc0b1f4011550f68c23dbd086a7e50c5938e07287bb01868c0d73b24fc",
+     "hash": 0.12796399999933783,
+     "link": 0.7460620000056224,
+     "bytes": 167109,
+     "ok": true,
+     "page": {
+      "setFrame": 24.599999994039536,
+      "restore": 20.400000005960464,
+      "setView": 3.2999999821186066,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 40,
+      "utility": 0,
+      "renderer": 30,
+      "node": 17.980000000000018
+     },
+     "cpuScreenshot": {
+      "browser": 40,
+      "zygote": 0,
+      "gpu-process": 9830,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.133000000000266
+     },
+     "bank": "beae59a458fb"
+    },
+    {
+     "index": 680,
+     "time": 22.666666666666668,
+     "transition": null,
+     "load1": 28.81,
+     "setFrame": 31.12962000000698,
+     "checks": 0.06253899999137502,
+     "pose": 31.358376000003773,
+     "screenshot": 2064.117486000003,
+     "pngCheck": 0.03729100000055041,
+     "write": 2.1203719999903115,
+     "rename": 0.2940410000010161,
+     "sha256": "be345a0961ddeb2b5d8489418a0ddb305a647e6cb581975b520f3951f4af9a82",
+     "hash": 0.14810199999192264,
+     "link": 0.8359530000016093,
+     "bytes": 167423,
+     "ok": true,
+     "page": {
+      "setFrame": 26.80000001192093,
+      "restore": 22,
+      "setView": 4.199999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.08600000000024
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9980,
+      "utility": 0,
+      "renderer": 10,
+      "node": 15.422999999999774
+     },
+     "bank": "fd8d38d8f68c"
+    },
+    {
+     "index": 681,
+     "time": 22.7,
+     "transition": null,
+     "load1": 29.22,
+     "setFrame": 37.86574000000837,
+     "checks": 0.10406800000055227,
+     "pose": 38.136928000007174,
+     "screenshot": 1931.4320810000063,
+     "pngCheck": 0.026561000006040558,
+     "write": 1.025485000005574,
+     "rename": 0.22062999999616295,
+     "sha256": "6221c54d74f909e4df340c3b656b670c018062e09011ba3879a0c84de7c9cf94",
+     "hash": 0.13073000000440516,
+     "link": 0.2748330000031274,
+     "bytes": 167404,
+     "ok": true,
+     "page": {
+      "setFrame": 31.599999994039536,
+      "restore": 25.5,
+      "setView": 4.800000011920929,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 16.843000000000302
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9790,
+      "utility": 0,
+      "renderer": 10,
+      "node": 12.997999999999593
+     },
+     "bank": "98c13a34e7f5"
+    },
+    {
+     "index": 682,
+     "time": 22.733333333333334,
+     "transition": null,
+     "load1": 29.22,
+     "setFrame": 37.03688100000727,
+     "checks": 0.1368499999953201,
+     "pose": 37.28816100000404,
+     "screenshot": 2060.5290039999963,
+     "pngCheck": 0.03429500000493135,
+     "write": 1.4216100000048755,
+     "rename": 0.3291469999967376,
+     "sha256": "e8564b539ef9ecfb6c0e24334affd68c963414b69c467ef701cf8b2a45be1928",
+     "hash": 0.1321719999978086,
+     "link": 0.511264000000665,
+     "bytes": 167372,
+     "ok": true,
+     "page": {
+      "setFrame": 32.30000001192093,
+      "restore": 23.599999994039536,
+      "setView": 4.5999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 100,
+      "utility": 0,
+      "renderer": 30,
+      "node": 16.0329999999999
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10450,
+      "utility": 0,
+      "renderer": 0,
+      "node": 15.50400000000036
+     },
+     "bank": "bbbd809a2dfe"
+    },
+    {
+     "index": 683,
+     "time": 22.766666666666666,
+     "transition": null,
+     "load1": 29.69,
+     "setFrame": 34.585319000005256,
+     "checks": 0.12580999999772757,
+     "pose": 34.98961999999301,
+     "screenshot": 1920.4668640000018,
+     "pngCheck": 0.08009200000378769,
+     "write": 1.1062190000084229,
+     "rename": 0.2124750000075437,
+     "sha256": "c09fcaa573a92a5fb48ed1e2b0b87cd8f3c0d8e83c2eb60d42d81d74a15d1933",
+     "hash": 0.13334499999473337,
+     "link": 0.46043800000916235,
+     "bytes": 167597,
+     "ok": true,
+     "page": {
+      "setFrame": 29,
+      "restore": 22.5,
+      "setView": 5.800000011920929,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 15.532000000000153
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10430,
+      "utility": 0,
+      "renderer": 0,
+      "node": 17.29199999999946
+     },
+     "bank": "d4a9ab16c9dc"
+    },
+    {
+     "index": 684,
+     "time": 22.8,
+     "transition": null,
+     "load1": 29.69,
+     "setFrame": 51.14097700000275,
+     "checks": 0.11577999999281019,
+     "pose": 51.450147000010475,
+     "screenshot": 1742.5081310000096,
+     "pngCheck": 0.029727000001003034,
+     "write": 2.8502730000036536,
+     "rename": 0.3174859999999171,
+     "sha256": "7bdbd17727af2c3c5ccfd06cbc2c2c8b3d954ef8ac376f557e969222f912937c",
+     "hash": 0.13965699999243952,
+     "link": 0.2987089999951422,
+     "bytes": 167292,
+     "ok": true,
+     "page": {
+      "setFrame": 44.29999998211861,
+      "restore": 34.5,
+      "setView": 8.900000005960464,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 130,
+      "utility": 0,
+      "renderer": 40,
+      "node": 16.471999999999753
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10170,
+      "utility": 0,
+      "renderer": 10,
+      "node": 14.550000000000182
+     },
+     "bank": "5b7425427ff2"
+    },
+    {
+     "index": 685,
+     "time": 22.833333333333332,
+     "transition": null,
+     "load1": 29.69,
+     "setFrame": 34.72984400000132,
+     "checks": 0.0858730000036303,
+     "pose": 34.99458899999445,
+     "screenshot": 1414.1030730000057,
+     "pngCheck": 0.03435499999613967,
+     "write": 1.578138000011677,
+     "rename": 0.2549459999863757,
+     "sha256": "c4995d89feb0ac46a305dff3b21957cc836aa11cb5d4208f375749b156d6b71d",
+     "hash": 0.12833400000818074,
+     "link": 0.33721199999854434,
+     "bytes": 167353,
+     "ok": true,
+     "page": {
+      "setFrame": 29.099999994039536,
+      "restore": 23.600000023841858,
+      "setView": 4.799999982118607,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 30,
+      "node": 16.36500000000069
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9810,
+      "utility": 0,
+      "renderer": 10,
+      "node": 13.201999999999316
+     },
+     "bank": "17cfb7ae7abb"
+    },
+    {
+     "index": 686,
+     "time": 22.866666666666667,
+     "transition": null,
+     "load1": 30.03,
+     "setFrame": 32.93855900000199,
+     "checks": 0.12383700000646058,
+     "pose": 33.1942970000091,
+     "screenshot": 1922.4009059999953,
+     "pngCheck": 0.027652999997371808,
+     "write": 6.692416999998386,
+     "rename": 2.959342000001925,
+     "sha256": "b6fb167e603400c7fe09e84383656c326fd851bc9b23b1dd7284847db7ebe5a9",
+     "hash": 0.13926500000525266,
+     "link": 8.864417000004323,
+     "bytes": 167383,
+     "ok": true,
+     "page": {
+      "setFrame": 28.400000005960464,
+      "restore": 21.599999994039536,
+      "setView": 5.9000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 15.072000000000116
+     },
+     "cpuScreenshot": {
+      "browser": 40,
+      "zygote": 0,
+      "gpu-process": 10300,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.365999999999985
+     },
+     "bank": "eb0df3bf9581"
+    },
+    {
+     "index": 687,
+     "time": 22.9,
+     "transition": null,
+     "load1": 30.03,
+     "setFrame": 36.75019700000121,
+     "checks": 0.12129099998855963,
+     "pose": 37.041872999994666,
+     "screenshot": 1474.9890560000058,
+     "pngCheck": 0.024004999999306165,
+     "write": 1.062514999997802,
+     "rename": 0.1948019999981625,
+     "sha256": "054475d4fade99a96c09eaedd6659f03f0394537f498426dca6b2dbd5d3b499b",
+     "hash": 0.11763300000166055,
+     "link": 0.22221400000853464,
+     "bytes": 167232,
+     "ok": true,
+     "page": {
+      "setFrame": 24.5,
+      "restore": 18.19999998807907,
+      "setView": 5.699999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 10,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 30,
+      "node": 35.65800000000036
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9300,
+      "utility": 0,
+      "renderer": 0,
+      "node": 12.648999999999432
+     },
+     "bank": "1c0e50a7ff8b"
+    },
+    {
+     "index": 688,
+     "time": 22.933333333333334,
+     "transition": null,
+     "load1": 30.03,
+     "setFrame": 30.051957999996375,
+     "checks": 0.10831700000562705,
+     "pose": 30.33249299999443,
+     "screenshot": 1671.233871999997,
+     "pngCheck": 0.02727200000663288,
+     "write": 1.3174419999995735,
+     "rename": 0.2539329999999609,
+     "sha256": "ec516e86a392d1d5661d4057d0ad2a89c1eceff8c2f39fa883f50b8d6e2e489c",
+     "hash": 0.13142999999399763,
+     "link": 0.27951300000131596,
+     "bytes": 167381,
+     "ok": true,
+     "page": {
+      "setFrame": 21.30000001192093,
+      "restore": 17.799999982118607,
+      "setView": 3,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 30,
+      "node": 17.327000000000226
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10190,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.292000000000371
+     },
+     "bank": "02ad1f50b95e"
+    },
+    {
+     "index": 689,
+     "time": 22.966666666666665,
+     "transition": null,
+     "load1": 30.51,
+     "setFrame": 40.32567200000631,
+     "checks": 0.0746930000022985,
+     "pose": 40.4838929999969,
+     "screenshot": 1498.9228969999967,
+     "pngCheck": 0.02382499999657739,
+     "write": 1.1376490000111517,
+     "rename": 0.19954000000143424,
+     "sha256": "d6640a2214894e8d96769ce37c9a5b1a50c86e55c23cabd8d7cc2e4ff01dfb90",
+     "hash": 0.12032899999758229,
+     "link": 0.27249899999878835,
+     "bytes": 167124,
+     "ok": true,
+     "page": {
+      "setFrame": 36.80000001192093,
+      "restore": 31.69999998807907,
+      "setView": 4.5999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 15.204999999999927
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9810,
+      "utility": 0,
+      "renderer": 10,
+      "node": 12.46600000000035
+     },
+     "bank": "bc725bb65e0b"
+    },
+    {
+     "index": 690,
+     "time": 23,
+     "transition": null,
+     "load1": 30.51,
+     "setFrame": 30.881148000000394,
+     "checks": 0.06586499999684747,
+     "pose": 31.081539999999222,
+     "screenshot": 1388.236923000004,
+     "pngCheck": 0.018135000005713664,
+     "write": 1.1171579999936512,
+     "rename": 0.21390799999062438,
+     "sha256": "fdce85b6f811d3f19556d4130ff1ba18cf9251876212a3ff5105e4576d477d4c",
+     "hash": 0.1171640000102343,
+     "link": 0.2342860000062501,
+     "bytes": 167137,
+     "ok": true,
+     "page": {
+      "setFrame": 26.80000001192093,
+      "restore": 21.30000001192093,
+      "setView": 4.699999988079071,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 20,
+      "node": 15.510000000000218
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9530,
+      "utility": 0,
+      "renderer": 10,
+      "node": 11.470999999999549
+     },
+     "bank": "94f67166d570"
+    },
+    {
+     "index": 691,
+     "time": 23.033333333333335,
+     "transition": null,
+     "load1": 30.51,
+     "setFrame": 36.557749999992666,
+     "checks": 0.116492000001017,
+     "pose": 36.80865800000902,
+     "screenshot": 1799.008422999992,
+     "pngCheck": 0.030377999995835125,
+     "write": 1.1911909999907948,
+     "rename": 0.4867380000068806,
+     "sha256": "b94f279a4bb6131cfbc39db41dd28dbfc4aa81c2db0ea0ebf1f0335e19fc5806",
+     "hash": 0.13100999999733176,
+     "link": 0.378391999998712,
+     "bytes": 167208,
+     "ok": true,
+     "page": {
+      "setFrame": 30.30000001192093,
+      "restore": 24.69999998807907,
+      "setView": 5.100000023841858,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 30,
+      "node": 16.249000000000706
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10220,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.464999999999236
+     },
+     "bank": "ae736c048c58"
+    },
+    {
+     "index": 692,
+     "time": 23.066666666666666,
+     "transition": null,
+     "load1": 30.95,
+     "setFrame": 27.659697000010055,
+     "checks": 0.17353000000002794,
+     "pose": 27.988844999999856,
+     "screenshot": 1977.658064999996,
+     "pngCheck": 0.039305999991483986,
+     "write": 2.8007899999938672,
+     "rename": 0.2872079999942798,
+     "sha256": "bec8bb790040d135c81aa7f01f042a75233145b5a3ed1462ec3d31e93d07919a",
+     "hash": 0.14520600000105333,
+     "link": 0.6407509999989998,
+     "bytes": 167335,
+     "ok": true,
+     "page": {
+      "setFrame": 22,
+      "restore": 18.400000005960464,
+      "setView": 3.0999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 30,
+      "node": 15.037999999999556
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10310,
+      "utility": 0,
+      "renderer": 0,
+      "node": 15.052999999999884
+     },
+     "bank": "608f129e79ea"
+    },
+    {
+     "index": 693,
+     "time": 23.1,
+     "transition": null,
+     "load1": 30.95,
+     "setFrame": 29.322816999992938,
+     "checks": 0.06606599999940954,
+     "pose": 29.49390499999572,
+     "screenshot": 1710.5090089999867,
+     "pngCheck": 0.022503000000142492,
+     "write": 1.1639890000078594,
+     "rename": 0.27082700000028126,
+     "sha256": "def50e1fab4f77b66cc8af1b8b5c32490563ffa74ceed515262470b4019e6a75",
+     "hash": 0.12039799999911338,
+     "link": 0.2918760000029579,
+     "bytes": 167398,
+     "ok": true,
+     "page": {
+      "setFrame": 22.5,
+      "restore": 18,
+      "setView": 3.9000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 50,
+      "node": 13.670999999999367
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10060,
+      "utility": 0,
+      "renderer": 10,
+      "node": 11.509000000000015
+     },
+     "bank": "b6f04e06a21c"
+    },
+    {
+     "index": 694,
+     "time": 23.133333333333333,
+     "transition": null,
+     "load1": 30.95,
+     "setFrame": 47.71787400000903,
+     "checks": 0.10838700000022072,
+     "pose": 47.983852000004845,
+     "screenshot": 1685.004329000003,
+     "pngCheck": 0.02928599998995196,
+     "write": 1.6662769999966258,
+     "rename": 0.21777600000496022,
+     "sha256": "029ccb8bddfad4eecd7a938946104a4c4d503f988400e6751b4fc58238cd1019",
+     "hash": 0.1395160000101896,
+     "link": 0.24649000000499655,
+     "bytes": 167354,
+     "ok": true,
+     "page": {
+      "setFrame": 41.900000005960464,
+      "restore": 36.29999998211861,
+      "setView": 5,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 180,
+      "utility": 0,
+      "renderer": 50,
+      "node": 14.016000000000531
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10020,
+      "utility": 0,
+      "renderer": 10,
+      "node": 14.734999999999673
+     },
+     "bank": "49eb0bd8a0de"
+    },
+    {
+     "index": 695,
+     "time": 23.166666666666668,
+     "transition": null,
+     "load1": 31.28,
+     "setFrame": 41.36968300001172,
+     "checks": 0.11142200000176672,
+     "pose": 41.64443799998844,
+     "screenshot": 1708.047927000007,
+     "pngCheck": 0.030167999997502193,
+     "write": 1.5149080000119284,
+     "rename": 0.31282700000156183,
+     "sha256": "b76c3e86a7958191ed43c7b54b287a6803b42d9481dd7930b010691ee30bce63",
+     "hash": 0.12690199998905882,
+     "link": 0.4005429999961052,
+     "bytes": 167061,
+     "ok": true,
+     "page": {
+      "setFrame": 37.099999994039536,
+      "restore": 29.099999994039536,
+      "setView": 6.9000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 30,
+      "node": 15.681999999999789
+     },
+     "cpuScreenshot": {
+      "browser": 70,
+      "zygote": 0,
+      "gpu-process": 10000,
+      "utility": 0,
+      "renderer": 10,
+      "node": 14.731999999999971
+     },
+     "bank": "c81a54162a12"
+    },
+    {
+     "index": 696,
+     "time": 23.2,
+     "transition": null,
+     "load1": 31.28,
+     "setFrame": 33.17327899999509,
+     "checks": 0.1565779999946244,
+     "pose": 33.488549999994575,
+     "screenshot": 2080.3592139999964,
+     "pngCheck": 0.03531700000166893,
+     "write": 1.0340609999984736,
+     "rename": 0.21970800000417512,
+     "sha256": "39971ec0375d4005f24ce9118f37c169c882934b78beb8ee10044b8924dd333f",
+     "hash": 0.15165800000249874,
+     "link": 0.33036899998842273,
+     "bytes": 167168,
+     "ok": true,
+     "page": {
+      "setFrame": 27.400000005960464,
+      "restore": 22.299999982118607,
+      "setView": 4.5,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 50,
+      "node": 16.875
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10610,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.53399999999965
+     },
+     "bank": "9b1899e96884"
+    },
+    {
+     "index": 697,
+     "time": 23.233333333333334,
+     "transition": null,
+     "load1": 31.57,
+     "setFrame": 31.56701699999394,
+     "checks": 0.08157500000379514,
+     "pose": 31.767009000002872,
+     "screenshot": 2185.2954020000034,
+     "pngCheck": 0.028043999991496094,
+     "write": 3.442693999997573,
+     "rename": 0.25943399999232497,
+     "sha256": "21b260f2a153f976b06e540acedb30c40dd860e762441eeae864b23d0ce26259",
+     "hash": 0.23223199999483768,
+     "link": 0.9661619999969844,
+     "bytes": 167386,
+     "ok": true,
+     "page": {
+      "setFrame": 27.899999976158142,
+      "restore": 21.5,
+      "setView": 5.700000017881393,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 10,
+      "zygote": 0,
+      "gpu-process": 40,
+      "utility": 0,
+      "renderer": 40,
+      "node": 15.234000000000378
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 10370,
+      "utility": 0,
+      "renderer": 0,
+      "node": 17.30999999999949
+     },
+     "bank": "6f44cb69affd"
+    },
+    {
+     "index": 698,
+     "time": 23.266666666666666,
+     "transition": null,
+     "load1": 31.57,
+     "setFrame": 37.602734000000055,
+     "checks": 0.07262999999511521,
+     "pose": 37.81978699998581,
+     "screenshot": 1316.583004,
+     "pngCheck": 0.033462999999755993,
+     "write": 1.6607349999976577,
+     "rename": 0.359375,
+     "sha256": "116a99fa14459b55d8bd5dc12f9f21408ca5e9cea7349efa9d3702f42b8b9351",
+     "hash": 0.27938300000096206,
+     "link": 0.5851959999999963,
+     "bytes": 167239,
+     "ok": true,
+     "page": {
+      "setFrame": 32.69999998807907,
+      "restore": 23.299999982118607,
+      "setView": 7.200000017881393,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 40,
+      "node": 14.427999999999884
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9370,
+      "utility": 0,
+      "renderer": 0,
+      "node": 12.806000000000495
+     },
+     "bank": "323850ebc02e"
+    },
+    {
+     "index": 699,
+     "time": 23.3,
+     "transition": null,
+     "load1": 31.57,
+     "setFrame": 32.24285599999712,
+     "checks": 0.07017300000006799,
+     "pose": 32.42552400000568,
+     "screenshot": 2391.2405819999985,
+     "pngCheck": 0.01591099999495782,
+     "write": 0.9382690000056755,
+     "rename": 0.20812699999078177,
+     "sha256": "0773b520089a680b9d8d6e05179f19dd795a09577433a2c8992b5d82beda5d8b",
+     "hash": 0.11749299999792129,
+     "link": 0.19888899999205023,
+     "bytes": 167282,
+     "ok": true,
+     "page": {
+      "setFrame": 28.30000001192093,
+      "restore": 23.099999994039536,
+      "setView": 4.5,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.962999999999738
+     },
+     "cpuScreenshot": {
+      "browser": 70,
+      "zygote": 0,
+      "gpu-process": 10900,
+      "utility": 0,
+      "renderer": 10,
+      "node": 11.655000000000655
+     },
+     "bank": "ab2a04016e3c"
+    },
+    {
+     "index": 700,
+     "time": 23.333333333333332,
+     "transition": null,
+     "load1": 31.85,
+     "setFrame": 29.095005999988643,
+     "checks": 0.09527200000593439,
+     "pose": 29.284136000002036,
+     "screenshot": 1932.3821929999976,
+     "pngCheck": 0.025517999994917773,
+     "write": 6.985987000007299,
+     "rename": 0.2684129999979632,
+     "sha256": "d5eec427b7d1d55f885904350d52a4658dc4f696ddeec0973a0b2819d777a278",
+     "hash": 0.11839499999769032,
+     "link": 0.3281449999922188,
+     "bytes": 167365,
+     "ok": true,
+     "page": {
+      "setFrame": 24.900000005960464,
+      "restore": 20.19999998807907,
+      "setView": 3.9000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 40,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.322000000000116
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10200,
+      "utility": 0,
+      "renderer": 0,
+      "node": 12.511000000000422
+     },
+     "bank": "adef84175d96"
+    },
+    {
+     "index": 701,
+     "time": 23.366666666666667,
+     "transition": null,
+     "load1": 31.85,
+     "setFrame": 37.651656999994884,
+     "checks": 0.16594599999370985,
+     "pose": 37.9764070000092,
+     "screenshot": 1911.4560320000019,
+     "pngCheck": 0.02532799998880364,
+     "write": 1.3596120000001974,
+     "rename": 0.2936900000058813,
+     "sha256": "5c4a0451e85aa49fd07b968661d1a7bb53de72a5ffe7118d9d98a0d8efcb7b08",
+     "hash": 0.12867600000754464,
+     "link": 0.3227049999986775,
+     "bytes": 167391,
+     "ok": true,
+     "page": {
+      "setFrame": 29.299999982118607,
+      "restore": 20.69999998807907,
+      "setView": 7.4000000059604645,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 90,
+      "utility": 0,
+      "renderer": 30,
+      "node": 58.1220000000003
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9830,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.90899999999965
+     },
+     "bank": "b90097c5292b"
+    },
+    {
+     "index": 702,
+     "time": 23.4,
+     "transition": null,
+     "load1": 32.34,
+     "setFrame": 44.9528580000042,
+     "checks": 0.07470299999113195,
+     "pose": 45.23709800001234,
+     "screenshot": 1904.3737609999953,
+     "pngCheck": 0.021921000006841496,
+     "write": 1.0067790000030072,
+     "rename": 2.1853960000007646,
+     "sha256": "7bb0b34a2e2bab5bcddb48017417c68e5e3510ea7fdd38aa77090c347a594b5b",
+     "hash": 0.14694999999483116,
+     "link": 1.0712530000018887,
+     "bytes": 167418,
+     "ok": true,
+     "page": {
+      "setFrame": 32.099999994039536,
+      "restore": 26.69999998807907,
+      "setView": 4.600000023841858,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 50,
+      "node": 16.0649999999996
+     },
+     "cpuScreenshot": {
+      "browser": 40,
+      "zygote": 0,
+      "gpu-process": 10880,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.845000000000255
+     },
+     "bank": "ff5e0c43fc96"
+    },
+    {
+     "index": 703,
+     "time": 23.433333333333334,
+     "transition": null,
+     "load1": 32.34,
+     "setFrame": 24.548578000001726,
+     "checks": 0.07197699999960605,
+     "pose": 24.716760000010254,
+     "screenshot": 1878.7093870000099,
+     "pngCheck": 0.02084899999317713,
+     "write": 1.0773229999904288,
+     "rename": 0.2252089999965392,
+     "sha256": "a5bb4c5451013e13579236d56fdf7536bc98c0e112f82bef024e459ef14952bc",
+     "hash": 0.11806500000238884,
+     "link": 0.305993000001763,
+     "bytes": 167497,
+     "ok": true,
+     "page": {
+      "setFrame": 19.299999982118607,
+      "restore": 14.599999994039536,
+      "setView": 4,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 50,
+      "utility": 0,
+      "renderer": 20,
+      "node": 13.88299999999981
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 10290,
+      "utility": 10,
+      "renderer": 0,
+      "node": 12.799000000000888
+     },
+     "bank": "d5fac595a0b8"
+    },
+    {
+     "index": 704,
+     "time": 23.466666666666665,
+     "transition": null,
+     "load1": 32.34,
+     "setFrame": 33.81387199999881,
+     "checks": 0.07576400000834838,
+     "pose": 34.00151000000187,
+     "screenshot": 1832.468525999997,
+     "pngCheck": 0.016781000012997538,
+     "write": 1.1727259999897797,
+     "rename": 0.41790600001695566,
+     "sha256": "981951830b748777edffd0f3f69fa22a7169cb33b25450a3316794d0c4cd60c3",
+     "hash": 0.1313709999958519,
+     "link": 0.5197709999920335,
+     "bytes": 167731,
+     "ok": true,
+     "page": {
+      "setFrame": 29.200000017881393,
+      "restore": 22,
+      "setView": 6.5999999940395355,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 70,
+      "utility": 0,
+      "renderer": 30,
+      "node": 14.523999999999432
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9870,
+      "utility": 0,
+      "renderer": 0,
+      "node": 13.373999999999796
+     },
+     "bank": "5d34f4b180d3"
+    },
+    {
+     "index": 705,
+     "time": 23.5,
+     "transition": null,
+     "load1": 32.71,
+     "setFrame": 29.231005000008736,
+     "checks": 0.10142200000700541,
+     "pose": 29.462948000000324,
+     "screenshot": 1514.3388280000072,
+     "pngCheck": 0.020659999980125576,
+     "write": 0.8745570000028238,
+     "rename": 0.19832900000619702,
+     "sha256": "98334f27855bb4afa663b182e0b9a5970f5c270e92dbe75b2043dda37c3784e4",
+     "hash": 0.12337399998796172,
+     "link": 0.23249400002532639,
+     "bytes": 167867,
+     "ok": true,
+     "page": {
+      "setFrame": 24.5,
+      "restore": 20,
+      "setView": 4,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 40,
+      "node": 15.463999999999942
+     },
+     "cpuScreenshot": {
+      "browser": 60,
+      "zygote": 0,
+      "gpu-process": 9350,
+      "utility": 0,
+      "renderer": 0,
+      "node": 14.969999999999345
+     },
+     "bank": "fd4101822bb7"
+    },
+    {
+     "index": 706,
+     "time": 23.533333333333335,
+     "transition": null,
+     "load1": 32.71,
+     "setFrame": 56.251167000009445,
+     "checks": 0.08140500000445172,
+     "pose": 56.44583700000658,
+     "screenshot": 1534.6629130000074,
+     "pngCheck": 0.02673099999083206,
+     "write": 1.9037400000088383,
+     "rename": 0.34437599999364465,
+     "sha256": "ba443c99cd6459e4b436c06101e183f8dafece73c828a7b757b58b1ecb2b06b9",
+     "hash": 0.13523800001712516,
+     "link": 0.34521800000220537,
+     "bytes": 167657,
+     "ok": true,
+     "page": {
+      "setFrame": 42.20000001788139,
+      "restore": 33.099999994039536,
+      "setView": 8.400000005960464,
+      "setTime": 0,
+      "highlight": 0,
+      "rafCount": 0,
+      "rafWait": 0,
+      "restoreCalls": 1,
+      "setViewCalls": 1
+     },
+     "cpuPose": {
+      "browser": 0,
+      "zygote": 0,
+      "gpu-process": 60,
+      "utility": 0,
+      "renderer": 30,
+      "node": 16.601000000000568
+     },
+     "cpuScreenshot": {
+      "browser": 50,
+      "zygote": 0,
+      "gpu-process": 9810,
+      "utility": 10,
+      "renderer": 0,
+      "node": 15.802999999999884
+     },
+     "bank": "7da2b76ec1a3"
+    }
+   ]
+  }
+ ],
+ "environment": {
+  "chromium": "151.0.7922.34",
+  "viewerApi": 29,
+  "width": 1920,
+  "height": 1080,
+  "webgl": {
+   "view": {
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "vendor": "Google Inc. (Google)",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "attributes": {
+     "alpha": true,
+     "antialias": true,
+     "depth": true,
+     "desynchronized": false,
+     "failIfMajorPerformanceCaveat": false,
+     "powerPreference": "default",
+     "premultipliedAlpha": true,
+     "preserveDrawingBuffer": false,
+     "stencil": true,
+     "xrCompatible": false
+    }
+   },
+   "fresh": {
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "vendor": "Google Inc. (Google)",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "attributes": {
+     "alpha": true,
+     "antialias": true,
+     "depth": true,
+     "desynchronized": false,
+     "failIfMajorPerformanceCaveat": false,
+     "powerPreference": "default",
+     "premultipliedAlpha": true,
+     "preserveDrawingBuffer": false,
+     "stencil": false,
+     "xrCompatible": false
+    }
+   },
+   "canvases": [
+    {
+     "width": 1766,
+     "height": 929
+    }
+   ]
+  },
+  "processes": [
+   {
+    "type": "browser",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-updater-scheduler --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --use-angle=swiftshader --enable-unsafe-swiftshader --user-data-dir=/home/asa/devel/machinome/videomaker/WTs/render-cost/workflow/ongoing/addition-warts-campaign/render-cost/_build/tmp/playwright_chromiumdev_profile-NbBXwa --remote-debugging-pipe --no-startup-window "
+   },
+   {
+    "type": "zygote",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-zygote-sandbox --no-sandbox --headless "
+   },
+   {
+    "type": "zygote",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=zygote --no-sandbox --headless "
+   },
+   {
+    "type": "gpu-process",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=gpu-process --no-sandbox --disable-dev-shm-usage --disable-breakpad --headless --ozone-platform=headless --use-angle=swiftshader --enable-unsafe-swiftshader --gpu-preferences=YAAAAAAAAAAgAAAEAAAAAAAAAAAAAGAASAAAAAAAAAABAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAMAAAAAQAAAAAAAAAAAAAACAAAAAAAAAAIAAAAAAAAAA== --shared-files --field-trial-handle=3,i,14744153720227425559,17510572645910274687,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,14176806010032969932,4801930690911128815,4 --trace-process-track-uuid=3190708988185955192 "
+   },
+   {
+    "type": "utility",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=utility --utility-sub-type=network.mojom.NetworkService --lang=en-US --service-sandbox-type=none --no-sandbox --disable-dev-shm-usage --use-angle=swiftshader --mute-audio --headless=old --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14744153720227425559,17510572645910274687,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,14176806010032969932,4801930690911128815,4 --trace-process-track-uuid=3190708989122997041 "
+   },
+   {
+    "type": "renderer",
+    "cmd": "/home/asa/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell --type=renderer --headless=old --no-sandbox --disable-dev-shm-usage --disable-back-forward-cache --disable-background-timer-throttling --disable-breakpad --force-color-profile=srgb --remote-debugging-pipe --allow-pre-commit-input --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --ozone-platform=headless --lang=en-US --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=4 --time-ticks-at-unix-epoch=-1790589212949046 --launch-time-ticks=253332249342 --shared-files=v8_context_snapshot_data:100 --field-trial-handle=3,i,14744153720227425559,17510572645910274687,262144 --enable-features=CDPScreenshotNewSurface --disable-features=AutoDeElevate,AvoidUnnecessaryBeforeUnloadCheckSync,BlockOriginHeaderModificationOnRedirect,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,OptimizationHints,PaintHolding,ThirdPartyStoragePartitioning,Translate,msEdgeUpdateLaunchServicesPreferredVersion,msForceBrowserSignIn --variations-seed-version --pseudonymization-salt-handle=7,i,14176806010032969932,4801930690911128815,4 --trace-process-track-uuid=3190708990060038890 "
+   }
+  ],
+  "node": "v24.11.1",
+  "cpus": 16,
+  "viewerSha256": "b5fcdb8613aceb3936c09d755af41f1ceb9ad1125e4f5bc4e671a568a0920107",
+  "stageSha256": "50f37c454411a75c3b18375236a38834b137ba4d6a497edce860d9159006d700",
+  "takeReplay": {
+   "steps": 7,
+   "matched": true
+  }
+ },
+ "fps": 30,
+ "shotFrames": 581,
+ "frameCount": 60,
+ "frames": [
+  {
+   "index": 647,
+   "time": 21.566666666666666,
+   "transition": null
+  },
+  {
+   "index": 648,
+   "time": 21.6,
+   "transition": null
+  },
+  {
+   "index": 649,
+   "time": 21.633333333333333,
+   "transition": null
+  },
+  {
+   "index": 650,
+   "time": 21.666666666666668,
+   "transition": null
+  },
+  {
+   "index": 651,
+   "time": 21.7,
+   "transition": null
+  },
+  {
+   "index": 652,
+   "time": 21.733333333333334,
+   "transition": null
+  },
+  {
+   "index": 653,
+   "time": 21.766666666666666,
+   "transition": null
+  },
+  {
+   "index": 654,
+   "time": 21.8,
+   "transition": null
+  },
+  {
+   "index": 655,
+   "time": 21.833333333333332,
+   "transition": null
+  },
+  {
+   "index": 656,
+   "time": 21.866666666666667,
+   "transition": null
+  },
+  {
+   "index": 657,
+   "time": 21.9,
+   "transition": null
+  },
+  {
+   "index": 658,
+   "time": 21.933333333333334,
+   "transition": null
+  },
+  {
+   "index": 659,
+   "time": 21.966666666666665,
+   "transition": null
+  },
+  {
+   "index": 660,
+   "time": 22,
+   "transition": null
+  },
+  {
+   "index": 661,
+   "time": 22.033333333333335,
+   "transition": null
+  },
+  {
+   "index": 662,
+   "time": 22.066666666666666,
+   "transition": null
+  },
+  {
+   "index": 663,
+   "time": 22.1,
+   "transition": null
+  },
+  {
+   "index": 664,
+   "time": 22.133333333333333,
+   "transition": null
+  },
+  {
+   "index": 665,
+   "time": 22.166666666666668,
+   "transition": null
+  },
+  {
+   "index": 666,
+   "time": 22.2,
+   "transition": null
+  },
+  {
+   "index": 667,
+   "time": 22.233333333333334,
+   "transition": null
+  },
+  {
+   "index": 668,
+   "time": 22.266666666666666,
+   "transition": null
+  },
+  {
+   "index": 669,
+   "time": 22.3,
+   "transition": null
+  },
+  {
+   "index": 670,
+   "time": 22.333333333333332,
+   "transition": null
+  },
+  {
+   "index": 671,
+   "time": 22.366666666666667,
+   "transition": null
+  },
+  {
+   "index": 672,
+   "time": 22.4,
+   "transition": null
+  },
+  {
+   "index": 673,
+   "time": 22.433333333333334,
+   "transition": null
+  },
+  {
+   "index": 674,
+   "time": 22.466666666666665,
+   "transition": null
+  },
+  {
+   "index": 675,
+   "time": 22.5,
+   "transition": null
+  },
+  {
+   "index": 676,
+   "time": 22.533333333333335,
+   "transition": null
+  },
+  {
+   "index": 677,
+   "time": 22.566666666666666,
+   "transition": null
+  },
+  {
+   "index": 678,
+   "time": 22.6,
+   "transition": null
+  },
+  {
+   "index": 679,
+   "time": 22.633333333333333,
+   "transition": null
+  },
+  {
+   "index": 680,
+   "time": 22.666666666666668,
+   "transition": null
+  },
+  {
+   "index": 681,
+   "time": 22.7,
+   "transition": null
+  },
+  {
+   "index": 682,
+   "time": 22.733333333333334,
+   "transition": null
+  },
+  {
+   "index": 683,
+   "time": 22.766666666666666,
+   "transition": null
+  },
+  {
+   "index": 684,
+   "time": 22.8,
+   "transition": null
+  },
+  {
+   "index": 685,
+   "time": 22.833333333333332,
+   "transition": null
+  },
+  {
+   "index": 686,
+   "time": 22.866666666666667,
+   "transition": null
+  },
+  {
+   "index": 687,
+   "time": 22.9,
+   "transition": null
+  },
+  {
+   "index": 688,
+   "time": 22.933333333333334,
+   "transition": null
+  },
+  {
+   "index": 689,
+   "time": 22.966666666666665,
+   "transition": null
+  },
+  {
+   "index": 690,
+   "time": 23,
+   "transition": null
+  },
+  {
+   "index": 691,
+   "time": 23.033333333333335,
+   "transition": null
+  },
+  {
+   "index": 692,
+   "time": 23.066666666666666,
+   "transition": null
+  },
+  {
+   "index": 693,
+   "time": 23.1,
+   "transition": null
+  },
+  {
+   "index": 694,
+   "time": 23.133333333333333,
+   "transition": null
+  },
+  {
+   "index": 695,
+   "time": 23.166666666666668,
+   "transition": null
+  },
+  {
+   "index": 696,
+   "time": 23.2,
+   "transition": null
+  },
+  {
+   "index": 697,
+   "time": 23.233333333333334,
+   "transition": null
+  },
+  {
+   "index": 698,
+   "time": 23.266666666666666,
+   "transition": null
+  },
+  {
+   "index": 699,
+   "time": 23.3,
+   "transition": null
+  },
+  {
+   "index": 700,
+   "time": 23.333333333333332,
+   "transition": null
+  },
+  {
+   "index": 701,
+   "time": 23.366666666666667,
+   "transition": null
+  },
+  {
+   "index": 702,
+   "time": 23.4,
+   "transition": null
+  },
+  {
+   "index": 703,
+   "time": 23.433333333333334,
+   "transition": null
+  },
+  {
+   "index": 704,
+   "time": 23.466666666666665,
+   "transition": null
+  },
+  {
+   "index": 705,
+   "time": 23.5,
+   "transition": null
+  },
+  {
+   "index": 706,
+   "time": 23.533333333333335,
+   "transition": null
+  }
+ ],
+ "wallMs": 133944.853292,
+ "load1End": 32.71,
+ "finished": "2026-10-01T08:17:58.724Z"
+}

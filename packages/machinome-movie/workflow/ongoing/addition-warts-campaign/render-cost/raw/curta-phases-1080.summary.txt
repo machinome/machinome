@@ -1,0 +1,33 @@
+== curta-phases-1080.json: mode phases, shot add-23, 60 frames (647..706), 1920×1080, wall 133.9 s, load1 16.97 → 32.71
+-- variant stage; first frame excluded (pose 124, screenshot 14146); 59 frames, 0 with animation-frame waits, 0 in a join; load1 median 28.3 (23.2–32.7); PNG 163 KiB
+phase (ms)                             mean   median      p10      p90      min      max  share
+frame (all phases)                     1899     1924     1544     2204     1357     2425
+pose: total (Node)                     37.4     35.0     29.4     48.1     24.7     74.6    1.8 %
+  setFrame round trip                  37.1     34.7     29.2     47.8     24.5     72.0    1.8 %
+    in page: setFrame                  30.4     28.6     22.7     41.9     18.9     62.1    1.5 %
+      restore (bank)                   24.0     22.5     18.2     32.3     14.6     48.0    1.2 %
+      setView (camera, draw call)       5.6      5.2      3.7      8.2      3.0     13.2    0.3 %
+      animation-frame waits             0.0      0.0      0.0      0.0      0.0      0.0    0.0 %
+      rest (React, marks, measure)      0.9      0.7      0.5      1.1      0.4      4.1    0.0 %
+    evaluate overhead                   6.6      5.8      4.2     10.2      3.5     20.5    0.3 %
+  checks (Node)                         0.1      0.1      0.1      0.2      0.1      0.4    0.0 %
+  inner screenshots (joins, fades)      0.0      0.0      0.0      0.0      0.0      0.0    0.0 %
+  compose (joins, fades)                0.0      0.0      0.0      0.0      0.0      0.0    0.0 %
+  frame resolution, bookkeeping         0.2      0.2      0.1      0.2      0.1      2.3    0.0 %
+screenshot (page.screenshot)           1858     1890     1511     2167     1317     2391   98.2 %
+Node: PNG check                         0.0      0.0      0.0      0.1      0.0      0.1    0.0 %
+Node: write                             1.8      1.3      1.0      3.5      0.9      7.0    0.1 %
+Node: rename                            0.4      0.3      0.2      0.5      0.2      3.0    0.0 %
+Node: sha256                            0.1      0.1      0.1      0.2      0.1      0.3    0.0 %
+Node: link                              0.5      0.3      0.2      0.7      0.2      8.9    0.0 %
+CPU ms per frame, by process      
+cpu during pose: browser                0.5      0.0      0.0      0.0      0.0     10.0
+cpu during screenshot: browser         54.2     50.0     50.0     60.0     40.0     70.0
+cpu during pose: gpu-process           68.1     60.0     40.0     92.0     20.0      180
+cpu during screenshot: gpu-process    10096    10130     9580    10690     9300    10900
+cpu during screenshot: utility          0.3      0.0      0.0      0.0      0.0     10.0
+cpu during pose: renderer              37.1     30.0     30.0     50.0     20.0      110
+cpu during screenshot: renderer         4.7      0.0      0.0     10.0      0.0     50.0
+cpu during pose: node                  19.7     16.4     14.3     19.7     13.7      129
+cpu during screenshot: node            14.4     14.4     12.4     16.3     11.5     20.1
+
