@@ -4407,3 +4407,69 @@ fix: key `cached_shape` on the load observation, as the mesh caches key on
 theirs. Evidence: design.md "Non-Goals" and §3 of the
 `persistent-verdict-memo` change; no project has reported a wrong verdict
 from it.
+
+# Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)
+
+
+
+**Status (as filed): recorded; triage open.**
+
+
+
+Videomaker films the clocked Curta (`ClockedCurta`, document version 8) by
+
+recording a take through the public `Sim` and posing the viewer by restoring
+
+the recorded banks; the framework's requests and the viewer's agree bit for bit
+
+on 23 + 145. Three frictions met on the way, each a framework matter:
+
+
+
+1. **`Sim` fails over a project reached through a symlink.** With the
+
+   workspace's `projects/` a symlink to `/mnt/data/machinome-projects`,
+
+   `Sim(ClockedCurta())` run from `/home/asa/devel/machinome/projects/…` raises
+
+   `PermissionError: [Errno 13] Permission denied: '/mnt/home'` in
+
+   `machinome/node/base.py` `_make_build_dirs`; from the real path
+
+   `/mnt/data/machinome-projects/…` it works. The build directory is anchored
+
+   on a project root that the symlink resolves to the wrong place. Evidence:
+
+   the spike note of Videomaker's curta-video campaign
+
+   (`videomaker/workflow/ongoing/curta-video-campaign/spike.md`, "Other
+
+   findings").
+
+2. **`Sim` publishes no machine identity.** The export's manifest carries
+
+   `clocked.identity` and the viewer validates snapshots against it, but a
+
+   consumer recording a take through `Sim` can read the identity only from the
+
+   private `sim._clocked.identity`, so it cannot refuse a take recorded over a
+
+   model whose machine differs from the export's. Videomaker compares the
+
+   bank's ids with the export's drivers and states instead, and leaves the
+
+   identity check to the viewer's `restore`. Ask: a public `Sim.identity` (or
+
+   the identity on the snapshot). Evidence: `declare-a-take` evidence, finding 2.
+
+3. **`machinome export` writes no record of the source revision.** Videomaker
+
+   pins a model's `sourceRevision` from `<export>/source-revision.txt`, which
+
+   the Leonardo project's own `scripts/gallery.py` writes (`git rev-parse HEAD`)
+
+   and the Curta film has to write by hand. Ask: the export records the
+
+   project's revision when the project is a Git repository, in the manifest or
+
+   beside it, so a consumer can hold a film to the model it filmed.
