@@ -204,7 +204,8 @@ bundle SHALL be rebuilt only when the content of one of its inputs changes
 (the runtime, a module or a file it reads, the stage block, the versions of
 the bundler, the type checker and React), never because of a modification
 time. A YAML episode SHALL be drawn by a bundle of the runtime alone. `check`
-SHALL report the bundle it built or reused.
+SHALL report the bundle it built or reused, with the SHA-256 of its script
+and the SHA-256 of its stylesheet, so a change to either shows in the line.
 
 #### Scenario: A prop of the wrong type
 - **WHEN** `stage.tsx` reads the `Jobs` prop `jobs` as a string while the
@@ -218,8 +219,9 @@ SHALL report the bundle it built or reused.
 - **THEN** the second run reuses the bundle and reports it as reused.
 
 #### Scenario: A changed stylesheet
-- **WHEN** a stylesheet `stage.tsx` imports changes
-- **THEN** the next `check` rebuilds the bundle and reports its new hash.
+- **WHEN** a stylesheet `stage.tsx` imports changes, and nothing else
+- **THEN** the next `check` rebuilds the bundle and its `Stage:` line
+  reports the stylesheet's new hash beside the script's unchanged one.
 
 ### Requirement: The stage bundle is part of what a frame was made from
 

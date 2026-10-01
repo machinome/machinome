@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {parseArgs} from 'node:util';
-import {resolve,dirname,extname} from 'node:path';
+import {resolve,dirname,extname,basename} from 'node:path';
 import {readFile} from 'node:fs/promises';
 import {loadEpisode,confirmViewerApi,filmSubject,PAPER_STAGE} from '../src/episode.mjs';
 import {filmShots,shotActions,joinShows} from '../src/timeline.mjs';
@@ -10,7 +10,7 @@ import {chaptersOf,chapterTakeLines} from '../src/chapters.mjs';
 import {generateMovieTakes} from '../src/movie.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
-import {preview,render} from '../src/render.mjs';
+import {preview,render,readTrees} from '../src/render.mjs';
 import {clipCadence,loadPictures} from '../src/pictures.mjs';
 import {picturesShown,measureLayouts,layoutLines,checkEnlargements,checkPictureViews,
   reframesOf,reframeBoxes,reframeLines} from '../src/layout.mjs';
@@ -89,7 +89,8 @@ try{
     // The stage bundle: bundled and type-checked before any speech is bought.
     const bundle=early??await buildFilmStage(e);
     const modules=e.stage.modules.length?e.stage.modules.join(', '):'the runtime alone';
-    console.log(`Stage: ${bundle.reused?'reused':'bundled'} ${bundle.js} (sha256 ${bundle.sha256.slice(0,12)}) from ${modules}; `+
+    // Both hashes: a stylesheet change leaves the script's bytes as they were.
+    console.log(`Stage: ${bundle.reused?'reused':'bundled'} ${bundle.js} (sha256 ${bundle.sha256.slice(0,12)}) and ${basename(bundle.css)} (sha256 ${bundle.cssSha256.slice(0,12)}) from ${modules}; `+
       (bundle.typechecked?'types checked':e.stage.modules.length?'no TypeScript module, types not checked':'no module to type-check'));
     if(layouts)for(const line of [...layoutLines(layouts),...reframeLines(e,layouts)])console.log(line);
     const shots=filmShots(e),fps=e.output.fps;
@@ -120,6 +121,9 @@ try{
           `${cadence.dropped} dropped, ${cadence.repeated} repeated; audio not played`);
       }
     }
+    // The trees a render would name the heads of, and whether they are dirty
+    // now (ADR-015): the project's and this checkout's.
+    await readTrees(e,'check');
     process.exit(0);
   }
   if(command==='speech'){await speech(e,{generate:true});process.exit(0);}

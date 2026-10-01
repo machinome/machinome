@@ -157,7 +157,7 @@ test('the tour is checked, previewed, rendered twice and reviewed from the comma
   // Where the film's length comes from (wart 7 of Cut and Advance): each
   // chapter's take, its resolved length and its tail, after the summary line.
   assert.match(checked.out,/^Tour: 3 chapters.*\n {2}opening: take 3\.94 s, chapter 4\.77 s, tail 0\.63 s\n {2}balance: take 6\.04 s, chapter 6\.67 s, tail 0\.43 s\n {2}tip: take 6\.22 s, chapter 7\.47 s, tail 1\.05 s$/m);
-  const line=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) from stage\.tsx; types checked$/m.exec(checked.out);
+  const line=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) and stage\.css \(sha256 [0-9a-f]{12}\) from stage\.tsx; types checked$/m.exec(checked.out);
   assert.ok(line,checked.out);
   const bundle=await fileHash(line[1]);
   assert.equal(bundle.slice(0,12),line[2]);assert.equal(line[1],join(await realpath(build),'stage','stage.js'));
@@ -248,7 +248,7 @@ test('the YAML fixture episode is checked, previewed, rendered twice and reviewe
   assert.match(checked.out,/^YAML fixture: 3 chapters, 3 shots, 7s; model 20s$/m);
   // A YAML episode's chapters are its shots.
   assert.match(checked.out,/^ {2}hook: take 1\.35 s, chapter 2\.50 s, tail 0\.85 s\n {2}coupling: take 1\.90 s, chapter 2\.50 s, tail 0\.40 s\n {2}closing: take 1\.35 s, chapter 2\.00 s, tail 0\.45 s$/m);
-  const line=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) from the runtime alone; no module to type-check$/m.exec(checked.out);
+  const line=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) and stage\.css \(sha256 [0-9a-f]{12}\) from the runtime alone; no module to type-check$/m.exec(checked.out);
   assert.ok(line,checked.out);
   const e=await loadEpisode(file);
   await prepareWordTimingForCommand(e,{command:'preview'});
@@ -327,6 +327,25 @@ test('check refuses a reframe into a slot sized by what it holds, before any tak
   assert.doesNotMatch(refused.out,/no cached narration take/,'refused before the takes are asked for');
   assert.deepEqual(await readdir(join(build,'audio')).catch(()=>[]),[],'no take exists');
   assert.equal(refused.launches,1);
+});
+
+test('check reports the stylesheet\'s hash beside the script\'s, so a stylesheet change shows in its Stage line',async t=>{
+  // Wart 6 of Addition: the film's look was tuned in stage.css, and the line
+  // stayed the same, since the script's bytes do not change with it.
+  const {file,viewer,movie,build}=await fixtureMovie(t,'tour');
+  const stageLine=out=>/^Stage: .*$/m.exec(out)?.[0];
+  const first=cli('check',file,'--viewer',viewer);
+  assert.equal(first.code,0,first.out);
+  await appendFile(join(movie,'stage.css'),'\n.videomaker-test-unused { color: #123456; }\n');
+  const second=cli('check',file,'--viewer',viewer);
+  assert.equal(second.code,0,second.out);
+  assert.notEqual(stageLine(second.out),stageLine(first.out),'a stylesheet change shows in the Stage line');
+  const pattern=/^Stage: bundled (\S+stage\.js) \(sha256 ([0-9a-f]{12})\) and stage\.css \(sha256 ([0-9a-f]{12})\) from stage\.tsx; types checked$/m;
+  const [a,b]=[pattern.exec(first.out),pattern.exec(second.out)];
+  assert.ok(a&&b,second.out);
+  assert.equal(b[2],a[2],'the script is unchanged');
+  assert.notEqual(b[3],a[3],'the stylesheet is not');
+  assert.equal(b[3],(await fileHash(join(build,'stage','stage.css'))).slice(0,12));
 });
 
 test('check of a movie that shows no picture launches no Chromium',async t=>{

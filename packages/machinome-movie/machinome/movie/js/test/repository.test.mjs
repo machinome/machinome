@@ -106,3 +106,16 @@ test('the manual, the contract and the records say how a clocked take is filmed 
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md)'),'the ADR index');
   assert.doesNotMatch(await read('AGENTS.md'),/Only posed models with a normalized loop are filmable/);
 });
+
+test('the manual and the records say what provenance records of a dirty tree, and the Stage line\'s two hashes (honest-provenance)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const line='`Stage: bundled <path>/stage.js (sha256 <prefix>) and stage.css (sha256 <prefix>) from stage.tsx; types checked`';
+  const readme=await read('README.md');
+  assert.ok(readme.includes(line),'README: check\'s Stage line');
+  assert.ok(readme.includes('`Project tree: clean at <head>`'),'README: the tree line');
+  for(const field of ['`projectDirty`','`workflowDirty`','`releaseIssues`'])assert.ok(readme.includes(field),`README: ${field}`);
+  assert.ok((await read('docs/stage.md')).includes('Stage: bundled <root>/_build/stage/stage.js (sha256 <12 hex digits>) and stage.css (sha256 <12 hex digits>) from stage.tsx; types checked'),'stage.md: the Stage line');
+  assert.ok((await read('CHANGELOG.md')).includes('(`honest-provenance`, ADR-015)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)'),'the ADR index');
+  assert.ok((await readFile(join(root,'.gitignore'),'utf8')).split('\n').includes('/WTs/'),'.gitignore: the worktrees, as AGENTS.md says');
+});

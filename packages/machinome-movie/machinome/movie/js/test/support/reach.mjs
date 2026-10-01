@@ -55,6 +55,7 @@ export const READS={
   'test/support/stage-page.mjs':['src/film.html'],
   'test/pipeline/movie-pipeline.test.mjs':['fixtures','bin/videomaker.mjs'],  // spawns the command line
   'test/pipeline/review-pack.test.mjs':['bin/videomaker.mjs'],                // spawns the command line
+  'test/pipeline/provenance.test.mjs':['bin/videomaker.mjs'],                 // spawns the command line
   'test/pipeline/source-scenes.test.mjs':['src/film.html'],
   'test/viewer/real-viewer.test.mjs':['bin/videomaker.mjs'],                   // spawns the command line
   'test/viewer/take.test.mjs':['bin/videomaker.mjs'],                          // spawns the command line

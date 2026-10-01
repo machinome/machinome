@@ -20,6 +20,23 @@ lands it.
   mark only at its take time exactly, and `check`'s take line gives the
   length as written; `bankAt` takes the document. (`exact-take-times`,
   ADR-016)
+- Provenance says whether each tree was dirty. `preview` and `render` read
+  the project's Git tree and Videomaker's own once, before the first frame,
+  and record beside `projectHead` and `workflowHead` whether each was dirty
+  (a tracked file changed, or an untracked file Git does not ignore):
+  `projectDirty` and `workflowDirty` in the render manifest's `provenance`,
+  in every captured shot generation's `index.provenance` and in the
+  preview's `report.json`; the manifest no longer reads the heads again
+  after the encode. `check`, `preview` and `render` print a `Project tree:`
+  and a `Videomaker tree:` line, `clean at <head>` or `dirty at <command>`
+  with the paths that differ and what that means for the record. A film
+  rendered from a dirty tree is not release-ready: the manifest's new
+  `releaseIssues` lists every reason in words, the dirty tree's among them,
+  and `releaseReady` is true exactly when it is empty. The dirt is no cache
+  key: a dirty tree reuses the frames of a clean one. `check`'s `Stage:`
+  line carries the stylesheet's hash beside the script's, so a change to
+  `stage.css` alone shows. `WTs/` is ignored, as `AGENTS.md` said it was.
+  (`honest-provenance`, ADR-015)
 - The commands film a clocked machine's take. A movie document with
   `model.timeMode: "take"` loads; Node checks its `take` block against the
   export and replays its steps to the recorded banks, refusing the five
