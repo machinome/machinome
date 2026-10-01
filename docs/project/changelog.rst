@@ -35,6 +35,13 @@ Unreleased
   filming the clocked Curta, whose ``Sim`` raised ``PermissionError`` on
   ``/mnt/home`` when the project was reached through the workspace's
   symlinked ``projects/`` directory.
+* **A clocked simulation names its machine:** ``sim.identity`` is the
+  machine's identity, the string an export of the same model carries as
+  ``clocked.identity``, whatever the bank holds, so a recording made
+  through ``Sim`` can be refused against an export whose machine differs;
+  a ``Sim`` that is not clocked refuses it by name
+  (:doc:`/reference/api`). Born of a film of a clocked calculator whose
+  take could read the identity only from a private attribute.
 
 Machinome 0.7.1
 ---------------
