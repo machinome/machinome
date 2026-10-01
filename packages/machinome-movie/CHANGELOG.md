@@ -22,6 +22,21 @@ lands it.
   mark is not reported, and a continuation that would leave the take is
   still refused with its words. The fixture `count`'s resolved pin gains
   the crossing on `nine`. (`check-the-continuation`, ADR-014)
+- A stage bundle is the same bytes from any checkout. The bundle names
+  every file it read by the tool or by the project repository, never by
+  where either lies on the machine: the runtime as
+  `videomaker/stage/<file>`, React and React DOM as
+  `videomaker/node_modules/<file>`, a project file as `project/<path in the
+  repository>`. esbuild's own names, which ran from the build directory
+  through the machine's directories into the checkout, are rewritten in
+  the script's module comments, its CommonJS wrappers and the stylesheet's
+  comments before the bundle is written; no code changes. The bundle's key
+  is computed over those names and the files' content, and `inputs.json`
+  records them by name, so another checkout of the same content reuses
+  the bundle (`reused`) and gets the same `Stage:` hashes, the same
+  `stageSha256` and the same shot cache key, where it rebuilt the bundle
+  and recaptured every shot before. Every film's `stage.js` changes bytes
+  once with this change. (`stable-stage-bundle`, ADR-013)
 - A take's time is summed exactly. Evaluation adds a `Take`'s durations as
   the decimals written (a move's `over=`, an instruction's `duration`), in
   exact arithmetic, and writes each step's `at`, every mark and the length

@@ -5,12 +5,12 @@
 // Also the bundle's reuse and its refusals (src/stage-build.mjs), in a
 // temporary directory outside the repository.
 import {execFile} from 'node:child_process';
-import {cp,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
+import {cp,mkdtemp,readFile,realpath,rm,symlink,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {dirname,join,resolve} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import {afterAll,beforeAll,describe,expect,test} from 'vitest';
-import {buildStage,movieTypes} from '../src/stage-build.mjs';
+import {buildStage,movieTypes,renameOutput} from '../src/stage-build.mjs';
 
 const TOOL=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const TOUR=join(TOOL,'python/tests/fixtures/project/videos/tour');
@@ -80,6 +80,70 @@ describe('bundle',()=>{
     const alone=await buildStage({root,modules:[],stageBlock:null,build:join(work,'build-alone')});
     expect(alone).toMatchObject({reused:false,typechecked:false,modules:[]});
     expect((await readFile(alone.js,'utf8')).length).toBeGreaterThan(10_000);
+  });
+  // The stable-stage-bundle change (ADR-013): the bundle names what it read by
+  // the tool and the project, never by the machine's directories, so two
+  // checkouts of the same tool building two copies of the same project write
+  // the same bytes, and a second checkout reuses what the first one built.
+  // The second checkout is a copy of the tool's src/, stage/ and package.json
+  // elsewhere, with its node_modules a link to this checkout's, as a
+  // worktree's is.
+  let otherCheckout=null;
+  const elsewhere=()=>otherCheckout??=(async()=>{
+    const other=join(work,'other-checkout');
+    // package.json too: its "type" decides how esbuild imports the runtime.
+    for(const entry of ['src','stage','package.json'])await cp(join(TOOL,entry),join(other,entry),{recursive:true});
+    await symlink(await realpath(join(TOOL,'node_modules')),join(other,'node_modules'));
+    return import(pathToFileURL(join(other,'src','stage-build.mjs')).href);
+  })();
+  const copyOfTour=async(...at)=>{const dir=join(work,...at,'project');await cp(TOUR,dir,{recursive:true});return dir;};
+  test('two checkouts bundle two copies of a project, at different places, to the same bytes',async()=>{
+    const near=await copyOfTour('near'),far=await copyOfTour('far','deeper','still');
+    const first=await buildStage({root:near,modules:stageBlock.modules,stageBlock,build:join(near,'_build')});
+    const second=await (await elsewhere()).buildStage({root:far,modules:stageBlock.modules,stageBlock,build:join(far,'_build')});
+    expect(first).toMatchObject({reused:false,typechecked:true});
+    expect(second).toMatchObject({reused:false,typechecked:true});
+    const lines=async file=>(await readFile(file,'utf8')).split('\n');
+    const differing=async(a,b)=>{const [x,y]=[await lines(a),await lines(b)];
+      return x.flatMap((line,i)=>line===y[i]?[]:[`${i+1}: ${line}  |  ${y[i]}`]).concat(y.length===x.length?[]:[`${x.length} lines | ${y.length} lines`]);};
+    expect(await differing(first.js,second.js),'stage.js differs between the checkouts').toEqual([]);
+    expect(await differing(first.css,second.css),'stage.css differs between the checkouts').toEqual([]);
+    expect([second.sha256,second.cssSha256]).toEqual([first.sha256,first.cssSha256]);
+    // Every name is the tool's or the project's: no path through the machine.
+    const js=await readFile(first.js,'utf8'),css=await readFile(first.css,'utf8');
+    for(const text of [js,css]){
+      for(const machine of [TOOL,await realpath(TOOL),await realpath(join(TOOL,'node_modules')),work,await realpath(work)])
+        expect(text).not.toContain(machine.slice(1));
+      expect(text).not.toMatch(/^\s*(\/\/|\/\*|["']) ?\.\.\//m);
+    }
+    expect(js).toMatch(/^ {2}\/\/ videomaker\/stage\/runtime\.tsx$/m);
+    expect(js).toMatch(/^ {2}\/\/ project\/stage\.tsx$/m);
+    expect(js).toMatch(/^ {4}"videomaker\/node_modules\/react\/index\.js"\(exports, module\) \{$/m);
+    expect(css).toMatch(/^\/\* videomaker\/stage\/stage\.css \*\/$/m);
+    expect(css).toMatch(/^\/\* project\/stage\.css \*\/$/m);
+  },120_000);
+  test('the bundle\'s key is the same from another checkout, which reuses the bundle this one built',async()=>{
+    const root=await copyOfTour('shared'),build=join(root,'_build');
+    const first=await buildStage({root,modules:stageBlock.modules,stageBlock,build});
+    expect(first.reused).toBe(false);
+    const reused=await (await elsewhere()).buildStage({root,modules:stageBlock.modules,stageBlock,build});
+    expect(reused).toMatchObject({reused:true,typechecked:true,sha256:first.sha256,cssSha256:first.cssSha256});
+    // And back: this checkout reuses it too.
+    expect(await buildStage({root,modules:stageBlock.modules,stageBlock,build})).toMatchObject({reused:true,sha256:first.sha256});
+  },120_000);
+  test('a name esbuild escaped or quoted singly is found and renamed; nothing else is touched',()=>{
+    // The forms esbuild 0.28 prints for a directory with a non-ASCII
+    // character or a double quote in it (seen in the change's evidence).
+    const renames=new Map([['../a\u00e7a\u00ed dir/c.cjs','videomaker/node_modules/c/c.cjs'],
+      ['../q"d x/y \u{1F600} \u0142/c.cjs','project/\u00e9/c.cjs'],['../../stage.css','project/stage.css']]);
+    const js=['  // ../a\u00e7a\u00ed dir/c.cjs','  var require_c = __commonJS({','    "../a\\xE7a\\xED dir/c.cjs"(exports, module) {',
+      '      module.exports = "../a\\xE7a\\xED dir/c.cjs";','    }','  });',
+      '    \'../q"d x/y \\u{1F600} \\u0142/c.cjs\'(exports) {','  // ../elsewhere/c.cjs',''].join('\n');
+    expect(renameOutput(js,'js',renames).split('\n')).toEqual(['  // videomaker/node_modules/c/c.cjs','  var require_c = __commonJS({',
+      '    "videomaker/node_modules/c/c.cjs"(exports, module) {','      module.exports = "../a\\xE7a\\xED dir/c.cjs";','    }','  });',
+      '    "project/\\u00e9/c.cjs"(exports) {','  // ../elsewhere/c.cjs','']);
+    expect(renameOutput('/* ../../stage.css */\n.a {\n  content: "/* ../../stage.css */";\n}\n','css',renames))
+      .toBe('/* project/stage.css */\n.a {\n  content: "/* ../../stage.css */";\n}\n');
   });
   test('a module that is missing or outside the project is refused by name',async()=>{
     const root=join(work,'project');

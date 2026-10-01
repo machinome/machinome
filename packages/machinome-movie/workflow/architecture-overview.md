@@ -77,7 +77,12 @@ the stage, the transitions and the chrome, and no colour, word or layout.
 `_build/stage/stage.js` and `stage.css` with esbuild, generates `movie.d.ts`
 from the document's stage block, checks TypeScript modules with `tsc
 --noEmit`, and reuses the bundle while the content of its inputs is
-unchanged; a YAML episode is drawn by the runtime alone.
+unchanged; a YAML episode is drawn by the runtime alone. The bundle and its
+key name every file by the tool (`videomaker/stage/…`,
+`videomaker/node_modules/…`) or the project repository (`project/…`),
+rewriting esbuild's machine-relative names in its outputs, so a checkout's
+location never changes the bytes, the hashes or the shot cache's key
+(ADR-013).
 
 Narration belongs to chapters (`src/chapters.mjs`): a movie document groups
 shots into chapters of one narration each; a YAML episode is one chapter per
