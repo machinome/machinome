@@ -150,9 +150,16 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   `Layout` line per set, refuses a picture enlarged beyond its allowance in
   its slot's measured box before `speech` is run, and, once the takes place
   the cues, a picture view that leaves the picture; a slot whose box depends
-  on what it holds is left to `preview` and `render`. A YAML episode, whose
-  paper sets' boxes are known, and a movie without pictures open no
-  browser. It does not extract clip frames.
+  on what it holds is left to `preview` and `render`. On the same page it
+  measures the text each shot shows, wholly shown in its slot, and prints
+  one line per shot: the size of a source panel's code at the output size
+  and the lines each shown title and its subtitle wrap to,
+  `Shot question: title opening.title in headline on 1 line, its subtitle on 1 line`,
+  `Shot source: source balance.code in left at 13.1 px (1.02 vw)`.
+  Nothing is judged or refused: the numbers are the author's to read. A YAML
+  episode, whose paper sets' boxes are known, and a movie without pictures
+  or reframes open no browser; such a movie that shows code or a title says
+  `Text not measured: …`. It does not extract clip frames.
 - `speech` generates narration through ElevenLabs, caches each segment and its
   character timestamps, checks it fits, then mixes audio and writes captions.
   It makes chargeable requests only for missing cached segments.
@@ -166,6 +173,17 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   start, quarters and end; every posed frame refuses an annotation whose part
   is off screen or whose text leaves the frame. Each highlight cue is posed
   with and without its cue and must change the pixels and restore them exactly.
+  Whether it lit the part the author meant is for a person to see: `preview`
+  keeps both captures and a difference (the unlit frame in grey, every
+  changed pixel in red) as `preview/highlights/<shot>-<cue>-<parts>-{lit,unlit,difference}.png`;
+  for a cue that dims or ghosts the rest, which changes the whole model, it
+  also poses the instant with the parts lit and the rest kept
+  (`-parts-lit.png`, never drawn in the film) and takes the difference
+  against that, so the red marks the named parts. It
+  lists them in `report.json` under `highlights`, by each part's name (a
+  layer's, or an assembly path's names joined with `/`), with the pixels
+  changed and their box, and prints one line per highlight:
+  `Highlight rise cues[1].actions[2] lights Beam/Plank, Beam/Weight: <n> pixels changed within <w>×<h> at <x>,<y>; see preview/highlights/rise-cue1-action2-Plank+Weight-difference.png`.
   Each transition between shots (format 0.4) adds stills at its first frame,
   quarters, midpoint and last frame, and is proved in pixels against the plain
   pictures it is made of: a dissolve blends them within 2 levels, a wipe and a
@@ -257,7 +275,9 @@ Each episode's ignored `_build/` contains:
 - `rehearsal.mp4`: H.264 video and AAC narration, no burned or embedded subtitles.
 - `rehearsal.srt`, `captions.srt` and `captions.json`: separate timed subtitles.
 - `narration.wav` and `audio/`: mixed audio, cached segments and alignments.
-- `thumbnail.png`, `storyboard.jpg`, `preview/`: presentation review assets.
+- `thumbnail.png`, `storyboard.jpg`, `preview/`: presentation review assets;
+  `preview/highlights/` holds each highlight's lit, unlit and difference
+  images from the latest preview, indexed in `preview/report.json`.
 - `description.md`: draft release copy with missing public URLs explicitly marked
   (not written for a movie document without `release.descriptionTemplate`).
 - `movie-resolved.json` (a movie document only): the document with every anchor

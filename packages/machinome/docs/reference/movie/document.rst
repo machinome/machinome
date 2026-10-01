@@ -517,8 +517,9 @@ headless Chromium by the renderer. Its contract with the renderer:
   reports its `kind` and `box`. A view reports its viewer instance, canvas,
   camera, target, up, field of view, navigation and the on-screen geometry
   of its marks; a source panel its displayed text, its lit tokens, its
-  cursor and whether the excerpt fits its box; a title the box of its text
-  and its revealed count; a picture the rectangle it drew (`drawn`), its
+  cursor, whether the excerpt fits its box and the font size of its code
+  (`fontSize`); a title the box of its text, its revealed count and the
+  lines its text and subtitle wrap to (`lines`, `subtitleLines`); a picture the rectangle it drew (`drawn`), its
   natural size (`natural`) and a clip's frame; a project element whatever
   its component reports. The renderer checks each report against the
   request and refuses a frame that differs, naming the shot, the element

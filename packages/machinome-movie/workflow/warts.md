@@ -413,7 +413,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    restored and reapplied exactly as the one on the input pinions beside the
 
    drum does; the wrong part was caught by looking.
-    Triage, 1 October 2026 (orchestrator): cycle `proofs-report-the-look` (wave 2): the review pack carries lit, unlit and difference images per highlight, named by the part; no proof can know the intended part.
+    Triage, 1 October 2026 (orchestrator): fixed by `proofs-report-the-look` (archived 2026-10-01, merged the same day, ADR-017): `preview` keeps every highlight's lit, unlit and difference images at the cue's midpoint under `preview/highlights/`, named by shot, cue and parts, indexed by part in `report.json` with the changed pixels and their box, and prints a `Highlight …` line; for a highlight that dims or ghosts the rest the difference is taken against a review-only pose with the rest kept, so the red marks the named parts alone (the agent's D4a, overturnable; the film is drawn as before).
 
 3. **A shot's continuation through a join is refused only when it leaves the
 
@@ -429,7 +429,7 @@ needed (`declare-a-take`, `pose-a-take`, `reframe-join`, the viewer's
    `check` reports a headline "sized by what it holds" and the fit proof
 
    passed at 0.82 vw; both were found by looking.
-    Triage, 1 October 2026 (orchestrator): cycle `proofs-report-the-look` (wave 2): measured code sizes and headline line counts in `check`, no threshold.
+    Triage, 1 October 2026 (orchestrator): fixed by `proofs-report-the-look`: `check`'s layout probe measures each shot's source panels (`fontSize`, in px and vw) and titles (`lines`, `subtitleLines`) and prints `Shot <id>: …` lines; no threshold, no refusal; a movie the probe does not measure (no picture, no reframe) gets a `Text not measured:` line and still opens no browser.
 
 5. **Render provenance records `projectHead` for a dirty tree.** The film's
 
@@ -528,4 +528,8 @@ Recorded at the merges; triage by the orchestrator unless stated.
 32. **A fixture export's revision cannot be Videomaker's HEAD**: the fixture movies' source panels run `git show <revision>:…` in the recipe's own repository, and Videomaker's tree is dirty while a change is made; `scripts/pin-fixture-project.mjs --machinome` therefore exports inside the recipe commit (10b189d1516c…, clean). Found by `read-the-exports-source`; the brief had assumed otherwise. Settled.
 33. **Exporting two models from one checkout records the second dirty unless `_build/` is ignored**, since the first build is left untracked; the pin recipe ignores it in `.git/info/exclude`. The Curta ignores neither `_build/` nor `export/` (finding 17). Found by `read-the-exports-source`.
 34. **The schema allowed `"sourceRevision": null`**, which nothing produced or accepted; the orchestrator tightened it to a string at the merge of `read-the-exports-source`. `docs/FORMAT.md`'s "A null revision marks unpinned source" was corrected by the cycle.
+35. **Text is measured only when the layout probe runs** (a picture or a reframe in the movie); measuring every film would amend "no picture, no browser" in the contract and its scenario. Found by `proofs-report-the-look`. Recorded; the contract stands.
+36. **With the rest kept, a highlighted part partly hidden by parts in front shows only its visible pixels in the difference.** Found by `proofs-report-the-look`. Recorded.
+37. **The probe measures a shot's text without the shot's other elements**; a template whose title width depends on a sibling would be mis-measured; no fixture or film does that. Found by `proofs-report-the-look`. Recorded.
+38. **The film's README names `export/event_driven_curta` while its document reads `export/clocked_curta`**, after the project's rename (finding 28). Project work at the close. Found by `proofs-report-the-look`.
 

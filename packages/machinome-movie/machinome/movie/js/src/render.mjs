@@ -4,7 +4,7 @@
 // against what the frame asked for, proves the pixels in preview, and
 // captures, caches and encodes the film in render.
 import {createServer} from 'node:http';
-import {readFile,writeFile,mkdir,copyFile,rename,link,unlink} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,copyFile,rename,link,unlink,rm} from 'node:fs/promises';
 import {resolve,dirname,extname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
@@ -13,7 +13,7 @@ import {frameAt,srt,filmShots,shotActions,joinShows,reframeAt,modelSecondsAt} fr
 import {replayTake,markAt} from './take.mjs';
 import {viewerApiRefusal,filmSubject,PAPER_STAGE} from './episode.mjs';
 import {fileHash,hash,json,command,sourceBase} from './util.mjs';
-import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark} from './pixels.mjs';
+import {decodePng,hexColor,chromeMask,largestDifference,at,proveMark,differenceImage} from './pixels.mjs';
 import {resolveWordTiming,validateWordFramesAtFps} from './words.mjs';
 import {readSpeechTake} from './speech.mjs';
 import {extractClips,pictureRect,clipCadence,drawnEnlargement} from './pictures.mjs';
@@ -453,6 +453,30 @@ function actionsWith(film,test){
 const label=x=>x.action.overlay!==undefined?`#${x.action.overlay}`:x.action.annotation!==undefined?`#${x.action.annotation}`:
   x.action.highlight!==undefined?`#${x.action.highlight}`:x.action.picture!==undefined?`#${x.action.picture}`:
   x.action.emphasis!==undefined?`#${x.action.emphasis}`:x.id;
+// A highlighted part by the name its author gave it: a layer by its name, an
+// assembly path by its names joined with `/` (ADR-017).
+export const partName=part=>typeof part==='string'?part:part.join('/');
+// What `preview` prints of a highlight check: where its pixels changed, and
+// the difference image to look at.
+export function highlightLine(h){
+  const where=h.changedBox?`${h.changedPixels} pixels changed within ${h.changedBox[2]}×${h.changedBox[3]} at ${h.changedBox[0]},${h.changedBox[1]}`:'no pixel changed';
+  return `Highlight ${h.shotId} ${h.index!==undefined?`#${h.index}`:h.cue} lights ${h.parts.map(partName).join(', ')}: ${where}; see preview/${h.images.difference}`;
+}
+// The file stem of a highlight's images: its shot, its cue (a YAML highlight
+// by its index, a movie's by its place) and its parts, a layer by its name
+// and a path by its last name, joined with `+` and counted past 96
+// characters (design D2 of the proofs-report-the-look change).
+export function highlightStem(x){
+  const slug=s=>String(s).replace(/[^A-Za-z0-9_.-]+/g,'-');
+  const cue=x.action.highlight!==undefined?`highlight-${x.action.highlight}`:x.id.replace(/^cues\[(\d+)\]\.actions\[(\d+)\]$/,'cue$1-action$2');
+  const names=x.action.parts.map(p=>slug(typeof p==='string'?p:p.at(-1)));
+  let parts=names[0];
+  for(let i=1;i<names.length;i++){
+    if(`${parts}+${names[i]}`.length>96){parts+=`+${names.length-i}-more`;break;}
+    parts+=`+${names[i]}`;
+  }
+  return `${slug(x.shot.id)}-${slug(cue)}-${parts}`;
+}
 
 // An entrance whose end falls inside the exit, or an exit that starts inside
 // the entrance, has no instant at which the element is drawn as it is
@@ -477,7 +501,12 @@ export async function preview(film,{viewer,width=960,captions=[],browser,assets}
     // Highlights first, while every material is pristine: the same instant
     // without its cue, with it, without it, with it. The cue must change the
     // pixels, restore() must return them exactly, and re-applying must match.
-    const highlightChecks=[];
+    // Each highlight's two captures are kept with their difference, under
+    // preview/highlights/, which holds only this preview's, and indexed under
+    // each part it lights (the proofs-report-the-look change, ADR-017): the
+    // proof cannot know the part the author meant, the reviewer can see it.
+    const highlightChecks=[],highlights={},highlightDir=resolve(dir,'highlights');
+    await rm(highlightDir,{recursive:true,force:true});await mkdir(highlightDir,{recursive:true});
     for(const x of actionsWith(film,a=>a.action==='highlight')){
       const t=x.shot.start+(x.cue.at+x.cue.until)/2,state=frameAt(film,t).elements[x.key];
       const capture=async lit=>{await pose(t,{transition:null,elements:{[x.key]:lit?state:{...state,highlight:null}}});return grabBytes();};
@@ -491,7 +520,21 @@ export async function preview(film,{viewer,width=960,captions=[],browser,assets}
       if(!plain.equals(plainAgain))await fail('restore','Highlight did not restore exactly',plain,plainAgain);
       if(lit.equals(plain))await fail('visible','Highlight did not reach the pixels',plain,lit);
       if(!lit.equals(litAgain))await fail('reapply','Highlight did not re-apply identically',lit,litAgain);
-      highlightChecks.push({shotId:x.shot.id,element:x.key,cue:x.id,index:x.action.highlight,time:t,changed:true,restored:true,reapplied:true});
+      // A highlight that dims or ghosts the rest changes every part of the
+      // view, so its lit frame differs from the unlit one everywhere the
+      // model is. Where the named parts are is read from the same instant
+      // with the same highlight keeping the rest (`partsLit`, a review
+      // capture the film never draws): the difference is taken against it.
+      const stem=`highlights/${highlightStem(x)}`,keeps=state.highlight.others==='keep';
+      const partsLit=keeps?lit:(await pose(t,{transition:null,elements:{[x.key]:{...state,highlight:{...state.highlight,others:'keep'}}}}),await grabBytes());
+      const images={lit:`${stem}-lit.png`,unlit:`${stem}-unlit.png`,...(keeps?{}:{partsLit:`${stem}-parts-lit.png`}),difference:`${stem}-difference.png`};
+      const difference=differenceImage(decodePng(plain),decodePng(partsLit));
+      for(const [file,bytes] of [[images.lit,lit],[images.unlit,plain],[images.partsLit,partsLit],[images.difference,difference.png]])
+        if(file)await writeFile(resolve(dir,file),bytes);
+      const parts=x.action.parts,paths=state.highlight.paths,seen={changedPixels:difference.changed,changedBox:difference.box};
+      highlightChecks.push({shotId:x.shot.id,element:x.key,cue:x.id,index:x.action.highlight,time:t,changed:true,restored:true,reapplied:true,
+        parts,paths,images,...seen});
+      for(const part of parts)(highlights[partName(part)]??=[]).push({shotId:x.shot.id,cue:x.id,element:x.key,time:t,paths,...images,...seen});
     }
     const samples=[];
     for(const {shot} of shots){
@@ -823,7 +866,7 @@ export async function preview(film,{viewer,width=960,captions=[],browser,assets}
     // Bad camera requests must leave the actual mounted view intact.
     const preserved=await page.evaluate(()=>{const v=window.film.viewer;if(!v)return null;const before=JSON.stringify(v.view());try{v.setView({camera:[1,NaN,3],target:[0,0,0]});return false;}catch{return before===JSON.stringify(v.view());}});
     if(preserved===false)throw new Error('Invalid camera request changed viewer state');
-    return {samples,pixelReplay:true,invalidCameraPreserved:preserved??'no view in this film',...(highlightChecks.length?{highlightChecks}:{}),...(cameraChecks.length?{cameraChecks}:{}),
+    return {samples,pixelReplay:true,invalidCameraPreserved:preserved??'no view in this film',...(highlightChecks.length?{highlightChecks,highlights}:{}),...(cameraChecks.length?{cameraChecks}:{}),
       ...(transitionChecks.length?{transitionChecks}:{}),...(entranceChecks.length?{entranceChecks}:{}),
       ...(revealChecks.length?{revealChecks}:{}),...(fadeChecks.length?{fadeChecks}:{}),
       ...(emphasisChecks.length?{emphasisChecks}:{}),...(pictureChecks.length?{pictureChecks}:{})};

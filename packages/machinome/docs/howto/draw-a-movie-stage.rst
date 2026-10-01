@@ -430,6 +430,20 @@ files and its stylesheets.
   `preview` and `render` against the box the stage reports. So a set must
   draw with its slots empty, as it does for a slot a shot leaves empty, and
   a slot meant for a picture is best given a box of its own.
+
+  On the same page `check` then poses, for each shot that places a source
+  panel or a title one of its cues shows, those elements alone in their
+  slots of the shot's set, wholly shown (the whole excerpt typed, the
+  title with every word), and prints what the stage measured, the code's
+  size at the output size and the lines each title and its subtitle wrap
+  to:
+
+      Shot question: title opening.title in headline on 1 line, its subtitle on 1 line
+      Shot source: source balance.code in left at 13.1 px (1.02 vw)
+
+  These are measurements, not verdicts: nothing is refused for a small size
+  or a wrapped headline. A movie without a picture or a reframe opens no
+  browser at `check` and says `Text not measured: …`.
 - A YAML episode is drawn by a bundle of the runtime alone, with its shipped
   sets.
 - The bundle's hashes are common inputs of every cached shot, so a changed
@@ -506,4 +520,14 @@ is proved against the same instant drawn with and without it, leaving out
 the chrome rectangles and nothing else; a reframe's first frame draws each
 moving view in its outgoing slot's box, and its end, at full progress,
 draws exactly the incoming shot's frame. Whether the template reads well is for a
-person looking at the stills and the film.
+person looking at the stills and the film. For each highlight `preview` keeps
+the two captures it compared and a difference marking the named parts (for
+a highlight that dims or ghosts the rest, against one more capture with the
+parts lit and the rest kept) under `preview/highlights/`, listed in
+`report.json` by the part lit, since the proof passes for whatever part
+changes and only a person can say it was the one meant.
+
+Beside what the renderer checks, the shipped source panel reports `fontSize`,
+the computed size of its code in CSS pixels, and a shown title `lines`, the
+lines its text wraps to, and with a subtitle `subtitleLines`; `check` prints
+them and nothing compares them.

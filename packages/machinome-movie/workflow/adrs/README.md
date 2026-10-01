@@ -53,6 +53,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-014](TIMELINE/ADR-014-a-continuation-that-crosses-a-mark-is-reported-from-the-frames-the-join-poses.md) | TIMELINE | A continuation that crosses a mark is reported, from the frames the join poses | Accepted |
 | [ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md) | PIPELINE | Provenance records whether each tree was dirty, and a dirty tree is not release-ready | Accepted |
 | [ADR-016](SOURCE/ADR-016-take-seconds-are-the-exact-sums-of-the-written-durations.md) | SOURCE | Take seconds are the exact sums of the written durations | Accepted |
+| [ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md) | PIPELINE | What a proof cannot judge, it measures and lays out for the reviewer | Accepted |
 | [ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md) | SOURCE | The model's revision is the one its export records | Accepted |
 
 The twelve changes archived before ADR-001 carry their decisions in their

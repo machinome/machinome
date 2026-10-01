@@ -622,7 +622,18 @@ with it, without it and with it again. The cue must change the pixels, the two
 captures without it must match exactly (restore is complete), and the two with
 it must match (it re-applies identically). A failure keeps its before/after
 images in `preview/`. Whether a ghosted frame reads as translucent context is a
-judgement on the stills, not an automated claim.
+judgement on the stills, not an automated claim, and so is whether the cue lit
+the part you meant: the proof passes for any part that changes. So `preview`
+keeps, for every cue, the capture without it, the capture with it and their
+difference (the unlit frame in grey, every pixel that changed in red), as
+`preview/highlights/<shot>-highlight-<i>-<parts>-{unlit,lit,difference}.png`.
+A cue with `others: dim` or `ghost` changes every part, so for it `preview`
+also poses the instant with the cue's parts lit and the rest kept
+(`-parts-lit.png`, never in the film) and takes the difference against that:
+the red marks the named parts alone. It lists them in `report.json` under `highlights` by each part's name, the
+layer's or the path's names joined with `/`, with the number of pixels that
+changed and the box that holds them. It prints one line per cue naming them;
+open the difference image to see where the highlight landed.
 
 ## Format 0.4
 

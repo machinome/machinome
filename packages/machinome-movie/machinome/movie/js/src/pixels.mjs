@@ -76,6 +76,27 @@ export function largestDifference(image,expect,mask=null){
   return largest;
 }
 export const at=(image,x,y,k)=>image.rgb[(y*image.width+x)*3+k];
+// Where two captures of one instant differ (the proofs-report-the-look
+// change, D4): the first drawn in grey (its luminance mapped to 160 to 255),
+// every pixel that differs from the second in any channel, exactly, in red.
+// Returns the image, the number of pixels that differ and the smallest box
+// [x, y, width, height] holding them (null when none does).
+export function differenceImage(a,b){
+  if(a.width!==b.width||a.height!==b.height)throw new Error(`Captures of different sizes cannot be compared: ${a.width}×${a.height} and ${b.width}×${b.height}`);
+  const {width,height}=a,rgb=Buffer.alloc(width*height*3);
+  let changed=0,x0=width,y0=height,x1=-1,y1=-1;
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const i=(y*width+x)*3;
+    if(a.rgb[i]!==b.rgb[i]||a.rgb[i+1]!==b.rgb[i+1]||a.rgb[i+2]!==b.rgb[i+2]){
+      rgb[i]=255;rgb[i+1]=0;rgb[i+2]=0;changed++;
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+    }else{
+      const grey=Math.round(160+(.2126*a.rgb[i]+.7152*a.rgb[i+1]+.0722*a.rgb[i+2])*95/255);
+      rgb[i]=rgb[i+1]=rgb[i+2]=grey;
+    }
+  }
+  return {png:encodeRgbPng(width,height,rgb),changed,box:changed?[x0,y0,x1-x0+1,y1-y0+1]:null};
+}
 // The largest channel difference between two images within the 3×3
 // neighbourhood of the point p (viewport pixels, rounded).
 function aroundDifference(a,b,p){

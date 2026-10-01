@@ -104,6 +104,9 @@ output size, each slot's box, the box a picture gets there and whether the
 slot is sized by what it holds, and the enlargement and view refusals
 against the boxes that stay put
 ([ADR-009](adrs/STAGE/ADR-009-check-measures-a-sets-layout-before-speech.md));
+on the same page it measures the text each shot shows, wholly shown (a
+source panel's code size and a title's lines, which `check` prints and
+never judges, ADR-017);
 it also turns a measured layout into the film's `reframes`, the slot boxes
 each reframe moves its views between, which `check` and every renderer
 session (on its own page, before its first frame) attach to the film for
@@ -167,6 +170,12 @@ is a release issue, and the shot cache keys the manifest without it
    is read from the cached alignment. Narration is never truncated or
    stretched; a take that does not fit is refused with its measurement.
 6. **Proofs are stated as tolerances and masks**, once, in `src/pixels.mjs`.
+   What a proof cannot judge it measures and lays out for the reviewer
+   ([ADR-017](adrs/PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md)):
+   `preview` keeps each highlight's unlit and lit captures and their
+   difference under `preview/highlights/`, indexed by the part lit in
+   `preview/report.json`; `check` prints each shot's code size and title
+   lines.
 7. **Nothing is published by the tool.** Release fields left null block a
    release bundle and never default to an address.
 8. **One resolved document is the seam after loading**

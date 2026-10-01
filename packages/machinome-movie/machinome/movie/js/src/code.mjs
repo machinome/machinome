@@ -104,7 +104,15 @@ export function sourceState(film,chapter,shot,key,element,local){
       emphasis.push({token:word.token,...tokenRange(snippet,word.token,action.line)});
   }));
   emphasis.sort((a,b)=>a.start-b.start);
-  return {kind:'source',file:snippet.file,firstLine:snippet.lines[0],lastLine:snippet.lines[1],text,
-    html:hljs.highlight(text,{language:'python',ignoreIllegals:true}).value,
-    cursor:count<total&&Math.floor(local*2)%2===0,emphasis};
+  return sourceLook(snippet,text,count<total&&Math.floor(local*2)%2===0,emphasis);
+}
+const sourceLook=(snippet,text,cursor,emphasis)=>({kind:'source',file:snippet.file,firstLine:snippet.lines[0],lastLine:snippet.lines[1],text,
+  html:hljs.highlight(text,{language:'python',ignoreIllegals:true}).value,cursor,emphasis});
+// A source panel wholly typed, as its state is once typing completes: the
+// whole excerpt's markup, no cursor, nothing lit. What `check` measures the
+// code's size on (ADR-017); it depends on no take.
+export function wholeSource(excerpts,name){
+  const snippet=excerpts?.[name];
+  if(!snippet)throw new Error(`Source excerpt is not loaded: ${name}`);
+  return sourceLook(snippet,snippet.text,false,[]);
 }
