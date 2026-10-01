@@ -51,7 +51,10 @@ side's suite.
 - `resolved/<name>.json` — the resolved document the Node resolver produces
   from `documents/<name>.json` with `takes/<name>/` (see "Resolution" in
   `docs/movie-document.md`). Pinned by the Node suite, reviewed by hand when
-  written; the Python suite does not read it.
+  written; the Python suite does not read it. `count`'s shot `nine` ends on
+  the mark `nine` still moving and its dissolve into `carry` runs the take
+  on into `step-3`, so its resolved `model` carries the `crossing` that
+  `check` reports.
 - `invalid/<name>.json` — `{"name", "document", "must_mention": [...]}`: a
   document that must be refused, with the substrings the refusal names.
   Both suites iterate every file here. Each is refusable without a take:

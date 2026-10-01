@@ -327,6 +327,16 @@ otherwise.
   the same instant, or `Reframe(d)`, which is drawn live; the film's first
   shot may `fade_in=FadeIn(d)` and its last `fade_out=FadeOut(d)`. Each takes
   `ease=`, `smooth` unless written.
+- While a dissolve, a wipe, a slide or the first half of a fade still shows
+  the shot before it, that shot keeps moving: its model time runs on at
+  the rate it ended with. A shot that ends on a mark still moving, as
+  `Turns.run("one", "nine")` does, shows the take running on into the step
+  after the mark. `check` reports each shot whose continuation crosses a
+  mark, without refusing it; to stop there, hold the shot at the mark
+  before it ends, `Turns.keys({0: "one", lines.spoken("bring it"): "nine",
+  lines.spoken("On the tenth turn"): "nine"})`, or ease its model to rest
+  on it, `Turns.keys({0: "one", lines.spoken("On the tenth turn"): ("nine",
+  "out")})`.
 - `Reframe(d)` moves a view: the shot and the shot before it place at least
   one view element in both, and for `d` seconds each such view is drawn in a
   box that moves from its slot in the outgoing set to its slot in the

@@ -71,6 +71,10 @@ try{
     // A clocked take: its steps, marks and length, and the replay its load
     // checked against the recorded banks (ADR-012).
     if(e.model.timeMode==='take')console.log(takeLine(e));
+    // Each shot whose continuation through its outgoing join crosses a mark,
+    // in film order, as resolution recorded it on the shot's model time: a
+    // report, not a refusal (check-the-continuation, ADR-014).
+    for(const {shot} of filmShots(e))if(shot.model?.crossing)console.log(shot.model.crossing.report);
   }
   await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
   if(command==='check'){

@@ -122,6 +122,15 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   adds one line, after the take's document checks and the replay of its
   steps against its recorded banks have passed:
   `Take: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark`.
+  A shot that ends still moving keeps moving while the join after it shows
+  it, so on a take its machine may run on past a mark into the next step;
+  for each shot whose continuation crosses a mark that way, `check` adds a
+  line naming the shot, the join, the mark, how far past it the join's last
+  frame of the shot is, and the step it runs into:
+  `Continuation: shot nine runs on through the 0.5 s dissolve into shot carry and crosses the mark nine: its last frame there poses take time 6.76 s, 0.76 s past the mark, inside step-3, which moves crank by 360; hold the shot at the mark before it ends, or ease its model to rest there`.
+  It is a report, not a refusal: a film may let the machine run on under a
+  dissolve. Running past a step's end where no mark is declared is not
+  reported, and a continuation that would leave the take is refused.
   For a 0.3 episode that needs
   Viewer API 28 it also reads the selected bundle's `viewer API` banner. An
   episode with spoken reveals or source emphasis needs its cached speech first:

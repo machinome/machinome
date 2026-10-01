@@ -30,7 +30,9 @@ the real model through the machinome viewer and never invents a pose.
         │    the replay of its steps, before any take
         │  both: validated against the export and project
         ▼
-    resolved movie document (numeric times, chapters, sets, slots, elements)
+    resolved movie document (numeric times, chapters, sets, slots, elements;
+        │    on a take, each shot whose continuation through its outgoing
+        │    join crosses a mark, recorded and reported, ADR-014)
         │  written to <root>/_build/movie-resolved.json for a document
         │  frameAt(film, t): pure                          src/timeline.mjs
         ▼
@@ -214,7 +216,11 @@ is the Python side of the movie document:
   before the first step and at every mark and the identity the export
   publishes; the steps' `at`, the marks and the length are the exact sums
   of the declared durations, which both runtimes compare without a
-  tolerance and Node reads rather than adds (ADR-016). `document.py` holds a take document to its export (identity,
+  tolerance and Node reads rather than adds (ADR-016). Resolution, in
+  `src/movie.mjs` and outside the modules the shot cache hashes, follows a
+  shot a join shows past its end through the join's frames and records on
+  its model, for `check` to print, a mark its take time runs past and the
+  step it runs into: a report, never a refusal (ADR-014). `document.py` holds a take document to its export (identity,
   inputs, the bank's ids) and to the replay of its steps, the rule both
   runtimes share; `src/take.mjs` is the Node side of it, and the pose rule
   the frame reads (ADR-012).

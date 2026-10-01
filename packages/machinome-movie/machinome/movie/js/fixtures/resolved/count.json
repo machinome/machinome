@@ -296,7 +296,17 @@
           "cues": [],
           "model": {
             "from": 2,
-            "to": 6
+            "to": 6,
+            "crossing": {
+              "join": "dissolve",
+              "duration": 0.5,
+              "into": "carry",
+              "mark": "nine",
+              "step": "step-3",
+              "reaches": 6.761904761904763,
+              "past": 0.7619047619047628,
+              "report": "Continuation: shot nine runs on through the 0.5 s dissolve into shot carry and crosses the mark nine: its last frame there poses take time 6.76 s, 0.76 s past the mark, inside step-3, which moves crank by 360; hold the shot at the mark before it ends, or ease its model to rest there"
+            }
           },
           "places": {
             "stage": "view"

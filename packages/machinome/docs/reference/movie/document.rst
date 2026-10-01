@@ -426,9 +426,19 @@ Refusals name an anchor's field by its path in the shot: `until`,
    phrase's spoken end plus `hold`, and each of its `words` an `at`, the
    onset of its spoken words; a `show` with a spoken `reveal` gains
    `reveal.onsets`, each word's onset; these are shot-local and not snapped
-   to the frame grid (finding 2 of the react-stage change). `check` writes
-   it to `<root>/_build/movie-resolved.json`; `preview` and `render` write
-   the same file before capturing. A YAML episode loads into exactly this
+   to the frame grid (finding 2 of the react-stage change). In a take
+   document, a shot whose continuation through its outgoing join (rule 8)
+   crosses a mark gains `crossing` on its `model`: followed through the
+   output frames on which the join shows it, its take time on the last of
+   them, `reaches`, lies past a mark its take time at its end had reached
+   or not yet reached; `crossing` names the join (`join`, `duration`), the
+   incoming shot (`into`), the first such `mark`, the `step` whose `at` is
+   that mark, `reaches`, how far `past` the mark, and the `report` `check`
+   prints after its take line. It is a report, never a refusal, and a step
+   boundary that is not a mark is not one (the `check-the-continuation`
+   change, ADR-014). `check` writes the resolved document to
+   `<root>/_build/movie-resolved.json`; `preview` and `render` write the
+   same file before capturing. A YAML episode loads into exactly this
    shape: one chapter per shot, the shipped sets `paper`, `paper-split` and
    `source-only`, and elements synthesized from its fields. A synthesized
    action keeps its authored identity in a field naming the YAML list it

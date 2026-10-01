@@ -119,3 +119,18 @@ test('the manual and the records say what provenance records of a dirty tree, an
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)'),'the ADR index');
   assert.ok((await readFile(join(root,'.gitignore'),'utf8')).split('\n').includes('/WTs/'),'.gitignore: the worktrees, as AGENTS.md says');
 });
+
+test('the manual and the records say a continuation that crosses a mark is reported, in the words check prints (check-the-continuation)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  // The README quotes the line check prints for the fixture count: the
+  // report its pinned resolution records on nine.
+  const pinned=JSON.parse(await readFile(join(root,'fixtures','resolved','count.json'),'utf8'));
+  const report=pinned.chapters[0].shots.find(s=>s.id==='nine').model.crossing.report;
+  const readme=await read('README.md');
+  assert.ok(readme.includes(`\`${report}\``),'README: check\'s continuation line');
+  assert.ok(readme.includes('It is a report, not a refusal'),'README: not a refusal');
+  assert.ok((await read('docs/movie-document.md')).includes('a shot whose continuation through its outgoing join (rule 8) crosses a mark gains `crossing` on its `model`'),'movie-document.md: the resolved field');
+  assert.ok((await read('docs/declaring-a-movie.md')).includes('`check` reports each shot whose continuation crosses a mark, without refusing it'),'declaring-a-movie.md: the join');
+  assert.ok((await read('CHANGELOG.md')).includes('(`check-the-continuation`, ADR-014)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-014](TIMELINE/ADR-014-a-continuation-that-crosses-a-mark-is-reported-from-the-frames-the-join-poses.md)'),'the ADR index');
+});

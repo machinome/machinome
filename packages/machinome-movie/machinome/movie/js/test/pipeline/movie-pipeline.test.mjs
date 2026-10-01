@@ -216,6 +216,14 @@ test('the clocked take count is checked, previewed and rendered twice from the c
   assert.equal(checked.launches,0,'no picture and no reframe: check opens no browser');
   assert.match(checked.out,/^Count: 1 chapters, 3 shots, 11\.4s; model 8s$/m);
   assert.match(checked.out,/^ {2}counting: take [\d.]+ s, chapter 11\.40 s, tail [\d.]+ s\nTake: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark$/m);
+  // nine ends on the mark nine still moving and its dissolve into carry runs
+  // the take on into step-3: reported after the take's line, not refused
+  // (check-the-continuation, ADR-014), and recorded on nine's model time in
+  // the resolved document check writes.
+  assert.match(checked.out,/^Take: .*\nContinuation: shot nine runs on through the 0\.5 s dissolve into shot carry and crosses the mark nine: its last frame there poses take time 6\.76 s, 0\.76 s past the mark, inside step-3, which moves crank by 360; hold the shot at the mark before it ends, or ease its model to rest there$/m);
+  assert.equal(checked.out.match(/^Continuation: /gm).length,1,'one crossing');
+  const nine=(await readJson(join(build,'movie-resolved.json'))).chapters[0].shots.find(s=>s.id==='nine');
+  assert.deepEqual([nine.model.crossing.mark,nine.model.crossing.step,nine.model.crossing.into],['nine','step-3','carry']);
   assert.match(checked.out,new RegExp(`^Viewer API 29 required for clocked take, highlight \\(shot carry\\); ${viewer.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')} declares API 29$`,'m'));
   const previewed=cli('preview',file,'--viewer',viewer);
   assert.equal(previewed.code,0,previewed.out);

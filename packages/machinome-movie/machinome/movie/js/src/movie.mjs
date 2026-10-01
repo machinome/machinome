@@ -17,7 +17,7 @@ import {loadPictures} from './pictures.mjs';
 import {EASINGS,endSlope,ease} from './easing.mjs';
 import {TOKEN,countPhrase,countWords,countToken,excerptLine,propKind,spokenForm} from './text.mjs';
 import {effectiveStyle,COLOR} from './style.mjs';
-import {joinShows,movingViews,noViewInBoth} from './timeline.mjs';
+import {joinShows,movingViews,noViewInBoth,modelSecondsAt} from './timeline.mjs';
 import {checkTakeBanks,takeTimes} from './take.mjs';
 // Seconds within which a model time the reader adds itself, a mark plus its
 // `plus`, is still inside the take (the Python side's TOLERANCE). The take's
@@ -496,7 +496,55 @@ export function resolveMovie(doc,takes={}){
   const {format,output,chapters:_,...rest}=doc;
   const resolved={format,resolved:true,...rest,output:{...output,durationSeconds:clock},chapters};
   checkResolved(resolved);
+  recordCrossings(resolved);
   return resolved;
+}
+
+// A continuation that crosses a mark (the check-the-continuation change,
+// ADR-014). On a take, while a join still shows the outgoing shot past its
+// end, the shot's take time runs on at the rate it ended with
+// (modelSecondsAt, the frame's own rule). Followed through the output frames
+// n / fps on which the join shows it, by transitionAt's own conditions (a
+// dissolve, wipe or slide while t < start + duration; a fade while
+// 2u / duration < 1, settled as transitionAt settles it; a reframe never),
+// the take time on the last of them is `reaches`; a mark m with
+// end ≤ m < reaches is crossed, the first one reported, with the step that
+// starts there. A report, not a refusal: the outgoing shot's model records
+// it, and check prints its sentence. Written here, beside the refusal of
+// the same continuation, and not in timeline.mjs or take.mjs, whose hashes
+// key every shot cache: a report changes no picture.
+function outgoingShown(join,start,t){
+  if(join.kind==='reframe'||!(t<start+join.duration))return false;
+  if(join.kind!=='fade')return true;
+  const h=2*(t-start)/join.duration;
+  return Math.abs(h-1)>=1e-9&&h<1;
+}
+function recordCrossings(film){
+  if(film.model.timeMode!=='take')return;
+  const fps=film.output.fps,shots=film.chapters.flatMap(c=>c.shots);
+  const marks=Object.entries(film.marks??{}).sort((a,b)=>a[1]-b[1]);
+  shots.forEach((shot,i)=>{
+    const join=shot.transition;
+    if(!i||!join)return;
+    const prior=shots[i-1],duration=prior.end-prior.start;
+    let reaches=null;
+    for(let n=Math.ceil(shot.start*fps-1e-9);n/fps<shot.end;n++){
+      const t=n/fps;
+      if(t<shot.start)continue;
+      if(!outgoingShown(join,shot.start,t))break;
+      reaches=modelSecondsAt(prior,duration+(t-shot.start));
+    }
+    if(reaches===null)return;
+    const end=lastSeconds(prior.model),crossed=marks.find(([,m])=>end<=m&&m<reaches);
+    if(!crossed)return;
+    const [mark,m]=crossed,step=film.take.steps.find(s=>s.at===m),past=reaches-m;
+    need(step,`Shot ${prior.id} continues into the ${join.kind} to shot ${shot.id} past the mark ${mark}, where the take ends; end its model earlier or shorten the transition`);
+    const moves=step.to!==undefined?`to ${step.to}`:`by ${step.by}`;
+    prior.model.crossing={join:join.kind,duration:join.duration,into:shot.id,mark,step:step.id,reaches,past,
+      report:`Continuation: shot ${prior.id} runs on through the ${join.duration} s ${join.kind} into shot ${shot.id} and crosses the mark ${mark}: `+
+        `its last frame there poses take time ${reaches.toFixed(2)} s, ${past.toFixed(2)} s past the mark, inside ${step.id}, which moves ${step.input} ${moves}; `+
+        'hold the shot at the mark before it ends, or ease its model to rest there'};
+  });
 }
 
 // The rules that need resolved times (design D2.3).

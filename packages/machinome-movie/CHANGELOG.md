@@ -6,6 +6,22 @@ lands it.
 
 ## Unreleased
 
+- `check` reports a continuation that crosses a mark. On a take, a shot
+  that a dissolve, a wipe, a slide or the first half of a fade still shows
+  past its end keeps running its take time at the rate it ended with;
+  resolution follows it through the frames on which the join shows it, and
+  when the take time on the last of them lies past a mark the shot ended on
+  or before, the shot's resolved `model` records `crossing` (the join, the
+  incoming shot, the mark, the step whose `at` is the mark, the take time
+  reached, how far past) and `check` prints, after its take line, one
+  sentence per crossing: `Continuation: shot nine runs on through the 0.5 s
+  dissolve into shot carry and crosses the mark nine: its last frame there
+  poses take time 6.76 s, 0.76 s past the mark, inside step-3, which moves
+  crank by 360; hold the shot at the mark before it ends, or ease its model
+  to rest there`. A report, not a refusal; a step boundary that is not a
+  mark is not reported, and a continuation that would leave the take is
+  still refused with its words. The fixture `count`'s resolved pin gains
+  the crossing on `nine`. (`check-the-continuation`, ADR-014)
 - A take's time is summed exactly. Evaluation adds a `Take`'s durations as
   the decimals written (a move's `over=`, an instruction's `duration`), in
   exact arithmetic, and writes each step's `at`, every mark and the length
