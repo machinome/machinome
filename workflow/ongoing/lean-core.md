@@ -252,7 +252,7 @@ create, so a core without machinome-occt never imports OCP and never
 asks for it. The faceted path is the OpenSCAD plus JSCAD case and works
 in core as it stands.
 
-### machinome-occt, Apache-2.0
+### machinome-occt, LGPL-2.1
 
 The engine and nothing else: the exact layer rewritten on bare OCP,
 dropping the four cadquery spellings, as `machinome.occt`; the OCCT
@@ -260,7 +260,10 @@ currency, the booleans and transforms, and reading BREP and STEP files
 into that currency; the exact engine the core's seam resolves; the OCP
 paths of the test kernel that `test.py` already imports lazily. It
 depends on cadquery-ocp only and carries no node type (pilot, 2 October
-2026). The exact-leaf contract it serves, `ExactLeafNode`, stays in the
+2026). Its licence is LGPL-2.1, matching OCCT, the provider it wraps
+(pilot, 2 October 2026: the policy is to match the provider's licence;
+OCCT's is LGPL-2.1 with the Open CASCADE exception, and cadquery-ocp's
+Apache-2.0 covers only the binding). The exact-leaf contract it serves, `ExactLeafNode`, stays in the
 core at `machinome.node.exact_leaf`, resolving the engine lazily.
 
 Why an engine package distinct from the node packages: three node types
@@ -305,11 +308,16 @@ The licence of a node package matches its node technology (pilot,
 cadquery, build123d, ocp-gordon and molejo declare Apache-2.0;
 cadquery-ocp declares nothing in its metadata and its upstream LICENSE
 is Apache-2.0, OCCT beneath it being LGPL-2.1 with exception, which
-places no condition on code that uses it. All five new packages are
+places no condition on code that uses it. The four node packages are
 therefore Apache-2.0, copyright Luis Henrique Cassis Fagundes, with the
-core's NOTICE pattern. FreeCAD is the one LGPL technology and
-machinome-freecad already matches it; OpenSCAD is GPL-2.0-or-later and
-is reached as a process, never a dependency.
+core's NOTICE pattern; machinome-occt is LGPL-2.1, matching OCCT
+rather than the binding, by the pilot's ruling of the same day that a
+package matches its provider's licence. A node package over the engine
+keeps its own provider's licence, so machinome-node-step and
+machinome-node-molejo stay Apache-2.0 over an LGPL engine, as any
+program may be over an LGPL library. FreeCAD is the other LGPL
+technology and machinome-freecad already matches it; OpenSCAD is
+GPL-2.0-or-later and is reached as a process, never a dependency.
 
 ### Import paths
 
@@ -698,8 +706,9 @@ ratification gate, integration the pilot's, one agent at a time.
   repository; machinome-occt carries no node type; machinome-node-molejo
   is its own package and repository; `ExactLeafNode` stays in the core;
   no table and no entry-point group (2 October 2026).
-- The five new packages are Apache-2.0, the licence of a node package
-  matching its node technology; numbered with the framework; the
+- A package's licence matches its provider's: the four node packages
+  are Apache-2.0 and machinome-occt is LGPL-2.1 as OCCT is; all are
+  numbered with the framework; the
   refactor starts the 0.8 line, and 0.8 is released only when every
   package of the set, mechanics, studio and video included, complies
   with one set of guidelines (2 October 2026).
