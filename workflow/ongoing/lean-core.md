@@ -570,23 +570,33 @@ validation is orchestrated with subagents like the rest of the cycle.
 |---|---|---|
 | exact engine | OpenAstroMount | the smallest direct caller of the exact operations |
 | leaf contract | machinome-freecad, the Dum-E adapter | the originating evidence; the one third-party exact leaf. **Done** 3 October 2026: 82 passed after the migration, the universe loaded with no leaf-contract row; `openspec/changes/archive/2026-10-03-leaf-contract/evidence.md` |
-| class-name switch | a solid2 project, the abacus | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes |
+| class-name switch | splitflap, a solid2 project (the abacus named on 3 October is CadQuery, a misreading corrected the same day) | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |
 
-**Orchestration.** The applier of a cycle does not migrate a project
-itself: it delegates each project to a fresh validator subagent, briefed
-in writing with the bench, the project, the names the cycle moved and
-the evidence file, one at a time, and folds the result into the cycle's
-evidence before its implementation commit. The universe scan runs after
-that commit and before the orchestrator's review, and its report goes in
-the same evidence file. A failed validation returns to the orchestrator
-with the project's output; it is never fixed in the project.
+**Orchestration.** The orchestrator runs the validation, as it runs
+every agent of a cycle (pilot, 3 October 2026: "don't delegate your job,
+you are the reviewer"). The applier implements, runs the framework's own
+suite, then stops before its implementation commit and reports. The
+orchestrator briefs and launches one validator subagent per project,
+one at a time, with the bench, the project, the names the cycle moved
+and the declared members it may use; runs the universe scan itself,
+`scripts/load-projects` with every cycle's moved-names file and a 300 s
+timeout; and hands both reports to the paused applier, which folds them
+into the cycle's evidence, archives the change and commits. An applier
+never spawns an agent. A failed validation returns to the orchestrator
+with the project's output; it is never fixed in the project. The
+moved-names file of a cycle is archived with the change and copied to
+the workspace's `scripts/load-projects.d/<cycle>.toml`.
 
 **Out of scope,** each its own later work: the one-path cycle itself,
 both roots and the 74-repository migration; machinome-freecad's
 retarget and rename; mechanics and movie moving to their addresses;
-the machinome.org software roster; publication of anything.
+the machinome.org software roster; publication of anything; an
+assembly extension contract, for which the FreeCAD adapter's carriers
+are the evidence (its `_link_children` and `track_sources` reaches, the
+`object.__new__` construction and the undeclared members the leaf-contract
+validation recorded in its evidence, section 8).
 
 ## Sequencing
 
