@@ -465,7 +465,48 @@ introduced; the viewer's stays.
   evaluate through it, are node packages over it (pilot, 2 October
   2026; the 1 October shape had both riding in the engine).
 
-## What it takes: the scope of the first refactor
+## Layers (pilot, 3 October 2026)
+
+The campaign is built in layers, and the repository question is not
+decided. Layer 1 is the internal architecture for the whole split,
+OpenSCAD included, inside one repository and one distribution. Layer 2 is
+the package split, for licensing: the requirement behind it is that a
+GPL-2.0-only project, which is an OpenSCAD project, imports machinome
+with no Apache-2.0 code beneath it; that turns on the core's own grant
+and its required dependencies, decisions the pilot has not taken.
+Whether distributions become repositories is decided later, on evidence
+a published package produces; the package standard's "its own
+repository" is read as "its own distribution" until then. Layer 2 starts
+only when layer 1 is complete. The three archived cycles (`exact-engine`,
+`leaf-contract`, `backend-switch`) are layer 1's first three; its five
+remaining cycles:
+
+4. `lean-install`: every leaf's address final, `machinome.node.<x>` with
+   the `adapters` level dissolved; the two path-extension lines; the
+   command table resolving `import-step` by a try-import naming the
+   extra; the markings reducer behind a seam; the vet universe
+   following; and the four kernel dependencies, cadquery, build123d,
+   cadquery-ocp and molejo, as extras with their modules still in the
+   core, each module refusing by its extra when its kernel is absent.
+   The lean install, before any package exists.
+5. to 8. OpenSCAD out of the core, four cycles: the core's own
+   expression type in place of solid2's `OpenSCADConstant` facade; the
+   SCAD presentation behind a seam, `assemble()` no longer requiring it,
+   the `develop` fallback included; the binary runner as an engine
+   subpackage with `Solid2Node` and `OpenScadNode` as two node modules
+   over it; the project template scaffolding whatever leaf kind the
+   installed extras provide.
+
+Dropped and deferred the same day: a non-Apache faceted fusion engine
+(no GPL-2.0-only project uses `FusionNode`; their fusions happen inside
+OpenSCAD); watchdog optional, and the test suite organised by future
+package, both deferred as not architecture. The root cleanup ordered on
+27 September follows layer 1 and precedes layer 2, after cycle 4 fixes
+the addresses. "What it takes" below is the 2 October scope; its items
+4 to 6 and the five repositories are layer 2 material now, kept as
+written.
+
+## What it takes: the scope of the first refactor (2 October 2026; see "Layers")
 
 Proposed 2 October 2026 under the locked import-path norm; the pilot
 accepts or trims it. Each framework item is a candidate cycle under
