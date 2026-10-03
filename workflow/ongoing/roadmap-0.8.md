@@ -154,6 +154,13 @@ panel as the fallback; `machinome export` uses the view as the index page.
 pieces by declaration path the way mates reference frames, with materials
 and standards as objects rather than strings.
 
+The sketch below is superseded by
+[Production: independent, nested assets over a model](production-layer.md),
+the design direction locked with the pilot on 2026-10-03. That note records
+explicit item boundaries, nested delegation, mass assumptions, and lazy
+access without a public evaluation step; this earlier sketch is retained
+as the roadmap's original context.
+
 ```python
 PETG_CF = Material(density=1.29)
 
@@ -373,8 +380,10 @@ the finding dissolves by then.
   interlock; `Bound` does both jobs today.
 - Whether the generic spelling `Simulation[CurtaModel]` or the constructor
   alone carries the binding.
-- Process declared on the part class, which is simpler, or in a
-  production table, which lets one model be produced two ways.
 - The view bindings come from the AGPL viewer package, so a project's
   view carries that licence; the Foundry licensing policy needs a line.
 - The 2x's scale, measured, before any law is fitted to it.
+
+The former part-class-versus-production-table question is settled in
+[production-layer.md](production-layer.md): independent production assets
+own the choices and can delegate submodels to subproductions.
