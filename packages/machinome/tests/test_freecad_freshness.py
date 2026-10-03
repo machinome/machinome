@@ -121,7 +121,7 @@ def test_native_recipe_refreshes_existing_exact_artifacts(monkeypatch):
     first = Currency()
     leaf = solid(first)
     leaf.materialize(leaf.render())
-    assert leaf.shape().Volume() == pytest.approx(192)
+    assert cq.Shape.cast(leaf.shape()).Volume() == pytest.approx(192)
     identity = leaf.uniq_id
     load = adapter.load_snapshot
     def modified(source):
@@ -139,10 +139,10 @@ def test_native_recipe_refreshes_existing_exact_artifacts(monkeypatch):
     updated = solid(second)
     assert updated.uniq_id == identity
     assert not updated._up_to_date(updated.brep_file)
-    assert updated.shape().Volume() == pytest.approx(384)
+    assert cq.Shape.cast(updated.shape()).Volume() == pytest.approx(384)
     updated.materialize(updated.render())
     assert updated._up_to_date(updated.brep_file)
-    assert updated.shape().Volume() == pytest.approx(384)
+    assert cq.Shape.cast(updated.shape()).Volume() == pytest.approx(384)
 
 def test_acceptance_recipe_alone_invalidates_existing_artifact_currency(monkeypatch):
     import machinome_freecad.adapter as adapter
@@ -166,7 +166,7 @@ def test_acceptance_recipe_alone_invalidates_existing_artifact_currency(monkeypa
     assert not fresh._up_to_date(fresh.brep_file)
     fresh.materialize(fresh.render())
     assert fresh._up_to_date(fresh.brep_file)
-    assert fresh.shape().Volume() == pytest.approx(192)
+    assert cq.Shape.cast(fresh.shape()).Volume() == pytest.approx(192)
 
 def test_old_rendered_node_refuses_materialization_after_source_change(tmp_path,monkeypatch):
     import machinome_freecad.adapter as adapter
@@ -306,7 +306,7 @@ def test_sibling_linked_document_and_source_preserving_relocation(tmp_path):
         try:
             spec.loader.exec_module(module)
             leaf = solid(module.Relocated())
-            assert leaf.render().Volume() == pytest.approx(192)
+            assert cq.Shape.cast(leaf.render()).Volume() == pytest.approx(192)
             identities.append(leaf.uniq_id)
         finally:
             sys.modules.pop(name,None)

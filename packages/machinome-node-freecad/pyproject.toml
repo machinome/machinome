@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "LGPL-2.1-or-later"}
 authors = [{name = "Luis Henrique Cassis Fagundes"}]
-dependencies = ["machinome==0.7.1"]
+# Validation branch lean-core-validation, never merged: it runs against the
+# unreleased v0.8 lean-core line (framework change leaf-contract), so the
+# 0.7.1 release pin is relaxed here.
+dependencies = ["machinome"]
 
 [project.optional-dependencies]
 test = ["pytest>=8", "build>=1.2"]

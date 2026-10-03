@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 
+import cadquery
 import numpy as np
 
 import pytest
@@ -175,7 +176,7 @@ def test_exact_geometry_transfer_and_fixed_leaf_occurrences():
     assert len({id(leaf) for leaf in leaves}) == 3
     assert len({leaf.uniq_id for leaf in leaves}) == 1
     for leaf in leaves:
-        shape = leaf.render()
+        shape = cadquery.Shape.cast(leaf.render())
         assert shape.Volume() == pytest.approx(192,abs=1e-8)
         assert shape.BoundingBox().xmin == pytest.approx(0,abs=1e-8)
 
@@ -208,7 +209,7 @@ def test_distinct_same_named_native_products_and_repeated_occurrences():
         else:
             leaves.append(current)
     walk(node)
-    assert [leaf.render().Volume() for leaf in leaves] == pytest.approx([192,192,384])
+    assert [cadquery.Shape.cast(leaf.render()).Volume() for leaf in leaves] == pytest.approx([192,192,384])
     assert leaves[0].uniq_id == leaves[1].uniq_id
     assert leaves[2].uniq_id != leaves[0].uniq_id
 

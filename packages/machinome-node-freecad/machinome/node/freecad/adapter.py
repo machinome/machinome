@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 """Compile native immutable mechanics into ordinary machinome nodes."""
 import inspect
-from importlib.metadata import version
 from pathlib import Path
 import io
 import math
@@ -116,17 +115,12 @@ class _NativeCurrency:
             if actual != expected[0]:
                 raise SourceChanged(f'Native source changed; construct a fresh model: {path}')
 
-    def _tracked_fingerprint(self, files):
+    @property
+    def source_recipe(self):
+        # Read by the core whenever it computes this node's source digest or
+        # fingerprint, which is where the native generation is checked.
         self._check_native_generation()
-        found = super()._tracked_fingerprint(files)
-        recipe = getattr(self, '_native_recipe', '')
-        return hashlib.sha256((str(found) + recipe).encode()).hexdigest() if found else None
-
-    def _tracked_digest(self, files):
-        self._check_native_generation()
-        found = super()._tracked_digest(files)
-        recipe = getattr(self, '_native_recipe', '')
-        return hashlib.sha256((str(found) + recipe).encode()).hexdigest() if found else None
+        return getattr(self, '_native_recipe', None)
 
 class _Carrier(_NativeCurrency, AssemblyNode):
     def get_source_file(self):
@@ -146,13 +140,12 @@ class _Carrier(_NativeCurrency, AssemblyNode):
 def _leaf_class(wrapper_source, product_key):
     from machinome.node.exact_leaf import ExactLeafNode
     class _Solid(_NativeCurrency, ExactLeafNode):
-        namespace = 'cadquery'
+        leaf_contract = 1
         def get_source_file(self):
             return wrapper_source
         def materialize(self, rendered):
             from machinome import currency
             self._check_native_generation()
-            replaced = not self._up_to_date(self.brep_file)
             paths = (self.brep_file, self.stl_file,
                      currency.sidecar(self.brep_file), currency.sidecar(self.stl_file))
             # Exact writers publish immediately. Preserve this leaf's existing
@@ -174,27 +167,19 @@ def _leaf_class(wrapper_source, product_key):
                             shutil.copy2(backups[path], path)
                         elif os.path.exists(path):
                             os.unlink(path)
-                    from machinome.exact import _evict
-                    _evict(self.brep_file)
                     raise
-            if replaced:
-                # Core exact-shape cache keys only path+mtime; native recipe
-                # changes can replace a BREP while source mtime stays equal.
-                # Invalidate this rebuilt path through its existing helper.
-                from machinome.exact import _evict
-                _evict(self.brep_file)
         def render(self):
             self._check_native_generation()
-            import cadquery as cq
             from OCP.BRep import BRep_Builder
+            from OCP.BRepCheck import BRepCheck_Analyzer
             from OCP.BRepTools import BRepTools
             from OCP.TopoDS import TopoDS_Shape
+            from machinome.occt.engine import solid_count
             shape = TopoDS_Shape()
             BRepTools.Read_s(shape, io.BytesIO(self._brep.encode()), BRep_Builder())
-            result = cq.Shape.cast(shape)
-            if not result.Solids() or not result.isValid():
+            if not solid_count(shape) or not BRepCheck_Analyzer(shape).IsValid():
                 raise NativeAssemblyError('Native BREP transfer contains no valid solid')
-            return result
+            return shape
     _Solid.__qualname__ = '_NativeSolid_' + product_key
     return _Solid
 
@@ -203,8 +188,6 @@ class FreeCADAssemblyNode(_NativeCurrency, AssemblyNode):
     freecad_source = None
 
     def __init__(self, *args, **kwargs):
-        if version('machinome') != '0.7.1':
-            raise NativeAssemblyError('machinome-freecad requires tested machinome 0.7.1')
         super().__init__(*args, **kwargs)
         self._ensure_native_assembly()
         for ref in _aliases(type(self)).values():
