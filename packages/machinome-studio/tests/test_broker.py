@@ -33,6 +33,13 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.broker.agents["designer"].state, "waiting", "direction must not mutate work state")
         self.assertFalse(self.broker.agents["designer"].runtime_pristine)
 
+    async def test_run_snapshot_carries_the_profiles_work_mode(self) -> None:
+        self.assertEqual(self.broker.run()["work_mode"], "delegated")
+
+        direct_broker = Broker(load_profile("openspec", shop_root=ROOT))
+        direct_broker.manifest("builder", "Builder")
+        self.assertEqual(direct_broker.run()["work_mode"], "direct")
+
     async def test_assignment_and_activity_permanently_end_runtime_pristine_state(self) -> None:
         self.assertTrue(self.broker.run()["agents"][1]["runtime_pristine"])
         self.broker.assign("designer", "drawing-1")
@@ -187,7 +194,7 @@ class BrokerTest(unittest.IsolatedAsyncioTestCase):
 
 class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_profile_routes_user_and_turn_state_without_assignment_ceremony(self) -> None:
-        broker = Broker(profile=load_profile("builder", shop_root=ROOT))
+        broker = Broker(profile=load_profile("openspec", shop_root=ROOT))
         builder = broker.manifest("builder", "Builder")
         entry = await broker.record_conversation("user", "Build a bracket.")
         direction = broker.pending_for("builder")[0]
@@ -211,7 +218,7 @@ class ProfileBrokerTest(unittest.IsolatedAsyncioTestCase):
                 operation()
 
     async def test_direct_role_failure_ends_only_the_failed_turn(self) -> None:
-        broker = Broker(profile=load_profile("builder", shop_root=ROOT))
+        broker = Broker(profile=load_profile("openspec", shop_root=ROOT))
         builder = broker.manifest("builder", "Builder")
         broker.register_direct_delivery("builder", "turn-1")
         broker.turn_started("builder", "turn-1")

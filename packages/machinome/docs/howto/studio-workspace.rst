@@ -14,7 +14,7 @@ The conversation
 ================
 
 The conversation is with one agent: the one the project's profile puts in
-front of you, **Builder** under ``builder`` and **Foreman** under
+front of you, **Builder** under ``openspec`` and **Foreman** under
 ``fordesmac``. Write what you want in ordinary words; Enter sends, and
 Ctrl+Enter starts a new line. The transcript holds your messages and that
 agent's replies, attributed with the labels the profile gives you both. The

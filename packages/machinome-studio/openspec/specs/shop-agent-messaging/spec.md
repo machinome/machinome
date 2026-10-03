@@ -4,9 +4,7 @@
 
 Provide ordered role-addressed direction, assignments, reports, and portable
 backend delivery with tool-boundary handling and event-driven standby.
-
 ## Requirements
-
 ### Requirement: Running agents receive ordered direction at work boundaries
 Each profile-declared standing agent SHALL have an ordered inbox for direction
 addressed to its stable agent ID. Direction received while the agent is using a
@@ -89,7 +87,7 @@ other agent, into user-conversation entries.
 - **THEN** the reporting parent receives the unseen events once in recorded order
 
 #### Scenario: The user-facing agent emits output
-- **WHEN** Builder in `builder` or Foreman in `fordesmac` emits non-empty backend output
+- **WHEN** Builder in `openspec` or Foreman in `fordesmac` emits non-empty backend output
 - **THEN** the orchestrator records it in the user conversation under that configured agent identity
 
 ### Requirement: The broker enforces the active profile's communication graph
@@ -143,3 +141,4 @@ MUST NOT start or resume an agent turn.
 #### Scenario: The maker saves the same file several times before delivery
 - **WHEN** several accepted saves of one path occur before a recipient receives its pending notice
 - **THEN** that recipient receives the latest unsent revision of that path without a notice for each superseded revision
+

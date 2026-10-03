@@ -197,10 +197,14 @@ class ShopLifecycleE2E(unittest.TestCase):
     def test_project_creation_opens_a_workspace_and_close_returns_to_the_hub(self) -> None:
         self.page.goto(self.url("/"))
         self.page.get_by_role("button", name="New project").first.click()
+        openspec_choice = self.page.get_by_role("button", name="OpenSpec")
+        openspec_choice.wait_for()
+        self.assertIn("selected", openspec_choice.get_attribute("class") or "")
+        self.page.get_by_text("OpenSpec design record", exact=False).wait_for()
+        self.page.get_by_role("button", name="Fordesmac").wait_for()
         self.page.get_by_label("Project name").fill("new_bracket")
-        self.page.get_by_role("button", name="Builder").click()
         self.page.get_by_role("button", name="Create and open").click()
-        self.page.get_by_text("creating · builder", exact=False).wait_for(timeout=2_000)
+        self.page.get_by_text("creating · openspec", exact=False).wait_for(timeout=2_000)
         self.page.wait_for_url("**/projects/new_bracket", timeout=10_000)
         self.page.get_by_role("link", name="Machinome Studio").wait_for()
         self.page.get_by_text("/ new_bracket", exact=True).wait_for()
@@ -220,7 +224,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         (project / ".fake-machinome-state.json").write_text(json.dumps({"build_gate": str(gate)}))
 
         self.page.goto(self.url("/"))
-        self.page.get_by_text("closed · builder", exact=False).wait_for()
+        self.page.get_by_text("closed · openspec", exact=False).wait_for()
         rebuilding = self.page.get_by_text("Bringing the model up to date", exact=False)
         self.assertEqual(rebuilding.count(), 0)
 
@@ -234,7 +238,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         # and the maker has to be told when the model is current again.
         gate.write_text("go\n")
         rebuilding.wait_for(state="detached", timeout=20_000)
-        self.page.get_by_text("open · builder", exact=False).wait_for()
+        self.page.get_by_text("open · openspec", exact=False).wait_for()
 
     def test_the_workspace_says_a_presented_model_is_being_brought_up_to_date(self) -> None:
         project = self._make_project("warm-workspace")
@@ -605,6 +609,7 @@ class ShopLifecycleE2E(unittest.TestCase):
 
         self.page.get_by_role("button", name="Agents", exact=True).click()
         self.page.locator(".agents-area").wait_for()
+        self.page.get_by_text("openspec · direct", exact=False).wait_for()
         self.page.get_by_text("Replace this unused session immediately.").wait_for()
         controls = self.page.locator(".agent-controls")
         provider_select = controls.get_by_label("Provider", exact=True)
@@ -862,7 +867,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         page = self.context.new_page()
         self.addCleanup(page.close)
         page.goto(self.url("/projects/sandbox/windmill"))
-        page.get_by_text("builder · open", exact=True).wait_for(timeout=30_000)
+        page.get_by_text("openspec · open", exact=True).wait_for(timeout=30_000)
         self.assertEqual(page.url, self.url("/projects/sandbox/windmill"))
         self.assertEqual(self._project("sandbox/windmill")["state"], "open")
 
@@ -903,7 +908,7 @@ class ShopLifecycleE2E(unittest.TestCase):
         (project / ".gitignore").write_text("_build/\n.fake-machinome-builds\n.fake-machinome-state.json\n")
         declared = "".join(f'{model} = "root:Root"\n' for model in models)
         (project / "pyproject.toml").write_text(
-            '[tool.machinome-studio]\nprofile = "builder"\n'
+            '[tool.machinome-studio]\nprofile = "openspec"\n'
             + (f"\n[tool.machinome.models]\n{declared}" if models else "")
         )
         if models:

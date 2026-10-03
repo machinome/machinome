@@ -33,7 +33,7 @@ identify the project file and the offending value, and SHALL leave the shop and
 every other project available.
 
 A project that declares no `profile` key, no `[tool.machinome-studio]` table, or
-no `pyproject.toml` at all SHALL be opened under the shop default.
+no `pyproject.toml` at all SHALL be opened under the shop default, `openspec`.
 
 Creating a project SHALL write the `profile` key the maker chose for it, so a
 project created by the shop declares its profile from its first state.
@@ -44,7 +44,7 @@ project created by the shop declares its profile from its first state.
 
 #### Scenario: A project declares no profile
 - **WHEN** a project declares no `profile` key and it is opened
-- **THEN** the session opens the shop default profile
+- **THEN** the session opens the shop default profile, `openspec`, with Builder as its one agent
 
 #### Scenario: A malformed profile value is always rejected
 - **WHEN** a project's `profile` value is not lowercase kebab-case, such as a path or a value containing a separator
@@ -53,6 +53,10 @@ project created by the shop declares its profile from its first state.
 #### Scenario: An unresolvable declared profile is rejected rather than replaced
 - **WHEN** a project declares a well-formed profile that no `profiles/<profile-id>/profile.toml` provides
 - **THEN** the shop refuses to open that project, naming the project file and the value, rather than opening the default profile
+
+#### Scenario: A project declares a profile the shop no longer ships
+- **WHEN** a project's `pyproject.toml` declares a profile the shop shipped before and no longer does, such as `builder`, and it is opened
+- **THEN** the shop refuses to open that project, naming the project file and the value, rather than opening the default, and remains available for every other project
 
 #### Scenario: A created project declares its chosen profile
 - **WHEN** the maker creates a project and chooses a profile for it
@@ -159,12 +163,12 @@ rather than silently inert. An agent key that is not a well-formed lowercase
 kebab-case agent ID SHALL be rejected.
 
 #### Scenario: A project carries selections for two rosters
-- **WHEN** a project declares selections for both `builder` and the Fordesmac specialists and declares the profile `builder`
+- **WHEN** a project declares selections for both the agent `builder` and the Fordesmac specialists and declares the profile `openspec`
 - **THEN** the Builder selection applies, the Fordesmac keys are ignored, and the ignored keys are reported
 
 #### Scenario: A project changes its declared profile
-- **WHEN** a project that declared `fordesmac` with selections for its specialists is changed to declare `builder` and is opened
-- **THEN** the session opens `builder`, the specialist keys are ignored rather than rejected, and they are reported
+- **WHEN** a project that declared `fordesmac` with selections for its specialists is changed to declare `openspec` and is opened
+- **THEN** the session opens `openspec`, the specialist keys are ignored rather than rejected, and they are reported
 
 #### Scenario: An agent ID is misspelled
 - **WHEN** a project declares a selection for an agent key absent from the active roster
@@ -329,3 +333,4 @@ read or write `[tool.machinome]`.
 #### Scenario: Project and framework tables coexist
 - **WHEN** persisted runtime is written beside an existing `[tool.machinome]` table and other project configuration
 - **THEN** only the selected `[tool.machinome-studio.agents]` key changes and all unrelated content remains semantically and textually preserved
+

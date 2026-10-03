@@ -159,22 +159,22 @@ class FloorAPITest(unittest.TestCase):
 
     def test_creation_writes_the_chosen_profile_and_rejects_every_collision(self) -> None:
         response = _request(
-            self.url("/api/projects"), "POST", {"name": "new_engine", "profile": "builder"}
+            self.url("/api/projects"), "POST", {"name": "new_engine", "profile": "openspec"}
         )
         self.assertEqual(response["state"], "opening")
         _wait_for(lambda: self._project("new_engine")["state"] == "open")
-        self.assertIn('profile = "builder"', (self.project_home / "new_engine" / "pyproject.toml").read_text())
+        self.assertIn('profile = "openspec"', (self.project_home / "new_engine" / "pyproject.toml").read_text())
         self.assertEqual(
             subprocess.run(
                 ["git", "-C", str(self.project_home / "new_engine"), "show", "HEAD:pyproject.toml"],
                 check=True, text=True, capture_output=True,
-            ).stdout.count('profile = "builder"'),
+            ).stdout.count('profile = "openspec"'),
             1,
         )
 
         (self.project_home / "occupied").write_text("not a directory")
-        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "occupied", "profile": "builder"}), 409)
-        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "../escape", "profile": "builder"}), 409)
+        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "occupied", "profile": "openspec"}), 409)
+        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "../escape", "profile": "openspec"}), 409)
 
     def test_a_failed_initial_build_still_opens_and_artifacts_are_project_scoped(self) -> None:
         project = self._make_project("broken-model")
@@ -380,7 +380,7 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/malformed.png"), "GET"), 404)
         self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/root/__init__.py"), "GET"), 404)
 
-    def _make_project(self, name: str, profile: str = "builder", models: tuple[str, ...] = ()) -> Path:
+    def _make_project(self, name: str, profile: str = "openspec", models: tuple[str, ...] = ()) -> Path:
         project = self.project_home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")

@@ -4,7 +4,6 @@
 
 Define how the shop manifests its standing role team and reflects each role's
 acknowledged assignment state in the shop-floor roster.
-
 ## Requirements
 ### Requirement: An open shop manifests the working team
 Each newly opened project SHALL manifest exactly the complete standing agent set
@@ -14,7 +13,7 @@ profile's stable agent IDs and display labels. Each open project SHALL have its
 own roster, and an agent SHALL appear in the roster of its own project only.
 
 #### Scenario: The default working team starts
-- **WHEN** a project declaring `builder` is opened
+- **WHEN** a project declaring `openspec`, or declaring no profile, is opened
 - **THEN** that project's roster shows one waiting Builder
 
 #### Scenario: The Fordesmac working team starts
@@ -140,6 +139,7 @@ The broker SHALL record an optional backend failure reason for each manifested a
 #### Scenario: A direct-agent turn fails
 - **WHEN** the direct profile's active agent reports `role_failed`
 - **THEN** its failed turn identity is cleared, its failure reason is shown, and a later maker direction can start a new turn
+
 ### Requirement: Runtime mutation requires broker and backend idleness
 The orchestrator SHALL serialize a runtime update with role delivery and SHALL
 accept it only when the role has no active native delivery, no backend failure,
@@ -163,3 +163,4 @@ lifecycle transition cannot pass between validation and application.
 #### Scenario: Work starts during a runtime request
 - **WHEN** a runtime request and delivery race for the same idle role
 - **THEN** the role lock admits exactly one first and the other observes the resulting active or updated state
+

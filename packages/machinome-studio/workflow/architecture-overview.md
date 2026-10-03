@@ -111,12 +111,12 @@ When a project is opened, the registry makes one side-effect-free read of its
 package resources. A source-worktree launch therefore exercises that worktree;
 an installed launch uses its installed resources and requires no Git checkout.
 The project's `[tool.machinome-studio]` `profile` value selects it;
-otherwise the shop uses `fordesmac`. The launcher provides no override. A
-profile is strict trusted configuration: it declares the
-human label, one user-facing agent, standing roster, direct or delegated work
-mode, prompt paths, allowed skills, communication edges, and Claude
-runtime defaults. The option overrides a project declaration for one run
-without modifying it. The project may select backend, provider, model, and
+otherwise the shop uses `openspec`, the shop default. The launcher
+provides no override. A profile is strict trusted configuration: it
+declares the human label, one user-facing agent, standing roster, direct
+or delegated work mode, prompt paths, allowed skills, communication
+edges, and Claude runtime defaults. The project may select backend,
+provider, model, and
 reasoning level per agent under `[tool.machinome-studio.agents]`; the profile
 tool policy remains non-overridable and is the whole authority a Claude session
 holds, so no profile or project declaration can widen it or disable permission
@@ -143,15 +143,16 @@ intentionally has no web or external documentation tools, pending a bounded
 research surface.
 
 `OpenSpec` is a capability of its own in that vocabulary, resolving to the
-floor's two OpenSpec tools. Only `builder` declares it; no other capability
-reaches those tools, so a session holding the shell or filesystem capabilities
-does not reach a project's spec record as a side effect.
+floor's two OpenSpec tools. Only the `openspec` profile declares it, for
+Builder; no other capability reaches those tools, so a session holding
+the shell or filesystem capabilities does not reach a project's spec
+record as a side effect.
 
 The initial profiles are:
 
 | Profile | Mode | Human-facing agent | Standing roster |
 | --- | --- | --- | --- |
-| `builder` | direct | Builder | Builder |
+| `openspec` | direct | Builder | Builder |
 | `fordesmac` | delegated | Foreman | Foreman, Designer, Machinist, Librarian |
 
 Builder keeps a durable design record inside its project: an OpenSpec root

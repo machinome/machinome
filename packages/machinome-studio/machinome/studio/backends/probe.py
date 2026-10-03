@@ -52,7 +52,7 @@ def probe_backend(name: str, configured_models: tuple[str, ...] = ()) -> dict[st
 
 def _configured_models(shop_root: Path) -> dict[str, tuple[str, ...]]:
     models: dict[str, set[str]] = {name: set() for name in BACKENDS}
-    for profile_id in ("builder", "fordesmac"):
+    for profile_id in ("openspec", "fordesmac"):
         try:
             profile = resolve_profile_runtime(load_profile(profile_id, shop_root=shop_root))
         except ValueError:

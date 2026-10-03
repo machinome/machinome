@@ -429,7 +429,7 @@ class OpenCodeSelectionTest(unittest.TestCase):
         from floor.profiles import load_profile, resolve_profile_runtime
 
         for profile_id, expected_roles in (
-            ("builder", ["builder"]),
+            ("openspec", ["builder"]),
             ("fordesmac", ["foreman", "designer", "machinist", "librarian"]),
         ):
             loaded = load_profile(profile_id, shop_root=ROOT)

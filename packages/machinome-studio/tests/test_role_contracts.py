@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class RoleContractTest(unittest.TestCase):
     def test_runtime_prompts_are_profile_owned_and_runtime_skills_are_allowlisted(self) -> None:
-        for profile_id in ("builder", "fordesmac"):
+        for profile_id in ("openspec", "fordesmac"):
             profile = load_profile(profile_id, shop_root=ROOT)
             for agent in profile.agents:
                 text = agent.prompt_path.read_text()
@@ -33,7 +33,7 @@ class RoleContractTest(unittest.TestCase):
         self.assertNotIn("running-the-shop", foreman)
 
     def test_builder_is_direct_and_preserves_disassembled_leaf_first_red(self) -> None:
-        builder = (ROOT / "profiles" / "builder" / "builder.md").read_text()
+        builder = (ROOT / "profiles" / "openspec" / "builder.md").read_text()
         self.assertIn("deliberately\ndisassembled position", builder)
         self.assertIn("already-existing leaf", builder)
         self.assertNotIn("machinome develop --callback", builder)

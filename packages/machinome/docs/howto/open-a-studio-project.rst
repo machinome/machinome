@@ -80,7 +80,7 @@ Open a project
 
 Opening is one action from the card. Before anything starts, the studio
 reads the project's ``pyproject.toml`` without changing it, resolves the
-profile it declares (``fordesmac`` when it declares none), validates the
+profile it declares (``openspec`` when it declares none), validates the
 profile and every runtime selection, and verifies that the directory is
 its own repository. It then asks the framework where the entry's model
 publishes, builds that model with ``machinome build``, starts the

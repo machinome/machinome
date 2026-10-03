@@ -7,13 +7,13 @@ which one speaks with you, who assigns work to whom, what each may do, the
 prompt each follows and the skills it may load. The studio ships two. The
 choice is made when a project is created, recorded in its
 ``pyproject.toml`` and read every time the project opens; a project that
-records none opens under ``fordesmac``. :doc:`reference/profiles` lists
-what each declares.
+records none opens under ``openspec``, the shop default. :doc:`reference/profiles`
+lists what each declares.
 
-Builder
-=======
+OpenSpec
+========
 
-``builder`` is one agent, **Builder**, working directly with you. You
+``openspec`` is one agent, **Builder**, working directly with you. You
 describe what you want; Builder designs, builds, tests and commits, and
 reports back, asking only when a choice is yours to make. It never pushes.
 
@@ -89,7 +89,7 @@ Where the work is recorded
 
 In the project, and only there: the source and its tests; under
 ``fordesmac``, ``docs/design.md``, ``docs/specs/`` and ``docs/notes/``;
-under ``builder``, the ``openspec/`` record; the commits, one per coherent
+under ``openspec``, the ``openspec/`` record; the commits, one per coherent
 slice; and the model's preview picture, committed with the model. Agents
 commit and never push. What you see in a session, its conversation and its
 activity, is not kept; the repository is the record.

@@ -347,7 +347,7 @@ class ReferenceTest(unittest.TestCase):
         page = (DOCS / "reference/project-configuration.rst").read_text()
         for needed in (
             "[tool.machinome-studio]", "[tool.machinome-studio.agents]",
-            "libresolid-studio", "[tool.machinome]", "fordesmac",
+            "libresolid-studio", "[tool.machinome]", "openspec", "fordesmac",
         ):
             with self.subTest(needed=needed):
                 self.assertIn(needed, page)
@@ -357,7 +357,12 @@ class ReferenceTest(unittest.TestCase):
         for profile_dir in sorted(path for path in (ROOT / "profiles").iterdir() if path.is_dir()):
             profile = tomllib.loads((profile_dir / "profile.toml").read_text())
             with self.subTest(profile=profile_dir.name):
-                self.assertIn(f"``{profile_dir.name}``", page)
+                heading = re.compile(rf"^``{re.escape(profile_dir.name)}``\n=+$", re.M)
+                self.assertRegex(
+                    page, heading,
+                    f"{profile_dir.name!r} must have its own section heading, "
+                    "not merely a mention",
+                )
                 self.assertIn(profile["work_mode"], page)
             for agent in profile["agents"]:
                 with self.subTest(profile=profile_dir.name, agent=agent["id"]):

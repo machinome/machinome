@@ -16,9 +16,9 @@ class CodexBackendTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         await service_fixtures.CodexServiceTests.asyncSetUp(self)
         self.reference = await self.service.acquire("synthetic", [])
-        agent = resolve_profile_runtime(load_profile("builder", shop_root=ROOT)).user_agent
+        agent = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT)).user_agent
         agent = replace(agent, runtime=BackendRuntime("gpt-6-sol", "medium", agent.runtime.tools, backend="codex"))
-        self.context = RoleContext(str(ROOT), self.temporary.name, agent, "builder", "Maker", "Builder")
+        self.context = RoleContext(str(ROOT), self.temporary.name, agent, "openspec", "Maker", "Builder")
         self.worker_patch = patch("floor.backends.codex.FloorWorker")
         self.worker = self.worker_patch.start().return_value
         self.worker.start = AsyncMock()

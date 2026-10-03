@@ -612,8 +612,8 @@ def _project_listing(entry: Path, path: str, *, model: str | None = None) -> Pro
     try:
         selection = read_project_runtime(entry)
     except (PreparationError, ProjectRuntimeError) as error:
-        return ProjectListing(path, False, str(error), "fordesmac")
-    profile = selection.profile or "fordesmac"
+        return ProjectListing(path, False, str(error), "openspec")
+    profile = selection.profile or "openspec"
     name = entry.name
     try:
         root = _run(

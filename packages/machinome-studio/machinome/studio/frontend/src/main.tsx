@@ -69,6 +69,7 @@ type Run = {
   id: string;
   status: string;
   profile_id: string;
+  work_mode: "direct" | "delegated";
   user_label: string;
   user_agent: { id: string; label: string };
   roster: { id: string; label: string }[];
@@ -548,7 +549,7 @@ function Hub({ folder }: { folder: string }) {
   const [shopOpen, setShopOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
-  const [profile, setProfile] = useState<"builder" | "fordesmac" | "">("");
+  const [profile, setProfile] = useState<"openspec" | "fordesmac" | "">("openspec");
   const [formError, setFormError] = useState("");
   const pendingOpen = useRef<string | null>(null);
   // A folder of declared models is a project repository, so it holds no
@@ -611,7 +612,7 @@ function Hub({ folder }: { folder: string }) {
           kind: "project",
           path: event.project,
           name: event.project.split("/").pop() ?? event.project,
-          profile: event.profile ?? "fordesmac",
+          profile: event.profile ?? "openspec",
           openable: true,
           reason: null,
           branch: null,
@@ -782,9 +783,9 @@ function Hub({ folder }: { folder: string }) {
         <header><h2>New project</h2><p>Create a repository and open its first session.</p></header>
         <label>Project name<input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="bracket-assembly" /></label>
         <fieldset><legend>Runtime profile</legend><div className="profile-grid">
-          {(["builder", "fordesmac"] as const).map((value) => <button type="button" className={profile === value ? "selected" : ""} onClick={() => setProfile(value)} key={value}>
-            <strong>{value === "builder" ? "Builder" : "Fordesmac"}</strong>
-            <span>{value === "builder" ? "One direct agent" : "Four-agent mechanical shop"}</span>
+          {(["openspec", "fordesmac"] as const).map((value) => <button type="button" className={profile === value ? "selected" : ""} onClick={() => setProfile(value)} key={value}>
+            <strong>{value === "openspec" ? "OpenSpec" : "Fordesmac"}</strong>
+            <span>{value === "openspec" ? "One agent, Builder, keeping an OpenSpec design record" : "Four-agent mechanical shop"}</span>
           </button>)}
         </div></fieldset>
         <p className="runtime-note">Agents use project-declared runtime selections or the profile's Claude defaults.</p>
@@ -1415,7 +1416,7 @@ function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
       </section>
       <section className="agents-session-panel">
         <h2>Session</h2>
-        <div><span>Profile</span><strong>{run?.profile_id ?? "—"} · delegated</strong><small>{agents.length} standing session{agents.length === 1 ? "" : "s"} · {new Set(agents.map((agent) => agent.backend)).size} backend{new Set(agents.map((agent) => agent.backend)).size === 1 ? "" : "s"}</small></div>
+        <div><span>Profile</span><strong>{run ? `${run.profile_id} · ${run.work_mode}` : "—"}</strong><small>{agents.length} standing session{agents.length === 1 ? "" : "s"} · {new Set(agents.map((agent) => agent.backend)).size} backend{new Set(agents.map((agent) => agent.backend)).size === 1 ? "" : "s"}</small></div>
         <p>Provider identity is explicit. Runtime selections persist by default; tool policy remains profile-owned.</p>
       </section>
     </aside>

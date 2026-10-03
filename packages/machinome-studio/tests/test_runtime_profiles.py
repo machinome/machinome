@@ -17,14 +17,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class RuntimeProfileTest(unittest.TestCase):
     def test_builtin_profiles_have_the_ratified_topologies_and_backend_matrix(self) -> None:
-        builder = load_profile("builder", shop_root=ROOT)
-        self.assertEqual(builder.id, "builder")
-        self.assertEqual(builder.user_label, "Maker")
-        self.assertEqual(builder.user_agent.id, "builder")
-        self.assertEqual(builder.work_mode, "direct")
-        self.assertEqual([(agent.id, agent.label) for agent in builder.agents], [("builder", "Builder")])
-        self.assertEqual(builder.user_agent.backends["claude"].model, "sonnet")
-        self.assertEqual(builder.user_agent.backends["claude"].effort, "medium")
+        openspec = load_profile("openspec", shop_root=ROOT)
+        self.assertEqual(openspec.id, "openspec")
+        self.assertEqual(openspec.user_label, "Maker")
+        self.assertEqual(openspec.user_agent.id, "builder")
+        self.assertEqual(openspec.work_mode, "direct")
+        self.assertEqual([(agent.id, agent.label) for agent in openspec.agents], [("builder", "Builder")])
+        self.assertEqual(openspec.user_agent.backends["claude"].model, "sonnet")
+        self.assertEqual(openspec.user_agent.backends["claude"].effort, "medium")
 
         fordesmac = load_profile("fordesmac", shop_root=ROOT)
         self.assertEqual(fordesmac.work_mode, "delegated")
@@ -38,13 +38,17 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(fordesmac.agent("designer").reports_to, "foreman")
         self.assertEqual(fordesmac.agent("foreman").assigns, ("designer", "machinist", "librarian"))
 
+    def test_builder_is_no_longer_a_shippable_profile(self) -> None:
+        with self.assertRaisesRegex(ProfileError, r"builder.*unavailable"):
+            load_profile("builder", shop_root=ROOT)
+
     def test_requested_project_and_default_profile_precedence(self) -> None:
         source_path = ROOT / "projects" / "sample" / "pyproject.toml"
-        declared = ProjectRuntimeSelection(source_path.parent, source_path, {}, "builder")
+        declared = ProjectRuntimeSelection(source_path.parent, source_path, {}, "fordesmac")
 
-        self.assertEqual(load_profile("fordesmac", shop_root=ROOT, selection=declared).id, "fordesmac")
-        self.assertEqual(load_profile(None, shop_root=ROOT, selection=declared).id, "builder")
-        self.assertEqual(load_profile(None, shop_root=ROOT).id, "fordesmac")
+        self.assertEqual(load_profile("openspec", shop_root=ROOT, selection=declared).id, "openspec")
+        self.assertEqual(load_profile(None, shop_root=ROOT, selection=declared).id, "fordesmac")
+        self.assertEqual(load_profile(None, shop_root=ROOT).id, "openspec")
 
     def test_project_profile_resolution_errors_name_the_source_and_explicit_requests_still_validate(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -58,12 +62,12 @@ class RuntimeProfileTest(unittest.TestCase):
                 load_profile(None, shop_root=ROOT, selection=declared)
 
             self.assertEqual(
-                load_profile("builder", shop_root=ROOT, selection=declared).id,
-                "builder",
+                load_profile("openspec", shop_root=ROOT, selection=declared).id,
+                "openspec",
             )
 
     def test_skills_are_profile_allowlisted(self) -> None:
-        profile = load_profile("builder", shop_root=ROOT)
+        profile = load_profile("openspec", shop_root=ROOT)
         agent = profile.user_agent
         self.assertEqual({skill.path.name for skill in agent.skills}, {"machinome", "machinome-api"})
         for skill in agent.skills:
@@ -72,7 +76,7 @@ class RuntimeProfileTest(unittest.TestCase):
             self.assertEqual(skill.path.resolve().parent, ROOT / "shop-skills")
 
     def test_allowlisted_skills_carry_the_announcement_their_skill_file_declares(self) -> None:
-        agent = load_profile("builder", shop_root=ROOT).user_agent
+        agent = load_profile("openspec", shop_root=ROOT).user_agent
         self.assertEqual(
             {skill.name for skill in agent.skills}, {"machinome", "machinome-api"}
         )
@@ -96,11 +100,11 @@ class RuntimeProfileTest(unittest.TestCase):
                 shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
                 shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
                 (shop / "shop-skills" / "machinome" / "SKILL.md").write_text(content)
-                with self.assertRaisesRegex(ProfileError, "builder.*skills.*machinome"):
-                    load_profile("builder", shop_root=shop)
+                with self.assertRaisesRegex(ProfileError, "openspec.*skills.*machinome"):
+                    load_profile("openspec", shop_root=shop)
 
     def test_builtin_profiles_declare_only_profile_explicit_backends(self) -> None:
-        for profile_id in ("builder", "fordesmac"):
+        for profile_id in ("openspec", "fordesmac"):
             with (ROOT / "profiles" / profile_id / "profile.toml").open("rb") as source:
                 manifest = tomllib.load(source)
             for agent in manifest["agents"]:
@@ -111,7 +115,7 @@ class RuntimeProfileTest(unittest.TestCase):
             shop = Path(temporary)
             shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
-            manifest = shop / "profiles" / "builder" / "profile.toml"
+            manifest = shop / "profiles" / "openspec" / "profile.toml"
             original = manifest.read_text()
             for retired in ("hermes", "codex"):
                 with self.subTest(backend=retired):
@@ -120,7 +124,7 @@ class RuntimeProfileTest(unittest.TestCase):
                         + f'\n[agents.backends.{retired}]\nmodel = "inherit"\neffort = "inherit"\ntools = "inherit"\n'
                     )
                     with self.assertRaisesRegex(ProfileError, f"unknown key.*{retired}"):
-                        load_profile("builder", shop_root=shop)
+                        load_profile("openspec", shop_root=shop)
 
     def test_invalid_selection_and_unknown_schema_key_fail_with_actionable_errors(self) -> None:
         with self.assertRaisesRegex(ProfileError, "profile.*lowercase kebab-case"):
@@ -129,10 +133,10 @@ class RuntimeProfileTest(unittest.TestCase):
             shop = Path(temporary)
             shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
-            profile = shop / "profiles" / "builder" / "profile.toml"
+            profile = shop / "profiles" / "openspec" / "profile.toml"
             profile.write_text(profile.read_text() + "\nmisspelled = true\n")
-            with self.assertRaisesRegex(ProfileError, "builder.*unknown key.*misspelled"):
-                load_profile("builder", shop_root=shop)
+            with self.assertRaisesRegex(ProfileError, "openspec.*unknown key.*misspelled"):
+                load_profile("openspec", shop_root=shop)
 
     def test_skill_links_and_prompt_paths_cannot_escape_the_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -140,44 +144,44 @@ class RuntimeProfileTest(unittest.TestCase):
             shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
             (shop / "skills").mkdir()
-            skills = shop / "profiles" / "builder" / "skills"
+            skills = shop / "profiles" / "openspec" / "skills"
             (skills / "machinome").unlink()
             (skills / "machinome").symlink_to(shop / "skills")
-            with self.assertRaisesRegex(ProfileError, "builder.*skills.*machinome.*shop-skills"):
-                load_profile("builder", shop_root=shop)
+            with self.assertRaisesRegex(ProfileError, "openspec.*skills.*machinome.*shop-skills"):
+                load_profile("openspec", shop_root=shop)
 
     def test_selected_backends_reject_controls_their_adapters_cannot_enforce(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             shop = Path(temporary)
             shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
-            manifest = shop / "profiles" / "builder" / "profile.toml"
+            manifest = shop / "profiles" / "openspec" / "profile.toml"
             value = manifest.read_text()
             manifest.write_text(value.replace('model = "sonnet"', 'model = "not-a-claude-model"'))
             with self.assertRaisesRegex(ProfileError, "claude.*model.*unsupported"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
             manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "OpenSpec"]', 'tools = ["ImaginaryTool"]'))
             with self.assertRaisesRegex(ProfileError, "claude.*tools.*unsupported"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
             manifest.write_text(value.replace('[agents.backends.claude]\nmodel = "sonnet"\neffort = "medium"', '[agents.backends.claude]\nmodel = "sonnet"\neffort = "ultra"'))
             with self.assertRaisesRegex(ProfileError, "claude.*effort.*unsupported"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
             manifest.write_text(value.replace('tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "OpenSpec"]', 'tools = "inherit"'))
             with self.assertRaisesRegex(ProfileError, "claude.*tools.*must be a list"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
             # A permission policy is no longer a thing a profile can declare:
             # the tool list is the whole authority a role session holds.
             manifest.write_text(value.replace('effort = "medium"', 'effort = "medium"\npermission = "autonomous"'))
             with self.assertRaisesRegex(ProfileError, "claude.*unknown"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
             manifest.write_text(value.replace('effort = "medium"\n', ''))
             with self.assertRaisesRegex(ProfileError, "claude.*must declare model, effort, and tools"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
 
 

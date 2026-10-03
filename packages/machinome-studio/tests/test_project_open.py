@@ -60,7 +60,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
 
     # ── fixtures ────────────────────────────────────────────────────────
 
-    def make_project(self, name: str, profile: str = "builder") -> Path:
+    def make_project(self, name: str, profile: str = "openspec") -> Path:
         project = self.home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")
@@ -216,7 +216,7 @@ class ProjectOpenTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue((project / "screenshot.png").is_file())
 
     async def test_a_created_project_waits_for_its_build_before_opening(self) -> None:
-        await self.registry.create("", "new_engine", "builder")
+        await self.registry.create("", "new_engine", "openspec")
         session = await self.registry.wait_until_settled("new_engine")
         self.assertIsNotNone(session, self.registry._failures.get("new_engine"))
         assert session is not None

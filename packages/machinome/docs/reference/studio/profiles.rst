@@ -38,8 +38,8 @@ every one rooted at the active project:
 
 Loading a skill follows the agent's declared skills, not its capabilities.
 
-``builder``
-===========
+``openspec``
+============
 
 Work mode: direct. One agent, speaking with the maker.
 

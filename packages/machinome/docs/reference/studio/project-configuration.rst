@@ -20,12 +20,13 @@ table is neither read nor written by the studio.
 
 ``profile``
     The profile every session of the project opens with, as the lowercase
-    kebab-case name of a profile the studio ships: ``builder`` or
+    kebab-case name of a profile the studio ships: ``openspec`` or
     ``fordesmac`` (:doc:`profiles`). Absent, the project opens under
-    ``fordesmac``. A value that is not such a name makes the project
-    unreadable; a name the studio does not ship makes it unopenable, and
-    the studio does not substitute the default. Creating a project from
-    the hub writes this key.
+    ``openspec``, the shop default. A value that is not such a name makes
+    the project unreadable; a name the studio does not ship, including the
+    former ``builder``, makes it unopenable, and the studio does not
+    substitute the default. Creating a project from the hub writes this
+    key.
 
 ``agents.<agent>``
     One value per agent, keyed by the agent's identifier in the profile.

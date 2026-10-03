@@ -214,6 +214,7 @@ class Broker:
             "id": self.session_id,
             "status": "running",
             "profile_id": self.profile.id,
+            "work_mode": self.profile.work_mode,
             "user_label": self.profile.user_label,
             "user_agent": {"id": self.profile.user_agent.id, "label": self.profile.user_agent.label},
             "roster": [{"id": agent.id, "label": agent.label} for agent in self.profile.agents],

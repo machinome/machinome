@@ -149,7 +149,7 @@ class FolderListingTest(unittest.TestCase):
     def test_listing_keeps_valid_and_unopenable_entries_independent(self) -> None:
         valid = self.home / "valid_project"
         _make_repository(valid)
-        (valid / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "builder"\n')
+        (valid / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "openspec"\n')
         subprocess.run(["git", "-C", str(valid), "add", "pyproject.toml"], check=True)
         subprocess.run([
             "git", "-C", str(valid), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",
@@ -164,13 +164,22 @@ class FolderListingTest(unittest.TestCase):
         self.assertNotIn("README.md", values)
         self.assertTrue(values["valid_project"].openable)
         self.assertEqual(values["valid_project"].path, "valid_project")
-        self.assertEqual(values["valid_project"].profile, "builder")
+        self.assertEqual(values["valid_project"].profile, "openspec")
         self.assertEqual(values["valid_project"].branch, "main")
         self.assertIsNotNone(values["valid_project"].last_commit)
         self.assertFalse(values["not-a-repository"].openable)
         self.assertIn("repository", values["not-a-repository"].reason or "")
         self.assertFalse(values["Bad Name"].openable)
         self.assertIn("repository", values["Bad Name"].reason or "")
+
+    def test_a_project_declaring_no_profile_is_listed_under_the_shop_default(self) -> None:
+        bare = self.home / "bare_project"
+        _make_repository(bare)
+
+        values = self.listing()
+
+        self.assertTrue(values["bare_project"].openable)
+        self.assertEqual(values["bare_project"].profile, "openspec")
 
     def test_a_directory_holding_projects_is_a_folder(self) -> None:
         _make_repository(self.home / "sandbox" / "windmill")
@@ -391,16 +400,16 @@ class ProjectPreparationTest(unittest.TestCase):
         )
 
     def test_creation_records_the_chosen_profile_in_the_initial_commit(self) -> None:
-        self.prepare("profiled-project", profile="builder")
+        self.prepare("profiled-project", profile="openspec")
         project = self.home / "profiled-project"
-        self.assertIn('profile = "builder"', (project / "pyproject.toml").read_text())
+        self.assertIn('profile = "openspec"', (project / "pyproject.toml").read_text())
         committed = subprocess.run(
             ["git", "-C", str(project), "show", "HEAD:pyproject.toml"],
             check=True,
             text=True,
             capture_output=True,
         ).stdout
-        self.assertIn('profile = "builder"', committed)
+        self.assertIn('profile = "openspec"', committed)
 
     def test_a_refused_screenshot_render_is_reported_in_the_log(self) -> None:
         project = self.home / "unphotographed"

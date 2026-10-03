@@ -69,25 +69,25 @@ class OpenSpecCapabilityTest(unittest.TestCase):
             shop = Path(temporary)
             shutil.copytree(ROOT / "profiles", shop / "profiles", symlinks=True)
             shutil.copytree(ROOT / "shop-skills", shop / "shop-skills", symlinks=True)
-            manifest = shop / "profiles" / "builder" / "profile.toml"
+            manifest = shop / "profiles" / "openspec" / "profile.toml"
             value = manifest.read_text()
 
             manifest.write_text(value.replace('"Grep", "OpenSpec"]', '"Grep"]'))
-            declared = load_profile("builder", shop_root=shop).user_agent.backends["claude"].tools
+            declared = load_profile("openspec", shop_root=shop).user_agent.backends["claude"].tools
             self.assertNotIn("OpenSpec", declared)
 
             manifest.write_text(value)
-            declared = load_profile("builder", shop_root=shop).user_agent.backends["claude"].tools
+            declared = load_profile("openspec", shop_root=shop).user_agent.backends["claude"].tools
             self.assertIn("OpenSpec", declared)
 
             manifest.write_text(value.replace('"OpenSpec"]', '"OpenSpecs"]'))
             with self.assertRaisesRegex(ProfileError, "claude.*tools.*unsupported"):
-                load_profile("builder", shop_root=shop)
+                load_profile("openspec", shop_root=shop)
 
-    def test_builder_declares_the_capability(self) -> None:
-        builder = load_profile("builder", shop_root=ROOT)
+    def test_openspec_declares_the_capability(self) -> None:
+        openspec = load_profile("openspec", shop_root=ROOT)
         session = session_tool_names(
-            builder.user_agent.skills, builder.user_agent.backends["claude"].tools
+            openspec.user_agent.skills, openspec.user_agent.backends["claude"].tools
         )
         for tool in OPENSPEC_TOOLS:
             self.assertIn(tool, session)

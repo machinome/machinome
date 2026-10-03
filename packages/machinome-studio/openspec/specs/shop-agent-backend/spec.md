@@ -35,7 +35,7 @@ Interrupting an agent SHALL be reserved for closing or shutting down. A backend
 whose native interrupt spends a session SHALL NOT return it to standby.
 
 #### Scenario: Backend creates Builder profile sessions
-- **WHEN** the orchestrator opens the `builder` profile
+- **WHEN** the orchestrator opens the `openspec` profile
 - **THEN** Builder's selected backend receives one `open_role()` call carrying Builder's resolved profile contract
 
 #### Scenario: Backend creates Fordesmac profile sessions
@@ -627,3 +627,4 @@ Closing a Codex role or partial open SHALL stop accepting tool calls and bounded
 #### Scenario: Partial role open fails
 - **WHEN** opening a later Codex role fails
 - **THEN** every resource started for that project open is released under existing partial-open semantics
+

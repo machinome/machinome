@@ -3,9 +3,7 @@
 ## Purpose
 
 Provide one profile-neutral ordered conversation between stable internal participant `user` and the active profile's declared user-facing agent.
-
 ## Requirements
-
 ### Requirement: The user and configured user-facing agent share one ordered conversation
 The shop floor SHALL let stable internal participant `user` submit text to the
 selected profile's exactly one user-facing agent. The conversation SHALL show
@@ -21,7 +19,7 @@ submit control `Send`, SHALL submit a non-empty draft on Enter, and SHALL insert
 a line break without submitting on Ctrl+Enter.
 
 #### Scenario: Maker directs Builder
-- **WHEN** the `builder` profile's Maker submits a non-empty message
+- **WHEN** the `openspec` profile's Maker submits a non-empty message
 - **THEN** it is recorded under internal identity `user` and delivered as direction to Builder
 
 #### Scenario: Maker directs Foreman
@@ -69,5 +67,6 @@ response.
 - **THEN** Foreman receives the direction without stopping the specialist assignment
 
 #### Scenario: The user steers Builder
-- **WHEN** the `builder` Maker writes while Builder's direct turn is active
+- **WHEN** the `openspec` Maker writes while Builder's direct turn is active
 - **THEN** the orchestrator steers that same Builder turn under the selected backend's delivery contract
+

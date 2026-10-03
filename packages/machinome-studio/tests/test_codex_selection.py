@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class CodexSelectionTests(unittest.TestCase):
     def test_explicit_choices_derive_profile_tools_without_new_tables(self):
-        profile = load_profile("builder", shop_root=ROOT)
+        profile = load_profile("openspec", shop_root=ROOT)
         source = Path("/tmp/synthetic/pyproject.toml")
         for model in ("gpt-6-sol", "gpt-6-astra"):
             choice = _parse_agent_runtime("builder", f"codex:{model}", source)

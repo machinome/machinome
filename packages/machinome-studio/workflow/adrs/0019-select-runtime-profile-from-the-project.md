@@ -1,6 +1,6 @@
 # ADR 0019: Select the runtime profile from the project
 
-**Status:** Accepted
+**Status:** Accepted (amended by ADR 0034)
 
 **Date:** 2026-08-09
 
