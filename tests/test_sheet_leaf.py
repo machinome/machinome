@@ -452,14 +452,6 @@ class SheetAdapterContractTest(BuildDirTestCase):
         self.assertFalse(issubclass(Build123dSheetNode, CadQueryNode))
         self.assertFalse(issubclass(CadQueryNode, Build123dSheetNode))
 
-    def test_the_backend_walk_resolves_no_mesh_backend(self):
-        """generate_stl names the backend by walking the MRO for adapter
-        class names. The sheet base must not introduce one."""
-        mesh_backends = {'Solid2Node', 'OpenScadNode', 'FusionNode'}
-        names = {cls.__name__ for cls in Build123dSheetNode.__mro__}
-
-        self.assertEqual(names & mesh_backends, set())
-
     def test_the_stl_never_reaches_the_openscad_renderer(self):
         node = Plate()
         node.assemble()

@@ -313,7 +313,7 @@ class Build123dExactnessTest(BuildDirTestCase):
 class ExactAdapterIdentityTest(TestCase):
     """The exact adapters share an implementation base. Sharing it must not
     make them interchangeable to a type test, which is what a project's
-    `isinstance` check and the backend lookup in generate_stl both rely on."""
+    `isinstance` check relies on."""
 
     def test_the_exact_adapters_are_not_instances_of_each_other(self):
         cadquery_node = CadQueryBox()
@@ -323,16 +323,6 @@ class ExactAdapterIdentityTest(TestCase):
         self.assertNotIsInstance(build123d_node, CadQueryNode)
         self.assertIsNot(type(cadquery_node).__mro__[1],
                          type(build123d_node))
-
-    def test_neither_adapter_resolves_to_a_mesh_rendering_backend(self):
-        """generate_stl names the backend by walking the MRO for adapter
-        class names. A shared ancestor must not introduce one."""
-        mesh_backends = {'Solid2Node', 'OpenScadNode', 'FusionNode'}
-
-        for adapter in (CadQueryNode, Build123dNode):
-            with self.subTest(adapter=adapter.__name__):
-                names = {cls.__name__ for cls in adapter.__mro__}
-                self.assertEqual(names & mesh_backends, set())
 
     def test_a_subclass_defines_with_the_cq_editor_metaclass_active(self):
         """CheckCQEditor drops the declared bases under CQ-editor. It names

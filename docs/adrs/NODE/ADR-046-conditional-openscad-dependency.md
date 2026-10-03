@@ -1,6 +1,6 @@
 # ADR-046: Conditional OpenSCAD dependency
 
-**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md)
+**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md)
 
 **Date:** 2026-08-13
 
@@ -83,6 +83,19 @@ clause is superseded.
   node `bottom` naming the `Solid2Node` backend and installation remedy.
 - `gearbox` built with zero traced OpenSCAD invocations; builds with and
   without the binary produced byte-identical STL and BREP artifact sets.
+
+## Amendment (2026-10-03)
+
+[ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md)
+names what needed OpenSCAD, for a node's STL, as the node and its own
+class, and the reason as the path's own: `node housing (FacetedBox)
+requires the OpenSCAD binary because its STL is rendered from SCAD by
+OpenSCAD; install OpenSCAD and ensure 'openscad' is on PATH`. The backend
+label, found by walking the node's method resolution order for adapter
+class names, is gone, so a SCAD-presented leaf written outside the core is
+reported in the same words as the core's own. The requiring set, the single
+resolver, the check at the point of use and the no-substitution rule are
+unchanged. The Evidence below, naming the `Solid2Node` backend, is history.
 
 ## References
 

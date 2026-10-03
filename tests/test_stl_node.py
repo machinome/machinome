@@ -590,14 +590,6 @@ class StlAdapterContractTest(BuildDirTestCase):
             self.assertFalse(issubclass(StlNode, other))
             self.assertFalse(issubclass(other, StlNode))
 
-    def test_the_backend_walk_resolves_no_mesh_backend(self):
-        """generate_stl names the backend by walking the MRO for adapter
-        class names; an imported mesh introduces none."""
-        mesh_backends = {'Solid2Node', 'OpenScadNode', 'FusionNode'}
-        names = {cls.__name__ for cls in StlNode.__mro__}
-
-        self.assertEqual(names & mesh_backends, set())
-
     def test_a_fusion_over_an_imported_mesh_is_not_exact(self):
         fusion = rack.PostedBracket()
 

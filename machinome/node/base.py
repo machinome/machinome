@@ -1328,14 +1328,10 @@ class AbstractBaseNode(metaclass=NodeMeta):
         if self._stl_generation_locked:
             return logger.info('Cannot generate, locked')
 
-        backend = next(
-            (cls.__name__ for cls in type(self).__mro__
-             if cls.__name__ in ('Solid2Node', 'OpenScadNode', 'FusionNode')),
-            type(self).__name__)
         node_name = getattr(self, 'name', type(self).__name__)
         openscad = require_openscad(
-            f'node {node_name} ({backend} backend)',
-            'its backend renders this STL through OpenSCAD')
+            f'node {node_name} ({type(self).__qualname__})',
+            'its STL is rendered from SCAD by OpenSCAD')
 
         fh = open(self.lock_file, 'w')
 

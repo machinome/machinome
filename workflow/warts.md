@@ -4553,3 +4553,26 @@ and a second build restores them, so a test that needs every artifact
 current must build twice. Pre-existing behaviour, observed and left
 unchanged by the cycle. Not triaged: whether a fused child's STL is an
 artifact the sweep should keep is a build-pipeline question.
+
+## Findings from the framework cycle `backend-switch` (3 October 2026)
+
+- **A self-materializing leaf that publishes nothing falls through to the
+  OpenSCAD path.** `AbstractBaseNode.generate_stl` launches OpenSCAD for
+  any rigid, unlocked node whose STL is not current after preparation; its
+  gate is staleness, not "this node is presented as SCAD". A `LeafNode`
+  subclass whose `materialize` returns without publishing its STL reaches
+  `require_openscad`, and with OpenSCAD present would launch it on a
+  `.scad` preparation never wrote (inferred from the code; not run with the
+  binary). Probed on the bench with OpenSCAD absent: `node SilentProducer
+  (SilentProducer) requires the OpenSCAD binary because its STL is rendered
+  from SCAD by OpenSCAD; ...`. `JScadNode.materialize` is the core's one
+  instance: its branch `if not os.path.exists(temporary): return`
+  (`node/adapters/jscad.py`) means a `jscad` run that exits 0 and writes
+  nothing ends in OpenSCAD, which `openscad-dependency` says a `JScadNode`
+  never launches. No project uses `JScadNode` (lean-core plan's count: 0)
+  and no self-materializing leaf outside the core exists, so the cycle
+  recorded it and changed nothing (design.md, "Findings"). The remedy
+  shape, should a project meet it: a refusal naming the node that produced
+  no STL, made where `materialize` returns. Evidence:
+  `openspec/changes/archive/2026-10-03-backend-switch/evidence.md`, §1.3.
+  **Untriaged.**

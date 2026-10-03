@@ -44,7 +44,7 @@ that way.
 - [ADR-039](NODE/ADR-039-solid-integrity-at-the-topmost-rigid-node.md) — Solid integrity at the topmost rigid node — **Accepted**, amended 2026-08-10
 - [ADR-044](NODE/ADR-044-derived-exact-geometry-capability.md) — Derived exact-geometry capability — **Accepted**, amended by 164
 - [ADR-045](NODE/ADR-045-exact-fusion-composition.md) — Exact fusion composition — **Accepted**
-- [ADR-046](NODE/ADR-046-conditional-openscad-dependency.md) — Conditional OpenSCAD dependency — **Accepted**
+- [ADR-046](NODE/ADR-046-conditional-openscad-dependency.md) — Conditional OpenSCAD dependency — **Accepted**, amended by 166
 - [ADR-047](NODE/ADR-047-shared-occt-currency-for-exact-backends.md) — One shared OCCT currency for every exact backend — **Accepted**, amended 2026-08-22, chosen option **Superseded** by 160, "framework-internal base" superseded in part by 163
 - [ADR-050](NODE/ADR-050-nanosecond-fidelity-artifact-freshness.md) — Nanosecond-fidelity artifact freshness — **Accepted**
 - [ADR-053](NODE/ADR-053-authored-profile-as-the-sheet-part-source-of-truth.md) — Authored profile as a sheet part's source of truth — **Accepted**, "framework-internal base" superseded in part by 163
@@ -128,6 +128,7 @@ that way.
 - [ADR-163](NODE/ADR-163-the-leaf-bases-are-declared-extension-points.md) — The leaf bases are declared extension points: `LeafNode`, `ExactLeafNode`, `SheetLeafNode` and `FlexibleNode` at one path each, their members specified by `leaf-contract`; `publish_artifact`, `source_recipe`, the public `ExternalSourceIdentity`, the declared conversion hook, and the sheet and flexible hooks without their underscore — **Accepted**, supersedes in part 047/053/057, cites 004/044/055/102/155/160/161
 - [ADR-164](NODE/ADR-164-the-loaded-shape-cache-keys-on-the-artifacts-observation.md) — The loaded-shape cache keys on the artifact's observation, device, inode, size, mtime and ctime from one `stat`, so a `.brep` replaced under an unchanged stamp is never served and no node evicts a cache — **Accepted**, amends 044, cites 006/028/081/156
 - [ADR-165](NODE/ADR-165-a-leaf-package-declares-the-contract-version-on-its-class.md) — A leaf package declares the contract version on its class: `machinome.node.leaf.CONTRACT`, checked against an own-body `leaf_contract` at class creation, refused by `TypeError` naming both; undeclared classes unchecked — **Accepted**, extends 162, cites 068
+- [ADR-166](NODE/ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md) — The core recognises no node type by the spelling of its class name: no module under `machinome/` compares a class name with a string, held by an AST test; the missing-OpenSCAD refusal for a node's STL names the node and its own class — **Accepted**, amends 046, cites 004/102/161/163
 
 ### OCCT — the OCCT exact engine (leaves the core with `machinome/occt/` at the cut)
 - [ADR-160](OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — The OCCT engine's currency is the kernel's own shape: the bare `TopoDS_Shape`, admitted by `as_shape` — **Accepted**, supersedes 047's chosen option, notes 057's recast sentence as historical

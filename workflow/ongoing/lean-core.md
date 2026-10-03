@@ -109,7 +109,9 @@ plugin architecture part.
   directly.
 - **`node/base.py:1262` chooses a backend by class name:** the spellings
   `Solid2Node`, `OpenScadNode`, `FusionNode`. A magic string of the kind
-  `workflow/ongoing/magic-strings.md` inventories.
+  `workflow/ongoing/magic-strings.md` inventories. (removed by change
+  `backend-switch`, 3 October 2026: the refusal names the node and its
+  class; ADR-166)
 - **`vet/universe.toml` names the kernels** a pure project may import:
   cadquery, build123d, OCP, solid2, trimesh, numpy, scipy, manifold3d,
   shapely, each with a denylist of file-exchange names. It is the one
@@ -488,7 +490,9 @@ the workspace's `skills/write-the-manual/SKILL.md`.
    adapter on a branch of that repository, the Dum-E cycle being the
    originating evidence; the adapter's retarget and rename are a later
    cycle there.
-2. **Remove the class-name switch** at `node/base.py:1262`.
+2. **Remove the class-name switch** at `node/base.py:1262` (removed by
+   change `backend-switch`, 3 October 2026: the refusal names the node and
+   its class; ADR-166).
 3. **The exact engine seam and the exact layer on bare OCP.**
    `exact_engine()` and `require_exact_engine(needed_by, reason)` of the
    mesh engine's shape; the layer rewritten without the four cadquery
@@ -570,7 +574,7 @@ validation is orchestrated with subagents like the rest of the cycle.
 |---|---|---|
 | exact engine | OpenAstroMount | the smallest direct caller of the exact operations |
 | leaf contract | machinome-freecad, the Dum-E adapter | the originating evidence; the one third-party exact leaf. **Done** 3 October 2026: 82 passed after the migration, the universe loaded with no leaf-contract row; `openspec/changes/archive/2026-10-03-leaf-contract/evidence.md` |
-| class-name switch | splitflap, a solid2 project (the abacus named on 3 October is CadQuery, a misreading corrected the same day) | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes |
+| class-name switch | splitflap, a solid2 project (the abacus named on 3 October is CadQuery, a misreading corrected the same day) | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes. **Done** 3 October 2026: splitflap green before and after, refusal `node front (Solid2Node backend)` → `node front (FrontPanel)`; universe 120 ok, non-ok rows unchanged; `openspec/changes/archive/2026-10-03-backend-switch/evidence.md` |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |
 

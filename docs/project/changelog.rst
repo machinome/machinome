@@ -6,6 +6,20 @@ Changelog
 Unreleased
 ----------
 
+* **No node type is recognised by its class name:** the core no longer
+  decides anything about a node by the spelling of its class name, or of
+  any class it derives from. The one place it did, the refusal raised when
+  a node's STL must be rendered by OpenSCAD and ``openscad`` is not on the
+  PATH, now names the node and its own class and says why: ``node housing
+  (Solid2Node backend) requires the OpenSCAD binary because its backend
+  renders this STL through OpenSCAD; ...`` is now ``node housing
+  (FacetedBox) requires the OpenSCAD binary because its STL is rendered
+  from SCAD by OpenSCAD; install OpenSCAD and ensure 'openscad' is on
+  PATH``. A leaf written outside machinome and presented as SCAD is
+  reported in the same words, with its own name and class, where it used
+  to have its own class called a backend. When OpenSCAD is checked and
+  launched is unchanged, and no build behaviour, artifact, record or
+  identity changes (ADR-166).
 * **The leaf bases are a declared contract:** ``LeafNode``,
   ``ExactLeafNode``, ``SheetLeafNode`` and ``FlexibleNode``, each imported
   from the module that defines it (``machinome.node.leaf``,

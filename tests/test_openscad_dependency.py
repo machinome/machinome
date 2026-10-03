@@ -86,16 +86,21 @@ class OpenScadDependencyTest(TestCase):
             os.environ['SOLID_BUILD_DIR'] = self.old_build_dir
         self.directory.cleanup()
 
-    def test_mesh_leaf_missing_binary_names_node_backend_and_remedy(self):
+    def test_mesh_leaf_missing_binary_names_node_class_and_remedy(self):
         node = FacetedBox(name='housing')
         node.assemble()
 
         with patch('machinome.openscad.shutil.which', return_value=None), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
-            with self.assertRaisesRegex(
-                    RuntimeError, 'housing.*Solid2Node.*install OpenSCAD'):
+            with self.assertRaises(OpenScadUnavailable) as raised:
                 node.generate_stl()
+
+        self.assertEqual(
+            str(raised.exception),
+            "node housing (FacetedBox) requires the OpenSCAD binary because "
+            "its STL is rendered from SCAD by OpenSCAD; install OpenSCAD and "
+            "ensure 'openscad' is on PATH")
 
     def test_faceted_fusion_does_not_use_openscad_after_children_are_current(self):
         node = FacetedPair()
