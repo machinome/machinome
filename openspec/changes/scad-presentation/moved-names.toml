@@ -1,0 +1,18 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's sixth cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-scad-presentation;
+# record in the framework's openspec/changes/archive/<date>-scad-presentation/.
+#
+# No importable name moves. The SCAD presentation leaves the core for the
+# OpenSCAD engine behind machinome.scad_engine, but what changes is the type
+# assemble(), as_scad() and artifact_import() return, and the removal of the
+# methods Rotation.scad() and Translation.scad(); none is an import line, and
+# no project uses any of them (grep of projects/, 3 October 2026).
+# machinome.openscad.binary keeps OpenScadUnavailable, now a subclass of
+# machinome.scad_engine.ScadEngineUnavailable.
+
+cycle = "scad-presentation"
+date = "2026-10-03"
+moved = []
