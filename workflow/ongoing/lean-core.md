@@ -533,8 +533,48 @@ tests of "Import paths". Numbered with the framework (D7).
   skill teach the one path and the extras.
 - *Projects.* No import line is rewritten by this refactor; the
   one-path cycle's script does that once, with the moved names as rows.
-  The refactor validates in one originating project per node type,
-  migrated by hand on a branch, named when each cycle opens.
+  Every cycle is validated empirically as "Empirical validation, per
+  cycle" below says.
+
+### Empirical validation, per cycle
+
+Settled by the pilot on 3 October 2026: every cycle of this campaign is
+validated empirically before it integrates, at two depths, and the
+validation is orchestrated with subagents like the rest of the cycle.
+
+- **One project refactored by hand, deep.** On a branch
+  `lean-core-validation` of that project's own repository: its suite run
+  against the cycle's bench before and after the migration, both results
+  in the cycle's evidence. The branch is never merged. It is also a
+  fixture for the root-cleanup cycle's rewrite script, which must
+  reproduce the hand edit exactly.
+- **The whole universe loaded, shallow.** A workspace script beside
+  `scripts/scan-projects`, cut in its own workspace cycle before the
+  leaf-contract cycle needs it, loads every project's root against a
+  given bench, one project at a time (the workspace is on virtiofs), and
+  classifies each failure as expected, a name the cycle moved, or
+  unexpected. It migrates nothing; an unexpected failure is a finding for
+  the cycle before it integrates.
+- **The end validation is not a substitute.** The root-cleanup cycle
+  runs the rewrite script over the 74 repositories and every suite after
+  it; the per-cycle work is what makes that step routine.
+
+| cycle | project | why |
+|---|---|---|
+| exact engine | OpenAstroMount | the smallest direct caller of the exact operations |
+| leaf contract | machinome-freecad, the Dum-E adapter | the originating evidence; the one third-party exact leaf |
+| class-name switch | a solid2 project, the abacus | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes |
+| the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
+| manual and conformance | none | the manual's examples are pinned by tests |
+
+**Orchestration.** The applier of a cycle does not migrate a project
+itself: it delegates each project to a fresh validator subagent, briefed
+in writing with the bench, the project, the names the cycle moved and
+the evidence file, one at a time, and folds the result into the cycle's
+evidence before its implementation commit. The universe scan runs after
+that commit and before the orchestrator's review, and its report goes in
+the same evidence file. A failed validation returns to the orchestrator
+with the project's output; it is never fixed in the project.
 
 **Out of scope,** each its own later work: the one-path cycle itself,
 both roots and the 74-repository migration; machinome-freecad's
@@ -701,10 +741,15 @@ every repository.
 
 ### D12. Orchestration
 
-Recommendation: the usual pattern unless the pilot says otherwise. One
-proposer and one applier per cycle, fresh agents with a written
-briefing, the orchestrating agent's adversarial review as the
-ratification gate, integration the pilot's, one agent at a time.
+As practised from the first cycle (2 and 3 October 2026): one proposer
+and one applier per cycle, fresh agents with a written briefing, the
+orchestrating agent's adversarial review as the ratification gate, one
+agent at a time; the orchestrator fast-forwards a reviewed cycle into
+the campaign line `v0.8`, merges the line into `main` at the campaign's
+close, and pushing and uploading stay the pilot's. The empirical
+validation of each cycle is orchestrated the same way, with validator
+subagents, as "Empirical validation, per cycle" under "What it takes"
+says (pilot, 3 October 2026).
 
 ### Settled, and not reopened
 

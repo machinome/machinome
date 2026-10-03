@@ -4529,3 +4529,27 @@ definition (export spec, ADR-128) that the import module is part of it, or
 anchor the identity on the project-relative module as the manifest's
 `[tool.machinome.models]` names it, so the spelling of `PYTHONPATH` cannot
 change a machine.
+
+## OpenAstroMount — a scenario test refused by the exact common guard (3 October 2026)
+
+Found validating the framework change `exact-engine` on a branch of the
+project. `OpenAstroMountScenarioTest.test_every_instruction_reaches_its_documented_end_state`
+fails on the project's `master` against the unmodified framework (feb23f2)
+and against the change alike, with `ExactCommonInconsistency`: the exact
+common of `housing` and `rolamento_uc206_valor_predeterminado_1` is empty
+while a point near (-2.02, 265.56, 442.98) classifies strictly inside both
+solids beyond their face tolerances. Same pair, same witness to the last
+digit before and after the change, so it is not the engine's doing. Either
+the housing and the bearing genuinely overlap at that pose, or the guard
+witnesses a false empty on a valid common. Not triaged; the project's other
+eight tests pass. Evidence: `openspec/changes/archive/2026-10-03-exact-engine/evidence.md`, §6.
+
+## A first build's sweep removes fused children's STLs (3 October 2026, framework)
+
+Observed in the `exact-engine` cycle's fixture
+`tests/meta_project/exact_fusion_current.py`: the first build of an exact
+fusion leaves the fused children's `.stl` artifacts removed by the sweep,
+and a second build restores them, so a test that needs every artifact
+current must build twice. Pre-existing behaviour, observed and left
+unchanged by the cycle. Not triaged: whether a fused child's STL is an
+artifact the sweep should keep is a build-pipeline question.

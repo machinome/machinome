@@ -1,6 +1,6 @@
 # ADR-069: Deferred Callables for a Module's Own Call Sites
 
-**Status:** Accepted
+**Status:** Accepted; amended 2026-10-03 by `exact-engine` (no remaining use)
 **Date:** 2026-09-05
 **Extends:**
 - [ADR-059: Import at the Point of Use](./ADR-059-import-at-the-point-of-use.md)
@@ -108,3 +108,13 @@ cohesion for a mechanical one.
 - `tests/import_probe.py` — fresh-subprocess import reporting
 - `spike/interference/FINDINGS.md` — finding 1
 - OpenSpec change `fast-test-feedback`, capability `cli-startup-cost`
+
+## Amendment (2026-10-03, change `exact-engine`)
+
+The one use of this mechanism, the nine exact names `machinome.test` bound
+as deferred callables, is gone: the test kernel now looks each engine
+operation up on the exact engine the seam resolves, and each memo on
+`machinome.exact_cache`, at the moment of the call
+([ADR-161](../NODE/ADR-161-the-core-holds-no-kernel-code.md)). The
+decision stands as the pattern it records; nothing in the framework
+applies it today.
