@@ -334,7 +334,7 @@ only agent permitted to assign the three specialists, and SHALL be the only
 recipient of their reports. Both profiles SHALL use `Maker` as their initial
 human display label and SHALL be valid with Claude and OpenCode.
 
-#### Scenario: Builder topology is loaded
+#### Scenario: OpenSpec topology is loaded
 - **WHEN** the `openspec` profile is validated
 - **THEN** its complete standing roster contains only user-facing Builder, with agent ID `builder` and label `Builder`
 

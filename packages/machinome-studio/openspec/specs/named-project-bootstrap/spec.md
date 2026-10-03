@@ -84,7 +84,7 @@ repository. An agent SHALL receive the root of its own project only. When the
 session belongs to one declared model of that project, the system SHALL also
 give the agent the name of that model.
 
-#### Scenario: The Builder project is ready
+#### Scenario: The OpenSpec project is ready
 - **WHEN** the system starts the `openspec` profile after preparing the chosen project
 - **THEN** Builder works from that exact project repository root
 
