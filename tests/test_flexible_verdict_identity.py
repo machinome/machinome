@@ -239,8 +239,8 @@ class StateIdentityIsState(FlexiblePairTestCase):
                             identity, 'a bound value is not in the identity')
 
         node = self.coil(root)
-        original = node._shape_spec
-        with patch.object(node, '_shape_spec', side_effect=lambda rendered: {
+        original = node.shape_spec
+        with patch.object(node, 'shape_spec', side_effect=lambda rendered: {
                 **original(rendered), 'revision': 'next'}):
             self.assertNotEqual(self.identity(node), identity,
                                 'the spec is not in the identity')
@@ -318,8 +318,8 @@ class IdentityNamesTheComparedGeometry(FlexiblePairTestCase):
 
         with patch.object(spring, 'current_shape',
                           side_effect=current_shape) as current, \
-                patch.object(spring, '_snapshot_mesh',
-                             wraps=spring._snapshot_mesh) as evaluated:
+                patch.object(spring, 'snapshot_mesh',
+                             wraps=spring.snapshot_mesh) as evaluated:
             _, _, identity = test_module._flexible_geometry(spring)
 
         self.assertEqual(current.call_count, 1)

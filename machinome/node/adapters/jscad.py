@@ -9,11 +9,11 @@ import time
 from subprocess import CalledProcessError, Popen
 from machinome import currency
 from machinome.node.leaf import LeafNode
-from machinome.node.sources import require_source_file, _ExternalWrapperIdentity
+from machinome.node.sources import require_source_file, ExternalSourceIdentity
 from machinome.source_generation import current_phase
 
 
-class JScadNode(_ExternalWrapperIdentity, LeafNode):
+class JScadNode(ExternalSourceIdentity, LeafNode):
     """
     A JScad node. You just need to declare the property "jscad_source" with
     the path of your JScad source code. It must be placed in the same directory

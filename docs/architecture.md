@@ -289,13 +289,40 @@ kernel's own shape needs no override; `CadQueryNode` and `StepNode` add a
 `Workplane`'s values, `Build123dNode` a builder's finished part. Because that
 conversion makes everything after it backend-neutral, the contract itself —
 `exact`, `shape()`, native materialization and `as_scad()` presentation —
-lives once on `ExactLeafNode`, the internal
+lives once on `ExactLeafNode`, the declared
 base every exact adapter extends; each supplies only its `namespace` and any
 validation its own API needs. Adapters remain distinct types regardless of the
 bases they share. Because build123d
 groups solids, sketches and curves under one namespace, `Build123dNode`
 additionally rejects a render result that is not a solid, and accepts a
 `BuildPart` builder by taking its finished `.part`.
+
+The four leaf bases — `LeafNode` (`machinome.node.leaf`), `ExactLeafNode`
+(`machinome.node.exact_leaf`), `SheetLeafNode` (`machinome.node.sheet_leaf`)
+and `FlexibleNode` (`machinome.node.flexible`) — are declared extension
+points, the `leaf-contract` capability (ADR-163): a node type written
+outside the core, as each node package will be, subclasses one of them at
+that one path and uses only the members it declares, and no core leaf
+reaches a private either. What a leaf provides is its render, its
+conversion hook if it is exact (`shape_from_rendered`, a rewrap only), the
+public backend hooks of the sheet and flexible bases, and its source
+identity: `get_source_file()`, additions to `files`, and `source_recipe`, a
+string stating what decides its artifacts beyond its tracked files, which
+the core folds into the digest and fingerprint of every artifact the node
+publishes (`None` changes nothing). A leaf writes an artifact of its own
+only through `publish_artifact(path, write)`, the core's one sequence of
+temporary file, stamp, source record and atomic rename, skipped when the
+artifact is current; an external-file leaf mixes in
+`ExternalSourceIdentity` (`machinome.node.sources`, ADR-155). What the core
+guarantees in return — artifact naming, currency, the tree, assembly,
+fusion, export, the document, the test framework, and a `shape()` never
+served from a replaced `.brep` — needs no cooperation from the subclass:
+none evicts a core cache. The contract is versioned:
+`machinome.node.leaf.CONTRACT` is the version the core speaks, and a class
+declaring `leaf_contract` in its own body is refused at class creation when
+the numbers differ (ADR-165), ADR-162's check moved to the moment an
+imported package's class meets the core; a class declaring nothing is not
+checked.
 
 One leaf kind has no modelling backend at all. `StlNode` is a part that
 arrives as an STL mesh: it declares `stl_source` beside its wrapper
@@ -385,12 +412,14 @@ overwriting existing source and never touching `pyproject.toml`
 (ADR-079, amended by ADR-115).
 
 One leaf kind names a *manufacturing method* rather than a backend.
-`SheetLeafNode` — internal base, `Build123dSheetNode` its v1 adapter — is a
+`SheetLeafNode` — a declared base, `Build123dSheetNode` its v1 adapter — is a
 part cut from sheet stock, authored as a 2D `profile()` plus a declared
 `thickness`. The base owns `render()`, which validates the profile and
 extrudes it from the XY plane along +Z, so the solid in the tree and the file
 a cutter consumes derive from one authored thing and cannot drift apart;
-`profile()` is the only extension point (ADR-053). The profile contract is
+`profile()` is a part's only extension point (ADR-053), and a sheet backend
+supplies the four public hooks `profile_faces`, `lies_on_xy_plane`,
+`extrude` and `write_dxf(face, path)`, the base publishing the DXF. The profile contract is
 the base's: exactly one planar face, one outer boundary with holes strictly
 inside, on the XY plane, rejected naming the node and the offending type
 before anything is written. `thickness` is required and positive at
@@ -399,8 +428,9 @@ parameter. The extrusion is an ordinary backend solid, so a sheet part is an
 exact leaf in every respect above — the exact path needed no change, and a
 fusion may mix a sheet part with any other exact child.
 
-One leaf kind carries no solid at all. `FlexibleNode` — internal base,
-`MolejoNode` its v1 adapter — is a part whose *geometry*, not merely whose
+One leaf kind carries no solid at all. `FlexibleNode` — a declared base,
+`MolejoNode` its v1 adapter, which implements its five public backend hooks
+— is a part whose *geometry*, not merely whose
 placement, is a function of machine state: a valve spring, a belt, a loom
 (ADR-057). Its per-instant parameters arrive **through declared ports**,
 connected by the parent assembly's `connect()` — ADR-056's guardrail
@@ -445,7 +475,10 @@ it is absent, raise its own error when it is broken, and refuse a provider
 whose declared `CONTRACT` differs (ADR-162). To the core an exact shape is an
 opaque handle. What it keeps is what an abstract exact node needs: the exact
 leaf and fusion nodes; `machinome.exact_cache`, the memos over handles and
-artifact files, filled by engine operations; `machinome.exact_artifacts`,
+artifact files, filled by engine operations, a loaded shape keyed on its
+`.brep`'s observation — path, device, inode, size, mtime and ctime from one
+`stat` — so a `.brep` replaced under an unchanged source stamp is read again
+and nothing outside the cache evicts it (ADR-164); `machinome.exact_artifacts`,
 which publishes what the engine writes; the test framework's culling order;
 and the verdict memo. A leaf converts its render result only inside the
 branch that writes a stale artifact, and a fusion resolves the engine only
@@ -2975,7 +3008,9 @@ The short list that changes must not silently break:
   recorded metadata fingerprint of every tracked source equals its current
   path identity, size, mtime and change time (ADR-050/081); an exact node
   requires both STL and BREP current, and every
-  cache keys on that signal (ADR-006/028/029/044). Equality, not
+  cache keys on that signal, the base-mesh and loaded-shape caches on the
+  artifact's full observation so that a replacement under an unchanged
+  stamp is never served (ADR-006/028/029/044/164). Equality, not
   tolerance: a window wide enough to absorb a filesystem's timestamp
   quantum is a window in which a real edit is invisible. When and only
   when either equality fails, a content-verified fallback compares a digest
@@ -3225,7 +3260,7 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162 |
+| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165 |
 | OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |

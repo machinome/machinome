@@ -42,16 +42,16 @@ that way.
 - [ADR-028](NODE/ADR-028-cached-base-meshes-and-single-matrix-world-composition.md) — Cached base meshes, single-matrix world composition — **Accepted** (characterization), amended by 085
 - [ADR-033](NODE/ADR-033-import-closure-source-set-and-up-to-date-leaf-path.md) — Import-closure source set, up-to-date leaf path — **Accepted**, one-node-per-file driver withdrawn by 071
 - [ADR-039](NODE/ADR-039-solid-integrity-at-the-topmost-rigid-node.md) — Solid integrity at the topmost rigid node — **Accepted**, amended 2026-08-10
-- [ADR-044](NODE/ADR-044-derived-exact-geometry-capability.md) — Derived exact-geometry capability — **Accepted**
+- [ADR-044](NODE/ADR-044-derived-exact-geometry-capability.md) — Derived exact-geometry capability — **Accepted**, amended by 164
 - [ADR-045](NODE/ADR-045-exact-fusion-composition.md) — Exact fusion composition — **Accepted**
 - [ADR-046](NODE/ADR-046-conditional-openscad-dependency.md) — Conditional OpenSCAD dependency — **Accepted**
-- [ADR-047](NODE/ADR-047-shared-occt-currency-for-exact-backends.md) — One shared OCCT currency for every exact backend — **Accepted**, amended 2026-08-22, chosen option **Superseded** by 160
+- [ADR-047](NODE/ADR-047-shared-occt-currency-for-exact-backends.md) — One shared OCCT currency for every exact backend — **Accepted**, amended 2026-08-22, chosen option **Superseded** by 160, "framework-internal base" superseded in part by 163
 - [ADR-050](NODE/ADR-050-nanosecond-fidelity-artifact-freshness.md) — Nanosecond-fidelity artifact freshness — **Accepted**
-- [ADR-053](NODE/ADR-053-authored-profile-as-the-sheet-part-source-of-truth.md) — Authored profile as a sheet part's source of truth — **Accepted**
+- [ADR-053](NODE/ADR-053-authored-profile-as-the-sheet-part-source-of-truth.md) — Authored profile as a sheet part's source of truth — **Accepted**, "framework-internal base" superseded in part by 163
 - [ADR-054](NODE/ADR-054-imported-meshes-admitted-selected-and-corrected-explicitly.md) — An imported mesh is admitted, selected and corrected explicitly — **Accepted**
 - [ADR-055](NODE/ADR-055-wrapper-module-in-the-imported-part-source-set.md) — The wrapper module joins an imported part's tracked source set — **Accepted**
 - [ADR-056](NODE/ADR-056-signals-drivers-ports-and-stepped-simulation.md) — Signals, drivers, ports, and stepped simulation — **Proposed** (design draft, pre-OpenSpec), amended 2026-08-27, amended by 087, extended by 088
-- [ADR-057](NODE/ADR-057-the-flexible-leaf-and-spec-carried-geometry.md) — The flexible leaf, whose geometry travels as a spec — **Accepted**
+- [ADR-057](NODE/ADR-057-the-flexible-leaf-and-spec-carried-geometry.md) — The flexible leaf, whose geometry travels as a spec — **Accepted**, "framework-internal base" superseded in part by 163
 - [ADR-058](NODE/ADR-058-indexed-package-lookup-for-source-closures.md) — Indexed package lookup for source closures — **Accepted**
 - [ADR-060](NODE/ADR-060-content-verified-currency-beneath-the-mtime-rule.md) — Content-verified currency beneath the mtime rule — **Accepted**, amends 006, amended by 071/081
 - [ADR-061](NODE/ADR-061-a-call-in-a-class-body-is-a-declaration.md) — A call in a node class body is a declaration — **Accepted**, extends 001
@@ -125,6 +125,9 @@ that way.
 - [ADR-155](NODE/ADR-155-external-wrapper-identity-includes-defining-source.md) — External-file wrapper identity includes project-relative real defining Python source; ordinary keys, author specializations and currency are unchanged — **Accepted**, extends 026/063
 - [ADR-161](NODE/ADR-161-the-core-holds-no-kernel-code.md) — The core holds no kernel code: the exact engine seam `machinome.exact_engine` resolves the known provider `machinome.occt.engine`, exact shapes are opaque handles, `machinome.exact` is removed and its jobs split into the engine, the memos and publication — **Accepted**, cites 045/046/047/069/070/092/143/156
 - [ADR-162](NODE/ADR-162-a-resolved-provider-declares-the-contract-version-it-implements.md) — A resolved provider declares the contract version it implements, checked by equality at resolve time with a refusal naming both — **Accepted**, cites 068/161
+- [ADR-163](NODE/ADR-163-the-leaf-bases-are-declared-extension-points.md) — The leaf bases are declared extension points: `LeafNode`, `ExactLeafNode`, `SheetLeafNode` and `FlexibleNode` at one path each, their members specified by `leaf-contract`; `publish_artifact`, `source_recipe`, the public `ExternalSourceIdentity`, the declared conversion hook, and the sheet and flexible hooks without their underscore — **Accepted**, supersedes in part 047/053/057, cites 004/044/055/102/155/160/161
+- [ADR-164](NODE/ADR-164-the-loaded-shape-cache-keys-on-the-artifacts-observation.md) — The loaded-shape cache keys on the artifact's observation, device, inode, size, mtime and ctime from one `stat`, so a `.brep` replaced under an unchanged stamp is never served and no node evicts a cache — **Accepted**, amends 044, cites 006/028/081/156
+- [ADR-165](NODE/ADR-165-a-leaf-package-declares-the-contract-version-on-its-class.md) — A leaf package declares the contract version on its class: `machinome.node.leaf.CONTRACT`, checked against an own-body `leaf_contract` at class creation, refused by `TypeError` naming both; undeclared classes unchecked — **Accepted**, extends 162, cites 068
 
 ### OCCT — the OCCT exact engine (leaves the core with `machinome/occt/` at the cut)
 - [ADR-160](OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — The OCCT engine's currency is the kernel's own shape: the bare `TopoDS_Shape`, admitted by `as_shape` — **Accepted**, supersedes 047's chosen option, notes 057's recast sentence as historical

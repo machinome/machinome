@@ -1,6 +1,6 @@
 # ADR-044: Derived exact-geometry capability
 
-**Status:** Accepted
+**Status:** Accepted, amended 2026-10-03 by [ADR-164](ADR-164-the-loaded-shape-cache-keys-on-the-artifacts-observation.md)
 
 **Date:** 2026-08-13
 
@@ -93,3 +93,14 @@ AABB broad phase remains ahead of either representation.
 - `solid_node/node/base.py`, `internal.py`, `adapters/cadquery.py`
 - `solid_node/test.py`
 - OpenSpec archive `exact-brep-geometry`
+
+## Amendment (2026-10-03)
+
+[ADR-164](ADR-164-the-loaded-shape-cache-keys-on-the-artifacts-observation.md)
+replaces the in-memory shape cache's `(path, mtime)` key with the
+artifact's observation, `(path, (device, inode, size, mtime_ns,
+ctime_ns))` from one `stat`, keeping stale-entry eviction on a miss. Every
+artifact is stamped with its source's mtime, so a `.brep` replaced under an
+unchanged source carried its predecessor's key and was served stale; a
+replacement published by rename is a different observation. BREP currency
+itself is unchanged.

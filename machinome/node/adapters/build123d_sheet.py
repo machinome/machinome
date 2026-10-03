@@ -2,7 +2,6 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.exact_artifacts import _atomic_export
 from machinome.node.sheet_leaf import SheetLeafNode
 
 
@@ -12,8 +11,8 @@ from machinome.node.sheet_leaf import SheetLeafNode
 _PLANE_TOLERANCE = 1e-6
 
 
-def _export_dxf(face, path, mtime_ns, digest=None, fingerprint=None):
-    """Write one validated planar face as a nominal cut file.
+def _export_dxf(face, path):
+    """Write one validated planar face as a nominal cut file at `path`.
 
     Nominal: the authored profile at model scale, in millimeters, with no
     kerf or other machine compensation. Compensation is a property of a
@@ -27,24 +26,24 @@ def _export_dxf(face, path, mtime_ns, digest=None, fingerprint=None):
     Deliberately a private, single-purpose function rather than a method:
     it converts a validated face to a file and knows nothing about nodes,
     so a second sheet backend can be given its own without either growing
-    a backend switch (ADR-047's pattern). It borrows the exact artifacts'
-    atomic export only for the write-and-stamp convention every other
-    artifact already uses -- what is written is build123d's business, not
-    the exact engine's.
+    a backend switch (ADR-047's pattern). It writes bytes and nothing else:
+    the sheet base publishes the file, stamped and recorded, through
+    `publish_artifact` -- what is written is build123d's business, how it
+    is published the core's.
     """
     import build123d as b3d
 
     exporter = b3d.ExportDXF(unit=b3d.Unit.MM)
     exporter.add_shape(face)
-    _atomic_export(path, mtime_ns, exporter.write, digest, fingerprint)
+    exporter.write(path)
 
 
 class Build123dSheetNode(SheetLeafNode):
     """A sheet part authored as a build123d profile.
 
-    The whole adapter is the three backend-specific steps SheetLeafNode
-    asks for -- reduce a profile result to one planar face, extrude it,
-    write it as a cut file. The contract around them is the sheet base's,
+    The whole adapter is the backend-specific hooks SheetLeafNode declares
+    -- reduce a profile result to its planar faces, say whether a face lies
+    on the XY plane, extrude it, write it as a cut file. The contract around them is the sheet base's,
     and the exact-adapter contract under that is ExactLeafNode's: the
     extrusion is an ordinary build123d Part, so namespace validation,
     the rewrap to the engine's currency, and the STL/BREP writes are the
@@ -71,7 +70,7 @@ class Build123dSheetNode(SheetLeafNode):
             f"{self.__class__} is a Build123dSheetNode and must implement "
             "profile(), returning a build123d sketch, face or BuildSketch")
 
-    def _profile_faces(self, profile):
+    def profile_faces(self, profile):
         """The planar faces of a build123d profile result.
 
         Empty for anything that is not a planar 2D object, so the sheet
@@ -94,7 +93,7 @@ class Build123dSheetNode(SheetLeafNode):
             return []
         return [face for face in profile.faces() if face.is_planar]
 
-    def _lies_on_xy_plane(self, face):
+    def lies_on_xy_plane(self, face):
         normal = face.normal_at()
         if abs(abs(normal.Z) - 1) > _PLANE_TOLERANCE:
             return False
@@ -102,7 +101,7 @@ class Build123dSheetNode(SheetLeafNode):
         return (abs(box.min.Z) <= _PLANE_TOLERANCE
                 and abs(box.max.Z) <= _PLANE_TOLERANCE)
 
-    def _extrude(self, face):
+    def extrude(self, face):
         """The profile swept along +Z by the thickness.
 
         The direction is given explicitly rather than left to the face's
@@ -114,6 +113,5 @@ class Build123dSheetNode(SheetLeafNode):
 
         return b3d.extrude(face, amount=self.thickness, dir=(0, 0, 1))
 
-    def _write_dxf(self, face, path, mtime_ns, digest=None,
-                   fingerprint=None):
-        _export_dxf(face, path, mtime_ns, digest, fingerprint)
+    def write_dxf(self, face, path):
+        _export_dxf(face, path)

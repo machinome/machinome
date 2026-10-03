@@ -227,8 +227,11 @@ class ExactArtifactTest(TestCase):
 
         self.assertAlmostEqual(cq.Shape.cast(first).Volume(), 1.0)
         self.assertAlmostEqual(cq.Shape.cast(second).Volume(), 8.0)
-        self.assertEqual([key for key in _shape_cache if key[0] == path],
-                         [(path, 2.0)])
+        # The key is the artifact's observation (ADR-164); the survivor is
+        # the one stamped 2 s.
+        self.assertEqual([(key[0], key[1][3]) for key in _shape_cache
+                          if key[0] == path],
+                         [(path, 2 * 10 ** 9)])
 
     def test_one_placement_serves_repeated_comparisons(self):
         """A placement is built once per (shape identity, matrix).
@@ -279,8 +282,8 @@ class ExactArtifactTest(TestCase):
         ignores location, so a shape and a differently placed copy of it
         compare EQUAL. Nor can `id()` be one on its own, since CPython reuses an
         address after collection. The key is therefore the same
-        `(file, mtime)` identity `_shape_cache` uses, and a rebuild under
-        a new mtime must not be served the old geometry's placement.
+        `(file, observation)` identity `_shape_cache` uses (ADR-164), and
+        a rebuild must not be served the old geometry's placement.
         """
         path = os.path.join(self.directory.name, 'rebuilt.brep')
         matrix = np.eye(4)
@@ -296,8 +299,9 @@ class ExactArtifactTest(TestCase):
         self.assertAlmostEqual(cq.Shape.cast(before).Volume(), 1.0)
         self.assertAlmostEqual(cq.Shape.cast(after).Volume(), 8.0)
         self.assertEqual(
-            {key[0] for key in _placement_cache if key[0][0] == path},
-            {(path, 2.0)},
+            {(key[0][0], key[0][1][3]) for key in _placement_cache
+             if key[0][0] == path},
+            {(path, 2 * 10 ** 9)},
             'a placement built from the evicted geometry survived')
 
     def test_a_shape_without_file_identity_is_not_cached(self):

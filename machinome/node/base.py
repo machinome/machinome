@@ -80,6 +80,20 @@ def _atomic_write_text(path, content, mtime_ns, digest=None, fingerprint=None):
         raise
 
 
+def _with_recipe(value, recipe):
+    """A source digest or fingerprint with a node's `source_recipe` folded
+    in: the value itself when either is None, so a node declaring no
+    recipe -- and a source set that cannot be read -- answer exactly as
+    they did before recipes existed."""
+    if value is None or recipe is None:
+        return value
+    folded = hashlib.sha256()
+    folded.update(value.encode('ascii'))
+    folded.update(b'\0source-recipe\0')
+    folded.update(recipe.encode('utf-8', 'surrogatepass'))
+    return folded.hexdigest()
+
+
 def _publish_scad(path, content, mtime_ns, digest, fingerprint):
     """Publish one captured SCAD state and update process-local currentness."""
     _atomic_write_text(path, content, mtime_ns, digest, fingerprint)
@@ -611,6 +625,18 @@ class AbstractBaseNode(metaclass=NodeMeta):
     # its optimized STL.
     optimize = True
 
+    #: What decides this node's artifacts beyond its tracked files, as a
+    #: string, or None. A node whose geometry also depends on something no
+    #: tracked file holds -- a native tool's interpretation of a document,
+    #: say -- states it here, and the core folds it into the source digest
+    #: and fingerprint of every artifact the node publishes, so changing
+    #: it alone makes them stale. Read whenever the core computes either,
+    #: so a node may raise `machinome.source_generation.SourceChanged`
+    #: from it to refuse a source generation that is no longer the one it
+    #: was built from. None, the default, changes nothing: the digest and
+    #: fingerprint are exactly those of the tracked files (ADR-163).
+    source_recipe = None
+
     # Whether the render in progress left this node out of the machine.
     # Set by omit(), cleared by the parent's render before it runs.
     _omitted = False
@@ -853,7 +879,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return None
 
     def get_source_file(self):
-        """Finds the source file of this node"""
+        """The file this node's build directory and artifact names are
+        anchored on: the module defining its class, by default.
+
+        A leaf whose part comes from a file outside Python returns that
+        file, and sets whatever attribute declares it before calling the
+        base constructor, which reads it.
+        """
         return inspect.getfile(self.__class__)
 
     @property
@@ -981,7 +1013,16 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return self._prepared_rendered
 
     def materialize(self, rendered):
-        """Produce backend-owned artifacts from one validated render."""
+        """Produce this node's own artifacts from one validated render.
+
+        Called by the core when the node is prepared and its artifacts are
+        not all current -- on every build for a node declaring
+        `optimize = False` -- so each artifact is still produced only when
+        it is stale: `publish_artifact` checks. A faceted leaf that
+        produces its own STL implements it, publishing through
+        `publish_artifact`; a leaf on another base may extend it, calling
+        the base's.
+        """
 
     def _prepare_can_be_skipped(self):
         return False
@@ -1102,12 +1143,28 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return max(os.stat(path).st_mtime_ns for path in files)
 
     def _tracked_digest(self, files):
-        """What one tracked source set says, as one digest."""
-        return currency.source_digest(files, self._project_root, self.scope)
+        """What one tracked source set says, as one digest, with this
+        node's `source_recipe` folded in when it declares one."""
+        recipe = self._declared_recipe()
+        return _with_recipe(currency.source_digest(
+            files, self._project_root, self.scope), recipe)
 
     def _tracked_fingerprint(self, files):
-        """The observable metadata state of one tracked source set."""
-        return currency.source_fingerprint(files, self._project_root)
+        """The observable metadata state of one tracked source set, with
+        this node's `source_recipe` folded in when it declares one."""
+        recipe = self._declared_recipe()
+        return _with_recipe(currency.source_fingerprint(
+            files, self._project_root), recipe)
+
+    def _declared_recipe(self):
+        """`source_recipe`, read once per digest or fingerprint, and
+        refused unless it is a string or None."""
+        recipe = self.source_recipe
+        if recipe is not None and not isinstance(recipe, str):
+            raise TypeError(
+                f'{self.name}.source_recipe must be a string or None, not '
+                f'{type(recipe).__name__}')
+        return recipe
 
     @property
     def mtime_ns(self):
@@ -1170,6 +1227,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return _seconds(self.mtime_ns)
 
     def render(self):
+        """What this node is made of.
+
+        A leaf returns one object of its modelling library -- never a
+        list, never None -- and the core turns it into the leaf's
+        artifacts; an internal node returns its children. Every node type
+        implements it.
+        """
         raise NotImplementedError
 
     @property
@@ -1197,6 +1261,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return code
 
     def generate_scad(self):
+        """Write this node's `.scad` from its `model`, stamped and
+        recorded like every artifact, unless the same file was already
+        written in this source generation.
+
+        A leaf whose native artifact language is SCAD calls it from
+        `materialize`, after setting `model` to its render result.
+        """
         mtime_ns = self.mtime_ns
         digest = self.source_digest
         fingerprint = self.source_fingerprint

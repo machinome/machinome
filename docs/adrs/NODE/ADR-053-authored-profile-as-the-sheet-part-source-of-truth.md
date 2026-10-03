@@ -1,6 +1,6 @@
 # ADR-053: The authored profile is a sheet part's single source of truth
 
-**Status:** Accepted
+**Status:** Accepted ("framework-internal base" superseded in part by [ADR-163](ADR-163-the-leaf-bases-are-declared-extension-points.md), 2026-10-03: `SheetLeafNode` is a declared extension point and its backend hooks are public, `profile_faces`, `lies_on_xy_plane`, `extrude`, `write_dxf(face, path)`; everything else below stands)
 
 **Date:** 2026-08-22
 
@@ -61,7 +61,7 @@ and the cutter would faithfully cut the drift.
 Chosen option: **the authored profile is the source of truth, and the cut
 file is written by the adapter that owns the profile's backend.**
 
-`SheetLeafNode`, a framework-internal base under `ExactLeafNode`, owns
+`SheetLeafNode`, a framework-internal base under `ExactLeafNode` *(a declared extension point since ADR-163)*, owns
 `render()`: it takes `profile()`, validates it, and extrudes it from the XY
 plane along +Z by `thickness`. The subclass's extension point is `profile()`
 and only `profile()`; overriding `render()` is unsupported, because a

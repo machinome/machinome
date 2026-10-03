@@ -75,19 +75,81 @@ Common node API
 Leaf nodes
 --------------
 
+A leaf produces one solid. Four bases make up the declared leaf contract,
+each imported from the module that defines it:
+:class:`~machinome.node.leaf.LeafNode`, the base of every leaf and the one
+a faceted leaf subclasses; :class:`~machinome.node.exact_leaf.ExactLeafNode`,
+for a leaf whose geometry is exact;
+:class:`~machinome.node.sheet_leaf.SheetLeafNode`, for an exact leaf cut
+from sheet stock; and :class:`~machinome.node.flexible.FlexibleNode`, for a
+leaf whose shape follows its bound ports. A node type written outside
+machinome subclasses one of them and uses only the members documented with
+it here; currency, stamps, source records, the tree, assembly, fusion,
+export, the viewer document and the test framework are machinome's. A
+subclass never overrides ``assemble``, ``mtime_ns``, ``mtime``,
+``source_digest``, ``source_fingerprint``, ``uniq_id``, ``children``,
+``time``, nor any member whose name begins with an underscore.
+
+The contract is versioned. :data:`machinome.node.leaf.CONTRACT` is the
+version this machinome speaks; a class that declares ``leaf_contract`` in
+its own body is compared with it when the class is created, and refused
+with a ``TypeError`` naming both numbers when they differ. A class that
+declares nothing is not checked.
+
+.. autodata:: machinome.node.leaf.CONTRACT
+
 .. autoclass:: machinome.node.leaf.LeafNode
-   :members: time
+   :members: render, validate, namespace, as_scad, materialize,
+             publish_artifact, get_source_file, source_recipe,
+             artifact_import, generate_scad, leaf_contract, time
+
+   .. attribute:: files
+
+      The node's tracked source set: its defining module and that
+      module's project-local import closure. A subclass may add files to
+      it after the base constructor has run; every artifact's currency is
+      computed over it.
+
+   .. attribute:: basepath
+
+      The common stem of every artifact the node owns, under its project's
+      build directory, named from its source file and its parameter-hashed
+      identity. :meth:`publish_artifact` accepts only paths beginning with
+      it.
+
+   .. attribute:: scad_file
+
+      Path of the node's ``.scad`` artifact.
+
+   .. attribute:: stl_file
+
+      Path of the node's ``.stl`` artifact.
+
+   .. attribute:: local_stl
+
+      The ``.stl`` artifact's name relative to the node's build directory,
+      as :meth:`artifact_import` takes it.
+
+   .. attribute:: model
+
+      The node's SCAD presentation once assembled, or ``None`` before. A
+      leaf whose artifact language is SCAD sets it to its render result
+      before calling :meth:`generate_scad`.
 
 .. autoclass:: machinome.node.exact_leaf.ExactLeafNode
-   :members: exact, shape
+   :members: shape_from_rendered, exact, shape
+
+   .. attribute:: brep_file
+
+      Path of the node's ``.brep`` artifact, its exact geometry.
 
    .. attribute:: linear_deflection
 
       The maximum distance, in millimetres, between this node's ``.stl``
       artifact and the surface it approximates (OCCT's own
       ``theLinDeflection``). Declared as a class attribute, like
-      :attr:`~machinome.node.SheetLeafNode.thickness`; defaults to
-      ``0.1``. See :ref:`tessellation-precision`.
+      :attr:`~machinome.node.sheet_leaf.SheetLeafNode.thickness`; defaults
+      to ``0.1``. See :ref:`tessellation-precision`.
 
    .. attribute:: angular_deflection
 
@@ -103,8 +165,9 @@ Leaf nodes
 
 .. autoclass:: machinome.node.Build123dNode
 
-.. autoclass:: machinome.node.SheetLeafNode
-   :members: profile, render, validated_profile
+.. autoclass:: machinome.node.sheet_leaf.SheetLeafNode
+   :members: profile, profile_faces, lies_on_xy_plane, extrude, write_dxf,
+             render, validated_profile
 
    .. attribute:: thickness
 
@@ -175,7 +238,9 @@ Leaf nodes
    An exact part selected from a STEP document. See :doc:`/howto/imported-parts`
    for source paths, product selection and `adjust()`.
 
-.. autoclass:: machinome.node.FlexibleNode
+.. autoclass:: machinome.node.flexible.FlexibleNode
+   :members: tech, shape_parameters, shape_spec, snapshot_mesh, snapshot_stl,
+             snapshot_shape, exact
 
 .. autoclass:: machinome.node.MolejoNode
    :members: shape_tolerance

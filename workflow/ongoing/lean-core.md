@@ -225,9 +225,11 @@ coincide, and the result is three new packages.
 
 ### machinome, the core
 
-The node base and the two declared leaf contracts, `LeafNode` and
-`ExactLeafNode`; AssemblyNode, FusionNode, FlexibleNode and
-SheetLeafNode; the tree, frames and mates, motion, simulation, the CLI,
+The node base and the four declared leaf bases, `LeafNode`,
+`ExactLeafNode`, `SheetLeafNode` and `FlexibleNode`, at leaf contract
+version 1 (`machinome.node.leaf.CONTRACT`; leaf-contract cycle, 3 October
+2026); AssemblyNode and FusionNode; the tree, frames and mates, motion,
+simulation, the CLI,
 the document format, vet, the test harness, the markings declarations;
 and the four leaf types whose Python side carries no kernel, at
 `machinome.node.openscad`, `.solid2`, `.jscad` and `.stl`.
@@ -369,7 +371,7 @@ modules under `machinome.node` that are not node types, `base`, `frames`,
 | `MolejoNode` | `machinome.node.molejo` | `machinome[molejo]` | machinome-node-molejo |
 | the exact engine: OCCT currency, booleans, file reading | `machinome.occt` | `machinome[occt]` | machinome-occt |
 | the exact operations a project calls, formerly `machinome.exact`: `intersect_shapes`, `fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume` | `machinome.occt.engine` | `machinome[occt]` | machinome-occt |
-| `ExactLeafNode`, the declared exact-leaf contract | `machinome.node.exact_leaf` | core | machinome |
+| `ExactLeafNode`, the declared exact-leaf base, beside the other three declared leaf bases `LeafNode`, `SheetLeafNode` and `FlexibleNode` | `machinome.node.exact_leaf`; `machinome.node.leaf`, `.sheet_leaf`, `.flexible` | core | machinome |
 | mechanics, movie, later and under their own processes | `machinome.mechanics`, `machinome.movie` | `machinome[mechanics]`, `[movie]` | machinome-mechanics, machinome-movie |
 
 The viewer keeps `machinome_viewer`: it is reached as a separate process,
@@ -472,10 +474,15 @@ the workspace's `skills/write-the-manual/SKILL.md`.
 **In the framework, on the campaign branch:**
 
 1. **Declare the leaf extension contract.** `LeafNode` for faceted
-   leaves and `ExactLeafNode` for exact ones become declared extension
-   points, `ExactLeafNode` staying in the core and resolving the exact
-   engine lazily; the eviction helper machinome-freecad reaches today
-   is made public or unnecessary. What `shape()` returns once cadquery
+   leaves, `ExactLeafNode` for exact ones, and `SheetLeafNode` and
+   `FlexibleNode` for sheet and flexible ones become declared extension
+   points (four bases, not two: settled by the pilot on 3 October 2026,
+   since `Build123dSheetNode` and `MolejoNode` leave at the cut),
+   `ExactLeafNode` staying in the core and resolving the exact engine
+   lazily; the contract is versioned, `machinome.node.leaf.CONTRACT = 1`,
+   checked against a class's own `leaf_contract` when it is created; the
+   eviction helper machinome-freecad reaches today is made unnecessary
+   by keying the shape cache on the artifact's observation. What `shape()` returns once cadquery
    is out of the exact layer is a consequential interface and goes to
    the pilot with the proposal. Validated against machinome-freecad's
    adapter on a branch of that repository, the Dum-E cycle being the
@@ -562,7 +569,7 @@ validation is orchestrated with subagents like the rest of the cycle.
 | cycle | project | why |
 |---|---|---|
 | exact engine | OpenAstroMount | the smallest direct caller of the exact operations |
-| leaf contract | machinome-freecad, the Dum-E adapter | the originating evidence; the one third-party exact leaf |
+| leaf contract | machinome-freecad, the Dum-E adapter | the originating evidence; the one third-party exact leaf. **Done** 3 October 2026: 82 passed after the migration, the universe loaded with no leaf-contract row; `openspec/changes/archive/2026-10-03-leaf-contract/evidence.md` |
 | class-name switch | a solid2 project, the abacus | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |

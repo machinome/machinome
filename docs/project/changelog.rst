@@ -6,6 +6,35 @@ Changelog
 Unreleased
 ----------
 
+* **The leaf bases are a declared contract:** ``LeafNode``,
+  ``ExactLeafNode``, ``SheetLeafNode`` and ``FlexibleNode``, each imported
+  from the module that defines it (``machinome.node.leaf``,
+  ``.exact_leaf``, ``.sheet_leaf``, ``.flexible``), are the extension
+  points a node type written outside machinome subclasses, and the API
+  reference documents what each declares. The contract is versioned:
+  ``machinome.node.leaf.CONTRACT`` is ``1``, and a class declaring
+  ``leaf_contract`` in its own body is refused when it is created if the
+  numbers differ. A leaf writes an artifact of its own through one call,
+  ``publish_artifact(path, write)``, which stamps, records and replaces it
+  atomically and does nothing when it is current; a node states what
+  decides its artifacts beyond its tracked files as ``source_recipe``, and
+  changing it alone rebuilds them; the external-file identity mixin is
+  public as ``machinome.node.sources.ExternalSourceIdentity``. A loaded
+  ``shape()`` is now keyed on its ``.brep``'s observation, so a ``.brep``
+  replaced under an unchanged source stamp is never served stale and no
+  subclass evicts anything. Breaking, for subclasses of the two
+  specialised bases only: the sheet hooks ``_profile_faces``,
+  ``_lies_on_xy_plane``, ``_extrude`` and ``_write_dxf`` are now
+  ``profile_faces``, ``lies_on_xy_plane``, ``extrude`` and
+  ``write_dxf(face, path)``, which writes to the path it is given, and the
+  flexible hooks ``_shape_parameters``, ``_shape_spec``,
+  ``_snapshot_mesh``, ``_snapshot_stl`` and ``_snapshot_shape`` lose their
+  underscore. Artifacts, source records and identities are unchanged for a
+  node declaring no recipe (ADR-163, ADR-164, ADR-165). Born of
+  machinome-freecad's exact leaf, which imported CadQuery only to cast its
+  shape, evicted a private cache when its native recipe replaced a BREP,
+  overrode the core's private currency, and pinned a machinome release
+  that could not see the contract it depended on change.
 * **Exact geometry is the exact engine's:** every operation on an exact
   shape now lives in one module, ``machinome.occt.engine``, written on the
   OCCT kernel alone with no CadQuery, and the core reaches it through

@@ -1,0 +1,71 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's second cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-leaf-contract; record
+# in the framework's openspec/changes/archive/2026-10-03-leaf-contract/.
+
+cycle = "leaf-contract"
+date = "2026-10-03"
+
+[[moved]]
+name = "machinome.node.sources._ExternalWrapperIdentity"
+to = "machinome.node.sources.ExternalSourceIdentity"
+also = ["_ExternalWrapperIdentity"]
+
+[[moved]]
+name = "SheetLeafNode._profile_faces"
+to = "SheetLeafNode.profile_faces"
+also = ["_profile_faces"]
+
+[[moved]]
+name = "SheetLeafNode._lies_on_xy_plane"
+to = "SheetLeafNode.lies_on_xy_plane"
+also = ["_lies_on_xy_plane"]
+
+[[moved]]
+name = "SheetLeafNode._extrude"
+to = "SheetLeafNode.extrude"
+also = ["_extrude"]
+
+[[moved]]
+name = "SheetLeafNode._write_dxf"
+to = "SheetLeafNode.write_dxf(face, path), writing to the temporary path the base publishes"
+also = ["_write_dxf"]
+
+[[moved]]
+name = "FlexibleNode._shape_parameters"
+to = "FlexibleNode.shape_parameters"
+also = ["_shape_parameters"]
+
+[[moved]]
+name = "FlexibleNode._shape_spec"
+to = "FlexibleNode.shape_spec"
+also = ["_shape_spec"]
+
+[[moved]]
+name = "FlexibleNode._snapshot_mesh"
+to = "FlexibleNode.snapshot_mesh"
+also = ["_snapshot_mesh"]
+
+[[moved]]
+name = "FlexibleNode._snapshot_stl"
+to = "FlexibleNode.snapshot_stl"
+also = ["_snapshot_stl"]
+
+[[moved]]
+name = "FlexibleNode._snapshot_shape"
+to = "FlexibleNode.snapshot_shape"
+also = ["_snapshot_shape"]
+
+[[moved]]
+name = "machinome.node.adapters.stl._write_binary_stl"
+to = "LeafNode.publish_artifact(path, write)"
+also = ["_write_binary_stl"]
+
+# Not a name: the loaded-shape cache key changed from (path, float mtime) to
+# (path, (st_dev, st_ino, st_size, st_mtime_ns, st_ctime_ns)).
+[[moved]]
+name = "exact_cache._shape_cache key (path, mtime)"
+to = "(path, (st_dev, st_ino, st_size, st_mtime_ns, st_ctime_ns))"
+also = ["_shape_cache"]

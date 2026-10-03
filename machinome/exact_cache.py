@@ -10,6 +10,14 @@ on a shape's own contents, and fills itself by asking the engine
 (`machinome.exact_engine`) for the operation. No function here reads,
 measures or places a shape itself. Importing this module imports no
 engine; the engine is resolved at the first miss.
+
+A loaded shape is keyed on its artifact's observation -- path, device,
+inode, size, mtime and ctime from one `stat` -- not on its mtime alone
+(ADR-164). Every exact artifact is stamped with its source's mtime, so a
+`.brep` replaced under an unchanged source has its predecessor's stamp;
+but the core publishes every artifact by renaming a newly written file
+into place, so the replacement is a different observation, and no node
+ever has to evict anything here.
 """
 
 from collections import OrderedDict
@@ -36,9 +44,11 @@ _shape_keys = {}
 
 # The observation each cached shape was loaded FROM, by shape cache key --
 # recorded only when the file was the same before and after the read. The
-# in-process key above stays `(path, float mtime)`; this is what lets the
-# verdict store (ADR-156) digest the very bytes a compared shape came from,
-# and refuse a persistent identity when the path has changed since.
+# in-process key above is `(path, stat metadata)`, cheap enough to take on
+# every request; this full observation, its realpath included, is what
+# lets the verdict store (ADR-156) digest the very bytes a compared shape
+# came from, and refuse a persistent identity when the path has changed
+# since.
 _shape_observations = {}
 
 # One placed shape per (shape cache key, exact matrix bytes), and one
@@ -97,15 +107,28 @@ def _observed(path):
         return None
 
 
-def cached_shape(brep_file):
-    """Load one immutable shape per ``(path, mtime)``, through the engine.
+def _metadata(path):
+    """The observable metadata of `path` from one `stat`: device, inode,
+    size, mtime and ctime, the fields of an `ArtifactObservation` without
+    its realpath."""
+    stat = os.stat(path)
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns,
+            stat.st_ctime_ns)
 
-    The file is observed before and after the read, and the load
-    observation is recorded beside the shape only when the two agree: the
-    file the shape was read from is then exactly that observation's.
+
+def cached_shape(brep_file):
+    """Load one immutable shape per artifact observation, through the
+    engine.
+
+    Keyed on ``(path, (device, inode, size, mtime_ns, ctime_ns))`` from one
+    `stat` per request, so a `.brep` replaced under an unchanged stamp is a
+    new key and is read again (ADR-164); a miss evicts every entry held
+    for the path, with its bounds, face boxes and placements. The file is
+    observed in full before and after the read, and the load observation is
+    recorded beside the shape only when the two agree: the file the shape
+    was read from is then exactly that observation's.
     """
-    mtime = os.path.getmtime(brep_file)
-    key = (brep_file, mtime)
+    key = (brep_file, _metadata(brep_file))
     cached = _shape_cache.get(key)
     if cached is None:
         engine = _engine(f'{brep_file} is a BREP to load')

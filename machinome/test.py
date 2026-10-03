@@ -411,7 +411,7 @@ def _flexible_geometry(node, needed_by=_FACETED_NEEDED_BY,
     # snapshot above already supplied the one rendered shape whose serialized
     # spec keyed this miss, so calling `base_mesh()` here would render a
     # second, potentially different shape.
-    mesh = node._snapshot_mesh(rendered, values)
+    mesh = node.snapshot_mesh(rendered, values)
     bounds = (mesh.bounds[0].copy(), mesh.bounds[1].copy())
     manifold = _admitted(Manifold(mesh=Mesh(
         vert_properties=np.asarray(mesh.vertices, np.float32),

@@ -40,9 +40,10 @@ occurrences a reader has in mind; placing it is the assembly's job.
 
 And the document is read at most once per file per process: XCAF's
 transfer is expensive (11.79 s measured on a 35 MB vendor assembly) and
-every node over one file shares the one cached read, evicted when the
-file's mtime changes -- the same cache shape as
-`machinome.exact_cache._shape_cache`.
+every node over one file shares the one cached read, keyed on the file's
+complete observable identity and evicted when it changes -- the shape of
+`machinome.exact_cache`'s loaded-shape cache, which keys on an artifact's
+observation the same way (ADR-164).
 """
 
 import math
@@ -69,7 +70,7 @@ from machinome.exact_engine import require_exact_engine
 from machinome.node.adapters.cadquery import workplane_shape
 from machinome.node.exact_leaf import ExactLeafNode
 from machinome.node.sources import (require_source_file, source_closure,
-                                    _ExternalWrapperIdentity)
+                                    ExternalSourceIdentity)
 from machinome.source_generation import consumed_source
 
 
@@ -354,7 +355,8 @@ def _read_document(path):
 
 
 #: One document per complete observable source identity, in the shape of
-#: `machinome.exact_cache._shape_cache` (design D6): a key miss for a path
+#: `machinome.exact_cache`'s loaded-shape cache, keyed on an observation
+#: (design D6, ADR-164): a key miss for a path
 #: drops every entry for that path before reading, so at most one live
 #: entry exists per file, and the process pays the read once.
 _document_cache = {}
@@ -411,7 +413,7 @@ def solids_from_faces(shape, tolerance):
 # The node
 
 
-class StepNode(_ExternalWrapperIdentity, ExactLeafNode):
+class StepNode(ExternalSourceIdentity, ExactLeafNode):
     """A part that comes from one product of a STEP document.
 
     Declare the file with `step_source`, as a path relative to the

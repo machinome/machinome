@@ -436,7 +436,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
 
         again = bound_valvetrain(lift=4.0)
         rendered = again.spring.render()
-        with patch.object(type(again.spring), '_snapshot_stl',
+        with patch.object(type(again.spring), 'snapshot_stl',
                           side_effect=AssertionError(
                               'a current snapshot must not be re-evaluated')):
             assembled = again.spring.as_scad(rendered)
@@ -621,8 +621,8 @@ class MolejoMeshPathPairTest(BaseNodeTest):
         node = self.assembled(lift=7.25)
 
         with self.faceted(node):
-            with patch.object(node.spring, '_snapshot_mesh',
-                              wraps=node.spring._snapshot_mesh) as evaluated:
+            with patch.object(node.spring, 'snapshot_mesh',
+                              wraps=node.spring.snapshot_mesh) as evaluated:
                 _intersection_stats(node.spring, node.retainer)
                 _intersection_stats(node.spring, node.retainer)
 

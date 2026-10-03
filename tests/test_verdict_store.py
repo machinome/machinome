@@ -46,6 +46,7 @@ from trimesh.creation import box
 import machinome
 import machinome.test as test_module
 from machinome import _verdict_store as store
+from machinome import exact_cache
 from machinome._artifact import VERDICT_STORE_DIRECTORY, observe_artifact
 from machinome.core.builder import unanchor_build_dir
 from machinome.exact_artifacts import write_brep
@@ -650,20 +651,28 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         pair = self.exact_pair(first, second, [0.5, 0, 0])
         loaded = pair[1].shape()
 
-        # Different content under the float mtime `cached_shape` keys on,
-        # so the loaded shape is still the one served: the digest the store
-        # would read now names bytes the compared geometry did not come
-        # from.
+        # Different content under the key `cached_shape` takes from one
+        # `stat`, so the loaded shape is still the one served: the digest
+        # the store would read now names bytes the compared geometry did
+        # not come from. A rename changes that key (ADR-164), so the one
+        # way left to serve a loaded shape for replaced bytes -- an
+        # in-place rewrite within one timestamp tick, equal in size and
+        # mtime -- is held here by answering the key's `stat` as it was.
         replacement = os.path.join(self.scratch, 'other.brep')
         write_brep(cq.Workplane('XY').box(2, 2, 2).val().wrapped,
                    replacement, 1 * 10 ** 9)
         before = os.stat(second)
         os.replace(replacement, second)
         os.utime(second, ns=(before.st_atime_ns, before.st_mtime_ns))
-        self.assertIs(pair[1].shape(), loaded)
+        metadata = exact_cache._metadata
+        held = (before.st_dev, before.st_ino, before.st_size,
+                before.st_mtime_ns, before.st_ctime_ns)
+        with patch.object(exact_cache, '_metadata', side_effect=lambda path:
+                          held if path == second else metadata(path)):
+            self.assertIs(pair[1].shape(), loaded)
 
-        with self.counted() as computed:
-            test_module._intersection_stats(*pair)
+            with self.counted() as computed:
+                test_module._intersection_stats(*pair)
         self.assertEqual(computed.count, 1)
         self.assertNothingKept()
 

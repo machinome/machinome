@@ -570,8 +570,11 @@ resolution order SHALL get the same answer whatever bases the adapters
 happen to share.
 
 This constrains how shared adapter behaviour may be factored. It does not
-require any particular factoring, and it does not make a shared base part of
-the public interface.
+require any particular factoring. The shared leaf bases — `LeafNode`,
+`ExactLeafNode`, `SheetLeafNode` and `FlexibleNode` — are the declared
+extension points of the `leaf-contract` capability; declaring them does not
+make two adapters sharing one interchangeable, and an adapter written outside
+the core against one of them is as distinct a type as the core's own.
 
 #### Scenario: Adapters sharing a base stay distinct
 
@@ -584,6 +587,12 @@ the public interface.
 - **WHEN** `Build123dSheetNode` and `Build123dNode` are tested against each
   other with `isinstance`
 - **THEN** neither is an instance of the other, though both drive build123d
+
+#### Scenario: An adapter written outside the core is its own type
+
+- **WHEN** an `ExactLeafNode` subclass defined outside `machinome/` is tested
+  against `CadQueryNode` and `Build123dNode` with `isinstance`
+- **THEN** it is an instance of neither, and neither is an instance of it
 
 #### Scenario: The backend lookup is not confused by a shared ancestor
 

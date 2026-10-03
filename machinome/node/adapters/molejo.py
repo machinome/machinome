@@ -68,21 +68,21 @@ class MolejoNode(FlexibleNode):
         """
         return True
 
-    def _shape_parameters(self, rendered):
+    def shape_parameters(self, rendered):
         return rendered.params
 
-    def _shape_spec(self, rendered):
+    def shape_spec(self, rendered):
         return rendered.to_dict()
 
-    def _snapshot_shape(self, rendered, values):
+    def snapshot_shape(self, rendered, values):
         # molejo's solid is a bare `TopoDS_Solid`, already the exact
         # engine's currency (ADR-160), so placement, Booleans and volume
         # need no molejo special case and a spring composes with a
         # CadQuery part by the ordinary rule.
-        result = evaluate_brep(self._shape_spec(rendered), values)
+        result = evaluate_brep(self.shape_spec(rendered), values)
         return result.solid, result.tolerance
 
-    def _snapshot_mesh(self, rendered, values):
+    def snapshot_mesh(self, rendered, values):
         mesh = rendered.evaluate(**values)
         # process=False: molejo's vertices are the evaluation, and
         # merging or reordering them here would break the very
@@ -91,5 +91,5 @@ class MolejoNode(FlexibleNode):
         return trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces,
                                process=False)
 
-    def _snapshot_stl(self, rendered, values):
+    def snapshot_stl(self, rendered, values):
         return rendered.evaluate(**values).to_stl()

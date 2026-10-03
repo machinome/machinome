@@ -31,15 +31,12 @@ sees one geometry.
 
 import os
 import sys
-import tempfile
-import time
 
 import trimesh
 
-from machinome import currency
 from machinome.node.leaf import LeafNode
 from machinome.node.sources import (require_source_file, source_closure,
-                                    _ExternalWrapperIdentity)
+                                    ExternalSourceIdentity)
 
 
 #: Decimal places the body ordering compares centroids on. STL stores
@@ -94,30 +91,7 @@ def _open_edges(mesh):
     return len(trimesh.grouping.group_rows(mesh.edges_sorted, require_count=1))
 
 
-def _write_binary_stl(mesh, path, mtime_ns, digest=None, fingerprint=None):
-    """Write the artifact, stamped, in one atomic step.
-
-    Temp-file-then-rename, and the stamp applied before the rename, so
-    the file at `path` is never a half-written mesh and never carries a
-    build-time mtime that would make it look newer than its source
-    (following `machinome.exact_artifacts._atomic_export`).
-    """
-    directory = os.path.dirname(path) or '.'
-    os.makedirs(directory, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(
-        prefix=f'.{os.path.basename(path)}.', suffix='.tmp', dir=directory)
-    os.close(descriptor)
-    try:
-        mesh.export(temporary, file_type='stl')
-        os.utime(temporary, ns=(time.time_ns(), mtime_ns))
-        currency.publish(temporary, path, digest, fingerprint)
-    except Exception:
-        if os.path.exists(temporary):
-            os.remove(temporary)
-        raise
-
-
-class StlNode(_ExternalWrapperIdentity, LeafNode):
+class StlNode(ExternalSourceIdentity, LeafNode):
     """A part that comes from a committed STL file.
 
     Declare the file with `stl_source`, as a path relative to the
@@ -136,9 +110,9 @@ class StlNode(_ExternalWrapperIdentity, LeafNode):
     The node's geometry is its own artifact, materialized from the
     source file: the committed mesh is never imported in place, so
     fusion, piece identity, export and the viewer all see one thing.
-    Producing it needs no external tool -- not even OpenSCAD, since the
-    artifact is stamped with the source mtime exactly as `JScadNode`
-    stamps the one `jscad` produced for it.
+    Producing it needs no external tool -- not even OpenSCAD: the node
+    publishes the mesh itself through `publish_artifact`, stamped with
+    the source mtime like every artifact a leaf owns.
     """
 
     #: The committed mesh, relative to the wrapper module's directory.
@@ -192,15 +166,15 @@ class StlNode(_ExternalWrapperIdentity, LeafNode):
     def materialize(self, _):
         # The artifact is this node's own, always: there is no
         # import-the-file-in-place path. It is produced only when it is
-        # stale, and the SCAD is the same either way.
-        if not self._up_to_date(self.stl_file):
-            _write_binary_stl(self._materialized_mesh(), self.stl_file,
-                              self.mtime_ns, self.source_digest,
-                              self.source_fingerprint)
+        # stale (`publish_artifact` asks), and the SCAD is the same either
+        # way.
+        self.publish_artifact(
+            self.stl_file,
+            lambda temporary: self._materialized_mesh().export(
+                temporary, file_type='stl'))
 
     def as_scad(self, rendered):
-        if not self._up_to_date(self.stl_file):
-            self.materialize(rendered)
+        self.materialize(rendered)
         return self.artifact_import(self.local_stl)
 
     ##############################################

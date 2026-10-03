@@ -50,15 +50,15 @@ class StubFlexibleNode(FlexibleNode):
     which is enough to tell one binding's geometry from another's.
     """
 
-    def _shape_parameters(self, rendered):
+    def shape_parameters(self, rendered):
         return rendered.params
 
-    def _snapshot_mesh(self, rendered, values):
+    def snapshot_mesh(self, rendered, values):
         side = sum(values.values())
         return trimesh.creation.box((side, side, side))
 
-    def _snapshot_stl(self, rendered, values):
-        return self._snapshot_mesh(rendered, values).export(file_type='stl')
+    def snapshot_stl(self, rendered, values):
+        return self.snapshot_mesh(rendered, values).export(file_type='stl')
 
 
 class Spring(StubFlexibleNode):

@@ -50,12 +50,12 @@ fail loudly, naming the node, the offending name and both sets. A
 missing binding fails too -- never a silent default, matching the driver
 read discipline.
 
-This is a framework-internal base, like `ExactLeafNode` and
-`SheetLeafNode`: it holds everything the framework needs regardless of
-which technology evaluates the sweep, and a concrete adapter (today
-`MolejoNode`) supplies the three backend hooks at the bottom of this
-module. Sharing the base never makes two adapters interchangeable to a
-type test.
+This is a declared extension point of the `leaf-contract` capability,
+like `ExactLeafNode` and `SheetLeafNode` (ADR-163): it holds everything
+the framework needs regardless of which technology evaluates the sweep,
+and a concrete adapter (today `MolejoNode`) supplies the five public
+backend hooks at the bottom of this module. Sharing the base never makes
+two adapters interchangeable to a type test.
 """
 
 import hashlib
@@ -65,8 +65,7 @@ import os
 from solid2 import union
 from machinome.scad_expression import depends_on_time, scalar
 
-from machinome.node.base import (_atomic_write_bytes, _canonical_serialization,
-                                  binding_hash)
+from machinome.node.base import _canonical_serialization, binding_hash
 from machinome.node.declarative import identity_values, is_declarative
 from machinome.node.leaf import LeafNode
 from machinome.motion.ports import declared_ports
@@ -77,13 +76,20 @@ def _names(names):
 
 
 class FlexibleNode(LeafNode):
-    """Base for the leaf adapters whose part deforms with machine state.
+    """The base of a leaf whose part deforms with machine state.
 
-    A subclass declares one port per shape parameter, returns its
-    backend's shape object from `render()`, and implements the three
-    backend hooks. Everything else -- rigidity, the parameter-surface
-    check, the resolved binding, the per-binding snapshot artifact and
-    the mesh seam -- is here, so a correction to the contract lands once.
+    A declared extension point of the `leaf-contract` capability (ADR-163),
+    at this one path. A subclass declares one port per shape parameter,
+    declares its `tech`, returns its backend's shape object from
+    `render()`, and implements the backend hooks: `shape_parameters`,
+    `shape_spec`, `snapshot_mesh`, `snapshot_stl` and, when it declares
+    `exact` true, `snapshot_shape`. Everything else -- rigidity, the
+    parameter-surface check, the resolved binding, the per-binding snapshot
+    artifact, its publication and the mesh seam -- is here, so a correction
+    to the contract lands once.
+
+    Declared members: `tech`, `shape_parameters`, `shape_spec`,
+    `snapshot_mesh`, `snapshot_stl`, `snapshot_shape`, `exact`.
     """
 
     #: The one non-rigid leaf kind. Its geometry is a function of bound
@@ -213,7 +219,7 @@ class FlexibleNode(LeafNode):
         """
         return {
             'tech': self.tech,
-            'spec': self._shape_spec(self.current_shape()),
+            'spec': self.shape_spec(self.current_shape()),
             'params': self.bound_expressions(graph=graph),
         }
 
@@ -226,7 +232,7 @@ class FlexibleNode(LeafNode):
         """
         super().validate(rendered)
 
-        parameters = set(self._shape_parameters(rendered))
+        parameters = set(self.shape_parameters(rendered))
         ports = set(declared_ports(type(self)))
 
         unfed = sorted(parameters - ports)
@@ -320,10 +326,12 @@ class FlexibleNode(LeafNode):
 
         values = self.bound_values()
         snapshot = self.snapshot_stl_file(values)
-        if not self._up_to_date(snapshot):
-            _atomic_write_bytes(snapshot, self._snapshot_stl(rendered, values),
-                                self.mtime_ns, self.source_digest,
-                                self.source_fingerprint)
+
+        def write(temporary):
+            with open(temporary, 'wb') as output:
+                output.write(self.snapshot_stl(rendered, values))
+
+        self.publish_artifact(snapshot, write)
         self.snapshot_file = snapshot
         return self.artifact_import(self.local_snapshot_stl(values))
 
@@ -339,7 +347,7 @@ class FlexibleNode(LeafNode):
         -- `mesh` in world coordinates, `_mesh_in_frame` in the solid
         frame -- the same geometry it would have had from an artifact.
         """
-        return self._snapshot_mesh(self.current_shape(), self.bound_values())
+        return self.snapshot_mesh(self.current_shape(), self.bound_values())
 
     def _snapshot(self, values=None, geometry_key=False):
         """ONE coherent read of this leaf's state, serving both paths.
@@ -370,7 +378,7 @@ class FlexibleNode(LeafNode):
         if values is None:
             values = self.bound_values()
         rendered = self.current_shape()
-        spec = self._shape_spec(rendered)
+        spec = self.shape_spec(rendered)
         serialized_spec = json.dumps(
             spec, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
         spec_digest = hashlib.sha256(
@@ -468,7 +476,7 @@ class FlexibleNode(LeafNode):
         key = binding_hash(values)
         if key != self._exact_binding:
             identity, rendered, values = self._state_snapshot(values)
-            self._exact_result = self._snapshot_shape(rendered, values)
+            self._exact_result = self.snapshot_shape(rendered, values)
             self._exact_identity = identity
             self._exact_binding = key
         return self._exact_result
@@ -491,24 +499,24 @@ class FlexibleNode(LeafNode):
     ##############################################
     # Backend hooks
 
-    def _shape_parameters(self, rendered):
+    def shape_parameters(self, rendered):
         """The parameter names the rendered shape references."""
         raise NotImplementedError
 
-    def _shape_spec(self, rendered):
+    def shape_spec(self, rendered):
         """The rendered shape as the document the framework embeds."""
         raise NotImplementedError
 
-    def _snapshot_mesh(self, rendered, values):
+    def snapshot_mesh(self, rendered, values):
         """The backend's evaluation of `rendered` at `values`, as a
         trimesh in the node's own frame."""
         raise NotImplementedError
 
-    def _snapshot_stl(self, rendered, values):
+    def snapshot_stl(self, rendered, values):
         """The same evaluation as binary STL bytes."""
         raise NotImplementedError
 
-    def _snapshot_shape(self, rendered, values):
+    def snapshot_shape(self, rendered, values):
         """The same evaluation as `(exact shape, tolerance)`, the shape in
         the exact engine's currency every exact node trades in."""
         raise NotImplementedError

@@ -295,7 +295,7 @@ class StlArtifactTest(BuildDirTestCase):
         second = parts.Bracket()
         with patch('machinome.node.adapters.stl._load_source_mesh',
                    side_effect=AssertionError('must not re-read source')), \
-             patch('machinome.node.adapters.stl._write_binary_stl',
+             patch('machinome.exact_artifacts._atomic_export',
                    side_effect=AssertionError('must not rewrite artifact')):
             assembled = second.as_scad(second.render())
 

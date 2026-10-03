@@ -44,8 +44,8 @@ class FlexibleFacetedCacheTest(TestCase):
         bindings = (0.0, 4.0, 8.0)
         observations = []
 
-        with patch.object(machine.spring, '_snapshot_mesh',
-                          wraps=machine.spring._snapshot_mesh) as evaluated, \
+        with patch.object(machine.spring, 'snapshot_mesh',
+                          wraps=machine.spring.snapshot_mesh) as evaluated, \
                 patch.object(test_module, '_admitted',
                              wraps=test_module._admitted) as admitted:
             for index in range(80):
@@ -69,10 +69,10 @@ class FlexibleFacetedCacheTest(TestCase):
         second = self.flexible_at(AlternateSpring, 2.0)
         second.uniq_id = first.uniq_id
 
-        with patch.object(first, '_snapshot_mesh',
-                          wraps=first._snapshot_mesh) as first_mesh, \
-                patch.object(second, '_snapshot_mesh',
-                             wraps=second._snapshot_mesh) as second_mesh:
+        with patch.object(first, 'snapshot_mesh',
+                          wraps=first.snapshot_mesh) as first_mesh, \
+                patch.object(second, 'snapshot_mesh',
+                             wraps=second.snapshot_mesh) as second_mesh:
             test_module._flexible_manifold(first)
             test_module._flexible_manifold(second)
 
@@ -84,10 +84,10 @@ class FlexibleFacetedCacheTest(TestCase):
         first = self.flexible_at(fixture.Spring, 2.0)
         second = self.flexible_at(fixture.Spring, 2.0)
 
-        with patch.object(first, '_snapshot_mesh',
-                          wraps=first._snapshot_mesh) as first_mesh, \
-                patch.object(second, '_snapshot_mesh',
-                             wraps=second._snapshot_mesh) as second_mesh:
+        with patch.object(first, 'snapshot_mesh',
+                          wraps=first.snapshot_mesh) as first_mesh, \
+                patch.object(second, 'snapshot_mesh',
+                             wraps=second.snapshot_mesh) as second_mesh:
             test_module._flexible_manifold(first)
             test_module._flexible_manifold(second)
 
@@ -99,10 +99,10 @@ class FlexibleFacetedCacheTest(TestCase):
         second = self.flexible_at(fixture.Spring, 2.0)
         second.tech = 'other-technology'
 
-        with patch.object(first, '_snapshot_mesh',
-                          wraps=first._snapshot_mesh) as first_mesh, \
-                patch.object(second, '_snapshot_mesh',
-                             wraps=second._snapshot_mesh) as second_mesh:
+        with patch.object(first, 'snapshot_mesh',
+                          wraps=first.snapshot_mesh) as first_mesh, \
+                patch.object(second, 'snapshot_mesh',
+                             wraps=second.snapshot_mesh) as second_mesh:
             test_module._flexible_manifold(first)
             test_module._flexible_manifold(second)
 
@@ -114,10 +114,10 @@ class FlexibleFacetedCacheTest(TestCase):
         second = self.flexible_at(TwinSpring, 2.0)
         second.uniq_id = first.uniq_id
 
-        with patch.object(first, '_snapshot_mesh',
-                          wraps=first._snapshot_mesh) as first_mesh, \
-                patch.object(second, '_snapshot_mesh',
-                             wraps=second._snapshot_mesh) as second_mesh:
+        with patch.object(first, 'snapshot_mesh',
+                          wraps=first.snapshot_mesh) as first_mesh, \
+                patch.object(second, 'snapshot_mesh',
+                             wraps=second.snapshot_mesh) as second_mesh:
             test_module._flexible_manifold(first)
             test_module._flexible_manifold(second)
 
@@ -129,8 +129,8 @@ class FlexibleFacetedCacheTest(TestCase):
         node = self.spring_at(0.0).spring
 
         with patch.object(base_module, '_HASH_LEN', 0), \
-                patch.object(node, '_snapshot_mesh',
-                             wraps=node._snapshot_mesh) as evaluated:
+                patch.object(node, 'snapshot_mesh',
+                             wraps=node.snapshot_mesh) as evaluated:
             test_module._flexible_manifold(node)
             node._parent.set_state(lift=5.0)
             test_module._flexible_manifold(node)
@@ -139,12 +139,12 @@ class FlexibleFacetedCacheTest(TestCase):
 
     def test_serialized_spec_change_at_one_binding_is_a_cache_miss(self):
         node = self.spring_at(3.0).spring
-        original = node._shape_spec
+        original = node.shape_spec
 
-        with patch.object(node, '_snapshot_mesh',
-                          wraps=node._snapshot_mesh) as evaluated:
+        with patch.object(node, 'snapshot_mesh',
+                          wraps=node.snapshot_mesh) as evaluated:
             test_module._flexible_manifold(node)
-            with patch.object(node, '_shape_spec',
+            with patch.object(node, 'shape_spec',
                               side_effect=lambda rendered: {
                                   **original(rendered), 'revision': 'next',
                               }):
@@ -164,8 +164,8 @@ class FlexibleFacetedCacheTest(TestCase):
 
         with patch.object(node, 'current_shape', side_effect=current_shape) \
                 as current, \
-                patch.object(node, '_snapshot_mesh',
-                             wraps=node._snapshot_mesh) as evaluated:
+                patch.object(node, 'snapshot_mesh',
+                             wraps=node.snapshot_mesh) as evaluated:
             test_module._flexible_manifold(node)
 
         self.assertEqual(current.call_count, 1)
@@ -177,8 +177,8 @@ class FlexibleFacetedCacheTest(TestCase):
         with patch.object(type(node), 'source_fingerprint',
                           new_callable=PropertyMock,
                           return_value=None), \
-                patch.object(node, '_snapshot_mesh',
-                             wraps=node._snapshot_mesh) as evaluated:
+                patch.object(node, 'snapshot_mesh',
+                             wraps=node.snapshot_mesh) as evaluated:
             test_module._flexible_manifold(node)
             test_module._flexible_manifold(node)
 
@@ -202,8 +202,8 @@ class FlexibleFacetedCacheTest(TestCase):
                 source.write('shape = 1\n')
             node.files.add(contributor)
 
-            with patch.object(node, '_snapshot_mesh',
-                              wraps=node._snapshot_mesh) as evaluated:
+            with patch.object(node, 'snapshot_mesh',
+                              wraps=node.snapshot_mesh) as evaluated:
                 test_module._flexible_manifold(node)
                 with open(contributor, 'w') as source:
                     source.write('shape = 22\n')
@@ -217,8 +217,8 @@ class FlexibleFacetedCacheTest(TestCase):
 
         with patch.object(test_module, '_FLEXIBLE_MANIFOLD_CACHE_LIMIT', 3,
                           create=True), \
-                patch.object(machine.spring, '_snapshot_mesh',
-                             wraps=machine.spring._snapshot_mesh) as evaluated:
+                patch.object(machine.spring, 'snapshot_mesh',
+                             wraps=machine.spring.snapshot_mesh) as evaluated:
             for lift in bindings:
                 if lift == bindings[-1]:
                     # The first key was just read, so access order evicts
@@ -309,9 +309,9 @@ class FlexibleFacetedCacheTest(TestCase):
         first = self.flexible_at(fixture.Spring, 2.0)
         second = self.flexible_at(fixture.Spring, 2.0)
 
-        with patch.object(first, '_snapshot_shape',
+        with patch.object(first, 'snapshot_shape',
                           return_value=('first', 0.0)) as first_shape, \
-                patch.object(second, '_snapshot_shape',
+                patch.object(second, 'snapshot_shape',
                              return_value=('second', 0.0)) as second_shape:
             self.assertEqual(first._exact_solid(), ('first', 0.0))
             self.assertEqual(first._exact_solid(), ('first', 0.0))
