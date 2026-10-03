@@ -32,14 +32,19 @@ Pairs of parts
 
 The intersection questions are answered on the exact kernel when both
 parts are exact and on meshes otherwise (:doc:`/howto/fast-tests`).
-For a direct comparison of two already-placed exact CadQuery shapes,
-``machinome.exact.intersect_shapes(first, second)`` returns their native
-common. If OCCT reports an empty common but an independent native section
+For a direct comparison of two already-placed exact shapes,
+``machinome.occt.engine.intersect_shapes(first, second, first_name,
+second_name)`` returns their native common, named by the two names in any
+error. It takes the exact engine's currency, the OCCT ``TopoDS_Shape`` that
+``shape()`` returns (a CadQuery or build123d shape is accepted too), and
+returns one; wrap it with ``cadquery.Shape.cast(...)`` for CadQuery's
+methods. If OCCT reports an empty common but an independent native section
 and zero-tolerance solid classification find a point inside both shapes,
 resolved farther from every boundary face than that face's native tolerance,
 it raises ``ExactCommonInconsistency`` rather than claiming
 clearance or inventing a volume. If that independent check cannot complete,
-it raises ``ExactCommonVerificationError``. Native face tolerance here
+it raises ``ExactCommonVerificationError``. Both error types are imported
+from ``machinome.exact_engine``. Native face tolerance here
 qualifies the witness only; it never waives a positive intersection volume.
 Exact intersection assertions
 use the same path. The bounded witness search does not certify every empty

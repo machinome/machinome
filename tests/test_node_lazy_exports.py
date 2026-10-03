@@ -8,7 +8,8 @@ The package used to re-export every backend class eagerly, so importing
 ANY module under it -- `from machinome.node.base import AbstractBaseNode`,
 which the loader, the builder, the piece inventory, the test manager and
 the simulation enumerator all do -- ran that whole list and dragged in
-`machinome.exact` -> `cadquery`, 1.84 s on every `machinome` invocation.
+the exact layer of the time -> `cadquery`, 1.84 s on every `machinome`
+invocation.
 
 Two things have to stay true at once, so both are pinned here: nothing
 is imported until it is named, and what comes back when it IS named is
@@ -83,9 +84,14 @@ PARAMETER_NAMES = ('Quantity', 'Length', 'Angle', 'Count', 'Ratio', 'Scalar',
 MOVED_NAMES = ('Port', 'RotationalPort', 'TranslationalPort', 'SignalPort',
               'declared_ports', 'Time', 'ports', 'timebase')
 
-# The exports whose submodule reaches `machinome.exact` -> `cadquery`.
+# The exact exports. Since the exact engine change (OpenSpec `exact-engine`)
+# exact geometry is the exact engine's and the core imports no CAD front end
+# for it, so only `StepNode`, whose reader and `adjust` still use CadQuery,
+# reaches `cadquery` when named; the others reach it only when a project's
+# own module imports it to render.
 EXACT_EXPORTS = ('FusionNode', 'CadQueryNode', 'Build123dNode',
                  'Build123dSheetNode', 'StepNode')
+CADQUERY_EXPORTS = ('StepNode',)
 
 # Refuse `cadquery` the way an interpreter without the wheel does, in the
 # shape of tests/mesh_engine_absent.py: a `sys.meta_path` finder that
@@ -128,8 +134,8 @@ class NodePackageImportCost(TestCase):
         result = self._ran('import machinome.node\n')
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.node imported cadquery')
-        self.assertFalse(result.imported('machinome.exact'),
-                         'importing machinome.node imported the exact stack')
+        self.assertFalse(result.imported('machinome.occt.engine'),
+                         'importing machinome.node imported the exact engine')
 
     def test_importing_the_node_base_does_not_import_cadquery(self):
         # The path that actually hurts: every core consumer imports
@@ -146,15 +152,19 @@ class NodePackageImportCost(TestCase):
         self.assertFalse(result.imported('cadquery'),
                          'resolving Solid2Node imported cadquery')
 
-    def test_naming_an_exact_backend_imports_cadquery(self):
+    def test_naming_an_exact_backend_imports_what_it_needs(self):
         # The other half of the contract: deferral must not mean absent.
+        # Every exact export resolves to its class; the one whose module
+        # reads with CadQuery imports it, and the others need no front end.
         for name in EXACT_EXPORTS:
             with self.subTest(name=name):
                 result = self._ran(
                     f'from machinome.node import {name}\n'
                     f'assert isinstance({name}, type), {name!r}\n')
-                self.assertTrue(result.imported('cadquery'),
-                                f'resolving {name} did not import cadquery')
+                self.assertEqual(result.imported('cadquery'),
+                                 name in CADQUERY_EXPORTS,
+                                 f'resolving {name}: cadquery imported is '
+                                 f'{result.imported("cadquery")}')
 
     def test_importing_the_node_package_does_not_import_the_step_reader(self):
         # design D10 / ADR-078: OCP is the boundary-representation
@@ -351,24 +361,27 @@ class NodePackageBrokenBackend(TestCase):
         self.assertEqual(result.stdout.strip(), 'IMPORTED', result.stderr)
         self.assertNotIn('Traceback', result.stderr)
 
+    # `StepNode` is the backend whose module imports cadquery itself; the
+    # CadQuery adapter's module no longer does (it reached cadquery only
+    # through the exact layer before the `exact-engine` change).
     def test_a_broken_backend_raises_the_underlying_import_error(self):
-        result = self._access('machinome.node.CadQueryNode')
+        result = self._access('machinome.node.StepNode')
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR'), reported)
         self.assertIn('cadquery', reported)
 
     def test_the_reported_failure_names_the_requested_export(self):
-        result = self._access('machinome.node.CadQueryNode')
+        result = self._access('machinome.node.StepNode')
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertIn('CadQueryNode', result.stdout)
+        self.assertIn('StepNode', result.stdout)
 
     def test_hasattr_does_not_turn_a_broken_backend_into_a_missing_name(self):
         result = probe(
             CADQUERY_ABSENT +
             'import machinome.node\n'
             'try:\n'
-            "    present = hasattr(machinome.node, 'CadQueryNode')\n"
+            "    present = hasattr(machinome.node, 'StepNode')\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -376,7 +389,7 @@ class NodePackageBrokenBackend(TestCase):
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR'), reported)
-        self.assertIn('CadQueryNode', reported)
+        self.assertIn('StepNode', reported)
 
 
 class ParameterModuleSurface(TestCase):

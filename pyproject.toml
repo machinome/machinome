@@ -95,6 +95,14 @@ web-snapshot = [
 mechanics = [
     "machinome-mechanics",
 ]
+# The exact engine (`machinome.occt.engine`, resolved by
+# `machinome.exact_engine`) needs only the OCCT kernel. This range is the one
+# the pinned cadquery 2.7 above already requires, so the extra resolves
+# nothing new while the engine ships inside the core; the cut that moves the
+# engine into machinome-occt repoints this extra at that package.
+occt = [
+    "cadquery-ocp>=7.8.1,<7.9",
+]
 # Machinome Studio is still experimental and unpublished. Declaring its final
 # extra name now does not make the dependency available from a package index.
 studio = [

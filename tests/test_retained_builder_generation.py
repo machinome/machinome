@@ -140,9 +140,9 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
 
         with patch('machinome.node.fusion._compose_solid_matrix',
                    return_value=object()), patch(
-                       'machinome.node.fusion.placed_shape',
+                       'machinome.node.fusion.cached_placement',
                        side_effect=lambda shape, matrix: shape), patch(
-                           'machinome.node.fusion.fuse_shapes',
+                           'machinome.occt.engine.fuse_shapes',
                            side_effect=fuse), patch(
                                'machinome.core.builder.load_node',
                                return_value=self.node):

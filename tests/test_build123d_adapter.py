@@ -19,11 +19,14 @@ from unittest.mock import patch
 
 import build123d as b3d
 import cadquery as cq
+from OCP.TopoDS import TopoDS_Shape
 from solid2 import cube
 
-from machinome.exact import shape_from_rendered
 from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
                              Solid2Node)
+from machinome.node.adapters.build123d import build123d_shape
+from machinome.node.adapters.cadquery import workplane_shape
+from machinome.occt import engine
 
 
 class BuilderBox(Build123dNode):
@@ -133,44 +136,47 @@ class Build123dConversionTest(TestCase):
         with b3d.BuildPart() as builder:
             b3d.Box(2, 2, 2)
 
-        shape = shape_from_rendered(builder.part)
+        shape = build123d_shape(builder.part)
 
-        self.assertIsInstance(shape, cq.Shape)
-        self.assertAlmostEqual(shape.Volume(), builder.part.volume, places=6)
-        self.assertAlmostEqual(shape.Volume(), 8.0, places=6)
+        self.assertIsInstance(shape, TopoDS_Shape)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(),
+                               builder.part.volume, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(), 8.0, places=6)
 
     def test_builder_is_converted_through_its_finished_part(self):
         with b3d.BuildPart() as builder:
             b3d.Box(2, 2, 2)
 
-        self.assertAlmostEqual(shape_from_rendered(builder).Volume(), 8.0,
-                               places=6)
+        self.assertAlmostEqual(
+            cq.Shape.cast(build123d_shape(builder)).Volume(), 8.0, places=6)
 
     def test_conversion_survives_a_brep_roundtrip(self):
-        from machinome.exact import cached_shape, write_brep
+        from machinome.exact_artifacts import write_brep
+        from machinome.exact_cache import cached_shape
 
-        shape = shape_from_rendered(b3d.Box(2, 2, 2))
+        shape = build123d_shape(b3d.Box(2, 2, 2))
         path = os.path.join(tempfile.mkdtemp(), 'part.brep')
         write_brep(shape, path, 1)
 
-        self.assertAlmostEqual(cached_shape(path).Volume(), 8.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(cached_shape(path)).Volume(),
+                               8.0, places=6)
 
     def test_cadquery_conversion_is_untouched(self):
         rendered = cq.Workplane('XY').box(2, 2, 2)
 
-        self.assertAlmostEqual(shape_from_rendered(rendered).Volume(), 8.0,
-                               places=6)
+        self.assertAlmostEqual(
+            cq.Shape.cast(workplane_shape(rendered, engine)).Volume(), 8.0,
+            places=6)
 
     def test_shapes_from_both_backends_fuse_into_one_solid(self):
-        from machinome.exact import fuse_shapes, solid_count
+        cadquery_shape = workplane_shape(cq.Workplane('XY').box(2, 2, 2),
+                                         engine)
+        build123d_part = build123d_shape(b3d.Box(2, 2, 2))
 
-        cadquery_shape = shape_from_rendered(cq.Workplane('XY').box(2, 2, 2))
-        build123d_shape = shape_from_rendered(b3d.Box(2, 2, 2))
+        fused = engine.fuse_shapes(cadquery_shape, build123d_part,
+                                   'cadquery', 'build123d')
 
-        fused = fuse_shapes(cadquery_shape, build123d_shape,
-                            'cadquery', 'build123d')
-
-        self.assertEqual(solid_count(fused), 1)
+        self.assertEqual(engine.solid_count(fused), 1)
 
 
 class Build123dRenderValidationTest(BuildDirTestCase):
@@ -216,7 +222,7 @@ class Build123dRenderValidationTest(BuildDirTestCase):
                      SolidBox()):
             with self.subTest(node=type(node).__name__):
                 node.assemble()
-                self.assertAlmostEqual(node.shape().Volume(), 8.0, places=6)
+                self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 8.0, places=6)
 
 
 class Build123dArtifactTest(BuildDirTestCase):
@@ -252,14 +258,14 @@ class Build123dArtifactTest(BuildDirTestCase):
                 'a current BREP must avoid rerendering')):
             shape = node.shape()
 
-        self.assertAlmostEqual(shape.Volume(), 8.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(), 8.0, places=6)
 
     def test_shape_is_local_and_does_not_apply_node_operations(self):
         node = BuilderBox()
         node.translate([20, 0, 0])
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
 
         self.assertAlmostEqual(bounds.xmin, -1.0, places=6)
         self.assertAlmostEqual(bounds.xmax, 1.0, places=6)
@@ -290,7 +296,7 @@ class Build123dExactnessTest(BuildDirTestCase):
         self.assertTrue(fusion.exact)
 
     def test_a_fusion_mixing_exact_backends_fuses_to_one_solid(self):
-        from machinome.exact import solid_count
+        from machinome.occt.engine import solid_count
 
         fusion = MixedBackendFusion()
         fusion.assemble()

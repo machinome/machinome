@@ -100,7 +100,7 @@ def _write_binary_stl(mesh, path, mtime_ns, digest=None, fingerprint=None):
     Temp-file-then-rename, and the stamp applied before the rename, so
     the file at `path` is never a half-written mesh and never carries a
     build-time mtime that would make it look newer than its source
-    (following `machinome.exact._atomic_export`).
+    (following `machinome.exact_artifacts._atomic_export`).
     """
     directory = os.path.dirname(path) or '.'
     os.makedirs(directory, exist_ok=True)

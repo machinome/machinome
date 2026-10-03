@@ -8,9 +8,11 @@ The backend classes below are resolved on first access rather than at
 import. Importing any submodule runs this file first, so the eager
 re-export list this replaces meant that `from machinome.node.base import
 AbstractBaseNode` -- what the loader, the builder, the piece inventory,
-the test manager and the simulation enumerator all do -- pulled
-`machinome.exact` and therefore `cadquery` into every `machinome`
-invocation, including ones that touch no geometry at all.
+the test manager and the simulation enumerator all do -- pulled the
+exact layer of the time and therefore `cadquery` into every `machinome`
+invocation, including ones that touch no geometry at all. Exact geometry
+is now the exact engine's, resolved through `machinome.exact_engine` only
+by the paths that use it.
 
 Nothing here dispatches on a registry of subclasses, so no import was
 load-bearing for a side effect and deferral is safe. PEP 562 hands back

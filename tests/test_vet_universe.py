@@ -45,6 +45,10 @@ class TheDeclarationTest(TestCase):
             'machinome.core.pieces',
             'machinome.source_generation', 'machinome.viewers',
             'machinome.sphinx', 'machinome.currency', 'machinome._artifact',
+            'machinome.exact_cache', 'machinome.exact_artifacts',
+            'machinome.occt.engine.read_brep',
+            'machinome.occt.engine.write_brep',
+            'machinome.occt.engine.write_stl',
         ))
 
     def test_the_kernels(self):

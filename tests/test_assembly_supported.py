@@ -30,6 +30,7 @@ import trimesh
 from trimesh.creation import box
 
 import machinome.test as test_module
+from machinome.occt import engine as occt_engine
 from machinome.node.operations import Translation
 from machinome.test import TestCase as AssertingTestCase
 
@@ -111,6 +112,7 @@ class SupportFixture(TestCase):
                         (y_span[0] + y_span[1]) / 2,
                         (z_span[0] + z_span[1]) / 2))
             .val()
+            .wrapped
         )
         return ExactRigidNode(name, path, shape)
 
@@ -525,8 +527,8 @@ class ExactRoutingTest(SupportFixture):
         base = self.exact_block('base', (-1, 1), (-1, 1))
         top = self.exact_block('top', (-1, 1), (1, 3))
 
-        with patch('machinome.test.intersect_shapes',
-                   wraps=test_module.intersect_shapes) as kernel:
+        with patch('machinome.occt.engine.intersect_shapes',
+                   wraps=occt_engine.intersect_shapes) as kernel:
             with patch('machinome.test._interface_contacts',
                        wraps=test_module._interface_contacts) as extract:
                 asserter.assertAssemblySupported(Assembly('root', (base, top)))
@@ -544,8 +546,8 @@ class ExactRoutingTest(SupportFixture):
         base = self.exact_block('base', (-1, 1), (-1, 1))
         top = self.block('top', (-1, 1), (1, 3))
 
-        with patch('machinome.test.intersect_shapes',
-                   wraps=test_module.intersect_shapes) as kernel:
+        with patch('machinome.occt.engine.intersect_shapes',
+                   wraps=occt_engine.intersect_shapes) as kernel:
             asserter.assertAssemblySupported(Assembly('root', (base, top)))
 
         kernel.assert_not_called()

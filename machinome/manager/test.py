@@ -17,6 +17,7 @@ from machinome.core.loader import (
     AmbiguousNodeError, project_root, _defined_classes,
 )
 from machinome.core.builder import project_build_lock
+from machinome import exact_cache
 from machinome.node.base import AbstractBaseNode
 from machinome.test import (ComparisonPolicy, DEFAULT_PLACEMENT_QUANTUM,
                              resolve_comparison_policy, set_comparison_policy)
@@ -29,16 +30,14 @@ class StopTestRun(Exception):
 
 
 def _reset_placement_cache_for_run():
-    """Clear exact placement retention without importing the exact kernel.
+    """Clear exact placement retention for a new run.
 
     A fresh CLI process has no placement cache. This only matters when a
     managed run is established in an interpreter that already used exact
-    geometry; keep the faceted-only path from loading CadQuery just to clear
-    an absent cache.
+    geometry. The memo module imports no exact engine, so clearing it
+    costs a faceted-only run nothing.
     """
-    exact = sys.modules.get('machinome.exact')
-    if exact is not None:
-        exact._reset_placement_cache()
+    exact_cache._reset_placement_cache()
 
 
 class Test:

@@ -8,7 +8,7 @@ import machinome.core.expressions
 import machinome.node
 import machinome.simulation
 import machinome.motion
-import machinome.exact
+import machinome.occt.engine
 import machinome.openscad
 
 BUILDER = machinome.core.builder.Builder

@@ -23,7 +23,6 @@ verbatim: they already name the parameter and where in the document it is
 referenced, which is better than anything a wrapper could say.
 """
 
-import cadquery
 import trimesh
 from molejo.brep import evaluate as evaluate_brep
 
@@ -64,8 +63,8 @@ class MolejoNode(FlexibleNode):
         """molejo evaluates the same document to a B-rep solid, so this
         adapter is exact -- fixed by type, like every other adapter's,
         never by installation state or by which instant is bound. The
-        OCCT kernel `molejo[brep]` needs is already a machinome
-        dependency through CadQuery, so nothing here is optional.
+        OCCT kernel `molejo[brep]` needs is the exact engine's own, so
+        nothing here is optional.
         """
         return True
 
@@ -76,13 +75,12 @@ class MolejoNode(FlexibleNode):
         return rendered.to_dict()
 
     def _snapshot_shape(self, rendered, values):
-        # Cast to the CadQuery `Shape` the framework's exact geometry
-        # trades in -- the same rewrapping of one TopoDS_Shape that
-        # carries a build123d part across (see machinome.exact) -- so
-        # placement, Booleans and volume need no molejo special case and
-        # a spring composes with a CadQuery part by the ordinary rule.
+        # molejo's solid is a bare `TopoDS_Solid`, already the exact
+        # engine's currency (ADR-160), so placement, Booleans and volume
+        # need no molejo special case and a spring composes with a
+        # CadQuery part by the ordinary rule.
         result = evaluate_brep(self._shape_spec(rendered), values)
-        return cadquery.Shape.cast(result.solid), result.tolerance
+        return result.solid, result.tolerance
 
     def _snapshot_mesh(self, rendered, values):
         mesh = rendered.evaluate(**values)

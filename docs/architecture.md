@@ -276,9 +276,17 @@ no backend at all), and `StepNode` (`step_source` + `part`, a STEP
 document's own kernel writing its artifacts). Every node exposes derived read-only exactness (ADR-044): the
 OCCT adapters are exact, the other leaf adapters are faceted, and an
 internal node is exact only when every child is. Exactness does not require
-one backend — every exact adapter converts its render result to one shared
-OCCT shape at the adapter boundary, so the exact layer holds a single type and
-a fusion may mix CadQuery and build123d children (ADR-047). Because that
+one backend — every exact adapter converts its render result to the exact
+engine's one currency at the adapter boundary, a rewrap of the kernel object
+the result already holds, so every exact node returns a single type and a
+fusion may mix CadQuery and build123d children (ADR-047). That type is the
+engine's decision, and the OCCT engine's is the kernel's own
+`OCP.TopoDS.TopoDS_Shape` (ADR-160): `shape()` returns it, and a consumer
+that wants CadQuery's methods wraps it, `cadquery.Shape.cast(node.shape())`.
+`ExactLeafNode.shape_from_rendered` admits whatever the engine admits — its
+currency, or an object carrying it as `.wrapped` — so a leaf rendering the
+kernel's own shape needs no override; `CadQueryNode` and `StepNode` add a
+`Workplane`'s values, `Build123dNode` a builder's finished part. Because that
 conversion makes everything after it backend-neutral, the contract itself —
 `exact`, `shape()`, native materialization and `as_scad()` presentation —
 lives once on `ExactLeafNode`, the internal
@@ -388,8 +396,8 @@ inside, on the XY plane, rejected naming the node and the offending type
 before anything is written. `thickness` is required and positive at
 construction, and as a constructor argument it keys artifacts like any other
 parameter. The extrusion is an ordinary backend solid, so a sheet part is an
-exact leaf in every respect above — `exact.py` needed no change, and a fusion
-may mix a sheet part with any other exact child.
+exact leaf in every respect above — the exact path needed no change, and a
+fusion may mix a sheet part with any other exact child.
 
 One leaf kind carries no solid at all. `FlexibleNode` — internal base,
 `MolejoNode` its v1 adapter — is a part whose *geometry*, not merely whose
@@ -407,7 +415,8 @@ defaulting. `MolejoNode.render()` returns a molejo `Shape`, validated by
 the ordinary `namespace` mechanism: the render contract is the backend's
 object, as for every other adapter. It is exact by type, `shape()`
 evaluating the bound instant through molejo's B-rep evaluator and
-recasting it into ADR-047's one currency, with the backend's declared
+returning molejo's own `TopoDS_Solid`, already the exact engine's currency
+(ADR-160), with the backend's declared
 approximation surfaced as `shape_tolerance` (`1e-6` for a helix or spline
 sweep, `0.0` where every surface is analytic) rather than hidden. Nothing
 of that geometry is persisted: `shape()` computes on demand behind an
@@ -418,6 +427,33 @@ Exact nodes expose unplaced BREP geometry through
 `shape()`; placement remains the caller's responsibility through the same
 composed matrices as the mesh path. An exact `FusionNode` fuses its placed
 children in OCCT and represents that fuse in both BREP and STL (ADR-045).
+
+The core holds no kernel code (ADR-161). Every operation on an exact shape —
+reading and writing BREP, tessellating to STL, placing, fusing, intersecting
+with the empty-common witness, counting solids, measuring volume, bounds and
+per-face boxes, classifying containment — is the exact engine's,
+`machinome.occt.engine`, one module on bare OCP under a `machinome.occt`
+package that exports nothing, each operation defined there once; it is also
+where a project imports the five exact operations it calls directly
+(`intersect_shapes`, `fuse_shapes`, `placed_shape`, `solid_count`,
+`solid_volume`). The core reaches it through one seam,
+`machinome.exact_engine`: `CONTRACT`, the Protocols naming the thirteen
+operations the core calls, the error types, and `exact_engine()` /
+`require_exact_engine()`, which try-import the one known provider once per
+process, answer `None` or refuse naming `pip install "machinome[occt]"` when
+it is absent, raise its own error when it is broken, and refuse a provider
+whose declared `CONTRACT` differs (ADR-162). To the core an exact shape is an
+opaque handle. What it keeps is what an abstract exact node needs: the exact
+leaf and fusion nodes; `machinome.exact_cache`, the memos over handles and
+artifact files, filled by engine operations; `machinome.exact_artifacts`,
+which publishes what the engine writes; the test framework's culling order;
+and the verdict memo. A leaf converts its render result only inside the
+branch that writes a stale artifact, and a fusion resolves the engine only
+in its exact branch, so a node whose artifacts are current is reused
+without resolving the engine, and a model with no exact node never imports
+it. Only the STEP adapter still imports OCP and cadquery outside the engine
+(its reader and `adjust`), and the markings' SVG reducer build123d, until
+their packages are cut.
 Each adapter can still present SCAD, but artifact production follows its backend:
 Solid2 and raw OpenSCAD leaves use OpenSCAD, CadQuery and build123d — sheet
 parts included — use OCCT, JSCAD uses `jscad`, a flexible leaf uses molejo's
@@ -2070,12 +2106,13 @@ command's module is imported, and the node and simulation packages resolve
 their exports on first access, so a command pays for the backends it uses and
 not for the rest (ADR-059) — `machinome viewer` answers from the viewer's entry
 point alone. Top-level `-h` is the exception: it renders every command's
-docstring, so it loads them all. The test framework defers the same way by a
-different mechanism (ADR-069): a module's own call sites are global reads,
-which PEP 562 never sees, so `machinome.test` binds its seven
-`machinome.exact` names to deferred callables that import on first call and
-replace themselves unless patched. A faceted-only project runs its whole suite
-without importing cadquery. Snapshot has an explicit renderer choice
+docstring, so it loads them all. The test framework defers the exact stack
+through the exact engine seam (ADR-161): its exact path resolves the engine
+at the first exact comparison and calls each engine operation, and each memo
+of `machinome.exact_cache`, as an attribute of its defining module at the
+moment of the call, so a name patched where it is defined is honoured and
+`machinome.test` binds none of them. A faceted-only project runs its whole
+suite without importing cadquery, OCP or the engine. Snapshot has an explicit renderer choice
 (ADR-021/041/046/068): OpenSCAD remains the external-tool default with xvfb
 fallback, whether or not the browser viewer is installed, while the
 optional `web` renderer stages the node and has the installed viewer package
@@ -2158,13 +2195,15 @@ have chosen for its own candidates (ADR-091) — and reads
 verdict-identical to the naive faceted path. Exact pairs share the same
 world-AABB
 broad phase, then a second exact-negative tier (ADR-092) may decide the
-pair empty before any boolean: each solid's face boxes
-(`BRepBndLib.Add_s(face, box, False)`, a pure function of the exact
-surface, cached once per shape identity) are compared in one solid's own
+pair empty before any boolean: each solid's face boxes (the engine's
+`face_bounds`, `BRepBndLib.Add_s(face, box, False)`, a pure function of the
+exact surface, cached once per shape identity by `exact_cache`) are compared
+in one solid's own
 frame, enlarging only the other solid's boxes by a fixed margin, and if
-none meet, a containment guard — one representative vertex of every
-solid of each shape classified against every solid of the other, in both
-directions — tells a genuinely disjoint pair from one solid wholly inside
+none meet, a containment guard — the engine's `mutually_outside`: one
+representative vertex of every solid of each shape classified against every
+solid of the other, in both directions — tells a genuinely disjoint pair
+from one solid wholly inside
 another before reporting it empty; disjoint face boxes alone are never
 by themselves a verdict, because two closed solids with disjoint
 boundaries may still be nested rather than separate. Anything the tier
@@ -3186,7 +3225,8 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact.py` | `node-model`, `exact-geometry`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152 |
+| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162 |
+| OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |
@@ -3194,7 +3234,7 @@ The short list that changes must not silently break:
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
-| Test framework | `machinome/test.py`, `machinome/exact.py`, `manager/test.py` | `test-framework` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143 |
+| Test framework | `machinome/test.py`, `machinome/exact_cache.py`, `manager/test.py` | `test-framework`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

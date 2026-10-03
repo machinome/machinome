@@ -9,7 +9,7 @@ Deferring `machinome.node`'s backend exports was not enough: a real
 through two chains that never touch the node package's exports at all.
 
 - `core/loader.py` imported `TestCase` at module scope, and
-  `machinome/test.py` imports `machinome.exact`. Every node-scoped
+  `machinome/test.py` imported `machinome.exact`. Every node-scoped
   command goes through the loader, so this is the chain that matters
   most: it is the shop floor's hot path, where `machinome build` runs on
   every project open.
@@ -93,6 +93,25 @@ EXPECTED_EXPORTS = {
 # Refuse `cadquery` the way an interpreter without the wheel does: a
 # `sys.meta_path` finder that raises, rather than a stub, so a deferred
 # import fails for the real reason a broken install fails.
+# Refuse `OCP`, the OCCT kernel the exact engine imports, the same way: what
+# a broken exact engine looks like now that exact geometry imports no CAD
+# front end.
+KERNEL_ABSENT = '''
+import sys
+
+
+class _KernelAbsent:
+
+    def find_spec(self, name, target=None, path=None):
+        if name == 'OCP' or name.startswith('OCP.'):
+            raise ModuleNotFoundError("No module named 'OCP'", name='OCP')
+        return None
+
+
+sys.meta_path.insert(0, _KernelAbsent())
+sys.modules.pop('OCP', None)
+'''
+
 CADQUERY_ABSENT = '''
 import sys
 
@@ -181,13 +200,13 @@ class LoaderImportCost(TestCase):
 
     def test_importing_the_loader_does_not_import_cadquery(self):
         # The consequence that pays for the change: machinome.test
-        # imports machinome.exact, which is 1.84 s of cadquery on every
-        # node-scoped command.
+        # imported the exact layer of the time, which was 1.84 s of
+        # cadquery on every node-scoped command.
         result = ran('import machinome.core.loader\n')
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.core.loader imported cadquery')
         self.assertFalse(
-            result.imported('machinome.exact'),
+            result.imported('machinome.occt.engine'),
             'importing machinome.core.loader imported the exact stack')
 
     def test_loading_a_node_does_not_import_the_test_framework(self):
@@ -405,9 +424,11 @@ class SimulationBrokenExport(TestCase):
     Now that the test framework defers the exact stack too, that chain
     stops one step earlier: reading `ScenarioTest` no longer needs
     cadquery at all, so the guard follows the dependency to where it
-    actually lives -- the kernel names on `machinome.test`, whose first
-    USE is now the first thing that can fail. The trap is unchanged and
-    so is what it must not do; only the name that springs it moved.
+    actually lives. Since the `exact-engine` change that is the exact
+    engine, resolved through `machinome.exact_engine` at the exact path's
+    first use, and what a broken engine lacks is its kernel, `OCP`. The
+    trap is unchanged and so is what it must not do; only the name that
+    springs it moved.
     """
 
     def _access(self, expression):
@@ -426,14 +447,15 @@ class SimulationBrokenExport(TestCase):
             "    print('NO_ERROR')\n")
 
     def _use_kernel_name(self):
-        """Call a deferred kernel name on `machinome.test`, exact stack
-        absent. Reading the name is not enough -- the deferred binding
-        resolves on USE, which is the point the failure must surface."""
+        """Take the exact path of `machinome.test`, its kernel absent.
+        Importing is not enough -- the engine resolves on USE, which is
+        the point the failure must surface."""
         return ran(
-            CADQUERY_ABSENT +
+            KERNEL_ABSENT +
             'import machinome.test\n'
             'try:\n'
-            "    machinome.test.intersect_shapes(None, None, 'a', 'b')\n"
+            "    machinome.test._exact_engine().intersect_shapes(\n"
+            "        None, None, 'a', 'b')\n"
             'except AttributeError as wrong:\n'
             "    print('ATTRIBUTE_ERROR', wrong)\n"
             'except ImportError as failure:\n'
@@ -463,16 +485,16 @@ class SimulationBrokenExport(TestCase):
         result = self._use_kernel_name()
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR'), reported)
-        self.assertIn('cadquery', reported)
+        self.assertIn('OCP', reported)
 
     def test_reading_a_kernel_name_is_not_a_missing_attribute(self):
         # The trap itself: whatever a broken install does, it must not
-        # look like `machinome.test` never had the name.
+        # look like the exact engine was never installed.
         result = ran(
-            CADQUERY_ABSENT +
-            'import machinome.test\n'
+            KERNEL_ABSENT +
+            'import machinome.exact_engine\n'
             'try:\n'
-            "    present = hasattr(machinome.test, 'intersect_shapes')\n"
+            "    present = machinome.exact_engine.exact_engine() is not None\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -495,7 +517,7 @@ class BuildImportCost(TestCase):
         result = build('flat_project/simple_cylinder.py')
         self.assertFalse(result.imported('cadquery'),
                          'building a Solid2Node project imported cadquery')
-        self.assertFalse(result.imported('machinome.exact'),
+        self.assertFalse(result.imported('machinome.occt.engine'),
                          'building a Solid2Node project imported the '
                          'exact stack')
         self.assertFalse(result.imported('machinome.test'),
@@ -537,8 +559,8 @@ class TestFrameworkImportCost(TestCase):
 
     `LoaderImportCost` above asserts this from the outside: loading a node
     imports neither the test framework nor cadquery. That left the inside
-    unasserted -- the moment a test IS discovered, `machinome.test`
-    imports `machinome.exact` at module scope and every test process pays
+    unasserted -- the moment a test WAS discovered, `machinome.test`
+    imported the exact layer at module scope and every test process paid
     2.84 s for cadquery, whether or not a single node in the project is
     exact.
 
@@ -551,7 +573,7 @@ class TestFrameworkImportCost(TestCase):
         result = ran('import machinome.test\n')
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.test imported cadquery')
-        self.assertFalse(result.imported('machinome.exact'),
+        self.assertFalse(result.imported('machinome.occt.engine'),
                          'importing machinome.test imported the exact stack')
 
     def test_a_faceted_test_run_imports_no_cadquery(self):
@@ -564,8 +586,8 @@ class TestFrameworkImportCost(TestCase):
         # its stamp -- which names cadquery's installed version, read from
         # distribution metadata -- may import the exact stack. An all-exact
         # fixture cannot make this point in a fresh interpreter: every exact
-        # node class imports `machinome.exact`, and with it cadquery, the
-        # moment its module is loaded.
+        # node fixture's module imports cadquery to render, the moment it is
+        # loaded.
         with tempfile.TemporaryDirectory(
                 prefix='machinome-lazy-test-') as build_dir:
             runs = [run_tests('meta_project/separated.py', build_dir,
@@ -592,24 +614,25 @@ class TestFrameworkImportCost(TestCase):
 
 
 class ExactNamesStayPatchable(TestCase):
-    """The deferred exact names remain module globals of `machinome.test`.
+    """The exact names are patched where they are defined.
 
     Deferring the import moves WHEN the kernel loads, not where its names
-    live. A caller that patches one keeps working -- before the exact path
-    has ever run, and after it has already resolved the name -- because
-    the deferred binding is an ordinary module global that resolution
-    replaces and a patch replaces in turn.
+    live. Since the `exact-engine` change an engine operation is defined
+    once, in `machinome.occt.engine`, and the test framework looks it up
+    there at the moment of the call; a caller that patches it there keeps
+    working -- before the exact path has ever run, and after it has
+    already resolved the engine.
     """
 
     EXACT_NAMES = ('fuse_shapes', 'intersect_shapes', 'placed_shape',
                    'solid_count', 'solid_volume')
 
     def test_every_deferred_name_is_readable(self):
-        import machinome.test as test_module
+        import machinome.occt.engine as engine
         for name in self.EXACT_NAMES:
             with self.subTest(name=name):
-                self.assertTrue(callable(getattr(test_module, name)),
-                                f'{name} is not readable on machinome.test')
+                self.assertTrue(callable(getattr(engine, name)),
+                                f'{name} is not readable on the engine')
 
     def test_a_patch_applied_before_first_use_is_used(self):
         result = ran(PATCH_BEFORE_USE, cwd=BASEDIR)
@@ -622,24 +645,21 @@ class ExactNamesStayPatchable(TestCase):
 
 
 # Both snippets drive the exact branch of `_placed_intersection` with every
-# kernel name patched, so they exercise the real internal call sites without
-# needing real geometry -- what is under test is whose function those sites
-# call, not what it computes. `FakeShape.Faces()` returns none, which is
-# enough for the face-box tier (ADR-092) inside that branch to decline
-# immediately -- a faceless shape always falls through -- so the record
-# still reaches the patched `intersect_shapes` exactly as before that tier
-# existed.
+# engine operation it reaches patched on the engine module, so they exercise
+# the real internal call sites without needing real geometry -- what is under
+# test is whose function those sites call, not what it computes. The patched
+# `face_bounds` reports no face, which is enough for the face-box tier
+# (ADR-092) inside that branch to decline immediately -- a faceless shape
+# always falls through -- so the record still reaches the patched
+# `intersect_shapes` exactly as before that tier existed.
 _PATCH = '''
 import numpy as np
 
+import machinome.occt.engine as e
+
 
 class FakeShape:
-
-    def Solids(self):
-        return []
-
-    def Faces(self):
-        return []
+    pass
 
 
 class FakeSolid:
@@ -647,9 +667,10 @@ class FakeSolid:
 
 
 def patched_verdict():
-    t.intersect_shapes = lambda first, second, one, two: 'RESULT'
-    t.solid_count = lambda result: 0
-    t.solid_volume = lambda result: 0.0
+    e.intersect_shapes = lambda first, second, one, two: 'RESULT'
+    e.solid_count = lambda result: 0
+    e.solid_volume = lambda result: 0.0
+    e.face_bounds = lambda shape: np.empty((0, 2, 3))
     shape = FakeShape()
     # A real `_place_solid` record's width, so the tier ahead of the
     # boolean can read the matrix (index 6) and local shape (index 8)
@@ -665,12 +686,14 @@ PATCH_BEFORE_USE = 'import machinome.test as t\n' + _PATCH + '''
 print(patched_verdict())
 '''
 
-# `solid_count` is called for real first -- on a duck-typed shape, so the
-# resolution is genuine without building geometry -- which is what makes the
-# second half an assertion about a name that has ALREADY been replaced by the
-# resolved kernel function rather than one still holding its deferred binding.
+# The test framework resolves the engine for real first and runs its real
+# `solid_count` -- on an empty compound, so the resolution is genuine without
+# building geometry -- which is what makes the second half an assertion about
+# names patched AFTER the exact path has resolved the engine.
 PATCH_AFTER_USE = 'import machinome.test as t\n' + _PATCH + '''
-resolved = 'RESOLVED' if t.solid_count(FakeShape()) == 0 else 'UNRESOLVED'
+engine = t._exact_engine()
+resolved = ('RESOLVED' if engine.solid_count(engine.compound([])) == 0
+            else 'UNRESOLVED')
 print(resolved, patched_verdict())
 '''
 

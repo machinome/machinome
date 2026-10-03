@@ -509,6 +509,6 @@ class FlexibleNode(LeafNode):
         raise NotImplementedError
 
     def _snapshot_shape(self, rendered, values):
-        """The same evaluation as `(exact shape, tolerance)`, in the
-        shared boundary representation every exact node trades in."""
+        """The same evaluation as `(exact shape, tolerance)`, the shape in
+        the exact engine's currency every exact node trades in."""
         raise NotImplementedError

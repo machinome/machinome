@@ -95,15 +95,17 @@ class ExternalWrapperIdentityTest(TestCase):
                 self.assertAlmostEqual(abs(first_mesh.volume), 24, places=4)
                 self.assertAlmostEqual(abs(second_mesh.volume), 192, places=4)
                 if kind == 'StepNode':
-                    from machinome.exact import cached_shape
-                    self.assertAlmostEqual(cached_shape(first.brep_file).Volume(), 24)
-                    self.assertAlmostEqual(cached_shape(second.brep_file).Volume(), 192)
+                    from machinome.exact_cache import cached_shape
+                    self.assertAlmostEqual(cq.Shape.cast(
+                        cached_shape(first.brep_file)).Volume(), 24)
+                    self.assertAlmostEqual(cq.Shape.cast(
+                        cached_shape(second.brep_file)).Volume(), 192)
                 self.assertNotEqual(first.stl_file, second.stl_file)
                 self.assert_current(first)
                 self.assert_current(second)
-                from machinome.exact import _atomic_export
+                from machinome.exact_artifacts import _atomic_export
                 from machinome.node.adapters.stl import _write_binary_stl
-                with patch('machinome.exact._atomic_export',
+                with patch('machinome.exact_artifacts._atomic_export',
                            wraps=_atomic_export) as exact_producer, \
                      patch('machinome.node.adapters.stl._write_binary_stl',
                            wraps=_write_binary_stl) as mesh_producer:
@@ -139,12 +141,13 @@ class ExternalWrapperIdentityTest(TestCase):
                 break
         else:
             self.fail('native cached build did not settle within four passes')
-        from machinome.exact import cached_shape
+        from machinome.exact_cache import cached_shape
         for node in (first, second):
-            self.assertAlmostEqual(cached_shape(node.brep_file).Volume(),
-                                   24 * 1.25 ** 3)
-        from machinome.exact import _atomic_export
-        with patch('machinome.exact._atomic_export', wraps=_atomic_export) as producer:
+            self.assertAlmostEqual(
+                cq.Shape.cast(cached_shape(node.brep_file)).Volume(),
+                24 * 1.25 ** 3)
+        from machinome.exact_artifacts import _atomic_export
+        with patch('machinome.exact_artifacts._atomic_export', wraps=_atomic_export) as producer:
             first, second = first_class(), second_class()
             for node in (first, second):
                 node.assemble()

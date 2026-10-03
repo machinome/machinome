@@ -7,7 +7,8 @@ import struct
 import cadquery as cq
 from OCP.BRep import BRep_Tool
 
-import machinome.exact as exact
+import machinome.occt.engine as engine
+from machinome.exact_engine import ExactCommonVerificationError
 
 
 def box(x=0):
@@ -53,55 +54,54 @@ class ObserveBuild:
 
 class NativeInputPreservationTest(TestCase):
     def assert_private_copies(self, algorithm_name, operation, shift):
-        original = getattr(exact, algorithm_name)
+        original = getattr(engine, algorithm_name)
         first, second = box(), box(shift)
 
         def observed(*args):
             return ObserveBuild(original(*args), observed_builds, first, second)
 
         observed_builds = []
-        with patch.object(exact, algorithm_name, side_effect=observed):
+        with patch.object(engine, algorithm_name, side_effect=observed):
             operation(first, second)
         self.assertEqual(observed_builds, [(False, False, False)])
 
     def test_common_receives_private_inputs_in_default_mode(self):
         self.assert_private_copies('BRepAlgoAPI_Common',
-                                   lambda a, b: exact.intersect_shapes(
+                                   lambda a, b: engine.intersect_shapes(
                                        a, b, 'left', 'right'), .5)
 
     def test_fuse_receives_private_inputs_in_default_mode(self):
         self.assert_private_copies('BRepAlgoAPI_Fuse',
-                                   lambda a, b: exact.fuse_shapes(
+                                   lambda a, b: engine.fuse_shapes(
                                        a, b, 'left', 'right'), .5)
 
     def test_false_empty_section_receives_private_inputs_in_default_mode(self):
         self.assert_private_copies('BRepAlgoAPI_Section',
-                                   lambda a, b: exact.intersect_shapes(
+                                   lambda a, b: engine.intersect_shapes(
                                        a, b, 'left', 'right'), 2)
 
     def test_copy_failure_refuses_with_named_pair(self):
-        for operation in (exact.intersect_shapes, exact.fuse_shapes):
+        for operation in (engine.intersect_shapes, engine.fuse_shapes):
             with self.subTest(operation=operation.__name__):
-                with patch.object(cq.Shape, 'copy', side_effect=RuntimeError(
+                with patch.object(engine, '_copy', side_effect=RuntimeError(
                         'copy failed')):
                     with self.assertRaisesRegex(RuntimeError, 'left and right'):
                         operation(box(), box(.5), 'left', 'right')
 
     def test_section_copy_failure_refuses_verification_with_named_pair(self):
-        original_copy = cq.Shape.copy
+        original_copy = engine._copy
         calls = []
 
-        def fail_third(shape, mesh=False):
+        def fail_third(shape):
             calls.append(shape)
             if len(calls) == 3:
                 raise RuntimeError('section copy failed')
-            return original_copy(shape, mesh=mesh)
+            return original_copy(shape)
 
-        with patch.object(cq.Shape, 'copy', autospec=True,
-                          side_effect=fail_third):
-            with self.assertRaisesRegex(exact.ExactCommonVerificationError,
+        with patch.object(engine, '_copy', side_effect=fail_third):
+            with self.assertRaisesRegex(ExactCommonVerificationError,
                                         'left and right'):
-                exact.intersect_shapes(box(), box(2), 'left', 'right')
+                engine.intersect_shapes(box(), box(2), 'left', 'right')
 
     def test_native_contact_verdicts_and_repeated_inputs(self):
         first = box()
@@ -109,8 +109,8 @@ class NativeInputPreservationTest(TestCase):
             with self.subTest(shift=shift):
                 second = box(shift)
                 for _ in range(2):
-                    result = exact.intersect_shapes(first, second,
-                                                    'left', 'right')
+                    result = cq.Shape.cast(engine.intersect_shapes(
+                        first, second, 'left', 'right'))
                     self.assertTrue(result.isValid())
                     if shift == .5:
                         self.assertGreater(result.Volume(), 0)
@@ -119,9 +119,9 @@ class NativeInputPreservationTest(TestCase):
 
     def test_common_fuse_and_section_preserve_both_inputs(self):
         operations = (
-            ('common', lambda a, b: exact.intersect_shapes(a, b, 'a', 'b'), .5),
-            ('fuse', lambda a, b: exact.fuse_shapes(a, b, 'a', 'b'), .5),
-            ('section', lambda a, b: exact.intersect_shapes(a, b, 'a', 'b'), 2),
+            ('common', lambda a, b: engine.intersect_shapes(a, b, 'a', 'b'), .5),
+            ('fuse', lambda a, b: engine.fuse_shapes(a, b, 'a', 'b'), .5),
+            ('section', lambda a, b: engine.intersect_shapes(a, b, 'a', 'b'), 2),
         )
         for name, operation, shift in operations:
             with self.subTest(operation=name):

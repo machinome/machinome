@@ -5,8 +5,9 @@
 import hashlib
 import numpy as np
 
-from machinome.exact import (cached_shape, deflections, fuse_shapes,
-                              placed_shape, write_brep, write_stl)
+from machinome.exact_artifacts import deflections, write_brep, write_stl
+from machinome.exact_cache import cached_placement, cached_shape
+from machinome.exact_engine import require_exact_engine
 from machinome.mesh_engine import require_mesh_engine
 from .base import (_atomic_write_bytes, _compose_solid_matrix,
                    cached_base_mesh)
@@ -77,17 +78,26 @@ class FusionNode(InternalNode):
                     "fuse solids first, then assemble them")
 
     def shape(self):
+        """The fused exact solid, in this fusion's own frame.
+
+        A current BREP is loaded through the shape memo. Otherwise the
+        exact engine is resolved -- the one point a fusion needs it -- and
+        each child's shape is placed in this frame and fused in turn.
+        """
         if not self.exact:
             return super().shape()
         if self._up_to_date(self.brep_file):
             return cached_shape(self.brep_file)
+        engine = require_exact_engine(f'exact fusion {self.name}',
+                                      'fusing its exact children')
         placed = [
-            placed_shape(child.shape(), _compose_solid_matrix(child))
+            cached_placement(child.shape(), _compose_solid_matrix(child))
             for child in self.children
         ]
         result = placed[0]
         for child, child_shape in zip(self.children[1:], placed[1:]):
-            result = fuse_shapes(result, child_shape, self.name, child.name)
+            result = engine.fuse_shapes(result, child_shape, self.name,
+                                        child.name)
         return result
 
     def generate_stl(self):
@@ -96,6 +106,8 @@ class FusionNode(InternalNode):
         if (self._up_to_date(self.stl_file)
                 and self._up_to_date(self.brep_file)):
             return
+        require_exact_engine(f'exact fusion {self.name}',
+                             'writing its fused exact artifacts')
         shape = self.shape()
         digest = self.source_digest
         fingerprint = self.source_fingerprint

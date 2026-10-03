@@ -21,6 +21,7 @@ import os
 import time
 from unittest.mock import patch
 
+import cadquery as cq
 import molejo
 import molejo.brep
 import numpy as np
@@ -28,7 +29,7 @@ import trimesh
 from solid2 import cube
 
 from machinome.core.builder import Builder
-from machinome.exact import solid_count, solid_volume
+from machinome.occt.engine import solid_count, solid_volume
 from machinome.node import MolejoNode
 from machinome.node.base import binding_hash
 from machinome.node.flexible import FlexibleNode
@@ -196,7 +197,7 @@ class MolejoExactTest(BaseNodeTest):
         shape = node.spring.shape()
 
         self.assertEqual(solid_count(shape), 1)
-        self.assertTrue(shape.isValid())
+        self.assertTrue(cq.Shape.cast(shape).isValid())
         self.assertGreater(solid_volume(shape), 0.0)
 
     def test_the_shape_is_molejos_brep_evaluation_of_the_same_spec(self):

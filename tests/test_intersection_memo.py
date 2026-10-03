@@ -48,7 +48,10 @@ import numpy as np
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.exact import _placement_cache, cached_shape, write_brep
+from machinome import exact_cache
+from machinome.exact_artifacts import write_brep
+from machinome.exact_cache import _placement_cache, cached_shape
+from machinome.occt import engine as occt_engine
 from machinome.node.base import AbstractBaseNode, _compose_world_matrix
 from machinome.node.operations import Rotation, Translation
 
@@ -144,7 +147,8 @@ class MemoTestCase(TestCase):
         """An exact node backed by a written BREP, so `shape_identity`
         has something stable to key the exact path's memo on."""
         path = os.path.join(self.tmpdir.name, f'{name}.brep')
-        write_brep(cq.Workplane('XY').box(*size).val(), path, 1 * 10 ** 9)
+        write_brep(cq.Workplane('XY').box(*size).val().wrapped, path,
+                   1 * 10 ** 9)
         return ExactFakeNode(name, path)
 
     def _carried_pair(self, first, second):
@@ -407,8 +411,8 @@ class ExactKernelQuantisation(MemoTestCase):
         parent = self._carried_pair(first, second)
         before = self._relative_matrix(first, second)
 
-        with patch.object(test_module, 'intersect_shapes',
-                          wraps=test_module.intersect_shapes) as intersect:
+        with patch.object(occt_engine, 'intersect_shapes',
+                          wraps=occt_engine.intersect_shapes) as intersect:
             test_module._intersection_stats(first, second)
             parent.operations.append(
                 Rotation(37.123456, [0.3, 0.7, 0.1], None))
@@ -494,7 +498,7 @@ class PlacedGeometryIsNotQuantised(MemoTestCase):
             [test_module.DEFAULT_PLACEMENT_QUANTUM / 4, 0, 0], second))
         test_module._intersection_stats(first, second)
 
-        identity = test_module.shape_identity(second.shape())
+        identity = exact_cache.shape_identity(second.shape())
         matrices = [key[1] for key in _placement_cache if key[0] == identity]
         self.assertEqual(len(matrices), 2,
                          'two comparisons at different exact placements '

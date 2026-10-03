@@ -2,8 +2,9 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.exact import (cached_shape, deflections, shape_from_rendered,
-                              write_brep, write_stl)
+from machinome.exact_artifacts import deflections, write_brep, write_stl
+from machinome.exact_cache import cached_shape
+from machinome.exact_engine import require_exact_engine
 from machinome.node.leaf import LeafNode
 
 
@@ -11,11 +12,13 @@ class ExactLeafNode(LeafNode):
     """Base for the leaf adapters whose backend is a B-rep kernel.
 
     Holds the exact-adapter contract that `exact-geometry` specifies and
-    ADR-047 explains: because every exact backend converts its render result
-    to one shared OCCT shape at the adapter boundary, everything after that
-    conversion is one implementation rather than one per backend. A subclass
-    supplies what genuinely differs -- its `namespace`, and whatever
-    validation its own API needs.
+    ADR-047 and ADR-160 explain: because every exact backend converts its
+    render result to the exact engine's one currency at the adapter
+    boundary, everything after that conversion is one implementation rather
+    than one per backend. A subclass supplies what genuinely differs -- its
+    `namespace`, whatever validation its own API needs, and, when its
+    render result is not something the engine admits as it is, the
+    conversion (`shape_from_rendered`).
 
     This is a framework-internal base, not a declared extension point: it
     lives here so that a correction to the contract lands once, not so that a
@@ -25,9 +28,11 @@ class ExactLeafNode(LeafNode):
     it imposes none on a subclass.
 
     Kept out of leaf.py on purpose. That module imports nothing heavier than
-    base, and putting this here would make every adapter that imports
-    LeafNode -- Solid2Node included -- pull in exact.py and through it
-    cadquery, trimesh and OCP.
+    base. This one imports the core's exact modules -- the memos over shape
+    handles and artifact publication -- but no engine and no kernel: the
+    exact engine is resolved through `machinome.exact_engine` only when a
+    shape is converted, read or written, so a node whose artifacts are
+    current never resolves it to be built.
     """
 
     #: The maximum distance, in millimetres, between this node's STL
@@ -36,7 +41,8 @@ class ExactLeafNode(LeafNode):
     #: `SheetLeafNode.thickness`: an edit lands in this node's own class
     #: body, which the source-set path already tracks (ADR-071), so it
     #: rebuilds this node's artifacts and nothing else. It is read and
-    #: validated at export time, not here -- see `exact.deflections` --
+    #: validated at export time, not here -- see
+    #: `exact_artifacts.deflections` --
     #: and never enters uniq_id (ADR-026/063): two tessellations of one
     #: solid are one node's artifact at two times, not two nodes.
     linear_deflection = 0.1
@@ -58,7 +64,21 @@ class ExactLeafNode(LeafNode):
         # _ArtifactImport. A stale BREP needs fresh native geometry.
         rendered = self.render()
         self.validate(rendered)
-        return shape_from_rendered(rendered)
+        return self.shape_from_rendered(rendered)
+
+    def shape_from_rendered(self, rendered):
+        """The engine's currency for one validated render result.
+
+        A rewrap of the kernel object the result holds, never a
+        translation. The default admits what the exact engine admits as it
+        is -- its currency, or an object carrying it as `.wrapped` -- so a
+        leaf rendering the kernel's own shape needs no override; an adapter
+        whose backend returns something else (a CadQuery `Workplane`, a
+        build123d builder) overrides this.
+        """
+        return require_exact_engine(
+            f'exact leaf {self.name}',
+            'its render result becomes exact geometry').as_shape(rendered)
 
     def materialize(self, rendered):
         """Export native BREP and STL artifacts.
@@ -69,28 +89,38 @@ class ExactLeafNode(LeafNode):
         optimization still reaches here, so the guard belongs on the adapter
         and not only on the assemble() shortcut.
 
+        The render result is converted only once an artifact is known to
+        be stale, inside the branch that writes it. A leaf declaring
+        `optimize = False` is prepared on every build, current or not, and
+        converting first would resolve the exact engine for nothing.
+
         The BREP is written before the STL, and not merely for symmetry
-        with FusionNode.generate_stl(): `Shape.exportStl` calls
-        `BRepMesh_IncrementalMesh`, which stores its triangulation ON the
-        shape, and `Shape.exportBrep` serialises whatever triangulation the
-        shape is carrying alongside its topology. Export the STL first and
-        two builds of the same solid at different declared precision write
-        BYTE-DIFFERENT `.brep` files, even though the topology --
-        everything `shape()` and `.brep` promise -- never changed. Writing
-        the BREP from the not-yet-meshed shape is what keeps it, and
-        `shape()`, independent of whatever precision is declared.
+        with FusionNode.generate_stl(): the engine's STL writer meshes the
+        shape, which stores its triangulation ON the shape, and its BREP
+        writer serialises whatever triangulation the shape is carrying
+        alongside its topology. Export the STL first and two builds of the
+        same solid at different declared precision write BYTE-DIFFERENT
+        `.brep` files, even though the topology -- everything `shape()`
+        and `.brep` promise -- never changed. Writing the BREP from the
+        not-yet-meshed shape is what keeps it, and `shape()`, independent
+        of whatever precision is declared.
         """
-        shape = shape_from_rendered(rendered)
+        brep_current = self._up_to_date(self.brep_file)
+        stl_current = self._up_to_date(self.stl_file)
+        if brep_current and stl_current:
+            return
+        shape = self.shape_from_rendered(rendered)
         digest = self.source_digest
         fingerprint = self.source_fingerprint
-        if not self._up_to_date(self.brep_file):
+        if not brep_current:
             write_brep(shape, self.brep_file, self.mtime_ns, digest,
                        fingerprint)
-        if not self._up_to_date(self.stl_file):
+        if not stl_current:
             linear_deflection, angular_deflection = deflections(self)
             write_stl(shape, self.stl_file, self.mtime_ns,
                       linear_deflection, angular_deflection, digest,
                       fingerprint)
+
     def as_scad(self, rendered):
         """Present the canonical native artifact to SCAD."""
         if not self._up_to_date(self.stl_file):

@@ -3,8 +3,27 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import sys
+from machinome.exact_engine import require_exact_engine
 from machinome.node.declarative import NodeMeta
 from machinome.node.exact_leaf import ExactLeafNode
+
+
+def workplane_shape(rendered, engine):
+    """The exact engine's currency for a CadQuery render result.
+
+    A `Workplane` is a stack of values, not a shape: its values are taken,
+    one becomes the currency as it is and several become one compound. A
+    render that is already a shape -- a CadQuery `Shape`, or the kernel's
+    own -- is admitted by the engine directly. Recognised by its `vals`
+    method rather than imported, so the adapter module does not load
+    CadQuery.
+    """
+    shapes = list(rendered.vals()) if hasattr(rendered, 'vals') else [rendered]
+    if not shapes:
+        raise ValueError('CadQuery render produced no shape')
+    if len(shapes) == 1:
+        return engine.as_shape(shapes[0])
+    return engine.compound([engine.as_shape(shape) for shape in shapes])
 
 
 class CheckCQEditor(NodeMeta):
@@ -32,7 +51,12 @@ class CadQueryNode(ExactLeafNode, metaclass=CheckCQEditor):
     Represents a 3D object created using the CadQuery tool.
 
     The exact-adapter contract -- exact, shape(), as_scad() -- is
-    ExactLeafNode's; CadQuery adds only its namespace and the CQ-editor
-    metaclass.
+    ExactLeafNode's; CadQuery adds its namespace, the CQ-editor metaclass,
+    and the conversion of a `Workplane` to the engine's currency.
     """
     namespace = 'cadquery.cq'
+
+    def shape_from_rendered(self, rendered):
+        return workplane_shape(rendered, require_exact_engine(
+            f'exact leaf {self.name}',
+            'its render result becomes exact geometry'))

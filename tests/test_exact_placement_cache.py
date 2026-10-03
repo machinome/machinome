@@ -13,7 +13,9 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-import machinome.exact as exact
+import machinome.exact_artifacts as exact_artifacts
+import machinome.exact_cache as exact
+import machinome.occt.engine as engine
 from machinome.manager import test as manager_test
 import machinome.test as test_module
 
@@ -30,8 +32,9 @@ class ExactPlacementCacheTest(TestCase):
 
     def shape(self, name='shape', size=2):
         path = os.path.join(self.directory.name, f'{name}.brep')
-        exact.write_brep(cq.Workplane('XY').box(size, size, size).val(),
-                         path, 1 * 10 ** 9)
+        exact_artifacts.write_brep(
+            cq.Workplane('XY').box(size, size, size).val().wrapped,
+            path, 1 * 10 ** 9)
         return path, exact.cached_shape(path)
 
     @staticmethod
@@ -47,7 +50,7 @@ class ExactPlacementCacheTest(TestCase):
         # before WP8 the injected limit was ignored and ten entries remained.
         with patch.object(exact, '_PLACEMENT_CACHE_LIMIT', 3, create=True):
             for offset in range(10):
-                exact.placed_shape(shape, self.matrix(offset))
+                exact.cached_placement(shape, self.matrix(offset))
                 self.assertLessEqual(len(exact._placement_cache), 3)
 
         self.assertEqual(len(exact._placement_cache), 3)
@@ -58,12 +61,12 @@ class ExactPlacementCacheTest(TestCase):
                                 for offset in (1, 2, 3))
 
         with patch.object(exact, '_PLACEMENT_CACHE_LIMIT', 2, create=True), \
-                patch.object(exact, '_place', wraps=exact._place) as place:
-            exact.placed_shape(shape, first)
-            exact.placed_shape(shape, second)
-            exact.placed_shape(shape, first)
-            exact.placed_shape(shape, third)
-            exact.placed_shape(shape, second)
+                patch.object(engine, 'placed_shape', wraps=engine.placed_shape) as place:
+            exact.cached_placement(shape, first)
+            exact.cached_placement(shape, second)
+            exact.cached_placement(shape, first)
+            exact.cached_placement(shape, third)
+            exact.cached_placement(shape, second)
 
         self.assertEqual(place.call_count, 4)
         self.assertEqual(len(exact._placement_cache), 2)
@@ -74,9 +77,9 @@ class ExactPlacementCacheTest(TestCase):
         negative = self.matrix()
         negative[0, 1] = -0.0
 
-        with patch.object(exact, '_place', wraps=exact._place) as place:
-            exact.placed_shape(shape, positive)
-            exact.placed_shape(shape, negative)
+        with patch.object(engine, 'placed_shape', wraps=engine.placed_shape) as place:
+            exact.cached_placement(shape, positive)
+            exact.cached_placement(shape, negative)
 
         self.assertEqual(place.call_count, 2)
         self.assertEqual(len(exact._placement_cache), 2)
@@ -84,20 +87,20 @@ class ExactPlacementCacheTest(TestCase):
     def test_an_unstable_shape_is_never_retained(self):
         shape = cq.Workplane('XY').box(2, 2, 2).val()
 
-        with patch.object(exact, '_place', wraps=exact._place) as place:
-            exact.placed_shape(shape, self.matrix())
-            exact.placed_shape(shape, self.matrix())
+        with patch.object(engine, 'placed_shape', wraps=engine.placed_shape) as place:
+            exact.cached_placement(shape, self.matrix())
+            exact.cached_placement(shape, self.matrix())
 
         self.assertEqual(place.call_count, 2)
         self.assertEqual(len(exact._placement_cache), 0)
 
     def test_rebuild_eagerly_evicts_old_placements_and_bounds(self):
         path, shape = self.shape('rebuilt', size=1)
-        exact.placed_shape(shape, self.matrix(1))
+        exact.cached_placement(shape, self.matrix(1))
         exact.cached_bounding_box(shape)
 
-        exact.write_brep(cq.Workplane('XY').box(2, 2, 2).val(), path,
-                         2 * 10 ** 9)
+        exact_artifacts.write_brep(cq.Workplane('XY').box(2, 2, 2).val().wrapped,
+                                   path, 2 * 10 ** 9)
         rebuilt = exact.cached_shape(path)
 
         self.assertEqual(
@@ -105,22 +108,23 @@ class ExactPlacementCacheTest(TestCase):
             set())
         self.assertEqual(
             [key for key in exact._bounds_cache if key[0] == path], [])
-        self.assertAlmostEqual(exact.placed_shape(rebuilt, self.matrix(1))
-                               .Volume(), 8.0)
+        self.assertAlmostEqual(cq.Shape.cast(
+            exact.cached_placement(rebuilt, self.matrix(1))).Volume(), 8.0)
 
     def test_an_evicted_shape_held_by_a_caller_is_recomputed(self):
         _, shape = self.shape()
         first, second = self.matrix(1), self.matrix(2)
 
         with patch.object(exact, '_PLACEMENT_CACHE_LIMIT', 1, create=True), \
-                patch.object(exact, '_place', wraps=exact._place) as place:
-            retained_by_caller = exact.placed_shape(shape, first)
-            exact.placed_shape(shape, second)
-            recomputed = exact.placed_shape(shape, first)
+                patch.object(engine, 'placed_shape', wraps=engine.placed_shape) as place:
+            retained_by_caller = exact.cached_placement(shape, first)
+            exact.cached_placement(shape, second)
+            recomputed = exact.cached_placement(shape, first)
 
         self.assertIsNot(retained_by_caller, recomputed)
         self.assertEqual(place.call_count, 3)
-        self.assertAlmostEqual(recomputed.Volume(), retained_by_caller.Volume())
+        self.assertAlmostEqual(cq.Shape.cast(recomputed).Volume(),
+                               cq.Shape.cast(retained_by_caller).Volume())
 
     def test_cached_evicted_and_uncached_occt_placements_keep_boolean_verdicts(self):
         _, cached_shape = self.shape('cached')
@@ -128,16 +132,16 @@ class ExactPlacementCacheTest(TestCase):
         other = cq.Workplane('XY').box(2, 2, 2).val()
         matrix = self.matrix(0.5)
 
-        cached = exact.placed_shape(cached_shape, matrix)
-        cached_again = exact.placed_shape(cached_shape, matrix)
-        uncached = exact.placed_shape(raw_shape, matrix)
+        cached = exact.cached_placement(cached_shape, matrix)
+        cached_again = exact.cached_placement(cached_shape, matrix)
+        uncached = exact.cached_placement(raw_shape, matrix)
         with patch.object(exact, '_PLACEMENT_CACHE_LIMIT', 1, create=True):
-            exact.placed_shape(cached_shape, self.matrix(4))
-            recomputed = exact.placed_shape(cached_shape, matrix)
+            exact.cached_placement(cached_shape, self.matrix(4))
+            recomputed = exact.cached_placement(cached_shape, matrix)
 
         def verdict(shape):
-            common = exact.intersect_shapes(shape, other, 'left', 'right')
-            return exact.solid_count(common), exact.solid_volume(common)
+            common = engine.intersect_shapes(shape, other, 'left', 'right')
+            return engine.solid_count(common), engine.solid_volume(common)
 
         self.assertIs(cached, cached_again)
         self.assertIsNot(cached, recomputed)
@@ -149,16 +153,16 @@ class ExactPlacementCacheTest(TestCase):
         matrices = [self.matrix(offset) for offset in (1, 2, 3)]
 
         with patch.object(exact, '_PLACEMENT_CACHE_LIMIT', 3, create=True), \
-                patch.object(exact, '_place', wraps=exact._place) as place:
+                patch.object(engine, 'placed_shape', wraps=engine.placed_shape) as place:
             for _ in range(4):
                 for matrix in matrices:
-                    exact.placed_shape(shape, matrix)
+                    exact.cached_placement(shape, matrix)
 
         self.assertEqual(place.call_count, 3)
 
     def test_direct_isolation_reset_clears_placements(self):
         _, shape = self.shape()
-        exact.placed_shape(shape, self.matrix())
+        exact.cached_placement(shape, self.matrix())
 
         exact._reset_placement_cache()
 
@@ -175,7 +179,7 @@ class ManagedPlacementCacheResetTest(TestCase):
                                     failfast=False, set=None, all=False,
                                     path=None)
 
-        with patch('machinome.exact._reset_placement_cache') as reset, \
+        with patch('machinome.exact_cache._reset_placement_cache') as reset, \
                 patch('machinome.manager.test.select_model',
                       side_effect=SystemExit):
             with self.assertRaises(SystemExit):

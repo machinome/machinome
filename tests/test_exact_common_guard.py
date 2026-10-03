@@ -12,8 +12,9 @@ import cadquery as cq
 import numpy as np
 from OCP.TopAbs import TopAbs_UNKNOWN
 
-from machinome.exact import (ExactCommonInconsistency,
-                             ExactCommonVerificationError, intersect_shapes)
+from machinome.exact_engine import (ExactCommonInconsistency,
+                                    ExactCommonVerificationError)
+from machinome.occt.engine import intersect_shapes
 from machinome.test import _exact_verdict
 
 
@@ -22,33 +23,33 @@ def box(x=0, y=0, z=0):
 
 
 def empty_common():
-    return cq.Compound.makeCompound([])
+    return cq.Compound.makeCompound([]).wrapped
 
 
 class ExactCommonGuardTest(TestCase):
     def test_direct_shape_helper_refuses_false_empty_with_strict_interior(self):
         first, second = box(), box(.5, .5, .5)
-        with patch('machinome.exact._boolean', return_value=empty_common()):
+        with patch('machinome.occt.engine._boolean', return_value=empty_common()):
             with self.assertRaisesRegex(ExactCommonInconsistency,
                                         'first.*second'):
                 intersect_shapes(first, second, 'first', 'second')
 
     def test_managed_exact_verdict_does_not_turn_false_empty_green(self):
         first, second = box(), box(.5, .5, .5)
-        with patch('machinome.exact._boolean', return_value=empty_common()):
+        with patch('machinome.occt.engine._boolean', return_value=empty_common()):
             with self.assertRaisesRegex(ExactCommonInconsistency,
                                         'first.*second'):
-                _exact_verdict(first, np.eye(4), second, np.eye(4),
-                               'first', 'second')
+                _exact_verdict(first.wrapped, np.eye(4), second.wrapped,
+                               np.eye(4), 'first', 'second')
 
     def test_disjoint_and_boundary_only_pairs_keep_empty_verdict(self):
         first = box()
         for second in (box(2), box(1), box(1, 1)):
             with self.subTest(other=(second.Center().toTuple())):
-                with patch('machinome.exact._boolean',
+                with patch('machinome.occt.engine._boolean',
                            return_value=empty_common()):
                     result = intersect_shapes(first, second, 'first', 'second')
-                self.assertEqual(len(result.Solids()), 0)
+                self.assertEqual(len(cq.Shape.cast(result).Solids()), 0)
 
     def test_nonempty_overlap_and_containment_keep_native_volume(self):
         first = box()
@@ -56,7 +57,8 @@ class ExactCommonGuardTest(TestCase):
                                                 cq.Vector(.25, .25, .25))):
             with self.subTest(other=second.Center().toTuple()):
                 expected = first.intersect(second)
-                result = intersect_shapes(first, second, 'first', 'second')
+                result = cq.Shape.cast(
+                    intersect_shapes(first, second, 'first', 'second'))
                 self.assertEqual(len(result.Solids()), len(expected.Solids()))
                 self.assertAlmostEqual(result.Volume(), expected.Volume())
 
@@ -65,22 +67,23 @@ class ExactCommonGuardTest(TestCase):
         for second in (box(1), box(1, 1)):
             with self.subTest(other=second.Center().toTuple()):
                 expected = first.intersect(second)
-                result = intersect_shapes(first, second, 'first', 'second')
+                result = cq.Shape.cast(
+                    intersect_shapes(first, second, 'first', 'second'))
                 self.assertEqual(len(result.Solids()), len(expected.Solids()))
                 self.assertEqual(sum(solid.Volume() for solid in result.Solids()),
                                  sum(solid.Volume() for solid in expected.Solids()))
 
     def test_failed_independent_check_refuses_empty_as_clearance(self):
-        with patch('machinome.exact._boolean', return_value=empty_common()), \
-             patch('machinome.exact.BRepAlgoAPI_Section',
+        with patch('machinome.occt.engine._boolean', return_value=empty_common()), \
+             patch('machinome.occt.engine.BRepAlgoAPI_Section',
                    side_effect=RuntimeError('section failed')):
             with self.assertRaisesRegex(ExactCommonVerificationError,
                                         'first.*second.*section failed'):
                 intersect_shapes(box(), box(2), 'first', 'second')
 
     def test_unknown_classifier_state_refuses_empty_as_clearance(self):
-        with patch('machinome.exact._boolean', return_value=empty_common()), \
-             patch('machinome.exact.BRepClass3d_SolidClassifier') as classify:
+        with patch('machinome.occt.engine._boolean', return_value=empty_common()), \
+             patch('machinome.occt.engine.BRepClass3d_SolidClassifier') as classify:
             classify.return_value.Rejected.return_value = False
             classify.return_value.State.return_value = TopAbs_UNKNOWN
             with self.assertRaisesRegex(ExactCommonVerificationError,

@@ -26,6 +26,13 @@ deny = [
   "machinome.core.pieces",
   "machinome.source_generation", "machinome.viewers", "machinome.sphinx",
   "machinome.currency", "machinome._artifact",
+  # The exact layer's internals: the memos load a BREP from a caller-chosen
+  # path, and artifact publication writes through `currency.publish`.
+  "machinome.exact_cache", "machinome.exact_artifacts",
+  # The exact engine's file operations, which read or write a caller-chosen
+  # path; its other operations are contract.
+  "machinome.occt.engine.read_brep", "machinome.occt.engine.write_brep",
+  "machinome.occt.engine.write_stl",
 ]
 
 [kernels]                   # allowed, minus the denylists below

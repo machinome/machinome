@@ -48,7 +48,9 @@ import machinome.test as test_module
 from machinome import _verdict_store as store
 from machinome._artifact import VERDICT_STORE_DIRECTORY, observe_artifact
 from machinome.core.builder import unanchor_build_dir
-from machinome.exact import ExactCommonInconsistency, write_brep
+from machinome.exact_artifacts import write_brep
+from machinome.exact_engine import ExactCommonInconsistency
+from machinome.occt import engine as occt_engine
 from machinome.node import base as base_module
 from machinome.node.operations import Translation
 
@@ -157,8 +159,8 @@ class StoreTestCase(TestCase):
 
     def brep(self, name, size=(1, 1, 1), offset=(0, 0, 0)):
         path = self.artifact_path(name, 'brep')
-        write_brep(cq.Workplane('XY').box(*size).translate(offset).val(),
-                   path, 1 * 10 ** 9)
+        write_brep(cq.Workplane('XY').box(*size).translate(offset).val()
+                   .wrapped, path, 1 * 10 ** 9)
         return path
 
     def faceted(self, name, path, translation=(0, 0, 0)):
@@ -291,7 +293,7 @@ class ServedAfterAFreshProcess(StoreTestCase):
 
         self.fresh_process()
         with self.counted() as computed, \
-                patch.object(test_module, 'intersect_shapes',
+                patch.object(occt_engine, 'intersect_shapes',
                              side_effect=AssertionError('boolean ran')):
             served = test_module._intersection_stats(
                 *self.exact_pair(first, second, [0.5, 0, 0]))
@@ -378,7 +380,7 @@ class IdentifiedByContent(StoreTestCase):
 
         replacement = os.path.join(self.scratch, 'moved.brep')
         write_brep(cq.Workplane('XY').box(1, 1, 1).translate((5, 0, 0))
-                   .val(), replacement, 1 * 10 ** 9)
+                   .val().wrapped, replacement, 1 * 10 ** 9)
         with open(replacement, 'rb') as handle:
             self.rewrite_under_preserved_timestamp(
                 second, handle.read(), same_size=False)
@@ -583,7 +585,7 @@ class ExactShapeWithoutIdentity(ExactFakeNode):
     """A shape composed for one comparison: no `shape_identity`."""
 
     def shape(self):
-        return cq.Workplane('XY').box(1, 1, 1).val()
+        return cq.Workplane('XY').box(1, 1, 1).val().wrapped
 
 
 class NothingKeptForTheUncacheable(StoreTestCase):
@@ -627,7 +629,7 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         for error in (RuntimeError('OCCT failed'),
                       ExactCommonInconsistency('false-empty common')):
             with self.subTest(error=type(error).__name__):
-                with patch.object(test_module, 'intersect_shapes',
+                with patch.object(occt_engine, 'intersect_shapes',
                                   side_effect=error):
                     with self.assertRaises(type(error)):
                         test_module._intersection_stats(
@@ -653,8 +655,8 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         # would read now names bytes the compared geometry did not come
         # from.
         replacement = os.path.join(self.scratch, 'other.brep')
-        write_brep(cq.Workplane('XY').box(2, 2, 2).val(), replacement,
-                   1 * 10 ** 9)
+        write_brep(cq.Workplane('XY').box(2, 2, 2).val().wrapped,
+                   replacement, 1 * 10 ** 9)
         before = os.stat(second)
         os.replace(replacement, second)
         os.utime(second, ns=(before.st_atime_ns, before.st_mtime_ns))

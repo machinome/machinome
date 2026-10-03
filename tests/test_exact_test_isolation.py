@@ -11,16 +11,16 @@ from unittest import TestCase
 import cadquery as cq
 import numpy as np
 
-from machinome.exact import (
+from machinome.exact_artifacts import write_brep
+from machinome.exact_cache import (
     _bounds_cache,
     _placement_cache,
     _shape_cache,
     _shape_keys,
     cached_bounding_box,
+    cached_placement,
     cached_shape,
-    placed_shape,
     shape_identity,
-    write_brep,
 )
 from tests.exact_test_support import clear_exact_shape_caches
 
@@ -41,10 +41,11 @@ class ExactCacheFixtureIsolationTest(TestCase):
         not retain a stale file identity through an id-keyed side registry.
         """
         path = os.path.join(self.directory.name, 'fixture-shape.brep')
-        write_brep(cq.Workplane('XY').box(2, 2, 2).val(), path, 1 * 10 ** 9)
+        write_brep(cq.Workplane('XY').box(2, 2, 2).val().wrapped, path,
+                   1 * 10 ** 9)
         shape = cached_shape(path)
         cached_bounding_box(shape)
-        placed_shape(shape, np.eye(4))
+        cached_placement(shape, np.eye(4))
 
         clear_exact_shape_caches()
 
@@ -52,7 +53,7 @@ class ExactCacheFixtureIsolationTest(TestCase):
         self.assertEqual(_bounds_cache, {})
         self.assertEqual(_placement_cache, {})
         self.assertIsNone(shape_identity(shape))
-        first = placed_shape(shape, np.eye(4))
-        second = placed_shape(shape, np.eye(4))
+        first = cached_placement(shape, np.eye(4))
+        second = cached_placement(shape, np.eye(4))
         self.assertIsNot(first, second)
         self.assertEqual(_placement_cache, {})

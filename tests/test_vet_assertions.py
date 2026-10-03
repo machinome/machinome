@@ -80,6 +80,24 @@ class FrameworkInternalTest(TestCase):
         })
 
 
+class ExactEngineInternalTest(TestCase):
+    """The exact internals and the engine's file operations are framework
+    internals; the engine's other operations and the seam's error types are
+    contract (OpenSpec change `exact-engine`, design.md Decision 14)."""
+
+    def test_internals_are_found_and_the_contract_passes(self):
+        fixture = 'exact_engine_internals'
+
+        self.assertEqual(findings(run_vet(fixture)), {
+            at(fixture, 'from machinome.occt.engine import write_brep',
+               'framework-internal', 'machinome.occt.engine.write_brep'),
+            at(fixture, 'import machinome.exact_artifacts',
+               'framework-internal', 'machinome.exact_artifacts'),
+            at(fixture, 'LOAD = machinome.exact_cache.cached_shape',
+               'framework-internal', 'machinome.exact_cache'),
+        })
+
+
 class FileWriteTest(TestCase):
     """(5.3)"""
 

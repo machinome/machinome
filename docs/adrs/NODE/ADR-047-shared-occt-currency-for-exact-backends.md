@@ -1,6 +1,8 @@
 # ADR-047: One shared OCCT currency for every exact backend
 
-**Status:** Accepted; amended 2026-08-22 by `exact-leaf-node-base`
+**Status:** Accepted; amended 2026-08-22 by `exact-leaf-node-base`; chosen option **Superseded** 2026-10-03 by ADR-160
+
+**Superseded by:** [ADR-160: The OCCT engine's currency is the kernel's own shape](../OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — the chosen option, CadQuery's `Shape` as the one currency, is replaced by this ADR's option 2, the bare `TopoDS_Shape`, now that cadquery has left the exact path (ADR-161). The conversion at the adapter boundary, as a rewrap, stands.
 
 **Date:** 2026-08-22
 

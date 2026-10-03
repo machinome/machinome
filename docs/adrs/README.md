@@ -45,7 +45,7 @@ that way.
 - [ADR-044](NODE/ADR-044-derived-exact-geometry-capability.md) — Derived exact-geometry capability — **Accepted**
 - [ADR-045](NODE/ADR-045-exact-fusion-composition.md) — Exact fusion composition — **Accepted**
 - [ADR-046](NODE/ADR-046-conditional-openscad-dependency.md) — Conditional OpenSCAD dependency — **Accepted**
-- [ADR-047](NODE/ADR-047-shared-occt-currency-for-exact-backends.md) — One shared OCCT currency for every exact backend — **Accepted**, amended 2026-08-22
+- [ADR-047](NODE/ADR-047-shared-occt-currency-for-exact-backends.md) — One shared OCCT currency for every exact backend — **Accepted**, amended 2026-08-22, chosen option **Superseded** by 160
 - [ADR-050](NODE/ADR-050-nanosecond-fidelity-artifact-freshness.md) — Nanosecond-fidelity artifact freshness — **Accepted**
 - [ADR-053](NODE/ADR-053-authored-profile-as-the-sheet-part-source-of-truth.md) — Authored profile as a sheet part's source of truth — **Accepted**
 - [ADR-054](NODE/ADR-054-imported-meshes-admitted-selected-and-corrected-explicitly.md) — An imported mesh is admitted, selected and corrected explicitly — **Accepted**
@@ -123,6 +123,11 @@ that way.
 - [ADR-153](NODE/ADR-153-mate-mechanical-contracts-resolve-the-generated-child-joint.md) — Mate mechanical contracts resolve the generated child joint: Bounds read the declaring assembly, without changing the child's geometric frame; moving mate reads, constraints and explicit controls normalize to one physical endpoint while relations and binding keep the assembly port; canonical aliases and effective inherited references are checked — **Accepted**, amends 147/150, extends 113/117/134
 - [ADR-154](NODE/ADR-154-a-mate-may-reference-an-existing-child-joint.md) — A mate may reference an existing direct-child scalar joint: frames place it at rest, the handle names the same original endpoint in every reference context, and original name/order/scope/binder survive without another port, bank value or wiring; canonical aliases retain written ownership provenance — **Accepted**, amends 147, extends 153
 - [ADR-155](NODE/ADR-155-external-wrapper-identity-includes-defining-source.md) — External-file wrapper identity includes project-relative real defining Python source; ordinary keys, author specializations and currency are unchanged — **Accepted**, extends 026/063
+- [ADR-161](NODE/ADR-161-the-core-holds-no-kernel-code.md) — The core holds no kernel code: the exact engine seam `machinome.exact_engine` resolves the known provider `machinome.occt.engine`, exact shapes are opaque handles, `machinome.exact` is removed and its jobs split into the engine, the memos and publication — **Accepted**, cites 045/046/047/069/070/092/143/156
+- [ADR-162](NODE/ADR-162-a-resolved-provider-declares-the-contract-version-it-implements.md) — A resolved provider declares the contract version it implements, checked by equality at resolve time with a refusal naming both — **Accepted**, cites 068/161
+
+### OCCT — the OCCT exact engine (leaves the core with `machinome/occt/` at the cut)
+- [ADR-160](OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — The OCCT engine's currency is the kernel's own shape: the bare `TopoDS_Shape`, admitted by `as_shape` — **Accepted**, supersedes 047's chosen option, notes 057's recast sentence as historical
 
 ### BUILD — loading, watching, CLI
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**

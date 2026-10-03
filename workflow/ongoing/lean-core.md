@@ -266,6 +266,14 @@ OCCT's is LGPL-2.1 with the Open CASCADE exception, and cadquery-ocp's
 Apache-2.0 covers only the binding). The exact-leaf contract it serves, `ExactLeafNode`, stays in the
 core at `machinome.node.exact_leaf`, resolving the engine lazily.
 
+It also carries the exact operations a project calls directly, the ones
+that used to be `machinome.exact`: `intersect_shapes`, `fuse_shapes`,
+`placed_shape`, `solid_count` and `solid_volume`, at
+`machinome.occt.engine`, the one module that is both the provider the
+core's seam resolves and their address (change `exact-engine`, 3 October
+2026). They are operations, not node types, so the rule that the package
+carries no node type stands.
+
 Why an engine package distinct from the node packages: three node types
 need the engine and no CadQuery (build123d, STEP, FreeCAD), ADR-047
 already named the OCCT shape as the currency, and the pin coupling shows
@@ -360,6 +368,7 @@ modules under `machinome.node` that are not node types, `base`, `frames`,
 | `StepNode`, `StepAssembly`, `import-step` | `machinome.node.step` | `machinome[step]` | machinome-node-step |
 | `MolejoNode` | `machinome.node.molejo` | `machinome[molejo]` | machinome-node-molejo |
 | the exact engine: OCCT currency, booleans, file reading | `machinome.occt` | `machinome[occt]` | machinome-occt |
+| the exact operations a project calls, formerly `machinome.exact`: `intersect_shapes`, `fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume` | `machinome.occt.engine` | `machinome[occt]` | machinome-occt |
 | `ExactLeafNode`, the declared exact-leaf contract | `machinome.node.exact_leaf` | core | machinome |
 | mechanics, movie, later and under their own processes | `machinome.mechanics`, `machinome.movie` | `machinome[mechanics]`, `[movie]` | machinome-mechanics, machinome-movie |
 
@@ -547,6 +556,12 @@ the repositories are cut when item 3 has an engine to ship and item 5 a
 root to leave. Framework main holds 0.7.1 tagged and unpublished;
 merging the campaign at its close does not move the tag, and uploading
 0.7.1 first, if wanted, is a step before the close.
+
+The orchestrator's sequencing put item 3, the engine, first (change
+`exact-engine`, 3 October 2026), and it runs before item 1's leaf-contract
+cycle because that contract names the engine's currency: what `render()`
+may return and what `shape()` returns are the engine's to state. The
+markings' SVG reducer and its refusal by extra wait for the cut.
 
 ## What packaging does not solve
 

@@ -22,7 +22,7 @@ import build123d as b3d
 import cadquery as cq
 import ezdxf
 
-from machinome.exact import solid_count
+from machinome.occt.engine import solid_count
 from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, SheetLeafNode)
 from machinome.openscad import openscad_binary
@@ -210,13 +210,13 @@ class SheetSolidTest(BuildDirTestCase):
         node.assemble()
 
         volume = PLATE_WIDTH * PLATE_HEIGHT * PLATE_THICKNESS
-        self.assertAlmostEqual(node.shape().Volume(), volume, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), volume, places=6)
 
     def test_the_solid_runs_from_the_xy_plane_to_the_thickness(self):
         node = Plate()
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
 
         self.assertAlmostEqual(bounds.zmin, 0.0, places=6)
         self.assertAlmostEqual(bounds.zmax, PLATE_THICKNESS, places=6)
@@ -229,20 +229,20 @@ class SheetSolidTest(BuildDirTestCase):
                 - 3.141592653589793 * HOLE_RADIUS ** 2
                 - SLOT_WIDTH * SLOT_HEIGHT)
 
-        self.assertAlmostEqual(node.shape().Volume(),
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(),
                                area * PLATE_THICKNESS, places=4)
 
     def test_a_face_profile_is_accepted(self):
         node = FaceProfilePlate()
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 200.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 200.0, places=6)
 
     def test_a_sketch_builder_profile_is_accepted(self):
         node = BuilderProfilePlate()
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 200.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 200.0, places=6)
 
     def test_render_is_not_the_extension_point(self):
         """The base owns render(), so a subclass that never writes one still
@@ -285,8 +285,8 @@ class SheetThicknessTest(BuildDirTestCase):
         thick = Panel(6)
         thick.assemble()
 
-        self.assertAlmostEqual(thin.shape().Volume(), 300.0, places=6)
-        self.assertAlmostEqual(thick.shape().Volume(), 600.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(thin.shape()).Volume(), 300.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(thick.shape()).Volume(), 600.0, places=6)
 
 
 class SheetProfileValidationTest(BuildDirTestCase):
@@ -547,13 +547,13 @@ class FramePanelProjectTest(BuildDirTestCase):
     def test_the_panel_is_its_profile_in_the_declared_stock(self):
         expected = self.profile_area() * frame_panel.STOCK_THICKNESS
 
-        self.assertAlmostEqual(self.node.shape().Volume(), expected, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(self.node.shape()).Volume(), expected, places=3)
 
     def test_the_panel_is_one_solid_the_thickness_of_its_stock(self):
         # OCCT pads a bounding box around curved faces, and this panel has
         # bolt holes, so the extent is checked to a manufacturing tolerance
         # rather than to the kernel's last bit.
-        bounds = self.node.shape().BoundingBox()
+        bounds = cq.Shape.cast(self.node.shape()).BoundingBox()
 
         self.assertEqual(solid_count(self.node.shape()), 1)
         self.assertAlmostEqual(bounds.zmin, 0.0, delta=0.01)

@@ -42,7 +42,7 @@ And the document is read at most once per file per process: XCAF's
 transfer is expensive (11.79 s measured on a 35 MB vendor assembly) and
 every node over one file shares the one cached read, evicted when the
 file's mtime changes -- the same cache shape as
-`machinome.exact._shape_cache`.
+`machinome.exact_cache._shape_cache`.
 """
 
 import math
@@ -65,6 +65,8 @@ from OCP.TDocStd import TDocStd_Document
 from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
 
+from machinome.exact_engine import require_exact_engine
+from machinome.node.adapters.cadquery import workplane_shape
 from machinome.node.exact_leaf import ExactLeafNode
 from machinome.node.sources import (require_source_file, source_closure,
                                     _ExternalWrapperIdentity)
@@ -352,7 +354,7 @@ def _read_document(path):
 
 
 #: One document per complete observable source identity, in the shape of
-#: `machinome.exact._shape_cache` (design D6): a key miss for a path
+#: `machinome.exact_cache._shape_cache` (design D6): a key miss for a path
 #: drops every entry for that path before reading, so at most one live
 #: entry exists per file, and the process pays the read once.
 _document_cache = {}
@@ -499,6 +501,14 @@ class StepNode(_ExternalWrapperIdentity, ExactLeafNode):
 
     def render(self):
         return cq.Workplane(obj=self._materialized_shape())
+
+    def shape_from_rendered(self, rendered):
+        """The engine's currency for this node's `Workplane`, exactly as
+        `CadQueryNode` converts one: `adjust` still receives and returns
+        a CadQuery `Shape`, which the conversion unwraps."""
+        return workplane_shape(rendered, require_exact_engine(
+            f'exact leaf {self.name}',
+            'its STEP product becomes exact geometry'))
 
     #: A subclass that declares its own `color` shadows this property
     #: entirely with a plain class attribute (ordinary Python attribute

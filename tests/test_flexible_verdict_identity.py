@@ -32,6 +32,7 @@ from unittest.mock import PropertyMock, patch
 from trimesh.creation import box
 
 import machinome.test as test_module
+from machinome.occt import engine as occt_engine
 from machinome.core.loader import import_module_from_path
 from machinome.node import base as base_module
 
@@ -87,8 +88,8 @@ class ExactPathKeysFlexiblePairs(FlexiblePairTestCase):
     def test_one_binding_runs_one_boolean_and_another_binding_another(self):
         spring = self.spring(4.0)
         plate = self.exact_plate()
-        with patch.object(test_module, 'intersect_shapes',
-                          wraps=test_module.intersect_shapes) as boolean:
+        with patch.object(occt_engine, 'intersect_shapes',
+                          wraps=occt_engine.intersect_shapes) as boolean:
             first = test_module._intersection_stats(spring, plate)
             second = test_module._intersection_stats(spring, plate)
             self.assertEqual(boolean.call_count, 1,

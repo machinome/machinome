@@ -17,7 +17,8 @@ from scipy.sparse import coo_matrix, eye as sparse_eye
 from scipy.sparse import hstack as sparse_hstack
 from unittest import TestCase as BaseTestCase
 
-from machinome import _verdict_store
+from machinome import _verdict_store, exact_cache
+from machinome.exact_engine import require_exact_engine
 from machinome.mesh_engine import require_mesh_engine
 from machinome._artifact import (ArtifactChanged, ArtifactObservation,
                                  artifact_cache_key)
@@ -28,53 +29,24 @@ from machinome.node.flexible import FlexibleNode
 from machinome.node.operations import Rotation, Translation
 
 
-def _deferred_exact(name):
-    """Bind one `machinome.exact` name without importing the kernel.
+_EXACT_NEEDED_BY = 'Comparing exact geometry'
+_EXACT_REASON = ('two exact parts are compared on the boundary-representation '
+                 'kernel')
 
-    Importing `machinome.exact` imports cadquery, which costs about 1.5 s
-    and pulls VTK in behind it. `machinome.core.loader` already refuses to
-    pay that for merely loading a node (see the `cli-startup-cost`
-    capability); this is the same refusal one level in -- discovering or
-    running tests must not pay it either, because a project modelling in
-    solid2 and asserting over meshes never reaches the kernel at all.
 
-    The deferral is a self-replacing callable rather than a module
-    `__getattr__`: the names below are CALLED from this module's own
-    functions, and a global-name lookup inside a function never consults a
-    module's `__getattr__` -- it would raise NameError until something
-    outside happened to read the attribute. A wrapper resolves on first
-    call and rebinds the global, so every later call is the kernel function
-    reached by an ordinary lookup, and the five call sites read exactly as
-    they did.
+def _exact_engine(needed_by=_EXACT_NEEDED_BY):
+    """The exact engine, resolved for the exact path of a comparison.
 
-    The rebinding declines to overwrite a global that is no longer this
-    wrapper, so a caller that patched the name keeps its patch; and because
-    the resolved name is a plain module global, a patch applied after
-    resolution is equally honoured. An import failure surfaces here, at
-    first use, naming what failed.
+    The test framework holds no exact operation of its own: it decides the
+    order in which a pair is culled and compared, and asks the engine for
+    every bound, placement, classification, Boolean and measurement --
+    directly, or through a memo of `machinome.exact_cache`. Both are looked
+    up as attributes where they are defined, at the moment of the call, so
+    a name patched in its defining module is honoured whether or not an
+    exact comparison has yet run, and importing this module imports
+    neither the engine nor its kernel (the `cli-startup-cost` capability).
     """
-
-    def deferred(*arguments, **keywords):
-        from machinome import exact
-        resolved = getattr(exact, name)
-        if globals().get(name) is deferred:
-            globals()[name] = resolved
-        return resolved(*arguments, **keywords)
-
-    deferred.__name__ = name
-    deferred.__qualname__ = name
-    return deferred
-
-
-cached_bounding_box = _deferred_exact('cached_bounding_box')
-cached_face_boxes = _deferred_exact('cached_face_boxes')
-shape_identity = _deferred_exact('shape_identity')
-shape_load_observation = _deferred_exact('shape_load_observation')
-fuse_shapes = _deferred_exact('fuse_shapes')
-intersect_shapes = _deferred_exact('intersect_shapes')
-placed_shape = _deferred_exact('placed_shape')
-solid_count = _deferred_exact('solid_count')
-solid_volume = _deferred_exact('solid_volume')
+    return require_exact_engine(needed_by, _EXACT_REASON)
 
 
 @dataclass(frozen=True)
@@ -848,9 +820,10 @@ def _place_solid(solid, stl_file, local_bounds, matrix, shape,
     return (solid, _DeferredManifold(
                 stl_file, matrix, faceted_identity[1]),
             _world_bounds(local_bounds, matrix),
-            None if shape is None else placed_shape(shape, matrix),
+            None if shape is None
+            else exact_cache.cached_placement(shape, matrix),
             faceted_identity,
-            None if shape is None else shape_identity(shape),
+            None if shape is None else exact_cache.shape_identity(shape),
             matrix,
             local_bounds,
             shape)
@@ -937,9 +910,10 @@ def _dropped_assembly_solids(solids, offset):
 #
 # Disjoint face boxes alone are NOT a verdict -- they prove disjoint
 # BOUNDARIES, and a solid wholly inside another has disjoint boundaries
-# too. The containment guard (`_mutually_outside`) is what tells the two
-# cases apart, and both classification directions are load-bearing: only
-# the CONTAINED shape's own representative points reveal containment.
+# too. The containment guard -- the exact engine's `mutually_outside` --
+# is what tells the two cases apart, and both classification directions
+# are load-bearing: only the CONTAINED shape's own representative points
+# reveal containment.
 #
 # The tier can only be wrong by declining to prove something true -- every
 # step is a containment (a face inside its box, a box inside its
@@ -950,11 +924,13 @@ def _dropped_assembly_solids(solids, offset):
 # by the classifier -- DECLINES: the pair is settled by the boolean
 # exactly as it is without the tier.
 #
-# The OCP names the containment guard needs (`BRepClass3d_SolidClassifier`,
-# `TopAbs_OUT`, `Precision`, `gp_Pnt`) are imported lazily inside
-# `_mutually_outside`, not at module level: a faceted run never reaches
-# this tier at all (a Manifold has no faces), and it must import nothing
-# new (see `_deferred_exact`'s own reason for the same discipline).
+# This module computes no box and classifies nothing: the face boxes come
+# from the exact engine's `face_bounds`, through the memo
+# `exact_cache.cached_face_boxes`, and the containment guard is the
+# engine's `mutually_outside`. Only the order, the transform of one
+# shape's boxes into the other's frame and the overlap test are the
+# framework's. A faceted run never reaches this tier at all (a Manifold
+# has no faces), so it never resolves the engine.
 
 # The fixed absolute margin (mm) a transformed face box is enlarged by
 # before it is compared, absorbing the residue of the one inversion and
@@ -1009,72 +985,6 @@ def _transformed_face_boxes(boxes, relative):
     return np.stack([low, high], axis=1)
 
 
-def _representative_points(solids, point):
-    """One ``point`` (a ``gp_Pnt`` constructor) per solid of ``solids``,
-    or ``None`` if any solid carries no vertex at all (a full torus is the
-    realistic case) -- the tier does not invent a representative."""
-    points = []
-    for solid in solids:
-        vertices = solid.Vertices()
-        if not vertices:
-            return None
-        points.append(point(*vertices[0].toTuple()))
-    return points
-
-
-def _classified_out(points, partner_solids, classifier_type, out, tolerance):
-    """``True`` iff every point in ``points`` classifies strictly ``out``
-    of every solid in ``partner_solids``.
-
-    One classifier is loaded per SOLID of the partner -- never one loaded
-    from a compound, since `BRepClass3d_SolidClassifier` is specified for
-    a solid and design.md's proof rests on that -- and `Perform` is called
-    once per representative point against it. A rejected classification,
-    an OCCT exception, or any state other than ``out`` declines the whole
-    guard rather than being treated as a pass.
-    """
-    for partner_solid in partner_solids:
-        try:
-            classifier = classifier_type(partner_solid.wrapped)
-            for point in points:
-                classifier.Perform(point, tolerance)
-                if classifier.Rejected() or classifier.State() != out:
-                    return False
-        except Exception:
-            return False
-    return True
-
-
-def _mutually_outside(placed1, placed2):
-    """The containment guard (design.md section 2, step 3): ``True`` iff
-    no solid of either placed shape lies inside, or on the boundary of,
-    any solid of the other.
-
-    Both directions are required and neither is redundant: a shape wholly
-    inside the other has boundaries that do not meet either, so only the
-    CONTAINED shape's own representative points reveal it. Declines (never
-    a wrong answer) on a shape with no solids on either side -- there is
-    then nothing to load a classifier from -- or a solid with no vertex.
-    """
-    solids1 = placed1.Solids()
-    solids2 = placed2.Solids()
-    if not solids1 or not solids2:
-        return False
-    from OCP.BRepClass3d import BRepClass3d_SolidClassifier
-    from OCP.gp import gp_Pnt
-    from OCP.Precision import Precision
-    from OCP.TopAbs import TopAbs_OUT
-    points1 = _representative_points(solids1, gp_Pnt)
-    points2 = _representative_points(solids2, gp_Pnt)
-    if points1 is None or points2 is None:
-        return False
-    tolerance = Precision.Confusion_s()
-    return (_classified_out(points1, solids2, BRepClass3d_SolidClassifier,
-                            TopAbs_OUT, tolerance)
-            and _classified_out(points2, solids1, BRepClass3d_SolidClassifier,
-                                TopAbs_OUT, tolerance))
-
-
 def _faces_disjoint(shape1, placed1, shape2, placed2, relative):
     """``True`` only when this tier PROVES ``shape1`` and ``shape2`` share
     no material -- never a false claim of emptiness, only a decline when
@@ -1090,14 +1000,15 @@ def _faces_disjoint(shape1, placed1, shape2, placed2, relative):
     boxes prove disjoint boundaries; two closed solids with disjoint
     boundaries are either disjoint or one wholly contains the other; one
     representative point of every solid of each shape, classified against
-    every solid of the other, in BOTH directions, tells the two cases
-    apart. A decline here is always a fall-through to the boolean that
-    runs today -- never a wrong empty.
+    every solid of the other, in BOTH directions -- the engine's
+    ``mutually_outside`` -- tells the two cases apart. A decline here is
+    always a fall-through to the boolean that runs today -- never a wrong
+    empty.
     """
     if not np.all(np.isfinite(relative)):
         return False
-    boxes1 = cached_face_boxes(shape1)
-    boxes2 = cached_face_boxes(shape2)
+    boxes1 = exact_cache.cached_face_boxes(shape1)
+    boxes2 = exact_cache.cached_face_boxes(shape2)
     if boxes1.shape[0] == 0 or boxes2.shape[0] == 0:
         return False
     boxes2 = _transformed_face_boxes(boxes2, relative)
@@ -1110,7 +1021,7 @@ def _faces_disjoint(shape1, placed1, shape2, placed2, relative):
         disjoint = np.any((high1 < low2) | (high2 < low1), axis=-1)
         if not np.all(disjoint):
             return False
-    return _mutually_outside(placed1, placed2)
+    return _exact_engine().mutually_outside(placed1, placed2)
 
 
 def _placed_intersection(first, second, needed_by=_FACETED_NEEDED_BY,
@@ -1128,16 +1039,20 @@ def _placed_intersection(first, second, needed_by=_FACETED_NEEDED_BY,
     pair really is decided by the mesh boolean.
     """
     if first[3] is not None and second[3] is not None:
+        engine = _exact_engine(_EXACT_NEEDED_BY
+                               if needed_by == _FACETED_NEEDED_BY
+                               else needed_by)
 
         def exact():
             relative = np.linalg.inv(first[6]) @ second[6]
             if _faces_disjoint(first[8], first[3], second[8], second[3],
                                relative):
                 return IntersectionStats(True, 0.0, True)
-            result = intersect_shapes(
+            result = engine.intersect_shapes(
                 first[3], second[3], first[0].name, second[0].name)
-            count = solid_count(result)
-            return IntersectionStats(count == 0, solid_volume(result), True)
+            count = engine.solid_count(result)
+            return IntersectionStats(count == 0, engine.solid_volume(result),
+                                     True)
 
         return _settled(
             _memoized(_record_key(first, second, 5, 'exact'), exact))
@@ -1820,7 +1735,8 @@ def _persistent_identity(identity, path):
             return None
         kind, observation = 'stl', identity[1]
     elif path == 'exact':
-        kind, observation = 'brep', shape_load_observation(identity)
+        kind, observation = 'brep', exact_cache.shape_load_observation(
+            identity)
         if observation is None:
             return None
     else:
@@ -1857,29 +1773,27 @@ def _exact_verdict(shape1, matrix1, shape2, matrix2, name1, name2):
     """The exact path's verdict for one pair: the AABB cull, then the
     face-box tier with its containment guard (ADR-092), then the boolean.
 
-    ``placed_shape`` is materialised once for each side and handed to
-    BOTH the tier and, if it declines, the boolean -- so a pair the AABB
-    culls never pays a placement, and a pair the tier decides pays one
-    placement per side rather than two.
+    Each placement is materialised once for each side, through the memo
+    ``exact_cache.cached_placement``, and handed to BOTH the tier and, if it
+    declines, the boolean -- so a pair the AABB culls never pays a
+    placement, and a pair the tier decides pays one placement per side
+    rather than two.
     """
-    bounds1 = cached_bounding_box(shape1)
-    bounds2 = cached_bounding_box(shape2)
-    box1 = _world_bounds(
-        (np.array([bounds1.xmin, bounds1.ymin, bounds1.zmin]),
-         np.array([bounds1.xmax, bounds1.ymax, bounds1.zmax])), matrix1)
-    box2 = _world_bounds(
-        (np.array([bounds2.xmin, bounds2.ymin, bounds2.zmin]),
-         np.array([bounds2.xmax, bounds2.ymax, bounds2.zmax])), matrix2)
+    engine = _exact_engine()
+    low1, high1 = exact_cache.cached_bounding_box(shape1)
+    low2, high2 = exact_cache.cached_bounding_box(shape2)
+    box1 = _world_bounds((np.array(low1), np.array(high1)), matrix1)
+    box2 = _world_bounds((np.array(low2), np.array(high2)), matrix2)
     if _boxes_disjoint(box1, box2):
         return IntersectionStats(True, 0.0, True)
-    placed1 = placed_shape(shape1, matrix1)
-    placed2 = placed_shape(shape2, matrix2)
+    placed1 = exact_cache.cached_placement(shape1, matrix1)
+    placed2 = exact_cache.cached_placement(shape2, matrix2)
     relative = np.linalg.inv(matrix1) @ matrix2
     if _faces_disjoint(shape1, placed1, shape2, placed2, relative):
         return IntersectionStats(True, 0.0, True)
-    result = intersect_shapes(placed1, placed2, name1, name2)
-    count = solid_count(result)
-    return IntersectionStats(count == 0, solid_volume(result), True)
+    result = engine.intersect_shapes(placed1, placed2, name1, name2)
+    count = engine.solid_count(result)
+    return IntersectionStats(count == 0, engine.solid_volume(result), True)
 
 
 def _faceted_verdict(manifold1, bounds1, matrix1,
@@ -1947,6 +1861,7 @@ def _engine_intersection_stats(node1, node2, compose_matrix):
     doubles in tests/test_assertions.py).
     """
     if _routes_exact(node1) and _routes_exact(node2):
+        _exact_engine()
         shape1 = node1.shape()
         shape2 = node2.shape()
         matrix1 = compose_matrix(node1)
@@ -1986,7 +1901,7 @@ def _exact_identity(node, shape):
         if getattr(node.shape, '__func__', None) is not FlexibleNode.shape:
             return None
         return node._exact_state_identity(shape)
-    return shape_identity(shape)
+    return exact_cache.shape_identity(shape)
 
 
 def _mesh_in_frame(node, compose_matrix):
@@ -2283,7 +2198,8 @@ class TestCase(BaseTestCase):
         """
         for solid in _topmost_rigid_nodes(node):
             if _routes_exact(solid):
-                bodies = solid_count(solid.shape())
+                engine = _exact_engine('assertNoDisconnectedSolids')
+                bodies = engine.solid_count(solid.shape())
                 source = 'exact geometry'
             else:
                 bodies = len(cached_base_mesh(solid.stl_file).split(
@@ -2568,12 +2484,13 @@ class TestCase(BaseTestCase):
         _, weld_volume = _intersection_stats(
             node1, node2, compose_matrix=_compose_solid_matrix)
         if _routes_exact(node1) and _routes_exact(node2):
-            shape1 = placed_shape(
+            engine = _exact_engine('assertJoined')
+            shape1 = exact_cache.cached_placement(
                 node1.shape(), _compose_solid_matrix(node1))
-            shape2 = placed_shape(
+            shape2 = exact_cache.cached_placement(
                 node2.shape(), _compose_solid_matrix(node2))
-            union = fuse_shapes(shape1, shape2, node1.name, node2.name)
-            bodies = solid_count(union)
+            union = engine.fuse_shapes(shape1, shape2, node1.name, node2.name)
+            bodies = engine.solid_count(union)
         else:
             union = trimesh.boolean.union([
                 _mesh_in_frame(node1, _compose_solid_matrix),

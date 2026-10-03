@@ -5,7 +5,7 @@
 """Red-first proof for openspec/changes/declared-tessellation-precision.
 
 A node cannot say how finely its solid should be tessellated: every exact
-STL artifact goes through `exact.write_stl`, which fixed
+STL artifact went through `exact.write_stl`, which fixed
 `tolerance=0.1, angularTolerance=0.1` in its own body. This change lets an
 `ExactLeafNode` or a `FusionNode` declare `linear_deflection` (mm) and
 `angular_deflection` (radians) as class attributes that shape its own STL
@@ -32,7 +32,7 @@ import cadquery as cq
 import trimesh
 
 from machinome.node import CadQueryNode, FusionNode
-from machinome.exact import deflections, write_stl
+from machinome.exact_artifacts import deflections, write_stl
 import machinome.test as test_module
 
 from tests.exact_test_support import clear_exact_shape_caches
@@ -241,7 +241,7 @@ class ExactDeclarationTest(TestCase):
 
         self.assertEqual(default_brep, coarse_brep)
         self.assertAlmostEqual(
-            default.shape().Volume(), coarse.shape().Volume(), places=6)
+            cq.Shape.cast(default.shape()).Volume(), cq.Shape.cast(coarse.shape()).Volume(), places=6)
         # Only the STL differs.
         self.assertNotEqual(self._triangles(default.stl_file),
                             self._triangles(coarse.stl_file))
@@ -279,15 +279,18 @@ class DeflectionValidationTest(TestCase):
         box = trimesh.creation.box((2, 2, 2))
 
         class Shape:
-            def exportStl(self, path, tolerance, angularTolerance):
-                self.tolerance = tolerance
-                self.angularTolerance = angularTolerance
-                box.export(path, file_type='stl')
+            pass
+
+        def engine_write_stl(shape, path, tolerance, angular_tolerance):
+            shape.tolerance = tolerance
+            shape.angularTolerance = angular_tolerance
+            box.export(path, file_type='stl')
 
         shape = Shape()
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, 'leaf.stl')
-            write_stl(shape, path, 1 * 10 ** 9, 0.05, 0.5)
+            with patch('machinome.occt.engine.write_stl', engine_write_stl):
+                write_stl(shape, path, 1 * 10 ** 9, 0.05, 0.5)
 
         self.assertEqual(shape.tolerance, 0.05)
         self.assertEqual(shape.angularTolerance, 0.5)

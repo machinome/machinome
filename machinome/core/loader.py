@@ -338,8 +338,8 @@ def load_tests(path, root=None):
     """Return every companion ``TestCase`` defined next to ``path``."""
     # Imported here rather than at module scope because this is its only
     # use site, and this module is on the path of every node-scoped
-    # command: `machinome.test` reaches `machinome.exact` and so
-    # `cadquery`, which a build has no use for. Deferred, not optional --
+    # command: `machinome.test` brings trimesh, scipy and the assertion
+    # machinery, which a build has no use for. Deferred, not optional --
     # discovering a test still imports the framework, right here.
     from machinome.test import TestCase
 

@@ -6,6 +6,27 @@ Changelog
 Unreleased
 ----------
 
+* **Exact geometry is the exact engine's:** every operation on an exact
+  shape now lives in one module, ``machinome.occt.engine``, written on the
+  OCCT kernel alone with no CadQuery, and the core reaches it through
+  ``machinome.exact_engine``, only on the paths that do exact work: a model
+  with no exact part never loads it, and a part whose artifacts are current
+  is reused without it. ``machinome.exact`` is removed. Its operations a
+  project calls directly, ``intersect_shapes``, ``fuse_shapes``,
+  ``placed_shape``, ``solid_count`` and ``solid_volume``, are imported from
+  ``machinome.occt.engine`` under the same names and signatures, and the
+  errors ``ExactCommonInconsistency`` and ``ExactCommonVerificationError``
+  from ``machinome.exact_engine``. ``shape()`` and those operations now
+  return the kernel's own ``TopoDS_Shape`` rather than a CadQuery
+  ``Shape``; a project that calls CadQuery's methods on one wraps it,
+  ``cadquery.Shape.cast(node.shape())``. An exact part may render the
+  kernel's shape directly and build, fuse and test without CadQuery or
+  build123d. BREP and STL artifacts are byte-for-byte unchanged, and every
+  verdict is the same; the verdict store starts afresh once. A missing
+  engine is refused naming ``pip install "machinome[occt]"``, and the
+  ``occt`` extra is declared (ADR-160, ADR-161, ADR-162). Born of
+  machinome-freecad's exact leaf, which reads a FreeCAD BREP into the
+  kernel's shape and had to import CadQuery only to cast it.
 * **Verdicts kept between runs:** a second ``machinome test`` of an
   unchanged project is served every intersection verdict the first one
   decided, without running a boolean. Verdicts are kept in the build

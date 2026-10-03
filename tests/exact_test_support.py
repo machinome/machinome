@@ -4,7 +4,7 @@
 
 """Test-only isolation seams for process-local exact geometry caches."""
 
-from machinome import exact
+from machinome import exact_cache
 
 
 def clear_exact_shape_caches():
@@ -15,9 +15,9 @@ def clear_exact_shape_caches():
     dependent registry while the fixture still owns any shapes, then release
     the shape cache so a future object-id reuse cannot acquire stale identity.
     """
-    exact._shape_keys.clear()
-    exact._shape_observations.clear()
-    exact._bounds_cache.clear()
-    exact._face_box_cache.clear()
-    exact._placement_cache.clear()
-    exact._shape_cache.clear()
+    exact_cache._shape_keys.clear()
+    exact_cache._shape_observations.clear()
+    exact_cache._bounds_cache.clear()
+    exact_cache._face_box_cache.clear()
+    exact_cache._placement_cache.clear()
+    exact_cache._shape_cache.clear()

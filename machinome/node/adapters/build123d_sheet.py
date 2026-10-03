@@ -2,7 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.exact import _atomic_export
+from machinome.exact_artifacts import _atomic_export
 from machinome.node.sheet_leaf import SheetLeafNode
 
 
@@ -27,10 +27,10 @@ def _export_dxf(face, path, mtime_ns, digest=None, fingerprint=None):
     Deliberately a private, single-purpose function rather than a method:
     it converts a validated face to a file and knows nothing about nodes,
     so a second sheet backend can be given its own without either growing
-    a backend switch (ADR-047's pattern). It borrows exact.py's atomic
-    export only for the write-and-stamp convention every other artifact
-    already uses -- what is written is build123d's business, not the
-    backend-neutral exact layer's.
+    a backend switch (ADR-047's pattern). It borrows the exact artifacts'
+    atomic export only for the write-and-stamp convention every other
+    artifact already uses -- what is written is build123d's business, not
+    the exact engine's.
     """
     import build123d as b3d
 
@@ -47,8 +47,8 @@ class Build123dSheetNode(SheetLeafNode):
     write it as a cut file. The contract around them is the sheet base's,
     and the exact-adapter contract under that is ExactLeafNode's: the
     extrusion is an ordinary build123d Part, so namespace validation,
-    the OCCT rewrap, and the STL/BREP writes are the ones every other
-    exact adapter already goes through.
+    the rewrap to the engine's currency, and the STL/BREP writes are the
+    ones every other exact adapter already goes through.
 
     This is not a Build123dNode. Both drive build123d, but a Build123dNode
     renders a solid it authored, while a sheet part's solid is derived and
@@ -57,7 +57,7 @@ class Build123dSheetNode(SheetLeafNode):
     that way.
 
     Like the other build123d adapter, this module never imports build123d
-    at import time: `machinome.node` imports every adapter eagerly, and
+    at import time: `machinome.node` may import every adapter, and
     build123d costs about 1.6 seconds a project on another backend should
     not pay.
     """

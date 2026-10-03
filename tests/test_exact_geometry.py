@@ -24,10 +24,10 @@ from machinome.node import (
     OpenScadNode,
     Solid2Node,
 )
-from machinome.exact import (_placement_cache, _shape_cache,
-                              cached_shape, placed_shape,
-                              solid_count, solid_volume, write_brep,
-                              write_stl)
+from machinome.exact_artifacts import write_brep, write_stl
+from machinome.exact_cache import (_placement_cache, _shape_cache,
+                                   cached_placement, cached_shape)
+from machinome.occt.engine import placed_shape, solid_count, solid_volume
 from machinome.node.base import StlRenderStart
 import machinome.test as test_module
 from machinome.test import TestCase as GeometryTestCase, _intersection_stats
@@ -91,7 +91,9 @@ class ShapeNode:
     children = ()
 
     def __init__(self, shape, name, *, matrix_parent=None):
-        self._shape = shape
+        # `shape()` returns the exact engine's currency, as every exact
+        # node's does; a fixture built with CadQuery is unwrapped here.
+        self._shape = getattr(shape, 'wrapped', shape)
         self.name = name
         self.operations = []
         self._parent = matrix_parent
@@ -191,7 +193,7 @@ class ExactArtifactTest(TestCase):
         with patch.object(node, 'render', side_effect=AssertionError(
                 'current BREP must avoid rerendering')):
             shape = node.shape()
-        self.assertAlmostEqual(shape.Volume(), 8.0)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(), 8.0)
 
     def test_exact_fusion_recovers_native_leaf_after_brep_goes_stale(self):
         fusion = ExactFusion()
@@ -210,7 +212,7 @@ class ExactArtifactTest(TestCase):
         node.translate([20, 0, 0])
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
         self.assertAlmostEqual(bounds.xmin, -1.0, places=6)
         self.assertAlmostEqual(bounds.xmax, 1.0, places=6)
 
@@ -218,60 +220,64 @@ class ExactArtifactTest(TestCase):
         path = os.path.join(self.directory.name, 'shape.brep')
         first_shape = cq.Workplane('XY').box(1, 1, 1).val()
         second_shape = cq.Workplane('XY').box(2, 2, 2).val()
-        write_brep(first_shape, path, 1 * 10 ** 9)
+        write_brep(first_shape.wrapped, path, 1 * 10 ** 9)
         first = cached_shape(path)
-        write_brep(second_shape, path, 2 * 10 ** 9)
+        write_brep(second_shape.wrapped, path, 2 * 10 ** 9)
         second = cached_shape(path)
 
-        self.assertAlmostEqual(first.Volume(), 1.0)
-        self.assertAlmostEqual(second.Volume(), 8.0)
+        self.assertAlmostEqual(cq.Shape.cast(first).Volume(), 1.0)
+        self.assertAlmostEqual(cq.Shape.cast(second).Volume(), 8.0)
         self.assertEqual([key for key in _shape_cache if key[0] == path],
                          [(path, 2.0)])
 
     def test_one_placement_serves_repeated_comparisons(self):
         """A placement is built once per (shape identity, matrix).
 
-        `placed_shape` runs `BRepBuilderAPI_Transform` over the whole
+        `cached_placement` runs `BRepBuilderAPI_Transform` over the whole
         B-rep -- 6-19 ms on real parts -- and an animated assertion
         places the same solid by the same matrix at every candidate pair
         it visits. The second placement of a matrix already placed must
         cost a lookup.
         """
         path = os.path.join(self.directory.name, 'placed.brep')
-        write_brep(cq.Workplane('XY').box(1, 1, 1).val(), path, 1 * 10 ** 9)
+        write_brep(cq.Workplane('XY').box(1, 1, 1).val().wrapped, path,
+                   1 * 10 ** 9)
         shape = cached_shape(path)
         matrix = np.eye(4)
         matrix[0, 3] = 5.0
 
-        first = placed_shape(shape, matrix)
-        second = placed_shape(shape, matrix)
+        first = cached_placement(shape, matrix)
+        second = cached_placement(shape, matrix)
 
         self.assertIs(second, first)
         self.assertAlmostEqual(
-            first.BoundingBox().xmin, 4.5, places=6)
+            cq.Shape.cast(first).BoundingBox().xmin, 4.5, places=6)
 
     def test_a_different_matrix_builds_its_own_placement(self):
         path = os.path.join(self.directory.name, 'placed.brep')
-        write_brep(cq.Workplane('XY').box(1, 1, 1).val(), path, 1 * 10 ** 9)
+        write_brep(cq.Workplane('XY').box(1, 1, 1).val().wrapped, path,
+                   1 * 10 ** 9)
         shape = cached_shape(path)
         near, far = np.eye(4), np.eye(4)
         near[0, 3] = 5.0
         far[0, 3] = 9.0
 
-        placed_near = placed_shape(shape, near)
-        placed_far = placed_shape(shape, far)
+        placed_near = cached_placement(shape, near)
+        placed_far = cached_placement(shape, far)
 
         self.assertIsNot(placed_near, placed_far)
-        self.assertAlmostEqual(placed_near.BoundingBox().xmin, 4.5, places=6)
-        self.assertAlmostEqual(placed_far.BoundingBox().xmin, 8.5, places=6)
+        self.assertAlmostEqual(
+            cq.Shape.cast(placed_near).BoundingBox().xmin, 4.5, places=6)
+        self.assertAlmostEqual(
+            cq.Shape.cast(placed_far).BoundingBox().xmin, 8.5, places=6)
 
     def test_a_rebuilt_shape_is_never_served_the_old_placement(self):
         """The hazard this cache exists to avoid.
 
-        A `cq.Shape` cannot be its own cache key: `Shape.__eq__` is
-        `isSame()`, which compares the underlying TShape and ignores
-        location, so a shape and a differently placed copy of it compare
-        EQUAL. Nor can `id()` be one on its own, since CPython reuses an
+        A shape cannot be its own cache key: OCCT's sameness (`IsSame`,
+        CadQuery's `Shape.__eq__`) compares the underlying TShape and
+        ignores location, so a shape and a differently placed copy of it
+        compare EQUAL. Nor can `id()` be one on its own, since CPython reuses an
         address after collection. The key is therefore the same
         `(file, mtime)` identity `_shape_cache` uses, and a rebuild under
         a new mtime must not be served the old geometry's placement.
@@ -280,13 +286,15 @@ class ExactArtifactTest(TestCase):
         matrix = np.eye(4)
         matrix[0, 3] = 5.0
 
-        write_brep(cq.Workplane('XY').box(1, 1, 1).val(), path, 1 * 10 ** 9)
-        before = placed_shape(cached_shape(path), matrix)
-        write_brep(cq.Workplane('XY').box(2, 2, 2).val(), path, 2 * 10 ** 9)
-        after = placed_shape(cached_shape(path), matrix)
+        write_brep(cq.Workplane('XY').box(1, 1, 1).val().wrapped, path,
+                   1 * 10 ** 9)
+        before = cached_placement(cached_shape(path), matrix)
+        write_brep(cq.Workplane('XY').box(2, 2, 2).val().wrapped, path,
+                   2 * 10 ** 9)
+        after = cached_placement(cached_shape(path), matrix)
 
-        self.assertAlmostEqual(before.Volume(), 1.0)
-        self.assertAlmostEqual(after.Volume(), 8.0)
+        self.assertAlmostEqual(cq.Shape.cast(before).Volume(), 1.0)
+        self.assertAlmostEqual(cq.Shape.cast(after).Volume(), 8.0)
         self.assertEqual(
             {key[0] for key in _placement_cache if key[0][0] == path},
             {(path, 2.0)},
@@ -296,14 +304,14 @@ class ExactArtifactTest(TestCase):
         # A shape built on the fly -- a fusion composed for this
         # comparison, a node whose BREP is not current -- has no identity
         # to key on, so it is placed exactly as it is today.
-        shape = cq.Workplane('XY').box(1, 1, 1).val()
+        shape = cq.Workplane('XY').box(1, 1, 1).val().wrapped
         matrix = np.eye(4)
 
-        first = placed_shape(shape, matrix)
-        second = placed_shape(shape, matrix)
+        first = cached_placement(shape, matrix)
+        second = cached_placement(shape, matrix)
 
         self.assertIsNot(first, second)
-        self.assertAlmostEqual(second.Volume(), 1.0)
+        self.assertAlmostEqual(cq.Shape.cast(second).Volume(), 1.0)
 
     def test_fusion_composes_and_renders_exactly_without_subprocess(self):
         fusion = ExactFusion()
@@ -403,7 +411,8 @@ class ExactIntersectionTest(TestCase):
         failed = Mock()
         failed.IsDone.return_value = False
 
-        with patch('machinome.exact.BRepAlgoAPI_Common', return_value=failed):
+        with patch('machinome.occt.engine.BRepAlgoAPI_Common',
+                   return_value=failed):
             with self.assertRaisesRegex(RuntimeError, 'left.*right'):
                 _intersection_stats(left, right)
 
@@ -413,7 +422,7 @@ class ExactIntersectionTest(TestCase):
         from machinome.node.operations import Translation
         right.operations.append(Translation([10, 0, 0], right))
 
-        with patch('machinome.test.intersect_shapes',
+        with patch('machinome.occt.engine.intersect_shapes',
                    side_effect=AssertionError('boolean must be culled')):
             stats = _intersection_stats(left, right)
 
@@ -450,7 +459,9 @@ class ExactConnectivityAndEpsilonTest(TestCase):
         second = placed_shape(
             cq.Workplane('XY').box(1, 1, 1).val(),
             trimesh.transformations.translation_matrix([3, 0, 0]))
-        node = ShapeNode(cq.Compound.makeCompound([first, second]), 'broken')
+        node = ShapeNode(
+            cq.Compound.makeCompound([first, cq.Shape.cast(second)]),
+            'broken')
 
         with self.assertRaisesRegex(AssertionError, 'broken.*2'):
             asserter.assertNoDisconnectedSolids(node)
@@ -601,16 +612,22 @@ class FacetedKernelTest(TestCase):
         self.assertAlmostEqual(stats.volume, 0.5, places=6)
 
     def test_no_kernel_name_is_resolved(self):
-        # The deferred kernel names are what would import the exact stack
-        # through the test framework; a faceted run never reaches one.
+        # The engine's operations and the memos over its shapes are what
+        # the exact path of the test framework calls; a faceted run never
+        # reaches one.
         self.faceted()
         left = self.box_node('left')
         right = self.box_node('right', [0.5, 0, 0])
-        refused = {name: patch.object(
-            test_module, name, side_effect=AssertionError(name))
-            for name in ('intersect_shapes', 'placed_shape', 'fuse_shapes',
-                         'solid_count', 'solid_volume', 'shape_identity',
-                         'cached_bounding_box')}
+        refused = {name: patch(name, side_effect=AssertionError(name))
+                   for name in (
+                       'machinome.occt.engine.intersect_shapes',
+                       'machinome.occt.engine.placed_shape',
+                       'machinome.occt.engine.fuse_shapes',
+                       'machinome.occt.engine.solid_count',
+                       'machinome.occt.engine.solid_volume',
+                       'machinome.exact_cache.shape_identity',
+                       'machinome.exact_cache.cached_bounding_box',
+                       'machinome.exact_cache.cached_placement')}
         for refusal in refused.values():
             refusal.start()
             self.addCleanup(refusal.stop)
@@ -646,8 +663,8 @@ class FacetedKernelTest(TestCase):
         from machinome.node.operations import Translation
         overlapping.operations.append(Translation([1, 0, 0], overlapping))
 
-        with _refuse_shape(left), _refuse_shape(overlapping), patch.object(
-                test_module, 'fuse_shapes',
+        with _refuse_shape(left), _refuse_shape(overlapping), patch(
+                'machinome.occt.engine.fuse_shapes',
                 side_effect=AssertionError('no fuse on the faceted kernel')):
             asserter.assertJoined(left, overlapping, min_weld_volume=3.9)
 
@@ -812,13 +829,13 @@ class DegenerateTriangleExportTest(TestCase):
         faces = np.vstack([box.faces, [[8, 8, 9]]])
         tessellated = trimesh.Trimesh(vertices, faces, process=False)
 
-        class Shape:
-            def exportStl(self, path, tolerance, angularTolerance):
-                tessellated.export(path, file_type='stl')
+        def engine_write_stl(shape, path, linear, angular):
+            tessellated.export(path, file_type='stl')
 
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, 'leaf.stl')
-            write_stl(Shape(), path, 1 * 10 ** 9, 0.1, 0.1)
+            with patch('machinome.occt.engine.write_stl', engine_write_stl):
+                write_stl(object(), path, 1 * 10 ** 9, 0.1, 0.1)
             raw = trimesh.load(path, process=False)
 
         self.assertEqual(len(raw.faces), 12)
@@ -871,8 +888,8 @@ class FaceBoxTierAssertionTest(TestCase):
                          self.node(wheel_a, 'wheel_a'),
                          self.node(wheel_b, 'wheel_b'))
 
-        with patch.object(
-                test_module, 'intersect_shapes',
+        with patch(
+                'machinome.occt.engine.intersect_shapes',
                 side_effect=AssertionError('boolean must be culled')):
             asserter.assertNoSolidInterference(root)
 

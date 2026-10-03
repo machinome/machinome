@@ -375,7 +375,7 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
         self.cq = cq
 
     def _exact(self, name, size, translation=None):
-        shape = self.cq.Workplane('XY').box(*size).val()
+        shape = self.cq.Workplane('XY').box(*size).val().wrapped
         path = os.path.join(self.tmpdir.name, f'{name}.stl')
         box(size).export(path)
         part = ExactPart(name, shape, path)
