@@ -1,0 +1,66 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's fifth cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-expression-type; record
+# in the framework's openspec/changes/archive/<date>-expression-type/.
+#
+# machinome.scad_expression is removed (Python's own ModuleNotFoundError, the
+# exact-engine precedent): its names are defined in machinome.expression_graph.
+# The OpenSCAD binary locator machinome/openscad.py moved into the new engine
+# package machinome/openscad/ as machinome.openscad.binary; `machinome.openscad`
+# itself still imports (a package that defines nothing), so only the names
+# below fail, with Python's "cannot import name". On 3 October 2026 the only
+# project importers are three probes under docs/probes/ (Pascaline-module,
+# CycloidalDrive, Leonardo models/cam_hammer), none loaded by a model.
+
+cycle = "expression-type"
+date = "2026-10-03"
+
+[[moved]]
+name = "machinome.scad_expression"
+to = "machinome.expression_graph"
+
+[[moved]]
+name = "machinome.scad_expression.GraphValue"
+to = "machinome.expression_graph.GraphValue"
+
+[[moved]]
+name = "machinome.scad_expression.as_node"
+to = "machinome.expression_graph.as_node"
+
+[[moved]]
+name = "machinome.scad_expression.call"
+to = "machinome.expression_graph.call"
+
+[[moved]]
+name = "machinome.scad_expression.symbol"
+to = "machinome.expression_graph.symbol"
+
+[[moved]]
+name = "machinome.scad_expression.get_animation_time"
+to = "machinome.expression_graph.get_animation_time"
+
+[[moved]]
+name = "machinome.scad_expression.depends_on_time"
+to = "machinome.expression_graph.depends_on_time"
+
+[[moved]]
+name = "machinome.scad_expression.scalar"
+to = "machinome.expression_graph.scalar"
+
+[[moved]]
+name = "machinome.scad_expression.restore_scalar"
+to = "machinome.expression_graph.restore_scalar"
+
+[[moved]]
+name = "machinome.openscad.require_openscad"
+to = "machinome.openscad.binary.require_openscad"
+
+[[moved]]
+name = "machinome.openscad.openscad_binary"
+to = "machinome.openscad.binary.openscad_binary"
+
+[[moved]]
+name = "machinome.openscad.OpenScadUnavailable"
+to = "machinome.openscad.binary.OpenScadUnavailable"
