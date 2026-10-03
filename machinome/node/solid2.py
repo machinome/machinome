@@ -7,7 +7,7 @@ import re
 import tempfile
 from subprocess import Popen
 from solid2 import scad_render
-from machinome.openscad import require_openscad
+from machinome.openscad.binary import require_openscad
 from machinome.node.leaf import LeafNode
 
 
@@ -31,7 +31,7 @@ class Solid2Node(LeafNode):
     def as_number(self, n):
         """Receives a solid2 function result and calculates its number.
         uses an openscad process internally to do the calculation."""
-        from machinome.scad_expression import GraphValue
+        from machinome.expression_graph import GraphValue
         if isinstance(n, GraphValue):
             return float(n)
         if type(n).__module__.startswith('solid2'):

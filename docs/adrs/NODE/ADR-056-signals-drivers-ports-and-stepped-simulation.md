@@ -2,7 +2,9 @@
 
 **Status:** Proposed (design draft; core spike-validated 2026-08-25,
 expression representation spike-validated 2026-08-26); amended
-2026-08-27 by `driver-attribute-reads`
+2026-08-27 by `driver-attribute-reads`; the `DriverToken` representation
+amended 2026-10-03 by
+[ADR-170](../MATH/ADR-170-the-core-s-symbolic-value-is-its-own-type.md)
 
 **Date:** 2026-08-25
 
@@ -551,6 +553,18 @@ where a declaration is bound.
 
 **No shadowing guard.** Rejected: it converts a class-definition
 mistake into wrong geometry with no message.
+
+## Amendment (2026-10-03): the token is the core's own value
+
+[ADR-170](../MATH/ADR-170-the-core-s-symbolic-value-is-its-own-type.md)
+replaces the representation decided above, "an eagerly-qualified token
+subclassing solid2's `OpenSCADConstant`". `DriverToken` subclasses
+`machinome.expression_graph.GraphValue`, the core's own symbolic value: a
+name node whose text is the qualified id, final when the token is created,
+composed by the value's own operators into a shared graph (as ADR-101
+already had it) and published as the same text. No SolidPython class is in
+its ancestry, and `machinome.math` recognises it as the core's value rather
+than by SolidPython's base class. The spike evidence above is history.
 
 ## Implementation status (2026-08-25)
 

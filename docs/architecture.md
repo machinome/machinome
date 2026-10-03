@@ -2031,7 +2031,8 @@ upgrades in place. Settled checks stat tracked files and read the sidecar, but
 never read source contents or parse Python.
 
 OpenSCAD availability is resolved once per process, at the first operation
-that actually requires it (ADR-046/102). Solid2/raw-SCAD STL rendering, a
+that actually requires it (ADR-046/102), by the binary contract
+`machinome.openscad.binary` (ADR-171). Solid2/raw-SCAD STL rendering, a
 declared legacy SCAD-only adapter, Solid2 symbolic-value evaluation, and the
 OpenSCAD snapshot renderer are the complete requiring set. A missing binary
 raises one actionable error naming the operation and remedy before subprocess
@@ -2754,8 +2755,13 @@ old consumer refuses only what it genuinely cannot render. Consumers accept
 **Schema version 4 publishes each subexpression more than one operation or
 `params` entry uses, once, as a named `bindings` table** (ADR-080). Sharing
 begins during construction (ADR-101): `machinome/expression_graph.py` owns
-immutable native scalar nodes independent of any modelling backend;
-`machinome/scad_expression.py` supplies the SolidPython compatibility facade.
+immutable native scalar nodes independent of any modelling backend, and the
+core's own symbolic value over them, `GraphValue`, which derives from no
+backend class, defines every operator it supports and refuses a truth test
+with `SymbolicTruthError` (ADR-170). A value SolidPython built is an
+expression only because the OpenSCAD engine adopts it as a node
+(`machinome.openscad.engine`, reached through the seam
+`machinome/scad_engine.py`, ADR-171); without the engine it is not one.
 Arithmetic retains references, not expanded strings. Values own their graphs,
 and compiler tables are publication-local, with no global strong graph arena.
 `machinome/core/expressions.py` collects native `operations` and flexible
@@ -3302,8 +3308,9 @@ The short list that changes must not silently break:
 |---|---|---|---|
 | Node model | `machinome/node/` (`frames.py` among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165 |
 | OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
+| OpenSCAD engine | `machinome/scad_engine.py` (the seam); `machinome/openscad/` (`engine.py`, `binary.py`; leaves the core at the cut) | `scad-engine-dependency`, `openscad-engine`, `openscad-dependency` | 046, 102, 171 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
-| Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py` | `kinematics` | 008, 022, 023, 028, 087, 088, 104, 127 |
+| Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |

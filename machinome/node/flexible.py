@@ -63,7 +63,7 @@ import json
 import os
 
 from solid2 import union
-from machinome.scad_expression import depends_on_time, scalar
+from machinome.expression_graph import depends_on_time, scalar
 
 from machinome.node.base import _canonical_serialization, binding_hash
 from machinome.node.declarative import identity_values, is_declarative
@@ -189,7 +189,7 @@ class FlexibleNode(LeafNode):
 
         The symbolic counterpart of `bound_values()`, and the document's
         parameter surface. Under symbolic serialization the parent's
-        `connect()` has already bound each port to ordinary solid2
+        `connect()` has already bound each port to ordinary symbolic
         arithmetic over driver tokens, so the wire expression is finished
         before this reads it and `str` is the whole serialization -- the
         same `str(value)` an operation publishes, carrying the same
@@ -285,7 +285,7 @@ class FlexibleNode(LeafNode):
 
         Narrower than "symbolic" on purpose. Time is the ONE thing
         nothing can bind here -- `AssemblyNode.time` falls back to
-        solid2's `$t` precisely so the build and viewer paths animate --
+        the symbolic `$t` precisely so the build and viewer paths animate --
         so a time-fed port is a part with no instant, not a mistake.
         Every other symbolic value IS a mistake: the loader binds
         declared driver defaults, so a port still carrying a raw driver

@@ -3,7 +3,7 @@
 
 from unittest import TestCase
 from machinome.math import min, max, abs, sin
-from machinome.scad_expression import symbol, as_node
+from machinome.expression_graph import symbol, as_node
 from machinome.simulation.contact_proof import constant_contact
 
 

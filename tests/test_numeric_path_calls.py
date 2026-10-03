@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from machinome import math as motion_math
 from machinome.expression_graph import ExpressionNode
-from machinome.scad_expression import GraphValue
+from machinome.expression_graph import GraphValue
 from machinome.simulation.program import _PathValue
 
 

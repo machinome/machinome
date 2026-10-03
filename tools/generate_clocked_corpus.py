@@ -68,8 +68,7 @@ from machinome.core.serializer import (  # noqa: E402
     compiled_clocked, document_body, drivers_table, instructions_table,
     serialize_node, symbolic_document,
 )
-from machinome.expression_graph import postorder  # noqa: E402
-from machinome.scad_expression import GraphValue  # noqa: E402
+from machinome.expression_graph import GraphValue, postorder  # noqa: E402
 from machinome.simulation import Sim  # noqa: E402
 from machinome.simulation.enumeration import (  # noqa: E402
     bind_declared_defaults,

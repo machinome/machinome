@@ -27,7 +27,7 @@ OpenSpec change ``a-bound-stops-the-request``.
 import math
 
 from machinome.expression_graph import free_names
-from machinome.scad_expression import as_node
+from machinome.expression_graph import as_node
 from machinome.simulation import Sim
 from machinome.simulation.clocked import TooManyEvents
 

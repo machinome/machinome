@@ -12,7 +12,7 @@ The operation is also able to revert itself.
 
 import math
 import trimesh
-from machinome.scad_expression import GraphValue, scalar, restore_scalar
+from machinome.expression_graph import GraphValue, scalar, restore_scalar
 from solid2 import (
     rotate as scad_rotate,
     translate as scad_translate,
@@ -20,10 +20,11 @@ from solid2 import (
 
 
 def _as_number(node, value):
-    """Converts value to a plain number. When a node is available its
-    as_number is used, so solid2 animated expressions can be resolved;
-    otherwise falls back to a plain float() conversion (used when an
-    operation was rebuilt through unserialize(), which has no node)."""
+    """Converts value to a plain number. A symbolic value of the framework
+    evaluates itself; otherwise, when a node is available its as_number
+    is used, so SolidPython's own animated expressions can be resolved,
+    and without one falls back to a plain float() conversion (used when
+    an operation was rebuilt through unserialize(), which has no node)."""
     if node is None or isinstance(value, GraphValue):
         return float(value)
     return node.as_number(value)
@@ -58,7 +59,7 @@ class Rotation:
         """The 4x4 world rotation matrix for this operation (skill-repo
         docs/performance-improvement.md fix 1), resolved through the
         node's as_number() AT ACCESS TIME -- never cached, since angle
-        can be a solid2 animated expression that changes with the
+        can be a symbolic animated expression that changes with the
         keyframe. Used by AbstractBaseNode.mesh to compose a whole
         operation chain into a single world matrix instead of applying
         each operation as a separate mesh pass."""

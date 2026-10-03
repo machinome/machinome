@@ -25,7 +25,7 @@ import ezdxf
 from machinome.occt.engine import solid_count
 from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, SheetLeafNode)
-from machinome.openscad import openscad_binary
+from machinome.openscad.binary import openscad_binary
 
 from .sheet_project import frame_panel
 
@@ -469,7 +469,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('machinome.openscad.shutil.which', return_value=None), \
+        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             node = PerforatedPlate()

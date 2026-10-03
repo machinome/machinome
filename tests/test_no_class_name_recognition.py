@@ -32,7 +32,7 @@ from unittest.mock import patch
 from solid2 import cube
 
 from machinome.node import Solid2Node
-from machinome.openscad import OpenScadUnavailable, openscad_binary
+from machinome.openscad.binary import OpenScadUnavailable, openscad_binary
 
 from .contract_package.scad_stand_in import MeshScad
 from .test_openscad_dependency import Build123dBox, ExactBox
@@ -166,7 +166,7 @@ class OpenScadRefusalNamesTheNodeTest(TestCase):
 
     def _refusal(self, node):
         node.assemble()
-        with patch('machinome.openscad.shutil.which', return_value=None), \
+        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             with self.assertRaises(OpenScadUnavailable) as raised:

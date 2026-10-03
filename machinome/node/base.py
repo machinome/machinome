@@ -20,7 +20,7 @@ from machinome import currency
 from machinome._artifact import (ArtifactChanged, ArtifactSnapshot,
                                   artifact_cache_key)
 from machinome.extras import ExtraUnavailable
-from machinome.openscad import require_openscad
+from machinome.openscad.binary import require_openscad
 from machinome.source_generation import (
     current_census, current_generation, current_phase, track_sources,
 )

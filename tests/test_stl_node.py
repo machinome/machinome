@@ -34,7 +34,7 @@ import trimesh
 from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, JScadNode, OpenScadNode, Solid2Node,
                              StlNode)
-from machinome.openscad import openscad_binary
+from machinome.openscad.binary import openscad_binary
 
 from .stl_project import originals, parts, rack
 from .utils import edit_source
@@ -334,7 +334,7 @@ class StlArtifactTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('machinome.openscad.shutil.which', return_value=None), \
+        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = rack.Rack()

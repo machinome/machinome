@@ -13,11 +13,13 @@ and under the declarative parameter algebra as well:
   asin(0.5) == 30.0, atan2 returns degrees).
 
 - symbolic, in the viewer/build path: time and drivers carry native
-  shared graphs behind an OpenSCADConstant-compatible facade. These
-  functions recognize both native values and legacy SolidPython constants,
-  returning call nodes over operand references, never expanded text.
-  Publication emits the existing degree-in/degree-out scalar vocabulary,
-  so the symbolic and numeric computations are the same function deferred.
+  shared graphs, the core's own type
+  (`machinome.expression_graph.GraphValue`). These functions return call
+  nodes over operand references, never expanded text. A value SolidPython
+  built is symbolic too when the OpenSCAD engine adopts it
+  (`machinome.scad_engine`). Publication emits the existing
+  degree-in/degree-out scalar vocabulary, so the symbolic and numeric
+  computations are the same function deferred.
 
 - declarative, in a node class body: an argument is a declared
   parameter token or a formula over them, and the result is a formula
@@ -68,8 +70,8 @@ itself are bound privately below, before anything shadows them.
 
 import math as _math
 
-from solid2.core.object_base import OpenSCADConstant
-from machinome.scad_expression import GraphValue, call as expression_call
+from machinome.expression_graph import (ExpressionNode, GraphValue,
+                                        call as expression_call, symbolic)
 
 from machinome.parameters import Expression, function_formula
 
@@ -79,6 +81,10 @@ from machinome.parameters import Expression, function_formula
 _abs = abs
 _min = min
 _max = max
+
+#: The plain numbers: never symbolic, decided without consulting the
+#: OpenSCAD engine.
+_NUMBERS = frozenset((int, float))
 
 
 #: Every OpenSCAD builtin this module may emit as a call. It is the one
@@ -95,7 +101,20 @@ SYMBOLIC_BUILTINS = (
 
 
 def _is_symbolic(value):
-    return isinstance(value, OpenSCADConstant)
+    """The core's own symbolic value, or a value the OpenSCAD engine
+    adopts (`machinome.expression_graph.symbolic`).
+
+    A plain number is decided first and never consults the engine; nor
+    does a declared quantity or formula, which is the third face and never
+    a value SolidPython built. A bare graph node is not an operand of this
+    vocabulary.
+    """
+    if isinstance(value, GraphValue):
+        return True
+    if value.__class__ in _NUMBERS or isinstance(value,
+                                                 (ExpressionNode, Expression)):
+        return False
+    return symbolic(value) is not None
 
 
 def _is_formula(value):
@@ -111,9 +130,10 @@ def _is_formula(value):
     else in the framework, so naming it costs this module nothing on any
     path. It used to be imported on use, when the algebra lived inside
     the node package and reaching it dragged that package in.
+
+    A number or a symbolic value is never an `Expression`, so the one
+    test answers for both without asking whether the value is symbolic.
     """
-    if isinstance(value, (int, float)) or _is_symbolic(value):
-        return False
     return isinstance(value, Expression)
 
 

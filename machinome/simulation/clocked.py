@@ -42,13 +42,12 @@ import hashlib
 import math
 from collections import deque
 
-from solid2.core.object_base import OpenSCADConstant
-
-from machinome.expression_graph import ExpressionNode, free_names, postorder
+from machinome.expression_graph import (ExpressionNode, GraphValue, as_node,
+                                        free_names, postorder, symbol,
+                                        symbolic)
 from machinome.motion.couplings import CouplingError
 from machinome.motion.ports import CLOCK_NAME, clocked_marking
 from machinome.node.qualified import (driver_id, drive_tree, instance_path)
-from machinome.scad_expression import GraphValue, as_node, symbol
 
 from .program import (JumpPlan, TooManyCrossings, _CROSSING_TOLERANCE,
                       _KinkCuts, _MAX_CROSSINGS, _Jump, _along,
@@ -1116,7 +1115,7 @@ class _Chains:
                    f'expression.')
         if isinstance(value, (int, float)):
             return _num(value)
-        if not isinstance(value, OpenSCADConstant):
+        if symbolic(value) is None:
             refuse(f'{what} is driven by {described}, whose law returned '
                    f'{value!r}, which is neither a number nor an '
                    f'expression over its sources.')

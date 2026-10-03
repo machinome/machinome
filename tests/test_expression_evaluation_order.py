@@ -6,7 +6,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from machinome.expression_graph import ExpressionNode, postorder
-from machinome.scad_expression import GraphValue
+from machinome.expression_graph import GraphValue
 
 
 class ExpressionEvaluationOrderTest(TestCase):

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import functools
-from machinome.scad_expression import get_animation_time
+from machinome.expression_graph import get_animation_time
 from . import phase as _phase
 from .internal import InternalNode
 from .qualified import (declared_drivers_of, declared_states_of,
@@ -671,7 +671,7 @@ class AssemblyNode(InternalNode):
 
     def clear_keyframe(self):
         """The inverse of set_keyframe: drop the fixed time so this
-        assembly renders against solid2's symbolic $t again, leaving
+        assembly renders against the symbolic $t again, leaving
         any other bound driver in place."""
         self.clear_state('time')
 
@@ -680,8 +680,9 @@ class AssemblyNode(InternalNode):
         """The $t variable, the animation time from 0 to 1.
 
         One entry of the snapshot, with the ADR-008 fallback: an
-        assembly nobody bound a time on still animates symbolically,
-        which is what the build and viewer paths depend on. Only time
+        assembly nobody bound a time on still animates symbolically, on
+        the framework's own `$t` (`machinome.expression_graph`), which is
+        what the build and viewer paths depend on. Only time
         falls back -- any other unbound driver fails loudly, because a
         default invented here would bind the simulation layer to a
         contract it never chose.

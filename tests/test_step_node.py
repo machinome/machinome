@@ -668,7 +668,7 @@ class StepExactnessTest(BuildDirTestCase):
                                places=3)
 
     def test_a_project_of_step_leaves_builds_with_no_openscad_on_the_path(self):
-        with patch('machinome.openscad.shutil.which', return_value=None), \
+        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = assemblies.TwoStepParts()

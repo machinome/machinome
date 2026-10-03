@@ -1,6 +1,6 @@
 # ADR-046: Conditional OpenSCAD dependency
 
-**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md)
+**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md); module location amended 2026-10-03 by [ADR-171](ADR-171-the-openscad-engine-is-machinome-openscad.md)
 
 **Date:** 2026-08-13
 
@@ -96,6 +96,16 @@ class names, is gone, so a SCAD-presented leaf written outside the core is
 reported in the same words as the core's own. The requiring set, the single
 resolver, the check at the point of use and the no-substitution rule are
 unchanged. The Evidence below, naming the `Solid2Node` backend, is history.
+
+## Amendment (2026-10-03): the locator's module
+
+[ADR-171](ADR-171-the-openscad-engine-is-machinome-openscad.md) moves the
+locator, unchanged, from `machinome/openscad.py` to
+`machinome/openscad/binary.py`, inside the OpenSCAD engine's package:
+`openscad_binary`, `require_openscad` and `OpenScadUnavailable` are
+imported from `machinome.openscad.binary`. The resolver, its once-per-process
+cache, the requiring set and the refusal's words are unchanged; the
+References below are history.
 
 ## References
 

@@ -10,7 +10,7 @@ from machinome.core.loader import ProjectManifestError, load_node, select_model
 from machinome.motion.ports import declared_time
 from machinome.core.builder import project_build_lock
 from machinome.viewers.openscad import OpenScadImportError, OpenScadRenderer
-from machinome.openscad import OpenScadUnavailable
+from machinome.openscad.binary import OpenScadUnavailable
 
 
 logger = logging.getLogger('manager.snapshot')

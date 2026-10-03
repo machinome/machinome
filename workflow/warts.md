@@ -4591,3 +4591,26 @@ artifact the sweep should keep is a build-pipeline question.
   a minute. Not reproduced; the worktree was removed. Evidence:
   `openspec/changes/archive/2026-10-03-lean-install/evidence.md`, §5.1.
   **Untriaged.**
+
+## Findings from the framework cycle `expression-type` (3 October 2026)
+
+- **OpenSCAD's STL output is not reproducible run to run.** Two renders of
+  byte-identical SCAD under the same OpenSCAD binary gave different STL
+  bytes for several parts of Pin_tumbler_lock (Body, Core, DriverPin,
+  Key, ...), and a piece's mesh volume therefore differed by one unit in the
+  last place between two exports (`pieces[1].volume`
+  `21065.08699624388` against `21065.086996243885`); exporting twice from
+  the same build directory gives the same volume. Any byte-pinned
+  validation across builds must hash the SCAD, never the STL or a
+  mesh-derived number; the export manifest's `volume` carries that noise.
+  Evidence: `openspec/changes/archive/2026-10-03-expression-type/evidence.md`,
+  §6.1. **Untriaged.**
+- **For the record, outside this repository.** machinome-mechanics' tests
+  name solid2's `OpenSCADConstant` as the test of symbolic-ness
+  (`tests/test_motion.py:46`, `tests/test_mechanisms.py:349`), now
+  corrected by a mechanics cycle asserting
+  `machinome.expression_graph.symbolic` (the pilot, 3 October 2026); and
+  machinome-viewer carries a stray root-level `openscad.py`, outside its
+  package and imported by nothing, importing
+  `machinome.openscad.require_openscad`, which this cycle moved to
+  `machinome.openscad.binary`. Evidence: the same file, §6.3, §6.5.

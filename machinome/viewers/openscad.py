@@ -10,7 +10,7 @@ import re
 import shutil
 import sys
 
-from machinome.openscad import require_openscad
+from machinome.openscad.binary import require_openscad
 
 
 logger = logging.getLogger('viewers.openscad')

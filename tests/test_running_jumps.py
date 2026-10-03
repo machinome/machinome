@@ -29,7 +29,7 @@ import tracemalloc
 from pytest import approx
 
 from machinome.motion.ports import get_coordinate
-from machinome.scad_expression import symbol
+from machinome.expression_graph import symbol
 from machinome.simulation import Sim, TooManyCrossings, UnsupportedLaw
 
 from .base import BaseNodeTest
@@ -812,7 +812,7 @@ class ShapeOfTest(BaseNodeTest):
     """
 
     def shape(self, build):
-        from machinome.scad_expression import as_node
+        from machinome.expression_graph import as_node
         from machinome.simulation.program import _shape_of
 
         return _shape_of(as_node(build(symbol('x'), symbol('y'))))

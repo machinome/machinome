@@ -25,7 +25,7 @@ from .base import BaseNodeTest
 
 def text(graph):
     """One published expression graph as the document's own text."""
-    from machinome.scad_expression import GraphValue, as_node
+    from machinome.expression_graph import GraphValue, as_node
 
     return str(GraphValue(as_node(graph)))
 
@@ -327,7 +327,7 @@ def evaluated(expression, values):
     DOCUMENT's own expression semantics, whose `%` is the truncated
     remainder both runtimes already agree on."""
     from machinome.core.expressions import parse
-    from machinome.scad_expression import GraphValue
+    from machinome.expression_graph import GraphValue
 
     return GraphValue(parse(expression)).evaluate(values)
 
@@ -375,7 +375,7 @@ class PublishedRemainderTest(BaseNodeTest):
         import struct
 
         from machinome.core.expressions import parse
-        from machinome.scad_expression import GraphValue, symbol
+        from machinome.expression_graph import GraphValue, symbol
         from machinome.simulation.clocked import _floored_remainder
 
         graph = _floored_remainder(symbol('a') % symbol('b'))
@@ -425,7 +425,7 @@ class PublishedRemainderTest(BaseNodeTest):
         computed; desugaring one would make the document disagree with
         the framework."""
         from machinome.simulation.clocked import _floored_remainder
-        from machinome.scad_expression import GraphValue, symbol
+        from machinome.expression_graph import GraphValue, symbol
         from .clocked_project.units import JumpsOnly
 
         published = _written(compiled(JumpsOnly).published({}))

@@ -16,7 +16,7 @@ from solid2.core.object_base import OpenSCADConstant
 from machinome.manager.snapshot import Snapshot
 from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
                              JScadNode, Solid2Node)
-from machinome.openscad import OpenScadUnavailable, openscad_binary
+from machinome.openscad.binary import OpenScadUnavailable, openscad_binary
 from machinome.viewers import openscad as openscad_viewer
 from machinome.viewers.openscad import OpenScadRenderer
 
@@ -90,7 +90,7 @@ class OpenScadDependencyTest(TestCase):
         node = FacetedBox(name='housing')
         node.assemble()
 
-        with patch('machinome.openscad.shutil.which', return_value=None), \
+        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             with self.assertRaises(OpenScadUnavailable) as raised:
@@ -161,7 +161,7 @@ class OpenScadDependencyTest(TestCase):
     def test_symbolic_value_missing_binary_names_node_and_evaluation(self):
         node = FacetedBox(name='animated-arm')
 
-        with patch('machinome.openscad.shutil.which', return_value=None), \
+        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
              patch('machinome.node.solid2.Popen',
                    side_effect=AssertionError('must fail before launch')):
             with self.assertRaisesRegex(
@@ -180,7 +180,7 @@ class OpenScadDependencyTest(TestCase):
         runner = Mock(side_effect=AssertionError('must fail before launch'))
 
         with patch.dict(os.environ, {'DISPLAY': ':1'}), \
-             patch('machinome.openscad.shutil.which', return_value=None):
+             patch('machinome.openscad.binary.shutil.which', return_value=None):
             with self.assertRaisesRegex(
                     RuntimeError,
                     'OpenSCAD snapshot renderer.*--renderer web'):
@@ -267,7 +267,7 @@ class OpenScadAvailabilityTest(TestCase):
 
     def test_binary_is_resolved_only_once_per_process(self):
         openscad_binary.cache_clear()
-        with patch('machinome.openscad.shutil.which',
+        with patch('machinome.openscad.binary.shutil.which',
                    return_value='/usr/bin/openscad') as which:
             self.assertEqual(openscad_binary(), '/usr/bin/openscad')
             self.assertEqual(openscad_binary(), '/usr/bin/openscad')

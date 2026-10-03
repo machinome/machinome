@@ -58,10 +58,10 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
 
-from solid2.core.object_base import OpenSCADConstant
-
 from machinome import math as motion_math
-from machinome.expression_graph import ExpressionNode, free_names, postorder
+from machinome.expression_graph import (ExpressionNode, GraphValue, as_node,
+                                        free_names, postorder, symbol,
+                                        symbolic)
 from machinome.math import SYMBOLIC_BUILTINS
 from machinome.motion.couplings import (_solved_formulas, _wirings,
                                          ClockRef, CouplingError)
@@ -69,7 +69,6 @@ from machinome.motion.joints import coordinates_of, declared_joints
 from machinome.motion.ports import CLOCK_NAME
 from machinome.node.qualified import (driver_id, instance_path,
                                        DriverIdError)
-from machinome.scad_expression import GraphValue, as_node, symbol
 
 
 # The primitives that JUMP, and are therefore recognized and planned for
@@ -4170,7 +4169,7 @@ def _compiled_bound(bound, identifier, node, joint, side, read_ids=None):
                f'expression.')
     if isinstance(returned, (int, float)):
         return float(returned)
-    if not isinstance(returned, OpenSCADConstant):
+    if symbolic(returned) is None:
         refuse(f'returned {returned!r}, which is neither a number nor an '
                f"expression over the joint's own coordinate.")
     root = as_node(returned)
@@ -4222,7 +4221,7 @@ def _compiled_reading_bound(bound, identifier, read_ids, refuse):
                f'number {returned!r}, so it never reads what it declares. '
                f'A bound that reads other coordinates is an expression '
                f'over them; a bound that is a number is written as one.')
-    if not isinstance(returned, OpenSCADConstant):
+    if symbolic(returned) is None:
         refuse(f'returned {returned!r}, which is neither a number nor an '
                f'expression over the coordinates it was given.')
     root = as_node(returned)
@@ -4530,8 +4529,9 @@ def _law_graphs(assembly, record, source_nodes, count):
                    f'exactly {count} values.')
     allowed = {node.name for node in source_nodes}
     for value in returned:
-        if isinstance(value, OpenSCADConstant):
-            unknown = free_names(as_node(value)) - allowed
+        node = symbolic(value)
+        if node is not None:
+            unknown = free_names(node) - allowed
             if unknown:
                 repair = (
                     ' Name the root\'s time declaration explicitly: '
@@ -4552,7 +4552,7 @@ def _graph_of(value, refuse):
                f'an expression.')
     if isinstance(value, (int, float)):
         return None, None
-    if not isinstance(value, OpenSCADConstant):
+    if symbolic(value) is None:
         refuse(f'the law returned {value!r}, which is neither a number nor '
                f'an expression over its sources.')
     root, jumps = checked_expression(value, refuse)

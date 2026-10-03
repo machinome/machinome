@@ -6,6 +6,25 @@ Changelog
 Unreleased
 ----------
 
+* **Symbolic values are machinome's own:** animation time, driver reads
+  and what ``machinome.math`` returns for them are
+  ``machinome.expression_graph.GraphValue``, a type the core defines; they
+  no longer derive from SolidPython's ``OpenSCADConstant``, and importing
+  ``machinome.math`` no longer imports SolidPython. Arithmetic,
+  comparisons, degree math and their text are unchanged, and so is every
+  SCAD file and published document, byte for byte. SolidPython's own
+  values (``solid2.get_animation_time()``, ``scad_inline(...)``) are still
+  accepted by ``machinome.math``, laws and bounds, read by the OpenSCAD
+  engine, now the package ``machinome.openscad``; with a SolidPython value
+  on the LEFT of an operator, SolidPython builds the result as its own
+  text, which machinome reads back wherever it is used. Asking a symbolic
+  value for its truth raises ``SymbolicTruthError`` naming it, where
+  SolidPython raised a bare ``Exception``. Breaking:
+  ``machinome.scad_expression`` is removed and its names
+  (``get_animation_time``, ``GraphValue``, ...) are imported from
+  ``machinome.expression_graph``; the OpenSCAD binary helpers
+  ``require_openscad``, ``openscad_binary`` and ``OpenScadUnavailable``
+  are imported from ``machinome.openscad.binary`` (ADR-170, ADR-171).
 * **The CAD kernels are extras, and each leaf has its final address:**
   every leaf type is one module directly under ``machinome.node``, named
   for its technology: ``machinome.node.cadquery``, ``.build123d`` (which

@@ -147,7 +147,7 @@ def expression_evaluations(sim, ticks):
     what falls is the cost INSIDE one evaluation, which
     `graph_node_visits` below is the probe that can see.
     """
-    from machinome.scad_expression import GraphValue
+    from machinome.expression_graph import GraphValue
     import machinome.simulation.program as program_module
 
     original_evaluate = GraphValue.evaluate

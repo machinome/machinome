@@ -21,7 +21,7 @@ import math
 
 from machinome.motion.joints import JointRangeError
 from machinome.motion.ports import Time
-from machinome.scad_expression import GraphValue
+from machinome.expression_graph import GraphValue
 from machinome.simulation import Sim
 from machinome.simulation import clocked as clocked_module
 from machinome.simulation.clocked import ClockedError

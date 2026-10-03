@@ -16,8 +16,8 @@ from machinome import math as m
 from machinome.core.expressions import bind_expressions
 from machinome.node.operations import Rotation, Translation, unserialize
 from machinome.node.qualified import DriverToken
-from machinome.scad_expression import GraphValue, restore_scalar
-from machinome.expression_graph import postorder
+from machinome.expression_graph import (GraphValue, as_node, free_names,
+                                        postorder, restore_scalar)
 from machinome.node import AssemblyNode
 from machinome.simulation import Driver
 from tests.test_expression_bindings import Leaf
@@ -64,7 +64,7 @@ class GraphProducerTest(BaseNodeTest):
             self.assertEqual(node.drive, .25)
 
     def test_dependency_and_diagnostics_do_not_render_the_graph(self):
-        from machinome.scad_expression import depends_on_time, get_animation_time
+        from machinome.expression_graph import depends_on_time, get_animation_time
         x = DriverToken('drive')
         for _ in range(1000):
             x = x + x
@@ -81,19 +81,42 @@ class GraphProducerTest(BaseNodeTest):
 
 class ExpressionGraphTest(TestCase):
     def test_every_supported_operator_keeps_both_legacy_operand_orders(self):
+        """A SolidPython operand on the right composes into the framework's
+        own value; on the left, SolidPython's operator builds its own text,
+        which the framework reads back (`motion-expression-sharing`,
+        "Legacy operand on the left yields SolidPython text the framework
+        reads")."""
         import operator
+        from machinome.simulation import Sim
+        from tests.expression_type_project.running import LegacyLeft
         ops = [operator.add, operator.sub, operator.mul, operator.truediv,
                operator.mod, operator.pow, operator.eq, operator.ne,
                operator.lt, operator.le, operator.gt, operator.ge]
         x, legacy = DriverToken('drive'), scad_inline('2')
         for op in ops:
-            for left, right, a, b in [(x, legacy, 3, 2), (legacy, x, 2, 3)]:
-                with self.subTest(operator=op.__name__, left=a):
-                    value = op(left, right)
-                    self.assertIsInstance(value, GraphValue)
-                    self.assertEqual(value.evaluate({'drive': 3}), op(a, b))
+            with self.subTest(operator=op.__name__, legacy='right'):
+                value = op(x, legacy)
+                self.assertIsInstance(value, GraphValue)
+                self.assertEqual(value.evaluate({'drive': 3}), op(3, 2))
+            with self.subTest(operator=op.__name__, legacy='left'):
+                value = op(legacy, x)
+                self.assertNotIsInstance(value, GraphValue)
+                self.assertIsInstance(value, OpenSCADConstant)
+                node = as_node(value)
+                self.assertEqual(GraphValue(node).evaluate({'drive': 3}),
+                                 op(2, 3))
+                self.assertEqual(free_names(node), {'drive'})
+                read = m.sin(value)
+                self.assertIsInstance(read, GraphValue)
+                self.assertEqual(free_names(as_node(read)), {'drive'})
+                rewritten, _, warnings = bind_expressions([str(value)],
+                                                          ['drive'])
+                self.assertFalse(warnings)
+                self.assertNotIn('let(', rewritten[0])
         self.assertEqual((-x).evaluate({'drive': 3}), -3)
         self.assertEqual(abs(x).evaluate({'drive': -3}), 3)
+        law = Sim(LegacyLeft(), 0.1).program.described()
+        self.assertIn("law ['crank'] -> ['first.turn'] (2 * crank)", law)
 
     def test_native_collection_never_stringifies_and_reclaims_the_graph(self):
         from machinome.core.serializer import bind_document
@@ -215,18 +238,28 @@ class ExpressionGraphTest(TestCase):
         self.assertNotIn('let(', json.dumps([rewritten, bindings]))
 
     def test_legacy_operand_order_and_public_math(self):
+        """A framework value on the left keeps the framework's own type; a
+        SolidPython operand on the left gives SolidPython's text constant.
+        The text is the same either way."""
+        from machinome.expression_graph import SymbolicTruthError
         x = DriverToken('drive')
         legacy = scad_inline('(other + 2)')
-        pairs = [(x - legacy, '(drive - (other + 2))'),
-                 (legacy - x, '((other + 2) - drive)'),
-                 (legacy / x, '((other + 2) / drive)'),
-                 (abs(x), 'abs(drive)'),
-                 (m.sin(x), 'sin(drive)')]
-        for actual, expected in pairs:
+        framework = [(x - legacy, '(drive - (other + 2))'),
+                     (abs(x), 'abs(drive)'),
+                     (m.sin(x), 'sin(drive)')]
+        solidpython = [(legacy - x, '((other + 2) - drive)'),
+                       (legacy / x, '((other + 2) / drive)')]
+        for actual, expected in framework:
+            self.assertIsInstance(actual, GraphValue)
+            self.assertEqual(str(actual), expected)
+        for actual, expected in solidpython:
+            self.assertNotIsInstance(actual, GraphValue)
             self.assertIsInstance(actual, OpenSCADConstant)
             self.assertEqual(str(actual), expected)
-        with self.assertRaises(Exception):
+        with self.assertRaises(SymbolicTruthError):
             bool(x < legacy)
+        with self.assertRaises(Exception):
+            bool(legacy < x)
 
     def test_standalone_operation_round_trip_preserves_input(self):
         x = m.sin(DriverToken('drive'))

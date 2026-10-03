@@ -177,7 +177,7 @@ class Affine:
     """`driven = ratio * driver + offset`, and its algebraic inverse.
 
     Ordinary arithmetic, deliberately: a `DriverToken` or `$t` for the
-    operand builds the wire expression solid2 builds, and a number gives
+    operand builds the framework's own symbolic graph, and a number gives
     a number. A ratio of one and an offset of zero are skipped rather
     than multiplied and added, so an identity never publishes `(x * 1)`.
 

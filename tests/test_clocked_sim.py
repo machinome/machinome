@@ -18,7 +18,7 @@ of task 4 beside it. The originating project is
 
 from machinome.motion.joints import JointRangeError
 from machinome.node import AssemblyNode
-from machinome.scad_expression import GraphValue
+from machinome.expression_graph import GraphValue
 from machinome.simulation import Sim
 from machinome.simulation.clocked import ClockedError
 

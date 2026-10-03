@@ -44,13 +44,13 @@ that way.
 - [ADR-039](NODE/ADR-039-solid-integrity-at-the-topmost-rigid-node.md) — Solid integrity at the topmost rigid node — **Accepted**, amended 2026-08-10
 - [ADR-044](NODE/ADR-044-derived-exact-geometry-capability.md) — Derived exact-geometry capability — **Accepted**, amended by 164
 - [ADR-045](NODE/ADR-045-exact-fusion-composition.md) — Exact fusion composition — **Accepted**
-- [ADR-046](NODE/ADR-046-conditional-openscad-dependency.md) — Conditional OpenSCAD dependency — **Accepted**, amended by 166
+- [ADR-046](NODE/ADR-046-conditional-openscad-dependency.md) — Conditional OpenSCAD dependency — **Accepted**, amended by 166, 171
 - [ADR-047](NODE/ADR-047-shared-occt-currency-for-exact-backends.md) — One shared OCCT currency for every exact backend — **Accepted**, amended 2026-08-22, chosen option **Superseded** by 160, "framework-internal base" superseded in part by 163
 - [ADR-050](NODE/ADR-050-nanosecond-fidelity-artifact-freshness.md) — Nanosecond-fidelity artifact freshness — **Accepted**
 - [ADR-053](NODE/ADR-053-authored-profile-as-the-sheet-part-source-of-truth.md) — Authored profile as a sheet part's source of truth — **Accepted**, "framework-internal base" superseded in part by 163
 - [ADR-054](NODE/ADR-054-imported-meshes-admitted-selected-and-corrected-explicitly.md) — An imported mesh is admitted, selected and corrected explicitly — **Accepted**
 - [ADR-055](NODE/ADR-055-wrapper-module-in-the-imported-part-source-set.md) — The wrapper module joins an imported part's tracked source set — **Accepted**
-- [ADR-056](NODE/ADR-056-signals-drivers-ports-and-stepped-simulation.md) — Signals, drivers, ports, and stepped simulation — **Proposed** (design draft, pre-OpenSpec), amended 2026-08-27, amended by 087, extended by 088
+- [ADR-056](NODE/ADR-056-signals-drivers-ports-and-stepped-simulation.md) — Signals, drivers, ports, and stepped simulation — **Proposed** (design draft, pre-OpenSpec), amended 2026-08-27, amended by 087, extended by 088, `DriverToken` representation amended by 170
 - [ADR-057](NODE/ADR-057-the-flexible-leaf-and-spec-carried-geometry.md) — The flexible leaf, whose geometry travels as a spec — **Accepted**, "framework-internal base" superseded in part by 163
 - [ADR-058](NODE/ADR-058-indexed-package-lookup-for-source-closures.md) — Indexed package lookup for source closures — **Accepted**
 - [ADR-060](NODE/ADR-060-content-verified-currency-beneath-the-mtime-rule.md) — Content-verified currency beneath the mtime rule — **Accepted**, amends 006, amended by 071/081
@@ -131,6 +131,7 @@ that way.
 - [ADR-166](NODE/ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md) — The core recognises no node type by the spelling of its class name: no module under `machinome/` compares a class name with a string, held by an AST test; the missing-OpenSCAD refusal for a node's STL names the node and its own class — **Accepted**, amends 046, cites 004/102/161/163
 - [ADR-167](NODE/ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md) — A kernel is an extra, and its module refuses its absence at import: the extras `occt`, `cadquery`, `build123d`, `step`, `molejo`, `all` named by the address, each kernel extra including `occt`; `machinome.extras.require_extra` checks presence without importing and raises `ExtraUnavailable` (a `ModuleNotFoundError` carrying the extra) at three doors; the engine seam reads the `occt` refusal as an absent engine; the markings' artwork reducer behind a seam — **Accepted**, amends 161, cites 046/059/162
 - [ADR-169](NODE/ADR-169-a-leaf-type-is-one-module-under-machinome-node.md) — A leaf type is one module under `machinome.node`; the adapters package is dissolved and refuses naming the new address; `Build123dSheetNode` beside `Build123dNode`; the filtered path extension admitting only portions without their own `__init__.py` — **Accepted**, amends 004, cites 163/165/167
+- [ADR-171](NODE/ADR-171-the-openscad-engine-is-machinome-openscad.md) — The OpenSCAD engine is `machinome.openscad`: `engine.py` adopts a SolidPython value as the core's expression graph (`CONTRACT = 1`), `binary.py` is the ADR-046 locator moved unchanged; the seam `machinome.scad_engine` resolves it once, absent without SolidPython, no install refusal yet — **Accepted**, amends 046, cites 161/162/170
 
 ### OCCT — the OCCT exact engine (leaves the core with `machinome/occt/` at the cut)
 - [ADR-160](OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — The OCCT engine's currency is the kernel's own shape: the bare `TopoDS_Shape`, admitted by `as_shape` — **Accepted**, supersedes 047's chosen option, notes 057's recast sentence as historical
@@ -166,8 +167,9 @@ that way.
 ### MATH — expression evaluation parity
 - [ADR-022](MATH/ADR-022-cross-runtime-degree-trig-parity-for-t-expressions.md) — Cross-runtime degree-trig parity for `$t` and driver expressions — **Accepted**, revised 2026-09-06 (defect fixed and parity enforced 2026-08-26; vocabulary widened beyond trigonometry, and the corpus must cover every emitted name)
 - [ADR-076](MATH/ADR-076-mechanism-laws-as-compositions-over-expression-math.md) — Mechanism laws as compositions over expression math — **Accepted**, depends on 022; ownership and import path superseded by 132
-- [ADR-101](MATH/ADR-101-motion-sharing-begins-at-construction.md) — Motion sharing begins at construction — **Accepted**, supersedes 080's eager construction and flat SCAD decisions in part, depends on 022/076
+- [ADR-101](MATH/ADR-101-motion-sharing-begins-at-construction.md) — Motion sharing begins at construction — **Accepted**, supersedes 080's eager construction and flat SCAD decisions in part, depends on 022/076, facade amended by 170
 - [ADR-132](MATH/ADR-132-mechanics-helpers-release-independently.md) — Mechanics helpers release independently — **Accepted**, completes the earlier extraction and preserves the opt-in mechanics extra
+- [ADR-170](MATH/ADR-170-the-core-s-symbolic-value-is-its-own-type.md) — The core's symbolic value is its own type: `GraphValue` at `machinome.expression_graph`, no SolidPython ancestry, `SymbolicTruthError` (an `Exception`, not a `TypeError`), recognition by `symbolic()`, text unchanged; a SolidPython operand on the left yields SolidPython's text, read back — **Accepted**, amends 101/056, cites 022/080/171
 
 ### TEST-FRAMEWORK — CAD testing
 - [ADR-009](TEST-FRAMEWORK/ADR-009-trimesh-based-mesh-assertions-for-cad-testing.md) — Trimesh mesh assertions — **Accepted**, extended by 025

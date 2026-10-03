@@ -75,7 +75,7 @@ from machinome.node.qualified import (
     DriverToken, declared_drivers_of, driver_id, drive_tree,
 )
 from machinome.motion.ports import CLOCK_NAME, declared_time
-from machinome.scad_expression import symbol
+from machinome.expression_graph import symbol
 from machinome.simulation.enumeration import tree_declares_drivers
 
 

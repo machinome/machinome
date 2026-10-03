@@ -42,15 +42,15 @@ reason: `machinome/node/` never imports `machinome/simulation/`.
   MEANS (native units, dtype rounding, ramps) stays in the simulation
   layer, which owns the `Driver` that subclasses this. `Port` next
   door is the same shape for the same reason.
-- `DriverToken` is the symbolic read of one driver. Its compatibility
-  facade subclasses solid2's `OpenSCADConstant`, but ordinary arithmetic
-  and degree math retain a native graph. Only publication produces text.
+- `DriverToken` is the symbolic read of one driver: the core's own
+  symbolic value (`machinome.expression_graph.GraphValue`), so ordinary
+  arithmetic and degree math retain a native graph. Only publication
+  produces text.
 """
 
 import re
 
-from machinome.scad_expression import GraphValue
-from machinome.expression_graph import ExpressionNode
+from machinome.expression_graph import ExpressionNode, GraphValue
 
 from .phase import note_read
 
@@ -266,9 +266,9 @@ class DriverToken(GraphValue):
     """A symbolic read of one driver: a constant whose string IS its
     qualified id.
 
-    The graph facade retains SolidPython type compatibility while preserving
-    operand references through arithmetic and degree math. The qualified id
-    is final when the token is created; compound text is an output only.
+    A `GraphValue` over one name node, so arithmetic and degree math keep
+    operand references. The qualified id is final when the token is
+    created; compound text is an output only.
     """
 
     def __init__(self, qualified_id):
