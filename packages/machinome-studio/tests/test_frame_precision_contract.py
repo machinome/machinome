@@ -1,3 +1,5 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """The runtime contract preserves the ratified narrow Frame precision rule."""
 from pathlib import Path
 import unittest
