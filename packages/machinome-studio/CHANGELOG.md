@@ -42,18 +42,19 @@ backend.
   each agent's activity, with its runtime changeable while idle; and the
   distinct printed pieces of the last build on a fixed virtual bed,
   downloadable as one STL per piece with printing instructions.
-- **Two profiles**: `openspec`, the shop default, one agent — Builder —
-  working directly with the maker and keeping the project's design in an
-  OpenSpec record it owns; and `fordesmac`, a foreman who speaks with the
-  maker and assigns a designer, a machinist and a librarian one increment
-  at a time. **Breaking:** a project declaring no profile now opens under
-  `openspec` instead of `fordesmac`, and a project declaring the former
-  `builder` name is refused, naming its `pyproject.toml` and the value,
-  until its declaration is edited to `openspec`; the studio ships no
-  alias and no migration path for the old name.
+- **Two profiles**: `openspec-builder`, the shop default, one agent —
+  OpenSpec Builder — working directly with the maker and keeping the
+  project's design in an OpenSpec record it owns; and `fordesmac`, a
+  foreman who speaks with the maker and assigns a designer, a machinist
+  and a librarian one increment at a time. **Breaking:** a project
+  declaring no profile now opens under `openspec-builder` instead of
+  `fordesmac`, and a project declaring the former `builder` or `openspec`
+  name is refused, naming its `pyproject.toml` and the value, until its
+  declaration names `openspec-builder`; the studio ships no alias and no
+  migration path for either old name.
 - **Correction:** the Agents area's Session panel reported every profile
   as `delegated`; it now reads the profile's own work mode (`direct` for
-  `openspec`, `delegated` for `fordesmac`).
+  `openspec-builder`, `delegated` for `fordesmac`).
 - **Three backends, chosen per agent by the project**: Claude Code,
   OpenCode and qualified Codex, each agent replacing its native tools with the studio's bounded
   operations rooted at the project, holding exactly the capabilities its

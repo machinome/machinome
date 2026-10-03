@@ -46,7 +46,7 @@ the overview says *what is true now*.
 | `0031` | [Use Machinome as the product and framework identity](./0031-use-machinome-as-the-product-and-framework-identity.md) | Accepted | 2026-09-18 |
 | `0032` | [Restore Codex only with a qualified exact floor-tool surface](./0032-restore-scoped-codex-backend.md) | Accepted | 2026-09-26 |
 | `0033` | [Start the studio with one command and a configuration file](./0033-start-the-studio-with-one-command-and-a-configuration-file.md) | Accepted | 2026-09-26 |
-| `0034` | [Ship the OpenSpec profile as the default](./0034-ship-the-openspec-profile-as-the-default.md) | Accepted | 2026-10-03 |
+| `0034` | [Ship the OpenSpec Builder profile as the default](./0034-ship-the-openspec-profile-as-the-default.md) | Accepted | 2026-10-03 |
 
 ## Conventions
 

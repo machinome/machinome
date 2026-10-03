@@ -5,7 +5,7 @@ work_mode = "direct"
 
 [[agents]]
 id = "builder"
-label = "Builder"
+label = "OpenSpec Builder"
 prompt = "builder.md"
 assigns = []
 

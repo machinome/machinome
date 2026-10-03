@@ -576,7 +576,7 @@ class MultiBackendOrchestratorTest(unittest.IsolatedAsyncioTestCase):
 
 class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
     async def test_direct_start_event_that_wins_the_receipt_race_is_adopted(self) -> None:
-        profile = _resolved_profile("openspec")
+        profile = _resolved_profile("openspec-builder")
         broker = Broker(profile=profile)
 
         class RacingBackend(FakeMultiplexBackend):
@@ -614,7 +614,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_direct_completion_that_wins_the_receipt_race_stays_waiting(self) -> None:
-        profile = _resolved_profile("openspec")
+        profile = _resolved_profile("openspec-builder")
         broker = Broker(profile=profile)
 
         class RacingBackend(FakeMultiplexBackend):
@@ -683,7 +683,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.conversation, [("foreman", "Public")])
 
     async def test_direct_turn_events_update_the_builder_broker_without_assignment_ids(self) -> None:
-        profile = _resolved_profile("openspec")
+        profile = _resolved_profile("openspec-builder")
         broker = Broker(profile=profile)
         backend = FakeMultiplexBackend()
         orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
@@ -699,7 +699,7 @@ class ProfileOrchestratorTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(broker.agents["builder"].state, "waiting")
 
     async def test_direct_lifecycle_ignores_stale_events_and_preserves_the_steered_delivery_identity(self) -> None:
-        profile = _resolved_profile("openspec")
+        profile = _resolved_profile("openspec-builder")
         broker = Broker(profile=profile)
         backend = FakeMultiplexBackend()
         orchestrator = ShopOrchestrator(backend, LocalBrokerControl(broker), profile=profile, shop_root=ROOT, active_project=ROOT)
@@ -832,7 +832,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         (self.project / "root").mkdir(parents=True)
         (self.project / "root" / "__init__.py").write_text("# model\n")
         (self.project / ".gitignore").write_text("_build/\n.fake-machinome-builds\n")
-        (self.project / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "openspec"\n')
+        (self.project / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "openspec-builder"\n')
         subprocess.run(["git", "init", "-q", "-b", "main", str(self.project)], check=True)
         subprocess.run(["git", "-C", str(self.project), "add", "--all"], check=True)
         subprocess.run([
@@ -866,7 +866,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         session = await self.registry.wait_until_settled("engine")
         self.assertIsNotNone(session)
         assert session is not None
-        self.assertEqual(session.profile.id, "openspec")
+        self.assertEqual(session.profile.id, "openspec-builder")
         self.assertEqual(list(session.broker.agents), ["builder"])
         self.assertNotEqual(session.id, session.name)
         self.assertEqual(self.backends[0][0]["session_id"], session.id)
@@ -887,7 +887,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         session = await self.registry.wait_until_settled("bare")
         self.assertIsNotNone(session)
         assert session is not None
-        self.assertEqual(session.profile.id, "openspec")
+        self.assertEqual(session.profile.id, "openspec-builder")
         self.assertEqual(list(session.broker.agents), ["builder"])
 
     async def test_a_backend_is_built_with_every_skill_its_profile_allowlists(self) -> None:
@@ -899,7 +899,7 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
             for agent in session.profile.agents
             for skill in agent.skills
         }
-        self.assertTrue(expected, "the openspec profile allowlists skills")
+        self.assertTrue(expected, "the openspec-builder profile allowlists skills")
         self.assertEqual(
             {skill.name: skill.path for skill in self.backends[0][0]["skills"]},
             expected,
@@ -931,15 +931,15 @@ class SessionOpeningTest(unittest.IsolatedAsyncioTestCase):
         subscriber, _snapshot = await self.registry.subscribe_hub()
         try:
             with patch("floor.sessions.prepare_project", side_effect=slow_prepare):
-                response = await self.registry.create("", "new_project", "openspec")
+                response = await self.registry.create("", "new_project", "openspec-builder")
                 self.assertEqual(response, {"state": "opening"})
                 self.assertTrue(await asyncio.to_thread(started.wait, 2))
 
                 event = await asyncio.wait_for(subscriber.get(), timeout=2)
-                self.assertEqual(event, {"kind": "creating", "project": "new_project", "folder": "", "profile": "openspec"})
+                self.assertEqual(event, {"kind": "creating", "project": "new_project", "folder": "", "profile": "openspec-builder"})
                 projects = {item["path"]: item for item in await self.registry.entries()}
                 self.assertEqual(projects["new_project"]["state"], "creating")
-                self.assertEqual(projects["new_project"]["profile"], "openspec")
+                self.assertEqual(projects["new_project"]["profile"], "openspec-builder")
                 self.assertFalse((self.home / "new_project").exists())
 
                 release.set()

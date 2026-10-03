@@ -347,7 +347,7 @@ class ReferenceTest(unittest.TestCase):
         page = (DOCS / "reference/project-configuration.rst").read_text()
         for needed in (
             "[tool.machinome-studio]", "[tool.machinome-studio.agents]",
-            "libresolid-studio", "[tool.machinome]", "openspec", "fordesmac",
+            "libresolid-studio", "[tool.machinome]", "openspec-builder", "fordesmac",
         ):
             with self.subTest(needed=needed):
                 self.assertIn(needed, page)

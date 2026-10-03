@@ -549,7 +549,7 @@ function Hub({ folder }: { folder: string }) {
   const [shopOpen, setShopOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState("");
-  const [profile, setProfile] = useState<"openspec" | "fordesmac" | "">("openspec");
+  const [profile, setProfile] = useState<"openspec-builder" | "fordesmac" | "">("openspec-builder");
   const [formError, setFormError] = useState("");
   const pendingOpen = useRef<string | null>(null);
   // A folder of declared models is a project repository, so it holds no
@@ -612,7 +612,7 @@ function Hub({ folder }: { folder: string }) {
           kind: "project",
           path: event.project,
           name: event.project.split("/").pop() ?? event.project,
-          profile: event.profile ?? "openspec",
+          profile: event.profile ?? "openspec-builder",
           openable: true,
           reason: null,
           branch: null,
@@ -783,9 +783,9 @@ function Hub({ folder }: { folder: string }) {
         <header><h2>New project</h2><p>Create a repository and open its first session.</p></header>
         <label>Project name<input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="bracket-assembly" /></label>
         <fieldset><legend>Runtime profile</legend><div className="profile-grid">
-          {(["openspec", "fordesmac"] as const).map((value) => <button type="button" className={profile === value ? "selected" : ""} onClick={() => setProfile(value)} key={value}>
-            <strong>{value === "openspec" ? "OpenSpec" : "Fordesmac"}</strong>
-            <span>{value === "openspec" ? "One agent, Builder, keeping an OpenSpec design record" : "Four-agent mechanical shop"}</span>
+          {(["openspec-builder", "fordesmac"] as const).map((value) => <button type="button" className={profile === value ? "selected" : ""} onClick={() => setProfile(value)} key={value}>
+            <strong>{value === "openspec-builder" ? "OpenSpec Builder" : "Fordesmac"}</strong>
+            <span>{value === "openspec-builder" ? "One agent keeping the project's design in an OpenSpec record" : "Four-agent mechanical shop"}</span>
           </button>)}
         </div></fieldset>
         <p className="runtime-note">Agents use project-declared runtime selections or the profile's Claude defaults.</p>

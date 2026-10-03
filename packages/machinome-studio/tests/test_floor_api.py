@@ -71,7 +71,7 @@ class FloorAPITest(unittest.TestCase):
         for session_id in (alpha, bravo):
             manifested = _request(
                 self.url(f"/api/sessions/{session_id}/agents"), "POST",
-                {"role": "builder", "label": "Builder"},
+                {"role": "builder", "label": "OpenSpec Builder"},
             )
             self.assertEqual(manifested["state"], "waiting")
         _request(self.url(f"/api/sessions/{alpha}/conversation"), "POST", {"text": "Alpha only"})
@@ -94,7 +94,7 @@ class FloorAPITest(unittest.TestCase):
         session_id = self._open("runtime-less")
         _request(
             self.url(f"/api/sessions/{session_id}/agents"), "POST",
-            {"role": "builder", "label": "Builder"},
+            {"role": "builder", "label": "OpenSpec Builder"},
         )
         route = self.url(f"/api/sessions/{session_id}/agents/builder/runtime")
         self.assertEqual(_status(route, "GET"), 409)
@@ -106,7 +106,7 @@ class FloorAPITest(unittest.TestCase):
     def test_unknown_session_is_refused_and_a_closed_id_cannot_reach_a_reopened_project(self) -> None:
         self._make_project("engine")
         first = self._open("engine")
-        self.assertEqual(_status(self.url("/api/sessions/missing/agents"), "POST", {"role": "builder", "label": "Builder"}), 404)
+        self.assertEqual(_status(self.url("/api/sessions/missing/agents"), "POST", {"role": "builder", "label": "OpenSpec Builder"}), 404)
         self.assertEqual(_status(self.url(f"/api/sessions/{first}"), "DELETE"), 202)
         _wait_for(lambda: self._project("engine")["state"] == "closed")
         second = self._open("engine")
@@ -129,7 +129,7 @@ class FloorAPITest(unittest.TestCase):
         for session_id in (alpha, bravo):
             _request(
                 self.url(f"/api/sessions/{session_id}/agents"), "POST",
-                {"role": "builder", "label": "Builder"},
+                {"role": "builder", "label": "OpenSpec Builder"},
             )
         _request(self.url(f"/api/sessions/{alpha}/conversation"), "POST", {"text": "Alpha only"})
         _request(self.url(f"/api/sessions/{bravo}/conversation"), "POST", {"text": "Bravo only"})
@@ -159,22 +159,22 @@ class FloorAPITest(unittest.TestCase):
 
     def test_creation_writes_the_chosen_profile_and_rejects_every_collision(self) -> None:
         response = _request(
-            self.url("/api/projects"), "POST", {"name": "new_engine", "profile": "openspec"}
+            self.url("/api/projects"), "POST", {"name": "new_engine", "profile": "openspec-builder"}
         )
         self.assertEqual(response["state"], "opening")
         _wait_for(lambda: self._project("new_engine")["state"] == "open")
-        self.assertIn('profile = "openspec"', (self.project_home / "new_engine" / "pyproject.toml").read_text())
+        self.assertIn('profile = "openspec-builder"', (self.project_home / "new_engine" / "pyproject.toml").read_text())
         self.assertEqual(
             subprocess.run(
                 ["git", "-C", str(self.project_home / "new_engine"), "show", "HEAD:pyproject.toml"],
                 check=True, text=True, capture_output=True,
-            ).stdout.count('profile = "openspec"'),
+            ).stdout.count('profile = "openspec-builder"'),
             1,
         )
 
         (self.project_home / "occupied").write_text("not a directory")
-        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "occupied", "profile": "openspec"}), 409)
-        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "../escape", "profile": "openspec"}), 409)
+        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "occupied", "profile": "openspec-builder"}), 409)
+        self.assertEqual(_status(self.url("/api/projects"), "POST", {"name": "../escape", "profile": "openspec-builder"}), 409)
 
     def test_a_failed_initial_build_still_opens_and_artifacts_are_project_scoped(self) -> None:
         project = self._make_project("broken-model")
@@ -273,7 +273,7 @@ class FloorAPITest(unittest.TestCase):
         for session_id in (first, second):
             _request(
                 self.url(f"/api/sessions/{session_id}/agents"), "POST",
-                {"role": "builder", "label": "Builder"},
+                {"role": "builder", "label": "OpenSpec Builder"},
             )
         _request(self.url(f"/api/sessions/{first}/conversation"), "POST", {"text": "First clock only"})
         self.assertEqual(
@@ -380,7 +380,7 @@ class FloorAPITest(unittest.TestCase):
         self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/malformed.png"), "GET"), 404)
         self.assertEqual(_status(self.url(f"/api/sessions/{session_id}/source-preview/root/__init__.py"), "GET"), 404)
 
-    def _make_project(self, name: str, profile: str = "openspec", models: tuple[str, ...] = ()) -> Path:
+    def _make_project(self, name: str, profile: str = "openspec-builder", models: tuple[str, ...] = ()) -> Path:
         project = self.project_home / name
         (project / "root").mkdir(parents=True)
         (project / "root" / "__init__.py").write_text("# model\n")

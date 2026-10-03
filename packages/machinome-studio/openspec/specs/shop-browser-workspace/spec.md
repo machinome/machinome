@@ -65,7 +65,7 @@ per-agent assignment detail. It SHALL NOT show an agent belonging to another
 open project.
 
 #### Scenario: The default profile is visible
-- **WHEN** the maker opens the workspace of a project declaring `openspec`, or declaring no profile
+- **WHEN** the maker opens the workspace of a project declaring `openspec-builder`, or declaring no profile
 - **THEN** the Model panel shows the mounted model's assembly navigator and
   Builder's live state
 

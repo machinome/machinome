@@ -151,9 +151,9 @@ class SessionSourceSaveTest(unittest.IsolatedAsyncioTestCase):
         subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
         subprocess.run(["git", "-C", str(project), "add", "model.py"], check=True)
         root = Path(__file__).resolve().parents[1]
-        profile = load_profile("openspec", shop_root=root)
+        profile = load_profile("openspec-builder", shop_root=root)
         broker = Broker(profile=profile, session_id="source-session")
-        broker.manifest("builder", "Builder")
+        broker.manifest("builder", "OpenSpec Builder")
         broker.register_direct_delivery("builder", "turn-1")
         broker.turn_started("builder", "turn-1")
 

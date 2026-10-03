@@ -28,9 +28,9 @@ class CodexGitIdentityTests(unittest.IsolatedAsyncioTestCase):
             (project / "openspec").mkdir()
             (project / "openspec" / "planning.md").write_text("Synthetic planning record\n")
             subprocess.run(["git", "-C", str(project), "add", "openspec/planning.md"], check=True)
-            agent = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT)).user_agent
+            agent = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT)).user_agent
             agent = replace(agent, skills=())
-            context = RoleContext(str(ROOT), str(project), agent, "openspec", "Maker", "Builder")
+            context = RoleContext(str(ROOT), str(project), agent, "openspec-builder", "Maker", "OpenSpec Builder")
             worker = FloorWorker(context, machinome_command=("unused",), broker_url="http://unused", session_id="synthetic")
             with patch.dict(os.environ, {"HOME": str(operator), "PATH": os.environ["PATH"]}, clear=True):
                 await worker.start()

@@ -87,7 +87,7 @@ other agent, into user-conversation entries.
 - **THEN** the reporting parent receives the unseen events once in recorded order
 
 #### Scenario: The user-facing agent emits output
-- **WHEN** Builder in `openspec` or Foreman in `fordesmac` emits non-empty backend output
+- **WHEN** Builder in `openspec-builder` or Foreman in `fordesmac` emits non-empty backend output
 - **THEN** the orchestrator records it in the user conversation under that configured agent identity
 
 ### Requirement: The broker enforces the active profile's communication graph

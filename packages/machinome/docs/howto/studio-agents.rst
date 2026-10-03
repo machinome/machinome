@@ -7,30 +7,31 @@ which one speaks with you, who assigns work to whom, what each may do, the
 prompt each follows and the skills it may load. The studio ships two. The
 choice is made when a project is created, recorded in its
 ``pyproject.toml`` and read every time the project opens; a project that
-records none opens under ``openspec``, the shop default. :doc:`reference/profiles`
+records none opens under ``openspec-builder``, the shop default. :doc:`reference/profiles`
 lists what each declares.
 
-OpenSpec
-========
+OpenSpec Builder
+================
 
-``openspec`` is one agent, **Builder**, working directly with you. You
-describe what you want; Builder designs, builds, tests and commits, and
-reports back, asking only when a choice is yours to make. It never pushes.
+``openspec-builder`` is one agent, **OpenSpec Builder**, working directly
+with you. You describe what you want; OpenSpec Builder designs, builds,
+tests and commits, and reports back, asking only when a choice is yours to
+make. It never pushes.
 
-Builder keeps the project's design in the project's own OpenSpec record,
-which it creates on the first design change. A design change is one that
-establishes or alters an interface between parts; Builder plans it and
-commits the plan, then builds it, syncs the record and commits the parts,
-their tests and the record together. A knob value, a build repair or a
-snapshot is not a design change and is done directly. You never write,
-read or approve a spec artifact to get work done: the record is there so
-that "why is this part like this?" can be answered from it months later,
-and Builder answers such questions from it.
+OpenSpec Builder keeps the project's design in the project's own OpenSpec
+record, which it creates on the first design change. A design change is
+one that establishes or alters an interface between parts; OpenSpec
+Builder plans it and commits the plan, then builds it, syncs the record
+and commits the parts, their tests and the record together. A knob value,
+a build repair or a snapshot is not a design change and is done directly.
+You never write, read or approve a spec artifact to get work done: the
+record is there so that "why is this part like this?" can be answered
+from it months later, and OpenSpec Builder answers such questions from it.
 
-For every new part Builder first wires the part into the model in a
-deliberately disassembled position, then writes the fit or assembly test
-that fails because the relationship is wrong, then assembles the part
-until the test passes; builds, range checks and snapshots follow.
+For every new part OpenSpec Builder first wires the part into the model
+in a deliberately disassembled position, then writes the fit or assembly
+test that fails because the relationship is wrong, then assembles the
+part until the test passes; builds, range checks and snapshots follow.
 
 Fordesmac
 =========
@@ -73,7 +74,7 @@ The studio gives each a bounded set of operations rooted there: reading,
 searching, writing and editing files; Git status, diff, log, staging and
 commit, and never push, reset, checkout, branch or rebase; the framework's
 build, test and snapshot; messages to the other agents of its team; and,
-for Builder alone, the project's OpenSpec record. There is no shell, no
+for OpenSpec Builder alone, the project's OpenSpec record. There is no shell, no
 web and no other network. Which of these an agent holds is declared by its
 profile and cannot be widened by a project or a prompt, and no agent runs
 with permission checking disabled.
@@ -89,7 +90,7 @@ Where the work is recorded
 
 In the project, and only there: the source and its tests; under
 ``fordesmac``, ``docs/design.md``, ``docs/specs/`` and ``docs/notes/``;
-under ``openspec``, the ``openspec/`` record; the commits, one per coherent
+under ``openspec-builder``, the ``openspec/`` record; the commits, one per coherent
 slice; and the model's preview picture, committed with the model. Agents
 commit and never push. What you see in a session, its conversation and its
 activity, is not kept; the repository is the record.

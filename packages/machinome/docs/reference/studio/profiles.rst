@@ -38,8 +38,8 @@ every one rooted at the active project:
 
 Loading a skill follows the agent's declared skills, not its capabilities.
 
-``openspec``
-============
+``openspec-builder``
+====================
 
 Work mode: direct. One agent, speaking with the maker.
 
@@ -53,7 +53,7 @@ Work mode: direct. One agent, speaking with the maker.
      - Claude default
      - Capabilities and skills
    * - ``builder``
-     - Builder
+     - OpenSpec Builder
      - Speaks with the maker; designs, builds, tests and commits; keeps
        the project's OpenSpec record.
      - ``sonnet``, medium

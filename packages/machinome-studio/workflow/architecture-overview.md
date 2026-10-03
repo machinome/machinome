@@ -111,7 +111,7 @@ When a project is opened, the registry makes one side-effect-free read of its
 package resources. A source-worktree launch therefore exercises that worktree;
 an installed launch uses its installed resources and requires no Git checkout.
 The project's `[tool.machinome-studio]` `profile` value selects it;
-otherwise the shop uses `openspec`, the shop default. The launcher
+otherwise the shop uses `openspec-builder`, the shop default. The launcher
 provides no override. A profile is strict trusted configuration: it
 declares the human label, one user-facing agent, standing roster, direct
 or delegated work mode, prompt paths, allowed skills, communication
@@ -143,8 +143,8 @@ intentionally has no web or external documentation tools, pending a bounded
 research surface.
 
 `OpenSpec` is a capability of its own in that vocabulary, resolving to the
-floor's two OpenSpec tools. Only the `openspec` profile declares it, for
-Builder; no other capability reaches those tools, so a session holding
+floor's two OpenSpec tools. Only the `openspec-builder` profile declares it,
+for its agent; no other capability reaches those tools, so a session holding
 the shell or filesystem capabilities does not reach a project's spec
 record as a side effect.
 
@@ -152,7 +152,7 @@ The initial profiles are:
 
 | Profile | Mode | Human-facing agent | Standing roster |
 | --- | --- | --- | --- |
-| `openspec` | direct | Builder | Builder |
+| `openspec-builder` | direct | OpenSpec Builder | OpenSpec Builder |
 | `fordesmac` | delegated | Foreman | Foreman, Designer, Machinist, Librarian |
 
 Builder keeps a durable design record inside its project: an OpenSpec root

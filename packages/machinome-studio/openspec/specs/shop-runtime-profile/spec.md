@@ -7,7 +7,7 @@ Define trusted declarative packages that select shop runtime topology, prompts, 
 ### Requirement: A run selects one trusted runtime profile
 The shop SHALL resolve the profile for a session from exactly one of two
 sources, in this order of precedence: the project's declared profile when it
-declares one, and otherwise the shop default `openspec`. It SHALL resolve a
+declares one, and otherwise the shop default `openspec-builder`. It SHALL resolve a
 selected profile only from `profiles/<profile-id>/profile.toml` beneath the
 primary shop checkout. The broker-only and orchestrated entry points SHALL use
 the same profile selection contract. A project's declaration SHALL govern every
@@ -16,7 +16,7 @@ profile it does not declare.
 
 #### Scenario: The default profile is selected
 - **WHEN** a project that declares no profile is opened
-- **THEN** the shop selects the repository-owned `openspec` profile
+- **THEN** the shop selects the repository-owned `openspec-builder` profile
 
 #### Scenario: The project's declared profile is selected
 - **WHEN** a project that declares a profile is opened
@@ -77,7 +77,7 @@ mismatched, or without a description SHALL fail profile validation, because a
 skill that cannot be announced cannot be chosen.
 
 #### Scenario: A profile exposes a shared shop skill
-- **WHEN** `profiles/openspec/skills/machinome` is an individual symlink resolving to `shop-skills/machinome`
+- **WHEN** `profiles/openspec-builder/skills/machinome` is an individual symlink resolving to `shop-skills/machinome`
 - **THEN** a Builder prompt that declares `machinome` passes skill validation
 
 #### Scenario: A prompt names an unavailable skill
@@ -128,7 +128,7 @@ compatibility policy. A profile SHALL reject runtime tables for unsupported or
 retired backends, including Hermes, Codex, and OpenCode.
 
 #### Scenario: A complete backend mapping is selected
-- **WHEN** the `openspec` profile is loaded and the project selects no runtime for Builder
+- **WHEN** the `openspec-builder` profile is loaded and the project selects no runtime for Builder
 - **THEN** Builder opens on Claude with the model, effort, and tool policy that profile declares for Claude
 
 #### Scenario: A project model overrides a profile default
@@ -304,13 +304,13 @@ The profile tool vocabulary SHALL include `OpenSpec`, resolving to the floor's
 OpenSpec tools. It SHALL be a capability of its own rather than a member of any
 existing capability, so that a profile grants it only by naming it.
 
-The `openspec` profile SHALL declare `OpenSpec` for Builder. The `fordesmac`
+The `openspec-builder` profile SHALL declare `OpenSpec` for Builder. The `fordesmac`
 profile SHALL NOT declare it for any agent, and no Fordesmac session SHALL
 reach an OpenSpec tool.
 
 #### Scenario: Builder opens with the OpenSpec capability
 
-- **WHEN** a Builder session of the `openspec` profile opens
+- **WHEN** a Builder session of the `openspec-builder` profile opens
 - **THEN** the floor's OpenSpec tools are among its reachable tools
 
 #### Scenario: A Fordesmac role opens
@@ -325,9 +325,10 @@ reach an OpenSpec tool.
 - **THEN** profile validation fails before any project or runtime side effect
 
 ### Requirement: The shop ships OpenSpec and Fordesmac profiles
-The `openspec` profile SHALL declare one user-facing agent in direct mode,
-Builder, with the agent ID `builder` and the display label `Builder`; the
-profile is named for its discipline and its agent keeps its own name. The
+The `openspec-builder` profile SHALL declare one user-facing agent in direct mode,
+Builder, with the agent ID `builder` and the display label
+`OpenSpec Builder`; the maker meets the profile and its agent under that one
+name, while the agent ID stays `builder`. The
 `fordesmac` profile SHALL declare standing Foreman, Designer, Machinist, and
 Librarian agents in delegated mode; Foreman SHALL be user-facing, SHALL be the
 only agent permitted to assign the three specialists, and SHALL be the only
@@ -335,8 +336,8 @@ recipient of their reports. Both profiles SHALL use `Maker` as their initial
 human display label and SHALL be valid with Claude and OpenCode.
 
 #### Scenario: OpenSpec topology is loaded
-- **WHEN** the `openspec` profile is validated
-- **THEN** its complete standing roster contains only user-facing Builder, with agent ID `builder` and label `Builder`
+- **WHEN** the `openspec-builder` profile is validated
+- **THEN** its complete standing roster contains only user-facing Builder, with agent ID `builder` and label `OpenSpec Builder`
 
 #### Scenario: Fordesmac topology is loaded
 - **WHEN** the `fordesmac` profile is validated

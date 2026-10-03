@@ -37,7 +37,7 @@ put in the folder it is listing.
 
 #### Scenario: A project declares no profile
 - **WHEN** the maker views a hub whose working folder holds a project that declares no profile
-- **THEN** that project is listed under `openspec`, the shop default it would open under
+- **THEN** that project is listed under `openspec-builder`, the shop default it would open under
 
 #### Scenario: The working folder holds a folder of projects
 - **WHEN** the maker views a hub whose working folder holds a directory containing project repositories
@@ -75,10 +75,10 @@ convention, and SHALL require a profile choice. It SHALL report an unsafe name
 or a missing profile choice before creating anything, and SHALL leave the folder
 unchanged when it rejects one.
 
-The creation sheet SHALL offer the OpenSpec and Fordesmac profiles, each with
-its label and a one-line description of what it is, and SHALL open with
-OpenSpec, labelled `OpenSpec`, already chosen, so a maker who does not change
-the choice creates an `openspec` project. Choosing Fordesmac SHALL remain one
+The creation sheet SHALL offer the OpenSpec Builder and Fordesmac profiles,
+each with its label and a one-line description of what it is, and SHALL open
+with OpenSpec Builder, labelled `OpenSpec Builder`, already chosen, so a maker
+who does not change the choice creates an `openspec-builder` project. Choosing Fordesmac SHALL remain one
 action.
 
 While the hub is listing a multi-model project, whose entries are declared
@@ -98,11 +98,11 @@ progress and is listing the folder the project is being created in.
 
 #### Scenario: The sheet opens with OpenSpec chosen
 - **WHEN** the maker opens the "New project" sheet
-- **THEN** OpenSpec is offered, labelled `OpenSpec` with a one-line description, and already chosen, and Fordesmac is offered beside it
+- **THEN** OpenSpec Builder is offered, labelled `OpenSpec Builder` with a one-line description, and already chosen, and Fordesmac is offered beside it
 
 #### Scenario: The maker keeps the preselected profile
 - **WHEN** the maker supplies an unused valid name and creates the project without changing the profile choice
-- **THEN** the provisional card shows the project as creating under `openspec`, and the created project's `pyproject.toml` declares `profile = "openspec"`
+- **THEN** the provisional card shows the project as creating under `openspec-builder`, and the created project's `pyproject.toml` declares `profile = "openspec-builder"`
 
 #### Scenario: The maker creates a project inside a folder
 - **WHEN** the maker has entered a folder and creates a project there

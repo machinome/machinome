@@ -85,9 +85,9 @@ librarian = "opencode:openai:gpt-5.4:medium"
                 prepare_project(
                     new_entry("", "created-project", home),
                     machinome_command=(sys.executable, str(ROOT / "tests" / "fixtures" / "fake_machinome.py")),
-                    profile="openspec",
+                    profile="openspec-builder",
                 )
-            self.assertEqual(read_project_runtime(home / "created-project").profile, "openspec")
+            self.assertEqual(read_project_runtime(home / "created-project").profile, "openspec-builder")
 
     def test_malformed_selections_are_rejected_with_agent_and_value(self) -> None:
         invalid = (
@@ -174,27 +174,27 @@ librarian = "opencode:openai:gpt-5.4:medium"
     def test_resolution_ignores_and_reports_keys_outside_the_roster(self) -> None:
         selection = self._selection(
             '[tool.machinome-studio]\n'
-            'profile = "openspec"\n'
+            'profile = "openspec-builder"\n'
             '[tool.machinome-studio.agents]\n'
             'builder = "claude:opus"\n'
             'designer = "claude:sonnet"\n'
         )
-        profile = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT), selection)
+        profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
         self.assertEqual(profile.user_agent.runtime.backend, "claude")
         self.assertEqual(profile.ignored_agent_ids, ("designer",))
 
     def test_a_project_changing_its_declared_profile_ignores_the_former_rosters_keys(self) -> None:
         selection = self._selection(
             '[tool.machinome-studio]\n'
-            'profile = "openspec"\n'
+            'profile = "openspec-builder"\n'
             '[tool.machinome-studio.agents]\n'
             'foreman = "claude:sonnet"\n'
             'designer = "claude:opus"\n'
             'machinist = "claude:opus"\n'
             'librarian = "claude:sonnet"\n'
         )
-        profile = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT), selection)
-        self.assertEqual(profile.id, "openspec")
+        profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
+        self.assertEqual(profile.id, "openspec-builder")
         self.assertEqual(
             profile.ignored_agent_ids,
             ("designer", "foreman", "librarian", "machinist"),
@@ -205,6 +205,14 @@ librarian = "opencode:openai:gpt-5.4:medium"
         with self.assertRaisesRegex(
             ProjectRuntimeError,
             r"pyproject\.toml.*'builder'",
+        ):
+            load_profile(None, shop_root=ROOT, selection=selection)
+
+    def test_a_project_declaring_openspec_is_refused_and_not_opened_under_the_default(self) -> None:
+        selection = self._selection('[tool.machinome-studio]\nprofile = "openspec"\n')
+        with self.assertRaisesRegex(
+            ProjectRuntimeError,
+            r"pyproject\.toml.*'openspec'",
         ):
             load_profile(None, shop_root=ROOT, selection=selection)
 
@@ -270,10 +278,10 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             path = project / "pyproject.toml"
-            original = '[tool.machinome-studio]\nprofile = "openspec"\n'
+            original = '[tool.machinome-studio]\nprofile = "openspec-builder"\n'
             path.write_text(original)
             selection = read_project_runtime(project)
-            profile = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT), selection)
+            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
             broker = Broker(profile, session_id="runtime-test")
             backend = FakeBackend()
             orchestrator = ShopOrchestrator(
@@ -330,9 +338,9 @@ class LiveRuntimeUpdateTest(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary)
             path = project / "pyproject.toml"
-            path.write_text('[tool.machinome-studio]\nprofile = "openspec"\n')
+            path.write_text('[tool.machinome-studio]\nprofile = "openspec-builder"\n')
             selection = read_project_runtime(project)
-            profile = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT), selection)
+            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT), selection)
             broker = Broker(profile, session_id="runtime-switch")
             original, opencode = FakeBackend(), OpenCodeBackend()
 
@@ -379,21 +387,21 @@ class ProfileRuntimeTableTest(unittest.TestCase):
     def test_loader_validates_every_backend_table(self) -> None:
         temporary, shop = self._shop()
         with temporary:
-            manifest = shop / "profiles" / "openspec" / "profile.toml"
+            manifest = shop / "profiles" / "openspec-builder" / "profile.toml"
             manifest.write_text(manifest.read_text().replace('model = "sonnet"', 'model = "not-a-claude-model"'))
             with self.assertRaisesRegex(ProfileError, "claude.*model.*unsupported"):
-                load_profile("openspec", shop_root=shop)
+                load_profile("openspec-builder", shop_root=shop)
 
     def test_loader_rejects_opencode_profile_table(self) -> None:
         temporary, shop = self._shop()
         with temporary:
-            manifest = shop / "profiles" / "openspec" / "profile.toml"
+            manifest = shop / "profiles" / "openspec-builder" / "profile.toml"
             manifest.write_text(
                 manifest.read_text()
                 + '\n[agents.backends.opencode]\nmodel = "inherit"\neffort = "inherit"\ntools = "inherit"\n'
             )
             with self.assertRaisesRegex(ProfileError, "unknown key.*opencode"):
-                load_profile("openspec", shop_root=shop)
+                load_profile("openspec-builder", shop_root=shop)
 
 
 if __name__ == "__main__":

@@ -184,7 +184,7 @@ These are not tools, but they decide where the tools go.
   foreman's pipeline starts at the first drawing. Builder could carry the
   whole job alone if it had the tools. Either fordesmac gains a research
   phase and an owner for that record, or historical reconstructions run on
-  the openspec profile first.
+  the openspec-builder profile first.
 - **The committed screenshot conflicts with the Foundry policy.** The hub
   serves a project's committed preview, and `git_commit` refreshes and stages
   `screenshot.png` whenever model content is committed. The Foundry

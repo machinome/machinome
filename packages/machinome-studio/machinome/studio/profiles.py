@@ -87,7 +87,7 @@ def load_profile(
     profile_id: str | None,
     *,
     shop_root: Path,
-    default: str | None = "openspec",
+    default: str | None = "openspec-builder",
     selection: ProjectRuntimeSelection | None = None,
 ) -> RuntimeProfile:
     """Select and load one validated profile without project or backend side effects."""

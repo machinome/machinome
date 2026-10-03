@@ -13,7 +13,7 @@ profile's stable agent IDs and display labels. Each open project SHALL have its
 own roster, and an agent SHALL appear in the roster of its own project only.
 
 #### Scenario: The default working team starts
-- **WHEN** a project declaring `openspec`, or declaring no profile, is opened
+- **WHEN** a project declaring `openspec-builder`, or declaring no profile, is opened
 - **THEN** that project's roster shows one waiting Builder
 
 #### Scenario: The Fordesmac working team starts

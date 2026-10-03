@@ -99,8 +99,8 @@ Synthetic `RoleContext` and `ProfileAgent` values in backend tests carry
 the label without the broker checking it; they follow for consistency.
 
 Alternative considered: rename the agent ID to `openspec-builder` too.
-Rejected by the pilot (decision 3): the ID is internal, and every project's
-`builder = ...` agent selection would stop applying.
+Rejected: the ID is internal, and every project's `builder = ...` agent
+selection would stop applying.
 
 ### 3. The sheet names the choice the way the agent is named
 

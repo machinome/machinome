@@ -57,7 +57,7 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
             active_project=str(self.project),
             agent=ProfileAgent(
                 "builder",
-                "Builder",
+                "OpenSpec Builder",
                 self.prompt,
                 (self.skill,),
                 (),
@@ -69,9 +69,9 @@ class OpenCodeBackendTest(unittest.IsolatedAsyncioTestCase):
                     backend="opencode",
                 ),
             ),
-            profile_id="builder",
+            profile_id="openspec-builder",
             user_label="Maker",
-            user_agent_label="Builder",
+            user_agent_label="OpenSpec Builder",
         )
 
     def captured(self) -> list[dict]:
@@ -429,7 +429,7 @@ class OpenCodeSelectionTest(unittest.TestCase):
         from floor.profiles import load_profile, resolve_profile_runtime
 
         for profile_id, expected_roles in (
-            ("openspec", ["builder"]),
+            ("openspec-builder", ["builder"]),
             ("fordesmac", ["foreman", "designer", "machinist", "librarian"]),
         ):
             loaded = load_profile(profile_id, shop_root=ROOT)

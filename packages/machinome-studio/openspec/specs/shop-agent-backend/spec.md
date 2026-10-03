@@ -35,7 +35,7 @@ Interrupting an agent SHALL be reserved for closing or shutting down. A backend
 whose native interrupt spends a session SHALL NOT return it to standby.
 
 #### Scenario: Backend creates OpenSpec profile sessions
-- **WHEN** the orchestrator opens the `openspec` profile
+- **WHEN** the orchestrator opens the `openspec-builder` profile
 - **THEN** Builder's selected backend receives one `open_role()` call carrying Builder's resolved profile contract
 
 #### Scenario: Backend creates Fordesmac profile sessions

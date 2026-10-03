@@ -20,7 +20,7 @@ class CodexPreflightTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as temporary:
             service = SimpleNamespace(acquire=AsyncMock(side_effect=RuntimeError("qualification failed")), close=AsyncMock())
             registry = SessionRegistry(Path(temporary), shop_root=ROOT, codex_service=service)
-            profile = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT))
+            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT))
             agent = profile.agents[0]
             profile = replace(profile, agents=(replace(agent, runtime=replace(agent.runtime, backend="codex", model="gpt-6-sol")),))
             entry = SimpleNamespace(path="synthetic", project_root=Path(temporary))
@@ -39,7 +39,7 @@ class CodexPreflightTests(unittest.IsolatedAsyncioTestCase):
             reference = SimpleNamespace(close=AsyncMock())
             service = SimpleNamespace(acquire=AsyncMock(return_value=reference), close=AsyncMock())
             registry = SessionRegistry(Path(temporary), shop_root=ROOT, codex_service=service)
-            profile = resolve_profile_runtime(load_profile("openspec", shop_root=ROOT))
+            profile = resolve_profile_runtime(load_profile("openspec-builder", shop_root=ROOT))
             agent = profile.agents[0]
             profile = replace(profile, agents=(replace(agent, runtime=replace(agent.runtime, backend="codex", model="gpt-6-sol")),))
             entry = SimpleNamespace(path="synthetic", project_root=Path(temporary))

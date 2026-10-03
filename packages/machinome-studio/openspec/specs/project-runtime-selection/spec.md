@@ -33,7 +33,7 @@ identify the project file and the offending value, and SHALL leave the shop and
 every other project available.
 
 A project that declares no `profile` key, no `[tool.machinome-studio]` table, or
-no `pyproject.toml` at all SHALL be opened under the shop default, `openspec`.
+no `pyproject.toml` at all SHALL be opened under the shop default, `openspec-builder`.
 
 Creating a project SHALL write the `profile` key the maker chose for it, so a
 project created by the shop declares its profile from its first state.
@@ -44,7 +44,7 @@ project created by the shop declares its profile from its first state.
 
 #### Scenario: A project declares no profile
 - **WHEN** a project declares no `profile` key and it is opened
-- **THEN** the session opens the shop default profile, `openspec`, with Builder as its one agent
+- **THEN** the session opens the shop default profile, `openspec-builder`, with Builder as its one agent
 
 #### Scenario: A malformed profile value is always rejected
 - **WHEN** a project's `profile` value is not lowercase kebab-case, such as a path or a value containing a separator
@@ -163,12 +163,12 @@ rather than silently inert. An agent key that is not a well-formed lowercase
 kebab-case agent ID SHALL be rejected.
 
 #### Scenario: A project carries selections for two rosters
-- **WHEN** a project declares selections for both the agent `builder` and the Fordesmac specialists and declares the profile `openspec`
+- **WHEN** a project declares selections for both the agent `builder` and the Fordesmac specialists and declares the profile `openspec-builder`
 - **THEN** the Builder selection applies, the Fordesmac keys are ignored, and the ignored keys are reported
 
 #### Scenario: A project changes its declared profile
-- **WHEN** a project that declared `fordesmac` with selections for its specialists is changed to declare `openspec` and is opened
-- **THEN** the session opens `openspec`, the specialist keys are ignored rather than rejected, and they are reported
+- **WHEN** a project that declared `fordesmac` with selections for its specialists is changed to declare `openspec-builder` and is opened
+- **THEN** the session opens `openspec-builder`, the specialist keys are ignored rather than rejected, and they are reported
 
 #### Scenario: An agent ID is misspelled
 - **WHEN** a project declares a selection for an agent key absent from the active roster

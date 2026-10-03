@@ -152,8 +152,8 @@ runtime for an agent, and SHALL be the backend an agent opens on when the
 project selects no runtime for it.
 
 #### Scenario: Builder opens with Claude
-- **WHEN** a project declaring `openspec` selects a Claude runtime for Builder and is opened
-- **THEN** the shop opens one Builder Claude session with the `openspec` profile's Builder contract
+- **WHEN** a project declaring `openspec-builder` selects a Claude runtime for Builder and is opened
+- **THEN** the shop opens one Builder Claude session with the `openspec-builder` profile's Builder contract
 
 #### Scenario: Fordesmac opens with Claude
 - **WHEN** a project declaring `fordesmac` selects a Claude runtime for all four agents and is opened
