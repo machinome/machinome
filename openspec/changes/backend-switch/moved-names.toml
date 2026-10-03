@@ -1,0 +1,14 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's third cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-backend-switch; record
+# in the framework's openspec/changes/archive/<date>-backend-switch/.
+#
+# None: the cycle removes a class-name lookup inside generate_stl and rewords
+# the missing-OpenSCAD refusal. No import path, class, member or hook moves.
+# The list is empty, not absent, because load-projects requires one.
+
+cycle = "backend-switch"
+date = "2026-10-03"
+moved = []
