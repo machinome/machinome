@@ -4576,3 +4576,18 @@ artifact the sweep should keep is a build-pipeline question.
   no STL, made where `materialize` returns. Evidence:
   `openspec/changes/archive/2026-10-03-backend-switch/evidence.md`, §1.3.
   **Untriaged.**
+
+## Findings from the framework cycle `lean-install` (3 October 2026)
+
+- **A `machinome build` in a fresh project worktree hung for three hours.**
+  During the cycle's deep validation, a `machinome build` of
+  Actuators/Internal-Cycloidal-Actuator in a fresh git worktree
+  (`WTs/lean-core-validation` under the project, on its virtiofs path
+  `/mnt/data/machinome-projects/...`, with the ignored 35 MB vendor STEP
+  copied in) hung: the `machinome build` process alive with 4 s of CPU, an
+  empty `_build/actuator.lock`, no artifact written and no child process;
+  killed by the orchestrator after three hours, at 18:29. The same build in
+  the project's primary checkout, where artifacts exist, completed in under
+  a minute. Not reproduced; the worktree was removed. Evidence:
+  `openspec/changes/archive/2026-10-03-lean-install/evidence.md`, §5.1.
+  **Untriaged.**

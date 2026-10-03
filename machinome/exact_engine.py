@@ -27,6 +27,8 @@ from functools import lru_cache
 import importlib
 from typing import Any, Protocol
 
+from machinome.extras import ExtraUnavailable
+
 #: The exact engine contract version this core speaks. A provider declares
 #: the version it implements as its own `CONTRACT`; they must be equal.
 CONTRACT = 1
@@ -145,8 +147,16 @@ class ExactCommonVerificationError(RuntimeError):
 
 
 def _absent(error):
-    """Whether an import error means the provider is not installed, rather
-    than installed and failing to import."""
+    """Whether an import error means the engine is not installed, rather
+    than installed and failing to import.
+
+    Two shapes are absence: the provider module itself cannot be found, or
+    it is found and refuses because the kernel its `occt` extra installs
+    cannot be found (`machinome.extras.ExtraUnavailable` naming that
+    extra). A kernel that is found and fails to load is neither.
+    """
+    if isinstance(error, ExtraUnavailable):
+        return error.extra == 'occt'
     return (isinstance(error, ModuleNotFoundError)
             and error.name in ('machinome.occt', PROVIDER))
 
@@ -155,11 +165,12 @@ def _absent(error):
 def exact_engine():
     """Resolve the exact engine once for this process, only when a path
     needs it. Returns the provider module, or ``None`` when it is not
-    installed.
+    installed: when the provider cannot be found, or refuses because its
+    `occt` extra's kernel cannot be.
 
     A provider that is found but fails to import for another reason -- its
-    own kernel failing to load -- raises that error here rather than being
-    reported absent. A provider declaring another contract version, or
+    own kernel found and failing to load -- raises that error here rather
+    than being reported absent. A provider declaring another contract version, or
     none, raises `ExactEngineIncompatible`; an exception is not cached, so
     it is raised at every ask.
     """

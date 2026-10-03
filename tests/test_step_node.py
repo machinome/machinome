@@ -42,8 +42,8 @@ import trimesh
 
 from machinome.exact_cache import cached_shape
 from machinome.node import StepNode
-from machinome.node.adapters import step as step_module
-from machinome.node.adapters.step import STEPCAFControl_Reader
+from machinome.node import step as step_module
+from machinome.node.step import STEPCAFControl_Reader
 
 from .step_project import assemblies, parts
 from .utils import edit_source

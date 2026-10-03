@@ -26,22 +26,10 @@ dependencies = [
     "watchdog",
     "trimesh==4.4.*",
     "solidpython2==2.1.*",
-    # cadquery and build123d both bind the single OCP module through the
-    # cadquery-ocp distribution, so their ranges must intersect. This pair
-    # is the newest that resolves to one OCP (7.8): cadquery 2.8 moved to
-    # cadquery-ocp >=7.9 while build123d 0.11 moved to cadquery-ocp-novtk,
-    # a second distribution installing the same OCP package.
-    "cadquery==2.7.*",
-    "build123d==0.10.*",
-    # build123d 0.10 leaves this transitive dependency unbounded; 0.3
-    # imports OCP 8 collections absent from our shared OCP 7.8 runtime.
-    "ocp-gordon>=0.2.2,<0.3",
-    # The flexible leaf evaluates molejo shapes, and MolejoNode reaches for
-    # molejo's OCCT evaluator at import, so `brep` is required rather than
-    # optional. Pinned to the minor: a molejo minor carries the shape-spec
-    # version it implements, and the documents this framework writes name
-    # that version.
-    "molejo[brep]==0.2.*",
+    # No CAD kernel is required: cadquery, build123d, ocp-gordon, molejo and
+    # the OCCT binding are the extras below, each named by the last component
+    # of the address of the module that needs it (OpenSpec change
+    # `lean-install`).
     "httpx==0.27.*",
     "fastapi==0.111.*",
     "termcolor==2.4.*",
@@ -52,13 +40,16 @@ dependencies = [
     "rtree",
     "scipy",
     # A member of the vet universe's kernel tier (machinome/vet/universe.toml):
-    # a member the framework does not install would let a project pass
-    # `machinome vet` and fail at import. Pinned to the installed minor.
+    # a member the framework does not install, directly or through an extra,
+    # would let a project pass `machinome vet` and fail at import. Pinned to
+    # the installed minor.
     "shapely==2.1.*",
 ]
 
 [project.optional-dependencies]
 dev = [
+    # The suite runs every kernel, so the development install takes them all.
+    "machinome[all]",
     "bump2version",
     "flake8>=7",
     "tox>=4",
@@ -96,12 +87,48 @@ mechanics = [
     "machinome-mechanics",
 ]
 # The exact engine (`machinome.occt.engine`, resolved by
-# `machinome.exact_engine`) needs only the OCCT kernel. This range is the one
-# the pinned cadquery 2.7 above already requires, so the extra resolves
-# nothing new while the engine ships inside the core; the cut that moves the
-# engine into machinome-occt repoints this extra at that package.
+# `machinome.exact_engine`) needs only the OCCT kernel, in the range the
+# pinned cadquery 2.7 requires; the cut that moves the engine into
+# machinome-occt repoints this extra at that package.
 occt = [
     "cadquery-ocp>=7.8.1,<7.9",
+]
+# The kernel extras, each named by the last component of the address of the
+# module that needs it, each installing the `occt` extra too, so the OCCT
+# range is stated once and several extras resolve one OCCT binding.
+#
+# cadquery and build123d both bind the single OCP module through the
+# cadquery-ocp distribution, so their ranges must intersect. This pair is the
+# newest that resolves to one OCP (7.8): cadquery 2.8 moved to cadquery-ocp
+# >=7.9 while build123d 0.11 moved to cadquery-ocp-novtk, a second
+# distribution installing the same OCP package. One range per kernel:
+# `cadquery` and `step` name CadQuery alike.
+cadquery = [
+    "cadquery==2.7.*",
+    "machinome[occt]",
+]
+build123d = [
+    "build123d==0.10.*",
+    # build123d 0.10 leaves this transitive dependency unbounded; 0.3
+    # imports OCP 8 collections absent from our shared OCP 7.8 runtime.
+    "ocp-gordon>=0.2.2,<0.3",
+    "machinome[occt]",
+]
+# `machinome.node.step` reads with CadQuery and the OCCT binding itself.
+step = [
+    "cadquery==2.7.*",
+    "machinome[occt]",
+]
+# The flexible leaf evaluates molejo shapes and reaches for molejo's OCCT
+# evaluator, so `brep`. Pinned to the minor: a molejo minor carries the
+# shape-spec version it implements, and the documents this framework writes
+# name that version.
+molejo = [
+    "molejo[brep]==0.2.*",
+    "machinome[occt]",
+]
+all = [
+    "machinome[cadquery,build123d,step,molejo,occt]",
 ]
 # Machinome Studio is still experimental and unpublished. Declaring its final
 # extra name now does not make the dependency available from a package index.

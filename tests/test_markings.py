@@ -32,6 +32,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from unittest import TestCase
 from unittest.mock import patch
 
 from machinome import currency
@@ -578,6 +579,16 @@ class ArtworkPathTest(BaseNodeTest):
         self.assertIn(expected, str(raised.exception))
 
 
+def svg_regions(art):
+    """The closed regions of a resolved artwork, by the reducer.
+
+    The reduction is `machinome.node.build123d`'s since the `lean-install`
+    change (the markings' artwork seam); imported here, on use, so the rest
+    of this file needs no kernel."""
+    from machinome.node.build123d import svg_regions as regions
+    return regions(art.resolved or art.path)
+
+
 class ArtworkReductionTest(BaseNodeTest):
     """(3.2, 3.3) The drawing reduced to its closed regions."""
 
@@ -589,7 +600,7 @@ class ArtworkReductionTest(BaseNodeTest):
 
     def test_the_closed_regions_become_faces_with_their_holes_nested(self):
         with self.assertLogs('node.markings', level='INFO'):
-            regions = self.artwork().regions()
+            regions = svg_regions(self.artwork())
 
         self.assertEqual(len(regions), 2)
         # The first region is the one drawn with its counter inside it:
@@ -601,7 +612,7 @@ class ArtworkReductionTest(BaseNodeTest):
 
     def test_the_open_border_contributes_nothing_and_is_counted(self):
         with self.assertLogs('node.markings', level='INFO') as logged:
-            regions = self.artwork().regions()
+            regions = svg_regions(self.artwork())
 
         self.assertEqual(len(logged.records), 1)
         message = logged.records[0].getMessage()
@@ -625,7 +636,7 @@ class ArtworkReductionTest(BaseNodeTest):
                     Dial, 'digits')
 
         with self.assertRaises(ValueError) as raised:
-            art.regions()
+            svg_regions(art)
 
         self.assertIn('open_only.svg', str(raised.exception))
         self.assertIn('closed', str(raised.exception))
@@ -876,8 +887,8 @@ class WindingTest(BaseNodeTest):
     """
 
     def reversed_regions(self):
-        """Patch `Svg.regions` so every region it yields comes back
-        REVERSED, restored after the test.
+        """Patch the reducer's `svg_regions` so every region it yields
+        comes back REVERSED, restored after the test.
 
         Real artwork geometry, really reversed, through the real
         `tessellate` / `place` / `mesh_bytes` path -- the only way to
@@ -887,14 +898,15 @@ class WindingTest(BaseNodeTest):
         spot recorded in Risks).
         """
         import build123d as b3d
+        import machinome.node.build123d as reducer
 
-        original = Svg.regions
+        original = reducer.svg_regions
 
-        def reversed_method(svg_self):
+        def reversed_regions(path):
             return [b3d.Face(face.wrapped.Complemented())
-                   for face in original(svg_self)]
+                    for face in original(path)]
 
-        patcher = patch.object(Svg, 'regions', reversed_method)
+        patcher = patch.object(reducer, 'svg_regions', reversed_regions)
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -1667,3 +1679,143 @@ class OpenScadPathTest(BaseNodeTest):
 
         self.assertTrue(os.path.exists(output))
         self.assertGreater(os.path.getsize(output), 0)
+
+
+##############################################
+# The artwork seam (OpenSpec change `lean-install`)
+
+#: Build the faceted fixture plate under the run's build directory and
+#: report what happened, as JSON on the last line: the error if the build
+#: failed, and every marking artifact on disk afterwards with its bytes'
+#: digest and its stamp.
+BUILD_PLATE = """
+import glob, hashlib, json, os, sys
+from tests.markings_project.plate import Plate
+report = {'kernel_imported_at_declaration': 'build123d' in sys.modules}
+try:
+    Plate().assemble()
+except Exception as raised:
+    report['error'] = [type(raised).__name__,
+                       [cls.__name__ for cls in type(raised).__mro__],
+                       str(raised)]
+build = os.environ['SOLID_BUILD_DIR']
+report['markings'] = {
+    os.path.relpath(path, build): [
+        hashlib.sha256(open(path, 'rb').read()).hexdigest(),
+        os.stat(path).st_mtime_ns]
+    for path in sorted(glob.glob(os.path.join(build, '**', '*.marking-*.stl'),
+                                 recursive=True))}
+print(json.dumps(report))
+"""
+
+
+class ArtworkSeamTest(TestCase):
+    """A marking's declaration needs no kernel; reducing its artwork is
+    `machinome.node.build123d`'s, reached through a seam that refuses by
+    the `build123d` extra (`markings` capability, "Artwork is reduced
+    through a seam that names its extra"). An install without the extra is
+    stood in for by `tests/exact_engine_absent.py`'s finder refusing
+    `build123d`."""
+
+    def setUp(self):
+        scratch = tempfile.TemporaryDirectory(prefix='artwork-seam-')
+        self.addCleanup(scratch.cleanup)
+        self.build_dir = scratch.name
+
+    def build(self, blocked):
+        from .exact_engine_absent import run_python
+        import json
+
+        run = run_python(BUILD_PLATE, blocked=blocked, absent=('build123d',),
+                         build_dir=self.build_dir)
+        lines = run.stdout.strip().splitlines()
+        self.assertTrue(lines, run.output)
+        return json.loads(lines[-1])
+
+    def test_declaring_a_marking_needs_no_kernel(self):
+        result = probe(
+            'from machinome.node.markings import declared_markings\n'
+            'from tests.markings_project.plate import Plate\n'
+            'print(sorted(declared_markings(Plate)))\n')
+        self.assertEqual(result.stdout.strip(), "['badge', 'band']",
+                         result.stderr)
+        self.assertFalse(result.imported('build123d'))
+        self.assertFalse(result.imported('machinome.node.build123d'))
+
+    def test_a_stale_marking_without_the_extra_is_refused(self):
+        report = self.build(blocked=True)
+
+        self.assertFalse(report['kernel_imported_at_declaration'])
+        kind, mro, message = report['error']
+        self.assertEqual(kind, 'ExtraUnavailable')
+        self.assertIn('ModuleNotFoundError', mro)
+        self.assertEqual(
+            message,
+            'marking badge of Plate (artwork badge.svg) needs build123d, '
+            'which is not installed; install it with '
+            '\'pip install "machinome[build123d]"\'')
+        self.assertEqual(report['markings'], {})
+
+    def test_a_current_marking_needs_no_reducer(self):
+        built = self.build(blocked=False)
+        self.assertNotIn('error', built)
+        self.assertEqual(len(built['markings']), 2, built)
+
+        rebuilt = self.build(blocked=True)
+
+        self.assertNotIn('error', rebuilt)
+        self.assertEqual(rebuilt['markings'], built['markings'])
+
+
+class ArtworkReducerContractTest(BaseNodeTest):
+    """The reducer declares the contract version it implements, and the
+    markings module refuses another, or none, before reducing anything
+    (ADR-162's pattern)."""
+
+    def stub(self, **attributes):
+        import types
+
+        module = types.ModuleType('machinome.node.build123d')
+        module.reduced = []
+
+        def svg_triangles(path, tolerance):
+            module.reduced.append(path)
+            raise AssertionError('reduced through a refused reducer')
+
+        module.svg_triangles = svg_triangles
+        for name, value in attributes.items():
+            setattr(module, name, value)
+        return module
+
+    def assert_refused(self, reducer, declared):
+        import sys
+        from machinome.node import markings
+
+        art = Svg(LABEL)
+        art.resolve(os.path.dirname(os.path.abspath(__file__)), Dial,
+                    'digits')
+        with patch.dict(sys.modules, {'machinome.node.build123d': reducer}):
+            with self.assertRaises(markings.ArtworkReducerIncompatible) \
+                    as raised:
+                art.tessellate(0.1)
+
+        message = str(raised.exception)
+        self.assertIn('machinome.node.build123d', message)
+        self.assertIn(f'version {markings.SVG_REDUCER_CONTRACT}', message)
+        self.assertIn(declared, message)
+        self.assertEqual(reducer.reduced, [])
+
+    def test_a_reducer_of_another_contract_is_refused(self):
+        self.assert_refused(self.stub(SVG_REDUCER_CONTRACT=2),
+                            'declares contract version 2')
+
+    def test_a_reducer_declaring_no_contract_is_refused(self):
+        self.assert_refused(self.stub(), 'declares none')
+
+    def test_the_reducer_speaks_the_markings_contract(self):
+        import machinome.node.build123d as reducer
+        from machinome.node import markings
+
+        self.assertEqual(reducer.SVG_REDUCER_CONTRACT,
+                         markings.SVG_REDUCER_CONTRACT)
+        self.assertFalse(hasattr(Svg, 'regions'))

@@ -13,7 +13,7 @@ from solid2 import cube
 from machinome import currency
 from machinome.node import AssemblyNode, FusionNode
 from machinome.node.base import _atomic_write_bytes
-from machinome.node.adapters.cadquery import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.node.exact_leaf import ExactLeafNode
 from machinome.node.leaf import LeafNode
 

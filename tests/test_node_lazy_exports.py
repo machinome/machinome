@@ -39,17 +39,17 @@ EXPECTED_EXPORTS = {
     'StlRenderStart': 'machinome.node.base',
     'AssemblyNode': 'machinome.node.assembly',
     'FusionNode': 'machinome.node.fusion',
-    'CadQueryNode': 'machinome.node.adapters.cadquery',
-    'Build123dNode': 'machinome.node.adapters.build123d',
+    'CadQueryNode': 'machinome.node.cadquery',
+    'Build123dNode': 'machinome.node.build123d',
     'SheetLeafNode': 'machinome.node.sheet_leaf',
-    'Build123dSheetNode': 'machinome.node.adapters.build123d_sheet',
+    'Build123dSheetNode': 'machinome.node.build123d',
     'FlexibleNode': 'machinome.node.flexible',
-    'MolejoNode': 'machinome.node.adapters.molejo',
-    'Solid2Node': 'machinome.node.adapters.solid2',
-    'OpenScadNode': 'machinome.node.adapters.openscad',
-    'JScadNode': 'machinome.node.adapters.jscad',
-    'StlNode': 'machinome.node.adapters.stl',
-    'StepNode': 'machinome.node.adapters.step',
+    'MolejoNode': 'machinome.node.molejo',
+    'Solid2Node': 'machinome.node.solid2',
+    'OpenScadNode': 'machinome.node.openscad',
+    'JScadNode': 'machinome.node.jscad',
+    'StlNode': 'machinome.node.stl',
+    'StepNode': 'machinome.node.step',
     'property_as_number': 'machinome.node.decorators',
     # Added by the declarative node API, lazily like the rest. Only the
     # STRUCTURE half: the parameter kinds this package also exported for
@@ -96,7 +96,7 @@ CADQUERY_EXPORTS = ('StepNode',)
 # Refuse `cadquery` the way an interpreter without the wheel does, in the
 # shape of tests/mesh_engine_absent.py: a `sys.meta_path` finder that
 # raises, rather than a stub, so the deferred import fails for the real
-# reason a broken install fails.
+# reason an install without the `step` extra fails.
 CADQUERY_ABSENT = '''
 import sys
 
@@ -111,6 +111,31 @@ class _CadQueryAbsent:
 
 
 sys.meta_path.insert(0, _CadQueryAbsent())
+sys.modules.pop('cadquery', None)
+'''
+
+# Find `cadquery`, then fail to import it from inside, as an installed
+# kernel that cannot load does: a broken install, not an absent extra.
+CADQUERY_BROKEN = '''
+import importlib.machinery
+import sys
+
+
+class _CadQueryBroken:
+
+    def find_spec(self, name, target=None, path=None):
+        if name == 'cadquery' or name.startswith('cadquery.'):
+            return importlib.machinery.ModuleSpec(name, self)
+        return None
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        raise ImportError('broken cadquery')
+
+
+sys.meta_path.insert(0, _CadQueryBroken())
 sys.modules.pop('cadquery', None)
 '''
 
@@ -201,7 +226,7 @@ class NodePackageExports(TestCase):
         # consumers test it with issubclass, so a proxy would break them
         # in ways an attribute-forwarding test would not notice.
         from machinome.node import CadQueryNode
-        from machinome.node.adapters.cadquery import CheckCQEditor
+        from machinome.node.cadquery import CheckCQEditor
         from machinome.node.exact_leaf import ExactLeafNode
 
         self.assertIsInstance(CadQueryNode, type)
@@ -268,7 +293,7 @@ class NodePackageSubmodules(TestCase):
     """
 
     def test_a_submodule_is_reachable_after_a_bare_package_import(self):
-        for submodule in ('assembly', 'operations', 'adapters'):
+        for submodule in ('assembly', 'operations', 'cadquery'):
             with self.subTest(submodule=submodule):
                 result = probe(
                     'import machinome.node\n'
@@ -333,17 +358,24 @@ class NodePackageBrokenBackend(TestCase):
     This is the classic PEP 562 trap: an `ImportError` raised inside
     `__getattr__` looks, to anything that treats the accessor as a
     lookup, like the name simply not being there. A broken install must
-    not be reported as a missing attribute.
+    not be reported as a missing attribute, and an absent extra must not
+    be reported as a broken install: since the `lean-install` change the
+    CAD kernels are extras, so a missing cadquery is an install that has
+    not asked for the `step` extra, and the step module's own refusal,
+    naming the extra, reaches the caller unmodified.
     """
 
-    def _access(self, expression):
+    def _access(self, expression, blocker=CADQUERY_ABSENT):
         return probe(
-            CADQUERY_ABSENT +
+            blocker +
             'import machinome.node\n'
             'try:\n'
             f'    {expression}\n'
             'except AttributeError as wrong:\n'
             "    print('ATTRIBUTE_ERROR', wrong)\n"
+            'except ModuleNotFoundError as absent:\n'
+            "    print('ABSENT', type(absent).__name__, absent.name,\n"
+            "          getattr(absent, 'extra', None), '|', absent)\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'except Exception as other:\n'
@@ -352,33 +384,76 @@ class NodePackageBrokenBackend(TestCase):
             "    print('NO_ERROR')\n")
 
     def test_the_package_still_imports_without_the_exact_stack(self):
-        # Not a claim that cadquery is optional -- it is a required
-        # dependency and stays one. It is a claim about WHEN the failure
-        # is allowed to happen: at first use of a name that needs it.
+        # cadquery is the `step` and `cadquery` extras' kernel, not a
+        # required dependency: the package imports without it, and the
+        # failure is allowed only at first use of a name that needs it.
         result = probe(CADQUERY_ABSENT +
                        'import machinome.node\n'
                        "print('IMPORTED')\n")
         self.assertEqual(result.stdout.strip(), 'IMPORTED', result.stderr)
         self.assertNotIn('Traceback', result.stderr)
 
-    # `StepNode` is the backend whose module imports cadquery itself; the
-    # CadQuery adapter's module no longer does (it reached cadquery only
-    # through the exact layer before the `exact-engine` change).
-    def test_a_broken_backend_raises_the_underlying_import_error(self):
+    # `StepNode` is the export whose module needs cadquery itself; the
+    # CadQuery module imports none (it reached cadquery only through the
+    # exact layer before the `exact-engine` change).
+    def test_an_absent_extra_raises_the_modules_refusal_unmodified(self):
         result = self._access('machinome.node.StepNode')
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
+        self.assertTrue(reported.startswith('ABSENT ExtraUnavailable '
+                                            'cadquery step |'), reported)
+        self.assertIn('StepNode', reported)
+        self.assertIn('pip install "machinome[step]"', reported)
+        self.assertNotIn('raised resolving', reported)
+
+    def test_from_import_carries_the_refusal(self):
+        result = probe(
+            CADQUERY_ABSENT +
+            'try:\n'
+            '    from machinome.node import StepNode\n'
+            'except ImportError as failure:\n'
+            "    print(type(failure).__name__, '|', failure)\n")
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.strip(),
+            'ExtraUnavailable | machinome.node.step (StepNode, StepAssembly) '
+            'needs cadquery, which is not installed; install it with '
+            '\'pip install "machinome[step]"\'')
+
+    def test_hasattr_does_not_turn_an_absent_extra_into_a_missing_name(self):
+        result = probe(
+            CADQUERY_ABSENT +
+            'import machinome.node\n'
+            'try:\n'
+            "    present = hasattr(machinome.node, 'StepNode')\n"
+            'except ImportError as failure:\n'
+            "    print('IMPORT_ERROR', failure)\n"
+            'else:\n'
+            "    print('SWALLOWED', present)\n")
+        self.assertEqual(result.status, 0, result.stderr)
+        reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR'), reported)
-        self.assertIn('cadquery', reported)
+        self.assertIn('machinome[step]', reported)
+        self.assertNotIn('raised resolving', reported)
+
+    def test_a_broken_backend_raises_the_underlying_import_error(self):
+        result = self._access('machinome.node.StepNode',
+                              blocker=CADQUERY_BROKEN)
+        self.assertEqual(result.status, 0, result.stderr)
+        reported = result.stdout.strip()
+        self.assertTrue(reported.startswith('IMPORT_ERROR broken cadquery'),
+                        reported)
 
     def test_the_reported_failure_names_the_requested_export(self):
-        result = self._access('machinome.node.StepNode')
+        result = self._access('machinome.node.StepNode',
+                              blocker=CADQUERY_BROKEN)
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertIn('StepNode', result.stdout)
+        self.assertIn('(raised resolving machinome.node.StepNode from .step)',
+                      result.stdout)
 
     def test_hasattr_does_not_turn_a_broken_backend_into_a_missing_name(self):
         result = probe(
-            CADQUERY_ABSENT +
+            CADQUERY_BROKEN +
             'import machinome.node\n'
             'try:\n'
             "    present = hasattr(machinome.node, 'StepNode')\n"

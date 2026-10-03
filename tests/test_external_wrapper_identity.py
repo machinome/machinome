@@ -107,10 +107,10 @@ class ExternalWrapperIdentityTest(TestCase):
                 # An StlNode's mesh is produced only inside the writer it
                 # hands `publish_artifact`, whose first step reads the
                 # source mesh (leaf-contract).
-                from machinome.node.adapters.stl import _load_source_mesh
+                from machinome.node.stl import _load_source_mesh
                 with patch('machinome.exact_artifacts._atomic_export',
                            wraps=_atomic_export) as exact_producer, \
-                     patch('machinome.node.adapters.stl._load_source_mesh',
+                     patch('machinome.node.stl._load_source_mesh',
                            wraps=_load_source_mesh) as mesh_producer:
                     rebuilt = (type(first)(), type(second)())
                     for node in rebuilt:

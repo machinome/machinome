@@ -16,6 +16,13 @@ Unlike the mesh engine's helper, the finder is installed by a
 (`machinome.core.processes`), which inherits the environment but not the
 parent's memory, and the engine must be absent there too.
 
+The finder refuses whichever modules a caller lists (`absent`, the engine's
+package by default), and can make a listed module *broken* instead
+(`broken`): found, then failing to import from inside, as an installed
+kernel that cannot load does. The `lean-install` change uses both, for an
+install without a kernel extra and for one whose kernel is present and
+broken.
+
 Every interpreter of a run also appends one line to a shared log at exit:
 which of the exact stack's modules it imported -- the engine, `OCP`,
 `cadquery`, `build123d` -- and how many times it asked for the engine. A
@@ -33,24 +40,60 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(BASEDIR)
 
 SITECUSTOMIZE = '''
-import atexit, os, sys
+import atexit, importlib.machinery, os, sys
 
 _ATTEMPTS = [0]
 _LOG = os.environ['EXACT_ENGINE_ABSENT_LOG']
 
 
+def _listed(variable):
+    return tuple(name for name in os.environ.get(variable, '').split(',')
+                 if name)
+
+
+def _under(name, roots):
+    return next((root for root in roots
+                 if name == root or name.startswith(root + '.')), None)
+
+
 class _ExactEngineAbsent:
-    """Refuse machinome.occt the way an install without it does."""
+    """Refuse every listed module, and everything beneath it, the way an
+    install without it does."""
+
+    def __init__(self, names):
+        self.names = names
 
     def find_spec(self, name, target=None, path=None):
-        if name == 'machinome.occt' or name.startswith('machinome.occt.'):
+        if _under(name, self.names):
             _ATTEMPTS[0] += 1
             raise ModuleNotFoundError(f"No module named {name!r}", name=name)
         return None
 
 
+class _Broken:
+    """Find every listed module, then fail to import it from inside, the
+    way an installed kernel that cannot load does."""
+
+    def __init__(self, names):
+        self.names = names
+
+    def find_spec(self, name, target=None, path=None):
+        if _under(name, self.names):
+            return importlib.machinery.ModuleSpec(name, self)
+        return None
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        raise ImportError(f'broken {_under(module.__name__, self.names)}')
+
+
 if os.environ.get('EXACT_ENGINE_ABSENT') == '1':
-    sys.meta_path.insert(0, _ExactEngineAbsent())
+    sys.meta_path.insert(0, _ExactEngineAbsent(
+        _listed('EXACT_ENGINE_ABSENT_NAMES')))
+if _listed('EXACT_ENGINE_BROKEN_NAMES'):
+    sys.meta_path.insert(0, _Broken(_listed('EXACT_ENGINE_BROKEN_NAMES')))
 
 
 def _report():
@@ -91,7 +134,12 @@ class Run:
         return sum(attempts for attempts, _ in self.reports)
 
 
-def _run(code, arguments=(), blocked=True, build_dir=None, cwd=REPO_DIR):
+#: What the finder refuses unless a caller lists otherwise: the engine.
+ENGINE = ('machinome.occt',)
+
+
+def _run(code, arguments=(), blocked=True, build_dir=None, cwd=REPO_DIR,
+         absent=ENGINE, broken=()):
     with tempfile.TemporaryDirectory(prefix='exact-engine-absent-') as site:
         with open(os.path.join(site, 'sitecustomize.py'), 'w') as handle:
             handle.write(SITECUSTOMIZE)
@@ -99,6 +147,8 @@ def _run(code, arguments=(), blocked=True, build_dir=None, cwd=REPO_DIR):
         env = dict(os.environ,
                    PYTHONPATH=os.pathsep.join([site, REPO_DIR]),
                    EXACT_ENGINE_ABSENT='1' if blocked else '0',
+                   EXACT_ENGINE_ABSENT_NAMES=','.join(absent),
+                   EXACT_ENGINE_BROKEN_NAMES=','.join(broken),
                    EXACT_ENGINE_ABSENT_LOG=log)
         if build_dir is not None:
             env['SOLID_BUILD_DIR'] = build_dir
@@ -119,12 +169,19 @@ def _run(code, arguments=(), blocked=True, build_dir=None, cwd=REPO_DIR):
     return Run(completed, reports)
 
 
-def run_python(snippet, blocked=True, build_dir=None):
-    """Run `snippet` in a subprocess, the engine absent if `blocked`."""
-    return _run(snippet, blocked=blocked, build_dir=build_dir)
+def run_python(snippet, blocked=True, build_dir=None, absent=ENGINE,
+               broken=(), cwd=REPO_DIR):
+    """Run `snippet` in a subprocess, the `absent` modules (the engine by
+    default) refused if `blocked`, and the `broken` ones failing to import
+    from inside."""
+    return _run(snippet, blocked=blocked, build_dir=build_dir, cwd=cwd,
+                absent=absent, broken=broken)
 
 
-def run_machinome(*arguments, blocked=True, build_dir=None):
-    """Run a `machinome` command, the engine absent from every process of
-    it if `blocked`."""
-    return _run(CLI, arguments, blocked=blocked, build_dir=build_dir)
+def run_machinome(*arguments, blocked=True, build_dir=None, absent=ENGINE,
+                  broken=(), cwd=REPO_DIR):
+    """Run a `machinome` command, the `absent` modules (the engine by
+    default) refused in every process of it if `blocked`, and the `broken`
+    ones failing to import from inside."""
+    return _run(CLI, arguments, blocked=blocked, build_dir=build_dir,
+                cwd=cwd, absent=absent, broken=broken)

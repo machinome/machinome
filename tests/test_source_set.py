@@ -210,14 +210,14 @@ class UpToDateLeafTest(BaseNodeTest):
         currency.record(node.stl_file, node.source_digest,
                         node.source_fingerprint)
 
-        with mock.patch('machinome.node.adapters.jscad.Popen') as popen:
+        with mock.patch('machinome.node.jscad.Popen') as popen:
             node.as_scad(None)
 
         popen.assert_not_called()
 
     def test_jscad_runs_when_the_artifact_is_missing(self):
         node = JsBlock()
-        with mock.patch('machinome.node.adapters.jscad.Popen') as popen:
+        with mock.patch('machinome.node.jscad.Popen') as popen:
             popen.return_value.returncode = 0
             node.as_scad(None)
         popen.assert_called_once()

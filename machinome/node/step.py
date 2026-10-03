@@ -50,6 +50,14 @@ import math
 import os
 import sys
 
+from machinome.extras import require_extra
+
+# The reader and `adjust` are CadQuery's and the document is read through
+# the OCCT binding, both installed by the `step` extra: refused here, before
+# either is imported, by the line that installs them.
+require_extra('step', 'machinome.node.step (StepNode, StepAssembly)',
+              'cadquery', 'OCP')
+
 import cadquery as cq
 import numpy as np
 from OCP.Bnd import Bnd_Box
@@ -67,7 +75,7 @@ from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
 
 from machinome.exact_engine import require_exact_engine
-from machinome.node.adapters.cadquery import workplane_shape
+from machinome.node.cadquery import workplane_shape
 from machinome.node.exact_leaf import ExactLeafNode
 from machinome.node.sources import (require_source_file, source_closure,
                                     ExternalSourceIdentity)

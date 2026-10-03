@@ -3,13 +3,18 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The core holds no kernel code (OpenSpec change `exact-engine`,
-capability `exact-engine-dependency`).
+capability `exact-engine-dependency`), and imports a kernel only in its
+kernel modules (OpenSpec change `lean-install`, capability
+`kernel-extras`).
 
 Read from the source, not from a running interpreter: the core imports
 `OCP` and `cadquery` nowhere outside the engine's own package except the
-STEP adapter (its reader and `adjust`, which move with their package), it
+STEP module (its reader and `adjust`, which move with their package), it
 names the engine's package in exactly one module -- the seam -- and the
-test framework binds none of the exact layer's names as its own.
+test framework binds none of the exact layer's names as its own. Every
+CAD kernel is imported only by the module its extra is named for, which
+checks its kernel before importing it, and a kernel module is named only
+at the seams that reach it.
 """
 
 import ast
@@ -71,7 +76,7 @@ class CoreHoldsNoKernelTest(TestCase):
                 importing[path] = sorted(kernel)
 
         self.assertEqual(importing, {
-            'machinome/node/adapters/step.py': ['OCP', 'cadquery']})
+            'machinome/node/step.py': ['OCP', 'cadquery']})
 
     def test_the_old_exact_module_is_gone(self):
         self.assertFalse((PACKAGE / 'exact.py').exists())
@@ -83,3 +88,136 @@ class CoreHoldsNoKernelTest(TestCase):
                      'shape_load_observation'):
             with self.subTest(name):
                 self.assertFalse(hasattr(machinome.test, name))
+
+
+#: Every CAD kernel's top-level module.
+KERNELS = {'cadquery', 'build123d', 'OCP', 'molejo', 'ocp_gordon'}
+
+#: The four node modules a kernel extra installs a kernel for.
+KERNEL_MODULES = {'machinome.node.cadquery', 'machinome.node.build123d',
+                  'machinome.node.step', 'machinome.node.molejo'}
+
+#: Each kernel module, as a path, with the extra its address names (the
+#: last component; the package's for the engine).
+EXTRA_OF = {
+    'machinome/node/cadquery.py': 'cadquery',
+    'machinome/node/build123d.py': 'build123d',
+    'machinome/node/step.py': 'step',
+    'machinome/node/molejo.py': 'molejo',
+    'machinome/occt/engine.py': 'occt',
+}
+
+#: The core modules that name a kernel module, and the ones each names
+#: (`kernel-extras`, "The core imports no kernel outside its kernel
+#: modules").
+SEAMS = {
+    'machinome/node/__init__.py': KERNEL_MODULES,
+    'machinome/node/markings.py': {'machinome.node.build123d'},
+    'machinome/cli.py': {'machinome.node.step'},
+    'machinome/manager/import_step.py': {'machinome.node.step'},
+    'machinome/node/step.py': {'machinome.node.cadquery'},
+}
+
+
+def every_module():
+    """Every module under `machinome/`, the engine's package included."""
+    for path in sorted(PACKAGE.rglob('*.py')):
+        yield path.relative_to(ROOT).as_posix(), ast.parse(path.read_text())
+
+
+def absolute_imports(path, tree):
+    """`(line, module)` for every module an import statement names,
+    relative imports resolved against the importing module's package."""
+    package = path[:-len('.py')].replace('/', '.').rsplit('.', 1)[0]
+    if path.endswith('/__init__.py'):
+        package = path[:-len('/__init__.py')].replace('/', '.')
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield node.lineno, alias.name
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                base = package.rsplit('.', node.level - 1)[0]
+                module = f'{base}.{node.module}' if node.module else base
+            else:
+                module = node.module
+            yield node.lineno, module
+            for alias in node.names:
+                yield node.lineno, f'{module}.{alias.name}'
+
+
+def kernel_modules_named(path, tree):
+    """The kernel modules a module imports or spells as a whole string."""
+    named = {module for _, module in absolute_imports(path, tree)
+             if module in KERNEL_MODULES}
+    named.update(node.value for node in ast.walk(tree)
+                 if isinstance(node, ast.Constant)
+                 and node.value in KERNEL_MODULES)
+    return named
+
+
+def require_extra_call(tree):
+    """The first top-level `require_extra(...)` call: its line and its
+    extra."""
+    for statement in tree.body:
+        if isinstance(statement, ast.Expr) \
+                and isinstance(statement.value, ast.Call):
+            function = statement.value.func
+            name = getattr(function, 'id', getattr(function, 'attr', None))
+            if name == 'require_extra':
+                (extra, *_) = statement.value.args
+                return statement.lineno, extra.value
+    return None, None
+
+
+class KernelsOnlyInTheirModulesTest(TestCase):
+    """(lean-install 2.6) Each kernel is imported only by its module."""
+
+    def test_kernels_are_imported_only_by_their_modules(self):
+        importing = {}
+        for path, tree in every_module():
+            roots = {module.split('.')[0]
+                     for _, module in absolute_imports(path, tree)}
+            if roots & KERNELS:
+                importing[path] = sorted(roots & KERNELS)
+
+        self.assertEqual(importing, {
+            'machinome/node/build123d.py': ['build123d'],
+            'machinome/node/molejo.py': ['molejo'],
+            'machinome/node/step.py': ['OCP', 'cadquery'],
+            'machinome/occt/engine.py': ['OCP'],
+        })
+
+    def test_kernel_modules_are_named_only_at_the_seams(self):
+        naming = {}
+        for path, tree in every_module():
+            named = kernel_modules_named(path, tree)
+            if named:
+                naming[path] = named
+
+        for path, named in naming.items():
+            with self.subTest(path=path):
+                self.assertLessEqual(named, SEAMS.get(path, set()))
+        for path in ('machinome/node/markings.py', 'machinome/cli.py',
+                     'machinome/manager/import_step.py',
+                     'machinome/node/step.py'):
+            with self.subTest(seam=path):
+                self.assertEqual(naming.get(path), SEAMS[path])
+
+    def test_each_kernel_module_checks_its_kernel_first(self):
+        modules = dict(every_module())
+
+        for path, extra in EXTRA_OF.items():
+            with self.subTest(path=path):
+                line, declared = require_extra_call(modules[path])
+                self.assertIsNotNone(line, f'{path} calls no require_extra')
+                self.assertEqual(declared, extra)
+                later = [(number, module) for number, module
+                         in absolute_imports(path, modules[path])
+                         if module.split('.')[0] in KERNELS
+                         or module in KERNEL_MODULES
+                         or any(module.startswith(f'{kernel}.')
+                                for kernel in KERNEL_MODULES)]
+                self.assertEqual(
+                    [(number, module) for number, module in later
+                     if number < line], [])

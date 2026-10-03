@@ -14,6 +14,13 @@ invocation, including ones that touch no geometry at all. Exact geometry
 is now the exact engine's, resolved through `machinome.exact_engine` only
 by the paths that use it.
 
+Each leaf type is one module directly under this package, named for its
+technology (`machinome.node.cadquery`, `.build123d`, `.step`, `.molejo`,
+`.solid2`, `.openscad`, `.jscad`, `.stl`); the export table below names
+them as the modules its names are resolved from. The former
+`machinome.node.adapters` package was dissolved by the `lean-install`
+change and refuses every spelling beneath it.
+
 Nothing here dispatches on a registry of subclasses, so no import was
 load-bearing for a side effect and deferral is safe. PEP 562 hands back
 the real class rather than a proxy, which matters: `CadQueryNode` is
@@ -46,6 +53,14 @@ __version__ = '0.4.0'
 from importlib import import_module
 from importlib.util import find_spec
 
+from machinome import _namespace_portions
+from machinome.extras import ExtraUnavailable
+
+# A node package cut from the core installs its module here without this
+# package's `__init__.py`; it is found as a portion of this package's path,
+# and a second copy of the core never is (see `_namespace_portions`).
+__path__ = _namespace_portions(__path__, __name__)
+
 from .base import StlRenderStart
 
 
@@ -56,22 +71,22 @@ _EXPORTS = {
     'AssemblyNode': 'assembly',
     'declared_children': 'declarative',
     'FusionNode': 'fusion',
-    'CadQueryNode': 'adapters.cadquery',
-    'Build123dNode': 'adapters.build123d',
+    'CadQueryNode': 'cadquery',
+    'Build123dNode': 'build123d',
     'SheetLeafNode': 'sheet_leaf',
-    'Build123dSheetNode': 'adapters.build123d_sheet',
+    'Build123dSheetNode': 'build123d',
     'FlexibleNode': 'flexible',
-    'MolejoNode': 'adapters.molejo',
-    'Solid2Node': 'adapters.solid2',
-    'OpenScadNode': 'adapters.openscad',
-    'JScadNode': 'adapters.jscad',
-    'StlNode': 'adapters.stl',
+    'MolejoNode': 'molejo',
+    'Solid2Node': 'solid2',
+    'OpenScadNode': 'openscad',
+    'JScadNode': 'jscad',
+    'StlNode': 'stl',
     'Marking': 'markings',
     'Wrapped': 'markings',
     'Flat': 'markings',
     'Svg': 'markings',
     'Frame': 'frames',
-    'StepNode': 'adapters.step',
+    'StepNode': 'step',
     'property_as_number': 'decorators',
 }
 
@@ -103,9 +118,18 @@ def _load(module_name, requested):
     original error is re-raised -- same class, same `name`, same
     traceback -- with the requested export spliced into its message, so
     the report says both what is broken and what asked for it.
+
+    An extra that is not installed is not a broken install. A leaf module
+    whose kernel is an extra refuses its absence at import with
+    `ExtraUnavailable`, whose message already names the node types and
+    the line that installs the extra; it is raised unmodified, still an
+    `ImportError`, so `from machinome.node import StepNode` carries it to
+    the import line and `hasattr` raises it.
     """
     try:
         return import_module(f'.{module_name}', __name__)
+    except ExtraUnavailable:
+        raise
     except ImportError as failure:
         blame = (f'{failure} (raised resolving {__name__}.{requested} '
                  f'from .{module_name})')

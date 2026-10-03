@@ -23,6 +23,13 @@ verbatim: they already name the parameter and where in the document it is
 referenced, which is better than anything a wrapper could say.
 """
 
+from machinome.extras import require_extra
+
+# molejo and its OCCT evaluator are installed by the `molejo` extra:
+# refused here, before either is imported, by the line that installs them.
+require_extra('molejo', 'machinome.node.molejo (MolejoNode)',
+              'molejo', 'OCP')
+
 import trimesh
 from molejo.brep import evaluate as evaluate_brep
 
@@ -63,8 +70,9 @@ class MolejoNode(FlexibleNode):
         """molejo evaluates the same document to a B-rep solid, so this
         adapter is exact -- fixed by type, like every other adapter's,
         never by installation state or by which instant is bound. The
-        OCCT kernel `molejo[brep]` needs is the exact engine's own, so
-        nothing here is optional.
+        OCCT kernel `molejo[brep]` needs is the exact engine's own, and
+        the `molejo` extra installs both, so a module that imports at all
+        has both.
         """
         return True
 

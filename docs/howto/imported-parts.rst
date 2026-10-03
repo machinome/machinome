@@ -174,7 +174,7 @@ knowingly:
 
 .. code-block:: python
 
-    from machinome.node.adapters.step import solids_from_faces
+    from machinome.node.step import solids_from_faces
 
     class Battery(StepNode):
 

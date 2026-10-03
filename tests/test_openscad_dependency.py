@@ -162,7 +162,7 @@ class OpenScadDependencyTest(TestCase):
         node = FacetedBox(name='animated-arm')
 
         with patch('machinome.openscad.shutil.which', return_value=None), \
-             patch('machinome.node.adapters.solid2.Popen',
+             patch('machinome.node.solid2.Popen',
                    side_effect=AssertionError('must fail before launch')):
             with self.assertRaisesRegex(
                     RuntimeError, 'animated-arm.*symbolic.*OpenSCAD'):
@@ -244,7 +244,7 @@ class JScadDependencyBoundaryTest(TestCase):
                     process.communicate.side_effect = render_jscad
                     return process
 
-                with patch('machinome.node.adapters.jscad.Popen',
+                with patch('machinome.node.jscad.Popen',
                            side_effect=launch_jscad), \
                      patch('machinome.node.base.require_openscad',
                            side_effect=AssertionError(

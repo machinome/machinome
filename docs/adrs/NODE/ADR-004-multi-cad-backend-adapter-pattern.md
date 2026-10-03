@@ -2,7 +2,8 @@
 
 **Status:** Accepted; universal-compilation-target clause superseded by
 [ADR-046](ADR-046-conditional-openscad-dependency.md), native production
-contract amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md)
+contract amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md),
+module layout amended 2026-10-03 by [ADR-169](ADR-169-a-leaf-type-is-one-module-under-machinome-node.md)
 **Date:** 2023-07-25
 **Related to:** [ADR-002: Template Method Pattern for Node Lifecycle](./ADR-002-template-method-pattern-for-node-lifecycle.md)
 
@@ -86,3 +87,14 @@ The CadQueryNode metaclass enables dual-mode operation - same code runs standalo
 - solid-node/solid_node/node/adapters/cadquery.py:25-46
 - solid-node/solid_node/node/adapters/openscad.py
 - solid-node/solid_node/node/adapters/jscad.py
+
+## Amendment (2026-10-03)
+
+[ADR-169](ADR-169-a-leaf-type-is-one-module-under-machinome-node.md) moves
+each adapter to one module directly under `machinome.node`, named for its
+technology (`machinome.node.cadquery`, `.build123d`, `.step`, `.molejo`,
+`.solid2`, `.openscad`, `.jscad`, `.stl`), with `Build123dSheetNode` in
+`machinome.node.build123d`, and dissolves `machinome.node.adapters`, which
+now only refuses naming the new address. The adapter pattern and the
+`as_scad()` presentation contract are unchanged; the paths in the
+References below are history.

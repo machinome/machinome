@@ -3,9 +3,7 @@
 ## Purpose
 
 The exact engine as a conditional, versioned dependency of the core: which paths resolve it, that the core holds no kernel code and treats exact shapes as opaque handles, the actionable refusal when the engine is absent, the contract version check, and the one place the core names its provider.
-
 ## Requirements
-
 ### Requirement: The exact engine is resolved only by the paths that use it
 
 The system SHALL treat the exact engine, the boundary-representation kernel
@@ -95,19 +93,21 @@ are cut.
 ### Requirement: An unavailable exact engine fails actionably at the point of use
 
 When a path that needs the exact engine is reached and its provider module
-cannot be found, the system SHALL raise one error that names the exact engine,
-the operation that needed it, why that operation needs it, and the install
-line `pip install "machinome[occt]"`, before any geometry work is attempted. It
-SHALL be raised at the requiring operation, not at import, and SHALL NOT
-surface as a bare `ModuleNotFoundError` from framework internals.
+cannot be found, or is found but refuses because the kernel its `occt` extra
+installs cannot be found (the `kernel-extras` capability), the system SHALL
+raise one error that names the exact engine, the operation that needed it, why
+that operation needs it, and the install line `pip install "machinome[occt]"`,
+before any geometry work is attempted. It SHALL be raised at the requiring
+operation, not at import, and SHALL NOT surface as a bare
+`ModuleNotFoundError` from framework internals.
 
-`exact_engine()` SHALL answer `None` when the provider module cannot be found,
-without raising, so a caller may ask whether exact geometry is available.
+`exact_engine()` SHALL answer `None` in both cases, without raising, so a
+caller may ask whether exact geometry is available.
 
 A provider module that is found but fails to import for another reason, such
-as its own kernel failing to load, SHALL NOT be reported as absent: the
-underlying import error SHALL be raised at the point of use, as the
-`cli-startup-cost` capability requires of every deferred import.
+as its kernel being found and failing to load, SHALL NOT be reported as
+absent: the underlying import error SHALL be raised at the point of use, as
+the `cli-startup-cost` capability requires of every deferred import.
 
 The system SHALL NOT substitute the mesh engine, degrade an exact question to
 a faceted one, or skip an operation when the exact engine is unavailable.
@@ -124,6 +124,14 @@ installs the engine's kernel.
   fusion Bracket`, `fusing its exact children` and `pip install
   "machinome[occt]"`
 
+#### Scenario: An absent OCCT binding is an absent engine
+
+- **WHEN** `require_exact_engine('exact fusion Bracket', 'fusing its exact
+  children')` is called in an interpreter where the provider module exists
+  and `OCP` cannot be found
+- **THEN** it raises the same error naming `pip install "machinome[occt]"`,
+  and `exact_engine()` answers `None`
+
 #### Scenario: Asking about availability does not raise
 
 - **WHEN** `exact_engine()` is called in an interpreter where the provider
@@ -133,7 +141,7 @@ installs the engine's kernel.
 #### Scenario: A broken engine reports its own failure
 
 - **WHEN** the provider module is present but importing it raises an import
-  error from inside it
+  error from inside, its kernel having been found
 - **THEN** that import error is raised at the point of use, rather than the
   engine being reported as not installed
 
@@ -184,3 +192,4 @@ it; every other core path SHALL reach the engine through the seam.
 
 - **WHEN** the core's source is scanned for imports of `machinome.occt`
 - **THEN** the only module that names it is the exact engine seam
+

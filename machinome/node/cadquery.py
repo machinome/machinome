@@ -4,8 +4,16 @@
 
 import sys
 from machinome.exact_engine import require_exact_engine
+from machinome.extras import require_extra
 from machinome.node.declarative import NodeMeta
 from machinome.node.exact_leaf import ExactLeafNode
+
+# A project names this module to render with CadQuery, so without the
+# `cadquery` extra it is refused here, at the import line, with the line
+# that installs it. The check imports nothing: rendering imports CadQuery
+# in the project's own module.
+require_extra('cadquery', 'machinome.node.cadquery (CadQueryNode)',
+              'cadquery')
 
 
 def workplane_shape(rendered, engine):
@@ -15,7 +23,7 @@ def workplane_shape(rendered, engine):
     one becomes the currency as it is and several become one compound. A
     render that is already a shape -- a CadQuery `Shape`, or the kernel's
     own -- is admitted by the engine directly. Recognised by its `vals`
-    method rather than imported, so the adapter module does not load
+    method rather than imported, so this module does not load
     CadQuery.
     """
     shapes = list(rendered.vals()) if hasattr(rendered, 'vals') else [rendered]

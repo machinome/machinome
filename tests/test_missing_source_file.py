@@ -409,7 +409,7 @@ class ScratchContainmentTest(TestCase):
             'class Outside(OpenScadNode):\n'
             '    scad_source = "../outside.scad"\n')
 
-        with patch('machinome.node.adapters.openscad.coherent_read') as read:
+        with patch('machinome.node.openscad.coherent_read') as read:
             self.assertOutside(module.Outside, 'Outside', 'scad_source',
                                '../outside.scad',
                                os.path.join(self.base, 'outside.scad'))

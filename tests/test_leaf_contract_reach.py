@@ -6,12 +6,13 @@
 `leaf-contract`, capability `leaf-contract`).
 
 Read from the source, not imported: the stand-ins of
-`tests/contract_package/` and the five adapters that leave the core when
-the node packages are cut (`cadquery`, `build123d`, `build123d_sheet`,
-`step`, `molejo`) may not import a private name from `machinome` or one of
-its internal modules, define a method that overrides a private member of
-a leaf base, or read one through `self`. And a leaving adapter imports
-from the core only the modules the contract declares.
+`tests/contract_package/` and the four leaf modules that leave the core
+when the node packages are cut (`machinome.node.cadquery`, `.build123d`
+-- which holds `Build123dSheetNode` too since the `lean-install` change --
+`.step` and `.molejo`) may not import a private name from `machinome` or
+one of its internal modules, define a method that overrides a private
+member of a leaf base, or read one through `self`. And a leaving module
+imports from the core only the modules the contract declares.
 """
 
 import ast
@@ -21,10 +22,10 @@ from unittest import TestCase
 
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(BASEDIR)
-ADAPTERS = os.path.join(REPO_DIR, 'machinome', 'node', 'adapters')
+NODE = os.path.join(REPO_DIR, 'machinome', 'node')
 
-LEAVING = [os.path.join(ADAPTERS, f'{name}.py') for name in
-           ('cadquery', 'build123d', 'build123d_sheet', 'step', 'molejo')]
+LEAVING = [os.path.join(NODE, f'{name}.py') for name in
+           ('cadquery', 'build123d', 'step', 'molejo')]
 STAND_INS = sorted(glob.glob(os.path.join(BASEDIR, 'contract_package',
                                           '*.py')))
 
@@ -47,9 +48,15 @@ ALLOWED = {
     ('cadquery.py', 'machinome.node.declarative', 'NodeMeta'):
         'declared: a leaf declaring its own metaclass derives it from '
         'NodeMeta, which lives in machinome.node.declarative, not in a base',
-    ('step.py', 'machinome.node.adapters.cadquery', 'workplane_shape'):
+    ('step.py', 'machinome.node.cadquery', 'workplane_shape'):
         'Deferred (design.md): at the cut, machinome-node-step either '
         'depends on machinome-node-cadquery or keeps its own conversion',
+    **{(module, 'machinome.extras', 'require_extra'):
+       'lean-install: in one distribution a kernel module refuses its '
+       'absent extra at import (kernel-extras); at the cut the node '
+       'package requires its kernel and the check may go with the move'
+       for module in ('cadquery.py', 'build123d.py', 'step.py',
+                      'molejo.py')},
 }
 
 

@@ -6,6 +6,35 @@ Changelog
 Unreleased
 ----------
 
+* **The CAD kernels are extras, and each leaf has its final address:**
+  every leaf type is one module directly under ``machinome.node``, named
+  for its technology: ``machinome.node.cadquery``, ``.build123d`` (which
+  holds ``Build123dSheetNode`` too, and the reducer of ``Svg`` artwork),
+  ``.step`` (``StepNode``, ``StepAssembly``, ``solids_from_faces``,
+  ``cached_document``), ``.molejo``, ``.solid2``, ``.openscad``, ``.jscad``
+  and ``.stl``. The root spellings, ``from machinome.node import
+  StepNode``, are unchanged. Breaking: ``machinome.node.adapters`` is
+  dissolved, and importing anything under it fails at the import line
+  naming the rule, ``machinome.node.adapters.<x>`` is now
+  ``machinome.node.<x>``; for example ``from machinome.node.adapters.step
+  import StepAssembly`` becomes ``from machinome.node.step import
+  StepAssembly``. Breaking for installation: a bare ``pip install
+  machinome`` carries no CAD kernel. The extras ``cadquery``,
+  ``build123d``, ``step``, ``molejo``, ``occt`` and ``all`` install them,
+  each named by the last component of the module that needs it, and
+  without its extra a module refuses at import with its install line:
+  ``machinome.node.cadquery (CadQueryNode) needs cadquery, which is not
+  installed; install it with 'pip install "machinome[cadquery]"'``, the
+  same through ``from machinome.node import CadQueryNode``. ``machinome
+  import-step`` without the ``step`` extra answers ``Error: machinome
+  import-step needs the step extra: ...`` and exits 1, and is still listed
+  by ``machinome -h``. Declaring a marking needs no kernel; building a
+  stale ``Svg`` marking needs ``machinome[build123d]`` and without it is
+  refused naming the part, the marking and the artwork. A project with its
+  extras installed sees no change, and no artifact byte changes; a node
+  whose class is one of the leaf classes itself, rather than a project's
+  subclass, rebuilds once, because its module is part of its recipe
+  (ADR-167, ADR-168, ADR-169).
 * **No node type is recognised by its class name:** the core no longer
   decides anything about a node by the spelling of its class name, or of
   any class it derives from. The one place it did, the refusal raised when

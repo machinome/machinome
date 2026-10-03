@@ -54,7 +54,8 @@ keeps the exact geometry in a ``.brep`` beside it for tests.
 
 Leaves come in several kinds, one per modelling technology, and they all
 work the same way from the outside. ``CadQueryNode`` and ``Build123dNode``
-are exact and need nothing installed beyond the package. ``Solid2Node``
+are exact, each installed by its extra, ``machinome[cadquery]`` or
+``machinome[build123d]`` (:doc:`/start/install`). ``Solid2Node``
 and ``OpenScadNode`` are OpenSCAD's, ``JScadNode`` is JSCAD's, and three
 more bring in parts from files or describe parts that flex.
 :doc:`/howto/backends` puts the same part in each. The tutorial stays with

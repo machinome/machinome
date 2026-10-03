@@ -25,8 +25,57 @@ Optional:
 * The **jscad** command from npm, to write parts in JavaScript with
   ``JScadNode``.
 
-Everything else comes with the package: CadQuery, build123d, trimesh,
-and `molejo <https://molejo.readthedocs.io>`_ for flexible parts.
+The package itself brings trimesh, SolidPython and the mesh engine. The
+CAD kernels are extras, so a project installs only the ones its parts use.
+
+CAD kernels are extras
+----------------------
+
+Each leaf type lives in one module, ``machinome.node.<name>``, and a leaf
+whose kernel is not part of the package is installed by the extra of the
+same name: the extra is the last component of the module's address.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 26 34 40
+
+   * - Extra
+     - Module
+     - Installs, for
+   * - ``machinome[cadquery]``
+     - ``machinome.node.cadquery``
+     - CadQuery, for ``CadQueryNode``
+   * - ``machinome[build123d]``
+     - ``machinome.node.build123d``
+     - build123d, for ``Build123dNode``, ``Build123dSheetNode`` and the
+       SVG artwork of :doc:`markings </howto/markings>`
+   * - ``machinome[step]``
+     - ``machinome.node.step``
+     - CadQuery's STEP reader, for ``StepNode``, ``StepAssembly`` and
+       ``machinome import-step``
+   * - ``machinome[molejo]``
+     - ``machinome.node.molejo``
+     - `molejo <https://molejo.readthedocs.io>`_ with its B-rep evaluator,
+       for ``MolejoNode``
+   * - ``machinome[occt]``
+     - ``machinome.occt.engine``
+     - the OCCT kernel of the exact engine, which every extra above
+       installs too
+   * - ``machinome[all]``
+     - every module above
+     - every kernel
+
+``Solid2Node``, ``OpenScadNode``, ``JScadNode`` and ``StlNode`` need no
+extra. Without its extra, importing a module refuses with the line that
+installs it, for example::
+
+    ModuleNotFoundError: machinome.node.cadquery (CadQueryNode) needs
+    cadquery, which is not installed; install it with
+    'pip install "machinome[cadquery]"'
+
+The same refusal answers ``from machinome.node import CadQueryNode`` and
+``machinome import-step``. A project that imports ``cadquery`` or
+``build123d`` itself, in its own modules, needs the extra of that name.
 
 Two packages, two licences
 --------------------------
@@ -45,18 +94,20 @@ Install
 -------
 
 Create a virtual environment for your projects and install the framework
-with the viewer:
+with the viewer and CadQuery, which the tutorial models with:
 
 .. code-block:: bash
 
     $ python -m venv machines
     $ source machines/bin/activate
-    $ python -m pip install "machinome[viewer]"
+    $ python -m pip install "machinome[viewer,cadquery]"
 
-Or without an interactive viewer:
+Name the extras your parts need instead, ``all`` for every kernel, or
+none for a project whose parts are all OpenSCAD, JSCAD or STL:
 
 .. code-block:: bash
 
+    $ python -m pip install "machinome[viewer,all]"
     $ python -m pip install machinome
 
 If you will author OpenSCAD or SolidPython parts, install OpenSCAD too. On

@@ -1,6 +1,6 @@
 # ADR-161: The Core Holds No Kernel Code: the Exact Engine Seam and Its Address
 
-**Status:** Accepted
+**Status:** Accepted; absent-engine case amended 2026-10-03 by [ADR-167](ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md)
 **Date:** 2026-10-03
 **Change:** [`exact-engine`](../../../openspec/changes/archive/2026-10-03-exact-engine/)
 **Related to:**
@@ -150,3 +150,13 @@ cycle's fix for `_evict` would have to be made in the engine.
   `tests/test_front_end_free_exact.py`, `tests/test_core_kernel_free.py`,
   `tests/exact_engine_absent.py`
 - `openspec/specs/exact-engine-dependency/spec.md`
+
+## Amendment (2026-10-03)
+
+[ADR-167](ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md)
+makes the OCCT binding the `occt` extra's. The engine module is now in every
+install and checks for `OCP` before importing it; the seam counts that
+refusal as an absent engine, so `exact_engine()` answers `None` and
+`require_exact_engine` names `pip install "machinome[occt]"` as before. An
+`OCP` found and failing to load is still reported as itself. The engine
+imports `machinome.extras` beside the contract module.

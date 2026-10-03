@@ -16,11 +16,20 @@ object by the `.wrapped` attribute CadQuery and build123d share.
 
 Everything here is OCP and numpy: the engine imports no CAD front end, no
 trimesh, and from the framework only the contract module, for the error
-types it raises. It keeps no state; caching is its caller's choice.
+types it raises, and the extras module, for the refusal it raises before
+importing OCP when the `occt` extra is not installed. It keeps no state;
+caching is its caller's choice.
 """
 
 from itertools import product
 import math
+
+from machinome.extras import require_extra
+
+# The OCCT binding is the `occt` extra's: refused here, before it is
+# imported, by the line that installs it. The seam
+# (`machinome.exact_engine`) reads this refusal as an absent engine.
+require_extra('occt', 'the exact engine (machinome.occt.engine)', 'OCP')
 
 import numpy as np
 from OCP.Bnd import Bnd_Box

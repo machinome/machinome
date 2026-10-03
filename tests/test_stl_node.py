@@ -293,7 +293,7 @@ class StlArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = parts.Bracket()
-        with patch('machinome.node.adapters.stl._load_source_mesh',
+        with patch('machinome.node.stl._load_source_mesh',
                    side_effect=AssertionError('must not re-read source')), \
              patch('machinome.exact_artifacts._atomic_export',
                    side_effect=AssertionError('must not rewrite artifact')):

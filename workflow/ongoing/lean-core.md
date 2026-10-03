@@ -217,7 +217,17 @@ Which install combinations find the portion:
 
 The one `extend_path` line therefore covers every combination. A
 regular package always wins over portions found earlier on `sys.path`,
-so order does not matter.
+so order does not matter -- for which `__init__.py` runs, not for which
+submodules resolve: the plain line appends every directory of the
+package's name on `sys.path`, a second copy of the core included, and in
+a development workspace the editable primary checkout sits on `sys.path`
+behind every bench, so a module the bench lacks resolved to the primary's
+file (probed in the `lean-install` cycle, 3 October 2026: `import
+machinome.exact`, deleted by `exact-engine`, resolved to the primary's
+`machinome/exact.py`). The line as built therefore admits only portions
+that ship no `__init__.py` of their own, which a satellite never does
+(the check-dist collision guard), so every combination above still works
+and no second copy of the core is ever merged.
 
 ## The shape
 
@@ -376,6 +386,14 @@ modules under `machinome.node` that are not node types, `base`, `frames`,
 | `ExactLeafNode`, the declared exact-leaf base, beside the other three declared leaf bases `LeafNode`, `SheetLeafNode` and `FlexibleNode` | `machinome.node.exact_leaf`; `machinome.node.leaf`, `.sheet_leaf`, `.flexible` | core | machinome |
 | mechanics, movie, later and under their own processes | `machinome.mechanics`, `machinome.movie` | `machinome[mechanics]`, `[movie]` | machinome-mechanics, machinome-movie |
 
+`Build123dSheetNode` lives in `machinome.node.build123d`, beside
+`Build123dNode` (decided in the `lean-install` cycle, design.md
+Decision 1): "node type" in rule 1 names the technology, not the class,
+as `StepNode` and `StepAssembly` share `machinome.node.step`. The sheet
+node has the kernel, pin and licence of `Build123dNode`, and a module
+`machinome.node.build123d_sheet` would need an extra installing exactly
+what `build123d` installs, or break rule 2.
+
 The viewer keeps `machinome_viewer`: it is reached as a separate process,
 nothing imports it, and its entry-point group is already called
 `machinome.viewer`. The studio is not a library and keeps its name.
@@ -488,7 +506,9 @@ remaining cycles:
    following; and the four kernel dependencies, cadquery, build123d,
    cadquery-ocp and molejo, as extras with their modules still in the
    core, each module refusing by its extra when its kernel is absent.
-   The lean install, before any package exists.
+   The lean install, before any package exists. **Done** 3 October 2026
+   (ADR-167, ADR-168, ADR-169);
+   `openspec/changes/archive/2026-10-03-lean-install/evidence.md`.
 5. to 8. OpenSCAD out of the core, four cycles: the core's own
    expression type in place of solid2's `OpenSCADConstant` facade; the
    SCAD presentation behind a seam, `assemble()` no longer requiring it,
@@ -616,6 +636,7 @@ validation is orchestrated with subagents like the rest of the cycle.
 | exact engine | OpenAstroMount | the smallest direct caller of the exact operations |
 | leaf contract | machinome-freecad, the Dum-E adapter | the originating evidence; the one third-party exact leaf. **Done** 3 October 2026: 82 passed after the migration, the universe loaded with no leaf-contract row; `openspec/changes/archive/2026-10-03-leaf-contract/evidence.md` |
 | class-name switch | splitflap, a solid2 project (the abacus named on 3 October is CadQuery, a misreading corrected the same day) | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes. **Done** 3 October 2026: splitflap green before and after, refusal `node front (Solid2Node backend)` → `node front (FrontPanel)`; universe 120 ok, non-ok rows unchanged; `openspec/changes/archive/2026-10-03-backend-switch/evidence.md` |
+| lean install | Actuators/Internal-Cycloidal-Actuator | its companion test imports `machinome.node.adapters.step` twice, so the migration runs in the suite the sweep loads; scaffolded by `machinome import-step` and all `StepNode` leaves, so it exercises the `step` extra, the moved module and the command. **Done** 3 October 2026: ICA 33/35 faceted before and after, the two failures the first cycle's currency; universe 117 ok, three new expected rows, nothing unexpected; `openspec/changes/archive/2026-10-03-lean-install/evidence.md` |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |
 

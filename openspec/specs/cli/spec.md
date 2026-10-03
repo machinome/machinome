@@ -797,10 +797,14 @@ The command SHALL NOT modify `pyproject.toml`. It SHALL print the manifest
 lines that declare the generated model, for the pilot to add, together with
 the next steps for building it.
 
-The command needs the exact-geometry kernel, as every exact path does. When
-`cadquery` or the STEP reader cannot be imported it SHALL report that the
-command needs them, name the extra that installs them, and exit 1, rather
-than fail with an import traceback.
+The command needs the STEP reader, `machinome.node.step`, which the `step`
+extra installs. When that module refuses because its kernel cannot be found,
+the CLI SHALL answer `import-step` before the command parses its arguments or
+runs: it SHALL print one line on standard error naming `import-step`, the
+`step` extra and the install line `pip install "machinome[step]"`, write
+nothing, and exit 1, rather than fail with an import traceback or report an
+unknown command. A STEP reader whose kernel is found but fails to import SHALL
+report its own import error.
 
 A `FILE` that does not exist, or that the STEP reader cannot read or
 transfer, SHALL be reported on standard error with exit status 1 and no
@@ -852,10 +856,17 @@ judged.
 
 #### Scenario: The kernel is missing
 
-- **WHEN** the command is run in an installation without the exact-geometry
-  kernel
-- **THEN** it reports that `import-step` needs it, names the extra that
-  installs it, exits 1, and writes nothing
+- **WHEN** `machinome import-step vendor/actuator.step --into sim` is run in
+  an installation without the `step` extra's kernel
+- **THEN** standard error names `import-step` and `pip install
+  "machinome[step]"`, nothing is created or written, no traceback is printed,
+  and the command exits 1
+
+#### Scenario: Help for the command is answered the same way
+
+- **WHEN** `machinome import-step -h` is run in an installation without the
+  `step` extra's kernel
+- **THEN** the same refusal is printed and the command exits 1
 
 #### Scenario: An unreadable file is reported
 
@@ -956,3 +967,41 @@ status 2 and nothing on standard output.
 - **THEN** the command writes an error naming the accepted reference
   spellings to standard error, prints nothing on standard output, and
   exits 2
+
+### Requirement: A command that needs an extra is answered by the extra
+
+The command registry SHALL be able to name, for a command, the one module of
+the framework that command needs beyond its own implementation. Dispatching
+that command SHALL import that module first; when the module refuses because
+its kernel cannot be found (the `kernel-extras` capability), the CLI SHALL
+print one line on standard error naming the command and the install line the
+refusal names, and exit 1, without running or parsing the command. The extra
+SHALL be the one the module's refusal names, not a second copy kept in the
+CLI.
+
+The command SHALL stay registered and listed whether or not its extra is
+installed: `machinome -h` SHALL list it with its docstring help and SHALL NOT
+import the module it needs, and an invocation of it SHALL never be reported as
+an unknown command. `import-step` is the one such command; its entry names
+`machinome.node.step`. No entry-point group or plugin registry SHALL be
+consulted to find a command.
+
+#### Scenario: The command is listed without its extra
+
+- **WHEN** `machinome -h` is run in an installation without the `step`
+  extra's kernel
+- **THEN** the command list includes `import-step` with its docstring help,
+  the command exits 0, and `machinome.node.step` is not imported
+
+#### Scenario: Dispatching a command imports the module it needs
+
+- **WHEN** `machinome import-step FILE` is dispatched with the `step` extra
+  installed
+- **THEN** `machinome.node.step` is imported before the command runs, and the
+  command behaves as the Import-step command requirement states
+
+#### Scenario: A command needing no module imports none
+
+- **WHEN** `machinome viewer` is dispatched
+- **THEN** no leaf module under `machinome.node` is imported
+

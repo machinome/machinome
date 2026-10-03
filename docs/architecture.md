@@ -297,6 +297,32 @@ groups solids, sketches and curves under one namespace, `Build123dNode`
 additionally rejects a render result that is not a solid, and accepts a
 `BuildPart` builder by taking its finished `.part`.
 
+Each leaf type is one module directly under `machinome.node`, named for its
+technology (ADR-169): `machinome.node.cadquery`, `.build123d` (both
+build123d node types and the `Svg` artwork reducer), `.step` (`StepNode`,
+`StepAssembly`), `.molejo`, `.solid2`, `.openscad`, `.jscad` and `.stl`. The
+node root resolves its exports from them, and the former
+`machinome.node.adapters` package is dissolved: its `__init__.py` raises an
+`ImportError` naming the rule, so every spelling beneath it fails at its
+import line. The CAD kernels are extras, not required dependencies
+(ADR-167): each is installed by the extra named by the last component of
+the address of the module that needs it — `machinome[cadquery]`,
+`[build123d]`, `[step]`, `[molejo]`, `[occt]` for the engine's package, and
+`[all]` — every kernel extra including `occt`, so the OCCT range is stated
+once. Each of those five modules calls `machinome.extras.require_extra`
+before it imports a kernel; the check asks `find_spec` and imports nothing,
+and an absent kernel raises one `ExtraUnavailable`, a `ModuleNotFoundError`
+whose `name` is the missing kernel and which carries the extra. It reaches a
+caller unchanged at three doors: the module's own import, the node root's
+lazy export (`_load` re-raises it without its broken-install splice, since
+an absent extra is not a broken install), and the CLI command that needs the
+module. A kernel that is found and fails to import reports its own error.
+`machinome` and `machinome.node` extend their `__path__` with
+`pkgutil.extend_path`, admitting only portions that ship no `__init__.py` of
+their own: a node package cut later resolves at the same address, and a
+second copy of the core on `sys.path` — an editable checkout behind a
+development bench — is never merged into the package.
+
 The four leaf bases — `LeafNode` (`machinome.node.leaf`), `ExactLeafNode`
 (`machinome.node.exact_leaf`), `SheetLeafNode` (`machinome.node.sheet_leaf`)
 and `FlexibleNode` (`machinome.node.flexible`) — are declared extension
@@ -383,7 +409,7 @@ measured on a 35 MB vendor assembly) and a project may hold many leaves
 over one file (ADR-078).
 
 The other half of a STEP document — where each product sits — is a
-reader, not a node: `StepAssembly(path)`, in the same adapter module,
+reader, not a node: `StepAssembly(path)`, in the same module, `machinome.node.step`,
 walks every occurrence through nested sub-assemblies over the identical
 cached document, reporting each one's placement matrix, its world
 matrix composed outward through its parents, and, for a proper rigid
@@ -484,9 +510,16 @@ and the verdict memo. A leaf converts its render result only inside the
 branch that writes a stale artifact, and a fusion resolves the engine only
 in its exact branch, so a node whose artifacts are current is reused
 without resolving the engine, and a model with no exact node never imports
-it. Only the STEP adapter still imports OCP and cadquery outside the engine
-(its reader and `adjust`), and the markings' SVG reducer build123d, until
-their packages are cut.
+it. Outside the engine, only `machinome.node.step` imports OCP and cadquery
+(its reader and `adjust`), `machinome.node.build123d` build123d (inside its
+functions) and `machinome.node.molejo` molejo, each after checking its extra;
+the seam reads the engine's own `occt` refusal as an absent engine, so
+`require_exact_engine` names the install either way. The markings reach the
+`Svg` reducer through a seam of their own: `Svg.tessellate` resolves
+`machinome.node.build123d` on first use and refuses a reducer declaring
+another `SVG_REDUCER_CONTRACT`, so declaring a marking and reusing a current
+one need no kernel, and building a stale one without the `build123d` extra
+is refused naming the part's class, the marking and its artwork.
 Each adapter can still present SCAD, but artifact production follows its backend:
 Solid2 and raw OpenSCAD leaves use OpenSCAD, CadQuery and build123d — sheet
 parts included — use OCCT, JSCAD uses `jscad`, a flexible leaf uses molejo's
@@ -2107,7 +2140,14 @@ of any geometric test (ADR-039, amended 2026-08-10).
 `solid <command> <path>` — command-first grammar since 0.4, with an
 exit-2 migration guard for the old order (ADR-024). Commands are a
 duck-typed registry naming where each lives: `build`, `develop`, `test`,
-`snapshot`, `new` (offline scaffold), `export`, `viewer`, `models`.
+`snapshot`, `new` (offline scaffold), `export`, `viewer`, `models`,
+`import-step`, `vet`. An entry also names the one module a command needs
+beyond its implementation, when its kernel is an extra (ADR-168):
+`import-step` names `machinome.node.step`, which dispatching imports before
+the command parses; when it refuses for an absent kernel the CLI writes
+`Error: machinome import-step needs the step extra: <refusal>` and exits 1.
+The help path imports no such module, so every command is listed with or
+without its extra.
 `models` lists a project's models from the manifest and their build
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk

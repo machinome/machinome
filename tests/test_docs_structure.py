@@ -97,6 +97,37 @@ class LicenceWordingTest(unittest.TestCase):
                 self.assertNotIn(STALE_GRANT, text)
 
 
+class KernelExtrasTest(unittest.TestCase):
+    """The CAD kernels are extras (OpenSpec change `lean-install`): the
+    installation page names each, and no page a reader lands on says the
+    package carries them or sends a reader to the dissolved adapters
+    package."""
+
+    EXTRAS = ('occt', 'cadquery', 'build123d', 'step', 'molejo', 'all')
+
+    STALE = ('Everything else comes with the package',
+             'machinome.node.adapters')
+
+    #: The changelog records the dissolution, so it names the old package.
+    RECORDS = {'project/changelog.rst': ('machinome.node.adapters',)}
+
+    def test_the_installation_page_names_every_kernel_extra(self):
+        page = (DOCS / 'start' / 'install.rst').read_text()
+        for extra in self.EXTRAS:
+            with self.subTest(extra=extra):
+                self.assertIn(f'machinome[{extra}]', page)
+
+    def test_no_reader_page_carries_the_kernels_or_the_old_addresses(self):
+        pages = list(documents()) + [('README.rst',
+                                      (REPO / 'README.rst').read_text())]
+        for relative, text in pages:
+            for stale in self.STALE:
+                if stale in self.RECORDS.get(relative, ()):
+                    continue
+                with self.subTest(document=relative, stale=stale):
+                    self.assertNotIn(stale, text)
+
+
 class ReleaseFactsTest(unittest.TestCase):
 
     def test_facts_are_substitutions(self):

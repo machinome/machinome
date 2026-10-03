@@ -93,22 +93,32 @@ EXPECTED_EXPORTS = {
 # Refuse `cadquery` the way an interpreter without the wheel does: a
 # `sys.meta_path` finder that raises, rather than a stub, so a deferred
 # import fails for the real reason a broken install fails.
-# Refuse `OCP`, the OCCT kernel the exact engine imports, the same way: what
-# a broken exact engine looks like now that exact geometry imports no CAD
-# front end.
-KERNEL_ABSENT = '''
+# Find `OCP`, the OCCT kernel the exact engine imports, and fail to import
+# it from inside: what a broken exact engine looks like now that exact
+# geometry imports no CAD front end. An ABSENT `OCP` is not a broken engine
+# since the `lean-install` change -- the `occt` extra is simply not
+# installed, and the seam answers it as an absent engine
+# (tests/test_exact_engine_seam.py, `AbsentKernelTest`).
+KERNEL_BROKEN = '''
+import importlib.machinery
 import sys
 
 
-class _KernelAbsent:
+class _KernelBroken:
 
     def find_spec(self, name, target=None, path=None):
         if name == 'OCP' or name.startswith('OCP.'):
-            raise ModuleNotFoundError("No module named 'OCP'", name='OCP')
+            return importlib.machinery.ModuleSpec(name, self)
         return None
 
+    def create_module(self, spec):
+        return None
 
-sys.meta_path.insert(0, _KernelAbsent())
+    def exec_module(self, module):
+        raise ImportError('broken OCP')
+
+
+sys.meta_path.insert(0, _KernelBroken())
 sys.modules.pop('OCP', None)
 '''
 
@@ -426,9 +436,10 @@ class SimulationBrokenExport(TestCase):
     cadquery at all, so the guard follows the dependency to where it
     actually lives. Since the `exact-engine` change that is the exact
     engine, resolved through `machinome.exact_engine` at the exact path's
-    first use, and what a broken engine lacks is its kernel, `OCP`. The
-    trap is unchanged and so is what it must not do; only the name that
-    springs it moved.
+    first use, and what breaks a broken engine is its kernel, `OCP`, found
+    and failing to load (an absent `OCP` is an absent engine since the
+    `lean-install` change, not a broken one). The trap is unchanged and so
+    is what it must not do; only the name that springs it moved.
     """
 
     def _access(self, expression):
@@ -447,11 +458,11 @@ class SimulationBrokenExport(TestCase):
             "    print('NO_ERROR')\n")
 
     def _use_kernel_name(self):
-        """Take the exact path of `machinome.test`, its kernel absent.
+        """Take the exact path of `machinome.test`, its kernel broken.
         Importing is not enough -- the engine resolves on USE, which is
         the point the failure must surface."""
         return ran(
-            KERNEL_ABSENT +
+            KERNEL_BROKEN +
             'import machinome.test\n'
             'try:\n'
             "    machinome.test._exact_engine().intersect_shapes(\n"
@@ -491,7 +502,7 @@ class SimulationBrokenExport(TestCase):
         # The trap itself: whatever a broken install does, it must not
         # look like the exact engine was never installed.
         result = ran(
-            KERNEL_ABSENT +
+            KERNEL_BROKEN +
             'import machinome.exact_engine\n'
             'try:\n'
             "    present = machinome.exact_engine.exact_engine() is not None\n"

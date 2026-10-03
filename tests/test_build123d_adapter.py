@@ -24,8 +24,8 @@ from solid2 import cube
 
 from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
                              Solid2Node)
-from machinome.node.adapters.build123d import build123d_shape
-from machinome.node.adapters.cadquery import workplane_shape
+from machinome.node.build123d import build123d_shape
+from machinome.node.cadquery import workplane_shape
 from machinome.occt import engine
 
 

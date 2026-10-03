@@ -332,7 +332,7 @@ class AsyncRendererGenerationGuardTest(TestCase):
 class ForeignSourceCacheTest(TestCase):
 
     def test_step_document_cache_rejects_same_mtime_replacement(self):
-        from machinome.node.adapters import step
+        from machinome.node import step
 
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, 'part.step')
@@ -356,7 +356,7 @@ class ForeignSourceCacheTest(TestCase):
             self.assertEqual(read.call_count, 2)
 
     def test_step_read_before_phase_rejects_replacement_during_read(self):
-        from machinome.node.adapters import step
+        from machinome.node import step
 
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, 'part.step')
@@ -425,7 +425,7 @@ class JScadGenerationGuardTest(TestCase):
             return process
 
         with SourceGeneration(self.root) as generation, \
-             mock.patch('machinome.node.adapters.jscad.Popen',
+             mock.patch('machinome.node.jscad.Popen',
                         side_effect=launch):
             with self.assertRaises(SourceChanged):
                 with generation.phase([self.source], label='assembly'):
@@ -446,7 +446,7 @@ class JScadGenerationGuardTest(TestCase):
             process.communicate.side_effect = render
             return process
 
-        with mock.patch('machinome.node.adapters.jscad.Popen',
+        with mock.patch('machinome.node.jscad.Popen',
                         side_effect=launch):
             with self.assertRaises(CalledProcessError):
                 JScadNode.as_scad(self.node(), None)

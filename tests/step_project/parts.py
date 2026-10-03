@@ -17,7 +17,7 @@ that exist only once the test suite has run.
 """
 
 from machinome.node import StepNode
-from machinome.node.adapters.step import solids_from_faces
+from machinome.node.step import solids_from_faces
 
 from .dimensions import SCALE_FACTOR, SEWING_TOLERANCE
 

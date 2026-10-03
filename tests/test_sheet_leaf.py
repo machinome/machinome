@@ -391,7 +391,7 @@ class SheetDxfArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = PerforatedPlate()
-        with patch('machinome.node.adapters.build123d_sheet._export_dxf',
+        with patch('machinome.node.build123d._export_dxf',
                    side_effect=AssertionError('must not re-export')):
             assembled = second.as_scad(second.render())
 

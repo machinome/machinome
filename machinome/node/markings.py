@@ -35,14 +35,20 @@ only the decal is rebuilt.
 
 Nothing heavier than the standard library is imported here -- the one
 framework import, `require_source_file`, is the admission every
-source-bound leaf already makes and imports nothing itself. build123d
-is reached inside the artwork reduction, trimesh inside the mesh build
-and numpy inside the placement arithmetic, for the reason
-`Build123dSheetNode`'s docstring gives: `machinome.node` is on every
-`machinome` invocation's path and build123d costs about 1.6 s.
+source-bound leaf already makes and imports nothing itself. trimesh is
+reached inside the mesh build and numpy inside the placement arithmetic:
+`machinome.node` is on every `machinome` invocation's path.
+
+Reducing `Svg` artwork to its regions and triangles is not this module's:
+it is the reducer in `machinome.node.build123d`, which drives build123d and
+is installed by the `build123d` extra. This module resolves it on first use,
+through the one seam below (OpenSpec change `lean-install`), so declaring a
+marking and building a part whose marking is current need no kernel; only
+building a stale marking does, and without the extra it is refused naming
+the part, the marking, the artwork and the line that installs the extra.
 """
 
-import logging
+import importlib
 import math
 import os
 import re
@@ -51,7 +57,41 @@ import sys
 from .sources import require_source_file
 
 
-logger = logging.getLogger('node.markings')
+#: The artwork reducer contract version this module speaks. The reducer's
+#: module declares the version it implements; they must be equal.
+SVG_REDUCER_CONTRACT = 1
+
+#: The one module that reduces `Svg` artwork.
+SVG_REDUCER = 'machinome.node.build123d'
+
+
+class ArtworkReducerIncompatible(RuntimeError):
+    """The artwork reducer found does not implement the contract this
+    module speaks."""
+
+    def __init__(self, declared):
+        stated = ('declares none' if declared is None
+                  else f'declares contract version {declared!r}')
+        super().__init__(
+            f'The artwork reducer {SVG_REDUCER} {stated}, but this machinome '
+            f'speaks artwork reducer contract version {SVG_REDUCER_CONTRACT}; '
+            f'install the reducer released with this machinome')
+
+
+def _artwork_reducer():
+    """The module that reduces `Svg` artwork, resolved on use.
+
+    Without the `build123d` extra, importing it raises its own
+    `ExtraUnavailable`, which propagates as raised; a reducer declaring
+    another contract version, or none, is refused before any artwork is
+    reduced.
+    """
+    reducer = importlib.import_module(SVG_REDUCER)
+    declared = getattr(reducer, 'SVG_REDUCER_CONTRACT', None)
+    if declared != SVG_REDUCER_CONTRACT:
+        raise ArtworkReducerIncompatible(declared)
+    return reducer
+
 
 # How nearly parallel two declared directions may be before the second
 # leaves nothing of itself across the first. Loose enough to catch a
@@ -168,89 +208,23 @@ class Svg:
         self.resolved = path
         return path
 
-    def regions(self) -> list:
-        """The drawing's CLOSED regions, each one face carrying its
-        enclosed regions as holes.
-
-        The file's own origin is kept (`align=None`) rather than moved
-        to the drawing's minimum corner, which is what makes `origin=`
-        meaningful and what makes two artworks authored on one sheet
-        register with each other. Its Y axis is flipped into model
-        orientation (`flip_y=True`, build123d's default), because SVG's
-        Y grows downward and the model's does not -- so a drawing
-        authored in a drawing program reads the right way up and its
-        faces sit at negative Y.
-
-        Open paths are ignored and COUNTED, in one line at INFO naming
-        the file: a drawing's sheet border is an open path that
-        registers the artwork and is not part of it -- the Curta's own
-        `results_dial.svg` carries a border that measures its roll's
-        unwrapped circumference exactly -- and dropping it silently
-        would leave a modeller wondering why the digits do not sit where
-        the drawing says. Artwork with no closed region at all is
-        refused: a decal with nothing in it is a mistake, not an empty
-        decal.
-
-        build123d is imported HERE rather than at module scope: it costs
-        about 1.6 s and `machinome.node` is on every `machinome`
-        invocation's path, so only a build that actually reduces an
-        artwork pays for it.
-        """
-        import build123d as b3d
-
-        path = self.resolved or self.path
-        shapes = b3d.import_svg(path, align=None)
-        faces = [shape for shape in shapes if isinstance(shape, b3d.Face)]
-        ignored = len(shapes) - len(faces)
-        logger.info('%s: %d open path(s) ignored, %d closed region(s) read',
-                    path, ignored, len(faces))
-        if not faces:
-            raise ValueError(
-                f'{path} holds no closed region: a marking is the drawing\'s '
-                f'closed regions, and this file has none -- every path in it '
-                f'is open. Close the outlines the marking is meant to carry.')
-        return faces
-
     def tessellate(self, tolerance):
         """The artwork as flat triangles: `(vertices, triangles)`, the
         vertices an `(N, 2)` array of artwork coordinates and the
         triangles an `(M, 3)` array of indices into them.
 
-        Each region is oriented to `+Z` before it is meshed, so the
-        triangles' winding is a property of THIS PRODUCER and not of the
-        drawing tool or of a transitive dependency's fix-up pass: the
-        framework's own placement maths already maps artwork `+Z`
-        outward by construction -- `Flat` builds its frame so
-        `x_axis x y_axis` is the declared normal, and `Wrapped` maps
-        artwork `(u, v)` so its tangents' cross product is the outward
-        radial direction -- so orienting the artwork here is what makes
-        the built decal face away from the part, whichever way the
-        artwork's own regions came out of the drawing.
-
-        Each region is then meshed in its own plane through OCCT's
-        incremental mesher, which respects the holes the face carries,
-        so a digit's counter is a hole in the decal and not a second
-        patch of colour over it. `scale` multiplies the result, because
-        it is a property of the FILE: a drawing authored in inches is
-        the same drawing at a different size.
+        The reduction -- the drawing's closed regions, each oriented to
+        `+Z` and meshed with its holes -- is the reducer's
+        (`machinome.node.build123d.svg_triangles`), reached through this
+        module's seam, and needs the `build123d` extra. `scale` is applied
+        here, because it is a property of the FILE: a drawing authored in
+        inches is the same drawing at a different size.
         """
-        import build123d as b3d
-        import numpy as np
-
-        vertices = []
-        triangles = []
-        for face in self.regions():
-            if face.normal_at().Z < 0:
-                face = b3d.Face(face.wrapped.Complemented())
-            points, facets = face.tessellate(tolerance)
-            offset = len(vertices)
-            vertices.extend((point.X, point.Y) for point in points)
-            triangles.extend((a + offset, b + offset, c + offset)
-                             for a, b, c in facets)
-        placed = np.array(vertices, dtype=float)
+        placed, triangles = _artwork_reducer().svg_triangles(
+            self.resolved or self.path, tolerance)
         if self.scale is not None:
             placed = placed * self.scale
-        return placed, np.array(triangles, dtype=np.int64)
+        return placed, triangles
 
     def __repr__(self):
         if self.scale is None:
@@ -658,8 +632,8 @@ class Marking:
         a solid: nothing in the framework imports it as a part, fuses
         it, or measures its volume.
 
-        trimesh is imported here rather than at module scope, for the
-        reason build123d is (see `Svg.regions`).
+        trimesh is imported here rather than at module scope: importing
+        this module must cost nothing beyond the standard library.
         """
         import numpy as np
         import trimesh

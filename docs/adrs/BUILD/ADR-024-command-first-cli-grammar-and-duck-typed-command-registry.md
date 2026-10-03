@@ -1,6 +1,6 @@
 # ADR-024: Command-First CLI Grammar and Duck-Typed Command Registry
 
-**Status:** Accepted
+**Status:** Accepted; registry amended 2026-10-03 by [ADR-168](./ADR-168-the-command-table-names-the-module-a-command-needs.md)
 **Date:** 2026-07-17
 **Depends on:**
 - [ADR-005: Path-Based Dynamic Module Loading](./ADR-005-path-based-dynamic-module-loading.md)
@@ -105,3 +105,13 @@ Rationale for the chosen options:
 - `solid_node/manager/develop.py` — representative duck-typed command (`needs_node`, `add_arguments`, `handle`)
 - `solid_node/manager/templates/project/` — packaged project template (`root/__init__.py`, `gitignore`)
 - Commits: `2d8b3f0` (flip to command-first), `e1f2105` (`solid new` scaffolding), `1caa1f7` (docs), `3a0a625` / `2a2ee15` (`solid test` path handling)
+
+## Amendment (2026-10-03)
+
+[ADR-168](./ADR-168-the-command-table-names-the-module-a-command-needs.md)
+gives the registry a third column: the one module of the framework a command
+needs beyond its implementation, or `None`. `import-step` names
+`machinome.node.step`; dispatching it imports that module first and, where
+its kernel extra is absent, answers the command with the extra the module's
+refusal names and exits 1. The help path imports no such module, so every
+command is still listed by name with its docstring.

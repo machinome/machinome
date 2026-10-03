@@ -1,11 +1,8 @@
-# Runtime dependencies, mirrored from pyproject.toml for existing tooling.
+# Runtime dependencies and every kernel extra's requirements, mirrored from
+# pyproject.toml for CI and tox.
 watchdog
 trimesh==4.4.*
 solidpython2==2.1.*
-cadquery==2.7.*
-build123d==0.10.*
-ocp-gordon>=0.2.2,<0.3
-molejo[brep]==0.2.*
 httpx==0.27.*
 fastapi==0.111.*
 termcolor==2.4.*
@@ -16,3 +13,9 @@ manifold3d
 rtree
 scipy
 shapely==2.1.*
+# The kernel extras: occt, cadquery, build123d, step, molejo (and all).
+cadquery-ocp>=7.8.1,<7.9
+cadquery==2.7.*
+build123d==0.10.*
+ocp-gordon>=0.2.2,<0.3
+molejo[brep]==0.2.*

@@ -3,9 +3,7 @@
 ## Purpose
 
 The OCCT exact engine, `machinome.occt.engine`: its currency, the operations it performs on exact shapes, the exact operations a project calls directly, the contract version it declares, and what it imports. It governs behaviour that leaves the core with the engine package at the cut.
-
 ## Requirements
-
 ### Requirement: The engine is one module under a package that exports nothing
 
 The OCCT exact engine SHALL be the module `machinome.occt.engine`. It SHALL be
@@ -75,8 +73,13 @@ The engine SHALL perform every operation on the OCCT kernel through OCP, with
 numpy for arrays. Importing it, and running any of its operations, SHALL NOT
 import `cadquery`, `build123d` or `trimesh`. From the framework it SHALL import
 only the core's exact engine contract module, for the error types it raises,
-and never a framework internal such as artifact publication, currency or a
+and the core's extras module, for the refusal it raises when OCP cannot be
+found; never a framework internal such as artifact publication, currency or a
 cache.
+
+Before it imports OCP, the engine SHALL check that OCP can be found, without
+importing it, and refuse an absent OCP with the `kernel-extras` capability's
+refusal naming the exact engine and `pip install "machinome[occt]"`.
 
 The engine SHALL keep no state between calls: every operation is a function of
 its arguments, and caching the results is its caller's choice.
@@ -87,6 +90,12 @@ its arguments, and caching the results is its caller's choice.
   intersects, measures and writes a shape with it
 - **THEN** neither `cadquery`, `build123d` nor `trimesh` is among the imported
   modules
+
+#### Scenario: The engine without its kernel refuses by its extra
+
+- **WHEN** `machinome.occt.engine` is imported where `OCP` cannot be found
+- **THEN** a `ModuleNotFoundError` is raised whose `name` is `OCP` and whose
+  message names the exact engine and `pip install "machinome[occt]"`
 
 ### Requirement: Direct exact operations
 
@@ -245,3 +254,4 @@ are interchangeable.
 - **WHEN** a fused solid is written by the engine and by CadQuery's exporters
   at the same deflections, in separate processes
 - **THEN** the BREP and STL files have the same SHA-256 each way
+

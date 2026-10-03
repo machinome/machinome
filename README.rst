@@ -59,14 +59,16 @@ Install it with the browser viewer and start a project:
 
 .. code-block:: bash
 
-   pip install "machinome[viewer]"
+   pip install "machinome[viewer,cadquery]"
    machinome new myproject
    cd myproject
    machinome develop
 
 The default template uses SolidPython and needs the OpenSCAD executable;
-the manual's first page replaces it with an exact part that needs
-nothing else. The
+the manual's first page replaces it with an exact CadQuery part, which
+the ``cadquery`` extra installs. Each CAD kernel is an extra named for the
+module that needs it (``cadquery``, ``build123d``, ``step``, ``molejo``,
+or ``all``). The
 `migration guide <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_
 maps imports, commands, configuration and viewer integration from 0.6.
 There is no ``solid_node`` import shim or ``solid`` command alias.

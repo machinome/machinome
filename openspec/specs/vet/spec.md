@@ -10,9 +10,7 @@ findings that say why not. Vet checks what a project declares; it is not a
 sandbox, and the runtime that lacks a capability is. Encodes ADR-149.
 
 Code: `machinome/vet/`, `machinome/manifest.py`, `machinome/manager/vet.py`.
-
 ## Requirements
-
 ### Requirement: The universe is a versioned declaration shipped with the framework
 
 The system SHALL carry one universe declaration as a data file inside the
@@ -237,13 +235,21 @@ The finding SHALL name the denied name reached. Every other name beneath
 the contract members, including `machinome.node`, `machinome.simulation`,
 `machinome.motion`, `machinome.math`, `machinome.parameters`,
 `machinome.test`, `machinome.exact_engine`, `machinome.occt.engine` and its
-other operations, and `machinome.openscad`, SHALL pass.
+other operations, `machinome.openscad`, and the leaf modules
+`machinome.node.cadquery`, `machinome.node.build123d`, `machinome.node.step`,
+`machinome.node.molejo`, `machinome.node.solid2`, `machinome.node.openscad`,
+`machinome.node.jscad` and `machinome.node.stl`, SHALL pass.
 
 `machinome.exact` no longer exists: the exact operations a project calls
 directly are defined in `machinome.occt.engine` and are reached there. Vet
 judges a name by its place in the universe, not by whether a module defines
 it, so an import of the removed module is not a vet finding; it fails when the
 project runs.
+
+`machinome.node.adapters` no longer holds the leaf modules: each is
+`machinome.node.<x>`. An import beneath the dissolved package is, likewise, not
+a vet finding; it fails when the project runs, naming the new address. Whether
+a kernel's extra is installed does not enter a verdict.
 
 #### Scenario: The loader through an import
 
@@ -278,6 +284,13 @@ project runs.
   write_brep`, or names `machinome.exact_cache.cached_shape`
 - **THEN** vet reports kind `framework-internal`, naming
   `machinome.occt.engine.write_brep` or `machinome.exact_cache`
+
+#### Scenario: A leaf module passes
+
+- **WHEN** a vetted module runs `from machinome.node.cadquery import
+  CadQueryNode` and `from machinome.node.step import StepAssembly,
+  solids_from_faces`
+- **THEN** vet reports no finding for those imports
 
 ### Requirement: A file write is a finding
 
@@ -706,3 +719,4 @@ vets. The system SHALL read those files as bytes and parse them.
 
 - **WHEN** vet runs twice over an unchanged tree
 - **THEN** the two JSON reports are byte-identical
+

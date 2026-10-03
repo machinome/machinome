@@ -19,6 +19,7 @@ from solid2 import scad_render, import_stl, color
 from machinome import currency
 from machinome._artifact import (ArtifactChanged, ArtifactSnapshot,
                                   artifact_cache_key)
+from machinome.extras import ExtraUnavailable
 from machinome.openscad import require_openscad
 from machinome.source_generation import (
     current_census, current_generation, current_phase, track_sources,
@@ -1643,13 +1644,25 @@ class AbstractBaseNode(metaclass=NodeMeta):
 
         Never reached for a non-rigid node: a marking is refused on one
         at class creation, so there is nothing to visit.
+
+        Reducing a stale marking's artwork needs the `build123d` extra (the
+        markings' artwork seam); without it the refusal is raised again
+        naming this part's class, the marking and its artwork, before any
+        marking artifact is written. A current marking resolves no reducer.
         """
         for name, marking in self.declared_markings().items():
             path = self.marking_file(name)
             sources = self.marking_sources(marking)
             if self._up_to_date(path, sources):
                 continue
-            content = marking.mesh_bytes(self.marking_tolerance())
+            try:
+                content = marking.mesh_bytes(self.marking_tolerance())
+            except ExtraUnavailable as absent:
+                raise ExtraUnavailable(
+                    absent.extra,
+                    f'marking {name} of {type(self).__qualname__} '
+                    f'(artwork {marking.artwork.path})',
+                    absent.name) from absent
             _atomic_write_bytes(
                 path, content, self._tracked_mtime_ns(sources),
                 self._tracked_digest(sources),

@@ -20,6 +20,7 @@ import importlib
 import importlib.abc
 import importlib.machinery
 import inspect
+import json
 import sys
 import tomllib
 import types
@@ -187,3 +188,53 @@ class BrokenEngineTest(_SeamCacheCleared):
             sys.meta_path.remove(finder)
             if package is not None and 'engine' in saved:
                 package.engine = saved['engine']
+
+
+#: Ask the seam whether the engine is there, then require it, and report
+#: both as JSON on the last line.
+ASK_AND_REQUIRE = '''
+import json
+import machinome.exact_engine as seam
+report = {}
+try:
+    report['asked'] = repr(seam.exact_engine())
+except ImportError as raised:
+    report['asked'] = f'{type(raised).__name__}: {raised}'
+try:
+    seam.require_exact_engine('exact fusion Bracket',
+                              'fusing its exact children')
+except Exception as raised:
+    report['required'] = f'{type(raised).__name__}: {raised}'
+print(json.dumps(report))
+'''
+
+
+class AbsentKernelTest(TestCase):
+    """The engine's module is in every install, its kernel only with the
+    `occt` extra (OpenSpec change `lean-install`): an absent OCP is an
+    absent engine, a broken one reports itself."""
+
+    def ask(self, **blocking):
+        from .exact_engine_absent import run_python
+
+        run = run_python(ASK_AND_REQUIRE, **blocking)
+        lines = run.stdout.strip().splitlines()
+        self.assertTrue(lines, run.output)
+        return json.loads(lines[-1])
+
+    def test_an_absent_occt_binding_is_an_absent_engine(self):
+        report = self.ask(absent=('OCP',))
+
+        self.assertEqual(report['asked'], 'None')
+        self.assertEqual(
+            report['required'],
+            'ExactEngineUnavailable: exact fusion Bracket requires the exact '
+            'engine because fusing its exact children; install it with '
+            '\'pip install "machinome[occt]"\'. A model with no exact node '
+            'never needs it')
+
+    def test_a_broken_occt_binding_reports_its_own_failure(self):
+        report = self.ask(broken=('OCP',), blocked=False)
+
+        self.assertEqual(report['asked'], 'ImportError: broken OCP')
+        self.assertEqual(report['required'], 'ImportError: broken OCP')

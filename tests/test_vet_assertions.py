@@ -98,6 +98,16 @@ class ExactEngineInternalTest(TestCase):
         })
 
 
+class LeafModuleTest(TestCase):
+    """The leaf modules at their final addresses are contract members
+    (OpenSpec change `lean-install`, `vet` "A framework internal is a
+    finding"): vet judges a name by its place in the universe, so this
+    passes before the change as after it."""
+
+    def test_a_leaf_module_passes(self):
+        self.assertEqual(findings(run_vet('leaf_modules')), set())
+
+
 class FileWriteTest(TestCase):
     """(5.3)"""
 

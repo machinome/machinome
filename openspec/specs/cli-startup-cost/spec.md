@@ -92,13 +92,13 @@ motion module and SHALL be reachable only from there. Importing
 `machinome.node`, or any module beneath it,
 SHALL NOT import a backend the caller has not named.
 
-In particular, importing `machinome.node` SHALL NOT import `cadquery`, and
-SHALL NOT import the boundary-representation kernel's STEP reader. The
-exact-geometry stack SHALL be imported when a name that depends on it —
-`FusionNode`, `CadQueryNode`, `Build123dNode`, `Build123dSheetNode`,
-`StepNode`, or a
-module reached through them — is first accessed, and the STEP reader when
-`StepNode` is.
+In particular, importing `machinome.node` SHALL NOT import `cadquery`,
+`build123d`, `molejo` or the boundary-representation kernel `OCP`. A name is
+resolved by importing the leaf module that defines it (the `node-model`
+capability's table), which imports what that module needs and nothing else:
+`StepNode` imports CadQuery and the kernel's STEP reader, `MolejoNode` imports
+molejo, and `CadQueryNode`, `Build123dNode` and `Build123dSheetNode` import
+no CAD front end, since a project's own module imports it to render.
 
 Attribute access SHALL resolve submodules of `machinome.node` as well as the
 exported classes, so a consumer reading `machinome.node.<submodule>` after
@@ -110,7 +110,8 @@ message names the module that now answers for it: an `ImportError` rather
 than an `AttributeError` because `from machinome.node import <name>`
 discards an `AttributeError`'s message and substitutes its own generic
 text, so only an `ImportError` carries the redirect to the failing import
-line.
+line. A name whose leaf module refuses an absent kernel SHALL raise that
+refusal, which is an `ImportError`, for the same reason.
 
 #### Scenario: An OpenSCAD-only project imports no exact stack
 
@@ -121,8 +122,8 @@ line.
 #### Scenario: A named backend is resolved
 
 - **WHEN** a module runs `from machinome.node import CadQueryNode`
-- **THEN** it receives the same class it receives today, and `cadquery` is
-  imported
+- **THEN** it receives the class `machinome.node.cadquery` defines, the same
+  class it received before, and `cadquery` is not imported by the resolution
 
 #### Scenario: The STEP reader is not imported by the node package
 
@@ -133,7 +134,7 @@ line.
 #### Scenario: A submodule is reached through the package
 
 - **WHEN** a consumer imports `machinome.node` and then reads
-  `machinome.node.assembly`
+  `machinome.node.assembly` or `machinome.node.cadquery`
 - **THEN** the submodule is returned
 
 #### Scenario: An unknown name still fails
@@ -231,17 +232,31 @@ not a mesh has yet been read.
 
 ### Requirement: Deferred imports do not hide a broken installation
 
-When a deferred import fails, the system SHALL raise the underlying import
-error at the point the deferred name is first used, naming that name. It SHALL
-NOT be swallowed, retried against a substitute, or reported as a missing
-attribute.
+When a deferred import fails because something installed is broken, the
+system SHALL raise the underlying import error at the point the deferred name
+is first used, naming that name. It SHALL NOT be swallowed, retried against a
+substitute, or reported as a missing attribute.
+
+An extra that is not installed is not a broken installation. When the deferred
+import fails with a kernel module's absent-kernel refusal (the `kernel-extras`
+capability), the system SHALL raise that refusal unmodified, so its message
+names the node types and the install line and nothing suggests a broken
+install. It SHALL NOT be reported as a missing attribute either.
 
 #### Scenario: A broken backend reports its own failure
 
-- **WHEN** a name whose backend cannot be imported is accessed from
-  `machinome.node`
+- **WHEN** a name whose backend's kernel is found but fails to import is
+  accessed from `machinome.node`
 - **THEN** the underlying import error is raised, naming the requested name,
   rather than an `AttributeError`
+
+#### Scenario: An absent extra is reported by its install line
+
+- **WHEN** `from machinome.node import StepNode` runs where `cadquery` cannot
+  be found
+- **THEN** the raised error is the `step` module's refusal, unmodified: it
+  names `StepNode` and `pip install "machinome[step]"`, and `hasattr` on the
+  name raises it rather than answering `False`
 
 ### Requirement: The build-parameter module costs nothing to import
 
@@ -413,6 +428,7 @@ of a run binder SHALL add no import to it.
 - **WHEN** a `Sim` is constructed over a root declaring `Time.running()`
 - **THEN** the compile step and the engine are imported then, and no CAD
   backend and no exact-geometry stack with them
+
 ### Requirement: The vet command and the manifest reader load no geometry stack
 
 The system SHALL keep manifest discovery and model declaration in a
@@ -453,3 +469,4 @@ numeric backend.
 - **THEN** the process has imported the `vet` command's module and no
   other command's module, and `machinome.core.loader`, `numpy` and
   `cadquery` are absent from its imported modules
+
