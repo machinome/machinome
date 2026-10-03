@@ -21,9 +21,9 @@ import re
 from unittest import TestCase
 
 from solid2 import get_animation_time
-from solid2.core.object_base import OpenSCADConstant
 
 from machinome import math as snmath
+from machinome.expression_graph import symbolic
 from machinome.math import cos, sin
 from machinome_mechanics import (circle_intersection, crank_pin,
                                    crank_rod_angle, delta_carriage, delta_rod,
@@ -346,7 +346,7 @@ class SymbolicFaceTest(TestCase):
         for name, law in LAWS:
             with self.subTest(law=name):
                 for part in _parts(law(symbol)):
-                    self.assertIsInstance(part, OpenSCADConstant)
+                    self.assertIsNotNone(symbolic(part))
                     called = set(re.findall(
                         r'([A-Za-z_]\w*)\s*\(', _expanded(part)))
                     self.assertTrue(

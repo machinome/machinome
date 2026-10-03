@@ -2,6 +2,13 @@
 
 All notable changes to Machinome Mechanics.
 
+## Unreleased
+
+- The tests recognise a symbolic result by Machinome's own predicate,
+  `machinome.expression_graph.symbolic`, instead of by solid2's
+  `OpenSCADConstant` class, which Machinome's symbolic values no longer
+  derive from on its 0.8 line. No helper changes.
+
 ## 0.1.0 — 23 September 2026
 
 The first release of Machinome Mechanics, released with Machinome 0.7.0.

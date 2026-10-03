@@ -18,7 +18,9 @@ modelling library's class instead of the property it means.
   under a symbolic driver, eight subtests), assert
   `symbolic(result) is not None` through the framework's predicate.
 - Those two test modules stop importing `OpenSCADConstant`.
-- `CHANGELOG.md` gains an `## Unreleased` section recording it.
+- `CHANGELOG.md` gains an `## Unreleased` section recording it, and the
+  documentation test that pins the current release reads the newest release
+  section past it instead of refusing it (found while applying).
 - Nothing else changes: no helper, signature, formula, documentation page or
   dependency line. The tests keep `solid2.get_animation_time()` as their
   symbolic time.
@@ -37,7 +39,8 @@ None.
 
 ## Impact
 
-`tests/test_motion.py`, `tests/test_mechanisms.py`, `CHANGELOG.md`, the
+`tests/test_motion.py`, `tests/test_mechanisms.py`,
+`tests/test_documentation.py`, `CHANGELOG.md`, the
 `mechanisms` baseline spec. The branch `v0.8` targets the framework's 0.8
 line; the predicate does not exist in released Machinome 0.7.1, so this
 change lives only on that branch until the release pass. Against an

@@ -7,8 +7,8 @@ import math
 import pytest
 
 pytest.importorskip("machinome.motion")
-from solid2.core.object_base import OpenSCADConstant
 from machinome.core.serializer import symbolic_document
+from machinome.expression_graph import symbolic
 from machinome.motion.joints import Prismatic
 from machinome.node import AssemblyNode
 from machinome.simulation import Driver
@@ -43,7 +43,7 @@ def test_the_realized_law_preserves_symbolic_math():
     with symbolic_document(engine):
         engine.render()
         result = engine.piston.rise.value
-        assert isinstance(result, OpenSCADConstant)
+        assert symbolic(result) is not None
         assert "crank" in str(result)
         assert "sqrt(" in str(result)
     assert engine.piston.rise.value == 75

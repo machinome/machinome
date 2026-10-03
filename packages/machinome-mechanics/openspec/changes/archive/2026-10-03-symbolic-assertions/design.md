@@ -51,6 +51,15 @@ predicate answers "symbolic" for all thirteen.
   str(result)`, the emitted-builtins check through `_expanded`) already read
   the expression text and pass on the bench once the type check no longer
   stops them first.
+- **The changelog's release pin reads past `Unreleased`.** Found while
+  applying: `tests/test_documentation.py::test_the_manual_states_the_release`
+  took the first `## ` section of `CHANGELOG.md` as the current release, so
+  the `## Unreleased` section this change adds failed it. Under the
+  standard's rule the work since a release sits under `Unreleased` until the
+  release renames it; a pin that forbids that section is the defect. The pin
+  now takes the newest section that is not `Unreleased` and still requires
+  it to be 0.1.0 with Machinome 0.7.0. Alternative: leave the changelog
+  alone. Rejected: the brief and the standard both ask for the entry.
 - **The dependency line stays at `machinome>=0.7.0` in this cycle.** The
   branch `v0.8` targets the framework's 0.8 line, where the predicate exists;
   released 0.7.1 does not have it. The pin moves at the release pass, as the
@@ -62,9 +71,11 @@ predicate answers "symbolic" for all thirteen.
 
 - [The predicate is renamed or moved before 0.8 is released] → the two
   sites fail at import on the `v0.8` branch, loudly; the fix is one import.
-- [The branch is installed against Machinome 0.7.x] → the two test modules
-  fail to import; the library itself is unaffected. The branch is a campaign
-  line, not a release.
+- [The branch is installed against Machinome 0.7.x] → the suite fails at
+  collection: the two test modules, and the nine per-helper modules that
+  import shared fixtures from `tests/test_mechanisms.py`, cannot import the
+  predicate (eleven collection errors, found while applying). The library
+  itself is unaffected. The branch is a campaign line, not a release.
 
 ## Deferred
 

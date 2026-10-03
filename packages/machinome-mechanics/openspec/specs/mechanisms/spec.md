@@ -66,6 +66,15 @@ body that needs a mechanism law over declared parameters evaluates it on
 - **THEN** class definition raises a dimension error, and the same
   computation over `theta.value` succeeds
 
+#### Scenario: The framework recognises the deferred face
+
+- **WHEN** a gear-mesh, lead-screw, slider-crank, delta or circle-geometry
+  law is applied to a symbolic driver over animation time, directly or
+  through a realized Machinome motion law
+- **THEN** each value it returns is symbolic by the framework's own
+  predicate, `machinome.expression_graph.symbolic(value)` returning an
+  expression node rather than `None`, whatever class carries the expression
+
 ### Requirement: The external spur-gear mesh law
 
 `meshed_angle(driver_angle, driver_teeth, driven_teeth, line_of_centres=0.0,

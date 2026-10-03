@@ -66,7 +66,11 @@ def test_the_manual_states_the_release():
                        "awaiting publication", "in preparation for release"):
             assert phrase not in text, (page, phrase)
     changelog = (ROOT / "CHANGELOG.md").read_text()
-    current = " ".join(re.split(r"^## ", changelog, flags=re.M)[1].split())
+    # The newest release section; the work since it sits under "Unreleased"
+    # at the top until a release renames that heading.
+    sections = re.split(r"^## ", changelog, flags=re.M)[1:]
+    current = next(" ".join(section.split()) for section in sections
+                   if not section.startswith("Unreleased"))
     assert current.startswith("0.1.0 — 23 September 2026"), current[:40]
     assert "Machinome 0.7.0" in current
     import tomllib
