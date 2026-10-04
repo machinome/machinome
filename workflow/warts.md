@@ -4614,3 +4614,97 @@ artifact the sweep should keep is a build-pipeline question.
   package and imported by nothing, importing
   `machinome.openscad.require_openscad`, which this cycle moved to
   `machinome.openscad.binary`. Evidence: the same file, §6.3, §6.5.
+
+## Findings from the adversarial review of the framework cycle `production-layer` (4 October 2026)
+
+Reviewed after the cycle was merged into `v0.8-split` (69c7019) at the
+pilot's direction, so every item below is on the campaign line. The cycle's
+focused suite (94 tests), its package fingerprint `cba98e72…`, its stated
+base and its Curta and studio commits were all reproduced; the items are
+what the review found beyond the record. Probes ran on the `v0.8-production`
+bench against a faceted `FusionNode` of two self-materializing boxes with
+one child translated in `render()`.
+
+- **Defect: binding a production after a build doubles the placements of
+  children positioned in a rigid internal node's `render()`.** The
+  `model-consumption` spec's scenario "Read an advanced machine" promises
+  that structural reading leaves established operation values unchanged.
+  It holds when the facade reads first and fails when the lifecycle ran
+  first: `ModelSnapshot.occurrences` (`machinome/model.py:354-365`) calls
+  `render()` on every non-assembly internal node unless its own
+  `_production_rest` cache exists, and a node already rendered by
+  `_prepare()` or `assemble()` has no such cache, so the author's `render()`
+  runs a second time and re-applies every `translate`/`rotate` to the same
+  declared children. The doubled structure is then cached and returned by
+  every later `render()` (`machinome/node/internal.py:39-42`); nothing
+  raises. Measured: child operations 1 in the facade-only, lifecycle-only
+  and facade-then-lifecycle orders, 2 in the lifecycle-then-facade order,
+  also with the fusion inside a prepared assembly; a regeneration after the
+  doubling fused a different solid (content id `f966a273…` became
+  `c49003bd…`). The cycle's test
+  `test_rigid_rest_placements_reused_by_normal_lifecycle` covers the
+  facade-first order only, and the Curta slice prints leaves, so neither
+  could meet it. Exposed by any process that builds, snapshots or serves a
+  model and then binds a `Production` to the same instance. Remedy shape:
+  the walk reuses the node's `_prepared_rendered` when the lifecycle
+  already rendered it and renders once otherwise, pinned by a red test in
+  the lifecycle-first order that compares operations and the regenerated
+  content id. **Untriaged.**
+- **A missing input file at binding escapes `Production(model)` as the
+  facade's own error.** A node whose `files` names a path that does not
+  exist makes the constructor raise
+  `machinome.model.ModelInputChangedError("input observation failed: …")`:
+  `Production.__init__` (`machinome/production/profile.py:281-288`) wraps
+  only `OSError`, so the production error taxonomy is bypassed, and the
+  message says a file changed when it never existed. **Untriaged.**
+- **The draft bundle is not portable.** Every key of the manifest's
+  `input_hashes` and `files`, every `source_paths` entry and every
+  `instruction_path` is an absolute local path; the snapshot observes the
+  framework's own source files through each node's MRO
+  (`ModelSnapshot._sources`), so on the bench all seven input-hash keys of
+  a sourced-only bundle were framework files under the worktree, and an
+  installed framework will write its `site-packages` path into every
+  maker's bundle. Root-relative keys, with the framework identified by its
+  version, is the remedy shape. **Untriaged.**
+- **The Markdown gate refuses text that is not a dependency.** `_markdown`
+  (`profile.py:143-181`) rejected `if a<b then c>d ok` and a code span
+  containing a tag as an "unsupported HTML dependency". Version 1 was meant
+  to refuse dependencies a bundle cannot carry, not inequalities or quoted
+  markup. **Untriaged.**
+- **An overlap anywhere in the root blocks an unambiguous child's reports.**
+  With an overlap under `right`, `production.left.bom` raises
+  `ProductionConflictError`: `_read` (`profile.py:361-374`) checks every
+  overlap finding of the shared root, not the ones inside the queried
+  scope. The design refuses ambiguous totals; the child's totals are not
+  ambiguous. **Untriaged.**
+- **Declaration paths change shape with the repetition count.** A
+  one-member repeated child binding is named `kids/arbitrary_name` and a
+  two-member one `kids-0/arbitrary_name` (`profile.py:1083-1085`), although
+  the binding is a tuple in both cases, as the spec requires. A consumer
+  test pinning a declaration path breaks when a count parameter moves from
+  one to two. **Untriaged.**
+- **`Finding.check_status` is always `"checked"`.** No code path produces
+  another value, and the export manifest's `checks` block is a constant.
+  The design's "an unrequested geometry-dependent check is not advertised
+  as passed" has no runtime shape beyond omitting the finding. Either give
+  the field a value or drop it before the contract is released.
+  **Untriaged.**
+- **The facade re-implements the preparation lifecycle by hand.**
+  `ModelSnapshot._ensure.prepare` (`model.py:469-492`) copies `_prepare`
+  and `InternalNode.materialize` minus markings, scope aggregation,
+  `track_sources` and the `_prepared` flag. Fidelity held on the bench: the
+  facade's fused STL and the lifecycle's had the same canonical content id.
+  But the mesh-engine cycle is about to move these seams, and a copy this
+  size drifts silently. Design debt, not a defect today. **Untriaged.**
+- **Consumed STL bytes are held in memory for the life of a binding.**
+  `ModelSnapshot.geometry` keeps `(observation, facts, data)` per artifact
+  so a later copy pairs the same bytes with the same facts. Right for a
+  partial Curta; a whole-machine export holds every printed part's STL at
+  once. Scalability note. **Untriaged.**
+- **Checked and found sound, for the record.** Vet reports the
+  attribute-chain route (`import machinome.model as facade;
+  facade.ModelSnapshot(...)`) as framework-internal, so the new deny
+  entries are not bypassed that way. A mated assembly
+  (`tests/mate_project/arm.py`) reads structure-only in both orders
+  although mates bind ports at rest. The Curta consumer uses public members
+  only and changed no simulation source.
