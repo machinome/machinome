@@ -57,6 +57,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md) | SOURCE | The model's revision is the one its export records | Accepted |
 | [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser's pose of a take, written to lift | Proposed |
 | [ADR-021](PIPELINE/ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md) | PIPELINE | A live session serves the render's stage and the frame function to a browser | Proposed |
+| [ADR-022](PIPELINE/ADR-022-the-player-is-two-transports-over-the-renders-stage-and-a-video-is-its-recording.md) | PIPELINE | The player is two transports over the render's stage, and a video is its recording | Proposed |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may

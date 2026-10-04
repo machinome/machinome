@@ -177,3 +177,17 @@ def test_the_status_line_names_what_is_filmable():
     text = ' '.join((REPOSITORY / 'README.md').read_text().split())
     assert 'running machines are refused' in text
     assert 'a clocked machine\'s take' in text
+
+
+def test_the_manual_and_the_package_readme_document_the_watch():
+    # The player-page change: `watch` beside `evaluate`.
+    words = ' '.join(PAGE.read_text().split())
+    assert 'python -m machinome_movie watch <project-dir> tour' in words
+    for sentence in ('`watch` evaluates the movie as `evaluate` does',
+                     'passing over `_build`, `.git` and `__pycache__`',
+                     '`--interval`'):
+        assert sentence in words, sentence
+    readme = (PYTHON / 'README.md').read_text()
+    assert 'python -m machinome_movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]' in readme
+    main = (PYTHON / 'machinome_movie' / '__main__.py').read_text()
+    assert 'python -m machinome_movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]' in main

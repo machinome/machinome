@@ -1,5 +1,6 @@
 // Layer 8 (serial; the viewer double, the speech double, no provider): the
-// live session (the live-server change, ADR-021) end to end on the fixture
+// live session (the live-server change, ADR-021; the player it builds and
+// serves at /, the player-page change, ADR-022) end to end on the fixture
 // movies `count`, `minimal` and `tour` and on the YAML fixture episode,
 // through the module and through the command line. The command line runs in
 // a child process with no key and a fetch that throws, and launches its own
@@ -24,7 +25,7 @@ import {fixtureProject,yamlEpisode,evenAlignment,installTake,readJson} from '../
 import {viewerDouble} from '../viewer-double.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url)),CLI=join(here,'..','..','bin','videomaker.mjs');
-const FILM_PAGE=join(here,'..','..','src','film.html');
+const FILM_PAGE=join(here,'..','..','src','film.html'),PLAYER_PAGE=join(here,'..','..','player','index.html');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const NO_FETCH='data:text/javascript,globalThis.fetch=()=>{throw new Error("A test attempted a network request")}';
@@ -194,11 +195,20 @@ test('a session on the counter serves the outline, the frames, the take, the sta
   const line=checked.out.split('\n').find(l=>l.startsWith('Stage: '));
   assert.ok(line.includes(`(sha256 ${g.bundle.sha256.slice(0,12)})`),line);
 
-  // No player yet; no narration yet.
-  for(const path of ['/','/player.js','/player.css']){
-    const missing=await get(session.origin,path);
-    assert.deepEqual([missing.status,missing.text],[404,'The player is not built'],path);
-  }
+  // The player, built once for the session before it served (player-page):
+  // the page, its script and its stylesheet from _build/player/.
+  const page0=await get(session.origin,'/');
+  assert.deepEqual([page0.status,page0.status===404?page0.text:''],[200,''],'/ is the built player');
+  assert.match(page0.type,/^text\/html/);
+  assert.equal(session.player.reused,false,'the first session on a fresh copy builds the player');
+  assert.ok(page0.bytes.equals(await readFile(join(build,'player','index.html'))));
+  assert.ok(page0.bytes.equals(await readFile(PLAYER_PAGE)),'the page is player/index.html');
+  assert.match(page0.text,/<script src="\/player\.js"><\/script>/);assert.match(page0.text,/href="\/player\.css"/);
+  const script=await get(session.origin,'/player.js'),style=await get(session.origin,'/player.css');
+  assert.match(script.type,/^text\/javascript/);assert.match(style.type,/^text\/css/);
+  assert.deepEqual([sha(script.bytes),sha(style.bytes),sha(page0.bytes)],[session.player.sha256,session.player.cssSha256,session.player.htmlSha256]);
+  assert.match(script.text,/^ {2}\/\/ videomaker\/player\/index\.ts$/m);
+  // No narration yet.
   for(const path of ['/narration.wav','/captions.json'])assert.equal((await get(session.origin,path)).status,404,path);
 
   // A subscriber hears the current generation at once.
@@ -206,19 +216,14 @@ test('a session on the counter serves the outline, the frames, the take, the sta
   assert.deepEqual(await events.next('generation'),{number:1,loadedAt:g.loadedAt,stageSha256:g.stageSha256,exportChanged:false});
 
   // The tool's own products under _build/ reload nothing: the player's
-  // files, the stage bundle's directory, the preview, the resolved document.
-  await mkdir(join(build,'player'),{recursive:true});
-  await writeFile(join(build,'player','index.html'),'<!doctype html><title>Player</title>\n');
-  await writeFile(join(build,'player','player.js'),'// player\n');
-  await writeFile(join(build,'player','player.css'),'/* player */\n');
+  // directory, the stage bundle's, the preview, the resolved document.
+  await writeFile(join(build,'player','scratch.txt'),'scratch\n');
+  await writeFile(join(build,'player','index.html'),await readFile(join(build,'player','index.html')));
   await writeFile(join(build,'stage','scratch.txt'),'scratch\n');
   await mkdir(join(build,'preview'),{recursive:true});await writeFile(join(build,'preview','scratch.png'),'not a png\n');
   await writeFile(join(build,'movie-resolved.json'),await readFile(join(build,'movie-resolved.json')));
   await events.quiet(1500,'the tool\'s own products start no reload');
-  const player=await get(session.origin,'/');
-  assert.deepEqual([player.status,player.text],[200,'<!doctype html><title>Player</title>\n']);assert.match(player.type,/^text\/html/);
-  assert.equal((await get(session.origin,'/player.js')).text,'// player\n');
-  assert.equal((await get(session.origin,'/player.css')).text,'/* player */\n');
+  assert.ok((await get(session.origin,'/')).bytes.equals(page0.bytes),'the player is still served');
 
   // The document written again: a reload, check's lines printed again.
   const document=await readFile(file);
@@ -238,7 +243,19 @@ test('a session on the counter serves the outline, the frames, the take, the sta
   assert.ok(reloads.length>=2,JSON.stringify(reloads));
   assert.deepEqual(reloads.map(e=>e.kind),reloads.map((_,i)=>i%2?'generation':'loading'),JSON.stringify(reloads));
   const last=reloads.at(-1).data;
-  assert.ok((await get(session.origin,'/narration.wav')).bytes.equals(await readFile(join(build,'narration.wav'))));
+  const mix=await readFile(join(build,'narration.wav')),narration=await fetch(`${session.origin}/narration.wav`);
+  assert.ok(Buffer.from(await narration.arrayBuffer()).equals(mix));
+  // An audio element reads the mix's length and seeks it by ranges (player-page).
+  assert.deepEqual([narration.headers.get('content-length'),narration.headers.get('accept-ranges')],[String(mix.length),'bytes']);
+  const part=await fetch(`${session.origin}/narration.wav`,{headers:{Range:'bytes=100-199'}});
+  assert.deepEqual([part.status,part.headers.get('content-range'),part.headers.get('content-length')],[206,`bytes 100-199/${mix.length}`,'100']);
+  assert.ok(Buffer.from(await part.arrayBuffer()).equals(mix.subarray(100,200)));
+  const tail=await fetch(`${session.origin}/narration.wav`,{headers:{Range:'bytes=-10'}});
+  assert.deepEqual([tail.status,tail.headers.get('content-range')],[206,`bytes ${mix.length-10}-${mix.length-1}/${mix.length}`]);
+  await tail.arrayBuffer();
+  const outside=await fetch(`${session.origin}/narration.wav`,{headers:{Range:`bytes=${mix.length}-`}});
+  assert.deepEqual([outside.status,outside.headers.get('content-range')],[416,`bytes */${mix.length}`]);
+  await outside.arrayBuffer();
   assert.deepEqual((await get(session.origin,'/captions.json')).json(),await readJson(join(build,'captions.json')));
   assert.deepEqual((await get(session.origin,'/film.json')).json().speech,{mix:true,captions:true});
   const accepted=session.generation().number;
@@ -271,6 +288,14 @@ test('a session on the counter serves the outline, the frames, the take, the sta
   assert.equal(events.ended(),true,'the event stream ended');
   await assert.rejects(fetch(`${session.origin}/film.json`));
   assert.equal(await canListen(port),true,'the port is free');
+  // A second session on the same film reuses the player the first built:
+  // tool content, built once per session, not per generation.
+  const again=await live(file,{viewer,width:640});
+  try{
+    assert.equal(again.player.reused,true);
+    assert.deepEqual([again.player.sha256,again.player.cssSha256],[session.player.sha256,session.player.cssSha256]);
+    assert.ok((await get(again.origin,'/')).bytes.equals(page0.bytes));
+  }finally{await again.close();}
   assert.deepEqual(calls,[]);
 });
 

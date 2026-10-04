@@ -10,5 +10,9 @@ Private, unversioned (0.0.0), unpublished; its licence is not selected.
 
     python -m machinome_movie list <project-dir>
     python -m machinome_movie evaluate <project-dir> <movie-name> [--out FILE]
+    python -m machinome_movie watch <project-dir> <movie-name> [--out FILE] [--interval SECONDS]
+
+`watch` evaluates the movie, then again whenever a file of the project
+changes, until interrupted.
 
 Tests: `python -m pytest` from this directory.

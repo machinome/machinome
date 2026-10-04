@@ -6,6 +6,31 @@ lands it.
 
 ## Unreleased
 
+- `videomaker live` opens in a browser as a film player and a take
+  player. At `/` the session now serves the player page, built once per
+  session from `player/` (plain DOM over the take transport) and named by
+  the tool, so its bytes are the same from any checkout. `#movie` shows the
+  render's own stage page at the session's width, scaled down to fit, each
+  frame the renderer's from `/frame` posed as the renderer poses it, the
+  narration's mix as the clock when there is one; `#take/take` (or
+  `#take/loop`) shows the viewer alone on the export, the take posed by the
+  rule the frame uses, a mark a stop, the camera the viewer's own. A ruler
+  (chapters, shots, joins hatched, cues, marks) is a scrubber; space plays
+  and pauses, the arrows move a frame, with shift a second, home and end go
+  to the ends, a click on a shot's name or a mark seeks to it; the readout
+  under the frame gives the time, the frame, the shot, the chapter, the
+  mark, the join and the caption. A dissolve, fade, wipe or slide is shown
+  as a cut at its midpoint and a shot's fade in or out without its colour,
+  and the readout says so; a reframe is drawn live. A change keeps the
+  stage page while what it boots from and the export are unchanged, and
+  reloads it otherwise; a refusal is shown and the last accepted film
+  stays. `/film.json` gains `marks`, each mark at the frames where a shot's
+  model time reaches it, and `/narration.wav` answers byte ranges, so an
+  audio element knows the mix's length and seeks it.
+  `python -m machinome_movie watch <project-dir> <movie>` evaluates a movie
+  and evaluates it again each time a file of its project changes
+  (`--interval`, 0.5 s by default), for `live` to reload. Nothing a film
+  renders changes. (`player-page`, ADR-022)
 - `videomaker live SOURCE` serves a film to a browser while it is edited.
   It loads the film as `check` does and prints `check`'s lines, then
   `Live: http://127.0.0.1:<port>/`, and answers on the loopback interface

@@ -5,7 +5,9 @@
 // pose rule src/take.mjs: no package, nothing from the stage, nothing else
 // from src/. Its tests may also import the test runner and the shared
 // fixtures. And the pose rule's declaration, src/take.d.mts, declares
-// exactly the functions src/take.mjs exports. Pure: it reads files.
+// exactly the functions src/take.mjs exports. The player's boundary, last,
+// is the player-page change's: it imports its own files and the transport.
+// Pure: it reads files.
 import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
@@ -86,6 +88,9 @@ test('the boundary check refuses a package, the stage and the rest of src/, by f
     [['vitest','a package'],['../fixtures/documents/count.json','fixtures/documents/count.json, which is neither the transport\'s nor the pose rule']]);
   assert.deepEqual(check(unit,"import {test} from 'vitest';\nimport count from '../fixtures/documents/count.json';\nimport {render} from '../stage/runtime';\nimport {x} from 'jsdom';\n"),
     [['vitest',null],['../fixtures/documents/count.json',null],['../stage/runtime','the stage'],['jsdom','a package other than vitest']]);
+  // The player depends on the transport; the transport on nothing of the player (player-page).
+  assert.deepEqual(check(source,"import {rulerOf} from '../player/model';\n"),
+    [['../player/model','player/model, which is neither the transport\'s nor the pose rule']]);
 });
 
 test('src/take.d.mts declares exactly the functions src/take.mjs exports',async()=>{
@@ -94,4 +99,36 @@ test('src/take.d.mts declares exactly the functions src/take.mjs exports',async(
   assert.ok(exported.includes('bankAt'));
   assert.deepEqual(declared,exported,'the declaration and the module disagree on their functions');
   assert.deepEqual(Object.keys(poseRule).sort(),exported,'src/take.mjs exports functions only');
+});
+
+// The player's boundary (the player-page change, design D1): plain DOM over
+// the take transport. Its sources import only their own files and the
+// transport's (the pose rule reaches them through it): no package, no React,
+// nothing of the stage, nothing of src/ directly. Its tests may also import
+// the test runner.
+const PLAYER=join(root,'player');
+export function playerRefusal(file,spec){
+  if(spec===null)return 'a module computed at run time, which the boundary cannot check';
+  if(TEST_FILE.test(file)&&spec==='vitest')return null;
+  if(!spec.startsWith('./')&&!spec.startsWith('../'))return 'a package';
+  const target=resolve(dirname(file),spec);
+  if(inside(PLAYER,target)||inside(TRANSPORT,target))return null;
+  if(inside(join(root,'stage'),target))return 'the stage';
+  return `${relative(root,target).split(sep).join('/')}, which is neither the player's nor the take transport's`;
+}
+
+test('every file of the player imports only its own files and the take transport, and its tests also the runner',async()=>{
+  const all=await files(PLAYER),names=all.map(f=>relative(PLAYER,f));
+  for(const needed of ['index.html','index.ts','model.ts','poser.ts','player.css','tsconfig.json'])assert.ok(names.includes(needed),`player/${needed}`);
+  const refused=[];
+  for(const file of all)
+    for(const spec of specifiers(await readFile(file,'utf8'))){
+      const why=playerRefusal(file,spec);
+      if(why)refused.push(`player/${relative(PLAYER,file)} imports ${spec===null?'import(<computed>)':JSON.stringify(spec)}: ${why}`);
+    }
+  assert.deepEqual(refused,[],'the player imports across its boundary');
+  const check=text=>specifiers(text).map(spec=>[spec,playerRefusal(join(PLAYER,'index.ts'),spec)]);
+  assert.deepEqual(check("import {createRoot} from 'react-dom/client';\nimport {Film} from '../stage/runtime';\nimport {frameAt} from '../src/timeline.mjs';\n"),
+    [['react-dom/client','a package'],['../stage/runtime','the stage'],['../src/timeline.mjs','src/timeline.mjs, which is neither the player\'s nor the take transport\'s']]);
+  assert.deepEqual(check("import {attachTake} from '../transport/take';\nimport {rulerOf} from './model';\n"),[['../transport/take',null],['./model',null]]);
 });

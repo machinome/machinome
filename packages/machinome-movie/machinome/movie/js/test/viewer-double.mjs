@@ -4,7 +4,8 @@
 // on-screen rect moves with model time, or with `machine` with the bank its
 // clocked machine holds (below); project() is a pinhole camera. Every
 // instance of a page records its calls in the one list window.viewerCalls, in
-// order; window.viewerInstances lists each mount ({selector, calls}).
+// order; window.viewerInstances lists each mount ({selector, calls}), and
+// window.viewerMounts each mount's {selector, url, options}.
 export function viewerDouble(options={}){
   const o={api:28,color:'#6f8fa8',...options};
   return `window.MachinomeViewer={async mount(selector,url,options){
@@ -29,9 +30,13 @@ export function viewerDouble(options={}){
         canvas.style.width=w+'px';canvas.style.height=h+'px';};
       after(late,fit);new ResizeObserver(()=>after(late,fit)).observe(host);
     }else{canvas.style.width='100%';canvas.style.height='100%';}
-    let view={camera:options.view.camera,target:options.view.target,up:options.up,fov:options.fov},time=options.time??0,lit=null,drifted=0;
+    // A mount without a camera (the player's take surface) takes the double's
+    // own, as the real viewer frames the model itself.
+    const given=options.view??{camera:[160,-260,140],target:[0,0,20]};
+    let view={camera:given.camera,target:given.target,up:options.up??[0,0,1],fov:options.fov??37},time=options.time??0,lit=null,drifted=0;
     const calls=window.viewerCalls??=[],own=[];
     (window.viewerInstances??=[]).push({selector,calls:own});
+    (window.viewerMounts??=[]).push({selector,url,options:JSON.parse(JSON.stringify(options))});
     const record=call=>{calls.push(call);own.push(call);};
     const sub=(a,b)=>a.map((v,i)=>v-b[i]),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0);
     const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];

@@ -10,9 +10,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {join,dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {frameFor,outline,takeDocument} from '../src/live.mjs';
+import {frameFor,outline,takeDocument,markInstants} from '../src/live.mjs';
 import {resolveMovie,excerptSources,movieViewerApi} from '../src/movie.mjs';
-import {frameAt,filmShots} from '../src/timeline.mjs';
+import {frameAt,filmShots,modelSecondsAt} from '../src/timeline.mjs';
 import {bankAt} from '../src/take.mjs';
 
 const fixtures=join(dirname(fileURLToPath(import.meta.url)),'..','fixtures');
@@ -119,4 +119,34 @@ test('the take document is the length, the marks and the take block the pose rul
   assert.equal(JSON.stringify(doc),JSON.stringify({model:{expectedDurationSeconds:film.model.expectedDurationSeconds},marks:film.marks,take:film.take}),'verbatim');
   for(const t of [0,1,2,4.5,6,7.25,8])assert.deepEqual(bankAt(doc,t),bankAt(film,t),`bankAt at ${t}`);
   assert.equal(takeDocument(await tour()),null);
+});
+
+// The player-page change, design D3: the marks in video time, at the frames
+// where a shot's model time reaches them on the renderer's grid.
+test('the marks in video time: the first frame of a shot that reaches each mark, and none for a mark no frame reaches',async()=>{
+  const film=await count();
+  // nine begins at the mark one; carry begins at the mark nine; ten (8 s) is
+  // past carry's last frame, which poses 7.97 s.
+  assert.deepEqual(markInstants(film),[{name:'one',shot:'nine',at:3.2},{name:'nine',shot:'carry',at:5.3}]);
+  const carry=filmShots(film).find(({shot})=>shot.id==='carry').shot;
+  assert.ok(modelSecondsAt(carry,11.3-carry.start)<8,'the last frame does not reach ten');
+  assert.deepEqual(markInstants(film),markInstants(film),'twice the same');
+  // A loop's marks are model seconds, read against each shot's model time:
+  // question starts past 4 s and crosses rise (5 s), source starts at top
+  // (10 s), push crosses fall (15 s); the keyed shot rise starts at 5 s and
+  // eases through 10 s.
+  const loop=await tour(),fps=loop.output.fps;
+  assert.deepEqual(markInstants(loop).map(m=>[m.name,m.shot,Math.round(m.at*fps)]),
+    [['rise','question',91],['top','source',198],['fall','push',325],['rise','rise',343],['top','rise',405]]);
+  for(const {at} of markInstants(loop))assert.equal(at,Math.round(at*fps)/fps,'on the grid');
+  // The outline carries them.
+  assert.deepEqual(outline(film,{width:640,...FACTS}).marks,markInstants(film));
+  assert.deepEqual(outline(loop,{width:640,...FACTS}).marks,markInstants(loop));
+});
+
+test('a mark is flagged once where a shot holds at it, and where a shot crosses it backwards',()=>{
+  const shot=(id,start,end,model)=>({id,start,end,set:'frame',places:{},cues:[],model});
+  const film={output:{fps:10,durationSeconds:3,width:640,height:360},marks:{m:1},model:{timeMode:'take',expectedDurationSeconds:2},
+    chapters:[{id:'c',start:0,end:3,elements:{},shots:[shot('held',0,1,{from:1,to:1}),shot('back',1,2,{from:2,to:0}),shot('past',2,3,{from:1.5,to:2})]}]};
+  assert.deepEqual(markInstants(film),[{name:'m',shot:'held',at:0},{name:'m',shot:'back',at:1.5}]);
 });

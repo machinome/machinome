@@ -187,6 +187,8 @@ test('the manual and the records say a view on a take is posed through the take 
   assert.ok((await read('CHANGELOG.md')).includes('(`take-transport`, ADR-020)'),'the changelog bullet');
   assert.ok((await read('docs/adrs/README.md')).includes('| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser\'s pose of a take, written to lift | Proposed |'),'the ADR index');
   assert.ok(await exists('docs/adrs/STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md'),'ADR-020');
+});
+
 test('every option the command line declares is documented in the README',async()=>{
   const script=await readFile(join(root,'bin','videomaker.mjs'),'utf8');
   const declared=/parseArgs\(\{allowPositionals:true,options:\{([\s\S]*?)\}\}\)/.exec(script);
@@ -214,4 +216,24 @@ test('the manual and the records say how a film is served live (live-server)',as
   assert.ok((await read('docs/adrs/README.md')).includes(`[ADR-021](${adr})`),'the ADR index');
   assert.ok((await read('CHANGELOG.md')).includes('(`live-server`, ADR-021)'),'the changelog bullet');
   assert.doesNotMatch(await read('AGENTS.md'),/There is no live preview/,'AGENTS.md: the status line');
+});
+
+test('the manual and the records say how the player shows a film and a take, and what it does not draw (player-page)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md');
+  for(const words of ['`#movie`','`#take/take`','`#take/loop`','Space plays and pauses','shown as a cut at its midpoint',
+    'shown without its fade','drawn live','`window.player`','provisional','python -m machinome_movie watch'])
+    assert.ok(readme.includes(words),`README: ${words}`);
+  assert.doesNotMatch(readme,/The player page is not built yet/,'README: the player is built');
+  const adr='PIPELINE/ADR-022-the-player-is-two-transports-over-the-renders-stage-and-a-video-is-its-recording.md';
+  assert.ok(await exists(`docs/adrs/${adr}`),adr);
+  assert.ok((await read('docs/adrs/README.md')).includes(`| [ADR-022](${adr}) | PIPELINE | The player is two transports over the render's stage, and a video is its recording | Proposed |`),'the ADR index');
+  assert.ok((await read('CHANGELOG.md')).includes('(`player-page`, ADR-022)'),'the changelog bullet');
+  const overview=await read('docs/architecture-overview.md');
+  for(const module of ['`player/`','src/player-build.mjs','`markInstants`'])assert.ok(overview.includes(module),`overview: ${module}`);
+  assert.doesNotMatch(overview,/player page that drives it is not built/,'overview: what is changing');
+  const agents=await read('AGENTS.md');
+  assert.ok(agents.includes('`player/**/*.test.ts`'),'AGENTS.md: layer 4');
+  assert.doesNotMatch(agents,/the player page that drives them is not built/,'AGENTS.md: the status line');
+  assert.ok((await read('docs/declaring-a-movie.md')).includes('`watch` evaluates the movie as `evaluate` does'),'declaring-a-movie.md: watch');
 });

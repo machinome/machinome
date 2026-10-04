@@ -272,9 +272,16 @@ node bin/videomaker.mjs live ../projects/Leonardo/videos/hydraulic-sawmill/episo
     and whether the export changed), `refused` when one is refused (the
     message and time); a new subscriber hears the current generation at
     once, and the standing refusal after it.
-  - `/`, `/player.js`, `/player.css`: the player page from `_build/player/`
-    once it is built; until then 404 `The player is not built`. The player
-    page is not built yet.
+  - `/`, `/player.js`, `/player.css`: the player page (below), which `live`
+    builds into `_build/player/` once per session before it serves, from
+    the tool's `player/`, reused while the tool's player and take transport
+    are unchanged; 404 `The player is not built` only if those files are
+    removed.
+  - `/film.json` also lists `marks`, each mark of the film's take where a
+    shot reaches it: the first frame of the shot at which its model time is
+    at or past the mark, in video seconds; a mark no frame reaches is not
+    listed. `/narration.wav` answers byte ranges, so the player's audio
+    knows the mix's length and seeks it.
 
   It watches the film's inputs: the document (and an episode's
   `production.yaml`), the project files the stage bundle reads, the excerpt
@@ -287,6 +294,60 @@ node bin/videomaker.mjs live ../projects/Leonardo/videos/hydraulic-sawmill/episo
   `_build/` never reload it. Each load rewrites `movie-resolved.json` and
   may rebuild `_build/stage/`, as `check` does: do not preview or render
   the same film from another process while a session reloads it.
+
+  The player, at the address, shows the film or its take; the address
+  says which:
+  - `#movie`, the default, shows the film: the render's own stage page, at
+    the width `--width` gives and the renderer's height for it, scaled down
+    to fit the window and never up, each frame the one `/frame` gives,
+    posed as the renderer poses it. Its clock is the narration's mix when
+    `speech` has written one (the readout says so when the mix's length
+    differs from the film's: run `speech` again), a timer otherwise.
+  - `#take/take`, for a movie on a clocked take, shows the take alone: the
+    viewer mounted on the export, its camera the viewer's own navigator, the
+    take posed by the rule the frame uses at each time and exactly at each
+    mark; `#take/loop`, for a posed loop, the loop at its time over its
+    period. Nothing of the stage is loaded.
+
+  Under the frame, never in it, a ruler and a readout. The ruler shows the
+  chapters as bands, the shots as segments, each join hatched over its
+  span, the cues as ticks and the marks as flags (on the take surface, the
+  take's marks); it is a scrubber: press anywhere on it and the playhead
+  goes to the time under the pointer and follows it while it is held,
+  paused where it is released. A click on a shot's name goes to its start,
+  on a flag to its mark. Space plays and pauses; left and right move a
+  frame, with shift a second; home and end go to the first and the last
+  frame. The readout gives the time, the frame, the shot and the chapter,
+  the mark at the playhead, the join, and the caption's text when `speech`
+  has written the captions. One frame is posed at a time and the latest
+  time asked wins: a frame the stage cannot pose in time is skipped, and
+  the narration never waits.
+
+  What the player does not draw as the film does: a dissolve, fade, wipe or
+  slide between shots is shown as a cut at its midpoint, the outgoing shot
+  before it and the incoming after, and the readout names the join and says
+  `shown as a cut at its midpoint`; a shot's fade in or out is shown
+  without its colour, `shown without its fade`. A reframe is drawn live, as
+  the film draws it. Fading marks and pictures are shown at the stage's own
+  opacity, the same to the eye and not the same pixels. The take surface
+  draws no ring, label, arrow or highlight and hides no layer: those are
+  the film's.
+
+  A change the session accepts keeps the stage page and its viewers when
+  what the page boots from and the export are unchanged, and poses the
+  current time again; otherwise the stage page is loaded again (the take
+  surface's viewer is mounted again only when the export changed). A
+  refused change is shown above the frame, and the film shown stays the
+  last one accepted until a change is accepted. The page reports its state
+  on `window.player` (the surface, the time, the frame, the generation, the
+  poses, the take, `seek`, `play`, `pause`, `idle`), for a page that frames
+  it; the names are provisional, not a protocol.
+
+  For a movie declared in Python, run
+  `python -m machinome_movie watch <project-dir> <movie>` beside `live` on
+  the movie's `_build/movie.json`: it evaluates the movie again each time a
+  file of the project changes, and the session reloads when the document
+  is written ([Declaring a movie in Python](docs/declaring-a-movie.md)).
 
 `check`, `preview` and `render` each print what they know of the two Git
 trees a render names the heads of, the project's and Videomaker's own:

@@ -1,4 +1,4 @@
-// Layer 4 (pure, Node): the stage runtime and the take transport compile under
+// Layer 4 (pure, Node): the stage runtime, the take transport and the player compile under
 // `tsc --noEmit` (strict), and a movie's
 // generated types check its stage modules: the fixture tour's template
 // compiles against the types generated from its document's stage block, and a
@@ -36,6 +36,11 @@ describe('types',()=>{
   });
   test('the take transport compiles strictly, its tests included: tsc --noEmit -p transport/tsconfig.json',async()=>{
     const {code,output}=await run(['--noEmit','--pretty','false','-p','transport/tsconfig.json'],TOOL);
+    expect(output).toBe('');
+    expect(code).toBe(0);
+  });
+  test('the player compiles strictly, its tests included: tsc --noEmit -p player/tsconfig.json',async()=>{
+    const {code,output}=await run(['--noEmit','--pretty','false','-p','player/tsconfig.json'],TOOL);
     expect(output).toBe('');
     expect(code).toBe(0);
   });

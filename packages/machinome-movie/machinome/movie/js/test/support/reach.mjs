@@ -35,7 +35,7 @@ const TEST_FILE=/\.test\.[cm]?[jt]sx?$/;
 // Static relative imports and re-exports, and import() of a literal relative path.
 const IMPORTS=/\b(?:import|export)\s*(?:[\w*{}\s,$]*?\s*from\s*)?['"](\.{1,2}\/[^'"]+)['"]|\bimport\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
 // A module that locates a repository file by path rather than importing it.
-export const LOCATES=/\bimport\.meta\.url\b|\b(?:resolve|join)\(\s*['"](?:\.\.?\/)?(?:bin|src|stage|transport|fixtures|schema|python|test)\//;
+export const LOCATES=/\bimport\.meta\.url\b|\b(?:resolve|join)\(\s*['"](?:\.\.?\/)?(?:bin|src|stage|transport|player|fixtures|schema|python|test)\//;
 
 const FIXTURE_PROJECT='python/tests/fixtures/project';
 // What a module reads without importing it, by path relative to the root. A
@@ -50,6 +50,7 @@ export const READS={
   'src/layout.mjs':['src/film.html'],                 // the page the layout probe serves
   'src/film-assets.mjs':['src/film.html'],            // the page a film's session serves
   'src/stage-build.mjs':['stage','transport','src/take.mjs'],  // bundles the runtime from stage/ and transport/
+  'src/player-build.mjs':['player','transport','src/take.mjs'],  // bundles the player over the take transport (player-page)
   'src/schema.mjs':['schema'],                        // the movie document schema
   'src/speech.mjs':[],                                // the .env files of keyFiles(): a test names a throwaway checkout, never this one
   'test/support/memo.mjs':[],                         // the memo itself: reads the key's inputs
@@ -60,7 +61,7 @@ export const READS={
   'test/pipeline/movie-pipeline.test.mjs':['fixtures','bin/videomaker.mjs'],  // spawns the command line
   'test/pipeline/review-pack.test.mjs':['bin/videomaker.mjs'],                // spawns the command line
   'test/pipeline/provenance.test.mjs':['bin/videomaker.mjs'],                 // spawns the command line
-  'test/pipeline/live.test.mjs':['fixtures','bin/videomaker.mjs'],           // spawns the command line
+  'test/pipeline/live.test.mjs':['fixtures','bin/videomaker.mjs','player/index.html'],  // spawns the command line; reads the player's page
   'test/pipeline/source-scenes.test.mjs':['src/film.html'],
   'test/viewer/real-viewer.test.mjs':['bin/videomaker.mjs'],                   // spawns the command line
   'test/viewer/take.test.mjs':['bin/videomaker.mjs'],                          // spawns the command line
