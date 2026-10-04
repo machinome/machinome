@@ -500,6 +500,18 @@ introduced; the viewer's stays.
   evaluate through it, are node packages over it (pilot, 2 October
   2026; the 1 October shape had both riding in the engine).
 
+## The campaign line is `v0.8-split` (pilot, 4 October 2026)
+
+The framework branch carrying the campaign was `v0.8` from its opening
+on 2 October 2026 until 4 October, when the pilot renamed it
+`v0.8-split`: the release of the 0.8 line is tagged `v0.8.0`, and a
+branch named like the tag confused the two. The bench at
+`machinome/WTs/v0.8-split` (slot 1) is the same worktree, moved; the six
+integrated cycle branches keep their `v0.8-<change>` names as history. A
+new cycle bench is `scripts/dev-env v0.8-split-<change> setup --base
+v0.8-split`. The pilot's parallel branch `v0.8-production` is cut from
+this line (its bench, slot 6) and is not part of the campaign.
+
 ## Layers (pilot, 3 October 2026)
 
 The campaign is built in layers, and the repository question is not
@@ -865,7 +877,9 @@ As practised from the first cycle (2 and 3 October 2026): one proposer
 and one applier per cycle, fresh agents with a written briefing, the
 orchestrating agent's adversarial review as the ratification gate, one
 agent at a time; the orchestrator fast-forwards a reviewed cycle into
-the campaign line `v0.8`, merges the line into `main` at the campaign's
+the campaign line `v0.8-split` (named `v0.8` from 2 to 4 October 2026,
+renamed by the pilot so the name is not the release tag's), merges the
+line into `main` at the campaign's
 close, and pushing and uploading stay the pilot's. The empirical
 validation of each cycle is orchestrated the same way, with validator
 subagents, as "Empirical validation, per cycle" under "What it takes"
