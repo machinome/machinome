@@ -1,28 +1,34 @@
 #!/usr/bin/env bash
 # One-time setup on the CUDA host: a venv beside this script with the whole free chain.
-# torch, torchaudio and ctranslate2 ship wheels for Python 3.10 to 3.12 only, so the
-# venv is made from one of those; uv fetches one when the host has none.
+# torch, torchaudio and ctranslate2 ship wheels for CPython 3.10 to 3.12 only (no PyPy),
+# so the venv is made from one of those; uv fetches one when the host has none.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 pick_python() {
   for p in python3.12 python3.11 python3.10 python3; do
-    if command -v "$p" >/dev/null 2>&1 && "$p" -c 'import sys; sys.exit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)'; then
+    if command -v "$p" >/dev/null 2>&1 && "$p" -c 'import sys, platform; sys.exit(0 if platform.python_implementation() == "CPython" and (3,10) <= sys.version_info[:2] <= (3,12) else 1)'; then
       command -v "$p"; return 0
     fi
   done
   return 1
 }
 
+# A venv made from the wrong interpreter (PyPy, or a Python without wheels) is replaced.
+if [ -x .venv/bin/python ] && ! .venv/bin/python -c 'import sys, platform; sys.exit(0 if platform.python_implementation() == "CPython" and (3,10) <= sys.version_info[:2] <= (3,12) else 1)'; then
+  echo "existing .venv is $(.venv/bin/python -c 'import platform; print(platform.python_implementation(), platform.python_version())'); replacing it"
+  rm -rf .venv
+fi
+
 if [ ! -x .venv/bin/python ]; then
   if py=$(pick_python); then
-    echo "using $py ($("$py" --version))"
+    echo "using $py ($("$py" -c 'import platform; print(platform.python_implementation(), platform.python_version())'))"
     "$py" -m venv .venv
   elif command -v uv >/dev/null 2>&1; then
-    echo "no Python 3.10-3.12 on PATH; uv fetches 3.12"
+    echo "no CPython 3.10-3.12 on PATH; uv fetches 3.12"
     uv venv --python 3.12 .venv
   else
-    echo "no Python 3.10-3.12 on PATH and no uv. Install one of:" >&2
+    echo "no CPython 3.10-3.12 on PATH and no uv. Install one of:" >&2
     echo "  curl -LsSf https://astral.sh/uv/install.sh | sh     (then rerun ./setup.sh)" >&2
     echo "  sudo apt install python3.12 python3.12-venv         (Debian/Ubuntu)" >&2
     exit 1
