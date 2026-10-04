@@ -486,7 +486,7 @@ introduced; the viewer's stays.
   the same way; its only difference is that no extra on the core names
   it.
 
-### Not split, and why
+### Not split, and why (superseded 4 October 2026: see "Every node type is a package")
 
 - **No machinome-node-openscad, -solid2, -jscad or -stl.** A node type
   is a package when it brings a Python dependency the core would
@@ -626,6 +626,44 @@ open-simulation permission: the pilot's own deliberation for the dedicated
 licensing session, not a decision this plan acts on. Layer 2 waits on that
 session's outcome only for what it says about the split's worth; layer 1
 does not.
+
+## Every node type is a package (pilot, 4 October 2026, at the session's close)
+
+The pilot's ruling, after the seventh cycle, superseding "Not split, and
+why" below and the one-package OpenSCAD shape of "Layers":
+
+- **Every node type is its own package contributing to the `machinome.node`
+  namespace**, symmetric: `machinome.node.<x>` / `machinome[<x>]` /
+  `machinome-node-<x>` for all eight, `cadquery`, `build123d`, `step`,
+  `molejo`, `openscad`, `solid2`, `jscad` and `stl`. The rule "a node type
+  is a package when it brings a Python dependency the core would otherwise
+  carry" is dropped. The reason is not weight but declaration: a project's
+  dependencies must say at once what mix it makes. cadquery beside openscad
+  says precision is lost somewhere; step or stl says a source is missing
+  and a binary is handled.
+- **`Solid2Node` and `OpenScadNode` are two packages.** solid2 is a node
+  type that depends on openscad; an OpenSCAD project that does not use
+  SolidPython authoring does not carry `Solid2Node`. `machinome[solid2]`
+  includes `machinome[openscad]`, as `[cadquery]` includes `[occt]`.
+- **`machinome.openscad` is not an engine.** Tested the same day: it
+  decides no spatial question (every comparison of an OpenSCAD part is
+  faceted and the mesh engine decides it; with manifold3d absent such a
+  project cannot test), so it fails the criterion `occt` and `manifold`
+  meet. It is the OpenSCAD node family's backend: the SCAD writer
+  (SolidPython), the binary runner, and the OpenSCAD snapshot renderer
+  (OpenSCAD-specific, in the core only by history). It belongs in the
+  `openscad` node package, and the seam `machinome.scad_engine` is to be
+  renamed for what it is, a SCAD-text writer the core calls for
+  `scad_code`, `generate_scad()` and the snapshot renderer, or dissolved
+  if those move with the package; the eighth cycle's proposer settles
+  that with the evidence and the pilot ratifies.
+- **Still midway.** The addresses of the eight node types already obey the
+  norm; what is not yet in shape is the packaging of the OpenSCAD family
+  (the eighth cycle), the four node types the earlier rule kept in the
+  core, and the names, which the pilot fine-tunes before more packages
+  come in. The licence will be one for the whole suite (the pilot's
+  decision of 4 October, recorded in the workspace, not in scope here);
+  the split is kept, in a monorepo.
 
 ## Layers (pilot, 3 October 2026)
 
