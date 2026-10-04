@@ -1,23 +1,91 @@
-# Can a machinome model become a game asset without a runtime?
+# Game assets: a machinome model as a rigged, budgeted GLB
 
-A spike, 2026-10-04. Status: design evidence for a possible new output of
-the framework, a rigged, budgeted GLB a game engine or Blender takes as it
-is. It creates no requirement, ratifies nothing and changed nothing in any
-repository: the code ran in a throwaway venv in the session scratchpad
-against the Thor arm's built document, and only this note and the evidence
-directory beside it (`game-asset-spike/`) were committed. The project is
+Provisional, 2026-10-04. Working record, not a promise: nothing here is
+ratified, no OpenSpec change exists for it, and a baseline spec or an
+accepted ADR outranks every sentence below. It records a direction the
+pilot opened on 4 October 2026, the measurements that shaped it, and the
+spike that proved its first form; it supersedes the standalone spike note
+of the same day (`game-asset-spike.md`), whose text it keeps in full under
+"The spike" and whose evidence stays in `game-asset-spike/` beside this
+file. Written from the code as it stands at Machinome 0.7.1 on `main`.
+
+## Where this came from
+
+The framework produces three things from one model: the viewer bundle, a
+front-end application; the production bundle, on its unmerged branch; and
+videos, through the videomaker that mounts the viewer headless. On
+4 October the pilot asked for a fourth: a 3D gallery to experiment in like
+a game, and the models themselves as outputs for games.
+
+The first assessment that day put both as a View in 0.8 terms and leaned on
+the viewer's running engine, some 13,500 lines of TypeScript with no
+three.js in it, as the runtime a game would embed. The pilot's correction
+set the actual shape: a game cannot carry six hundred pieces of a Curta in
+the same scene as four thousand from a printer, nor the running program;
+what it wants is what an artist makes in Blender. A few bodies, coarse
+meshes, a rig, clips. That is this note's subject. The gallery, a walkable
+scene of many live machines on the viewer's own runtime, is a different
+output and is not planned here.
+
+## The shape of the output
+
+One GLB per model, three layers in one file, each usable without the next:
+
+- **Bodies.** The tree cut at every placement that reads a variable;
+  everything between two cuts is one rigid body with one merged mesh per
+  colour, at a triangle budget. The joint chain is the node hierarchy.
+- **Clips.** The model's instructions, or a gesture recorded from the
+  Python runtime, sampled into glTF animation channels on the joint nodes.
+  An engine without any machinome code plays them.
+- **Formulas.** The drivers, the bindings and each joint's expression in the
+  file's extras, so a consumer that wants to pose from state rather than
+  from clips can do it in a line of script. The program's own affine flags
+  say which joints are a constant times a state value and which are not.
+
+What it is not: the viewer, a runtime, a simulation. It carries no stops,
+no contact, no verdicts. Fidelity is set by budgets, the deflection, the
+triangle count, which inputs are exposed, whether interiors are dropped,
+and in 0.8 terms those budgets are a fact of the View layer, not of the
+model. The asset is data and travels under the design's licence.
+
+## What the catalogue says
+
+Pieces grouped by what moves together, measured on the built documents on
+4 October (`Thor` remeasured after a rebuild from source; the first reading
+on a stale document gave 36):
+
+| machine | pieces placed | co-moving bodies | placed triangles |
+|---|---|---|---|
+| Thor | 438 | 41 | 1.46 M |
+| Curta 3x | 390 | 165 | 0.7 M |
+| Prusa3 | 207 | 17 | 1.05 M |
+| Kossel | 373 | 20 | 64 k |
+| Voron 2 | 1565 | 106 | 2.0 M |
+| 3DPrintedClocks | 57 | 29 | 235 k |
+
+The body count is the upper bound of independent motion, every freedom
+included; a game that exposes fewer inputs merges further. The triangles
+are the real excess, tessellation at a tenth of a millimetre being
+simulation precision. In the Curta's running document the laws split 183
+affine to 85 non-affine, and placements 94 bare coordinates to 91
+expressions; its clocked document has 18 states and 39 commits, each a
+transition a game's animation state machine can hold.
+
+## The spike
+
+A spike, 2026-10-04. Status: design evidence for the output above. It
+created no requirement and changed nothing in any repository: the code
+ran in a throwaway venv in the session scratchpad against the Thor arm's
+built document, and only this record and the evidence directory
+`game-asset-spike/` were committed. The project is
 `projects/Robotic-Arms/Thor`, the upstream design CC-BY-SA-4.0, the
 framework at Machinome 0.7.1 on `main`.
 
-## The question
+### The question
 
-The viewer, the videos and the production bundle all consume one document.
-A game cannot carry that document's six hundred pieces and million-plus
-triangles, nor its running program. The pilot's framing on 4 October: the
-game wants something like a Blender model, a few bodies, coarse meshes, a
-rig, clips. So: **can the clocked, running or posed document be reduced to
-bodies, clips and per-body formulas, at a game triangle budget, with no
-machinome code in the engine, and still pose exactly as the viewer does?**
+**Can the document be reduced to bodies, clips and per-body formulas, at a
+game triangle budget, with no machinome code in the engine, and still pose
+exactly as the viewer does?**
 
 Thor was chosen over the Curta because its motion is almost entirely the
 game-friendly kind: six joint angles that are bare driver coordinates, every
@@ -25,7 +93,7 @@ shaft and pulley an affine multiple of one, and one non-affine piece, the
 gripper's four-bar. The Curta's question, whether a gesture's clip is
 independent of machine state, is not answered here.
 
-## Verdict
+### Verdict
 
 **The design holds for Thor.** One GLB of 2.7 MB carries 41 bodies under a
 40-node rig, five clips and the formulas, and a stock glTF loader with
@@ -41,7 +109,7 @@ STLs stalls at about forty percent on STEP-born parts, whatever the
 decimator, so the reduction has to start from the B-rep at a coarser
 deflection, which the build directory already keeps beside every STL.
 
-## Measurements
+### Measurements
 
 The document, rebuilt from source during the spike (see "Findings"):
 
@@ -104,10 +172,10 @@ Silhouette intersection over union:
 | base turn alone | 0.983 |
 
 The residual is the coarse mesh and the dropped belts, visible in
-`comparison.png`: the big bodies read as the viewer's; the gripper's organic
-surfaces at this budget look quilted, which is decimation over a coarse
-tessellation under smooth normals, and is where an artist or interior
-removal would earn their keep.
+`game-asset-spike/comparison.png`: the big bodies read as the viewer's; the
+gripper's organic surfaces at this budget look quilted, which is decimation
+over a coarse tessellation under smooth normals, and is where an artist or
+interior removal would earn their keep.
 
 Engines, both headless on this machine:
 
@@ -117,7 +185,7 @@ Engines, both headless on this machine:
 | Godot 4.3, `GLTFDocument.append_from_file` + `generate_scene` | 131 nodes, 41 `MeshInstance3D`, 100,285 triangles, the same chain, the 5 animations in an `AnimationPlayer`; node extras are not kept as metadata |
 | three.js 0.156 `GLTFLoader` | the asset page: extras in `userData`, clips as `AnimationClip`s, no console errors |
 
-## How it was made
+### How it was made
 
 1. **Partition.** Walk the document; a node whose operations read a
    variable starts a body; constant nodes fold into the body above them.
@@ -148,7 +216,7 @@ page `index.html`. Reports: `measurements.json`, `retess.json`,
 `gripper-diagnostics.png`. The GLB itself is regenerated by the scripts in
 seconds and is not committed.
 
-## Findings
+### Findings
 
 - **Decimation needs clean input.** On the document's 0.1 mm STLs, both
   quadric decimators tried (fast-simplification and pyfqmr, border
@@ -186,18 +254,62 @@ seconds and is not committed.
   the rule, 0.997 and 0.987. Pixel comparisons across renderers need the
   same framing rule, not the same intent.
 
-## What this does not claim
+### What the spike does not claim
 
 - Nothing about running or clocked machines: whether a gesture's clip is
   independent of state (the Curta's question) is untested.
 - No interior removal, no textures, no LODs, no physics, no Unity or
   Unreal, no player input beyond sliders and keys.
-- No claim about other machines: the body counts measured on 4 October
-  for the Curta (390 pieces → 165 bodies), the printers (207 → 17,
-  373 → 20, 1565 → 106) and the clocks (57 → 29) say the partition
-  collapses them too, not that their motion classes are as kind as Thor's.
-- Not a framework feature. If the pilot wants one, the cycle is cut from
-  this finding with Thor as its project, under the framework-change skill,
-  and the production exporter's shape is the one above: partition and rig
-  in core, re-tessellation behind the B-rep seam and decimation behind the
-  mesh seam of the lean-core plan, GLB written by core.
+- No claim about other machines beyond the partition counts above: that
+  the partition collapses them is measured; that their motion classes are
+  as kind as Thor's is not.
+- Not a framework feature.
+
+## The exporter, as the spike suggests it
+
+Where each step would live if a cycle is cut, following the lean-core
+plan's seams (`lean-core.md`):
+
+- **Partition and rig** in core. Every input is framework knowledge: the
+  tree, the operation chains, the program's affine flags, the controls'
+  axes. The joint table a game needs is the same additive document key the
+  first assessment named, derived from mates since ADR-147.
+- **Meshes** behind the engine seams: re-tessellation of exact leaves
+  behind the B-rep provider, decimation of STL-born leaves behind the mesh
+  provider, with the decimator an optional dependency the venv does not
+  carry today.
+- **Clips** from the Python runtime: instructions for posed documents,
+  `sim.move` recordings for running ones, commits for clocked ones.
+- **The GLB writer** in core. trimesh already writes a scene graph; the
+  animation samplers and extras are a small amount of JSON the spike wrote
+  by hand.
+- **The command.** A format on `machinome export`, or a target of its own;
+  budgets as declarations of the View layer once 0.8 has one, flags
+  until then.
+- **The checks.** The spike's three, kept as tests: the matrix proof
+  against the document, the silhouette proof against the viewer with the
+  viewer's framing rule, and a glTF validator. Pixels remain evidence.
+
+Nothing above is proposed. A cycle would be cut from the Thor finding
+under the framework-change skill, with Thor as the project that validates
+it, and would carry the budgets as its first design decision.
+
+## Open questions
+
+- **State-dependent gestures.** The Curta's crank clip should be the same
+  from any state while the dials pose by formula from state. Recording the
+  same gesture from two states in the Python runtime and diffing the
+  clip-driven bodies would settle it; it is the second spike if one is
+  wanted, or evidence the first cycle collects.
+- **Interior removal.** Most of the Curta's pieces are inside the housing.
+  A visibility bake over sampled poses, by ray casting, is the mechanical
+  form of what an artist does by eye. Not tried.
+- **Flexible parts.** Morph targets from molejo's fixed topology for short
+  clips, or dropped with a record, or left to the artist.
+- **Textures and LODs.** The asset carries colours only. Engines generate
+  LODs on import; textures are artist work in Blender.
+- **Godot extras.** A `GLTFDocumentExtension` that reads the formulas, or
+  a sidecar JSON, if the formula route matters there.
+- **The gallery.** A separate output on the viewer's runtime, needing the
+  engine extracted from the renderer and a scene that hosts many
+  documents; nothing of it is in this note.
