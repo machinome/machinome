@@ -1,0 +1,66 @@
+/* The player page (the player-page change): a bar with the surfaces, the
+   messages, the surface (the stage page's frame, or the viewer), the ruler,
+   the readout and the caption. Nothing here is drawn in the film's frame. */
+:root{
+  --vm-player-background:#f4f2ec;--vm-player-foreground:#1f2328;--vm-player-muted:#5c6470;--vm-player-line:#c9c4b8;
+  --vm-player-band:#e4dfd3;--vm-player-shot:#ffffff;--vm-player-accent:#237c86;--vm-player-flag:#b4532a;
+  --vm-player-alert:#8a1c1c;--vm-player-alert-background:#fbe9e7;--vm-player-surface:#d9d4c7;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --vm-player-background:#17191c;--vm-player-foreground:#e6e3dc;--vm-player-muted:#9aa1ab;--vm-player-line:#3a3f46;
+    --vm-player-band:#262a30;--vm-player-shot:#1f2328;--vm-player-accent:#4fb3bf;--vm-player-flag:#e0875e;
+    --vm-player-alert:#ffb4a8;--vm-player-alert-background:#3b1d1a;--vm-player-surface:#0e0f11;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:clip}
+body{display:flex;flex-direction:column;background:var(--vm-player-background);color:var(--vm-player-foreground);
+  font:14px/1.4 system-ui,'DejaVu Sans',sans-serif;overflow:hidden}
+.vm-bar{display:flex;align-items:baseline;gap:16px;padding:8px 16px;border-bottom:1px solid var(--vm-player-line)}
+.vm-bar h1{font-size:15px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#surfaces{display:flex;gap:8px}
+#surfaces a{color:var(--vm-player-muted);text-decoration:none;padding:2px 8px;border-radius:4px}
+#surfaces a[aria-current="page"]{color:var(--vm-player-foreground);background:var(--vm-player-band)}
+#status{margin-left:auto;color:var(--vm-player-muted);white-space:nowrap}
+#messages p{margin:0;padding:6px 16px}
+#refusal,#fault{color:var(--vm-player-alert);background:var(--vm-player-alert-background);white-space:pre-wrap}
+#note{color:var(--vm-player-muted)}
+#surface{position:relative;flex:1;min-height:0;overflow:hidden;background:var(--vm-player-surface)}
+/* The stage page at the session's geometry, scaled down to fit, never up. */
+.vm-stage-box{position:absolute;overflow:hidden}
+.vm-stage-box iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;pointer-events:none;background:#fff}
+.vm-take-viewer{position:absolute;inset:0}
+.vm-take-target{width:100%;height:100%}
+
+/* The ruler: chapters, shots with their names, joins hatched, cues, marks, the playhead. */
+.vm-ruler{position:relative;margin:8px 16px 0;user-select:none;touch-action:none;cursor:col-resize}
+.vm-ruler-row{position:relative;height:20px}
+.vm-ruler-bands{height:18px}
+.vm-ruler-shots{height:28px}
+.vm-ruler-marks{height:20px}
+.vm-ruler-take{height:22px}
+.vm-take-span{position:absolute;top:0;bottom:0;background:var(--vm-player-shot);border:1px solid var(--vm-player-line)}
+.vm-band,.vm-shot,.vm-join,.vm-tick,.vm-flag{position:absolute;top:0;bottom:0}
+.vm-band{background:var(--vm-player-band);border-left:1px solid var(--vm-player-line);font-size:11px;padding:1px 4px;
+  overflow:hidden;white-space:nowrap;color:var(--vm-player-muted)}
+.vm-shot{background:var(--vm-player-shot);border:1px solid var(--vm-player-line);border-right:0;overflow:hidden}
+.vm-shot-name{display:inline-block;font-size:12px;padding:3px 5px;cursor:pointer;white-space:nowrap;position:relative;z-index:2}
+.vm-shot-name:hover{color:var(--vm-player-accent)}
+.vm-join{pointer-events:none;z-index:1;
+  background:repeating-linear-gradient(135deg,transparent 0 4px,color-mix(in srgb,var(--vm-player-accent) 45%,transparent) 4px 6px)}
+.vm-tick{width:1px;top:auto;height:8px;background:var(--vm-player-muted);pointer-events:none}
+.vm-flag{cursor:pointer;font-size:11px;color:var(--vm-player-flag);white-space:nowrap;border-left:2px solid var(--vm-player-flag);
+  padding:2px 3px;z-index:2}
+.vm-flag-end{transform:translateX(-100%);border-left:0;border-right:2px solid var(--vm-player-flag)}
+.vm-playhead,.vm-wanted{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;pointer-events:none;z-index:3}
+.vm-playhead{background:var(--vm-player-accent)}
+.vm-wanted{background:var(--vm-player-accent);opacity:.35}
+
+/* The readout and the caption, under the frame. */
+#readout{display:flex;flex-wrap:wrap;gap:4px 18px;padding:8px 16px;font-variant-numeric:tabular-nums}
+#readout span:empty{display:none}
+#readout [data-field="join"]{color:var(--vm-player-muted)}
+#caption{margin:0 16px 10px;padding:6px 10px;border-left:3px solid var(--vm-player-line)}
+@media (max-width:600px){.vm-bar{flex-wrap:wrap}#status{margin-left:0}}

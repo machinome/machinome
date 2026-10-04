@@ -61,8 +61,15 @@ the real model through the machinome viewer and never invents a pose.
         │  the film's inputs watched; a change reloads, a refusal
         │    keeps the last generation served; /events says which
         ▼
-    a browser poses the stage page through window.film.setFrame
-        (the player page that drives it is not built yet)
+    the player page at / (ADR-022), plain DOM, built once      player/, src/player-build.mjs
+        │  per session and named by the tool
+        ├─ #movie: the stage page in a frame of the output's size,
+        │    each frame from /frame posed by window.film.setFrame as
+        │    the renderer poses it; composed joins shown as cuts
+        └─ #take/<key>: the viewer alone on the export, the take
+             posed through the take transport                       transport/
+    python -m machinome_movie watch: evaluates a Python movie again
+        as its project changes; the session reloads on the document
 
 The seam after loading is the resolved movie document
 ([ADR-006](adrs/SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md)):
@@ -189,6 +196,31 @@ recursively, the set taken again from every accepted generation; changes
 settle within 200 ms into one reload; a refused reload keeps the last
 generation served. The tool's own outputs under `_build/` are never
 inputs.
+
+The player ([ADR-022](adrs/PIPELINE/ADR-022-the-player-is-two-transports-over-the-renders-stage-and-a-video-is-its-recording.md))
+is the page the session serves at `/`, in `player/`: TypeScript in plain
+DOM, importing only its own files and the take transport, which a
+repository test holds. `src/player-build.mjs` bundles it with the stage
+build's esbuild into the film's `_build/player/` once per session, its
+files named by the tool (`videomaker/player/…`, `videomaker/transport/…`,
+`videomaker/src/take.mjs`) and reused by content. `model.ts` holds its pure
+parts: snapping to the film's frames, the stage request (the renderer's,
+a composed join posed as its outgoing frame before its midpoint and its
+incoming after, a shot's fade without its plate, a reframe live), the
+surface an address names, the ruler's geometry and the time under a
+pointer, the readout and what a generation asks of the page; `poser.ts`
+keeps one pose in flight, the latest time winning; `index.ts` draws the
+surfaces, the ruler (a scrubber), the readout and the messages, takes the
+keys and follows `/events`. The movie surface poses the render's stage page
+in an iframe through its `window.film`; the take surface mounts the viewer
+alone on the export and attaches the take transport to `/take.json` or to
+the loop. The outline's `marks` are each mark of the take at the first
+frame where a shot's model time reaches it (`markInstants` in
+`src/live.mjs`, from the timeline's `modelSecondsAt`). The page reports its
+state on `window.player`, provisionally. A Python movie's document is
+evaluated again by `python -m machinome_movie watch` (`python/machinome_movie/watch.py`),
+which runs `evaluate` in a fresh process at each change of the project's
+files.
 
 ## Commitments
 
@@ -320,6 +352,7 @@ machines' takes, the page element and the studio's live preview are later
 steps of the same direction and are not built. The player campaign
 (`workflow/ongoing/player-campaign/plan.md`) builds the live preview in
 Videomaker first: its first change, `take-transport` (ADR-020), lifted the
-pose of a take out of the stage into `transport/`, and its second,
-`live-server` (ADR-021), built the server half, `videomaker live`; the
-player page that drives it is not built.
+pose of a take out of the stage into `transport/`, its second,
+`live-server` (ADR-021), built the server half, `videomaker live`, and its
+third, `player-page` (ADR-022), the player page and the Python watcher.
+Drawing composed joins live, and the studio's panel, are not built.

@@ -171,6 +171,14 @@ hash with it. The switch is a list of links, one per surface
   `clamp(round(t · fps), 0, round(duration · fps) − 1)`, the server's rule,
   so the last frame is `(count − 1) / fps`.
 
+- **The mix by ranges** (found in the browser, layer 5): the session
+  answered `/narration.wav` without its length and without ranges, so an
+  audio element took the mix for a stream of unknown length (`duration`
+  `Infinity`) and could seek only what it had read. The session's file route
+  (`/narration.wav`, `/captions.json`, the player's files) now answers the
+  length, `Accept-Ranges: bytes`, a single range with 206 and
+  `Content-Range`, and 416 for a range past the end; a layer 8 test pins it.
+
 ### D6. One pose in flight, the latest wins
 
 `poser(pose)`: `request(t)` records `t` as wanted; when no pose runs it
@@ -186,11 +194,13 @@ and does not stop the poser.
 ### D7. The take surface
 
 - **Mount.** `/viewer.js` is loaded on first use (a script element), then
-  `MachinomeViewer.mount(<host>, '/model/manifest.json', {renderMode:
+  `MachinomeViewer.mount(<target>, '/model/manifest.json', {renderMode:
   'continuous', animation: 'external', autoplay: false, driverControls:
   'none', partControls: 'none'})`: no camera is given, the viewer frames the
-  model itself and its navigator moves the camera. Nothing of the stage is
-  loaded.
+  model itself and its navigator moves the camera. The real viewer styles
+  the element it is mounted in (`position: relative`), so it is mounted in a
+  target that fills a host, the host filling the region, as the stage mounts
+  its viewers (found on the real bundle). Nothing of the stage is loaded.
 - **Attach.** `take`: `attachTake(viewer, <the JSON of /take.json>)`;
   `loop`: `attachLoop(viewer)`. A refusal of the transport is shown in the
   refusal display, named by the take.
@@ -203,7 +213,8 @@ and does not stop the poser.
   frames still poses its recorded bank. The readout shows the time posed
   and its nearest frame.
 - **Ruler.** The take's marks only (`transport.marks`, or the loop's from
-  the outline in model seconds).
+  the outline in model seconds), over a plain row spanning the take, the
+  ground the scrubber is pressed on.
 
 ### D8. Shared: the ruler, the keys, the readout, the refusals, `window.player`
 

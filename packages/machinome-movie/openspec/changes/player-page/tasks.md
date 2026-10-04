@@ -19,7 +19,7 @@
 
 ## 1. Python: `watch` (layers 1 and 9, red first)
 
-- [ ] 1.1 Red: `python/tests/test_watch.py` (the loop with an injected
+- [x] 1.1 Red: `python/tests/test_watch.py` (the loop with an injected
   listing and sleep: one evaluation at start, none over an unchanged
   listing, one per change of size, time or inode, file added or removed;
   one interval slept per step; `_build`, `.git`, `__pycache__` passed
@@ -29,49 +29,51 @@
   `test_repository.py` (`watch` in `docs/declaring-a-movie.md` and
   `python/README.md`). Run, record (the module absent; `watch` an unknown
   subcommand).
-- [ ] 1.2 `python/machinome_movie/watch.py`, the `watch` subcommand in
+- [x] 1.2 `python/machinome_movie/watch.py`, the `watch` subcommand in
   `__main__.py` (D10). Green.
 
 ## 2. Layer 3: the marks in video time (red first)
 
-- [ ] 2.1 Red: `test/live.test.mjs`, `markInstants` of the resolved `count`
+- [x] 2.1 Red: `test/live.test.mjs`, `markInstants` of the resolved `count`
   and `tour` and the outline's `marks`. Run, record.
-- [ ] 2.2 `markInstants` and `outline`'s `marks` in `src/live.mjs` (D3).
+- [x] 2.2 `markInstants` and `outline`'s `marks` in `src/live.mjs` (D3).
   Green.
 
 ## 3. Layer 4: the player's pure parts (red first)
 
-- [ ] 3.1 Red: `player/model.test.ts` (snapping, the stage request and
+- [x] 3.1 Red: `player/model.test.ts` (snapping, the stage request and
   the join-as-cut rule, routing, the ruler's geometry and the time under a
   pointer, the readout, the reload decision), `player/poser.test.ts`; the
   `stage` project of `vitest.config.mjs` runs `player/**/*.test.ts`;
   `tsc --noEmit -p player/tsconfig.json` among the pure tests
   (`test/stage-types.test.mjs`). Run, record (`player/` absent).
-- [ ] 3.2 `player/model.ts`, `player/poser.ts`, `player/tsconfig.json`
+- [x] 3.2 `player/model.ts`, `player/poser.ts`, `player/tsconfig.json`
   (D4 to D9). Green.
 
 ## 4. Layer 9: the build and the boundary (red first)
 
-- [ ] 4.1 Red: `test/player-build.test.mjs` (two places, one set of bytes,
+- [x] 4.1 Red: `test/player-build.test.mjs` (two places, one set of bytes,
   named by the tool; reuse; a damaged output rebuilt); the player's import
   pin and the transport's refusal of `../player/…` in
   `test/transport-boundary.test.mjs`; `test/support/reach.mjs` declares
   what `src/player-build.mjs` reads. Run, record (the module absent).
-- [ ] 4.2 `src/player-build.mjs` (D2), `player/index.html`,
+- [x] 4.2 `src/player-build.mjs` (D2), `player/index.html`,
   `player/index.ts`, `player/player.css` (D1, D4 to D9). Green.
 
 ## 5. Layer 8: `live` serves the built player (red first)
 
-- [ ] 5.1 Red: `test/pipeline/live.test.mjs`: `/`, `/player.js`,
+- [x] 5.1 Red: `test/pipeline/live.test.mjs`: `/`, `/player.js`,
   `/player.css` are the built player, a second session reuses it; a
   scratch file under `_build/player/` reloads nothing. Run, record (`/`
   404).
-- [ ] 5.2 `live` builds the player before serving and reports it (D2).
+- [x] 5.2 `live` builds the player before serving and reports it (D2).
   Green.
+- [x] 5.3 Added from the browser (6.1): `/narration.wav` answers its length
+  and byte ranges (D5); red, then green, at layer 8.
 
 ## 6. Layer 5: the page in a browser (red first)
 
-- [ ] 6.1 Red: `test/browser/player.test.mjs` (the double; the session
+- [x] 6.1 Red: `test/browser/player.test.mjs` (the double; the session
   in-process): on `count`, the movie surface's pose equal to the
   renderer's, A-B-A pixels, the keys, the clicks, a drag across the
   boundary of `once` and `nine` posing frames of both and ending on the
@@ -81,33 +83,33 @@
   surface's marks with the recorded bank and its reload; on `tour`, the
   join rule, the reframe, the fade in, the loop surface.
   `test/viewer-double.mjs` mounts without a camera. Run, record.
-- [ ] 6.2 Green, the page corrected where the browser shows it wrong.
+- [x] 6.2 Green, the page corrected where the browser shows it wrong.
 
 ## 7. Layer 6: the take surface on the real viewer
 
-- [ ] 7.1 `test/viewer/player.test.mjs`: the take surface over the
+- [x] 7.1 `test/viewer/player.test.mjs`: the take surface over the
   counter's export on the API 29 bundle, each mark clicked, the bank equal
   to the record.
 
 ## 8. Records (red first at layer 9)
 
-- [ ] 8.1 Red: `test/repository.test.mjs` pins (the README's player:
+- [x] 8.1 Red: `test/repository.test.mjs` pins (the README's player:
   surfaces, keys, what is not drawn live, `watch`; the changelog bullet
   `(\`player-page\`, ADR-022)`; the ADR index row; the overview names
   `player/` and `src/player-build.mjs` and no longer says the page is not
   built; `AGENTS.md`'s status line and layer 4). Run, record.
-- [ ] 8.2 ADR-022 (PIPELINE, Proposed) and its index row;
+- [x] 8.2 ADR-022 (PIPELINE, Proposed) and its index row;
   `README.md`; `docs/declaring-a-movie.md`; `python/README.md`;
   `docs/architecture-overview.md`; `AGENTS.md`; `CHANGELOG.md` (one bullet
   under `Unreleased`). Green.
 
 ## 9. Proof
 
-- [ ] 9.1 The Node suite cold on the final content with the API 29 bundle
+- [x] 9.1 The Node suite cold on the final content with the API 29 bundle
   selected; the Python suite; summaries quoted.
-- [ ] 9.2 `evidence.md`: every run (command, counts, time, cold or memo),
+- [x] 9.2 `evidence.md`: every run (command, counts, time, cold or memo),
   the red-first output, findings, deviations, what was not done.
-- [ ] 9.3 Stop before committing the implementation, for the
+- [x] 9.3 Stop before committing the implementation, for the
   orchestrator's review.
 
 ## Not in this cycle

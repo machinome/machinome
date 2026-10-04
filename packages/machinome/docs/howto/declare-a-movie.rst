@@ -401,6 +401,7 @@ With the workspace's Python environment:
     python -m machinome_movie list <project-dir>
     python -m machinome_movie evaluate <project-dir> tour
     python -m machinome_movie evaluate <project-dir> tour --out other/place.json
+    python -m machinome_movie watch <project-dir> tour
 
 `evaluate` imports the movie from the project and writes
 `_build/movie.json` beside the movie's module, or the `--out` file. It opens
@@ -411,6 +412,19 @@ which reads the model's own project files. No clock, no randomness, no
 network, and no CAD is built, so two evaluations write the same bytes. The
 anchors stay phrases and marks; the tool measures them in the recorded
 speech.
+
+`watch` evaluates the movie as `evaluate` does, printing the document's
+path or the refusal, and then again each time a file of the project
+changes, is added or is removed, until it is interrupted (Ctrl-C ends it
+with status 0). It finds a change by comparing every file's size,
+modification time and inode at each interval, half a second unless
+`--interval` gives another number of seconds, passing over `_build`,
+`.git` and `__pycache__` directories wherever they are; it takes `--out`
+as `evaluate` does. Each evaluation is the `evaluate` command in a process
+of its own, so a declaration changed since the last one is read afresh; a
+refusal is printed and the watch goes on. Run it beside `videomaker live`
+on the movie's `_build/movie.json`, which reloads the film each time the
+document is written again; the player then shows the film as it now is.
 
 The document's `model.sourceRevision`, the commit its source excerpts are
 read at, is the revision the export records it was made from:

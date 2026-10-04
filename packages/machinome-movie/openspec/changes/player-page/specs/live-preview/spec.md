@@ -48,6 +48,22 @@ frame reaches SHALL NOT be listed.
   shot `carry`, and `ten`, which no frame of the film reaches, is not
   listed.
 
+### Requirement: The mix is served with its length and by byte ranges
+
+`/narration.wav`, `/captions.json` and the player's files SHALL be answered
+with their length and `Accept-Ranges: bytes`, and a request for a single
+byte range of one SHALL be answered 206 with that range and its
+`Content-Range`, or 416 naming the file's length when the range starts past
+its end, so an audio element knows the mix's length and seeks it.
+
+#### Scenario: A range of the mix
+
+- **WHEN** `speech` has mixed the counter's narration and `/narration.wav`
+  is asked for `bytes=100-199`, `bytes=-10` and a range past its end
+- **THEN** the answers are 206 with those hundred bytes, 206 with the last
+  ten, and 416 with `bytes */<length>`, and a request without a range has
+  the file's length.
+
 ### Requirement: The player shows a film or a take, by the address
 
 The player SHALL show the movie surface at `#movie` and the take surface at

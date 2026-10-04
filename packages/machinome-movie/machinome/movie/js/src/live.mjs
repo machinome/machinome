@@ -1,7 +1,8 @@
 // The live session (the live-server change, ADR-021; README, "live"): one
 // process per film, on the loopback interface, that loads the film as `check`
 // does, serves the renderer's stage page and the frame function to a browser,
-// and reloads when the film's inputs change. A movie frame is `frameAt` of
+// and reloads when the film's inputs change; at / the player page that shows
+// them (the player-page change, ADR-022). A movie frame is `frameAt` of
 // the film in this process, on the renderer's grid; the browser computes
 // none. What it answers of a generation is pure, below.
 import {spawn} from 'node:child_process';
@@ -13,7 +14,8 @@ import {assetServer,stageConfig} from './render.mjs';
 import {extractClips} from './pictures.mjs';
 import {filmFiles,clipUses,filmAssets,FILM_PAGE} from './film-assets.mjs';
 import {hash} from './util.mjs';
-import {frameAt,filmShots} from './timeline.mjs';
+import {buildPlayer} from './player-build.mjs';
+import {frameAt,filmShots,modelSecondsAt} from './timeline.mjs';
 
 // The frame the route gives for `t`: the output frame nearest `t` on the
 // renderer's grid (round(t·fps)/fps, as outputShotUnits counts frames),
@@ -39,6 +41,33 @@ function takesOf(film){
     :{loop:{kind:'loop',duration,marks}};
 }
 
+// Where each mark falls in video time (the player-page change, design D3):
+// for each output frame on the renderer's grid, the shot it shows (frameAt's
+// rule) and that shot's model time there; a mark is placed at the first frame
+// of a shot whose model time is the mark's, or has passed it since the
+// previous frame of the same shot. So a shot that starts at a mark flags it
+// at its first frame, one that crosses it at the first frame past it, one
+// that holds at it once; a mark no frame reaches is not placed. The marks are
+// the document's: take seconds for a clocked take, model seconds for a posed
+// loop, both the shot's model time. Ordered by time, then name.
+const AT_MARK=1e-9;
+export function markInstants(film){
+  const fps=film.output.fps,count=Math.round(film.output.durationSeconds*fps),shots=filmShots(film),marks=marksOf(film),out=[];
+  let previous=null;
+  for(let i=0;i<count;i++){
+    const t=i/fps,at=shots.find(({shot})=>t>=shot.start&&t<shot.end);
+    if(!at)continue;
+    const seconds=modelSecondsAt(at.shot,t-at.shot.start),same=previous?.shot===at.shot.id;
+    for(const {name,time} of marks){
+      const here=Math.abs(seconds-time)<=AT_MARK,was=same&&Math.abs(previous.seconds-time)<=AT_MARK;
+      const crossed=same&&!was&&!here&&(previous.seconds-time)*(seconds-time)<0;
+      if((here&&!was)||crossed)out.push({name,shot:at.shot.id,at:t});
+    }
+    previous={shot:at.shot.id,seconds};
+  }
+  return out.sort((a,b)=>a.at-b.at||(a.name<b.name?-1:a.name>b.name?1:0));
+}
+
 // The outline of a film as a session serves it at `width` (/film.json):
 // times in video seconds except under `takes`. The output is the session's
 // geometry: `width` and the renderer's height for it.
@@ -51,7 +80,7 @@ export function outline(film,{width,number,loadedAt,stageSha256,speech,refusal=n
       join:shot.transition?{kind:shot.transition.kind,duration:shot.transition.duration}:null,model:shot.model})),
     cues:shots.flatMap(({shot})=>(shot.cues??[]).map((cue,i)=>({shot:shot.id,id:`cues[${i}]`,
       at:shot.start+cue.at,until:cue.until===undefined?null:shot.start+cue.until}))),
-    takes:takesOf(film),speech,stage:{sha256:stageSha256},viewer:{api:(film.viewerApi??{api:21}).api},
+    marks:markInstants(film),takes:takesOf(film),speech,stage:{sha256:stageSha256},viewer:{api:(film.viewerApi??{api:21}).api},
     generation:{number,loadedAt},refusal};
 }
 
@@ -151,6 +180,10 @@ export async function live(source,{viewer,width=960,port=0,poll=0,open=false}={}
   if(!Number.isInteger(port)||port<0||port>65535)throw new Error('--port must be an integer from 0 to 65535');
   if(!Number.isInteger(poll)||poll<0)throw new Error('--poll must be a whole number of milliseconds (0 watches instead of polling)');
   let current=await loadGeneration(source,{viewer,width},null),refusal=null;
+  // The player page (the player-page change, design D2): tool content, built
+  // once for the session before it serves, reused by content; no generation
+  // rebuilds it, and _build/player/ is never watched.
+  const player=await buildPlayer(current.film.paths.build);
   const subscribers=new Set();
   const send=(res,kind,data)=>res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
   const broadcast=(kind,data)=>{for(const res of subscribers)send(res,kind,data);};
@@ -159,10 +192,21 @@ export async function live(source,{viewer,width=960,port=0,poll=0,open=false}={}
   // ----- routes (design D4) -----
   const text=(res,status,body)=>{res.writeHead(status,{'Content-Type':'text/plain; charset=utf-8'});res.end(body);};
   const json=(res,value)=>{res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
-  async function file(res,path,missing){
+  // A file of the build, with its length, and a single byte range when one is
+  // asked: an audio element reads the mix's length and seeks it by ranges
+  // (the player-page change).
+  async function file(req,res,path,missing){
     let bytes;
     try{bytes=await readFile(path);}catch(error){if(error.code==='ENOENT')return text(res,404,missing);throw error;}
-    res.writeHead(200,{'Content-Type':TYPES[extname(path)]??'application/octet-stream'});res.end(bytes);
+    const type=TYPES[extname(path)]??'application/octet-stream',size=bytes.length;
+    const range=/^bytes=(\d*)-(\d*)$/.exec(req.headers.range??'');
+    if(range&&(range[1]||range[2])){
+      const [from,to]=range[1]?[Number(range[1]),range[2]?Math.min(Number(range[2]),size-1):size-1]:[Math.max(0,size-Number(range[2])),size-1];
+      if(from>=size||from>to){res.writeHead(416,{'Content-Range':`bytes */${size}`});return res.end();}
+      res.writeHead(206,{'Content-Type':type,'Content-Length':to-from+1,'Content-Range':`bytes ${from}-${to}/${size}`,'Accept-Ranges':'bytes'});
+      return res.end(req.method==='HEAD'?undefined:bytes.subarray(from,to+1));
+    }
+    res.writeHead(200,{'Content-Type':type,'Content-Length':size,'Accept-Ranges':'bytes'});res.end(req.method==='HEAD'?undefined:bytes);
   }
   async function handle(req,res){
     res.setHeader('Cache-Control','no-store');
@@ -180,8 +224,8 @@ export async function live(source,{viewer,width=960,port=0,poll=0,open=false}={}
         return json(res,frameFor(g.film,t));
       }
       if(path==='/take.json'){const doc=takeDocument(g.film);return doc?json(res,doc):text(res,404,'No take document');}
-      if(path==='/narration.wav'||path==='/captions.json')return file(res,resolve(build,path.slice(1)),'Not found');
-      if(Object.hasOwn(PLAYER,path))return file(res,resolve(build,'player',PLAYER[path]),'The player is not built');
+      if(path==='/narration.wav'||path==='/captions.json')return file(req,res,resolve(build,path.slice(1)),'Not found');
+      if(Object.hasOwn(PLAYER,path))return file(req,res,resolve(build,'player',PLAYER[path]),'The player is not built');
       if(path==='/events'){
         res.writeHead(200,{'Content-Type':'text/event-stream','Connection':'keep-alive'});
         send(res,'generation',announced(g));
@@ -279,5 +323,6 @@ export async function live(source,{viewer,width=960,port=0,poll=0,open=false}={}
     })();
     return closing;
   }
-  return {origin:assets.origin,generation:()=>current,close};
+  return {origin:assets.origin,generation:()=>current,close,
+    player:{sha256:player.sha256,cssSha256:player.cssSha256,htmlSha256:player.htmlSha256,reused:player.reused}};
 }
