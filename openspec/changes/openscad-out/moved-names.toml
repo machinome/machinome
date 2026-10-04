@@ -1,0 +1,199 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's eighth cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-split-openscad-out;
+# record in the framework's openspec/changes/archive/<date>-openscad-out/.
+#
+# The OpenSCAD family leaves the core for the node package
+# machinome.node.openscad (OpenScadNode keeps its address: the package's
+# __init__ defines it) with Solid2Node at machinome.node.solid2 over it. The
+# seam machinome.scad_engine and the package machinome.openscad are removed
+# (Python's own ModuleNotFoundError; no alias, ADR-169). The OpenSCAD snapshot
+# renderer keeps its address, machinome.viewers.openscad, until the viewer
+# cycle. The SCAD members leave the node and leaf bases for the family's leaf
+# base machinome.node.openscad.leaf.ScadLeafNode or the writer
+# machinome.node.openscad.writer; `as_scad` is `present`. No project names any
+# of them (grep of projects/, 4 October 2026); a project with Solid2Node or
+# OpenScadNode parts installs machinome[solid2] or machinome[openscad].
+
+cycle = "openscad-out"
+date = "2026-10-04"
+
+# The seam, dissolved.
+
+[[moved]]
+name = "machinome.scad_engine"
+to = "(removed: nothing in the core asks the OpenSCAD family through a seam; see machinome.node.openscad)"
+
+[[moved]]
+name = "machinome.scad_engine.scad_engine"
+to = "(removed: import machinome.node.openscad.writer directly)"
+
+[[moved]]
+name = "machinome.scad_engine.require_scad_engine"
+to = "(removed: importing machinome.node.openscad refuses an absent SolidPython naming machinome[openscad])"
+
+[[moved]]
+name = "machinome.scad_engine.ScadEngineUnavailable"
+to = "machinome.extras.ExtraUnavailable (the package's import refusal); the binary's refusal is machinome.node.openscad.binary.OpenScadUnavailable"
+
+[[moved]]
+name = "machinome.scad_engine.ScadEngineIncompatible"
+to = "(removed: no contract version is checked for the family)"
+
+[[moved]]
+name = "machinome.scad_engine.CONTRACT"
+to = "(removed)"
+
+[[moved]]
+name = "machinome.scad_engine.PROVIDER"
+to = "(removed)"
+
+# The former engine package.
+
+[[moved]]
+name = "machinome.openscad"
+to = "machinome.node.openscad"
+
+[[moved]]
+name = "machinome.openscad.engine"
+to = "machinome.node.openscad.writer (scad_text) and machinome.node.solid2 (adopt)"
+
+[[moved]]
+name = "machinome.openscad.engine.scad_text"
+to = "machinome.node.openscad.writer.scad_text"
+
+[[moved]]
+name = "machinome.openscad.engine.adopt"
+to = "machinome.node.solid2.adopt"
+
+[[moved]]
+name = "machinome.openscad.engine.require_binary"
+to = "machinome.node.openscad.binary.require_openscad"
+
+[[moved]]
+name = "machinome.openscad.engine.CONTRACT"
+to = "(removed)"
+
+[[moved]]
+name = "machinome.openscad.binary"
+to = "machinome.node.openscad.binary"
+
+[[moved]]
+name = "machinome.openscad.binary.openscad_binary"
+to = "machinome.node.openscad.binary.openscad_binary"
+
+[[moved]]
+name = "machinome.openscad.binary.require_openscad"
+to = "machinome.node.openscad.binary.require_openscad"
+
+[[moved]]
+name = "machinome.openscad.binary.OpenScadUnavailable"
+to = "machinome.node.openscad.binary.OpenScadUnavailable"
+
+# The snapshot command and the viewer module.
+
+[[moved]]
+name = "machinome.manager.snapshot.OPENSCAD_RENDERER"
+to = "(removed: the renderer is resolved through machinome.node.supported)"
+
+[[moved]]
+name = "machinome.viewers.openscad.OpenScadRenderer.require_engine"
+to = "(removed: importing machinome.viewers.openscad refuses an absent SolidPython naming machinome[openscad])"
+
+# The expression language and the camera.
+
+[[moved]]
+name = "machinome.core.expressions.scad_expression"
+to = "machinome.core.expressions.closed_expression"
+
+[[moved]]
+name = "machinome.core.camera.OPENSCAD_FOV"
+to = "machinome.core.camera.DEFAULT_FOV"
+
+# The source generation.
+
+[[moved]]
+name = "machinome.source_generation.SourceGeneration.has_scad_artifact"
+to = "machinome.source_generation.SourceGeneration.has_published"
+
+[[moved]]
+name = "machinome.source_generation.SourceGeneration.remember_scad_artifact"
+to = "machinome.source_generation.SourceGeneration.remember_published"
+
+[[moved]]
+name = "machinome.source_generation.SourcePhase.defer_scad"
+to = "(removed: ADR-086's assembly-phase coalescing has no producer)"
+
+[[moved]]
+name = "machinome.source_generation.SourcePhase.coalesces_scad"
+to = "(removed)"
+
+[[moved]]
+name = "machinome.source_generation.SourcePhase.pending_scad_count"
+to = "(removed)"
+
+# The members leaving the node and leaf bases.
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.as_scad"
+to = "machinome.node.base.AbstractBaseNode.present"
+
+[[moved]]
+name = "machinome.node.leaf.LeafNode.as_scad"
+to = "machinome.node.leaf.LeafNode.present"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.scad_code"
+to = "machinome.node.openscad.leaf.ScadLeafNode.scad_code; any node: machinome.node.openscad.writer.scad_code(node)"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.generate_scad"
+to = "machinome.node.openscad.leaf.ScadLeafNode.generate_scad; any node: machinome.node.openscad.writer.generate_scad(node)"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.scad_file"
+to = "machinome.node.openscad.leaf.ScadLeafNode.scad_file"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.fn"
+to = "machinome.node.openscad.leaf.ScadLeafNode.fn"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.mesh_scad_file"
+to = "(removed: never written or read)"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.scad_authored"
+to = "machinome.node.base.AbstractBaseNode.kept_artifacts"
+
+[[moved]]
+name = "machinome.node.leaf.LeafNode.scad_authored"
+to = "machinome.node.base.AbstractBaseNode.kept_artifacts"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.stl_builder_command"
+to = "machinome.node.openscad.leaf.ScadLeafNode.stl_builder_command"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.stl_builder_command_for"
+to = "machinome.node.openscad.leaf.ScadLeafNode.stl_builder_command_for"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode._model_for_own_scad"
+to = "machinome.node.base.AbstractBaseNode.presentation"
+
+[[moved]]
+name = "machinome.node.base._atomic_write_text"
+to = "machinome.currency.publish_text"
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode._render_can_be_skipped"
+to = "(removed: no production caller since ADR-102)"
+
+# The project template, no longer a package.
+
+[[moved]]
+name = "machinome.manager.templates.project.root"
+to = "(removed: the templates are data files root/solid2.py and root/cadquery.py)"
