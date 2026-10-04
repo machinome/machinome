@@ -657,6 +657,28 @@ why" below and the one-package OpenSCAD shape of "Layers":
   `scad_code`, `generate_scad()` and the snapshot renderer, or dissolved
   if those move with the package; the eighth cycle's proposer settles
   that with the evidence and the pilot ratifies.
+- **No SCAD in the core.** `scad_code` and `generate_scad()` move with
+  the `openscad` node package, with `scad_file`, `scad_authored`, `as_scad`
+  and the OpenSCAD snapshot renderer; the core mentions SCAD nowhere but in
+  a table of supported node types, if one exists. At the ruling the core
+  says "scad" in fifteen modules (counts of 4 October 2026: `node/base.py`
+  80, `viewers/openscad.py` 47, `scad_engine.py` 32, `manager/snapshot.py`
+  25, `source_generation.py` 23, `node/leaf.py` 22, `core/builder.py` 21,
+  `math.py` 16, `node/flexible.py` 12, `expression_graph.py` 11,
+  `node/presentation.py` 10, `node/internal.py` 9, `core/expressions.py`
+  7; `node/jscad.py` is JSCAD's own name). The eighth cycle is therefore
+  "OpenSCAD out of the core" complete, not the runner alone.
+- **Engines are named as engines.** The `node-` infix stands; the engine
+  packages are `machinome-engine-<name>`, not named after their libraries
+  alone (the pilot, 4 October 2026). Which `<name>` (the technology, `occt`
+  and `manifold`, as the providers' addresses are today, or the role,
+  `exact` and `mesh`, as the seams are) is the pilot's next decision; the
+  code today names seams by role (`machinome.exact_engine`,
+  `machinome.mesh_engine`; "the exact engine", "the mesh engine" in every
+  message; the paths `'exact'` and `'faceted'` in the test framework and
+  the verdict keys) and providers by technology (`machinome.occt.engine`,
+  `machinome.manifold.engine`; the recipe identities `exact-fusion-occt-v1`
+  and `faceted-fusion-manifold-v1`).
 - **Still midway.** The addresses of the eight node types already obey the
   norm; what is not yet in shape is the packaging of the OpenSCAD family
   (the eighth cycle), the four node types the earlier rule kept in the
