@@ -1,12 +1,43 @@
 #!/usr/bin/env bash
 # One-time setup on the CUDA host: a venv beside this script with the whole free chain.
+# torch, torchaudio and ctranslate2 ship wheels for Python 3.10 to 3.12 only, so the
+# venv is made from one of those; uv fetches one when the host has none.
 set -euo pipefail
 cd "$(dirname "$0")"
-python3 -m venv .venv
-.venv/bin/pip install -U pip
-# torch on Linux installs the CUDA build by default; qwen-tts pulls it in.
-.venv/bin/pip install -U qwen-tts soundfile faster-whisper
+
+pick_python() {
+  for p in python3.12 python3.11 python3.10 python3; do
+    if command -v "$p" >/dev/null 2>&1 && "$p" -c 'import sys; sys.exit(0 if (3,10) <= sys.version_info[:2] <= (3,12) else 1)'; then
+      command -v "$p"; return 0
+    fi
+  done
+  return 1
+}
+
+if [ ! -x .venv/bin/python ]; then
+  if py=$(pick_python); then
+    echo "using $py ($("$py" --version))"
+    "$py" -m venv .venv
+  elif command -v uv >/dev/null 2>&1; then
+    echo "no Python 3.10-3.12 on PATH; uv fetches 3.12"
+    uv venv --python 3.12 .venv
+  else
+    echo "no Python 3.10-3.12 on PATH and no uv. Install one of:" >&2
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh     (then rerun ./setup.sh)" >&2
+    echo "  sudo apt install python3.12 python3.12-venv         (Debian/Ubuntu)" >&2
+    exit 1
+  fi
+fi
+
+pip=".venv/bin/pip"
+[ -x "$pip" ] || .venv/bin/python -m ensurepip --upgrade
+.venv/bin/python -m pip install -U pip
+# torch and torchaudio first, so qwen-tts resolves against the CUDA build already present.
+.venv/bin/python -m pip install -U torch torchaudio
+.venv/bin/python -m pip install -U qwen-tts soundfile faster-whisper
 .venv/bin/python - <<'PY'
-import torch; print("torch", torch.__version__, "cuda", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")
+import sys, torch
+print("python", sys.version.split()[0], "torch", torch.__version__, "cuda", torch.cuda.is_available(),
+      torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")
 PY
 echo "setup done; now ./run.sh"
