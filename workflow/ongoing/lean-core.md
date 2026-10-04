@@ -975,6 +975,30 @@ validation of each cycle is orchestrated the same way, with validator
 subagents, as "Empirical validation, per cycle" under "What it takes"
 says (pilot, 3 October 2026).
 
+### Settled by the pilot, 4 October 2026, later the same day: the grant stays Apache-2.0
+
+The reopening below lasted a few hours. Assessing what a GPL-2.0-only
+OpenSCAD project needs (collision and clearance tests above all: Prusa3-
+vanilla's suite is 63 `assertNotIntersecting`, 24 gap assertions, 16
+motion sweeps of the same question, 4 overlap-volume thresholds), the
+pilot found that supporting them would cost not only the core's grant
+but a second faceted engine behind a reshaped mesh seam (predicates on
+a BSD collision library such as FCL, overlap volumes through the
+OpenSCAD process or refused), since manifold3d is Apache-2.0 and no
+GPLv2-compatible mesh-boolean library exists for Python (CGAL is GPLv3).
+The pilot's decision: "I'm not giving up patent protection for
+supporting those projects." The core stays Apache-2.0; the licence
+policy of "Settled" stands as written; GPL-2.0-only projects stay out of
+the Foundry (the policy of `docs/foundry-licensing-policy.md`).
+
+Consequences for this plan: the package split (layer 2) is no longer a
+licensing requirement. It remains wanted for the architecture and for
+the lean install, choosing only what a project needs; its repository
+question stays open on evidence, as "Layers" says. The next cycle after
+this session is the extraction of manifold3d behind the mesh seam, for
+the architecture alone, by the same shape as the exact engine (the pilot,
+4 October 2026); watchdog stays as it is.
+
 ### Reopened by the pilot, 4 October 2026: the licences
 
 The pilot unlocked the licence policy below ("a package's licence matches
