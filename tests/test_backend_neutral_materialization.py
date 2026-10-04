@@ -85,7 +85,7 @@ class BackendNeutralMaterializationTest(TestCase):
         machine = NativeAssembly()
         with patch.object(NativeMeshLeaf, 'as_scad',
                           side_effect=AssertionError('SCAD boundary used')), \
-             patch('machinome.node.base.require_openscad',
+             patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError('OpenSCAD boundary used')):
             machine.build_stls()
 
@@ -167,7 +167,7 @@ class BackendNeutralMaterializationTest(TestCase):
         fusion._prepare()
         with patch('machinome.node.fusion.require_mesh_engine',
                    side_effect=RuntimeError('manifold unavailable')), \
-             patch('machinome.node.base.require_openscad') as openscad:
+             patch('machinome.openscad.binary.require_openscad') as openscad:
             with self.assertRaisesRegex(RuntimeError, 'manifold unavailable'):
                 fusion.generate_stl()
         openscad.assert_not_called()
@@ -178,7 +178,7 @@ class BackendNeutralMaterializationTest(TestCase):
         invalid = trimesh.creation.box((2, 2, 2))
         invalid.update_faces(range(len(invalid.faces) - 1))
         invalid.export(fusion.right.stl_file)
-        with patch('machinome.node.base.require_openscad') as openscad:
+        with patch('machinome.openscad.binary.require_openscad') as openscad:
             with self.assertRaisesRegex(ValueError, r'right: manifold3d'):
                 fusion.generate_stl()
         openscad.assert_not_called()

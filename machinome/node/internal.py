@@ -8,7 +8,7 @@ from .base import AbstractBaseNode
 from .declarative import (StructureError, declared_child_nodes,
                           declared_children)
 from machinome.motion.ports import bind
-from solid2 import union
+from .presentation import Union
 
 
 def _declarative_render(render):
@@ -123,7 +123,8 @@ class InternalNode(AbstractBaseNode):
         return all(child.exact for child in self.children)
 
     def as_scad(self, children):
-        """Renders a scad of the combined children"""
+        """The presentation description of the combined children: their
+        union, the one child itself, or an empty union"""
         scads = []
 
         self._link_children(children)
@@ -142,14 +143,14 @@ class InternalNode(AbstractBaseNode):
         self.children = children
 
         if len(scads) > 1:
-            rendered = union()(scads)
+            rendered = Union(tuple(scads))
         elif scads:
             rendered = scads[0]
         else:
             # A non-rigid assembly may contain no present parts. Keep the
             # ordinary composable result through assemble()/scad_code without
             # inventing geometry; FusionNode rejects this list in validate().
-            rendered = union()()
+            rendered = Union(())
 
         return rendered
 

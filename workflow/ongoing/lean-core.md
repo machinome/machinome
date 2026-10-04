@@ -88,7 +88,15 @@ plugin architecture part.
   `machinome.scad_engine`; `scad_expression.py` is removed, and the core's
   remaining solid2 importers are the SCAD presentation, `node/{base,
   operations, internal, flexible}.py`, the two leaves `node/{solid2,
-  openscad}.py` and the template. ADR-170, ADR-171)
+  openscad}.py` and the template. ADR-170, ADR-171.) The SCAD presentation
+  is the engine's since change `scad-presentation`, 3-4 October 2026: the
+  core composes a description in its own types (`node/presentation.py`)
+  and `machinome.openscad.engine.scad_text` writes the text, so
+  `node/{base, operations, internal, flexible}.py` import no solid2, and
+  the core's remaining solid2 importers are the two leaves `node/{solid2,
+  openscad}.py` and the template; the core reaches the binary through the
+  seam too, and only `node/solid2.py` still imports `machinome.openscad`
+  (ADR-172, ADR-173).
 - **The exact layer is one module, `exact.py`,** importing cadquery and
   OCP at module top. Its cadquery use is four spellings: `Shape.cast`
   (four times), `Shape.importBrep`, `Compound.makeCompound`,
@@ -391,7 +399,7 @@ modules under `machinome.node` that are not node types, `base`, `frames`,
 | `MolejoNode` | `machinome.node.molejo` | `machinome[molejo]` | machinome-node-molejo |
 | the exact engine: OCCT currency, booleans, file reading | `machinome.occt` | `machinome[occt]` | machinome-occt |
 | the exact operations a project calls, formerly `machinome.exact`: `intersect_shapes`, `fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume` | `machinome.occt.engine` | `machinome[occt]` | machinome-occt |
-| the OpenSCAD engine: `machinome.openscad.engine`, the provider of the seam `machinome.scad_engine` (adopting SolidPython's values as expressions); `machinome.openscad.binary`, the OpenSCAD binary contract (`require_openscad`, `openscad_binary`, `OpenScadUnavailable`) | `machinome.openscad` | `machinome[openscad]` (declared by cycle 7) | machinome-openscad |
+| the OpenSCAD engine: `machinome.openscad.engine`, the provider of the seam `machinome.scad_engine` (contract 2: adopting SolidPython's values as expressions, writing the SCAD text of the core's presentation description, locating the binary); `machinome.openscad.binary`, the OpenSCAD binary contract (`require_openscad`, `openscad_binary`, `OpenScadUnavailable`) | `machinome.openscad` | `machinome[openscad]` (declared by cycle 7) | machinome-openscad |
 | `ExactLeafNode`, the declared exact-leaf base, beside the other three declared leaf bases `LeafNode`, `SheetLeafNode` and `FlexibleNode` | `machinome.node.exact_leaf`; `machinome.node.leaf`, `.sheet_leaf`, `.flexible` | core | machinome |
 | mechanics, movie, later and under their own processes | `machinome.mechanics`, `machinome.movie` | `machinome[mechanics]`, `[movie]` | machinome-mechanics, machinome-movie |
 
@@ -526,7 +534,20 @@ remaining cycles:
    ADR-170, ADR-171;
    `openspec/changes/archive/2026-10-03-expression-type/evidence.md`); the
    SCAD presentation behind a seam, `assemble()` no longer requiring it,
-   the `develop` fallback included; the binary runner as an engine
+   the `develop` fallback included (`scad-presentation`, the sixth: the
+   core describes its presentation in `machinome.node.presentation` and
+   the engine writes the text, contract 2; **Done** 4 October 2026, ADR-172,
+   ADR-173; `openspec/changes/archive/<date>-scad-presentation/evidence.md`.
+   The `develop` fallback it names had been removed by ADR-103 on 11
+   September 2026, before the campaign: nothing of `develop` moved but its
+   builder's `scad_output`. The pilot decided design.md Decision 3 on 3
+   October 2026: option A, a `.scad` written only where a path reads it, a
+   SCAD-authored leaf's for its STL and the root's on demand for the
+   OpenSCAD snapshot renderer, which removes it once drawn (the
+   orchestrator's correction of 4 October, with the rule that a `.scad` no
+   current node writes never survives a successful build); option B, every
+   build's `.scad` kept when the engine is installed, rejected because
+   those deliverables served a reader machinome does not have); the binary runner as an engine
    subpackage with `Solid2Node` and `OpenScadNode` as two node modules
    over it; the project template scaffolding whatever leaf kind the
    installed extras provide.
@@ -652,6 +673,7 @@ validation is orchestrated with subagents like the rest of the cycle.
 | class-name switch | splitflap, a solid2 project (the abacus named on 3 October is CadQuery, a misreading corrected the same day) | the switch chooses backends by class name for solid2, OpenSCAD and fusion nodes. **Done** 3 October 2026: splitflap green before and after, refusal `node front (Solid2Node backend)` → `node front (FrontPanel)`; universe 120 ok, non-ok rows unchanged; `openspec/changes/archive/2026-10-03-backend-switch/evidence.md` |
 | lean install | Actuators/Internal-Cycloidal-Actuator | its companion test imports `machinome.node.adapters.step` twice, so the migration runs in the suite the sweep loads; scaffolded by `machinome import-step` and all `StepNode` leaves, so it exercises the `step` extra, the moved module and the command. **Done** 3 October 2026: ICA 33/35 faceted before and after, the two failures the first cycle's currency; universe 117 ok, three new expected rows, nothing unexpected; `openspec/changes/archive/2026-10-03-lean-install/evidence.md` |
 | expression type | Locks/Pin_tumbler_lock, with the Curta Type I 3x's clocked block and machinome-mechanics' suite as probes | a running root whose laws and bounds are built on `machinome.math`, whose flexible ports carry expressions and whose `Solid2Node` parts write SCAD carrying symbolic values: four of the five former facade importers, the seam's native path and the SCAD bytes in one cheap project; the Curta exercises the clocked face, mechanics the SolidPython operands. **Done** 3 October 2026: the lock 24/24 faceted before and after with every `.scad` byte-identical and `manifest.json` differing only in one piece volume's last digit, OpenSCAD's own STL noise; the Curta's clocked block identical (88910 bytes, `be1e37234b443566`); mechanics 9 failures, all its tests asserting solid2's `OpenSCADConstant` of a symbolic value, corrected by a mechanics cycle (the pilot); universe unchanged from the fourth cycle; `openspec/changes/archive/2026-10-03-expression-type/evidence.md` |
+| scad presentation | Locks/Pin_tumbler_lock, and OpenAstroMount without SolidPython | the fifth cycle's project, so its 11 `Solid2Node` `.scad` hashes are compared byte for byte, and its sub-assembly, flexible spring and running root exercise every presentation construct and the three files a build stops writing; OpenAstroMount is the all-STEP project a build must publish with no SolidPython. Result: pending the orchestrator's validation (tasks 10.1-10.3); `openspec/changes/archive/<date>-scad-presentation/evidence.md` |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |
 

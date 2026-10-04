@@ -463,7 +463,7 @@ class ScadPathUntouchedTest(BaseNodeTest):
     """Task 3.2: the generated `.scad` for a tree carrying heavy sharing
     is byte-identical before and after publishing the document.
 
-    `operation.scad(...)` reads `self.angle` / `self.translation`
+    `operation.presented(...)` reads `self.angle` / `self.translation`
     directly, never `operation.serialized` -- the only thing
     `bind_document` ever rewrites, and only on the plain-dict document
     `serialize_node` returns, never on the live `Rotation`/`Translation`

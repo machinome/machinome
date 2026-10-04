@@ -69,10 +69,10 @@ different geometry engine.
 
 #### Scenario: OpenSCAD users obtain a machine's SCAD on demand
 
-- **WHEN** a person wants the SCAD of a built machine to open in OpenSCAD
-- **THEN** `machinome snapshot --renderer openscad` leaves the root's `.scad`
-  in the build directory beside the artifacts it imports, until the next build
-  of that directory, and `node.scad_code` gives any node's SCAD text
+- **WHEN** a person wants the SCAD of a built machine
+- **THEN** `node.scad_code` gives any node's SCAD text, and `machinome
+  snapshot --renderer openscad` renders the root's SCAD with OpenSCAD and
+  then removes the file it wrote for it
 
 #### Scenario: A normal build without the engine
 

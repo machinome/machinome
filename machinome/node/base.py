@@ -5,7 +5,6 @@
 import os
 import io
 import re
-import copy
 import time
 import inspect
 import hashlib
@@ -15,16 +14,16 @@ import tempfile
 import numpy as np
 from decimal import Decimal
 from subprocess import CalledProcessError, Popen
-from solid2 import scad_render, import_stl, color
 from machinome import currency
 from machinome._artifact import (ArtifactChanged, ArtifactSnapshot,
                                   artifact_cache_key)
 from machinome.extras import ExtraUnavailable
-from machinome.openscad.binary import require_openscad
+from machinome.scad_engine import require_scad_engine
 from machinome.source_generation import (
     current_census, current_generation, current_phase, track_sources,
 )
 from .frames import resolve_declared_frames
+from .presentation import ArtifactImport, Color, described, reanchored
 from .markings import DEFAULT_DEFLECTION, declared_markings
 from .sources import source_closure, source_scope
 from . import phase as _phase
@@ -95,6 +94,15 @@ def _with_recipe(value, recipe):
     return folded.hexdigest()
 
 
+def _scad_engine_for(node):
+    """The OpenSCAD engine, which writes `node`'s SCAD text, or its refusal
+    naming the node by its name and its own class."""
+    node_name = getattr(node, 'name', type(node).__name__)
+    return require_scad_engine(
+        f'node {node_name} ({type(node).__qualname__})',
+        'its SCAD text is written by the OpenSCAD engine')
+
+
 def _publish_scad(path, content, mtime_ns, digest, fingerprint):
     """Publish one captured SCAD state and update process-local currentness."""
     _atomic_write_text(path, content, mtime_ns, digest, fingerprint)
@@ -103,46 +111,6 @@ def _publish_scad(path, content, mtime_ns, digest, fingerprint):
         generation.remember_scad_artifact(
             path, (mtime_ns, digest, fingerprint))
     logger.info('%s generated with %s!', path, _seconds(mtime_ns))
-
-
-class _ArtifactImport(import_stl):
-    """An `import()` of a build artifact the framework itself emitted.
-
-    `import_stl.__init__` passes the OpenSCAD call name `'import'` to its
-    base (`solid2.core.builtins.openscad_primitives`), so this subclass
-    renders byte-identically to a plain `import_stl` -- the marker exists
-    only in Python, never in the SCAD text. It is what lets
-    `_reanchor_artifact_imports` tell a path THIS layer is free to
-    re-anchor from a path a project wrote itself in its own `render()`,
-    which must be left exactly as written (verified against the installed
-    solid2 in `evidence/probe_reanchor.py`; a `str` subclass on `file`
-    does NOT survive -- `import_stl` normalises it through
-    `_Path(file).as_posix()`, which returns a plain `str`).
-
-    Its path is anchored on the build directory of the whole build
-    (`get_build_dir`, see `AbstractBaseNode.artifact_import`) until a node
-    writes its OWN `.scad`, at which point `_reanchor_artifact_imports`
-    rewrites it onto that file's directory (`_model_for_own_scad`).
-    """
-
-
-def _reanchor_artifact_imports(node, build_dir, own_build_dir):
-    """Rewrite every `_ArtifactImport` under `node` from its build-wide
-    anchor onto `own_build_dir`, the directory of the `.scad` about to
-    hold it.
-
-    Walks solid2 privates (`_children`, `_params`) -- confined to this one
-    helper so a solid2 upgrade that renames them fails loudly here rather
-    than silently emitting a bad path elsewhere. The caller passes a
-    `copy.deepcopy` of the tree being re-anchored, so a parent's own
-    inlined copy of the same child is untouched (ADR-116).
-    """
-    if isinstance(node, _ArtifactImport):
-        anchored = node._params['file']
-        node._params['file'] = os.path.relpath(
-            os.path.join(build_dir, anchored), own_build_dir)
-    for child in node._children:
-        _reanchor_artifact_imports(child, build_dir, own_build_dir)
 
 
 def _atomic_write_bytes(path, content, mtime_ns, digest=None,
@@ -936,8 +904,17 @@ class AbstractBaseNode(metaclass=NodeMeta):
         pass
 
     def assemble(self, root=None):
-        """Renders this node and returns an optimized version
-        with all operations applied"""
+        """Prepare this node and return its SCAD presentation: a
+        description in the core's own types (`machinome.node.presentation`),
+        with its optimized imports, its colour and every operation applied
+        in order.
+
+        It writes no `.scad`, at this node or any other, and needs neither
+        SolidPython nor the OpenSCAD engine: the engine writes SCAD text
+        from the description only where a path reads it (`scad_code`,
+        `generate_scad()`), under the `backend-neutral-materialization`
+        capability.
+        """
         if self._assembled:
             return self._assembled
 
@@ -950,23 +927,20 @@ class AbstractBaseNode(metaclass=NodeMeta):
             # rendered lazily if something actually asks for the scad.
             if self.model is None:
                 self.model = self.artifact_import(self.local_stl)
-            self.generate_scad()
             assembled = self.import_optimized()
         else:
             rendered = self._require_rendered()
             self.model = self.as_scad(rendered)
             if not self.optimize:
                 self.model = self._colorize(self.model)
-            self.generate_scad()
 
             if self.optimize:
                 assembled = self.import_optimized()
             else:
-                assembled = self.model
+                assembled = described(self.model)
 
         for operation in self.operations:
-            # Apply scad operation
-            assembled = operation.scad(assembled)
+            assembled = operation.presented(assembled)
 
         self._assembled = assembled
 
@@ -996,8 +970,10 @@ class AbstractBaseNode(metaclass=NodeMeta):
             self._prepared_rendered = rendered
             if self._uses_legacy_scad_materialization():
                 # A project adapter that overrides the established SCAD hook
-                # is an explicit request to keep using that artifact path.
-                # Preserve it without making SCAD the path for native leaves.
+                # is an explicit request to keep using that artifact path:
+                # its SCAD, which the OpenSCAD engine writes, is what
+                # OpenSCAD renders its STL from. Preserve it without making
+                # SCAD the path for native leaves.
                 self.model = self.as_scad(rendered)
                 self.generate_scad()
             else:
@@ -1031,6 +1007,15 @@ class AbstractBaseNode(metaclass=NodeMeta):
     def _uses_legacy_scad_materialization(self):
         return False
 
+    @property
+    def scad_authored(self):
+        """Whether this node's geometry is authored in SCAD, so that its own
+        `.scad` is what OpenSCAD renders its STL from: the one `.scad` a
+        build writes and keeps for it (design.md, Decision 3). False here;
+        true on `Solid2Node`, `OpenScadNode` and a project leaf overriding
+        `as_scad`."""
+        return False
+
     def _render_can_be_skipped(self):
         """Whether assemble() can import this node's artifact instead of
         producing it. False here: an internal node's file set is the
@@ -1042,7 +1027,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return False
 
     def _require_model(self):
-        """This node's own geometry as scad.
+        """This node's own SCAD presentation.
 
         A leaf whose artifact was already current never rendered, so
         self.model is unset. Nothing in the build path needs it -- the
@@ -1058,10 +1043,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return self.model
 
     def artifact_import(self, local_path):
-        """Build the anchored import of one of THIS node's own artifact
-        files -- `local_path` relative to `self.build_dir`, as every
-        caller already spells it (`self.local_stl`,
-        `self.local_snapshot_stl(values)`).
+        """The presentation description of the anchored import of one of
+        THIS node's own artifact files (`machinome.node.presentation.
+        ArtifactImport`) -- `local_path` relative to `self.build_dir`, as
+        every caller already spells it (`self.local_stl`,
+        `self.local_snapshot_stl(values)`). A leaf presenting its own
+        artifact returns it from `as_scad` as it is; it is not a solid2
+        object and is not composed into one.
 
         Anchored on `get_build_dir(self.src)`, the build directory of the
         whole build -- the same anchor the published document already
@@ -1078,47 +1066,44 @@ class AbstractBaseNode(metaclass=NodeMeta):
         build_dir = get_build_dir(self.src)
         anchored = os.path.relpath(
             os.path.join(self.build_dir, local_path), build_dir)
-        return _ArtifactImport(anchored)
+        return ArtifactImport(anchored)
 
     def _model_for_own_scad(self):
-        """This node's own model, with every framework artifact import
-        re-anchored from the build-wide anchor onto THIS node's own
-        build directory -- the directory the `.scad` about to hold it
-        will actually sit in (ADR-116).
+        """This node's own presentation description, with every framework
+        artifact import re-anchored from the build-wide anchor onto THIS
+        node's own build directory -- the directory the `.scad` about to
+        hold it will actually sit in (ADR-116).
 
-        A no-op copy when this node's build directory already IS the
-        build-wide anchor (a root declared at the top of the source
-        tree): `os.path.relpath` of a path against itself is `'.'`, so
-        re-anchoring would rewrite nothing, and skipping it avoids
-        `copy.deepcopy`-ing a tree for no reason. Every other node --
-        every real project, whose models live under a package such as
-        `simulation/` -- pays one deep copy per `.scad` write; task 2.9
-        measures it, and it is not free (reviewer's note).
+        `reanchored` is a pure function over the core's own description:
+        it shares every node holding no artifact import and never enters
+        authored geometry, so a project's own `import_stl` is left exactly
+        as written. Nothing to do when this node's build directory already
+        IS the build-wide anchor (a root declared at the top of the source
+        tree).
         """
-        model = self._require_model()
+        model = described(self._require_model())
         from machinome.core.builder import get_build_dir
         build_dir = os.path.normpath(get_build_dir(self.src))
         own_build_dir = os.path.normpath(self.build_dir)
         if build_dir == own_build_dir:
             return model
-        reanchored = copy.deepcopy(model)
-        _reanchor_artifact_imports(reanchored, build_dir, own_build_dir)
-        return reanchored
+        return reanchored(model, build_dir, own_build_dir)
 
     def import_optimized(self):
         if self.rigid and self._up_to_date(self.stl_file):
             return self._colorize(self.artifact_import(self.local_stl))
         return self._colorize(self.model)
 
-    def _colorize(self, scad_code):
+    def _colorize(self, presented):
+        """`presented` in this node's colour, as a description."""
         if self.color is None:
-            return scad_code
+            return described(presented)
         hex_code = self.color.lstrip('#')
         if len(hex_code) != 6:
             raise ValueError(f"Invalid self.color at {self}. "
                              "It should be in the format #RRGGBB")
-        colors = [int(hex_code[i:i + 2], 16) / 255 for i in (0, 2, 4)]
-        return color(colors, 1)(scad_code)
+        colors = tuple(int(hex_code[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        return Color(colors, 1, described(presented))
 
     @property
     def stl(self):
@@ -1246,7 +1231,9 @@ class AbstractBaseNode(metaclass=NodeMeta):
         raise RuntimeError(f'{self.name} does not expose exact geometry')
 
     def as_scad(self, rendered):
-        """Converts the output of render() to solid2 object"""
+        """This node's SCAD presentation of what render() returned: a
+        presentation description, or the solid2 object a SCAD-authored
+        leaf authored, which the core holds as `Authored`."""
         raise NotImplementedError
 
     def as_number(self, n):
@@ -1254,21 +1241,31 @@ class AbstractBaseNode(metaclass=NodeMeta):
             raise TypeError(f'{n!r} is not a number')
         return n
 
+    def _require_scad_engine(self):
+        """The OpenSCAD engine, which writes this node's SCAD text, or its
+        refusal naming this node."""
+        return _scad_engine_for(self)
+
     @property
     def scad_code(self):
-        code = scad_render(self._model_for_own_scad())
-        if self.fn:
-            code = f'$fn = {self.fn};\n\n{code}'
-        return code
+        """This node's own SCAD text, which the OpenSCAD engine writes from
+        its presentation description; refused naming the missing module
+        when the engine is not installed."""
+        engine = self._require_scad_engine()
+        return engine.scad_text(self._model_for_own_scad(), fn=self.fn)
 
     def generate_scad(self):
         """Write this node's `.scad` from its `model`, stamped and
         recorded like every artifact, unless the same file was already
         written in this source generation.
 
-        A leaf whose native artifact language is SCAD calls it from
-        `materialize`, after setting `model` to its render result.
+        Called only where a path reads the file: a leaf whose native
+        artifact language is SCAD calls it from `materialize`, after setting
+        `model` to its render result, for OpenSCAD to render its STL; the
+        OpenSCAD snapshot renderer calls it on the root. Requires the
+        OpenSCAD engine, which writes the text.
         """
+        _scad_engine_for(self)
         mtime_ns = self.mtime_ns
         digest = self.source_digest
         fingerprint = self.source_fingerprint
@@ -1330,9 +1327,10 @@ class AbstractBaseNode(metaclass=NodeMeta):
             return logger.info('Cannot generate, locked')
 
         node_name = getattr(self, 'name', type(self).__name__)
-        openscad = require_openscad(
-            f'node {node_name} ({type(self).__qualname__})',
-            'its STL is rendered from SCAD by OpenSCAD')
+        needed_by = f'node {node_name} ({type(self).__qualname__})'
+        reason = 'its STL is rendered from SCAD by OpenSCAD'
+        openscad = require_scad_engine(needed_by, reason).require_binary(
+            needed_by, reason)
 
         fh = open(self.lock_file, 'w')
 

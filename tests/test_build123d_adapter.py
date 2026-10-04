@@ -274,7 +274,7 @@ class Build123dArtifactTest(BuildDirTestCase):
         node = BuilderBox()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(

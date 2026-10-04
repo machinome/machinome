@@ -107,7 +107,7 @@ class OpenScadDependencyTest(TestCase):
         node.build_stls()
         os.remove(node.stl_file)
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'faceted fusion must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
@@ -120,7 +120,7 @@ class OpenScadDependencyTest(TestCase):
         node = ExactPair()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'exact geometry must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
@@ -134,7 +134,7 @@ class OpenScadDependencyTest(TestCase):
         node = Build123dBox()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'exact geometry must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
@@ -148,7 +148,7 @@ class OpenScadDependencyTest(TestCase):
         node = MixedExactPair()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'exact geometry must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
@@ -220,7 +220,7 @@ class JScadDependencyBoundaryTest(TestCase):
         node = object.__new__(JScadNode)
         node.stl_file = 'current.stl'
         with patch.object(JScadNode, '_up_to_date', return_value=True), \
-             patch('machinome.node.base.require_openscad',
+             patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'current JSCAD artifact must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(
@@ -246,7 +246,7 @@ class JScadDependencyBoundaryTest(TestCase):
 
                 with patch('machinome.node.jscad.Popen',
                            side_effect=launch_jscad), \
-                     patch('machinome.node.base.require_openscad',
+                     patch('machinome.openscad.binary.require_openscad',
                            side_effect=AssertionError(
                                'JSCAD must not check OpenSCAD')):
                     node = JsBlock()

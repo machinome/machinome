@@ -1177,6 +1177,9 @@ class SkipDecisionTest(CurrencyTestCase):
         # The other half of the same statement: a missing decal is not a
         # reason to re-enter the render path at all.
         node = built(FixtureDial)
+        # `_render_can_be_skipped` also asks for the `.scad`, which only a
+        # path reading it writes since `scad-presentation`.
+        node.generate_scad()
         os.remove(node.marking_file('digits'))
 
         second = FixtureDial()
@@ -1670,6 +1673,8 @@ class OpenScadPathTest(BaseNodeTest):
         node.build_stls()
 
         output = os.path.join(self.build_dir, 'bench.png')
+        # The root's SCAD, written on demand as `machinome snapshot` does.
+        OpenScadRenderer().present(node)
         OpenScadRenderer().render(
             node,
             SimpleNamespace(imgsize='120,90', time=0, camera=None, path=None,

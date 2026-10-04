@@ -10,7 +10,8 @@ import re
 import shutil
 import sys
 
-from machinome.openscad.binary import require_openscad
+from machinome import currency
+from machinome.scad_engine import require_scad_engine
 
 
 logger = logging.getLogger('viewers.openscad')
@@ -49,17 +50,61 @@ class OpenScadImportError(RuntimeError):
 
 
 class OpenScadRenderer:
-    def render(self, node, args, output, runner):
-        openscad = require_openscad(
+    """Renders a node's SCAD to an image with OpenSCAD.
+
+    The SCAD it draws is obtained on demand, from no build: `present`
+    writes the root's `.scad` in the build directory, through the OpenSCAD
+    engine, for the pose the snapshot renders, and `render` removes it once
+    OpenSCAD has read it, whether the render succeeded or failed -- the file
+    exists only for this renderer. A root whose geometry is authored in SCAD
+    keeps its `.scad`, which is its own build artifact. The engine and the
+    binary are both reached through the seam `machinome.scad_engine`.
+    """
+
+    def require_engine(self):
+        """The OpenSCAD engine, which writes the SCAD this renderer draws,
+        or its refusal naming this renderer and `--renderer web`. Asked
+        before the node is loaded."""
+        return require_scad_engine(
             'the OpenSCAD snapshot renderer',
-            'rendering the requested image launches OpenSCAD',
+            'it renders the SCAD the OpenSCAD engine writes',
             'use --renderer web')
-        base_command = self.build_command(node, args, output)
-        base_command[0] = openscad
-        command = self.wrap_command(base_command)
-        logger.info('Rendering %s to %s', node.scad_file, output)
-        logger.debug('OpenSCAD command: %s', ' '.join(command))
-        result = runner(command, check=True, capture_output=True, text=True)
+
+    def present(self, node):
+        """Write the root's `.scad` at its own artifact path for the pose it
+        is assembled in, its imports resolving from that file's directory.
+        Called inside the project build lock, right after `assemble()`.
+        Not a build artifact: `render` removes it after OpenSCAD has read
+        it, and a build removes one a killed render left."""
+        node.generate_scad()
+
+    def withdraw(self, node):
+        """Remove the root's on-demand `.scad` and its currency record,
+        unless the root's geometry is authored in SCAD, whose `.scad` is
+        its own build artifact."""
+        if getattr(node, 'scad_authored', True):
+            return
+        for path in (node.scad_file, currency.sidecar(node.scad_file)):
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                pass
+
+    def render(self, node, args, output, runner):
+        try:
+            openscad = self.require_engine().require_binary(
+                'the OpenSCAD snapshot renderer',
+                'rendering the requested image launches OpenSCAD',
+                'use --renderer web')
+            base_command = self.build_command(node, args, output)
+            base_command[0] = openscad
+            command = self.wrap_command(base_command)
+            logger.info('Rendering %s to %s', node.scad_file, output)
+            logger.debug('OpenSCAD command: %s', ' '.join(command))
+            result = runner(command, check=True, capture_output=True,
+                            text=True)
+        finally:
+            self.withdraw(node)
         self._report(result, node)
 
     def _report(self, result, node):

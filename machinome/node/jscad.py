@@ -92,6 +92,9 @@ class JScadNode(ExternalSourceIdentity, LeafNode):
                 pass
 
     def as_scad(self, rendered):
+        """Present the part's STL artifact: the core's description of its
+        import (`artifact_import`), whose text the OpenSCAD engine writes
+        where a path reads it."""
         if not self._up_to_date(self.stl_file):
             JScadNode.materialize(self, rendered)
         return self.artifact_import(self.local_stl)

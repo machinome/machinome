@@ -4,19 +4,20 @@
 
 """
 The operations that can be applied to a solid are represented
-here as classes that are able to handle scad and mesh, other than
-serializing themselves for the web frontend. This way the same results
-can be obtained in browser and in tests.
+here as classes that are able to handle the SCAD presentation and mesh,
+other than serializing themselves for the web frontend. This way the same
+results can be obtained in browser and in tests.
 The operation is also able to revert itself.
+
+An operation presents itself in the core's presentation description
+(`machinome.node.presentation`), holding its own values; the OpenSCAD
+engine writes the SCAD text of it.
 """
 
 import math
 import trimesh
 from machinome.expression_graph import GraphValue, scalar, restore_scalar
-from solid2 import (
-    rotate as scad_rotate,
-    translate as scad_translate,
-)
+from machinome.node.presentation import Rotate, Translate, described
 
 
 def _as_number(node, value):
@@ -51,9 +52,10 @@ class Rotation:
         """Return an operation that reverses the rotation"""
         return Rotation(-self.angle, self.axis, self.node)
 
-    def scad(self, scad_object):
-        """Returns a scad object with a rotation applied"""
-        return scad_rotate(self.angle, self.axis)(scad_object)
+    def presented(self, child):
+        """The presentation description of `child` rotated, holding this
+        operation's own angle and axis"""
+        return Rotate(self.angle, self.axis, described(child))
 
     def matrix(self):
         """The 4x4 world rotation matrix for this operation (skill-repo
@@ -101,9 +103,10 @@ class Translation:
             self.node,
         )
 
-    def scad(self, scad_object):
-        """Returns a scad object with a translation applied"""
-        return scad_translate(self.translation)(scad_object)
+    def presented(self, child):
+        """The presentation description of `child` translated, holding
+        this operation's own vector"""
+        return Translate(self.translation, described(child))
 
     def matrix(self):
         """The 4x4 world translation matrix for this operation

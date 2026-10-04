@@ -6,6 +6,44 @@ Changelog
 Unreleased
 ----------
 
+* **The SCAD presentation is the OpenSCAD engine's:** machinome's node
+  base no longer imports SolidPython. ``assemble()`` composes a
+  description of the node's SCAD presentation (artifact imports, colours,
+  rotations, translations, unions and the geometry an OpenSCAD-family part
+  authored) and the OpenSCAD engine, ``machinome.openscad``, writes the
+  ``.scad`` text from it, byte for byte as before. ``assemble()`` therefore
+  needs neither SolidPython nor the engine, and it writes no file of SCAD:
+  without them a project of exact, STEP or STL parts builds, tests,
+  exports and publishes, while asking for SCAD text (``scad_code``,
+  ``generate_scad()``, an OpenSCAD-family part, ``machinome snapshot
+  --renderer openscad``) refuses naming the missing module and its
+  install.
+
+  **Breaking, for OpenSCAD users: a ``.scad`` is written only where
+  machinome reads it.** ``machinome build`` writes the ``.scad`` of an
+  OpenSCAD-family part (a ``Solid2Node``, an ``OpenScadNode``, a part
+  overriding ``as_scad``), from which OpenSCAD renders its STL, and no
+  other: it no longer writes the ``.scad`` of an assembly, of a fusion or
+  of a flexible part (nor of an exact, STEP, STL, JSCAD or sheet part, nor
+  a flexible part's per-pose snapshot STL), and the next build removes
+  those an earlier build left in the build directory. A machine's SCAD
+  text is ``node.scad_code``, for any node; ``machinome snapshot
+  --renderer openscad`` writes the root's ``.scad`` for the pose it
+  renders only while OpenSCAD draws it, and removes it afterwards. Every
+  ``.scad`` a build writes is the text OpenSCAD renders the part's STL
+  from, byte for byte what it was, except that the file of a coloured
+  OpenSCAD-family part declaring ``optimize = False`` is no longer
+  overwritten with its coloured presentation after the render. This also
+  fixes a defect: a later build, test or export process no longer replaces
+  the ``.scad`` of a current OpenSCAD-family part with an import of its own
+  STL. Breaking for code
+  outside projects: ``assemble()``, ``as_scad()`` and
+  ``artifact_import()`` return machinome's presentation description
+  instead of a SolidPython object (render it with the engine's
+  ``scad_text``), ``Rotation.scad()`` and ``Translation.scad()`` are
+  removed, and ``Builder`` no longer takes ``scad_output``; no project
+  uses any of them. ``OpenScadUnavailable`` is now a
+  ``machinome.scad_engine.ScadEngineUnavailable`` (ADR-172, ADR-173).
 * **Symbolic values are machinome's own:** animation time, driver reads
   and what ``machinome.math`` returns for them are
   ``machinome.expression_graph.GraphValue``, a type the core defines; they

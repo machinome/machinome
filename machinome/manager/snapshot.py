@@ -10,7 +10,7 @@ from machinome.core.loader import ProjectManifestError, load_node, select_model
 from machinome.motion.ports import declared_time
 from machinome.core.builder import project_build_lock
 from machinome.viewers.openscad import OpenScadImportError, OpenScadRenderer
-from machinome.openscad.binary import OpenScadUnavailable
+from machinome.scad_engine import ScadEngineUnavailable
 
 
 logger = logging.getLogger('manager.snapshot')
@@ -149,6 +149,7 @@ class Snapshot:
         self.output = args.output
         self.time = args.time
         renderer = getattr(args, 'renderer', 'openscad')
+        self.renderer = renderer
 
         if renderer == 'web':
             unsupported = [
@@ -186,6 +187,15 @@ class Snapshot:
             sys.stderr.write(f"Error: Invalid --imgsize format '{args.imgsize}'. "
                            f"Expected WxH (e.g., 1920x1080)\n")
             sys.exit(1)
+
+        # The OpenSCAD renderer draws SCAD only the OpenSCAD engine writes:
+        # refuse its absence before anything is loaded or written.
+        if renderer == 'openscad':
+            try:
+                OPENSCAD_RENDERER.require_engine()
+            except ScadEngineUnavailable as error:
+                sys.stderr.write(f'Error: {error}\n')
+                raise SystemExit(1)
 
         # Load and prepare the node
         try:
@@ -230,7 +240,7 @@ class Snapshot:
             sys.stderr.write("Error: OpenSCAD not found in PATH. "
                            "Please install OpenSCAD and ensure it is accessible.\n")
             sys.exit(1)
-        except OpenScadUnavailable as error:
+        except ScadEngineUnavailable as error:
             sys.stderr.write(f'Error: {error}\n')
             raise SystemExit(1)
 
@@ -247,7 +257,9 @@ class Snapshot:
 
     def _load_and_prepare_node(self):
         """Load the node, pose its named drivers, and prepare it for
-        rendering."""
+        rendering. For the OpenSCAD renderer, also write the root's SCAD
+        for that pose, in the same locked step; the web renderer writes
+        none."""
         with project_build_lock():
             node = load_node(self.path,
                              overrides=getattr(self, 'overrides', None))
@@ -271,6 +283,8 @@ class Snapshot:
             node.set_keyframe(self.time * loop if loop is not None
                               else self.time)
             node.assemble()
+            if getattr(self, 'renderer', None) == 'openscad':
+                OPENSCAD_RENDERER.present(node)
 
         return node
 

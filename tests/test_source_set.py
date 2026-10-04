@@ -23,7 +23,7 @@ import time
 from contextlib import chdir
 from unittest import TestCase, mock
 
-from solid2 import scad_render
+from machinome.scad_engine import scad_engine
 
 from machinome import currency
 from .base import BaseNodeTest
@@ -172,7 +172,8 @@ class UpToDateLeafTest(BaseNodeTest):
     def test_skipped_leaf_assembles_the_same_scad(self):
         rendered = Block().assemble()
         skipped = Block().assemble()
-        self.assertEqual(scad_render(skipped), scad_render(rendered))
+        engine = scad_engine()
+        self.assertEqual(engine.scad_text(skipped), engine.scad_text(rendered))
 
     def test_cadquery_does_not_reexport_a_current_artifact(self):
         node = Block()
@@ -184,7 +185,8 @@ class UpToDateLeafTest(BaseNodeTest):
             scad = again.as_scad(again.render())
 
         export.assert_not_called()
-        self.assertEqual(scad_render(scad), scad_render(node.model))
+        engine = scad_engine()
+        self.assertEqual(engine.scad_text(scad), engine.scad_text(node.model))
 
     def test_cadquery_exports_when_the_artifact_is_missing(self):
         # The stand-in still has to produce the file: the adapter

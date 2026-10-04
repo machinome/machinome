@@ -1,0 +1,171 @@
+{
+  "bench_commit": "9a894d459c83a5ff9bad5285821d785643e1b4df",
+  "fixture": {
+    "files": {
+      "scad_presentation_project/bracket-__Bracket_,_scad_presentation_project_parts.py__-e8d312e50df4.scad": {
+        "length": 109,
+        "scad_authored": false,
+        "sha256": "ee62bf9bd542a3914a1f6adb6adf9fcbc56fc9dde8fdeded6eefa3b4f2f8e182"
+      },
+      "scad_presentation_project/parts-Block-211d0bb8cf4f.scad": {
+        "length": 64,
+        "scad_authored": false,
+        "sha256": "332c2d374a98c0dc362b69bd34342ad26d11723febec99172b5c1b12f61ad590"
+      },
+      "scad_presentation_project/parts-Boss-6a6ac8386005.scad": {
+        "length": 15,
+        "scad_authored": true,
+        "sha256": "34ce366942cf9e8425de0b7ea968fce88164f6ed33f7d04ab87b3406db849528"
+      },
+      "scad_presentation_project/parts-Coil-2fed02da4a54.scad": {
+        "length": 76,
+        "scad_authored": false,
+        "sha256": "23030b54bba7927ac6319b1a2f9dd2087a68d4de395013e0e6415a16d3453d28"
+      },
+      "scad_presentation_project/parts-ColouredCube-615d4b9ac084.scad": {
+        "length": 31,
+        "scad_authored": true,
+        "sha256": "2d7fa2b7ab29a877e229dedbaabe1a441fda20c626cd93f90efb226bc28f1406"
+      },
+      "scad_presentation_project/parts-Empty-c6c094bc0054.scad": {
+        "length": 9,
+        "scad_authored": false,
+        "sha256": "1653da2b47e6d0e68764638c64d608231927977003ce7695bee6cfcba8eb5c83"
+      },
+      "scad_presentation_project/parts-FineCylinder-2111f2f9079a.scad": {
+        "length": 35,
+        "scad_authored": true,
+        "sha256": "815c7c5a5b9d71980fdbcc53ef8ec002055d5703099b51ff8b2d335db3580af7"
+      },
+      "scad_presentation_project/parts-Fused-8cedfb8cbef5.scad": {
+        "length": 85,
+        "scad_authored": false,
+        "sha256": "df1d67a5a54a9a7a5f57a7db3309af582594a3b717cb9df4b3957fd8a9d41ca7"
+      },
+      "scad_presentation_project/parts-InlineCylinder-e6e368128f71.scad": {
+        "length": 24,
+        "scad_authored": true,
+        "sha256": "afad85022194324f3b0ae3139c9dd02f5db2fb305695e297b91fc68d7af5a647"
+      },
+      "scad_presentation_project/parts-Legacy-1432897a6136.scad": {
+        "length": 24,
+        "scad_authored": true,
+        "sha256": "7772a25053303b74a9f41de0a0851134823420d78b6792a6119451e82fc204b3"
+      },
+      "scad_presentation_project/parts-Lug-b5245f210371.scad": {
+        "length": 24,
+        "scad_authored": true,
+        "sha256": "1ebd63db553cfbc170828e44796f036fb38f3bdfdcedbcdfab5b7e5c88b1afb4"
+      },
+      "scad_presentation_project/parts-OwnImport-1baf13817176.scad": {
+        "length": 85,
+        "scad_authored": true,
+        "sha256": "6a532f4ab6be4c5749b3c65362d1577010810a62ea2254b10c04f45a49aa8a6b"
+      },
+      "scad_presentation_project/parts-Single-8888a029aaf6.scad": {
+        "length": 129,
+        "scad_authored": false,
+        "sha256": "404b31086da496675de26354ae1cd7a010db3c5d47175d0d0bbb7362c3421d28"
+      },
+      "scad_presentation_project/parts-Unoptimized-6c61f77e529a.scad": {
+        "length": 114,
+        "scad_authored": false,
+        "sha256": "463a696157e81fa9bea62c0bc95e8859c3543b3c421cd5b94aa9a028307cc5e4"
+      },
+      "scad_presentation_project/plate-__Plate_,_scad_presentation_project_parts.py__-9ea63c013015.scad": {
+        "length": 149,
+        "scad_authored": true,
+        "sha256": "409ece45ab5ec11da73f1b7931ccc30514656740e1dcfa06f83bc6498293bac3"
+      },
+      "scad_presentation_project/tools/bench-Bench-3f8c65be8e28.scad": {
+        "length": 1234,
+        "scad_authored": false,
+        "sha256": "25e7360f6213bd9cb0ad13cebc85567ddf36ffda6efde64270b4cd94ce16c688"
+      },
+      "scad_presentation_project/tools/bench-Loose-384bf8e88ca4.scad": {
+        "length": 85,
+        "scad_authored": false,
+        "sha256": "6a532f4ab6be4c5749b3c65362d1577010810a62ea2254b10c04f45a49aa8a6b"
+      }
+    },
+    "scad_code": {
+      "Bench": {
+        "length": 1234,
+        "sha256": "25e7360f6213bd9cb0ad13cebc85567ddf36ffda6efde64270b4cd94ce16c688"
+      },
+      "Bench/Block": {
+        "length": 64,
+        "sha256": "332c2d374a98c0dc362b69bd34342ad26d11723febec99172b5c1b12f61ad590"
+      },
+      "Bench/Bracket": {
+        "length": 109,
+        "sha256": "ee62bf9bd542a3914a1f6adb6adf9fcbc56fc9dde8fdeded6eefa3b4f2f8e182"
+      },
+      "Bench/Coil": {
+        "length": 76,
+        "sha256": "23030b54bba7927ac6319b1a2f9dd2087a68d4de395013e0e6415a16d3453d28"
+      },
+      "Bench/Empty": {
+        "length": 9,
+        "sha256": "1653da2b47e6d0e68764638c64d608231927977003ce7695bee6cfcba8eb5c83"
+      },
+      "Bench/FineCylinder": {
+        "length": 35,
+        "sha256": "815c7c5a5b9d71980fdbcc53ef8ec002055d5703099b51ff8b2d335db3580af7"
+      },
+      "Bench/Fused": {
+        "length": 85,
+        "sha256": "df1d67a5a54a9a7a5f57a7db3309af582594a3b717cb9df4b3957fd8a9d41ca7"
+      },
+      "Bench/Fused/Boss": {
+        "length": 15,
+        "sha256": "34ce366942cf9e8425de0b7ea968fce88164f6ed33f7d04ab87b3406db849528"
+      },
+      "Bench/Fused/Lug": {
+        "length": 24,
+        "sha256": "1ebd63db553cfbc170828e44796f036fb38f3bdfdcedbcdfab5b7e5c88b1afb4"
+      },
+      "Bench/Legacy": {
+        "length": 24,
+        "sha256": "7772a25053303b74a9f41de0a0851134823420d78b6792a6119451e82fc204b3"
+      },
+      "Bench/Plate": {
+        "length": 149,
+        "sha256": "409ece45ab5ec11da73f1b7931ccc30514656740e1dcfa06f83bc6498293bac3"
+      },
+      "Bench/Single": {
+        "length": 129,
+        "sha256": "404b31086da496675de26354ae1cd7a010db3c5d47175d0d0bbb7362c3421d28"
+      },
+      "Bench/Single/ColouredCube": {
+        "length": 31,
+        "sha256": "2d7fa2b7ab29a877e229dedbaabe1a441fda20c626cd93f90efb226bc28f1406"
+      },
+      "Bench/Unoptimized": {
+        "length": 114,
+        "sha256": "463a696157e81fa9bea62c0bc95e8859c3543b3c421cd5b94aa9a028307cc5e4"
+      },
+      "Bench/Unoptimized/InlineCylinder": {
+        "length": 82,
+        "sha256": "b26e0f843d0c98319f86a99d1ec781fca0de0c06a429433f65a1cce2f06e51ca"
+      },
+      "Loose": {
+        "length": 85,
+        "sha256": "6a532f4ab6be4c5749b3c65362d1577010810a62ea2254b10c04f45a49aa8a6b"
+      },
+      "Loose/OwnImport": {
+        "length": 85,
+        "sha256": "6a532f4ab6be4c5749b3c65362d1577010810a62ea2254b10c04f45a49aa8a6b"
+      }
+    }
+  },
+  "re_recorded": {
+    "date": "2026-10-04",
+    "entry": "scad_presentation_project/parts-InlineCylinder-e6e368128f71.scad",
+    "was": {
+      "length": 82,
+      "sha256": "b26e0f843d0c98319f86a99d1ec781fca0de0c06a429433f65a1cce2f06e51ca"
+    },
+    "why": "design.md Decision 8: a coloured optimize = False SCAD-authored leaf keeps the text OpenSCAD renders its STL from"
+  }
+}

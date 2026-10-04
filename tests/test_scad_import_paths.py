@@ -12,6 +12,10 @@ into its parent's `.scad` by bare filename...") is a cross-package parent
 importing a flexible leaf; the fixture and this test also cover the rigid
 and exact leaf kinds and an intermediate assembly, which the same
 measurement (`evidence.md`) showed broken the other way.
+
+Since `scad-presentation` no build and no `assemble()` writes an assembly's
+`.scad`: each test asks the node it reads for its file (`generate_scad()`),
+the path a caller -- or the OpenSCAD snapshot renderer, for the root -- takes.
 """
 
 import os
@@ -92,6 +96,7 @@ class CrossPackageLeafKindsTest(BaseNodeTest):
         _build_stl(self.bench)
         _forget_assembly(self.bench)
         self.bench.assemble()
+        self.bench.generate_scad()
 
     def test_every_leaf_kind_resolves_from_the_parents_own_directory(self):
         text = _assert_all_resolve(self, self.bench.scad_file)
@@ -106,6 +111,7 @@ class CrossPackageLeafKindsTest(BaseNodeTest):
 
         second = Bench()
         second.assemble()
+        second.generate_scad()
         second_text = _assert_all_resolve(self, second.scad_file)
 
         self.assertEqual(first_text, second_text)
@@ -124,6 +130,8 @@ class IntermediateAssemblyScadImportTest(BaseNodeTest):
         _build_stl(self.deep_bench)
         _forget_assembly(self.deep_bench)
         self.deep_bench.assemble()
+        self.deep_bench.children[0].generate_scad()
+        self.deep_bench.generate_scad()
 
     def test_intermediate_assemblys_own_scad_resolves_from_its_own_directory(self):
         group = self.deep_bench.children[0]
@@ -147,6 +155,7 @@ class SamePackageControlTest(BaseNodeTest):
         _build_stl(self.same_bench)
         _forget_assembly(self.same_bench)
         self.same_bench.assemble()
+        self.same_bench.generate_scad()
 
     def test_bare_basenames_unchanged(self):
         text = _assert_all_resolve(self, self.same_bench.scad_file)

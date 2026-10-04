@@ -8,8 +8,9 @@ is the framework's own type").
 
 Read from the source: no module outside the OpenSCAD engine's package
 imports a SolidPython expression name, and the modules that still import
-SolidPython at all are exactly the SCAD presentation, the two OpenSCAD leaves
-and the project template, which the campaign's later cycles move. Read from
+SolidPython at all are exactly the two OpenSCAD leaves and the project
+template, which the campaign's later cycles move (the SCAD presentation left
+the core in `scad-presentation`). Read from
 a fresh interpreter: importing the vocabulary imports no SolidPython. Read
 from the values: time, a driver read and what `machinome.math` returns are
 `GraphValue`s with no SolidPython class in their ancestry, and asking one
@@ -34,25 +35,20 @@ EXPRESSION_NAMES = {'OpenSCADConstant', 'scad_inline', 'ScadValue',
                     'get_animation_time'}
 
 #: Every core module that still imports SolidPython, and the campaign
-#: cycle that removes it (`workflow/ongoing/lean-core.md`, "Layers").
+#: cycle that removes it (`workflow/ongoing/lean-core.md`, "Layers"). The
+#: SCAD presentation left the core in cycle 6 (`scad-presentation`).
 SOLID2_IMPORTERS = {
-    'machinome/node/base.py',        # cycle 6, the SCAD presentation
-    'machinome/node/operations.py',  # cycle 6, the SCAD presentation
-    'machinome/node/internal.py',    # cycle 6, the SCAD presentation
-    'machinome/node/flexible.py',    # cycle 6, the SCAD presentation
     'machinome/node/solid2.py',      # cycle 7, the Solid2Node leaf
     'machinome/node/openscad.py',    # cycle 7, the OpenScadNode leaf
     'machinome/manager/templates/project/root/__init__.py',  # cycle 8
 }
 
 #: The core modules that reach the engine's package directly, outside the
-#: seam `machinome.scad_engine`, for the OpenSCAD binary locator: the SCAD
-#: presentation and the runner, which cycles 6 and 7 move behind the seam.
+#: seam `machinome.scad_engine`: since cycle 6 (`scad-presentation`) the
+#: core reaches the binary through the seam, and only the `Solid2Node`
+#: leaf's `as_number` still reaches the locator, until cycle 7.
 BINARY_REACHES = {
-    'machinome/node/base.py',         # cycles 6-7
     'machinome/node/solid2.py',       # cycle 7
-    'machinome/viewers/openscad.py',  # cycle 7
-    'machinome/manager/snapshot.py',  # cycle 7
 }
 
 

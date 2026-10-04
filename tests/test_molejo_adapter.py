@@ -490,7 +490,10 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
 
 
 class MolejoSnapshotSweepTest(BaseNodeTest):
-    """A superseded binding's artifact is collected; the bound one is not."""
+    """A per-binding snapshot is presentation: no build composes one since
+    `scad-presentation` (design.md Decision 3), so a publication that sweeps
+    collects every snapshot an `assemble()` left, the bound one included,
+    and a publication that changes nothing sweeps none."""
 
     def publish(self, node):
         builder = Builder('model.py', build_dir=self.build_dir)
@@ -499,13 +502,14 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
         with open(os.path.join(self.build_dir, 'viewer.json')) as document:
             return json.load(document)
 
-    def test_the_referenced_snapshot_survives_the_sweep(self):
+    def test_a_snapshot_an_assemble_left_is_swept(self):
         node = bound_valvetrain(lift=0.0)
         node.assemble()
+        self.assertTrue(os.path.isfile(node.spring.snapshot_file))
 
         self.publish(node)
 
-        self.assertTrue(os.path.isfile(node.spring.snapshot_file))
+        self.assertFalse(os.path.exists(node.spring.snapshot_file))
 
     def touch_sources(self):
         """Age the fixture's source, as the edit a later build follows.
@@ -524,7 +528,8 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
     def test_a_binding_change_alone_republishes_nothing(self):
         """The document is symbolic, so moving the machine does not
         change it -- and a publication that changed nothing sweeps
-        nothing, leaving the previous binding's snapshot where it is."""
+        nothing but `.scad`, leaving the snapshot an `assemble()` wrote
+        since where it is."""
         node = bound_valvetrain(lift=0.0)
         node.assemble()
         self.publish(node)
@@ -537,7 +542,7 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
 
         self.assertFalse(builder._write_viewer_snapshot())
         self.assertNotEqual(moved.spring.snapshot_file, at_rest)
-        self.assertTrue(os.path.isfile(at_rest))
+        self.assertTrue(os.path.isfile(moved.spring.snapshot_file))
 
     def test_a_superseded_snapshot_is_collected(self):
         node = bound_valvetrain(lift=0.0)
@@ -551,8 +556,9 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
         self.publish(moved)
 
         self.assertNotEqual(moved.spring.snapshot_file, superseded)
-        self.assertTrue(os.path.isfile(moved.spring.snapshot_file))
         self.assertFalse(os.path.exists(superseded))
+        # The bound one goes too: no build references a snapshot.
+        self.assertFalse(os.path.exists(moved.spring.snapshot_file))
 
     def test_the_rigid_sibling_keeps_its_own_artifact(self):
         node = bound_valvetrain(lift=0.0)

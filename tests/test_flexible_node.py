@@ -193,7 +193,7 @@ class FlexibleRigidityTest(BaseNodeTest):
         rig = bound_rig()
         rig.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'a flexible part must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(

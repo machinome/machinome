@@ -842,11 +842,28 @@ class SnapshotIntegrationTest(TestCase):
         )
         self.snapshot.path = node_path
         self.snapshot.time = 0.0
+        # The root's SCAD is written on demand for the OpenSCAD renderer
+        # only (`scad-presentation`), as `handle` selects it.
+        self.snapshot.renderer = 'openscad'
 
         node = self.snapshot._load_and_prepare_node()
 
         self.assertTrue(hasattr(node, 'scad_file'))
         self.assertTrue(os.path.exists(node.scad_file))
+
+    def test_load_and_prepare_for_the_web_renderer_writes_no_root_scad(self):
+        """(`scad-presentation`) The web renderer reads no SCAD, so none is
+        written for the root."""
+        node_path = os.path.join(
+            BASEDIR, 'flat_project', 'two_cylinders.py'
+        )
+        self.snapshot.path = node_path
+        self.snapshot.time = 0.0
+        self.snapshot.renderer = 'web'
+
+        node = self.snapshot._load_and_prepare_node()
+
+        self.assertFalse(os.path.exists(node.scad_file))
 
     def test_assembly_node_with_time(self):
         """Test that set_keyframe works with AssemblyNode"""

@@ -41,4 +41,8 @@ class TwoPipesTest(BaseNodeTest):
         assembled = node.assemble()
 
         self.assertIsNotNone(assembled)
+        # assemble() writes no SCAD (`scad-presentation`); generate_scad()
+        # writes the assembly's on demand.
+        self.assertFalse(os.path.exists(node.scad_file))
+        node.generate_scad()
         self.assertTrue(os.path.exists(node.scad_file))

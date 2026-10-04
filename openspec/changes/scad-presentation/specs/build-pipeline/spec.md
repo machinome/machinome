@@ -32,7 +32,7 @@ capability). It SHALL write no `.scad` for an assembly, a fusion, a flexible
 leaf or any other leaf, with or without the engine, and SHALL log nothing
 about SCAD presentation. The root's `.scad` is written in the build directory
 only by `machinome snapshot --renderer openscad`, under the `web-snapshot`
-capability; it is not a build artifact. Geometry/document-only consumers under
+capability, which removes it once rendered; it is not a build artifact. Geometry/document-only consumers under
 `backend-neutral-materialization` SHALL NOT require or generate assembly SCAD,
 but SHALL still produce SCAD source when a selected backend needs it. Other
 artifacts remain `.stl` (rendered) and `.stl.lock` during
@@ -176,7 +176,10 @@ SHALL NOT alter any document's schema.
 ### Requirement: A successful build sweeps unreferenced artifacts
 
 After a successful publication the system SHALL remove files in the build
-directory that the current viewer snapshot does not reference. It SHALL NOT
+directory that the current viewer snapshot does not reference. A build that
+finds the document it would publish already published SHALL still apply the
+`.scad` rule below, and only that rule: a `.scad` no current node writes
+never survives a successful build, whatever the document did. It SHALL NOT
 remove:
 
 - the snapshot;
@@ -205,8 +208,9 @@ geometry is authored in SCAD (a `Solid2Node`, an `OpenScadNode`, or a project
 leaf overriding `as_scad`), with its currency record, whether or not this
 build rewrote it, and SHALL remove every other `.scad` in the build directory
 with its currency record: one an earlier build wrote for an assembly, a
-fusion, a flexible leaf or another leaf, one the OpenSCAD snapshot renderer
-wrote for a root, and one of a SCAD-authored leaf no longer in the tree.
+fusion, a flexible leaf or another leaf, one an interrupted OpenSCAD
+snapshot left for a root, and one of a SCAD-authored leaf no longer in the
+tree.
 
 A **marking** artifact under the `markings` capability is spared by
 **reference**, not by kind, because the published snapshot names it beside the
@@ -253,11 +257,14 @@ successful publication, exactly as a renamed node's artifact is.
 - **THEN** the `.scad` under the old name is gone and the `.scad` under the
   new name is present
 
-#### Scenario: The next build removes the snapshot's root SCAD
+#### Scenario: A build removes any SCAD no current node writes
 
-- **WHEN** `machinome snapshot --renderer openscad` has left the root's
-  `.scad` in the build directory and the project is then built successfully
-- **THEN** the root's `.scad` is gone from the build directory
+- **WHEN** an interrupted `machinome snapshot --renderer openscad` has left
+  the root's `.scad` in the build directory and the project is then built
+  successfully, publishing the document already published
+- **THEN** the root's `.scad` and its currency record are gone from the
+  build directory, and every artifact the `.scad` rule does not govern is
+  swept, or not, exactly as before
 
 #### Scenario: The verdict store survives the sweep
 

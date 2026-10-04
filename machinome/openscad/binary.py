@@ -7,17 +7,25 @@
 import shutil
 from functools import lru_cache
 
+from machinome.scad_engine import ScadEngineUnavailable
 
-class OpenScadUnavailable(RuntimeError):
-    """A requested operation cannot run without the OpenSCAD binary."""
+
+class OpenScadUnavailable(ScadEngineUnavailable):
+    """A requested operation cannot run without the OpenSCAD binary.
+
+    One of the seam's `ScadEngineUnavailable`, so the core catches it
+    through the seam without naming this package; its message is the
+    binary's own."""
 
     def __init__(self, needed_by, reason, alternative=None):
+        super().__init__(needed_by, reason, None, alternative)
+
+    def describe(self):
         remedy = "install OpenSCAD and ensure 'openscad' is on PATH"
-        if alternative:
-            remedy = f'{remedy}, or {alternative}'
-        super().__init__(
-            f'{needed_by} requires the OpenSCAD binary because {reason}; '
-            f'{remedy}')
+        if self.alternative:
+            remedy = f'{remedy}, or {self.alternative}'
+        return (f'{self.needed_by} requires the OpenSCAD binary because '
+                f'{self.reason}; {remedy}')
 
 
 @lru_cache(maxsize=1)

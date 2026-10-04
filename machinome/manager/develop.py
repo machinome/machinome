@@ -27,15 +27,13 @@ logger = logging.getLogger('manager.develop')
 # project's build directory.
 
 
-def run_builder(path, overrides, is_reload=False, callback=None,
-                scad_output=False):
+def run_builder(path, overrides, is_reload=False, callback=None):
     Builder(
         path,
         is_reload=is_reload,
         callback=callback,
         lifecycle=True,
         overrides=overrides,
-        scad_output=scad_output,
     ).start()
 
 
@@ -122,8 +120,7 @@ class Develop:
             web_proc = self.web()
 
         if args.debug_builder:
-            return run_builder(self.path, self.overrides, callback=callback,
-                               scad_output=False)
+            return run_builder(self.path, self.overrides, callback=callback)
 
         # Only the very first builder attempt is "startup": a project
         # that is already broken at launch exits cleanly instead of
@@ -143,8 +140,7 @@ class Develop:
 
                 builder_proc = Process(target=run_builder,
                                        args=(self.path, self.overrides,
-                                             not first_run, callback,
-                                             False))
+                                             not first_run, callback))
                 builder_proc.start()
 
                 try:

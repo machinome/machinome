@@ -174,6 +174,9 @@ class StlNode(ExternalSourceIdentity, LeafNode):
                 temporary, file_type='stl'))
 
     def as_scad(self, rendered):
+        """Present the imported part's artifact: the core's description of
+        its import (`artifact_import`), whose text the OpenSCAD engine
+        writes where a path reads it."""
         self.materialize(rendered)
         return self.artifact_import(self.local_stl)
 

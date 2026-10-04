@@ -400,6 +400,9 @@ class SheetDxfArtifactTest(BuildDirTestCase):
     def test_a_current_sheet_leaf_skips_its_render_entirely(self):
         node = PerforatedPlate()
         node.assemble()
+        # `_render_can_be_skipped` also asks for the `.scad`, which only a
+        # path reading it writes since `scad-presentation`.
+        node.generate_scad()
 
         second = PerforatedPlate()
 
@@ -456,7 +459,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
         node = Plate()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
              patch('machinome.node.base.Popen', side_effect=AssertionError(

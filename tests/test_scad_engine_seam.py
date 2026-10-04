@@ -2,8 +2,9 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The OpenSCAD engine seam, `machinome.scad_engine` (OpenSpec change
-`expression-type`, capability `scad-engine-dependency`).
+"""The OpenSCAD engine seam, `machinome.scad_engine` (OpenSpec changes
+`expression-type` and `scad-presentation`, capability
+`scad-engine-dependency`).
 
 The core names the OpenSCAD engine in one place and resolves it on first
 use, of the exact engine seam's shape: `scad_engine()` answers the provider
@@ -49,7 +50,7 @@ class DeclarationTest(TestCase):
 
     def test_the_seam_declares_its_contract_and_its_one_provider(self):
         seam = _seam()
-        self.assertEqual(seam.CONTRACT, 1)
+        self.assertEqual(seam.CONTRACT, 2)
         self.assertEqual(seam.PROVIDER, PROVIDER)
 
     def test_importing_the_seam_imports_neither_the_provider_nor_solid2(self):
@@ -168,23 +169,51 @@ class ContractMismatchTest(_SeamCacheCleared):
             self.assertIn(str(self.seam.CONTRACT), message)
 
     def test_a_provider_declaring_another_version_is_refused(self):
-        self.assert_refused(_stub(CONTRACT=2), '2')
+        self.assert_refused(_stub(CONTRACT=1), '1')
 
     def test_a_provider_declaring_no_version_is_refused(self):
         self.assert_refused(_stub(), 'declares none')
 
     def test_a_refusal_is_not_cached(self):
-        with patch.dict(sys.modules, {PROVIDER: _stub(CONTRACT=2)}):
+        with patch.dict(sys.modules, {PROVIDER: _stub(CONTRACT=1)}):
             with self.assertRaises(self.seam.ScadEngineIncompatible):
                 self.seam.scad_engine()
         self.assertIsNotNone(self.seam.scad_engine())
 
 
-#: Run the expression golden's comparison in this interpreter.
+#: The expression golden's operations and published document, compared in
+#: this interpreter; and its SCAD text, which since `scad-presentation`
+#: only the engine writes, refused. Its `Solid2Node` parts are built first
+#: with the engine (`BUILT`): materializing one asks the engine for its SCAD.
 GOLDEN_CHECK = '''
-import runpy, sys
-sys.argv = ['tests/expression_type_golden.py', '--check']
-runpy.run_path('tests/expression_type_golden.py', run_name='__main__')
+import json, os, sys
+sys.path.insert(0, 'tests')
+import expression_type_golden as golden
+from machinome.core.serializer import symbolic_document
+from machinome.scad_engine import ScadEngineUnavailable
+recorded = json.load(open(golden.GOLDEN))['fixture']
+node = golden._machine()
+operations = {}
+with symbolic_document(node):
+    for each in (node, node.arm, node.slider, node.coil):
+        operations[each.name] = [
+            golden._digest(json.dumps(operation.serialized))
+            for operation in each.operations]
+    try:
+        node.scad_code
+        print('SCAD answered')
+    except ScadEngineUnavailable as error:
+        print('SCAD refused', error)
+print('OPERATIONS', operations == recorded['operations'])
+print('PUBLISHED', golden._document() == recorded['published'])
+'''
+
+#: The expression golden's parts built with the engine installed.
+BUILT = '''
+import sys
+sys.path.insert(0, 'tests')
+import expression_type_golden as golden
+golden._machine().build_stls()
 '''
 
 #: The numeric face, the law and the seam, with a SolidPython value.
@@ -213,10 +242,26 @@ class WithoutTheEngineTest(TestCase):
     ENGINE = (PROVIDER,)
 
     def test_native_values_compose_and_publish_the_golden(self):
-        run = run_python(GOLDEN_CHECK, absent=self.ENGINE)
+        """The golden's operations and document byte for byte; its SCAD
+        text, which only the engine writes (`scad-presentation`), refused
+        naming the engine. Its `Solid2Node` parts are built first with the
+        engine, since materializing one is a path that requires it."""
+        import shutil
+        import tempfile
+        build_dir = tempfile.mkdtemp(prefix='expression-golden-')
+        self.addCleanup(shutil.rmtree, build_dir, ignore_errors=True)
+        built = run_python(BUILT, blocked=False, build_dir=build_dir)
+        self.assertEqual(built.returncode, 0, built.output)
+        run = run_python(GOLDEN_CHECK, absent=self.ENGINE,
+                         build_dir=build_dir)
         self.assertEqual(run.returncode, 0, run.output)
-        self.assertIn('golden comparison: 17 values, 0 differences',
-                      run.stdout)
+        lines = run.stdout.splitlines()
+        self.assertIn('OPERATIONS True', lines)
+        self.assertIn('PUBLISHED True', lines)
+        refused = next(line for line in lines if line.startswith('SCAD '))
+        self.assertTrue(refused.startswith('SCAD refused node SharedMotion '
+                                           '(SharedMotion)'), refused)
+        self.assertIn(PROVIDER, refused)
 
     def test_a_solidpython_value_meets_the_existing_refusals(self):
         run = run_python(SOLIDPYTHON_VALUE, absent=self.ENGINE)
@@ -250,3 +295,113 @@ class NumbersNeverConsultTheEngineTest(TestCase):
             # The stub is wired: anything else does consult it.
             symbolic('not a number')
             self.assertEqual(asked.call_count, 1)
+
+
+class RequireTest(_SeamCacheCleared):
+    """(`scad-presentation`) The paths that need SCAD text require the
+    engine through the seam, and the binary's refusal is the seam's."""
+
+    def test_require_scad_engine_returns_the_provider(self):
+        engine = self.seam.require_scad_engine('node part (Part)', 'reasons')
+        self.assertEqual(engine.__name__, PROVIDER)
+        self.assertIs(engine, self.seam.scad_engine())
+
+    def test_the_provider_absent_is_refused_naming_it(self):
+        with patch.dict(sys.modules, {PROVIDER: None}):
+            with self.assertRaises(self.seam.ScadEngineUnavailable) as raised:
+                self.seam.require_scad_engine(
+                    'the OpenSCAD snapshot renderer', 'it draws SCAD',
+                    'use --renderer web')
+        message = str(raised.exception)
+        for words in ('the OpenSCAD snapshot renderer', 'it draws SCAD',
+                      PROVIDER, 'reinstall machinome', '--renderer web'):
+            self.assertIn(words, message)
+        self.assertNotIn('machinome[', message)
+
+    def test_the_binarys_refusal_is_the_seams_with_its_message_unchanged(self):
+        from machinome.openscad.binary import OpenScadUnavailable
+        self.assertTrue(issubclass(OpenScadUnavailable,
+                                   self.seam.ScadEngineUnavailable))
+        error = OpenScadUnavailable('node housing (FacetedBox)',
+                                    'its STL is rendered from SCAD by '
+                                    'OpenSCAD', 'use --renderer web')
+        self.assertEqual(
+            str(error),
+            'node housing (FacetedBox) requires the OpenSCAD binary because '
+            'its STL is rendered from SCAD by OpenSCAD; install OpenSCAD and '
+            "ensure 'openscad' is on PATH, or use --renderer web")
+
+
+class CountingProviderTest(_SeamCacheCleared):
+    """A stub provider counting what the core asks of it: SCAD text once per
+    stale SCAD-authored leaf a build materializes and never for
+    `assemble()`; the binary for a stale `Solid2Node`'s STL and for the
+    snapshot renderer."""
+
+    def setUp(self):
+        super().setUp()
+        import os
+        import shutil
+        import tempfile
+        real = importlib.import_module(PROVIDER)
+        self.texts, self.binaries = [], []
+
+        def scad_text(description, fn=None):
+            self.texts.append(description)
+            return real.scad_text(description, fn=fn)
+
+        def require_binary(needed_by, reason, alternative=None):
+            self.binaries.append(needed_by)
+            return real.require_binary(needed_by, reason, alternative)
+
+        stub = _stub(CONTRACT=2, adopt=real.adopt, scad_text=scad_text,
+                     require_binary=require_binary)
+        # Only the provider's entry is replaced and restored: restoring the
+        # whole of sys.modules would drop the modules this test imports
+        # (OCP's among them), which cannot be imported twice.
+        sys.modules[PROVIDER] = stub
+        self.addCleanup(sys.modules.__setitem__, PROVIDER, real)
+        self.build_dir = tempfile.mkdtemp(prefix='scad-counting-')
+        self.addCleanup(shutil.rmtree, self.build_dir, ignore_errors=True)
+        environment = patch.dict(os.environ,
+                                 {'SOLID_BUILD_DIR': self.build_dir})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def machine(self):
+        from tests.scad_where_read_project.machine import Machine
+        node = Machine()
+        node._prepare()
+        fine = next(child for child in node.children
+                    if type(child).__name__ == 'FineCylinder')
+        return node, fine
+
+    def test_scad_text_once_per_stale_scad_authored_leaf_never_by_assemble(self):
+        node, _ = self.machine()
+        self.assertEqual(len(self.texts), 1)
+        node.assemble()
+        self.assertEqual(len(self.texts), 1)
+
+    def test_the_binary_for_a_stale_solid2nodes_stl_and_the_renderer(self):
+        import os
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+        from machinome.node import StlRenderStart
+        from machinome.viewers.openscad import OpenScadRenderer
+        node, fine = self.machine()
+        with patch('machinome.node.base.Popen',
+                   return_value=MagicMock(pid=os.getpid())):
+            with self.assertRaises(StlRenderStart) as started:
+                fine.generate_stl()
+        started.exception._discard()
+        self.assertEqual(self.binaries,
+                         ['node FineCylinder (FineCylinder)'])
+
+        args = SimpleNamespace(camera=None, autocenter=False, viewall=False,
+                               imgsize='64x48', projection=None,
+                               colorscheme=None, preview=False, view=None)
+        runner = MagicMock(return_value=SimpleNamespace(stdout='',
+                                                        stderr=''))
+        OpenScadRenderer().render(node, args, 'out.png', runner)
+        runner.assert_called_once()
+        self.assertEqual(self.binaries[-1], 'the OpenSCAD snapshot renderer')

@@ -1,6 +1,6 @@
 # ADR-116: An Artifact Import Is Anchored on the Build Directory
 
-**Status:** Accepted
+**Status:** Accepted, mechanism amended 2026-10-04 by [ADR-172](../NODE/ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md)
 **Date:** 2026-09-15
 **Change:** `import-the-artifact-by-path`
 **Extends:**
@@ -186,6 +186,20 @@ broken.
   anchoring bug.
 - `viewer.json`, the export document and the web renderer are unaffected:
   they name artifacts by their own paths and never parse a `.scad`.
+
+## Amendment (2026-10-04): the mechanism
+
+[ADR-172](../NODE/ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md)
+replaces the mechanism, not the rule. The marker is the core's own
+`ArtifactImport`, not an `import_stl` subclass, and re-anchoring is
+`machinome.node.presentation.reanchored`, a pure function over the core's
+description that rewrites `ArtifactImport` paths only, shares every other
+node, never enters `Authored` geometry (so a project's own `import_stl` stays
+as written) and needs no deep copy; `_ArtifactImport` and
+`_reanchor_artifact_imports` are gone. Every path spelling is unchanged. Since
+[ADR-173](ADR-173-scad-is-written-only-where-it-is-read.md) the `.scad` files
+that hold such imports are written by a caller's `generate_scad()` or the
+OpenSCAD snapshot renderer, not by a build.
 
 ## References
 

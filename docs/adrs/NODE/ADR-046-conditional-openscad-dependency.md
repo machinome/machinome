@@ -1,6 +1,6 @@
 # ADR-046: Conditional OpenSCAD dependency
 
-**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md); module location amended 2026-10-03 by [ADR-171](ADR-171-the-openscad-engine-is-machinome-openscad.md)
+**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md); module location amended 2026-10-03 by [ADR-171](ADR-171-the-openscad-engine-is-machinome-openscad.md); refusal family amended 2026-10-04 by [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md)
 
 **Date:** 2026-08-13
 
@@ -106,6 +106,17 @@ locator, unchanged, from `machinome/openscad.py` to
 imported from `machinome.openscad.binary`. The resolver, its once-per-process
 cache, the requiring set and the refusal's words are unchanged; the
 References below are history.
+
+## Amendment (2026-10-04): the engine's refusal
+
+[ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md) adds a
+second refusal beside the binary's: `machinome.scad_engine.ScadEngineUnavailable`,
+raised where SCAD text is needed and the OpenSCAD engine is absent, naming the
+missing module and its install. `OpenScadUnavailable` derives from it with its
+message unchanged, so a caller catches either through the seam. The binary's
+requiring set and resolver are unchanged; the engine's requiring paths are
+`scad_code`, `generate_scad()`, a SCAD-authored leaf's materialization and the
+OpenSCAD snapshot renderer, checked before the binary.
 
 ## References
 

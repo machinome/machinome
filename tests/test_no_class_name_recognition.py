@@ -220,7 +220,7 @@ class SharedBaseRoutingTest(TestCase):
                 node = leaf()
                 node.assemble()
 
-                with patch('machinome.node.base.require_openscad',
+                with patch('machinome.openscad.binary.require_openscad',
                            side_effect=AssertionError(
                                'an exact adapter must not check OpenSCAD')), \
                      patch('machinome.node.base.Popen',

@@ -6,12 +6,25 @@
 resolution.
 
 The OpenSCAD engine (`machinome.openscad`) is where SolidPython is known.
-The core asks it, through this module, for one thing: to adopt a value
-SolidPython built as the core's expression graph
-(`machinome.expression_graph.symbolic`). Adoption is optional by nature --
-without the engine no SolidPython value is an expression, and a path that
-receives one refuses it as it refuses any other non-expression -- so no
-path requires the engine and this seam raises no install refusal.
+The core asks it, through this module, for what only it can do (contract
+version 2):
+
+- `adopt(value)` (since 1): read a value SolidPython built as the core's
+  expression graph (`machinome.expression_graph.symbolic`). Optional by
+  nature -- without the engine no SolidPython value is an expression, and a
+  path that receives one refuses it as it refuses any other non-expression;
+- `scad_text(description, fn=None)`: the SCAD text of a presentation
+  description the core composed (`machinome.node.presentation`). The core
+  describes its SCAD presentation and never writes SCAD itself;
+- `require_binary(needed_by, reason, alternative=None)`: the OpenSCAD
+  executable, or the binary contract's refusal.
+
+The paths that need SCAD text require the engine, through
+`require_scad_engine`, and are refused with `ScadEngineUnavailable` naming
+what needed it, the module that could not be found and its install: a
+node's `scad_code` and `generate_scad()`, the materialization of a leaf
+whose geometry is authored in SCAD, and the OpenSCAD snapshot renderer.
+`assemble()` and an ordinary build require nothing of it.
 
 The seam has the exact engine's shape (`machinome.exact_engine`): one
 known provider, named here and nowhere else in the core, resolved once per
@@ -25,10 +38,26 @@ import importlib
 #: The OpenSCAD engine contract version this core speaks. A provider
 #: declares the version it implements as its own `CONTRACT`; they must be
 #: equal.
-CONTRACT = 1
+CONTRACT = 2
 
 #: The one module that provides the OpenSCAD engine.
 PROVIDER = 'machinome.openscad.engine'
+
+#: What installs each module whose absence is an absent engine, as an
+#: install that works today: SolidPython is a requirement of machinome's
+#: distribution, which also carries the engine's package. Neither is an
+#: extra yet, and naming an install line that installs nothing would be
+#: worse than naming none.
+_REMEDIES = {
+    'solid2': "install SolidPython with 'pip install solidpython2'",
+    'machinome.openscad': ('reinstall machinome, whose distribution '
+                           'carries the OpenSCAD engine'),
+    PROVIDER: ('reinstall machinome, whose distribution carries the '
+               'OpenSCAD engine'),
+}
+
+#: The module whose absence made the last resolution answer None.
+_missing = [None]
 
 
 class ScadEngineIncompatible(RuntimeError):
@@ -41,6 +70,32 @@ class ScadEngineIncompatible(RuntimeError):
             f'The OpenSCAD engine {PROVIDER} {stated}, but this machinome '
             f'speaks OpenSCAD engine contract version {CONTRACT}; install '
             f'the engine released with this machinome')
+
+
+class ScadEngineUnavailable(RuntimeError):
+    """A requested operation cannot run without the OpenSCAD engine.
+
+    `needed_by` and `reason` say what asked and why, `missing` the module
+    that could not be found, and `alternative`, when given, another way to
+    the same result. The binary's refusal,
+    `machinome.openscad.binary.OpenScadUnavailable`, is one of these, so a
+    caller catches either through this seam.
+    """
+
+    def __init__(self, needed_by, reason, missing=None, alternative=None):
+        self.needed_by = needed_by
+        self.reason = reason
+        self.missing = missing
+        self.alternative = alternative
+        super().__init__(self.describe())
+
+    def describe(self):
+        remedy = _REMEDIES.get(self.missing, _REMEDIES[PROVIDER])
+        if self.alternative:
+            remedy = f'{remedy}, or {self.alternative}'
+        return (f'{self.needed_by} requires the OpenSCAD engine because '
+                f'{self.reason}, and the module {self.missing} cannot be '
+                f'found; {remedy}')
 
 
 def _absent(error):
@@ -68,9 +123,25 @@ def scad_engine():
         engine = importlib.import_module(PROVIDER)
     except ModuleNotFoundError as error:
         if _absent(error):
+            _missing[0] = error.name
             return None
         raise
     declared = getattr(engine, 'CONTRACT', None)
     if declared != CONTRACT:
         raise ScadEngineIncompatible(declared)
+    return engine
+
+
+def require_scad_engine(needed_by, reason, alternative=None):
+    """Return the OpenSCAD engine or raise one actionable error.
+
+    Called where a path that needs SCAD text is attempted, before any file
+    is written or any process launched. `needed_by` names what asked -- for
+    a node, its name and its own class -- and `alternative`, when given,
+    another way to the same result.
+    """
+    engine = scad_engine()
+    if engine is None:
+        raise ScadEngineUnavailable(needed_by, reason, _missing[0],
+                                    alternative)
     return engine

@@ -62,7 +62,7 @@ import hashlib
 import json
 import os
 
-from solid2 import union
+from .presentation import Union
 from machinome.expression_graph import depends_on_time, scalar
 
 from machinome.node.base import _canonical_serialization, binding_hash
@@ -132,10 +132,10 @@ class FlexibleNode(LeafNode):
                 type(self), args, kwargs)
 
         #: The snapshot artifact this node's last `as_scad()` imported,
-        #: or None before one ran. Public because the build's post-build
-        #: sweep has to know which per-binding artifact is still
-        #: referenced: the published document is serialized symbolically
-        #: and so cannot name one, while the assembled tree can.
+        #: or None before one ran, or when a time-fed port left nothing to
+        #: photograph. No build reads it: a build composes no presentation
+        #: (design.md of `scad-presentation`, Decision 3), so the next
+        #: build's sweep removes every per-binding snapshot.
         self.snapshot_file = None
 
         #: The last binding whose exact solid was built, and the result.
@@ -297,9 +297,10 @@ class FlexibleNode(LeafNode):
             if depends_on_time(getattr(self, name).value))
 
     def as_scad(self, rendered):
-        """Evaluate this instant and import it, so the assembled SCAD
-        document stays as complete as it honestly can for the OpenSCAD
-        GUI.
+        """Evaluate this instant and import it, so the presentation
+        description stays as complete as it honestly can for the SCAD the
+        OpenSCAD engine writes of it -- the root's, for the OpenSCAD
+        snapshot renderer, or any caller's `scad_code`.
 
         A snapshot camera, never animation: OpenSCAD gets the geometry of
         the bound state, the same treatment drivers already get. Produced
@@ -322,7 +323,7 @@ class FlexibleNode(LeafNode):
         """
         if not self._unbound_ports() and self._time_fed_ports():
             self.snapshot_file = None
-            return union()
+            return Union(())
 
         values = self.bound_values()
         snapshot = self.snapshot_stl_file(values)

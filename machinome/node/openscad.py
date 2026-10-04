@@ -4,7 +4,6 @@
 
 import os
 import sys
-from solid2 import scad_render
 from solid2.core.parse_scad import get_scad_file_as_dict
 from solid2.core.utils import resolve_scad_filename
 from machinome.node.leaf import LeafNode
@@ -25,6 +24,10 @@ class OpenScadNode(ExternalSourceIdentity, LeafNode):
     namespace = 'solid2.core.object_factory'
     scad_source = None
     module_name = None
+
+    #: Its geometry is authored in SCAD: OpenSCAD renders its STL from its
+    #: own `.scad`, which a build writes and keeps.
+    scad_authored = True
 
     def __init__(self, *args, name=None, **kwargs):
         """Receives args, an optional name keyword argument and a list of keyword
@@ -79,7 +82,9 @@ class OpenScadNode(ExternalSourceIdentity, LeafNode):
 
     @property
     def scad_code(self):
-        """The contents of the code, plus a module call"""
-        rendered = scad_render(self._model_for_own_scad())
+        """The contents of the code, plus a module call, whose text the
+        OpenSCAD engine writes"""
+        rendered = self._require_scad_engine().scad_text(
+            self._model_for_own_scad())
         module_call = rendered.strip().split('\n')[-1]
         return f'{self.openscad_code}\n\n{module_call}'

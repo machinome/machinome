@@ -361,7 +361,7 @@ class ExactArtifactTest(TestCase):
         fusion = MixedFusion()
         fusion.build_stls()
         os.remove(fusion.stl_file)
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.openscad.binary.require_openscad',
                    side_effect=AssertionError('fusion must not use OpenSCAD')), \
              patch('machinome.node.base.Popen',
                    side_effect=AssertionError('fusion must not launch')):

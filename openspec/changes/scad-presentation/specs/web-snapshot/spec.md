@@ -82,8 +82,12 @@ holding the text the root's `scad_code` gives in that pose, every artifact
 import in it resolving from that file's directory, and SHALL write no other
 node's `.scad` for the image. Every OpenSCAD snapshot SHALL write the file for
 its own pose rather than reuse one an earlier run or build left. The file is
-not a build artifact: the next successful build of that directory removes it
-under the `build-pipeline` capability.
+not a build artifact: it exists only for the renderer, which SHALL remove it
+and its currency record once OpenSCAD has read it, whether the render
+succeeded or failed. A root whose geometry is authored in SCAD keeps its
+`.scad`, which is its own build artifact. A file an interrupted render left
+is removed by the next successful build under the `build-pipeline`
+capability.
 
 When the web renderer is selected, the snapshot command SHALL write and read
 no `.scad`.
@@ -93,16 +97,22 @@ no `.scad`.
 - **WHEN** `machinome snapshot --renderer openscad` renders a model whose root
   places an assembly and a flexible leaf, in a build directory holding no
   `.scad` for the root
-- **THEN** the root's `.scad` exists at the root's artifact path holding the
-  root's SCAD text in the snapshot's pose, OpenSCAD is given that file, and
-  no `.scad` is written for the assembly or the flexible leaf
+- **THEN** OpenSCAD is given the root's `.scad` at the root's artifact path,
+  holding the root's SCAD text in the snapshot's pose, no `.scad` is written
+  for the assembly or the flexible leaf, and once OpenSCAD has read it the
+  root's `.scad` is gone
+
+#### Scenario: A failed render removes the root's SCAD too
+
+- **WHEN** OpenSCAD fails while rendering the root's `.scad`
+- **THEN** the command fails as before and the root's `.scad` is gone
 
 #### Scenario: Each snapshot presents its own pose
 
 - **WHEN** two OpenSCAD snapshots of one root are taken at two different
   `--time` positions, one after the other
-- **THEN** after each, the root's `.scad` holds the SCAD text of that
-  snapshot's pose
+- **THEN** each time, the root's `.scad` OpenSCAD is given holds the SCAD
+  text of that snapshot's pose
 
 #### Scenario: The web renderer touches no SCAD
 

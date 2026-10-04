@@ -14,11 +14,16 @@ The build directory
 ``_build/<name>/``) is written directly and holds, per node,
 ``<script>-<uniq_id>.stl``, plus ``.brep`` for an exact node, ``.dxf``
 for a sheet part, ``.marking-<name>.stl`` per declared marking, and the
-``.scad`` of OpenSCAD-family parts. Artifacts of different parameter sets
-coexist. Each artifact is written whole or not at all, every artifact a
-document names is in place before the document, and a successful
-publication sweeps files the document no longer references. Builds of
-one project serialize on an advisory lock beside the build directory.
+``.scad`` of OpenSCAD-family parts (a ``Solid2Node``, an ``OpenScadNode``,
+a part overriding ``as_scad``), which OpenSCAD renders their STL from. No
+other ``.scad`` is a build's: ``build`` and ``develop`` write none for an
+assembly, a fusion, a flexible part or any other part. Artifacts of
+different parameter sets coexist. Each artifact is written whole or not at
+all, every artifact a document names is in place before the document, and
+a successful publication sweeps files the document no longer references;
+every successful build, its document changed or not, removes any ``.scad``
+no current part writes. Builds of one project serialize on an advisory
+lock beside the build directory.
 
 ``viewer.json`` is the document. ``errors.json`` is written, atomically,
 on a failed build and removed after the next successful one; a failed
@@ -188,4 +193,6 @@ timeline fraction, ``--drive`` binds drivers by qualified id, and
 ``--set`` changes build parameters instead. Under a running root the
 image is the untimed rest pose at those driver values; a state carrying
 history is not posed from the command line. Neither renderer falls back
-to the other.
+to the other. The OpenSCAD renderer writes the root's ``.scad`` for the
+pose it renders, has OpenSCAD draw it, and removes it; the web renderer
+reads no SCAD. A machine's SCAD text, for any node, is its ``scad_code``.

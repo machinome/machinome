@@ -1,6 +1,6 @@
 # ADR-171: The OpenSCAD Engine Is `machinome.openscad`, Reached for Expressions Through `machinome.scad_engine`
 
-**Status:** Accepted
+**Status:** Accepted, contract and direct reaches amended 2026-10-04 by [ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md)
 **Date:** 2026-10-03
 **Change:** [`expression-type`](../../../openspec/changes/archive/2026-10-03-expression-type/)
 **Amends:** [ADR-046: Conditional OpenSCAD dependency](ADR-046-conditional-openscad-dependency.md) — the binary locator's module
@@ -103,6 +103,17 @@ function with one caller.
   is neither a number nor an expression over its sources." from a law.
 - An operation over a SolidPython constant never read before costs 128 to
   144 Python calls, within 10 % of 0.7.1's 125 and 135.
+
+## Amendment (2026-10-04)
+
+[ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md)
+moves the contract to version 2 on both sides, adding `scad_text` and
+`require_binary` to `adopt`, and the seam gains `require_scad_engine` and
+`ScadEngineUnavailable` ([ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md)),
+so "no path requires the engine" no longer holds: SCAD text does. Of the four
+direct reaches listed under "What still reaches the package directly",
+`node/base.py`, `viewers/openscad.py` and `manager/snapshot.py` now go through
+the seam; only `node/solid2.py` remains, until cycle 7.
 
 ## References
 

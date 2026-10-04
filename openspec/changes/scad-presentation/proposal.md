@@ -70,11 +70,16 @@ The originating evidence, read in the bench at a4a1f84 on 3 October 2026:
   `machinome build` and `develop`'s builder are one pipeline. `machinome
   snapshot --renderer openscad` writes the root's `.scad` on demand, through
   the seam, in the build directory at the root's own path, for the pose it
-  renders; `--renderer web` writes none. With the engine absent a build
+  renders, and removes it once OpenSCAD has read it, whether the render
+  succeeded or failed (correction of 4 October 2026, design.md Decision 3);
+  `--renderer web` writes none. With the engine absent a build
   writes no `.scad` because nothing asks for one, and a SCAD-authored leaf
   meets its existing refusal. The build sweep keeps a `.scad` by reference,
   only for a SCAD-authored leaf of the published tree, and removes every
-  other, so the files earlier builds left go at the next build.
+  other, so the files earlier builds left go at the next build: on every
+  successful build, also one that republishes an unchanged document, where
+  the `.scad` rule alone is applied and every other artifact keeps today's
+  trigger.
 - **Asking for SCAD text without the engine is refused actionably.** The seam
   gains `require_scad_engine(needed_by, reason, alternative=None)` and
   `ScadEngineUnavailable`, naming what needed the engine, why, which module is
@@ -98,9 +103,9 @@ The originating evidence, read in the bench at a4a1f84 on 3 October 2026:
   sheet), nor a flexible leaf's per-binding snapshot STL, and the next build
   removes those an earlier build left. For Pin_tumbler_lock that is 3 of the
   14 files: the root's, the `Plug` assembly's and the `PenSpring`'s. A
-  machine's SCAD is obtained on demand: `machinome snapshot --renderer
-  openscad` leaves the root's in the build directory until the next build,
-  and `node.scad_code` gives any node's text.
+  machine's SCAD is obtained on demand: `node.scad_code` gives any node's
+  text; `machinome snapshot --renderer openscad` writes the root's only for
+  OpenSCAD to draw and removes it afterwards.
 - **BREAKING (framework-internal):** `assemble()` and `as_scad()` return the
   core's presentation description rather than a SolidPython object, and
   `artifact_import()` returns the description of an import; `Rotation.scad()`
@@ -111,7 +116,11 @@ The originating evidence, read in the bench at a4a1f84 on 3 October 2026:
 - **Unchanged, byte for byte:** every `.scad` still written (a SCAD-authored
   leaf's; the root's from the OpenSCAD snapshot renderer, for the same pose),
   every node's `scad_code`, the published document, the viewer, `develop`,
-  export, `machinome test`, the OpenSCAD snapshot image.
+  export, `machinome test`, the OpenSCAD snapshot image. One exception, by
+  construction (design.md Decision 8, corrected 4 October 2026): the `.scad`
+  of a SCAD-authored leaf declaring `optimize = False` and a `color` is the
+  uncoloured text OpenSCAD renders its STL from, no longer overwritten with
+  its coloured presentation afterwards.
 
 Deferred, recorded in design.md: the runner (`stl_builder_command_for`,
 `StlRenderStart`'s OpenSCAD command, the snapshot renderer's command line),
@@ -183,7 +192,7 @@ binary, not a SCAD deliverable, and those paths are unchanged.
   (no importable name moves).
 - **Artifacts and documents.** No document changes and no document version
   moves. A build directory holds `.scad` only for SCAD-authored leaves (and
-  the root's after an OpenSCAD snapshot, until the next build); a flexible
+  the root's while an OpenSCAD snapshot draws it); a flexible
   leaf's per-binding snapshot STL is no longer written by a build. The
   persistent verdict store starts afresh once, as on every framework source
   change (ADR-156).

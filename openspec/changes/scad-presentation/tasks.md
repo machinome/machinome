@@ -1,9 +1,9 @@
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `openspec/changes/scad-presentation/evidence.md` in the shape
+- [x] 1.1 Create `openspec/changes/scad-presentation/evidence.md` in the shape
   of the archived cycles' (`2026-10-03-expression-type/evidence.md`), with the
   bench commit.
-- [ ] 1.2 The presentation golden (design.md Decision 8): write
+- [x] 1.2 The presentation golden (design.md Decision 8): write
   `tests/scad_presentation_golden.py` and its fixture package
   `tests/scad_presentation_project/` (reusing `tests/cross_package_project`
   or `tests/deep_project` for re-anchoring where they serve), covering a
@@ -24,9 +24,9 @@
   and every SCAD-authored leaf's file byte-identical and present; after the
   change, every other recorded file absent (design.md Decisions 3 and 8),
   which `--check` reports as expected rather than as a difference.
-- [ ] 1.3 Run `tests/expression_type_golden.py --check` on the unmodified
+- [x] 1.3 Run `tests/expression_type_golden.py --check` on the unmodified
   tree; record the summary line.
-- [ ] 1.4 Run, on the unmodified tree, `tests/test_expression_type.py`,
+- [x] 1.4 Run, on the unmodified tree, `tests/test_expression_type.py`,
   `tests/test_scad_engine_seam.py`, `tests/test_openscad_engine.py`,
   `tests/test_openscad_dependency.py`, `tests/test_backend_neutral_materialization.py`,
   `tests/test_scad_import_paths.py`, `tests/test_generation_dedup.py`,
@@ -39,7 +39,7 @@
 
 ## 2. Red tests
 
-- [ ] 2.1 `tests/test_scad_presentation.py`, the AST rules (design.md
+- [x] 2.1 `tests/test_scad_presentation.py`, the AST rules (design.md
   Decision 9): outside `machinome/openscad/`, the `solid2` importers are
   exactly `node/solid2.py`, `node/openscad.py` and
   `manager/templates/project/root/__init__.py`, each commented with the
@@ -47,7 +47,7 @@
   beneath it are exactly `scad_engine.py` and `node/solid2.py` (7). Red: four
   and three extra modules. Shrink `tests/test_expression_type.py`'s two
   lists to the same sets in the same commit (red there too until 4-6).
-- [ ] 2.2 Same file, no SolidPython and no engine, in subprocesses under
+- [x] 2.2 Same file, no SolidPython and no engine, in subprocesses under
   `tests/exact_engine_absent.py`'s finder, once with `absent=solid2` and once
   with `absent=machinome.openscad`: `machinome build` of an all-STL fixture
   project and of an all-exact fixture project exits 0, writes `viewer.json`
@@ -56,7 +56,7 @@
   `build_stls()` and `mesh` succeed and `assemble()` returns a
   `machinome.node.presentation` value. Red: `No module named 'solid2'` at
   `node/base.py`'s import; `.scad` files written.
-- [ ] 2.3 Same file, refusals: with each module absent, `scad_code` and
+- [x] 2.3 Same file, refusals: with each module absent, `scad_code` and
   `generate_scad()` on a fixture `StlNode` subclass raise
   `ScadEngineUnavailable` whose message is the spec's (node name and class,
   "its SCAD text is written by the OpenSCAD engine", the module, `pip install
@@ -67,7 +67,7 @@
   OpenSCAD renderer and the engine absent exits 1 naming the renderer, the
   module and `--renderer web`, before the node is loaded, with a patched
   runner never called, no image and no `.scad` left. Red.
-- [ ] 2.4 `tests/test_scad_engine_seam.py` (extend): `CONTRACT == 2` on the
+- [x] 2.4 `tests/test_scad_engine_seam.py` (extend): `CONTRACT == 2` on the
   seam and on the provider; a stub provider declaring `1` raises
   `ScadEngineIncompatible` naming `1`, `2` and the provider; with none,
   saying none and naming `2`; `require_scad_engine` returns the provider;
@@ -78,19 +78,19 @@
   stale `Solid2Node`'s `generate_stl` (with `Popen` patched) and by the
   snapshot renderer (with the runner patched). Red: contract 1, no
   operations.
-- [ ] 2.5 `tests/test_openscad_engine.py` (extend): `scad_text` of the
+- [x] 2.5 `tests/test_openscad_engine.py` (extend): `scad_text` of the
   spec's placed, coloured import equals the SolidPython rendering of the same
   calls; a symbolic angle is written as its closed text unquoted; a union of
   none is `union();\n`; `fn=24` prefixes `$fn = 24;\n\n`; `Authored` content is
   rendered as SolidPython renders it; `machinome.openscad` exports neither
   `scad_text` nor `require_binary`. Red.
-- [ ] 2.6 `tests/test_scad_presentation.py`, the description:
+- [x] 2.6 `tests/test_scad_presentation.py`, the description:
   `machinome.node.presentation` holds the six types; `reanchored` rewrites
   only `ArtifactImport` paths, as `_reanchor_artifact_imports` does today for
   the same paths, never enters `Authored`, and leaves its input unchanged;
   `Rotation.presented(child)`/`Translation.presented(child)` hold the
   operation's own value objects (identity, not copies). Red.
-- [ ] 2.7 `tests/test_scad_presentation.py`, written only where read (design.md
+- [x] 2.7 `tests/test_scad_presentation.py`, written only where read (design.md
   Decision 3), with the engine installed: a fixture project
   `tests/scad_where_read_project/` holding an assembly that places a faceted
   `FusionNode`, a numerically bound flexible leaf, an exact or `StlNode`
@@ -100,7 +100,7 @@
   per-binding snapshot STL of the flexible leaf; `assemble()` of the root
   afterwards writes or rewrites no `.scad`; `Builder` takes no `scad_output`.
   Red: every node's `.scad` written by the build, and the snapshot STL.
-- [ ] 2.8 Same file, the sweep: the 2.7 fixture's build directory seeded
+- [x] 2.8 Same file, the sweep: the 2.7 fixture's build directory seeded
   with the `.scad` files and currency records the unmodified tree's build
   leaves for the assembly, the fusion, the flexible leaf, the native leaf and
   the root (generated on the unmodified tree, or written at their
@@ -109,55 +109,59 @@
   with the `Solid2Node`'s `.scad` and its record as the only `.scad` files
   and records; a second build with the leaf's STL current keeps its `.scad`.
   Red: every seeded `.scad` spared by kind.
-- [ ] 2.9 Same file, the snapshot on demand: `Snapshot.handle` of the 2.7
+- [x] 2.9 Same file, the snapshot on demand: `Snapshot.handle` of the 2.7
   fixture's root with the OpenSCAD renderer (its runner patched, a stub
-  writing the image) leaves the root's `.scad` at its `scad_file`, its text
-  the root's `scad_code` after the same keyframe, every `import(file = ...)`
-  in it resolving from its directory, and no other node's `.scad` except the
-  `Solid2Node`'s; two snapshots at `--time 0` and `--time 0.5` leave each
-  pose's text in turn; a following build removes the root's `.scad`. With
+  reading the `.scad` it is given and writing the image) gives OpenSCAD the
+  root's `.scad` at its `scad_file`, its text the root's `scad_code` after
+  the same keyframe, every `import(file = ...)` in it resolving from its
+  directory, and no other node's `.scad` except the `Solid2Node`'s beside
+  it; two snapshots at `--time 0` and `--time 0.5` give each pose's text in
+  turn. Corrected 4 October 2026 (design.md Decision 3, "Correction"): after
+  the render the root's `.scad` and its record are gone, also when OpenSCAD
+  fails; a SCAD-authored root keeps its own; a root `.scad` an interrupted
+  render left is removed by a build that republishes the same document. With
   `--renderer web` (the browser renderer's capture patched) no `.scad` is
   written beyond the `Solid2Node`'s materialization. Red: every node's
   `.scad` written by the snapshot's `assemble()` under either renderer, and
   the root's spared by the following build.
-- [ ] 2.10 Characterisation, green before and after (Decision 9, "Develop"):
+- [x] 2.10 Characterisation, green before and after (Decision 9, "Develop"):
   with `has_bundle` patched false, `Develop.handle` exits 1 with
   `INSTALL_REMEDY` and starts neither `Popen` nor `Process`; the develop
   builder as `run_builder` constructs it (`scad_output=False` on the
   unmodified tree; no such parameter after the change) of a fixture mixing
   one `Solid2Node` with exact leaves writes that leaf's `.scad` and no
   other.
-- [ ] 2.11 Run 2.1-2.10 on the unmodified source in one pytest process;
+- [x] 2.11 Run 2.1-2.10 on the unmodified source in one pytest process;
   record every red test and its reason, verbatim, and the green
   characterisations.
 
 ## 3. The description
 
-- [ ] 3.1 `machinome/node/presentation.py`: `ArtifactImport`, `Color`,
+- [x] 3.1 `machinome/node/presentation.py`: `ArtifactImport`, `Color`,
   `Rotate`, `Translate`, `Union`, `Authored` (immutable; values held by
   reference) and `reanchored(description, build_dir, own_build_dir)`; no
   import of `solid2` or of the engine.
-- [ ] 3.2 `node/operations.py`: `Rotation.presented(child)` and
+- [x] 3.2 `node/operations.py`: `Rotation.presented(child)` and
   `Translation.presented(child)` in place of `.scad()`; drop the `solid2`
   import.
 
 ## 4. The engine and the seam
 
-- [ ] 4.1 `machinome/scad_engine.py`: `CONTRACT = 2`; the remembered missing
+- [x] 4.1 `machinome/scad_engine.py`: `CONTRACT = 2`; the remembered missing
   module; `ScadEngineUnavailable`; `require_scad_engine(needed_by, reason,
   alternative=None)` with the two remedies of design.md Decision 4; the
   module docstring listing the contract's operations and the requiring paths.
-- [ ] 4.2 `machinome/openscad/engine.py`: `CONTRACT = 2`;
+- [x] 4.2 `machinome/openscad/engine.py`: `CONTRACT = 2`;
   `scad_text(description, fn=None)` mapping each description type to the
   SolidPython call of design.md's table and `Authored` content through,
   `scad_render`, the `$fn` prefix; `require_binary(...)` delegating to
   `machinome.openscad.binary.require_openscad` at call time.
-- [ ] 4.3 `machinome/openscad/binary.py`: `OpenScadUnavailable` derives from
+- [x] 4.3 `machinome/openscad/binary.py`: `OpenScadUnavailable` derives from
   `machinome.scad_engine.ScadEngineUnavailable`, its message unchanged.
 
 ## 5. The node modules
 
-- [ ] 5.1 `node/base.py`: no `solid2` and no `machinome.openscad` import;
+- [x] 5.1 `node/base.py`: no `solid2` and no `machinome.openscad` import;
   `artifact_import` returns `ArtifactImport`; `_colorize` returns `Color`;
   `assemble()` builds the description through `operation.presented` and
   calls `generate_scad()` nowhere (its two calls go; no skip log exists);
@@ -170,36 +174,38 @@
   resolves the binary through `require_scad_engine(...).require_binary(...)`
   with today's words. The runner (`stl_builder_command_for`, `Popen`,
   `StlRenderStart`) is untouched.
-- [ ] 5.2 `node/internal.py` and `node/flexible.py`: `Union` in place of
+- [x] 5.2 `node/internal.py` and `node/flexible.py`: `Union` in place of
   `union()`; drop the `solid2` import. Every docstring naming "a solid2
   object" for the presentation says "presentation description".
-- [ ] 5.3 `node/openscad.py`: `scad_code` takes its module call from the
+- [x] 5.3 `node/openscad.py`: `scad_code` takes its module call from the
   engine's `scad_text` of `_model_for_own_scad()`; `scad_authored = True`;
   its `render()` and SolidPython parsing stay (cycle 7). `node/solid2.py`:
   `scad_authored = True` and nothing else (its imports stay, cycle 7).
   `node/leaf.py`: `scad_authored` answers `_uses_legacy_scad_materialization()`
   (false on `FlexibleNode`, as that predicate already is).
-- [ ] 5.4 `node/leaf.py`, `node/exact_leaf.py`, `node/stl.py`,
+- [x] 5.4 `node/leaf.py`, `node/exact_leaf.py`, `node/stl.py`,
   `node/jscad.py`, `node/sheet_leaf.py`: docstrings of `as_scad` and
   `artifact_import` (the description; the engine writes SCAD); no behaviour
   change.
 
 ## 6. The build and the snapshot command
 
-- [ ] 6.1 `viewers/openscad.py`: `OpenScadRenderer.require_engine()` calls
+- [x] 6.1 `viewers/openscad.py`: `OpenScadRenderer.require_engine()` calls
   `require_scad_engine('the OpenSCAD snapshot renderer', 'it renders the SCAD
   the OpenSCAD engine writes', 'use --renderer web')`;
   `OpenScadRenderer.present(node)` writes the root's `.scad` on demand
   (`node.generate_scad()`, at the root's `scad_file`); `render` resolves the
-  binary through the provider's `require_binary` with today's words; no
-  `machinome.openscad` import. (Method names provisional.)
-- [ ] 6.2 `manager/snapshot.py`: for the OpenSCAD renderer, calls
+  binary through the provider's `require_binary` with today's words and, in
+  a `finally`, removes the root's `.scad` and its record once OpenSCAD has
+  read it, unless the root is SCAD-authored (correction of 4 October 2026);
+  no `machinome.openscad` import. (Method names provisional.)
+- [x] 6.2 `manager/snapshot.py`: for the OpenSCAD renderer, calls
   `require_engine()` before the node is loaded, and `present(node)` inside
   the project build lock right after `assemble()`, so the root's `.scad` is
   written for the snapshot's pose; the web renderer calls neither; catches
   `ScadEngineUnavailable` from the seam in place of `OpenScadUnavailable`,
   printing the message and exiting 1; no `machinome.openscad` import.
-- [ ] 6.3 `core/builder.py`: `_present_scad_if_requested`, its two calls and
+- [x] 6.3 `core/builder.py`: `_present_scad_if_requested`, its two calls and
   the `assembly` phase they open are removed, and `Builder` loses
   `scad_output`; `_sweep_unreferenced_artifacts` no longer spares `.scad` by
   suffix in `kept()`, walks `self.node`'s tree and adds to `referenced` the
@@ -210,7 +216,7 @@
 
 ## 7. Existing tests
 
-- [ ] 7.1 Tests rendering `assemble()`'s or `as_scad()`'s result with
+- [x] 7.1 Tests rendering `assemble()`'s or `as_scad()`'s result with
   `scad_render`, or comparing it to SolidPython objects
   (`test_generation_dedup.py`, `test_stl_node.py`, `test_sheet_leaf.py`,
   `test_build123d_adapter.py`, `test_molejo_adapter.py`, `test_two_pipes.py`,
@@ -218,7 +224,7 @@
   `test_backend_neutral_materialization.py` and any other the suite finds)
   render through `scad_engine().scad_text(...)`; their asserted text is
   unchanged.
-- [ ] 7.2 Tests that read a `.scad` a build, a snapshot or `assemble()` left
+- [x] 7.2 Tests that read a `.scad` a build, a snapshot or `assemble()` left
   for a node that is not SCAD-authored (`test_scad_import_paths.py`,
   `test_build_publication.py`, `test_snapshot.py`, `test_two_pipes.py`,
   `test_generation_dedup.py`'s assembled cases and any other the suite
@@ -230,32 +236,33 @@
   a SCAD-authored `part`'s `.scad`. Tests constructing `Builder` or
   `run_builder` with `scad_output` drop it. No test is weakened: each change
   is recorded in the evidence with the test's name and why.
-- [ ] 7.3 Tests patching `machinome.node.base.require_openscad` patch
+- [x] 7.3 Tests patching `machinome.node.base.require_openscad` patch
   `machinome.openscad.binary.openscad_binary` (or the seam's
   `require_scad_engine`) instead; tests importing `OpenScadUnavailable` keep
   importing it from `machinome.openscad.binary`.
-- [ ] 7.4 Tests of `Rotation.scad`/`Translation.scad` move to `presented`.
+- [x] 7.4 Tests of `Rotation.scad`/`Translation.scad` move to `presented`.
 - [ ] 7.5 `tests/expression_type_golden.py --check` (0 differences) and
   `tests/scad_presentation_golden.py --check` (0 differences; the
   presentation files reported absent as expected); record both.
-- [ ] 7.6 The full framework suite, one process; record counts and wall time
+- [x] 7.6 The full framework suite, one process; record counts and wall time
   against 1.4's files and the last full run on the campaign line.
 
 ## 8. Docs
 
-- [ ] 8.1 `docs/architecture.md`: the SCAD presentation paragraphs (the core
+- [x] 8.1 `docs/architecture.md`: the SCAD presentation paragraphs (the core
   describes, the engine writes; `assemble()` without the engine), the
   operations' consumers (`.scad()` is `presented()`), the re-anchoring
   paragraph (ADR-116 over the core's description), the source map rows for
   `node/presentation.py`, `scad_engine.py` and `openscad/engine.py`.
-- [ ] 8.2 `docs/concepts/publishing.rst`: the build directory holds a
+- [x] 8.2 `docs/concepts/publishing.rst`: the build directory holds a
   `.scad` only for an OpenSCAD-family part (a `Solid2Node`, an `OpenScadNode`,
-  a leaf overriding `as_scad`), from `build` and `develop` alike, and the
-  root's after `machinome snapshot --renderer openscad`, until the next
-  build, which removes every `.scad` no current part writes;
+  a leaf overriding `as_scad`), from `build` and `develop` alike; the
+  root's is written by `machinome snapshot --renderer openscad` only while
+  OpenSCAD draws it, and every build removes any `.scad` no current part
+  writes;
   `docs/reference/api.rst`: `LeafNode.as_scad` and `artifact_import` as the
   delta says, and `assemble()` writing no file.
-- [ ] 8.3 `docs/project/changelog.rst`, under Unreleased, the bullet:
+- [x] 8.3 `docs/project/changelog.rst`, under Unreleased, the bullet:
 
   > **The SCAD presentation is the OpenSCAD engine's:** machinome's node
   > base no longer imports SolidPython. ``assemble()`` composes a
@@ -277,12 +284,18 @@
   > other: it no longer writes the ``.scad`` of an assembly, of a fusion or
   > of a flexible part (nor of an exact, STEP, STL, JSCAD or sheet part, nor
   > a flexible part's per-pose snapshot STL), and the next build removes
-  > those an earlier build left in the build directory. To open a machine's
-  > SCAD in OpenSCAD, run ``machinome snapshot --renderer openscad``, which
-  > writes the root's ``.scad`` in the build directory, beside the parts it
-  > imports, for the pose it renders, until the next build; from Python,
-  > ``node.scad_code`` gives any node's SCAD text. Every ``.scad`` still
-  > written is byte for byte what it was. Breaking for code outside
+  > those an earlier build left in the build directory. A machine's SCAD
+  > text is ``node.scad_code``, for any node; ``machinome snapshot
+  > --renderer openscad`` writes the root's ``.scad`` for the pose it
+  > renders only while OpenSCAD draws it, and removes it afterwards. Every
+  > ``.scad`` a
+  > build writes is the text OpenSCAD renders the part's STL from, byte for
+  > byte what it was, except that the file of a coloured OpenSCAD-family
+  > part declaring ``optimize = False`` is no longer overwritten with its
+  > coloured presentation after the render (corrected 4 October 2026,
+  > design.md Decision 8). This also fixes a defect: a later build, test
+  > or export process no longer replaces the ``.scad`` of a current
+  > OpenSCAD-family part with an import of its own STL. Breaking for code outside
   > projects: ``assemble()``, ``as_scad()`` and ``artifact_import()`` return
   > machinome's presentation description instead of a SolidPython object
   > (render it with the engine's ``scad_text``), ``Rotation.scad()`` and
@@ -291,7 +304,7 @@
   > now a ``machinome.scad_engine.ScadEngineUnavailable`` (ADR-172,
   > ADR-173).
 
-- [ ] 8.4 `workflow/ongoing/lean-core.md`: the "Empirical validation" table
+- [x] 8.4 `workflow/ongoing/lean-core.md`: the "Empirical validation" table
   gains the row for `scad-presentation` (Locks/Pin_tumbler_lock, why, the
   result in one sentence, the evidence path); "Where the core reaches each
   kernel" says the SCAD presentation is the engine's (`node/base.py`,
@@ -329,24 +342,26 @@
     directory and of `manifest.json` (not the STL). Expected: the same test
     counts; after the build leg, exactly 11 `.scad` files, the `OriginalPart`
     (`Solid2Node`) leaves' `simulation/parts-*.scad`, each byte-identical to
-    the fifth cycle's hash for the same path, and no
+    the file the fifth cycle's single-process build wrote for the same path
+    (its snapshot before leg; corrected 4 October 2026: not its three-process
+    after leg, whose `parts-*` files were mostly self-imports a later
+    process's `assemble()` wrote, design.md Decision 8), and no
     `simulation/lock-PinTumblerLock-*.scad`, `simulation/lock-Plug-*.scad`
     or `simulation/flexibles-PenSpring-*.scad`, nor the `PenSpring`'s
     per-binding snapshot STL; after all three legs, every `.scad` a
-    `simulation/parts-*.scad` of the fifth cycle's 24, byte-identical, and
-    every `lock-*` and `flexibles-*` file of those 24 absent;
+    `simulation/parts-*.scad`, and every `lock-*` and `flexibles-*` file of
+    the fifth cycle's 24 absent;
     `manifest.json` identical or differing only in OpenSCAD's STL-derived
     noise as recorded by the fifth cycle.
   - *Snapshot on demand.* `machinome snapshot --renderer openscad -o
     <scratch>/lock.png --imgsize 640x480` on the root after those legs, into
     the same scratch build directory: the PNG exists, its size recorded (not
-    its bytes); the root's `simulation/lock-PinTumblerLock-*.scad` exists,
-    every `import(file = ...)` in it names a file that exists relative to its
-    directory, its SHA-256 recorded (not compared with the fifth cycle's:
-    the snapshot binds its keyframe, so the pose is numeric where the
-    build's was `$t`); no `lock-Plug-*` or `flexibles-*` `.scad`. Then
-    `machinome build` into the same directory: the root's `.scad` is gone
-    and the 11 `parts-*` files remain. Then the snapshot with
+    its bytes); no `simulation/lock-PinTumblerLock-*.scad` afterwards (the
+    renderer removes it once drawn, design.md Decision 3, "Correction"; the
+    framework tests pin what OpenSCAD is given), no `lock-Plug-*` or
+    `flexibles-*` `.scad`, and the 11 `parts-*` files remain. Then
+    `machinome build` into the same directory: the 11 `parts-*` files
+    remain and no other `.scad`. Then the snapshot with
     `machinome.openscad.engine` unfindable (a `sitecustomize` carrying
     `tests/exact_engine_absent.py`'s finder, `absent=machinome.openscad.engine`,
     on `PYTHONPATH`): expected a refusal naming the OpenSCAD snapshot
@@ -358,7 +373,8 @@
     of the project's own `_build/` (31 `.scad` files from earlier builds on
     3 October 2026: `lock-*`, `flexibles-*`, `poses-*`, `_probe_old-*` and
     other parameter sets' `parts-*`; record the count found), then
-    `machinome build` into it. Expected: exactly the 11 `parts-*.scad` of
+    `machinome build` into it. Expected, whether or not the build changes
+    the copied `viewer.json`: exactly the 11 `parts-*.scad` of
     the current tree remain, each with its currency record; every other
     `.scad` and its record is gone. The project's `_build/` is only read.
   - *Develop, without a display.* A script: with
@@ -408,8 +424,11 @@
   of direct reaches, which gain status lines and amendment sections) and
   ADR-173 (`docs/adrs/BUILD/`, SCAD is written only where it is read: a
   SCAD-authored leaf's `.scad` for its STL, the root's on demand by the
-  OpenSCAD snapshot renderer in the build directory, the builder no longer
-  presenting, the sweep keeping a `.scad` by reference; option B recorded as
+  OpenSCAD snapshot renderer in the build directory and removed by it once
+  drawn, the builder no longer presenting, the sweep keeping a `.scad` by
+  reference and applying that rule on every successful build, unchanged
+  document included (the correction of 4 October 2026, with the applier's
+  evidence of the sweep's trigger); option B recorded as
   rejected and why; `require_scad_engine` and its remedies; amends ADR-102's
   consequences, ADR-046's refusal family and ADR-086, whose assembly-phase
   coalescing loses its production producer), each recording the pilot's

@@ -119,7 +119,10 @@ declares nothing is not checked.
 
    .. attribute:: scad_file
 
-      Path of the node's ``.scad`` artifact.
+      Path of the node's ``.scad``: written, through the OpenSCAD engine,
+      for a leaf whose geometry is authored in SCAD and by
+      :meth:`generate_scad`; :meth:`~machinome.node.base.AbstractBaseNode.assemble`
+      writes none.
 
    .. attribute:: stl_file
 
@@ -132,7 +135,8 @@ declares nothing is not checked.
 
    .. attribute:: model
 
-      The node's SCAD presentation once assembled, or ``None`` before. A
+      The node's SCAD presentation once assembled, or ``None`` before: the
+      object :meth:`as_scad` returned, or machinome's description of it. A
       leaf whose artifact language is SCAD sets it to its render result
       before calling :meth:`generate_scad`.
 

@@ -653,8 +653,40 @@ class PublicationOrderingTest(TestCase):
         self.builder._write_viewer_snapshot()
 
         remaining = set(os.listdir(self.root))
-        self.assertLessEqual({'part.scad', 'part.stl.lock',
-                              '.part.stl.abc123.tmp'}, remaining)
+        self.assertLessEqual({'part.stl.lock', '.part.stl.abc123.tmp'},
+                             remaining)
+        # A `.scad` is kept by reference, not by kind (`scad-presentation`):
+        # `part` is not SCAD-authored, so its `.scad` is no build's.
+        self.assertNotIn('part.scad', remaining)
+
+    def test_the_sweep_keeps_a_scad_authored_parts_scad(self):
+        """(`scad-presentation`) The `.scad` of a node whose geometry is
+        authored in SCAD is kept by reference, with its record; any other
+        `.scad` goes, on a changed document and on an unchanged one."""
+        self.builder.node = self.node_for('part')
+        part = self.builder.node.children[0]
+        part.scad_authored = True
+        part.scad_file = os.path.join(self.root, 'part.scad')
+        for name in ('part.scad', 'part.scad.sources', 'old.scad',
+                     'old.scad.sources'):
+            with open(os.path.join(self.root, name), 'w') as handle:
+                handle.write('seed')
+
+        self.builder._write_viewer_snapshot()
+
+        remaining = set(os.listdir(self.root))
+        self.assertLessEqual({'part.scad', 'part.scad.sources'}, remaining)
+        self.assertFalse({'old.scad', 'old.scad.sources'} & remaining)
+
+        for name in ('stray.scad', 'stray.scad.sources', 'stray.stl'):
+            with open(os.path.join(self.root, name), 'w') as handle:
+                handle.write('seed')
+        self.builder._write_viewer_snapshot()
+
+        remaining = set(os.listdir(self.root))
+        self.assertLessEqual({'part.scad', 'part.scad.sources', 'stray.stl'},
+                             remaining)
+        self.assertFalse({'stray.scad', 'stray.scad.sources'} & remaining)
 
     def verdict_store_in(self, directory):
         """A verdict store as test runs leave it: published segments, one

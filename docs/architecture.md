@@ -108,9 +108,17 @@ return one geometry object, and validation enforces the split on every
 assembly. Users implement `render()`; the framework owns the
 non-overridable lifecycle. `_prepare()` renders/simulates, validates, links the
 tree and materializes native artifacts; `assemble()` is the separately
-memoized compatibility consumer that presents SCAD, imports optimized STL and
-applies operations (ADR-002/102). Geometry-only consumers stop after native
-preparation.
+memoized compatibility consumer that composes the node's SCAD presentation
+*description* (`machinome/node/presentation.py`: artifact imports, colours,
+rotations, translations, unions and the geometry a SCAD-authored leaf
+authored), imports optimized STL and applies operations (ADR-002/102/172).
+It writes no `.scad` and needs neither SolidPython nor the OpenSCAD engine:
+the core describes its presentation and the engine writes the text
+(`machinome.openscad.engine.scad_text`, reached through the seam
+`machinome/scad_engine.py`, contract 2), only where a path reads it —
+`scad_code`, `generate_scad()`, a SCAD-authored leaf's materialization and the
+OpenSCAD snapshot renderer, each refusing an absent engine by name
+(ADR-173). Geometry-only consumers stop after native preparation.
 
 A node is authored in one of two forms, freely mixed in one tree. The
 **constructor form** builds children in `__init__` and forwards
@@ -520,17 +528,22 @@ the seam reads the engine's own `occt` refusal as an absent engine, so
 another `SVG_REDUCER_CONTRACT`, so declaring a marking and reusing a current
 one need no kernel, and building a stale one without the `build123d` extra
 is refused naming the part's class, the marking and its artwork.
-Each adapter can still present SCAD, but artifact production follows its backend:
+Each adapter can still present SCAD, as a description the OpenSCAD engine
+writes on demand, but artifact production follows its backend:
 Solid2 and raw OpenSCAD leaves use OpenSCAD, CadQuery and build123d — sheet
 parts included — use OCCT, JSCAD uses `jscad`, a flexible leaf uses molejo's
 Python evaluator, and an imported mesh uses no
 tool whatsoever (ADR-046). Emitting SCAD
-does not itself require the OpenSCAD binary. A sheet leaf writes one artifact
+does not itself require the OpenSCAD binary. A build writes the `.scad` of a
+SCAD-authored leaf (`scad_authored`: `Solid2Node`, `OpenScadNode`, a project
+leaf overriding `as_scad`), from which OpenSCAD renders its STL, and no
+other (ADR-173). A sheet leaf writes one artifact
 the others do not: a nominal DXF of its profile, in millimeters with arcs
 preserved, beside its `.stl` and `.brep` and under the same freshness rules,
 which its skip guard also requires. A flexible leaf writes another: a
-per-binding snapshot STL, so the assembled SCAD document and fixed-pose
-OpenSCAD snapshot renderer stay complete — a snapshot camera, never
+per-binding snapshot STL when its description is composed, so the root's
+SCAD the fixed-pose OpenSCAD snapshot renderer draws stays complete (a build
+composes no description and writes none) — a snapshot camera, never
 animation, the treatment drivers already receive. The camera declines where there is no instant to
 photograph: a port fed by animation time, which nothing binds on this path
 (ADR-008), yields no artifact and no geometry rather than failing the build
@@ -572,8 +585,10 @@ already claims it is current (ADR-057).
 ### Kinematics (NODE · spec `kinematics`)
 
 Transforms are first-class operation objects (ADR-023):
-`Rotation`/`Translation` render for four consumers — `.scad()`,
-`.mesh()`, `.serialized`, `.matrix()` (ADR-028) — plus `.reversed`.
+`Rotation`/`Translation` render for four consumers — `.presented()`, the
+presentation description holding the operation's own values, which the
+OpenSCAD engine writes as SCAD (ADR-172), `.mesh()`, `.serialized`,
+`.matrix()` (ADR-028) — plus `.reversed`.
 `AssemblyNode` is the only animatable node, and it binds a
 **multi-driver state snapshot** (ADR-056 stage 1): `set_state(**states)`
 merges named plain-number driver values and propagates down the
@@ -1976,7 +1991,11 @@ only when it writes its OWN `.scad`, since one assembled child tree is
 inlined into more than one `.scad` file at more than one depth and no
 single string is correct in two directories; a parent's `.scad` therefore
 always resolves the artifact it imports, whatever package it is declared
-in relative to the part it places (ADR-116).
+in relative to the part it places (ADR-116). Re-anchoring is a pure
+function over the core's own description (`presentation.reanchored`): it
+rewrites `ArtifactImport` paths only, shares every other node and never
+enters authored geometry, so a project's own `import_stl` stays as written
+(ADR-172).
 
 Loading a node also **binds its declared driver defaults** across the
 tree by qualified id, before the first render (ADR-056 stage 3a), so a
@@ -2121,14 +2140,17 @@ not artifact identity and rides the node's own source set instead
 only its own fused solid, never a child's.
 
 The artifact sweep learns one thing from the tree rather than from the
-document. A flexible leaf's snapshot is addressed by its binding, and the
-published document is symbolic — it describes the machine, not the pose —
-so it cannot name the file the assembled SCAD imported. The assembled tree
-can, and it is the same tree that publication describes, so each flexible
-node's `snapshot_file` joins the referenced set and every other binding's
-snapshot is swept. A build whose only change is the binding writes no new
-document and therefore runs no sweep, so one superseded snapshot survives
-until the next document-changing build (ADR-057).
+document: which `.scad` files are a build's. A `.scad` is kept by reference
+to the published tree, not by kind — the `scad_file` of every node whose
+`scad_authored` holds, with its currency record — and every other `.scad` is
+removed: an assembly's, a fusion's, a flexible or native leaf's an earlier
+build left, a root's an interrupted OpenSCAD snapshot left, a renamed
+SCAD-authored leaf's. That rule holds on every successful build, also one
+that republishes an unchanged document, where it alone is applied; every
+other artifact is swept only when the document changes. No build composes a
+presentation, so no flexible leaf's per-binding snapshot is referenced and
+the next document-changing build removes those an `assemble()` left
+(ADR-057, ADR-173).
 
 Publication enforces build mechanics and model validity, not project-selected
 geometry contracts. It therefore does not count STL components or invoke
@@ -2192,7 +2214,11 @@ fallback, whether or not the browser viewer is installed, while the
 optional `web` renderer stages the node and has the installed viewer package
 photograph it in sandboxed headless Chromium to produce a true-alpha PNG.
 Unsupported renderer-specific options are rejected rather than ignored or
-substituted. If the default OpenSCAD renderer is unavailable, the command
+substituted. The OpenSCAD renderer obtains the SCAD it draws on demand: it
+requires the OpenSCAD engine before the node is loaded, writes the root's
+`.scad` for the snapshot's pose inside the build lock, and removes it once
+OpenSCAD has read it, succeeded or failed; the web renderer reads no SCAD
+(ADR-173). If the default OpenSCAD renderer or the engine is unavailable, the command
 names `--renderer web` but does not select it silently; if the viewer is
 not installed, `--renderer web` names the `viewer` extra. Under
 `--renderer openscad`, every warning, error or deprecation line OpenSCAD
@@ -3306,9 +3332,9 @@ The short list that changes must not silently break:
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Node model | `machinome/node/` (`frames.py` among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165 |
+| Node model | `machinome/node/` (`frames.py` and `presentation.py`, the SCAD presentation description, among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172 |
 | OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
-| OpenSCAD engine | `machinome/scad_engine.py` (the seam); `machinome/openscad/` (`engine.py`, `binary.py`; leaves the core at the cut) | `scad-engine-dependency`, `openscad-engine`, `openscad-dependency` | 046, 102, 171 |
+| OpenSCAD engine | `machinome/scad_engine.py` (the seam, contract 2, `require_scad_engine`); `machinome/openscad/` (`engine.py`: `adopt`, `scad_text`, `require_binary`; `binary.py`; leaves the core at the cut) | `scad-engine-dependency`, `openscad-engine`, `openscad-dependency` | 046, 102, 171, 172, 173 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |

@@ -267,9 +267,11 @@ OpenSCAD
 renders the file after the lock is released, as today. Every OpenSCAD
 snapshot writes it for its own pose (the byte-identical write suppression of
 `build-pipeline` applies; nothing an earlier run left is trusted); it is a
-renderer artifact with no currency beyond that run, and the next successful
-build of that directory removes it with its currency record, like any
-`.scad` no current node writes. Reasons:
+renderer artifact with no currency beyond that run, which the renderer
+removes with its currency record once OpenSCAD has read it, whether the
+render succeeded or failed (corrected below, "Correction, 4 October 2026");
+a file an interrupted render left is removed by the next successful build,
+like any `.scad` no current node writes. Reasons:
 
 - It is exactly today's file: the same path, its imports re-anchored onto
   its own directory by ADR-116's rule, the bytes the root's `scad_code`
@@ -280,19 +282,23 @@ build of that directory removes it with its currency record, like any
 - What it imports lives in the build directory anyway, including the
   per-binding snapshot STL a flexible leaf publishes while the description is
   composed; a temporary would not free the renderer from the build directory.
-- It is the route left to a person who wants a machine's SCAD in a file:
-  `machinome snapshot --renderer openscad` leaves it beside the artifacts it
-  imports, openable in the OpenSCAD GUI until the next build. From Python,
-  `node.scad_code` gives any node's text.
+- *(Superseded by the correction below: the renderer now removes the file
+  once drawn.)* It was to be the route left to a person who wants a
+  machine's SCAD in a file. From Python, `node.scad_code` gives any node's
+  text, and remains that route.
 
 Rejected: a temporary directory removed after rendering, invisible to builds
-and sweeps, for the three reasons above. Trade-off accepted: a build that
+and sweeps, for the first two reasons above. Trade-off accepted: a build that
 runs between the snapshot's release of the lock and OpenSCAD reading the file
-now removes it, and the render fails naming it; today the same interval lets
-the build overwrite it with the build's own pose, a silently wrong image.
-Holding the lock through the render would close the interval at the cost of
-blocking builds for a render's duration; not taken, since `build-pipeline`'s
-lock is held for artifact work only.
+may remove it under a document change, and the render fails naming it; today
+the same interval lets the build overwrite it with the build's own pose, a
+silently wrong image. Holding the lock through the render would close the
+interval at the cost of blocking builds for a render's duration; not taken,
+since `build-pipeline`'s lock is held for artifact work only. (The lock is
+not held through the OpenSCAD read: `manager/snapshot.py` releases it when
+`_load_and_prepare_node` returns and renders afterwards; checked in the
+bench, 4 October 2026. The correction below keeps the renderer's own
+removal after the read regardless.)
 
 **The sweep: a `.scad` is kept by reference, not by kind.** Today `kept()` in
 `Builder._sweep_unreferenced_artifacts` spares every file ending `.scad`
@@ -344,6 +350,35 @@ build's `.scad` in the OpenSCAD GUI; no named project relies on it (grep, 3
 October 2026: `splitflap`'s and `openflexure-microscope`'s SCAD tooling reads
 their own upstream sources, not `_build/`). The changelog says so as BREAKING
 and names the on-demand route.
+
+**Correction, 4 October 2026 (applier's evidence, orchestrator's decision).**
+The applier found that the sweep runs only when the published document
+changes: `Builder._write_viewer_snapshot_with_inventory` returns before
+`_sweep_unreferenced_artifacts` when the document it would publish is
+byte-identical to `viewer.json` (`core/builder.py`, read at a4a1f84). The
+rule above ("the next successful build of that directory removes it") and the
+lingering-files leg of Decision 11 assumed a sweep on every successful build;
+the red test of the snapshot (build, OpenSCAD snapshot, build again with the
+same document) stayed red for that reason. The orchestrator decided:
+
+- **The `.scad` rule holds on every successful build.** When the document is
+  unchanged, the build still applies the sweep's `.scad` rule, and only it:
+  every `.scad` (and its currency record) no current SCAD-authored node keeps
+  by reference is removed; every other artifact keeps today's trigger, so
+  what `machinome test` wrote for other parameter sets survives an unchanged
+  build as it does today. A `.scad` no current node writes never survives a
+  successful build, whatever the document did. Rejected: sweeping everything
+  on every build (broader, would remove test artifacts an unchanged build
+  keeps today), and narrowing the scenario to builds that change the document
+  (leaves the files earlier builds left wherever the document did not move,
+  as in the lingering-files leg).
+- **The renderer owns its file.** The OpenSCAD snapshot renderer removes the
+  root's on-demand `.scad` and its record itself, in a `finally`, once
+  OpenSCAD has read it, whether the render succeeded or failed: the file
+  exists only for the renderer. The sweep meets it only when a render was
+  interrupted. A root whose geometry is authored in SCAD (a `Solid2Node`
+  snapshotted alone) keeps its `.scad`, which is its own build artifact.
+  The route left to a person who wants a machine's SCAD is `node.scad_code`.
 
 ### 4. Absence: `require_scad_engine` and its refusal
 
@@ -483,7 +518,41 @@ By construction (Decision 1), and pinned twice:
 - The deep validation compares Pin_tumbler_lock's SCAD-authored leaves'
   `.scad` with the fifth cycle's hashes for the same paths.
 
-No difference is unavoidable: the engine adds no header.
+One difference, by construction (the orchestrator's correction, 4 October
+2026, which the pilot may overrule before integration): the engine adds no
+header, but the `.scad` of a SCAD-authored leaf declaring `optimize = False`
+and a `color` is no longer overwritten. Its materialization writes its
+authored model, uncoloured, and OpenSCAD renders its STL from that; before
+this change `assemble()`'s non-optimized branch then set `model` to the
+coloured model and wrote it over the same file, after the STL had been
+rendered, so the file's bytes depended on whether `assemble()` ran after
+materialization. Under Decision 3 a `.scad` exists for the path that reads
+it, OpenSCAD rendering the STL, and nothing overwrites it. In the
+presentation golden's fixture (`InlineCylinder`) the file goes from 82 bytes
+(`color(alpha = 1, c = [...]) { cylinder(h = 5, r = 2); }`, SHA-256
+`b26e0f84...`) to 24 (`cylinder(h = 5, r = 2);`, `afad8502...`); that one
+entry of `tests/data/scad_presentation_golden.json` is re-recorded. The
+leaf's `scad_code` and its parent's presentation keep the colour, so
+nothing the OpenSCAD renderer draws changes.
+
+The same mechanism has a second shape, found by the orchestrator's
+validation on Pin_tumbler_lock (4 October 2026): across processes. On
+a4a1f84 a later process's `assemble()` of a *current* `Solid2Node` took the
+skip path, set `model = artifact_import(local_stl)` and called
+`generate_scad()`, overwriting the leaf's `.scad` with an import of its own
+STL; the byte-identical write suppression does not apply (the content
+differs) and the source generation's reuse is process-local. So after
+build, test and export the lock's `parts-Core` file was
+`import(file = "parts-Core,...-38d056aa9875.stl", origin = [0, 0]);`
+(215 bytes, after its `$fn` and `use` lines) where its first build wrote
+`part(cuts = [6, 1, 2, 5, 0], depth = 0, kind = 1, svg = ...)` (237 bytes),
+the text OpenSCAD rendered the STL from. One mechanism, two shapes: the
+coloured `optimize = False` model within one process, the self-import across
+processes; both are `assemble()` rewriting an artifact already consumed, and
+had the STL gone stale under the same name OpenSCAD would have rendered an
+empty import. Option A removes both, since `assemble()` writes nothing. A
+single-process build of a4a1f84 and a build of this change write the same 11
+`parts-*.scad` byte for byte (`cmp`, evidence.md 11.1).
 
 ### 9. Proof, red first
 
@@ -522,10 +591,13 @@ Red on the unmodified tree, green after:
   `part.scad` from what is spared and gains the case of a SCAD-authored
   `part`, whose `.scad` is kept.
 - **Snapshot on demand**: `Snapshot.handle` with the OpenSCAD renderer (its
-  runner patched) leaves the root's `.scad` at the root's `scad_file`, its
-  text the root's `scad_code` in the snapshot's pose, every import resolving
-  from its directory, and no assembly's or flexible leaf's `.scad` beside it;
-  a following build removes it. With `--renderer web` (the browser renderer
+  runner patched to read what it is given) hands OpenSCAD the root's `.scad`
+  at the root's `scad_file`, its text the root's `scad_code` in the
+  snapshot's pose, every import resolving from its directory, and no
+  assembly's or flexible leaf's `.scad` beside it; afterwards the file is
+  gone, also when the render fails, unless the root is SCAD-authored; a
+  root `.scad` left by an interrupted render is removed by a build that
+  republishes the same document. With `--renderer web` (the browser renderer
   patched) no `.scad` is written. Red: every node's `.scad` written by the
   snapshot's `assemble()`, under either renderer.
 - **Refusals**: `scad_code` and `generate_scad()` without the engine raise
@@ -596,25 +668,30 @@ Decision 8.
   SHA-256 of every `.scad` (never the STL: OpenSCAD's STL bytes vary run to
   run) and of `manifest.json`. Expected after the build leg: exactly 11
   `.scad` files, the `OriginalPart` (`Solid2Node`) leaves'
-  `simulation/parts-*.scad`, each byte-identical to the fifth cycle's hash
-  for the same path, and none of `simulation/lock-PinTumblerLock-*.scad`,
-  `simulation/lock-Plug-*.scad`, `simulation/flexibles-PenSpring-*.scad`, nor
-  the `PenSpring`'s per-binding snapshot STL. Expected after all three legs:
-  every `.scad` is a `simulation/parts-*.scad` of the fifth cycle's set, each
-  byte-identical, and every `lock-*` and `flexibles-*` file of that set is
-  absent (the test leg's further parameter sets add `parts-*` files of their
-  own, as they did then; no leg after the build sweeps).
+  `simulation/parts-*.scad`, each byte-identical to the file the fifth
+  cycle's single-process build wrote for the same path (its snapshot before
+  leg, one process on a4a1f84 into a fresh directory), and none of
+  `simulation/lock-PinTumblerLock-*.scad`, `simulation/lock-Plug-*.scad`,
+  `simulation/flexibles-PenSpring-*.scad`, nor the `PenSpring`'s per-binding
+  snapshot STL. Expected after all three legs: every `.scad` is a
+  `simulation/parts-*.scad`, and every `lock-*` and `flexibles-*` file of the
+  fifth cycle's set is absent (the test leg's further parameter sets add
+  `parts-*` files of their own, as they did then; no leg after the build
+  sweeps). *Corrected 4 October 2026, after the leg ran:* not compared with
+  the fifth cycle's three-process after leg (build, test, export), whose
+  `parts-*.scad` were mostly self-imports: on a4a1f84 a later process's
+  `assemble()` of a current `Solid2Node` overwrote its `.scad` with an import
+  of its own STL (Decision 8), so 13 of those 15 hashes are of bytes this
+  change no longer produces.
 - **Snapshot on demand**, after those legs, into the same scratch build
   directory: `machinome snapshot --renderer openscad` of the root (PNG
   existence and size, not bytes; `xvfb-run` when no `DISPLAY`, which the
-  renderer wraps itself). Expected: the PNG; the root's
-  `simulation/lock-PinTumblerLock-*.scad` present, every
-  `import(file = ...)` in it naming a file that exists relative to its
-  directory, its SHA-256 recorded (not compared with the build's: the
-  snapshot binds its keyframe, so it presents the pose numerically where
-  the build's presented `$t`); no `lock-Plug-*` or `flexibles-*` `.scad`.
-  Then `machinome build` into the same directory again: the root's `.scad`
-  is gone and the 11 `parts-*` files remain. Then the snapshot with
+  renderer wraps itself). Expected: the PNG; no
+  `simulation/lock-PinTumblerLock-*.scad` afterwards (the renderer removed
+  it once drawn; the framework tests pin what OpenSCAD was given), and no
+  `lock-Plug-*` or `flexibles-*` `.scad`; the 11 `parts-*` files remain.
+  Then `machinome build` into the same directory again: the 11 `parts-*`
+  files remain and no other `.scad`. Then the snapshot with
   `machinome.openscad.engine` made unfindable by the finder's
   `sitecustomize`: refused naming the renderer, the module, reinstalling
   machinome and `--renderer web`, exit 1, no PNG and no root `.scad` (before
@@ -625,7 +702,9 @@ Decision 8.
   `_probe_old-*` and other parameter sets' `parts-*`), then `machinome
   build` into it. Expected: exactly the 11 `parts-*.scad` of the current
   tree remain, with their currency records; every other `.scad` and its
-  record is gone. The project's own `_build/` is only read.
+  record is gone, whether or not the build changed the copied
+  `viewer.json` (Decision 3, correction). The project's own `_build/` is
+  only read.
 - **`develop` without a display.** Nothing to launch: (a) the viewer-hidden
   probe of Context, as a script (refusal, exit 1, no process started); (b) the
   develop builder alone, `run_builder`'s `Builder(<ref>, watch=False,
@@ -669,7 +748,8 @@ Decision 8.
   on-demand route (`machinome snapshot --renderer openscad`, `scad_code`).
 - [A concurrent build removes the snapshot's root `.scad` before OpenSCAD
   reads it] → the render fails naming the file, where today the same
-  interval silently drew the build's pose (Decision 3).
+  interval silently drew the build's pose (Decision 3). The lock is not held
+  through the read; the renderer removes its file after the read either way.
 - [A `.scad` byte moves] → by construction it cannot; two goldens and the
   lock's 11 hashes would show it, and the cycle stops for the orchestrator.
 - [A SCAD-authored leaf's `.scad` swept while still needed] → it is kept by
@@ -686,8 +766,8 @@ Decision 8.
 Projects: nothing to do; no importable name moves (`moved-names.toml` is
 empty). A project's next build removes the `.scad` files earlier builds left
 for its assemblies, fusions, flexible and native leaves. A person who wants a
-machine's SCAD runs `machinome snapshot --renderer openscad` (the root's, in
-the build directory until the next build) or reads `node.scad_code`.
+machine's SCAD reads `node.scad_code`; `machinome snapshot --renderer
+openscad` renders the root's and removes the file it wrote for it.
 Framework tests that patch `machinome.node.base.require_openscad` patch
 `machinome.openscad.binary.openscad_binary` instead. Rollback is reverting the
 implementation commit; the next build after a rollback writes the

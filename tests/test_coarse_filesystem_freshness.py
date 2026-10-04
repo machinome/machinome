@@ -203,13 +203,16 @@ class CoarseFilesystemTest(BaseNodeTest):
                 f'({float_to_ns(node.mtime)} ns as a float)')
 
     def test_exact_leaf_caches_on_a_millisecond_filesystem(self):
-        """A CadQuery leaf's .stl, .scad and .brep must all report current
-        after a build whose stamps could only be recorded to the
-        millisecond."""
+        """A CadQuery leaf's .stl and .brep, and its .scad when one is
+        generated, must all report current after a build whose stamps could
+        only be recorded to the millisecond. (Since `scad-presentation`
+        `assemble()` writes no `.scad`; a caller's `generate_scad()` does,
+        through the same stamping writer.)"""
         with millisecond_filesystem():
             node = ExactLeaf()
             self.quantise_sources(node)
             node.assemble()
+            node.generate_scad()
 
             self.assertArtifactsCurrent(node, node.stl_file, node.scad_file,
                                         node.brep_file)
@@ -343,6 +346,8 @@ class NativeFilesystemTest(BaseNodeTest):
     def test_exact_equality_still_holds_natively(self):
         node = ExactLeaf()
         node.assemble()
+        # `assemble()` writes no `.scad` (`scad-presentation`).
+        node.generate_scad()
 
         self.assertTrue(node._up_to_date(node.stl_file))
         self.assertTrue(node._up_to_date(node.scad_file))

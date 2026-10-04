@@ -9,7 +9,9 @@ import tempfile
 from types import SimpleNamespace
 from unittest import TestCase, mock
 
-from solid2 import cube, scad_render
+from solid2 import cube
+
+from machinome.scad_engine import scad_engine
 
 from machinome import currency
 from machinome.node import Solid2Node
@@ -127,18 +129,19 @@ class GenerationScadDedupTest(TestCase):
         self.assertEqual(first.scad_file, second.scad_file)
         RepeatedBlock.renders = 0
 
-        import machinome.node.base as base
-        real_scad_render = base.scad_render
+        # The SCAD text is the OpenSCAD engine's (`scad-presentation`):
+        # count what the core asks of it.
+        engine = scad_engine()
         with SourceGeneration(self.root) as generation, generation.phase(
                 first.files | second.files, label='assembly'), mock.patch.object(
-                    base, 'scad_render', wraps=real_scad_render) as generate:
+                    engine, 'scad_text', wraps=engine.scad_text) as generate:
             first_assembled = first.assemble()
             second_assembled = second.assemble()
 
         self.assertEqual(RepeatedBlock.renders, 2)
         self.assertEqual(generate.call_count, 1)
-        self.assertNotEqual(scad_render(first_assembled),
-                            scad_render(second_assembled))
+        self.assertNotEqual(engine.scad_text(first_assembled),
+                            engine.scad_text(second_assembled))
 
     def test_audit_scale_repeated_instances_still_generate_one_base_scad(self):
         with mock.patch.dict(os.environ, {'SOLID_BUILD_DIR': self.root}):
@@ -147,16 +150,16 @@ class GenerationScadDedupTest(TestCase):
         files = set().union(*(node.files for node in nodes))
         RepeatedBlock.renders = 0
 
-        import machinome.node.base as base
-        real_scad_render = base.scad_render
+        engine = scad_engine()
         with SourceGeneration(self.root) as generation, generation.phase(
                 files, label='assembly'), mock.patch.object(
-                    base, 'scad_render', wraps=real_scad_render) as generate:
+                    engine, 'scad_text', wraps=engine.scad_text) as generate:
             assembled = [node.assemble() for node in nodes]
 
         self.assertEqual(RepeatedBlock.renders, 59)
         self.assertEqual(generate.call_count, 1)
-        self.assertEqual(len({scad_render(model) for model in assembled}), 59)
+        self.assertEqual(len({engine.scad_text(model)
+                              for model in assembled}), 59)
 
     def test_same_path_with_different_full_source_identity_is_not_reused(self):
         path = os.path.join(self.root, 'shared.scad')
@@ -254,9 +257,15 @@ class GenerationScadDedupTest(TestCase):
                 base, '_atomic_write_text', wraps=_atomic_write_text) as write:
             with generation.phase(files, label='assembly'):
                 compositions = [first.assemble(), second.assemble()]
+                # assemble() writes no SCAD (`scad-presentation`); a caller
+                # asking for both assemblies' files in one phase still
+                # gets the coalesced last desired value (ADR-086).
+                first.generate_scad()
+                second.generate_scad()
 
-        self.assertNotEqual(scad_render(compositions[0]),
-                            scad_render(compositions[1]))
+        engine = scad_engine()
+        self.assertNotEqual(engine.scad_text(compositions[0]),
+                            engine.scad_text(compositions[1]))
         parent_writes = [
             call for call in write.call_args_list
             if os.path.realpath(call.args[0]) == os.path.realpath(first.scad_file)

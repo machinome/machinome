@@ -18,6 +18,10 @@ class Solid2Node(LeafNode):
 
     namespace = 'solid2'
 
+    #: Its geometry is authored in SCAD: OpenSCAD renders its STL from its
+    #: own `.scad`, which a build writes and keeps.
+    scad_authored = True
+
     def as_scad(self, rendered):
         """Doesn't do anything, as solid2 objects are already OpenScad objects"""
         return rendered

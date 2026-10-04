@@ -123,12 +123,16 @@ class LeafNode(AbstractBaseNode):
 
     def as_scad(self, rendered):
         """This leaf's render result as a solid2 object, for a leaf
-        presented as SCAD: the core writes that SCAD and OpenSCAD produces
-        the STL from it.
+        presented as SCAD: the core has the OpenSCAD engine write that SCAD
+        as the leaf's own `.scad` (the one kind of leaf whose `.scad` a build
+        writes and keeps), and OpenSCAD produces the STL from it.
 
         A leaf that produces its own STL in `materialize` need not
         implement it: once that artifact is current, the core presents it
-        by importing it.
+        by importing it. A leaf that does implement it to present its own
+        artifact returns `artifact_import(local_path)` as it is: the core's
+        description of that import (`machinome.node.presentation`), which
+        is not a solid2 object and is not composed into one.
         """
         raise NotImplementedError(f"LeafNode subclass {self.__class__} must "
                                   "be able to output scad")
@@ -188,6 +192,12 @@ class LeafNode(AbstractBaseNode):
         if self.namespace and not type(rendered).__module__.startswith(self.namespace):
             raise Exception(f"{self.__class__} is a LeafNode and should render "
                             f"as {self.namespace} child, not {type(rendered)}")
+    @property
+    def scad_authored(self):
+        """A project leaf overriding `as_scad` authors its geometry in SCAD:
+        OpenSCAD renders its STL from its own `.scad`."""
+        return self._uses_legacy_scad_materialization()
+
     def _uses_legacy_scad_materialization(self):
         """Honor a project leaf's explicit ``as_scad`` override.
 

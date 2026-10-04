@@ -399,8 +399,11 @@ class ContentVerifiedCurrencyTest(ScratchProjectTest):
 
     def test_every_published_artifact_records_its_source_fingerprint(self):
         node = self.build()
+        # A build writes no `.scad` for an exact leaf (`scad-presentation`):
+        # its published artifacts are the STL and the BREP.
         for owner in (node.block, node.pin):
-            for artifact in (owner.scad_file, owner.stl_file, owner.brep_file):
+            self.assertFalse(os.path.exists(owner.scad_file))
+            for artifact in (owner.stl_file, owner.brep_file):
                 self.assertEqual(currency.recorded_fingerprint(artifact),
                                  owner.source_fingerprint)
 
