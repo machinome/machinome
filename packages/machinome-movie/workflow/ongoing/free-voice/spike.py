@@ -170,8 +170,13 @@ def main():
     # 3. Timing for captions, in the videomaker's alignment shape.
     if a.align:
         t = time.time()
-        alignment, report = align(out / "clone-line.wav", line, "en" if a.language == "English" else None,
-                                  a.whisper, a.device)
+        try:
+            alignment, report = align(out / "clone-line.wav", line, "en" if a.language == "English" else None,
+                                      a.whisper, a.device)
+        except Exception as e:  # noqa: BLE001  (missing cuDNN for ctranslate2 is the usual cause)
+            print(f"alignment on {a.device} failed ({e}); retrying on the CPU", flush=True)
+            alignment, report = align(out / "clone-line.wav", line, "en" if a.language == "English" else None,
+                                      a.whisper, "cpu")
         run["timings"]["align"] = round(time.time() - t, 2)
         run["alignment_report"] = report
         if alignment:
