@@ -627,6 +627,37 @@ licensing session, not a decision this plan acts on. Layer 2 waits on that
 session's outcome only for what it says about the split's worth; layer 1
 does not.
 
+**Update at the eighth cycle's integration (4 October 2026, later
+session).** `openscad-out` is done and integrated: cycle commits f76aa20
+(plan) and f51b4de (implementation, archive `2026-10-04-openscad-out`,
+ADR-177, 178, 179; the specs `openscad-engine` and `scad-engine-dependency`
+removed, 45 remain), merged into the line as 04809f7 (a merge, not a
+fast-forward: the line had taken the viewer-seam plan commit meanwhile).
+Suite at f51b4de: 4513 passed, 4 skipped, twice; at the merge head the
+same, after one environment failure worth knowing about: a bench that
+takes a commit deleting a package directory keeps that directory alive
+through its ignored `__pycache__`, and Python then imports the deleted
+package as an empty namespace package, so the test that the former
+addresses are gone fails until `git clean -fdX <directory>` removes the
+leftover. Every checkout that pulls this cycle (the primary `machinome/`
+when the line merges into main, every bench cut before it) needs that
+cleaning once; the same will hold for `brep-mesh` (the `occt/` and
+`manifold/` directories) and `viewer-seam` (`viewers/`). Validation legs
+all identical to their baselines (the lock's 15 and Prusa's 55 `.scad`
+hashes, 2573 and 15935 verdicts, the snapshot's root SCAD and pixels, the
+three goldens, OpenAstroMount built and tested with SolidPython and both
+OpenSCAD packages unfindable, `machinome new` under three installs); the
+universe sweep unchanged (117 ok, 4 expected, 2 unexpected pre-existing, 6
+no-model). The workspace holds the eighth table,
+`scripts/load-projects.d/openscad-out.toml` (main b1c1bf5). The bench is
+torn down, the branch kept.
+
+What this leaves of the list above: the ninth cycle's template work was
+absorbed by `openscad-out` (the template scaffolds the installed leaf
+kind); `jscad` and `stl` as packages go with the root cleanup. **Next:
+`brep-mesh`**, then `root-cleanup`, then `viewer-seam`, as "The next
+phase" and "The last cycle of the phase" below record.
+
 ## Every node type is a package (pilot, 4 October 2026, at the session's close)
 
 The pilot's ruling, after the seventh cycle, superseding "Not split, and
