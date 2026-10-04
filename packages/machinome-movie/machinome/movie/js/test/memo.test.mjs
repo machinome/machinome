@@ -367,7 +367,9 @@ describe('the verdict key covers what a slow test can reach',()=>{
     assert.deepEqual(await undeclared(slow,{root}),[],'a module reads a repository file the key does not declare');
     for(const file of slow.filter(f=>f.includes('/test/browser/'))){
       const inputs=await slowTestInputs(file,{root});
-      for(const served of ['stage/shipped.tsx','stage/runtime.tsx','src/film.html','test/viewer-double.mjs'])
+      for(const served of ['stage/shipped.tsx','stage/runtime.tsx','src/film.html','test/viewer-double.mjs',
+        // The stage bundle embeds the take transport and the pose rule (ADR-020).
+        'transport/take.ts','transport/viewer-handle.ts','src/take.mjs'])
         assert.ok(inputs.includes(join(root,served)),`${served} is an input of ${file}`);
     }
     // The viewer layer reaches the stage and the real export it poses.

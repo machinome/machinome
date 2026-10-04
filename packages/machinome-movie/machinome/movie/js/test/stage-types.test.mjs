@@ -1,4 +1,5 @@
-// Layer 4 (pure, Node): the stage runtime compiles under `tsc --noEmit` (strict), and a movie's
+// Layer 4 (pure, Node): the stage runtime and the take transport compile under
+// `tsc --noEmit` (strict), and a movie's
 // generated types check its stage modules: the fixture tour's template
 // compiles against the types generated from its document's stage block, and a
 // module whose slot, prop or action parameter differs is refused naming it.
@@ -30,6 +31,11 @@ const run=(args,cwd)=>new Promise(done=>
 describe('types',()=>{
   test('the runtime compiles strictly: tsc --noEmit -p stage/tsconfig.json',async()=>{
     const {code,output}=await run(['--noEmit','--pretty','false','-p','stage/tsconfig.json'],TOOL);
+    expect(output).toBe('');
+    expect(code).toBe(0);
+  });
+  test('the take transport compiles strictly, its tests included: tsc --noEmit -p transport/tsconfig.json',async()=>{
+    const {code,output}=await run(['--noEmit','--pretty','false','-p','transport/tsconfig.json'],TOOL);
     expect(output).toBe('');
     expect(code).toBe(0);
   });
@@ -85,14 +91,14 @@ describe('bundle',()=>{
   // the tool and the project, never by the machine's directories, so two
   // checkouts of the same tool building two copies of the same project write
   // the same bytes, and a second checkout reuses what the first one built.
-  // The second checkout is a copy of the tool's src/, stage/ and package.json
-  // elsewhere, with its node_modules a link to this checkout's, as a
-  // worktree's is.
+  // The second checkout is a copy of the tool's src/, stage/, transport/ and
+  // package.json elsewhere, with its node_modules a link to this checkout's,
+  // as a worktree's is.
   let otherCheckout=null;
   const elsewhere=()=>otherCheckout??=(async()=>{
     const other=join(work,'other-checkout');
     // package.json too: its "type" decides how esbuild imports the runtime.
-    for(const entry of ['src','stage','package.json'])await cp(join(TOOL,entry),join(other,entry),{recursive:true});
+    for(const entry of ['src','stage','transport','package.json'])await cp(join(TOOL,entry),join(other,entry),{recursive:true});
     await symlink(await realpath(join(TOOL,'node_modules')),join(other,'node_modules'));
     return import(pathToFileURL(join(other,'src','stage-build.mjs')).href);
   })();
@@ -118,6 +124,17 @@ describe('bundle',()=>{
     }
     expect(js).toMatch(/^ {2}\/\/ videomaker\/stage\/runtime\.tsx$/m);
     expect(js).toMatch(/^ {2}\/\/ project\/stage\.tsx$/m);
+    // The take transport the runtime bundles (ADR-020). It imports the pose
+    // rule, which esbuild reads and drops from the script, since the stage
+    // poses banks the frame gives it; the record the key is computed over
+    // names both by the tool, and nothing by the machine.
+    expect(js).toMatch(/^ {2}\/\/ videomaker\/transport\/take\.ts$/m);
+    for(const build of [first,second]){
+      const names=JSON.parse(await readFile(join(dirname(build.js),'inputs.json'),'utf8')).inputs.map(i=>i.path);
+      for(const name of ['videomaker/transport/take.ts','videomaker/transport/viewer-handle.ts','videomaker/src/take.mjs','videomaker/stage/runtime.tsx'])
+        expect(names).toContain(name);
+      expect(names.filter(name=>name.startsWith('../'))).toEqual([]);
+    }
     expect(js).toMatch(/^ {4}"videomaker\/node_modules\/react\/index\.js"\(exports, module\) \{$/m);
     expect(css).toMatch(/^\/\* videomaker\/stage\/stage\.css \*\/$/m);
     expect(css).toMatch(/^\/\* project\/stage\.css \*\/$/m);

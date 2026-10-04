@@ -1,9 +1,11 @@
 // The stage runtime: boots the page the renderer serves, mounts the set each
 // frame names, poses each placed view element on a viewer instance leased to
 // it for the frame (ADR-007), draws marks, and returns what it measured
-// (docs/movie-document.md, "The stage"). Imported first by the bundle's entry,
-// so the shipped kinds are registered before a project's modules register
-// theirs; the entry calls boot() last.
+// (docs/movie-document.md, "The stage"). A view on a clocked take is posed
+// through the take transport (transport/, ADR-020), attached once per mounted
+// instance. Imported first by the bundle's entry, so the shipped kinds are
+// registered before a project's modules register theirs; the entry calls
+// boot() last.
 //
 // Raster discipline (the earlier film page's, kept): a pose repaints the whole
 // page when what it draws outside the views' canvases changed since the last
@@ -19,34 +21,18 @@ import {Stage,reframeOf,type ReportSource,type StageContextValue} from './compon
 import {drawMarks,plain,type MarkReport} from './marks';
 import {checkRegistry} from './registry';
 import {registerShipped} from './shipped';
-import type {Bank,MovieInfo,MovieStyle,PictureState,Rect,SourceState,StageConfig,StageFrame,Vec3,ViewState} from './types';
+import type {MovieInfo,MovieStyle,PictureState,Rect,SourceState,StageConfig,StageFrame,Vec3,ViewState} from './types';
+import {attachMachine,type MachineTransport} from '../transport/take';
+import type {MachineHandle,ViewerFactory,ViewerInstance} from '../transport/viewer-handle';
 
-interface Vector {toArray():number[]}
-/** The viewer's handle on a clocked machine (Viewer API 29, on-demand). */
-export interface MachineHandle {
-  identity():string;
-  state():Bank;
-  restore(snapshot:{identity:string;bank:Bank}):void;
-}
-export interface ViewerInstance {
-  apiVersion:number;
-  setVisible(path:string[],visible:boolean):void;
-  navigation():unknown;
-  machine?():MachineHandle|null;
-  setTime(time:number):void;
-  setView(view:{camera:Vec3;target:Vec3;up?:Vec3;fov?:number}):void;
-  view():{camera:Vector;target:Vector;up?:Vector;fov?:number};
-  partOnScreen(path:string[]):{rect:Rect}|null;
-  project(point:Vec3):{x:number;y:number}|null;
-  highlight(paths:string[][],settings:{color?:string;others?:string}):()=>void;
-}
-interface ViewerFactory {mount(selector:string,url:string,options:Record<string,unknown>):Promise<ViewerInstance>}
 export interface Film {
   readonly apiVersion:number|null;
   readonly viewer:ViewerInstance|null;
   project(key:string,points:Vec3[]):({x:number;y:number}|null)[];
   /** The machine handle of the viewer instance the view element `key` holds, or null. */
   machine(key:string):MachineHandle|null;
+  /** The take transport's machine transport the view element `key` is posed through, or null for a view on a loop. */
+  transport(key:string):MachineTransport|null;
   views():{key:string|null;instance:number;visible:boolean}[];
   setFrame(frame:StageFrame):Promise<Observed>;
   compose(request:ComposeRequest):Promise<{chrome:Rect[]}>;
@@ -90,11 +76,13 @@ if(typeof window!=='undefined')window.addEventListener('error',event=>{
 // when its viewer cannot be given another (below API 28), else null.
 export interface Tenancy {key:string|null;lens:string|null}
 // A mounted instance. What it holds (the layers it hides, the highlight
-// standing on it and its restore, its last box size) belongs to the instance
-// and travels with it from one view element to the next.
+// standing on it and its restore, its last box size, the machine transport a
+// view on a take is posed through) belongs to the instance and travels with
+// it from one view element to the next.
 interface PooledView extends Tenancy {
   instance:number;host:HTMLDivElement;marks:HTMLDivElement;viewer:ViewerInstance;
   hidden:string[][];applied:string|null;restore:(()=>void)|null;size:{width:number;height:number}|null;
+  transport:MachineTransport|null;
 }
 
 /**
@@ -135,34 +123,24 @@ export function reframeHost(element:Rect,page:{width:number;height:number},box:r
 }
 
 /**
- * The machine a view on a clocked take is posed through (ADR-012): the
- * viewer's `machine()` handle, whose identity must be the take's. A viewer
- * that gives none, or another machine, is refused naming the view (`where`).
+ * Poses one view. A view on a clocked take is posed through the machine
+ * transport its instance was attached when it mounted (ADR-012, ADR-020):
+ * its whole bank restored with the take's identity, then the camera. A view
+ * on a loop sets its time, then the camera. The camera call validates,
+ * updates and renders synchronously (under on-demand rendering it is also
+ * what draws a restored bank); from API 28 it sets up and field of view on
+ * every frame, below it camera and target alone.
  */
-export function viewMachine(viewer:ViewerInstance,identity:string|null|undefined,where:string):MachineHandle{
-  const machine=typeof viewer.machine==='function'?viewer.machine():null;
-  if(!machine)throw new Error(`${where}: the viewer gives no machine for this clocked document; a view on a take is posed through viewer.machine(), from Viewer API 29`);
-  const own=machine.identity();
-  if(own!==identity)throw new Error(`${where}: the viewer's machine is ${own}, and the take was recorded on ${identity} (take.identity)`);
-  return machine;
-}
-
-/**
- * Poses one view: a view on a clocked take restores its whole bank on the
- * viewer's machine with the take's identity, a view on a loop sets its time;
- * then the camera, which validates, updates and renders synchronously (under
- * on-demand rendering it is also what draws a restored bank). From API 28 up
- * and field of view are set on every frame; below it the call is exactly as
- * before.
- */
-export function poseView(viewer:ViewerInstance,state:ViewState,identity:string|null|undefined):void{
+export function poseView(viewer:ViewerInstance,state:ViewState,transport:MachineTransport|null):void{
+  const camera={camera:state.view.camera,target:state.view.target,up:state.up,fov:state.fov};
   if(state.bank){
-    const machine=typeof viewer.machine==='function'?viewer.machine():null;
-    if(!machine||!identity)throw new Error('a view on a take needs the viewer\'s machine and the take\'s identity');
-    machine.restore({identity,bank:{...state.bank}});
-  }else viewer.setTime(state.time as number);
-  if(viewer.apiVersion>=28)viewer.setView({camera:state.view.camera,target:state.view.target,up:state.up,fov:state.fov});
-  else viewer.setView({camera:state.view.camera,target:state.view.target});
+    if(!transport)throw new Error('a view on a take is posed through the take\'s machine transport, and its viewer has none');
+    transport.pose(state.bank,camera);
+    return;
+  }
+  viewer.setTime(state.time as number);
+  if(viewer.apiVersion>=28)viewer.setView(camera);
+  else viewer.setView({camera:camera.camera,target:camera.target});
 }
 
 const frames=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
@@ -315,16 +293,18 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     if(!(viewer.apiVersion>=21)||typeof viewer.setView!=='function')refuse('Viewer API 21 with setView is required');
     const required=config.viewer?.required?.api;
     if(typeof required==='number'&&viewer.apiVersion<required)refuse(refusal(viewer.apiVersion));
-    // A view on a take is posed through the viewer's machine, which must be
-    // the one the take was recorded on (ADR-012).
+    // A view on a take is posed through the take transport's machine
+    // transport, attached once, whose machine must be the one the take was
+    // recorded on (ADR-012, ADR-020).
+    let transport:MachineTransport|null=null;
     if(state.bank){
-      try{viewMachine(viewer,config.take?.identity,`View ${key} in shot ${shotId}`);}
-      catch(error){refuse(message(error));}
+      try{transport=attachMachine(viewer,config.take?.identity as string);}
+      catch(error){refuse(`View ${key} in shot ${shotId}: ${message(error)}`);}
     }
     // Below API 28 setView cannot change up or field of view: the instance
     // keeps the lens it mounted with, and is leased only to that lens.
     const view:PooledView={key,lens:viewer.apiVersion>=28?null:lensOf(state),instance,host,marks,viewer,
-      hidden:[],applied:null,restore:null,size:null};
+      hidden:[],applied:null,restore:null,size:null,transport};
     instances.push(view);first??=view;
     return view;
   }
@@ -346,8 +326,8 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
         const {paths,others,color}=state.highlight;
         view.restore=viewer.highlight(paths,{color,others});view.applied=wanted;
       }
-      // The loop's time, or the take's bank, then the camera.
-      poseView(viewer,state,config.take?.identity);
+      // The loop's time, or the take's bank through the transport, then the camera.
+      poseView(viewer,state,view.transport);
     }catch(error){throw new Error(`View ${key(view)} in shot ${shotId}: ${message(error)}`);}
   }
   const key=(view:PooledView)=>view.key;
@@ -425,7 +405,7 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
         camera:read.camera.toArray(),target:read.target.toArray(),
         ...(view.viewer.apiVersion>=28?{up:read.up?.toArray(),fov:Number(read.fov)}:{}),
         // The bank the machine holds after the pose, for a view on a take.
-        ...(state.bank?{bank:view.viewer.machine?.()?.state()??null}:{}),
+        ...(state.bank?{bank:view.transport?.bank()??null}:{}),
         navigation:view.viewer.navigation(),marks};
     }
     return {views:reports,resized};
@@ -489,6 +469,7 @@ function createFilm(config:StageConfig,movie:MovieInfo,factory:ViewerFactory):Fi
     get viewer(){return first?.viewer??null;},
     project:(k,points)=>{const {viewer}=viewNamed(k);return points.map(p=>viewer.project(p));},
     machine:k=>{const {viewer}=viewNamed(k);return typeof viewer.machine==='function'?viewer.machine():null;},
+    transport:k=>viewNamed(k).transport,
     views:()=>instances.map(v=>({key:v.key,instance:v.instance,visible:v.host.isConnected&&v.host.style.visibility!=='hidden'})),
     setFrame,compose,composeMarkBlend,
   };

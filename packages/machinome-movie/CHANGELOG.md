@@ -6,6 +6,20 @@ lands it.
 
 ## Unreleased
 
+- A take can be posed in a browser without the stage. The new take
+  transport (`transport/`) poses a clocked take on a mounted viewer:
+  `attachMachine` restores a bank on the viewer's machine with the take's
+  identity and sets the camera, refusing, before it touches the viewer, a
+  viewer that gives no machine or another machine, in the words the stage
+  used; `attachTake` seeks a take document by the rule the frame uses, so a
+  mark poses exactly its recorded bank; `attachLoop` seeks a posed loop by
+  its time; a timer clock and an audio clock drive them. The stage now poses
+  every view on a take through it, attached once per viewer instance, and
+  `window.film.transport(key)` reports it; every frame is posed and checked
+  as before. The transport imports only its own files and the pose rule, a
+  repository test holds it there, and the stage bundle names it by the tool
+  (`videomaker/transport/<file>`). The bundle changes, so every film's shots
+  recapture once. (`take-transport`, ADR-020)
 - A take is recorded against the machine the export carries, or not at
   all. Evaluation reads the take's `identity` from the framework's
   simulation of the declared model (`Sim(model).identity`), the simulation

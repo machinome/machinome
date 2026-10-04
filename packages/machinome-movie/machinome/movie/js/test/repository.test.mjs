@@ -173,3 +173,18 @@ test('the manual and the records say where a highlight landed and what check mea
   assert.ok((await read('CHANGELOG.md')).includes('(`proofs-report-the-look`, ADR-017)'),'the changelog bullet');
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md)'),'the ADR index');
 });
+
+test('the manual and the records say a view on a take is posed through the take transport (take-transport)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const stage=await read('docs/stage.md');
+  assert.ok(stage.includes('`videomaker/transport/<file>`'),'stage.md: the bundle names the transport by the tool');
+  assert.ok(stage.includes('through the take transport'),'stage.md: the view row');
+  const contract=await read('docs/movie-document.md');
+  assert.ok(contract.includes('`transport(key)`'),'movie-document.md: window.film.transport');
+  assert.ok(contract.includes('`attachMachine(viewer, take.identity)`'),'movie-document.md: the pose of a view on a take');
+  assert.ok((await read('docs/architecture-overview.md')).includes('`transport/`'),'the architecture overview');
+  assert.ok((await read('AGENTS.md')).includes('`transport/**/*.test.ts`'),'AGENTS.md: layer 4');
+  assert.ok((await read('CHANGELOG.md')).includes('(`take-transport`, ADR-020)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser\'s pose of a take, written to lift | Proposed |'),'the ADR index');
+  assert.ok(await exists('docs/adrs/STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md'),'ADR-020');
+});

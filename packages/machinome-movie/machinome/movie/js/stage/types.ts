@@ -4,10 +4,12 @@
 // MovieElements are empty here and augmented per movie by the generated
 // movie.d.ts, so a module's sets and elements are checked against its document.
 import type {ComponentType} from 'react';
+// A vector, a rectangle and a machine's bank are the viewer's handle's, which
+// the take transport declares (ADR-020); the stage gives authors the same names.
+import type {Bank,Rect,Vec3} from '../transport/viewer-handle';
+export type {Bank,Rect,Vec3};
 
 export type Vec2=[number,number];
-export type Vec3=[number,number,number];
-export interface Rect {x:number;y:number;width:number;height:number}
 
 export interface MovieStyle {
   background:string;
@@ -35,8 +37,6 @@ export interface MarkState {
   drawn:number;
 }
 export interface HighlightState {paths:string[][];others?:string;color?:string}
-/** A clocked machine's drivers and states by qualified id, in native units. */
-export type Bank=Record<string,number>;
 /**
  * A view's state: on a posed loop its normalized loop `time`; on a clocked
  * take, instead, the machine's whole `bank` at the view's take time, which
