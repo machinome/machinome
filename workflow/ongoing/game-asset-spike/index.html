@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thor game asset</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Spike: a machinome model exported as a rigged GLB and posed by a stock glTF loader, with no machinome runtime.">
+<style>
+  :root { --bg: #f5f5f4; --fg: #1c1917; --panel: rgba(255,255,255,.92); --line: #d6d3d1; --accent: #ea580c; --muted: #78716c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1c1917; --fg: #e7e5e4; --panel: rgba(41,37,36,.92); --line: #44403c; --muted: #a8a29e; } }
+  :root[data-theme="dark"] { --bg: #1c1917; --fg: #e7e5e4; --panel: rgba(41,37,36,.92); --line: #44403c; --muted: #a8a29e; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, sans-serif; }
+  #view { position: fixed; inset: 0; }
+  #panel { position: fixed; top: 12px; left: 12px; width: 312px; max-height: calc(100% - 24px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; box-sizing: border-box; backdrop-filter: blur(6px); }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; color: var(--muted); }
+  #status { font-size: 12px; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 44px 1fr 64px; gap: 8px; align-items: center; margin: 3px 0; }
+  .row input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row output { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  td { padding: 2px 0; vertical-align: top; }
+  td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  button, select { font: inherit; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: inherit; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  a { color: var(--accent); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  @media (max-width: 600px) { #panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 16px; max-height: 58%; } }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<aside id="panel">
+  <h1>Thor as a game asset</h1>
+  <div id="status">loading thor.glb…</div>
+  <h2>Joints</h2>
+  <div id="sliders"></div>
+  <h2>Clips</h2>
+  <div><select id="clips"></select> <button id="play" class="primary">Play</button> <button id="reset">Reset</button></div>
+  <div class="note">A clip is an instruction of the model sampled from its defaults. The sliders pose the rig from the formulas the file carries; no machinome code runs here.</div>
+  <h2>What this is</h2>
+  <table id="facts"></table>
+  <h2>Files</h2>
+  <div><a href="thor.glb" download>thor.glb</a> · <a href="measurements.json">measurements.json</a> · <a href="comparison.png">comparison sheet</a></div>
+  <div class="note">Thor by AngelLM, CC-BY-SA-4.0. Open the GLB in Blender, Godot or Unity: the joint chain is the node hierarchy.</div>
+</aside>
+<script type="importmap">
+{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.156.1/build/three.module.js",
+             "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.156.1/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const params = new URLSearchParams(location.search);
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+if (params.get('panel') === '0') document.getElementById('panel').style.display = 'none';
+const status = document.getElementById('status');
+window.spike = { ready: false, frames: 0 };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.getElementById('view').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(params.get('bg') ? '#' + params.get('bg') : (dark ? '#1c1917' : '#f5f5f4'));
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.01, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x777777, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(1.5, 2.5, 2); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.6); fill.position.set(-2, 1, -1.5); scene.add(fill);
+
+// The expression language of the document: OpenSCAD-flavoured, trigonometry in degrees.
+const D = Math.PI / 180;
+const FN = {
+  sin: d => Math.sin(d * D), cos: d => Math.cos(d * D), tan: d => Math.tan(d * D),
+  asin: x => Math.asin(Math.max(-1, Math.min(1, x))) / D, acos: x => Math.acos(Math.max(-1, Math.min(1, x))) / D,
+  atan: x => Math.atan(x) / D, atan2: (y, x) => Math.atan2(y, x) / D,
+  abs: Math.abs, floor: Math.floor, ceil: Math.ceil, sqrt: Math.sqrt, min: Math.min, max: Math.max,
+  pow: Math.pow, exp: Math.exp, ln: Math.log, log: Math.log10, round: Math.round, sign: Math.sign, mod: (a, b) => a % b,
+};
+const compile = (expr, names) => new Function(...names, 'return (' + expr.replace(/\$t/g, '_t') + ');');
+
+let rig, names, fnValues, bindingFns = [], joints = [], drivers = {}, root;
+let mixer, action, clipsByName = {}, instructions = {};
+const clock = new THREE.Clock();
+
+function scopeValues() {
+  const vals = [...fnValues, 0, ...Object.keys(rig.drivers).map(k => drivers[k])];
+  for (const f of bindingFns) vals.push(f(...vals));
+  return vals;
+}
+function pose() {
+  const vals = scopeValues();
+  for (const j of joints) {
+    if (j.info.op === 'r') j.obj.quaternion.setFromAxisAngle(j.axis, j.fns[0](...vals) * D);
+    else j.obj.position.set(j.fns[0](...vals), j.fns[1](...vals), j.fns[2](...vals));
+  }
+}
+function stopClip() { if (action) { action.stop(); action = null; } }
+function syncSliders() {
+  for (const [k, v] of Object.entries(drivers)) {
+    const el = document.getElementById('d-' + k); if (!el) continue;
+    el.value = v; el.nextElementSibling.value = (+v).toFixed(1) + ' ' + (rig.drivers[k].unit || '');
+  }
+}
+function buildSliders() {
+  const host = document.getElementById('sliders');
+  for (const [k, d] of Object.entries(rig.drivers)) {
+    const [lo, hi] = d.range || [d.default - 180, d.default + 180];
+    const row = document.createElement('label'); row.className = 'row';
+    row.innerHTML = `<span>${k}</span><input id="d-${k}" type="range" min="${lo}" max="${hi}" step="0.5" value="${drivers[k]}"><output></output>`;
+    row.querySelector('input').addEventListener('input', e => { stopClip(); drivers[k] = +e.target.value; syncSliders(); pose(); });
+    host.appendChild(row);
+  }
+  syncSliders();
+}
+function fit() {
+  const box = new THREE.Box3().setFromObject(root);
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  const radius = size.length() / 2;
+  let dist = radius / Math.sin(camera.fov * D / 2) * 1.05;
+  let dir = new THREE.Vector3(1, 0.55, 1.15).normalize();
+  if (params.get('cam') === 'viewer') {
+    // the machinome viewer's default framing: fov 50, from (1, -1, 0.8) in Z-up, 1.2 x the half diagonal over tan(fov/2)
+    camera.fov = 50; dir = new THREE.Vector3(1, 0.8, 1).normalize();
+    dist = radius / Math.tan(camera.fov * D / 2) * 1.2;
+  }
+  camera.position.copy(center).addScaledVector(dir, dist);
+  camera.near = dist / 100; camera.far = dist * 10; camera.updateProjectionMatrix();
+  controls.target.copy(center); controls.update();
+}
+async function facts(gltf) {
+  let tris = 0, meshes = 0;
+  root.traverse(o => { if (o.isMesh) { meshes++; tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; } });
+  const rows = [['document', rig.document.replace('/_build/viewer.json', '')], ['document version', rig.version],
+    ['mesh primitives (colour groups)', meshes], ['joint nodes', joints.length], ['triangles drawn', tris.toLocaleString()]];
+  try {
+    const m = await (await fetch('measurements.json')).json();
+    rows.push(['bodies', m.bodies], ['pieces in the model', m.pieces], ['triangles in the model', m.triangles_fine_placed?.toLocaleString() ?? '—'],
+      ['after re-tessellation', m.triangles_before?.toLocaleString() ?? '—'],
+      ['joint classes', Object.entries(m.joint_classes).map(([k, v]) => `${v} ${k}`).join(', ')],
+      ['belts dropped', m.flexible_dropped.length], ['file', (m.glb_bytes / 1e6).toFixed(1) + ' MB']);
+  } catch (e) { /* measurements are optional */ }
+  document.getElementById('facts').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+}
+function clips(gltf) {
+  const sel = document.getElementById('clips');
+  for (const clip of gltf.animations) { clipsByName[clip.name] = clip; sel.add(new Option(clip.name, clip.name)); }
+  mixer = new THREE.AnimationMixer(root);
+  mixer.addEventListener('finished', () => {
+    const t = instructions[action?.getClip().name]?.targets;
+    if (t) { Object.assign(drivers, t); syncSliders(); }
+  });
+  document.getElementById('play').addEventListener('click', () => {
+    stopClip();
+    // every clip starts at the defaults, so pose there first
+    Object.assign(drivers, Object.fromEntries(Object.entries(rig.drivers).map(([k, d]) => [k, d.default]))); syncSliders(); pose();
+    action = mixer.clipAction(clipsByName[sel.value]);
+    action.reset(); action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; action.play();
+  });
+  document.getElementById('reset').addEventListener('click', () => {
+    stopClip();
+    Object.assign(drivers, Object.fromEntries(Object.entries(rig.drivers).map(([k, d]) => [k, d.default]))); syncSliders(); pose();
+  });
+}
+
+new GLTFLoader().load('thor.glb', gltf => {
+  scene.add(gltf.scene);
+  gltf.scene.traverse(o => { if (o.userData?.machinome?.joints) root = o; });
+  root = root || gltf.scene;
+  rig = root.userData.machinome;
+  instructions = rig.instructions || {};
+  names = [...Object.keys(FN), '_t', ...Object.keys(rig.drivers), ...rig.bindings.map(b => b.name)];
+  fnValues = Object.values(FN);
+  bindingFns = rig.bindings.map(b => compile(b.expression, names));
+  for (const [name, j] of Object.entries(rig.joints)) {
+    const obj = gltf.scene.getObjectByName(name);
+    if (!obj) continue;
+    joints.push({ obj, info: j, fns: j.expressions.map(e => compile(e, names)), axis: j.axis ? new THREE.Vector3(...j.axis).normalize() : null });
+  }
+  drivers = Object.fromEntries(Object.entries(rig.drivers).map(([k, d]) => [k, params.has(k) ? +params.get(k) : d.default]));
+  buildSliders(); pose(); fit(); facts(gltf); clips(gltf);
+  status.textContent = `${Object.keys(rig.joints).length} joints, ${gltf.animations.length} clips, posed by a stock glTF loader`;
+  window.spike.ready = true;
+}, undefined, err => { status.textContent = 'failed to load thor.glb: ' + err.message; });
+
+window.spike.setDrivers = o => {
+  stopClip();
+  for (const [k, d] of Object.entries(rig.drivers)) drivers[k] = k in o ? o[k] : d.default;
+  syncSliders(); pose();
+  if (params.get('cam') === 'viewer') { root.updateWorldMatrix(true, true); fit(); }
+};
+window.spike.play = name => { document.getElementById('clips').value = name; document.getElementById('play').click(); };
+window.spike.scope = () => Object.fromEntries(names.map((n, i) => [n, scopeValues()[i]]).filter(([n]) => !(n in FN)));
+window.spike.worldOf = name => { const o = root.getObjectByName(name); o.updateWorldMatrix(true, false); return o.matrixWorld.elements.slice(); };
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+renderer.setAnimationLoop(() => { const dt = clock.getDelta(); if (mixer) mixer.update(dt); controls.update(); renderer.render(scene, camera); window.spike.frames++; });
+</script>
+</body>
+</html>

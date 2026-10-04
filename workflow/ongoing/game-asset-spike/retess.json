@@ -1,0 +1,550 @@
+{
+ "linear": 0.5,
+ "angular": 0.5,
+ "models": 90,
+ "fine_distinct": 795704,
+ "coarse_distinct": 134724,
+ "seconds": 3.9,
+ "rows": [
+  {
+   "model": "simulation/fasteners-HexNut,across_flats=5.5,bore=3.0,thickness=2.4-e56e92198995.stl",
+   "fine": 528,
+   "coarse": 128,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=10.-e2ab245f0b71.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=12.-93850e90abe0.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=16.-d78915c078b5.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=20.-9e4794baf8fc.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=25.-8c4380b6324f.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=30.-b3c3193495d1.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=40.-74b977fc0c4b.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=6.0-a0fd2aeeb3f6.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/fasteners-SocketHeadScrew,head_diameter=5.5,head_height=3.0,length=8.0-da9a475a2446.stl",
+   "fine": 1028,
+   "coarse": 228,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-ArduinoMega,board_thickness=1.63,component_height=13.18,leng-ac3e34670019.stl",
+   "fine": 28,
+   "coarse": 28,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-BallBearing,bore=4.0,flange_diameter=9.2,flange_width=0.6,ou-f7187e204793.stl",
+   "fine": 3528,
+   "coarse": 728,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-BallBearing,bore=5.0,flange_diameter=0.0,flange_width=0.6,ou-831204c4573d.stl",
+   "fine": 3024,
+   "coarse": 624,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-BallBearing,bore=70.0,flange_diameter=0.0,flange_width=0.6,o-2eb269ffc245.stl",
+   "fine": 3024,
+   "coarse": 728,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-BearingBall,diameter=6.0-a45e65c8dda9.stl",
+   "fine": 8000,
+   "coarse": 306,
+   "watertight": false
+  },
+  {
+   "model": "simulation/hardware-DcJack,height=12.7,reach=18.2,width=11.0-3e4f0cb54e72.stl",
+   "fine": 12,
+   "coarse": 12,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Fan,aperture=37.0,hub_diameter=16.0,side=40.0,thickness=10.0-7ca0f7b2ea61.stl",
+   "fine": 1128,
+   "coarse": 316,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Fan,aperture=46.0,hub_diameter=20.0,side=50.0,thickness=11.0-86a1c1a6bdbf.stl",
+   "fine": 1124,
+   "coarse": 316,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-GearBoxBody,barrel_diameter=36.0,barrel_length=20.3,body_len-33b5d1dedaa0.stl",
+   "fine": 908,
+   "coarse": 356,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-M8Connector,barrel_diameter=10.0,body_length=21.0,flat_width-b6c3ba977f8e.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Magnet,diameter=8.0,thickness=1.0-a69e576af20a.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-MicroEndstop,body_height=9.4,body_length=12.6,body_width=5.8-47a8b008c2e9.stl",
+   "fine": 28,
+   "coarse": 28,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-MotorShaft,diameter=5.0,flat=0.5,length=20.0-ebc4693dc44e.stl",
+   "fine": 400,
+   "coarse": 80,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-MotorShaft,diameter=5.0,flat=0.5,length=20.1-a22660ff728b.stl",
+   "fine": 400,
+   "coarse": 80,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-MotorShaft,diameter=6.0,flat=0.5,length=18.0-19e0f9f5b051.stl",
+   "fine": 412,
+   "coarse": 84,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-OptoInterrupter,board_length=35.0,board_thickness=2.2,board_-bd7f80fb7c27.stl",
+   "fine": 44,
+   "coarse": 44,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-PanelNut,across_flats=19.0,bore=16.2,outer_diameter=21.94,th-b0c86819c887.stl",
+   "fine": 848,
+   "coarse": 184,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-PanelPushButton,bezel_diameter=18.9,bezel_height=2.0,body_di-fc18e661201d.stl",
+   "fine": 1524,
+   "coarse": 324,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-PanelSwitch,bezel_diameter=17.8,bezel_height=1.5,body_diamet-a0d81a13a990.stl",
+   "fine": 1524,
+   "coarse": 324,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-PulleyGT2,belt_width=7.5,bore=4.0,flange_diameter=28.0,flang-317b695053c7.stl",
+   "fine": 2016,
+   "coarse": 416,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-PulleyGT2,belt_width=9.0,bore=5.0,flange_diameter=18.0,flang-5876f52c4bdc.stl",
+   "fine": 2016,
+   "coarse": 416,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-ServoHorn,disc_diameter=21.0,disc_thickness=2.3,hub_diameter-fe49bb37e0dd.stl",
+   "fine": 1004,
+   "coarse": 204,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-ServoMotor,body_height=40.48,body_length=40.6,body_offset=21-8af366128e8c.stl",
+   "fine": 548,
+   "coarse": 148,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Shaft,diameter=4.0,length=14.0-edefa6550102.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Shaft,diameter=5.0,length=102.0-c5692730d4a3.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Shaft,diameter=5.0,length=128.0-16f572fe88fd.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Shaft,diameter=5.0,length=14.5-bda176cb5b95.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-Shaft,diameter=5.0,length=32.0-321b3caa1fe9.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-ShaftCollar,bore=5.0,boss_reach=5.87,boss_width=6.0,outer_di-a214cd31dbf9.stl",
+   "fine": 1124,
+   "coarse": 244,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-StepperBody,body_length=34.0,boss_diameter=22.0,boss_length=-3ce3ecdaa4fc.stl",
+   "fine": 852,
+   "coarse": 292,
+   "watertight": true
+  },
+  {
+   "model": "simulation/hardware-StepperBody,body_length=40.0,boss_diameter=22.0,boss_length=-af76afc6a983.stl",
+   "fine": 852,
+   "coarse": 292,
+   "watertight": true
+  },
+  {
+   "model": "step/Art1Body-__Art1Body_,_simulation_parts.py__-8d081f9e70df.stl",
+   "fine": 56774,
+   "coarse": 10180,
+   "watertight": false
+  },
+  {
+   "model": "step/Art1Bot-__Art1Bot_,_simulation_parts.py__-8fec2910e260.stl",
+   "fine": 10322,
+   "coarse": 2958,
+   "watertight": true
+  },
+  {
+   "model": "step/Art1FanHolder-__Art1FanHolder_,_simulation_parts.py__-69cc062aa6c6.stl",
+   "fine": 3980,
+   "coarse": 966,
+   "watertight": true
+  },
+  {
+   "model": "step/Art1GearMotor-__Art1GearMotor_,_simulation_parts.py__-3859f24c70fe.stl",
+   "fine": 13341,
+   "coarse": 2719,
+   "watertight": false
+  },
+  {
+   "model": "step/Art1Top-__Art1Top_,_simulation_parts.py__-264e9ca563b1.stl",
+   "fine": 11928,
+   "coarse": 2973,
+   "watertight": false
+  },
+  {
+   "model": "step/Art23Optodisk-__Art23Optodisk_,_simulation_parts.py__-2c7a0b5eda46.stl",
+   "fine": 2668,
+   "coarse": 618,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2BodyA-__Art2BodyA_,_simulation_parts.py__-470a85b7b845.stl",
+   "fine": 37380,
+   "coarse": 7442,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2BodyACover1-__Art2BodyACover1_,_simulation_parts.py__-afefc85a4246.stl",
+   "fine": 10540,
+   "coarse": 2280,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2BodyACover2-__Art2BodyACover2_,_simulation_parts.py__-9e2f1db483cb.stl",
+   "fine": 4220,
+   "coarse": 964,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2BodyAWindow-__Art2BodyAWindow_,_simulation_parts.py__-0753b7ccd996.stl",
+   "fine": 6582,
+   "coarse": 1494,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2BodyB-__Art2BodyB_,_simulation_parts.py__-bcec6c2e7f25.stl",
+   "fine": 37458,
+   "coarse": 6432,
+   "watertight": false
+  },
+  {
+   "model": "step/Art2BodyBCover-__Art2BodyBCover_,_simulation_parts.py__-9ef1c7c26e76.stl",
+   "fine": 6036,
+   "coarse": 1364,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2BodyUnion-__Art2BodyUnion_,_simulation_parts.py__-8accc2ad2b3f.stl",
+   "fine": 8572,
+   "coarse": 1996,
+   "watertight": true
+  },
+  {
+   "model": "step/Art2MotorGear-__Art2MotorGear_,_simulation_parts.py__-65e7d867bf77.stl",
+   "fine": 14382,
+   "coarse": 2232,
+   "watertight": false
+  },
+  {
+   "model": "step/Art2SideCover-__Art2SideCover_,_simulation_parts.py__-85481383110b.stl",
+   "fine": 2444,
+   "coarse": 572,
+   "watertight": true
+  },
+  {
+   "model": "step/Art3Body-__Art3Body_,_simulation_parts.py__-6949d757cfeb.stl",
+   "fine": 28417,
+   "coarse": 7998,
+   "watertight": false
+  },
+  {
+   "model": "step/Art3Pulley-__Art3Pulley_,_simulation_parts.py__-cc8a12c548f9.stl",
+   "fine": 8824,
+   "coarse": 2056,
+   "watertight": true
+  },
+  {
+   "model": "step/Art3TensionerBody-__Art3TensionerBody_,_simulation_parts.py__-4ca5009f0faf.stl",
+   "fine": 1560,
+   "coarse": 360,
+   "watertight": true
+  },
+  {
+   "model": "step/Art3TensionerPulley-__Art3TensionerPulley_,_simulation_parts.py__-15d9fcc15c9d.stl",
+   "fine": 2520,
+   "coarse": 520,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4BearingFix-__Art4BearingFix_,_simulation_parts.py__-bccb95bae88d.stl",
+   "fine": 2590,
+   "coarse": 634,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4BearingRing-__Art4BearingRing_,_simulation_parts.py__-28e5a1331d2c.stl",
+   "fine": 20236,
+   "coarse": 1822,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4Body-__Art4Body_,_simulation_parts.py__-16236797b407.stl",
+   "fine": 27026,
+   "coarse": 6126,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4BodyBot-__Art4BodyBot_,_simulation_parts.py__-3eb75b0d5360.stl",
+   "fine": 12732,
+   "coarse": 2904,
+   "watertight": false
+  },
+  {
+   "model": "step/Art4BodyFan-__Art4BodyFan_,_simulation_parts.py__-d7d2ee25bd71.stl",
+   "fine": 2788,
+   "coarse": 638,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4MotorFix-__Art4MotorFix_,_simulation_parts.py__-20a97f7fde2e.stl",
+   "fine": 4656,
+   "coarse": 1056,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4MotorGear-__Art4MotorGear_,_simulation_parts.py__-87b4a254de24.stl",
+   "fine": 10272,
+   "coarse": 1546,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4Optodisk-__Art4Optodisk_,_simulation_parts.py__-9f6568e2608f.stl",
+   "fine": 5578,
+   "coarse": 1178,
+   "watertight": true
+  },
+  {
+   "model": "step/Art4TransmissionColumn-__Art4TransmissionColumn_,_simulation_parts.py__-04983370248f.stl",
+   "fine": 38602,
+   "coarse": 4456,
+   "watertight": true
+  },
+  {
+   "model": "step/Art56GearPlate-__Art56GearPlate_,_simulation_parts.py__-b2a47f5c293d.stl",
+   "fine": 19316,
+   "coarse": 4020,
+   "watertight": true
+  },
+  {
+   "model": "step/Art56MotorCoverRing-__Art56MotorCoverRing_,_simulation_parts.py__-4f207ac64343.stl",
+   "fine": 4630,
+   "coarse": 1220,
+   "watertight": true
+  },
+  {
+   "model": "step/Art56MotorHolderA-__Art56MotorHolderA_,_simulation_parts.py__-03ae4a3d5a60.stl",
+   "fine": 5638,
+   "coarse": 1244,
+   "watertight": true
+  },
+  {
+   "model": "step/Art56MotorHolderB-__Art56MotorHolderB_,_simulation_parts.py__-ea411f1efcaf.stl",
+   "fine": 5388,
+   "coarse": 1196,
+   "watertight": true
+  },
+  {
+   "model": "step/Art56SmallGear-__Art56SmallGear_,_simulation_parts.py__-7bffddafd9df.stl",
+   "fine": 11954,
+   "coarse": 2200,
+   "watertight": true
+  },
+  {
+   "model": "step/BaseBearingFix-__BaseBearingFix_,_simulation_parts.py__-b55277a6d322.stl",
+   "fine": 4044,
+   "coarse": 920,
+   "watertight": true
+  },
+  {
+   "model": "step/BaseBot-__BaseBot_,_simulation_parts.py__-eb2e1327e417.stl",
+   "fine": 41546,
+   "coarse": 8214,
+   "watertight": true
+  },
+  {
+   "model": "step/BaseBoxBody-__BaseBoxBody_,_simulation_parts.py__-4b38ccda31ed.stl",
+   "fine": 38780,
+   "coarse": 8272,
+   "watertight": true
+  },
+  {
+   "model": "step/BaseBoxCover-__BaseBoxCover_,_simulation_parts.py__-ca27a017a4b1.stl",
+   "fine": 5280,
+   "coarse": 1144,
+   "watertight": true
+  },
+  {
+   "model": "step/BaseTop-__BaseTop_,_simulation_parts.py__-6d225a19ac57.stl",
+   "fine": 3666,
+   "coarse": 876,
+   "watertight": true
+  },
+  {
+   "model": "step/CommonBearingFix-__CommonBearingFix_,_simulation_parts.py__-0e61a6d28daf.stl",
+   "fine": 2412,
+   "coarse": 524,
+   "watertight": true
+  },
+  {
+   "model": "step/CommonBearingFixThrough-__CommonBearingFixThrough_,_simulation_parts.py__-0b0a07f4af1a.stl",
+   "fine": 2920,
+   "coarse": 632,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperActiveArm-__GripperActiveArmPin_,_simulation_parts.py__-2ae7d60b9b1b.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperActiveArm-__GripperActiveArm_,_simulation_parts.py__-a963af37aa70.stl",
+   "fine": 59526,
+   "coarse": 4388,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperArm-__GripperArm_,_simulation_parts.py__-aa183e2a3f57.stl",
+   "fine": 34588,
+   "coarse": 2396,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperBot-__GripperBot_,_simulation_parts.py__-655ddaa71d38.stl",
+   "fine": 19938,
+   "coarse": 3130,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperFinger-__GripperFingerMirrored_,_simulation_parts.py__-a86284269a68.stl",
+   "fine": 7918,
+   "coarse": 1066,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperFinger-__GripperFinger_,_simulation_parts.py__-9f9a30926f28.stl",
+   "fine": 7918,
+   "coarse": 1066,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperPassiveArm-__GripperPassiveArmPin_,_simulation_parts.py__-22d29d3fafdf.stl",
+   "fine": 500,
+   "coarse": 100,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperPassiveArm-__GripperPassiveArm_,_simulation_parts.py__-da083e84e13e.stl",
+   "fine": 55910,
+   "coarse": 3762,
+   "watertight": true
+  },
+  {
+   "model": "step/GripperTop-__GripperTop_,_simulation_parts.py__-eeb6b0002da4.stl",
+   "fine": 23256,
+   "coarse": 2316,
+   "watertight": true
+  }
+ ]
+}

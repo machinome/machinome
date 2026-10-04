@@ -1,0 +1,825 @@
+{
+ "document": "Robotic-Arms/Thor/_build/viewer.json",
+ "budget": 100000,
+ "seconds": 1.0,
+ "meshes": "re-tessellated from the B-rep files beside the document",
+ "triangles_fine_placed": 1461220,
+ "pieces": 438,
+ "bodies": 41,
+ "gltf_nodes": 129,
+ "joints": 40,
+ "joint_classes": {
+  "affine": 20,
+  "joint": 6,
+  "formula": 14
+ },
+ "triangles_before": 225550,
+ "triangles_after": 100285,
+ "materials": 11,
+ "clips": [
+  "Park",
+  "Pick",
+  "Place",
+  "Reach",
+  "Ready"
+ ],
+ "flexible_dropped": [
+  "Thor/shoulder/art2/elbow_belt",
+  "Thor/shoulder/art2/art3/art4/wrist_belt_1",
+  "Thor/shoulder/art2/art3/art4/wrist_belt_2"
+ ],
+ "glb_bytes": 2691784,
+ "bodies_table": [
+  {
+   "body": "Thor",
+   "path": "Thor",
+   "pieces": 62,
+   "colours": 6,
+   "triangles_before": 32330,
+   "triangles_after": 14360
+  },
+  {
+   "body": "shaft.body",
+   "path": "Thor/base/stepper_nema17x40/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 80,
+   "triangles_after": 64
+  },
+  {
+   "body": "art1_gear_motor.body",
+   "path": "Thor/base/art1_gear_motor",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 2719,
+   "triangles_after": 1205
+  },
+  {
+   "body": "shoulder.body",
+   "path": "Thor/shoulder",
+   "pieces": 68,
+   "colours": 4,
+   "triangles_before": 33663,
+   "triangles_after": 14919
+  },
+  {
+   "body": "art23_optodisk.body",
+   "path": "Thor/shoulder/art23_optodisk",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 618,
+   "triangles_after": 272
+  },
+  {
+   "body": "shaft.body#1",
+   "path": "Thor/shoulder/shoulder_motor_1/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 84,
+   "triangles_after": 64
+  },
+  {
+   "body": "shaft.body#2",
+   "path": "Thor/shoulder/shoulder_motor_2/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 84,
+   "triangles_after": 64
+  },
+  {
+   "body": "shaft.body#3",
+   "path": "Thor/shoulder/elbow_motor/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 84,
+   "triangles_after": 64
+  },
+  {
+   "body": "shoulder_pinion_1.body",
+   "path": "Thor/shoulder/shoulder_pinion_1",
+   "pieces": 2,
+   "colours": 2,
+   "triangles_before": 2460,
+   "triangles_after": 1089
+  },
+  {
+   "body": "shoulder_pinion_2.body",
+   "path": "Thor/shoulder/shoulder_pinion_2",
+   "pieces": 2,
+   "colours": 2,
+   "triangles_before": 2460,
+   "triangles_after": 1089
+  },
+  {
+   "body": "elbow_drive_pulley.body",
+   "path": "Thor/shoulder/elbow_drive_pulley",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 416,
+   "triangles_after": 184
+  },
+  {
+   "body": "art2.body",
+   "path": "Thor/shoulder/art2",
+   "pieces": 87,
+   "colours": 5,
+   "triangles_before": 39376,
+   "triangles_after": 17479
+  },
+  {
+   "body": "art3.body",
+   "path": "Thor/shoulder/art2/art3",
+   "pieces": 39,
+   "colours": 6,
+   "triangles_before": 22070,
+   "triangles_after": 9802
+  },
+  {
+   "body": "shaft.body#4",
+   "path": "Thor/shoulder/art2/art3/yaw_motor/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 80,
+   "triangles_after": 64
+  },
+  {
+   "body": "art4_motor_gear.body",
+   "path": "Thor/shoulder/art2/art3/art4_motor_gear",
+   "pieces": 2,
+   "colours": 2,
+   "triangles_before": 1774,
+   "triangles_after": 784
+  },
+  {
+   "body": "bearing_balls.body",
+   "path": "Thor/shoulder/art2/art3/bearing_balls",
+   "pieces": 36,
+   "colours": 1,
+   "triangles_before": 11016,
+   "triangles_after": 4884
+  },
+  {
+   "body": "art4.body",
+   "path": "Thor/shoulder/art2/art3/art4",
+   "pieces": 85,
+   "colours": 6,
+   "triangles_before": 37372,
+   "triangles_after": 16570
+  },
+  {
+   "body": "shaft.body#5",
+   "path": "Thor/shoulder/art2/art3/art4/wrist_motor_1/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 80,
+   "triangles_after": 64
+  },
+  {
+   "body": "shaft.body#6",
+   "path": "Thor/shoulder/art2/art3/art4/wrist_motor_2/shaft",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 80,
+   "triangles_after": 64
+  },
+  {
+   "body": "motor_pulley_1.body",
+   "path": "Thor/shoulder/art2/art3/art4/motor_pulley_1",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 416,
+   "triangles_after": 184
+  },
+  {
+   "body": "motor_pulley_2.body",
+   "path": "Thor/shoulder/art2/art3/art4/motor_pulley_2",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 416,
+   "triangles_after": 184
+  },
+  {
+   "body": "art56.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56",
+   "pieces": 10,
+   "colours": 3,
+   "triangles_before": 4300,
+   "triangles_after": 1904
+  },
+  {
+   "body": "art56_small_gear_1.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/art56_small_gear_1",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 2200,
+   "triangles_after": 974
+  },
+  {
+   "body": "art56_small_gear_2.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/art56_small_gear_2",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 2200,
+   "triangles_after": 974
+  },
+  {
+   "body": "gt2x40_pulley_1.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/gt2x40_pulley_1",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 416,
+   "triangles_after": 184
+  },
+  {
+   "body": "gt2x40_pulley_2.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/gt2x40_pulley_2",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 416,
+   "triangles_after": 184
+  },
+  {
+   "body": "output.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output",
+   "pieces": 15,
+   "colours": 4,
+   "triangles_before": 11922,
+   "triangles_after": 5280
+  },
+  {
+   "body": "servomotor_wheel_horn.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/servomotor_wheel_horn",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 204,
+   "triangles_after": 90
+  },
+  {
+   "body": "gripper_active_arm.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_active_arm",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 4388,
+   "triangles_after": 1944
+  },
+  {
+   "body": "gripper_active_pin.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_active_pin",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 100,
+   "triangles_after": 64
+  },
+  {
+   "body": "gripper_passive_arm.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_passive_arm",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 3762,
+   "triangles_after": 1666
+  },
+  {
+   "body": "gripper_passive_pin.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_passive_pin",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 100,
+   "triangles_after": 64
+  },
+  {
+   "body": "gripper_arm_1.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_arm_1",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 2396,
+   "triangles_after": 1062
+  },
+  {
+   "body": "gripper_arm_2.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_arm_2",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 2396,
+   "triangles_after": 1062
+  },
+  {
+   "body": "gripper_finger.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_finger",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 1066,
+   "triangles_after": 472
+  },
+  {
+   "body": "gripper_finger_sym.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/gripper_finger_sym",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 1066,
+   "triangles_after": 472
+  },
+  {
+   "body": "screws-9.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/screws-9",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 228,
+   "triangles_after": 108
+  },
+  {
+   "body": "screws-10.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/screws-10",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 228,
+   "triangles_after": 100
+  },
+  {
+   "body": "screws-11.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/screws-11",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 228,
+   "triangles_after": 100
+  },
+  {
+   "body": "nuts-2.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/nuts-2",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 128,
+   "triangles_after": 64
+  },
+  {
+   "body": "nuts-3.body",
+   "path": "Thor/shoulder/art2/art3/art4/art56/output/gripper/nuts-3",
+   "pieces": 1,
+   "colours": 1,
+   "triangles_before": 128,
+   "triangles_after": 64
+  }
+ ],
+ "joints_table": [
+  {
+   "name": "shaft",
+   "cls": "affine",
+   "reads": [
+    "art1"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b0"
+   ]
+  },
+  {
+   "name": "art1_gear_motor",
+   "cls": "affine",
+   "reads": [
+    "art1"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b0"
+   ]
+  },
+  {
+   "name": "shoulder",
+   "cls": "joint",
+   "reads": [
+    "art1"
+   ],
+   "op": "r",
+   "expressions": [
+    "art1"
+   ]
+  },
+  {
+   "name": "art23_optodisk",
+   "cls": "affine",
+   "reads": [
+    "art2",
+    "art3"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b2"
+   ]
+  },
+  {
+   "name": "shaft#1",
+   "cls": "affine",
+   "reads": [
+    "art2"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b3"
+   ]
+  },
+  {
+   "name": "shaft#2",
+   "cls": "affine",
+   "reads": [
+    "art2"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b3"
+   ]
+  },
+  {
+   "name": "shaft#3",
+   "cls": "affine",
+   "reads": [
+    "art2",
+    "art3"
+   ],
+   "op": "r",
+   "expressions": [
+    "(-1.0 * _b2)"
+   ]
+  },
+  {
+   "name": "shoulder_pinion_1",
+   "cls": "affine",
+   "reads": [
+    "art2"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b3"
+   ]
+  },
+  {
+   "name": "shoulder_pinion_2",
+   "cls": "affine",
+   "reads": [
+    "art2"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b3"
+   ]
+  },
+  {
+   "name": "elbow_drive_pulley",
+   "cls": "affine",
+   "reads": [
+    "art2",
+    "art3"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b2"
+   ]
+  },
+  {
+   "name": "art2",
+   "cls": "joint",
+   "reads": [
+    "art2"
+   ],
+   "op": "r",
+   "expressions": [
+    "art2"
+   ]
+  },
+  {
+   "name": "art3",
+   "cls": "joint",
+   "reads": [
+    "art3"
+   ],
+   "op": "r",
+   "expressions": [
+    "art3"
+   ]
+  },
+  {
+   "name": "shaft#4",
+   "cls": "affine",
+   "reads": [
+    "art4"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b4"
+   ]
+  },
+  {
+   "name": "art4_motor_gear",
+   "cls": "affine",
+   "reads": [
+    "art4"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b4"
+   ]
+  },
+  {
+   "name": "bearing_balls",
+   "cls": "affine",
+   "reads": [
+    "art4"
+   ],
+   "op": "r",
+   "expressions": [
+    "(0.5 * art4)"
+   ]
+  },
+  {
+   "name": "art4",
+   "cls": "joint",
+   "reads": [
+    "art4"
+   ],
+   "op": "r",
+   "expressions": [
+    "art4"
+   ]
+  },
+  {
+   "name": "shaft#5",
+   "cls": "affine",
+   "reads": [
+    "art5",
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "(2.0 * _b6)"
+   ]
+  },
+  {
+   "name": "shaft#6",
+   "cls": "affine",
+   "reads": [
+    "art5",
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "(-2.0 * _b8)"
+   ]
+  },
+  {
+   "name": "motor_pulley_1",
+   "cls": "affine",
+   "reads": [
+    "art5",
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "(2.0 * _b8)"
+   ]
+  },
+  {
+   "name": "motor_pulley_2",
+   "cls": "affine",
+   "reads": [
+    "art5",
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "(-2.0 * _b6)"
+   ]
+  },
+  {
+   "name": "art56",
+   "cls": "joint",
+   "reads": [
+    "art5"
+   ],
+   "op": "r",
+   "expressions": [
+    "art5"
+   ]
+  },
+  {
+   "name": "art56_small_gear_1",
+   "cls": "affine",
+   "reads": [
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b7"
+   ]
+  },
+  {
+   "name": "art56_small_gear_2",
+   "cls": "affine",
+   "reads": [
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b7"
+   ]
+  },
+  {
+   "name": "gt2x40_pulley_1",
+   "cls": "affine",
+   "reads": [
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b5"
+   ]
+  },
+  {
+   "name": "gt2x40_pulley_2",
+   "cls": "affine",
+   "reads": [
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b5"
+   ]
+  },
+  {
+   "name": "output",
+   "cls": "joint",
+   "reads": [
+    "art6"
+   ],
+   "op": "r",
+   "expressions": [
+    "art6"
+   ]
+  },
+  {
+   "name": "servomotor_wheel_horn",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b14"
+   ]
+  },
+  {
+   "name": "gripper_active_arm",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b14"
+   ]
+  },
+  {
+   "name": "gripper_active_pin",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b14"
+   ]
+  },
+  {
+   "name": "gripper_passive_arm",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b15"
+   ]
+  },
+  {
+   "name": "gripper_passive_pin",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b15"
+   ]
+  },
+  {
+   "name": "gripper_arm_1",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b15"
+   ]
+  },
+  {
+   "name": "gripper_arm_2",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "r",
+   "expressions": [
+    "_b14"
+   ]
+  },
+  {
+   "name": "gripper_finger",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "(((0 + (-0.9999961503229939 * _b20)) + -0.0) + _b24)",
+    "(((0 + (-5.4210088515643665e-05 * _b20)) + -0.0) + _b25)",
+    "(((0 + (-0.002774238716919223 * _b20)) + 0.0) + _b26)"
+   ]
+  },
+  {
+   "name": "gripper_finger_sym",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "(((0 + (-0.9999961503229939 * _b27)) + -0.0) + _b24)",
+    "(((0 + (-5.4210088515643665e-05 * _b27)) + -0.0) + _b25)",
+    "(((0 + (-0.002774238716919223 * _b27)) + 0.0) + _b26)"
+   ]
+  },
+  {
+   "name": "screws-9",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "_b32",
+    "_b37",
+    "_b42"
+   ]
+  },
+  {
+   "name": "screws-10",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "_b47",
+    "_b52",
+    "_b57"
+   ]
+  },
+  {
+   "name": "screws-11",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "_b47",
+    "_b52",
+    "_b57"
+   ]
+  },
+  {
+   "name": "nuts-2",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "_b32",
+    "_b37",
+    "_b42"
+   ]
+  },
+  {
+   "name": "nuts-3",
+   "cls": "formula",
+   "reads": [
+    "grip"
+   ],
+   "op": "t",
+   "expressions": [
+    "(_b45 + (-0.002774000422907493 * _b23))",
+    "(_b50 + (0.9999961524534251 * _b23))",
+    "(((0 + (0.002774000422907493 * _b20)) + -0.0) + _b56)"
+   ]
+  }
+ ]
+}
