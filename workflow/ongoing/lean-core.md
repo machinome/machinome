@@ -1331,3 +1331,87 @@ the smallest proof that a portion resolves from a second distribution.
 For this session the removal cycle is the realistic work; the rename is
 mechanical and may follow; the root cleanup depends on the rewrite script
 and runs last. The orchestration stays as practised.
+
+## The last cycle of the phase: `viewer-seam` (pilot, 4 October 2026)
+
+Decided by the pilot while `openscad-out` was being proposed, and deferred
+to the end of the phase because that cycle is too big to carry it: the
+viewers become pluggable providers, symmetric, behind one seam, on the
+engines' model. The word is **viewer**: "renderer" confuses with
+`node.render()`; the directory `machinome/viewers/`, the flag
+`--renderer` and the word in every message become `viewer`, singular like
+`node` and `engine`. Planned now, executed after `root-cleanup`.
+
+**What exists today (the line at a16d45a).** `machinome/viewers/` holds
+three modules and no seam. The OpenSCAD one (`openscad.py`) is a class
+answering `present`, `withdraw` and `render`: it writes the root SCAD on
+demand inside the build lock, runs the binary, removes the SCAD in a
+`finally`. The web one (`browser.py`) answers `render` and `capture`: it
+stages a directory from the existing build, baking one instant and copying
+artifacts, then runs `machinome-viewer capture` as a subprocess. The third
+(`bundle.py`) finds the viewer package through the entry-point group
+`machinome.viewer` and answers describe, bundle path, API version,
+document versions and the command line. The snapshot command compares the
+string `--renderer` in four places and calls different methods on each.
+The web viewer is reached from six places in the core (snapshot, develop
+running `machinome-viewer serve`, export embedding the bundle, the builder
+refusing a document version the installed viewer cannot read, the Sphinx
+extension, the `machinome viewer` command); the OpenSCAD one from one. The
+process boundary and the entry point exist for the licence difference
+(ADR-068), which the one licence removes. Two roles are mixed under
+"renderer": capturing a fixed pose to an image, which both do, and
+interactive viewing, which only the browser does since ADR-103; export and
+documentation embedding are a third, browser-only by nature.
+
+**The shape, ratified in outline.**
+
+- A seam `machinome/viewer/__init__.py` declares the contract as Protocols
+  with an integer `CONTRACT` and extends its path with portions, as
+  `machinome/node/` does. Providers `machinome.viewer.openscad` and
+  `machinome.viewer.web`; packages `machinome-viewer-openscad` and
+  `machinome-viewer-web`; extras `viewer-openscad` and `viewer-web` (the
+  extras cannot be `openscad` and `web`: `openscad` is the node extra).
+- Unlike the engines (one per role at a fixed address), viewers coexist
+  and are chosen by name: `viewer(name)` imports `machinome.viewer.<name>`,
+  refuses an absent one by its extra and a wrong contract as incompatible.
+  The existing requirement of `web-snapshot`, "the renderer is selected
+  explicitly and never substituted", stays the rule. The default rule
+  (today: `openscad` for snapshot, `web` for develop) is the pilot's
+  decision at ratification; the orchestrator's preference is an explicit
+  `--viewer`, a project able to name its default viewer in its manifest,
+  and no fallback chain.
+- The contract's operations are what the core asks today: identity and the
+  document versions read; whether a document version is readable; present
+  and withdraw, preparing what the viewer reads at one assembled instant;
+  capture to an image; serve interactively; embed into an export or a
+  documentation page. Not every viewer offers every operation: the ruling
+  on leaves applies again, one declared set on the contract, and a command
+  asking for an operation the chosen viewer lacks is refused by name (the
+  OpenSCAD viewer declines to serve unless someone wants the GUI back).
+- The web viewer's staging moves into its provider, which knows what its
+  page reads; the core offers the assembled node, the presentation
+  description, the document serializer and the artifact inventory.
+- The OpenSCAD provider depends on the openscad node package for the SCAD
+  writer and the binary. `openscad-out` leaves `machinome/viewers/openscad.py`
+  where it is, an allowed zone of its scan, reached through the node-type
+  table's provisional column; this cycle moves both viewers under the seam
+  once and removes that column and `viewers/`.
+- The web provider in the core wraps the viewer process (`capture`,
+  `serve`, the bundle) exactly as `browser.py` and `bundle.py` do today, so
+  the cycle does not wait for the viewer package's return; when the viewer
+  comes into the monorepo under the one licence, its own portion
+  `machinome.viewer.web` replaces that wrapper, the entry-point group
+  `machinome.viewer` and the subprocess go, and the bundle ships inside the
+  provider (a change in the viewer repository too, two changes in two
+  repositories as the contract says).
+- Commands: `snapshot --viewer <name>`; `develop` asks the chosen viewer to
+  serve; export and the Sphinx extension ask embed; the builder asks
+  readable; `machinome viewer` reports the installed viewers.
+- Moved names: the `viewers` package and its three modules, the flag. The
+  projects' `--renderer` uses are rewritten by the rewrite script's second
+  run, with this cycle's table, after the root cleanup's single pass.
+
+**What the deferral costs**: one provisional column in the node-type
+table, removed here; the `viewers` directory living beside the plan for
+three cycles; a second, small run of the rewrite script for the flag.
+Nothing in `brep-mesh` or `root-cleanup` touches a viewer.
