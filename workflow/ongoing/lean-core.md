@@ -1218,3 +1218,116 @@ cleanup) does not depend on the answer; layer 2 turns on it.
   1 — one import path", the one-path cycle this note's import paths
   obey; `openspec/specs/ports/spec.md` for the ratified
   sentence.
+
+## The next phase: the architecture ready for the split (pilot, 4 October 2026, later session)
+
+Ratified by the pilot from the counts of 4 October 2026, taken on the
+line at 57928eb, after the closing rulings above. The phase is the rest
+of layer 1: three cycles on `v0.8-split`, then the pilot confirms the
+package names, then layer 2 starts with an actual cut.
+
+**What "ready for the split" means, measured on 57928eb.**
+
+- The core imports no node package and no kernel. One blocker: the
+  import-step command (`manager/import_step.py`) reaches
+  `machinome.node.step`. Node `step` imports `machinome.node.cadquery`,
+  which is a declared dependency (`[step]` installs CadQuery) and stays.
+- No "scad" in the core outside the OpenSCAD family: 41 modules say it
+  (the fifteen above with more than five mentions, and 26 more with one to
+  five), and 105 test files. No project names the SCAD API (`scad_file`,
+  `scad_code`, `generate_scad`, `as_scad`, `scad_authored`, the seam, the
+  renderer): grep of `projects/` on 4 October 2026 with vendored trees
+  excluded. The removal breaks no project.
+- One address per name: 1007 project files import from the `machinome.node`
+  root (679 `AssemblyNode`, 190 `CadQueryNode`, 78 `MolejoNode`, 56 `Frame`,
+  55 `StlNode`, 28 `StepNode`, 12 `FusionNode`, 12 `declared_children`,
+  `Solid2Node`, `Build123dNode`, 4 `OpenScadNode`, 1 `JScadNode`); 35
+  import from the module. `machinome/__init__.py` re-exports nothing
+  already.
+- The final engine words: `exact` and `faceted` appear in 39 of the 46
+  specs and in eight spec names (`exact-engine-dependency`,
+  `exact-geometry`, `manifold-engine`, `mesh-engine-dependency`,
+  `occt-engine`, `openscad-dependency`, `openscad-engine`,
+  `scad-engine-dependency`); in the projects only three files of
+  3DPrintedClocks spell `--faceted` (the Curta's tools use `faceted` as
+  their own parameter names, which stay).
+- A portion resolves without the core's `__init__`: `_namespace_portions`
+  exists since `lean-install` and nothing uses it yet; the first cut of
+  layer 2 is its proof.
+
+**The three cycles, in order.**
+
+1. `openscad-out`, gated by the red-first scan test (above). The family
+   becomes one package directory `machinome/node/openscad/`: the node, the
+   SolidPython writer (with `scad_expression` from `core/expressions.py`),
+   the binary runner, the OpenSCAD snapshot renderer, and the `scad_code`
+   family as the family's own methods; `Solid2Node` as its own module over
+   it, with `as_number` and the adoption of SolidPython values that
+   `expression_graph.py` does today through the seam. `machinome/openscad/`,
+   `machinome/scad_engine.py` and `machinome/viewers/openscad.py` vanish.
+   What the core keeps is nameless: a leaf declares the artifacts it keeps,
+   so the builder's sweep is generic; a presentation is a description any
+   installed package may write; the expression graph adopts foreign values
+   through a hook the solid2 package registers; the generation census of
+   `source_generation.py` stays and ADR-086's coalescing goes; the template
+   scaffolds whatever leaf kind the installed extras provide. `jscad` and
+   `stl` as packages wait for the root cleanup: this cycle is the
+   campaign's biggest and symmetry adds nothing to its risk.
+2. `brep-mesh`. Providers at `machinome/engine/brep.py` and
+   `machinome/engine/mesh.py`; the two seams in the engine package's
+   `__init__`, which extends its path with portions as `machinome/node/`
+   does. Renamed: the B-rep leaf base, the capability and the eight spec
+   names, the verdict paths, `--faceted`, the recipe identities, the
+   refusals, and the extras (`occt` becomes `brep`, `manifold` becomes
+   `mesh`: an extra is named for the module it serves, ADR-167). Persisted
+   verdicts are keyed by the path words, so every project's store
+   recomputes once after the rename; no migration code (the orchestrator's
+   preference, for the pilot at ratification). Moved-names table
+   `brep-mesh.toml`.
+3. `root-cleanup`. The node root stops re-exporting: each of its 20 names
+   refuses with the module's address, as the moved port names do. A new
+   rewrite script, modelled on `scripts/migrate-projects-to-machinome`,
+   applies every moved-names table and the root table over the universe in
+   one pass, fixes the four customers waiting since `lean-install`
+   (Voron-2, the Actuator, YouCanBuildDog, the Don1), and the sweep comes
+   back with no expected failure; the project repositories are committed
+   one by one after the sweep is green. `jscad` and `stl` become packages
+   here.
+
+Then the first cut of layer 2 is the mesh engine: one module, one extra,
+the smallest proof that a portion resolves from a second distribution.
+
+**Two rulings of the same discussion (pilot, 4 October 2026).**
+
+- *Capability flags become one declared set on the leaf base.* Today the
+  node spine is nominal (a node type subclasses one of the four leaf bases,
+  whose `leaf_contract` integer is checked at class creation; the core
+  dispatches by `isinstance` on the bases, never on a class name, ADR-166)
+  and every kind distinction inside it is a duck attribute the core probes
+  with `getattr` and a default: `exact`, `flexible`, `rigid`, `stl_file`,
+  `base_mesh`, `scad_authored`. Each flag was added when a kind appeared,
+  and that accretion is how SCAD leaked into the core (the sweep and the
+  renderer probe `scad_authored`; the leaf base still says a faceted leaf
+  "presents its render as SCAD"). The ruling: the flags are one declared
+  set on the base, which `openscad-out`'s proposer designs; `scad_authored`
+  and `as_scad` become a leaf's declaration of the artifacts it keeps and
+  how it presents, without the technology's name.
+- *The renderer architecture is revisited by the pilot on this
+  architecture.* Renderers have neither nominal nor duck typing today: the
+  OpenSCAD renderer answers `present`, `withdraw` and `render`, the browser
+  renderer `render` and `capture`, and the snapshot command chooses by
+  comparing a string. `openscad-out` does the least that gets SCAD out of
+  the core, so that the pilot's revisit is not pre-empted: the OpenSCAD
+  renderer moves into the package and the snapshot command reaches it, and
+  the import-step command reaches the step package, through the one table
+  of supported node types the ruling allows, each entry naming the
+  package's module and extra, refusing with the extra's name when absent.
+  Discovery of contributions from installed portions, and a renderer
+  contract, are the pilot's later decision. The engine shape (a module of
+  free functions behind one address, an integer contract, an opaque
+  currency, a golden conformance kit for the mesh side) is the model the
+  pilot wants carried to it.
+
+For this session the removal cycle is the realistic work; the rename is
+mechanical and may follow; the root cleanup depends on the rewrite script
+and runs last. The orchestration stays as practised.
