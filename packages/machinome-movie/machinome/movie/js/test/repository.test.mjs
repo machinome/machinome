@@ -173,3 +173,32 @@ test('the manual and the records say where a highlight landed and what check mea
   assert.ok((await read('CHANGELOG.md')).includes('(`proofs-report-the-look`, ADR-017)'),'the changelog bullet');
   assert.ok((await read('docs/adrs/README.md')).includes('[ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md)'),'the ADR index');
 });
+
+test('every option the command line declares is documented in the README',async()=>{
+  const script=await readFile(join(root,'bin','videomaker.mjs'),'utf8');
+  const declared=/parseArgs\(\{allowPositionals:true,options:\{([\s\S]*?)\}\}\)/.exec(script);
+  assert.ok(declared,'bin/videomaker.mjs declares its options in one parseArgs call');
+  const names=[...declared[1].matchAll(/(\w+):\{type:/g)].map(m=>m[1]).filter(name=>name!=='help');
+  assert.ok(['viewer','width','fps','silent'].every(name=>names.includes(name)),names.join(', '));
+  const readme=(await readFile(join(root,'README.md'),'utf8')).split(/\s+/).join(' ');
+  for(const name of names)assert.ok(readme.includes(`--${name}`),`README: --${name}`);
+});
+
+test('the manual and the records say how a film is served live (live-server)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md');
+  assert.ok(readme.includes('node bin/videomaker.mjs live '),'README: the command in use');
+  assert.ok(readme.includes('`Live: http://127.0.0.1:<port>/`'),'README: the address line');
+  for(const route of ['`/film.json`','`/frame?t=<seconds>`','`/take.json`','`/film.html`','`/narration.wav`','`/captions.json`','`/events`',
+    '`The player is not built`','`No take document`'])
+    assert.ok(readme.includes(route),`README: ${route}`);
+  const script=await readFile(join(root,'bin','videomaker.mjs'),'utf8');
+  assert.ok(script.includes('videomaker live EPISODE.yaml|MOVIE.json [--viewer BUNDLE.js] [--width 960] [--port 0] [--poll MS] [--open]'),'the usage line');
+  const overview=await read('docs/architecture-overview.md');
+  for(const module of ['src/check.mjs','src/film-assets.mjs','src/live.mjs'])assert.ok(overview.includes(module),`overview: ${module}`);
+  const adr='PIPELINE/ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md';
+  assert.ok(await exists(`docs/adrs/${adr}`),adr);
+  assert.ok((await read('docs/adrs/README.md')).includes(`[ADR-021](${adr})`),'the ADR index');
+  assert.ok((await read('CHANGELOG.md')).includes('(`live-server`, ADR-021)'),'the changelog bullet');
+  assert.doesNotMatch(await read('AGENTS.md'),/There is no live preview/,'AGENTS.md: the status line');
+});

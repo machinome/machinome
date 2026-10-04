@@ -1,151 +1,63 @@
 #!/usr/bin/env node
 import {parseArgs} from 'node:util';
-import {resolve,dirname,extname,basename} from 'node:path';
-import {readFile} from 'node:fs/promises';
-import {loadEpisode,confirmViewerApi,filmSubject,PAPER_STAGE} from '../src/episode.mjs';
-import {filmShots,shotActions,joinShows} from '../src/timeline.mjs';
-import {buildFilmStage} from '../src/stage-build.mjs';
-import {speech,cachedTake} from '../src/speech.mjs';
-import {chaptersOf,chapterTakeLines} from '../src/chapters.mjs';
+import {resolve,extname} from 'node:path';
+import {loadEpisode} from '../src/episode.mjs';
+import {speech} from '../src/speech.mjs';
 import {generateMovieTakes} from '../src/movie.mjs';
 import {validateWordFramesAtFps} from '../src/words.mjs';
 import {prepareWordTimingForCommand} from '../src/command-timing.mjs';
-import {preview,render,readTrees,highlightLine} from '../src/render.mjs';
-import {clipCadence,loadPictures} from '../src/pictures.mjs';
-import {loadSourceCode} from '../src/code.mjs';
-import {picturesShown,measureLayouts,layoutLines,checkEnlargements,checkPictureViews,
-  reframesOf,reframeBoxes,reframeLines,textLines,showsText,TEXT_NOT_MEASURED} from '../src/layout.mjs';
+import {preview,render,highlightLine} from '../src/render.mjs';
 import {reviewManifest} from '../src/review-pack.mjs';
-import {takeLine} from '../src/take.mjs';
+import {checkSource,commandOptions,summaryLine} from '../src/check.mjs';
+import {live} from '../src/live.mjs';
 
 try{
-  const {positionals,values}=parseArgs({allowPositionals:true,options:{viewer:{type:'string'},width:{type:'string'},fps:{type:'string'},silent:{type:'boolean'},help:{type:'boolean'}}});
+  const {positionals,values}=parseArgs({allowPositionals:true,options:{viewer:{type:'string'},width:{type:'string'},fps:{type:'string'},silent:{type:'boolean'},
+    port:{type:'string'},poll:{type:'string'},open:{type:'boolean'},help:{type:'boolean'}}});
   const [command,source]=positionals;
-  if(values.help||!source){console.log('videomaker check|speech|preview|render|build EPISODE.yaml|MOVIE.json [--viewer BUNDLE.js] [--width 960] [--fps 10] [--silent]\nvideomaker review MANIFEST.json');process.exit(source?0:1);}
+  if(values.help||!source){console.log('videomaker check|speech|preview|render|build EPISODE.yaml|MOVIE.json [--viewer BUNDLE.js] [--width 960] [--fps 10] [--silent]\n'+
+    'videomaker live EPISODE.yaml|MOVIE.json [--viewer BUNDLE.js] [--width 960] [--port 0] [--poll MS] [--open]\nvideomaker review MANIFEST.json');process.exit(source?0:1);}
   if(command==='review'){
     const result=await reviewManifest(source);
     console.log(`Review pack: ${result.generation}${result.reused?' (verified reuse)':''}`);
     process.exit(0);
   }
-  if(!['check','speech','preview','render','build'].includes(command))throw new Error('Unknown command: '+command);
-  // A movie document's takes need only its narration: speech generates them
-  // before the anchors that depend on them are resolved (movie-document D4).
-  if(extname(source).toLowerCase()==='.json'&&(command==='speech'||command==='build'&&!values.silent))await generateMovieTakes(source);
-  // check bundles and type-checks a document's stage before anything that
-  // needs a take, so a template that does not match the declarations is
-  // refused before speech is bought.
-  // A document that shows a picture or comes in by a reframe has its sets'
-  // layout measured next, in a headless page served the bundle
-  // (src/layout.mjs, ADR-009, ADR-010), and a picture enlarged beyond its
-  // allowance in its slot's box, or a reframe through a slot sized by what it
-  // holds, is refused before any take is read. A document without either,
-  // and a YAML episode, whose paper sets' boxes are known, open no browser.
-  // The same probe measures the text each shot shows, wholly shown, from the
-  // pinned excerpts (ADR-017); a document it does not measure says so.
-  let early=null,layouts=null,enlargements=null,textUnmeasured=false;
-  if(command==='check'&&extname(source).toLowerCase()==='.json'){
-    const {readMovie}=await import('../src/movie.mjs');
-    const {doc,documentPath,base,build}=await readMovie(source);
-    const {execFileSync}=await import('node:child_process');
-    const repository=execFileSync('git',['rev-parse','--show-toplevel'],{cwd:base,encoding:'utf8'}).trim();
-    early=await buildFilmStage({stage:doc.stage,paths:{base,build,repository,episode:documentPath}});
-    // A reframe moves its views between slots' measured boxes (ADR-010): the
-    // layout is measured for it too, and a slot sized by what it holds is
-    // refused before any take.
-    const pictures=picturesShown(doc).length>0,reframes=reframesOf(doc).length>0;
-    textUnmeasured=!pictures&&!reframes&&showsText(doc);
-    if(pictures||reframes){
-      const media=pictures?await loadPictures({source:'movie',stills:doc.stills,clips:doc.clips,paths:{repository,base}}):null;
-      const excerpts=await loadSourceCode({sourceCode:doc.sourceCode,model:doc.model,paths:{base,repository}});
-      layouts=await measureLayouts(doc,early,{excerpts});
-      reframeBoxes(doc,layouts);
-      if(pictures)enlargements=checkEnlargements(doc,media,layouts);
+  if(!['check','speech','preview','render','build','live'].includes(command))throw new Error('Unknown command: '+command);
+  // Each command takes its own options and no other's.
+  const own=command==='live'?['viewer','width','port','poll','open']:['viewer','width','fps','silent'];
+  for(const name of Object.keys(values))if(name!=='help'&&!own.includes(name))throw new Error(`The ${command} command takes no --${name}`);
+  // live checks the film as check does, serves it at one address and reloads
+  // it when its inputs change, until it is interrupted (src/live.mjs).
+  if(command==='live'){
+    const session=await live(source,{viewer:values.viewer,width:values.width?Number(values.width):undefined,
+      port:values.port===undefined?0:Number(values.port),poll:values.poll===undefined?0:Number(values.poll),open:Boolean(values.open)});
+    console.log(`Live: ${session.origin}/`);
+    const stop=()=>session.close().then(()=>process.exit(0),error=>{console.error(error.message);process.exit(1);});
+    process.once('SIGINT',stop);process.once('SIGTERM',stop);
+  }else{
+    // A movie document's takes need only its narration: speech generates them
+    // before the anchors that depend on them are resolved (movie-document D4).
+    if(extname(source).toLowerCase()==='.json'&&(command==='speech'||command==='build'&&!values.silent))await generateMovieTakes(source);
+    const numbers={width:values.width?Number(values.width):undefined,fps:values.fps?Number(values.fps):undefined};
+    // check's body is checkSource (src/check.mjs), which live loads with too.
+    if(command==='check'){
+      await checkSource(source,{viewer:values.viewer,...numbers,silent:Boolean(values.silent)});
+      process.exit(0);
     }
-  }
-  const e=await loadEpisode(source);
-  const options={viewer:resolve(values.viewer??resolve(dirname(e.paths.manifest),'machinome-viewer.js')),
-    width:values.width?Number(values.width):undefined,fps:values.fps?Number(values.fps):undefined};
-  if(options.width!==undefined&&(!Number.isInteger(options.width)||options.width<320||options.width%2))throw new Error('Width must be an even integer >= 320');
-  if(options.fps!==undefined&&(!Number.isInteger(options.fps)||options.fps<1||options.fps>120))throw new Error('FPS must be an integer from 1 to 120');
-  console.log(`${e.title}: ${e.chapters.length} chapters, ${filmShots(e).length} shots, ${e.output.durationSeconds}s; model ${e.model.expectedDurationSeconds}s`);
-  // Where the length comes from: each chapter's cached take and its tail
-  // (read from the cache only; check never generates speech).
-  if(command==='check'){
-    const takes=await Promise.all(chaptersOf(e).map((_,i)=>cachedTake(e,i)));
-    for(const line of chapterTakeLines(e,takes.map(take=>take?.record)))console.log(line);
-    // A clocked take: its steps, marks and length, and the replay its load
-    // checked against the recorded banks (ADR-012).
-    if(e.model.timeMode==='take')console.log(takeLine(e));
-    // Each shot whose continuation through its outgoing join crosses a mark,
-    // in film order, as resolution recorded it on the shot's model time: a
-    // report, not a refusal (check-the-continuation, ADR-014).
-    for(const {shot} of filmShots(e))if(shot.model?.crossing)console.log(shot.model.crossing.report);
-  }
-  await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
-  if(command==='check'){
-    // The reframes' boxes, from the measured layout, before any frame is posed.
-    if(layouts&&reframesOf(e).length)e.reframes=reframeBoxes(e,layouts);
-    // A view that leaves its picture, in the measured box, at a frame the
-    // takes have now placed.
-    if(layouts)checkPictureViews(e,layouts);
-    // check mounts no viewer (the layout page gets a stub): it reads the
-    // bundle's banner; preview and render confirm the running viewer's apiVersion instead.
-    const required=e.viewerApi;
-    if(required.api>21){
-      const declared=confirmViewerApi(required,await readFile(options.viewer,'utf8').catch(()=>null),filmSubject(e));
-      console.log(`Viewer API ${required.api} required for ${required.reasons.join(', ')}; ${options.viewer} declares API ${declared}`);
+    const e=await loadEpisode(source);
+    const options=commandOptions(e,{viewer:values.viewer,...numbers});
+    console.log(summaryLine(e));
+    await prepareWordTimingForCommand(e,{command,silent:Boolean(values.silent),fps:options.fps??e.output.fps});
+    if(command==='speech'){await speech(e,{generate:true});process.exit(0);}
+    if(command==='preview'){
+      const report=await preview(e,options);
+      // Where each highlight landed, by its parts (ADR-017).
+      for(const h of report.highlightChecks??[])console.log(highlightLine(h));
+      console.log('Storyboard: '+resolve(e.paths.build,'storyboard.jpg'));process.exit(0);
     }
-    // The stage bundle: bundled and type-checked before any speech is bought.
-    const bundle=early??await buildFilmStage(e);
-    const modules=e.stage.modules.length?e.stage.modules.join(', '):'the runtime alone';
-    // Both hashes: a stylesheet change leaves the script's bytes as they were.
-    console.log(`Stage: ${bundle.reused?'reused':'bundled'} ${bundle.js} (sha256 ${bundle.sha256.slice(0,12)}) and ${basename(bundle.css)} (sha256 ${bundle.cssSha256.slice(0,12)}) from ${modules}; `+
-      (bundle.typechecked?'types checked':e.stage.modules.length?'no TypeScript module, types not checked':'no module to type-check'));
-    if(layouts)for(const line of [...layoutLines(layouts),...reframeLines(e,layouts),...textLines(layouts)])console.log(line);
-    if(textUnmeasured)console.log(TEXT_NOT_MEASURED);
-    const shots=filmShots(e),fps=e.output.fps;
-    for(const [i,{chapter,shot}] of shots.entries())for(const {cue,action} of shotActions(shot)){
-      const element=chapter.elements[action.element];
-      if(element?.kind!=='picture'||action.action!=='show')continue;
-      const media=element.still!==undefined?'still':'clip',name=element[media],probe=e.pictureMedia[`${media}s`][name];
-      // A document's picture was measured in its slot's box, before the
-      // takes; a YAML episode's is in a paper set, whose boxes are known.
-      const measured=enlargements?.get(`${shot.id}/${chapter.id}.${action.element}`);
-      const slot=Object.keys(shot.places).find(s=>shot.places[s]===action.element),known=PAPER_STAGE[shot.set];
-      const box=!known?null:/^full(-\d+)?$/.test(slot)?[0,0,1,1]:known;
-      let text;
-      if(measured!==undefined)text=measured;
-      else if(probe.format==='svg')text='vector, no enlargement limit';
-      else if(!box)text=`allowance ${probe.upscale}×; enlargement checked against its slot's box at preview and render`;
-      else{
-        const zoom=Math.max(1,...(action.view??[]).map(v=>v.zoom)),w=box[2]*e.output.width,h=box[3]*e.output.height;
-        const peak=((element.fit??'contain')==='cover'?Math.max:Math.min)(w/probe.width,h/probe.height)*zoom;
-        text=`peak ${peak.toFixed(2)}×; allowance ${probe.upscale}×`;
-      }
-      console.log(`Picture ${shot.id} ${chapter.id}.${action.element} (${media} ${name}): ${text}`);
-      if(media==='clip'){
-        const globalStart=shot.start+cue.at,phase=Math.max(0,Math.ceil(globalStart*fps-1e-9)/fps-globalStart),start=element.inPoint??0;
-        const continuation=Math.abs(cue.until-(shot.end-shot.start))<1e-9?joinShows(shots[i+1]?.shot.transition):0;
-        const cadence=clipCadence(probe.timestamps,start,start+cue.until-cue.at+continuation,fps,phase);
-        console.log(`  source ${probe.averageRate.toFixed(3)} fps into film ${fps} fps: `+
-          `${cadence.dropped} dropped, ${cadence.repeated} repeated; audio not played`);
-      }
-    }
-    // The trees a render would name the heads of, and whether they are dirty
-    // now (ADR-015): the project's and this checkout's; then the revision the
-    // export was made from and whether the project was dirty then (ADR-019).
-    await readTrees(e,'check');
-    process.exit(0);
+    const audio=values.silent?null:await speech(e,{generate:command==='build'});
+    if(command==='build'&&!values.silent)validateWordFramesAtFps(e,options.fps??e.output.fps);
+    const output=await render(e,{...options,audio,label:values.silent?'silent-preview':'rehearsal'});
+    console.log('Video: '+output);
   }
-  if(command==='speech'){await speech(e,{generate:true});process.exit(0);}
-  if(command==='preview'){
-    const report=await preview(e,options);
-    // Where each highlight landed, by its parts (ADR-017).
-    for(const h of report.highlightChecks??[])console.log(highlightLine(h));
-    console.log('Storyboard: '+resolve(e.paths.build,'storyboard.jpg'));process.exit(0);
-  }
-  const audio=values.silent?null:await speech(e,{generate:command==='build'});
-  if(command==='build'&&!values.silent)validateWordFramesAtFps(e,options.fps??e.output.fps);
-  const output=await render(e,{...options,audio,label:values.silent?'silent-preview':'rehearsal'});
-  console.log('Video: '+output);
 }catch(error){console.error(error.message);process.exitCode=1;}

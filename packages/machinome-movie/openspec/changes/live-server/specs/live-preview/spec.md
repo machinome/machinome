@@ -56,7 +56,8 @@ resolved `duration`; its chapters with `start` and `end`; its shots with
 or `null`, and `model`, the shot's resolved model time as the resolved
 document records it; its cues with `shot`, `id` (`cues[<i>]`), `at` and
 `until` (null when the cue has none); its take, `take` for a clocked take
-with its length and its marks in take seconds, or `loop` for a posed loop
+with its length, its marks in take seconds and the `url` of its take
+document, or `loop` for a posed loop
 with its period and its marks in model seconds, the marks sorted by time;
 `speech` saying whether the mix and the captions exist; `stage.sha256`, the
 hash of what the stage page boots from; `viewer.api`, the API the film
@@ -81,6 +82,28 @@ video time except under `takes`.
 - **THEN** its take is `loop`, 20 s long, with the marks `rise` 5, `top` 10
   and `fall` 15, and its joins include the reframe into `question` and the
   wipe into `push`.
+
+### Requirement: The take document of a film on a clocked take
+
+`GET /take.json` SHALL answer, for a film on a clocked take, the JSON
+object `{model: {expectedDurationSeconds}, marks, take}`, each taken
+verbatim from the served film: the take's length in take seconds, the
+document's marks in take seconds, and its take block as the document
+records it, which is what the pose rule reads. The outline's `takes.take`
+SHALL name it with `url` `/take.json`. For a posed loop or a YAML episode
+it SHALL answer 404 `No take document`.
+
+#### Scenario: The counter's take
+
+- **WHEN** `/take.json` is read from a session on the fixture `count`
+- **THEN** it is the length 8, the marks `one`, `nine` and `ten` and the
+  take block of the served film, byte for byte as JSON, and the outline's
+  `takes.take.url` is `/take.json`.
+
+#### Scenario: A loop has no take document
+
+- **WHEN** `/take.json` is read from a session on the fixture `tour`
+- **THEN** it answers 404 `No take document`.
 
 ### Requirement: The frame at a time is the renderer's frame
 

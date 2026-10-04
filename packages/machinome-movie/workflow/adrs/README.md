@@ -55,6 +55,7 @@ synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
 | [ADR-016](SOURCE/ADR-016-take-seconds-are-the-exact-sums-of-the-written-durations.md) | SOURCE | Take seconds are the exact sums of the written durations | Accepted |
 | [ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md) | PIPELINE | What a proof cannot judge, it measures and lays out for the reviewer | Accepted |
 | [ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md) | SOURCE | The model's revision is the one its export records | Accepted |
+| [ADR-021](PIPELINE/ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md) | PIPELINE | A live session serves the render's stage and the frame function to a browser | Proposed |
 
 The twelve changes archived before ADR-001 carry their decisions in their
 `design.md` under `openspec/changes/archive/`; a characterization pass may

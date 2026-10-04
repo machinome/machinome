@@ -157,6 +157,8 @@ generation never reads a stale `stage.js`. Only GET and HEAD are answered
 - `/film.json`: the outline (D5), with `refusal` the session's.
 - `/frame?t=`: D5; 400 naming `t` when it is missing, empty or not a
   finite number.
+- `/take.json` (D11): the take document of a film on a clocked take, 404
+  `No take document` otherwise.
 - `/narration.wav`, `/captions.json`: the files `speech` wrote under the
   film's `_build/`, read when asked, 404 `Not found` when absent.
 - `/events`: D6.
@@ -202,7 +204,8 @@ generation never reads a stale `stage.js`. Only GET and HEAD are answered
   - A cue's `id` is `cues[<i>]`, its index in its shot as refusals name it;
     `at` and `until` are video time (`until` null for a cue without one).
   - `takes`: the document records no take name. A clocked take is `take`,
-    `{kind: 'clocked', duration: <its length in take seconds>, marks}`; a
+    `{kind: 'clocked', duration: <its length in take seconds>, marks, url:
+    '/take.json'}`, the `url` where its take document is served (D11); a
     posed loop is `loop`, `{kind: 'loop', duration: <the loop's period in
     model seconds>, marks}`, its marks the document's in model seconds
     (the take seconds of a loop, as the movie document defines `marks`).
@@ -284,8 +287,13 @@ the guest's writes and not the host's).
 [--poll MS] [--open]`:
 
 - `--width` is refused as `check` refuses it; `--port` must be an integer
-  from 0 to 65535 and `--poll` an integer number of milliseconds from 1
-  up, each refused naming the option; `--fps` and `--silent` are refused
+  from 0 to 65535 (`--port must be an integer from 0 to 65535`) and
+  `--poll` a whole number of milliseconds (`--poll must be a whole number
+  of milliseconds (0 watches instead of polling)`), each refused before
+  any load. Implementation note: `--poll 0`, the default, watches, where
+  this design first said a poll starts at 1, because `live(…, {poll: 0})`
+  is the module's own default and the two should agree. `--fps` and
+  `--silent` are refused
   for `live`, and `--port`, `--poll` and `--open` for the other commands
   (they were unknown options before, and refused as such).
 - It prints `check`'s lines (`live` calls `checkSource`), then
@@ -318,6 +326,24 @@ the campaign stops before sync and archive.
 routes; `docs/architecture-overview.md` gains the live branch and the
 three modules; `CHANGELOG.md` one bullet; `AGENTS.md`'s status line lists
 `live` and says the player page is not built.
+
+### D11. `/take.json`: the take document the take transport attaches to
+
+Added after the planning commit, on the orchestrator's message of
+4 October 2026, from a finding of the `take-transport` cycle: the outline
+gives a clocked take's marks and length, but the player's take surface
+attaches the transport to the take document itself (`attachTake(viewer,
+take)`, whose pose rule is `bankAt` of `src/take.mjs`), and no route served
+it.
+
+`GET /take.json` answers, for a film on a clocked take, the JSON object
+`{model: {expectedDurationSeconds}, marks, take}`, each taken verbatim from
+the generation's resolved film: the take's length, the top-level marks in
+take seconds, and the take block as the document records it. That is
+exactly what `bankAt` reads. For a posed loop or a YAML episode it answers
+404 `No take document`. The outline's `takes.take` names it
+(`url: '/take.json'`), so the player finds it without guessing; the loop
+entry has no `url`.
 
 ## Risks / Trade-offs
 
