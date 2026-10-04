@@ -1,0 +1,20 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's seventh cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-split-mesh-engine;
+# record in the framework's openspec/changes/archive/<date>-mesh-engine/.
+#
+# No importable name moves. manifold3d leaves the core for the mesh engine
+# machinome.manifold.engine behind the seam machinome.mesh_engine, which keeps
+# its address and its names mesh_engine, require_mesh_engine and
+# MeshEngineUnavailable; what changes is that mesh_engine() and
+# require_mesh_engine() return the provider module instead of the pair
+# (Manifold, Mesh), and the private caches and helpers of machinome.test that
+# held Manifolds are renamed. No project names any of them (grep of projects/,
+# 4 October 2026). Projects that import manifold3d or call trimesh.boolean
+# themselves need the manifold extra installed, not an import rewritten.
+
+cycle = "mesh-engine"
+date = "2026-10-04"
+moved = []
