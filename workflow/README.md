@@ -29,6 +29,9 @@ a promise that failed, a gap a project routed around. Entries are grouped by
 the project that produced them and say plainly whether they were filed,
 deferred, or judged not a framework fix at all. Triage decisions the pilot
 has ratified are recorded in place, so the file also reads as the queue.
+It holds open findings only: a resolved entry leaves it for a dated
+archive that keeps the text and says what closed it, as
+`archive/warts-hygiene-2026-10-04/` did for everything fixed up to then.
 
 An entry is evidence, not a requirement. It becomes a requirement only when
 it is taken up as a framework change under
