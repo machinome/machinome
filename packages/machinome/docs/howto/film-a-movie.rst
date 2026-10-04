@@ -111,6 +111,9 @@ node bin/videomaker.mjs render ../projects/Leonardo/videos/hydraulic-sawmill/epi
   --viewer ../machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js
 
 node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_build/rehearsal-manifest.json
+
+node bin/videomaker.mjs live ../projects/Leonardo/videos/hydraulic-sawmill/episode.yaml \
+  --viewer ../machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js
 ```
 
 - `check` validates YAML, timelines, named cameras/layers/evidence, the real model
@@ -230,6 +233,60 @@ node bin/videomaker.mjs review ../projects/Leonardo/videos/hydraulic-sawmill/_bu
   If pack generation fails, the film still succeeds and prints a distinct
   warning with this standalone retry command. Older manifests without a
   recorded review plan need a rerender before automatic event review.
+- `live` serves a film to a browser while it is being edited. It loads the
+  film as `check` does and prints `check`'s lines (a refusal is `check`'s,
+  with its exit status), then one line, `Live: http://127.0.0.1:<port>/`,
+  and answers there, on the loopback interface only, until it is
+  interrupted (Ctrl-C ends it with exit status 0). It generates no speech
+  and opens no browser to draw. `--viewer` defaults as the other commands'
+  does; `--width 960` is the width the stage page is drawn at, refused as
+  `check` refuses it; `--port 0` fixes the port (0 takes any free one, and a
+  port in use is refused naming it); `--poll MS` compares the film's inputs'
+  file status every MS milliseconds instead of watching them, for a
+  filesystem whose change events do not arrive (a share written from
+  another machine); `--open` runs `xdg-open` on the address, and a missing
+  or failing `xdg-open` changes nothing. It refuses `--fps` and `--silent`,
+  and the other commands refuse `--port`, `--poll` and `--open`. It answers:
+  - `/film.json`: the film's outline: `id`, `title`, `output` (the width
+    the stage page is drawn at, the height the renderer gives it, the rate
+    and the duration), the chapters, the shots with their incoming join
+    and resolved model time, the cues in video time, the film's take (a
+    clocked take as `take`, its length, marks and document `url`; a posed
+    loop as `loop`, its period and marks in model seconds), whether the mix
+    and captions exist, the hash of what the stage page boots from, the
+    viewer API the film needs, the generation's number and time, and the
+    standing refusal or `null`.
+  - `/frame?t=<seconds>`: the frame, as JSON, at the output instant nearest
+    `t` on the renderer's grid, clamped to the film's first and last
+    frames; 400 when `t` is not a finite number.
+  - `/take.json`: a clocked take's document, its length, marks and take
+    block as the film records them; 404 `No take document` for a posed
+    loop or a YAML episode.
+  - `/film.html`: the renderer's stage page, with its files where it names
+    them, served as the renderer serves them: `/config.json`, `/stage.js`,
+    `/stage.css`, `/viewer.js`, `/model/…` and the pictures.
+  - `/narration.wav` and `/captions.json`: what `speech` wrote under
+    `_build/`, 404 before.
+  - `/events`: server-sent events, `loading` when a reload starts,
+    `generation` when one is accepted (its number, time, stage page hash
+    and whether the export changed), `refused` when one is refused (the
+    message and time); a new subscriber hears the current generation at
+    once, and the standing refusal after it.
+  - `/`, `/player.js`, `/player.css`: the player page from `_build/player/`
+    once it is built; until then 404 `The player is not built`. The player
+    page is not built yet.
+
+  It watches the film's inputs: the document (and an episode's
+  `production.yaml`), the project files the stage bundle reads, the excerpt
+  sources, the stills and clips, the export's manifest, the cached takes
+  and the mix and captions, each in its own directory, the set taken again
+  from every accepted load. Changes within 200 ms are one reload, which
+  prints `check`'s lines again. A reload that is refused prints its message
+  and leaves the last accepted film served, frames and stage page
+  included, until a change is accepted. The tool's own outputs under
+  `_build/` never reload it. Each load rewrites `movie-resolved.json` and
+  may rebuild `_build/stage/`, as `check` does: do not preview or render
+  the same film from another process while a session reloads it.
 
 `check`, `preview` and `render` each print what they know of the two Git
 trees a render names the heads of, the project's and Videomaker's own:

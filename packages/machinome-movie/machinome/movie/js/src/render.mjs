@@ -5,7 +5,7 @@
 // captures, caches and encodes the film in render.
 import {createServer} from 'node:http';
 import {readFile,writeFile,mkdir,copyFile,rename,link,unlink,rm} from 'node:fs/promises';
-import {resolve,dirname,extname} from 'node:path';
+import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {chromium} from 'playwright';
@@ -25,7 +25,7 @@ import {effectiveStyle} from './style.mjs';
 import {buildFilmStage} from './stage-build.mjs';
 import {measureSetsOn,reframeBoxes,reframeSets} from './layout.mjs';
 import {treeState,treeLine,treeReleaseIssue,exportLine,exportReleaseIssue,exportProvenance,withoutSource} from './provenance.mjs';
-import {exportFiles} from './export.mjs';
+import {filmFiles,clipUses,filmAssets} from './film-assets.mjs';
 
 const here=dirname(fileURLToPath(import.meta.url));
 // The two trees a film's records name a head of, the project's and
@@ -110,24 +110,6 @@ function knownSlotBox(set,slot){
   return null;
 }
 
-async function stage(film,viewer,bundle) {
-  const paths=new Map([['/viewer.js',resolve(viewer)],['/model/manifest.json',film.paths.manifest],
-    ['/stage.js',bundle.js],['/stage.css',bundle.css],['/',resolve(here,'film.html')],
-    ...await exportFiles(film.paths.manifest)]);
-  for(const [name,media] of Object.entries(film.pictureMedia?.stills??{}))
-    paths.set(`/pictures/stills/${name}`,media.file);
-  for(const [name,media] of Object.entries(film.pictureMedia?.clips??{}))
-    for(const n of media.extraction?.frames??[])
-      paths.set(`/pictures/clips/${name}/${String(n).padStart(6,'0')}.png`,
-        resolve(media.extraction.dir,`${String(n).padStart(6,'0')}.png`));
-  const hashes={};for(const [url,file]of paths){
-    if(url.startsWith('/pictures/clips/'))continue;
-    hashes[url]=await fileHash(file);
-  }
-  for(const [name,media] of Object.entries(film.pictureMedia?.clips??{}))
-    if(media.extraction)hashes[`/pictures/clips/${name}`]=media.extraction.key;
-  return {paths,hashes};
-}
 // What the stage reads before its first frame (design D5).
 export function stageConfig(film){
   const kinds=new Set();
@@ -189,28 +171,21 @@ async function replayTakeOnViewer(page,film,key){
   });
   return {steps:film.take.steps.length,matched:true};
 }
-// The clip spans a film shows: each picture's cue, and the continuation a
-// transition shows past its shot's end.
-function clipUses(film){
-  const shots=filmShots(film);
-  return shots.flatMap(({chapter,shot},i)=>shotActions(shot).flatMap(({cue,action})=>{
-    const element=chapter.elements[action.element];
-    if(element?.kind!=='picture'||element.clip===undefined)return [];
-    const continuation=near(cue.until,shot.end-shot.start)?joinShows(shots[i+1]?.shot.transition):0;
-    return [{name:element.clip,inPoint:element.inPoint??0,span:cue.until-cue.at+continuation}];
-  }));
-}
-
 // One HTTP server for the stage's assets, serving one session at a time:
 // a session mounts its handler and releases it when it ends. The command line
-// makes one per session; a test run shares one across its sessions.
-export async function assetServer(){
+// makes one per session; a test run shares one across its sessions; a live
+// session mounts one handler for its life, on the port it is given (any free
+// one by default). It listens on the loopback interface only.
+export async function assetServer({port=0}={}){
   let handler=null;
   const server=createServer((req,res)=>{
     if(handler)return handler(req,res);
     res.writeHead(503);res.end('No film session');
   });
-  await new Promise(r=>server.listen(0,'127.0.0.1',r));
+  await new Promise((listening,failed)=>{
+    server.once('error',failed);
+    server.listen(port,'127.0.0.1',()=>{server.off('error',failed);listening();});
+  });
   const origin=`http://127.0.0.1:${server.address().port}`;
   return {origin,
     mount(next){
@@ -227,20 +202,12 @@ export async function assetServer(){
 export async function browserSession(film,viewer,width,captions,action,{browser:givenBrowser,assets:givenAssets,outputWidth=film.output.width}={}) {
   await extractClips(film,clipUses(film));
   const bundle=await buildFilmStage(film);
-  const {paths,hashes}=await stage(film,viewer,bundle);
+  const {paths,hashes}=await filmFiles(film,viewer,bundle);
   const height=Math.round(film.output.height*width/film.output.width/2)*2;
   const cfg=stageConfig(film);
   const errors=[];
-  const serve=async(req,res)=>{
-    try{
-      const path=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
-      if(path==='/config.json'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(cfg));return;}
-      if(path==='/favicon.ico'){res.writeHead(204);res.end();return;}
-      const file=paths.get(path);if(!file){res.writeHead(404);res.end('Not found');return;}
-      res.setHeader('Content-Type',({'.js':'text/javascript','.css':'text/css','.html':'text/html','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'}[extname(file)])??'application/octet-stream');
-      res.end(await readFile(file));
-    }catch(error){errors.push(String(error));res.writeHead(500);res.end('Asset error');}
-  };
+  // The film's page and assets, served as a live session serves them (src/film-assets.mjs).
+  const serve=filmAssets({paths,config:cfg,onError:error=>errors.push(String(error))});
   const assets=givenAssets??await assetServer(),release=assets.mount(serve);
   let browser=givenBrowser,page;
   try{
@@ -941,7 +908,8 @@ export async function render(film,{viewer,width=film.output.width,fps=film.outpu
       // (remove-progress-rule D4): no drawn element reads it any more.
       duration:film.output.durationSeconds,format:film.format,style,stage:{sets:film.stage.sets,elements:film.stage.elements},
       fonts:fontFaces,
-      renderer:await fileHash(resolve(here,'render.mjs')),timeline:await fileHash(resolve(here,'timeline.mjs')),
+      renderer:await fileHash(resolve(here,'render.mjs')),assets:await fileHash(resolve(here,'film-assets.mjs')),
+      timeline:await fileHash(resolve(here,'timeline.mjs')),
       take:await fileHash(resolve(here,'take.mjs')),
       pictures:await fileHash(resolve(here,'pictures.mjs')),
       easing:await fileHash(resolve(here,'easing.mjs')),

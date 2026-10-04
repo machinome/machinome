@@ -6,6 +6,27 @@ lands it.
 
 ## Unreleased
 
+- `videomaker live SOURCE` serves a film to a browser while it is edited.
+  It loads the film as `check` does and prints `check`'s lines, then
+  `Live: http://127.0.0.1:<port>/`, and answers on the loopback interface
+  until it is interrupted: the film's outline (`/film.json`), the
+  renderer's frame at the output instant nearest a time (`/frame?t=`), a
+  clocked take's document (`/take.json`), the renderer's own stage page and
+  its files (`/film.html`, its files at the root), the mix and captions
+  `speech` wrote, an event stream (`loading`, `generation`, `refused`), and
+  the player page once it is built (`/`; until then 404 `The player is not
+  built`). It watches the film's inputs, each in its own directory and
+  never the tool's outputs under `_build/`, and reloads within 200 ms of a
+  change (`--poll MS` compares their file status instead); a refused change
+  is printed and announced, and the last accepted film stays served.
+  Options `--viewer`, `--width 960`, `--port 0`, `--poll MS`, `--open`; it
+  refuses `--fps` and `--silent`, and the other commands refuse its
+  options. `check`'s body moved into `src/check.mjs` and the renderer's
+  asset handler into `src/film-assets.mjs`, with no change in what either
+  prints or serves; editing the renderer moves the shot cache's common key
+  once, so every film recaptures once, and the key now also hashes
+  `src/film-assets.mjs`. The player page that drives the session is not
+  built yet. (`live-server`, ADR-021)
 - A take can be posed in a browser without the stage. The new take
   transport (`transport/`) poses a clocked take on a mounted viewer:
   `attachMachine` restores a bank on the viewer's machine with the take's

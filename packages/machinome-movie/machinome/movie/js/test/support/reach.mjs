@@ -48,6 +48,7 @@ export const READS={
   // transport, which imports the pose rule (ADR-020).
   'src/render.mjs':['stage','transport','src/take.mjs','src/film.html'],
   'src/layout.mjs':['src/film.html'],                 // the page the layout probe serves
+  'src/film-assets.mjs':['src/film.html'],            // the page a film's session serves
   'src/stage-build.mjs':['stage','transport','src/take.mjs'],  // bundles the runtime from stage/ and transport/
   'src/schema.mjs':['schema'],                        // the movie document schema
   'src/speech.mjs':[],                                // the .env files of keyFiles(): a test names a throwaway checkout, never this one
@@ -59,6 +60,7 @@ export const READS={
   'test/pipeline/movie-pipeline.test.mjs':['fixtures','bin/videomaker.mjs'],  // spawns the command line
   'test/pipeline/review-pack.test.mjs':['bin/videomaker.mjs'],                // spawns the command line
   'test/pipeline/provenance.test.mjs':['bin/videomaker.mjs'],                 // spawns the command line
+  'test/pipeline/live.test.mjs':['fixtures','bin/videomaker.mjs'],           // spawns the command line
   'test/pipeline/source-scenes.test.mjs':['src/film.html'],
   'test/viewer/real-viewer.test.mjs':['bin/videomaker.mjs'],                   // spawns the command line
   'test/viewer/take.test.mjs':['bin/videomaker.mjs'],                          // spawns the command line

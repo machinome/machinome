@@ -53,6 +53,17 @@ the real model through the machinome viewer and never invents a pose.
         ▼
     rehearsal.mp4 + rehearsal.srt + manifest + review packs
 
+    live (ADR-021): the load above, as check makes it and prints it   src/check.mjs
+        │  held as a numbered generation, served on the loopback      src/live.mjs
+        │    interface: the outline, frameAt on the render's grid
+        │    (/frame?t=), a clocked take's document, the stage page
+        │    and its files as the renderer serves them               src/film-assets.mjs
+        │  the film's inputs watched; a change reloads, a refusal
+        │    keeps the last generation served; /events says which
+        ▼
+    a browser poses the stage page through window.film.setFrame
+        (the player page that drives it is not built yet)
+
 The seam after loading is the resolved movie document
 ([ADR-006](adrs/SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md)):
 a movie document resolves to it against its cached takes; a YAML episode,
@@ -152,6 +163,32 @@ pin that differs, the commands print it as an `Export:` line, the records
 keep it beside the heads (`exportRevision`, `exportDirty`), a dirty export
 is a release issue, and the shot cache keys the manifest without it
 ([ADR-019](adrs/SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md)).
+
+`src/check.mjs` is `check`'s body (`checkSource`), with what every command
+takes of its options (`commandOptions`: the viewer bundle beside the
+export's manifest by default, the width and rate refusals) and the summary
+line every command prints (`summaryLine`). `src/film-assets.mjs` is what a
+film's stage page is served: the map of its files and their hashes, which
+the shot cache keys on (`filmFiles`), the clip spans to extract
+(`clipUses`), and the handler that serves them (`filmAssets`), shared by
+the renderer's sessions and the live session. `src/live.mjs` is the live
+session
+([ADR-021](adrs/PIPELINE/ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md)):
+a generation is one load accepted by `checkSource`, with its clips
+extracted, its page's files and its stage config, numbered, served on the
+loopback interface by one `assetServer` for the session's life: the
+outline at the session's width (`outline`), the frame at the output
+instant nearest a time, clamped (`frameFor`), a clocked take's document
+(`takeDocument`), the stage page at `/film.html` with its files at the
+root, the mix and captions, the player's files once built, and an event
+stream. It watches the film's inputs (the document, an episode's
+production settings, the project files the stage bundle's record names,
+the excerpt sources, the stills and clips, the export's manifest, the
+cached takes, the mix and captions), each in its own directory and never
+recursively, the set taken again from every accepted generation; changes
+settle within 200 ms into one reload; a refused reload keeps the last
+generation served. The tool's own outputs under `_build/` are never
+inputs.
 
 ## Commitments
 
@@ -283,5 +320,6 @@ machines' takes, the page element and the studio's live preview are later
 steps of the same direction and are not built. The player campaign
 (`workflow/ongoing/player-campaign/plan.md`) builds the live preview in
 Videomaker first: its first change, `take-transport` (ADR-020), lifted the
-pose of a take out of the stage into `transport/`; the live server and the
-player page are not built.
+pose of a take out of the stage into `transport/`, and its second,
+`live-server` (ADR-021), built the server half, `videomaker live`; the
+player page that drives it is not built.
