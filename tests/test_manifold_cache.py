@@ -19,6 +19,7 @@ volume_epsilon-vs-emptiness semantics can be pinned deterministically
 rather than depending on real boolean noise.
 """
 
+import json
 import os
 import tempfile
 from unittest import TestCase
@@ -29,7 +30,7 @@ import trimesh
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.mesh_engine import mesh_engine
+from machinome.manifold import engine
 from machinome.node.base import AbstractBaseNode
 from machinome.node.operations import Translation
 from machinome.test import TestCase as AssertingTestCase
@@ -91,27 +92,20 @@ class ManifoldCacheBuiltOnceTest(ManifoldCacheTestCase):
         near = self._part('Near', [0.5, 0, 0])
         far = self._part('Far', [1000, 0, 0])
 
-        calls = []
-        original_manifold, original_mesh = mesh_engine()
-
-        def counting(*args, **kwargs):
-            calls.append(1)
-            return original_manifold(*args, **kwargs)
-
-        # The engine is now resolved at the point of use rather than
-        # bound as a module attribute, so the seam that counts real
-        # constructions is the resolver. The contract under test is
-        # unchanged: ONE build per artifact observation, however many
-        # assertions touch it.
-        with patch('machinome.test.require_mesh_engine',
-                   return_value=(counting, original_mesh)):
+        # Every solid the core builds is the mesh engine's, through its one
+        # construction operation, looked up where it is defined at the
+        # moment of the call: counting that operation counts real
+        # constructions. The contract under test is unchanged: ONE build
+        # per artifact observation, however many assertions touch it.
+        with patch.object(engine, 'solid_from_mesh',
+                          wraps=engine.solid_from_mesh) as built:
             asserter.assertNotIntersecting(origin, far)
             asserter.assertIntersecting(origin, near)
             asserter.assertNotIntersecting(near, far)
 
-        # One STL (box.stl) shared by all three nodes -> one Manifold
+        # One STL (box.stl) shared by all three nodes -> one solid
         # build, however many pairwise assertions touch it.
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(built.call_count, 1)
 
     def test_never_falls_back_to_node_mesh(self):
         # MeshRaisesIfTouched.mesh raises if ever accessed -- if any
@@ -148,7 +142,7 @@ class MeshEngineGateTest(ManifoldCacheTestCase):
         self.assertIn(holey_path, str(ctx.exception))
         self.assertIn('NotManifold', str(ctx.exception))
         self.assertFalse(any(key[0] == holey_path
-                             for key in test_module._manifold_cache))
+                             for key in test_module._mesh_solid_cache))
 
     def test_a_mesh_trimesh_doubts_and_the_engine_accepts_is_compared(self):
         # Two boxes sharing one edge, as OpenSCAD 2021.01 exports a
@@ -215,7 +209,7 @@ class VolumeEpsilonEmptinessSemanticsTest(ManifoldCacheTestCase):
         # operations) so the broad-phase never culls -- the stub
         # manifold's ^ / is_empty / volume are what get exercised.
         bounds = np.array([[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]])
-        return patch('machinome.test._cached_manifold',
+        return patch('machinome.test._cached_mesh_solid',
                      return_value=(manifold, bounds, None))
 
     def test_truly_empty_manifold_is_empty(self):
@@ -387,7 +381,7 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
         first = self._exact('First', (2.0, 2.0, 2.0))
         second = self._exact('Second', (2.0, 2.0, 2.0), [10.0, 0, 0])
 
-        with patch('machinome.test._cached_manifold',
+        with patch('machinome.test._cached_mesh_solid',
                    side_effect=AssertionError(
                        'the mesh engine must not be reached for an assembly '
                        'whose every candidate pair is exact')):
@@ -399,7 +393,7 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
         first = self._exact('First', (2.0, 2.0, 2.0))
         second = self._exact('Second', (2.0, 2.0, 2.0), [1.0, 0, 0])
 
-        with patch('machinome.test._cached_manifold',
+        with patch('machinome.test._cached_mesh_solid',
                    side_effect=AssertionError(
                        'an exact candidate pair must be decided by the '
                        'kernel, not the mesh engine')):
@@ -419,8 +413,8 @@ class ExactAssemblyBuildsNoManifoldTest(ManifoldCacheTestCase):
             Translation([1.0, 0, 0], faceted_near))
         exact_far = self._exact('ExactFar', (2.0, 2.0, 2.0), [1000.0, 0, 0])
 
-        original = test_module._cached_manifold
-        with patch('machinome.test._cached_manifold',
+        original = test_module._cached_mesh_solid
+        with patch('machinome.test._cached_mesh_solid',
                    wraps=original) as cached:
             with self.assertRaises(AssertionError):
                 asserter.assertNoSolidInterference(Root(
@@ -464,3 +458,92 @@ class CulledSolidIsNotJudgedTest(ManifoldCacheTestCase):
 
         self.assertIn(holey_path, str(ctx.exception))
         self.assertIn('NotManifold', str(ctx.exception))
+
+
+class _MeshOnly:
+    """A test double with only a `.mesh`, outside any solid: the shape
+    `assertJoined`'s union and the helper's `.mesh` fallback serve."""
+
+    def __init__(self, name, mesh):
+        self.name = name
+        self.mesh = mesh
+        self._parent = None
+
+
+def _boolean_called(*arguments, **keywords):
+    raise AssertionError('trimesh.boolean was called: the core reached the '
+                         "mesh engine's kernel outside the mesh engine")
+
+
+class BooleansGoThroughTheMeshEngineTest(TestCase):
+    """OpenSpec change `mesh-engine`, design.md Decision 6: `assertJoined`'s
+    union of meshes and the helper's `.mesh` fallback leave
+    `trimesh.boolean`, whose backend is manifold3d reached outside the
+    engine, and run the same steps through the mesh engine."""
+
+    def setUp(self):
+        for name in ('union', 'intersection'):
+            patched = patch(f'trimesh.boolean.{name}',
+                            side_effect=_boolean_called)
+            patched.start()
+            self.addCleanup(patched.stop)
+
+    def welded_pair(self, offset):
+        return (_MeshOnly('Hub', box((2, 2, 2))),
+                _MeshOnly('Boss', box((2, 2, 2)).apply_translation(
+                    [offset, 0, 0])))
+
+    def test_a_welded_pair_is_joined(self):
+        asserter.assertJoined(*self.welded_pair(1.0))
+
+    def test_an_unwelded_pair_is_not_joined(self):
+        hub, boss = self.welded_pair(5.0)
+
+        with self.assertRaises(AssertionError) as raised:
+            asserter.assertJoined(hub, boss)
+
+        self.assertEqual(
+            str(raised.exception),
+            'Hub and Boss should be joined into one body, but their union '
+            'has 2 connected components (shared volume 0.0)')
+
+    def test_each_weld_check_unites_once_through_the_engine(self):
+        with patch.object(engine, 'unite_solids',
+                          wraps=engine.unite_solids) as united:
+            asserter.assertJoined(*self.welded_pair(1.0))
+            asserter.assertJoined(*self.welded_pair(0.5))
+
+        self.assertEqual(united.call_count, 2)
+
+    def test_a_non_volume_mesh_is_refused_in_trimesh_words(self):
+        holey = box((2, 2, 2))
+        holey.faces = holey.faces[:-1]
+
+        with self.assertRaises(ValueError) as raised:
+            asserter.assertJoined(_MeshOnly('Holey', holey),
+                                  _MeshOnly('Box', box((2, 2, 2))))
+
+        self.assertEqual(str(raised.exception), 'Not all meshes are volumes!')
+
+    def test_the_mesh_fallback_returns_its_golden_verdicts(self):
+        from .test_assertions import FakeNode as MeshNode, FarAway
+
+        with open(os.path.join(os.path.dirname(__file__), 'data',
+                               'mesh_engine_golden.json')) as handle:
+            golden = json.load(handle)['values']['mesh_fallback']
+
+        def translated(name, offset):
+            node = MeshNode(name)
+            node.operations.append(Translation(offset, node))
+            return node
+
+        pairs = {
+            'overlapping': (MeshNode('A'), translated('B', [0.5, 0, 0])),
+            'flush': (MeshNode('A'), translated('B', [1.0, 0, 0])),
+            'far': (MeshNode('A'), FarAway()),
+        }
+        for label, pair in pairs.items():
+            with self.subTest(label):
+                stats = test_module._intersection_stats(*pair)
+                self.assertEqual([bool(stats.is_empty),
+                                  float(stats.volume).hex()], golden[label])

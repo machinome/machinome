@@ -166,9 +166,9 @@ class MemoTestCase(TestCase):
 
     def _counted(self):
         """Patch the faceted kernel read so a boolean actually running is
-        observable. `Manifold.__xor__` is the operation the fast path
-        performs; counting calls to the helper that performs it is what
-        distinguishes a served verdict from a recomputed one."""
+        observable. The engine's `intersect_solids` is the operation the
+        fast path performs; counting calls to the helper that performs it
+        is what distinguishes a served verdict from a recomputed one."""
         return patch.object(test_module, '_faceted_verdict',
                             wraps=test_module._faceted_verdict)
 

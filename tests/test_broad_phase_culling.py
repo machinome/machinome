@@ -40,10 +40,10 @@ from unittest.mock import patch
 
 import numpy as np
 import trimesh
-from manifold3d import Manifold
 from trimesh.creation import box
 
 import machinome.test as test_module
+from machinome.manifold import engine
 from machinome.node.base import AbstractBaseNode
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
@@ -330,16 +330,27 @@ class GenuineIntersectionStillDetectedTest(BroadPhaseTestCase):
 class Placement:
     """A cube placed by a world matrix, carrying the three things the
     broad phase reads: local bounds, the world matrix, and (for the
-    brute-force side of the comparison) the placed Manifold."""
+    brute-force side of the comparison) the placed mesh-engine solid."""
 
     def __init__(self, size, matrix):
-        manifold = Manifold.cube(size, True)
-        low_high = manifold.bounding_box()
-        self.local_bounds = np.array([low_high[:3], low_high[3:]], float)
+        solid = engine.centred_box(size)
+        self.local_bounds = solid_bounds(solid)
         self.matrix = np.asarray(matrix, float)
-        self.placed = manifold.transform(self.matrix[:3, :4])
+        self.placed = engine.placed_solid(solid, self.matrix)
         self.world_bounds = test_module._world_bounds(
             self.local_bounds, self.matrix)
+
+
+def solid_bounds(solid):
+    """A mesh-engine solid's axis-aligned box, `[low, high]`, read where it
+    was read before the engine was a provider: off the solid itself, in
+    double precision. The engine's `mesh_arrays` answers float32 vertices,
+    which may stand up to a float32 rounding outside the double-precision
+    box the conservativeness checks below compare against with 1e-9 slack;
+    the mesh engine contract has no bounds operation, since the core reads
+    every bound off the base mesh."""
+    low_high = solid.bounding_box()
+    return np.array([low_high[:3], low_high[3:]], float)
 
 
 def translation(offset):
@@ -363,8 +374,8 @@ def intersecting_pairs(placements):
         (first, second)
         for first, second in itertools.combinations(
             range(len(placements)), 2)
-        if not (placements[first].placed ^ placements[second].placed
-                ).is_empty()
+        if not engine.is_empty(engine.intersect_solids(
+            placements[first].placed, placements[second].placed))
     }
 
 
@@ -537,7 +548,7 @@ class WorldBoundsConservativeTest(TestCase):
     def test_rotated_bound_encloses_the_placed_geometry(self):
         placement = Placement((2.0, 2.0, 2.0), rotation_z(45))
         low, high = placement.world_bounds
-        actual = placement.placed.bounding_box()
+        actual = solid_bounds(placement.placed).ravel()
 
         np.testing.assert_array_less(low - 1e-9, np.array(actual[:3]))
         np.testing.assert_array_less(np.array(actual[3:]), high + 1e-9)
@@ -575,11 +586,11 @@ class ExistingFixtureDifferentialTest(BroadPhaseTestCase):
         parts = self.all_fixture_parts()
         placed = []
         for part in parts:
-            manifold, local_bounds, matrix, _ = test_module._fast_geometry(part)
+            solid, local_bounds, matrix, _ = test_module._fast_geometry(part)
             placement = Placement.__new__(Placement)
             placement.local_bounds = local_bounds
             placement.matrix = matrix
-            placement.placed = manifold.transform(matrix[:3, :4])
+            placement.placed = engine.placed_solid(solid, matrix)
             placement.world_bounds = test_module._world_bounds(
                 local_bounds, matrix)
             placed.append(placement)
@@ -690,8 +701,8 @@ class FramedBoundsConservativeTest(TestCase):
 
         low, high = test_module._framed_bounds(
             placement.local_bounds, placement.matrix, inverse_frame)
-        actual = placement.placed.transform(
-            inverse_frame[:3, :4]).bounding_box()
+        actual = solid_bounds(engine.placed_solid(
+            placement.placed, inverse_frame)).ravel()
 
         np.testing.assert_array_less(low - 1e-9, np.array(actual[:3]))
         np.testing.assert_array_less(np.array(actual[3:]), high + 1e-9)

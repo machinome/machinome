@@ -4592,6 +4592,19 @@ artifact the sweep should keep is a build-pipeline question.
   `openspec/changes/archive/2026-10-03-lean-install/evidence.md`, §5.1.
   **Untriaged.**
 
+  *4 October 2026, the framework cycle `mesh-engine`:* a `machinome build`
+  in a project whose sources were written moments earlier restarts every
+  second without end: each build generation, a fresh spawned interpreter,
+  ends `SOURCE_CHANGED` (11), and `machinome build` starts the next,
+  printing `START` once a second. In a temporary project of `StlNode` parts,
+  outside any import finder, `timeout 60 machinome build
+  mfixture/parts.py:Shelf` exited 124 after 50 `START` lines; with every
+  source dated an hour back, the same build printed one `START` and exited
+  0. (Here a child is spawned every second; the hang above saw none, so the
+  two may yet differ in their last step.) Evidence:
+  `openspec/changes/archive/2026-10-04-mesh-engine/evidence.md`, §2.
+  **Reproduced, mechanism found; untriaged.**
+
 ## Findings from the framework cycle `expression-type` (3 October 2026)
 
 - **OpenSCAD's STL output is not reproducible run to run.** Two renders of

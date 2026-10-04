@@ -43,6 +43,12 @@ the fast loop once, in that ignored checkout-local file:
 A CI runner has no such file and needs no configuration: its runs are
 exact. ``machinome new`` ignores ``.env``, so the choice never travels.
 
+The faceted kernel compares through the mesh engine, which the
+``manifold`` extra installs (``pip install "machinome[manifold]"``, or
+``machinome[all]``). Without it a faceted run refuses at its start, before
+it builds anything, naming that line. An exact run needs it only for a
+pair it compares on meshes, one with a part that has no exact geometry.
+
 A faceted run says what it is: a line before the first build names the
 kernel, and the summary line ends with ``(faceted kernel, volume epsilon
 E mm³)``, so a green fast run is never mistaken for an exact one in a log

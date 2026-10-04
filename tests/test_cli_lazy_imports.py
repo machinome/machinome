@@ -384,7 +384,7 @@ class VerdictStoreImportWeight(TestCase):
     """
 
     WATCHED = ('importlib.metadata', 'platform', 'cadquery', 'OCP',
-               'manifold3d', 'trimesh', 'molejo')
+               'manifold3d', 'machinome.manifold.engine', 'trimesh', 'molejo')
 
     #: What a `machinome build -h` dispatch loaded of WATCHED at bf24687,
     #: before this change (task 1.4): the ceiling it must stay under.

@@ -98,12 +98,13 @@ class LicenceWordingTest(unittest.TestCase):
 
 
 class KernelExtrasTest(unittest.TestCase):
-    """The CAD kernels are extras (OpenSpec change `lean-install`): the
-    installation page names each, and no page a reader lands on says the
-    package carries them or sends a reader to the dissolved adapters
-    package."""
+    """The CAD kernels are extras (OpenSpec changes `lean-install` and
+    `mesh-engine`): the installation page names each, and no page a reader
+    lands on says the package carries them or sends a reader to the
+    dissolved adapters package."""
 
-    EXTRAS = ('occt', 'cadquery', 'build123d', 'step', 'molejo', 'all')
+    EXTRAS = ('occt', 'manifold', 'cadquery', 'build123d', 'step', 'molejo',
+              'all')
 
     STALE = ('Everything else comes with the package',
              'machinome.node.adapters')

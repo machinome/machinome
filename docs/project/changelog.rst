@@ -6,6 +6,23 @@ Changelog
 Unreleased
 ----------
 
+* **The mesh engine is a provider, installed by its extra.** manifold3d,
+  which decides every comparison on meshes, is reached only through the
+  mesh engine ``machinome.manifold.engine``, resolved by the seam
+  ``machinome.mesh_engine`` with a versioned contract, and the core calls
+  none of its API, ``assertJoined``'s union of meshes included. Verdicts,
+  refusals and fused meshes are bit for bit what they were.
+
+  **Breaking: ``pip install machinome`` no longer installs manifold3d.**
+  Install ``machinome[manifold]`` (or ``machinome[all]``) for a project
+  that compares a part without exact geometry, runs ``machinome test
+  --faceted``, calls ``assertAssemblySupported``, fuses meshes, or imports
+  manifold3d or calls ``trimesh.boolean`` itself. Without it each of those
+  refuses naming the install line, and ``machinome test`` on the faceted
+  kernel refuses at its start, before building anything; an all-exact
+  project needs nothing new. The verdict store starts afresh once, and a
+  manifold3d upgrade no longer discards exact verdicts (ADR-176).
+
 * **Independent production profiles:** bind typed acquisition choices and
   nested maker instructions to the actual existing model, then read BOM,
   stock, mass and coverage findings directly. Printed material and mass can

@@ -11,16 +11,16 @@ naming the install line, when its kernel is absent. Encodes ADR-167
 Code: `machinome/extras.py`, the kernel modules `machinome/node/cadquery.py`,
 `build123d.py`, `step.py`, `molejo.py` and `machinome/occt/engine.py`;
 `pyproject.toml`, `requirements.txt`, `tox.ini`.
-
 ## Requirements
 ### Requirement: The CAD kernels are extras, not required dependencies
 
 The framework's required dependencies SHALL NOT include a CAD kernel: neither
-`cadquery`, `build123d`, `ocp-gordon`, `molejo` nor `cadquery-ocp`. Each kernel
-SHALL be installed by an extra named by the last component of the address of
-the module that needs it:
+`cadquery`, `build123d`, `ocp-gordon`, `molejo`, `cadquery-ocp` nor
+`manifold3d`. Each kernel SHALL be installed by an extra named by the last
+component of the address of the module that needs it:
 
 - `occt`, for the exact engine `machinome.occt.engine`: the OCCT binding;
+- `manifold`, for the mesh engine `machinome.manifold.engine`: `manifold3d`;
 - `cadquery`, for `machinome.node.cadquery`: CadQuery and the `occt` extra;
 - `build123d`, for `machinome.node.build123d`: build123d, its `ocp-gordon`
   bound and the `occt` extra;
@@ -29,12 +29,13 @@ the module that needs it:
 - `all`, every extra above.
 
 Every kernel requirement SHALL keep the version range the framework required
-before this change, and a kernel named by two extras SHALL carry the same range
-in both, so installing several extras resolves one OCCT binding.
+before it became an extra, and a kernel named by two extras SHALL carry the
+same range in both, so installing several extras resolves one OCCT binding.
+No node extra SHALL include `manifold`: an exact project needs the mesh engine
+only for a faceted question, which it may never ask.
 
-`manifold3d`, `watchdog`, `trimesh`, `numpy`, `scipy`, `shapely`, `rtree`,
-`solidpython2` and the other dependencies the core imports SHALL stay
-required.
+`watchdog`, `trimesh`, `numpy`, `scipy`, `shapely`, `rtree`, `solidpython2`
+and the other dependencies the core imports SHALL stay required.
 
 The extra that installs the development tools SHALL include `all`, and the
 continuous integration and the tox environments SHALL install every kernel
@@ -44,42 +45,45 @@ extra, so the framework's own suite runs every kernel.
 
 - **WHEN** the framework's package metadata is read
 - **THEN** its required dependencies name none of `cadquery`, `build123d`,
-  `ocp-gordon`, `molejo` or `cadquery-ocp`, and they still name `manifold3d`
-  and `watchdog`
+  `ocp-gordon`, `molejo`, `cadquery-ocp` or `manifold3d`, and they still name
+  `watchdog` and `trimesh`
 
 #### Scenario: Each extra installs what its module needs
 
 - **WHEN** the package metadata's extras are read
-- **THEN** `occt`, `cadquery`, `build123d`, `step`, `molejo` and `all` are
-  declared, each of `cadquery`, `build123d`, `step` and `molejo` includes the
-  `occt` extra, `all` includes every one of them, and the development extra
-  includes `all`
+- **THEN** `occt`, `manifold`, `cadquery`, `build123d`, `step`, `molejo` and
+  `all` are declared, each of `cadquery`, `build123d`, `step` and `molejo`
+  includes the `occt` extra and none includes `manifold`, `all` includes every
+  one of them, and the development extra includes `all`
 
 #### Scenario: The ranges are the ones required before
 
 - **WHEN** the extras' requirements are read
 - **THEN** CadQuery is `==2.7.*` wherever it is named, build123d `==0.10.*`,
-  `ocp-gordon` `>=0.2.2,<0.3`, molejo `molejo[brep]==0.2.*` and the OCCT
-  binding `>=7.8.1,<7.9`
+  `ocp-gordon` `>=0.2.2,<0.3`, molejo `molejo[brep]==0.2.*`, the OCCT
+  binding `>=7.8.1,<7.9`, and `manifold3d` carries no range, as when it was
+  required
 
 #### Scenario: Continuous integration installs every kernel
 
 - **WHEN** the requirements files the CI jobs install are read
-- **THEN** they name every concrete requirement of the `all` extra
+- **THEN** they name every concrete requirement of the `all` extra, `manifold3d`
+  among them
 
 ### Requirement: A kernel module refuses an absent kernel at import
 
 Each module that needs a kernel the core does not require — the four node
 modules `machinome.node.cadquery`, `machinome.node.build123d`,
-`machinome.node.step` and `machinome.node.molejo`, and the exact engine
-`machinome.occt.engine` — SHALL check, when it is imported and before it
-imports any kernel or another kernel module, that each kernel it needs can be
-found. The check SHALL NOT import the kernel.
+`machinome.node.step` and `machinome.node.molejo`, the exact engine
+`machinome.occt.engine` and the mesh engine `machinome.manifold.engine` — SHALL
+check, when it is imported and before it imports any kernel or another kernel
+module, that each kernel it needs can be found. The check SHALL NOT import the
+kernel.
 
 When a kernel cannot be found, importing the module SHALL raise one error that
 is a `ModuleNotFoundError` whose `name` is the missing kernel's module, and
-whose message names what the module provides (its node types, or the exact
-engine), the missing module, and the install line
+whose message names what the module provides (its node types, or the exact or
+the mesh engine), the missing module, and the install line
 `pip install "machinome[<extra>]"` of the module's extra. The error SHALL carry
 the extra's name as data so a caller can answer by it.
 
@@ -100,11 +104,13 @@ own extra, and no core module gains a row for it.
 
 #### Scenario: Each kernel module names its own extra
 
-- **WHEN** `machinome.node.build123d`, `machinome.node.step` and
-  `machinome.node.molejo` are each imported with their kernel absent
-- **THEN** each refusal names the module's node types and
-  `pip install "machinome[build123d]"`, `pip install "machinome[step]"` and
-  `pip install "machinome[molejo]"` respectively
+- **WHEN** `machinome.node.build123d`, `machinome.node.step`,
+  `machinome.node.molejo` and `machinome.manifold.engine` are each imported
+  with their kernel absent
+- **THEN** each refusal names what the module provides and
+  `pip install "machinome[build123d]"`, `pip install "machinome[step]"`,
+  `pip install "machinome[molejo]"` and `pip install "machinome[manifold]"`
+  respectively
 
 #### Scenario: Checking does not import the kernel
 
@@ -122,30 +128,34 @@ own extra, and no core module gains a row for it.
 #### Scenario: A project with the extra sees no change
 
 - **WHEN** a project using `CadQueryNode`, `StepNode`, `Build123dNode` or
-  `MolejoNode` is built and tested with the corresponding extra installed
+  `MolejoNode`, or comparing parts on meshes, is built and tested with the
+  corresponding extra installed
 - **THEN** its results, artifacts and messages are those it produced before
   this change
 
 ### Requirement: The core imports no kernel outside its kernel modules
 
 No module of the core other than the four node modules named above and the
-exact engine's package SHALL import `cadquery`, `build123d`, `OCP`, `molejo`
-or `ocp_gordon`, at module top or inside a function. A core module that needs
-a kernel module's capability SHALL reach it through a seam: a try-import of the
-one known module that answers by that module's extra when it is absent.
+exact and mesh engines' packages SHALL import `cadquery`, `build123d`, `OCP`,
+`molejo`, `ocp_gordon` or `manifold3d`, at module top or inside a function. A
+core module that needs a kernel module's capability SHALL reach it through a
+seam: a try-import of the one known module that answers by that module's extra
+when it is absent.
 
 The core modules that name a kernel module are exactly: the node root's export
 table, whose targets serve the root spellings until the root cleanup; the
 markings' artwork seam, naming `machinome.node.build123d`; the CLI's command
 table, naming `machinome.node.step`; the `import-step` command's
 implementation, which uses `machinome.node.step`; and `machinome.node.step`
-itself, which uses `machinome.node.cadquery` for its render conversion.
+itself, which uses `machinome.node.cadquery` for its render conversion. The
+engines' providers are named by their seams under the `exact-engine-dependency`
+and `mesh-engine-dependency` capabilities.
 
 #### Scenario: Scanning the core finds kernels only in their modules
 
 - **WHEN** every module under `machinome/` is scanned for imports of
-  `cadquery`, `build123d`, `OCP`, `molejo` and `ocp_gordon`
-- **THEN** they are found only in `machinome/occt/`,
+  `cadquery`, `build123d`, `OCP`, `molejo`, `ocp_gordon` and `manifold3d`
+- **THEN** they are found only in `machinome/occt/`, `machinome/manifold/`,
   `machinome/node/step.py` (`cadquery`, `OCP`),
   `machinome/node/build123d.py` (`build123d`) and
   `machinome/node/molejo.py` (`molejo`)

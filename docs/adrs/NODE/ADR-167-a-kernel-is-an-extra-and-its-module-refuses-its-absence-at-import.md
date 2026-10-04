@@ -1,6 +1,6 @@
 # ADR-167: A Kernel Is an Extra, and Its Module Refuses Its Absence at Import
 
-**Status:** Accepted
+**Status:** Accepted; manifold3d's exception amended 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
 **Date:** 2026-10-03
 **Change:** [`lean-install`](../../../openspec/changes/archive/2026-10-03-lean-install/)
 **Amends:** [ADR-161: The core holds no kernel code](ADR-161-the-core-holds-no-kernel-code.md) — an engine whose `occt` extra is not installed is an absent engine, not a broken one
@@ -146,3 +146,13 @@ answered by rule 2.
   `tests/test_markings.py`, `tests/exact_engine_absent.py`
 - `openspec/specs/kernel-extras/spec.md`, and the `cli-startup-cost`,
   `exact-engine-dependency`, `occt-engine` and `markings` capabilities
+
+## Amendment (2026-10-04)
+
+[ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md) ends the exception this record kept by
+the pilot's ruling of 2 October: `manifold3d` is no longer required. It is
+the `manifold` extra, installed by `all` and by no node extra, and its
+module `machinome.manifold.engine` refuses its absence at import with
+`require_extra('manifold', 'the mesh engine (machinome.manifold.engine)',
+'manifold3d')`, which the mesh engine seam reads as an absent engine.
+`watchdog` stays required.

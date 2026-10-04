@@ -5,7 +5,8 @@
 """The core holds no kernel code (OpenSpec change `exact-engine`,
 capability `exact-engine-dependency`), and imports a kernel only in its
 kernel modules (OpenSpec change `lean-install`, capability
-`kernel-extras`).
+`kernel-extras`), and holds no mesh engine code either (OpenSpec change
+`mesh-engine`, capability `mesh-engine-dependency`).
 
 Read from the source, not from a running interpreter: the core imports
 `OCP` and `cadquery` nowhere outside the engine's own package except the
@@ -91,7 +92,8 @@ class CoreHoldsNoKernelTest(TestCase):
 
 
 #: Every CAD kernel's top-level module.
-KERNELS = {'cadquery', 'build123d', 'OCP', 'molejo', 'ocp_gordon'}
+KERNELS = {'cadquery', 'build123d', 'OCP', 'molejo', 'ocp_gordon',
+           'manifold3d'}
 
 #: The four node modules a kernel extra installs a kernel for.
 KERNEL_MODULES = {'machinome.node.cadquery', 'machinome.node.build123d',
@@ -105,6 +107,7 @@ EXTRA_OF = {
     'machinome/node/step.py': 'step',
     'machinome/node/molejo.py': 'molejo',
     'machinome/occt/engine.py': 'occt',
+    'machinome/manifold/engine.py': 'manifold',
 }
 
 #: The core modules that name a kernel module, and the ones each names
@@ -184,6 +187,7 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         self.assertEqual(importing, {
             'machinome/node/build123d.py': ['build123d'],
             'machinome/node/molejo.py': ['molejo'],
+            'machinome/manifold/engine.py': ['manifold3d'],
             'machinome/node/step.py': ['OCP', 'cadquery'],
             'machinome/occt/engine.py': ['OCP'],
         })
@@ -221,3 +225,58 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                 self.assertEqual(
                     [(number, module) for number, module in later
                      if number < line], [])
+
+
+MESH_PROVIDER_PACKAGE = PACKAGE / 'manifold'
+MESH_PROVIDER_NAME = re.compile(r'^machinome\.manifold(\.\w+)*$')
+
+
+def boolean_reaches(tree):
+    """Every line of a module that reaches `trimesh.boolean`: an attribute
+    chain ending `trimesh.boolean`, or an import of it."""
+    lines = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr == 'boolean' \
+                and isinstance(node.value, ast.Name) \
+                and node.value.id == 'trimesh':
+            lines.append(node.lineno)
+        elif isinstance(node, ast.Import):
+            lines.extend(node.lineno for alias in node.names
+                         if alias.name.startswith('trimesh.boolean'))
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            if node.module.startswith('trimesh.boolean') or (
+                    node.module == 'trimesh' and any(
+                        alias.name == 'boolean' for alias in node.names)):
+                lines.append(node.lineno)
+    return lines
+
+
+def names_the_mesh_provider(tree):
+    """Whether a module imports, or spells as a whole string,
+    `machinome.manifold` or anything beneath it."""
+    for name in imported_roots(tree):
+        if name == 'machinome.manifold' \
+                or name.startswith('machinome.manifold.'):
+            return True
+    return any(isinstance(node, ast.Constant) and isinstance(node.value, str)
+               and MESH_PROVIDER_NAME.match(node.value)
+               for node in ast.walk(tree))
+
+
+class CoreHoldsNoMeshEngineTest(TestCase):
+    """(mesh-engine 2.3) The core holds no mesh engine code: it reaches
+    manifold3d through no module but the provider's, not even through
+    trimesh, and names the provider in its seam alone."""
+
+    def test_no_module_reaches_trimesh_boolean(self):
+        reaching = {path: lines for path, tree in every_module()
+                    if (lines := boolean_reaches(tree))}
+
+        self.assertEqual(reaching, {})
+
+    def test_the_seam_is_the_only_core_module_naming_the_provider(self):
+        naming = [path for path, tree in every_module()
+                  if MESH_PROVIDER_PACKAGE not in (ROOT / path).parents
+                  and names_the_mesh_provider(tree)]
+
+        self.assertEqual(naming, ['machinome/mesh_engine.py'])

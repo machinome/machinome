@@ -94,9 +94,10 @@ EXACT_EXPORTS = ('FusionNode', 'CadQueryNode', 'Build123dNode',
 CADQUERY_EXPORTS = ('StepNode',)
 
 # Refuse `cadquery` the way an interpreter without the wheel does, in the
-# shape of tests/mesh_engine_absent.py: a `sys.meta_path` finder that
-# raises, rather than a stub, so the deferred import fails for the real
-# reason an install without the `step` extra fails.
+# shape of the finders of tests/exact_engine_absent.py and
+# tests/mesh_engine_absent.py: a `sys.meta_path` finder that raises, rather
+# than a stub, so the deferred import fails for the real reason an install
+# without the `step` extra fails.
 CADQUERY_ABSENT = '''
 import sys
 

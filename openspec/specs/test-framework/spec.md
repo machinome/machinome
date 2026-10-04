@@ -347,8 +347,13 @@ the run's comparison kernel:
   fast path, unchanged. Under the faceted kernel this is the path every pair
   of built solids takes, exact or not: a node's `shape()` is never read, and
   the exact-geometry stack is not imported by the test framework.
-- Otherwise (e.g. test doubles implementing only `.mesh`) it falls back to a
-  plain trimesh boolean over `.mesh` with identical verdict semantics.
+- Otherwise (e.g. test doubles implementing only `.mesh`) it falls back to
+  intersecting the two `.mesh` geometries through the mesh engine, after
+  trimesh's own check that each is a volume and with trimesh's own message
+  when one is not, reading emptiness and volume off the resulting mesh as
+  trimesh reads them, with identical verdict semantics. It SHALL NOT call
+  `trimesh.boolean`, whose backend is the mesh engine's kernel reached outside
+  the mesh engine.
 
 The AABB broad-phase SHALL run ahead of every path: each part's local
 bounding-box corners are transformed by its composed world matrix into a
@@ -392,8 +397,9 @@ computation, so its verdict is cached and served under the same identity any
 boolean verdict is. The margin, the comparison frame and any internal chunking
 of the comparison are internal tuning values and SHALL NOT be exposed as an
 assertion argument, flag, or environment variable. The faceted path SHALL NOT
-have this tier: a faceted verdict is read from cached Manifolds, which carry
-no faces, and a faceted run reads no solid's exact geometry at all.
+have this tier: a faceted verdict is read from the mesh engine's cached
+solids, which carry no faces, and a faceted run reads no solid's exact
+geometry at all.
 
 The per-STL cache SHALL be split by what each part of it needs:
 
@@ -403,23 +409,25 @@ The per-STL cache SHALL be split by what each part of it needs:
   require the mesh engine and SHALL NOT judge the mesh: selecting a solid,
   placing it in the broad phase, or comparing it on the exact kernel never
   raises for the state of its mesh;
-- one `manifold3d.Manifold` per `(stl_file, mtime)` (module-level, stale
-  entries evicted on rebuild) is built from that same cached base mesh at the
-  FIRST comparison that actually reads it, and never for a solid whose every
-  comparison is decided by the boundary-representation kernel. Repeated reads
-  SHALL reuse the one cached Manifold, so deferring construction SHALL NOT
-  increase the number of Manifolds built for any assembly. The mesh engine's
-  own construction status is the admissibility verdict: a Manifold whose
-  `status()` is not `NoError` SHALL raise a `ValueError` naming the STL file
-  and the engine's status, with trimesh's watertightness verdict as a
-  diagnostic, and SHALL NOT be cached; a mesh the engine accepts
-  is compared whatever trimesh says of it. A flexible leaf's Manifold, built
-  from its evaluated mesh at the current binding, is judged the same way and
-  the error names the node.
+- one mesh-engine solid per `(stl_file, mtime)` (module-level, stale
+  entries evicted on rebuild) is built by the mesh engine from that same
+  cached base mesh at the FIRST comparison that actually reads it, and never
+  for a solid whose every comparison is decided by the boundary-representation
+  kernel. The core SHALL hold the solid as an opaque handle and ask the mesh
+  engine for every operation on it. Repeated reads SHALL reuse the one cached
+  solid, so deferring construction SHALL NOT increase the number of solids
+  built for any assembly. The mesh engine's own judgement of the solid it
+  built is the admissibility verdict: a solid the engine does not admit SHALL
+  raise a `ValueError` naming the STL file and the engine's own word for the
+  fault, with trimesh's watertightness verdict as a diagnostic, and SHALL NOT
+  be cached; a mesh the engine accepts is compared whatever trimesh says of
+  it. A flexible leaf's solid, built from its evaluated mesh at the current
+  binding, is judged the same way and the error names the node.
 
-The faceted fast path SHALL then place the cached Manifolds with a lazy
-`transform()` and intersect them directly, reading `is_empty()` and `volume()`
-off the result with no conversion back to trimesh, reading `volume` only when
+The faceted fast path SHALL then place the cached solids by the mesh
+engine's placement, which re-meshes and re-judges nothing, and intersect them
+directly through the engine, reading the engine's emptiness and volume off the
+result with no conversion back to trimesh, reading the volume only when
 non-empty.
 
 Under the faceted kernel the helper SHALL apply the run's volume epsilon to
@@ -458,16 +466,16 @@ emits SHALL NOT depend on whether its solids carry exact geometry.
 #### Scenario: Non-watertight part
 
 - **WHEN** a faceted fast-path assertion reads an STL from which the mesh
-  engine builds a Manifold whose status is not `NoError` (a box missing a
-  triangle, say)
-- **THEN** it raises a `ValueError` naming that STL file and the engine's
-  status, and the Manifold is not cached
+  engine builds a solid it does not admit (a box missing a triangle, say)
+- **THEN** it raises a `ValueError` naming that STL file and the engine's own
+  word for the fault (`NotManifold` from the provider this framework
+  resolves), and the solid is not cached
 
 #### Scenario: A mesh trimesh doubts and the engine accepts
 
 - **WHEN** a faceted fast-path assertion reads an STL whose edges are shared
   by four faces, so trimesh reports it non-watertight, and the mesh engine
-  builds it with `NoError`
+  admits the solid it builds from it
 - **THEN** the assertion compares the part and reaches the engine's verdict,
   with no error
 
@@ -475,8 +483,8 @@ emits SHALL NOT depend on whether its solids carry exact geometry.
 
 - **WHEN** the run's kernel is exact, two exact solids are compared, and one
   of them has an STL the mesh engine would refuse
-- **THEN** the verdict is the boundary-representation kernel's, no Manifold
-  is built, and the STL's state raises nothing
+- **THEN** the verdict is the boundary-representation kernel's, no
+  mesh-engine solid is built, and the STL's state raises nothing
 
 #### Scenario: The broad phase does not judge a mesh
 
@@ -503,15 +511,15 @@ emits SHALL NOT depend on whether its solids carry exact geometry.
 
 - **WHEN** `assertNoSolidInterference` verifies an assembly whose every selected
   solid is exact
-- **THEN** no `manifold3d.Manifold` is constructed for any of those solids, and
+- **THEN** no mesh-engine solid is constructed for any of those solids, and
   the verdict is the one the kernel reaches
 
 #### Scenario: A mixed assembly builds a Manifold only for the solids it compares faceted
 
 - **WHEN** an assembly's selected solids include exact and faceted parts and only
   some candidate pairs route faceted
-- **THEN** a Manifold is built for each solid a faceted comparison reads, once
-  each, and for no other solid
+- **THEN** a mesh-engine solid is built for each solid a faceted comparison
+  reads, once each, and for no other solid
 
 #### Scenario: A faceted run compares exact parts on their meshes
 
@@ -586,7 +594,16 @@ emits SHALL NOT depend on whether its solids carry exact geometry.
 - **WHEN** a pair is evaluated on the faceted path, whether because a solid is
   faceted or because the run's kernel is faceted
 - **THEN** no face bounding box is computed, no solid's exact geometry is
-  read, and the verdict is the cached Manifolds' own
+  read, and the verdict is the mesh engine's own, read off its cached
+  solids
+
+#### Scenario: Mesh-only nodes are intersected through the mesh engine
+
+- **WHEN** two test doubles that expose only `.mesh` are compared
+- **THEN** their meshes are intersected by the mesh engine, emptiness and
+  volume are those trimesh reads off the resulting mesh, exactly the values
+  `trimesh.boolean.intersection` returned for them, and `trimesh.boolean` is
+  not called
 
 ### Requirement: Whole-assembly solid interference assertion
 
@@ -2058,6 +2075,14 @@ evaluator on the verdict path, and to the platform. A verdict kept under any
 other framework source, kernel or evaluator version, or platform SHALL NOT be
 served.
 
+A verdict decided on the faceted path SHALL also be bound to the identity,
+name and version, that the mesh engine resolved for the process reports of
+itself; a verdict decided on the exact path SHALL NOT be bound to the mesh
+engine. A faceted question whose mesh engine cannot be resolved, or reports no
+version, SHALL be computed without being kept or served. What binds every
+verdict SHALL be computed without importing a kernel; only a faceted
+question SHALL ask the mesh engine for its identity.
+
 The store SHALL hold the kernel's raw verdict (emptiness, volume, and whether
 the exact kernel produced it) and no geometry. The run's volume epsilon SHALL
 be applied after a kept verdict is read, exactly as after a per-run hit. A
@@ -2131,6 +2156,14 @@ with it.
   or evaluator on the verdict path, differs from the one under which a
   verdict was kept
 - **THEN** that verdict is not served and the comparison is computed
+
+#### Scenario: A mesh engine upgrade invalidates faceted verdicts only
+
+- **WHEN** a project's store holds faceted and exact verdicts kept under one
+  version of the mesh engine, and a later run's mesh engine reports another
+  version, everything else unchanged
+- **THEN** the later run computes every faceted comparison again and is served
+  every exact one
 
 #### Scenario: A flexible pair is served at an equal state and recomputed at another
 
@@ -2212,6 +2245,8 @@ with it.
 #### Scenario: An all-exact project keeps its store without the mesh engine
 
 - **WHEN** an all-exact project is tested twice, with the store on, on a
-  machine where `manifold3d` cannot be imported
-- **THEN** both runs complete as they do without the store, and the second is
-  served from it
+  machine where the mesh engine is absent, neither `manifold3d` nor
+  `machinome.manifold` being importable
+- **THEN** both runs complete as they do without the store, the second is
+  served from it, and neither asks for the mesh engine
+

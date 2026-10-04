@@ -372,7 +372,7 @@ class FlexibleNode(LeafNode):
         read -- a coherent miss.
 
         The GEOMETRY key, asked for with `geometry_key`, keys the faceted
-        Manifold working set exactly as before: the same values plus the
+        solid cache's working set exactly as before: the same values plus the
         source's real path and its fingerprint, and None when either the
         fingerprint or the digest is unknown.
         """
@@ -419,7 +419,7 @@ class FlexibleNode(LeafNode):
     def _faceted_cache_snapshot(self):
         """The coherent current shape and full geometry key for one faceted
         read: ``(key, rendered, values)``. The test framework owns the
-        bounded Manifold cache this keys (see `_snapshot`)."""
+        bounded faceted solid cache this keys (see `_snapshot`)."""
         key, _, rendered, values = self._snapshot(geometry_key=True)
         return key, rendered, values
 

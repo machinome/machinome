@@ -1,6 +1,6 @@
 # ADR-052: Conditional mesh-engine dependency
 
-**Status:** Accepted
+**Status:** Accepted; packaging and `trimesh.boolean` amended 2026-10-04 by [ADR-176](ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
 
 **Date:** 2026-08-23
 
@@ -132,3 +132,19 @@ environment that cannot install it omits it deliberately.
 - `solid_node/test.py`
 - OpenSpec archive `defer-manifold-import-to-mesh-path`
 - `browser-engine` spike, "Upstream findings for the framework" item 4
+
+## Amendment (2026-10-04)
+
+[ADR-176](ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md) moves `manifold3d` to the `manifold` extra, the option
+this record rejected: "Packaging is unchanged" no longer holds. The
+objection, that an ordinary `pip install` would yield a silently
+faceted-broken installation, is answered by the refusals: every requiring
+path refuses at its point of use naming `pip install "machinome[manifold]"`,
+and `machinome test` on the faceted kernel refuses at its start. The engine
+is now the provider `machinome.manifold.engine` behind the seam
+`machinome.mesh_engine`, which returns the provider rather than
+`(Manifold, Mesh)` and no longer reads a broken `manifold3d` as absent.
+`assertJoined`'s union and the `.mesh` fallback no longer call
+`trimesh.boolean`: they run through the engine, so of the assertions whose
+geometry a library reaches with its own backend selection only the proximity
+queries remain outside this contract.
