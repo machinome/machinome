@@ -3,9 +3,7 @@
 ## Purpose
 
 The declared leaf extension contract: the four leaf bases a node type written outside the core subclasses, each at one import path; what a faceted, an exact, a sheet and a flexible leaf provides and may override; the optional namespace guard; artifact publication through `publish_artifact`; source identity through `get_source_file`, `files`, `source_recipe` and the external-file helpers; what a subclass must not override; what the core guarantees a leaf; and the contract version checked at class creation.
-
 ## Requirements
-
 ### Requirement: The leaf bases are declared extension points
 
 The system SHALL declare four leaf bases as the extension points through which
@@ -93,11 +91,17 @@ the core SHALL do everything else:
   list and never `None`. It MAY extend `validate(rendered)`, calling the
   base's first. Its exactness is fixed by its type.
 - **A faceted leaf presented as SCAD** implements `as_scad(rendered)`,
-  returning a solid2 object. The core writes that SCAD and OpenSCAD produces
-  the STL from it.
+  returning a solid2 object. The core has the OpenSCAD engine write that SCAD
+  as the leaf's own `.scad` (the `scad-engine-dependency` capability), the
+  one kind of leaf whose `.scad` a build writes and keeps, and OpenSCAD
+  produces the STL from it.
 - **A faceted leaf that produces its own STL** implements
   `materialize(rendered)` and writes `stl_file` through `publish_artifact`.
-  It need not implement `as_scad`: the core presents its artifact.
+  It need not implement `as_scad`: the core presents its artifact. A leaf
+  that does implement it to present its own artifact returns
+  `artifact_import(local_path)` as it is: the core's description of an import
+  of that artifact, which is not a solid2 object and is not composed into
+  one.
 - **An exact leaf** returns from `render()` an object its conversion hook
   `shape_from_rendered(rendered)` turns into the exact engine's currency; the
   default hook admits whatever the engine admits as its currency, and a
@@ -127,6 +131,15 @@ of the base it subclasses (`NodeMeta`, at `machinome.node.declarative`).
   returning a solid2 object, and is built with OpenSCAD available
 - **THEN** its `.scad` is written by the core and its STL is rendered by
   OpenSCAD from it
+
+#### Scenario: A leaf presents its own artifact by artifact_import
+
+- **WHEN** a `LeafNode` subclass implements `materialize()` publishing its
+  STL and `as_scad()` returning `self.artifact_import(self.local_stl)`
+- **THEN** it is assembled, and when its parent's `.scad` is generated with
+  the OpenSCAD engine installed, that SCAD imports the artifact by a path that
+  resolves from the parent's `.scad` directory, exactly as a core adapter's
+  does; a build writes no `.scad` for the leaf itself
 
 #### Scenario: A self-materializing faceted leaf needs no SCAD hook
 
@@ -375,3 +388,4 @@ its parent's declaration without being checked again.
   `leaf_contract`
 - **THEN** the class is created as before, and so is a subclass of a class
   that declared a matching version
+

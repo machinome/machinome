@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
-**Change:** [`scad-presentation`](../../../openspec/changes/scad-presentation/)
+**Change:** [`scad-presentation`](../../../openspec/changes/archive/2026-10-04-scad-presentation/)
 **Amends:**
 - [ADR-102: Native materialization precedes optional SCAD presentation](../NODE/ADR-102-native-materialization-precedes-optional-scad-presentation.md) — "ordinary builds still request that output"
 - [ADR-046: Conditional OpenSCAD dependency](../NODE/ADR-046-conditional-openscad-dependency.md) — the refusal family gains the engine's

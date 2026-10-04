@@ -204,11 +204,18 @@ Whichever directory a command was run from, a project therefore has one build
 directory per model and — because the build lock is derived from it — one
 build lock per model.
 
-The ordinary `machinome build` and SCAD presentation path SHALL retain `.scad`
-(base geometry, no transforms) deliverables. Geometry/document-only consumers
-under `backend-neutral-materialization` SHALL NOT require or generate assembly
-SCAD deliverables, but SHALL still produce SCAD source when a selected backend
-needs it. Other artifacts remain `.stl` (rendered) and `.stl.lock` during
+A build SHALL write a `.scad` (base geometry, no transforms) only for a leaf
+whose geometry is authored in SCAD — a `Solid2Node`, an `OpenScadNode`, or a
+project leaf overriding `as_scad` — because OpenSCAD renders that leaf's
+`.stl` from it, through the OpenSCAD engine (the `scad-engine-dependency`
+capability). It SHALL write no `.scad` for an assembly, a fusion, a flexible
+leaf or any other leaf, with or without the engine, and SHALL log nothing
+about SCAD presentation. The root's `.scad` is written in the build directory
+only by `machinome snapshot --renderer openscad`, under the `web-snapshot`
+capability, which removes it once rendered; it is not a build artifact. Geometry/document-only consumers under
+`backend-neutral-materialization` SHALL NOT require or generate assembly SCAD,
+but SHALL still produce SCAD source when a selected backend needs it. Other
+artifacts remain `.stl` (rendered) and `.stl.lock` during
 external rendering. A node that is exact under the `exact-geometry` capability
 SHALL additionally write
 `.brep`, holding that node's unplaced exact geometry under the same basename.
@@ -328,6 +335,23 @@ SHALL NOT alter any document's schema.
 - **WHEN** a rigid node that declares no marking is built
 - **THEN** its build directory holds exactly the artifacts it held before
   markings existed
+
+#### Scenario: A build writes SCAD only for SCAD-authored leaves
+
+- **WHEN** a project holding an assembly, a faceted fusion, a flexible leaf,
+  an exact leaf and a `Solid2Node` leaf is built with the OpenSCAD engine
+  installed
+- **THEN** the only `.scad` under its build directory is the `Solid2Node`
+  leaf's, beside that leaf's `.stl` under the same basename, and no
+  per-binding snapshot of the flexible leaf is written
+
+#### Scenario: A build without the OpenSCAD engine writes no SCAD
+
+- **WHEN** a project of exact and imported STL leaves is built with the
+  OpenSCAD engine absent
+- **THEN** its `.stl`, `.brep` and `viewer.json` are written as with the
+  engine, no `.scad` exists under its build directory, and nothing is logged
+  about SCAD presentation
 
 ### Requirement: External wrappers own independent current artifacts
 
@@ -1013,12 +1037,16 @@ snapshot is in place.
 ### Requirement: A successful build sweeps unreferenced artifacts
 
 After a successful publication the system SHALL remove files in the build
-directory that the current viewer snapshot does not reference. It SHALL NOT
+directory that the current viewer snapshot does not reference. A build that
+finds the document it would publish already published SHALL still apply the
+`.scad` rule below, and only that rule: a `.scad` no current node writes
+never survives a successful build, whatever the document did. It SHALL NOT
 remove:
 
 - the snapshot;
 - the error file;
-- `.scad` inputs;
+- the `.scad` of a node of the published tree whose geometry is authored in
+  SCAD;
 - `.brep` exact geometry;
 - live render lock files;
 - temporaries belonging to a build in progress;
@@ -1032,9 +1060,18 @@ state, not a build artifact, and no published document names it. It is
 written by test runs that may be in progress while a build publishes.
 
 `.brep` artifacts are spared by kind rather than by reference, because no
-published document names them. As with `.scad` inputs, a superseded one is
-therefore not removed by the sweep; mtime-equality caching means a superseded
-artifact is never read.
+published document names them. A superseded one is therefore not removed by
+the sweep; mtime-equality caching means a superseded artifact is never read.
+
+A `.scad` is spared by **reference to the tree being published**, not by
+kind. The sweep SHALL keep the `.scad` of every node of that tree whose
+geometry is authored in SCAD (a `Solid2Node`, an `OpenScadNode`, or a project
+leaf overriding `as_scad`), with its currency record, whether or not this
+build rewrote it, and SHALL remove every other `.scad` in the build directory
+with its currency record: one an earlier build wrote for an assembly, a
+fusion, a flexible leaf or another leaf, one an interrupted OpenSCAD
+snapshot left for a root, and one of a SCAD-authored leaf no longer in the
+tree.
 
 A **marking** artifact under the `markings` capability is spared by
 **reference**, not by kind, because the published snapshot names it beside the
@@ -1058,6 +1095,37 @@ successful publication, exactly as a renamed node's artifact is.
 - **WHEN** a build of exact nodes publishes successfully and sweeps
 - **THEN** every `.brep` written for a current node is still present, though
   the published snapshot names none of them
+
+#### Scenario: A SCAD-authored leaf's SCAD survives the sweep
+
+- **WHEN** a project holding a `Solid2Node` leaf whose `.stl` is already
+  current is rebuilt and publishes successfully
+- **THEN** that leaf's `.scad` and its currency record are still present,
+  though this build did not rewrite them
+
+#### Scenario: Presentation SCAD left by an earlier build is removed
+
+- **WHEN** a build directory holds the `.scad` files an earlier build wrote
+  for the project's assemblies, fusions, flexible leaves, exact leaves and
+  root, and the project is rebuilt and publishes successfully
+- **THEN** every one of them is gone with its currency record, and the only
+  `.scad` files left are those of the tree's SCAD-authored leaves
+
+#### Scenario: A renamed SCAD-authored leaf leaves no SCAD behind
+
+- **WHEN** a `Solid2Node` leaf is renamed and the project is rebuilt
+  successfully
+- **THEN** the `.scad` under the old name is gone and the `.scad` under the
+  new name is present
+
+#### Scenario: A build removes any SCAD no current node writes
+
+- **WHEN** an interrupted `machinome snapshot --renderer openscad` has left
+  the root's `.scad` in the build directory and the project is then built
+  successfully, publishing the document already published
+- **THEN** the root's `.scad` and its currency record are gone from the
+  build directory, and every artifact the `.scad` rule does not govern is
+  swept, or not, exactly as before
 
 #### Scenario: The verdict store survives the sweep
 
@@ -1309,8 +1377,10 @@ is how OpenSCAD resolves an `import()`. This SHALL hold for every leaf kind
 that presents its geometry as an artifact (`Solid2Node`, the exact adapters,
 `StlNode`, `JScadNode`, and a flexible leaf's per-binding snapshot), for a
 node at any depth of the tree, whether or not the artifact was already
-current when the tree was assembled, and whatever package the importing node
-is declared in relative to the node whose artifact it names. An assembly
+current when the tree was assembled, whatever package the importing node
+is declared in relative to the node whose artifact it names, and whichever
+path wrote the `.scad`: a SCAD-authored leaf's materialization, the OpenSCAD
+snapshot renderer's root, or a caller's `generate_scad()`. An assembly
 declared in a different package from a part it places SHALL therefore
 render exactly the geometry it renders when the two are declared together.
 
@@ -1325,14 +1395,15 @@ directory; the two files SHALL NOT be required to hold the same text.
 #### Scenario: A parent in another package imports every leaf kind
 
 - **WHEN** an assembly declared in `sim/tools/` places a rigid leaf, an
-  exact leaf and a flexible leaf all declared in `sim/`, and the model is
-  built
+  exact leaf and a flexible leaf all declared in `sim/`, the model is
+  built, and the assembly's `.scad` is then generated
 - **THEN** every `import(file = …)` in the assembly's generated `.scad`
   names a file that exists relative to that `.scad`'s own directory
 
 #### Scenario: The second build spells it the same way
 
-- **WHEN** that model is built again with every artifact already current
+- **WHEN** that model is built again with every artifact already current and
+  the assembly's `.scad` is generated again
 - **THEN** each import in the assembly's generated `.scad` still resolves
   from that `.scad`'s directory, and the geometry the document presents is
   unchanged
@@ -1340,11 +1411,19 @@ directory; the two files SHALL NOT be required to hold the same text.
 #### Scenario: An intermediate assembly's own SCAD resolves from its own directory
 
 - **WHEN** a root in `sim/tools/` places an assembly declared in
-  `sim/sub/deep/` which places a leaf declared in `sim/`, and the model is
-  built
+  `sim/sub/deep/` which places a leaf declared in `sim/`, the model is
+  built, and the intermediate assembly's and the root's `.scad` are then
+  generated
 - **THEN** the import in the intermediate assembly's own generated `.scad`
   resolves from `sim/sub/deep`'s build directory, and the import in the
   root's generated `.scad` resolves from the root's build directory
+
+#### Scenario: The snapshot renderer's root SCAD resolves
+
+- **WHEN** `machinome snapshot --renderer openscad` writes the root's `.scad`
+  of a model whose root is declared in another package than its parts
+- **THEN** every `import(file = …)` in it names a file that exists relative
+  to that `.scad`'s own directory
 
 #### Scenario: A project's own import is reproduced verbatim
 
@@ -1355,8 +1434,8 @@ directory; the two files SHALL NOT be required to hold the same text.
 
 #### Scenario: A parent beside its parts is unchanged
 
-- **WHEN** an assembly and the leaves it places are declared in one package
-  and the model is built
+- **WHEN** an assembly and the leaves it places are declared in one package,
+  the model is built, and the assembly's `.scad` is then generated
 - **THEN** each leaf artifact is imported by its bare basename, exactly as
   before this rule was stated
 

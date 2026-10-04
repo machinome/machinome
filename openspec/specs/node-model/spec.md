@@ -24,8 +24,9 @@ the framework substitutes the realized declared children minus the omitted
 ones before any consumer sees the result. A `LeafNode.render()` SHALL
 return a single geometry object, never a list and never `None`. Validation
 runs during framework preparation before geometry production or SCAD
-presentation. Public `assemble()` uses that same preparation and retains its
-SCAD result; neutral consumers compose the tree without a SCAD union.
+presentation. Public `assemble()` uses that same preparation and returns its
+presentation description; neutral consumers compose the tree without a SCAD
+union.
 
 #### Scenario: Internal node returns children
 
@@ -60,8 +61,13 @@ and placement through a framework-owned lifecycle. Users SHALL NOT override
 that lifecycle. Native geometry consumers SHALL NOT require `as_scad()` or
 SCAD generation to prepare the tree or produce its native artifacts.
 Public `assemble()` SHALL remain a SCAD compatibility entry point over the
-same prepared tree: it requests SCAD presentation, preserves optimized imports
-and colours, and applies queued operations in their existing order.
+same prepared tree: it composes the node's presentation description under the
+`scad-engine-dependency` capability, preserves optimized imports and colours,
+applies queued operations in their existing order, and returns that
+description. It SHALL request no SCAD presentation: it SHALL write no
+`.scad` for any node, with or without the OpenSCAD engine, and SHALL require
+neither SolidPython nor the engine. A node's `.scad` is written only by the
+paths that read it, under the `backend-neutral-materialization` capability.
 `assemble()` SHALL be idempotent — the result is memoized and `render()` is
 called at most once per instance. On an assembly the framework SHALL run
 `simulate()` after `render()` ONCE PER ENUMERATION of the tree, under the
@@ -83,8 +89,8 @@ ordering SHALL hold for native preparation and SCAD compatibility consumers.
 #### Scenario: Optimized import of cached STL
 
 - **WHEN** a node has `optimize = True`, is rigid, and its STL is up to date
-- **THEN** `assemble()` imports the STL (`import_stl`) instead of inlining
-  the SCAD model, and queued operations are applied after the import
+- **THEN** `assemble()` presents an import of the STL artifact instead of
+  inlining the SCAD model, and queued operations are applied after the import
 
 #### Scenario: An up-to-date leaf is not rendered
 
@@ -109,6 +115,22 @@ ordering SHALL hold for native preparation and SCAD compatibility consumers.
 - **THEN** both subtrees' `simulate()` methods ran before the first
   subtree's geometry was composed, so a coordinate bound while the
   second subtree simulated still moves a body in the first
+
+#### Scenario: Assemble writes no SCAD
+
+- **WHEN** `assemble()` is called with the OpenSCAD engine installed on an
+  assembly of an exact leaf and a `Solid2Node` leaf whose artifacts are
+  current
+- **THEN** it returns the presentation description and no `.scad` file is
+  written or rewritten, the assembly's included
+
+#### Scenario: Assemble without the OpenSCAD engine
+
+- **WHEN** `assemble()` is called on an assembly of native artifact-owning
+  leaves with the OpenSCAD engine absent
+- **THEN** it renders, validates, links, simulates and prepares exactly as with
+  the engine, returns the same presentation description, and writes no
+  `.scad`
 
 #### Scenario: Native preparation is independent of SCAD presentation
 

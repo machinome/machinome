@@ -321,14 +321,14 @@
 
 ## 9. Stop and report (the applier)
 
-- [ ] 9.1 With 1 to 8 done and the suite green, stop before any commit and
+- [x] 9.1 With 1 to 8 done and the suite green, stop before any commit and
   report to the orchestrator: the diff stat, the red and green results, the
   suite's counts, both goldens' summaries. The applier spawns no agent and
   runs neither validation below.
 
 ## 10. Empirical validation (the orchestrator)
 
-- [ ] 10.1 **Deep, Locks/Pin_tumbler_lock,** by a validator subagent the
+- [x] 10.1 **Deep, Locks/Pin_tumbler_lock,** by a validator subagent the
   orchestrator briefs and launches, from design.md Decision 11:
   - *Where.* `/home/asa/devel/machinome/projects/Locks/Pin_tumbler_lock`, on
     the branch `lean-core-validation` in a worktree under the project's own
@@ -388,14 +388,14 @@
   - *Migration.* None expected. If anything must change, stop and report.
   - *Must not change:* anything in the bench or the framework; any project
     file.
-- [ ] 10.2 **Engine absent, OpenAstroMount** (optional, the orchestrator's
+- [x] 10.2 **Engine absent, OpenAstroMount** (optional, the orchestrator's
   call on cost), read-only in `/home/asa/devel/machinome/projects/OpenAstroMount`
   with `PYTHONDONTWRITEBYTECODE=1`: `machinome build` into a scratch build
   directory with `solid2` unfindable (the finder, `absent=solid2`). Expected
   after: exit 0, `viewer.json`, every STL and BREP, no `.scad`, nothing
   logged about SCAD presentation. (Before: `ModuleNotFoundError` for
   `solid2`.)
-- [ ] 10.3 **Shallow, the universe,** run by the orchestrator from the
+- [x] 10.3 **Shallow, the universe,** run by the orchestrator from the
   workspace root: `scripts/load-projects --bench <bench> --moved
   scripts/load-projects.d/exact-engine.toml
   scripts/load-projects.d/leaf-contract.toml
@@ -409,15 +409,15 @@
   `Robots/openvmp` (`don1`) `expected`; `3DPrintedClocks` `wall_clock_41` and
   `Robotic-Arms/Dum-E` `unexpected`, pre-existing; six `no-model`. Any other
   row returns to the orchestrator with its output before integration.
-- [ ] 10.4 A failed validation returns to the orchestrator with the
+- [x] 10.4 A failed validation returns to the orchestrator with the
   project's output; nothing is fixed in a project. The orchestrator hands the
   reports to the paused applier.
 
 ## 11. Records, ADRs, specs, commit (the applier, after 10)
 
-- [ ] 11.1 Fold 10.1-10.3 into the evidence, verbatim where they quote a
+- [x] 11.1 Fold 10.1-10.3 into the evidence, verbatim where they quote a
   message, a hash or a summary line.
-- [ ] 11.2 Write ADR-172 (`docs/adrs/NODE/`, the core describes its SCAD
+- [x] 11.2 Write ADR-172 (`docs/adrs/NODE/`, the core describes its SCAD
   presentation and the OpenSCAD engine writes it: the description, contract
   2, expressions as values, the binary through the seam; amends ADR-102's
   compatibility consumer, ADR-116's re-anchoring mechanism and ADR-171's list
@@ -434,7 +434,7 @@
   coalescing loses its production producer), each recording the pilot's
   ruling on design.md Decision 3 (A, 3 October 2026) and the orchestrator's
   acceptance of Decision 6.
-- [ ] 11.3 Sync the seven delta specs into `openspec/specs/`, archive the
+- [x] 11.3 Sync the seven delta specs into `openspec/specs/`, archive the
   change with `openspec archive scad-presentation`, copy `moved-names.toml`
   to the workspace's `scripts/load-projects.d/scad-presentation.toml` (the
   orchestrator commits that copy in the workspace), validate `--strict`, and

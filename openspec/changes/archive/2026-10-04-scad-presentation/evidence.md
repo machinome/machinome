@@ -683,7 +683,32 @@ oam build dir: viewer.json yes; stl 90; brep 90; scad 0; exit.log: 1743248 0 OCP
 changed in either project (`git status` clean after the legs; the lock back on
 `main`).
 
-10.3, the universe sweep: pending.
+### 10.3 The universe sweep
+
+Run by the orchestrator from the workspace root, 4 October 2026 00:48 to
+01:10, on the bench at eebedf2 (the committed tree 10.1 and 10.2 validated):
+`scripts/load-projects --bench <bench> --moved` the five earlier moved-names
+files (`exact-engine`, `leaf-contract`, `backend-switch`, `lean-install`,
+`expression-type`) and this change's `moved-names.toml`, `--timeout 300`,
+JSON in `load-projects.json` beside this file (58161 bytes). Its summary
+line:
+
+```
+62 repositories, 129 rows: 117 ok, 4 expected, 2 unexpected, 0 timeout, 6 no-model; 2 skipped
+```
+
+Row for row identical to the fifth cycle's sweep in project, model, checkout
+and outcome: no row for this cycle. Carried, expected: `3D-Printers/Voron-2`
+(`shape()` currency, `exact-engine`), `Actuators/Internal-Cycloidal-Actuator`,
+`Robots/YouCanBuildDog` and `Robots/openvmp` (`don1`) (`machinome.node.adapters`,
+`lean-install`). Unexpected, pre-existing: `3DPrintedClocks` `wall_clock_41`
+(`ValueError: Workplane object must have at least one solid on the stack to
+union! (at clocks/plates.py:5224)`) and `Robotic-Arms/Dum-E`
+(`ModuleNotFoundError: No module named 'machinome_freecad' (at
+simulation/dume.py:7)`). No-model: `KZG-Marble-machine`,
+`Robotic-Arms/Dummy-Robot`, `Robotic-Arms/Primo`, `Robots/asimov-1`,
+`Robots-Bipedal/berkeley-humanoid-sim`, `Robots-Bipedal/upkie`. Skipped by
+rule: `.Trash-1000`, `sandbox`.
 
 ### The goldens after the validation (bench at eebedf2)
 
@@ -705,10 +730,61 @@ exit 0; wall time 635 s; no "Too many open files"
 ```
 
 Beside the first run (6 failed, 4381 passed, 3670 subtests): the six
-repointed tests pass and the two new tests of the repoints
-(`test_load_and_prepare_for_the_web_renderer_writes_no_root_scad`, already
-counted, and the four files' adjustments) bring 4386 passed. Beside
+failures were five tests and one subtest (`test_leaf_contract_recipe.py`,
+`exact_leaf_with_marking`), so 4381 + 5 = 4386 tests and 3670 + 1 = 3671
+subtests, all passing now. Beside
 `expression-type`'s run of record (4350 passed, 3648 subtests, 526 s): 36
 more tests, 23 more subtests, 107 s more wall time, the new subprocess
 tests of `test_scad_presentation.py` (builds with and without each module)
 among them.
+
+## 11.3 Specs, archive, records
+
+- **Commits.** The pilot ruled that this branch is never amended: the
+  implementation commit is the orchestrator's eebedf2 (the whole state
+  validated by 10.1-10.3), then 63c887e (the leaf-contract golden
+  re-recorded), bcdfc79 (the suite's run of record), and the archive commit
+  holding this section. The planning commit 9a894d4 keeps the planning
+  artifacts as ratified; their revisions of 4 October are in eebedf2.
+- **A retired scenario restated.** `openspec archive scad-presentation --yes`
+  first refused: "backend-neutral-materialization MODIFIED failed for header
+  "### Requirement: SCAD remains a supported output and compatibility
+  boundary" - current spec contains scenario(s) not present in the modified
+  block: "A normal build remains useful to OpenSCAD users". ... Aborted. No
+  files were changed." The delta had dropped that scenario because option A
+  retires its THEN ("its SCAD deliverables remain available for OpenSCAD").
+  The only scenario any delta dropped (checked over all seven). Kept under its
+  name, restated to option A: an ordinary build leaves each SCAD-authored
+  leaf's `.scad` available, from which OpenSCAD renders its STL, unchanged
+  builds do not rewrite it, and no other `.scad` is a build deliverable. No
+  behaviour beyond the requirement's own text; `openspec validate --strict`
+  valid.
+- **Specs.** `openspec archive scad-presentation --yes` then applied the
+  deltas: `backend-neutral-materialization` ~ 1; `build-pipeline` ~ 3;
+  `leaf-contract` ~ 1; `node-model` ~ 2; `openscad-engine` + 1, ~ 1;
+  `scad-engine-dependency` + 2, ~ 3; `web-snapshot` + 1, ~ 1; "Totals: + 4,
+  ~ 12, - 0, → 0", archived as `2026-10-04-scad-presentation` (with
+  `moved-names.toml` and `load-projects.json`). A copy of `openspec/specs/`
+  taken before the archive was diffed against the result: the 61 removed
+  lines are the old text of the modified requirements and scenarios and
+  nothing else. No capability was created, so no Purpose to write.
+
+```
+openspec validate --specs --strict   -> Totals: 43 passed, 0 failed (43 items)
+```
+
+- **Records.** ADR-172 and ADR-173 link this archive; `workflow/ongoing/lean-core.md`
+  carries the archive path and the validation's result in its "Empirical
+  validation" row. `moved-names.toml` is copied to the workspace's
+  `scripts/load-projects.d/scad-presentation.toml` by the orchestrator,
+  through a workspace worktree after integration; nothing was written in the
+  workspace by this cycle's applier.
+- **After the archive** (no source change since bcdfc79's run), the files
+  that read specs, records and documentation, with the cycle's own, alone:
+  `tests/test_release_records.py tests/test_docs_structure.py
+  tests/test_docs_exports.py tests/test_leaf_contract_members.py
+  tests/test_profile_documentation.py tests/test_frame_precision_docs.py
+  tests/test_mates.py tests/test_scad_presentation.py
+  tests/test_scad_engine_seam.py tests/test_openscad_engine.py
+  tests/test_expression_type.py`: `242 passed, 6 warnings, 853 subtests
+  passed in 115.73s`.

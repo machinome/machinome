@@ -67,6 +67,13 @@ different geometry engine.
 - **THEN** the only `.scad` under its build directory is the `Solid2Node`
   leaf's, and repeated unchanged builds do not rewrite it
 
+#### Scenario: A normal build remains useful to OpenSCAD users
+
+- **WHEN** an ordinary `machinome build` completes
+- **THEN** the `.scad` of each leaf whose geometry is authored in SCAD, from
+  which OpenSCAD renders its STL, remains available, repeated unchanged
+  builds do not rewrite it, and no other `.scad` is a build deliverable
+
 #### Scenario: OpenSCAD users obtain a machine's SCAD on demand
 
 - **WHEN** a person wants the SCAD of a built machine

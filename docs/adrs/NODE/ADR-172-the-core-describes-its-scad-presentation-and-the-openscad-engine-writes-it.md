@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-10-04
-**Change:** [`scad-presentation`](../../../openspec/changes/scad-presentation/)
+**Change:** [`scad-presentation`](../../../openspec/changes/archive/2026-10-04-scad-presentation/)
 **Amends:**
 - [ADR-102: Native materialization precedes optional SCAD presentation](ADR-102-native-materialization-precedes-optional-scad-presentation.md) — the compatibility consumer composes a description and writes no SCAD
 - [ADR-116: An artifact import is anchored on the build directory](../BUILD/ADR-116-an-artifact-import-is-anchored-on-the-build-directory.md) — re-anchoring is a pure function over the core's description
