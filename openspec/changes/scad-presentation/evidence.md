@@ -692,3 +692,23 @@ scad_presentation_golden.py --check   golden comparison: 34 values, 0 difference
 leaf_contract_golden.py --check       golden comparison: 7 fixtures, 77 values, 0 differences   (re-recorded)
 test_leaf_contract_recipe.py          2 passed, 14 subtests passed
 ```
+
+### 7.6 The full suite, run of record (bench at 63c887e)
+
+After the orchestrator's validation and the leaf-contract golden's
+re-recording, once, alone (`pgrep -af "[p]ytest"` empty before):
+
+```
+env -C <worktree> PYTHONPATH=<worktree> .venv/bin/python -m pytest -q -p no:cacheprovider -rf
+4386 passed, 4 skipped, 55 warnings, 3671 subtests passed in 633.30s (0:10:33)
+exit 0; wall time 635 s; no "Too many open files"
+```
+
+Beside the first run (6 failed, 4381 passed, 3670 subtests): the six
+repointed tests pass and the two new tests of the repoints
+(`test_load_and_prepare_for_the_web_renderer_writes_no_root_scad`, already
+counted, and the four files' adjustments) bring 4386 passed. Beside
+`expression-type`'s run of record (4350 passed, 3648 subtests, 526 s): 36
+more tests, 23 more subtests, 107 s more wall time, the new subprocess
+tests of `test_scad_presentation.py` (builds with and without each module)
+among them.
