@@ -1,8 +1,7 @@
 # ADR-021: A live session serves the render's stage and the frame function to a browser
 
-Status: Proposed (OpenSpec change `live-server`, 4 October 2026; the player
-campaign stops before sync, so the change is not archived and this ADR is
-not yet promoted).
+Status: Accepted (OpenSpec change `live-server`, 4 October 2026, the second
+change of the player campaign, archived the same day, after the pilot validated the player in the browser).
 
 ## Context
 
@@ -14,7 +13,7 @@ blind, because nothing could show a take before the movie rendered
 (`workflow/ongoing/roadmap.md` item 13, *Live preview*). The pilot's
 rulings of 4 October 2026 put the piece that shows a film while it is
 edited in Videomaker, for the studio to use later, as two transports over
-the render's own stage (`workflow/ongoing/player-campaign/plan.md`): a
+the render's own stage (`workflow/archive/player-2026-10-04/plan.md`): a
 take transport that poses a machine at a take time, and a movie transport
 that poses the stage at a video time.
 

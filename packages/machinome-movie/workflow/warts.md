@@ -535,3 +535,27 @@ Recorded at the merges; triage by the orchestrator unless stated.
 39. **A machine's identity depends on the module its model is imported from**: the same `counter.py` gives the export's identity as `models.counter` and another under another module name, so a take evaluated through a different `PYTHONPATH` spelling is refused as another machine. The framework's definition; the refusal names `module:Class` for it. Found by `take-identity`. Recorded here and worth the framework's log.
 40. **A document evaluated before `take-identity` from a changed model still passes `check`**, carrying the export's identity; only evaluating it again, or the viewer's `restore` at preview, catches it. Found by `take-identity`. Recorded.
 
+
+## The player (4 October 2026): the live preview as a scenario player and a movie player
+
+Findings met by the player campaign's three cycles (`take-transport`,
+`live-server`, `player-page`; `workflow/archive/player-2026-10-04/`), each
+recorded in the cycle's `evidence.md`. The campaign built the take transport
+and the live server and the player page in Videomaker, the viewer kept thin
+by the pilot's ruling, to be lifted at the migration.
+
+1. **The stage bundle reads the pose rule but does not embed it**: the stage only calls `attachMachine`, so esbuild drops `bankAt`; the rule's name matters in the bundle key's record and in the transport bundle. Found by `take-transport`. Not a defect; recorded.
+2. **On the API 29 bundle `restore` draws before it returns**, so the take proofs pass with the redraw after it removed; ADR-012's sentence about drawing on the next `setView` describes the clipping planes, not the pixels. The redraw after a camera-less seek is kept as the viewer's documented capture rule (a capture after the pose alone keeps the last framing's clipping planes). Found by `take-transport`. Recorded.
+3. **`test/support/reach.mjs` reads import-like text inside string literals**: an esbuild entry string `export {…} from './take'` broke a memo key loudly. Found by `take-transport`. Recorded; worked around in the test helper.
+4. **A `pkill -f` with a pattern was run once by a cycle's agent** to restart its own suite, which could have killed another worktree's run. Process finding: never, in any worktree; wait on a PID. Found by `take-transport`.
+5. **`assetServer` never handled a listen error**: a port in use would have hung or crashed it. Fixed by `live-server`, which added the port and refuses one in use by name.
+6. **A movie with a picture or a reframe costs about 1.3 s per reload**, all of it Chromium measuring the layout as `check` does. A layout cache keyed by the stage bundle and the document's sets would remove it. Found by `live-server`. Recorded; no cycle until an edit loop feels it.
+7. **After a refused load the session keeps the previous generation's watches**, so a file the refused document names for the first time is not watched until a load is accepted; touching the document recovers. Found by `live-server`. Recorded.
+8. **`/narration.wav` serves whatever `speech` last mixed**, which may be older than the document; and a generation can be accepted while `speech` is still writing the mix, so the player's mix-length note can flash between generations. Found by `live-server` and `player-page`. Recorded.
+9. **`check --width` is validated and never used by `check`** (pre-existing); `live` relies on that validation for its own width. Found by `live-server`. Recorded.
+10. **The orchestrator's union of `test/repository.test.mjs` in the live-server merge dropped the `});` closing a test**, so the file did not parse and its 15 pins never ran on the campaign branch until the next cycle's baseline caught it (the suite counted one failed file; the passing count looked whole). Fixed in `player-page` (2c46e84). Process finding: never union a conflict hunk that splits a function; re-run the file's own tests after every union.
+11. **From a worktree, `python/tests/test_cli.py` tests the primary checkout's `machinome_movie`**: its `run()` drops `PYTHONPATH`, and the venv's editable install points at the primary. `test_watch.py` sets `PYTHONPATH` for its own runs. Found by `player-page`. Recorded; the smallest fix passes the worktree's `python/` on the child's `PYTHONPATH`.
+12. **The session served the mix without its length or byte ranges**, so the browser saw a stream of unknown length and could seek only what it had read. Fixed by `player-page` (206 and 416 answered on the file route).
+13. **The real viewer styles the element it is mounted in** (`position: relative`), which collapsed an absolutely placed host to 150 px; the bank proof could not see it, a screenshot did. Found by `player-page`; the take surface mounts in a target inside a host, and layer 6 asserts the canvas fills the surface. Worth the viewer's log.
+14. **The viewer's handle declares no way to release an instance**: a remounted take viewer, which renders continuously, is left to garbage collection. Found by `player-page`. Worth the viewer's log.
+15. **The fixture counter's mark `ten` is reached by no frame of the fixture film**, so the movie ruler flags only `one` and `nine`; the take surface shows all three. Found by `player-page`. Recorded.

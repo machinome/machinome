@@ -28,6 +28,13 @@ regression coverage and a reproducibility audit remain deferred. Live preview
 is future Studio work requiring the pilot. This note does not schedule another
 roadmap item or imply main integration, publication or aesthetic approval.
 
+Player note, 4 October 2026: item 13, *Live preview*, is implemented in
+Videomaker as `videomaker live`, a player with a movie surface and a take
+surface over the render's stage, with the Python side's `watch`; see the
+[player campaign](../archive/player-2026-10-04/report.md). The studio
+mount of that page (the direction note's fifth step) is not built. Items
+4, 12 and 15 remain as the historical wishlist states them.
+
 ## Why not adopt a framework
 
 The films of AGPL simulations should be rebuildable from free software. That

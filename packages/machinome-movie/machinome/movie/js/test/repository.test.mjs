@@ -185,7 +185,7 @@ test('the manual and the records say a view on a take is posed through the take 
   assert.ok((await read('docs/architecture-overview.md')).includes('`transport/`'),'the architecture overview');
   assert.ok((await read('AGENTS.md')).includes('`transport/**/*.test.ts`'),'AGENTS.md: layer 4');
   assert.ok((await read('CHANGELOG.md')).includes('(`take-transport`, ADR-020)'),'the changelog bullet');
-  assert.ok((await read('docs/adrs/README.md')).includes('| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser\'s pose of a take, written to lift | Proposed |'),'the ADR index');
+  assert.ok((await read('docs/adrs/README.md')).includes('| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser\'s pose of a take, written to lift | Accepted |'),'the ADR index');
   assert.ok(await exists('docs/adrs/STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md'),'ADR-020');
 });
 
@@ -227,7 +227,7 @@ test('the manual and the records say how the player shows a film and a take, and
   assert.doesNotMatch(readme,/The player page is not built yet/,'README: the player is built');
   const adr='PIPELINE/ADR-022-the-player-is-two-transports-over-the-renders-stage-and-a-video-is-its-recording.md';
   assert.ok(await exists(`docs/adrs/${adr}`),adr);
-  assert.ok((await read('docs/adrs/README.md')).includes(`| [ADR-022](${adr}) | PIPELINE | The player is two transports over the render's stage, and a video is its recording | Proposed |`),'the ADR index');
+  assert.ok((await read('docs/adrs/README.md')).includes(`| [ADR-022](${adr}) | PIPELINE | The player is two transports over the render's stage, and a video is its recording | Accepted |`),'the ADR index');
   assert.ok((await read('CHANGELOG.md')).includes('(`player-page`, ADR-022)'),'the changelog bullet');
   const overview=await read('docs/architecture-overview.md');
   for(const module of ['`player/`','src/player-build.mjs','`markInstants`'])assert.ok(overview.includes(module),`overview: ${module}`);

@@ -348,11 +348,11 @@ template and a YAML episode on the shipped paper sets. The curta-video
 campaign adds machine takes: a clocked take is declared and recorded in
 Python (`declare-a-take`, ADR-011), and the commands read it and pose it on
 the viewer's machine, held to the record (`pose-a-take`, ADR-012). Running
-machines' takes, the page element and the studio's live preview are later
-steps of the same direction and are not built. The player campaign
-(`workflow/ongoing/player-campaign/plan.md`) builds the live preview in
-Videomaker first: its first change, `take-transport` (ADR-020), lifted the
-pose of a take out of the stage into `transport/`, its second,
-`live-server` (ADR-021), built the server half, `videomaker live`, and its
-third, `player-page` (ADR-022), the player page and the Python watcher.
-Drawing composed joins live, and the studio's panel, are not built.
+machines' takes and the page element are later steps of the same direction
+and are not built. The player campaign (`workflow/archive/player-2026-10-04/`,
+closed 4 October 2026) built the live preview in Videomaker: `take-transport`
+(ADR-020) lifted the pose of a take out of the stage into `transport/`,
+`live-server` (ADR-021) built `videomaker live`, and `player-page` (ADR-022)
+the player page and the Python watcher; the take transport lifts into the
+viewer package at the migration, by the pilot's arrangement. Drawing
+composed joins live, and the studio's panel over the player, are not built.

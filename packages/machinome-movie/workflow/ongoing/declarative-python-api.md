@@ -9,6 +9,14 @@ remain the only implemented source, and `AGENTS.md`, `README.md` and
 Every name below is provisional; naming is the next conversation, not this
 one. Where this note and a baseline spec disagree, the spec is right.
 
+Revision note, 4 October 2026: step 5 of "Path from today" is built on
+the Videomaker side as the player (`videomaker live`, the take transport
+and the live server; `workflow/archive/player-2026-10-04/report.md`),
+by the pilot's ruling that the viewer stays thin and the take transport
+lives in Videomaker until the migration into the planned monorepo. The
+studio mounting that page remains future studio work. Steps 4 and 6 are
+unchanged.
+
 ## What it does not claim
 
 - That the framework, the viewer or the studio have agreed to any of the

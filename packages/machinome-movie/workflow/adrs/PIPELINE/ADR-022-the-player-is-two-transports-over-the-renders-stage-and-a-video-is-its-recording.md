@@ -1,8 +1,7 @@
 # ADR-022: The player is two transports over the render's stage, and a video is its recording
 
-Status: Proposed (OpenSpec change `player-page`, 4 October 2026, the third
-and last change of the player campaign). It stays Proposed until the change
-is archived: the pilot ordered the campaign to stop before sync. Builds on
+Status: Accepted (OpenSpec change `player-page`, 4 October 2026, the third
+and last change of the player campaign, archived the same day, after the pilot validated the player in the browser). Builds on
 [ADR-020](../STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md)
 (the take transport) and
 [ADR-021](ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md)

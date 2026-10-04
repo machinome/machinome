@@ -1,8 +1,7 @@
 # ADR-020: A take transport is the browser's pose of a take, written to lift
 
-Status: Proposed (OpenSpec change `take-transport`, 4 October 2026, the
-first change of the player campaign). It stays Proposed until the change is
-archived: the pilot ordered the campaign to stop before sync. Builds on
+Status: Accepted (OpenSpec change `take-transport`, 4 October 2026, the
+first change of the player campaign, archived the same day, after the pilot validated the player in the browser). Builds on
 [ADR-012](ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md)
 (a view on a take is posed by restoring the machine's bank) and
 [ADR-013](../PIPELINE/ADR-013-the-stage-bundle-names-its-files-by-the-tool-and-the-project.md)
@@ -10,7 +9,7 @@ archived: the pilot ordered the campaign to stop before sync. Builds on
 
 ## Context
 
-The player campaign (`workflow/ongoing/player-campaign/plan.md`) answers a
+The player campaign (`workflow/archive/player-2026-10-04/plan.md`) answers a
 recorded cost: every timing revision of a film meant a preview run, the
 Curta's *Addition* renders in an hour, and its take was written blind,
 because nothing showed a take before a movie rendered. Two rulings of the
