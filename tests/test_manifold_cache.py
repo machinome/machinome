@@ -34,12 +34,13 @@ from machinome.manifold import engine
 from machinome.node.base import AbstractBaseNode
 from machinome.node.operations import Translation
 from machinome.test import TestCase as AssertingTestCase
+from tests.stand_in import StandIn
 
 
 asserter = AssertingTestCase()
 
 
-class FakeNode:
+class FakeNode(StandIn):
 
     def __init__(self, name, stl_file):
         self.name = name
@@ -460,7 +461,7 @@ class CulledSolidIsNotJudgedTest(ManifoldCacheTestCase):
         self.assertIn('NotManifold', str(ctx.exception))
 
 
-class _MeshOnly:
+class _MeshOnly(StandIn):
     """A test double with only a `.mesh`, outside any solid: the shape
     `assertJoined`'s union and the helper's `.mesh` fallback serve."""
 

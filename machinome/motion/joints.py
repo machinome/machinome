@@ -1069,9 +1069,9 @@ class Orbit(Joint):
                 f"off that line with carries=, in {frame} frame.")
 
         # The framework's own DEGREE trigonometry: numeric for a plain
-        # binding, and for a symbolic one the OpenSCAD builtins `cos`
-        # and `sin`, which the parity corpus covers and the viewer
-        # already evaluates (ADR-022). No new operation kind, and no
+        # binding, and for a symbolic one the expression language's
+        # builtins `cos` and `sin`, which the parity corpus covers and the
+        # viewer already evaluates (ADR-022). No new operation kind, and no
         # document key.
         turned = cos(value) - 1
         swept = sin(value)

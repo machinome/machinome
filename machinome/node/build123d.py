@@ -67,7 +67,7 @@ class Build123dNode(ExactLeafNode):
 
     build123d is a boundary-representation backend over the same OCCT that
     CadQueryNode uses, so the exact-adapter contract -- exact, shape(),
-    as_scad() -- is ExactLeafNode's. What is build123d's own is the namespace
+    present() -- is ExactLeafNode's. What is build123d's own is the namespace
     and the solid-shaped-result rule below.
 
     Note that this module never imports build123d. See build123d_shape().

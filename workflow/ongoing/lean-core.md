@@ -929,6 +929,7 @@ validation is orchestrated with subagents like the rest of the cycle.
 | expression type | Locks/Pin_tumbler_lock, with the Curta Type I 3x's clocked block and machinome-mechanics' suite as probes | a running root whose laws and bounds are built on `machinome.math`, whose flexible ports carry expressions and whose `Solid2Node` parts write SCAD carrying symbolic values: four of the five former facade importers, the seam's native path and the SCAD bytes in one cheap project; the Curta exercises the clocked face, mechanics the SolidPython operands. **Done** 3 October 2026: the lock 24/24 faceted before and after with every `.scad` byte-identical and `manifest.json` differing only in one piece volume's last digit, OpenSCAD's own STL noise; the Curta's clocked block identical (88910 bytes, `be1e37234b443566`); mechanics 9 failures, all its tests asserting solid2's `OpenSCADConstant` of a symbolic value, corrected by a mechanics cycle (the pilot); universe unchanged from the fourth cycle; `openspec/changes/archive/2026-10-03-expression-type/evidence.md` |
 | scad presentation | Locks/Pin_tumbler_lock, and OpenAstroMount without SolidPython | the fifth cycle's project, so its 11 `Solid2Node` `.scad` hashes are compared byte for byte, and its sub-assembly, flexible spring and running root exercise every presentation construct and the three files a build stops writing; OpenAstroMount is the all-STEP project a build must publish with no SolidPython. **Done** 4 October 2026: the lock's build writes exactly its 11 `parts-*.scad`, byte-identical to a single-process build of the fifth cycle (its three-process after leg held self-imports a later process's `assemble()` wrote, a defect this change removes), no `lock-*` or `flexibles-*` file, 24/24 faceted, `manifest.json` identical; the OpenSCAD snapshot draws the root's SCAD (6916 bytes, 20 imports resolving) and removes it, and is refused naming the engine and `--renderer web` without it; the project's 31 lingering `.scad` swept to 11, also by a build that left the document unchanged; OpenAstroMount builds with `solid2` unfindable, 90 STL, 90 BREP, no `.scad`; universe identical to the fifth cycle's sweep, no row for this cycle; `openspec/changes/archive/2026-10-04-scad-presentation/evidence.md` |
 | mesh engine | Locks/Pin_tumbler_lock, 3D-Printers/Prusa3-vanilla, Leonardo/models (`cam_hammer`) and OpenAstroMount without the engine | the lock is the campaign's faceted reference and Prusa3-vanilla the heaviest faceted user, so their verdict logs are compared line for line before and after; no project fuses faceted children, so `cam_hammer`'s two exact fusions show an exact fusion never asks for the engine, and the all-exact OpenAstroMount builds and tests with it absent. **Done** 4 October 2026: the lock 24/24 faceted before and after with its 2573 verdicts byte-identical, and with the engine absent `machinome test --faceted` refused at its start (exit 1, no STL) while `machinome build` wrote its 11 STL with no ask of `machinome.manifold`; Prusa3-vanilla 16 passed and 3 failed (pre-existing) before and after, its 15935 verdicts byte-identical, 1974 s against 1963 s; `cam_hammer`'s 14 artifacts identical unblocked and with the engine absent; OpenAstroMount built (90 STL, 90 BREP) and tested 8/9 (the known exact-common wart) with the engine absent, no process asking for `machinome.manifold` and every ask of `manifold3d` trimesh's own (`trimesh.boolean`, `trimesh.util`); universe identical to the sixth cycle's sweep, no row for this cycle; `openspec/changes/archive/2026-10-04-mesh-engine/evidence.md` |
+| openscad out | Locks/Pin_tumbler_lock, 3D-Printers/Prusa3-vanilla, OpenAstroMount without the family, `machinome new` under three installs | the lock is the faceted and SCAD reference: its 11 `parts-*.scad`, its verdict log and an OpenSCAD snapshot's root `.scad` are compared byte for byte, the root `.scad` gone after the render; Prusa3-vanilla's verdicts likewise; OpenAstroMount builds and tests with `solid2`, `machinome.node.openscad` and `machinome.node.solid2` unfindable and `machinome snapshot` refuses naming the extra; `machinome new` scaffolds the template its installed extras provide. **Done** 4 October 2026: the lock's 11 build `.scad` and 15 after the test, 2573 verdicts and the snapshot's root `.scad` (and image, 0 differing pixels) byte-identical, the root `.scad` gone after the render and a transient one removed by an unchanged build; Prusa3-vanilla 16 passed and 3 failed (pre-existing), its 15935 verdicts byte-identical; OpenAstroMount 90 STL, 90 BREP, 0 `.scad` and 8/9 with the family unfindable and no attempt of it, `machinome snapshot` refused naming `machinome[openscad]`; `machinome new` byte-identical under all extras, CadQuery without SolidPython, refused with neither; universe identical to the mesh-engine sweep, no row for this cycle; `openspec/changes/archive/2026-10-04-openscad-out/evidence.md` |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |
 
@@ -1223,8 +1224,9 @@ cleanup) does not depend on the answer; layer 2 turns on it.
 
 Ratified by the pilot from the counts of 4 October 2026, taken on the
 line at 57928eb, after the closing rulings above. The phase is the rest
-of layer 1: three cycles on `v0.8-split`, then the pilot confirms the
-package names, then layer 2 starts with an actual cut.
+of layer 1: four cycles on `v0.8-split` (three, and the viewer cycle the
+pilot added the same day), then the pilot confirms the package names, then
+layer 2 starts with an actual cut.
 
 **What "ready for the split" means, measured on 57928eb.**
 
@@ -1255,7 +1257,7 @@ package names, then layer 2 starts with an actual cut.
   exists since `lean-install` and nothing uses it yet; the first cut of
   layer 2 is its proof.
 
-**The three cycles, in order.**
+**The cycles, in order.**
 
 1. `openscad-out`, gated by the red-first scan test (above). The family
    becomes one package directory `machinome/node/openscad/`: the node, the
@@ -1273,6 +1275,16 @@ package names, then layer 2 starts with an actual cut.
    scaffolds whatever leaf kind the installed extras provide. `jscad` and
    `stl` as packages wait for the root cleanup: this cycle is the
    campaign's biggest and symmetry adds nothing to its risk.
+   **Done** (4 October 2026): branch `v0.8-split-openscad-out`, planning
+   commit f76aa20, ratified with the transient record for the
+   unchanged-document sweep (ADR-177, 178, 179). As ratified it narrows the
+   paragraph above: the OpenSCAD snapshot renderer stays at
+   `machinome/viewers/openscad.py`, importing the package directly, until the
+   viewer cycle; `scad_expression` stays in the core as `closed_expression`;
+   the table of supported node types is `machinome/node/supported.py`. The
+   gate is at zero, the suite green (4513 passed, 4 skipped), every
+   validation leg green. Evidence:
+   `openspec/changes/archive/2026-10-04-openscad-out/evidence.md`.
 2. `brep-mesh`. Providers at `machinome/engine/brep.py` and
    `machinome/engine/mesh.py`; the two seams in the engine package's
    `__init__`, which extends its path with portions as `machinome/node/`
@@ -1293,6 +1305,13 @@ package names, then layer 2 starts with an actual cut.
    back with no expected failure; the project repositories are committed
    one by one after the sweep is green. `jscad` and `stl` become packages
    here.
+4. The viewer cycle, the phase's last by the pilot's decision of 4 October
+   2026: viewers become providers behind a seam `machinome.viewer`
+   (`machinome.viewer.openscad`, `machinome.viewer.web`), done after the
+   root cleanup. It moves `machinome/viewers/openscad.py`, the last module
+   outside the OpenSCAD node family the `openscad-out` gate admits, and
+   removes the provisional renderer column of the table of supported node
+   types.
 
 Then the first cut of layer 2 is the mesh engine: one module, one extra,
 the smallest proof that a portion resolves from a second distribution.

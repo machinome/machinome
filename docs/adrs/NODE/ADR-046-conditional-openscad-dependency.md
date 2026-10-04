@@ -1,6 +1,6 @@
 # ADR-046: Conditional OpenSCAD dependency
 
-**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md); module location amended 2026-10-03 by [ADR-171](ADR-171-the-openscad-engine-is-machinome-openscad.md); refusal family amended 2026-10-04 by [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md)
+**Status:** Accepted, requiring set amended by [ADR-102](ADR-102-native-materialization-precedes-optional-scad-presentation.md) and [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); amended 2026-10-03 by [ADR-166](ADR-166-the-core-recognises-no-node-type-by-the-spelling-of-its-class-name.md); module location amended 2026-10-03 by [ADR-171](ADR-171-the-openscad-engine-is-machinome-openscad.md); refusal family amended 2026-10-04 by [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md); binary contract address amended 2026-10-04 by [ADR-177](ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 
 **Date:** 2026-08-13
 

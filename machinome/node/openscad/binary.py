@@ -2,23 +2,29 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""Conditional availability contract for the OpenSCAD executable."""
+"""Conditional availability contract for the OpenSCAD executable.
+
+The family's leaves render their STL with it, `Solid2Node.as_number`
+evaluates a SolidPython value with it, and the OpenSCAD snapshot renderer
+draws with it. Each confirms it here first, when its path is attempted, and
+is refused with `OpenScadUnavailable` naming what needed it.
+"""
 
 import shutil
 from functools import lru_cache
 
-from machinome.scad_engine import ScadEngineUnavailable
 
-
-class OpenScadUnavailable(ScadEngineUnavailable):
+class OpenScadUnavailable(RuntimeError):
     """A requested operation cannot run without the OpenSCAD binary.
 
-    One of the seam's `ScadEngineUnavailable`, so the core catches it
-    through the seam without naming this package; its message is the
-    binary's own."""
+    `needed_by` and `reason` say what asked and why, and `alternative`, when
+    given, another way to the same result."""
 
     def __init__(self, needed_by, reason, alternative=None):
-        super().__init__(needed_by, reason, None, alternative)
+        self.needed_by = needed_by
+        self.reason = reason
+        self.alternative = alternative
+        super().__init__(self.describe())
 
     def describe(self):
         remedy = "install OpenSCAD and ensure 'openscad' is on PATH"

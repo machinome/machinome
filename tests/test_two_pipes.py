@@ -5,6 +5,8 @@
 import os
 from .base import BaseNodeTest
 from . import flat_project
+from machinome.node.openscad.writer import scad_file
+from machinome.node.openscad.writer import generate_scad
 
 
 class TwoPipesTest(BaseNodeTest):
@@ -43,6 +45,6 @@ class TwoPipesTest(BaseNodeTest):
         self.assertIsNotNone(assembled)
         # assemble() writes no SCAD (`scad-presentation`); generate_scad()
         # writes the assembly's on demand.
-        self.assertFalse(os.path.exists(node.scad_file))
-        node.generate_scad()
-        self.assertTrue(os.path.exists(node.scad_file))
+        self.assertFalse(os.path.exists(scad_file(node)))
+        generate_scad(node)
+        self.assertTrue(os.path.exists(scad_file(node)))

@@ -1,6 +1,6 @@
 # ADR-171: The OpenSCAD Engine Is `machinome.openscad`, Reached for Expressions Through `machinome.scad_engine`
 
-**Status:** Accepted, contract and direct reaches amended 2026-10-04 by [ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md)
+**Status:** Superseded 2026-10-04 by [ADR-177](ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md): the engine package and the seam are dissolved into `machinome.node.openscad`
 **Date:** 2026-10-03
 **Change:** [`expression-type`](../../../openspec/changes/archive/2026-10-03-expression-type/)
 **Amends:** [ADR-046: Conditional OpenSCAD dependency](ADR-046-conditional-openscad-dependency.md) — the binary locator's module

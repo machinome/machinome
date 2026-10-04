@@ -137,9 +137,8 @@ def evaluate(operand, values):
 # caller of that attribute expects.
 _RESERVED = frozenset({
     'name', 'uniq_id', 'operations', 'checkpoint', 'src', 'basedir',
-    'build_dir', 'scad_file', 'stl_file', 'brep_file', 'mesh_scad_file',
-    'mesh_stl_file', 'lock_file', 'local_stl', 'basepath', 'files', 'model',
-    'root',
+    'build_dir', 'stl_file', 'brep_file', 'mesh_stl_file', 'lock_file',
+    'local_stl', 'basepath', 'files', 'model', 'root',
 })
 
 
@@ -387,9 +386,9 @@ def function_formula(name, numeric, *args):
     on degrees.
 
     Only the PRIMITIVES appear here -- the functions `machinome.math`
-    emits as an OpenSCAD call. Its compositions (`clamp`, `clamp01`,
-    `ramp`, `lerp`, `wrap`, `piecewise`, `bump`, and the vector
-    helpers) deliberately have no branch: a rule would give each of
+    emits as a call of the expression language. Its compositions
+    (`clamp`, `clamp01`, `ramp`, `lerp`, `wrap`, `piecewise`, `bump`, and
+    the vector helpers) deliberately have no branch: a rule would give each of
     them a second definition beside the composition its numeric and
     symbolic faces are, and the declared face would stop being the same
     function as the other two. What they do to dimensions follows from

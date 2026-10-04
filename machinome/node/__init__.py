@@ -14,12 +14,12 @@ invocation, including ones that touch no geometry at all. Exact geometry
 is now the exact engine's, resolved through `machinome.exact_engine` only
 by the paths that use it.
 
-Each leaf type is one module directly under this package, named for its
-technology (`machinome.node.cadquery`, `.build123d`, `.step`, `.molejo`,
-`.solid2`, `.openscad`, `.jscad`, `.stl`); the export table below names
-them as the modules its names are resolved from. The former
-`machinome.node.adapters` package was dissolved by the `lean-install`
-change and refuses every spelling beneath it.
+Each node type is one module directly under this package, named for it.
+The table of supported node types (`machinome.node.supported`) names each
+one and the classes the export table below resolves from its module; this
+module names none of them itself. The former `machinome.node.adapters`
+package was dissolved by the `lean-install` change and refuses every
+spelling beneath it.
 
 Nothing here dispatches on a registry of subclasses, so no import was
 load-bearing for a side effect and deferral is safe. PEP 562 hands back
@@ -62,32 +62,28 @@ from machinome.extras import ExtraUnavailable
 __path__ = _namespace_portions(__path__, __name__)
 
 from .base import StlRenderStart
+from .supported import NODE_TYPES
 
 
 # Each deferred export and the submodule that defines it. This is the
 # whole public surface of the package; `__all__` is derived from it so
-# the two cannot drift apart.
+# the two cannot drift apart. The names a node type contributes are the
+# table of supported node types' (`machinome.node.supported`), each
+# resolved from the node type's own module.
 _EXPORTS = {
     'AssemblyNode': 'assembly',
     'declared_children': 'declarative',
     'FusionNode': 'fusion',
-    'CadQueryNode': 'cadquery',
-    'Build123dNode': 'build123d',
     'SheetLeafNode': 'sheet_leaf',
-    'Build123dSheetNode': 'build123d',
     'FlexibleNode': 'flexible',
-    'MolejoNode': 'molejo',
-    'Solid2Node': 'solid2',
-    'OpenScadNode': 'openscad',
-    'JScadNode': 'jscad',
-    'StlNode': 'stl',
     'Marking': 'markings',
     'Wrapped': 'markings',
     'Flat': 'markings',
     'Svg': 'markings',
     'Frame': 'frames',
-    'StepNode': 'step',
     'property_as_number': 'decorators',
+    **{name: key for key, node_type in NODE_TYPES.items()
+       for name in node_type.classes},
 }
 
 # Names, and the two submodules, that used to live here and now answer

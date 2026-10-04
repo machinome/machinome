@@ -1,6 +1,6 @@
 # ADR-103: The browser is the only interactive development viewer
 
-**Status:** Accepted
+**Status:** Accepted, the OpenSCAD renderer reached through the table 2026-10-04 by [ADR-177](../NODE/ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md) and [ADR-179](ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md)
 
 **Date:** 2026-09-11
 

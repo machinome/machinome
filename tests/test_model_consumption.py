@@ -255,7 +255,7 @@ class NativeBox(LeafNode):
             self.stl_file, lambda path: rendered.export(path, file_type="stl")
         )
 
-    def as_scad(self, rendered):
+    def present(self, rendered):
         raise AssertionError("native consumption never presents SCAD")
 
     def _build_markings(self):

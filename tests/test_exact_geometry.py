@@ -33,6 +33,7 @@ import machinome.test as test_module
 from machinome.test import TestCase as GeometryTestCase, _intersection_stats
 from machinome.core.builder import Builder
 from tests.exact_test_support import clear_exact_shape_caches
+from tests.stand_in import StandIn
 
 
 class Box(CadQueryNode):
@@ -85,7 +86,7 @@ class MixedFusion(FusionNode):
         return [self.exact_child, self.faceted_child]
 
 
-class ShapeNode:
+class ShapeNode(StandIn):
     rigid = True
     exact = True
     children = ()
@@ -321,7 +322,7 @@ class ExactArtifactTest(TestCase):
         fusion = ExactFusion()
         fusion.assemble()
 
-        with patch('machinome.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                 'exact fusion must not launch OpenSCAD')):
             fusion.build_stls()
 
@@ -361,9 +362,9 @@ class ExactArtifactTest(TestCase):
         fusion = MixedFusion()
         fusion.build_stls()
         os.remove(fusion.stl_file)
-        with patch('machinome.openscad.binary.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError('fusion must not use OpenSCAD')), \
-             patch('machinome.node.base.Popen',
+             patch('machinome.node.openscad.leaf.Popen',
                    side_effect=AssertionError('fusion must not launch')):
             fusion.generate_stl()
         self.assertTrue(os.path.exists(fusion.stl_file))

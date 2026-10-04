@@ -2,11 +2,13 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""Compile native motion graphs and legacy scalar text into shared outputs.
+"""Compile native motion graphs and legacy scalar text into shared outputs:
+machinome's expression language.
 
 Framework arithmetic stores operand references, not strings. Publication
 interns only reachable nodes, counts repeated uses and emits the existing
-schema-4 binding language. The SCAD boundary emits closed scalar let bindings.
+schema-4 binding language. A value's own text (`closed_expression`) is one
+closed scalar, its shared subexpressions bound by `let`.
 The iterative parser imports legacy scalar text (including those closures);
 unknown legacy syntax keeps its verbatim fallback with a bounded warning.
 
@@ -34,7 +36,7 @@ class ExpressionError(ValueError):
     """Text that is not in the language the two producers emit.
 
     Never raised for text that publishes and renders today: solid2's own
-    output always parses. This is raised only for a `scad_inline` string,
+    output always parses. This is raised only for a library's inline string,
     or otherwise hand-built text, outside that language -- and the caller
     (`bind_expressions`) catches it, publishing the offending expression
     verbatim and unshared rather than failing the build.
@@ -121,7 +123,7 @@ class Interner:
 
 
 def parse(text, interner=None, memo=None):
-    """Parse a scalar or a local SCAD closure without Python recursion.
+    """Parse a scalar or a local `let` closure without Python recursion.
 
     The optional memo argument is retained for legacy callers. Sharing comes
     from the supplied interner, not substring copies of the input text.
@@ -228,7 +230,7 @@ def _validate_bindings(bindings, driver_ids, prefix):
     The ordering rule binds only MINTED names -- those matching
     `<prefix>\\d+`, `prefix` being exactly what `_mint_prefix` chose for
     this document. Any other leaf name an entry's expression carries ($t
-    aside) is the project's business, not this table's: a `scad_inline`
+    aside) is the project's business, not this table's: a library's inline
     constant, a name from solid2 the framework never declared, anything the
     consumer already resolves or already refuses on its own -- publishing
     it unexamined is what D2 requires ("refusal is for a table that would
@@ -341,8 +343,10 @@ def _canonical(roots):
     return result, interner
 
 
-def scad_expression(root):
-    """A closed SCAD scalar. No expanded intermediate, no global variables."""
+def closed_expression(root):
+    """The closed text of an expression: one scalar, its shared
+    subexpressions bound by `let`. No expanded intermediate, no global
+    variables."""
     roots, interner = _canonical([root])
     root = roots[0]
     occupied = {n.text for n in interner.order if n.kind == 'name'}
@@ -385,7 +389,7 @@ def bind_expressions(expressions, driver_ids):
     for expression, native in zip(expressions, native_roots):
         if isinstance(native, (ExpressionNode, Node)):
             if raw[native]:
-                original = scad_expression(native)
+                original = closed_expression(native)
                 node = None
             else:
                 original, node = None, native

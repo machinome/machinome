@@ -233,8 +233,7 @@ def comparison_policy():
 
 def _routes_exact(node):
     """Whether this run compares `node` through its exact geometry."""
-    return (comparison_policy().kernel == 'exact'
-            and getattr(node, 'exact', False))
+    return comparison_policy().kernel == 'exact' and node.exact
 
 
 def _engine_reason(reason):
@@ -320,7 +319,7 @@ def _admitted(solid, mesh, what, engine):
 
     The engine judges its own input. trimesh's opinion of the mesh is
     reported beside it as a diagnostic -- it is what a human opens the
-    file to look for -- but it decides nothing: OpenSCAD's four-face
+    file to look for -- but it decides nothing: an exported mesh's four-face
     snap-tab edges and build123d's T-junctions are non-watertight to
     trimesh and admitted by the mesh engine, with the same volume, and a
     predicate stricter than the engine it guards refuses parts the
@@ -494,10 +493,10 @@ def _fast_geometry(node, compose_matrix=_compose_world_matrix):
     for a node that only implements `.mesh` (e.g. the FakeNode test
     doubles in tests/test_assertions.py), which then falls back to a
     plain boolean over `.mesh` with no caching or culling."""
-    if getattr(node, 'flexible', False):
+    if node.flexible:
         solid, bounds, identity = _flexible_geometry(node)
         return solid, bounds, compose_matrix(node), identity
-    stl_file = getattr(node, 'stl_file', None)
+    stl_file = node.stl_file
     if stl_file is None:
         return None
     solid, bounds, identity = _cached_mesh_solid(stl_file)
@@ -1981,7 +1980,7 @@ def _exact_identity(node, shape):
     public ``shape()`` seam, whose geometry is not proven to be a function
     of the serialized spec.
     """
-    if getattr(node, 'flexible', False):
+    if node.flexible:
         if getattr(node.shape, '__func__', None) is not FlexibleNode.shape:
             return None
         return node._exact_state_identity(shape)
@@ -1999,7 +1998,7 @@ def _mesh_in_frame(node, compose_matrix):
     Mesh-only test doubles have no base geometry to reframe; their ``mesh`` is
     already treated as the caller's local geometry.
     """
-    base_mesh = getattr(node, 'base_mesh', None)
+    base_mesh = node.base_mesh
     if base_mesh is None:
         return node.mesh
     mesh = base_mesh()

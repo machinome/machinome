@@ -33,6 +33,7 @@ from .base import BaseNodeTest
 from .declarative_project.engine import CylinderUnit, Cylinders, Engine
 from .declarative_project.parts import Guard, LegacyPiston, Piston, Tower
 from .declarative_project.windmill import Windmill
+from machinome.node.openscad.writer import scad_file
 
 
 class Box(Solid2Node):
@@ -668,7 +669,7 @@ class IdentityTest(BaseNodeTest):
 
         pistons = [unit.piston for unit in cylinders.units]
         self.assertEqual(len({piston.uniq_id for piston in pistons}), 1)
-        self.assertEqual(len({piston.scad_file for piston in pistons}), 1)
+        self.assertEqual(len({scad_file(piston) for piston in pistons}), 1)
         self.assertEqual(len({unit.uniq_id for unit in cylinders.units}), 1)
         # Each unit still carries its own placement.
         placements = [[op.serialized for op in unit.operations]
@@ -754,7 +755,7 @@ class SiteJointIdentityTest(BaseNodeTest):
         self.assertEqual(jointed.widget.size, 4.0)
         self.assertEqual(plain.widget.uniq_id, jointed.widget.uniq_id)
         self.assertEqual(jointed.widget.uniq_id, other.widget.uniq_id)
-        self.assertEqual(jointed.widget.scad_file, other.widget.scad_file)
+        self.assertEqual(scad_file(jointed.widget), scad_file(other.widget))
 
 
 class SiteJointStillAWiringTest(BaseNodeTest):
@@ -1063,8 +1064,8 @@ class SpecializationIdentityTest(BaseNodeTest):
                top.other_joint.uniq_id}
         self.assertEqual(len(ids), 1)
         self.assertEqual(
-            {top.plain.scad_file, top.one_joint.scad_file,
-             top.other_joint.scad_file}.__len__(), 1)
+            {scad_file(top.plain), scad_file(top.one_joint),
+             scad_file(top.other_joint)}.__len__(), 1)
         self.assertEqual(
             {top.plain.stl_file, top.one_joint.stl_file,
              top.other_joint.stl_file}.__len__(), 1)

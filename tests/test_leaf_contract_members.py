@@ -22,7 +22,7 @@ from unittest.mock import patch
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(BASEDIR)
 SPEC = os.path.join(REPO_DIR, 'openspec', 'specs', 'leaf-contract', 'spec.md')
-DELTA = os.path.join(REPO_DIR, 'openspec', 'changes', 'leaf-contract',
+DELTA = os.path.join(REPO_DIR, 'openspec', 'changes', 'openscad-out',
                      'specs', 'leaf-contract', 'spec.md')
 API = os.path.join(REPO_DIR, 'docs', 'reference', 'api.rst')
 
@@ -30,8 +30,9 @@ BASES = ('LeafNode', 'ExactLeafNode', 'SheetLeafNode', 'FlexibleNode')
 
 
 def _spec_text():
-    """The synced spec once it exists, this change's delta before."""
-    with open(SPEC if os.path.exists(SPEC) else DELTA) as handle:
+    """The change in progress's delta while it exists, the synced spec
+    once the change is archived."""
+    with open(DELTA if os.path.exists(DELTA) else SPEC) as handle:
         return handle.read()
 
 
@@ -54,6 +55,14 @@ def spec_members():
     instance = re.search(r'\n(`files`.*?) are instance attributes',
                          requirement, re.S)
     return members, set(re.findall(r'`(\w+)`', instance.group(1)))
+
+
+def qualified_members():
+    """`{name: module}` for every declared member the spec qualifies with
+    the module that defines it, as `` `StlRenderStart` (`machinome.node.
+    base`) ``: a name declared at that module rather than on the base."""
+    return dict(re.findall(r'`(\w+)` \(`([\w.]+)`\)',
+                           _requirement(_spec_text())))
 
 
 def docstring_members(cls):
@@ -144,11 +153,16 @@ class DeclaredMembersTest(TestCase):
                     self.assertFalse(name.startswith('_'))
 
     def test_every_declared_member_exists(self):
+        import importlib
         instances = _Instances(self).by_base
+        qualified = qualified_members()
         for base, names in self.members.items():
             for name in names:
                 with self.subTest(base=base, member=name):
-                    if name in self.instance_attributes:
+                    if name in qualified:
+                        self.assertTrue(hasattr(
+                            importlib.import_module(qualified[name]), name))
+                    elif name in self.instance_attributes:
                         self.assertTrue(hasattr(instances[base], name))
                     else:
                         self.assertTrue(hasattr(self.bases[base], name))
@@ -166,8 +180,16 @@ class DeclaredMembersTest(TestCase):
                 self.assertNotIn('framework-internal', cls.__doc__)
 
     def test_the_api_reference_documents_every_declared_member(self):
+        qualified = qualified_members()
+        with open(API) as handle:
+            reference = handle.read()
         for base, names in self.members.items():
             documented = documented_members(base)
             for name in names:
                 with self.subTest(base=base, member=name):
-                    self.assertIn(name, documented)
+                    if name in qualified:
+                        self.assertRegex(
+                            reference, rf'\.\. auto(?:exception|class):: '
+                            rf'{re.escape(qualified[name])}\.{name}\b')
+                    else:
+                        self.assertIn(name, documented)

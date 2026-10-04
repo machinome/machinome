@@ -2636,7 +2636,7 @@ def clear_solved(assembly):
     otherwise fills, on a run where the ancestor reaches it first -- is
     left alone: it is not stale, it is fresh, and clearing it here would
     erase a value the current pass already produced correctly, before
-    this assembly's own phase (later in the same cascade) even runs.
+    this assembly's own phase (later in the same pass) even runs.
     `_enum_marker` (set by every `bind`) is what tells the two apart.
 
     The value's drop is what licenses a drop of its JOINT's placement

@@ -1,6 +1,6 @@
 # ADR-165: A Leaf Package Declares the Contract Version on Its Class
 
-**Status:** Accepted
+**Status:** Accepted, contract version 2 since 2026-10-04, by [ADR-178](ADR-178-a-leaf-declares-its-kind-as-one-set-on-the-leaf-base.md)
 **Date:** 2026-10-03
 **Change:** [`leaf-contract`](../../../openspec/changes/archive/2026-10-03-leaf-contract/)
 **Extends:**

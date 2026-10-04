@@ -84,6 +84,17 @@ def _walk(node, prefix=''):
         yield from _walk(child, path)
 
 
+def scad_code(node):
+    """A node's SCAD text: a family leaf's own (`OpenScadNode` composes it
+    with its source), any other node's through the OpenSCAD writer
+    (`openscad-out`, task 6.5)."""
+    from machinome.node.openscad import writer
+    from machinome.node.openscad.leaf import ScadLeafNode
+    if isinstance(node, ScadLeafNode):
+        return node.scad_code
+    return writer.scad_code(node)
+
+
 def scad_authored(node):
     """Whether the node's geometry is authored in SCAD, read without the
     change's own predicate so the golden answers the same before it."""
@@ -110,7 +121,8 @@ def measurements(build_dir):
     nodes.update(_walk(loose))
     authored = {}
     for node in nodes.values():
-        relative = os.path.relpath(node.scad_file, build_dir)
+        from machinome.node.openscad import writer
+        relative = os.path.relpath(writer.scad_file(node), build_dir)
         authored[relative] = authored.get(relative, False) or scad_authored(
             node)
 
@@ -123,7 +135,7 @@ def measurements(build_dir):
         entry['scad_authored'] = authored.get(relative, False)
         files[relative] = entry
 
-    scad = {path: _digest(node.scad_code) for path, node in nodes.items()}
+    scad = {path: _digest(scad_code(node)) for path, node in nodes.items()}
     return {'scad_code': scad, 'files': files}
 
 

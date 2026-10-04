@@ -32,9 +32,9 @@ def declaring(base, value):
 
 class ContractVersionTest(TestCase):
 
-    def test_the_core_speaks_contract_one(self):
+    def test_the_core_speaks_contract_two(self):
         from machinome.node import leaf
-        self.assertEqual(leaf.CONTRACT, 1)
+        self.assertEqual(leaf.CONTRACT, 2)
         self.assertIs(type(leaf.CONTRACT), int)
 
     def test_the_version_is_an_integer_literal_in_the_source(self):
@@ -55,25 +55,25 @@ class ContractVersionTest(TestCase):
     def test_a_matching_declaration_is_admitted(self):
         for base in _bases():
             with self.subTest(base=base.__name__):
-                self.assertEqual(declaring(base, 1).leaf_contract, 1)
+                self.assertEqual(declaring(base, 2).leaf_contract, 2)
 
     def test_a_mismatched_declaration_is_refused_naming_both_versions(self):
         for base in _bases():
-            for value in (2, '1', True):
+            for value in (1, '2', True):
                 with self.subTest(base=base.__name__, value=value):
                     with self.assertRaises(TypeError) as refused:
                         declaring(base, value)
                     message = str(refused.exception)
                     self.assertIn('Declaring', message)
                     self.assertIn(repr(value), message)
-                    self.assertIn('1', message.replace(repr(value), ''))
+                    self.assertIn('2', message.replace(repr(value), ''))
                     self.assertIn('machinome.node.leaf', message)
 
     def test_an_undeclared_subclass_is_not_checked(self):
         from machinome.node import CadQueryNode
         from machinome.node.leaf import LeafNode
-        declared = declaring(LeafNode, 1)
-        with patch('machinome.node.leaf.CONTRACT', 2):
+        declared = declaring(LeafNode, 2)
+        with patch('machinome.node.leaf.CONTRACT', 3):
             class Inherits(declared):
                 pass
 
@@ -85,7 +85,7 @@ class ContractVersionTest(TestCase):
 
             class ExplicitlyUndeclared(LeafNode):
                 leaf_contract = None
-        self.assertEqual(Inherits.leaf_contract, 1)
+        self.assertEqual(Inherits.leaf_contract, 2)
         self.assertIsNone(ProjectLeaf.leaf_contract)
         self.assertIsNone(Plain.leaf_contract)
         self.assertIsNone(ExplicitlyUndeclared.leaf_contract)

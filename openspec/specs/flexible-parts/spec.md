@@ -99,10 +99,14 @@ than wrapping them silently.
 
 ### Requirement: Snapshot artifacts on the SCAD path
 
-`as_scad()` on a flexible leaf whose ports are all bound numerically
+`present()` on a flexible leaf whose ports are all bound numerically
 SHALL evaluate the shape at that binding and import the resulting
-snapshot STL, keeping the assembled SCAD document complete for the
-OpenSCAD GUI as a snapshot camera (never animation). The snapshot
+snapshot STL, keeping the presentation, and the SCAD the OpenSCAD node
+package writes of it, complete as a snapshot camera (never animation). The
+snapshot STL is written only where a presentation is composed — `assemble()`,
+`presentation()`, the OpenSCAD node package's writer and the OpenSCAD
+snapshot renderer — never by a build, a test run, `Sim(meshes=True)` or the
+web snapshot renderer. The snapshot
 artifact's name SHALL include a hash of the resolved parameter values
 beside the node's `uniq_id`; within one binding the artifact
 participates in normal mtime currency, and a different binding is a
@@ -113,7 +117,7 @@ defaults makes the driver-fed build path well-defined.
 Where a port is bound to an expression over animation time, there is no
 instant to photograph: animation time is the one value nothing binds on
 this path, because an assembly nobody keyframed animates symbolically by
-contract (ADR-008). `as_scad()` SHALL then emit no geometry for that
+contract (ADR-008). `present()` SHALL then emit no geometry for that
 leaf, write no snapshot artifact, and allow assembly to proceed, rather
 than failing the build or choosing an instant on the author's behalf.
 The framework SHALL NOT substitute a value for animation time to
@@ -127,7 +131,7 @@ the node, the port, and the expression or the connection that would bind
 it. A part with no instant and a part nobody wired are different things
 and SHALL be reported differently.
 
-Emitting no geometry SHALL be confined to the `.scad` path: it SHALL
+Emitting no geometry SHALL be confined to the presentation: it SHALL
 NOT alter the published document, whose `params` carry the port's
 symbolic expression — the expression itself, never the constant an
 instant computed — for the consumer to evaluate per frame, and SHALL
@@ -253,3 +257,4 @@ This cache SHALL contain reusable faceted geometry, not intersection verdicts. V
 
 - **WHEN** one flexible instance is asked twice for exact shape and tolerance at one binding and then at another
 - **THEN** its first binding is evaluated once, the second binding replaces that instance's exact memo, and no other instance receives the exact result
+

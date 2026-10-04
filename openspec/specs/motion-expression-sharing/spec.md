@@ -96,11 +96,13 @@ expression data of all previously discarded models.
 ### Requirement: Supported legacy expressions retain their behavior
 
 Existing SolidPython symbolic operands SHALL remain accepted by framework
-math and motion in either operand order when the OpenSCAD engine resolves
-(capability `scad-engine-dependency`), which it does in every installation
-carrying SolidPython. The framework SHALL recognise such an operand only
-through that engine; no core module outside the engine imports SolidPython to
-do so. Recognized scalar expression text SHALL retain its evaluation and free
+math and motion in either operand order in a process that has imported
+`machinome.node.solid2`, which registers its adopter with the expression graph
+(capability `openscad-node`); every project using `Solid2Node` has. The
+framework SHALL recognise such an operand only through a registered adopter;
+no core module imports SolidPython to do so. Without an adopter, such an
+operand meets the refusal its path gives any value that is neither a number nor
+an expression. Recognized scalar expression text SHALL retain its evaluation and free
 inputs when combined with shared values.
 
 With a framework symbolic value as the left operand, the result SHALL be a
@@ -114,9 +116,10 @@ publishable. Construction of such a SolidPython result is SolidPython's text
 building and falls under the explicitly expanded text clause below, not under
 the framework's construction resource guarantee.
 
-The framework's own compact SCAD scalar expressions SHALL be readable back
-into motion processing without adding that syntax to the viewer document
-language. Unrecognized legacy text SHALL retain the export capability's
+The framework's own compact closed scalar expressions
+(`machinome.core.expressions.closed_expression`, the `str()` of its symbolic
+value) SHALL be readable back into motion processing without adding that
+syntax to the viewer document language. Unrecognized legacy text SHALL retain the export capability's
 verbatim fallback and warning behavior; failure to read the framework's own
 emitted scalar form SHALL be reported as a framework defect.
 

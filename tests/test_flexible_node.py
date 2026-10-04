@@ -187,16 +187,16 @@ class FlexibleRigidityTest(BaseNodeTest):
         rig = bound_rig()
         rig.assemble()
 
-        self.assertFalse(rig.spring._render_can_be_skipped())
+        self.assertFalse(rig.spring._prepare_can_be_skipped())
 
     def test_it_generates_no_cached_rigid_artifact(self):
         rig = bound_rig()
         rig.assemble()
 
-        with patch('machinome.openscad.binary.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'a flexible part must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'a flexible part must not launch OpenSCAD')):
             rig.spring.generate_stl()
 

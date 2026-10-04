@@ -309,18 +309,22 @@ class RegistryConformanceTest(TestCase):
                                       bool)
 
     def test_every_needed_module_imports(self):
-        # The third column names the one module a command needs beyond its
-        # own implementation (OpenSpec change `lean-install`); with every
-        # extra installed, as the suite runs, each must import.
+        # The third column names the one node type a command needs beyond
+        # its own implementation (OpenSpec changes `lean-install` and
+        # `openscad-out`), whose module the table of supported node types
+        # loads; with every extra installed, as the suite runs, each must
+        # import.
+        from machinome.node import supported
         needed = {name: needs for name, (_, _, needs) in COMMANDS.items()}
 
         self.assertEqual({name: needs for name, needs in needed.items()
                           if needs is not None},
-                         {'import-step': 'machinome.node.step'})
+                         {'import-step': 'step'})
         for name, needs in needed.items():
             if needs is not None:
                 with self.subTest(command=name):
-                    self.assertEqual(import_module(needs).__name__, needs)
+                    self.assertEqual(supported.load(needs).__name__,
+                                     f'machinome.node.{needs}')
 
 
 #: Refuse `cadquery` in the probed interpreter, the way an install without

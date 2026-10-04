@@ -9,6 +9,28 @@ import re
 import keyword
 from importlib import resources
 
+from machinome.extras import ExtraUnavailable
+from machinome.node import supported
+
+
+#: The node types `machinome new` scaffolds its first part with, in order of
+#: preference: the first whose module imports names the template
+#: `templates/project/root/<key>.py`.
+TEMPLATES = ('solid2', 'cadquery')
+
+
+def _installed_template():
+    """The first node type of `TEMPLATES` whose module imports, or None
+    when none does: a node type refused for an absent extra is not
+    installed."""
+    for key in TEMPLATES:
+        try:
+            supported.load(key)
+        except ExtraUnavailable:
+            continue
+        return key
+    return None
+
 
 def _project_identifiers(name):
     """Return the package and class identifiers for a project basename."""
@@ -45,13 +67,22 @@ class New:
             sys.stderr.write(f"Error: '{target}' already exists.\n")
             sys.exit(1)
 
+        template = _installed_template()
+        if template is None:
+            sys.stderr.write(
+                "Error: machinome new scaffolds its first part with "
+                "SolidPython or CadQuery, and neither is installed; install "
+                "one with 'pip install \"machinome[solid2]\"' or "
+                "'pip install \"machinome[cadquery]\"'\n")
+            sys.exit(1)
+
         templates = resources.files('machinome.manager') / 'templates' / 'project'
 
         package_dir = os.path.join(target, package)
         os.makedirs(package_dir)
         open(os.path.join(package_dir, '__init__.py'), 'w').close()
 
-        module_src = templates / 'root' / '__init__.py'
+        module_src = templates / 'root' / f'{template}.py'
         with resources.as_file(module_src) as module_path:
             with open(module_path) as source:
                 content = source.read().replace('DemoProject', class_name)

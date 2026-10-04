@@ -2,16 +2,45 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+"""The OpenSCAD node family: the node type `OpenScadNode`, and the modules
+every leaf authored in SCAD is built from.
+
+- `machinome.node.openscad.leaf`: `ScadLeafNode`, the family's leaf base,
+  which writes and keeps its own `.scad` and renders its STL from it with
+  OpenSCAD;
+- `machinome.node.openscad.writer`: the SCAD text of a presentation the core
+  described (`machinome.node.presentation`), and its publication;
+- `machinome.node.openscad.binary`: the OpenSCAD executable's contract.
+
+`Solid2Node`, a leaf of the family rendered with SolidPython, is its own node
+type at `machinome.node.solid2`. SolidPython is the family's kernel, installed
+by the `openscad` extra: without it, importing this package -- or any module
+beneath it -- is refused with the line that installs it (OpenSpec change
+`openscad-out`, capability `openscad-node`).
+"""
+
+from machinome.extras import require_extra
+
+# A project names this package to use OpenScadNode, and the OpenSCAD viewer
+# imports its writer, so without the `openscad` extra both are refused here,
+# with the line that installs it, before SolidPython is imported.
+require_extra('openscad',
+              'machinome.node.openscad (OpenScadNode and the OpenSCAD writer)',
+              'solid2')
+
 import os
 import sys
+
 from solid2.core.parse_scad import get_scad_file_as_dict
 from solid2.core.utils import resolve_scad_filename
-from machinome.node.leaf import LeafNode
-from machinome.node.sources import require_source_file, ExternalSourceIdentity
+
+from machinome.node.openscad.leaf import ScadLeafNode
+from machinome.node.openscad.writer import scad_text
+from machinome.node.sources import ExternalSourceIdentity, require_source_file
 from machinome.source_generation import coherent_read
 
 
-class OpenScadNode(ExternalSourceIdentity, LeafNode):
+class OpenScadNode(ExternalSourceIdentity, ScadLeafNode):
     """
     A pure OpenScad node. You just need to declare the property "scad_source" with
     the path of your OpenScad source code. It must be placed in the same directory
@@ -24,10 +53,6 @@ class OpenScadNode(ExternalSourceIdentity, LeafNode):
     namespace = 'solid2.core.object_factory'
     scad_source = None
     module_name = None
-
-    #: Its geometry is authored in SCAD: OpenSCAD renders its STL from its
-    #: own `.scad`, which a build writes and keeps.
-    scad_authored = True
 
     def __init__(self, *args, name=None, **kwargs):
         """Receives args, an optional name keyword argument and a list of keyword
@@ -72,19 +97,10 @@ class OpenScadNode(ExternalSourceIdentity, LeafNode):
         rendered = module(*self.args, **self.kwargs)
         return rendered
 
-    def as_scad(self, rendered):
-        """Returns the rendered argument (do nothing)"""
-        return rendered
-
-    def materialize(self, rendered):
-        self.model = rendered
-        self.generate_scad()
-
     @property
     def scad_code(self):
         """The contents of the code, plus a module call, whose text the
-        OpenSCAD engine writes"""
-        rendered = self._require_scad_engine().scad_text(
-            self._model_for_own_scad())
+        OpenSCAD writer writes"""
+        rendered = scad_text(self.presentation())
         module_call = rendered.strip().split('\n')[-1]
         return f'{self.openscad_code}\n\n{module_call}'

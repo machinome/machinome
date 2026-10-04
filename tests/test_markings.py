@@ -72,6 +72,8 @@ from .markings_project.plain_plate import Plate as PlainPlate
 from .markings_project.plate import BAND_RADIUS
 from .markings_project.plate import Plate as FixturePlate
 from .markings_project.assembly import Bench, PlainBench
+from tests.base import scad_code
+from machinome.node.openscad.writer import scad_file
 
 #: The fixture artwork, named from THIS module's directory: every
 #: class declared here resolves its artwork against `tests/`.
@@ -1098,7 +1100,7 @@ class MarkingRecipeTest(CurrencyTestCase):
     def test_the_solids_own_artifacts_record_no_recipe(self):
         node = built(FixtureDial)
 
-        for path in (node.stl_file, node.brep_file, node.scad_file):
+        for path in (node.stl_file, node.brep_file, scad_file(node)):
             with self.subTest(artifact=os.path.basename(path)):
                 self.assertIsNone(node._artifact_recipe(path))
                 self.assertIsNone(currency.recorded_recipe(path))
@@ -1177,15 +1179,11 @@ class SkipDecisionTest(CurrencyTestCase):
         # The other half of the same statement: a missing decal is not a
         # reason to re-enter the render path at all.
         node = built(FixtureDial)
-        # `_render_can_be_skipped` also asks for the `.scad`, which only a
-        # path reading it writes since `scad-presentation`.
-        node.generate_scad()
         os.remove(node.marking_file('digits'))
 
         second = FixtureDial()
 
         self.assertTrue(second._prepare_can_be_skipped())
-        self.assertTrue(second._render_can_be_skipped())
 
     def test_the_spy_does_see_the_render_when_the_solid_is_stale(self):
         node = built(FixtureDial)
@@ -1647,7 +1645,7 @@ class OpenScadPathTest(BaseNodeTest):
         node = factory()
         bind_declared_defaults(node)
         node.assemble()
-        return node, node.scad_code
+        return node, scad_code(node)
 
     def test_the_scad_is_what_it_is_without_the_markings(self):
         marked, with_markings = self.scad_of(Bench)

@@ -78,6 +78,16 @@ def _machine():
     return node
 
 
+def scad_code(node):
+    """A node's SCAD text: a family leaf's own, any other node's through
+    the OpenSCAD writer (`openscad-out`, task 6.5)."""
+    from machinome.node.openscad import writer
+    from machinome.node.openscad.leaf import ScadLeafNode
+    if isinstance(node, ScadLeafNode):
+        return node.scad_code
+    return writer.scad_code(node)
+
+
 def _symbolic():
     """Each node's operation texts and SCAD, in symbolic driver mode."""
     from machinome.core.serializer import symbolic_document
@@ -88,7 +98,7 @@ def _symbolic():
             operations[each.name] = [
                 _digest(json.dumps(operation.serialized))
                 for operation in each.operations]
-            scad[each.name] = _digest(each.scad_code)
+            scad[each.name] = _digest(scad_code(each))
     return operations, scad
 
 

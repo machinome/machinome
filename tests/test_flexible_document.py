@@ -276,7 +276,7 @@ class FlexibleExportTest(BaseNodeTest):
 
     def test_geometry_export_does_not_request_a_flexible_scad_snapshot(self):
         with patch.object(
-                fixture.Spring, 'as_scad',
+                fixture.Spring, 'present',
                 side_effect=AssertionError('flexible SCAD requested')):
             manifest, _ = self.export(bound_engine())
         self.assertIsNotNone(find(manifest['root'], 'spring')['flexible'])

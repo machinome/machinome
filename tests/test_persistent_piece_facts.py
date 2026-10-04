@@ -25,6 +25,7 @@ from machinome.core.export import export_node
 from machinome.node import base
 from machinome import test as test_module
 from tests.test_export import Cube
+from tests.stand_in import StandIn
 
 
 def content_sha256(data):
@@ -36,7 +37,7 @@ def box_bytes(extents):
     return trimesh.creation.box(extents).export(file_type='stl')
 
 
-class CurrentNode:
+class CurrentNode(StandIn):
     def __init__(self, path, source=__file__):
         self.stl_file = str(path)
         self.src = source

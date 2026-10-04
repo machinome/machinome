@@ -22,10 +22,13 @@ path, the module that defines it:
 Each base declares these members, in addition to those of the base it
 extends:
 
-- `LeafNode`: `render`, `validate`, `namespace`, `as_scad`, `materialize`,
-  `publish_artifact`, `get_source_file`, `files`, `source_recipe`,
-  `artifact_import`, `basepath`, `local_stl`, `scad_file`, `stl_file`,
-  `model`, `generate_scad`, `leaf_contract`;
+- `LeafNode`: `render`, `validate`, `namespace`, `present`, `presentation`,
+  `materialize`, `generate_stl`, `kept_artifacts`, `publish_artifact`,
+  `get_source_file`, `files`, `source_recipe`, `artifact_import`, `basepath`,
+  `local_stl`, `stl_file`, `model`, `rigid`, `flexible`, `exact`, `optimize`,
+  `base_mesh`, `declared_markings`, `leaf_contract`, and the signal
+  `StlRenderStart` (`machinome.node.base`) a leaf rendering its STL in a
+  subprocess raises;
 - `ExactLeafNode`: `shape_from_rendered`, `linear_deflection`,
   `angular_deflection`, `exact`, `shape`, `brep_file`;
 - `SheetLeafNode`: `profile`, `profile_faces`, `lies_on_xy_plane`, `extrude`,
@@ -33,9 +36,9 @@ extends:
 - `FlexibleNode`: `tech`, `shape_parameters`, `shape_spec`, `snapshot_mesh`,
   `snapshot_stl`, `snapshot_shape`, `exact`.
 
-`files`, `basepath`, `local_stl`, `scad_file`, `stl_file`, `brep_file`,
-`dxf_file` and `model` are instance attributes set by the base's constructor;
-the others are class members.
+`files`, `basepath`, `local_stl`, `stl_file`, `brep_file`, `dxf_file` and
+`model` are instance attributes set by the base's constructor; the others are
+class members. No declared member names a modelling technology.
 
 A subclass that uses only the members this capability declares SHALL be a
 complete node of its kind: it SHALL take part in the tree, preparation,
@@ -90,18 +93,21 @@ the core SHALL do everything else:
 - **Every leaf** implements `render()`, returning one geometry object, never a
   list and never `None`. It MAY extend `validate(rendered)`, calling the
   base's first. Its exactness is fixed by its type.
-- **A faceted leaf presented as SCAD** implements `as_scad(rendered)`,
-  returning a solid2 object. The core has the OpenSCAD engine write that SCAD
-  as the leaf's own `.scad` (the `scad-engine-dependency` capability), the
-  one kind of leaf whose `.scad` a build writes and keeps, and OpenSCAD
-  produces the STL from it.
-- **A faceted leaf that produces its own STL** implements
-  `materialize(rendered)` and writes `stl_file` through `publish_artifact`.
-  It need not implement `as_scad`: the core presents its artifact. A leaf
-  that does implement it to present its own artifact returns
-  `artifact_import(local_path)` as it is: the core's description of an import
-  of that artifact, which is not a solid2 object and is not composed into
-  one.
+- **A faceted leaf** produces its own STL: it implements
+  `materialize(rendered)` and writes `stl_file` through `publish_artifact`,
+  or, when its tool runs as a subprocess, implements `generate_stl()` to
+  start it and raise `StlRenderStart`. It need not implement `present`: the
+  base presents its artifact by `artifact_import(local_stl)`, materializing it
+  first when it is not current. A leaf that does implement `present` returns
+  the core's description of an import of its artifact, or the object it
+  authored. A leaf whose STL is still not current after its materialization
+  is refused under the `node-model` capability, naming it; the core hands no
+  leaf to another tool. A leaf of the OpenSCAD node family subclasses that
+  package's leaf base, under the `openscad-node` capability, which writes its
+  `.scad` and renders its STL with OpenSCAD.
+- **A leaf that keeps an artifact beyond its STL, BREP and markings**
+  declares its path in `kept_artifacts()`, and the build keeps it while the
+  leaf is in the published tree.
 - **An exact leaf** returns from `render()` an object its conversion hook
   `shape_from_rendered(rendered)` turns into the exact engine's currency; the
   default hook admits whatever the engine admits as its currency, and a
@@ -127,25 +133,26 @@ of the base it subclasses (`NodeMeta`, at `machinome.node.declarative`).
 
 #### Scenario: A SCAD-presented faceted leaf needs no producer of its own
 
-- **WHEN** a `LeafNode` subclass implements only `render()` and `as_scad()`
-  returning a solid2 object, and is built with OpenSCAD available
-- **THEN** its `.scad` is written by the core and its STL is rendered by
-  OpenSCAD from it
+- **WHEN** a subclass of the OpenSCAD node family's leaf base implements only
+  `render()` returning a solid2 object, and is built with OpenSCAD available
+- **THEN** its `.scad` is written by the family's leaf base and its STL is
+  rendered by OpenSCAD from it, and a `LeafNode` subclass that implements only
+  `render()` and an `as_scad()` method is refused for producing no STL
 
 #### Scenario: A leaf presents its own artifact by artifact_import
 
 - **WHEN** a `LeafNode` subclass implements `materialize()` publishing its
-  STL and `as_scad()` returning `self.artifact_import(self.local_stl)`
+  STL and `present()` returning `self.artifact_import(self.local_stl)`
 - **THEN** it is assembled, and when its parent's `.scad` is generated with
-  the OpenSCAD engine installed, that SCAD imports the artifact by a path that
-  resolves from the parent's `.scad` directory, exactly as a core adapter's
-  does; a build writes no `.scad` for the leaf itself
+  the OpenSCAD node package installed, that SCAD imports the artifact by a
+  path that resolves from the parent's `.scad` directory, exactly as a core
+  adapter's does; a build writes no `.scad` for the leaf itself
 
 #### Scenario: A self-materializing faceted leaf needs no SCAD hook
 
 - **WHEN** a `LeafNode` subclass implements `render()` and `materialize()`
-  publishing its STL, and no `as_scad()`
-- **THEN** it is assembled, and its SCAD presentation imports its STL artifact
+  publishing its STL, and no `present()`
+- **THEN** it is assembled, and its presentation imports its STL artifact
 
 #### Scenario: A sheet leaf supplies the four hooks
 
@@ -326,10 +333,13 @@ contract, and the core makes no promise about it across contract versions.
 
 For a subclass that keeps to the contract, the core SHALL guarantee:
 
-- its artifact paths, `scad_file`, `stl_file` and, for an exact leaf,
-  `brep_file`, named from its source file and its parameter-hashed
-  `uniq_id`, under its project's build directory, with `basepath` their
-  common stem and `local_stl` the STL's name for a SCAD import;
+- its artifact paths, `stl_file` and, for an exact leaf, `brep_file`, named
+  from its source file and its parameter-hashed `uniq_id`, under its
+  project's build directory, with `basepath` their common stem, under which a
+  leaf names any other artifact it keeps, and `local_stl` the STL's name for
+  an import in a presentation;
+- that every artifact it declares in `kept_artifacts()` survives the build's
+  sweep while it is in the published tree;
 - that each artifact is produced only when it is not current, is stamped with
   the node's `mtime_ns`, carries the record of its sources, and replaces the
   previous artifact by rename, so a reader never sees a partial file;
@@ -356,7 +366,10 @@ these guarantees.
 ### Requirement: The contract is versioned and a declaration is checked
 
 The core SHALL declare one integer, the leaf contract version it speaks, as
-`CONTRACT` in `machinome.node.leaf`. A change to the meaning of a declared
+`CONTRACT` in `machinome.node.leaf`, which is `2`: version 2 removed `as_scad`,
+`scad_file` and `generate_scad` from `LeafNode`, declared `present` and the
+capability set of "A leaf declares its kind as one set on the leaf base", and
+changed `generate_stl`, which no longer hands a leaf to OpenSCAD. A change to the meaning of a declared
 member, or the removal of one, SHALL change that number in the same change.
 
 A class MAY declare the version it was written against as the class attribute
@@ -371,15 +384,15 @@ its parent's declaration without being checked again.
 
 #### Scenario: A matching declaration is admitted
 
-- **WHEN** a `LeafNode` subclass declares `leaf_contract = 1` and the core
-  speaks 1
+- **WHEN** a `LeafNode` subclass declares `leaf_contract = 2` and the core
+  speaks 2
 - **THEN** the class is created and its instances build normally
 
 #### Scenario: A mismatched declaration is refused naming both versions
 
-- **WHEN** an `ExactLeafNode` subclass declares `leaf_contract = 2` and the
-  core speaks 1
-- **THEN** defining the class raises `TypeError` naming the class, 2, 1 and
+- **WHEN** an `ExactLeafNode` subclass declares `leaf_contract = 1` and the
+  core speaks 2
+- **THEN** defining the class raises `TypeError` naming the class, 1, 2 and
   `machinome.node.leaf`
 
 #### Scenario: A project leaf declares nothing and is not checked
@@ -388,4 +401,56 @@ its parent's declaration without being checked again.
   `leaf_contract`
 - **THEN** the class is created as before, and so is a subclass of a class
   that declared a matching version
+
+### Requirement: A leaf declares its kind as one set on the leaf base
+
+What the core asks a node of a leaf kind SHALL be one set of members, declared
+with a default on the node base so every node answers, and documented together
+on `LeafNode` with this meaning:
+
+- `rigid`, a class attribute: the node is a time-invariant solid with a cached
+  STL, in the piece and artifact sets;
+- `flexible`, a class attribute: its shape is a function of its bound ports;
+- `exact`, a property: it exposes boundary-representation geometry through
+  `shape()`;
+- `optimize`, a class attribute: a presentation imports its STL when true, and
+  carries what it rendered when false, in which case it is prepared on every
+  build;
+- `present(rendered)`: its presentation of one render; `presentation()`: its
+  own presentation, its artifact imports resolving from its own build
+  directory;
+- `kept_artifacts()`: the paths of the artifacts beyond its STL, BREP and
+  markings that a build keeps for it, `()` by default;
+- `generate_stl()`: make its STL current;
+- `stl_file`, `brep_file`, `basepath`, `local_stl`: its artifact paths;
+- `base_mesh()`: its geometry in its own frame; `declared_markings()`: its
+  declared markings.
+
+No member of the set SHALL name a modelling technology. No module of the core
+SHALL ask a node for a member of the set through `getattr` with a default or
+through `hasattr`: it SHALL read the member, and a stand-in for a node, in the
+framework's own suite, SHALL declare the members the code it stands in for
+reads.
+
+#### Scenario: The core reads the set directly
+
+- **WHEN** every module under `machinome/` is parsed for calls of `getattr`
+  with three arguments and of `hasattr` whose attribute is a member of the set
+- **THEN** none is found
+
+#### Scenario: A leaf written outside the core answers the whole set
+
+- **WHEN** a `LeafNode` subclass defined outside `machinome/` that declares
+  only `render()` and `materialize()` is asked each member of the set
+- **THEN** each answers with the base's default meaning: rigid, not flexible,
+  not exact, optimizing, presenting an import of its STL, keeping no other
+  artifact
+
+#### Scenario: A kept artifact survives the sweep by declaration
+
+- **WHEN** a leaf whose `kept_artifacts()` names a file beside its STL is built
+  and the build publishes and sweeps
+- **THEN** that file is still present while the leaf is in the tree, and gone
+  after a build of a tree without the leaf, with no rule of the sweep naming
+  its suffix
 

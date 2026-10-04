@@ -146,6 +146,31 @@ The ``studio`` extra names
 Machinome Studio, which remains experimental and unpublished and cannot
 be installed from an index.
 
+Install the OpenSCAD family's extras (unreleased)
+--------------------------------------------------
+
+The next release moves the OpenSCAD node family out of the plain install.
+SolidPython is no longer a required dependency: ``Solid2Node`` needs
+``pip install "machinome[solid2]"``, and ``OpenScadNode`` and the OpenSCAD
+renderer of ``machinome snapshot`` need ``pip install "machinome[openscad]"``
+(``machinome[solid2]`` includes it, and ``machinome[all]`` installs both).
+Without the extra, importing the node type refuses with the line that
+installs it, and ``machinome snapshot`` with its default renderer exits 1
+before loading the model, naming the extra and ``--renderer web``.
+
+``OpenScadNode`` is still ``machinome.node.openscad.OpenScadNode`` and
+``Solid2Node`` still ``machinome.node.solid2.Solid2Node``; the framework's
+internal OpenSCAD seam and engine modules are gone, with no alias (the
+:doc:`changelog` names them): the OpenSCAD writer and binary contract are
+``machinome.node.openscad.writer`` and ``machinome.node.openscad.binary``. A node's SCAD members (``scad_file``,
+``scad_code``, ``generate_scad``, ``fn``) belong to the family's leaf base,
+``machinome.node.openscad.leaf.ScadLeafNode``; a node's presentation hook is
+``present``. A project leaf that presented its render as SCAD through the
+leaf base's former hook, rather than subclassing ``Solid2Node``, is no
+longer handed to OpenSCAD: it is refused for producing no STL, naming it.
+Subclass ``Solid2Node`` instead. A leaf declaring ``leaf_contract = 1`` is
+refused: the leaf contract is version 2.
+
 Verify your project
 ---------------------
 

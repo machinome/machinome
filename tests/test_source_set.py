@@ -23,7 +23,7 @@ import time
 from contextlib import chdir
 from unittest import TestCase, mock
 
-from machinome.scad_engine import scad_engine
+from machinome.node.openscad import writer
 
 from machinome import currency
 from .base import BaseNodeTest
@@ -172,7 +172,7 @@ class UpToDateLeafTest(BaseNodeTest):
     def test_skipped_leaf_assembles_the_same_scad(self):
         rendered = Block().assemble()
         skipped = Block().assemble()
-        engine = scad_engine()
+        engine = writer
         self.assertEqual(engine.scad_text(skipped), engine.scad_text(rendered))
 
     def test_cadquery_does_not_reexport_a_current_artifact(self):
@@ -182,10 +182,10 @@ class UpToDateLeafTest(BaseNodeTest):
         again = Block()
         with mock.patch(
                 'machinome.node.exact_leaf.write_stl') as export:
-            scad = again.as_scad(again.render())
+            scad = again.present(again.render())
 
         export.assert_not_called()
-        engine = scad_engine()
+        engine = writer
         self.assertEqual(engine.scad_text(scad), engine.scad_text(node.model))
 
     def test_cadquery_exports_when_the_artifact_is_missing(self):
@@ -201,7 +201,7 @@ class UpToDateLeafTest(BaseNodeTest):
         node = Block()
         with mock.patch('machinome.node.exact_leaf.write_stl',
                         side_effect=export_stub) as export:
-            node.as_scad(node.render())
+            node.present(node.render())
         export.assert_called_once()
 
     def test_jscad_does_not_respawn_for_a_current_artifact(self):
@@ -213,7 +213,7 @@ class UpToDateLeafTest(BaseNodeTest):
                         node.source_fingerprint)
 
         with mock.patch('machinome.node.jscad.Popen') as popen:
-            node.as_scad(None)
+            node.present(None)
 
         popen.assert_not_called()
 
@@ -221,7 +221,7 @@ class UpToDateLeafTest(BaseNodeTest):
         node = JsBlock()
         with mock.patch('machinome.node.jscad.Popen') as popen:
             popen.return_value.returncode = 0
-            node.as_scad(None)
+            node.present(None)
         popen.assert_called_once()
 
 

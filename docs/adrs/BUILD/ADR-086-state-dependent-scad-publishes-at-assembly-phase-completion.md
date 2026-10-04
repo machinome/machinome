@@ -1,6 +1,6 @@
 # ADR-086: State-Dependent SCAD Publishes at Assembly Phase Completion
 
-**Status:** Accepted, production producer removed 2026-10-04 by [ADR-173](ADR-173-scad-is-written-only-where-it-is-read.md)
+**Status:** Accepted, production producer removed 2026-10-04 by [ADR-173](ADR-173-scad-is-written-only-where-it-is-read.md); coalescing removed 2026-10-04 by [ADR-177](../NODE/ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 **Date:** 2026-09-07
 **Change:** `bound-framework-performance-costs`
 **Extends:**

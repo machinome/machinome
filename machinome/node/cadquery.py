@@ -58,7 +58,7 @@ class CadQueryNode(ExactLeafNode, metaclass=CheckCQEditor):
     """
     Represents a 3D object created using the CadQuery tool.
 
-    The exact-adapter contract -- exact, shape(), as_scad() -- is
+    The exact-adapter contract -- exact, shape(), present() -- is
     ExactLeafNode's; CadQuery adds its namespace, the CQ-editor metaclass,
     and the conversion of a `Workplane` to the engine's currency.
     """

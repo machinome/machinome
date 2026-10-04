@@ -376,8 +376,14 @@ node), `--time` (0.0–1.0, validated, default
 `--projection` (`ortho`|`perspective`), `--colorscheme` (the 11 OpenSCAD
 schemes, default Cornfield), mutually exclusive `--render`/`--preview`,
 `--view` (comma-separated of axes, crosshairs, edges, scales, wireframe),
-`--renderer` (`openscad`|`web`, default `openscad`), and `--drive NAME=VALUE`
-(repeatable).
+`--renderer` (`web` and the renderers the table of supported node types
+lists, today `openscad`; default the table's `DEFAULT_RENDERER`, `openscad`),
+and `--drive NAME=VALUE` (repeatable). The snapshot command SHALL name no
+renderer technology itself: it SHALL reach every renderer other than `web`
+through the table of supported node types (`machinome.node.supported`), whose
+`openscad` entry names the OpenSCAD renderer at `machinome.viewers.openscad` in
+a provisional column, until the viewers become providers behind
+`machinome.viewer`.
 
 `--drive` SHALL bind a DECLARED DRIVER by its qualified id, to a value parsed
 as a number and checked by the declaration exactly as `set_state` checks it,
@@ -408,9 +414,17 @@ never substituted, as the web-snapshot capability requires.
 
 With `--renderer openscad` the image is produced by the OpenSCAD CLI; without a
 `DISPLAY` it SHALL wrap the render under `xvfb-run -a`, and error clearly if
-xvfb is also unavailable. When the OpenSCAD binary itself is unavailable the
-command SHALL fail naming it and naming `--renderer web` as the alternative,
-and SHALL write no image.
+xvfb is also unavailable. When the renderer's node type cannot be imported —
+the `openscad` extra's SolidPython is absent, or the OpenSCAD node package is
+not installed — the command SHALL fail at its start, before loading the node,
+with one line `Error: machinome snapshot --renderer openscad needs the openscad
+extra: <the refusal>; or use --renderer web`, exit 1, and write nothing. When
+the OpenSCAD binary itself is unavailable the command SHALL fail naming it and
+naming `--renderer web` as the alternative, and SHALL write no image.
+
+The OpenSCAD renderer alone SHALL compose the root's presentation for the
+image (it calls `assemble()` inside the build lock); the web renderer SHALL
+prepare the tree and build its STLs without composing one.
 
 With `--renderer web` the image is produced by the installed viewer package's
 capture, run as a separate process on a staging directory the framework
@@ -481,6 +495,15 @@ produced.
 - **THEN** the command fails, reporting that `--colorscheme` is not supported
   by the web renderer, and writes no image
 
+#### Scenario: The OpenSCAD extra is missing
+
+- **WHEN** an agent runs `machinome snapshot` without choosing a renderer in an
+  installation where `solid2` cannot be found
+- **THEN** the command fails before loading the node with the line naming
+  `machinome snapshot --renderer openscad`, the `openscad` extra,
+  `pip install "machinome[openscad]"` and `--renderer web`, exits 1, and writes
+  no image and no `.scad`
+
 #### Scenario: The OpenSCAD binary is missing
 
 - **WHEN** an agent runs `machinome snapshot` on an all-exact project on a
@@ -491,7 +514,8 @@ produced.
 #### Scenario: The default does not follow the project's backends
 
 - **WHEN** a snapshot is taken of an all-exact project without choosing a
-  renderer, on a machine where OpenSCAD is installed
+  renderer, on a machine where OpenSCAD and the `openscad` extra are
+  installed
 - **THEN** the OpenSCAD renderer produces the image, as it does for any other
   project
 
@@ -563,7 +587,10 @@ create:
 - `<package>/pyproject.toml`, declaring
   `model = "<package>.<package>:<ClassName>"`;
 - `<package>/<package>/__init__.py`;
-- `<package>/<package>/<package>.py`, defining the model node;
+- `<package>/<package>/<package>.py`, defining the model node: a
+  `Solid2Node` from the `solid2` template when `machinome.node.solid2` imports,
+  otherwise a `CadQueryNode` from the `cadquery` template when
+  `machinome.node.cadquery` imports;
 - `<package>/<package>/test_<package>.py`, defining a companion `TestCase`
   whose generated `test_solid_integrity` calls
   `assertNoDisconnectedSolids(self.node)` and whose generated
@@ -577,6 +604,14 @@ source: visible, editable, and deletable, with no registration or automatic
 execution outside `machinome test`. The assembly test SHALL use the runner's
 default testing instant and SHALL remain valid when the generated model is a
 single rigid node.
+
+When neither node type imports, the command SHALL write nothing and fail with
+`Error: machinome new scaffolds its first part with SolidPython or CadQuery,
+and neither is installed; install one with 'pip install "machinome[solid2]"' or
+'pip install "machinome[cadquery]"'`, exit 1. It SHALL reach the two node types
+through the table of supported node types, and the template it copies SHALL be
+the only module of the framework, outside the OpenSCAD node family, that
+imports SolidPython.
 
 The command SHALL refuse to overwrite an existing target directory (exit 1)
 and SHALL print next steps for entering the generated directory and running
@@ -605,6 +640,14 @@ command owns viewer selection, configured ports, and dependency diagnostics.
 - **WHEN** a freshly scaffolded project is run with `machinome build`,
   `machinome develop`, or `machinome snapshot`
 - **THEN** the generated tests are not discovered or executed
+
+#### Scenario: The template follows the installed extras
+
+- **WHEN** `machinome new my-project` runs where `solid2` cannot be found and
+  CadQuery is installed, and again where neither is installed
+- **THEN** the first writes a `CadQueryNode` model whose generated source
+  compiles, builds and passes its two tests with the mesh engine installed, and
+  the second writes nothing and fails naming both extras
 
 #### Scenario: Existing target is preserved
 
@@ -970,8 +1013,11 @@ status 2 and nothing on standard output.
 
 ### Requirement: A command that needs an extra is answered by the extra
 
-The command registry SHALL be able to name, for a command, the one module of
-the framework that command needs beyond its own implementation. Dispatching
+The command registry SHALL be able to name, for a command, the one node type
+of the table of supported node types (`machinome.node.supported`) that command
+needs beyond its own implementation, whose module is `machinome.node.<type>`;
+the registry and the command's implementation SHALL NOT spell that module
+themselves. Dispatching
 that command SHALL import that module first; when the module refuses because
 its kernel cannot be found (the `kernel-extras` capability), the CLI SHALL
 print one line on standard error naming the command and the install line the
@@ -983,7 +1029,8 @@ The command SHALL stay registered and listed whether or not its extra is
 installed: `machinome -h` SHALL list it with its docstring help and SHALL NOT
 import the module it needs, and an invocation of it SHALL never be reported as
 an unknown command. `import-step` is the one such command; its entry names
-`machinome.node.step`. No entry-point group or plugin registry SHALL be
+the node type `step`, whose module is `machinome.node.step`, and the table's
+`step` entry lists `import-step` among the commands that need it. No entry-point group or plugin registry SHALL be
 consulted to find a command.
 
 #### Scenario: The command is listed without its extra

@@ -13,12 +13,17 @@ paths that use it, not as a blanket installation requirement.
 
 The paths that require it are exactly:
 
-- rendering the STL of a `Solid2Node` or `OpenScadNode` leaf, whose
-  authored geometry is SCAD for OpenSCAD to render, or a legacy SCAD-only
-  adapter that supplies such geometry through the compatibility boundary;
+- rendering the STL of a leaf of the OpenSCAD node family (a `Solid2Node`,
+  an `OpenScadNode`, or another subclass of the family's leaf base
+  `machinome.node.openscad.leaf.ScadLeafNode`), whose authored geometry is
+  SCAD for OpenSCAD to render, under the `openscad-node` capability;
 - evaluating a legacy `Solid2Node` symbolic value through `as_number()` when
   it needs OpenSCAD evaluation, not a natively evaluable graph value;
 - rendering an image with `machinome snapshot --renderer openscad`.
+
+A leaf outside the family is never handed to OpenSCAD: a leaf whose STL is
+not current after its own materialization is refused under the `node-model`
+capability, naming it, rather than rendered from a `.scad` nothing wrote.
 
 No other operation SHALL require it. In particular, a project whose model is
 entirely exact under the `exact-geometry` capability SHALL build, test, publish,
@@ -99,6 +104,7 @@ still require the binary when their own geometry must be produced.
 - **WHEN** a fusion has a stale `Solid2Node` child and an imported STL child
 - **THEN** OpenSCAD is required for the Solid2 child's artifact, not for the
   fusion's mesh composition
+
 ### Requirement: A missing OpenSCAD binary is reported actionably
 
 When a path listed above requires the OpenSCAD binary and it cannot be found,
@@ -132,9 +138,9 @@ never reaches a requiring path is never asked for the binary.
 
 #### Scenario: A SCAD-presented leaf outside the core is reported the same way
 
-- **WHEN** a `LeafNode` subclass defined outside `machinome/`, implementing
-  `render()` and `as_scad()` returning a solid2 object, must be rendered and
-  no `openscad` is on the PATH
+- **WHEN** a subclass of `machinome.node.openscad.leaf.ScadLeafNode` defined
+  outside `machinome/`, implementing `render()` returning a solid2 object, must
+  be rendered and no `openscad` is on the PATH
 - **THEN** it fails with the same sentence as a `Solid2Node` leaf, naming its
   own node and class, before any subprocess is launched
 
@@ -156,3 +162,4 @@ never reaches a requiring path is never asked for the binary.
 
 - **WHEN** an all-exact project is built on a machine with no `openscad`
 - **THEN** no availability check fails, because no requiring path is reached
+

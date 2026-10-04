@@ -135,9 +135,10 @@ class RenderVisibilityTest(TestCase):
 
     def test_render_leaves_the_previous_artifact_in_place(self):
         from unittest.mock import Mock, patch
-        from machinome.node.base import AbstractBaseNode, StlRenderStart
+        from machinome.node.base import StlRenderStart
+        from machinome.node.openscad.leaf import ScadLeafNode
 
-        node = Mock(spec=AbstractBaseNode)
+        node = Mock(spec=ScadLeafNode)
         node.stl_file = os.path.join(self.root, 'part.stl')
         node.scad_file = os.path.join(self.root, 'part.scad')
         node.lock_file = os.path.join(self.root, 'part.stl.lock')
@@ -152,14 +153,14 @@ class RenderVisibilityTest(TestCase):
         node._up_to_date = lambda path: False
         node._stl_generation_locked = False
         node.stl_builder_command_for = \
-            AbstractBaseNode.stl_builder_command_for.__get__(node)
+            ScadLeafNode.stl_builder_command_for.__get__(node)
         with open(node.stl_file, 'w') as previous:
             previous.write('previous complete artifact')
 
-        with patch('machinome.node.base.Popen',
+        with patch('machinome.node.openscad.leaf.Popen',
                    return_value=Mock(pid=4321)) as popen:
             with self.assertRaises(StlRenderStart) as raised:
-                AbstractBaseNode.generate_stl(node)
+                ScadLeafNode.generate_stl(node)
 
         with open(node.stl_file) as artifact:
             self.assertEqual(artifact.read(), 'previous complete artifact',
@@ -257,3 +258,119 @@ class RunningSnapshotWarningTest(TestCase):
     def test_a_viewer_that_can_read_it_is_not_warned_about(self):
         document, records = self.published(None)
         self.assertEqual(document['version'], 11)
+
+
+class SweepByDeclarationTest(TestCase):
+    """(`openscad-out`, 2.8) The sweep keeps an artifact because a node of
+    the published tree declares it in `kept_artifacts()`, never by its
+    suffix; an artifact published as transient goes on every successful
+    build, changed document or not, and a build publishing an unchanged
+    document removes nothing else."""
+
+    def setUp(self):
+        from unittest.mock import patch
+        self.build_dir = tempfile.mkdtemp(prefix='sweep-by-declaration-')
+        self.addCleanup(shutil.rmtree, self.build_dir, ignore_errors=True)
+        environment = patch.dict(os.environ,
+                                 {'SOLID_BUILD_DIR': self.build_dir})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def built(self):
+        from tests.scad_where_read_project.machine import Machine
+        node = Machine()
+        node.build_stls()
+        fine = next(child for child in node.children
+                    if type(child).__name__ == 'FineCylinder')
+        return node, fine
+
+    def publish(self, node):
+        from machinome.core.builder import Builder
+        builder = Builder('model.py', build_dir=self.build_dir, watch=False)
+        builder.node = node
+        builder._write_viewer_snapshot()
+
+    def change_the_published_document(self):
+        with open(os.path.join(self.build_dir, 'viewer.json'), 'wb') as one:
+            one.write(b'{}')
+
+    def test_a_family_leaf_keeps_its_scad_through_a_changed_document(self):
+        from machinome import currency
+        node, fine = self.built()
+        self.publish(node)
+        before = os.stat(fine.scad_file)
+        self.change_the_published_document()
+        node, fine = self.built()
+        self.publish(node)
+        self.assertTrue(os.path.exists(fine.scad_file))
+        self.assertTrue(os.path.exists(currency.sidecar(fine.scad_file)))
+        after = os.stat(fine.scad_file)
+        self.assertEqual((after.st_ino, after.st_mtime_ns),
+                         (before.st_ino, before.st_mtime_ns))
+
+    def test_the_scad_is_kept_by_declaration_not_by_suffix(self):
+        from unittest.mock import patch
+        from machinome import currency
+        from machinome.node.solid2 import Solid2Node
+        node, fine = self.built()
+        self.publish(node)
+        self.change_the_published_document()
+        node, fine = self.built()
+        with patch.object(Solid2Node, 'kept_artifacts', lambda self: (),
+                          create=True):
+            self.publish(node)
+        self.assertFalse(os.path.exists(fine.scad_file))
+        self.assertFalse(os.path.exists(currency.sidecar(fine.scad_file)))
+
+    def test_a_transient_artifact_goes_on_an_unchanged_document(self):
+        from machinome import currency
+        node, fine = self.built()
+        self.publish(node)
+        digest, fingerprint = node.source_digest, node.source_fingerprint
+        transient = os.path.join(self.build_dir, 'left-behind.txt')
+        kept_stl = os.path.join(self.build_dir, 'other-parameters.stl')
+        kept_text = os.path.join(self.build_dir, 'other-parameters.s'
+                                 'cad')
+        for path in (transient, kept_stl, kept_text):
+            with open(path, 'w') as handle:
+                handle.write('written for one use\n')
+        currency.record(transient, digest, fingerprint, transient=True)
+        currency.record(kept_stl, digest, fingerprint)
+        currency.record(kept_text, digest, fingerprint)
+        with open(os.path.join(self.build_dir, 'viewer.json'), 'rb') as one:
+            document = one.read()
+
+        self.publish(node)
+
+        with open(os.path.join(self.build_dir, 'viewer.json'), 'rb') as two:
+            self.assertEqual(two.read(), document)
+        self.assertFalse(os.path.exists(transient))
+        self.assertFalse(os.path.exists(currency.sidecar(transient)))
+        for path in (kept_stl, kept_text):
+            with self.subTest(path=os.path.basename(path)):
+                self.assertTrue(os.path.exists(path))
+                self.assertTrue(os.path.exists(currency.sidecar(path)))
+        self.assertTrue(os.path.exists(fine.scad_file))
+
+    def test_the_renderer_marks_only_a_root_it_does_not_keep_transient(self):
+        from machinome import currency
+        from machinome.node.openscad.writer import scad_file
+        from machinome.viewers.openscad import OpenScadRenderer
+        from tests.scad_where_read_project.machine import (FineCylinder,
+                                                           Machine)
+        root = Machine()
+        OpenScadRenderer().present(root)
+        self.assertTrue(os.path.exists(scad_file(root)))
+        self.assertIs(currency.recorded_transient(scad_file(root)), True)
+
+        own = FineCylinder()
+        OpenScadRenderer().present(own)
+        self.assertTrue(os.path.exists(own.scad_file))
+        self.assertIs(currency.recorded_transient(own.scad_file), False)
+
+    def test_the_builder_names_no_kind_of_artifact_it_sweeps(self):
+        from pathlib import Path
+        source = (Path(__file__).resolve().parents[1] / 'machinome' / 'core'
+                  / 'builder.py').read_text()
+        self.assertNotIn('s' 'cad_only', source)
+        self.assertNotIn('.s' 'cad', source)

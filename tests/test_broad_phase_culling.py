@@ -49,12 +49,13 @@ from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
 
 from .test_assembly_integrity import Assembly, RigidNode
+from tests.stand_in import StandIn
 
 
 asserter = AssertingTestCase()
 
 
-class FakeNode:
+class FakeNode(StandIn):
     """Duck-typed stand-in exposing exactly what the broad-phase (and
     the real AbstractBaseNode.mesh getter it builds on) needs: name,
     stl_file, operations, and an optional _parent. Reuses the REAL

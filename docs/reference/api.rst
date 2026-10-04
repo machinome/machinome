@@ -211,16 +211,6 @@ Common node API
       numbers, e.g. ``.translate([100, 0, 0])``. Chains like
       :meth:`rotate`, and the node itself is returned.
 
-   .. attribute:: fn
-
-      Number of facets used to approximate curved surfaces, applied as
-      OpenSCAD's ``$fn`` to the generated code. Only meaningful for
-      OpenSCAD-based nodes (``Solid2Node``, ``OpenScadNode``); the
-      OCCT-backed leaves (``CadQueryNode``, ``Build123dNode``, the
-      sheet leaves, ``MolejoNode``) export high-resolution STLs on
-      their own. Default is ``None``, which keeps OpenSCAD's coarse
-      default.
-
    .. attribute:: name
 
       The node's name, used in viewer and test failure messages. Defaults
@@ -262,9 +252,66 @@ declares nothing is not checked.
 .. autodata:: machinome.node.leaf.CONTRACT
 
 .. autoclass:: machinome.node.leaf.LeafNode
-   :members: render, validate, namespace, as_scad, materialize,
+   :members: render, validate, namespace, present, materialize,
              publish_artifact, get_source_file, source_recipe,
-             artifact_import, generate_scad, leaf_contract, time
+             artifact_import, leaf_contract, time
+
+   .. method:: presentation()
+
+      This node's own presentation description, its artifact imports
+      resolving from its own build directory: what a node package writes
+      when it writes this node's presentation in its own language.
+
+   .. method:: kept_artifacts()
+
+      The paths of the artifacts beyond the STL, BREP and markings that a
+      build keeps for this node while it is in the published tree, by this
+      declaration and never by kind. None by default; an OpenSCAD-family
+      leaf keeps its ``.scad``.
+
+   .. method:: generate_stl()
+
+      Make the node's STL current. Nothing when it is current, the node is
+      not rigid or another process holds its render lock. A leaf whose tool
+      runs in a subprocess starts it here and raises
+      :exc:`~machinome.node.base.StlRenderStart`; otherwise a rigid leaf
+      whose STL is still not current after its materialization is refused
+      with :exc:`~machinome.node.base.ArtifactNotProduced`, naming it,
+      before any process starts.
+
+   .. attribute:: rigid
+
+      True for a time-invariant solid with a cached STL, in the piece and
+      artifact sets: the default. A class attribute.
+
+   .. attribute:: flexible
+
+      True for a leaf whose shape is a function of its bound ports
+      (:class:`~machinome.node.flexible.FlexibleNode`); false by default. A
+      class attribute.
+
+   .. attribute:: exact
+
+      Whether the node exposes boundary-representation geometry through
+      ``shape()``; false by default. A property.
+
+   .. attribute:: optimize
+
+      True, the default, for a presentation to import the leaf's STL;
+      false for it to carry what the leaf rendered, in which case the leaf
+      is prepared on every build. A class attribute.
+
+   .. method:: base_mesh()
+
+      The node's geometry in its own frame: its cached STL, or, for a
+      flexible leaf, its evaluated binding.
+
+   .. method:: declared_markings()
+
+      The markings the node's class declares, by attribute name.
+
+   The core reads every member of this set directly: a leaf declares its
+   kind through them, and the core never probes for one.
 
    .. attribute:: files
 
@@ -280,13 +327,6 @@ declares nothing is not checked.
       identity. :meth:`publish_artifact` accepts only paths beginning with
       it.
 
-   .. attribute:: scad_file
-
-      Path of the node's ``.scad``: written, through the OpenSCAD engine,
-      for a leaf whose geometry is authored in SCAD and by
-      :meth:`generate_scad`; :meth:`~machinome.node.base.AbstractBaseNode.assemble`
-      writes none.
-
    .. attribute:: stl_file
 
       Path of the node's ``.stl`` artifact.
@@ -298,10 +338,14 @@ declares nothing is not checked.
 
    .. attribute:: model
 
-      The node's SCAD presentation once assembled, or ``None`` before: the
-      object :meth:`as_scad` returned, or machinome's description of it. A
-      leaf whose artifact language is SCAD sets it to its render result
-      before calling :meth:`generate_scad`.
+      The node's presentation once assembled, or ``None`` before: the
+      object :meth:`present` returned, or machinome's description of it. An
+      OpenSCAD-family leaf sets it to its render result before writing its
+      ``.scad``.
+
+.. autoexception:: machinome.node.base.StlRenderStart
+
+.. autoexception:: machinome.node.base.ArtifactNotProduced
 
 .. autoclass:: machinome.node.exact_leaf.ExactLeafNode
    :members: shape_from_rendered, exact, shape
@@ -324,6 +368,38 @@ declares nothing is not checked.
       adjacent facets of this node's ``.stl`` artifact (OCCT's own
       ``theAngDeflection``). Defaults to ``0.1``. See
       :ref:`tessellation-precision`.
+
+The OpenSCAD node family is the package ``machinome.node.openscad``
+(``OpenScadNode``, its leaf base, its writer and its binary contract), with
+``Solid2Node`` at ``machinome.node.solid2`` over it; SolidPython is its
+kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
+
+.. autoclass:: machinome.node.openscad.leaf.ScadLeafNode
+   :members: present, materialize, kept_artifacts, generate_stl,
+             generate_scad, stl_builder_command_for
+
+   .. attribute:: fn
+
+      Number of facets used to approximate curved surfaces, applied as
+      OpenSCAD's ``$fn`` to the leaf's ``.scad``. The OCCT-backed leaves
+      (``CadQueryNode``, ``Build123dNode``, the sheet leaves,
+      ``MolejoNode``) export high-resolution STLs on their own. Default is
+      ``None``, which keeps OpenSCAD's coarse default.
+
+   .. attribute:: scad_file
+
+      Path of the leaf's ``.scad``, beside its STL: written by its
+      materialization and kept by the build.
+
+   .. attribute:: scad_code
+
+      The leaf's own SCAD text.
+
+.. autofunction:: machinome.node.openscad.writer.scad_text
+
+.. autofunction:: machinome.node.openscad.writer.scad_code
+
+.. autofunction:: machinome.node.openscad.writer.generate_scad
 
 .. autoclass:: machinome.node.Solid2Node
    :members: as_number

@@ -160,7 +160,7 @@ class WideTraversalNamingTest(_WideFixture, TestCase):
         root, children = self.wide(128)
         self.assertLinearSnapshot(
             root, children,
-            lambda node: node.as_scad(node.render()),
+            lambda node: node.present(node.render()),
             name_index_calls=2)
 
         root, children = self.wide(128)
@@ -188,7 +188,7 @@ class WideTraversalNamingTest(_WideFixture, TestCase):
                 node, lambda child: child.name)),
             ('simulation', lambda node: drive_tree(
                 node, lambda *arguments: 0)),
-            ('stl', lambda node: node.as_scad(node.render())),
+            ('stl', lambda node: node.present(node.render())),
             ('state', _rendered_children),
         )
 
@@ -302,13 +302,13 @@ class MidTraversalMutationTest(TestCase):
     def test_stl_recursion_uses_entry_snapshot_until_next_traversal(self):
         parent, mutator, sibling, visited = self._pair()
 
-        parent.as_scad(parent.render())
+        parent.present(parent.render())
         self.assertEqual((mutator.name, sibling.name), ('parts-0', 'parts-1'))
         self.assertIs(sibling._parent, parent)
         self.assertEqual(visited, [(mutator, 'parts-0'),
                                    (sibling, 'parts-1')])
 
-        parent.as_scad(parent.render())
+        parent.present(parent.render())
         self.assertEqual((sibling.name, mutator.name), ('parts-0', 'parts-1'))
 
     def test_serializer_recursion_uses_entry_snapshot_until_next_traversal(self):

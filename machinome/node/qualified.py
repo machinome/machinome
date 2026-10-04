@@ -210,8 +210,9 @@ class StateDeclaration(DriverDeclaration):
 
 
 # A segment of a qualified id must be a name in every runtime that
-# evaluates the expression it lands in -- jokenizer in the widget,
-# OpenSCAD on the scad path. `_attr_name_for` derives `<attr>-<index>`
+# evaluates the expression it lands in -- jokenizer in the widget, the
+# native evaluator on a written presentation. `_attr_name_for` derives
+# `<attr>-<index>`
 # for a list-held child, which is a perfectly good NODE name and parses
 # as a subtraction here. v1 forbids it loudly; bijective sanitization is
 # a recorded, compatible extension for when a project needs drivers on
@@ -338,7 +339,7 @@ def drive_tree(root, resolve, visit=None, collected=None):
     `resolve(node, path, name, declaration)` returns.
 
     The ORDER is the load-bearing part, and mirrors
-    `InternalNode.as_scad` and `core/serializer.serialize_node`: bind
+    `InternalNode.present` and `core/serializer.serialize_node`: bind
     EVERY node's drivers over the tree, linking each child before
     recursing into it so a child's own read already knows its derived
     name and parent -- then render the tree, ONCE, which is where

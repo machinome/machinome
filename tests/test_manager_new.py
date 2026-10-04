@@ -254,3 +254,68 @@ class ScaffoldAcceptanceTest(TestCase):
     def test_keyword_project_builds_and_tests_without_edits(self):
         self.assert_scaffold_builds_and_tests(
             'class', 'project_class', 'ProjectClass')
+
+
+#: The CadQuery template (`openscad-out`, design.md Decision 4e): the same
+#: part as the SolidPython one, a 50 mm cube centred on the Z axis and
+#: standing on the XY plane, less a radius-10 cylinder along Z.
+EXPECTED_CADQUERY = '''import cadquery as cq
+
+from machinome.node import CadQueryNode
+
+
+class DemoProject(CadQueryNode):
+
+    def render(self):
+        cube = cq.Workplane('XY').box(50, 50, 50, centered=(True, True, False))
+        hole = cq.Workplane('XY').circle(10).extrude(100)
+        return cube.cut(hole)
+'''
+
+#: R8 of design.md Decision 8.
+R8 = ('Error: machinome new scaffolds its first part with SolidPython or '
+      'CadQuery, and neither is installed; install one with '
+      '\'pip install "machinome[solid2]"\' or '
+      '\'pip install "machinome[cadquery]"\'')
+
+
+class TemplateByInstalledExtrasTest(TestCase):
+    """(`openscad-out`, 2.13) `machinome new` scaffolds the leaf kind the
+    installed extras provide: SolidPython's where it is installed, else
+    CadQuery's, and refuses before writing anything where neither is."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmpdir.cleanup)
+
+    def scaffold(self, absent):
+        from tests.exact_engine_absent import run_machinome
+        target = os.path.join(self.tmpdir.name, 'myproj')
+        run = run_machinome('new', target, absent=absent)
+        return target, run
+
+    def module_text(self, target):
+        with open(os.path.join(target, 'myproj', 'myproj.py')) as handle:
+            return handle.read()
+
+    def test_with_every_extra_the_solidpython_template(self):
+        target, run = self.scaffold(absent=())
+        self.assertEqual(run.returncode, 0, run.output)
+        self.assertEqual(self.module_text(target),
+                         EXPECTED_INIT.replace('DemoProject', 'Myproj'))
+
+    def test_without_solidpython_the_cadquery_template(self):
+        target, run = self.scaffold(absent=('solid2',))
+        self.assertEqual(run.returncode, 0, run.output)
+        self.assertEqual(self.module_text(target),
+                         EXPECTED_CADQUERY.replace('DemoProject', 'Myproj'))
+        with open(os.path.join(target, 'myproj', 'test_myproj.py')) as handle:
+            self.assertEqual(handle.read(),
+                             EXPECTED_TEST.replace('DemoProject', 'Myproj'))
+
+    def test_without_either_it_is_refused_and_writes_nothing(self):
+        target, run = self.scaffold(absent=('solid2', 'cadquery'))
+        self.assertEqual(run.returncode, 1, run.output)
+        self.assertEqual(run.stderr.strip().splitlines()[-1], R8)
+        self.assertFalse(os.path.exists(target))
+        self.assertEqual(os.listdir(self.tmpdir.name), [])

@@ -19,7 +19,8 @@ Code: `machinome/node/operations.py`, `machinome/node/assembly.py`,
 
 The system SHALL represent transforms as first-class operation objects
 (`Rotation(angle, axis, node)`, `Translation(vector, node)`) that each render
-for three consumers: `.scad(obj)` (OpenSCAD wrap), `.mesh(mesh)` (trimesh
+for three consumers: `.presented(child)` (the presentation description, which
+the OpenSCAD node package writes as SCAD), `.mesh(mesh)` (trimesh
 transform with animated values resolved to floats; rotation applied in
 radians), and `.serialized` (standalone form `['r', angle, axis]` / `['t',
 vector]`, with expression strings for scalar values). Each operation SHALL also
@@ -1186,3 +1187,4 @@ local name and SHALL NOT sanitize.
 - **THEN** the operation fails naming the node and the illegal
   segment, rather than emitting an expression that parses as
   subtraction or colliding on the bare name
+

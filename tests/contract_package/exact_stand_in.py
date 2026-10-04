@@ -51,7 +51,7 @@ RECIPE = 'native-v1'
 class NativeSolid(ExactLeafNode):
     """A solid whose geometry a native tool produced."""
 
-    leaf_contract = 1
+    leaf_contract = 2
 
     @property
     def source_recipe(self):

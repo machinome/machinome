@@ -62,7 +62,7 @@ class SheetLeafNode(ExactLeafNode):
         # set, under the same basename and the same freshness rules.
         self.dxf_file = f'{self.basepath}.dxf'
 
-        # The validated profile of this render, kept because as_scad() needs
+        # The validated profile of this render, kept because present() needs
         # the very face render() extruded -- deriving the cut file from a
         # second, independent call to profile() is exactly the divergence
         # this class exists to prevent.
@@ -161,15 +161,6 @@ class SheetLeafNode(ExactLeafNode):
     ##############################################
     # The cut file, in the artifact lifecycle
 
-    def _render_can_be_skipped(self):
-        """The cut file is an artifact of this node like the STL and the
-        BREP, so the build's work is only skippable while it too is
-        current -- otherwise a lost DXF would never come back."""
-        return (
-            super()._render_can_be_skipped()
-            and self._up_to_date(self.dxf_file)
-        )
-
     def _prepare_can_be_skipped(self):
         return (
             super()._prepare_can_be_skipped()
@@ -182,7 +173,7 @@ class SheetLeafNode(ExactLeafNode):
         Same guard as the other artifacts: produced only when it is not
         already the file these sources would produce, published through
         `publish_artifact` like any artifact a leaf owns, and the returned
-        SCAD is the same either way.
+        presentation is the same either way.
         """
         super().materialize(rendered)
         self.publish_artifact(

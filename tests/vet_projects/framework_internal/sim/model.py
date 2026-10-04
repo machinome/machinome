@@ -9,7 +9,7 @@ import machinome.node
 import machinome.simulation
 import machinome.motion
 import machinome.occt.engine
-import machinome.openscad
+import machinome.node.openscad
 
 BUILDER = machinome.core.builder.Builder
 LOADED = load_node

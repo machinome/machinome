@@ -1170,7 +1170,7 @@ def _validate_markings(cls, name, namespace):
     if not markings:
         return
 
-    if not getattr(cls, 'rigid', False) or getattr(cls, 'flexible', False):
+    if not cls.rigid or cls.flexible:
         written = [attribute for attribute in markings
                    if attribute in namespace]
         attribute = next(iter(written or markings))

@@ -77,7 +77,10 @@ class CoreHoldsNoKernelTest(TestCase):
                 importing[path] = sorted(kernel)
 
         self.assertEqual(importing, {
-            'machinome/node/step.py': ['OCP', 'cadquery']})
+            'machinome/node/step.py': ['OCP', 'cadquery'],
+            # A project's file `machinome new` copies (`openscad-out`).
+            'machinome/manager/templates/project/root/cadquery.py':
+                ['cadquery']})
 
     def test_the_old_exact_module_is_gone(self):
         self.assertFalse((PACKAGE / 'exact.py').exists())
@@ -116,10 +119,12 @@ EXTRA_OF = {
 SEAMS = {
     'machinome/node/__init__.py': KERNEL_MODULES,
     'machinome/node/markings.py': {'machinome.node.build123d'},
-    'machinome/cli.py': {'machinome.node.step'},
-    'machinome/manager/import_step.py': {'machinome.node.step'},
     'machinome/node/step.py': {'machinome.node.cadquery'},
 }
+
+#: The modules that reach a kernel module through the table of supported
+#: node types (`machinome.node.supported`, `openscad-out`), naming none.
+TABLE_READERS = ('machinome/cli.py', 'machinome/manager/import_step.py')
 
 
 def every_module():
@@ -190,6 +195,11 @@ class KernelsOnlyInTheirModulesTest(TestCase):
             'machinome/manifold/engine.py': ['manifold3d'],
             'machinome/node/step.py': ['OCP', 'cadquery'],
             'machinome/occt/engine.py': ['OCP'],
+            # The template `machinome new` scaffolds a CadQuery part from
+            # (`openscad-out`): a project's file, which the core copies and
+            # never imports.
+            'machinome/manager/templates/project/root/cadquery.py':
+                ['cadquery'],
         })
 
     def test_kernel_modules_are_named_only_at_the_seams(self):
@@ -202,11 +212,12 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         for path, named in naming.items():
             with self.subTest(path=path):
                 self.assertLessEqual(named, SEAMS.get(path, set()))
-        for path in ('machinome/node/markings.py', 'machinome/cli.py',
-                     'machinome/manager/import_step.py',
-                     'machinome/node/step.py'):
+        for path in ('machinome/node/markings.py', 'machinome/node/step.py'):
             with self.subTest(seam=path):
                 self.assertEqual(naming.get(path), SEAMS[path])
+        for path in TABLE_READERS:
+            with self.subTest(reader=path):
+                self.assertIsNone(naming.get(path))
 
     def test_each_kernel_module_checks_its_kernel_first(self):
         modules = dict(every_module())

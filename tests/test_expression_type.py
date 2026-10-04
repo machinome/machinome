@@ -6,11 +6,11 @@
 `expression-type`, capability `motion-expression-sharing`, "A symbolic value
 is the framework's own type").
 
-Read from the source: no module outside the OpenSCAD engine's package
-imports a SolidPython expression name, and the modules that still import
-SolidPython at all are exactly the two OpenSCAD leaves and the project
-template, which the campaign's later cycles move (the SCAD presentation left
-the core in `scad-presentation`). Read from
+Read from the source: no module outside the OpenSCAD node family (its
+package `machinome.node.openscad` and `machinome.node.solid2`, OpenSpec change
+`openscad-out`) imports a SolidPython expression name, and the one module
+outside it that still imports SolidPython at all is the project template
+that scaffolds a `Solid2Node`. Read from
 a fresh interpreter: importing the vocabulary imports no SolidPython. Read
 from the values: time, a driver read and what `machinome.math` returns are
 `GraphValue`s with no SolidPython class in their ancestry, and asking one
@@ -27,36 +27,32 @@ from unittest import TestCase
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'machinome'
-ENGINE_PACKAGE = PACKAGE / 'openscad'
-ENGINE_NAME = re.compile(r'^machinome\.openscad(\.\w+)*$')
+ENGINE_PACKAGE = PACKAGE / 'node' / 'openscad'
+SOLID2_MODULE = PACKAGE / 'node' / 'solid2.py'
+ENGINE_NAME = re.compile(r'^machinome\.node\.openscad(\.\w+)*$')
 
 #: The SolidPython names that make a value an expression.
 EXPRESSION_NAMES = {'OpenSCADConstant', 'scad_inline', 'ScadValue',
                     'get_animation_time'}
 
-#: Every core module that still imports SolidPython, and the campaign
-#: cycle that removes it (`workflow/ongoing/lean-core.md`, "Layers"). The
-#: SCAD presentation left the core in cycle 6 (`scad-presentation`).
+#: Every module outside the OpenSCAD node family that still imports
+#: SolidPython: the project template that scaffolds a `Solid2Node`.
 SOLID2_IMPORTERS = {
-    'machinome/node/solid2.py',      # cycle 7, the Solid2Node leaf
-    'machinome/node/openscad.py',    # cycle 7, the OpenScadNode leaf
-    'machinome/manager/templates/project/root/__init__.py',  # cycle 8
+    'machinome/manager/templates/project/root/solid2.py',
 }
 
-#: The core modules that reach the engine's package directly, outside the
-#: seam `machinome.scad_engine`: since cycle 6 (`scad-presentation`) the
-#: core reaches the binary through the seam, and only the `Solid2Node`
-#: leaf's `as_number` still reaches the locator, until cycle 7.
+#: The modules outside the family that reach its package directly: the
+#: OpenSCAD viewer, for its writer and binary, until the viewer cycle.
 BINARY_REACHES = {
-    'machinome/node/solid2.py',       # cycle 7
+    'machinome/viewers/openscad.py',
 }
 
 
 def core_modules():
     """Every module of the core: everything under `machinome/` outside the
-    OpenSCAD engine's package."""
+    OpenSCAD node family (its package and the `solid2` module)."""
     for path in sorted(PACKAGE.rglob('*.py')):
-        if ENGINE_PACKAGE in path.parents:
+        if ENGINE_PACKAGE in path.parents or path == SOLID2_MODULE:
             continue
         yield path.relative_to(ROOT).as_posix(), ast.parse(path.read_text())
 
@@ -76,22 +72,22 @@ def solid2_imports(tree):
 
 
 def names_the_engine_package(tree):
-    """Whether a module imports, or spells by name, `machinome.openscad`
-    or a module of it."""
+    """Whether a module imports, or spells by name, the family's package
+    `machinome.node.openscad` or a module of it."""
     for node in ast.walk(tree):
         if (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and ENGINE_NAME.match(node.value)):
             return True
         if isinstance(node, ast.Import):
-            if any(alias.name == 'machinome.openscad'
-                   or alias.name.startswith('machinome.openscad.')
+            if any(alias.name == 'machinome.node.openscad'
+                   or alias.name.startswith('machinome.node.openscad.')
                    for alias in node.names):
                 return True
         elif isinstance(node, ast.ImportFrom) and node.level == 0:
-            if (node.module == 'machinome.openscad'
-                    or node.module.startswith('machinome.openscad.')):
+            if (node.module == 'machinome.node.openscad'
+                    or node.module.startswith('machinome.node.openscad.')):
                 return True
-            if node.module == 'machinome' and any(
+            if node.module == 'machinome.node' and any(
                     alias.name == 'openscad' for alias in node.names):
                 return True
     return False
@@ -111,18 +107,17 @@ class NoExpressionImportTest(TestCase):
 
         self.assertEqual(offending, {})
 
-    def test_the_remaining_solid2_importers_are_presentation_leaves_and_template(self):
+    def test_the_one_solid2_importer_outside_the_family_is_the_template(self):
         importing = {path for path, tree in core_modules()
                      if any(True for _ in solid2_imports(tree))}
 
         self.assertEqual(importing, SOLID2_IMPORTERS)
 
-    def test_only_presentation_and_runner_reach_the_binary_locator(self):
+    def test_only_the_viewer_reaches_the_family_package(self):
         reaching = {path for path, tree in core_modules()
                     if names_the_engine_package(tree)}
 
-        self.assertEqual(reaching,
-                         BINARY_REACHES | {'machinome/scad_engine.py'})
+        self.assertEqual(reaching, BINARY_REACHES)
 
 
 #: Import one module in a fresh interpreter and report every `solid2`
@@ -213,3 +208,20 @@ class TheTypeTest(TestCase):
             with self.subTest(name):
                 with self.assertRaises(TypeError):
                     attempt()
+
+
+class ClosedExpressionTest(TestCase):
+    """(`openscad-out`, 2.11) The closed text of a symbolic value is the
+    core's own, `machinome.core.expressions.closed_expression`: one scalar,
+    its shared subexpressions bound by `let`."""
+
+    def test_the_text_of_a_shared_value_is_its_closed_expression(self):
+        import machinome.math as m
+        from machinome.core import expressions
+        from machinome.expression_graph import get_animation_time
+        shared = m.sin(get_animation_time() * 360)
+        value = shared * shared + shared
+        text = expressions.closed_expression(value._expression_node)
+        self.assertTrue(text.startswith('let('), text)
+        self.assertEqual(str(value), text)
+        self.assertFalse(hasattr(expressions, 's' 'cad_expression'))
