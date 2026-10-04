@@ -1,6 +1,6 @@
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `openspec/changes/mesh-engine/evidence.md` in the shape of the
+- [x] 1.1 Create `openspec/changes/mesh-engine/evidence.md` in the shape of the
   archived cycles' (`2026-10-04-scad-presentation/evidence.md`), with the bench
   commit, and record there the Context facts of design.md this cycle rests on:
   the probe of Decision 6 (`trimesh.boolean` against the four engine steps:
@@ -10,7 +10,7 @@
   `trimesh.boolean`, and the project counts of the proposal's Impact
   (re-checked by grep). Proves: the evidence the design cites exists in the
   change.
-- [ ] 1.2 The golden of design.md Decision 12, before any source change: write
+- [x] 1.2 The golden of design.md Decision 12, before any source change: write
   `tests/mesh_engine_golden.py` (not collected by pytest; `--record` writes,
   `--check` compares and prints one summary line) and its fixtures, recording
   into `tests/data/mesh_engine_golden.json`, with the bench commit: the
@@ -32,7 +32,7 @@
   `NotManifold`, Decision 4) and the compared part's "cannot build a Manifold"
   → "cannot build a solid" as expected differences and nothing else. Proves:
   bit identity, by construction checked.
-- [ ] 1.3 Run, on the unmodified tree, one pytest process at a time:
+- [x] 1.3 Run, on the unmodified tree, one pytest process at a time:
   `tests/test_mesh_engine_dependency.py`, `test_manifold_cache.py`,
   `test_verdict_store.py`, `test_verdict_store_cli.py`,
   `test_kernel_extras.py`, `test_core_kernel_free.py`,
@@ -48,7 +48,7 @@
 
 ## 2. Red tests
 
-- [ ] 2.1 `tests/test_mesh_engine_seam.py`: `mesh_engine()` returns the module
+- [x] 2.1 `tests/test_mesh_engine_seam.py`: `mesh_engine()` returns the module
   `machinome.manifold.engine`, whose `CONTRACT` equals
   `machinome.mesh_engine.CONTRACT == 1`; every member of the `MeshEngine`
   Protocol is a function whose `__module__` is the provider; with
@@ -64,7 +64,7 @@
   `manifold` extra; reading any operation off `machinome.manifold` raises
   `AttributeError`. Red: `mesh_engine()` returns `(Manifold, Mesh)`, there is no
   `CONTRACT`, no provider, no extra, and every `ImportError` reads as absent.
-- [ ] 2.2 `tests/test_manifold_engine.py`, in a fresh interpreter with arrays
+- [x] 2.2 `tests/test_manifold_engine.py`, in a fresh interpreter with arrays
   written out in numpy (no trimesh): `solid_from_mesh` of a closed cube is
   admitted (`fault` is `None`) and of the cube less one triangle is refused
   with `NotManifold`; `placed_solid` by a 4x4 translation moves its
@@ -77,7 +77,7 @@
   importlib.metadata.version('manifold3d'))`; afterwards `trimesh`, `OCP`,
   `cadquery` and `build123d` are absent from `sys.modules`; `CONTRACT` is an
   integer literal in the source (AST). Red: the module does not exist.
-- [ ] 2.3 The core holds no mesh-engine code, in `tests/test_core_kernel_free.py`:
+- [x] 2.3 The core holds no mesh-engine code, in `tests/test_core_kernel_free.py`:
   `KERNELS` gains `manifold3d` and the import table expects
   `'machinome/manifold/engine.py': ['manifold3d']` and nothing else for it;
   `EXTRA_OF` gains `'machinome/manifold/engine.py': 'manifold'` (so the
@@ -94,7 +94,7 @@
   broken-kernel subprocess checks run for it. Red: `mesh_engine.py` imports
   `manifold3d`, `test.py` calls `trimesh.boolean` twice, `manifold3d` is
   required, no `manifold` extra, no provider.
-- [ ] 2.4 `tests/mesh_engine_absent.py` in the finder form (design.md Decision
+- [x] 2.4 `tests/mesh_engine_absent.py` in the finder form (design.md Decision
   11), with `run_python`, `run_machinome` and `mesh_engine_is_installed`;
   then `tests/test_mesh_engine_dependency.py` rewritten over it, every case
   asserting through the per-process log:
@@ -125,7 +125,7 @@
   finder and asserts zero asks of `machinome.manifold` in both runs. Red: the
   refusals name `pip install manifold3d`; `--faceted` builds before it refuses;
   a broken `manifold3d` reads as absent.
-- [ ] 2.5 The verdict store, in `tests/test_verdict_store.py`: `KERNELS` names
+- [x] 2.5 The verdict store, in `tests/test_verdict_store.py`: `KERNELS` names
   no `manifold3d`; with `machinome.manifold.engine.identity` patched to report
   another version, a faceted verdict kept under the real one is computed again
   and an exact verdict is served; with `mesh_engine` answering `None`, a
@@ -133,7 +133,7 @@
   `test_computing_the_stamp_imports_no_kernel` stays green. Red: `KERNELS`
   holds the row, the provider has no `identity`, a faceted key ignores the
   engine.
-- [ ] 2.6 The two former `trimesh.boolean` paths, in
+- [x] 2.6 The two former `trimesh.boolean` paths, in
   `tests/test_manifold_cache.py`: with `trimesh.boolean.union` and
   `trimesh.boolean.intersection` patched to raise, `assertJoined` on the
   faceted welded pair passes and on the unwelded pair fails with its message,
@@ -141,25 +141,25 @@
   a counting wrapper on `machinome.manifold.engine.unite_solids` sees one call
   per `assertJoined`; a non-volume mesh still raises `ValueError('Not all
   meshes are volumes!')`. Red: both paths call `trimesh.boolean`.
-- [ ] 2.7 Run 2.1 to 2.6 on the unmodified source in one pytest process;
+- [x] 2.7 Run 2.1 to 2.6 on the unmodified source in one pytest process;
   record in the evidence every red test and its reason, verbatim.
 
 ## 3. The provider, the seam, the extra
 
-- [ ] 3.1 `machinome/manifold/__init__.py` (Apache-2.0 header, a docstring, no
+- [x] 3.1 `machinome/manifold/__init__.py` (Apache-2.0 header, a docstring, no
   names) and `machinome/manifold/engine.py`: `require_extra('manifold', 'the
   mesh engine (machinome.manifold.engine)', 'manifold3d')` first; numpy and
   manifold3d imports; `CONTRACT = 1` as a literal; the ten operations of
   design.md Decision 3, each the manifold3d call the table gives; no import of
   trimesh, the seam or any core module but `machinome.extras`; no state.
   Proves: 2.2 green.
-- [ ] 3.2 `machinome/mesh_engine.py`: `CONTRACT`, `PROVIDER`, `MeshSolid`, the
+- [x] 3.2 `machinome/mesh_engine.py`: `CONTRACT`, `PROVIDER`, `MeshSolid`, the
   Protocols `MeshSolids`, `MeshComposition`, `MeshComparison`, `MeshIdentity`
   and `MeshEngine`, `MeshEngineUnavailable` and `MeshEngineIncompatible` with
   design.md Decision 2's messages, `_absent`, `mesh_engine()` and
   `require_mesh_engine()`; the module docstring states the requiring paths and
   that the core names the provider here only. Proves: 2.1 green.
-- [ ] 3.3 `pyproject.toml`: drop `manifold3d` from `dependencies` (its comment
+- [x] 3.3 `pyproject.toml`: drop `manifold3d` from `dependencies` (its comment
   on kernels names it among the extras); add `manifold = ["manifold3d"]` with a
   comment naming `machinome.manifold.engine` and the rule; `all` gains
   `manifold`. `requirements.txt`: `manifold3d` under the kernel-extras comment,
@@ -167,7 +167,7 @@
 
 ## 4. The core over the seam
 
-- [ ] 4.1 `machinome/test.py` (design.md Decisions 4-6): `_mesh_engine`;
+- [x] 4.1 `machinome/test.py` (design.md Decisions 4-6): `_mesh_engine`;
   every site of design.md's site table through the provider's operations,
   looked up at call time; `_admitted` reading `fault`; `_mesh_boolean` for
   `assertJoined`'s faceted union and the `.mesh` fallback; the private renames
@@ -175,26 +175,26 @@
   or read say the mesh engine's solid. No change to culling order, cache keys,
   limits, messages (but Decision 4's "cannot build a solid") or the statics
   program.
-- [ ] 4.2 `machinome/node/fusion.py` (Decision 7): `_generate_faceted_stl`
+- [x] 4.2 `machinome/node/fusion.py` (Decision 7): `_generate_faceted_stl`
   through `solid_from_mesh`, `fault`, `unite_solids`, `mesh_arrays`, the
   engine's name from `identity()`; `faceted-fusion-manifold-v1` kept.
-- [ ] 4.3 `machinome/_verdict_store.py` (Decision 9): `KERNELS` loses the
+- [x] 4.3 `machinome/_verdict_store.py` (Decision 9): `KERNELS` loses the
   `manifold3d` row and its comment the faceted engine; `persisted_key` gains
   `engine`; `test.py`'s `_persisted_key` passes `mesh_engine().identity()` for a
   faceted key, `()` for an exact one, and `None` when the engine is absent or
   reports no version.
-- [ ] 4.4 `machinome/manager/test.py` (Decision 8): after
+- [x] 4.4 `machinome/manager/test.py` (Decision 8): after
   `set_comparison_policy` and before the faceted kernel's line, a faceted
   policy calls `require_mesh_engine('machinome test on the faceted kernel',
   "every pair the run compares is compared on the parts' meshes")`, a
   `MeshEngineUnavailable` going to `self.fail(str(error))`.
-- [ ] 4.5 Comments naming the Manifold cache in `machinome/node/flexible.py`
+- [x] 4.5 Comments naming the Manifold cache in `machinome/node/flexible.py`
   (lines 375, 422) say the faceted solid cache.
-- [ ] 4.6 Run 2.3, 2.4, 2.5 and 2.6 green.
+- [x] 4.6 Run 2.3, 2.4, 2.5 and 2.6 green.
 
 ## 5. Existing tests repointed
 
-- [ ] 5.1 Repoint without changing any asserted verdict, count or message
+- [x] 5.1 Repoint without changing any asserted verdict, count or message
   other than Decision 4's two: the renamed privates (`test_flexible_cache_performance.py`,
   `test_manifold_cache.py`, `test_verdict_store.py`, `test_persistent_piece_facts.py`,
   `test_assembly_integrity.py`, `test_assembly_supported.py`,
@@ -213,15 +213,15 @@
   `WATCHED` adds `machinome.manifold.engine`; `test_node_lazy_exports.py`'s
   comment points at the finder form. List in the evidence every changed
   assertion target and why.
-- [ ] 5.2 `tests/mesh_engine_golden.py --check`: zero unexpected differences;
+- [x] 5.2 `tests/mesh_engine_golden.py --check`: zero unexpected differences;
   record the summary line. Proves: bit identity.
-- [ ] 5.3 The whole framework suite, alone (it shares `tests/_build`); record
+- [x] 5.3 The whole framework suite, alone (it shares `tests/_build`); record
   counts and wall time against 1.3 and the line's last full run (4439 passed,
   4 skipped at 69c7019).
 
 ## 6. Docs
 
-- [ ] 6.1 `docs/architecture.md`: the test-framework paragraphs that build,
+- [x] 6.1 `docs/architecture.md`: the test-framework paragraphs that build,
   cache and intersect Manifolds (lines 2261-2300 and 2357-2391 at 69c7019) say
   the mesh engine's solids through the seam; line 69's conditional-engine
   sentence names the provider and the extra; the verdict store's stamp
@@ -230,7 +230,7 @@
   the core in layer 2) | `machinome/manifold/engine.py` | `manifold-engine` |
   176", and the test framework row names `machinome/mesh_engine.py` and
   `mesh-engine-dependency`.
-- [ ] 6.2 `docs/start/install.rst`: "The package itself brings trimesh,
+- [x] 6.2 `docs/start/install.rst`: "The package itself brings trimesh,
   SolidPython and the mesh engine" says it brings trimesh and SolidPython; the
   extras table gains `machinome[manifold]` → `machinome.manifold.engine` → "the
   mesh engine, for every comparison on meshes: a part without exact geometry,
@@ -241,7 +241,7 @@
   and a faceted run without it refuses at its start. `README.rst`: the
   `manifold3d` paragraph says it is the `manifold` extra. A docs build of the
   touched pages, recorded.
-- [ ] 6.3 `docs/project/changelog.rst`, one bullet under its existing
+- [x] 6.3 `docs/project/changelog.rst`, one bullet under its existing
   Unreleased section:
 
   > **The mesh engine is a provider, installed by its extra.** manifold3d,
@@ -266,7 +266,7 @@
 
 ## 7. The campaign plan
 
-- [ ] 7.1 `workflow/ongoing/lean-core.md`, in the implementation commit and
+- [x] 7.1 `workflow/ongoing/lean-core.md`, in the implementation commit and
   nothing else in it: the dependency table's `manifold3d` row reads "the
   `manifold` extra; `machinome.manifold.engine` behind `machinome.mesh_engine`";
   "Where the core reaches each kernel"'s mesh-engine bullet says the seam
@@ -280,7 +280,7 @@
 
 ## 8. Stop and report (the applier)
 
-- [ ] 8.1 With 1 to 7 done and the suite green, stop before any commit and
+- [x] 8.1 With 1 to 7 done and the suite green, stop before any commit and
   report to the orchestrator: the diff stat, the red and green results, the
   suite's counts and wall time, the golden's summary line. The applier spawns
   no agent and runs none of the validation below.
@@ -312,7 +312,7 @@ from machinome.cli import manage
 manage()
 ```
 
-- [ ] 9.1 **Deep, `Locks/Pin_tumbler_lock`.** Before and after: the recorder
+- [x] 9.1 **Deep, `Locks/Pin_tumbler_lock`.** Before and after: the recorder
   running `test --faceted --no-verdict-store`. Expected: 24 tests with the
   outcomes of cycle 6's evidence (`2026-10-04-scad-presentation/evidence.md`)
   both times, and the two verdict logs identical line for line. After, with
@@ -322,7 +322,7 @@ manage()
   `machinome build` exits 0 with zero asks of `machinome.manifold` in every
   process. Why this project: the campaign's faceted reference, a running root
   with a flexible spring and `Solid2Node` parts, cheap.
-- [ ] 9.2 **Deep, `3D-Printers/Prusa3-vanilla`.** Before and after: the recorder
+- [x] 9.2 **Deep, `3D-Printers/Prusa3-vanilla`.** Before and after: the recorder
   running `test --no-verdict-store` on the default kernel, as the project runs
   (its parts are `Solid2Node`s but for two `Build123dNode`s and three
   `MolejoNode`s, so nearly every pair is faceted; the log records each
@@ -336,7 +336,7 @@ manage()
   `assertSharesBelow` are the project's own trimesh measurements); wall times
   recorded, a slowdown beyond run-to-run noise returning to the orchestrator.
   Why: the heaviest faceted user of the catalogue.
-- [ ] 9.3 **Deep, the faceted fusion and an exact fusion.** No project fuses
+- [x] 9.3 **Deep, the faceted fusion and an exact fusion.** No project fuses
   faceted children (design.md Open Question 4); the fused STL's bytes are
   5.2's golden. On `Leonardo/models` (model `cam_hammer`, two exact
   `FusionNode`s over `CadQueryNode`s, the smallest candidate): after, build it
@@ -345,7 +345,7 @@ manage()
   the two fusions' STL and BREP SHA-256 equal across the two builds, and zero
   asks of `machinome.manifold` in the blocked build. Why: an exact fusion must
   never ask for the mesh engine.
-- [ ] 9.4 **Deep, OpenAstroMount, all exact.** After, read-only on its own
+- [x] 9.4 **Deep, OpenAstroMount, all exact.** After, read-only on its own
   checkout, with the finder refusing `manifold3d` and `machinome.manifold`:
   `machinome build` and `machinome test` into a scratch build directory, and
   the same two unblocked into another. Expected: the blocked runs' results
@@ -354,7 +354,7 @@ manage()
   every ask of `manifold3d` made by `trimesh.boolean`, and neither
   `machinome.manifold.engine` nor `manifold3d` imported (design.md Open
   Question 1).
-- [ ] 9.5 **Shallow, the universe,** run by the orchestrator from the workspace
+- [x] 9.5 **Shallow, the universe,** run by the orchestrator from the workspace
   root: `scripts/load-projects --bench <bench> --moved
   scripts/load-projects.d/exact-engine.toml
   scripts/load-projects.d/leaf-contract.toml
@@ -366,19 +366,19 @@ manage()
   <bench>/openspec/changes/mesh-engine/load-projects.json`. Expected: identical
   to the sixth cycle's sweep, no row for this cycle (its table is empty, and
   the workspace venv still installs manifold3d through `[all]`).
-- [ ] 9.6 A failed validation returns to the orchestrator with the project's
+- [x] 9.6 A failed validation returns to the orchestrator with the project's
   output; nothing is fixed in a project. The orchestrator hands the reports to
   the paused applier.
 
 ## 10. Records, ADR, specs, commit (the applier, after 9)
 
-- [ ] 10.1 Fold 9.1-9.5 into the evidence, verbatim where they quote a message,
+- [x] 10.1 Fold 9.1-9.5 into the evidence, verbatim where they quote a message,
   a digest or a summary line.
-- [ ] 10.2 Write ADR-176 (`docs/adrs/TEST-FRAMEWORK/`, design.md "ADRs"),
+- [x] 10.2 Write ADR-176 (`docs/adrs/TEST-FRAMEWORK/`, design.md "ADRs"),
   recording the pilot's ratification and the answers to the Open Questions;
   add status lines and amendment sections to ADR-052, ADR-161, ADR-156 and
   ADR-167; add ADR-176 to `docs/adrs/README.md`.
-- [ ] 10.3 Sync the four delta specs into `openspec/specs/` (the new
+- [x] 10.3 Sync the four delta specs into `openspec/specs/` (the new
   `manifold-engine`, and `mesh-engine-dependency`, `kernel-extras`,
   `test-framework`), archive the change with `openspec archive mesh-engine`,
   validate `--strict`, and make the implementation commit on

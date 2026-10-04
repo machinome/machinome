@@ -59,16 +59,19 @@ Three architectural commitments shape almost every subsystem:
    (ADR-004/044/045/046/047/102). Native preparation precedes optional SCAD
    presentation. Solid2 and raw `.scad` leaves render through OpenSCAD because
    it is their backend; faceted fusions compose current child meshes directly
-   through Manifold. The OCCT backends — CadQuery and build123d — preserve
+   through the mesh engine. The OCCT backends — CadQuery and build123d — preserve
    BREP geometry, and all-exact fusions compose and tessellate in OCCT
    without OpenSCAD, whichever of the two produced each child. JSCAD produces
    its STL through its own `jscad` tool, and a flexible part through molejo's
    evaluators — mesh, STL and B-rep from one analytic spec.
    OpenSCAD is therefore conditional on
    the paths that invoke it, not a universal framework prerequisite. The same
-   rule governs the `manifold3d` mesh engine (ADR-052/102): it decides faceted
-   fusion and faceted comparison geometry, and is also required by
-   `assertAssemblySupported`, whose statics phase is faceted for every body.
+   rule governs the mesh engine (ADR-052/102/176), the provider
+   `machinome.manifold.engine` over `manifold3d`, installed by the `manifold`
+   extra and resolved through the seam `machinome.mesh_engine`: it decides
+   faceted fusion and faceted comparison geometry, and is also required by
+   `assertAssemblySupported`, whose statics phase is faceted for every body,
+   and by a faceted `machinome test`, which refuses at its start without it.
    Both tools are resolved once per process at
    the point of use and report by name when absent.
 2. **The build artifact is the currency, mtime is its clock**
@@ -78,7 +81,7 @@ Three architectural commitments shape almost every subsystem:
    round trip off a filesystem coarser than a nanosecond (ADR-050). That
    equality is guarded by a recorded metadata fingerprint of every tracked
    contributor, so a future-dated source cannot hide an edit to an older one
-   (ADR-081). Base-mesh and Manifold caches key the path together with its
+   (ADR-081). Base-mesh and mesh-solid caches key the path together with its
    strong observable identity — device, inode, size, integer-nanosecond mtime
    and ctime — so a same-size restored-mtime replacement cannot serve old
    faceted geometry (ADR-085). Artifact freshness remains the one invalidation
@@ -376,7 +379,7 @@ joins the node's tracked source set (ADR-055) — a rule `StepNode` below
 also needs and for the same reason.
 `StlNode` is faceted: `exact` is false, mesh-only is settled doctrine for
 imported meshes, and a fusion containing one is faceted and composes child
-meshes through Manifold (ADR-102).
+meshes through the mesh engine (ADR-102, ADR-176).
 
 A second external-file leaf reads the *other* file every vendor
 publishes, and it is exact rather than faceted. `StepNode` declares
@@ -2024,8 +2027,8 @@ replaced, retargeted, newly selected or changed contributor returns
 STL generation is asynchronous only at an actual OpenSCAD backend:
 `StlRenderStart` carries that spawned process, PID lock files guard concurrency,
 and `build_stls()` loops until nothing is stale. Exact and imported producers
-run natively; faceted fusion unions current child meshes through Manifold in
-dependency order. The metadata-only currency path is
+run natively; faceted fusion unions current child meshes through the mesh
+engine in dependency order. The metadata-only currency path is
 **artifact mtime equality plus source-set fingerprint equality** — generated
 files are back-dated with `os.utime` to the max source mtime (ADR-006), and a
 sidecar records path, filesystem identity, size, mtime, and change time for
@@ -2258,8 +2261,8 @@ raises or an UNEXPECTED SUCCESS — which fails the run — when it does not
 
 Collision assertions (ADR-009/044) select the strongest shared representation
 the run allows: intersection-volume and connectivity questions use placed
-OCCT shapes when both operands are exact and retain trimesh/Manifold for
-mixed or faceted pairs. Which kernel a run compares on is the run's property,
+OCCT shapes when both operands are exact and retain trimesh and the mesh
+engine for mixed or faceted pairs. Which kernel a run compares on is the run's property,
 not the model's (ADR-073): `machinome test` resolves one comparison policy —
 `--exact`/`--faceted`, else `SOLID_TEST_KERNEL` from the project's ignored
 `.env`, else exact — and a faceted run answers every one of those questions
@@ -2268,8 +2271,8 @@ engine verdict after the memo is read, and labels itself before the first
 build and on its summary line. The exact run is unchanged, `node.exact`
 still reports the geometry's capability, and the build does not depend on
 the kernel. That selection reaches the placement step too (ADR-052): a solid is
-placed into the spatial index from its cached bounds alone, and its Manifold
-is built only when a comparison really reads it, so an all-exact assembly
+placed into the spatial index from its cached bounds alone, and its
+mesh-engine solid is built only when a comparison really reads it, so an all-exact assembly
 builds none and needs no mesh engine. Distance and containment assertions
 remain mesh-sampled. This includes the
 **paired kinematic fit contract** (ADR-025): `assertBlockedBeyond` +
@@ -2281,18 +2284,25 @@ pair. `volume_epsilon` separates real interference from boolean noise,
 with a deliberately strict default: a flush contact that is non-empty
 at exactly 0.0 mm³ **is** a foul until the test opts into an epsilon.
 
-The shared intersection path (ADR-029/044) caches one Manifold per strong
-artifact observation — canonical path, device, inode, size, nanosecond mtime
-and change time — built at the first faceted read and judged there by
-the engine's own `status()` (ADR-074): a mesh Manifold refuses raises by
-file name with the engine's reason, a mesh trimesh doubts and the engine
-accepts is compared, and selection, the broad phase and the exact path
-never judge a mesh at all. It culls provably disjoint pairs with a
-conservative world-AABB broad-phase of its own — always world axis here,
+The shared intersection path (ADR-029/044) caches one mesh-engine solid per
+strong artifact observation — canonical path, device, inode, size,
+nanosecond mtime and change time — built by the engine at the first faceted
+read and judged there by the engine's own `fault` (ADR-074): a mesh the
+engine refuses raises by file name with the engine's word for the fault,
+a mesh trimesh doubts and the engine accepts is compared, and selection,
+the broad phase and the exact path never judge a mesh at all. It culls
+provably disjoint pairs with a conservative world-AABB broad-phase of its
+own — always world axis here,
 whatever indexing frame the whole-assembly interference index below may
 have chosen for its own candidates (ADR-091) — and reads
-`is_empty()`/`volume()` straight off lazy-transformed Manifolds —
-verdict-identical to the naive faceted path. Exact pairs share the same
+the engine's `is_empty` and `volume` straight off solids it placed lazily
+(`placed_solid`) — verdict-identical to the naive faceted path. The core
+holds every mesh solid as an opaque handle and asks the mesh engine for each
+construction, admission, placement, Boolean, measurement and read-back,
+looked up on the provider at the moment of the call (ADR-176);
+`assertJoined`'s union of meshes and the `.mesh` fallback run the same steps
+through the engine rather than through `trimesh.boolean`, so no core path
+reaches `manifold3d` but the provider. Exact pairs share the same
 world-AABB
 broad phase, then a second exact-negative tier (ADR-092) may decide the
 pair empty before any boolean: each solid's face boxes (the engine's
@@ -2354,7 +2364,7 @@ the project, and remains untouched by the quantum. Exact and faceted entries
 never serve one another, a node with no file identity is never cached, a
 relative matrix carrying a non-finite entry is never cached either, and
 entries are evicted when a geometry identity changes, on the same discipline
-as the Manifold cache.
+as the mesh-solid cache.
 Beneath that in-process memo sits a persistent tier, consulted only at an
 in-process miss: the project's verdict store, the directory `.verdicts` at
 the top of the build root the testing process resolves (the anchored root,
@@ -2364,15 +2374,21 @@ working directory, and no store at all when there is none). A kept question
 is identified by state, never by a path or a time: the same key with each
 identity replaced by a persistent one — the SHA-256 of the artifact bytes
 the compared geometry was READ from (the BREP whose load `cached_shape`
-observed coherently, or the STL whose observation keyed the Manifold), or a
+observed coherently, or the STL whose observation keyed the mesh-engine
+solid), or a
 flexible leaf's state identity — and bound to a STAMP of the store format,
 the machinome version, every Python source of the running package, the
-installed versions of `cadquery-ocp`, `cadquery`, `manifold3d`, `trimesh`
-and `molejo`, and the platform, read from metadata inside the stamp function
-and never by importing a kernel. The store keeps raw verdicts (emptiness,
-volume bits, which kernel) as immutable checksummed segments published by
-atomic rename and merged on read, so concurrent runs need no lock; a reader
-that finds a listed segment gone lists once more, because compaction
+installed versions of `cadquery-ocp`, `cadquery`, `trimesh` and `molejo`,
+and the platform, read from metadata inside the stamp function and never by
+importing a kernel. A faceted verdict's key carries as well the name and
+version the resolved mesh engine reports of itself (`identity`, ADR-176), so
+a `manifold3d` upgrade starts the faceted verdicts afresh and not the exact
+ones; an exact verdict's key carries none, and a faceted question whose
+engine cannot name its version is computed without being kept. The store
+keeps raw verdicts (emptiness, volume bits, which kernel) as immutable
+checksummed segments published by atomic rename and merged on read, so
+concurrent runs need no lock; a reader that finds a listed segment gone
+lists once more, because compaction
 publishes its merged segment before deleting the inputs; the store is
 bounded and evicts foreign stamps first, then its least recently used
 records. The builder's sweep spares `.verdicts` by location, its name taken
@@ -2388,7 +2404,7 @@ tier above reads, share those stable geometry identities. Exact placements use a
 512-entry LRU keyed by stable shape identity and the exact placement-matrix
 bytes, with no rounding; eviction merely recomputes the same placement and a
 new managed `machinome test` run starts empty. A stock `FlexibleNode` keeps a
-separate 64-entry LRU of evaluated mesh, bounds and Manifold results keyed by
+separate 64-entry LRU of evaluated mesh, bounds and mesh-engine solids keyed by
 its full source identity, canonical structural identity, exact binding and
 serialized shape specification. That cache keeps geometry, never verdicts.
 A flexible leaf's verdicts are memoized in both tiers under its STATE
@@ -3354,6 +3370,7 @@ pure model closures without rejecting their pure declaration records.
 | Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
 | Node model | `machinome/node/` (`frames.py` and `presentation.py`, the SCAD presentation description, among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172 |
 | OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
+| Manifold mesh engine (leaves the core in layer 2) | `machinome/manifold/engine.py` | `manifold-engine` | 176 |
 | OpenSCAD engine | `machinome/scad_engine.py` (the seam, contract 2, `require_scad_engine`); `machinome/openscad/` (`engine.py`: `adopt`, `scad_text`, `require_binary`; `binary.py`; leaves the core at the cut) | `scad-engine-dependency`, `openscad-engine`, `openscad-dependency` | 046, 102, 171, 172, 173 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
@@ -3362,7 +3379,7 @@ pure model closures without rejecting their pure declaration records.
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
-| Test framework | `machinome/test.py`, `machinome/exact_cache.py`, `manager/test.py` | `test-framework`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161 |
+| Test framework | `machinome/test.py`, `machinome/mesh_engine.py`, `machinome/exact_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

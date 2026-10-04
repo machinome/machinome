@@ -9,12 +9,13 @@ termcolor==2.4.*
 asgiref==3.8.*
 uvicorn==0.30.*
 numpy==2.2.*
-manifold3d
 rtree
 scipy
 shapely==2.1.*
-# The kernel extras: occt, cadquery, build123d, step, molejo (and all).
+# The kernel extras: occt, manifold, cadquery, build123d, step, molejo (and
+# all).
 cadquery-ocp>=7.8.1,<7.9
+manifold3d
 cadquery==2.7.*
 build123d==0.10.*
 ocp-gordon>=0.2.2,<0.3

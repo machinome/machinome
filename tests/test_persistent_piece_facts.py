@@ -325,7 +325,7 @@ class LowerGeometryIdentityTest(TestCase):
         self.path.write_bytes(box_bytes((1, 2, 3)))
         base._base_mesh_cache.clear()
         test_module._bounds_cache.clear()
-        test_module._manifold_cache.clear()
+        test_module._mesh_solid_cache.clear()
         test_module._verdict_cache.clear()
         test_module._verdict_observations.clear()
 
@@ -333,7 +333,7 @@ class LowerGeometryIdentityTest(TestCase):
         old_mtime = self.path.stat().st_mtime_ns
         old_mesh = base.cached_base_mesh(str(self.path))
         old_bounds = test_module._cached_local_bounds(str(self.path))
-        old_manifold, _, _ = test_module._cached_manifold(str(self.path))
+        old_manifold, _, _ = test_module._cached_mesh_solid(str(self.path))
         old_identity = test_module._geometry_identity(str(self.path))
         other = Path(self.temporary.name) / 'other.stl'
         other.write_bytes(box_bytes((1, 1, 1)))
@@ -350,7 +350,7 @@ class LowerGeometryIdentityTest(TestCase):
 
         new_mesh = base.cached_base_mesh(str(self.path))
         new_bounds = test_module._cached_local_bounds(str(self.path))
-        new_manifold, _, _ = test_module._cached_manifold(str(self.path))
+        new_manifold, _, _ = test_module._cached_mesh_solid(str(self.path))
         new_identity = test_module._geometry_identity(str(self.path))
         new_key = test_module._verdict_key(
             new_identity, matrix, other_identity, matrix, 'faceted')
@@ -425,7 +425,7 @@ class LowerGeometryIdentityTest(TestCase):
         self.assertEqual(raced[0][4], old_identity)
         self.assertEqual(list(test_module._bounds_candidates(
             [record[2] for record in raced])), [])
-        self.assertAlmostEqual(test_module._placed_manifold(
+        self.assertAlmostEqual(test_module._placed_mesh_solid(
             raced[0], 'test', 'test').volume(), 1.0, places=4)
 
         with patch.object(test_module, '_compose_world_matrix',

@@ -1,0 +1,2823 @@
+{
+ "bench_commit": "872d8a3494c245c3a876a2959522d08061193175",
+ "values": {
+  "admission_compared": "<scratch>/holey.stl: the mesh engine refuses this mesh (NotManifold) -- cannot build a Manifold for spatial assertions; trimesh reads it as not watertight. Repair or replace the mesh; nothing is repaired here",
+  "admission_fusion_child": "faceted fusion HoleyFused cannot admit child holey: manifold3d reported Error.NotManifold",
+  "fusion_stl_length": 3284,
+  "fusion_stl_sha256": "90b7df64a726ab59cf4106d0ed7ec346a025c70c316c7824452c6c66a555f6a7",
+  "mesh_fallback": {
+   "far": [
+    true,
+    "0x0.0p+0"
+   ],
+   "flush": [
+    false,
+    "0x0.0p+0"
+   ],
+   "nested": [
+    false,
+    "0x1.0000000000000p+0"
+   ],
+   "overlapping": [
+    false,
+    "0x1.0000000000000p-1"
+   ],
+   "turned": [
+    false,
+    "0x1.fffffed9faa40p-1"
+   ]
+  },
+  "verdicts": {
+   "exact": {
+    "apart": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cubes_do_not_intersect": "passed",
+      "test_placed_cube_is_where_placed": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_animated": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: fixed should not interfere with moving (intersection volume 0.5)"
+     ],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p-1"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_contact": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_contained": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: outer should not interfere with inner (intersection volume 1.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_nested": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "assembly_integrity_single": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "assembly_integrity_triple": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: first should not interfere with third (intersection volume 0.5)"
+     ],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p-1"
+      ]
+     ]
+    },
+    "assembly_supported": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "bd8bc0d94416666af6fe5c5230e71ac54fb8312ae9d78fd8cc29728f4f640b65"
+      ],
+      [
+       4,
+       "d2801775b71e642891c24c541cfb5a890ee897493bea0bfc92e689785948690d"
+      ],
+      [
+       4,
+       "29585fce9f8ca7e0285d08d337bf753e22294e030f46469993ac4a6986539d3e"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "bb06326ed0a52f2b1d48e44a0e5fee6ab689e1d82d62b1abdd6ffdd19e4f1453"
+      ],
+      [
+       4,
+       "90688c2c461a6cd456222e9fb6340e5e31543cbd1816b26c7f663b40bfd41c0e"
+      ],
+      [
+       4,
+       "41fadce136565d265487047da5f9392c5dbc81ed9e94dfb8fc1cc43e647ae00f"
+      ],
+      [
+       4,
+       "cc600505bc346d2cc30b064aacb59f0ce6079359b43d124a9299b7144f0051f8"
+      ],
+      [
+       4,
+       "d298605612df809cd3c8d47b0e2cdd4c6d4ef46a21ed10a32345467bbb418143"
+      ],
+      [
+       4,
+       "d97f8b9f316f17cf9d8f6bf264d52f5c3fee87feabdcfe6daae9b62d931c469a"
+      ],
+      [
+       8,
+       "762067534ed1922ef80a89079d499b99c341fbc1161133d22be5956a66c35378"
+      ],
+      [
+       4,
+       "ed501b1f17416402ab85dd47be52b51ffacdf2c9d24b7419754471d9967485d8"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "9e83fdf8dc8579ef9db85f90442b52ec19356a6f4f8467d3f05e2242e4c69528"
+      ],
+      [
+       4,
+       "44deb056c51dd13ace8119f503e534a0beddc0681a0f5e5c80265690252168d9"
+      ],
+      [
+       4,
+       "fd126b39cd16cb04b57323124520e3385cb06f11f2cd817768d15634c721d8e7"
+      ],
+      [
+       4,
+       "2405c324e82a945a68393871dc0d79bc7484736566fbd7558dce9ee53d1d7d17"
+      ],
+      [
+       4,
+       "7a15ad1bf086051065caf71119d022f0008670421859c247fcc68704171f9fea"
+      ],
+      [
+       4,
+       "d2801775b71e642891c24c541cfb5a890ee897493bea0bfc92e689785948690d"
+      ],
+      [
+       4,
+       "90688c2c461a6cd456222e9fb6340e5e31543cbd1816b26c7f663b40bfd41c0e"
+      ],
+      [
+       4,
+       "44deb056c51dd13ace8119f503e534a0beddc0681a0f5e5c80265690252168d9"
+      ],
+      [
+       4,
+       "fd126b39cd16cb04b57323124520e3385cb06f11f2cd817768d15634c721d8e7"
+      ],
+      [
+       4,
+       "317f625344bca4bac7cf84512d1bbcc6f94a3df6f0e79811959676a3fc0b3be7"
+      ],
+      [
+       4,
+       "cc600505bc346d2cc30b064aacb59f0ce6079359b43d124a9299b7144f0051f8"
+      ],
+      [
+       4,
+       "29585fce9f8ca7e0285d08d337bf753e22294e030f46469993ac4a6986539d3e"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "d298605612df809cd3c8d47b0e2cdd4c6d4ef46a21ed10a32345467bbb418143"
+      ],
+      [
+       4,
+       "2405c324e82a945a68393871dc0d79bc7484736566fbd7558dce9ee53d1d7d17"
+      ],
+      [
+       4,
+       "7a15ad1bf086051065caf71119d022f0008670421859c247fcc68704171f9fea"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "0e58d77eacc6e25069c318cff75296ea471f8ff80c0228bb4eac90915c41a4b5"
+      ],
+      [
+       4,
+       "fd4d1b20daa988a2031d2d7270b9f901f4b1ff9841f9d2957aada0111b319b65"
+      ]
+     ],
+     "exceptions": [],
+     "floors": [
+      "d56b3d12b0cca62cb5dd09fa1302b8b94dfb6ef8a26c1c50559d8eb6efe9bd47",
+      "0eddc8aa2a2ed94eb64ca64eb6d4e2b6eb0eb8a94025b4e000e3da7d8c3c0880",
+      "a528b6afe09eb404417db1c98d3e2c1238ee1e4722a1b204b135040e109558a5",
+      "8781fb089ff17bf58527e635304ba649c532163d4ba70a40c712ba0781f794a4"
+     ],
+     "results": {
+      "test_hanging_hook_is_supported": "passed",
+      "test_mutually_leaning_pair_is_supported_through_the_ground": "passed",
+      "test_press_fit_is_supported_when_declared": "passed",
+      "test_resting_stack_is_supported": "passed",
+      "test_whole_assembly_is_supported_from_its_anchors": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 5 tests: 5 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.ffffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.99999fffffffdp+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.8000000000000p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.8000000000000p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.7fffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.8000000000000p+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.6666666666668p+1"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.99999fffffffdp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000002p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.6666666666668p+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000002p+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000004p+1"
+      ]
+     ]
+    },
+    "assembly_supported_balanced": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "661371219b45e3194b0c5f7e62cd86722b9829214bf9ef508513c9b70a25f68a"
+      ],
+      [
+       4,
+       "ce7c5f666170f4a2e84963dca81cf6fdff6061de64542dee60e6199902666685"
+      ],
+      [
+       4,
+       "d691eeceb50691081745a511db888790c596142674620644db15635fb0202ad0"
+      ],
+      [
+       4,
+       "836fb8667eeb9ee89e02a51a861b312565edf700860a1f300205a7e9ec2039e0"
+      ],
+      [
+       4,
+       "0d8d68f64d8c241323df5747353dab5d3fabc105232ceaffd111c547fd2e2b94"
+      ],
+      [
+       4,
+       "45de70f7e6c741c21dffbc548509aa4aa0d7521a0cbbeccda41d771514799104"
+      ],
+      [
+       4,
+       "e2d102a87729cbf43804b5a733a95250f3f00a04b88986f7f1d2a27303e4c5da"
+      ],
+      [
+       4,
+       "56a461fe77698033482b8d2fe04063d17690d83a8b9dc0b766a6f493969c923e"
+      ],
+      [
+       4,
+       "0dd75d0ab124d667faf336c538645da78ab42886ead75cc6c4c6f57ab24133ac"
+      ],
+      [
+       4,
+       "d2078b8f4fcd3da5f2f4189870c7086c905f7b795dc0dafdaa858c21b73b6044"
+      ],
+      [
+       4,
+       "790c064d2c37db6d831a047a66cb6dc34c1e4926bf856f71bd62ec5749604e55"
+      ],
+      [
+       4,
+       "45cbe35f35d4316eabb5360183691933e70bbd60464cb05dacc952e874696ac4"
+      ],
+      [
+       4,
+       "ce417db4d051025e832c036dfdd62d5a3326f2b817fab350f096e0620251f3ae"
+      ],
+      [
+       4,
+       "6a7f838412c7d9b0db088908bf78850a6acfd02e31bfc90965b02245d8445776"
+      ],
+      [
+       4,
+       "d4eeb2ee57b558d0dfb71fb93e71125620175904a548d1ba002146d40b2c4662"
+      ],
+      [
+       4,
+       "ab742f083b212bc1ca1cfeb3e0cb3d2bb6231d77a05081f1b779f8e2289716f0"
+      ]
+     ],
+     "exceptions": [],
+     "floors": [
+      "981cdee156c633bb88ad368d6b360324b6aaab90a1cfb7a499ed9af1cfd1aa71",
+      "3b4524e021301016a658aea0176534d1cde947f64f735b0bbc35a90aea4216a2",
+      "393b4e5a2eadc2f6bbb71d5ca2d8793e0b5434d0aa6f11c7f7bf4cc06598739b"
+     ],
+     "results": {
+      "test_bar_carried_at_both_ends_stands": "passed",
+      "test_cantilevered_pin_stands_on_its_couple": "passed",
+      "test_counterweighted_beam_stands": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 3 tests: 3 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000001p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.8000000000000p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.99997ffffffffp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.9999c00000002p+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffdp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffdp+1"
+      ]
+     ]
+    },
+    "assembly_supported_exact": {
+     "bodies": [],
+     "contacts": [
+      [
+       126,
+       "496afd32eb497804dcf217a23c2220b9efc7e0c33d6b957af11f78cc6f71b569"
+      ],
+      [
+       126,
+       "dc3e00baad44df4eb61b27c91997b3b0e638a1696e538171632c03dd59b84693"
+      ],
+      [
+       126,
+       "d8b5fe0937924dc75f6cfbb6007b8c62f37a2fc8450a8bd52fcf195ee3627aa5"
+      ]
+     ],
+     "exceptions": [],
+     "floors": [
+      "58cc059baca692fb0d23e311aea236f223617fba93d8fc32b526aef76c201263"
+     ],
+     "results": {
+      "test_exact_assembly_is_supported": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.3a0771b4ed5d2p+8"
+      ],
+      [
+       "exact",
+       false,
+       "0x1.c463abeccb2bep+4"
+      ]
+     ]
+    },
+    "assembly_supported_floating": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: floater, rider should be supported against gravity, but no support path reaches a grounded solid (dropped 1mm along gravity (0, 0, -1))",
+      "AssertionError: left, right should be supported against gravity, but no support path reaches a grounded solid (dropped 1.5mm along gravity (0, 0, -1))"
+     ],
+     "floors": [
+      "5b9759259e70e81a297b752e89df4e188a53b8a1fac6398e8ae46ae7e922a576",
+      "5c6fca5ff296390ab43b7d5ad09a25dd3322da90fad7d3fb40e61b15e798d280"
+     ],
+     "results": {
+      "test_floating_chain_is_reported": "failed",
+      "test_mutual_lean_without_ground_is_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 2 tests: 0 passed, 2 failed (verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.7fffffffffffep+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.8000000000000p+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.8000000000000p+3"
+      ]
+     ]
+    },
+    "assembly_supported_lifted": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "9e83fdf8dc8579ef9db85f90442b52ec19356a6f4f8467d3f05e2242e4c69528"
+      ],
+      [
+       4,
+       "44deb056c51dd13ace8119f503e534a0beddc0681a0f5e5c80265690252168d9"
+      ],
+      [
+       4,
+       "2405c324e82a945a68393871dc0d79bc7484736566fbd7558dce9ee53d1d7d17"
+      ]
+     ],
+     "exceptions": [
+      "AssertionError: block should be supported against gravity, but no support path reaches a grounded solid (dropped 1mm along gravity (0, 0, -1))"
+     ],
+     "floors": [
+      "9881a9b4b5e34a9b277d6d908185c54999790ad00a587c260364404376ceaa7b",
+      "1d414688fc0d759428314b2ee9e5b803ecdd79b6eb9e6f2e7827cb9db0c1649b",
+      "0bad31781b341e71d4b489aa54f95816bbf158099a9cd4643b7fccdafd2c2f4b"
+     ],
+     "results": {
+      "test_lifted_block_leaves_its_support": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ]
+     ]
+    },
+    "assembly_supported_unbalanced": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "661371219b45e3194b0c5f7e62cd86722b9829214bf9ef508513c9b70a25f68a"
+      ],
+      [
+       4,
+       "ce7c5f666170f4a2e84963dca81cf6fdff6061de64542dee60e6199902666685"
+      ],
+      [
+       4,
+       "0d8d68f64d8c241323df5747353dab5d3fabc105232ceaffd111c547fd2e2b94"
+      ],
+      [
+       4,
+       "13d6e527b4fc575791ababb2fe9de0eb0c72c3b71839c0f965e5bf33c4a55b08"
+      ],
+      [
+       4,
+       "c4ca2d653ee4336fd375662b6873c8ec80e0833a300ec251abded4682cb39bf2"
+      ]
+     ],
+     "exceptions": [
+      "AssertionError: bar cannot rest in frictionless static equilibrium on its detected contacts (unbalanced torque). Declare a hold that is real but outside frictionless statics in supports=[(supported, supporter)]",
+      "AssertionError: tippy cannot rest in frictionless static equilibrium on its detected contacts (unbalanced torque). Declare a hold that is real but outside frictionless statics in supports=[(supported, supporter)]"
+     ],
+     "floors": [
+      "981cdee156c633bb88ad368d6b360324b6aaab90a1cfb7a499ed9af1cfd1aa71",
+      "f8dabadb1ee38fc6a9b94734b94237a8b292b8e4554d26f92d0ee2bb30287ba1"
+     ],
+     "results": {
+      "test_one_end_supported_bar_is_reported": "failed",
+      "test_tippy_seed_is_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 2 tests: 0 passed, 2 failed (verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffdp+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffcp+2"
+      ]
+     ]
+    },
+    "axis": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_a_crash_is_caught_at_the_tick_it_appears": "passed",
+      "test_each_scenario_starts_from_the_declared_defaults": "passed",
+      "test_homing_stays_clear_of_the_stop": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 3 tests: 3 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffcp+1"
+      ]
+     ]
+    },
+    "collider": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: slider should not intersect obstacle (intersection volume 0.4999999999999998)"
+     ],
+     "floors": [],
+     "results": {
+      "test_slider_never_hits_obstacle": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffcp-2"
+      ]
+     ]
+    },
+    "conrod": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_rod_tip_follows_the_conrod_angle": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "cross_part_weld": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: left_bracket and right_bracket cannot be joined: they belong to different solids (left_bracket and right_bracket). Features weld only inside one printed part; parts placed by an assembly are separate by construction"
+     ],
+     "floors": [],
+     "results": {
+      "test_separate_parts_are_joined": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": []
+    },
+    "exact_clearance": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cleared_round_fit_has_no_solid_interference": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "exact",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "exact_subfacet_interference": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: left should not interfere with right (intersection volume 0.000942794899320106)"
+     ],
+     "floors": [],
+     "results": {
+      "test_real_subfacet_interference_is_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "exact",
+       false,
+       "0x1.ee4bca13486abp-11"
+      ]
+     ]
+    },
+    "exact_tight_fit": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_zero_clearance_round_fit_has_no_solid_interference": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "exact",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "flush": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_flush_faces_pass_with_volume_epsilon": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "flush_keyed": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_peg_blocked_beyond_play": "passed",
+      "test_peg_free_within_play": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe38p-6"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe37p-6"
+      ],
+      [
+       "faceted",
+       false,
+       "-0x1.4c40000000000p-61"
+      ],
+      [
+       "faceted",
+       false,
+       "-0x1.dc80000000000p-62"
+      ]
+     ]
+    },
+    "flush_keyed_strict": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: peg should be free at 5.0deg against slot (intersection volume -5.628533934504826e-19)"
+     ],
+     "floors": [],
+     "results": {
+      "test_peg_free_within_play": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "-0x1.4c40000000000p-61"
+      ]
+     ]
+    },
+    "flush_overlap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect b (intersection volume 0.49999999999999994), exceeds epsilon 1e-06"
+     ],
+     "floors": [],
+     "results": {
+      "test_real_overlap_still_reported_with_epsilon": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.fffffffffffffp-2"
+      ]
+     ]
+    },
+    "flush_strict": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect b (intersection volume 0.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_flush_faces_reported_without_epsilon": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "garage": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_children_get_attribute_derived_names": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "keyed": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_peg_blocked_beyond_play": "passed",
+      "test_peg_free_within_play": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe35p-6"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe33p-6"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "keyed_loose": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: peg should be blocked at 25.0deg against slot (no intersection)"
+     ],
+     "floors": [],
+     "results": {
+      "test_peg_blocked_beyond_play": "failed",
+      "test_peg_free_within_play": "passed"
+     },
+     "returncode": 1,
+     "summary": "Ran 2 tests: 1 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "leaky": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_a_leaks_and_clobbers_checkpoint": "passed",
+      "test_b_starts_clean_after_leaky_test": "passed",
+      "test_c_each_instant_starts_clean": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 3 tests: 3 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "long_params": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_mesh_exists": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "named_sizes": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_distinctly_named_cubes_get_correct_independent_geometry": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "nested": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_nested_cube_moves_with_time": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "occt_only": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_the_far_part_is_clear_of_the_fused_block": "passed",
+      "test_the_probe_overlaps_the_fused_block": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "exact",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "exact",
+       false,
+       "0x1.f3ffffffffffep+6"
+      ],
+      [
+       "exact",
+       false,
+       "0x1.f3ffffffffffep+6"
+      ]
+     ]
+    },
+    "overlapping": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect b (intersection volume 0.5)"
+     ],
+     "floors": [],
+     "results": {
+      "test_overlapping_cubes_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p-1"
+      ]
+     ]
+    },
+    "separated": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_no_pairwise_intersections": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "separated_overlap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect c (intersection volume 0.7)"
+     ],
+     "floors": [],
+     "results": {
+      "test_no_pairwise_intersections": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.6666666666666p-1"
+      ]
+     ]
+    },
+    "slider": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cube_at_absolute_position": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "solid_integrity_green": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_solid_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "solid_integrity_red": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: SolidIntegrityRed should be one connected body, but its STL contains 2 connected bodies"
+     ],
+     "floors": [],
+     "results": {
+      "test_solid_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": []
+    },
+    "steered_collision": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: wheel should not intersect obstacle (intersection volume 1.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_wheel_never_hits_obstacle": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+0"
+      ]
+     ]
+    },
+    "steered_wheel": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_wheel_tracks_both_animators": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (verdict store off)",
+     "verdicts": []
+    },
+    "trap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cubes_do_not_intersect": "passed",
+      "test_placed_cube_is_where_placed": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "unwelded": {
+     "bodies": [
+      2
+     ],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: hub and boss should be joined into one body, but their union has 2 connected components (shared volume 0.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_hub_and_boss_are_joined": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "welded": {
+     "bodies": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_features_stay_joined_through_the_cycle": "passed",
+      "test_the_weld_meets_its_required_volume": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ]
+     ]
+    },
+    "wrapped": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_leaf_mesh_is_at_world_position": "passed",
+      "test_wrapper_placement_separates_the_parts": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "wrapped_overlap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: cube should not intersect reference (intersection volume 0.9999999999999997)"
+     ],
+     "floors": [],
+     "results": {
+      "test_wrapped_leaf_clears_reference": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffdp-1"
+      ]
+     ]
+    }
+   },
+   "faceted": {
+    "apart": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cubes_do_not_intersect": "passed",
+      "test_placed_cube_is_where_placed": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_animated": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: fixed should not interfere with moving (intersection volume 0.5)"
+     ],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p-1"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_contact": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_contained": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: outer should not interfere with inner (intersection volume 1.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+0"
+      ]
+     ]
+    },
+    "assembly_integrity_nested": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "assembly_integrity_single": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "assembly_integrity_triple": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: first should not interfere with third (intersection volume 0.5)"
+     ],
+     "floors": [],
+     "results": {
+      "test_assembly_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p-1"
+      ]
+     ]
+    },
+    "assembly_supported": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "bd8bc0d94416666af6fe5c5230e71ac54fb8312ae9d78fd8cc29728f4f640b65"
+      ],
+      [
+       4,
+       "d2801775b71e642891c24c541cfb5a890ee897493bea0bfc92e689785948690d"
+      ],
+      [
+       4,
+       "29585fce9f8ca7e0285d08d337bf753e22294e030f46469993ac4a6986539d3e"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "bb06326ed0a52f2b1d48e44a0e5fee6ab689e1d82d62b1abdd6ffdd19e4f1453"
+      ],
+      [
+       4,
+       "90688c2c461a6cd456222e9fb6340e5e31543cbd1816b26c7f663b40bfd41c0e"
+      ],
+      [
+       4,
+       "41fadce136565d265487047da5f9392c5dbc81ed9e94dfb8fc1cc43e647ae00f"
+      ],
+      [
+       4,
+       "cc600505bc346d2cc30b064aacb59f0ce6079359b43d124a9299b7144f0051f8"
+      ],
+      [
+       4,
+       "d298605612df809cd3c8d47b0e2cdd4c6d4ef46a21ed10a32345467bbb418143"
+      ],
+      [
+       4,
+       "d97f8b9f316f17cf9d8f6bf264d52f5c3fee87feabdcfe6daae9b62d931c469a"
+      ],
+      [
+       8,
+       "762067534ed1922ef80a89079d499b99c341fbc1161133d22be5956a66c35378"
+      ],
+      [
+       4,
+       "ed501b1f17416402ab85dd47be52b51ffacdf2c9d24b7419754471d9967485d8"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "9e83fdf8dc8579ef9db85f90442b52ec19356a6f4f8467d3f05e2242e4c69528"
+      ],
+      [
+       4,
+       "44deb056c51dd13ace8119f503e534a0beddc0681a0f5e5c80265690252168d9"
+      ],
+      [
+       4,
+       "fd126b39cd16cb04b57323124520e3385cb06f11f2cd817768d15634c721d8e7"
+      ],
+      [
+       4,
+       "2405c324e82a945a68393871dc0d79bc7484736566fbd7558dce9ee53d1d7d17"
+      ],
+      [
+       4,
+       "7a15ad1bf086051065caf71119d022f0008670421859c247fcc68704171f9fea"
+      ],
+      [
+       4,
+       "d2801775b71e642891c24c541cfb5a890ee897493bea0bfc92e689785948690d"
+      ],
+      [
+       4,
+       "90688c2c461a6cd456222e9fb6340e5e31543cbd1816b26c7f663b40bfd41c0e"
+      ],
+      [
+       4,
+       "44deb056c51dd13ace8119f503e534a0beddc0681a0f5e5c80265690252168d9"
+      ],
+      [
+       4,
+       "fd126b39cd16cb04b57323124520e3385cb06f11f2cd817768d15634c721d8e7"
+      ],
+      [
+       4,
+       "317f625344bca4bac7cf84512d1bbcc6f94a3df6f0e79811959676a3fc0b3be7"
+      ],
+      [
+       4,
+       "cc600505bc346d2cc30b064aacb59f0ce6079359b43d124a9299b7144f0051f8"
+      ],
+      [
+       4,
+       "29585fce9f8ca7e0285d08d337bf753e22294e030f46469993ac4a6986539d3e"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "d298605612df809cd3c8d47b0e2cdd4c6d4ef46a21ed10a32345467bbb418143"
+      ],
+      [
+       4,
+       "2405c324e82a945a68393871dc0d79bc7484736566fbd7558dce9ee53d1d7d17"
+      ],
+      [
+       4,
+       "7a15ad1bf086051065caf71119d022f0008670421859c247fcc68704171f9fea"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       0,
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      [
+       4,
+       "0e58d77eacc6e25069c318cff75296ea471f8ff80c0228bb4eac90915c41a4b5"
+      ],
+      [
+       4,
+       "fd4d1b20daa988a2031d2d7270b9f901f4b1ff9841f9d2957aada0111b319b65"
+      ]
+     ],
+     "exceptions": [],
+     "floors": [
+      "d56b3d12b0cca62cb5dd09fa1302b8b94dfb6ef8a26c1c50559d8eb6efe9bd47",
+      "0eddc8aa2a2ed94eb64ca64eb6d4e2b6eb0eb8a94025b4e000e3da7d8c3c0880",
+      "a528b6afe09eb404417db1c98d3e2c1238ee1e4722a1b204b135040e109558a5",
+      "8781fb089ff17bf58527e635304ba649c532163d4ba70a40c712ba0781f794a4"
+     ],
+     "results": {
+      "test_hanging_hook_is_supported": "passed",
+      "test_mutually_leaning_pair_is_supported_through_the_ground": "passed",
+      "test_press_fit_is_supported_when_declared": "passed",
+      "test_resting_stack_is_supported": "passed",
+      "test_whole_assembly_is_supported_from_its_anchors": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 5 tests: 5 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.ffffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.99999fffffffdp+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.8000000000000p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.8000000000000p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.7fffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.8000000000000p+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.6666666666668p+1"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.99999fffffffdp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000002p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.6666666666668p+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000002p+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000004p+1"
+      ]
+     ]
+    },
+    "assembly_supported_balanced": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "661371219b45e3194b0c5f7e62cd86722b9829214bf9ef508513c9b70a25f68a"
+      ],
+      [
+       4,
+       "ce7c5f666170f4a2e84963dca81cf6fdff6061de64542dee60e6199902666685"
+      ],
+      [
+       4,
+       "d691eeceb50691081745a511db888790c596142674620644db15635fb0202ad0"
+      ],
+      [
+       4,
+       "836fb8667eeb9ee89e02a51a861b312565edf700860a1f300205a7e9ec2039e0"
+      ],
+      [
+       4,
+       "0d8d68f64d8c241323df5747353dab5d3fabc105232ceaffd111c547fd2e2b94"
+      ],
+      [
+       4,
+       "45de70f7e6c741c21dffbc548509aa4aa0d7521a0cbbeccda41d771514799104"
+      ],
+      [
+       4,
+       "e2d102a87729cbf43804b5a733a95250f3f00a04b88986f7f1d2a27303e4c5da"
+      ],
+      [
+       4,
+       "56a461fe77698033482b8d2fe04063d17690d83a8b9dc0b766a6f493969c923e"
+      ],
+      [
+       4,
+       "0dd75d0ab124d667faf336c538645da78ab42886ead75cc6c4c6f57ab24133ac"
+      ],
+      [
+       4,
+       "d2078b8f4fcd3da5f2f4189870c7086c905f7b795dc0dafdaa858c21b73b6044"
+      ],
+      [
+       4,
+       "790c064d2c37db6d831a047a66cb6dc34c1e4926bf856f71bd62ec5749604e55"
+      ],
+      [
+       4,
+       "45cbe35f35d4316eabb5360183691933e70bbd60464cb05dacc952e874696ac4"
+      ],
+      [
+       4,
+       "ce417db4d051025e832c036dfdd62d5a3326f2b817fab350f096e0620251f3ae"
+      ],
+      [
+       4,
+       "6a7f838412c7d9b0db088908bf78850a6acfd02e31bfc90965b02245d8445776"
+      ],
+      [
+       4,
+       "d4eeb2ee57b558d0dfb71fb93e71125620175904a548d1ba002146d40b2c4662"
+      ],
+      [
+       4,
+       "ab742f083b212bc1ca1cfeb3e0cb3d2bb6231d77a05081f1b779f8e2289716f0"
+      ]
+     ],
+     "exceptions": [],
+     "floors": [
+      "981cdee156c633bb88ad368d6b360324b6aaab90a1cfb7a499ed9af1cfd1aa71",
+      "3b4524e021301016a658aea0176534d1cde947f64f735b0bbc35a90aea4216a2",
+      "393b4e5a2eadc2f6bbb71d5ca2d8793e0b5434d0aa6f11c7f7bf4cc06598739b"
+     ],
+     "results": {
+      "test_bar_carried_at_both_ends_stands": "passed",
+      "test_cantilevered_pin_stands_on_its_couple": "passed",
+      "test_counterweighted_beam_stands": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 3 tests: 3 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000001p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.8000000000000p+3"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.99997ffffffffp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.9999c00000002p+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffdp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffcp+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffdp+1"
+      ]
+     ]
+    },
+    "assembly_supported_exact": {
+     "bodies": [],
+     "contacts": [
+      [
+       126,
+       "496afd32eb497804dcf217a23c2220b9efc7e0c33d6b957af11f78cc6f71b569"
+      ],
+      [
+       126,
+       "dc3e00baad44df4eb61b27c91997b3b0e638a1696e538171632c03dd59b84693"
+      ],
+      [
+       126,
+       "d8b5fe0937924dc75f6cfbb6007b8c62f37a2fc8450a8bd52fcf195ee3627aa5"
+      ]
+     ],
+     "exceptions": [],
+     "floors": [
+      "58cc059baca692fb0d23e311aea236f223617fba93d8fc32b526aef76c201263"
+     ],
+     "results": {
+      "test_exact_assembly_is_supported": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.3a0771b4ed5d2p+8"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.c433ae09f50dap+4"
+      ]
+     ]
+    },
+    "assembly_supported_floating": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: floater, rider should be supported against gravity, but no support path reaches a grounded solid (dropped 1mm along gravity (0, 0, -1))",
+      "AssertionError: left, right should be supported against gravity, but no support path reaches a grounded solid (dropped 1.5mm along gravity (0, 0, -1))"
+     ],
+     "floors": [
+      "5b9759259e70e81a297b752e89df4e188a53b8a1fac6398e8ae46ae7e922a576",
+      "5c6fca5ff296390ab43b7d5ad09a25dd3322da90fad7d3fb40e61b15e798d280"
+     ],
+     "results": {
+      "test_floating_chain_is_reported": "failed",
+      "test_mutual_lean_without_ground_is_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 2 tests: 0 passed, 2 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.7fffffffffffep+1"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.8000000000000p+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.8000000000000p+3"
+      ]
+     ]
+    },
+    "assembly_supported_lifted": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "9e83fdf8dc8579ef9db85f90442b52ec19356a6f4f8467d3f05e2242e4c69528"
+      ],
+      [
+       4,
+       "44deb056c51dd13ace8119f503e534a0beddc0681a0f5e5c80265690252168d9"
+      ],
+      [
+       4,
+       "2405c324e82a945a68393871dc0d79bc7484736566fbd7558dce9ee53d1d7d17"
+      ]
+     ],
+     "exceptions": [
+      "AssertionError: block should be supported against gravity, but no support path reaches a grounded solid (dropped 1mm along gravity (0, 0, -1))"
+     ],
+     "floors": [
+      "9881a9b4b5e34a9b277d6d908185c54999790ad00a587c260364404376ceaa7b",
+      "1d414688fc0d759428314b2ee9e5b803ecdd79b6eb9e6f2e7827cb9db0c1649b",
+      "0bad31781b341e71d4b489aa54f95816bbf158099a9cd4643b7fccdafd2c2f4b"
+     ],
+     "results": {
+      "test_lifted_block_leaves_its_support": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ],
+      [
+       null,
+       false,
+       "0x1.0000000000000p+4"
+      ]
+     ]
+    },
+    "assembly_supported_unbalanced": {
+     "bodies": [],
+     "contacts": [
+      [
+       4,
+       "661371219b45e3194b0c5f7e62cd86722b9829214bf9ef508513c9b70a25f68a"
+      ],
+      [
+       4,
+       "ce7c5f666170f4a2e84963dca81cf6fdff6061de64542dee60e6199902666685"
+      ],
+      [
+       4,
+       "0d8d68f64d8c241323df5747353dab5d3fabc105232ceaffd111c547fd2e2b94"
+      ],
+      [
+       4,
+       "13d6e527b4fc575791ababb2fe9de0eb0c72c3b71839c0f965e5bf33c4a55b08"
+      ],
+      [
+       4,
+       "c4ca2d653ee4336fd375662b6873c8ec80e0833a300ec251abded4682cb39bf2"
+      ]
+     ],
+     "exceptions": [
+      "AssertionError: bar cannot rest in frictionless static equilibrium on its detected contacts (unbalanced torque). Declare a hold that is real but outside frictionless statics in supports=[(supported, supporter)]",
+      "AssertionError: tippy cannot rest in frictionless static equilibrium on its detected contacts (unbalanced torque). Declare a hold that is real but outside frictionless statics in supports=[(supported, supporter)]"
+     ],
+     "floors": [
+      "981cdee156c633bb88ad368d6b360324b6aaab90a1cfb7a499ed9af1cfd1aa71",
+      "f8dabadb1ee38fc6a9b94734b94237a8b292b8e4554d26f92d0ee2bb30287ba1"
+     ],
+     "results": {
+      "test_one_end_supported_bar_is_reported": "failed",
+      "test_tippy_seed_is_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 2 tests: 0 passed, 2 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       null,
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+2"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffdp+1"
+      ],
+      [
+       null,
+       false,
+       "0x1.ffffffffffffcp+2"
+      ]
+     ]
+    },
+    "axis": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_a_crash_is_caught_at_the_tick_it_appears": "passed",
+      "test_each_scenario_starts_from_the_declared_defaults": "passed",
+      "test_homing_stays_clear_of_the_stop": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 3 tests: 3 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffcp+1"
+      ]
+     ]
+    },
+    "collider": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: slider should not intersect obstacle (intersection volume 0.4999999999999998)"
+     ],
+     "floors": [],
+     "results": {
+      "test_slider_never_hits_obstacle": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffcp-2"
+      ]
+     ]
+    },
+    "conrod": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_rod_tip_follows_the_conrod_angle": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "cross_part_weld": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: left_bracket and right_bracket cannot be joined: they belong to different solids (left_bracket and right_bracket). Features weld only inside one printed part; parts placed by an assembly are separate by construction"
+     ],
+     "floors": [],
+     "results": {
+      "test_separate_parts_are_joined": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "exact_clearance": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cleared_round_fit_has_no_solid_interference": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "exact_subfacet_interference": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_real_subfacet_interference_is_reported": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "exact_tight_fit": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: shaft should not interfere with bore (intersection volume 0.12080618894740745)"
+     ],
+     "floors": [],
+     "results": {
+      "test_zero_clearance_round_fit_has_no_solid_interference": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.eed2786aefa9fp-4"
+      ]
+     ]
+    },
+    "flush": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_flush_faces_pass_with_volume_epsilon": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "flush_keyed": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_peg_blocked_beyond_play": "passed",
+      "test_peg_free_within_play": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe38p-6"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe37p-6"
+      ],
+      [
+       "faceted",
+       false,
+       "-0x1.4c40000000000p-61"
+      ],
+      [
+       "faceted",
+       false,
+       "-0x1.dc80000000000p-62"
+      ]
+     ]
+    },
+    "flush_keyed_strict": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: peg should be free at 5.0deg against slot (intersection volume -5.628533934504826e-19)"
+     ],
+     "floors": [],
+     "results": {
+      "test_peg_free_within_play": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "-0x1.4c40000000000p-61"
+      ]
+     ]
+    },
+    "flush_overlap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect b (intersection volume 0.49999999999999994), exceeds epsilon 1e-06"
+     ],
+     "floors": [],
+     "results": {
+      "test_real_overlap_still_reported_with_epsilon": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.fffffffffffffp-2"
+      ]
+     ]
+    },
+    "flush_strict": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect b (intersection volume 0.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_flush_faces_reported_without_epsilon": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "garage": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_children_get_attribute_derived_names": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "keyed": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_peg_blocked_beyond_play": "passed",
+      "test_peg_free_within_play": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe35p-6"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.63833b6c5fe33p-6"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "keyed_loose": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: peg should be blocked at 25.0deg against slot (no intersection)"
+     ],
+     "floors": [],
+     "results": {
+      "test_peg_blocked_beyond_play": "failed",
+      "test_peg_free_within_play": "passed"
+     },
+     "returncode": 1,
+     "summary": "Ran 2 tests: 1 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "leaky": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_a_leaks_and_clobbers_checkpoint": "passed",
+      "test_b_starts_clean_after_leaky_test": "passed",
+      "test_c_each_instant_starts_clean": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 3 tests: 3 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "long_params": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_mesh_exists": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "named_sizes": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_distinctly_named_cubes_get_correct_independent_geometry": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "nested": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_nested_cube_moves_with_time": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "occt_only": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_the_far_part_is_clear_of_the_fused_block": "passed",
+      "test_the_probe_overlaps_the_fused_block": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.f400000000000p+6"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.f400000000000p+6"
+      ]
+     ]
+    },
+    "overlapping": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect b (intersection volume 0.5)"
+     ],
+     "floors": [],
+     "results": {
+      "test_overlapping_cubes_reported": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p-1"
+      ]
+     ]
+    },
+    "separated": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_no_pairwise_intersections": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "separated_overlap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: a should not intersect c (intersection volume 0.7)"
+     ],
+     "floors": [],
+     "results": {
+      "test_no_pairwise_intersections": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.6666666666666p-1"
+      ]
+     ]
+    },
+    "slider": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cube_at_absolute_position": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "solid_integrity_green": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_solid_integrity": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "solid_integrity_red": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: SolidIntegrityRed should be one connected body, but its STL contains 2 connected bodies"
+     ],
+     "floors": [],
+     "results": {
+      "test_solid_integrity": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "steered_collision": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: wheel should not intersect obstacle (intersection volume 1.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_wheel_never_hits_obstacle": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.0000000000000p+0"
+      ]
+     ]
+    },
+    "steered_wheel": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_wheel_tracks_both_animators": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 1 tests: 1 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": []
+    },
+    "trap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_cubes_do_not_intersect": "passed",
+      "test_placed_cube_is_where_placed": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "unwelded": {
+     "bodies": [
+      2
+     ],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: hub and boss should be joined into one body, but their union has 2 connected components (shared volume 0.0)"
+     ],
+     "floors": [],
+     "results": {
+      "test_hub_and_boss_are_joined": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "welded": {
+     "bodies": [
+      1,
+      1,
+      1,
+      1,
+      1
+     ],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_features_stay_joined_through_the_cycle": "passed",
+      "test_the_weld_meets_its_required_volume": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ],
+      [
+       "faceted",
+       false,
+       "0x1.999999999999ap-2"
+      ]
+     ]
+    },
+    "wrapped": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [],
+     "floors": [],
+     "results": {
+      "test_leaf_mesh_is_at_world_position": "passed",
+      "test_wrapper_placement_separates_the_parts": "passed"
+     },
+     "returncode": 0,
+     "summary": "Ran 2 tests: 2 passed, 0 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       true,
+       "0x0.0p+0"
+      ]
+     ]
+    },
+    "wrapped_overlap": {
+     "bodies": [],
+     "contacts": [],
+     "exceptions": [
+      "AssertionError: cube should not intersect reference (intersection volume 0.9999999999999997)"
+     ],
+     "floors": [],
+     "results": {
+      "test_wrapped_leaf_clears_reference": "failed"
+     },
+     "returncode": 1,
+     "summary": "Ran 1 tests: 0 passed, 1 failed (faceted kernel, volume epsilon 0 mm\u00b3, verdict store off)",
+     "verdicts": [
+      [
+       "faceted",
+       false,
+       "0x1.ffffffffffffdp-1"
+      ]
+     ]
+    }
+   }
+  }
+ }
+}

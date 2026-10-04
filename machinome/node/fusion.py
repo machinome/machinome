@@ -117,42 +117,38 @@ class FusionNode(InternalNode):
                   linear_deflection, angular_deflection, digest, fingerprint)
 
     def _generate_faceted_stl(self):
-        """Union current child artifacts in this fusion's local frame."""
+        """Union current child artifacts in this fusion's local frame,
+        through the mesh engine."""
         if self._up_to_date(self.stl_file):
             return
-        Manifold, Mesh = require_mesh_engine(
+        engine = require_mesh_engine(
             f"faceted fusion {self.name}",
             "directly unioning its children's mesh artifacts")
 
-        manifolds = []
+        solids = []
         for child in self.children:
             mesh = cached_base_mesh(child.stl_file).copy()
             mesh.apply_transform(_compose_solid_matrix(child))
-            manifold = Manifold(mesh=Mesh(
-                vert_properties=np.asarray(mesh.vertices, np.float32),
-                tri_verts=np.asarray(mesh.faces, np.uint32),
-            ))
-            status = manifold.status()
-            if str(status).split('.')[-1] != 'NoError':
+            solid = engine.solid_from_mesh(mesh.vertices, mesh.faces)
+            fault = engine.fault(solid)
+            if fault is not None:
                 raise ValueError(
                     f"faceted fusion {self.name} cannot admit child "
-                    f"{child.name}: manifold3d reported {status}")
-            manifolds.append(manifold)
+                    f"{child.name}: {engine.identity()[0]} reported {fault}")
+            solids.append(solid)
 
-        result = manifolds[0]
-        for manifold in manifolds[1:]:
-            result = result + manifold
-        status = result.status()
-        if str(status).split('.')[-1] != 'NoError':
+        result = engine.unite_solids(solids)
+        fault = engine.fault(result)
+        if fault is not None:
             raise ValueError(
-                f"faceted fusion {self.name} failed: manifold3d reported "
-                f"{status}")
+                f"faceted fusion {self.name} failed: "
+                f"{engine.identity()[0]} reported {fault}")
 
-        output = result.to_mesh()
+        vertices, faces = engine.mesh_arrays(result)
         trimesh = __import__('trimesh')
         fused = trimesh.Trimesh(
-            vertices=np.asarray(output.vert_properties[:, :3], np.float64),
-            faces=np.asarray(output.tri_verts, np.int64), process=False,
+            vertices=np.asarray(vertices, np.float64),
+            faces=np.asarray(faces, np.int64), process=False,
         )
         _atomic_write_bytes(
             self.stl_file, fused.export(file_type='stl'), self.mtime_ns,

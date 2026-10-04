@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The CAD kernels are extras, and a kernel module refuses an absent one
-(OpenSpec change `lean-install`, capability `kernel-extras`).
+(OpenSpec changes `lean-install` and `mesh-engine`, capability
+`kernel-extras`).
 
 Two halves. The metadata is read from `pyproject.toml`, `requirements.txt`
 and `tox.ini`: no kernel is a required dependency, each is installed by the
@@ -31,18 +32,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 #: The kernels no bare install carries, by distribution name.
 KERNEL_DISTRIBUTIONS = ('cadquery', 'build123d', 'ocp-gordon', 'molejo',
-                        'cadquery-ocp')
+                        'cadquery-ocp', 'manifold3d')
 
 #: Each extra and the requirements it lists, design.md Decision 3, written
 #: out here rather than read from the file under test.
 EXTRAS = {
     'occt': {'cadquery-ocp>=7.8.1,<7.9'},
+    'manifold': {'manifold3d'},
     'cadquery': {'cadquery==2.7.*', 'machinome[occt]'},
     'build123d': {'build123d==0.10.*', 'ocp-gordon>=0.2.2,<0.3',
                   'machinome[occt]'},
     'step': {'cadquery==2.7.*', 'machinome[occt]'},
     'molejo': {'molejo[brep]==0.2.*', 'machinome[occt]'},
-    'all': {'machinome[cadquery,build123d,step,molejo,occt]'},
+    'all': {'machinome[cadquery,build123d,step,molejo,occt,manifold]'},
 }
 
 #: Every kernel module, the extra its address names, the node types (or the
@@ -60,6 +62,9 @@ MODULES = {
         'molejo', 'machinome.node.molejo (MolejoNode)', ('molejo', 'OCP')),
     'machinome.occt.engine': (
         'occt', 'the exact engine (machinome.occt.engine)', ('OCP',)),
+    'machinome.manifold.engine': (
+        'manifold', 'the mesh engine (machinome.manifold.engine)',
+        ('manifold3d',)),
 }
 
 
@@ -110,7 +115,7 @@ class KernelMetadataTest(TestCase):
         required = names(project()['dependencies'])
 
         self.assertEqual(required & set(KERNEL_DISTRIBUTIONS), set())
-        self.assertIn('manifold3d', required)
+        self.assertNotIn('manifold3d', required)
         self.assertIn('watchdog', required)
 
     def test_each_extra_lists_what_its_module_needs(self):
@@ -127,11 +132,21 @@ class KernelMetadataTest(TestCase):
             with self.subTest(extra=extra):
                 self.assertIn('machinome[occt]', extras[extra])
 
+    def test_no_node_extra_includes_the_mesh_engine(self):
+        extras = project()['optional-dependencies']
+
+        for extra in ('cadquery', 'build123d', 'step', 'molejo'):
+            with self.subTest(extra=extra):
+                self.assertFalse(any(
+                    'manifold' in Requirement(line).extras
+                    for line in extras[extra]))
+
     def test_all_names_every_kernel_extra(self):
         (line,) = project()['optional-dependencies']['all']
 
         self.assertEqual(Requirement(line).extras,
-                         {'cadquery', 'build123d', 'step', 'molejo', 'occt'})
+                         {'cadquery', 'build123d', 'step', 'molejo', 'occt',
+                          'manifold'})
 
     def test_the_development_extra_includes_all(self):
         self.assertIn('machinome[all]',
@@ -151,8 +166,8 @@ class KernelMetadataTest(TestCase):
         with open(os.path.join(ROOT, 'requirements.txt')) as stream:
             listed = {line.strip() for line in stream
                       if line.strip() and not line.startswith('#')}
-        concrete = {line for extra in ('occt', 'cadquery', 'build123d',
-                                       'step', 'molejo')
+        concrete = {line for extra in ('occt', 'manifold', 'cadquery',
+                                       'build123d', 'step', 'molejo')
                     for line in EXTRAS[extra]
                     if not line.startswith('machinome[')}
 
@@ -199,10 +214,13 @@ class KernelRefusalTest(TestCase):
                                  f'importing {module} imported {kernel}')
 
     def test_a_broken_kernel_reports_its_own_failure(self):
-        report, run = imported('machinome.node.step', broken=('cadquery',),
-                               blocked=False)
+        for module, kernel in (('machinome.node.step', 'cadquery'),
+                               ('machinome.manifold.engine', 'manifold3d')):
+            with self.subTest(module=module):
+                report, run = imported(module, broken=(kernel,),
+                                       blocked=False)
 
-        self.assertIsNotNone(report, run.output)
-        self.assertEqual(report['type'], 'ImportError')
-        self.assertEqual(report['message'], 'broken cadquery')
-        self.assertIsNone(report['extra'])
+                self.assertIsNotNone(report, run.output)
+                self.assertEqual(report['type'], 'ImportError')
+                self.assertEqual(report['message'], f'broken {kernel}')
+                self.assertIsNone(report['extra'])

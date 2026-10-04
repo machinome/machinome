@@ -302,23 +302,30 @@ class AcrossProcesses(TestCase):
 
 
 class WithoutTheMeshEngine(TestCase):
-    """Task 6.6: an all-exact project keeps its store where `manifold3d`
-    cannot be imported (the `tests/mesh_engine_absent.py` technique)."""
+    """Task 6.6: an all-exact project keeps its store where neither
+    `manifold3d` nor the mesh engine's package `machinome.manifold` can be
+    imported (the finder of `tests/mesh_engine_absent.py`, in every
+    process of both runs), and neither run asks for the engine."""
 
     def test_an_all_exact_fixture_is_served_on_its_second_run(self):
         build_dir = tempfile.mkdtemp(prefix='machinome-verdict-exact-')
         self.addCleanup(shutil.rmtree, build_dir, ignore_errors=True)
-        env = {'SOLID_BUILD_DIR': build_dir}
         reference = 'tests/meta_project/exact_clearance.py'
 
-        first = run(REPO_DIR, reference, env=env,
-                    prefix=mesh_engine_absent.BLOCKER)
-        second = run(REPO_DIR, reference, env=env,
-                     prefix=mesh_engine_absent.BLOCKER)
+        with mesh_engine_absent.finder() as finder:
+            env = dict(finder.environment, SOLID_BUILD_DIR=build_dir)
+            first = run(REPO_DIR, reference, env=env)
+            first_reports = finder.run(first)
+            second = run(REPO_DIR, reference, env=env)
+            second_reports = finder.run(second)
 
-        for child in (first, second):
+        for child, reports in ((first, first_reports),
+                               (second, second_reports)):
             self.assertEqual(child.returncode, 0, child.stderr)
             self.assertNotIn('manifold3d', child.stdout)
+            self.assertEqual(reports.asks('machinome.manifold'), 0)
+            self.assertLessEqual(reports.askers('manifold3d'),
+                                 mesh_engine_absent.TRIMESH_PROBES)
         self.assertGreater(first.counts['computations'], 0)
         self.assertEqual(second.counts['computations'], 0)
         self.assertEqual(second.counts['store_hits'],

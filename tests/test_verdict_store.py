@@ -67,6 +67,9 @@ asserter = test_module.TestCase()
 
 KERNEL_MODULES = ('cadquery', 'OCP', 'manifold3d', 'trimesh', 'molejo')
 
+#: A mesh engine identity, as a faceted verdict's key carries one.
+ENGINE = ('manifold3d', '3.5.2')
+
 
 def bits(value):
     """A float's IEEE-754 bytes: what 'bit for bit' compares."""
@@ -76,14 +79,14 @@ def bits(value):
 def forget_process_state():
     """Drop everything a fresh interpreter would not have: the in-process
     memo and its observations, the store's loaded index, pending records,
-    digest memo and stamp, the exact shape cache and the Manifold, bounds
+    digest memo and stamp, the exact shape cache and the mesh-solid, bounds
     and base-mesh caches."""
     store._reset()
     test_module._verdict_cache.clear()
     test_module._verdict_observations.clear()
-    test_module._manifold_cache.clear()
+    test_module._mesh_solid_cache.clear()
     test_module._bounds_cache.clear()
-    test_module._flexible_manifold_cache.clear()
+    test_module._flexible_mesh_solid_cache.clear()
     base_module._base_mesh_cache.clear()
     clear_exact_shape_caches()
 
@@ -530,9 +533,9 @@ class QuantumInThePersistedKey(StoreTestCase):
 
         self.assertNotEqual(
             store.persisted_key('faceted', self.Q, identity, identity,
-                                key_q[4]),
+                                key_q[4], ENGINE),
             store.persisted_key('faceted', 2 * self.Q, identity, identity,
-                                key_double_q[4]))
+                                key_double_q[4], ENGINE))
 
     def test_a_verdict_kept_at_one_quantum_is_not_served_at_another(self):
         first = self.stl('first', box((2, 2, 2)))
@@ -681,7 +684,7 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         second = self.stl('second', box((2, 2, 2)))
         other = os.path.join(self.scratch, 'other.stl')
         box((3, 3, 3)).export(other)
-        real = test_module._cached_manifold
+        real = test_module._cached_mesh_solid
 
         def built_then_rewritten(stl_file, *arguments, **keywords):
             built = real(stl_file, *arguments, **keywords)
@@ -692,7 +695,7 @@ class NothingKeptForTheUncacheable(StoreTestCase):
                                      before.st_mtime_ns))
             return built
 
-        with patch.object(test_module, '_cached_manifold',
+        with patch.object(test_module, '_cached_mesh_solid',
                           side_effect=built_then_rewritten):
             test_module._intersection_stats(
                 *self.faceted_pair(first, second, [1.5, 0, 0]))
@@ -1301,3 +1304,73 @@ class DeclaredModelsShareOneStore(NamedProjectTest):
             self.assertFalse(os.path.exists(os.path.join(
                 self.build_root, model, VERDICT_STORE_DIRECTORY)),
                 f'{model} kept a store of its own')
+
+
+class MeshEngineIdentityBindsFacetedVerdicts(StoreTestCase):
+    """OpenSpec change `mesh-engine`, design.md Decision 9: the mesh
+    engine's identity leaves the process stamp for the key of the verdicts
+    it decides. A faceted verdict is bound to the name and version the
+    resolved engine reports of itself; an exact one is bound to no mesh
+    engine at all, so computing the stamp never resolves it."""
+
+    def test_the_stamp_names_no_mesh_engine(self):
+        self.assertNotIn('manifold3d',
+                         [distribution for distribution, _ in store.KERNELS])
+
+    def test_a_mesh_engine_upgrade_recomputes_faceted_and_serves_exact(self):
+        first_stl = self.stl('first', box((2, 2, 2)))
+        second_stl = self.stl('second', box((2, 2, 2)))
+        first_brep = self.brep('first')
+        second_brep = self.brep('second')
+
+        def ask():
+            return (test_module._intersection_stats(*self.faceted_pair(
+                        first_stl, second_stl, [1.5, 0, 0])),
+                    test_module._intersection_stats(*self.exact_pair(
+                        first_brep, second_brep, [0.5, 0, 0])))
+
+        with self.counted() as computed:
+            decided = ask()
+        self.assertEqual(computed.count, 2)
+        self.fresh_process()
+
+        with patch('machinome.manifold.engine.identity',
+                   return_value=('manifold3d', 'another version')), \
+                self.counted() as computed:
+            faceted, exact = ask()
+
+        self.assertEqual(computed.mocks[1].call_count, 1,
+                         'a faceted verdict kept under another mesh engine '
+                         'version was served')
+        self.assertEqual(computed.mocks[0].call_count, 0,
+                         'an exact verdict was computed again for a mesh '
+                         'engine upgrade')
+        self.assertBitIdentical(faceted, decided[0])
+        self.assertBitIdentical(exact, decided[1])
+
+    def faceted_key(self):
+        first = self.faceted('First', self.stl('first', box((2, 2, 2))))
+        second = self.faceted('Second', self.stl('second', box((2, 2, 2))),
+                              [1.5, 0, 0])
+        _, _, first_matrix, first_identity = test_module._fast_geometry(first)
+        _, _, second_matrix, second_identity = test_module._fast_geometry(
+            second)
+        key = test_module._verdict_key(first_identity, first_matrix,
+                                       second_identity, second_matrix,
+                                       'faceted')
+        self.assertIsNotNone(test_module._persisted_key(key),
+                             'the fixture key is not persistent at all')
+        return key
+
+    def test_without_a_mesh_engine_a_faceted_key_is_not_persisted(self):
+        key = self.faceted_key()
+
+        with patch.object(test_module, 'mesh_engine', return_value=None):
+            self.assertIsNone(test_module._persisted_key(key))
+
+    def test_an_engine_reporting_no_version_keeps_nothing(self):
+        key = self.faceted_key()
+
+        with patch('machinome.manifold.engine.identity',
+                   return_value=('manifold3d', None)):
+            self.assertIsNone(test_module._persisted_key(key))

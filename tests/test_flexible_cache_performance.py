@@ -24,8 +24,8 @@ from .flexible_project import spring as fixture
 class FlexibleFacetedCacheTest(TestCase):
 
     def setUp(self):
-        test_module._flexible_manifold_cache.clear()
-        self.addCleanup(test_module._flexible_manifold_cache.clear)
+        test_module._flexible_mesh_solid_cache.clear()
+        self.addCleanup(test_module._flexible_mesh_solid_cache.clear)
 
     def spring_at(self, lift):
         machine = fixture.Valvetrain()
@@ -51,7 +51,7 @@ class FlexibleFacetedCacheTest(TestCase):
             for index in range(80):
                 lift = bindings[index % len(bindings)]
                 machine.set_state(lift=lift)
-                manifold, bounds = test_module._flexible_manifold(
+                manifold, bounds = test_module._flexible_mesh_solid(
                     machine.spring)
                 observations.append((
                     tuple(bounds[0]), tuple(bounds[1]), manifold.volume(),
@@ -73,12 +73,12 @@ class FlexibleFacetedCacheTest(TestCase):
                           wraps=first.snapshot_mesh) as first_mesh, \
                 patch.object(second, 'snapshot_mesh',
                              wraps=second.snapshot_mesh) as second_mesh:
-            test_module._flexible_manifold(first)
-            test_module._flexible_manifold(second)
+            test_module._flexible_mesh_solid(first)
+            test_module._flexible_mesh_solid(second)
 
         self.assertEqual(first_mesh.call_count, 1)
         self.assertEqual(second_mesh.call_count, 1)
-        self.assertEqual(len(test_module._flexible_manifold_cache), 2)
+        self.assertEqual(len(test_module._flexible_mesh_solid_cache), 2)
 
     def test_source_equal_instances_with_full_identity_reuse_one_geometry(self):
         first = self.flexible_at(fixture.Spring, 2.0)
@@ -88,8 +88,8 @@ class FlexibleFacetedCacheTest(TestCase):
                           wraps=first.snapshot_mesh) as first_mesh, \
                 patch.object(second, 'snapshot_mesh',
                              wraps=second.snapshot_mesh) as second_mesh:
-            test_module._flexible_manifold(first)
-            test_module._flexible_manifold(second)
+            test_module._flexible_mesh_solid(first)
+            test_module._flexible_mesh_solid(second)
 
         self.assertEqual((first_mesh.call_count, second_mesh.call_count),
                          (1, 0))
@@ -103,8 +103,8 @@ class FlexibleFacetedCacheTest(TestCase):
                           wraps=first.snapshot_mesh) as first_mesh, \
                 patch.object(second, 'snapshot_mesh',
                              wraps=second.snapshot_mesh) as second_mesh:
-            test_module._flexible_manifold(first)
-            test_module._flexible_manifold(second)
+            test_module._flexible_mesh_solid(first)
+            test_module._flexible_mesh_solid(second)
 
         self.assertEqual((first_mesh.call_count, second_mesh.call_count),
                          (1, 1))
@@ -118,8 +118,8 @@ class FlexibleFacetedCacheTest(TestCase):
                           wraps=first.snapshot_mesh) as first_mesh, \
                 patch.object(second, 'snapshot_mesh',
                              wraps=second.snapshot_mesh) as second_mesh:
-            test_module._flexible_manifold(first)
-            test_module._flexible_manifold(second)
+            test_module._flexible_mesh_solid(first)
+            test_module._flexible_mesh_solid(second)
 
         self.assertEqual((first_mesh.call_count, second_mesh.call_count),
                          (1, 1))
@@ -131,9 +131,9 @@ class FlexibleFacetedCacheTest(TestCase):
         with patch.object(base_module, '_HASH_LEN', 0), \
                 patch.object(node, 'snapshot_mesh',
                              wraps=node.snapshot_mesh) as evaluated:
-            test_module._flexible_manifold(node)
+            test_module._flexible_mesh_solid(node)
             node._parent.set_state(lift=5.0)
-            test_module._flexible_manifold(node)
+            test_module._flexible_mesh_solid(node)
 
         self.assertEqual(evaluated.call_count, 2)
 
@@ -143,12 +143,12 @@ class FlexibleFacetedCacheTest(TestCase):
 
         with patch.object(node, 'snapshot_mesh',
                           wraps=node.snapshot_mesh) as evaluated:
-            test_module._flexible_manifold(node)
+            test_module._flexible_mesh_solid(node)
             with patch.object(node, 'shape_spec',
                               side_effect=lambda rendered: {
                                   **original(rendered), 'revision': 'next',
                               }):
-                test_module._flexible_manifold(node)
+                test_module._flexible_mesh_solid(node)
 
         self.assertEqual(evaluated.call_count, 2)
 
@@ -166,7 +166,7 @@ class FlexibleFacetedCacheTest(TestCase):
                 as current, \
                 patch.object(node, 'snapshot_mesh',
                              wraps=node.snapshot_mesh) as evaluated:
-            test_module._flexible_manifold(node)
+            test_module._flexible_mesh_solid(node)
 
         self.assertEqual(current.call_count, 1)
         self.assertIs(evaluated.call_args.args[0], observed[0])
@@ -179,11 +179,11 @@ class FlexibleFacetedCacheTest(TestCase):
                           return_value=None), \
                 patch.object(node, 'snapshot_mesh',
                              wraps=node.snapshot_mesh) as evaluated:
-            test_module._flexible_manifold(node)
-            test_module._flexible_manifold(node)
+            test_module._flexible_mesh_solid(node)
+            test_module._flexible_mesh_solid(node)
 
         self.assertEqual(evaluated.call_count, 2)
-        self.assertEqual(len(test_module._flexible_manifold_cache), 0)
+        self.assertEqual(len(test_module._flexible_mesh_solid_cache), 0)
 
     def test_signed_zero_binding_values_remain_distinct_cache_identities(self):
         node = self.flexible_at(fixture.Spring, 2.0)
@@ -204,10 +204,10 @@ class FlexibleFacetedCacheTest(TestCase):
 
             with patch.object(node, 'snapshot_mesh',
                               wraps=node.snapshot_mesh) as evaluated:
-                test_module._flexible_manifold(node)
+                test_module._flexible_mesh_solid(node)
                 with open(contributor, 'w') as source:
                     source.write('shape = 22\n')
-                test_module._flexible_manifold(node)
+                test_module._flexible_mesh_solid(node)
 
         self.assertEqual(evaluated.call_count, 2)
 
@@ -215,7 +215,7 @@ class FlexibleFacetedCacheTest(TestCase):
         machine = self.spring_at(0.0)
         bindings = (0.0, 2.0, 4.0, 6.0)
 
-        with patch.object(test_module, '_FLEXIBLE_MANIFOLD_CACHE_LIMIT', 3,
+        with patch.object(test_module, '_FLEXIBLE_MESH_SOLID_CACHE_LIMIT', 3,
                           create=True), \
                 patch.object(machine.spring, 'snapshot_mesh',
                              wraps=machine.spring.snapshot_mesh) as evaluated:
@@ -224,33 +224,33 @@ class FlexibleFacetedCacheTest(TestCase):
                     # The first key was just read, so access order evicts
                     # the second key when this fourth one is admitted.
                     machine.set_state(lift=bindings[0])
-                    test_module._flexible_manifold(machine.spring)
+                    test_module._flexible_mesh_solid(machine.spring)
                 machine.set_state(lift=lift)
-                test_module._flexible_manifold(machine.spring)
-            self.assertEqual(len(test_module._flexible_manifold_cache), 3)
+                test_module._flexible_mesh_solid(machine.spring)
+            self.assertEqual(len(test_module._flexible_mesh_solid_cache), 3)
             machine.set_state(lift=bindings[1])
-            test_module._flexible_manifold(machine.spring)
+            test_module._flexible_mesh_solid(machine.spring)
 
         self.assertEqual(evaluated.call_count, 5)
 
     def test_default_limit_bounds_a_long_distinct_structural_trajectory(self):
         """Distinct definitions, not one binding, exercise the default cap."""
-        limit = test_module._FLEXIBLE_MANIFOLD_CACHE_LIMIT
+        limit = test_module._FLEXIBLE_MESH_SOLID_CACHE_LIMIT
         node_types = [type(f'DistinctSpring{index}', (fixture.Spring,), {
             '__module__': fixture.Spring.__module__,
         })
                       for index in range(limit * 2)]
         nodes = [self.flexible_at(node_type, 2.0) for node_type in node_types]
 
-        first_manifold, first_bounds = test_module._flexible_manifold(nodes[0])
+        first_manifold, first_bounds = test_module._flexible_mesh_solid(nodes[0])
         for node in nodes[1:]:
-            test_module._flexible_manifold(node)
-            self.assertLessEqual(len(test_module._flexible_manifold_cache),
+            test_module._flexible_mesh_solid(node)
+            self.assertLessEqual(len(test_module._flexible_mesh_solid_cache),
                                  limit)
-        revisited_manifold, revisited_bounds = test_module._flexible_manifold(
+        revisited_manifold, revisited_bounds = test_module._flexible_mesh_solid(
             nodes[0])
 
-        self.assertEqual(len(test_module._flexible_manifold_cache), limit)
+        self.assertEqual(len(test_module._flexible_mesh_solid_cache), limit)
         self.assertAlmostEqual(revisited_manifold.volume(),
                                first_manifold.volume())
         self.assertEqual(tuple(revisited_bounds[0]), tuple(first_bounds[0]))
@@ -260,15 +260,15 @@ class FlexibleFacetedCacheTest(TestCase):
         node = self.flexible_at(TranslatedMeshSpring, 2.0)
 
         with patch.object(node, 'base_mesh', wraps=node.base_mesh) as mesh:
-            manifold, local_bounds = test_module._flexible_manifold(node)
-            repeated, repeated_bounds = test_module._flexible_manifold(node)
+            manifold, local_bounds = test_module._flexible_mesh_solid(node)
+            repeated, repeated_bounds = test_module._flexible_mesh_solid(node)
 
         self.assertEqual(mesh.call_count, 2)
         self.assertGreater(local_bounds[0][0], 50)
         self.assertAlmostEqual(manifold.volume(), repeated.volume())
         self.assertEqual(tuple(local_bounds[0]), tuple(repeated_bounds[0]))
         self.assertEqual(tuple(local_bounds[1]), tuple(repeated_bounds[1]))
-        self.assertEqual(len(test_module._flexible_manifold_cache), 0)
+        self.assertEqual(len(test_module._flexible_mesh_solid_cache), 0)
 
     def test_flexible_verdicts_are_memoized_on_their_state(self):
         """Inverted from `test_flexible_verdicts_are_not_memoized_after_

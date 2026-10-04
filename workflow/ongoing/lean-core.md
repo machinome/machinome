@@ -53,7 +53,7 @@ venv, where the core reaches it, and its fate under the shape below:
 | build123d 0.10 | Apache-2.0 | its two adapters; `node/markings.py` imports it lazily to reduce SVG artwork | machinome-node-build123d; markings made conditional |
 | cadquery-ocp 7.8 | Apache-2.0 (the CadQuery/OCP repository's LICENSE, checked upstream on 1 October 2026; OCCT itself is LGPL-2.1 with exception) | `exact.py`, `step.py`, `test.py` | machinome-occt |
 | ocp-gordon | Apache-2.0 | transitive of build123d | machinome-node-build123d |
-| manifold3d | Apache-2.0 | `mesh_engine.py` (already conditional), `node/fusion.py`, `test.py` | stays an optional engine |
+| manifold3d | Apache-2.0 | `mesh_engine.py` (already conditional), `node/fusion.py`, `test.py` | the `manifold` extra; `machinome.manifold.engine` behind `machinome.mesh_engine` (change `mesh-engine`, 4 October 2026) |
 | molejo[brep] 0.2 | Apache-2.0 | `node/adapters/molejo.py` only | machinome-node-molejo |
 | watchdog | Apache-2.0 | `core/builder.py` | a `develop` extra, or replaced |
 | solidpython2 | LGPL-2.1-or-later | 13 core modules, see below | stays in core |
@@ -111,8 +111,11 @@ plugin architecture part.
   every `machinome` invocation. Its docstring states that nothing
   dispatches on a registry of subclasses.
 - **`mesh_engine.py` is the existing engine seam:** `mesh_engine()`
-  returns manifold3d's classes or None, and `require_mesh_engine` raises
-  one actionable error naming the install, only when a path needs it.
+  resolves the provider `machinome.manifold.engine` once per process and
+  checks its contract version, answering None when it or its kernel is
+  absent, and `require_mesh_engine` raises one actionable error naming
+  `machinome[manifold]`, only when a path needs it (change `mesh-engine`,
+  4 October 2026; on 1 October it returned manifold3d's classes).
 - **`node/fusion.py` has two recipes.** `exact-fusion-occt-v1` when
   every child is exact, computed with `fuse_shapes` and `placed_shape`
   from the exact layer; otherwise `faceted-fusion-manifold-v1`, which
@@ -399,6 +402,7 @@ modules under `machinome.node` that are not node types, `base`, `frames`,
 | `MolejoNode` | `machinome.node.molejo` | `machinome[molejo]` | machinome-node-molejo |
 | the exact engine: OCCT currency, booleans, file reading | `machinome.occt` | `machinome[occt]` | machinome-occt |
 | the exact operations a project calls, formerly `machinome.exact`: `intersect_shapes`, `fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume` | `machinome.occt.engine` | `machinome[occt]` | machinome-occt |
+| the mesh engine | `machinome.manifold.engine` | `machinome[manifold]` | machinome-manifold |
 | the OpenSCAD engine: `machinome.openscad.engine`, the provider of the seam `machinome.scad_engine` (contract 2: adopting SolidPython's values as expressions, writing the SCAD text of the core's presentation description, locating the binary); `machinome.openscad.binary`, the OpenSCAD binary contract (`require_openscad`, `openscad_binary`, `OpenScadUnavailable`) | `machinome.openscad` | `machinome[openscad]` (declared by cycle 7) | machinome-openscad |
 | `ExactLeafNode`, the declared exact-leaf base, beside the other three declared leaf bases `LeafNode`, `SheetLeafNode` and `FlexibleNode` | `machinome.node.exact_leaf`; `machinome.node.leaf`, `.sheet_leaf`, `.flexible` | core | machinome |
 | mechanics, movie, later and under their own processes | `machinome.mechanics`, `machinome.movie` | `machinome[mechanics]`, `[movie]` | machinome-mechanics, machinome-movie |
@@ -525,9 +529,11 @@ table, each integrated into the line by fast-forward after the
 orchestrator's own suite run: `exact-engine` (ADR-160 to 165),
 `leaf-contract`, `backend-switch` (ADR-166), `lean-install` (ADR-167 to
 169), `expression-type` (ADR-170, 171), `scad-presentation` (ADR-172,
-173). The suite at the line's head: 4386 passed, 4 skipped. The
-workspace holds `scripts/load-projects` and the six tables under
-`scripts/load-projects.d/`; the universe sweep reads 117 ok, 4 expected
+173). Then `mesh-engine` (ADR-176), taken up by the pilot on
+4 October: manifold3d behind the mesh seam as the `manifold` extra.
+The suite at the line's head: 4386 passed, 4 skipped (4482 passed, 4
+skipped with `mesh-engine`). The workspace holds `scripts/load-projects`
+and the six tables under `scripts/load-projects.d/`; the universe sweep reads 117 ok, 4 expected
 (the root cleanup's customers), 2 unexpected and pre-existing
 (wall_clock_41's own CadQuery error, Dum-E without machinome-freecad), 6
 no-model. The validation branches `lean-core-validation` stay in
@@ -536,12 +542,13 @@ Actuator and Pin_tumbler_lock, never merged, as fixtures for the rewrite.
 machinome-mechanics' branch `v0.8` (symbolic assertions, 201 passed) is
 not merged into its main.
 
-**No package is split.** The extras today (`occt`, `cadquery`,
-`build123d`, `step`, `molejo`, `all`) only pull the third-party kernels;
-every machinome module still ships in the one distribution, refusing by
-its extra's name when its kernel is absent. That is layer 1's design;
-layer 2, the split, has not started for any package and waits on the
-licensing decision reopened above.
+**No package is split.** The extras today (`occt`, `manifold` since the
+seventh cycle, `cadquery`, `build123d`, `step`, `molejo`, `all`) only pull
+the third-party kernels; every machinome module still ships in the one
+distribution, refusing by its extra's name when its kernel is absent. That
+is layer 1's design; layer 2, the split, has not started for any package
+and starts only on the pilot's word, for the architecture and the lean
+install.
 
 **Left in layer 1:**
 
@@ -563,11 +570,12 @@ licensing decision reopened above.
   CadQuery methods on it), the Actuator, YouCanBuildDog and the Don1
   (`machinome.node.adapters` dissolved).
 
-**Struck or deferred by the pilot, unchanged:** manifold3d and watchdog
-remain required Apache-2.0 dependencies (the pilot takes manifold3d up
-next, after this session; see "What packaging does not solve"); watchdog
-as a `develop` extra is D6; the test suite organised by future package;
-a non-Apache faceted fusion engine, struck until a project names itself.
+**Struck or deferred by the pilot:** watchdog remains a required
+Apache-2.0 dependency, and as a `develop` extra is D6; manifold3d left the
+required list on 4 October 2026 for the `manifold` extra, by the seventh
+cycle (`mesh-engine`), the pilot's decision of that day; the test suite
+organised by future package; a non-Apache faceted fusion engine, struck
+until a project names itself.
 
 **Follow-ups the campaign owes outside the framework:** the workspace's
 `scripts/setup` tier 2 installs the framework editable without `[all]`,
@@ -776,6 +784,7 @@ validation is orchestrated with subagents like the rest of the cycle.
 | lean install | Actuators/Internal-Cycloidal-Actuator | its companion test imports `machinome.node.adapters.step` twice, so the migration runs in the suite the sweep loads; scaffolded by `machinome import-step` and all `StepNode` leaves, so it exercises the `step` extra, the moved module and the command. **Done** 3 October 2026: ICA 33/35 faceted before and after, the two failures the first cycle's currency; universe 117 ok, three new expected rows, nothing unexpected; `openspec/changes/archive/2026-10-03-lean-install/evidence.md` |
 | expression type | Locks/Pin_tumbler_lock, with the Curta Type I 3x's clocked block and machinome-mechanics' suite as probes | a running root whose laws and bounds are built on `machinome.math`, whose flexible ports carry expressions and whose `Solid2Node` parts write SCAD carrying symbolic values: four of the five former facade importers, the seam's native path and the SCAD bytes in one cheap project; the Curta exercises the clocked face, mechanics the SolidPython operands. **Done** 3 October 2026: the lock 24/24 faceted before and after with every `.scad` byte-identical and `manifest.json` differing only in one piece volume's last digit, OpenSCAD's own STL noise; the Curta's clocked block identical (88910 bytes, `be1e37234b443566`); mechanics 9 failures, all its tests asserting solid2's `OpenSCADConstant` of a symbolic value, corrected by a mechanics cycle (the pilot); universe unchanged from the fourth cycle; `openspec/changes/archive/2026-10-03-expression-type/evidence.md` |
 | scad presentation | Locks/Pin_tumbler_lock, and OpenAstroMount without SolidPython | the fifth cycle's project, so its 11 `Solid2Node` `.scad` hashes are compared byte for byte, and its sub-assembly, flexible spring and running root exercise every presentation construct and the three files a build stops writing; OpenAstroMount is the all-STEP project a build must publish with no SolidPython. **Done** 4 October 2026: the lock's build writes exactly its 11 `parts-*.scad`, byte-identical to a single-process build of the fifth cycle (its three-process after leg held self-imports a later process's `assemble()` wrote, a defect this change removes), no `lock-*` or `flexibles-*` file, 24/24 faceted, `manifest.json` identical; the OpenSCAD snapshot draws the root's SCAD (6916 bytes, 20 imports resolving) and removes it, and is refused naming the engine and `--renderer web` without it; the project's 31 lingering `.scad` swept to 11, also by a build that left the document unchanged; OpenAstroMount builds with `solid2` unfindable, 90 STL, 90 BREP, no `.scad`; universe identical to the fifth cycle's sweep, no row for this cycle; `openspec/changes/archive/2026-10-04-scad-presentation/evidence.md` |
+| mesh engine | Locks/Pin_tumbler_lock, 3D-Printers/Prusa3-vanilla, Leonardo/models (`cam_hammer`) and OpenAstroMount without the engine | the lock is the campaign's faceted reference and Prusa3-vanilla the heaviest faceted user, so their verdict logs are compared line for line before and after; no project fuses faceted children, so `cam_hammer`'s two exact fusions show an exact fusion never asks for the engine, and the all-exact OpenAstroMount builds and tests with it absent. **Done** 4 October 2026: the lock 24/24 faceted before and after with its 2573 verdicts byte-identical, and with the engine absent `machinome test --faceted` refused at its start (exit 1, no STL) while `machinome build` wrote its 11 STL with no ask of `machinome.manifold`; Prusa3-vanilla 16 passed and 3 failed (pre-existing) before and after, its 15935 verdicts byte-identical, 1974 s against 1963 s; `cam_hammer`'s 14 artifacts identical unblocked and with the engine absent; OpenAstroMount built (90 STL, 90 BREP) and tested 8/9 (the known exact-common wart) with the engine absent, no process asking for `machinome.manifold` and every ask of `manifold3d` trimesh's own (`trimesh.boolean`, `trimesh.util`); universe identical to the sixth cycle's sweep, no row for this cycle; `openspec/changes/archive/2026-10-04-mesh-engine/evidence.md` |
 | the cut | one per node package: a mid-size CadQuery project, one of the nine build123d projects, a STEP importer such as the Don1, a molejo project such as the Kossel; and the Curta Type I 3x | the Curta is the deepest caller, a hundred files reading shapes, and the 0.8 roadmap's conductor |
 | manual and conformance | none | the manual's examples are pinned by tests |
 
@@ -830,7 +839,8 @@ markings' SVG reducer and its refusal by extra wait for the cut.
 A project on the core alone gets OpenSCAD, solid2, JSCAD and STL leaves,
 assemblies, mates, motion, simulation, faceted fusion and the viewer,
 and loses only what needs a kernel that is not installed: exact leaves,
-exact fusion, and the mesh-based assertions when manifold3d is absent.
+exact fusion, and the mesh-based assertions without `machinome[manifold]`,
+the mesh engine's extra since the seventh cycle.
 The policy names the remaining gap for a profile with no Apache code
 beneath it: a non-Apache boolean engine. The obvious candidate is the
 OpenSCAD process behind the existing mesh engine seam, since unioning

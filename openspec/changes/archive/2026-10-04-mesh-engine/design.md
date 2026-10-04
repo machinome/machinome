@@ -437,6 +437,16 @@ trimesh. What can hold, and what the tests and the OpenAstroMount leg assert,
 is zero asks of `machinome.manifold`, and every ask of `manifold3d` made by
 `trimesh.boolean`. Open Question 1.
 
+*Corrected at implementation, accepted by the orchestrator on 4 October
+2026:* trimesh asks for `manifold3d` at its import from two of its modules,
+not one. Besides `trimesh/boolean.py`'s `try: from manifold3d import ...`,
+`trimesh/creation.py` probes it through `trimesh.util.has_module`, that is
+`importlib.util.find_spec`, which does not catch a finder's error. So the
+finder refuses by finding nothing (every other finder wrapped blind to the
+refused roots), not by raising, and what holds is every ask of
+`manifold3d` made by `trimesh.boolean` or `trimesh.util`
+(`TRIMESH_PROBES` in the helper; evidence.md section 2).
+
 The exact helper is not merged with this one: their logs watch different
 modules, and a shared helper would be a refactor no finding asks for.
 
@@ -650,7 +660,8 @@ recipe identity is kept (9); the two unchanged requirements keep their wording
    imports trimesh. *Recommendation:* the leg and the tests assert zero asks of
    `machinome.manifold` and that every ask of `manifold3d` comes from
    `trimesh.boolean`, which copes with its absence; the finder logs the asker
-   (Decision 11).
+   (Decision 11). *Accepted correction, 4 October 2026:* trimesh asks
+   from `trimesh.boolean` and `trimesh.util` (Decision 11).
 2. **The engine's identity binds faceted keys, not the process stamp.** The
    brief's shape says the store "stamps" the identity "in place of its
    hard-coded manifold3d row"; done in the stamp, every run would resolve the

@@ -26,17 +26,16 @@ dependencies = [
     "watchdog",
     "trimesh==4.4.*",
     "solidpython2==2.1.*",
-    # No CAD kernel is required: cadquery, build123d, ocp-gordon, molejo and
-    # the OCCT binding are the extras below, each named by the last component
-    # of the address of the module that needs it (OpenSpec change
-    # `lean-install`).
+    # No CAD kernel is required: cadquery, build123d, ocp-gordon, molejo, the
+    # OCCT binding and manifold3d are the extras below, each named by the last
+    # component of the address of the module that needs it (OpenSpec changes
+    # `lean-install` and `mesh-engine`).
     "httpx==0.27.*",
     "fastapi==0.111.*",
     "termcolor==2.4.*",
     "asgiref==3.8.*",
     "uvicorn==0.30.*",
     "numpy==2.2.*",
-    "manifold3d",
     "rtree",
     "scipy",
     # A member of the vet universe's kernel tier (machinome/vet/universe.toml):
@@ -93,6 +92,15 @@ mechanics = [
 occt = [
     "cadquery-ocp>=7.8.1,<7.9",
 ]
+# The mesh engine (`machinome.manifold.engine`, resolved by
+# `machinome.mesh_engine`) needs manifold3d, for every comparison on meshes:
+# a part without exact geometry, `machinome test --faceted`,
+# `assertAssemblySupported` and a fusion of such parts. Unranged, as it was
+# when required. No node extra includes it: an exact project needs it only
+# for a faceted question, which it may never ask.
+manifold = [
+    "manifold3d",
+]
 # The kernel extras, each named by the last component of the address of the
 # module that needs it, each installing the `occt` extra too, so the OCCT
 # range is stated once and several extras resolve one OCCT binding.
@@ -128,7 +136,7 @@ molejo = [
     "machinome[occt]",
 ]
 all = [
-    "machinome[cadquery,build123d,step,molejo,occt]",
+    "machinome[cadquery,build123d,step,molejo,occt,manifold]",
 ]
 # Machinome Studio is still experimental and unpublished. Declaring its final
 # extra name now does not make the dependency available from a package index.

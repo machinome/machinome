@@ -233,12 +233,12 @@ class TrivialSelectionTest(SupportFixture):
     def test_single_rigid_root_passes_without_loading_geometry(self):
         leaf = RigidNode('LeafWithoutBuiltGeometry')
 
-        with patch('machinome.test._cached_manifold',
+        with patch('machinome.test._cached_mesh_solid',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertAssemblySupported(leaf)
 
     def test_empty_assembly_passes_without_loading_geometry(self):
-        with patch('machinome.test._cached_manifold',
+        with patch('machinome.test._cached_mesh_solid',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertAssemblySupported(Assembly('empty', ()))
 

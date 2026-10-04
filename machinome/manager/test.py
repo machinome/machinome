@@ -18,6 +18,7 @@ from machinome.core.loader import (
 )
 from machinome.core.builder import project_build_lock
 from machinome import exact_cache
+from machinome.mesh_engine import MeshEngineUnavailable, require_mesh_engine
 from machinome.node.base import AbstractBaseNode
 from machinome.test import (ComparisonPolicy, DEFAULT_PLACEMENT_QUANTUM,
                              resolve_comparison_policy, set_comparison_policy)
@@ -107,6 +108,15 @@ class Test:
         set_comparison_policy(self.policy)
         _reset_placement_cache_for_run()
         if self.policy.kernel == 'faceted':
+            # Every pair a faceted run compares is compared on meshes, so
+            # the run needs the mesh engine before it builds anything.
+            try:
+                require_mesh_engine(
+                    'machinome test on the faceted kernel',
+                    "every pair the run compares is compared on the parts' "
+                    'meshes')
+            except MeshEngineUnavailable as error:
+                self.fail(str(error))
             sys.stdout.write(
                 'Comparing on the faceted kernel (volume epsilon '
                 f'{self.policy.volume_epsilon:g} mm³): verdicts are at '

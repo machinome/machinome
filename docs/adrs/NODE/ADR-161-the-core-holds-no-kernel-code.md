@@ -1,6 +1,6 @@
 # ADR-161: The Core Holds No Kernel Code: the Exact Engine Seam and Its Address
 
-**Status:** Accepted; absent-engine case amended 2026-10-03 by [ADR-167](ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md)
+**Status:** Accepted; absent-engine case amended 2026-10-03 by [ADR-167](ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md); extended to the mesh engine 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
 **Date:** 2026-10-03
 **Change:** [`exact-engine`](../../../openspec/changes/archive/2026-10-03-exact-engine/)
 **Related to:**
@@ -160,3 +160,13 @@ refusal as an absent engine, so `exact_engine()` answers `None` and
 `require_exact_engine` names `pip install "machinome[occt]"` as before. An
 `OCP` found and failing to load is still reported as itself. The engine
 imports `machinome.extras` beside the contract module.
+
+## Amendment (2026-10-04)
+
+[ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md) applies this record to the mesh engine:
+the core holds no mesh-engine code either. Its provider
+`machinome.manifold.engine` is named only by the seam `machinome.mesh_engine`,
+which takes this seam's shape (`CONTRACT = 1`, `PROVIDER`, Protocols by
+consumer, an absence rule reading the `manifold` extra's refusal as an absent
+engine, `MeshEngineIncompatible` for a contract mismatch), and the core's
+mesh solids are opaque handles in core-held caches.

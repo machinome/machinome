@@ -18,9 +18,11 @@ identity, the evaluation path, the placement quantum and ADR-090's
 quantised relative placement. That key also carries the STAMP: the store
 format, the machinome version, a digest of every Python source of the
 running package, the installed versions of the kernels and evaluators on
-the verdict path, and the platform. A record kept under any other stamp is
-never served, so a framework edit, a kernel upgrade or a format change
-starts the store afresh with no maintainer action.
+the verdict path, and the platform; a faceted verdict's key carries as well
+the name and version the mesh engine reports of itself. A record kept under
+any other stamp is never served, so a framework edit, a kernel upgrade or a
+format change starts the store afresh with no maintainer action, and a mesh
+engine upgrade starts its faceted verdicts afresh.
 
 The store holds raw engine verdicts -- emptiness, the volume's exact
 IEEE-754 bits, and whether the exact kernel produced it -- and no geometry,
@@ -105,11 +107,13 @@ TEMPORARY_NAME = re.compile(
 
 #: The distributions whose installed version is part of every stamp, each
 #: beside the top-level module it provides: the exact path's kernel and its
-#: front end, the faceted path's engine and the decoder of the STL its
-#: Manifold is built from, and the flexible evaluator on both paths.
+#: front end, the decoder of the STL a faceted solid is built from, and the
+#: flexible evaluator on both paths. The faceted path's engine is not here:
+#: a faceted verdict's key carries the identity the mesh engine reports of
+#: itself (`persisted_key`'s `engine`), and an exact verdict none, so
+#: computing the stamp never resolves the mesh engine.
 KERNELS = (('cadquery-ocp', 'OCP'), ('cadquery', 'cadquery'),
-           ('manifold3d', 'manifold3d'), ('trimesh', 'trimesh'),
-           ('molejo', 'molejo'))
+           ('trimesh', 'trimesh'), ('molejo', 'molejo'))
 
 
 #: Private counters for tests and probes. Nothing announces them.
@@ -232,16 +236,18 @@ def _platform_token():
 # Keys and digests
 
 
-def persisted_key(path, quantum, identity1, identity2, placement):
+def persisted_key(path, quantum, identity1, identity2, placement, engine):
     """The 32-byte digest a verdict is kept under.
 
     The in-process key's own fields -- evaluation path, quantum and
     placement cells, in its order, so (A, B) and (B, A) stay two
-    questions -- with the two identities replaced by persistent ones and
-    the stamp added. Nothing else enters it.
+    questions -- with the two identities replaced by persistent ones, the
+    stamp added, and `engine`: a tuple of strings naming the engine that
+    decided the verdict, `(name, version)` of the mesh engine for a
+    faceted verdict and empty for an exact one. Nothing else enters it.
     """
     return hashlib.sha256(_encode((
-        str(FORMAT_VERSION), stamp(), path,
+        str(FORMAT_VERSION), stamp(), path, tuple(engine),
         struct.pack('<d', float(quantum)), identity1, identity2,
         bytes(placement)))).digest()
 

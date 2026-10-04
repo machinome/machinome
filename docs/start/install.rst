@@ -25,8 +25,8 @@ Optional:
 * The **jscad** command from npm, to write parts in JavaScript with
   ``JScadNode``.
 
-The package itself brings trimesh, SolidPython and the mesh engine. The
-CAD kernels are extras, so a project installs only the ones its parts use.
+The package itself brings trimesh and SolidPython. The CAD kernels and the
+mesh engine are extras, so a project installs only the ones its parts use.
 
 CAD kernels are extras
 ----------------------
@@ -61,13 +61,20 @@ same name: the extra is the last component of the module's address.
      - ``machinome.occt.engine``
      - the OCCT kernel of the exact engine, which every extra above
        installs too
+   * - ``machinome[manifold]``
+     - ``machinome.manifold.engine``
+     - manifold3d, the mesh engine, for every comparison on meshes: a part
+       without exact geometry, ``machinome test --faceted``,
+       ``assertAssemblySupported``, a fusion of such parts
    * - ``machinome[all]``
      - every module above
      - every kernel
 
 ``Solid2Node``, ``OpenScadNode``, ``JScadNode`` and ``StlNode`` need no
-extra. Without its extra, importing a module refuses with the line that
-installs it, for example::
+extra to build. Their parts are compared on their meshes, by the mesh
+engine, so a project that tests them installs ``machinome[manifold]``.
+Without its extra, importing a module refuses with the line that installs
+it, for example::
 
     ModuleNotFoundError: machinome.node.cadquery (CadQueryNode) needs
     cadquery, which is not installed; install it with
@@ -75,7 +82,15 @@ installs it, for example::
 
 The same refusal answers ``from machinome.node import CadQueryNode`` and
 ``machinome import-step``. A project that imports ``cadquery`` or
-``build123d`` itself, in its own modules, needs the extra of that name.
+``build123d`` itself, in its own modules, needs the extra of that name, and
+one that imports ``manifold3d`` or calls ``trimesh.boolean`` needs
+``machinome[manifold]``.
+
+Without the mesh engine, each path that needs it refuses at its point of use
+naming ``pip install "machinome[manifold]"``, and ``machinome test`` on the
+faceted kernel refuses at its start, before it builds anything. A project
+whose every compared part is exact needs it only for
+``assertAssemblySupported`` and for runs on the faceted kernel.
 
 Two packages, two licences
 --------------------------
@@ -103,12 +118,12 @@ with the viewer and CadQuery, which the tutorial models with:
     $ python -m pip install "machinome[viewer,cadquery]"
 
 Name the extras your parts need instead, ``all`` for every kernel, or
-none for a project whose parts are all OpenSCAD, JSCAD or STL:
+``manifold`` for a project whose parts are all OpenSCAD, JSCAD or STL:
 
 .. code-block:: bash
 
     $ python -m pip install "machinome[viewer,all]"
-    $ python -m pip install machinome
+    $ python -m pip install "machinome[manifold]"
 
 If you will author OpenSCAD or SolidPython parts, install OpenSCAD too. On
 Debian-based systems:

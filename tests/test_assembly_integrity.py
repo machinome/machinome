@@ -14,7 +14,7 @@ import numpy as np
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.mesh_engine import mesh_engine
+from machinome.manifold import engine
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
 
@@ -70,7 +70,7 @@ class AssemblyIntegrityTestCase(TestCase):
     def test_rigid_root_passes_without_loading_geometry(self):
         leaf = RigidNode('LeafWithoutBuiltGeometry')
 
-        with patch('machinome.test._cached_manifold',
+        with patch('machinome.test._cached_mesh_solid',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertNoSolidInterference(leaf)
 
@@ -207,7 +207,7 @@ class AssemblyIntegrityTestCase(TestCase):
 
     def test_no_whole_assembly_union_is_computed(self):
         """The point of the change: the assertion reaches its verdict
-        through the spatial index alone. No Manifold batch union, no
+        through the spatial index alone. No mesh-engine union, no
         Trimesh union, no aggregate measurement of any kind -- those
         cost time proportional to the assembly's total triangle count on
         every passing run and named no offending pair."""
@@ -215,7 +215,7 @@ class AssemblyIntegrityTestCase(TestCase):
         second = self.part('Second', [10, 0, 0])
 
         with patch.object(
-                mesh_engine()[0], 'batch_boolean',
+                engine, 'unite_solids',
                 side_effect=AssertionError('no whole-assembly union')), \
              patch('machinome.test.trimesh.boolean.union',
                    side_effect=AssertionError('no whole-assembly union')):
