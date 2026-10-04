@@ -187,6 +187,8 @@ test('the manual and the records say a view on a take is posed through the take 
   assert.ok((await read('CHANGELOG.md')).includes('(`take-transport`, ADR-020)'),'the changelog bullet');
   assert.ok((await read('docs/adrs/README.md')).includes('| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser\'s pose of a take, written to lift | Proposed |'),'the ADR index');
   assert.ok(await exists('docs/adrs/STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md'),'ADR-020');
+});
+
 test('every option the command line declares is documented in the README',async()=>{
   const script=await readFile(join(root,'bin','videomaker.mjs'),'utf8');
   const declared=/parseArgs\(\{allowPositionals:true,options:\{([\s\S]*?)\}\}\)/.exec(script);
