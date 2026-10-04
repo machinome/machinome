@@ -24,6 +24,8 @@ deny = [
   "machinome.core.builder", "machinome.core.processes",
   "machinome.core.loader", "machinome.core.export",
   "machinome.core.pieces",
+  # Independent consumers may copy/export artifacts; pure model code cannot.
+  "machinome.model.ModelSnapshot", "machinome.production.profile",
   "machinome.source_generation", "machinome.viewers", "machinome.sphinx",
   "machinome.currency", "machinome._artifact",
   # The exact layer's internals: the memos load a BREP from a caller-chosen

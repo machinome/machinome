@@ -2,13 +2,13 @@
 
 **Status:** Design direction locked by the pilot on 2026-10-03, including
 nested subproductions and lazy access with no public `evaluate()` step.
-This is the pre-spec working record of that agreement, not an implemented
-capability, a ratified OpenSpec specification, an accepted ADR, or a
-published API promise. Baseline specs and accepted ADRs remain authoritative
-for current behavior. The examples below describe the agreed future
-interface; implementation details still to settle are listed at the end.
+This is the pre-spec working record of that agreement, not a ratified OpenSpec
+specification or a published API promise. The first bundled implementation is
+recorded by the production-layer cycle below. Baseline specs and accepted ADRs
+remain authoritative; the original examples below retain illustrative units
+and catalogue spellings that are not the implemented API.
 
-**Proposal update, 2026-10-04:** [production-layer](../../openspec/changes/production-layer/proposal.md)
+**Cycle update, 2026-10-04:** [production-layer](../../openspec/changes/archive/2026-10-04-production-layer/proposal.md)
 now records the bundled `machinome.production` direction and a narrow public
 model-reading facade, not an independent distribution. The cycle is on
 `v0.8-production` at base `e570068287c56e84f6ccb4ed73f0bae7bed5a07c`, the
@@ -20,8 +20,17 @@ Integration is not authorized. The pilot's instruction to orchestrate proposal,
 apply and independent adversarial reviews authorizes the complete in-scope
 cycle. The pilot explicitly confirmed that authority after the orchestrator
 incorrectly introduced a second ratification pause. Reviewed planning may
-proceed to implementation without another approval; no implementation is
-claimed by this working note.
+proceed to implementation without another approval.
+
+The cycle implements independent, nested, lazy production assets and a public
+rest-only consumption facade, with separate Curta3x and Studio API-skill work.
+Its [implementation review](../../openspec/changes/archive/2026-10-04-production-layer/implementation-review.md)
+and [evidence](../../openspec/changes/archive/2026-10-04-production-layer/evidence.md)
+record validation and exact content identities. It is development work, not a
+release or an integrated branch. This note remains in `ongoing/` because the
+broader intrinsic-requirement declaration and illustrative unit vocabulary
+were not taken up. CLI discovery, individual repeat-member selection and
+profile inheritance remain outside this cycle, not promised follow-up work.
 
 Only Curta-Type-I-3x supplies current Curta evidence. Curta2x is future work,
 not an implemented second model, a shared-catalogue demonstration or scope.

@@ -5,6 +5,169 @@
 API Reference
 =================
 
+Production assets
+=================
+
+``Production[Model]`` from ``machinome.production.profile`` binds independent
+production choices to an existing model. Several profiles can consume the
+same instance without selecting a current profile on the model or changing
+its simulation. Import each name from its defining module; neither
+``machinome`` nor ``machinome.production`` reexports these names.
+
+A partial calculator profile can delegate its actual crank assembly and
+source explicitly named fasteners. The following example omits the model
+modules and the two attributed Markdown instruction files that the author
+supplies beside the profile module:
+
+.. code-block:: python
+
+   from machinome.model import Reference
+   from machinome.components import Standard
+   from machinome.production.profile import Production
+   from machinome.production.item import Item
+   from machinome.production.process import Printed, Sourced
+   from machinome.production.instruction import Step, Markdown
+   from models.calculator import Calculator, CrankAssembly
+
+   class CrankProduction(Production[CrankAssembly]):
+       pin = Item(Reference(CrankAssembly, ("crank_handle_pin",)), Printed())
+       screw = Item(
+           Reference(CrankAssembly, ("crank_handle_1", "crank_handle_pin_screw")),
+           Printed(),
+       )
+       finish = Step(screw, instructions=Markdown("file-and-thread-pin.md"))
+
+   class CalculatorProduction(Production[Calculator]):
+       crank = CrankProduction(Reference(Calculator, ("main_drive", "crank")))
+       limitations = Step(crank, instructions=Markdown("draft-limitations.md"))
+
+   model = Calculator()
+   production = CalculatorProduction(model)
+   production.findings
+   production.crank.bom
+   production.export("draft-calculator")
+
+The child consumes the existing assembly with its actual resolved parameters.
+No default crank is constructed. ``parameters`` exposes the bound scope's
+read-only parameter mapping. References select actual active occurrences;
+lists and repetitions expand in model order, a zero repetition contributes
+nothing, and an omitted named target is an explicit finding. A nonempty tuple
+of references selects named siblings. Repeated child bindings are tuples,
+including a one-member repetition. Concrete profile inheritance is refused.
+
+``Item(target, process, *, mass=None)`` comes from
+``machinome.production.item``. An instance field returns a read-only
+``BoundItem`` with ``target_paths``, ``process``, ``mass_basis`` and
+``declaration_path``. Select a compatible model class itself for the bound
+root. ``Printed(material=None)``, ``Cut(stock)`` and
+``Sourced(requirement, *, offer=None)`` come from
+``machinome.production.process``. Unspecified printed material stays unknown;
+infill, finishing and wire bending are maker instructions. They do not become
+an invented polymer, mass multiplier or purchased finished spring.
+
+``Material(name, *, density_kg_m3=None)`` is defined in
+``machinome.production.material`` and
+``Sheet(material, *, thickness_mm)`` in ``machinome.production.stock``.
+Density and thickness, when supplied, must be finite and positive.
+Cut requires a declared sheet part with matching thickness and nominal-DXF
+capability. ``stock`` reports finished-part count and an unknown purchased
+sheet quantity; it performs no nesting or kerf compensation.
+
+``Standard(name, *, designation, grade=None)`` and
+``Product(manufacturer, part_number, *, conforms_to=())`` are neutral
+records in ``machinome.components``. ``Offer(product, supplier, sku,
+*, url=None)`` from ``machinome.production.sourcing`` identifies a distinct
+supplier listing. Its product must match the Product requirement or explicitly
+assert conformance to the Standard requirement. These records do no supplier
+search and make no certification claim.
+
+``Step(*subjects, instructions=Markdown(path))`` and ``Markdown(path)``
+come from ``machinome.production.instruction``. Subjects are Item or child
+declarations belonging to that profile. Paths resolve beside the declaring
+module, with canonical traversal and symlink escape refused. Child steps
+precede parent steps, preserving declaration order and model subject paths.
+Version-one text accepts plain Markdown, external HTTP/HTTPS links and
+same-document fragments. Unsupported local links, images, reference
+dependencies and raw HTML dependencies are refused. A missing instruction
+file refuses requested steps or export without producing a partial bundle.
+
+``MeasuredMass(grams, *, evidence)`` and ``SolidMass()`` are defined in
+``machinome.production.mass``. Measured grams apply per occurrence and require
+local evidence. ``SolidMass`` explicitly requests a homogeneous-solid
+calculation: positive watertight volume in mm³ times density in kg/m³ divided
+by 1,000,000 gives grams. Missing density, invalid volume and flexible volume
+stay unknown. The model's simulation and support assumptions do not change.
+
+Read ``bom``, ``stock``, ``steps``, ``mass`` and ``findings`` directly; there
+is no evaluate call. Construction performs no geometry work. Structural
+findings, instructions and sourced BOMs need no geometry. Manufactured BOM
+grouping requests canonical geometry content, with complete process/material,
+mass declaration and every directly applicable Step fingerprint. Different
+materials or finishing instructions remain separate. Sourced grouping uses
+the requirement and chosen offer rather than the visual mesh.
+
+``bom`` is a tuple of ``BomLine`` records. Each line retains status, quantity,
+occurrence paths, declaration paths, source paths and finding codes, plus its
+typed process, material, requirement, offer and optional geometry identity.
+Unassigned candidates appear separately with quantity one and no invented
+identity; invalid recipes retain their requested process but no usable
+process; absent targets have quantity zero. Delegation reserves its subtree.
+Sourcing a whole assembly replaces its internals with one purchased item.
+Overlapping owners remain inspectable in ``findings`` and refuse other reports
+with ``ProductionConflictError``.
+
+``MassSummary`` exposes ``known_grams``, ``complete``, ``unknown_occurrences``
+and a tuple of per-occurrence ``MassBasis`` records. A known subtotal is not
+a complete total. Unassigned and invalid candidates remain in the denominator;
+a valid sourced assembly replaces the descendants' weight with its own basis.
+Report records and mappings are immutable. The report types, ``Finding``,
+``ResolvedStep`` and ``ExportResult`` are defined in
+``machinome.production.results``; errors are defined in
+``machinome.production.errors``.
+
+``Finding.check_status`` describes only the structural check represented by
+that finding. Its ``checked`` value does not establish an unrequested geometry
+or mass check; export explicitly requests those checks.
+
+``export(destination)`` atomically creates a new portable directory and
+refuses an existing nonempty destination. ``production.json`` is the
+authoritative version-one ``machinome-production`` manifest, accompanied by
+``bom.csv``, ``stock.csv`` and ``instructions.md``. Explicitly consumed files
+live under ``files/<sha256>/<basename>``; selected Printed STL and Cut nominal
+DXF files live under ``artifacts/<sha256>.<extension>``. Facts and copied bytes
+describe the same pinned artifacts. Every export is a draft; coverage
+completeness does not certify fabrication readiness.
+
+Model consumption
+-----------------
+
+``machinome.model.ModelSnapshot(model)`` exposes immutable ``occurrences``,
+``select(reference, *, scope=None)``, ``geometry(occurrence)`` and
+``copy_artifact(occurrence, kind, destination)``. Occurrences distinguish
+assemblies, rigid pieces, rigid features and flexible pieces. Markings and
+frames add no production item; fusion ingredients are features of one piece.
+Each occurrence retains its root-relative path (``.`` for the root), model
+type, resolved parameters, source paths and declared sheet facts.
+``GeometryFacts`` retains full canonical content identity separately from
+artifact byte SHA-256, extents, volume and watertightness.
+
+``Reference(model_type, path)`` takes a tuple of public attribute names and
+supports constructor-created children without rewriting the model.
+``is_reference`` and ``reference_path`` adapt supported declarations;
+``empty_selection`` and ``selection_is_many`` distinguish absent targets
+from repetition shape. ``validate``, ``observe_input``, read-only
+``input_hashes`` and ``executed_code_provenance`` support a shared root/child
+input generation, without an extra author lifecycle.
+
+Rest-only structural reading preserves the running state and refuses
+stateful legacy rendering. Directly constructed models carry
+``unverified-direct-binding`` provenance: observing current source bytes
+cannot prove what Python imported earlier. Models loaded through the sealed
+source-generation loader retain verified provenance. A source, instruction,
+evidence or consumed artifact replacement invalidates the whole shared
+production with ``ProductionInputChangedError``; reload code and bind a fresh
+model rather than combining old facts with new bytes.
+
 Nodes
 =========
 

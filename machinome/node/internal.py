@@ -36,6 +36,10 @@ def _declarative_render(render):
 
     @functools.wraps(render)
     def wrapped(self):
+        if '_production_rest' in self.__dict__:
+            # A rigid consumer already ran and validated this instance's
+            # rest structure. Native preparation must reuse its placements.
+            return self.__dict__['_production_rest']
         if self.__dict__.get('_rendering'):
             return render(self)
         declared = declared_child_nodes(self)
