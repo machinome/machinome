@@ -512,6 +512,96 @@ new cycle bench is `scripts/dev-env v0.8-split-<change> setup --base
 v0.8-split`. The pilot's parallel branch `v0.8-production` is cut from
 this line (its bench, slot 6) and is not part of the campaign.
 
+## State of the campaign (4 October 2026, handoff)
+
+Written at the end of the session that ran cycles 4 to 6, for the next
+agent. Nothing below is pushed or uploaded; framework `main` holds 0.7.1
+tagged and unpublished, and the line `v0.8-split` merges into it only at
+the campaign's close.
+
+**Done, layer 1, cycles 1 to 6,** each archived under
+`openspec/changes/archive/` with its evidence, sweep JSON and moved-names
+table, each integrated into the line by fast-forward after the
+orchestrator's own suite run: `exact-engine` (ADR-160 to 165),
+`leaf-contract`, `backend-switch` (ADR-166), `lean-install` (ADR-167 to
+169), `expression-type` (ADR-170, 171), `scad-presentation` (ADR-172,
+173). The suite at the line's head: 4386 passed, 4 skipped. The
+workspace holds `scripts/load-projects` and the six tables under
+`scripts/load-projects.d/`; the universe sweep reads 117 ok, 4 expected
+(the root cleanup's customers), 2 unexpected and pre-existing
+(wall_clock_41's own CadQuery error, Dum-E without machinome-freecad), 6
+no-model. The validation branches `lean-core-validation` stay in
+OpenAstroMount, machinome-freecad, splitflap, the Internal-Cycloidal-
+Actuator and Pin_tumbler_lock, never merged, as fixtures for the rewrite.
+machinome-mechanics' branch `v0.8` (symbolic assertions, 201 passed) is
+not merged into its main.
+
+**No package is split.** The extras today (`occt`, `cadquery`,
+`build123d`, `step`, `molejo`, `all`) only pull the third-party kernels;
+every machinome module still ships in the one distribution, refusing by
+its extra's name when its kernel is absent. That is layer 1's design;
+layer 2, the split, has not started for any package and waits on the
+licensing decision reopened above.
+
+**Left in layer 1:**
+
+- Cycle 7: the STL runner into `machinome/openscad/`, `Solid2Node` and
+  `OpenScadNode` as the node modules `machinome.node.solid2` and
+  `machinome.node.openscad` over it, SolidPython as the `openscad` extra
+  refused at the three doors. Loose ends it absorbs: `Solid2Node.as_number`
+  reaching the engine's package directly; the web snapshot renderer and
+  `Sim(meshes=True)` calling `assemble()` only for a flexible leaf's
+  per-pose snapshot STL, whose owner is undecided; ADR-173's removal
+  candidates, ADR-086's assembly-phase coalescing and
+  `LeafNode._render_can_be_skipped`.
+- Cycle 8: `machinome new` scaffolding whatever leaf kind the installed
+  extras provide, the template being the last SolidPython importer.
+- The root cleanup (roadmap of 27 September): both roots stop
+  re-exporting, the rewrite script runs once over the 74 project
+  repositories with the moved-names tables as rows. Its first customers:
+  Voron-2 (`shape()` is the engine's currency, 29 project files call
+  CadQuery methods on it), the Actuator, YouCanBuildDog and the Don1
+  (`machinome.node.adapters` dissolved).
+
+**Struck or deferred by the pilot, unchanged:** manifold3d and watchdog
+remain required Apache-2.0 dependencies (the pilot takes manifold3d up
+next, after this session; see "What packaging does not solve"); watchdog
+as a `develop` extra is D6; the test suite organised by future package;
+a non-Apache faceted fusion engine, struck until a project names itself.
+
+**Follow-ups the campaign owes outside the framework:** the workspace's
+`scripts/setup` tier 2 installs the framework editable without `[all]`,
+and `docs/collaborator-setup.md` matches; the workspace contract still
+says `machinome develop` opens OpenSCAD without the viewer (gone since
+ADR-103); the studio's `machinome-api` skill still teaches
+`machinome.node.adapters.step`, a `--openscad` develop flag,
+`import-step` without its `step` extra and the OpenSCAD GUI fallback, and
+neither it nor the machining skill teaches the extras or the one path;
+the push script for package repositories (in scope, nothing to push to
+before layer 2); machinome-mechanics' pin `machinome>=0.7.0` and its
+twelve test files on solid2's `get_animation_time`, at the release pass;
+machinome-viewer's stray root `openscad.py` importing a moved name; the
+venv's editable `machinome` dist-info still reading 0.7.0;
+machinome-freecad's retarget to `machinome.node.freecad` and the assembly
+extension contract its carriers evidence; D10's conformance gaps of the
+framework against the package standard, not checked.
+
+**Warts filed by the cycles, untriaged** (`workflow/warts.md`, 3 October
+2026): OpenAstroMount's scenario test refused by the exact common guard on
+its master; a first build's sweep removing fused children's STLs; a
+self-materializing leaf that publishes nothing falling through to the
+OpenSCAD path (`JScadNode`); a `machinome build` hanging three hours in a
+fresh project worktree on virtiofs; OpenSCAD's STL output not
+reproducible run to run (hash SCAD, never STL). Cycle 6 filed none: the
+self-import overwrite it found is fixed by it (ADR-173).
+
+**Orchestration as practised** (D12): one proposer and one applier per
+cycle, fresh Opus agents with a written briefing, the orchestrator's
+adversarial review as the ratification gate, the orchestrator running
+the validation legs and the sweep itself and handing the reports to the
+paused applier, one suite at a time, no commit amended (pilot, 4 October
+2026: commit the state and add commits), fast-forward into the line.
+
 ## Layers (pilot, 3 October 2026)
 
 The campaign is built in layers, and the repository question is not
