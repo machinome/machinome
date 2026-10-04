@@ -241,7 +241,7 @@
   `require_scad_engine`) instead; tests importing `OpenScadUnavailable` keep
   importing it from `machinome.openscad.binary`.
 - [x] 7.4 Tests of `Rotation.scad`/`Translation.scad` move to `presented`.
-- [ ] 7.5 `tests/expression_type_golden.py --check` (0 differences) and
+- [x] 7.5 `tests/expression_type_golden.py --check` (0 differences) and
   `tests/scad_presentation_golden.py --check` (0 differences; the
   presentation files reported absent as expected); record both.
 - [x] 7.6 The full framework suite, one process; record counts and wall time

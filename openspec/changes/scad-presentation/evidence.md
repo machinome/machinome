@@ -404,12 +404,21 @@ expected absences is the orchestrator's call.
 
 Decided (orchestrator, 4 October 2026): re-record
 `tests/data/leaf_contract_golden.json` on the new tree after the
-orchestrator's validation reports, then `--check` (expected 0 differences,
-57 values). Before re-recording, the 20 differences are the five record
-fields (`digest`, `fingerprint_matches`, `record_version`, `sha256`,
-`stamp_matches`) of the `.scad` of `build123d_sheet_panel`,
-`exact_leaf_with_marking`, `molejo_snapshot` and `stl_node_with_markings`,
-now `None`; the remaining 57 of the 77 values were unchanged.
+orchestrator's validation reports, then `--check`. Before re-recording,
+the 20 differences are the five record fields (`digest`,
+`fingerprint_matches`, `record_version`, `sha256`, `stamp_matches`) of the
+`.scad` of `build123d_sheet_panel`, `exact_leaf_with_marking`,
+`molejo_snapshot` and `stl_node_with_markings`, now `None`.
+
+Re-recorded after the validation (bench at eebedf2): written to the
+scratchpad first and compared with the recorded file value by value: 97
+recorded, 77 now, 20 gone (exactly those 20), 0 added, 0 changed; the 77
+remaining values were unchanged before re-recording. (The orchestrator's
+"57 values" was 77 minus 20 counted twice; `--check` counts the values it
+measures, 77.) Then copied over `tests/data/leaf_contract_golden.json`
+(its `bench_commit` now eebedf2). `test_leaf_contract_recipe.py` compares
+with the re-recorded golden directly, its special case for the dropped
+`.scad` removed.
 
 ## 8. Documentation
 
@@ -675,3 +684,11 @@ changed in either project (`git status` clean after the legs; the lock back on
 `main`).
 
 10.3, the universe sweep: pending.
+
+### The goldens after the validation (bench at eebedf2)
+
+```
+scad_presentation_golden.py --check   golden comparison: 34 values, 0 differences, 9 presentation files absent as expected
+leaf_contract_golden.py --check       golden comparison: 7 fixtures, 77 values, 0 differences   (re-recorded)
+test_leaf_contract_recipe.py          2 passed, 14 subtests passed
+```

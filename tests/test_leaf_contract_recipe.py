@@ -72,12 +72,10 @@ class SourceRecipeTest(TestCase):
 
     def test_no_recipe_records_what_the_tree_recorded_before(self):
         for fixture in FIXTURES:
-            golden = dict(self.golden[fixture]['artifacts'])
-            if fixture == 'exact_leaf_with_marking':
-                # `assemble()` writes no `.scad` for a leaf that is not
-                # SCAD-authored since `scad-presentation`; every artifact
-                # it does write keeps the golden's record.
-                golden.pop('.scad')
+            # Re-recorded by `scad-presentation`, whose `assemble()` writes no
+            # `.scad` for a leaf that is not SCAD-authored; every other
+            # record is the one the tree wrote before `source_recipe`.
+            golden = self.golden[fixture]['artifacts']
             records = self.build(fixture, None)
             with self.subTest(fixture=fixture):
                 self.assertEqual(sorted(records), sorted(golden))
