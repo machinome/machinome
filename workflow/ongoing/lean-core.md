@@ -871,9 +871,22 @@ validation of each cycle is orchestrated the same way, with validator
 subagents, as "Empirical validation, per cycle" under "What it takes"
 says (pilot, 3 October 2026).
 
+### Reopened by the pilot, 4 October 2026: the licences
+
+The pilot unlocked the licence policy below ("a package's licence matches
+its provider's": the four node packages Apache-2.0, machinome-occt
+LGPL-2.1 as OCCT) and, with it, "the core's grant stays as it is". The
+pilot is reconsidering and named the direction under consideration:
+everything but the studio under LGPL-2.1-or-later. Nothing is decided; a
+dedicated licensing session decides, with the line-level check of the
+second author's commits recorded under "Settled" still due before any
+relicensing. Until then no layer-2 package is cut and no licence file,
+NOTICE or classifier moves. Layer 1 (cycles 7 and 8, then the root
+cleanup) does not depend on the answer; layer 2 turns on it.
+
 ### Settled, and not reopened
 
-- The core's grant stays as it is. For the record, the framework's
+- The core's grant stays as it is (reopened 4 October 2026, see above). For the record, the framework's
   history is 798 commits by Luis Fagundes and 9 by Fabio Montefuscolo
   (July 2023 and February 2025: CI workflows, docs, requirements files
   and a `solid_node/exceptions.py` since removed); a line-level check
@@ -887,7 +900,8 @@ says (pilot, 3 October 2026).
   is its own package and repository; `ExactLeafNode` stays in the core;
   no table and no entry-point group (2 October 2026).
 - A package's licence matches its provider's: the four node packages
-  are Apache-2.0 and machinome-occt is LGPL-2.1 as OCCT is; all are
+  are Apache-2.0 and machinome-occt is LGPL-2.1 as OCCT is (reopened
+  4 October 2026, see above); all are
   numbered with the framework; the
   refactor starts the 0.8 line, and 0.8 is released only when every
   package of the set, mechanics, studio and video included, complies
