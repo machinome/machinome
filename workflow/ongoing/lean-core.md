@@ -687,6 +687,73 @@ why" below and the one-package OpenSCAD shape of "Layers":
   decision of 4 October, recorded in the workspace, not in scope here);
   the split is kept, in a monorepo.
 
+## Locked at the session's close (pilot, 4 October 2026)
+
+**The version's goal.** 0.8 solves the long-deferred architectural debts
+of the whole suite, the licence included (one licence for every package,
+GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, called MGPL in the pilot's
+notes; the packages kept split inside a monorepo). The licence and the
+monorepo are decided by the pilot and are not this plan's scope; the
+architecture below is.
+
+**The engines are `brep` and `mesh`.** Locked by the pilot after the
+domain modelling of 4 October: the two engines are named for the
+representation each consumes, a boundary representation of parametric
+surfaces and a polyhedral triangle mesh, not for a claim ("exact") or a
+quality ("faceted"). Packages `machinome-engine-brep` and
+`machinome-engine-mesh`; providers `machinome.engine.brep` and
+`machinome.engine.mesh` (the provider module carries the role, so one
+engine per role is installed at a time; a second mesh engine is another
+package providing the same module). The same two words replace `exact`,
+`faceted` and `mesh` everywhere the code uses them for this split: the
+seams, the leaf base (`ExactLeafNode` becomes the B-rep leaf base), the
+`exact-geometry` capability and its spec names, the verdict paths `'exact'`
+and `'faceted'`, `machinome test --faceted`, the fusion recipe identities,
+the refusals' words. Artifact extensions stay (`.brep`, `.stl`). This is
+its own cycle, with the rewrite script over the universe (every
+`ExactLeafNode` subclass), placed with the root cleanup, where every
+project is rewritten once.
+
+**A proper OpenSCAD removal cycle.** The pilot's finding: cycles 5 and 6
+were described as taking OpenSCAD out of the core, and the core still says
+"scad" in fifteen modules (the counts above). What those cycles did was
+put the SCAD *writing* behind a seam; the core still presents, names,
+sweeps, snapshots and coalesces SCAD. The removal is one cycle,
+`openscad-out`, gated by one acceptance test written red first: an AST and
+token scan finding no `scad` (any case) in any core module outside the
+`openscad` and `solid2` node packages and outside one table of supported
+node types, `node/jscad.py`'s own name excepted. Its scope is the whole of
+what the eighth and ninth cycles were going to do and what they left out:
+
+- the OpenSCAD node package founded (`machinome.node.openscad`): the SCAD
+  writer (SolidPython), the binary runner (`generate_stl`'s OpenSCAD
+  launch), `scad_code`, `generate_scad()`, `scad_file`, `scad_authored`,
+  `as_scad`, the OpenSCAD snapshot renderer (`viewers/openscad.py`) and
+  its command line in `manager/snapshot.py`, with the `openscad` extra;
+  `Solid2Node` as `machinome.node.solid2` over it, `as_number` and the
+  adoption of SolidPython values with it, with the `solid2` extra;
+- the seam `machinome.scad_engine` dissolved: what the core needs of the
+  family is expressed in the leaf and presentation contracts without
+  naming SCAD (a leaf declares the artifacts it keeps and renders; a
+  presentation is a description the installed node packages may write);
+- the builder's sweep rule for `.scad` made generic: an artifact kept by
+  reference because a node declares it, not by suffix;
+- ADR-086's assembly-phase coalescing removed with its production producer
+  (`source_generation.py`);
+- the presentation description (`node/presentation.py`, `internal.py`,
+  `flexible.py`, `leaf.py`) worded for what it is, a presentation, with
+  the per-binding snapshot STL's owner decided;
+- the expression modules (`math.py`, `expression_graph.py`,
+  `core/expressions.py`) documented as machinome's expression language,
+  which the viewer reads, whatever syntax it inherited;
+- the project template scaffolding whatever leaf kind the installed
+  extras provide;
+- `jscad` and `stl` as node packages with their extras, for symmetry, in
+  the same cycle or the next.
+
+Then the root cleanup, then the `brep`/`mesh` rename, then the names of
+the packages confirmed before more packages enter the monorepo.
+
 ## Layers (pilot, 3 October 2026)
 
 The campaign is built in layers, and the repository question is not
