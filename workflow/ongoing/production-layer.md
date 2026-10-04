@@ -2,11 +2,56 @@
 
 **Status:** Design direction locked by the pilot on 2026-10-03, including
 nested subproductions and lazy access with no public `evaluate()` step.
-This is the pre-spec working record of that agreement, not an implemented
-capability, a ratified OpenSpec specification, an accepted ADR, or a
-published API promise. Baseline specs and accepted ADRs remain authoritative
-for current behavior. The examples below describe the agreed future
-interface; implementation details still to settle are listed at the end.
+This is the pre-spec working record of that agreement, not a ratified OpenSpec
+specification or a published API promise. The first bundled implementation is
+recorded by the production-layer cycle below. Baseline specs and accepted ADRs
+remain authoritative; the original examples below retain illustrative units
+and catalogue spellings that are not the implemented API.
+
+**Cycle update, 2026-10-04:** [production-layer](../../openspec/changes/archive/2026-10-04-production-layer/proposal.md)
+now records the bundled `machinome.production` direction and a narrow public
+model-reading facade, not an independent distribution. The cycle is on
+`v0.8-production` at base `e570068287c56e84f6ccb4ed73f0bae7bed5a07c`, the
+completed `v0.8-scad-presentation` HEAD. The pilot explicitly directed the
+rebase from the original `63c887ed69ebccd2d5a78af4dc75ebeee1acdab1` before
+implementation. The original dirty-source exception left its unrelated
+untracked load-projects report untouched.
+Integration is not authorized. The pilot's instruction to orchestrate proposal,
+apply and independent adversarial reviews authorizes the complete in-scope
+cycle. The pilot explicitly confirmed that authority after the orchestrator
+incorrectly introduced a second ratification pause. Reviewed planning may
+proceed to implementation without another approval.
+
+The cycle implements independent, nested, lazy production assets and a public
+rest-only consumption facade, with separate Curta3x and Studio API-skill work.
+Its [implementation review](../../openspec/changes/archive/2026-10-04-production-layer/implementation-review.md)
+and [evidence](../../openspec/changes/archive/2026-10-04-production-layer/evidence.md)
+record validation and exact content identities. It is development work, not a
+release or an integrated branch. This note remains in `ongoing/` because the
+broader intrinsic-requirement declaration and illustrative unit vocabulary
+were not taken up. CLI discovery, individual repeat-member selection and
+profile inheritance remain outside this cycle, not promised follow-up work.
+
+Only Curta-Type-I-3x supplies current Curta evidence. Curta2x is future work,
+not an implemented second model, a shared-catalogue demonstration or scope.
+The actual 3x operating root is `simulation.mechanistic:MechanisticCurta`;
+its clearing-loop mounting is simulation-only and whole-machine geometry
+acceptance is open. Production acceptance is a real project-owned partial
+slice with attributed source BOM/instructions and explicit reconciliation
+gaps, not a fabrication-ready root. Two profiles over this same 3x instance
+are controlled regressions, not author-approved workshop alternatives.
+The author's one retaining spring is represented by five geometric patches;
+terminal coverage cannot certify finished-part completeness. Fifteen carry
+springs are made from music wire and cannot be labelled purchased finished
+springs merely because the author lists them on a nonprinted sheet.
+
+The proposal resolves explicit unit suffixes, direct-binding provenance,
+tuple references for named siblings, deterministic recipe grouping, lazy
+geometry demand and draft bundle contracts. Cut uses the existing exact-sheet
+representative fixture with ADR-053's historical metamaquina-rebuild origin;
+the live Metamaquina2 ScadPart is not silently migrated or claimed to supply
+nominal DXF. The new API's exact proposed modules are in the change design;
+the illustrative units/catalogue spellings below are not current APIs.
 
 This note supersedes the production sketch and the part-versus-production
 ownership question in [the 0.8 roadmap](roadmap-0.8.md). It keeps the
@@ -46,8 +91,8 @@ another profile for a submodel, just as a machine uses subassemblies.
   evidence for instructions and distinct stock requirements. The mod also
   changes geometry; it is not evidence that every production alternative
   fits an unchanged model.
-- The two Curtas in the roadmap are different models sharing a catalogue.
-  The pilot separately requires multiple productions over the same model.
+- The roadmap's Curta2x is future work, not current evidence. The pilot
+  separately requires multiple productions over the same actual 3x model.
 - Videomaker's `docs/declaring-a-movie.md`, in the workspace's independent
   `videomaker/` repository, provides the asset precedent: project-owned
   declarations reference model parts, and referenced files resolve relative

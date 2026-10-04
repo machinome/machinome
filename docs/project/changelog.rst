@@ -6,6 +6,16 @@ Changelog
 Unreleased
 ----------
 
+* **Independent production profiles:** bind typed acquisition choices and
+  nested maker instructions to the actual existing model, then read BOM,
+  stock, mass and coverage findings directly. Printed material and mass can
+  stay unknown; whole sourced assemblies replace their internal acquisition.
+  Geometry and instruction fingerprints govern manufactured consolidation,
+  while explicit component requirements govern sourced consolidation.
+  Atomic portable exports retain diagnostic gaps and pinned STL/DXF bytes
+  and are always draft. A read-only model facade supports actual active
+  children without simulation or a model rewrite (:doc:`/reference/api`).
+
 * **The SCAD presentation is the OpenSCAD engine's:** machinome's node
   base no longer imports SolidPython. ``assemble()`` composes a
   description of the node's SCAD presentation (artifact imports, colours,

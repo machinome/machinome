@@ -31,6 +31,7 @@ that way.
 ## Index
 
 ### NODE — core node tree and lifecycle
+- [ADR-175](NODE/ADR-175-model-consumption-is-rest-only-and-generation-coherent.md) — Public rest-only coherent model consumption — **Accepted**, cites 066/174
 - [ADR-001](NODE/ADR-001-composite-pattern-node-tree-architecture.md) — Composite pattern node tree — **Accepted**, extended by 061
 - [ADR-002](NODE/ADR-002-template-method-pattern-for-node-lifecycle.md) — Template-method node lifecycle — **Accepted**, amended by 033, extended by 064
 - [ADR-003](NODE/ADR-003-rigid-vs-non-rigid-node-distinction.md) — Rigid vs non-rigid distinction — **Accepted**, amended by 039, third case added by 057, empty boundary defined by 082
@@ -138,6 +139,7 @@ that way.
 - [ADR-160](OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — The OCCT engine's currency is the kernel's own shape: the bare `TopoDS_Shape`, admitted by `as_shape` — **Accepted**, supersedes 047's chosen option, notes 057's recast sentence as historical
 
 ### BUILD — loading, watching, CLI
+- [ADR-174](BUILD/ADR-174-production-is-an-independent-nested-lazy-asset.md) — Independent nested lazy production assets and conservative draft evidence — **Accepted**, cites 175
 - [ADR-130](BUILD/ADR-130-machinome-is-a-clean-package-and-command-boundary.md) — Machinome is a clean package and command boundary — **Accepted**
 - [ADR-005](BUILD/ADR-005-path-based-dynamic-module-loading.md) — Path-based dynamic module loading — **Accepted**, amended by 119
 - [ADR-007](BUILD/ADR-007-watchdog-library-filesystem-monitoring.md) — Watchdog filesystem monitoring — **Accepted**

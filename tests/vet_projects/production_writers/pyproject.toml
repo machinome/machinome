@@ -1,0 +1,2 @@
+[tool.machinome]
+model = "sim.model:Model"

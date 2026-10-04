@@ -79,6 +79,15 @@ class FrameworkInternalTest(TestCase):
                'framework-internal', 'machinome.core.builder'),
         })
 
+    def test_production_writers_do_not_enter_the_pure_model_contract(self):
+        fixture = 'production_writers'
+        self.assertEqual(findings(run_vet(fixture)), {
+            at(fixture, 'from machinome.model import ModelSnapshot',
+               'framework-internal', 'machinome.model.ModelSnapshot'),
+            at(fixture, 'from machinome.production.profile import Production',
+               'framework-internal', 'machinome.production.profile'),
+        })
+
 
 class ExactEngineInternalTest(TestCase):
     """The exact internals and the engine's file operations are framework

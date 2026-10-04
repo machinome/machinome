@@ -3328,10 +3328,30 @@ The short list that changes must not silently break:
   two relations on one input with the same level graph — is possible and
   wants its own evidence.
 
+## Independent production consumption
+
+Production assets are separate `Production[Model]` bindings over existing
+instances, not mechanical model declarations or simulation metadata (ADR-174).
+Nested assets reserve actual reference-selected subtrees; immutable typed
+recipes feed lazy BOM, stock, instruction, mass and diagnostic reports.
+Unknown assignments and mass remain visible. Atomic portable exports are drafts,
+not fabrication acceptance. Neutral Standard/Product records live in
+`machinome.components`; the production root exports no convenience names.
+
+`machinome.model` owns the public consumption facade (ADR-175). It adapts
+core-owned validated rest-only traversal without running simulation or preparing
+the tree, preserves actual child identities and runtime state, and requests
+native geometry only on demand. Source closure and consumed artifacts define
+one pinned root/child generation. Any observed change invalidates all bindings;
+directly constructed instances remain explicitly unverified as executed code.
+Production accesses no private core API. Vet rejects the facade and writer from
+pure model closures without rejecting their pure declaration records.
+
 ## Map
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
+| Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
 | Node model | `machinome/node/` (`frames.py` and `presentation.py`, the SCAD presentation description, among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172 |
 | OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
 | OpenSCAD engine | `machinome/scad_engine.py` (the seam, contract 2, `require_scad_engine`); `machinome/openscad/` (`engine.py`: `adopt`, `scad_text`, `require_binary`; `binary.py`; leaves the core at the cut) | `scad-engine-dependency`, `openscad-engine`, `openscad-dependency` | 046, 102, 171, 172, 173 |

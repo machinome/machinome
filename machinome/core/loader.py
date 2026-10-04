@@ -331,6 +331,7 @@ def load_node(reference=None, overrides=None, generation=None):
     bind_declared_defaults(node)
     if generation is not None:
         generation.seal_load()
+        node.__dict__['_source_generation'] = generation
     return node
 
 

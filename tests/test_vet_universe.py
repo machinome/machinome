@@ -43,6 +43,7 @@ class TheDeclarationTest(TestCase):
             'machinome.core.builder', 'machinome.core.processes',
             'machinome.core.loader', 'machinome.core.export',
             'machinome.core.pieces',
+            'machinome.model.ModelSnapshot', 'machinome.production.profile',
             'machinome.source_generation', 'machinome.viewers',
             'machinome.sphinx', 'machinome.currency', 'machinome._artifact',
             'machinome.exact_cache', 'machinome.exact_artifacts',

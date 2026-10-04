@@ -31,6 +31,10 @@ and the stack, exactly as it keeps the phase stack next to it.
 
 import sys
 import warnings
+from contextvars import ContextVar
+
+
+_structure_only = ContextVar('machinome_structure_only', default=False)
 
 
 RENDER = 'render'
@@ -199,6 +203,9 @@ def note_read(what, name):
     one the deprecation warning names. A binding counts like a read
     because a once-only render() would bind once and never rebind.
     """
+    if _structure_only.get():
+        raise ValueError(f'structure-only reading refuses {what} {name!r}; '
+                         'move state-dependent work to simulate()')
     phase = current()
     if phase is not None and phase.kind == RENDER and phase.read is None:
         phase.read = (what, name)

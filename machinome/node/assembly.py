@@ -217,7 +217,7 @@ def _lifecycle_render(render):
     return wrapped
 
 
-def _rest_children(assembly):
+def _rest_children(assembly, *, structure_only=False):
     """The children a REST-ONLY walk descends into: `_rest`'s own
     idempotent render, LINKED, with no phase and no enumeration touched.
 
@@ -233,7 +233,18 @@ def _rest_children(assembly):
     """
     original = getattr(type(assembly).render, '__wrapped__',
                        type(assembly).render)
-    children = _linked(_rest(assembly, original))
+    if structure_only and assembly.__dict__.get('_legacy_render'):
+        raise ValueError(f'{assembly.name}: stateful legacy render cannot '
+                         'supply structure-only facts')
+    token = _phase._structure_only.set(True) if structure_only else None
+    try:
+        rendered = _rest(assembly, original)
+        if structure_only:
+            assembly.validate(rendered)
+        children = _linked(rendered)
+    finally:
+        if token is not None:
+            _phase._structure_only.reset(token)
     assembly._link_children(children)
     return children
 
