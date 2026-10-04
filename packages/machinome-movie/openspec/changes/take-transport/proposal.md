@@ -63,7 +63,8 @@ it to every mark with the same rule the frame uses.
   in the stage changes: the frame carries the bank, ADR-012 and every
   proof hold.
 - **The bundle names the transport by the tool.** The stage bundle embeds
-  `transport/take.ts` and `src/take.mjs`; ADR-013's names extend to them
+  `transport/take.ts` and reads `src/take.mjs` through it; ADR-013's names
+  extend to them
   (`videomaker/transport/<file>`, `videomaker/src/<file>`), and the
   bundle's key reads the transport's sources beside the runtime's, so the
   bundle's bytes and hash never depend on where the tool lies.

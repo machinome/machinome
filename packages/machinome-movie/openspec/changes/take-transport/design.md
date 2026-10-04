@@ -215,14 +215,19 @@ In `stage/runtime.tsx`:
   renderer's replay of the steps uses it.
 - `viewMachine` goes; its refusals are `attachMachine`'s, word for word.
 
-One render per frame, as today: a restore and one `setView`.
+One pose per frame, as today: a restore and one `setView`. (On the API 29
+bundle `restore` draws before it returns, finding 2 of the evidence, so
+the frame is drawn by both, as it was before this change.)
 
 ### D8. The bundle names the transport by the tool, and keys on it
 
 `src/stage-build.mjs`: the names gain two roots, before the project's,
 `transport/` as `videomaker/transport/<file>` and `src/` as
-`videomaker/src/<file>`, so `transport/take.ts` and `src/take.mjs`, which
-the runtime now bundles, are named by the tool from any checkout. The
+`videomaker/src/<file>`, so `transport/take.ts`, which the runtime now
+bundles, and `src/take.mjs`, which esbuild reads through it (and drops from
+the script, since the stage calls only `attachMachine`: finding 1 of the
+evidence), are named by the tool from any checkout, in the script and in
+the record the key is computed over. The
 runtime's sources for the key become every file under `stage/` and
 `transport/` but their tests, each named by the tool, so a change to the
 handle's types, which esbuild drops as types but a project's type check

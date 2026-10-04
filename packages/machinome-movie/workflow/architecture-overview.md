@@ -41,6 +41,8 @@ the real model through the machinome viewer and never invents a pose.
            the transition with its outgoing frame, or a reframe with
            each moving view's box (measured slot boxes, ADR-010)
         │  window.film.setFrame(frame) on the React stage  stage/
+        │    a view on a take posed through the take        transport/
+        │    transport, by the frame's bank (ADR-020)
         │  bundled per movie with the project's modules    src/stage-build.mjs
         ▼
     observed: what the stage drew, per element, with the chrome's rectangles
@@ -68,7 +70,21 @@ elements `view`, `source`, `title` and `picture`), `marks.ts` (rings, labels
 and arrows over a view), `runtime.tsx` (the boot, the viewer instances
 hosted outside React and leased to the view elements each frame places
 ([ADR-007](adrs/STAGE/ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md)),
-the transition layer and `window.film`) and `stage.css`. Four joins are
+the transition layer and `window.film`) and `stage.css`. A view on a clocked
+take is posed through the take transport, `transport/`
+([ADR-020](adrs/STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md)):
+`viewer-handle.ts` declares the viewer's public handle as Videomaker
+reaches it, types only, which the stage imports; `take.ts` gives a mounted
+viewer a machine transport (`attachMachine`: the take's identity checked
+once, then a bank restored and the camera set per pose), a clocked take
+transport that seeks a take document by the pose rule of `src/take.mjs`
+(`attachTake`), and the trivial take of a posed loop (`attachLoop`);
+`clock.ts` the timer and audio clocks that drive them. The stage attaches a
+machine transport to each viewer instance a view on a take mounts and
+`window.film.transport(key)` reports it; the transport knows nothing of the
+stage or the movie and imports only its own files and the pose rule, which a
+repository test holds, so it can be moved to the viewer package at the
+migration with its tests. Four joins are
 composed in the transition layer from same-instant captures; a reframe is
 drawn live, its moving views' hosts over the boxes the frame gives them and
 the incoming shot's other elements at its progress as opacity (ADR-010). `src/film.html` holds three empty layers,
@@ -79,6 +95,7 @@ from the document's stage block, checks TypeScript modules with `tsc
 --noEmit`, and reuses the bundle while the content of its inputs is
 unchanged; a YAML episode is drawn by the runtime alone. The bundle and its
 key name every file by the tool (`videomaker/stage/…`,
+`videomaker/transport/…`, `videomaker/src/…`,
 `videomaker/node_modules/…`) or the project repository (`project/…`),
 rewriting esbuild's machine-relative names in its outputs, so a checkout's
 location never changes the bytes, the hashes or the shot cache's key
@@ -263,4 +280,8 @@ campaign adds machine takes: a clocked take is declared and recorded in
 Python (`declare-a-take`, ADR-011), and the commands read it and pose it on
 the viewer's machine, held to the record (`pose-a-take`, ADR-012). Running
 machines' takes, the page element and the studio's live preview are later
-steps of the same direction and are not built.
+steps of the same direction and are not built. The player campaign
+(`workflow/ongoing/player-campaign/plan.md`) builds the live preview in
+Videomaker first: its first change, `take-transport` (ADR-020), lifted the
+pose of a take out of the stage into `transport/`; the live server and the
+player page are not built.

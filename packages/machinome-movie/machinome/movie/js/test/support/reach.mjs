@@ -35,7 +35,7 @@ const TEST_FILE=/\.test\.[cm]?[jt]sx?$/;
 // Static relative imports and re-exports, and import() of a literal relative path.
 const IMPORTS=/\b(?:import|export)\s*(?:[\w*{}\s,$]*?\s*from\s*)?['"](\.{1,2}\/[^'"]+)['"]|\bimport\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/g;
 // A module that locates a repository file by path rather than importing it.
-export const LOCATES=/\bimport\.meta\.url\b|\b(?:resolve|join)\(\s*['"](?:\.\.?\/)?(?:bin|src|stage|fixtures|schema|python|test)\//;
+export const LOCATES=/\bimport\.meta\.url\b|\b(?:resolve|join)\(\s*['"](?:\.\.?\/)?(?:bin|src|stage|transport|fixtures|schema|python|test)\//;
 
 const FIXTURE_PROJECT='python/tests/fixtures/project';
 // What a module reads without importing it, by path relative to the root. A
@@ -44,15 +44,18 @@ const FIXTURE_PROJECT='python/tests/fixtures/project';
 // Python leaves behind. An empty list says the module locates files but none
 // that decides a verdict, and why is written beside it.
 export const READS={
-  'src/render.mjs':['stage','src/film.html'],        // the page and the stage bundle it serves
+  // The page and the stage bundle it serves; the bundle embeds the take
+  // transport, which imports the pose rule (ADR-020).
+  'src/render.mjs':['stage','transport','src/take.mjs','src/film.html'],
   'src/layout.mjs':['src/film.html'],                 // the page the layout probe serves
-  'src/stage-build.mjs':['stage'],                    // bundles the runtime from stage/
+  'src/stage-build.mjs':['stage','transport','src/take.mjs'],  // bundles the runtime from stage/ and transport/
   'src/schema.mjs':['schema'],                        // the movie document schema
   'src/speech.mjs':[],                                // the .env files of keyFiles(): a test names a throwaway checkout, never this one
   'test/support/memo.mjs':[],                         // the memo itself: reads the key's inputs
   'test/support/reach.mjs':[],                        // this module: reads the key's inputs
   'test/support/fixture-movie.mjs':['fixtures',FIXTURE_PROJECT],
   'test/support/stage-page.mjs':['src/film.html'],
+  'test/support/transport-bundle.mjs':['transport','src/take.mjs'],  // bundles the take transport
   'test/pipeline/movie-pipeline.test.mjs':['fixtures','bin/videomaker.mjs'],  // spawns the command line
   'test/pipeline/review-pack.test.mjs':['bin/videomaker.mjs'],                // spawns the command line
   'test/pipeline/provenance.test.mjs':['bin/videomaker.mjs'],                 // spawns the command line

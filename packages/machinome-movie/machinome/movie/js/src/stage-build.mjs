@@ -30,7 +30,9 @@
 // or the project repository, never by the machine's directories, so the same
 // tool content and project content bundle to the same bytes from any checkout
 // and any copy of the project. A file in the output directory keeps esbuild's
-// name (`entry.tsx`); the runtime is `videomaker/stage/<file>`, the tool's
+// name (`entry.tsx`); the runtime is `videomaker/stage/<file>`, the take
+// transport the runtime poses a take through `videomaker/transport/<file>` and
+// the pose rule it imports `videomaker/src/<file>` (ADR-020), the tool's
 // packages `videomaker/node_modules/<file>`, a project file `project/<path in
 // the repository>`; anything else keeps esbuild's name, relative to the output
 // directory. esbuild prints its own names, relative to the output directory
@@ -40,11 +42,14 @@
 // `/* <name> */` line before each stylesheet.
 //
 // The key is the SHA-256 of the runtime's sources (every file under stage/
-// but its tests), each module's bytes, every input the previous build read (so
-// a module's own imports count), each under its name, the stage block, and
-// the versions of esbuild, TypeScript and React. An equal key whose outputs
-// still hash as recorded is reused without building; never an mtime, never a
-// path of the machine, so a second checkout reuses the first one's bundle.
+// and transport/ but their tests: the take transport's types reach a
+// project's type check through videomaker/stage even where esbuild drops
+// them), each module's bytes, every input the previous build read (so a
+// module's own imports count, the pose rule among them), each under its
+// name, the stage block, and the versions of esbuild, TypeScript and React.
+// An equal key whose outputs still hash as recorded is reused without
+// building; never an mtime, never a path of the machine, so a second checkout
+// reuses the first one's bundle.
 import {execFile} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {mkdir,readFile,readdir,realpath,rm,stat,writeFile} from 'node:fs/promises';
@@ -55,7 +60,11 @@ import {hash,json} from './util.mjs';
 
 const TOOL=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const STAGE=join(TOOL,'stage');
+const TRANSPORT=join(TOOL,'transport');
+const SOURCE=join(TOOL,'src');
 const NODE_MODULES=join(TOOL,'node_modules');
+// The tool's directories whose files the bundle names by the tool, and how.
+const TOOL_ROOTS=[[STAGE,'videomaker/stage'],[TRANSPORT,'videomaker/transport'],[SOURCE,'videomaker/src']];
 const EXTENSIONS=new Set(['.ts','.tsx','.js','.jsx']);
 const TYPED=new Set(['.ts','.tsx']);
 
@@ -63,18 +72,23 @@ const inside=(base,path)=>{const rel=relative(base,path);return rel===''||(!isAb
 const readOrNull=async path=>{try{return await readFile(path);}catch(error){if(error.code==='ENOENT')return null;throw error;}};
 const sha=async path=>{const bytes=await readOrNull(path);return bytes===null?null:hash(bytes);};
 
-/** Every source of the runtime (stage/, tests excluded), sorted. */
+/**
+ * Every source of the runtime (stage/ and the take transport it poses a take
+ * through, transport/; tests excluded), sorted, each with its name by the
+ * tool.
+ */
 export async function runtimeSources(){
   const files=[];
-  async function walk(dir){
+  async function walk(dir,prefix){
     for(const entry of await readdir(dir,{withFileTypes:true})){
       const path=join(dir,entry.name);
-      if(entry.isDirectory())await walk(path);
-      else if(!/\.test\.[cm]?[jt]sx?$/.test(entry.name))files.push(path);
+      if(entry.isDirectory())await walk(path,`${prefix}/${entry.name}`);
+      else if(!/\.test\.[cm]?[jt]sx?$/.test(entry.name))files.push({file:path,name:`${prefix}/${entry.name}`});
     }
   }
-  await walk(STAGE);
-  return files.sort();
+  await walk(STAGE,'videomaker/stage');
+  await walk(TRANSPORT,'videomaker/transport');
+  return files.sort((a,b)=>a.name<b.name?-1:a.name>b.name?1:0);
 }
 
 export function versions(){
@@ -191,8 +205,8 @@ async function buildNames(out,project){
   // esbuild names files by their real paths relative to the real output
   // directory; a worktree's node_modules is a link to another checkout's.
   const outReal=await realOr(out);
-  const roots=[[await realOr(STAGE),'videomaker/stage'],[await realOr(NODE_MODULES),'videomaker/node_modules'],
-    [await realOr(project),'project']];
+  const roots=[...await Promise.all(TOOL_ROOTS.map(async([dir,prefix])=>[await realOr(dir),prefix])),
+    [await realOr(NODE_MODULES),'videomaker/node_modules'],[await realOr(project),'project']];
   const nameOf=file=>{
     if(inside(outReal,file))return relative(outReal,file);
     for(const [root,prefix] of roots)if(inside(root,file))return `${prefix}/${relative(root,file)}`;
@@ -242,7 +256,7 @@ async function computeKey({names,runtime,modules,previous,stageBlock,versions:v}
     if(seen.has(name)||names.generated(name))return;
     seen.add(name);inputs.push({path:name,sha256:sha256??await sha(file)});
   };
-  for(const file of runtime)await add(`videomaker/stage/${relative(STAGE,file)}`,file);
+  for(const {file,name} of runtime)await add(name,file);
   for(const m of modules)await add(names.nameOf(m.file),m.file,m.sha256);
   for(const name of [...previous].sort())await add(name,names.fileOf(name));
   const key=hash(JSON.stringify({inputs,modules:modules.map(m=>m.path),stageBlock:stageBlock??null,versions:v}));

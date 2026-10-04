@@ -348,7 +348,7 @@ is the player's job.
 
 | kind | draws | reads |
 |---|---|---|
-| `view` | the model through its camera, with its highlight and marks, on a viewer instance leased to the element while frames place it and freed for another view element when one does not, hosted in the element's box (during a reframe, over the box the frame gives it); a film mounts no more instances than one of its frames places views (with a viewer below API 28, which keeps the up and field of view it mounted with, no more for each such lens); a view on a posed loop is posed at the loop's time, a view on a clocked take by restoring the machine's bank the frame gives it on the viewer's machine, with the take's identity, before its camera is set | `--vm-accent` for marks, `--vm-background` for the plate behind a mark's words |
+| `view` | the model through its camera, with its highlight and marks, on a viewer instance leased to the element while frames place it and freed for another view element when one does not, hosted in the element's box (during a reframe, over the box the frame gives it); a film mounts no more instances than one of its frames places views (with a viewer below API 28, which keeps the up and field of view it mounted with, no more for each such lens); a view on a posed loop is posed at the loop's time, a view on a clocked take by restoring the machine's bank the frame gives it on the viewer's machine, with the take's identity, before its camera is set, both through the take transport the stage attaches to the view's viewer instance when it mounts (`window.film.transport(key)` reports it) | `--vm-accent` for marks, `--vm-background` for the plate behind a mark's words |
 | `source` | a pinned excerpt, typed, highlighted as Python, its lit tokens marked in `mark.spoken`, the cursor while typing; its file and lines above it | `--vm-source-size`, `--vm-source-line`, `--vm-source-color`, `--vm-source-padding`, `--vm-source-rule`, `--vm-source-file-size`, `--vm-source-file-color`, `--vm-source-file-gap`, `--vm-source-cursor-color`, `--vm-accent` |
 | `title` | its text and subtitle while shown, at its opacity; with a reveal, each word as it arrives, the unrevealed ones keeping their place | `--vm-title-size`, `--vm-title-weight`, `--vm-title-line`, `--vm-title-spacing`, `--vm-title-align`, `--vm-title-color`, `--vm-title-background`, `--vm-title-padding`, `--vm-subtitle-size` |
 | `picture` | a still or a clip's frame while shown, fitted to the element's box (`contain` or `cover`) through its view's centre and zoom, on a plate of the background colour | `--vm-background` |
@@ -381,20 +381,22 @@ files and its stylesheets.
   `.jsx` module is bundled without a type check and meets only the stage's
   own refusals when it mounts.
 - **Rebuilt by content.** The bundle's key is the SHA-256 of the runtime's
-  sources, each module's bytes, every file the previous build read (the
-  modules' own imports and stylesheets included), the stage block, and the
-  versions of esbuild, TypeScript, React and React DOM. An equal key, with
-  outputs that still hash as recorded, reuses the bundle; a modification
-  time never rebuilds it.
+  sources (the take transport's among them), each module's bytes, every
+  file the previous build read (the modules' own imports and stylesheets
+  included), the stage block, and the versions of esbuild, TypeScript,
+  React and React DOM. An equal key, with outputs that still hash as
+  recorded, reuses the bundle; a modification time never rebuilds it.
 - **The same bytes from any checkout.** The bundle names every file it read
   by the tool or by the project repository, never by where either lies on
-  the machine: the runtime as `videomaker/stage/<file>`, React and React DOM
-  as `videomaker/node_modules/<file>`, a project file as `project/<path in
-  the repository>`. Those names are what the script's and the stylesheet's
-  comments carry and what the key is computed over, so two checkouts of the
-  tool with the same content, building the same project content, write the
-  same `stage.js` and `stage.css` with the same hashes, and a checkout
-  reuses a bundle another one built. A file a module imports from outside
+  the machine: the runtime as `videomaker/stage/<file>`, the take transport
+  it poses a clocked take through as `videomaker/transport/<file>` and the
+  pose rule that transport imports as `videomaker/src/<file>`, React and
+  React DOM as `videomaker/node_modules/<file>`, a project file as
+  `project/<path in the repository>`. Those names are what the script's
+  and the stylesheet's comments carry and what the key is computed over,
+  so two checkouts of the tool with the same content, building the same
+  project content, write the same `stage.js` and `stage.css` with the same
+  hashes, and a checkout reuses a bundle another one built. A file a module imports from outside
   both the tool and the repository keeps a name relative to
   `_build/stage/`, which depends on where it lies.
 - **`check` builds it** after the document has loaded and before anything

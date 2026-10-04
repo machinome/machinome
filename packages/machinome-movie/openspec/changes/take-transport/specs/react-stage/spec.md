@@ -8,7 +8,7 @@ machine transport to it once, with the take's identity, and keep it with
 the instance; and on every frame SHALL pose the view through that
 transport, which restores the whole bank on the viewer's machine handle,
 `machine().restore({identity, bank})`, and then sets the camera: one
-restore and one camera call, one render, per frame. It MUST NOT set a loop
+restore and one camera call per frame, as before. It MUST NOT set a loop
 time for that view. The view's report SHALL carry the bank the machine
 holds after the pose. `window.film.transport(key)` SHALL return the
 machine transport of the instance the view element `key` holds, or `null`
@@ -65,7 +65,7 @@ stage block, the versions of the bundler, the type checker and React),
 never because of a modification time. The bundle SHALL NOT depend on where
 the tool's checkout or the project lies: every file it embeds a name of
 SHALL be named relative to the tool (its runtime, the take transport and
-the pose rule the runtime bundles, and its packages) or to the project
+the pose rule it imports, and its packages) or to the project
 repository, so the same tool content and the same project content bundle
 to the same bytes, and the bundle's key SHALL be computed over those names
 and the files' content, so a checkout reuses a bundle another checkout of
@@ -95,9 +95,10 @@ either shows in the line.
   copy of the project, and by another checkout of the same tool content,
   elsewhere, from another copy of the same project content, elsewhere
 - **THEN** the two scripts are the same bytes, the two stylesheets are the
-  same bytes, no name in either is a path of the machine, and the take
-  transport and the pose rule are named `videomaker/transport/take.ts` and
-  `videomaker/src/take.mjs`.
+  same bytes, no name in either is a path of the machine, the script names
+  the take transport `videomaker/transport/take.ts`, and the record the
+  bundle's key is computed over names it and the pose rule it imports
+  `videomaker/transport/take.ts` and `videomaker/src/take.mjs`.
 
 #### Scenario: A second checkout reuses the bundle
 - **WHEN** a second checkout of the same tool content bundles the stage of a

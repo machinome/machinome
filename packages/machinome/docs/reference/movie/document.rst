@@ -536,17 +536,23 @@ headless Chromium by the renderer. Its contract with the renderer:
   judged by preview and render against the box the stage reports. A
   document that shows no picture opens no browser at `check`.
 - A view whose state carries a `bank` is posed through the viewer's
-  machine handle: `restore({identity, bank})` with the document's take
-  identity, then the camera; a viewer whose document is clocked and
-  declares no machine handle, or whose identity differs, is refused at
-  mount naming the view. The stage reports the machine's bank beside the
-  camera, so the renderer can hold it to the take's at every mark ("The
-  take").
+  machine handle by the take transport (`transport/`): when the view's
+  viewer instance mounts, `attachMachine(viewer, take.identity)` attaches
+  it, refusing, naming the view, a viewer whose document is clocked and
+  declares no machine handle, or whose identity differs; on every frame its
+  `pose(bank, camera)` makes `restore({identity, bank})` with the
+  document's take identity, then sets the camera. The stage reports
+  the machine's bank beside the camera, so the renderer can hold it to the
+  take's at every mark ("The take").
 - `window.film` also has `project(key, points)`, which projects world
-  points through the viewer of the view element `key`, and `views()`, which
+  points through the viewer of the view element `key`, `views()`, which
   lists the viewer instances with the key of the view element each serves
-  (`null` when it is free) and whether each is shown. `viewer` and `apiVersion` are those of the first view mounted, and
-  `null` before one is (finding 11 of the react-stage change).
+  (`null` when it is free) and whether each is shown, and `transport(key)`,
+  the take transport's machine transport the view element `key` is posed
+  through (its `identity`, and `bank()`, the bank the machine holds), or
+  `null` for a view on a loop. `viewer` and `apiVersion` are those of the
+  first view mounted, and `null` before one is (finding 11 of the
+  react-stage change).
 - `window.film.compose(request)` and `composeMarkBlend(request)` draw
   transition and blended frames over the page from same-instant captures,
   as today, in a layer above every set's content and below its chrome; each

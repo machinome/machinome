@@ -56,6 +56,32 @@ test('every view on the take is restored to its frame\'s bank, never given a loo
   assert.deepEqual(seen.takeReplay,{steps:3,matched:true});
 });
 
+test('window.film.transport reports the bank and the identity each frame on the take posed, the recorded bank at a mark, and null on a loop (take-transport)',async t=>{
+  const {film,viewer,document:doc}=await theCount();
+  const instants=[shotOf(film,'once').start,middle(film,'once'),shotOf(film,'nine').start];
+  const seen=await browserSession(film,viewer,WIDTH,[],async({page,pose})=>{
+    const out=[];
+    for(const at of instants){
+      const f=await pose(at,{transition:null});
+      out.push({frame:f.elements[VIEW].bank,reported:await page.evaluate(k=>{
+        const transport=window.film.transport(k);return transport&&{identity:transport.identity,bank:transport.bank()};},VIEW)});
+    }
+    return {result:out};
+  });
+  for(const {frame,reported} of seen.result)assert.deepEqual(reported,{identity:doc.take.identity,bank:frame});
+  assert.deepEqual(seen.result.map(r=>r.reported.bank.units),[0,0,1]);
+  assert.deepEqual(seen.result[2].reported.bank,doc.take.banks.one,'nine begins at the mark one');
+  // The tour films a loop: its views are posed by their time, through no transport.
+  const tour=await fixtureMovie(t,'tour'),loop=await loadEpisode(tour.file);
+  const first=filmShots(loop).find(({chapter,shot})=>Object.values(shot.places).some(k=>chapter.elements[k].kind==='view'));
+  const key=`${first.chapter.id}.${Object.values(first.shot.places).find(k=>first.chapter.elements[k].kind==='view')}`;
+  const looped=await browserSession(loop,tour.viewer,WIDTH,[],async({page,pose})=>{
+    await pose(first.shot.start);
+    return {result:await page.evaluate(k=>window.film.transport(k),key)};
+  });
+  assert.equal(looped.result,null,`the view ${key} on the tour's loop has no transport`);
+});
+
 test('posing one bank, then another, then the first gives identical pixels; a mark poses its recorded bank',async()=>{
   const {film,viewer,document:doc}=await theCount();
   const a=middle(film,'nine'),b=shotOf(film,'nine').start;

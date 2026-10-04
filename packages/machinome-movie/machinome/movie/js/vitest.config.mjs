@@ -26,8 +26,9 @@ export default defineConfig({
     projects:[
       {test:{name:'pure',include:['test/**/*.test.mjs'],exclude:[...SLOW,...VIEWER],
         sequence:{groupOrder:0},testTimeout:30_000}},
-      // Layer 4: the stage's components under jsdom, and tsc over stage/.
-      {test:{name:'stage',include:['stage/**/*.test.tsx'],environment:'jsdom',
+      // Layer 4: the stage's components and the take transport under jsdom,
+      // and tsc over stage/ and transport/.
+      {test:{name:'stage',include:['stage/**/*.test.tsx','transport/**/*.test.ts'],environment:'jsdom',
         sequence:{groupOrder:0},testTimeout:60_000}},
       {test:{name:'slow',include:SLOW,sequence:{groupOrder:1},...serial}},
       // Layer 6: the real viewer, over the fixture project's real export.
