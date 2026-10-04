@@ -12,8 +12,8 @@ numpy==2.2.*
 rtree
 scipy
 shapely==2.1.*
-# The kernel extras: occt, manifold, cadquery, build123d, step, molejo (and
-# all).
+# The kernel extras: occt, manifold, cadquery, build123d, step, molejo,
+# openscad (SolidPython, above), solid2 (and all).
 cadquery-ocp>=7.8.1,<7.9
 manifold3d
 cadquery==2.7.*

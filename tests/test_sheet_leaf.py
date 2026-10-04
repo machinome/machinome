@@ -25,7 +25,7 @@ import ezdxf
 from machinome.occt.engine import solid_count
 from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, SheetLeafNode)
-from machinome.openscad.binary import openscad_binary
+from machinome.node.openscad.binary import openscad_binary
 
 from .sheet_project import frame_panel
 
@@ -393,20 +393,17 @@ class SheetDxfArtifactTest(BuildDirTestCase):
         second = PerforatedPlate()
         with patch('machinome.node.build123d._export_dxf',
                    side_effect=AssertionError('must not re-export')):
-            assembled = second.as_scad(second.render())
+            assembled = second.present(second.render())
 
         self.assertIn(second.local_stl, str(assembled))
 
     def test_a_current_sheet_leaf_skips_its_render_entirely(self):
         node = PerforatedPlate()
         node.assemble()
-        # `_render_can_be_skipped` also asks for the `.scad`, which only a
-        # path reading it writes since `scad-presentation`.
-        node.generate_scad()
 
         second = PerforatedPlate()
 
-        self.assertTrue(second._render_can_be_skipped())
+        self.assertTrue(second._prepare_can_be_skipped())
 
     def test_a_missing_dxf_alone_forces_regeneration(self):
         node = PerforatedPlate()
@@ -416,7 +413,7 @@ class SheetDxfArtifactTest(BuildDirTestCase):
         second = PerforatedPlate()
         self.assertTrue(second._up_to_date(second.stl_file))
         self.assertTrue(second._up_to_date(second.brep_file))
-        self.assertFalse(second._render_can_be_skipped())
+        self.assertFalse(second._prepare_can_be_skipped())
 
         second.assemble()
 
@@ -459,10 +456,10 @@ class SheetAdapterContractTest(BuildDirTestCase):
         node = Plate()
         node.assemble()
 
-        with patch('machinome.openscad.binary.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'an exact backend must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -472,8 +469,8 @@ class SheetAdapterContractTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.openscad.binary.shutil.which', return_value=None), \
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             node = PerforatedPlate()
             node.assemble()

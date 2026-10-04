@@ -15,10 +15,11 @@ hierarchy, colours, rigid/flexible distinctions, driver bindings, motion and
 geometry that those consumers expose through their existing contracts.
 
 This independence SHALL apply to native adapters. Geometry authored in
-OpenSCAD or a legacy SCAD-only adapter SHALL still be evaluated through its
-own supported backend boundary, without making the rest of the machine use
-SCAD for composition. Native producer failures SHALL NOT select that legacy
-boundary as a fallback.
+OpenSCAD SHALL still be evaluated through its own supported backend boundary,
+the OpenSCAD node package of the `openscad-node` capability, without making
+the rest of the machine use SCAD for composition. No other leaf SHALL reach
+that boundary: a native producer's failure, or a leaf that produced no STL, is
+refused naming the leaf, never handed to OpenSCAD as a fallback.
 
 #### Scenario: Native export without assembly SCAD
 
@@ -153,31 +154,37 @@ assertions into normal build publication.
 
 ### Requirement: SCAD remains a supported output and compatibility boundary
 
-Existing SCAD-facing calls, including public `assemble()` and `as_scad()`,
-SHALL remain usable. `assemble()` SHALL return the node's presentation
-description under the `scad-engine-dependency` capability, retaining the
-placement order, colours and optimized artifact imports its SCAD carried; it
-SHALL require neither SolidPython nor the OpenSCAD engine and SHALL write no
-SCAD.
+Public `assemble()` SHALL remain usable. It SHALL return the node's
+presentation description (`machinome.node.presentation`), composed through
+each node's `present()`, retaining the placement order, colours and optimized
+artifact imports its SCAD carried; it SHALL require no node package and SHALL
+write no SCAD. The core SHALL write no SCAD at all: SCAD is the OpenSCAD node
+package's output, under the `openscad-node` capability.
 
 SCAD text SHALL be written only where a path reads it. A build SHALL write the
-`.scad` of a leaf whose geometry is authored in SCAD (a `Solid2Node`, an
-`OpenScadNode`, or a project leaf overriding `as_scad`), from which OpenSCAD
-renders that leaf's STL, and SHALL write no other `.scad`: none for an
-assembly, a fusion, a flexible leaf or any other leaf, with or without the
-engine. `machinome snapshot --renderer openscad` SHALL write the root's
-`.scad` on demand, under the `web-snapshot` capability, because the OpenSCAD
-renderer draws it. With the engine installed, a caller MAY ask any node for its
-SCAD text (`scad_code`) or have it write its `.scad` (`generate_scad()`).
-Whatever SCAD is written SHALL use the same prepared machine and canonical
-geometry as other consumers. Without the engine, a build of a tree with no
-SCAD-authored leaf SHALL complete writing no `.scad` and SHALL log nothing
-about SCAD presentation, since nothing in it asks for SCAD; a SCAD-authored
-leaf meets the refusal of the `scad-engine-dependency` capability.
+`.scad` of a leaf of the OpenSCAD node family (a `Solid2Node`, an
+`OpenScadNode`, or another subclass of the family's leaf base), from which
+OpenSCAD renders that leaf's STL, and SHALL write no other `.scad`: none for an
+assembly, a fusion, a flexible leaf or any other leaf, whatever is installed.
+`machinome snapshot --renderer openscad` SHALL write the root's `.scad` on
+demand, under the `web-snapshot` capability, because the OpenSCAD renderer
+draws it. With the OpenSCAD node package installed, a caller MAY ask any node
+for its SCAD text (`machinome.node.openscad.writer.scad_code(node)`, and
+`scad_code` on a family leaf) or have it written
+(`machinome.node.openscad.writer.generate_scad(node)`, and `generate_scad()` on
+a family leaf). Whatever SCAD is written SHALL use the same prepared machine and
+canonical geometry as other consumers. Without the package or SolidPython, a
+build of a tree with no family leaf SHALL complete writing no `.scad` and SHALL
+log nothing about SCAD, since nothing in it asks for SCAD; a project using a
+family leaf meets the package's refusal at its import, under the `openscad-node`
+capability.
 
-The system SHALL preserve OpenSCAD and Solid2 modelling support and legacy
-SCAD-only adapter overrides. The OpenSCAD snapshot renderer SHALL remain
-selectable with its existing default and missing-tool behavior. Flexible SCAD
+The system SHALL preserve OpenSCAD and Solid2 modelling support, through the
+`openscad` and `solid2` extras. A project leaf overriding a method named
+`as_scad` is no longer a SCAD-only adapter: the core never calls it. The
+OpenSCAD snapshot renderer SHALL remain selectable with its existing default
+and missing-tool behavior, and SHALL be refused naming the `openscad` extra
+when the package cannot be imported. Flexible SCAD
 output SHALL retain its numeric-snapshot and symbolic-time limitations; it
 SHALL NOT be described as supporting live independent driver controls. The
 OpenSCAD GUI SHALL NOT be offered as a machinome viewer or automatic
@@ -190,23 +197,25 @@ different geometry engine.
 
 #### Scenario: A direct SCAD caller remains supported
 
-- **WHEN** existing project code asks for `node.assemble()` or `node.scad_code`
-  with the OpenSCAD engine installed
-- **THEN** `assemble()` returns the node's presentation description and
-  `scad_code` the SCAD text the engine writes of it, with the existing
-  transform and colour semantics, even if native preparation already occurred
+- **WHEN** existing project code asks for `node.assemble()`, and for the SCAD
+  text of the node through the OpenSCAD node package's writer (or `scad_code` on
+  a family leaf), with the package installed
+- **THEN** `assemble()` returns the node's presentation description and the
+  writer the SCAD text of it, with the existing transform and colour semantics,
+  even if native preparation already occurred
 
 #### Scenario: assemble() writes no SCAD
 
 - **WHEN** `node.assemble()` is called on an assembly of exact, imported STL
-  and flexible leaves with the OpenSCAD engine installed
+  and flexible leaves with the OpenSCAD node package installed
 - **THEN** it returns the presentation description and no `.scad` is written
   for any node
 
 #### Scenario: assemble() without the engine
 
 - **WHEN** a project of exact and imported STL leaves calls `node.assemble()`
-  and then `node.build_stls()` with the OpenSCAD engine absent
+  and then `node.build_stls()` with SolidPython and the OpenSCAD node package
+  absent
 - **THEN** both succeed, every node is linked and prepared, `mesh` answers in
   world coordinates, and no `.scad` is written
 
@@ -214,7 +223,7 @@ different geometry engine.
 
 - **WHEN** an ordinary `machinome build` of a project holding an assembly, a
   fusion, a flexible leaf, an exact leaf and a `Solid2Node` leaf completes
-  with the OpenSCAD engine installed
+  with the OpenSCAD node package installed
 - **THEN** the only `.scad` under its build directory is the `Solid2Node`
   leaf's, and repeated unchanged builds do not rewrite it
 
@@ -228,16 +237,16 @@ different geometry engine.
 #### Scenario: OpenSCAD users obtain a machine's SCAD on demand
 
 - **WHEN** a person wants the SCAD of a built machine
-- **THEN** `node.scad_code` gives any node's SCAD text, and `machinome
-  snapshot --renderer openscad` renders the root's SCAD with OpenSCAD and
-  then removes the file it wrote for it
+- **THEN** `machinome.node.openscad.writer.scad_code(node)` gives any node's
+  SCAD text, and `machinome snapshot --renderer openscad` renders the root's
+  SCAD with OpenSCAD and then removes the file it wrote for it
 
 #### Scenario: A normal build without the engine
 
 - **WHEN** an ordinary `machinome build` of a project whose leaves need no
-  OpenSCAD completes with the OpenSCAD engine absent
-- **THEN** it publishes the same document and artifacts it publishes with the
-  engine, writes no `.scad`, and logs nothing about SCAD presentation
+  OpenSCAD completes with SolidPython and the OpenSCAD node package absent
+- **THEN** it publishes the same document and artifacts it publishes with
+  them, writes no `.scad`, and logs nothing about SCAD
 
 #### Scenario: SCAD and browser view the same fused part
 

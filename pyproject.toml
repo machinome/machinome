@@ -25,11 +25,10 @@ keywords = ["machinome"]
 dependencies = [
     "watchdog",
     "trimesh==4.4.*",
-    "solidpython2==2.1.*",
     # No CAD kernel is required: cadquery, build123d, ocp-gordon, molejo, the
-    # OCCT binding and manifold3d are the extras below, each named by the last
-    # component of the address of the module that needs it (OpenSpec changes
-    # `lean-install` and `mesh-engine`).
+    # OCCT binding, manifold3d and SolidPython are the extras below, each named
+    # by the last component of the address of the module that needs it
+    # (OpenSpec changes `lean-install`, `mesh-engine` and `openscad-out`).
     "httpx==0.27.*",
     "fastapi==0.111.*",
     "termcolor==2.4.*",
@@ -135,8 +134,19 @@ molejo = [
     "molejo[brep]==0.2.*",
     "machinome[occt]",
 ]
+# The OpenSCAD node family (`machinome.node.openscad`: OpenScadNode, the
+# OpenSCAD writer and the OpenSCAD snapshot renderer) writes SCAD through
+# SolidPython; the OpenSCAD executable itself is no extra's to install.
+openscad = [
+    "solidpython2==2.1.*",
+]
+# `machinome.node.solid2` (Solid2Node) renders with SolidPython over the
+# OpenSCAD node family.
+solid2 = [
+    "machinome[openscad]",
+]
 all = [
-    "machinome[cadquery,build123d,step,molejo,occt,manifold]",
+    "machinome[cadquery,build123d,step,molejo,occt,manifold,openscad,solid2]",
 ]
 # Machinome Studio is still experimental and unpublished. Declaring its final
 # extra name now does not make the dependency available from a package index.

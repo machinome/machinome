@@ -75,8 +75,8 @@ class ExactLeafNode(LeafNode):
         """
         if self._up_to_date(self.brep_file):
             return cached_shape(self.brep_file)
-        # `model` is the SCAD presentation after assemble(), often an
-        # _ArtifactImport. A stale BREP needs fresh native geometry.
+        # `model` is the presentation after assemble(), often an
+        # ArtifactImport. A stale BREP needs fresh native geometry.
         rendered = self.render()
         self.validate(rendered)
         return self._converted(rendered)
@@ -155,11 +155,3 @@ class ExactLeafNode(LeafNode):
             write_stl(shape, self.stl_file, self.mtime_ns,
                       linear_deflection, angular_deflection, digest,
                       fingerprint)
-
-    def as_scad(self, rendered):
-        """Present the canonical native artifact to SCAD: the core's
-        description of its import (`artifact_import`), whose text the
-        OpenSCAD engine writes where a path reads it."""
-        if not self._up_to_date(self.stl_file):
-            self.materialize(rendered)
-        return self.artifact_import(self.local_stl)

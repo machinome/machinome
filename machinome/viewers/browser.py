@@ -9,7 +9,8 @@ the build lock, serializes the photographed node into a staging directory of
 its own and links the models it names there. The photograph itself is the
 viewer's -- `machinome-viewer capture`, run on that directory as a separate
 process with the image size, the animation instant and the camera this side
-resolved from OpenSCAD's syntax. Nothing of the viewer is imported here.
+resolved from the `--camera` notation (`machinome.core.camera`). Nothing of
+the viewer is imported here.
 """
 
 import json
@@ -26,6 +27,7 @@ from machinome.core.serializer import (
     compiled_clocked, compiled_program, document_body, drivers_table,
     serialize_node,
 )
+from machinome.node.supported import DEFAULT_RENDERER
 from machinome.viewers import bundle as viewer_bundle
 
 
@@ -155,8 +157,8 @@ class BrowserRenderer:
         A capture is a one-shot: the viewer's own refusal would reach the
         caller as an opaque non-zero exit from a headless page, and this
         capability's standing rule is to fail with what is missing rather
-        than substitute. It never falls back to OpenSCAD, which is the
-        same rule stated for a missing viewer package and a missing
+        than substitute. It never falls back to another renderer, which is
+        the same rule stated for a missing viewer package and a missing
         browser.
         """
         message = viewer_bundle.unreadable_document(version)
@@ -166,7 +168,7 @@ class BrowserRenderer:
                 f'here rather than failing inside a headless page: no '
                 f'browser was started and no image was written. Install a '
                 f'viewer that renders it, or photograph the model with '
-                f'--renderer openscad.')
+                f'--renderer {DEFAULT_RENDERER}.')
 
     def artifact_path(self, stl_file, build_dir):
         """The staged, build-relative location of one artifact."""

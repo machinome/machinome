@@ -26,6 +26,10 @@ machinome new
 
 Creates a new project directory ``<name>`` with a package, model module,
 ``pyproject.toml`` manifest, and ``.gitignore``. Fails if ``<name>`` exists.
+The model module's starter part is a ``Solid2Node`` where SolidPython is
+installed (``machinome[solid2]``), otherwise a ``CadQueryNode`` where CadQuery
+is (``machinome[cadquery]``). With neither, the command writes nothing and
+exits 1 naming both extras.
 
 machinome develop
 =================
@@ -205,9 +209,12 @@ in headless Chromium and preserves a real alpha channel for compositing.
 
 ``--renderer``
     ``openscad`` (default) or ``web``. The default stays ``openscad``
-    whether or not the browser viewer is installed. Install the web renderer
-    with ``pip install "machinome[web-snapshot]"`` (the viewer package with
-    its browser driver) and download the browser separately with
+    whether or not the browser viewer is installed. The OpenSCAD renderer
+    needs ``pip install "machinome[openscad]"`` and the OpenSCAD executable;
+    without the extra the command exits 1 before loading the model, naming
+    the extra and ``--renderer web``. Install the web renderer with
+    ``pip install "machinome[web-snapshot]"`` (the viewer package with its
+    browser driver) and download the browser separately with
     ``playwright install chromium``. Neither renderer ever falls back to the
     other when its dependency is unavailable.
 

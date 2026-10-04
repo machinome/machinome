@@ -235,10 +235,15 @@ The finding SHALL name the denied name reached. Every other name beneath
 the contract members, including `machinome.node`, `machinome.simulation`,
 `machinome.motion`, `machinome.math`, `machinome.parameters`,
 `machinome.test`, `machinome.exact_engine`, `machinome.occt.engine` and its
-other operations, `machinome.openscad`, and the leaf modules
-`machinome.node.cadquery`, `machinome.node.build123d`, `machinome.node.step`,
-`machinome.node.molejo`, `machinome.node.solid2`, `machinome.node.openscad`,
-`machinome.node.jscad` and `machinome.node.stl`, SHALL pass.
+other operations, and the leaf modules `machinome.node.cadquery`,
+`machinome.node.build123d`, `machinome.node.step`, `machinome.node.molejo`,
+`machinome.node.solid2`, `machinome.node.jscad` and `machinome.node.stl` and the
+package `machinome.node.openscad` with its modules, SHALL pass.
+
+`machinome.openscad` and `machinome.scad_engine` no longer exist: the OpenSCAD
+writer and binary contract are `machinome.node.openscad.writer` and
+`machinome.node.openscad.binary`. An import of a removed module is not a vet
+finding; it fails when the project runs.
 
 `machinome.exact` no longer exists: the exact operations a project calls
 directly are defined in `machinome.occt.engine` and are reached there. Vet

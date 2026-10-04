@@ -33,11 +33,11 @@ already know and by what the part needs; a project may mix them freely.
    * - ``Solid2Node``
      - ``render()`` returning a SolidPython object
      - no
-     - OpenSCAD
+     - OpenSCAD and ``machinome[solid2]``
    * - ``OpenScadNode``
      - ``scad_source`` naming a module
      - no
-     - OpenSCAD
+     - OpenSCAD and ``machinome[openscad]``
    * - ``JScadNode``
      - ``jscad_source`` exporting ``main``
      - no
@@ -121,7 +121,13 @@ children from either and fuse them exactly.
 SolidPython and OpenSCAD
 ------------------------
 
-``Solid2Node`` wraps SolidPython 2, a Python front end for OpenSCAD:
+``Solid2Node`` wraps SolidPython 2, a Python front end for OpenSCAD. Both
+classes are the OpenSCAD node family, the package ``machinome.node.openscad``
+with ``Solid2Node`` at ``machinome.node.solid2`` over it: install
+``machinome[solid2]`` for ``Solid2Node`` and ``machinome[openscad]`` for
+``OpenScadNode``, or ``machinome[all]``. Without SolidPython, importing either
+is refused with the line that installs it. A family part writes its own
+``.scad``, which the build keeps, and OpenSCAD renders its STL from it:
 
 .. code-block:: python
 

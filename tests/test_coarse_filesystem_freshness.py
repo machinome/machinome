@@ -206,15 +206,17 @@ class CoarseFilesystemTest(BaseNodeTest):
         """A CadQuery leaf's .stl and .brep, and its .scad when one is
         generated, must all report current after a build whose stamps could
         only be recorded to the millisecond. (Since `scad-presentation`
-        `assemble()` writes no `.scad`; a caller's `generate_scad()` does,
-        through the same stamping writer.)"""
+        `assemble()` writes no `.scad`; the OpenSCAD writer's
+        `generate_scad(node)` does, through the same stamping writer,
+        `currency.publish_text`.)"""
+        from machinome.node.openscad.writer import generate_scad, scad_file
         with millisecond_filesystem():
             node = ExactLeaf()
             self.quantise_sources(node)
             node.assemble()
-            node.generate_scad()
+            generate_scad(node)
 
-            self.assertArtifactsCurrent(node, node.stl_file, node.scad_file,
+            self.assertArtifactsCurrent(node, node.stl_file, scad_file(node),
                                         node.brep_file)
 
     def test_an_unchanged_exact_leaf_is_not_rebuilt(self):
@@ -247,7 +249,8 @@ class CoarseFilesystemTest(BaseNodeTest):
 
     def test_faceted_leaf_caches_on_a_millisecond_filesystem(self):
         """The OpenSCAD path stamps its STL in StlRenderStart.finish and
-        its scad in _atomic_write_text -- different writers, same rule."""
+        its scad in currency.publish_text -- different writers, same
+        rule."""
         if shutil.which('openscad') is None:
             self.skipTest('openscad is not installed')
 
@@ -347,10 +350,11 @@ class NativeFilesystemTest(BaseNodeTest):
         node = ExactLeaf()
         node.assemble()
         # `assemble()` writes no `.scad` (`scad-presentation`).
-        node.generate_scad()
+        from machinome.node.openscad.writer import generate_scad, scad_file
+        generate_scad(node)
 
         self.assertTrue(node._up_to_date(node.stl_file))
-        self.assertTrue(node._up_to_date(node.scad_file))
+        self.assertTrue(node._up_to_date(scad_file(node)))
         self.assertTrue(node._up_to_date(node.brep_file))
         self.assertEqual(os.stat(node.stl_file).st_mtime_ns,
                          os.stat(node.brep_file).st_mtime_ns)

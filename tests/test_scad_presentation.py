@@ -2,21 +2,21 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The SCAD presentation is the OpenSCAD engine's (OpenSpec change
-`scad-presentation`, capabilities `scad-engine-dependency`,
+"""The SCAD presentation is the OpenSCAD node family's (OpenSpec changes
+`scad-presentation` and `openscad-out`, capabilities `openscad-node`,
 `backend-neutral-materialization`, `build-pipeline` and `web-snapshot`).
 
-The core describes a node's SCAD presentation in its own types
-(`machinome.node.presentation`) and the engine writes the text; so no core
-module but the two OpenSCAD leaves and the template imports SolidPython, and
-only the seam and the `Solid2Node` leaf reach the engine's package.
-`assemble()` composes that description and writes no file, and needs neither
-SolidPython nor the engine. A `.scad` is written only where a path reads it:
-a SCAD-authored leaf's, for OpenSCAD to render its STL, and the root's, on
-demand, for the OpenSCAD snapshot renderer, which removes it once drawn. A
-build sweeps every other, whatever its document did.
+The core describes a node's presentation in its own types
+(`machinome.node.presentation`) and the family's writer writes the text; so
+no module outside the family but the template imports SolidPython, and only
+the OpenSCAD viewer reaches the family's package. `assemble()` composes that
+description and writes no file, and needs neither SolidPython nor the
+family. A `.scad` is written only where a path reads it: a family leaf's, for
+OpenSCAD to render its STL, and the root's, on demand and transient, for the
+OpenSCAD snapshot renderer, which removes it once drawn. A build sweeps every
+other, and a transient one whatever its document did.
 
-The tests of an absent SolidPython or engine run in subprocesses under
+The tests of an absent SolidPython or family run in subprocesses under
 `tests/exact_engine_absent.py`'s finder, once for each missing module.
 """
 
@@ -48,25 +48,23 @@ MACHINE = f'{FIXTURE}/machine.py:Machine'
 MIXED = f'{FIXTURE}/machine.py:Mixed'
 GOLDEN = ROOT / 'tests' / 'data' / 'scad_presentation_golden.json'
 
-#: Each module whose absence is an absent OpenSCAD engine, and the words
-#: of the install that provides it today.
+#: Each module whose absence is an absent OpenSCAD node family, and the
+#: words of the install that provides it.
 ABSENCES = {
-    'solid2': "pip install solidpython2",
-    'machinome.openscad': 'reinstall machinome',
+    'solid2': 'pip install "machinome[openscad]"',
+    'machinome.node.openscad': 'pip install "machinome[openscad]"',
 }
 
-#: The core's SolidPython importers once the presentation is the engine's,
-#: and the campaign cycle that removes each (`workflow/ongoing/lean-core.md`).
+#: The modules outside the OpenSCAD node family that import SolidPython:
+#: the template that scaffolds a `Solid2Node`.
 SOLID2_IMPORTERS = {
-    'machinome/node/solid2.py',      # cycle 7, the Solid2Node leaf
-    'machinome/node/openscad.py',    # cycle 7, the OpenScadNode leaf
-    'machinome/manager/templates/project/root/__init__.py',  # cycle 8
+    'machinome/manager/templates/project/root/solid2.py',
 }
 
-#: The core modules reaching the engine's package, outside the package.
+#: The modules outside the family that reach its package: the OpenSCAD
+#: viewer, until the viewer cycle.
 ENGINE_REACHES = {
-    'machinome/scad_engine.py',      # the seam
-    'machinome/node/solid2.py',      # cycle 7, Solid2Node.as_number
+    'machinome/viewers/openscad.py',
 }
 
 #: What a build log would say if it presented or skipped SCAD.
@@ -138,12 +136,12 @@ class _BuildDirectory(TestCase):
 
 class ImportersTest(TestCase):
 
-    def test_the_solid2_importers_are_the_two_leaves_and_the_template(self):
+    def test_the_solid2_importer_outside_the_family_is_the_template(self):
         importing = {path for path, tree in core_modules()
                      if any(True for _ in solid2_imports(tree))}
         self.assertEqual(importing, SOLID2_IMPORTERS)
 
-    def test_only_the_seam_and_solid2node_reach_the_engines_package(self):
+    def test_only_the_viewer_reaches_the_familys_package(self):
         reaching = {path for path, tree in core_modules()
                     if names_the_engine_package(tree)}
         self.assertEqual(reaching, ENGINE_REACHES)
@@ -174,26 +172,25 @@ out['solid2'] = sorted(name for name in sys.modules
 print('RESULT', json.dumps(out))
 '''
 
-#: scad_code and generate_scad() of an STL part, and, where SolidPython is
-#: present, the materialization of a project leaf overriding as_scad.
+#: The SCAD text of an STL part, asked of the family's writer, directly and
+#: through the table of supported node types.
 REFUSALS = '''
 import glob, os
-from machinome.scad_engine import ScadEngineUnavailable
+from machinome.extras import ExtraUnavailable
+from machinome.node import supported
 from tests.scad_where_read_project.native import Bracket
 node = Bracket(name='bracket')
-for attempt in ('scad_code', 'generate_scad'):
+node.assemble()
+for attempt in ('table', 'writer'):
     try:
-        node.scad_code if attempt == 'scad_code' else node.generate_scad()
+        if attempt == 'table':
+            supported.load('openscad')
+        else:
+            from machinome.node.openscad import writer
+            writer.scad_code(node)
         print('ANSWERED', attempt)
-    except ScadEngineUnavailable as error:
-        print('REFUSED', attempt, error)
-if {legacy}:
-    from tests.scad_where_read_project.legacy import Bracket as Legacy
-    try:
-        Legacy(name='bracket')._prepare()
-        print('ANSWERED legacy')
-    except ScadEngineUnavailable as error:
-        print('REFUSED legacy', error)
+    except ImportError as error:
+        print('REFUSED', attempt, type(error).__name__, error)
 print('SCAD', len(glob.glob(os.path.join(os.environ['SOLID_BUILD_DIR'], '**',
                                          '*.scad'), recursive=True)))
 '''
@@ -271,36 +268,28 @@ class WithoutTheEngineTest(_BuildDirectory):
     def test_scad_text_is_refused_naming_the_module_and_its_install(self):
         for missing, remedy in ABSENCES.items():
             with self.subTest(missing=missing):
-                legacy = missing != 'solid2'
-                run = run_python(REFUSALS.format(legacy=legacy),
-                                 absent=(missing,), build_dir=self.build_dir)
+                run = run_python(REFUSALS, absent=(missing,),
+                                 build_dir=self.build_dir)
                 self.assertEqual(run.returncode, 0, run.output)
                 refused = [line for line in run.stdout.splitlines()
                            if line.startswith('REFUSED ')]
-                attempts = ['scad_code', 'generate_scad']
-                if legacy:
-                    attempts.append('legacy')
                 self.assertEqual([line.split()[1] for line in refused],
-                                 attempts, run.output)
-                for line in refused:
-                    self.assertIn('node bracket (Bracket)', line)
-                    self.assertIn(missing, line)
-                    self.assertIn(remedy, line)
-                    self.assertNotIn('machinome[', line)
-                for line in refused[:2]:
-                    self.assertIn(
-                        'its SCAD text is written by the OpenSCAD engine',
-                        line)
+                                 ['table', 'writer'], run.output)
+                self.assertIn('REFUSED table ExtraUnavailable', refused[0])
+                self.assertIn(missing, refused[0])
+                self.assertIn(remedy, refused[0])
+                self.assertIn(missing, refused[1])
                 self.assertIn('SCAD 0', run.stdout.splitlines())
 
     def test_a_build_holding_a_legacy_scad_leaf_is_refused_by_name(self):
-        run = run_machinome('build', LEGACY_BENCH,
-                            absent=('machinome.openscad',),
+        """A project leaf overriding `as_scad`, the legacy SCAD-only seam,
+        is handed to no tool since `openscad-out`: it produced no STL, and
+        the build refuses it naming the node (R7)."""
+        run = run_machinome('build', LEGACY_BENCH, blocked=False,
                             build_dir=self.build_dir)
         self.assertNotEqual(run.returncode, 0, run.output)
-        self.assertIn('node bracket (Bracket)', run.output)
-        self.assertIn('machinome.openscad', run.output)
-        self.assertIn('reinstall machinome', run.output)
+        self.assertIn('node bracket (Bracket) produced no STL: its '
+                      'materialization published nothing at', run.output)
         self.assertEqual(scad_files(self.build_dir), [])
 
     def test_the_openscad_snapshot_renderer_is_refused_before_loading(self):
@@ -316,7 +305,8 @@ class WithoutTheEngineTest(_BuildDirectory):
                 self.assertIn('RUN 0 LOADED 0', lines)
                 self.assertIn('IMAGE False', lines)
                 self.assertIn('SCAD 0', lines)
-                self.assertIn('the OpenSCAD snapshot renderer', run.stderr)
+                self.assertIn('machinome snapshot --renderer openscad needs '
+                              'the openscad extra', run.stderr)
                 self.assertIn(missing, run.stderr)
                 self.assertIn(remedy, run.stderr)
                 self.assertIn('--renderer web', run.stderr)
@@ -426,20 +416,20 @@ class WrittenOnlyWhereReadTest(_BuildDirectory):
 class SweepTest(_BuildDirectory):
 
     def seed(self):
-        from machinome.node.base import _publish_scad
+        from machinome.node.openscad.writer import scad_file
         node, parts = self.machine()
         seeded = []
         for each in (node, parts['Group'], parts['Fused'], parts['Spring'],
                      parts['Block']):
-            _publish_scad(each.scad_file, f'// seed {each.name}\n',
-                          each.mtime_ns, each.source_digest,
-                          each.source_fingerprint)
-            seeded.append(each.scad_file)
+            currency.publish_text(scad_file(each), f'// seed {each.name}\n',
+                                  each.mtime_ns, each.source_digest,
+                                  each.source_fingerprint)
+            seeded.append(scad_file(each))
         fine = parts['FineCylinder']
         renamed = os.path.join(os.path.dirname(fine.scad_file),
                                'machine-OldCylinder-000000000000.scad')
-        _publish_scad(renamed, '// seed renamed\n', fine.mtime_ns,
-                      fine.source_digest, fine.source_fingerprint)
+        currency.publish_text(renamed, '// seed renamed\n', fine.mtime_ns,
+                              fine.source_digest, fine.source_fingerprint)
         seeded.append(renamed)
         for path in seeded:
             self.assertTrue(os.path.exists(currency.sidecar(path)), path)
@@ -503,15 +493,17 @@ class SnapshotOnDemandTest(_BuildDirectory):
         """The root's `scad_code` in that pose, loaded as the snapshot
         command loads it."""
         from machinome.core.loader import load_node
+        from machinome.node.openscad.writer import scad_code
         node = load_node(str(ROOT / FIXTURE / 'machine.py') + ':Machine')
         node.set_keyframe(time)
         node.assemble()
-        return node.scad_code
+        return scad_code(node)
 
     def test_the_openscad_renderer_draws_the_roots_scad_for_its_pose(self):
+        from machinome.node.openscad import writer
         self.build()
         node, parts = self.machine()
-        root = os.path.relpath(node.scad_file, self.build_dir)
+        root = os.path.relpath(writer.scad_file(node), self.build_dir)
         fine = os.path.relpath(parts['FineCylinder'].scad_file,
                                self.build_dir)
 
@@ -519,7 +511,8 @@ class SnapshotOnDemandTest(_BuildDirectory):
             self.snapshot('openscad', time)
         texts = {}
         for time, (scad_file, text, present) in zip((0.0, 0.5), self.drawn):
-            self.assertEqual(scad_file, node.scad_file)
+            self.assertEqual(scad_file, os.path.join(
+                self.build_dir, root))
             self.assertEqual(present, sorted([root, fine]))
             imported = re.findall(r'import\(file = "([^"]*)"', text)
             self.assertTrue(imported, text)
@@ -532,6 +525,7 @@ class SnapshotOnDemandTest(_BuildDirectory):
         self.assertNotEqual(texts[0.0], texts[0.5])
 
     def test_the_renderer_removes_the_roots_scad_after_drawing_it(self):
+        from machinome.node.openscad.writer import scad_file
         self.build()
         node, parts = self.machine()
         self.snapshot('openscad')
@@ -539,7 +533,7 @@ class SnapshotOnDemandTest(_BuildDirectory):
         fine = os.path.relpath(parts['FineCylinder'].scad_file,
                                self.build_dir)
         self.assertEqual(scad_files(self.build_dir), [fine])
-        self.assertFalse(os.path.exists(currency.sidecar(node.scad_file)))
+        self.assertFalse(os.path.exists(currency.sidecar(scad_file(node))))
 
     def test_the_renderer_removes_the_roots_scad_when_drawing_fails(self):
         from subprocess import CalledProcessError
@@ -565,14 +559,14 @@ class SnapshotOnDemandTest(_BuildDirectory):
         self.assertTrue(os.path.exists(FineCylinder().scad_file))
 
     def test_a_build_removes_a_root_scad_a_killed_render_left(self):
-        """An unchanged build still applies the SCAD rule: the document is
-        the one already published, and the root's `.scad` goes."""
-        from machinome.node.base import _publish_scad
+        """An unchanged build still removes a transient artifact: the
+        document is the one already published, and the root's `.scad`,
+        which the renderer published transient, goes (`openscad-out`)."""
+        from machinome.node.openscad.writer import generate_scad, scad_file
         self.build()
         node, parts = self.machine()
-        _publish_scad(node.scad_file, '// left by a killed render\n',
-                      node.mtime_ns, node.source_digest,
-                      node.source_fingerprint)
+        generate_scad(node, lambda: '// left by a killed render\n')
+        self.assertIs(currency.recorded_transient(scad_file(node)), True)
         with open(os.path.join(self.build_dir, 'viewer.json'), 'rb') as one:
             document = one.read()
         self.build()
@@ -582,7 +576,7 @@ class SnapshotOnDemandTest(_BuildDirectory):
             scad_files(self.build_dir),
             [os.path.relpath(parts['FineCylinder'].scad_file,
                              self.build_dir)])
-        self.assertFalse(os.path.exists(currency.sidecar(node.scad_file)))
+        self.assertFalse(os.path.exists(currency.sidecar(scad_file(node))))
 
     def test_the_web_renderer_writes_no_scad(self):
         self.snapshot('web')

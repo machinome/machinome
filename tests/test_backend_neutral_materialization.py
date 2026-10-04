@@ -8,7 +8,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import trimesh
-from solid2 import cube
 
 from machinome import currency
 from machinome.node import AssemblyNode, FusionNode
@@ -83,9 +82,9 @@ class BackendNeutralMaterializationTest(TestCase):
 
     def test_native_fusion_builds_without_scad_or_openscad(self):
         machine = NativeAssembly()
-        with patch.object(NativeMeshLeaf, 'as_scad',
+        with patch.object(NativeMeshLeaf, 'present',
                           side_effect=AssertionError('SCAD boundary used')), \
-             patch('machinome.openscad.binary.require_openscad',
+             patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError('OpenSCAD boundary used')):
             machine.build_stls()
 
@@ -98,11 +97,11 @@ class BackendNeutralMaterializationTest(TestCase):
 
         machine = NativeAssembly()
         output = os.path.join(self.directory.name, 'export')
-        with patch.object(NativeMeshLeaf, 'as_scad',
+        with patch.object(NativeMeshLeaf, 'present',
                           side_effect=AssertionError('SCAD leaf used')), \
-             patch.object(FusionNode, 'as_scad',
+             patch.object(FusionNode, 'present',
                           side_effect=AssertionError('SCAD fusion used')), \
-             patch.object(AssemblyNode, 'as_scad',
+             patch.object(AssemblyNode, 'present',
                           side_effect=AssertionError('SCAD assembly used')):
             manifest = export_node(machine, output, widget=False)
 
@@ -167,7 +166,7 @@ class BackendNeutralMaterializationTest(TestCase):
         fusion._prepare()
         with patch('machinome.node.fusion.require_mesh_engine',
                    side_effect=RuntimeError('manifold unavailable')), \
-             patch('machinome.openscad.binary.require_openscad') as openscad:
+             patch('machinome.node.openscad.binary.require_openscad') as openscad:
             with self.assertRaisesRegex(RuntimeError, 'manifold unavailable'):
                 fusion.generate_stl()
         openscad.assert_not_called()
@@ -178,12 +177,15 @@ class BackendNeutralMaterializationTest(TestCase):
         invalid = trimesh.creation.box((2, 2, 2))
         invalid.update_faces(range(len(invalid.faces) - 1))
         invalid.export(fusion.right.stl_file)
-        with patch('machinome.openscad.binary.require_openscad') as openscad:
+        with patch('machinome.node.openscad.binary.require_openscad') as openscad:
             with self.assertRaisesRegex(ValueError, r'right: manifold3d'):
                 fusion.generate_stl()
         openscad.assert_not_called()
 
-    def test_builtin_subclass_as_scad_override_selects_legacy_bridge(self):
+    def test_an_as_scad_override_selects_no_legacy_bridge(self):
+        """(`openscad-out`) The legacy SCAD-only seam is gone: a builtin
+        subclass overriding `as_scad` is materialized by its own native
+        hook, and the override is never called."""
         import cadquery as cq
 
         class LegacyCadQuery(CadQueryNode):
@@ -191,12 +193,9 @@ class BackendNeutralMaterializationTest(TestCase):
                 return cq.Workplane('XY').box(2, 2, 2)
 
             def as_scad(self, rendered):
-                return cube(3)
+                raise AssertionError('the legacy seam was used')
 
         node = LegacyCadQuery()
-        with patch.object(ExactLeafNode, 'materialize',
-                          side_effect=AssertionError('native hook used')), \
-             patch.object(node, 'generate_scad') as generate:
+        with patch.object(ExactLeafNode, 'materialize') as native:
             node._prepare()
-        generate.assert_called_once_with()
-        self.assertIn('cube', str(node.model))
+        native.assert_called_once()

@@ -38,6 +38,7 @@ from machinome.test import TestCase as GeometryTestCase, _intersection_stats
 
 from .base import BaseNodeTest
 from .flexible_project import spring as fixture
+from tests.base import scad_code
 
 
 asserter = GeometryTestCase()
@@ -363,7 +364,7 @@ class MolejoTimeFedSnapshotTest(BaseNodeTest):
 
         node.assemble()
 
-        self.assertNotIn('.stl', node.valvetrain.spring.scad_code)
+        self.assertNotIn('.stl', scad_code(node.valvetrain.spring))
 
     def test_the_document_still_carries_the_symbolic_expression(self):
         node = fixture.TimedEngine()
@@ -411,7 +412,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         node.assemble()
 
         self.assertIn(os.path.basename(node.spring.snapshot_file),
-                      node.spring.scad_code)
+                      scad_code(node.spring))
 
     def test_the_snapshot_holds_molejos_evaluation(self):
         node = bound_valvetrain(lift=4.0)
@@ -439,7 +440,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         with patch.object(type(again.spring), 'snapshot_stl',
                           side_effect=AssertionError(
                               'a current snapshot must not be re-evaluated')):
-            assembled = again.spring.as_scad(rendered)
+            assembled = again.spring.present(rendered)
 
         self.assertIn(os.path.basename(node.spring.snapshot_file),
                       str(assembled))
@@ -470,7 +471,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         node = fixture.Spring()
 
         with self.assertRaises(Exception) as raised:
-            node.as_scad(node.render())
+            node.present(node.render())
 
         message = str(raised.exception)
         self.assertIn('Spring', message)
@@ -481,7 +482,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         node.height.value = DriverToken('valvetrain.lift')
 
         with self.assertRaises(Exception) as raised:
-            node.as_scad(node.render())
+            node.present(node.render())
 
         message = str(raised.exception)
         self.assertIn('Spring', message)

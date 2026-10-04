@@ -23,14 +23,16 @@ from importlib import import_module
 #: rather than when the CLI loads. tests/test_cli_lazy_imports.py walks the
 #: whole table once so the failure lands in the suite instead.
 #:
-#: The third column names a module the command cannot run without, whose
-#: kernel is an extra: `import-step` reads with `machinome.node.step`, which
-#: the `step` extra installs. Dispatching the command imports that module
-#: first, and where it refuses because its kernel is absent the CLI answers
-#: the command with the extra the refusal names -- stated once, by the module
-#: that needs it, never copied here -- instead of a traceback or an unknown
-#: command. The help path imports no such module, so every command is listed
-#: whether or not its extra is installed (OpenSpec change `lean-install`).
+#: The third column names the node type a command cannot run without, whose
+#: kernel is an extra: `import-step` reads with the `step` node type's module,
+#: which the `step` extra installs. The node type is the table of supported
+#: node types' (`machinome.node.supported`, its `commands`), which names its
+#: module. Dispatching the command imports that module first, and where it
+#: refuses because its kernel is absent the CLI answers the command with the
+#: extra the refusal names -- stated once, by the module that needs it, never
+#: copied here -- instead of a traceback or an unknown command. The help path
+#: imports no such module, so every command is listed whether or not its
+#: extra is installed (OpenSpec change `lean-install`; ADR-168, ADR-179).
 COMMANDS = {
     'build': ('machinome.manager.build', 'Build', None),
     'develop': ('machinome.manager.develop', 'Develop', None),
@@ -40,8 +42,7 @@ COMMANDS = {
     'export': ('machinome.manager.export', 'Export', None),
     'viewer': ('machinome.manager.viewer', 'Viewer', None),
     'models': ('machinome.manager.models', 'Models', None),
-    'import-step': ('machinome.manager.import_step', 'ImportStep',
-                    'machinome.node.step'),
+    'import-step': ('machinome.manager.import_step', 'ImportStep', 'step'),
     'vet': ('machinome.manager.vet', 'Vet', None),
 }
 
@@ -90,8 +91,9 @@ def resolve_command(name):
 
 
 def require_needed_module(name):
-    """Import the module command `name` needs, or answer the command by the
-    extra that installs it.
+    """Import the module of the node type command `name` needs, through the
+    table of supported node types, or answer the command by the extra that
+    installs it.
 
     A refusal for an absent kernel (`ExtraUnavailable`) is written as one
     line naming the command and the extra, and the CLI exits 1 before the
@@ -102,8 +104,9 @@ def require_needed_module(name):
     if needs is None:
         return
     from machinome.extras import ExtraUnavailable
+    from machinome.node import supported
     try:
-        import_module(needs)
+        supported.load(needs)
     except ExtraUnavailable as absent:
         sys.stderr.write(f'Error: machinome {name} needs the {absent.extra} '
                          f'extra: {absent}\n')

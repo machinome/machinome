@@ -40,8 +40,9 @@ class ExternalSourceIdentity:
     A declared member of the `leaf-contract` capability (ADR-155,
     ADR-163), mixed in before the leaf base by a leaf whose
     `get_source_file()` returns an asset -- a mesh, a STEP document, a
-    SCAD or JSCAD script -- as the core's `StlNode`, `StepNode`,
-    `OpenScadNode` and `JScadNode` do. The asset determines artifact
+    script of another modelling language -- as the core's `StlNode`,
+    `StepNode` and `JScadNode` and a node package's own leaves do. The
+    asset determines artifact
     placement, but the Python wrapper decides which producer owns it, so
     the wrapper module's project-relative path joins the node's
     `uniq_id`: two wrappers of one asset are two artifacts. A wrapper
@@ -129,7 +130,7 @@ def require_source_file(klass, attribute, declared, path):
     """Refuse a leaf whose declared source file is not there.
 
     Called by each source-bound adapter (`StlNode`, `StepNode`,
-    `JScadNode`, `OpenScadNode`) immediately after it resolves its
+    `JScadNode`, and a node package's own) immediately after it resolves its
     declared attribute into an absolute `path`, before `super().__init__`
     reads anything from it. `klass` is the constructing subclass;
     `attribute` and `declared` are the class attribute's name and the

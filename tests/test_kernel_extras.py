@@ -32,7 +32,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 #: The kernels no bare install carries, by distribution name.
 KERNEL_DISTRIBUTIONS = ('cadquery', 'build123d', 'ocp-gordon', 'molejo',
-                        'cadquery-ocp', 'manifold3d')
+                        'cadquery-ocp', 'manifold3d', 'solidpython2')
 
 #: Each extra and the requirements it lists, design.md Decision 3, written
 #: out here rather than read from the file under test.
@@ -44,7 +44,10 @@ EXTRAS = {
                   'machinome[occt]'},
     'step': {'cadquery==2.7.*', 'machinome[occt]'},
     'molejo': {'molejo[brep]==0.2.*', 'machinome[occt]'},
-    'all': {'machinome[cadquery,build123d,step,molejo,occt,manifold]'},
+    'openscad': {'solidpython2==2.1.*'},
+    'solid2': {'machinome[openscad]'},
+    'all': {'machinome[cadquery,build123d,step,molejo,occt,manifold,'
+            'openscad,solid2]'},
 }
 
 #: Every kernel module, the extra its address names, the node types (or the
@@ -65,6 +68,11 @@ MODULES = {
     'machinome.manifold.engine': (
         'manifold', 'the mesh engine (machinome.manifold.engine)',
         ('manifold3d',)),
+    'machinome.node.openscad': (
+        'openscad', 'machinome.node.openscad (OpenScadNode and the OpenSCAD '
+        'writer)', ('solid2',)),
+    'machinome.node.solid2': (
+        'solid2', 'machinome.node.solid2 (Solid2Node)', ('solid2',)),
 }
 
 
@@ -116,6 +124,7 @@ class KernelMetadataTest(TestCase):
 
         self.assertEqual(required & set(KERNEL_DISTRIBUTIONS), set())
         self.assertNotIn('manifold3d', required)
+        self.assertNotIn('solidpython2', required)
         self.assertIn('watchdog', required)
 
     def test_each_extra_lists_what_its_module_needs(self):
@@ -146,7 +155,13 @@ class KernelMetadataTest(TestCase):
 
         self.assertEqual(Requirement(line).extras,
                          {'cadquery', 'build123d', 'step', 'molejo', 'occt',
-                          'manifold'})
+                          'manifold', 'openscad', 'solid2'})
+
+    def test_the_solid2_extra_installs_the_openscad_extra(self):
+        (line,) = project()['optional-dependencies']['solid2']
+
+        self.assertEqual(Requirement(line).name, 'machinome')
+        self.assertEqual(Requirement(line).extras, {'openscad'})
 
     def test_the_development_extra_includes_all(self):
         self.assertIn('machinome[all]',
@@ -167,11 +182,13 @@ class KernelMetadataTest(TestCase):
             listed = {line.strip() for line in stream
                       if line.strip() and not line.startswith('#')}
         concrete = {line for extra in ('occt', 'manifold', 'cadquery',
-                                       'build123d', 'step', 'molejo')
+                                       'build123d', 'step', 'molejo',
+                                       'openscad', 'solid2')
                     for line in EXTRAS[extra]
                     if not line.startswith('machinome[')}
 
         self.assertEqual(concrete - listed, set())
+        self.assertIn('solidpython2==2.1.*', listed)
 
     def test_tox_installs_every_extra(self):
         config = configparser.ConfigParser()

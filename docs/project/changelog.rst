@@ -6,6 +6,42 @@ Changelog
 Unreleased
 ----------
 
+* **The OpenSCAD family is a node package, and the core names no
+  technology.** ``OpenScadNode``, the family's leaf base ``ScadLeafNode``,
+  the SCAD writer and the OpenSCAD binary contract are the package
+  ``machinome.node.openscad``, and ``Solid2Node`` is ``machinome.node.solid2``
+  over it, which registers the adoption of SolidPython values with the
+  expression graph when it is imported. The core keeps nameless mechanisms:
+  a leaf declares its kind as one set on the leaf base (``rigid``,
+  ``flexible``, ``exact``, ``optimize``, ``present``, ``presentation``,
+  ``kept_artifacts``, ``generate_stl``, ``base_mesh``,
+  ``declared_markings``), which the core reads directly; the build keeps an
+  artifact because a node declares it in ``kept_artifacts()``, and removes on
+  every build one published as transient, such as the root ``.scad`` an
+  interrupted OpenSCAD snapshot left; one table of supported node types,
+  ``machinome.node.supported``, is where the core names node types, for the
+  node root's exports, ``import-step`` and the snapshot renderers. ``machinome
+  new`` scaffolds a ``Solid2Node`` where SolidPython is installed, a
+  ``CadQueryNode`` where only CadQuery is, and refuses naming both extras with
+  neither. Every ``.scad``, every node's SCAD text and every document are
+  byte for byte what they were (ADR-177, ADR-178, ADR-179).
+
+  **Breaking: ``pip install machinome`` no longer installs SolidPython.**
+  Install ``machinome[solid2]`` for ``Solid2Node`` and ``machinome[openscad]``
+  for ``OpenScadNode`` and the OpenSCAD renderer of ``machinome snapshot``
+  (``machinome[all]`` installs both); without it importing the node type,
+  and ``machinome snapshot`` with its default renderer, refuse naming the
+  extra. **Breaking (framework API):** ``machinome.scad_engine`` and the
+  OpenSCAD package under ``machinome`` are removed with no alias; the SCAD
+  members leave the node and leaf bases for ``ScadLeafNode``; ``as_scad`` is
+  ``present``; ``scad_expression`` is ``closed_expression`` and
+  ``OPENSCAD_FOV`` is ``DEFAULT_FOV``. A leaf whose STL is not current after
+  its materialization is refused naming it instead of being handed to
+  OpenSCAD, so a project leaf that only overrode ``as_scad`` subclasses
+  ``Solid2Node``. The leaf contract is version 2, and a leaf declaring 1 is
+  refused. A SolidPython value is an expression only in a process that
+  imported ``machinome.node.solid2``.
+
 * **The mesh engine is a provider, installed by its extra.** manifold3d,
   which decides every comparison on meshes, is reached only through the
   mesh engine ``machinome.manifold.engine``, resolved by the seam

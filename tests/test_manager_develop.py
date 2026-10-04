@@ -84,7 +84,7 @@ class DefaultViewerTest(DevelopHarness):
 
     def test_default_without_the_viewer_fails_even_with_openscad_available(self):
         self.has_bundle.return_value = False
-        with patch('machinome.openscad.binary.openscad_binary',
+        with patch('machinome.node.openscad.binary.openscad_binary',
                    return_value='/usr/bin/openscad') as openscad, \
              redirect_stderr(io.StringIO()) as errors, \
              self.assertRaises(SystemExit):

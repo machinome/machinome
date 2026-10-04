@@ -92,21 +92,21 @@ is not judged. Construction SHALL NOT read the mesh before this check.
 
 ### Requirement: Materialized artifact
 
-`StlNode.as_scad()` SHALL always materialize the node's own STL
-artifact from the source file when that artifact is not up to date —
+`StlNode.present()`, the leaf base's, SHALL always materialize the node's
+own STL artifact from the source file when that artifact is not up to date —
 selected body extracted, `adjust` applied, written in binary form, and
 mtime-stamped to the node's source mtime — and SHALL return the same
-SCAD import of that artifact whether or not it was rebuilt. There is no
+presentation, an import of that artifact, whether or not it was rebuilt. There is no
 import-in-place path: downstream consumers (fusion, piece identity,
 export, the viewer) SHALL see only the node's own artifact. Producing
 the artifact SHALL NOT require OpenSCAD or any external tool.
 
 #### Scenario: A current artifact is not rewritten
 
-- **WHEN** `as_scad()` runs on an `StlNode` whose artifact is up to
+- **WHEN** `present()` runs on an `StlNode` whose artifact is up to
   date
 - **THEN** the source STL is not re-read for materialization, no
-  artifact is written, and the returned SCAD output is unchanged
+  artifact is written, and the returned presentation is unchanged
 
 #### Scenario: The leaf builds without OpenSCAD
 
@@ -225,3 +225,4 @@ than an open question.
 - **WHEN** a `FusionNode` combines an `StlNode` with an exact leaf
 - **THEN** the fusion reports not exact and its union is produced
   through the mesh path, per the exact-fusion composition rule
+

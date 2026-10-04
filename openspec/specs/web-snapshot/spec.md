@@ -80,10 +80,12 @@ The rule SHALL hold symmetrically. When the OpenSCAD renderer is requested —
 including by the default — and the OpenSCAD binary is unavailable, the system
 SHALL fail with an error identifying the missing binary and naming the web
 renderer as the alternative, and SHALL NOT render with the web renderer
-instead. The same SHALL hold when the OpenSCAD engine, which writes the SCAD the
-OpenSCAD renderer draws, is not installed: the error names the engine, the
-module that could not be found, its install and the web renderer, before
-OpenSCAD is launched.
+instead. The same SHALL hold when the OpenSCAD node package, which writes the
+SCAD the OpenSCAD renderer draws, cannot be imported, because SolidPython or
+the package itself is not installed: the error names the `openscad` extra, the
+module that could not be found, its install line `pip install
+"machinome[openscad]"` and the web renderer, before the node is loaded and
+before OpenSCAD is launched.
 
 The default renderer SHALL NOT vary with the availability of either renderer,
 with whether the viewer package is installed, nor with whether the project's
@@ -130,11 +132,11 @@ change the appearance of snapshots taken of an existing project.
 
 #### Scenario: The OpenSCAD engine is unavailable
 
-- **WHEN** the OpenSCAD renderer is requested and the OpenSCAD engine is not
-  installed
-- **THEN** the command fails naming the OpenSCAD snapshot renderer, the
-  missing engine module and `--renderer web`, launches no OpenSCAD process,
-  and writes no image
+- **WHEN** the OpenSCAD renderer is requested and SolidPython, the `openscad`
+  extra's kernel, is not installed
+- **THEN** the command fails naming `machinome snapshot --renderer openscad`,
+  the `openscad` extra, the missing module and `--renderer web`, loads no node,
+  launches no OpenSCAD process, and writes no image
 
 ### Requirement: A requested camera is honoured or refused, never approximated
 
@@ -262,22 +264,26 @@ capture SHALL proceed exactly as it does for any other document.
 ### Requirement: The OpenSCAD renderer writes the root's SCAD on demand
 
 When the OpenSCAD renderer is selected, the snapshot command SHALL obtain the
-SCAD it draws on demand, through the OpenSCAD engine, and from no build: after
-posing and assembling the root inside the project build lock, it SHALL write
-the root's `.scad` at the root's own artifact path in the build directory,
-holding the text the root's `scad_code` gives in that pose, every artifact
+SCAD it draws on demand, through the OpenSCAD node package's writer, and from
+no build: after posing and assembling the root inside the project build lock,
+the renderer SHALL write the root's `.scad` at `<basepath>.scad` of the root in
+the build directory, holding the text the writer's `scad_code(root)` gives in
+that pose, every artifact
 import in it resolving from that file's directory, and SHALL write no other
 node's `.scad` for the image. Every OpenSCAD snapshot SHALL write the file for
 its own pose rather than reuse one an earlier run or build left. The file is
-not a build artifact: it exists only for the renderer, which SHALL remove it
-and its currency record once OpenSCAD has read it, whether the render
-succeeded or failed. A root whose geometry is authored in SCAD keeps its
-`.scad`, which is its own build artifact. A file an interrupted render left
-is removed by the next successful build under the `build-pipeline`
-capability.
+not a build artifact: it is published as transient in its currency record and
+exists only for the renderer, which SHALL remove it and its currency record
+once OpenSCAD has read it, whether the render succeeded or failed. A root that
+declares that `.scad` in `kept_artifacts()` (a family leaf snapshotted alone)
+keeps it, as its own build artifact, published as any kept artifact is. A file
+an interrupted render left is removed, by its transient record, by the next
+successful build whether or not the document changed, under the
+`build-pipeline` capability.
 
 When the web renderer is selected, the snapshot command SHALL write and read
-no `.scad`.
+no `.scad` and SHALL compose no presentation: it prepares the tree and builds
+its STLs, so no flexible leaf's per-binding snapshot STL is written for it.
 
 #### Scenario: The OpenSCAD renderer writes the root's SCAD
 

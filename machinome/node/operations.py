@@ -4,14 +4,14 @@
 
 """
 The operations that can be applied to a solid are represented
-here as classes that are able to handle the SCAD presentation and mesh,
+here as classes that are able to handle the presentation and mesh,
 other than serializing themselves for the web frontend. This way the same
 results can be obtained in browser and in tests.
 The operation is also able to revert itself.
 
 An operation presents itself in the core's presentation description
-(`machinome.node.presentation`), holding its own values; the OpenSCAD
-engine writes the SCAD text of it.
+(`machinome.node.presentation`), holding its own values; an installed node
+package writes that description in its own language where a path reads it.
 """
 
 import math

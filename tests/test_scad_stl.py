@@ -8,6 +8,7 @@ import sys
 import shutil
 from .base import BaseNodeTest, preserve
 from . import flat_project, deep_project
+from machinome.node.openscad.writer import scad_file
 
 
 class ScadSavingTest(BaseNodeTest):
@@ -18,10 +19,10 @@ class ScadSavingTest(BaseNodeTest):
         self.solid.assemble()
 
     def test_scad_file_is_saved(self):
-        self.assertTrue(os.path.exists(self.solid.scad_file))
+        self.assertTrue(os.path.exists(scad_file(self.solid)))
 
     def test_scad_file_is_inside_build_dir(self):
-        rel_path = os.path.relpath(self.solid.scad_file,
+        rel_path = os.path.relpath(scad_file(self.solid),
                                    self.build_dir)
 
         self.assertFalse(rel_path.startswith('..'))

@@ -87,10 +87,11 @@ viewer extra unless the caller explicitly selects the `--no-web` watch loop.
 
 #### Scenario: A plain installation retains non-viewer operations
 
-- **WHEN** `pip install machinome` runs without the extra
+- **WHEN** `pip install machinome` runs without the extra, with the extras
+  the project's parts need
 - **THEN** building, testing, exporting without the widget, snapshotting
-  through OpenSCAD, and developing with `--no-web` work, while ordinary
-  `machinome develop` fails naming the viewer extra
+  through OpenSCAD with the `openscad` extra, and developing with `--no-web`
+  work, while ordinary `machinome develop` fails naming the viewer extra
 
 #### Scenario: The extra brings the interactive viewer
 
@@ -152,3 +153,4 @@ viewer rendering, serving, or capture code.
 
 - **WHEN** `machinome develop` runs without `machinome-viewer`
 - **THEN** it fails naming `pip install "machinome[viewer]"`
+

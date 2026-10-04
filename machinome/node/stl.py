@@ -110,7 +110,7 @@ class StlNode(ExternalSourceIdentity, LeafNode):
     The node's geometry is its own artifact, materialized from the
     source file: the committed mesh is never imported in place, so
     fusion, piece identity, export and the viewer all see one thing.
-    Producing it needs no external tool -- not even OpenSCAD: the node
+    Producing it needs no external tool: the node
     publishes the mesh itself through `publish_artifact`, stamped with
     the source mtime like every artifact a leaf owns.
     """
@@ -166,19 +166,12 @@ class StlNode(ExternalSourceIdentity, LeafNode):
     def materialize(self, _):
         # The artifact is this node's own, always: there is no
         # import-the-file-in-place path. It is produced only when it is
-        # stale (`publish_artifact` asks), and the SCAD is the same either
-        # way.
+        # stale (`publish_artifact` asks), and the presentation is the same
+        # either way.
         self.publish_artifact(
             self.stl_file,
             lambda temporary: self._materialized_mesh().export(
                 temporary, file_type='stl'))
-
-    def as_scad(self, rendered):
-        """Present the imported part's artifact: the core's description of
-        its import (`artifact_import`), whose text the OpenSCAD engine
-        writes where a path reads it."""
-        self.materialize(rendered)
-        return self.artifact_import(self.local_stl)
 
     ##############################################
     # Materialization

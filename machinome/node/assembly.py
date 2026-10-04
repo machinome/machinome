@@ -726,7 +726,8 @@ def read_time(node):
     under test, or loaded alone -- uses its own declaration.
 
     The walk relies on the link every tree walker makes before it
-    recurses (`_link_child` from the scad, serializer and state passes);
+    recurses (`_link_child` from the presentation, serializer and state
+    passes);
     a bare `render()` links nothing, by contract, so a child rendered by
     hand before any walker reached it is its own root for that read.
     """

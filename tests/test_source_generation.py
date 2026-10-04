@@ -261,7 +261,8 @@ class BuilderGenerationGuardTest(ScratchLoadProject):
         artifact = os.path.join(self.root, 'part.stl')
         with open(artifact, 'w') as output:
             output.write('solid part\nendsolid part\n')
-        node = SimpleNamespace(
+        from tests.stand_in import NodeDouble
+        node = NodeDouble(
             rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact, files={source})
         builder = Builder('model.py', build_dir=self.root, watch=False)
@@ -395,7 +396,7 @@ class JScadGenerationGuardTest(TestCase):
         currency.record(self.target, 'old-digest', 'old-fingerprint')
 
     def node(self):
-        return SimpleNamespace(
+        node = SimpleNamespace(
             jscad_source=self.source,
             stl_file=self.target,
             local_stl='part.stl',
@@ -405,6 +406,11 @@ class JScadGenerationGuardTest(TestCase):
             _up_to_date=lambda path: False,
             artifact_import=mock.Mock(),
         )
+        # `present` is the leaf base's, which materializes a stale STL
+        # through the node's own `materialize`: the JSCAD one.
+        node.materialize = lambda rendered: JScadNode.materialize(
+            node, rendered)
+        return node
 
     def test_source_replacement_after_renderer_preserves_old_artifact(self):
         old_mtime = os.stat(self.source).st_mtime_ns
@@ -429,7 +435,7 @@ class JScadGenerationGuardTest(TestCase):
                         side_effect=launch):
             with self.assertRaises(SourceChanged):
                 with generation.phase([self.source], label='assembly'):
-                    JScadNode.as_scad(self.node(), None)
+                    JScadNode.present(self.node(), None)
 
         with open(self.target, 'rb') as artifact:
             self.assertEqual(artifact.read(), b'old artifact')
@@ -449,7 +455,7 @@ class JScadGenerationGuardTest(TestCase):
         with mock.patch('machinome.node.jscad.Popen',
                         side_effect=launch):
             with self.assertRaises(CalledProcessError):
-                JScadNode.as_scad(self.node(), None)
+                JScadNode.present(self.node(), None)
 
         with open(self.target, 'rb') as artifact:
             self.assertEqual(artifact.read(), b'old artifact')

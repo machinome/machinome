@@ -1,23 +1,24 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The framework's symbolic value and its native, immutable graph. No
-modelling backend or global arena.
+"""The framework's symbolic value and its native, immutable graph:
+machinome's expression language. No modelling backend or global arena.
 
 `ExpressionNode` is one operation of a shared graph; `GraphValue` is the
 value a project composes -- animation time, a driver read, a port value,
 everything `machinome.math` returns for them -- a handle on one node. It
 is the core's own type: it derives from no backend class, defines every
 operator it supports, and refuses to be asked for its truth with
-`SymbolicTruthError`. Its text, `str()`, is the core's compact closed
-scalar (`machinome.core.expressions.scad_expression`), which is OpenSCAD's
-scalar syntax and the standalone serialization alike.
+`SymbolicTruthError`. Its text, `str()`, is the language's compact closed
+scalar (`machinome.core.expressions.closed_expression`): degrees, `let`
+closures for sharing, the builtins `machinome.math.SYMBOLIC_BUILTINS`
+lists. The viewer
+evaluates it, and it is the standalone serialization.
 
-A value SolidPython built (`solid2.get_animation_time()`, `scad_inline`,
-text SolidPython's own operators produced) is recognised as an expression
-only through the OpenSCAD engine, which adopts it as a graph node
-(`machinome.scad_engine`, `machinome.openscad.engine`); without the
-engine it is not an expression.
+A value a modelling library built is an expression only when an installed
+node package adopts it: the package registers an adopter
+(`register_adopter`), which `symbolic` asks after the core's own types. With
+no adopter for it, a foreign value is not an expression.
 
 Values own their reachable operands. Identity hashing is intentional:
 structural interning is the document compiler's job, and must never
@@ -25,8 +26,6 @@ recursively hash a DAG.
 """
 
 from dataclasses import dataclass
-
-from machinome import scad_engine as _seam
 
 
 @dataclass(frozen=True, eq=False, slots=True, repr=False, weakref_slot=True)
@@ -81,8 +80,23 @@ class SymbolicTruthError(Exception):
 
 
 #: The plain numbers, decided before any other test: the numeric face pays
-#: one membership test and never consults the OpenSCAD engine.
+#: one membership test and never consults an adopter.
 _NUMBERS = frozenset((int, float))
+
+#: The adopters node packages registered, in registration order: each takes
+#: a value and returns its graph node, or None when the value is not its.
+_ADOPTERS = ()
+
+
+def register_adopter(adopt):
+    """Have `symbolic` ask `adopt(value)` of a value that is not the core's
+    own: a node package's reading of the values its modelling library
+    builds as graph nodes. Idempotent: an adopter already registered, by
+    identity, is not registered again."""
+    global _ADOPTERS
+    if any(registered is adopt for registered in _ADOPTERS):
+        return
+    _ADOPTERS = _ADOPTERS + (adopt,)
 
 
 def symbolic(value):
@@ -90,7 +104,8 @@ def symbolic(value):
 
     A `GraphValue` is its node and an `ExpressionNode` itself; a plain
     `int` or `float` is never symbolic; anything else is symbolic only when
-    the OpenSCAD engine resolves and adopts it (a value SolidPython built).
+    a registered adopter adopts it (`register_adopter`), the first that
+    answers, in registration order.
     """
     if value.__class__ in _NUMBERS:
         return None
@@ -98,10 +113,11 @@ def symbolic(value):
         return value._expression_node
     if isinstance(value, ExpressionNode):
         return value
-    engine = _seam.scad_engine()
-    if engine is None:
-        return None
-    return engine.adopt(value)
+    for adopt in _ADOPTERS:
+        node = adopt(value)
+        if node is not None:
+            return node
+    return None
 
 
 def as_node(value):
@@ -133,11 +149,11 @@ class GraphValue:
         return str(self)
 
     def __str__(self):
-        from machinome.core.expressions import scad_expression
+        from machinome.core.expressions import closed_expression
         if any(node.kind == 'profile' for node in
                postorder([self._expression_node])):
             raise ValueError('profileOverlap is symbolic only in a running Bound')
-        return scad_expression(self._expression_node)
+        return closed_expression(self._expression_node)
 
     def __repr__(self):
         return repr(self._expression_node)
@@ -317,7 +333,8 @@ def depends_on_time(value):
 
 
 def scalar(value, graph=False):
-    """A producer collects native roots; standalone callers get closed SCAD."""
+    """A producer collects native roots; standalone callers get the closed
+    text."""
     if graph:
         node = symbolic(value)
         if node is not None:

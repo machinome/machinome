@@ -18,7 +18,7 @@ def _declarative_render(render):
     only positions and selects. A returned list is the author's and
     keeps its contract to the letter.
 
-    Every tree walker -- as_scad, the serializer, the driver walk, state
+    Every tree walker -- present, the serializer, the driver walk, state
     propagation -- calls render() and treats a non-list as "no
     children", so this is the one place that turns None into the list
     before any of them see it. On an assembly it sits INSIDE the
@@ -126,14 +126,14 @@ class InternalNode(AbstractBaseNode):
                 'are linked by assemble()')
         return all(child.exact for child in self.children)
 
-    def as_scad(self, children):
+    def present(self, children):
         """The presentation description of the combined children: their
         union, the one child itself, or an empty union"""
-        scads = []
+        presented = []
 
         self._link_children(children)
         for child in children:
-            scads.append(child.assemble(self.root))
+            presented.append(child.assemble(self.root))
             self.files.update(child.files)
             for path, names in child.scope.items():
                 self.scope[path] = self.scope.get(path, frozenset()) | names
@@ -146,14 +146,15 @@ class InternalNode(AbstractBaseNode):
         # name" fallback (skill-repo improvements.md #16).
         self.children = children
 
-        if len(scads) > 1:
-            rendered = Union(tuple(scads))
-        elif scads:
-            rendered = scads[0]
+        if len(presented) > 1:
+            rendered = Union(tuple(presented))
+        elif presented:
+            rendered = presented[0]
         else:
             # A non-rigid assembly may contain no present parts. Keep the
-            # ordinary composable result through assemble()/scad_code without
-            # inventing geometry; FusionNode rejects this list in validate().
+            # ordinary composable result through assemble()/presentation()
+            # without inventing geometry; FusionNode rejects this list in
+            # validate().
             rendered = Union(())
 
         return rendered

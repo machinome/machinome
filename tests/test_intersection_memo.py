@@ -54,9 +54,10 @@ from machinome.exact_cache import _placement_cache, cached_shape
 from machinome.occt import engine as occt_engine
 from machinome.node.base import AbstractBaseNode, _compose_world_matrix
 from machinome.node.operations import Rotation, Translation
+from tests.stand_in import StandIn
 
 
-class FakeNode:
+class FakeNode(StandIn):
     """Duck-typed stand-in exposing what the intersection path needs,
     reusing the REAL mesh getter -- the same pattern as
     tests/test_broad_phase_culling.py's FakeNode."""
@@ -77,7 +78,7 @@ class FakeNode:
         return AbstractBaseNode.mesh.fget(self)
 
 
-class MeshOnlyNode:
+class MeshOnlyNode(StandIn):
     """A node with no geometry file at all -- the test-double shape the
     `.mesh` fallback exists for. It has no stable identity, so it must
     never be cached."""
@@ -89,7 +90,7 @@ class MeshOnlyNode:
         self.mesh = mesh
 
 
-class ExactFakeNode:
+class ExactFakeNode(StandIn):
     """A minimal exact node whose shape has the stable cache identity the
     exact path's memo key needs -- the same `cached_shape`/`write_brep`
     technique `tests/test_exact_geometry.py`'s exact fixtures use, kept

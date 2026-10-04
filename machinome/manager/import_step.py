@@ -5,7 +5,7 @@
 """`machinome import-step`: scaffold declarative source from a STEP document.
 
 One-shot, project-owned, never a node: this module reads a document's
-assembly structure through `machinome.node.step.StepAssembly`
+assembly structure through the `step` node type's `StepAssembly`
 and writes `parts.py` (one `StepNode` subclass per part) and
 `assembly.py` (one `AssemblyNode` subclass per assembly product, placed
 at rest), in the declarative class-body idiom of `docs/declaring.rst`.
@@ -15,7 +15,7 @@ the pilot to add (design D6, D9, D10 of step-assembly-import).
 
 The STEP reader is imported lazily, inside `handle()`, so `machinome -h`
 costs nothing here. Its absence is not this module's to report: the reader
-is `machinome.node.step`, which the `step` extra installs, and the CLI's
+is the `step` node type's module, which the `step` extra installs, and the CLI's
 command table names it as the module this command needs, so where its
 kernel is absent the CLI answers `import-step` with the extra to install
 before this command parses or runs (OpenSpec change `lean-install`, CLI
@@ -427,7 +427,8 @@ class ImportStep:
                  "the document's root product, or the file's stem)")
 
     def handle(self, args):
-        from machinome.node.step import StepAssembly
+        from machinome.node import supported
+        StepAssembly = supported.load('step').StepAssembly
 
         try:
             assembly = StepAssembly(args.file)

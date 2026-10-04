@@ -8,7 +8,7 @@ capabilities `leaf-contract`, `exact-geometry` and `node-model`).
 `tests/contract_package/exact_stand_in.py` stands in for machinome-freecad's
 exact leaf as it is after its validation migration: a bare `TopoDS_Shape`
 read from BREP bytes, no `namespace`, no cadquery, a `source_recipe` in
-place of overriding the core's private currency, and `leaf_contract = 1`.
+place of overriding the core's private currency, and `leaf_contract = 2`.
 It is built, fused with a CadQuery leaf and compared by exact assertions
 in a fresh interpreter, the way a project would use it.
 """

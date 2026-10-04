@@ -13,7 +13,15 @@ from .base import AbstractBaseNode
 #: declared member, or the removal of one, changes this number in the same
 #: change. A leaf written outside the core may declare the number it was
 #: written against as `leaf_contract`; see `LeafNode.__init_subclass__`.
-CONTRACT = 1
+#:
+#: 2 (ADR-178): the three members naming one technology left `LeafNode`
+#: for that technology's own leaf base;
+#: `present`, `presentation`,
+#: `kept_artifacts`, `generate_stl` and the set a leaf declares its kind by
+#: (`rigid`, `flexible`, `exact`, `optimize`, `base_mesh`,
+#: `declared_markings`) were declared; and `generate_stl` no longer hands a
+#: leaf whose STL is not current to another tool.
+CONTRACT = 2
 
 
 class LeafNode(AbstractBaseNode):
@@ -24,22 +32,42 @@ class LeafNode(AbstractBaseNode):
     or one of the three bases that extend it (`ExactLeafNode`,
     `SheetLeafNode`, `FlexibleNode`), and uses only the members declared
     here and on those bases. Each technology renders its solid its own
-    way; a faceted leaf either presents its render as SCAD (`as_scad`),
-    which OpenSCAD turns into the STL, or produces its own STL in
-    `materialize`, publishing it through `publish_artifact`. The core
+    way and produces its own STL: in `materialize`, publishing it through
+    `publish_artifact`, or, when its tool runs as a subprocess, in
+    `generate_stl`, which starts it and raises `StlRenderStart`. The core
     does everything else: currency, stamps, source records, the tree,
     assembly, fusion, export, the viewer document and the test framework.
     A subclass never overrides `assemble`, `mtime_ns`, `mtime`,
     `source_digest`, `source_fingerprint`, `uniq_id`, `children`, `time`
     or a member whose name begins with an underscore.
 
-    Declared members: `render`, `validate`, `namespace`, `as_scad`,
-    `materialize`, `publish_artifact`, `get_source_file`, `files`,
-    `source_recipe`, `artifact_import`, `basepath`, `local_stl`,
-    `scad_file`, `stl_file`, `model`, `generate_scad`, `leaf_contract`.
+    Declared members: `render`, `validate`, `namespace`, `present`,
+    `presentation`, `materialize`, `generate_stl`, `kept_artifacts`,
+    `publish_artifact`, `get_source_file`, `files`, `source_recipe`,
+    `artifact_import`, `basepath`, `local_stl`, `stl_file`, `model`,
+    `rigid`, `flexible`, `exact`, `optimize`, `base_mesh`,
+    `declared_markings`, `leaf_contract`, `StlRenderStart`.
 
-    `files`, `basepath`, `local_stl`, `scad_file`, `stl_file` and `model`
-    are set by the constructor; the others are class members.
+    `files`, `basepath`, `local_stl`, `stl_file` and `model` are set by the
+    constructor; `StlRenderStart` is the signal at `machinome.node.base`;
+    the others are class members.
+
+    A leaf declares its kind as one set, which the core reads directly and
+    never probes for: `rigid` (a time-invariant solid with a cached STL, in
+    the piece and artifact sets; true), `flexible` (its shape is a function
+    of its bound ports; false), `exact` (it exposes boundary-representation
+    geometry through `shape()`; false), `optimize` (a presentation imports
+    its STL when true, and carries what it rendered when false, in which
+    case it is prepared on every build; true), `present(rendered)` (its
+    presentation of one render: an import of its own STL, materialized
+    first when stale), `presentation()` (its own presentation, its artifact
+    imports resolving from its own build directory), `kept_artifacts()`
+    (the artifacts beyond its STL, BREP and markings a build keeps for it;
+    none), `generate_stl()` (make its STL current; a rigid leaf whose STL
+    is still not current after its materialization is refused, naming
+    it), its artifact paths, `base_mesh()` (its geometry in its own frame)
+    and `declared_markings()`. Each has its default on the node base, so
+    every node answers it.
     """
 
     _type = 'LeafNode'
@@ -95,23 +123,6 @@ class LeafNode(AbstractBaseNode):
         """Returns an empty tuple, as leaf nodes have no children"""
         return tuple()
 
-    def _render_can_be_skipped(self):
-        """A leaf knows its own source set at construction, so it can
-        answer this before doing any work -- unlike an internal node.
-
-        Both artifacts must be current, not just the STL: the scad is
-        what regenerates the STL if it is ever lost, and skipping is
-        only safe while the pair on disk is the pair this source would
-        produce.
-        """
-        return (
-            self.optimize
-            and self.rigid
-            and self._up_to_date(self.stl_file)
-            and self._up_to_date(self.scad_file)
-            and (not self.exact or self._up_to_date(self.brep_file))
-        )
-
     def _prepare_can_be_skipped(self):
         """Native geometry does not depend on a presentation sidecar."""
         return (
@@ -121,21 +132,19 @@ class LeafNode(AbstractBaseNode):
             and (not self.exact or self._up_to_date(self.brep_file))
         )
 
-    def as_scad(self, rendered):
-        """This leaf's render result as a solid2 object, for a leaf
-        presented as SCAD: the core has the OpenSCAD engine write that SCAD
-        as the leaf's own `.scad` (the one kind of leaf whose `.scad` a build
-        writes and keeps), and OpenSCAD produces the STL from it.
+    def present(self, rendered):
+        """This leaf's presentation of one render: the import of its own
+        STL artifact (`artifact_import(local_stl)`), materialized first when
+        it is not current.
 
         A leaf that produces its own STL in `materialize` need not
-        implement it: once that artifact is current, the core presents it
-        by importing it. A leaf that does implement it to present its own
-        artifact returns `artifact_import(local_path)` as it is: the core's
-        description of that import (`machinome.node.presentation`), which
-        is not a solid2 object and is not composed into one.
+        implement it. A leaf that does returns the core's description of an
+        import of its artifact (`machinome.node.presentation`), or the
+        object it authored, which the core holds as authored geometry.
         """
-        raise NotImplementedError(f"LeafNode subclass {self.__class__} must "
-                                  "be able to output scad")
+        if not self._up_to_date(self.stl_file):
+            self.materialize(rendered)
+        return self.artifact_import(self.local_stl)
 
     def publish_artifact(self, path, write):
         """Publish one artifact of this node's own, unless it is current.
@@ -192,24 +201,3 @@ class LeafNode(AbstractBaseNode):
         if self.namespace and not type(rendered).__module__.startswith(self.namespace):
             raise Exception(f"{self.__class__} is a LeafNode and should render "
                             f"as {self.namespace} child, not {type(rendered)}")
-    @property
-    def scad_authored(self):
-        """A project leaf overriding `as_scad` authors its geometry in SCAD:
-        OpenSCAD renders its STL from its own `.scad`."""
-        return self._uses_legacy_scad_materialization()
-
-    def _uses_legacy_scad_materialization(self):
-        """Honor a project leaf's explicit ``as_scad`` override.
-
-        Built-in adapters that own both materialization and presentation are
-        native.  An earlier class in the MRO owning only ``as_scad`` is the
-        legacy extension seam and must still drive its artifact production.
-        """
-        mro = type(self).mro()
-        scad_owner = next(
-            index for index, cls in enumerate(mro)
-            if 'as_scad' in cls.__dict__)
-        materialize_owner = next(
-            index for index, cls in enumerate(mro)
-            if 'materialize' in cls.__dict__)
-        return scad_owner < materialize_owner

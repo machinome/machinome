@@ -17,12 +17,13 @@ import machinome.test as test_module
 from machinome.manifold import engine
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
+from tests.stand_in import StandIn
 
 
 asserter = AssertingTestCase()
 
 
-class RigidNode:
+class RigidNode(StandIn):
 
     rigid = True
 
@@ -37,7 +38,7 @@ class RigidNode:
         return float(value)
 
 
-class Assembly:
+class Assembly(StandIn):
 
     rigid = False
 

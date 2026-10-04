@@ -14,16 +14,18 @@ The build directory
 ``_build/<name>/``) is written directly and holds, per node,
 ``<script>-<uniq_id>.stl``, plus ``.brep`` for an exact node, ``.dxf``
 for a sheet part, ``.marking-<name>.stl`` per declared marking, and the
-``.scad`` of OpenSCAD-family parts (a ``Solid2Node``, an ``OpenScadNode``,
-a part overriding ``as_scad``), which OpenSCAD renders their STL from. No
-other ``.scad`` is a build's: ``build`` and ``develop`` write none for an
+``.scad`` of OpenSCAD-family parts (a ``Solid2Node``, an ``OpenScadNode``),
+which OpenSCAD renders their STL from and which the part keeps: a build keeps
+every file a part of the tree declares, by that declaration. No other
+``.scad`` is a build's: ``build`` and ``develop`` write none for an
 assembly, a fusion, a flexible part or any other part. Artifacts of
 different parameter sets coexist. Each artifact is written whole or not at
 all, every artifact a document names is in place before the document, and
-a successful publication sweeps files the document no longer references;
-every successful build, its document changed or not, removes any ``.scad``
-no current part writes. Builds of one project serialize on an advisory
-lock beside the build directory.
+a successful publication sweeps files the document no longer references
+and no part keeps; every successful build, its document changed or not,
+removes a file published for one process's own use, such as the root
+``.scad`` an interrupted OpenSCAD snapshot left. Builds of one project
+serialize on an advisory lock beside the build directory.
 
 ``viewer.json`` is the document. ``errors.json`` is written, atomically,
 on a failed build and removed after the next successful one; a failed

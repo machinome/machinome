@@ -34,7 +34,7 @@ import trimesh
 from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, JScadNode, OpenScadNode, Solid2Node,
                              StlNode)
-from machinome.openscad.binary import openscad_binary
+from machinome.node.openscad.binary import openscad_binary
 
 from .stl_project import originals, parts, rack
 from .utils import edit_source
@@ -297,7 +297,7 @@ class StlArtifactTest(BuildDirTestCase):
                    side_effect=AssertionError('must not re-read source')), \
              patch('machinome.exact_artifacts._atomic_export',
                    side_effect=AssertionError('must not rewrite artifact')):
-            assembled = second.as_scad(second.render())
+            assembled = second.present(second.render())
 
         self.assertIn(second.local_stl, str(assembled))
 
@@ -321,10 +321,10 @@ class StlArtifactTest(BuildDirTestCase):
         node = parts.Bracket()
         node.assemble()
 
-        with patch('machinome.openscad.binary.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an imported mesh must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'an imported mesh must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -334,8 +334,8 @@ class StlArtifactTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('machinome.openscad.binary.shutil.which', return_value=None), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.openscad.binary.shutil.which', return_value=None), \
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = rack.Rack()
             node.build_stls()

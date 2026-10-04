@@ -33,6 +33,7 @@ from unittest.mock import patch
 
 from machinome.core.builder import unanchor_build_dir
 from machinome.simulation import Sim
+from machinome.node.openscad.writer import scad_file
 
 
 PACKAGES = itertools.count()
@@ -166,5 +167,5 @@ class ProjectThroughASymlinkTest(TestCase):
                                            (linked.arbor, real.arbor)):
             self.assertEqual(through_link.build_dir, through_real.build_dir)
             self.assertEqual(through_link.stl_file, through_real.stl_file)
-            self.assertEqual(through_link.scad_file, through_real.scad_file)
+            self.assertEqual(scad_file(through_link), scad_file(through_real))
             self.assertEqual(through_link.src, through_real.src)

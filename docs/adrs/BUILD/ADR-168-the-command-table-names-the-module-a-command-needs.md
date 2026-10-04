@@ -1,6 +1,6 @@
 # ADR-168: The Command Table Names the Module a Command Needs
 
-**Status:** Accepted
+**Status:** Accepted, third column names a node type since 2026-10-04, by [ADR-179](ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md)
 **Date:** 2026-10-03
 **Change:** [`lean-install`](../../../openspec/changes/archive/2026-10-03-lean-install/)
 **Amends:**

@@ -2,24 +2,25 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The expression vocabulary: one semantics, three faces.
+"""The expression vocabulary of machinome's expression language: one
+semantics, three faces.
 
 Everything here computes under BOTH of AssemblyNode.time's two faces,
 and under the declarative parameter algebra as well:
 
 - numeric, under set_keyframe() (tests, keyframe renders): self.time
   is a plain float, and these functions compute with Python's stdlib
-  math -- in DEGREES, matching the OpenSCAD language (sin(90) == 1.0,
+  math -- in DEGREES, matching the expression language (sin(90) == 1.0,
   asin(0.5) == 30.0, atan2 returns degrees).
 
 - symbolic, in the viewer/build path: time and drivers carry native
   shared graphs, the core's own type
   (`machinome.expression_graph.GraphValue`). These functions return call
-  nodes over operand references, never expanded text. A value SolidPython
-  built is symbolic too when the OpenSCAD engine adopts it
-  (`machinome.scad_engine`). Publication emits the existing
-  degree-in/degree-out scalar vocabulary, so the symbolic and numeric
-  computations are the same function deferred.
+  nodes over operand references, never expanded text. A value a modelling
+  library built is symbolic too when an installed node package adopts it
+  (`machinome.expression_graph.register_adopter`). Publication emits the
+  existing degree-in/degree-out scalar vocabulary, so the symbolic and
+  numeric computations are the same function deferred.
 
 - declarative, in a node class body: an argument is a declared
   parameter token or a formula over them, and the result is a formula
@@ -32,7 +33,7 @@ through the graph facade's operator overloads and needs none of this.
 
 Two layers, and the distinction between them matters:
 
-PRIMITIVES are the functions the module emits as an OpenSCAD call --
+PRIMITIVES are the functions the module emits as a call of the language --
 the degree trigonometry, `sqrt`, and the six direct builtins `abs`,
 `floor`, `ceil`, `sign`, `min` and `max`. Each carries its own
 dimension rule in `machinome.parameters.function_formula`. Every name
@@ -52,14 +53,15 @@ number is dimensionless -- the same refusal `a_length + 1` gives.
 
 What is deliberately absent, and why:
 
-- `round`. OpenSCAD rounds a half away from zero, JavaScript's
-  Math.round rounds a half toward +infinity, and Python rounds a half
-  to even. Three runtimes, three answers, on a value a timeline lands
-  on constantly. `floor(x + 0.5)` is the half-up all three agree on.
+- `round`. The language's native evaluators round a half away from
+  zero, JavaScript's Math.round rounds a half toward +infinity, and
+  Python rounds a half to even. Three runtimes, three answers, on a
+  value a timeline lands on constantly. `floor(x + 0.5)` is the half-up
+  all three agree on.
 
-- `mod`. OpenSCAD has no mod() function -- it spells the operation as
-  the `%` operator -- and Python's `%` takes the sign of the divisor
-  where OpenSCAD's and JavaScript's take the sign of the dividend.
+- `mod`. The language has no mod() function -- it spells the operation
+  as the `%` operator -- and Python's `%` takes the sign of the divisor
+  where the language's and JavaScript's take the sign of the dividend.
   `wrap` is built on `ceil` instead, which every runtime agrees on.
 
 These names deliberately shadow Python builtins in a module that
@@ -82,13 +84,13 @@ _abs = abs
 _min = min
 _max = max
 
-#: The plain numbers: never symbolic, decided without consulting the
-#: OpenSCAD engine.
+#: The plain numbers: never symbolic, decided without consulting an
+#: adopter.
 _NUMBERS = frozenset((int, float))
 
 
-#: Every OpenSCAD builtin this module may emit as a call. It is the one
-#: inventory: `_symbolic_call` refuses a name absent from it, and the
+#: Every builtin of the language this module may emit as a call. It is the
+#: one inventory: `_symbolic_call` refuses a name absent from it, and the
 #: parity corpus's coverage check reads it rather than keeping a list of
 #: its own, so a new symbolic function cannot reach a published document
 #: without a fixture case behind it (ADR-022).
@@ -101,13 +103,13 @@ SYMBOLIC_BUILTINS = (
 
 
 def _is_symbolic(value):
-    """The core's own symbolic value, or a value the OpenSCAD engine
+    """The core's own symbolic value, or a value an installed node package
     adopts (`machinome.expression_graph.symbolic`).
 
-    A plain number is decided first and never consults the engine; nor
+    A plain number is decided first and never consults an adopter; nor
     does a declared quantity or formula, which is the third face and never
-    a value SolidPython built. A bare graph node is not an operand of this
-    vocabulary.
+    a value a modelling library built. A bare graph node is not an operand
+    of this vocabulary.
     """
     if isinstance(value, GraphValue):
         return True
@@ -278,11 +280,11 @@ def sqrt(x):
 ##############################################
 # Primitives: the direct builtins
 #
-# Each is a name OpenSCAD and JavaScript's Math both carry, with the
+# Each is a name the language and JavaScript's Math both carry, with the
 # same semantics on every input a model can produce -- which is why
 # four projects never needed the `sqrt(x * x)` clamp kit they wrote,
-# and four clock models never needed to import solid2's private
-# OpenSCADConstant to emit `floor`.
+# and four clock models never needed to import a modelling library's
+# private constant type to emit `floor`.
 
 
 def abs(x):
@@ -330,8 +332,8 @@ def sign(x):
 def min(a, b):
     """The smaller of two values.
 
-    Exactly two arguments: OpenSCAD's min accepts a vector or a varying
-    number of arguments depending on version and JavaScript's is
+    Exactly two arguments: the language's native min accepts a vector or a
+    varying number of arguments depending on version and JavaScript's is
     variadic, so two is the arity every runtime agrees on. A three-way
     minimum is `min(min(a, b), c)`.
     """
@@ -369,7 +371,8 @@ def clamp(x, low, high):
 def clamp01(x):
     """`x` held between 0 and 1. Four projects wrote this as
     `(|x| - |x - 1| + 1) / 2` over `sqrt(x * x)`, for a `min`/`max` the
-    viewer's evaluator and OpenSCAD both had all along."""
+    viewer's evaluator and the language's native one both had all
+    along."""
     return clamp(x, 0.0, 1.0)
 
 
@@ -395,9 +398,9 @@ def wrap(value, period=360.0):
     """`value` folded into (-period/2, period/2]: wrap(180) == 180,
     wrap(181) == -179, wrap(-180) == 180.
 
-    Built on `ceil`, not on a modulo: OpenSCAD has no mod() function,
-    and Python's `%` takes the sign of the divisor where OpenSCAD's and
-    JavaScript's `%` take the sign of the dividend.
+    Built on `ceil`, not on a modulo: the language has no mod() function,
+    and Python's `%` takes the sign of the divisor where the language's
+    and JavaScript's `%` take the sign of the dividend.
     """
     if not _is_symbolic(period) and not _is_formula(period):
         # `isinstance(True, int)` is True, and a period of True would

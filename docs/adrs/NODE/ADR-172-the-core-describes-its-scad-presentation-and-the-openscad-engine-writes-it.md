@@ -1,6 +1,6 @@
 # ADR-172: The Core Describes Its SCAD Presentation and the OpenSCAD Engine Writes It
 
-**Status:** Accepted
+**Status:** Accepted, writer owner and address amended 2026-10-04 by [ADR-177](ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 **Date:** 2026-10-04
 **Change:** [`scad-presentation`](../../../openspec/changes/archive/2026-10-04-scad-presentation/)
 **Amends:**

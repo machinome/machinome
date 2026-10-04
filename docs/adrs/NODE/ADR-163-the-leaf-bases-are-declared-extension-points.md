@@ -1,6 +1,6 @@
 # ADR-163: The Leaf Bases Are Declared Extension Points
 
-**Status:** Accepted
+**Status:** Accepted, declared members amended 2026-10-04 by [ADR-178](ADR-178-a-leaf-declares-its-kind-as-one-set-on-the-leaf-base.md)
 **Date:** 2026-10-03
 **Change:** [`leaf-contract`](../../../openspec/changes/archive/2026-10-03-leaf-contract/)
 **Supersedes in part:**

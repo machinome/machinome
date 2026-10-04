@@ -245,7 +245,7 @@ class Build123dArtifactTest(BuildDirTestCase):
                    side_effect=AssertionError('must not re-export')), \
              patch('machinome.node.exact_leaf.write_brep',
                    side_effect=AssertionError('must not re-export')):
-            assembled = second.as_scad(second.render())
+            assembled = second.present(second.render())
 
         self.assertIn(second.local_stl, str(assembled))
 
@@ -274,10 +274,10 @@ class Build123dArtifactTest(BuildDirTestCase):
         node = BuilderBox()
         node.assemble()
 
-        with patch('machinome.openscad.binary.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'an exact backend must not launch OpenSCAD')):
             node.generate_stl()
 

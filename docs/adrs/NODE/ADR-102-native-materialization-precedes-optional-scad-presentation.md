@@ -1,6 +1,6 @@
 # ADR-102: Native materialization precedes optional SCAD presentation
 
-**Status:** Accepted, OpenSCAD viewer consequence amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); compatibility consumer amended 2026-10-04 by [ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md) and [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md)
+**Status:** Accepted, OpenSCAD viewer consequence amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); compatibility consumer amended 2026-10-04 by [ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md) and [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md); legacy SCAD-only override removed 2026-10-04 by [ADR-177](ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 
 **Date:** 2026-09-11
 

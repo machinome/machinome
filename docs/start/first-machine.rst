@@ -34,9 +34,11 @@ rebuilt and the page reloads. Leave it running.
 Give it an input
 ----------------
 
-The starter part is written in SolidPython and needs OpenSCAD. Replace the
-whole of ``myproject/myproject.py`` with a CadQuery block and an assembly
-that lifts it:
+The starter part is a CadQuery part when, as on the installation page's
+route, only ``machinome[cadquery]`` is installed, and a SolidPython part,
+which needs OpenSCAD, where SolidPython is installed too. Replace the whole
+of ``myproject/myproject.py`` with a CadQuery block and an assembly that
+lifts it:
 
 .. literalinclude:: ../tutorial/counter/first_machine.py
    :language: python

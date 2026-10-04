@@ -109,12 +109,6 @@ class FlexibleNode(LeafNode):
     #: the concrete adapter, like `namespace`.
     tech = None
 
-    def _uses_legacy_scad_materialization(self):
-        # Flexible SCAD is a per-binding snapshot presentation, never a
-        # time-invariant native artifact. Geometry-only preparation carries
-        # the analytic spec and binding and deliberately produces no snapshot.
-        return False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -131,11 +125,11 @@ class FlexibleNode(LeafNode):
             self._flexible_structural_identity = _canonical_serialization(
                 type(self), args, kwargs)
 
-        #: The snapshot artifact this node's last `as_scad()` imported,
+        #: The snapshot artifact this node's last `present()` imported,
         #: or None before one ran, or when a time-fed port left nothing to
         #: photograph. No build reads it: a build composes no presentation
-        #: (design.md of `scad-presentation`, Decision 3), so the next
-        #: build's sweep removes every per-binding snapshot.
+        #: (ADR-173), so the next build's sweep removes every per-binding
+        #: snapshot.
         self.snapshot_file = None
 
         #: The last binding whose exact solid was built, and the result.
@@ -270,8 +264,9 @@ class FlexibleNode(LeafNode):
         return f'{self.basepath}-{binding_hash(values)}.stl'
 
     def local_snapshot_stl(self, values):
-        """`snapshot_stl_file` as the SCAD document imports it, beside
-        the scad -- the local form `local_stl` is for a rigid leaf."""
+        """`snapshot_stl_file` as a presentation imports it, beside the
+        file holding it -- the local form `local_stl` is for a rigid
+        leaf."""
         return f'{os.path.basename(self.basepath)}-{binding_hash(values)}.stl'
 
     def _unbound_ports(self):
@@ -296,17 +291,17 @@ class FlexibleNode(LeafNode):
             name for name in declared_ports(type(self))
             if depends_on_time(getattr(self, name).value))
 
-    def as_scad(self, rendered):
+    def present(self, rendered):
         """Evaluate this instant and import it, so the presentation
-        description stays as complete as it honestly can for the SCAD the
-        OpenSCAD engine writes of it -- the root's, for the OpenSCAD
-        snapshot renderer, or any caller's `scad_code`.
+        description stays as complete as it honestly can for whatever
+        writes it -- the root's, for a snapshot renderer, or any caller's
+        `presentation()`.
 
-        A snapshot camera, never animation: OpenSCAD gets the geometry of
+        A snapshot camera, never animation: the writer gets the geometry of
         the bound state, the same treatment drivers already get. Produced
         only when the artifact for THIS binding is not already the file
-        these sources would produce, and the returned SCAD is the same
-        either way.
+        these sources would produce, and the returned description is the
+        same either way.
 
         A port fed by animation time has no instant to photograph. The
         loader binds declared driver defaults, so a driver-fed port

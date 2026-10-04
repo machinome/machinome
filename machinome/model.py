@@ -484,11 +484,7 @@ class ModelSnapshot:
                     rendered = current.render()
                     current.validate(rendered)
                     current._prepared_rendered = rendered
-                    if current._uses_legacy_scad_materialization():
-                        current.model = current.as_scad(rendered)
-                        current.generate_scad()
-                    else:
-                        current.materialize(rendered)
+                    current.materialize(rendered)
                 current.generate_stl()
 
         path = Path(getattr(node, f"{kind}_file")).absolute()

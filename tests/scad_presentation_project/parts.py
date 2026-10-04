@@ -19,7 +19,6 @@ from solid2 import cube, cylinder, import_stl, sphere
 from machinome.motion.ports import TranslationalPort
 from machinome.node import (AssemblyNode, CadQueryNode, FusionNode,
                             MolejoNode, OpenScadNode, Solid2Node, StlNode)
-from machinome.node.leaf import LeafNode
 
 
 class ColouredCube(Solid2Node):
@@ -110,17 +109,13 @@ class Plate(OpenScadNode):
     scad_source = 'plate.scad'
 
 
-class Legacy(LeafNode):
-    """A project leaf overriding `as_scad`: the legacy SCAD-only seam,
-    whose STL OpenSCAD renders from the SCAD it returns."""
-
-    namespace = 'solid2'
+class Legacy(Solid2Node):
+    """Once a project leaf overriding `as_scad`, the legacy SCAD-only seam;
+    since `openscad-out` a `Solid2Node`, which that seam's users subclass:
+    its `.scad` and STL are written as before."""
 
     def render(self):
         return cube([3, 5, 7])
-
-    def as_scad(self, rendered):
-        return rendered
 
 
 class Single(AssemblyNode):

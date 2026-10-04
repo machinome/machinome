@@ -1,6 +1,6 @@
 # ADR-173: SCAD Is Written Only Where It Is Read
 
-**Status:** Accepted
+**Status:** Accepted, the sweep by declaration and the transient record amended 2026-10-04 by [ADR-177](../NODE/ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 **Date:** 2026-10-04
 **Change:** [`scad-presentation`](../../../openspec/changes/archive/2026-10-04-scad-presentation/)
 **Amends:**

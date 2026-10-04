@@ -13,19 +13,22 @@ Needed only for OpenSCAD-family parts and OpenSCAD snapshots:
 
 * **OpenSCAD**, the executable. It builds the STL files of
   ``Solid2Node`` and ``OpenScadNode`` parts and renders the fixed-pose
-  snapshots of ``machinome snapshot``. A project whose parts are all
-  OCCT-backed (``CadQueryNode``, ``Build123dNode``, ``StepNode`` and the
-  sheet leaves) builds, tests and exports without it. The tutorial's
-  machine is one of those, so you can follow it without OpenSCAD. The
-  starter part that ``machinome new`` writes is a ``Solid2Node``, which
-  is why :doc:`first-machine` replaces it first thing.
+  snapshots of ``machinome snapshot``, which also need the ``openscad``
+  extra below. A project whose parts are all OCCT-backed
+  (``CadQueryNode``, ``Build123dNode``, ``StepNode`` and the sheet leaves)
+  builds, tests and exports without it. The tutorial's machine is one of
+  those, so you can follow it without OpenSCAD. The starter part that
+  ``machinome new`` writes is a ``Solid2Node`` where SolidPython is
+  installed (``machinome[solid2]``, ``machinome[all]``), and a
+  ``CadQueryNode`` where only ``machinome[cadquery]`` is; with neither,
+  ``machinome new`` refuses naming both extras.
 
 Optional:
 
 * The **jscad** command from npm, to write parts in JavaScript with
   ``JScadNode``.
 
-The package itself brings trimesh and SolidPython. The CAD kernels and the
+The package itself brings trimesh. The CAD kernels, SolidPython and the
 mesh engine are extras, so a project installs only the ones its parts use.
 
 CAD kernels are extras
@@ -66,12 +69,19 @@ same name: the extra is the last component of the module's address.
      - manifold3d, the mesh engine, for every comparison on meshes: a part
        without exact geometry, ``machinome test --faceted``,
        ``assertAssemblySupported``, a fusion of such parts
+   * - ``machinome[openscad]``
+     - ``machinome.node.openscad``
+     - SolidPython, for ``OpenScadNode``, the OpenSCAD writer and the
+       OpenSCAD snapshot renderer of ``machinome snapshot``
+   * - ``machinome[solid2]``
+     - ``machinome.node.solid2``
+     - SolidPython, for ``Solid2Node``; it installs ``machinome[openscad]``
+       too
    * - ``machinome[all]``
      - every module above
      - every kernel
 
-``Solid2Node``, ``OpenScadNode``, ``JScadNode`` and ``StlNode`` need no
-extra to build. Their parts are compared on their meshes, by the mesh
+``JScadNode`` and ``StlNode`` need no extra to build. Their parts are compared on their meshes, by the mesh
 engine, so a project that tests them installs ``machinome[manifold]``.
 Without its extra, importing a module refuses with the line that installs
 it, for example::

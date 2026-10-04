@@ -4,26 +4,22 @@
 
 """A faceted leaf written outside the core, presented as SCAD.
 
-`MeshScad` takes the other faceted path the leaf contract declares: it
-produces no STL of its own, declares no `materialize`, and presents its
-render as SCAD through `as_scad`, which OpenSCAD turns into the STL. It
-is what a node package for a SCAD-producing technology looks like, and
-it is described by the core exactly as the core's own `Solid2Node` is
-(the `backend-switch` change).
+`MeshScad` takes the path a SCAD-producing leaf takes since `openscad-out`:
+it subclasses the OpenSCAD node family's `Solid2Node`, produces no STL of its
+own, and lets the family write its render as SCAD, which OpenSCAD turns into
+the STL. It is what a project leaf that once overrode `as_scad` looks like
+now, and the core describes it exactly as it describes `Solid2Node`.
 """
 
 from solid2 import cube
 
-from machinome.node.leaf import LeafNode
+from machinome.node.solid2 import Solid2Node
 
 
-class MeshScad(LeafNode):
+class MeshScad(Solid2Node):
     """A 2 mm cube presented to OpenSCAD as SCAD."""
 
-    leaf_contract = 1
+    leaf_contract = 2
 
     def render(self):
         return cube(2)
-
-    def as_scad(self, rendered):
-        return rendered

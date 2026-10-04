@@ -767,7 +767,9 @@ class ImportStepCliHelpTest(TestCase):
         module, class_name, needs = COMMANDS['import-step']
         self.assertEqual(module, 'machinome.manager.import_step')
         self.assertEqual(class_name, 'ImportStep')
-        self.assertEqual(needs, 'machinome.node.step')
+        # The node type, whose module the table of supported node types
+        # names (`openscad-out`).
+        self.assertEqual(needs, 'step')
 
 
 #: What the CLI answers `import-step` with where the `step` extra's kernel

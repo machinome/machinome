@@ -2,7 +2,16 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""Generation-local SCAD work and compare-before-replace publication."""
+"""Generation-local SCAD work and compare-before-replace publication.
+
+The OpenSCAD node family's writer (`machinome.node.openscad.writer`)
+publishes a node's `.scad` through `currency.publish_text`, reusing within one
+source generation the text already published for the same full source
+identity of a rigid node, which the generation records
+(`has_published`, `remember_published`). Since `openscad-out` every
+publication is immediate: ADR-086's assembly-phase coalescing went with its
+one producer, and the assembly phase checkpoints as every phase does.
+"""
 
 import os
 import tempfile
@@ -11,15 +20,12 @@ from unittest import TestCase, mock
 
 from solid2 import cube
 
-from machinome.scad_engine import scad_engine
-
 from machinome import currency
 from machinome.node import Solid2Node
 from machinome.node.assembly import AssemblyNode
-from machinome.node.base import AbstractBaseNode, _atomic_write_text
-from machinome.node.flexible import FlexibleNode
+from machinome.node.openscad import writer
 from machinome.source_generation import (
-    SourceCensus, SourceChanged, SourceGeneration,
+    SourceCensus, SourceGeneration,
 )
 
 
@@ -31,59 +37,28 @@ class RepeatedBlock(Solid2Node):
         return cube(4)
 
 
-class BindingDependentFlexible(FlexibleNode):
-    """Minimal actual flexible class for the SCAD publication seam only."""
-
-    @property
-    def scad_code(self):
-        return self._test_scad_code
-
-    @property
-    def mtime_ns(self):
-        return 10
-
-    @property
-    def mtime(self):
-        return 10
-
-    @property
-    def source_digest(self):
-        return 'digest'
-
-    @property
-    def source_fingerprint(self):
-        return 'fingerprint'
-
-
-class BindingDependentAssembly(AssemblyNode):
-    """A non-flexible assembly whose instances share one artifact path."""
-
-    @property
-    def scad_code(self):
-        return self._test_scad_code
-
-    @property
-    def mtime_ns(self):
-        return 10
-
-    @property
-    def mtime(self):
-        return 10
-
-    @property
-    def source_digest(self):
-        return 'digest'
-
-    @property
-    def source_fingerprint(self):
-        return 'fingerprint'
-
-
 class ComposedBindingDependentAssembly(AssemblyNode):
     """Assembly instances whose child placement is not in artifact identity."""
 
     def render(self):
         return [self.part]
+
+
+def desired(path, code, *, rigid=False, flexible=False, digest='digest',
+            fingerprint='fingerprint', mtime_ns=1_700_000_000_123_456_789):
+    """A stand-in the writer publishes: its `.scad` at `path`, its text
+    `code`, keeping no artifact."""
+    node = SimpleNamespace(
+        basepath=path[:-len('.scad')], scad_code=code, mtime_ns=mtime_ns,
+        mtime=mtime_ns / 1e9, source_digest=digest,
+        source_fingerprint=fingerprint, rigid=rigid, flexible=flexible)
+    node.kept_artifacts = lambda: ()
+    return node
+
+
+def publish(node):
+    """The writer's publication of a stand-in's own text."""
+    writer.generate_scad(node, lambda: node.scad_code)
 
 
 class GenerationScadDedupTest(TestCase):
@@ -93,35 +68,6 @@ class GenerationScadDedupTest(TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = self.temp.name
 
-    def desired(self, path, code, *, rigid=False, flexible=False,
-                digest='digest', fingerprint='fingerprint'):
-        return SimpleNamespace(
-            scad_file=path, scad_code=code,
-            mtime_ns=1_700_000_000_123_456_789,
-            mtime=1_700_000_000.1234567,
-            source_digest=digest, source_fingerprint=fingerprint,
-            rigid=rigid, flexible=flexible,
-        )
-
-    def publish_non_rigid_phase(self, path):
-        nodes = [
-            self.desired(path, 'translate([1, 0, 0]) cube(1);'),
-            self.desired(path, 'translate([2, 0, 0]) cube(1);'),
-        ]
-        with SourceGeneration(self.root) as generation, generation.phase(
-                (), label='assembly'):
-            for node in nodes:
-                AbstractBaseNode.generate_scad(node)
-
-    def replace_source_preserving_size_and_mtime(self, source):
-        previous = os.stat(source).st_mtime_ns
-        replacement = os.path.join(
-            os.path.dirname(source), f'.{os.path.basename(source)}')
-        with open(replacement, 'wb') as changed:
-            changed.write(b'VALUE = 2\n')
-        os.utime(replacement, ns=(previous, previous))
-        os.replace(replacement, source)
-
     def test_repeated_instances_render_user_code_but_generate_base_scad_once(self):
         with mock.patch.dict(os.environ, {'SOLID_BUILD_DIR': self.root}):
             first = RepeatedBlock().translate([1, 0, 0])
@@ -129,19 +75,18 @@ class GenerationScadDedupTest(TestCase):
         self.assertEqual(first.scad_file, second.scad_file)
         RepeatedBlock.renders = 0
 
-        # The SCAD text is the OpenSCAD engine's (`scad-presentation`):
-        # count what the core asks of it.
-        engine = scad_engine()
+        # The SCAD text is the OpenSCAD writer's: count what is asked of it.
         with SourceGeneration(self.root) as generation, generation.phase(
-                first.files | second.files, label='assembly'), mock.patch.object(
-                    engine, 'scad_text', wraps=engine.scad_text) as generate:
+                first.files | second.files, label='assembly'), \
+                mock.patch.object(writer, 'scad_text',
+                                  wraps=writer.scad_text) as generate:
             first_assembled = first.assemble()
             second_assembled = second.assemble()
 
         self.assertEqual(RepeatedBlock.renders, 2)
         self.assertEqual(generate.call_count, 1)
-        self.assertNotEqual(engine.scad_text(first_assembled),
-                            engine.scad_text(second_assembled))
+        self.assertNotEqual(writer.scad_text(first_assembled),
+                            writer.scad_text(second_assembled))
 
     def test_audit_scale_repeated_instances_still_generate_one_base_scad(self):
         with mock.patch.dict(os.environ, {'SOLID_BUILD_DIR': self.root}):
@@ -150,43 +95,35 @@ class GenerationScadDedupTest(TestCase):
         files = set().union(*(node.files for node in nodes))
         RepeatedBlock.renders = 0
 
-        engine = scad_engine()
         with SourceGeneration(self.root) as generation, generation.phase(
                 files, label='assembly'), mock.patch.object(
-                    engine, 'scad_text', wraps=engine.scad_text) as generate:
+                    writer, 'scad_text', wraps=writer.scad_text) as generate:
             assembled = [node.assemble() for node in nodes]
 
         self.assertEqual(RepeatedBlock.renders, 59)
         self.assertEqual(generate.call_count, 1)
-        self.assertEqual(len({engine.scad_text(model)
+        self.assertEqual(len({writer.scad_text(model)
                               for model in assembled}), 59)
 
     def test_same_path_with_different_full_source_identity_is_not_reused(self):
         path = os.path.join(self.root, 'shared.scad')
-        first = SimpleNamespace(
-            scad_file=path, scad_code='cube(1);', mtime_ns=10, mtime=10,
-            source_digest='digest-one', source_fingerprint='fingerprint-one',
-            rigid=True)
-        second = SimpleNamespace(
-            scad_file=path, scad_code='cube(2);', mtime_ns=10, mtime=10,
-            source_digest='digest-two', source_fingerprint='fingerprint-two',
-            rigid=True)
+        first = desired(path, 'cube(1);', rigid=True, mtime_ns=10,
+                        digest='digest-one', fingerprint='fingerprint-one')
+        second = desired(path, 'cube(2);', rigid=True, mtime_ns=10,
+                         digest='digest-two', fingerprint='fingerprint-two')
 
-        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
-                base, '_atomic_write_text') as write:
-            AbstractBaseNode.generate_scad(first)
-            AbstractBaseNode.generate_scad(second)
+                currency, 'publish_text') as write:
+            publish(first)
+            publish(second)
 
         self.assertEqual(write.call_count, 2)
 
     def test_alternating_full_identities_follow_current_artifact(self):
         path = os.path.join(self.root, 'shared.scad')
         nodes = [
-            SimpleNamespace(
-                scad_file=path, scad_code=code, mtime_ns=10, mtime=10,
-                source_digest=digest, source_fingerprint=fingerprint,
-                rigid=True, flexible=False)
+            desired(path, code, rigid=True, mtime_ns=10, digest=digest,
+                    fingerprint=fingerprint)
             for code, digest, fingerprint in (
                 ('cube(1);', 'digest-one', 'fingerprint-one'),
                 ('cube(2);', 'digest-two', 'fingerprint-two'),
@@ -194,54 +131,44 @@ class GenerationScadDedupTest(TestCase):
             )
         ]
 
-        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
-                base, '_atomic_write_text') as write:
+                currency, 'publish_text') as write:
             for node in nodes:
-                AbstractBaseNode.generate_scad(node)
+                publish(node)
 
         self.assertEqual(write.call_count, 3)
 
     def test_unknown_identity_invalidates_rigid_current_artifact(self):
         path = os.path.join(self.root, 'shared.scad')
         nodes = [
-            self.desired(path, 'cube(1);', rigid=True,
-                         digest='digest-a', fingerprint='fingerprint-a'),
-            self.desired(path, 'cube(2);', rigid=True,
-                         digest=None, fingerprint=None),
-            self.desired(path, 'cube(1);', rigid=True,
-                         digest='digest-a', fingerprint='fingerprint-a'),
+            desired(path, 'cube(1);', rigid=True,
+                    digest='digest-a', fingerprint='fingerprint-a'),
+            desired(path, 'cube(2);', rigid=True,
+                    digest=None, fingerprint=None),
+            desired(path, 'cube(1);', rigid=True,
+                    digest='digest-a', fingerprint='fingerprint-a'),
         ]
 
-        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
-                base, '_atomic_write_text') as write:
+                currency, 'publish_text') as write:
             for node in nodes:
-                AbstractBaseNode.generate_scad(node)
+                publish(node)
 
         self.assertEqual(write.call_count, 3)
 
-    def test_non_flexible_assembly_instances_share_base_scad_path(self):
+    def test_non_rigid_instances_sharing_a_path_publish_each_request(self):
+        """No coalescing: two non-rigid nodes sharing one path, asked for
+        in an assembly phase, are each published when asked."""
         path = os.path.join(self.root, 'assembly.scad')
-        nodes = []
-        for code in ('translate([1, 0, 0]) cube(1);',
-                     'translate([2, 0, 0]) cube(1);'):
-            node = object.__new__(BindingDependentAssembly)
-            node.scad_file = path
-            node._test_scad_code = code
-            nodes.append(node)
+        nodes = [desired(path, code) for code in (
+            'translate([1, 0, 0]) cube(1);', 'translate([2, 0, 0]) cube(1);')]
 
-        self.assertFalse(nodes[0].rigid)
-        self.assertFalse(nodes[0].flexible)
-
-        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text') as write:
+                currency, 'publish_text') as write:
             with generation.phase((), label='assembly'):
-                for node in nodes:
-                    AbstractBaseNode.generate_scad(node)
-
-        self.assertEqual(write.call_count, 1)
+                for index, node in enumerate(nodes, 1):
+                    publish(node)
+                    self.assertEqual(write.call_count, index)
 
     def test_binding_dependent_assemblies_keep_distinct_compositions(self):
         with mock.patch.dict(os.environ, {'SOLID_BUILD_DIR': self.root}):
@@ -249,185 +176,69 @@ class GenerationScadDedupTest(TestCase):
             first.part = RepeatedBlock().translate([1, 0, 0])
             second = ComposedBindingDependentAssembly()
             second.part = RepeatedBlock().translate([2, 0, 0])
-        self.assertEqual(first.scad_file, second.scad_file)
+        path = writer.scad_file(first)
+        self.assertEqual(path, writer.scad_file(second))
         files = first.files | first.part.files | second.files | second.part.files
 
-        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text', wraps=_atomic_write_text) as write:
+                currency, 'publish_text',
+                wraps=currency.publish_text) as write:
             with generation.phase(files, label='assembly'):
                 compositions = [first.assemble(), second.assemble()]
                 # assemble() writes no SCAD (`scad-presentation`); a caller
-                # asking for both assemblies' files in one phase still
-                # gets the coalesced last desired value (ADR-086).
-                first.generate_scad()
-                second.generate_scad()
+                # asking for both assemblies' files gets each published,
+                # the last one standing.
+                writer.generate_scad(first)
+                writer.generate_scad(second)
 
-        engine = scad_engine()
-        self.assertNotEqual(engine.scad_text(compositions[0]),
-                            engine.scad_text(compositions[1]))
+        self.assertNotEqual(writer.scad_text(compositions[0]),
+                            writer.scad_text(compositions[1]))
         parent_writes = [
             call for call in write.call_args_list
-            if os.path.realpath(call.args[0]) == os.path.realpath(first.scad_file)
+            if os.path.realpath(call.args[0]) == os.path.realpath(path)
         ]
-        self.assertEqual(len(parent_writes), 1)
-        with open(first.scad_file) as published:
-            self.assertEqual(published.read(), second.scad_code)
-
-    def test_last_desired_values_are_captured_and_flushed_in_path_order(self):
-        first_path = os.path.join(self.root, 'first.scad')
-        second_path = os.path.join(self.root, 'second.scad')
-        first_old = self.desired(first_path, 'cube(1);', digest='first-old')
-        second = self.desired(second_path, 'sphere(2);', digest='second')
-        first_final = self.desired(
-            first_path, 'cube(3);', digest='first-final')
-
-        import machinome.node.base as base
-        with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text') as write:
-            with generation.phase((), label='assembly'):
-                AbstractBaseNode.generate_scad(first_old)
-                AbstractBaseNode.generate_scad(second)
-                AbstractBaseNode.generate_scad(first_final)
-                first_final.scad_code = 'cube(999);'
-                first_final.mtime_ns += 1
-                first_final.source_digest = 'mutated-after-request'
-                self.assertEqual(write.call_count, 0)
-
-        self.assertEqual([call.args[0] for call in write.call_args_list],
-                         [second_path, first_path])
-        self.assertEqual(write.call_args_list[0].args[1:], (
-            'sphere(2);', second.mtime_ns,
-            second.source_digest, second.source_fingerprint,
-        ))
-        self.assertEqual(write.call_args_list[1].args[1:], (
-            'cube(3);', first_final.mtime_ns - 1,
-            'first-final', first_final.source_fingerprint,
-        ))
-
-    def test_second_and_third_stable_phase_preserve_file_identities(self):
-        path = os.path.join(self.root, 'assembly.scad')
-        self.publish_non_rigid_phase(path)
-        targets = (path, currency.sidecar(path))
-        settled = {
-            target: os.stat(target) for target in targets
-        }
-
-        self.publish_non_rigid_phase(path)
-        second = {target: os.stat(target) for target in targets}
-        self.publish_non_rigid_phase(path)
-        third = {target: os.stat(target) for target in targets}
-
-        for target in targets:
-            for current in (second[target], third[target]):
-                self.assertEqual(current.st_ino, settled[target].st_ino)
-                self.assertEqual(current.st_mtime_ns,
-                                 settled[target].st_mtime_ns)
-                self.assertEqual(current.st_ctime_ns,
-                                 settled[target].st_ctime_ns)
+        self.assertEqual(len(parent_writes), 2)
         with open(path) as published:
-            self.assertEqual(
-                published.read(), 'translate([2, 0, 0]) cube(1);')
+            self.assertEqual(published.read(), writer.scad_code(second))
 
-    def test_nonassembly_phase_and_direct_generation_remain_immediate(self):
+    def test_publication_is_immediate_in_every_phase_and_outside_one(self):
         nodes = [
-            self.desired(os.path.join(self.root, 'phase.scad'), 'cube(1);'),
-            self.desired(os.path.join(self.root, 'direct.scad'), 'cube(2);'),
+            desired(os.path.join(self.root, 'assembly.scad'), 'cube(1);'),
+            desired(os.path.join(self.root, 'phase.scad'), 'cube(2);'),
+            desired(os.path.join(self.root, 'direct.scad'), 'cube(3);'),
+            desired(os.path.join(self.root, 'spring.scad'), 'cube(4);',
+                    flexible=True),
         ]
 
-        import machinome.node.base as base
         with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text') as write:
-            with generation.phase((), label='artifact_pass'):
-                AbstractBaseNode.generate_scad(nodes[0])
-                self.assertEqual(write.call_count, 1)
-            AbstractBaseNode.generate_scad(nodes[1])
-            self.assertEqual(write.call_count, 2)
-
-    def test_flexible_generation_remains_immediate_in_assembly_phase(self):
-        nodes = [
-            self.desired(os.path.join(self.root, 'spring.scad'), code,
-                         flexible=True)
-            for code in ('import("one.stl");', 'import("two.stl");')
-        ]
-
-        import machinome.node.base as base
-        with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text') as write:
+                currency, 'publish_text') as write:
             with generation.phase((), label='assembly'):
-                for index, node in enumerate(nodes, 1):
-                    AbstractBaseNode.generate_scad(node)
-                    self.assertEqual(write.call_count, index)
+                publish(nodes[0])
+                self.assertEqual(write.call_count, 1)
+                publish(nodes[3])
+                self.assertEqual(write.call_count, 2)
+            with generation.phase((), label='artifact_pass'):
+                publish(nodes[1])
+                self.assertEqual(write.call_count, 3)
+            publish(nodes[2])
+            self.assertEqual(write.call_count, 4)
 
-    def test_body_failure_discards_pending_scad_without_generated_log(self):
-        node = self.desired(
-            os.path.join(self.root, 'assembly.scad'), 'cube(1);')
-
-        import machinome.node.base as base
-        with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text') as write, mock.patch.object(
-                    base.logger, 'info') as logged:
-            with self.assertRaisesRegex(RuntimeError, 'body failed'):
-                with generation.phase((), label='assembly'):
-                    AbstractBaseNode.generate_scad(node)
-                    raise RuntimeError('body failed')
-
-        write.assert_not_called()
-        logged.assert_not_called()
-
-    def test_preflush_source_failure_discards_pending_scad(self):
-        source = os.path.join(self.root, 'model.py')
-        with open(source, 'wb') as current:
-            current.write(b'VALUE = 1\n')
-        node = self.desired(
-            os.path.join(self.root, 'assembly.scad'), 'cube(1);')
-
-        import machinome.node.base as base
-        with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text') as write:
-            with self.assertRaisesRegex(SourceChanged, 'pre-flush'):
-                with generation.phase((source,), label='assembly'):
-                    AbstractBaseNode.generate_scad(node)
-                    self.replace_source_preserving_size_and_mtime(source)
-
-        write.assert_not_called()
-
-    def test_flush_failure_clears_pending_requests_after_partial_progress(self):
-        nodes = [
-            self.desired(os.path.join(self.root, 'one.scad'), 'cube(1);'),
-            self.desired(os.path.join(self.root, 'two.scad'), 'cube(2);'),
-            self.desired(os.path.join(self.root, 'three.scad'), 'cube(3);'),
-        ]
-
-        import machinome.node.base as base
-        phase = None
-        with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_atomic_write_text',
-                side_effect=[None, OSError('flush failed')]) as write:
-            with self.assertRaisesRegex(OSError, 'flush failed'):
-                with generation.phase((), label='assembly') as phase:
-                    for node in nodes:
-                        AbstractBaseNode.generate_scad(node)
-                    self.assertEqual(write.call_count, 0)
-
-        self.assertEqual(write.call_count, 2)
-        self.assertEqual(phase.pending_scad_count, 0)
-
-    def test_flush_failure_leaves_only_completed_atomic_publications(self):
-        first = self.desired(
+    def test_a_failed_publication_leaves_only_completed_ones(self):
+        first = desired(
             os.path.join(self.root, 'one.scad'), 'cube(2);',
             digest='new-one', fingerprint='new-one-fingerprint')
-        second = self.desired(
+        second = desired(
             os.path.join(self.root, 'two.scad'), 'sphere(2);',
             digest='new-two', fingerprint='new-two-fingerprint')
-        for path in (first.scad_file, second.scad_file):
-            _atomic_write_text(
+        paths = [writer.scad_file(node) for node in (first, second)]
+        for path in paths:
+            currency.publish_text(
                 path, 'cube(1);', first.mtime_ns,
                 'old-digest', 'old-fingerprint')
         real_replace = os.replace
 
         def fail_second_artifact(source, target):
-            if os.path.realpath(target) == os.path.realpath(second.scad_file):
+            if os.path.realpath(target) == os.path.realpath(paths[1]):
                 raise OSError('second atomic replacement failed')
             return real_replace(source, target)
 
@@ -436,90 +247,41 @@ class GenerationScadDedupTest(TestCase):
             with self.assertRaisesRegex(
                     OSError, 'second atomic replacement failed'):
                 with generation.phase((), label='assembly'):
-                    AbstractBaseNode.generate_scad(first)
-                    AbstractBaseNode.generate_scad(second)
+                    publish(first)
+                    publish(second)
 
-        with open(first.scad_file) as published:
+        with open(paths[0]) as published:
             self.assertEqual(published.read(), 'cube(2);')
-        self.assertEqual(currency.recorded_digest(first.scad_file), 'new-one')
-        with open(second.scad_file) as published:
+        self.assertEqual(currency.recorded_digest(paths[0]), 'new-one')
+        with open(paths[1]) as published:
             self.assertEqual(published.read(), 'cube(1);')
-        self.assertFalse(os.path.exists(currency.sidecar(second.scad_file)))
+        self.assertFalse(os.path.exists(currency.sidecar(paths[1])))
         self.assertFalse(any(name.endswith('.tmp')
                              for name in os.listdir(self.root)))
 
-    def test_postflush_source_failure_propagates_after_atomic_publication(self):
-        source = os.path.join(self.root, 'model.py')
-        with open(source, 'wb') as current:
-            current.write(b'VALUE = 1\n')
-        node = self.desired(
-            os.path.join(self.root, 'assembly.scad'), 'cube(1);')
-
-        import machinome.node.base as base
-        real_publish = base._publish_scad
-
-        def publish_then_change(*args):
-            real_publish(*args)
-            self.replace_source_preserving_size_and_mtime(source)
-
-        with SourceGeneration(self.root) as generation, mock.patch.object(
-                base, '_publish_scad', side_effect=publish_then_change) as write:
-            with self.assertRaisesRegex(SourceChanged, 'post-flush'):
-                with generation.phase((source,), label='assembly'):
-                        AbstractBaseNode.generate_scad(node)
-
-        write.assert_called_once()
-        with open(node.scad_file) as published:
-            self.assertEqual(published.read(), 'cube(1);')
-
-    def test_generated_log_is_emitted_only_for_the_flushed_value(self):
-        path = os.path.join(self.root, 'assembly.scad')
-        nodes = [
-            self.desired(path, 'cube(1);'),
-            self.desired(path, 'cube(2);'),
-        ]
-
-        with SourceGeneration(self.root) as generation, self.assertLogs(
-                'node.base', level='INFO') as logs:
-            with generation.phase((), label='assembly'):
-                for node in nodes:
-                    AbstractBaseNode.generate_scad(node)
-                self.assertFalse(any(
-                    'generated with' in line for line in logs.output))
-
-        generated = [line for line in logs.output if 'generated with' in line]
-        self.assertEqual(len(generated), 1)
-
     def test_three_flexible_bindings_are_never_reused_by_base_scad_path(self):
         path = os.path.join(self.root, 'spring.scad')
-        nodes = []
-        for binding in ('spring-a.stl', 'spring-b.stl', 'spring-c.stl'):
-            node = object.__new__(BindingDependentFlexible)
-            node.scad_file = path
-            node._test_scad_code = f'import("{binding}");'
-            nodes.append(node)
+        nodes = [desired(path, f'import("{binding}");', flexible=True,
+                         mtime_ns=10)
+                 for binding in ('spring-a.stl', 'spring-b.stl',
+                                 'spring-c.stl')]
 
-        import machinome.node.base as base
         with SourceGeneration(self.root), mock.patch.object(
-                base, '_atomic_write_text') as write:
+                currency, 'publish_text') as write:
             for node in nodes:
-                AbstractBaseNode.generate_scad(node)
+                publish(node)
 
         self.assertEqual(write.call_count, 3)
 
     def test_scad_reuse_does_not_survive_a_source_generation(self):
-        node = SimpleNamespace(
-            scad_file=os.path.join(self.root, 'part.scad'),
-            scad_code='cube(1);', mtime_ns=10, mtime=10,
-            source_digest='digest', source_fingerprint='fingerprint',
-            rigid=True)
+        node = desired(os.path.join(self.root, 'part.scad'), 'cube(1);',
+                       rigid=True, mtime_ns=10)
 
-        import machinome.node.base as base
-        with mock.patch.object(base, '_atomic_write_text') as write:
+        with mock.patch.object(currency, 'publish_text') as write:
             with SourceGeneration(self.root):
-                AbstractBaseNode.generate_scad(node)
+                publish(node)
             with SourceGeneration(self.root):
-                AbstractBaseNode.generate_scad(node)
+                publish(node)
 
         self.assertEqual(write.call_count, 2)
 
@@ -570,6 +332,62 @@ class GenerationScadDedupTest(TestCase):
         self.assertEqual(hashed.call_count, 210)
 
 
+class PublishedRecordTest(TestCase):
+    """(`openscad-out`, 2.9) The source generation keeps a record of what is
+    currently published at each path, named for what it records; the
+    assembly phase coalesces nothing and checkpoints as every phase does."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = self.temp.name
+
+    def test_a_phase_has_no_coalescing(self):
+        from machinome.source_generation import SourcePhase
+        for name in ('defer_scad', 'coalesces_scad', 'pending_scad_count',
+                     '_flush_scad'):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(SourcePhase, name))
+        with SourceGeneration(self.root) as generation:
+            phase = generation.phase((), label='assembly')
+            for name in ('coalesces_scad', '_pending_scad'):
+                with self.subTest(name=name):
+                    self.assertFalse(hasattr(phase, name))
+
+    def test_the_assembly_phase_checkpoints_post(self):
+        from machinome.source_generation import SourcePhase
+        labels = []
+        real = SourcePhase.checkpoint
+
+        def checkpoint(phase, paths=(), label=None):
+            labels.append(label)
+            return real(phase, paths, label=label)
+
+        with mock.patch.object(SourcePhase, 'checkpoint', checkpoint):
+            with SourceGeneration(self.root) as generation:
+                with generation.phase((), label='assembly'):
+                    pass
+        self.assertEqual(labels, ['assembly post'])
+
+    def test_historical_identity_is_not_current_identity(self):
+        path = os.path.join(self.root, 'shared.out')
+        one = (10, 'digest-one', 'fingerprint-one')
+        two = (10, 'digest-two', 'fingerprint-two')
+        with SourceGeneration(self.root) as generation:
+            self.assertFalse(hasattr(generation, 'has_scad_artifact'))
+            self.assertFalse(generation.has_published(path, one))
+            generation.remember_published(path, one)
+            self.assertTrue(generation.has_published(path, one))
+            generation.remember_published(path, two)
+            self.assertFalse(generation.has_published(path, one))
+            self.assertTrue(generation.has_published(path, two))
+            generation.remember_published(path, one)
+            self.assertTrue(generation.has_published(path, one))
+            generation.remember_published(path, (10, None, None))
+            self.assertFalse(generation.has_published(path, one))
+            self.assertFalse(generation.has_published(path, (10, None, None)))
+
+
 class CompareBeforeReplaceTest(TestCase):
 
     def setUp(self):
@@ -580,7 +398,7 @@ class CompareBeforeReplaceTest(TestCase):
 
     def publish(self, content='cube(1);', stamp=None, digest='digest',
                 fingerprint='fingerprint'):
-        _atomic_write_text(
+        currency.publish_text(
             self.path, content, self.stamp if stamp is None else stamp,
             digest, fingerprint)
 

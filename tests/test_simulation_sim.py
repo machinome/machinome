@@ -504,3 +504,22 @@ class SimulationClockTest(BaseNodeTest):
         node.clear_keyframe()
 
         self.assertEqual(str(node.time), '$t')
+
+
+class MeshesWithoutPresentationTest(BaseNodeTest):
+    """(`openscad-out`, 2.14) `Sim(meshes=True)` builds every rigid STL and
+    composes no presentation: `assemble()` is not called."""
+
+    def test_meshes_are_built_without_assembling(self):
+        import os
+        from unittest.mock import patch
+
+        node = Carriage()
+
+        def refuse(*arguments, **keywords):
+            raise AssertionError('assemble() was called')
+
+        with patch.object(Carriage, 'assemble', refuse):
+            Sim(node, DT, meshes=True)
+
+        self.assertTrue(os.path.exists(node.cube.stl_file))
