@@ -608,3 +608,43 @@ CoreXY belt disagreement caused by Python floor modulo versus published
 truncated remainder; its project-owned `publish-voron-corexy-signed-wraps`
 cycle remains separate. Viewer/document parity does not establish intended
 physical belt correctness or finish the whole-printer qualification.
+
+## Local integration and separate default-camera capture recheck — 5 October 2026
+
+The earlier worktree-only disposition is now locally integrated in actual viewer
+main commit `3a51e0d8bda231040a7a2f838125476501ef3679`
+(`mount-voron-export`). That is local integration, not publication.
+
+A separately bounded rerun of the original default-camera public web snapshot
+passes on that viewer main and framework
+`5de66e776fd3020bb6cc0529644c752c2815ca99`, with PYTHONPATH unset:
+
+```sh
+env -u PYTHONPATH SOLID_BUILD_DIR=_build_corexy_signed_wraps_20261005 /home/asa/devel/machinome/.venv/bin/machinome snapshot --renderer web --autocenter --viewall --imgsize 1400x1100 -o snapshot-default-web-main-recheck-20261005.png
+```
+
+It exits zero in 48.849 seconds. The capture agent and parent independently
+inspect the saved 1400×1100 image: the whole closed printer is visible with
+margins from its elevated default camera; top, two exterior sides and lower red
+fittings are visible, while unchanged opaque panels occlude its interior.
+Image SHA256 is
+`3ac2f0d6dcd3f515c56fda8ceeb0acb3f1494082f7210449ffe038c57add7ed2`.
+Owned-group cleanup records exit zero and no survivors; cleanup SHA256 is
+`68d03160116ba83ac3e2dda4053b169a55cbb38b4ae103f0ff9cb8d904b8da48`.
+The actual capture log SHA256 is
+`d1d761b55a853ff8dae2ece36bf002d9ad513d0c80771f6b18f19b7a63f35f12`.
+
+The originating project's new
+`docs/evidence/default-web-main-recheck-2026-10-05/` retains the exact
+command/status/cleanup/logs, inspected PNG and sampled unchanged bundle,
+Printer build and separate export-manifest pins. This evidence is separate
+from historical failures; no source/interface change was made by the recheck.
+
+**Disposition:** current-main default-camera capture passes and its scoped
+outcome is accepted. The historical `Failed to fetch` resource and cause
+remain unidentified: the quiet original CLI supplies no full per-request
+network telemetry, and a successful snapshot does not establish that old
+failure's cause or a shared cause with the portable-export stall. No new
+all-resource HTTP-count/no-network-error claim, universal capture guarantee,
+mechanical certification or publication is made. The separate producer
+negative-leading `--up` argv wart remains untested and unfixed.
