@@ -4,7 +4,7 @@
 
 import socket  # noqa: F401
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 
 class ClockB(AssemblyNode):

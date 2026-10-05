@@ -17,7 +17,9 @@ import cadquery
 from molejo import Circle, Helix, P, Shape
 from solid2 import cube, cylinder, import_stl
 
-from machinome.node import CadQueryNode, MolejoNode, Solid2Node
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.molejo import MolejoNode
+from machinome.node.solid2 import Solid2Node
 from machinome.motion.ports import TranslationalPort
 
 

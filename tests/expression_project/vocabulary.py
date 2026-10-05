@@ -31,7 +31,8 @@ alone would fold to a number and put no name on the wire at all.
 from solid2 import cube
 
 import machinome.math as m
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver
 
 #: The driver's native units per design unit: 100 native units is one

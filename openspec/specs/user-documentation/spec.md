@@ -261,8 +261,10 @@ Every example that declares a parameter SHALL import the kinds from the
 dedicated build-parameter module, and every example that declares a port
 or a time base SHALL import them from `machinome.motion.ports`. The concept
 page on values SHALL state that build parameters come from that module while
-node classes come from the node package, ports and the declared time base
-from the motion package, and drivers from the simulation package. Every
+node classes come from their own modules under the node package
+(`machinome.node.assembly`, `machinome.node.cadquery`, ...), ports and the
+declared time base from the motion package, and drivers from the simulation
+package. Every
 tutorial chapter, how-to guide, concept page and the API reference SHALL read
 drivers and time in `simulate()`, the node-tree, part and CLI pages SHALL
 cross-reference the values page, and the changelog SHALL record the lifecycle
@@ -666,4 +668,56 @@ record the capability.
   state of their parts, that no verdict changes because of it, how to run
   without the store, and that the `.verdicts` directory may be deleted at any
   time
+
+### Requirement: The manual imports every name from its module
+
+The node package's root resolves no name (`node-model`, "The node package's
+root exports nothing"), so the documentation SHALL show and state one import
+path per name, the module that defines it:
+
+- every example a reader is sent to -- the tutorial's modules, the how-to
+  guides, the concept pages, the API reference and `README.rst` -- SHALL import
+  each node class and declaration from its module, and no page a reader is sent
+  to SHALL spell `from machinome.node import <name>` or `machinome.node.<name>`
+  for a name the root resolved until the OpenSpec change `root-cleanup`; the
+  decision records under `docs/adrs/` keep the names they used;
+- the API reference SHALL document each node class under its module address
+  and SHALL NOT say that node classes are importable from `machinome.node`;
+- the upgrading page SHALL state that the root exports nothing and that nothing
+  aliases a former spelling, show the refusal a former spelling meets, and map
+  each of the twenty-one names to its module;
+- the installation page SHALL list the extra of every node type of the table of
+  supported node types, `machinome[jscad]` and `machinome[stl]` among them, with
+  what each installs, and the how-to guide on choosing a part backend SHALL list
+  every node class with its module and the extra that installs it;
+- the changelog SHALL record the change under its unreleased section.
+
+#### Scenario: A reader copies an example
+
+- **WHEN** a reader copies the import block of any example in the manual into a
+  project
+- **THEN** every node name in it is imported from its module, and the project
+  imports it
+
+#### Scenario: A reader looks up a node class in the reference
+
+- **WHEN** a reader opens the API reference for `CadQueryNode`, `StlNode` or
+  `AssemblyNode`
+- **THEN** the class is documented as `machinome.node.cadquery.CadQueryNode`,
+  `machinome.node.stl.StlNode` and `machinome.node.assembly.AssemblyNode`, and
+  the section states that each class is imported from its module
+
+#### Scenario: A reader upgrades a project that imports from the root
+
+- **WHEN** a reader whose project writes `from machinome.node import
+  AssemblyNode, CadQueryNode` reads the upgrading page
+- **THEN** they find that the root exports nothing, the error their import line
+  meets, and the module of each of the twenty-one names
+
+#### Scenario: A reader picks the extra of a node type
+
+- **WHEN** a reader looks up what to install for `JScadNode` or `StlNode`
+- **THEN** the installation page names `machinome[jscad]` and `machinome[stl]`,
+  says that neither installs anything beyond the package, and that `JScadNode`
+  needs the `jscad` command, which no extra installs
 

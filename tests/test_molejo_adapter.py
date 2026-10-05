@@ -30,7 +30,7 @@ from solid2 import cube
 
 from machinome.core.builder import Builder
 from machinome.engine.brep import solid_count, solid_volume
-from machinome.node import MolejoNode
+from machinome.node.molejo import MolejoNode
 from machinome.node.base import binding_hash
 from machinome.node.flexible import FlexibleNode
 from machinome.node.qualified import DriverToken

@@ -20,7 +20,7 @@ dimensions left as parameters fed through ports:
 .. code-block:: python
 
     from molejo import Circle, Helix, P, Shape
-    from machinome.node import MolejoNode
+    from machinome.node.molejo import MolejoNode
     from machinome.motion.ports import TranslationalPort
 
     class ValveSpring(MolejoNode):
@@ -53,7 +53,7 @@ name, and the owning assembly binds them in ``simulate()``:
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode
+    from machinome.node.assembly import AssemblyNode
     from machinome.simulation import Driver
 
     FREE_HEIGHT = 46.8

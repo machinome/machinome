@@ -15,7 +15,7 @@ from machinome.manager import new as new_manager
 from machinome.manager.new import New
 
 
-EXPECTED_INIT = '''from machinome.node import Solid2Node
+EXPECTED_INIT = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube, cylinder, translate
 
 class DemoProject(Solid2Node):
@@ -261,7 +261,7 @@ class ScaffoldAcceptanceTest(TestCase):
 #: standing on the XY plane, less a radius-10 cylinder along Z.
 EXPECTED_CADQUERY = '''import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 
 class DemoProject(CadQueryNode):

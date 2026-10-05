@@ -41,7 +41,7 @@ import cadquery as cq
 import trimesh
 
 from machinome.brep_cache import cached_shape
-from machinome.node import StepNode
+from machinome.node.step import StepNode
 from machinome.node import step as step_module
 from machinome.node.step import STEPCAFControl_Reader
 

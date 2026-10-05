@@ -21,7 +21,8 @@ named and this package closes.
 
 from solid2 import cube, cylinder, rotate, translate
 
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.motion.ports import TranslationalPort
 from machinome.simulation import Driver, Instruction
 

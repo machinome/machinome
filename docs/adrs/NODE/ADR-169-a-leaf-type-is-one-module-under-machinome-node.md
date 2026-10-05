@@ -1,6 +1,6 @@
 # ADR-169: A Leaf Type Is One Module Under `machinome.node`; the Adapters Package Is Dissolved
 
-**Status:** Accepted
+**Status:** Accepted; the root's re-exports struck and `_MOVED` and the adapters package kept, amended 2026-10-05 by [ADR-181](ADR-181-the-node-packages-root-exports-nothing.md)
 **Date:** 2026-10-03
 **Change:** [`lean-install`](../../../openspec/changes/archive/2026-10-03-lean-install/)
 **Amends:** [ADR-004: Multi-CAD backend adapter pattern](ADR-004-multi-cad-backend-adapter-pattern.md) — the adapters' module layout
@@ -110,3 +110,13 @@ package wins for which `__init__.py` runs, not for which submodules resolve.
 - `tests/test_leaf_addresses.py`, `tests/test_node_lazy_exports.py`
 - `openspec/specs/node-model/spec.md` ("Each leaf type is one module under
   the node package")
+
+## Amendment (2026-10-05)
+
+[ADR-181](ADR-181-the-node-packages-root-exports-nothing.md) strikes the root's re-exports: "the root
+spellings unchanged" no longer holds, and each leaf class is imported from
+its module only, the root refusing its name with an `ImportError` naming
+that module. The question this record left to the root cleanup ("it stays as
+long as `_MOVED` does; the root cleanup decides both") is decided: `_MOVED`
+and the dissolved `machinome.node.adapters` package both stay, each a
+refusal naming where a released spelling went.

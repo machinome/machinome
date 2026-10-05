@@ -8,7 +8,7 @@ separately, but it is a single rigid part, printed in one go. A
 
 .. code-block:: python
 
-    from machinome.node import FusionNode
+    from machinome.node.fusion import FusionNode
 
     from .knob_shaft import KnobShaft
     from .knob_grip import KnobGrip
@@ -67,7 +67,7 @@ part.
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode
+    from machinome.node.assembly import AssemblyNode
     from machinome.simulation import Driver
 
     class VolumeControl(AssemblyNode):

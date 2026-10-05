@@ -4,16 +4,17 @@
 
 """The table of the node types the core supports.
 
-One row per node type, keyed by the node type's name: the class names the
-node root (`machinome.node`) resolves from it, the renderers it contributes
+One row per node type, keyed by the node type's name: the class names its
+module defines for a project to import, the renderers it contributes
 to `machinome snapshot`, and the CLI commands that cannot run without its
 module. A node type's address and its extra are not stored, because they are
 its name: the module `machinome.node.<key>`, installed by `machinome[<key>]`.
 
 This is the one place the core names a node type by its technology. The node
-root's export table, the CLI and the snapshot and `new` commands read it;
-nothing else spells a node type's module. Importing it imports no node type:
-`load` imports one when a reader asks.
+root's refusals (it exports nothing, and refuses each class name naming its
+node type's module), `load`'s message, the CLI and the snapshot, `new` and
+`import-step` commands read it; nothing else spells a node type's module.
+Importing it imports no node type: `load` imports one when a reader asks.
 
 The renderer column is provisional (OpenSpec change `openscad-out`, ADR-179):
 viewers become providers behind a seam `machinome.viewer` in the phase's last
@@ -31,7 +32,9 @@ from machinome.extras import ExtraUnavailable
 class NodeType:
     """One supported node type.
 
-    `classes` are the names the node root resolves from its module;
+    `classes` are the names its module defines for a project to import,
+    which the node root refuses naming that module and `load` names in its
+    refusal;
     `renderers` the `(renderer name, 'module.Class')` pairs it contributes
     to `machinome snapshot` (provisional); `commands` the CLI commands that
     need its module.

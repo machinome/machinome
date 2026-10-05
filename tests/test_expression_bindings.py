@@ -31,7 +31,8 @@ from machinome.core.serializer import (
     animation_block, bind_document, document_version, drivers_table,
     instructions_table, serialize_node, symbolic_document,
 )
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver
 from machinome.simulation.enumeration import bind_declared_defaults
 import machinome.math as m

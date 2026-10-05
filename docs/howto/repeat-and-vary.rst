@@ -15,7 +15,7 @@ on a bill of materials.
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode
+    from machinome.node.assembly import AssemblyNode
     from machinome.parameters import Count, Length
 
     STATION_PITCH = 44.0

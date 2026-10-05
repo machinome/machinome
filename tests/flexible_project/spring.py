@@ -7,7 +7,9 @@ from molejo import Circle, Helix, Line, P, Shape
 from solid2 import cube
 
 from machinome.math import cos
-from machinome.node import AssemblyNode, CadQueryNode, MolejoNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.molejo import MolejoNode
 from machinome.motion.ports import TranslationalPort
 from machinome.simulation import Driver
 

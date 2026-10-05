@@ -256,6 +256,13 @@ project runs.
 a vet finding; it fails when the project runs, naming the new address. Whether
 a kernel's extra is installed does not enter a verdict.
 
+The node package's root resolves no name (`node-model`, "The node package's
+root exports nothing"): every node class is imported from its module,
+`machinome.node.assembly`, `machinome.node.cadquery` and the others, which are
+beneath the contract members and pass. An import of a former root name, such as
+`from machinome.node import AssemblyNode`, is, likewise, not a vet finding; it
+fails when the project runs, naming the module that defines the name.
+
 #### Scenario: The loader through an import
 
 - **WHEN** a vetted module runs `from machinome.core.loader import
@@ -273,8 +280,9 @@ a kernel's extra is installed does not enter a verdict.
 
 #### Scenario: The public contract passes
 
-- **WHEN** a vetted module imports from `machinome.node`,
-  `machinome.simulation`, `machinome.motion` and `machinome.engine.brep`
+- **WHEN** a vetted module imports from `machinome.node.assembly`,
+  `machinome.node.cadquery`, `machinome.node.stl`, `machinome.simulation`,
+  `machinome.motion` and `machinome.engine.brep`
 - **THEN** vet reports no finding for those imports
 
 #### Scenario: The engine's B-rep operations pass

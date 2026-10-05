@@ -57,8 +57,10 @@ class ExternalWrapperIdentityTest(TestCase):
                             'JScadNode': 'jscad_source'}[kind]
         suffix = {'StepNode': 'step', 'StlNode': 'stl',
                   'OpenScadNode': 'scad', 'JScadNode': 'js'}[kind]
+        module = {'StepNode': 'step', 'StlNode': 'stl',
+                  'OpenScadNode': 'openscad', 'JScadNode': 'jscad'}[kind]
         return self.load(filename,
-            f'from machinome.node import {kind}\n'
+            f'from machinome.node.{module} import {kind}\n'
             f'class Wrapper({kind}):\n'
             f'    {source_attribute} = "asset.{suffix}"\n'
             '    color = "#123456"\n' + extra + adjustment).Wrapper
@@ -219,7 +221,7 @@ class ExternalWrapperIdentityTest(TestCase):
         with tempfile.TemporaryDirectory() as outside:
             path = Path(outside) / 'wrapper.py'
             path.write_text(
-                'from machinome.node import OpenScadNode\n'
+                'from machinome.node.openscad import OpenScadNode\n'
                 'class Wrapper(OpenScadNode):\n'
                 f'    scad_source = {str(self.root / "asset.scad")!r}\n')
             node = self.import_path(path).Wrapper()
@@ -236,7 +238,7 @@ class ExternalWrapperIdentityTest(TestCase):
         self.assertNotEqual(klass(long='a' * 100 + 'x').uniq_id,
                             klass(long='a' * 100 + 'y').uniq_id)
         module = self.load('declared.py',
-            'from machinome.node import StlNode\n'
+            'from machinome.node.stl import StlNode\n'
             'from machinome.parameters import Length\n'
             'class Wrapper(StlNode):\n'
             '    stl_source = "asset.stl"\n'
@@ -248,16 +250,18 @@ class ExternalWrapperIdentityTest(TestCase):
         self.assertNotEqual(module.Wrapper().uniq_id, module.Other().uniq_id)
 
     def test_site_joints_and_fresh_mates_keep_author_geometry_identity(self):
-        for kind, attribute, suffix in (
-                ('StlNode', 'stl_source', 'stl'),
-                ('StepNode', 'step_source', 'step'),
-                ('OpenScadNode', 'scad_source', 'scad'),
-                ('JScadNode', 'jscad_source', 'js')):
+        for kind, module_name, attribute, suffix in (
+                ('StlNode', 'stl', 'stl_source', 'stl'),
+                ('StepNode', 'step', 'step_source', 'step'),
+                ('OpenScadNode', 'openscad', 'scad_source', 'scad'),
+                ('JScadNode', 'jscad', 'jscad_source', 'js')):
             with self.subTest(kind=kind):
                 if kind in ('StlNode', 'StepNode'):
                     self.native_asset(kind)
                 module = self.load('sites.py',
-                    f'from machinome.node import {kind}, AssemblyNode, Frame\n'
+                    f'from machinome.node.{module_name} import {kind}\n'
+                    'from machinome.node.assembly import AssemblyNode\n'
+                    'from machinome.node.frames import Frame\n'
                     'from machinome.motion.joints import Revolute\n'
                     f'class Wrapper({kind}):\n'
                     f'    {attribute} = "asset.{suffix}"\n'
@@ -280,7 +284,7 @@ class ExternalWrapperIdentityTest(TestCase):
         self.native_asset('StlNode')
         helper = self.load('helper.py', 'SCALE = 1\n')
         wrapper_source = (
-            'from machinome.node import StlNode\n'
+            'from machinome.node.stl import StlNode\n'
             f'from {helper.__name__} import SCALE\n'
             'class Wrapper(StlNode):\n'
             '    stl_source = "asset.stl"\n'

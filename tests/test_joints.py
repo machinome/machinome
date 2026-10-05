@@ -38,7 +38,8 @@ from machinome.motion.joints import (Bound, Free, Joint, JointRangeError,
 from machinome.motion.ports import (BoundPort, Port, RotationalPort,
                                      TranslationalPort, declared_ports,
                                      get_coordinate)
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node import phase as _phase
 from machinome.node.base import _compose_world_matrix
 from machinome.node.assembly import _rest_children, _sweep

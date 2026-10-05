@@ -15,7 +15,8 @@ import math
 
 from machinome.math import floor, sin
 from machinome.motion.joints import Revolute
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver, Instruction, State
 
 from .parts import Dial

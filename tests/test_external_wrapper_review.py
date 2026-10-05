@@ -35,7 +35,7 @@ class ExternalWrapperReviewTest(TestCase):
         path = self.root / filename
         if ordinary:
             source = (
-                'from machinome.node import AssemblyNode\n'
+                'from machinome.node.assembly import AssemblyNode\n'
                 'class Wrapper(AssemblyNode):\n'
                 '    step_source = "not-a-step-file"\n'
                 '    stl_source = "not-an-stl-file"\n'
@@ -46,7 +46,7 @@ class ExternalWrapperReviewTest(TestCase):
             )
         else:
             source = (
-                'from machinome.node import OpenScadNode\n'
+                'from machinome.node.openscad import OpenScadNode\n'
                 'class Wrapper(OpenScadNode):\n'
                 f'    scad_source = {str(self.root / "asset.scad")!r}\n'
             )

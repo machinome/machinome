@@ -4,7 +4,7 @@
 
 """A project of the faceted stand-in: two cubes, apart."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .faceted_stand_in import MeshPart
 

@@ -46,8 +46,13 @@ EXTRAS = {
     'molejo': {'molejo[brep]==0.2.*', 'machinome[brep]'},
     'openscad': {'solidpython2==2.1.*'},
     'solid2': {'machinome[openscad]'},
+    # `root-cleanup` (design.md Decision 7): the node types whose module
+    # needs nothing the core does not require; each extra names the node
+    # type and installs nothing.
+    'jscad': set(),
+    'stl': set(),
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
-            'openscad,solid2]'},
+            'openscad,solid2,jscad,stl]'},
 }
 
 #: Every kernel module, the extra its address names, the node types (or the
@@ -162,7 +167,17 @@ class KernelMetadataTest(TestCase):
 
         self.assertEqual(Requirement(line).extras,
                          {'cadquery', 'build123d', 'step', 'molejo', 'brep',
-                          'mesh', 'openscad', 'solid2'})
+                          'mesh', 'openscad', 'solid2', 'jscad', 'stl'})
+
+    def test_every_node_type_has_the_extra_of_its_name(self):
+        # `root-cleanup`: the install line a refusal or a manifest names
+        # for a node type, `machinome[<key>]`, is always one pip resolves.
+        from machinome.node.supported import NODE_TYPES
+
+        extras = project()['optional-dependencies']
+        for key in NODE_TYPES:
+            with self.subTest(key=key):
+                self.assertIn(key, extras)
 
     def test_the_solid2_extra_installs_the_openscad_extra(self):
         (line,) = project()['optional-dependencies']['solid2']

@@ -354,6 +354,35 @@ class GeneratedAssemblyTest(ColdCacheTestCase):
 
 
 ##############################################
+# Section 3 (continued): the generated import lines (`root-cleanup`)
+
+
+class GeneratedImportsTest(ColdCacheTestCase):
+    """The generated source imports each name from its module, never from
+    the node package's root, which exports nothing (OpenSpec change
+    `root-cleanup`, `cli` capability)."""
+
+    def test_the_parts_import_step_node_from_its_module(self):
+        assembly = StepAssembly(SIMPLE_STEP)
+
+        source, _ = generate_parts(assembly, SIMPLE_STEP, PROJECT)
+
+        self.assertIn('\nfrom machinome.node.step import StepNode\n', source)
+        self.assertNotIn('from machinome.node import', source)
+
+    def test_the_assembly_imports_assembly_node_from_its_module(self):
+        assembly = StepAssembly(SIMPLE_STEP)
+        _, class_names = generate_parts(assembly, SIMPLE_STEP, PROJECT)
+
+        source, _ = generate_assembly(
+            assembly, 'actuator', SIMPLE_STEP, class_names)
+
+        self.assertIn('\nfrom machinome.node.assembly import AssemblyNode\n',
+                      source)
+        self.assertNotIn('from machinome.node import', source)
+
+
+##############################################
 # Section 3 (continued): every generated module parses (task 1.7)
 
 

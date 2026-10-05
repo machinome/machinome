@@ -23,7 +23,7 @@ import math
 from machinome.math import sin
 from machinome.motion.joints import Free, Prismatic, Revolute
 from machinome.motion.ports import RotationalPort, Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.qualified import instance_path
 from machinome.simulation import (Button, Driver, Instruction, Sim,
                                    Slide, Turn)

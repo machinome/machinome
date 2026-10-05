@@ -31,9 +31,13 @@ from unittest.mock import patch
 import numpy as np
 import trimesh
 
-from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
-                             FusionNode, JScadNode, OpenScadNode, Solid2Node,
-                             StlNode)
+from machinome.node.build123d import Build123dNode, Build123dSheetNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.jscad import JScadNode
+from machinome.node.openscad import OpenScadNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.stl import StlNode
 from machinome.node.openscad.binary import openscad_binary
 
 from .stl_project import originals, parts, rack

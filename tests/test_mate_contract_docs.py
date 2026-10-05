@@ -14,7 +14,8 @@ class MateContractDocumentationTest(unittest.TestCase):
     def test_the_drive_example_executes_and_intersects_its_original_bound(self):
         from machinome.motion.joints import Bound, Revolute
         from machinome.motion.ports import Time
-        from machinome.node import AssemblyNode, Frame
+        from machinome.node.assembly import AssemblyNode
+        from machinome.node.frames import Frame
         from machinome.simulation import Driver, Sim
         from .test_mate_contracts import Handle, Pawl
 

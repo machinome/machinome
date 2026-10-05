@@ -13,7 +13,7 @@ hand-written joint had it. Each is held to its hand-placed twin in
 """
 
 from machinome.motion.joints import Revolute
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.frames import Frame
 from machinome.simulation import Driver
 

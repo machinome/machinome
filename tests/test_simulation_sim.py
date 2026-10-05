@@ -23,7 +23,7 @@ produces is a snapshot, and the assertions here are about the
 snapshot. Geometry is the scenario tests' subject.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Instruction, Sim
 
 from .base import BaseNodeTest

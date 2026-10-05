@@ -11,7 +11,8 @@ the imported mesh, so the new part is designed against the geometry of
 the old one.
 """
 
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 
 from .originals import BRACKET_HEIGHT, Post
 from .parts import Bracket

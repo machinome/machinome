@@ -5,7 +5,7 @@
 
 from machinome.motion.joints import Bound, JointRangeError, Revolute
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Angle
 from machinome.simulation import Driver, Sim, State, UnsupportedLaw
 from .base import BaseNodeTest

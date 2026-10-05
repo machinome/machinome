@@ -8,48 +8,64 @@ already know and by what the part needs; a project may mix them freely.
 
 .. list-table::
    :header-rows: 1
-   :widths: 22 30 12 36
+   :widths: 18 22 26 8 26
 
    * - Class
+     - Imported from
      - You write
      - B-rep
      - Needs
    * - ``CadQueryNode``
+     - ``machinome.node.cadquery``
      - ``render()`` returning a ``Workplane``
      - yes
-     - nothing
+     - ``machinome[cadquery]``
    * - ``Build123dNode``
+     - ``machinome.node.build123d``
      - ``render()`` returning a ``Part``, ``Solid``, ``Compound`` or ``BuildPart``
      - yes
-     - nothing
+     - ``machinome[build123d]``
    * - ``Build123dSheetNode``
+     - ``machinome.node.build123d``
      - ``profile()`` plus ``thickness``
      - yes
-     - nothing (:doc:`sheet-parts`)
+     - ``machinome[build123d]`` (:doc:`sheet-parts`)
    * - ``StepNode``
+     - ``machinome.node.step``
      - ``step_source`` and a product name
      - yes
-     - nothing (:doc:`imported-parts`)
+     - ``machinome[step]`` (:doc:`imported-parts`)
    * - ``Solid2Node``
+     - ``machinome.node.solid2``
      - ``render()`` returning a SolidPython object
      - no
      - OpenSCAD and ``machinome[solid2]``
    * - ``OpenScadNode``
+     - ``machinome.node.openscad``
      - ``scad_source`` naming a module
      - no
      - OpenSCAD and ``machinome[openscad]``
    * - ``JScadNode``
+     - ``machinome.node.jscad``
      - ``jscad_source`` exporting ``main``
      - no
-     - the ``jscad`` command
+     - the ``jscad`` command and ``machinome[jscad]``, which installs
+       nothing
    * - ``StlNode``
+     - ``machinome.node.stl``
      - ``stl_source``
      - no
-     - nothing (:doc:`imported-parts`)
+     - ``machinome[stl]``, which installs nothing (:doc:`imported-parts`)
    * - ``MolejoNode``
+     - ``machinome.node.molejo``
      - ``render()`` returning a molejo ``Shape``
      - yes
-     - nothing (:doc:`flexible-parts`)
+     - ``machinome[molejo]`` (:doc:`flexible-parts`)
+
+Each class is imported from the module beside it, the module of its node
+type: eight node types, and ``machinome.node.build123d`` defines two
+classes. The root of ``machinome.node`` exports nothing, and the extra is
+the module's last name (:doc:`/start/install`).
 
 **B-rep** parts keep their boundary representation: a ``.brep`` beside
 the STL, a B-rep fusion with other B-rep parts, and geometric tests
@@ -63,7 +79,7 @@ CadQuery
 .. code-block:: python
 
     import cadquery as cq
-    from machinome.node import CadQueryNode
+    from machinome.node.cadquery import CadQueryNode
 
     class Box(CadQueryNode):
 
@@ -89,7 +105,7 @@ Either of build123d's two styles works. Builder mode:
 .. code-block:: python
 
     from build123d import BuildPart, Box, Cylinder, Mode
-    from machinome.node import Build123dNode
+    from machinome.node.build123d import Build123dNode
 
     class Box(Build123dNode):
 
@@ -104,7 +120,7 @@ Algebra mode:
 .. code-block:: python
 
     from build123d import Box, Cylinder
-    from machinome.node import Build123dNode
+    from machinome.node.build123d import Build123dNode
 
     class Box(Build123dNode):
 
@@ -131,7 +147,7 @@ is refused with the line that installs it. A family part writes its own
 
 .. code-block:: python
 
-    from machinome.node import Solid2Node
+    from machinome.node.solid2 import Solid2Node
     from solid2 import cube, cylinder, translate
 
     class Box(Solid2Node):
@@ -150,7 +166,7 @@ apart.
 
 .. code-block:: python
 
-    from machinome.node import OpenScadNode
+    from machinome.node.openscad import OpenScadNode
 
     class Box(OpenScadNode):
 
@@ -210,7 +226,7 @@ dependencies installed in the directory you run ``machinome`` from.
 
 .. code-block:: python
 
-    from machinome.node import JScadNode
+    from machinome.node.jscad import JScadNode
 
     class Box(JScadNode):
 

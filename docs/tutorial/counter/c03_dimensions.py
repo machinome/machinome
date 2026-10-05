@@ -1,7 +1,8 @@
 """Chapter 3: dimensions in one place."""
 import cadquery as cq
 
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.motion.joints import Revolute
 from machinome.parameters import Length
 from machinome.simulation import Driver

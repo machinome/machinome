@@ -42,7 +42,7 @@ ARBOR = '''\
 from solid2 import cylinder
 
 from machinome.motion.joints import Revolute
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Arbor(Solid2Node):
@@ -54,7 +54,7 @@ class Arbor(Solid2Node):
 '''
 
 MACHINE = '''\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from .parts.arbor import Arbor

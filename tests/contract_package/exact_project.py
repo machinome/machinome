@@ -11,7 +11,9 @@ clear of it.
 
 import cadquery as cq
 
-from machinome.node import AssemblyNode, CadQueryNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
 
 from .exact_stand_in import NativeSolid
 

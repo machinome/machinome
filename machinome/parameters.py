@@ -12,7 +12,8 @@ driver is a runtime input, it changes every instant, and structure may
 never depend on it. The two live in modules of their own so an import
 line says which is which::
 
-    from machinome.node import AssemblyNode, CadQueryNode
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.cadquery import CadQueryNode
     from machinome.parameters import Length, Flag
     from machinome.simulation import Driver
 

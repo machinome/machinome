@@ -9,8 +9,9 @@ The system SHALL accept a **marking** as a class-body declaration on a node
 class: an attribute holding `Marking(artwork, placement, color=...)`, where
 `artwork` names the drawing, `placement` says where on the part it sits, and
 `color` is its colour. `Marking`, together with the artwork source `Svg` and
-the placements `Wrapped` and `Flat`, SHALL be importable from
-`machinome.node.markings` and SHALL also resolve from `machinome.node`.
+the placements `Wrapped` and `Flat`, SHALL be imported from
+`machinome.node.markings`, their one import path: the node root resolves none
+of them (`node-model`, "The node package's root exports nothing").
 
 A marking SHALL take its name from the attribute it is assigned to, SHALL be
 recorded in declaration order, and SHALL be inherited through the method

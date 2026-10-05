@@ -21,7 +21,7 @@ from unittest import TestCase, mock
 from solid2 import cube
 
 from machinome import currency
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from machinome.node.assembly import AssemblyNode
 from machinome.node.openscad import writer
 from machinome.source_generation import (

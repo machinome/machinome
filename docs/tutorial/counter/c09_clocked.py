@@ -1,6 +1,6 @@
 """Chapter 9: a machine that remembers."""
 from machinome.math import clamp01, floor
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Length
 from machinome.simulation import Driver, Instruction, State
 

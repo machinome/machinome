@@ -5,7 +5,7 @@
 """A windmill-shaped root: a ratio-derived radius, a flag gating a
 guard, a legacy child, and a child whose height has no default."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Flag, Length, Ratio
 from .parts import Guard, Rotor, Tower
 

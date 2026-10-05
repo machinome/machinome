@@ -10,7 +10,8 @@ import pytest
 from machinome import math as machinome_math
 from machinome.motion.joints import Bound, Revolute
 from machinome.motion.ports import Time, get_coordinate
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.simulation import Driver, Sim, UnsupportedLaw
 
 

@@ -11,7 +11,7 @@ useful assertions to fail -- a false green. With NODE naming the main
 class explicitly, the right class must load regardless of definition
 order, and the same contract as apart.py must genuinely hold."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from .parts import Cube
 
 

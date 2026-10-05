@@ -1,7 +1,7 @@
 """Chapter 1: a part."""
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 
 class Base(CadQueryNode):

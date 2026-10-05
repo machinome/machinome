@@ -44,7 +44,7 @@ PROJECT = {
     '.gitignore': '_build*\n__pycache__/\nsnapshot.png\n.env\n',
     'design/__init__.py': '',
     'design/part.py': (
-        'from machinome.node import Solid2Node\n'
+        'from machinome.node.solid2 import Solid2Node\n'
         'from solid2 import cube\n'
         'class Part(Solid2Node):\n'
         '    def render(self):\n'

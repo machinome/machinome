@@ -2,25 +2,30 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""`machinome.node` resolves its backend exports on first access.
+"""`machinome.node` is a package path, a refusal and submodule access, and
+exports nothing (OpenSpec change `root-cleanup`; before it, this module
+pinned the root's lazy exports).
 
-The package used to re-export every backend class eagerly, so importing
-ANY module under it -- `from machinome.node.base import AbstractBaseNode`,
-which the loader, the builder, the piece inventory, the test manager and
-the simulation enumerator all do -- ran that whole list and dragged in
-the exact layer of the time -> `cadquery`, 1.84 s on every `machinome`
-invocation.
+The root used to resolve twenty-one names a second time, lazily, from the
+modules that define them. One address per name is the split's readiness
+condition: a name a project imports has exactly one import path, the module
+that defines it, so that cutting a node package moves a module and never a
+second spelling. So the root now resolves none of them, and refuses each
+with `ImportError` naming its module; the acceptance gate,
+`tests/test_node_root_exports_nothing.py`, pins every refusal's text.
 
-Two things have to stay true at once, so both are pinned here: nothing
-is imported until it is named, and what comes back when it IS named is
-the identical class object callers got before. `CadQueryNode` carries
-the `CheckCQEditor` metaclass and consumers test it with `issubclass`,
-so a lazy proxy would be a silent behaviour change, not an optimisation.
+What stays pinned here is what the root still is. Importing it imports no
+backend and no node type's module: a node type is reached by importing the
+module that defines it, which imports what that module needs and nothing
+else. A submodule is reachable through the package (`machinome.node.step`,
+`from machinome.node import step`), and a submodule that cannot be imported
+reports why: an absent extra by the module's own refusal, unmodified, a
+broken install by its own error with the requested name spliced in. The
+moved port names and the parameter kinds stay out.
 
-The laziness itself is only observable in a process that has not already
-imported the framework, so those assertions run through
-`tests/import_probe.py` in a fresh interpreter. The identity assertions
-run in-process, where they are cheaper and just as conclusive.
+What a fresh process imports is only observable in a process that has not
+already imported the framework, so those assertions run through
+`tests/import_probe.py` in a fresh interpreter. The rest run in-process.
 """
 
 import importlib
@@ -31,11 +36,10 @@ from .import_probe import probe
 import machinome.node
 
 
-# The names `machinome/node/__init__.py` exported eagerly before this
-# change, each with the submodule that defines it. Written out here
-# rather than read from the package under test: a table that agreed with
-# itself would prove nothing about what consumers used to import.
-EXPECTED_EXPORTS = {
+# The names `machinome/node/__init__.py` resolved until `root-cleanup`,
+# each with the module that defines it. Written out here rather than read
+# from the package under test.
+FORMER_EXPORTS = {
     'StlRenderStart': 'machinome.node.base',
     'AssemblyNode': 'machinome.node.assembly',
     'FusionNode': 'machinome.node.fusion',
@@ -51,22 +55,11 @@ EXPECTED_EXPORTS = {
     'StlNode': 'machinome.node.stl',
     'StepNode': 'machinome.node.step',
     'property_as_number': 'machinome.node.decorators',
-    # Added by the declarative node API, lazily like the rest. Only the
-    # STRUCTURE half: the parameter kinds this package also exported for
-    # one unreleased cycle now live in `machinome.parameters` and are
-    # pinned out of here by ParameterModuleSurface below.
     'declared_children': 'machinome.node.declarative',
-    # Added by `carry-markings-on-a-part`: what a part carries on its
-    # surface is an answer to "what has shape", so the four names are
-    # node exports -- and deferred like the rest, since the artwork
-    # reduction's build123d and the mesh build's trimesh are reached
-    # inside the build and never at import.
     'Marking': 'machinome.node.markings',
     'Wrapped': 'machinome.node.markings',
     'Flat': 'machinome.node.markings',
     'Svg': 'machinome.node.markings',
-    # OpenSpec change ``place-parts-by-mate``: a frame resolves from
-    # ``machinome.node`` as the ``mates`` spec requires.
     'Frame': 'machinome.node.frames',
 }
 
@@ -84,14 +77,21 @@ PARAMETER_NAMES = ('Quantity', 'Length', 'Angle', 'Count', 'Ratio', 'Scalar',
 MOVED_NAMES = ('Port', 'RotationalPort', 'TranslationalPort', 'SignalPort',
               'declared_ports', 'Time', 'ports', 'timebase')
 
-# The exact exports. Since the exact engine change (OpenSpec `exact-engine`)
-# exact geometry is the exact engine's and the core imports no CAD front end
-# for it, so only `StepNode`, whose reader and `adjust` still use CadQuery,
-# reaches `cadquery` when named; the others reach it only when a project's
-# own module imports it to render.
-EXACT_EXPORTS = ('FusionNode', 'CadQueryNode', 'Build123dNode',
-                 'Build123dSheetNode', 'StepNode')
-CADQUERY_EXPORTS = ('StepNode',)
+# The B-rep node classes. Since the exact engine change (OpenSpec
+# `exact-engine`) B-rep geometry is the B-rep engine's and the core imports
+# no CAD front end for it, so only `StepNode`, whose reader and `adjust`
+# still use CadQuery, reaches `cadquery` when its module is imported; the
+# others reach it only when a project's own module imports it to render.
+BREP_CLASSES = ('FusionNode', 'CadQueryNode', 'Build123dNode',
+                'Build123dSheetNode', 'StepNode')
+CADQUERY_CLASSES = ('StepNode',)
+
+# The modules of the node types (the table of supported node types' keys),
+# none of which importing the package may import.
+NODE_TYPE_MODULES = ('machinome.node.cadquery', 'machinome.node.build123d',
+                     'machinome.node.step', 'machinome.node.molejo',
+                     'machinome.node.solid2', 'machinome.node.openscad',
+                     'machinome.node.jscad', 'machinome.node.stl')
 
 # Refuse `cadquery` the way an interpreter without the wheel does, in the
 # shape of the finders of tests/brep_engine_absent.py and
@@ -140,6 +140,17 @@ sys.meta_path.insert(0, _CadQueryBroken())
 sys.modules.pop('cadquery', None)
 '''
 
+#: The `step` module's refusal where CadQuery is absent.
+STEP_REFUSAL = ('machinome.node.step (StepNode, StepAssembly) needs '
+                'cadquery, which is not installed; install it with '
+                '\'pip install "machinome[step]"\'')
+
+
+def root_import(name):
+    """`from machinome.node import <name>`, composed at run time: this
+    file spells no former root name as a literal import line."""
+    return f'from machinome.node import {name}\n'
+
 
 class NodePackageImportCost(TestCase):
     """What importing the package, and only the package, costs."""
@@ -161,7 +172,14 @@ class NodePackageImportCost(TestCase):
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.node imported cadquery')
         self.assertFalse(result.imported('machinome.engine.brep'),
-                         'importing machinome.node imported the exact engine')
+                         'importing machinome.node imported the B-rep engine')
+
+    def test_importing_the_node_package_imports_no_node_type(self):
+        result = self._ran('import machinome.node\n')
+        for module in NODE_TYPE_MODULES:
+            with self.subTest(module=module):
+                self.assertFalse(result.imported(module),
+                                 f'importing machinome.node imported {module}')
 
     def test_importing_the_node_base_does_not_import_cadquery(self):
         # The path that actually hurts: every core consumer imports
@@ -171,25 +189,26 @@ class NodePackageImportCost(TestCase):
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.node.base imported cadquery')
 
-    def test_importing_a_faceted_backend_does_not_import_cadquery(self):
-        # An OpenSCAD/solid2-only project names Solid2Node and nothing
-        # else; it must not pay for the exact stack.
-        result = self._ran('from machinome.node import Solid2Node\n')
+    def test_importing_an_openscad_node_type_does_not_import_cadquery(self):
+        # An OpenSCAD/solid2-only project imports Solid2Node from its
+        # module and nothing else; it must not pay for the B-rep stack.
+        result = self._ran('from machinome.node.solid2 import Solid2Node\n')
         self.assertFalse(result.imported('cadquery'),
-                         'resolving Solid2Node imported cadquery')
+                         'importing Solid2Node imported cadquery')
 
-    def test_naming_an_exact_backend_imports_what_it_needs(self):
-        # The other half of the contract: deferral must not mean absent.
-        # Every exact export resolves to its class; the one whose module
-        # reads with CadQuery imports it, and the others need no front end.
-        for name in EXACT_EXPORTS:
+    def test_importing_a_brep_node_class_imports_what_it_needs(self):
+        # Every B-rep class is imported from its module; the one whose
+        # module reads with CadQuery imports it, and the others need no
+        # front end.
+        for name in BREP_CLASSES:
+            module = FORMER_EXPORTS[name]
             with self.subTest(name=name):
                 result = self._ran(
-                    f'from machinome.node import {name}\n'
+                    f'from {module} import {name}\n'
                     f'assert isinstance({name}, type), {name!r}\n')
                 self.assertEqual(result.imported('cadquery'),
-                                 name in CADQUERY_EXPORTS,
-                                 f'resolving {name}: cadquery imported is '
+                                 name in CADQUERY_CLASSES,
+                                 f'importing {name}: cadquery imported is '
                                  f'{result.imported("cadquery")}')
 
     def test_importing_the_node_package_does_not_import_the_step_reader(self):
@@ -200,70 +219,94 @@ class NodePackageImportCost(TestCase):
         self.assertFalse(result.imported('OCP'),
                          'importing machinome.node imported OCP')
 
-    def test_naming_step_node_imports_the_step_reader(self):
+    def test_importing_the_step_module_imports_the_step_reader(self):
         result = self._ran(
-            'from machinome.node import StepNode\n'
+            'from machinome.node.step import StepNode\n'
             'assert isinstance(StepNode, type), StepNode\n')
         self.assertTrue(result.imported('OCP'),
-                        'resolving StepNode did not import OCP')
+                        'importing machinome.node.step did not import OCP')
+
+    def test_a_refused_name_imports_no_node_type(self):
+        # The refusal reads the table of supported node types and nothing
+        # else: it never imports the module it names.
+        result = probe(
+            'import sys\n'
+            'try:\n'
+            f'    {root_import("StepNode").strip()}\n'
+            'except ImportError as refused:\n'
+            "    print('REFUSED', refused)\n"
+            "print('LOADED', sorted(m for m in sys.modules\n"
+            f"                      if m in {NODE_TYPE_MODULES!r}))\n")
+        self.assertEqual(result.status, 0, result.stderr)
+        lines = result.stdout.strip().splitlines()
+        self.assertTrue(lines[0].startswith('REFUSED '), result.stdout)
+        self.assertIn("'machinome.node.step'", lines[0])
+        self.assertEqual(lines[1], 'LOADED []')
 
 
-class NodePackageExports(TestCase):
-    """Every name the package used to export still resolves, unchanged."""
+class NodePackageRefusals(TestCase):
+    """The package resolves none of the names it used to export: each is
+    refused naming its module, and the module answers for it."""
 
-    def test_all_lists_exactly_the_names_exported_before(self):
-        self.assertEqual(sorted(machinome.node.__all__),
-                         sorted(EXPECTED_EXPORTS))
+    def test_all_is_empty(self):
+        self.assertEqual(machinome.node.__all__, [])
 
-    def test_every_export_is_the_object_its_submodule_defines(self):
-        for name, module_name in EXPECTED_EXPORTS.items():
+    def test_every_former_export_is_refused_naming_its_module(self):
+        for name, module_name in FORMER_EXPORTS.items():
+            with self.subTest(name=name):
+                with self.assertRaises(ImportError) as raised:
+                    getattr(machinome.node, name)
+                message = str(raised.exception)
+                self.assertIn('exports nothing', message)
+                self.assertIn(f'from {module_name} import {name}', message)
+
+    def test_every_former_export_is_defined_by_its_module(self):
+        # The module the refusal names is the one that defines the name,
+        # not one that re-exports it: the one address.
+        for name, module_name in FORMER_EXPORTS.items():
             with self.subTest(name=name):
                 module = importlib.import_module(module_name)
-                self.assertIs(getattr(machinome.node, name),
-                              getattr(module, name))
+                self.assertEqual(getattr(module, name).__module__,
+                                 module_name)
 
-    def test_a_resolved_export_is_a_real_class_not_a_proxy(self):
+    def test_a_class_from_its_module_is_a_real_class_not_a_proxy(self):
         # CadQueryNode is built by the CheckCQEditor metaclass and
         # consumers test it with issubclass, so a proxy would break them
         # in ways an attribute-forwarding test would not notice.
-        from machinome.node import CadQueryNode
-        from machinome.node.cadquery import CheckCQEditor
+        from machinome.node.cadquery import CadQueryNode, CheckCQEditor
         from machinome.node.brep_leaf import BrepLeafNode
 
         self.assertIsInstance(CadQueryNode, type)
         self.assertIs(type(CadQueryNode), CheckCQEditor)
         self.assertTrue(issubclass(CadQueryNode, BrepLeafNode))
 
-    def test_star_import_binds_every_exported_name(self):
+    def test_star_import_binds_nothing(self):
         result = probe(
-            'from machinome.node import *\n'
-            f'missing = [n for n in {sorted(EXPECTED_EXPORTS)!r} '
-            'if n not in dir()]\n'
-            'print(missing)\n')
+            'before = set(dir())\n'
+            'from machinome.node ' 'import *\n'
+            "print(sorted(set(dir()) - before - {'before'}))\n")
         self.assertEqual(result.status, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), '[]')
 
-    def test_dir_offers_the_exported_names(self):
+    def test_dir_offers_no_former_export(self):
         listed = dir(machinome.node)
-        for name in EXPECTED_EXPORTS:
+        for name in FORMER_EXPORTS:
             with self.subTest(name=name):
-                self.assertIn(name, listed)
+                self.assertNotIn(name, listed)
 
-    def test_resolving_a_name_caches_it_in_module_globals(self):
-        # The cache is what keeps the second access a plain dict lookup,
-        # and it is also what stops a submodule that reads a lazy name
-        # during its own import from re-entering the accessor forever.
-        # It has to be observed in a fresh interpreter: by the time this
-        # suite runs, the names are long since resolved.
+    def test_a_refused_name_is_never_cached(self):
+        # A refusal binds nothing in the package's namespace, so a second
+        # read is refused again rather than answered from a stale binding.
         result = probe(
             'import machinome.node as node\n'
-            "print('BEFORE', 'StlNode' in vars(node))\n"
-            'first = node.StlNode\n'
-            "print('AFTER', vars(node).get('StlNode') is first)\n"
-            "print('AGAIN', node.StlNode is first)\n")
+            'for attempt in (1, 2):\n'
+            '    try:\n'
+            "        getattr(node, 'StlNode')\n"
+            '    except ImportError:\n'
+            "        print('REFUSED', 'StlNode' in vars(node))\n")
         self.assertEqual(result.stdout.split(),
-                         ['BEFORE', 'False', 'AFTER', 'True',
-                          'AGAIN', 'True'], result.stderr)
+                         ['REFUSED', 'False', 'REFUSED', 'False'],
+                         result.stderr)
 
     def test_an_unknown_name_still_raises_attribute_error(self):
         with self.assertRaises(AttributeError):
@@ -285,12 +328,11 @@ class NodePackageExports(TestCase):
 
 
 class NodePackageSubmodules(TestCase):
-    """Submodule attributes survive losing the eager imports.
+    """Submodules are reachable through the package.
 
-    `from .assembly import AssemblyNode` used to bind
-    `machinome.node.assembly` as a side effect of the import machinery,
-    so a consumer could read it after importing only the package. The
-    accessor has to resolve submodule names too, or that quietly breaks.
+    A consumer reads `machinome.node.assembly` after importing only the
+    package, or writes `from machinome.node import supported`; the
+    accessor resolves submodule names, or that quietly breaks.
     """
 
     def test_a_submodule_is_reachable_after_a_bare_package_import(self):
@@ -304,6 +346,15 @@ class NodePackageSubmodules(TestCase):
                 self.assertEqual(result.stdout.strip(),
                                  f'machinome.node.{submodule}')
 
+    def test_submodules_are_imported_through_the_package(self):
+        result = probe(
+            'from machinome.node import supported, phase, step\n'
+            'print(supported.__name__, phase.__name__, step.__name__)\n')
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertEqual(result.stdout.split(),
+                         ['machinome.node.supported', 'machinome.node.phase',
+                          'machinome.node.step'])
+
     def test_a_submodule_attribute_is_the_imported_module(self):
         module = importlib.import_module('machinome.node.assembly')
         self.assertIs(machinome.node.assembly, module)
@@ -314,7 +365,7 @@ class NodePackageSubmodules(TestCase):
                        "print('DONE')\n")
         self.assertEqual(result.stdout.strip(), 'DONE', result.stderr)
         self.assertFalse(result.imported('cadquery'),
-                         'reading one submodule imported the exact stack')
+                         'reading one submodule imported the B-rep stack')
 
 
 class NodePackageMovedNames(TestCase):
@@ -322,7 +373,7 @@ class NodePackageMovedNames(TestCase):
     now, not from this package -- `motion-package`'s deliberate,
     unshimmed break. `tests/test_motion_package.py` owns the fuller
     behavioural pin; this class keeps the moved names inside the same
-    export-table discipline as every other name here.
+    discipline as every other name here.
     """
 
     def test_a_moved_name_is_not_in_all(self):
@@ -354,7 +405,7 @@ class NodePackageMovedNames(TestCase):
 
 
 class NodePackageBrokenBackend(TestCase):
-    """A deferred import that fails reports its own failure.
+    """A submodule that fails to import reports its own failure.
 
     This is the classic PEP 562 trap: an `ImportError` raised inside
     `__getattr__` looks, to anything that treats the accessor as a
@@ -363,7 +414,9 @@ class NodePackageBrokenBackend(TestCase):
     be reported as a broken install: since the `lean-install` change the
     CAD kernels are extras, so a missing cadquery is an install that has
     not asked for the `step` extra, and the step module's own refusal,
-    naming the extra, reaches the caller unmodified.
+    naming the extra, reaches the caller unmodified. The package's
+    deferred names are its submodules, so the doors are
+    `machinome.node.step` and `from machinome.node import step`.
     """
 
     def _access(self, expression, blocker=CADQUERY_ABSENT):
@@ -384,21 +437,21 @@ class NodePackageBrokenBackend(TestCase):
             'else:\n'
             "    print('NO_ERROR')\n")
 
-    def test_the_package_still_imports_without_the_exact_stack(self):
+    def test_the_package_still_imports_without_the_brep_stack(self):
         # cadquery is the `step` and `cadquery` extras' kernel, not a
         # required dependency: the package imports without it, and the
-        # failure is allowed only at first use of a name that needs it.
+        # failure is allowed only at first use of a module that needs it.
         result = probe(CADQUERY_ABSENT +
                        'import machinome.node\n'
                        "print('IMPORTED')\n")
         self.assertEqual(result.stdout.strip(), 'IMPORTED', result.stderr)
         self.assertNotIn('Traceback', result.stderr)
 
-    # `StepNode` is the export whose module needs cadquery itself; the
+    # `step` is the node type whose module needs cadquery itself; the
     # CadQuery module imports none (it reached cadquery only through the
     # exact layer before the `exact-engine` change).
     def test_an_absent_extra_raises_the_modules_refusal_unmodified(self):
-        result = self._access('machinome.node.StepNode')
+        result = self._access('machinome.node.step')
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('ABSENT ExtraUnavailable '
@@ -411,22 +464,40 @@ class NodePackageBrokenBackend(TestCase):
         result = probe(
             CADQUERY_ABSENT +
             'try:\n'
-            '    from machinome.node import StepNode\n'
+            '    from machinome.node import step\n'
             'except ImportError as failure:\n'
             "    print(type(failure).__name__, '|', failure)\n")
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertEqual(
-            result.stdout.strip(),
-            'ExtraUnavailable | machinome.node.step (StepNode, StepAssembly) '
-            'needs cadquery, which is not installed; install it with '
-            '\'pip install "machinome[step]"\'')
+        self.assertEqual(result.stdout.strip(),
+                         f'ExtraUnavailable | {STEP_REFUSAL}')
+
+    def test_the_root_refuses_a_class_before_the_module_refuses_its_kernel(
+            self):
+        # The root's refusal imports no node type, so where CadQuery is
+        # absent the class name meets the root's refusal naming the
+        # module, and the line it suggests meets the module's refusal
+        # naming the extra.
+        result = probe(
+            CADQUERY_ABSENT +
+            'for line in (' + repr(root_import('StepNode')) + ',\n'
+            "             'from machinome.node.step import StepNode\\n'):\n"
+            '    try:\n'
+            '        exec(line, {})\n'
+            '    except ImportError as failure:\n'
+            "        print(type(failure).__name__, '|', failure)\n")
+        self.assertEqual(result.status, 0, result.stderr)
+        root, module = result.stdout.strip().splitlines()
+        self.assertTrue(root.startswith('ImportError | '), root)
+        self.assertIn("is imported from its module, 'machinome.node.step'",
+                      root)
+        self.assertEqual(module, f'ExtraUnavailable | {STEP_REFUSAL}')
 
     def test_hasattr_does_not_turn_an_absent_extra_into_a_missing_name(self):
         result = probe(
             CADQUERY_ABSENT +
             'import machinome.node\n'
             'try:\n'
-            "    present = hasattr(machinome.node, 'StepNode')\n"
+            "    present = hasattr(machinome.node, 'step')\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -438,26 +509,39 @@ class NodePackageBrokenBackend(TestCase):
         self.assertNotIn('raised resolving', reported)
 
     def test_a_broken_backend_raises_the_underlying_import_error(self):
-        result = self._access('machinome.node.StepNode',
+        result = self._access('machinome.node.step',
                               blocker=CADQUERY_BROKEN)
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR broken cadquery'),
                         reported)
 
-    def test_the_reported_failure_names_the_requested_export(self):
-        result = self._access('machinome.node.StepNode',
+    def test_the_reported_failure_names_the_requested_submodule(self):
+        result = self._access('machinome.node.step',
                               blocker=CADQUERY_BROKEN)
         self.assertEqual(result.status, 0, result.stderr)
-        self.assertIn('(raised resolving machinome.node.StepNode from .step)',
+        self.assertIn('(raised resolving machinome.node.step from .step)',
                       result.stdout)
+
+    def test_from_import_reports_a_broken_backend_naming_the_submodule(self):
+        result = probe(
+            CADQUERY_BROKEN +
+            'try:\n'
+            '    from machinome.node import step\n'
+            'except ImportError as failure:\n'
+            "    print(type(failure).__name__, '|', failure)\n")
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.strip(),
+            'ImportError | broken cadquery (raised resolving '
+            'machinome.node.step from .step)')
 
     def test_hasattr_does_not_turn_a_broken_backend_into_a_missing_name(self):
         result = probe(
             CADQUERY_BROKEN +
             'import machinome.node\n'
             'try:\n'
-            "    present = hasattr(machinome.node, 'StepNode')\n"
+            "    present = hasattr(machinome.node, 'step')\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -465,7 +549,7 @@ class NodePackageBrokenBackend(TestCase):
         self.assertEqual(result.status, 0, result.stderr)
         reported = result.stdout.strip()
         self.assertTrue(reported.startswith('IMPORT_ERROR'), reported)
-        self.assertIn('StepNode', reported)
+        self.assertIn('machinome.node.step', reported)
 
 
 class ParameterModuleSurface(TestCase):

@@ -12,7 +12,7 @@ import numpy as np
 from machinome.core.serializer import serialize_node, symbolic_document
 from machinome.motion.joints import Free, Revolute
 from machinome.motion.ports import Time, get_coordinate
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.base import _compose_world_matrix
 from machinome.simulation import Driver, Sim
 

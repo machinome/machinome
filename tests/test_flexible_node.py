@@ -25,7 +25,9 @@ from unittest.mock import patch
 import trimesh
 from solid2 import cube
 
-from machinome.node import AssemblyNode, FusionNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.motion.ports import TranslationalPort
 from machinome.node.base import _topmost_rigid_nodes
 from machinome.node.flexible import FlexibleNode

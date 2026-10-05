@@ -7,7 +7,7 @@ import re
 
 from unittest import TestCase
 from solid2 import cube
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from machinome.node.base import _build_uniq_id
 from .base import BaseNodeTest
 

@@ -22,8 +22,10 @@ import cadquery as cq
 from OCP.TopoDS import TopoDS_Shape
 from solid2 import cube
 
-from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
-                             Solid2Node)
+from machinome.node.build123d import Build123dNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.build123d import build123d_shape
 from machinome.node.cadquery import workplane_shape
 from machinome.engine import brep as engine

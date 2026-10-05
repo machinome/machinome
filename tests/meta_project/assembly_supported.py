@@ -12,7 +12,7 @@ by ITS lowest solid, not by another group's. The whole-assembly test
 then anchors every group explicitly.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .support_parts import Block, Hook, LeftHook, RightHook
 

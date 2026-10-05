@@ -7,7 +7,7 @@ package `cross_package_project` -- the cross-package shape
 `workflow/warts.md` records for `projects/Robots/Thor` ("A leaf's
 artifact is imported into its parent's `.scad` by bare filename...")."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from ..parts import ExactLeaf, FlexLeaf, RigidLeaf, UnoptimizedLeaf
 

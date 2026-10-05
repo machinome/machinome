@@ -2,7 +2,8 @@
 import cadquery as cq
 
 from machinome.math import clamp01, floor
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.node.markings import Marking, Svg, Wrapped
 from machinome.motion.joints import Revolute
 from machinome.parameters import Length

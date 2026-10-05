@@ -70,7 +70,7 @@ class ContractVersionTest(TestCase):
                     self.assertIn('machinome.node.leaf', message)
 
     def test_an_undeclared_subclass_is_not_checked(self):
-        from machinome.node import CadQueryNode
+        from machinome.node.cadquery import CadQueryNode
         from machinome.node.leaf import LeafNode
         declared = declaring(LeafNode, 3)
         with patch('machinome.node.leaf.CONTRACT', 4):

@@ -13,7 +13,8 @@ from pathlib import Path
 import cadquery as cq
 
 import sim.parts.gear
-from machinome.node import AssemblyNode, StlNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.stl import StlNode
 
 from .helpers import pitch
 

@@ -13,7 +13,10 @@ from molejo import Circle, Helix, P, Shape
 from solid2 import cylinder
 
 from machinome.motion.ports import TranslationalPort
-from machinome.node import AssemblyNode, FusionNode, MolejoNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
+from machinome.node.molejo import MolejoNode
+from machinome.node.solid2 import Solid2Node
 
 from .native import Block, Bracket, Plinth, Tab
 

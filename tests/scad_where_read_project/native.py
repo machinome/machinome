@@ -10,7 +10,9 @@ is absent."""
 
 import cadquery
 
-from machinome.node import AssemblyNode, CadQueryNode, StlNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.stl import StlNode
 
 
 class Bracket(StlNode):

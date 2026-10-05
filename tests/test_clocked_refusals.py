@@ -20,7 +20,7 @@ from unittest import TestCase
 
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import RotationalPort, Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State, Turn
 from machinome.simulation.enumeration import bind_declared_defaults
 
@@ -275,7 +275,7 @@ class CommitDeclarationRefusalTest(TestCase):
         self.assertIn('class body', str(caught.exception))
 
     def test_a_commits_on_a_leaf_is_refused(self):
-        from machinome.node import Solid2Node
+        from machinome.node.solid2 import Solid2Node
 
         with self.assertRaises(TypeError) as caught:
             class Leafy(Solid2Node):

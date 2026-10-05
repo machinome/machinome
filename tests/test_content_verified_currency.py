@@ -65,7 +65,7 @@ SIZE = 4.0
 BLOCK = '''\
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from . import trace
 from .dimensions import SIZE
@@ -81,7 +81,7 @@ class Block(CadQueryNode):
 PIN = '''\
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from . import trace
 
@@ -95,7 +95,7 @@ class Pin(CadQueryNode):
 '''
 
 MACHINE = '''\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .block import Block
 from .pin import Pin

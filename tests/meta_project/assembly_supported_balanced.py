@@ -10,7 +10,7 @@ on its own subtree so its own lowest solid is what the virtual floor
 meets.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .support_parts import Block, BoredBlock, Pin
 

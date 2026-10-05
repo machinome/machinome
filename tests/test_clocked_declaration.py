@@ -16,7 +16,7 @@ requirement note is `workflow/archive/clocked-machine-2026-09-17/clocked-machine
 
 from unittest import TestCase
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 from machinome.simulation.enumeration import (bind_declared_defaults,
                                                declared_states,

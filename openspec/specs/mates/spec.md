@@ -3,7 +3,6 @@
 ## Purpose
 TBD - created by archiving change place-parts-by-mate. Update Purpose after archive.
 ## Requirements
-
 ### Requirement: A mate attaches frames through an existing child joint
 
 The system SHALL accept `moving_child.frame.on(fixed_frame, moving_child.joint)` in an assembly class body where the explicit declaration reference names an existing one-coordinate Revolute or Prismatic joint on that exact directly declared moving child. It SHALL accept a class-declared or declaration-site joint, including a supported inherited joint, with its existing name and unit. The mate SHALL place the frames by the existing rest-placement rule and SHALL reuse the joint rather than install, rename, replace, reorder or mutate it. Its axis, anchor, range, arguments, original class/site frame and Bound read declarer SHALL be preserved. The frame SHALL not supply axis or anchor defaults to the referenced joint. Class-shared joint metadata and existing child specialization SHALL not be changed by attachment.
@@ -15,7 +14,8 @@ The mate name SHALL name the attachment handle only and SHALL not be required to
 - **WHEN** the following declarations are realized and rendered
 
 ```python
-from machinome.node import AssemblyNode, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
 from machinome.motion.joints import Revolute
 
 class Dial(AssemblyNode):
@@ -67,8 +67,9 @@ class: an attribute holding `Frame(at=(0, 0, 0), z=(0, 0, 1), x=None)`,
 an origin `at` and a right-handed triad whose third axis is `z`, stated
 in the declaring node's OWN rest frame — the frame its own `render()`
 states its geometry in, the frame a class-declared joint is read in.
-`Frame` SHALL be importable from `machinome.node.frames` and SHALL also
-resolve from `machinome.node`. The framework SHALL transform nothing
+`Frame` SHALL be imported from `machinome.node.frames`, its one import
+path: the node root does not resolve it (`node-model`, "The node package's
+root exports nothing"). The framework SHALL transform nothing
 when it reads a frame: the numbers are the declarer's own.
 
 A frame SHALL be declarable on any node kind — a leaf adapter, a fusion,
@@ -1183,7 +1184,6 @@ change nothing and SHALL NOT call a function.
   `rotation`, and the mate with its `name`, `moving`, `fixed` and
   `freedom`, beside `Frame`, `declared_frames` and `declared_mates`
 
-
 #### Scenario: A function is read as written
 
 - **WHEN** the mount of "OpenArm's joint is one mate on both sides" is
@@ -1444,3 +1444,4 @@ declarer scopes SHALL remain unchanged.
 
 - **WHEN** a whole-range factory returns a Bound reading an out-of-scope declaration or the mate's own generated coordinate
 - **THEN** the assembly is refused when that returned declaration becomes available, naming the mate and invalid read
+

@@ -34,7 +34,7 @@ association, and an interlock that refuses a shift unless lifted.
 from machinome.math import floor, sign
 from machinome.motion.joints import Bound, Prismatic, Revolute
 from machinome.motion.ports import RotationalPort, Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from ..running_project.parts import Arbor, Block, Carriage as Slide

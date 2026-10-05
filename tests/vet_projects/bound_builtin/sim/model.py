@@ -8,7 +8,7 @@
 
 from re import compile
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 
 class InputArbor:

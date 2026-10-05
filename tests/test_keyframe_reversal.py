@@ -17,7 +17,7 @@ fixtures, assembled in-process, with the serialized operations
 inspected directly rather than parsed out of `machinome test` output.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .base import BaseNodeTest
 from .meta_project.conrod import Conrod

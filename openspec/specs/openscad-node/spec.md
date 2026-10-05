@@ -49,9 +49,10 @@ with Python's own `ModuleNotFoundError`.
 
 - **WHEN** a module runs `from machinome.node.openscad import OpenScadNode`
 - **THEN** it receives the class, whose `__module__` is
-  `machinome.node.openscad`, which is the object `machinome.node.OpenScadNode`
-  resolves to, and which is a subclass of
-  `machinome.node.openscad.leaf.ScadLeafNode`
+  `machinome.node.openscad`, which is a subclass of
+  `machinome.node.openscad.leaf.ScadLeafNode`, and
+  `from machinome.node import OpenScadNode` raises `ImportError` naming
+  `machinome.node.openscad`: the package is the class's one import path
 
 #### Scenario: The former addresses are gone
 
@@ -228,10 +229,13 @@ SolidPython or each other, that SolidPython can be found, under the
 - `machinome.node.openscad (OpenScadNode and the OpenSCAD writer) needs solid2, which is not installed; install it with 'pip install "machinome[openscad]"'`
 - `machinome.node.solid2 (Solid2Node) needs solid2, which is not installed; install it with 'pip install "machinome[solid2]"'`
 
-The node root's export SHALL carry the module's refusal unmodified; the table of
-supported node types SHALL read it as an absent node type; and a command that
-needs the family, `machinome snapshot` with the OpenSCAD renderer, SHALL refuse
-at its start under the `cli` capability. No other module of the framework SHALL
+The three doors SHALL be the module's own import, whether written
+`from machinome.node.solid2 import Solid2Node` or reached through the node
+package as `from machinome.node import solid2`, which SHALL carry the module's
+refusal unmodified; the table of supported node types, which SHALL read it as
+an absent node type; and a command that needs the family, `machinome snapshot`
+with the OpenSCAD renderer, which SHALL refuse at its start under the `cli`
+capability. The node root resolves neither class name, so it is not a door. No other module of the framework SHALL
 import SolidPython, except the project template that scaffolds a `Solid2Node`.
 
 #### Scenario: OpenScadNode without SolidPython
@@ -242,8 +246,8 @@ import SolidPython, except the project template that scaffolds a `Solid2Node`.
 
 #### Scenario: Solid2Node without SolidPython
 
-- **WHEN** `from machinome.node import Solid2Node` runs where `solid2` cannot be
-  found
+- **WHEN** `from machinome.node.solid2 import Solid2Node` runs where `solid2`
+  cannot be found
 - **THEN** the import line raises the second message above, naming
   `machinome[solid2]`, unmodified
 

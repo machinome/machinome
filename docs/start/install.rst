@@ -77,12 +77,24 @@ same name: the extra is the last component of the module's address.
      - ``machinome.node.solid2``
      - SolidPython, for ``Solid2Node``; it installs ``machinome[openscad]``
        too
+   * - ``machinome[jscad]``
+     - ``machinome.node.jscad``
+     - nothing: ``JScadNode`` runs the ``jscad`` command from npm, which no
+       Python package installs
+   * - ``machinome[stl]``
+     - ``machinome.node.stl``
+     - nothing: ``StlNode`` reads with trimesh, which comes with the
+       package
    * - ``machinome[all]``
      - every module above
-     - every kernel
+     - every extra above
 
-``JScadNode`` and ``StlNode`` need no extra to build. Their parts are compared on their meshes, by the mesh
-engine, so a project that tests them installs ``machinome[mesh]``.
+``machinome[jscad]`` and ``machinome[stl]`` install nothing today; they
+exist so that every node type has the extra of its name, and a project that
+names them keeps its install line when the node types become packages of
+their own. ``JScadNode`` and ``StlNode`` parts are compared on their meshes,
+by the mesh engine, so a project that tests them installs
+``machinome[mesh]``.
 Without its extra, importing a module refuses with the line that installs
 it, for example::
 
@@ -90,8 +102,10 @@ it, for example::
     cadquery, which is not installed; install it with
     'pip install "machinome[cadquery]"'
 
-The same refusal answers ``from machinome.node import CadQueryNode`` and
-``machinome import-step``. A project that imports ``cadquery`` or
+The same refusal answers ``from machinome.node.cadquery import
+CadQueryNode``, the import every ``CadQueryNode`` part makes (each node
+class is imported from its module; the root of ``machinome.node`` exports
+nothing), and ``machinome import-step``. A project that imports ``cadquery`` or
 ``build123d`` itself, in its own modules, needs the extra of that name, and
 one that imports ``manifold3d`` or calls ``trimesh.boolean`` needs
 ``machinome[mesh]``.

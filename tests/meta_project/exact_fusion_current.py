@@ -12,7 +12,8 @@ nothing (design.md Decision 7).
 
 import cadquery as cq
 
-from machinome.node import CadQueryNode, FusionNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
 
 
 class Hub(CadQueryNode):

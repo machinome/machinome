@@ -18,7 +18,7 @@ from machinome.node.operations import Rotation, Translation, unserialize
 from machinome.node.qualified import DriverToken
 from machinome.expression_graph import (GraphValue, as_node, free_names,
                                         postorder, restore_scalar)
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 from tests.test_expression_bindings import Leaf
 from tests.flexible_project.spring import Spring

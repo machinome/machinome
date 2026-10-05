@@ -13,7 +13,7 @@ every node here would depend on every other one and a single edit
 would invalidate the whole project.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .block import Block
 from .cyl import Cyl

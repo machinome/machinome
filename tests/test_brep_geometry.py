@@ -15,15 +15,13 @@ import numpy as np
 import trimesh
 from solid2 import cube
 
-from machinome.node import (
-    Build123dNode,
-    CadQueryNode,
-    FusionNode,
-    JScadNode,
-    MolejoNode,
-    OpenScadNode,
-    Solid2Node,
-)
+from machinome.node.build123d import Build123dNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.jscad import JScadNode
+from machinome.node.molejo import MolejoNode
+from machinome.node.openscad import OpenScadNode
+from machinome.node.solid2 import Solid2Node
 from machinome.brep_artifacts import write_brep, write_stl
 from machinome.brep_cache import (_placement_cache, _shape_cache,
                                    cached_placement, cached_shape)

@@ -25,14 +25,14 @@ from unittest import TestCase, mock
 from machinome import currency
 from machinome.core.builder import Builder, BuildOutcome
 from machinome.core.loader import load_node, project_source_generation
-from machinome.node import JScadNode
+from machinome.node.jscad import JScadNode
 from machinome.node.base import StlRenderStart
 from machinome.source_generation import SourceChanged, SourceGeneration
 
 
 MODEL = '''\
 from solid2 import cube
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from .dimensions import VALUE
 
 

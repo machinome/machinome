@@ -11,7 +11,7 @@ of the markings. The separate asset file also keeps their original mirrored
 artifact locations independent.
 """
 
-from machinome.node import StlNode
+from machinome.node.stl import StlNode
 
 
 class Plate(StlNode):

@@ -1046,7 +1046,7 @@ class MultiTestCaseFixture(TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
 
-SKIP_ONLY_SOURCE = '''from machinome.node import Solid2Node
+SKIP_ONLY_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1069,7 +1069,7 @@ class WidgetTest(TestCase):
         self.skipTest('the exact kernel is not available here')
 '''
 
-UNEXPECTED_SUCCESS_SOURCE = '''from machinome.node import Solid2Node
+UNEXPECTED_SUCCESS_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1116,7 +1116,7 @@ class UnusualResultExitCodeTest(MultiTestCaseFixture):
         self.assertIn('1 unexpected success', stdout)
 
 
-WINDMILL_SOURCE = '''from machinome.node import Solid2Node
+WINDMILL_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1173,7 +1173,7 @@ class CompanionMultipleTestCasesRunTest(MultiTestCaseFixture):
         self.assertIn('2 passed, 0 failed', stdout)
 
 
-HULL_SOURCE = '''from machinome.node import Solid2Node
+HULL_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1219,7 +1219,7 @@ class UndeclaredTestCaseInMultiNodeModuleTest(MultiTestCaseFixture):
         self.assertNotIn('passed', stdout)
 
 
-MAST_SOURCE = '''from machinome.node import Solid2Node
+MAST_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1820,7 +1820,7 @@ class ComparisonEngineSelectionTest(TestCase):
         self.assertNotIn('ex' 'act', fields)
 
 
-ROBOT_SOURCE = '''from machinome.node import Solid2Node
+ROBOT_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 

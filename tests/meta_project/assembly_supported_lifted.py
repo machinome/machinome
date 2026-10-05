@@ -11,7 +11,7 @@ and fails at the second -- the assertion itself neither accepts nor sets
 a keyframe.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .support_parts import Block
 

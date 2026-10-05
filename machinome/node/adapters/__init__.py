@@ -15,7 +15,9 @@ every spelling beneath it -- `from machinome.node.adapters.step import
 StepAssembly`, `from machinome.node.adapters import step`, `import
 machinome.node.adapters.cadquery` -- fails at its import line naming where
 the module went, which Python's own "No module named" would not say. The
-root spellings (`from machinome.node import StepNode`) are unchanged.
+root of `machinome.node` exports no class either (OpenSpec change
+`root-cleanup`): each is imported from its node type's module, as
+`from machinome.node.step import StepNode`.
 """
 
 raise ImportError(

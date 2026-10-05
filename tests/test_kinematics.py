@@ -17,7 +17,8 @@ from solid2 import cube
 from machinome.motion.couplings import declared_relations
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import RotationalPort
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver
 
 from .base import BaseNodeTest

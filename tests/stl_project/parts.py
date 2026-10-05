@@ -13,7 +13,7 @@ would.
 
 import numpy as np
 
-from machinome.node import StlNode
+from machinome.node.stl import StlNode
 
 from .dimensions import MILLIMETRES_PER_INCH
 

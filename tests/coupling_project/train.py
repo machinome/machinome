@@ -23,7 +23,7 @@ import math
 
 from machinome.motion.couplings import Affine
 from machinome.motion.joints import Revolute
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Angle, Count
 from machinome.simulation import Driver
 

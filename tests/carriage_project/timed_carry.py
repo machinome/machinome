@@ -11,7 +11,7 @@ same union graph, but has no active influence on the earlier carry at shift 0.
 from machinome.math import clamp01, floor
 from machinome.motion.ports import Time
 from machinome.motion.joints import Bound, Revolute
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from ..running_project.parts import Arbor, Carriage

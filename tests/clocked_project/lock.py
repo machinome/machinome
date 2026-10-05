@@ -26,7 +26,7 @@ value in the tests is computed BY HAND.
 
 from machinome.math import floor, max as sym_max
 from machinome.motion.joints import Bound, Prismatic
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .parts import Dial, Slide

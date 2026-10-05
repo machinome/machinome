@@ -6,6 +6,31 @@ Changelog
 Unreleased
 ----------
 
+* **The node package's root exports nothing: every name is imported from its
+  module.** ``machinome.node`` is the package's path, its refusals and its
+  submodules (``from machinome.node import supported`` still imports the
+  module). Each name the root resolved a second time is imported from the
+  module that defines it, ``from machinome.node.assembly import
+  AssemblyNode``, ``from machinome.node.step import StepNode``, ``from
+  machinome.node.frames import Frame``, and the upgrading page maps all
+  twenty-one. Importing one of them from the root, or reading it off the
+  root, raises ``ImportError`` naming its module and the line to write; a
+  node type's class names are read for that refusal from the table of
+  supported node types. ``machinome new`` and ``machinome import-step``
+  write their import lines per module. ``machinome[jscad]`` and
+  ``machinome[stl]`` are extras, installing nothing today, so every node
+  type has the extra of its name and a manifest naming one stays valid when
+  the node packages are cut; ``machinome[all]`` includes both. No verdict,
+  artifact byte or golden value changes (ADR-181).
+
+  **Breaking (framework API):** the twenty-one names fail at
+  ``from machinome.node import ...`` with nothing aliasing them, a star import
+  from the root binds nothing, and ``machinome.node.__all__`` is empty.
+  **Breaking (generated source):** a project ``machinome new`` or
+  ``machinome import-step`` writes imports from the modules. Each part whose
+  module a rewrite touches rebuilds once, to the same bytes
+  (:doc:`upgrading`).
+
 * **The engines are named for the representation each consumes: B-rep and
   mesh.** The B-rep engine, over boundary representations, and the mesh
   engine, over triangle meshes, are the modules ``machinome.engine.brep``
@@ -51,7 +76,7 @@ Unreleased
   every build one published as transient, such as the root ``.scad`` an
   interrupted OpenSCAD snapshot left; one table of supported node types,
   ``machinome.node.supported``, is where the core names node types, for the
-  node root's exports, ``import-step`` and the snapshot renderers. ``machinome
+  node root's refusals, ``import-step`` and the snapshot renderers. ``machinome
   new`` scaffolds a ``Solid2Node`` where SolidPython is installed, a
   ``CadQueryNode`` where only CadQuery is, and refuses naming both extras with
   neither. Every ``.scad``, every node's SCAD text and every document are
@@ -163,8 +188,8 @@ Unreleased
   holds ``Build123dSheetNode`` too, and the reducer of ``Svg`` artwork),
   ``.step`` (``StepNode``, ``StepAssembly``, ``solids_from_faces``,
   ``cached_document``), ``.molejo``, ``.solid2``, ``.openscad``, ``.jscad``
-  and ``.stl``. The root spellings, ``from machinome.node import
-  StepNode``, are unchanged. Breaking: ``machinome.node.adapters`` is
+  and ``.stl``, each class imported from its module (the root of
+  ``machinome.node`` exports nothing; see the first entry). Breaking: ``machinome.node.adapters`` is
   dissolved, and importing anything under it fails at the import line
   naming the rule, ``machinome.node.adapters.<x>`` is now
   ``machinome.node.<x>``; for example ``from machinome.node.adapters.step
@@ -177,7 +202,7 @@ Unreleased
   without its extra a module refuses at import with its install line:
   ``machinome.node.cadquery (CadQueryNode) needs cadquery, which is not
   installed; install it with 'pip install "machinome[cadquery]"'``, the
-  same through ``from machinome.node import CadQueryNode``. ``machinome
+  same through ``from machinome.node.cadquery import CadQueryNode``. ``machinome
   import-step`` without the ``step`` extra answers ``Error: machinome
   import-step needs the step extra: ...`` and exits 1, and is still listed
   by ``machinome -h``. Declaring a marking needs no kernel; building a

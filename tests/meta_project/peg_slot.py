@@ -16,7 +16,7 @@ half-diagonal (~0.707), so the peg never touches at any angle -- the
 gamed fit the red fixture exercises.
 """
 
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 

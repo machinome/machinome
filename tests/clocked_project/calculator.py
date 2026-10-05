@@ -34,7 +34,7 @@ say what it means.
 from machinome.math import ceil, floor, sign
 from machinome.motion.joints import Bound, Prismatic, Revolute
 from machinome.motion.ports import TranslationalPort
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Instruction, State
 
 from .freeze import rest

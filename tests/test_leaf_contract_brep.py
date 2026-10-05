@@ -115,7 +115,8 @@ class StandInDistinctnessTest(TestCase):
     def test_the_stand_in_is_neither_core_exact_adapter(self):
         from unittest.mock import patch
 
-        from machinome.node import Build123dNode, CadQueryNode
+        from machinome.node.build123d import Build123dNode
+        from machinome.node.cadquery import CadQueryNode
         from tests.contract_package.exact_project import Block
         from tests.contract_package.exact_stand_in import NativeSolid
 

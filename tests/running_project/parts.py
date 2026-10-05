@@ -21,7 +21,7 @@ from solid2 import cube, cylinder
 
 from machinome.motion.joints import Free, Prismatic, Revolute
 from machinome.motion.ports import RotationalPort, TranslationalPort
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Arbor(Solid2Node):

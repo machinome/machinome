@@ -16,7 +16,7 @@ Commit the ``.stl`` beside the module that declares it, and name it:
 
 .. code-block:: python
 
-    from machinome.node import StlNode
+    from machinome.node.stl import StlNode
 
     class Bracket(StlNode):
 
@@ -118,7 +118,7 @@ external tool.
 
 .. code-block:: python
 
-    from machinome.node import StepNode
+    from machinome.node.step import StepNode
 
     class Bracket(StepNode):
 

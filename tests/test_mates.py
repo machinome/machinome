@@ -31,7 +31,8 @@ from machinome.motion.joints import (Bound, Free, JointRangeError, Orbit,
                                       Prismatic, Revolute, declared_joints)
 from machinome.motion.ports import (RotationalPort, TranslationalPort,
                                      declared_ports)
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.declarative import SidewaysReadError
 from machinome.node.frames import Frame
 from machinome.parameters import Angle, Length

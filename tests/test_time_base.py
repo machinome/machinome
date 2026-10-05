@@ -27,7 +27,8 @@ from unittest.mock import patch
 from machinome.core.builder import Builder
 from machinome.core.export import export_node
 from machinome.core.serializer import animation_block
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.motion.ports import Time, declared_time
 from machinome.test import testing_steps as steps_of
 from solid2 import cube
