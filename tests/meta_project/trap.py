@@ -1,6 +1,6 @@
 # Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Green fixture reproducing the exact trap that bit a real agent
 session (skill-repo improvements.md #14): naming a helper subclass so

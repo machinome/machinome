@@ -1,6 +1,6 @@
 # Solid Node - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Probe 1: where the false `DoublyBound` is raised, and on what state.
 

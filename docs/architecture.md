@@ -2326,7 +2326,8 @@ their own origins. Collision remains world-framed and time-dependent.
 
 The browser viewer is not in this repository. It is `machinome-viewer`, an
 independent AGPL-3.0-or-later package installed through the `viewer` extra
-(ADR-068/103); the framework is Apache-2.0 and complete for non-interactive
+(ADR-068/103); the framework is licensed GPL-2.0-or-later or
+CERN-OHL-S-2.0-or-later, at the recipient's choice, and complete for non-interactive
 use without it. The OpenSCAD CLI remains the default fixed-pose snapshot
 renderer, not an interactive viewer.
 The framework touches the viewer in exactly two ways. `machinome/viewers/
@@ -2856,7 +2857,7 @@ is one change here and one there.
 ### Mechanics helpers (independent package · spec `mechanics-distribution`)
 
 The twelve gear, screw, crank, delta and linkage formulas introduced by
-ADR-076 live in the independent Apache-2.0 `machinome-mechanics` package
+ADR-076 live in the independent `machinome-mechanics` package
 (ADR-132). Their numeric and symbolic faces compose over `machinome.math`;
 the package owns their conventions, tests and formula specification.
 

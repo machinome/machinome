@@ -2,13 +2,15 @@
 
 ## Project License
 
-**Machinome** is licensed under the **Apache License 2.0**.
+**Machinome** is offered under two licences, at the recipient's choice:
 
-Copyright (c) 2023-2026 Luis Henrique Cassis Fagundes and contributors
+- the GNU General Public License, version 2 or any later version
+  (`GPL-2.0-or-later`); or
+- the CERN Open Hardware Licence Version 2 - Strongly Reciprocal, version 2.0
+  or any later version (`CERN-OHL-S-2.0+`).
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at https://www.apache.org/licenses/LICENSE-2.0.
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes and contributors. The
+statement is in `LICENSE` and the full texts are in `LICENSES/`.
 
 ---
 
@@ -27,14 +29,12 @@ This project depends on the following open source software packages. We are grat
   - 2011-2012 Yesudeep Mangalapilly
 - **Repository:** https://github.com/gorakhargosh/watchdog
 - **Description:** Filesystem events monitoring library
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### trimesh
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2023 Michael Dawson-Haggerty
 - **Repository:** https://github.com/mikedh/trimesh
 - **Description:** Python library for loading and using triangular meshes
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### solidpython2
 - **License:** LGPL 2.1 or later
@@ -42,63 +42,54 @@ This project depends on the following open source software packages. We are grat
 - **Repository:** https://github.com/jeff-dh/SolidPython
 - **Description:** Python interface to OpenSCAD
 - **Additional Notes:** Some docstrings are derived from the OpenSCAD User Manual and are available under the Creative Commons Attribution-ShareAlike License
-- **License Compatibility:** Used as an unmodified library dependency, permitted alongside Apache-2.0; LGPL-2.1+ obligations attach only to solidpython2 itself
 
 #### cadquery
 - **License:** Apache License 2.0
 - **Copyright:** CadQuery Development Team
 - **Repository:** https://github.com/CadQuery/cadquery
 - **Description:** Parametric CAD scripting framework
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### httpx
 - **License:** BSD 3-Clause License
 - **Copyright:** Copyright © 2019, Encode OSS Ltd.
 - **Repository:** https://github.com/encode/httpx
 - **Description:** HTTP client library for Python
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### fastapi
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2018 Sebastián Ramírez
 - **Repository:** https://github.com/tiangolo/fastapi
 - **Description:** Modern web framework for building APIs
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### termcolor
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2008-2011 Volvox Development Team
 - **Repository:** https://github.com/termcolor/termcolor
 - **Description:** ANSI color formatting for terminal output
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### asgiref
 - **License:** BSD 3-Clause License
 - **Copyright:** Copyright (c) Django Software Foundation and individual contributors
 - **Repository:** https://github.com/django/asgiref
 - **Description:** ASGI specification reference implementation
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### uvicorn
 - **License:** BSD 3-Clause License
 - **Copyright:** Copyright © 2017-present, Encode OSS Ltd.
 - **Repository:** https://github.com/encode/uvicorn
 - **Description:** ASGI web server implementation
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### numpy
 - **License:** BSD 3-Clause License
 - **Copyright:** Copyright (c) 2005-2025, NumPy Developers
 - **Repository:** https://github.com/numpy/numpy
 - **Description:** Fundamental package for scientific computing
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### manifold3d
 - **License:** Apache License 2.0
 - **Copyright:** Emmett Lalish and contributors
 - **Repository:** https://github.com/elalish/manifold
 - **Description:** Robust geometry library for 3D mesh operations
-- **License Compatibility:** Compatible with Apache-2.0
 
 ### Historical bundled frontend dependencies
 
@@ -116,56 +107,48 @@ distributions contain no JavaScript.
 - **Copyright:** Copyright © 2010-2023 three.js authors
 - **Repository:** https://github.com/mrdoob/three.js
 - **Description:** JavaScript 3D rendering library (WebGL)
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### jokenizer
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2018 Umut Özel
 - **Repository:** https://github.com/umutozel/jokenizer
 - **Description:** JavaScript expression parser/evaluator, used to evaluate animation expressions ($t) in the browser
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### react / react-dom
 - **License:** MIT License
 - **Copyright:** Copyright (c) Facebook, Inc. and its affiliates
 - **Repository:** https://github.com/facebook/react
 - **Description:** UI component framework
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### react-router-dom
 - **License:** MIT License
 - **Copyright:** Copyright (c) React Training LLC 2015-2019, Remix Software 2020-2021
 - **Repository:** https://github.com/remix-run/react-router
 - **Description:** Routing library for React
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### ace-builds (Ace editor)
 - **License:** BSD 3-Clause License
 - **Copyright:** Copyright (c) 2010, Ajax.org B.V.
 - **Repository:** https://github.com/ajaxorg/ace-builds
 - **Description:** Embeddable code editor
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### react-ace
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2014 James Hrisho
 - **Repository:** https://github.com/securingsincity/react-ace
 - **Description:** React component wrapping the Ace editor
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### re-resizable
 - **License:** MIT License
 - **Copyright:** Copyright (c) 2018 bokuweb
 - **Repository:** https://github.com/bokuweb/re-resizable
 - **Description:** Resizable React component
-- **License Compatibility:** Compatible with Apache-2.0
 
 #### web-vitals
 - **License:** Apache License 2.0
 - **Copyright:** Copyright Google LLC
 - **Repository:** https://github.com/GoogleChrome/web-vitals
 - **Description:** Web performance metrics library
-- **License Compatibility:** Compatible with Apache-2.0
 
 ### Development/Test Dependencies
 
@@ -174,7 +157,6 @@ distributions contain no JavaScript.
 - **Copyright:** Copyright (c) 2004 Holger Krekel and others
 - **Repository:** https://github.com/pytest-dev/pytest
 - **Description:** Testing framework for Python
-- **License Compatibility:** Compatible with Apache-2.0
 
 ---
 

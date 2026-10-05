@@ -2,6 +2,18 @@
 History
 =======
 
+Unreleased
+----------
+
+* **Machinome is GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
+  recipient's choice.** Every release up to 0.7.1 is Apache-2.0; from here
+  the framework is relicensed, with the consent of all contributors, under
+  the GNU General Public License version 2 or any later version, or the
+  CERN Open Hardware Licence Version 2 - Strongly Reciprocal version 2.0 or
+  any later version, so that a design under CERN-OHL-S can use the
+  framework under its own licence. Contributions are accepted under both.
+  Decided by the pilot on 4 October 2026.
+
 Machinome 0.7.1 (2026-09-27)
 ----------------------------
 

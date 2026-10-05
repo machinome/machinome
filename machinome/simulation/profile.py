@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Finite pointwise contact profiles for a running machine's numeric bounds.
 

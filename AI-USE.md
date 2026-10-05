@@ -83,7 +83,8 @@ agents wrote.
 ## Responsibility and licence
 
 The agents are tools. The maintainer publishes their output under this
-repository's licence, Apache-2.0, holds the copyright the `NOTICE` states,
+repository's licence, GPL-2.0-or-later or CERN-OHL-S-2.0-or-later at the
+recipient's choice, holds the copyright `LICENSE` states,
 and is responsible for it. No model is an author of Machinome.
 
 ## The other repositories

@@ -1,6 +1,6 @@
 # Solid Node - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Task 2.14: what one tick of a JUMP-carrying law costs, beside cycle
 1's own 1.16 ms on `Train`.

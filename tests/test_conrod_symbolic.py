@@ -1,6 +1,6 @@
 # Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Framework-level regression for issue #19: a FRESH node.assemble()
 (no set_keyframe -- exactly the viewer/build path `machinome develop`

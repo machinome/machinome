@@ -1,6 +1,6 @@
 # Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """A shin holding a servo by a mate with no freedom, and the
 hand-placed twin it must reproduce.

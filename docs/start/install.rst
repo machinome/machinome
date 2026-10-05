@@ -31,7 +31,8 @@ and `molejo <https://molejo.readthedocs.io>`_ for flexible parts.
 Two packages, two licences
 --------------------------
 
-The framework is one package, ``machinome``, licensed Apache-2.0. The
+The framework is one package, ``machinome``, licensed GPL-2.0-or-later or CERN-OHL-S-2.0-or-later
+at the recipient's choice. The
 browser viewer is a separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``

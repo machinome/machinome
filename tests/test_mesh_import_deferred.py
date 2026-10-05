@@ -1,6 +1,6 @@
 # Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """`trimesh` belongs to the path that reads meshes, not to every path
 that touches a node module.

@@ -88,7 +88,8 @@ source and licence.
 * `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
 * `Source repository <https://github.com/machinome/machinome>`_
 
-The framework is **Apache-2.0**. The optional
+Machinome is licensed **GPL-2.0-or-later or CERN-OHL-S-2.0-or-later**, at
+the recipient's choice. The optional
 `Machinome Viewer <https://github.com/machinome/machinome-viewer>`_
 is **AGPL-3.0-or-later**, installed through ``viewer``.
 Ordinary ``machinome develop`` requires it. Without it, the framework

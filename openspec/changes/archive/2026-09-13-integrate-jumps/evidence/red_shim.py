@@ -1,6 +1,6 @@
 # Solid Node - A framework for mechanical CAD projects
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """A pytest plugin that installs the NAMES this cycle adds, and lifts
 cycle 1's refusal, so every red of section 2 can be seen for its own

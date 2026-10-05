@@ -94,13 +94,13 @@ until that publication occurs.
 
 - **WHEN** `pip install "machinome[viewer]"` resolves from published packages
 - **THEN** the independent AGPL `machinome-viewer` distribution is installed
-  beside the Apache framework
+  beside the framework
 
 #### Scenario: A user installs the mechanics extra
 
 - **WHEN** `pip install "machinome[mechanics]"` resolves from published
   packages
-- **THEN** the independent Apache `machinome-mechanics` distribution is
+- **THEN** the independent `machinome-mechanics` distribution is
   installed without the framework importing or re-exporting its helpers
 
 #### Scenario: A reader asks for the studio extra before publication
