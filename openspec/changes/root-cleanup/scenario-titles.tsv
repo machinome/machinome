@@ -1,0 +1,8 @@
+# Scenario titles the root-cleanup archive task renames in openspec/specs/ after
+# `openspec archive` (design.md, Decision 12): OpenSpec 1.6.0 refuses a MODIFIED
+# requirement that drops a scenario name (the brep-mesh cycle's finding), so the
+# deltas keep these titles and the archive task replaces each, in its spec, by
+# the title beside it.
+# spec<TAB>title in the baseline<TAB>title after this change
+ports	A node class is still a node export	A node class is imported from its module
+node-model	The node root's node types come from the table	The node root's refusals come from the table
