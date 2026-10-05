@@ -1581,3 +1581,44 @@ expected, 2 unexpected (pre-existing, not the campaign's: wall_clock_41's
 own CadQuery error, Dum-E without machinome-freecad), 6 no-model**: every
 project loads on the module spelling and the renamed engines, the four
 projects broken since lean-install included.
+
+## Layer 1 complete; the root is clean (5 October 2026, handoff for the release)
+
+The tenth cycle, `root-cleanup`, is integrated: cycle commits deb5244
+(plan) and 756b611 (implementation; archive `2026-10-05-root-cleanup`,
+ADR-181; ADR-167, 169, 179 amended; 45 specs, the `cli-startup-cost`
+requirement renamed), merged into the line as **d025677**. Suite at the
+merged head, one process alone, the fixture timestamps aged inside the
+bench: **4600 passed, 4 skipped, 6487 subtests**. The bench is torn down;
+the branch kept. The workspace holds the tenth table,
+`scripts/load-projects.d/root-cleanup.toml`.
+
+What the line now is, for the release the pilot makes after it: every
+node type at `machinome.node.<x>`, its own extra, and the root exporting
+nothing; the OpenSCAD family a node package with `Solid2Node` over it and
+no SCAD named in the core; the engines `brep` and `mesh` behind one engine
+package whose providers are `machinome.engine.brep` and
+`machinome.engine.mesh`, chosen as extras `brep` and `mesh`, the test run's
+engine by `--brep`/`--mesh` and `SOLID_TEST_ENGINE`; the leaf contract at
+3 with the capability set declared on the base; the verdict stores and
+mesh fusion artifacts recomputed once; ten moved-names tables and the
+workspace's `scripts/rewrite-projects` with its table as the record of
+every move. Every project repository in the catalogue is rewritten and
+committed on its checked-out branch (the pass of 5 October, the shape()
+casts, the hand edits in Voron-2, the Curta, the clocks, Dum-E, Thor, the
+v8 engine, the Actuator); the universe sweep against the line reads
+**121 ok, 0 expected, 2 unexpected pre-existing (wall_clock_41's own
+CadQuery error; Dum-E without machinome-freecad), 6 no-model**.
+
+Before or with the release, outside the framework: machinome-studio's
+`machinome_test` tool (`floor/mcp_server.py`) and its two skills still
+pass `--faceted`/`--exact` and teach the root spelling (seven lines); the
+workspace's `skills/simulate-project/SKILL.md` spells `--faceted`;
+machinome-mechanics has two tests and two examples on the root spelling
+and twelve test files taking the animation time from SolidPython;
+machinome-freecad's retarget onto `BrepLeafNode` and leaf contract 3;
+every checkout that pulls the line needs `git clean -fdX machinome/occt
+machinome/manifold machinome/openscad` once (the deleted packages'
+`__pycache__`); the primary `machinome/` takes the line when the pilot
+merges it into main. Deferred past 0.8 by the pilot: the viewer seam
+(`viewer-seam` above), with ADR-179's provisional column shipping.
