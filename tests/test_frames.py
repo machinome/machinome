@@ -21,6 +21,7 @@ rule -- the moment its declarer is constructed.
 """
 
 import math
+import sys
 
 from solid2 import cube
 
@@ -119,7 +120,8 @@ class DeclarationTest(BaseNodeTest):
     def test_importing_frames_adds_nothing_outside_the_framework(self):
         # `machinome.node` itself is on every invocation's path; what a
         # frame may cost is what it adds to that, and it adds nothing
-        # but its own module.
+        # but its own module and the standard library (`math`, which a
+        # bare interpreter has not yet imported).
         result = probe(
             'import sys\n'
             'import machinome.node\n'
@@ -130,7 +132,9 @@ class DeclarationTest(BaseNodeTest):
 
         result.check()
         added = set(filter(None, result.stdout.strip().split(',')))
-        self.assertLessEqual(added, {'machinome.node.frames'})
+        outside = {module for module in added
+                   if module.partition('.')[0] not in sys.stdlib_module_names}
+        self.assertLessEqual(outside, {'machinome.node.frames'})
         for heavy in ('trimesh', 'cadquery', 'build123d'):
             with self.subTest(module=heavy):
                 self.assertFalse(result.imported(heavy))

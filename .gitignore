@@ -108,8 +108,12 @@ ENV/
 .vscode/
 .idea/
 
-# meta-test harness build artifacts
-tests/_build_meta/
+# the suite's build directories: tests/_build, tests/_build_meta and the
+# tests/_build_<name> a test preserves. Ignored here, not only in a
+# developer's .git/info/exclude, or an export taken while a test build
+# exists records the checkout as dirty.
+tests/_build/
+tests/_build_*/
 
 # project build locks left beside a test build directory. The framework
 # records this exclusion itself for a user's project, but only where `.git`

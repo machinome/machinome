@@ -31,10 +31,11 @@ import shutil
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
 from machinome import currency
+from machinome.viewers.bundle import has_bundle
 from tests.brep_engine_absent import run_machinome, run_python
 from tests.test_expression_type import (core_modules, names_the_engine_package,
                                         solid2_imports)
@@ -578,6 +579,8 @@ class SnapshotOnDemandTest(_BuildDirectory):
                              self.build_dir)])
         self.assertFalse(os.path.exists(currency.sidecar(scad_file(node))))
 
+    @skipUnless(has_bundle(),
+                'machinome-viewer not installed (pip install "machinome[viewer]")')
     def test_the_web_renderer_writes_no_scad(self):
         self.snapshot('web')
         node, parts = self.machine()
