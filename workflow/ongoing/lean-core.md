@@ -1521,3 +1521,27 @@ renderer column ships as it is.
 release, outside the framework: the studio's `machinome_test` tool and its
 two skills, and the workspace's `skills/simulate-project/SKILL.md`, still
 pass `--faceted`/`--exact` and break against the renamed flags.
+
+**The rewrite pass over the projects, done (5 October 2026, before the
+root cycle).** The workspace's `scripts/rewrite-projects` (main 76fb48c,
+table `scripts/rewrite-projects.d/root-cleanup.toml`: the twenty-one root
+names, every applicable row of the nine moved-names tables, the flags,
+the test variable and its values, the extras, and a syntax-tree rule
+wrapping `cadquery.Shape.cast` around a `shape()` whose result CadQuery's
+API is used on, ADR-160) ran once over the catalogue: 56 of 62
+repositories changed, 910 files, one commit per repository on its
+checked-out branch ("machinome 0.8: imports and flags on the campaign's
+names"), none blocked by uncommitted work; a second pass wrapped 61
+`shape()` sites in seven repositories. Hand edits, committed per
+repository: the clocks' `check_models` tool takes `--engine brep|mesh` and
+its docs follow; the reads of a node's renamed capability (`.exact` to
+`.brep`) in the Curta, Dum-E, Thor and the v8 engine; stored `shape()`
+results cast where CadQuery's API reads them (the Actuator, Dum-E;
+OpenAstroMount's go to the engine and stay). In progress by agents inside
+the repositories: Voron-2 (53 call sites and 31 stored results) and the
+Curta (100 stored results), each running its project's tests on the line.
+The universe sweep against the line (815ceb9) after the pass: **121 ok, 0
+expected, 2 unexpected (pre-existing, not the campaign's: wall_clock_41's
+own CadQuery error, Dum-E without machinome-freecad), 6 no-model**: every
+project loads on the module spelling and the renamed engines, the four
+projects broken since lean-install included.
