@@ -12,9 +12,12 @@ exports, custom embeds and headless snapshots.
 [Embedding](https://machinome-viewer.readthedocs.io/en/latest/embedding.html) ·
 [API and CLI reference](https://machinome-viewer.readthedocs.io/en/latest/reference/index.html)
 
-Version **0.7.1** releases with Machinome 0.7.1 and is numbered with it. It
-declares viewer API **27** and reads document versions **1–13**. The widget is
-not published on npm; it ships inside the Python distribution.
+Version **0.8.0** releases with Machinome 0.8.0 and is numbered with it. It
+declares viewer API **29** and reads document versions **1–13**; over 0.7 it
+tells a host where any part stands on screen, highlights parts, takes an up
+direction and field of view per view, and captures a clocked machine on
+demand. The widget is not published on npm; it ships inside the Python
+distribution.
 
 ## For makers
 
@@ -54,13 +57,14 @@ framework; serving and capture are separate processes.
 ## License and development
 
 This package and its browser bundle are **AGPL-3.0-or-later**; the framework is
-Apache-2.0. Keep the bundle's source/license and dependency notices intact.
+licensed separately, as its own manual states. Keep the bundle's source/license
+and dependency notices intact.
 See [LICENSE](LICENSE) and [CHANGELOG.md](CHANGELOG.md).
 
 User documentation lives in [docs/](docs/). Build/hosting instructions and
 review evidence belong in [workflow/](workflow/README.md); accepted decisions
 remain in [workflow/adrs/](workflow/adrs/README.md), and the release-preparation
-record is [workflow/release-0.7.md](workflow/release-0.7.md).
+record is [workflow/release-0.8.md](workflow/release-0.8.md).
 OpenSpec requirements and changes remain in `openspec/`.
 
 For a local manual preview, follow

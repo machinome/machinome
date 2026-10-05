@@ -26,10 +26,11 @@ def test_docs_contains_no_development_records():
     assert (ROOT / 'workflow/adrs/README.md').is_file()
     assert not (ROOT / 'workflow/release-0.2.md').exists()
     assert (ROOT / 'workflow/release-0.7.md').is_file()
+    assert (ROOT / 'workflow/release-0.8.md').is_file()
 
 
 def test_the_manual_states_the_release():
-    """0.7.1 released with Machinome 0.7.1: nothing reader-facing says otherwise."""
+    """0.8.0 released with Machinome 0.8.0: nothing reader-facing says otherwise."""
     pages = sorted((ROOT / 'docs').rglob('*.rst'))
     assert pages
     for page in pages + [ROOT / 'README.md']:
@@ -46,19 +47,18 @@ def test_the_manual_states_the_release():
         release_sections = release_sections[1:]
     assert not any(one.startswith('Unreleased') for one in release_sections)
     current = ' '.join(release_sections[0].split())
-    assert current.startswith('0.7.1 — 27 September 2026'), current[:40]
+    assert current.startswith('0.8.0 — 5 October 2026'), current[:40]
     assert 'unreleased' not in current.lower()
-    assert 'Machinome 0.7.1' in current
+    assert 'Machinome 0.8.0' in current
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     versions = widget['machinomeDocumentVersions']
-    # The recorded release, not the live declaration: the source runs
-    # ahead of it at API 28 (OpenSpec `track-a-part-on-screen`, D9).
-    assert 'viewer API 27' in current
+    assert f"viewer API {widget['machinomeViewerApi']}" in current
+    assert 'viewer API 29' in current
     assert f'document versions {versions[0]} through {versions[-1]}' in current
     assert 'released-viewer-api' not in (ROOT / 'docs/conf.py').read_text()
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
-    assert project['version'] == '0.7.1'
-    assert (ROOT / 'README.md').read_text().count('0.7.1') >= 1
+    assert project['version'] == '0.8.0'
+    assert (ROOT / 'README.md').read_text().count('0.8.0') >= 1
 
 
 def test_package_points_readers_to_manual():
@@ -145,25 +145,28 @@ def test_profile_contact_is_documented_as_part_of_the_release():
     assert 'It declares viewer API 27' in ' '.join(release.split())
 
 
-def test_film_annotations_are_documented_as_current_source():
-    """OpenSpec `track-a-part-on-screen`, design D9: the source declares
-    API 28 after 0.7.1, in no published release, and the recorded 0.7.1
-    facts stay at API 27."""
+def test_film_annotations_are_documented_as_part_of_the_0_8_0_release():
+    """OpenSpec `track-a-part-on-screen`, as released by `release-0-8-0`:
+    API 28 arrives in 0.8.0, and the recorded 0.7.1 facts stay at API 27."""
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     # 28 or later: `on-demand-clocked` declares 29 on top of it.
     assert widget['machinomeViewerApi'] >= 28
     assert widget['machinomeDocumentVersions'] == list(range(1, 14))
     compatibility = ' '.join((ROOT / 'docs/compatibility.rst').read_text().split())
-    assert 'The 0.7.1 release declares:' in compatibility
-    assert '**Viewer API** 27' in compatibility
-    assert ('The current source, after 0.7.1 and in no published release, '
-            'declares viewer API |viewer-api|') in compatibility
+    assert 'The 0.8.0 release declares:' in compatibility
+    assert '**Viewer API** |viewer-api|' in compatibility
+    assert 'API 28 and API 29, the 0.8.0 release' in compatibility
+    assert 'in no published release' not in compatibility
     assert 'API 28 adds' in compatibility
     index = ' '.join((ROOT / 'docs/index.rst').read_text().split())
-    assert 'declares viewer API 27 and reads document versions' in index
-    assert 'viewer API **27**' in (ROOT / 'README.md').read_text()
+    assert 'declares viewer API |viewer-api| and reads document versions' in index
+    assert 'viewer API **29**' in (ROOT / 'README.md').read_text()
     changelog = (ROOT / 'CHANGELOG.md').read_text()
-    # The released records stay at API 27, whatever `Unreleased` says.
+    release = changelog.split('## 0.8.0 — 5 October 2026')[1].split('\n## ')[0]
+    for member in ('partOnScreen(', 'project(', 'highlight(', 'setView('):
+        assert member in release, member
+    assert 'API 28' in release
+    # The recorded 0.7.1 facts stay at API 27.
     released = changelog.split('## 0.7.1 — 27 September 2026')[1]
     assert 'API 28' not in released
     handle = (ROOT / 'docs/reference/viewer-handle.rst').read_text()
@@ -184,9 +187,9 @@ def test_film_annotations_are_documented_as_current_source():
 
 
 def test_on_demand_clocked_capture_is_documented():
-    """OpenSpec `on-demand-clocked`: the source declares API 29, the
+    """OpenSpec `on-demand-clocked`: API 29, released in 0.8.0; the
     manual states the on-demand rules for a clocked machine, and the
-    change's changelog entry sits under `Unreleased`."""
+    0.8.0 changelog section records it."""
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     assert widget['machinomeViewerApi'] == 29
     assert widget['machinomeDocumentVersions'] == list(range(1, 14))
@@ -202,6 +205,8 @@ def test_on_demand_clocked_capture_is_documented():
     compatibility = flat('docs/compatibility.rst')
     assert 'API 29 adds' in compatibility
     changelog = (ROOT / 'CHANGELOG.md').read_text()
-    pending = changelog.split('## Unreleased')[1].split('\n## ')[0]
-    assert 'viewer API 29' in ' '.join(pending.split())
-    assert changelog.index('## Unreleased') < changelog.index('## 0.7.1')
+    release = changelog.split('## 0.8.0 — 5 October 2026')[1].split('\n## ')[0]
+    flat_release = ' '.join(release.split())
+    assert 'viewer API 29' in flat_release
+    assert 'on-demand' in flat_release
+    assert changelog.index('## 0.8.0') < changelog.index('## 0.7.1')

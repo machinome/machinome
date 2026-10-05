@@ -18,8 +18,8 @@ Mounting and configuration
 
 .. js:attribute:: MachinomeViewer.apiVersion
 
-   Integer browser API version: 27 in the 0.7.1 release, |viewer-api| in the
-   current source. See :doc:`../compatibility`.
+   Integer browser API version: |viewer-api| in the |package-version| release.
+   See :doc:`../compatibility`.
 
 .. js:attribute:: MachinomeViewer.API_VERSION
 

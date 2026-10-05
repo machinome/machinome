@@ -31,8 +31,8 @@ provide a host as described in :doc:`embedding`.
 The bundle carries AGPL-3.0-or-later and third-party notices. Preserve those notices
 and consult the repository's `LICENSE
 <https://github.com/machinome/machinome-viewer/blob/main/LICENSE>`_ when
-redistributing or modifying it. The framework's Apache license is not the
-license of the browser bundle.
+redistributing or modifying it. The framework is licensed separately, as its
+own manual states; its licence is not the licence of the browser bundle.
 
 Link to a chosen presentation
 =================================

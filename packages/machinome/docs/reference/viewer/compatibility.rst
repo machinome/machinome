@@ -5,16 +5,16 @@ Versions and compatibility
 Three version numbers
 =====================
 
-The 0.7.1 release declares:
+The 0.8.0 release declares:
 
 * **Package** |package-version| — the Python distribution and its bundled
-  widget, released with Machinome 0.7.1 and numbered with it. The widget is
+  widget, released with Machinome 0.8.0 and numbered with it. The widget is
   not published on npm; it ships inside the Python distribution.
-* **Viewer API** 27 — the browser-host interface/capabilities.
+* **Viewer API** |viewer-api| — the browser-host interface/capabilities.
 * **Document versions** |document-versions| — model schemas this bundle reads.
 
-The current source, after 0.7.1 and in no published release, declares viewer
-API |viewer-api| with the same document versions. API 28 adds
+API 28 and API 29, the 0.8.0 release, add to what 0.7 declared, with the
+same document versions. API 28 adds
 :js:meth:`ViewerHandle.partOnScreen` and :js:meth:`ViewerHandle.project`,
 which tell a host where any part and any world point stand on screen, and
 :js:meth:`ViewerHandle.highlight`, which tints named parts and keeps, dims or
@@ -118,12 +118,12 @@ version-13 finite convex-profile contact inside a numeric running Bound.
 API 27, the 0.7.0 release, adds separately named handles for two ``Turn``
 controls on one part selecting different joints, without changing the
 document schema or the ``controls()`` shape. API 26 refuses that pair at
-load. API 28, in the source after 0.7.1, adds screen positions for any part
-and world point, a reversible highlight, and an up direction and field of
-view per view change. API 29 mounts a clocked machine with on-demand
-rendering, posed by request and drawn without a frame loop. A host that needs a feature can check the declared API before using
-it. Do not assume an old pinned bundle implements the
-current manual.
+load. API 28 and API 29 are the 0.8.0 release: API 28 adds screen positions
+for any part and world point, a reversible highlight, and an up direction and
+field of view per view change; API 29 mounts a clocked machine with on-demand
+rendering, posed by request and drawn without a frame loop. A host that needs
+a feature can check the declared API before using it. Do not assume an old
+pinned bundle implements the current manual.
 
 Source-timing migration
 =======================

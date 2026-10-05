@@ -3,22 +3,63 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
-## Unreleased
+## 0.8.0 — 5 October 2026
 
-The source declares viewer API 29 and still reads document versions 1
-through 13.
+Released with Machinome 0.8.0 and numbered with it. It declares viewer API
+29 and reads document versions 1 through 13. Install both with
+`pip install "machinome[viewer]"`. The document format does not move: a
+0.7 viewer reads a 0.8 export, and this viewer reads every 0.7 export.
 
-- **A clocked machine captured on demand.** `renderMode: 'on-demand'` now
-  mounts a clocked (version 8) document, with or without declared
-  instructions, under the same four options that mode already required.
+### What a host gets
+
+- **Where a part stands on screen.** `partOnScreen(path)` gives, for any
+  assembly path, a part or a subassembly, the screen rectangle of its
+  visible geometry and a visible point on it, in viewport CSS pixels, or
+  null when nothing of it is in view; `project(world)` gives the screen
+  position of any world point. Both read the current pose and camera and
+  draw nothing, and `controls()` answers from the same computation. API 28
+  (`track-a-part-on-screen`).
+- **A part highlighted.** `highlight(paths, options)` tints the named parts
+  and keeps, dims or ghosts every other part, draws before it returns, and
+  gives back a function that puts every part back exactly. One highlight
+  stands at a time; it survives a reload and the targeted updates, and a
+  part inside a ghosted housing is still found on screen. API 28
+  (`highlight-a-part`).
+- **Up and field of view per view call.** `setView(view)` takes an
+  optional up direction and vertical field of view beside the camera and
+  target; what is omitted keeps its value, and `view()` reports all four.
+  The adopted up and field of view persist through `setRoot()`, `reload()`
+  and the targeted updates, and orbiting by pointer turns about the adopted
+  up. An invalid up or field of view is refused by name before anything
+  changes. API 28 (`move-up-and-field-of-view`).
+- **A clocked machine captured on demand.** `renderMode: 'on-demand'` mounts
+  a clocked (version 8) document, with or without declared instructions,
+  under the same four options that mode already required.
   `machine().move`, `restore` and `reset` pose the model and draw it before
   they return, and `setView(viewer.view())` redraws without changing the
-  view, so a host poses a stroke bank by bank and captures each frame with
-  no frame loop running. `machine().trigger` and
-  `machine().setClockPlaying(true)` draw over wall seconds and are refused
-  there, naming the mode. A running program stays refused, now with a
-  message of its own; a posed document with instructions stays refused as
-  before. No control and no full-screen button is drawn. This is API 29.
+  view, so a host poses a machine request by request and captures each
+  frame with no frame loop running. `machine().trigger` and
+  `machine().setClockPlaying(true)` draw over wall-clock seconds and are
+  refused there, naming the mode. A running program stays refused, now with
+  a message of its own. No control and no full-screen button is drawn.
+  API 29 (`on-demand-clocked`).
+
+### What a maker gets
+
+- **The same picture on every load.** A freshly mounted model draws its
+  rigid parts and markings the same way whichever of their files finishes
+  downloading first, so two parts sharing a surface no longer change colour
+  from one load to the next, and repeated captures of one model at one view
+  and pose agree pixel for pixel. Files are still fetched concurrently;
+  nothing in the API or the document changes
+  (`deterministic-asset-load-order`).
+
+### Compatibility
+
+API 28 brings the screen-position, highlight and per-view up and field of
+view members; API 29 the on-demand clocked mount. A host checks
+`apiVersion` before relying on them: a bundle reporting 27 has none of
+them, and one reporting 28 refuses an on-demand clocked mount.
 
 ## 0.7.1 — 27 September 2026
 
@@ -183,10 +224,10 @@ slower than its declared two-second drawing duration; that work continues.
 ### Identity and licensing
 
 - Package `machinome-viewer`, import `machinome_viewer`, entry point
-  `machinome.viewer`, licensed AGPL-3.0-or-later. The framework, Apache-2.0,
-  reaches it only through that entry point and separate processes; neither
-  package imports the other. The widget ships inside the Python
-  distribution and is not published on npm.
+  `machinome.viewer`, licensed AGPL-3.0-or-later. The framework, licensed
+  separately, reaches it only through that entry point and separate
+  processes; neither package imports the other. The widget ships inside
+  the Python distribution and is not published on npm.
 - The version number identifies the distribution; capability is declared by
   `apiVersion` and `documentVersions` alone. Development states 0.1.0 and
   0.2.0 were never published; their detailed history is in

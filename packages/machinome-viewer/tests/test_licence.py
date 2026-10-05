@@ -35,6 +35,11 @@ HISTORY = ('workflow/archive/', 'workflow/adrs/', 'openspec/changes/')
 # SPDX pattern it scans for; it is not a header to check.
 SELF = 'tests/test_licence.py'
 
+# A licence named the way SPDX names one (`Name-1.0`, `Name-1.0-or-later`),
+# and a licence named by a capitalised word before "licence"/"license".
+IDENTIFIER = re.compile(r'\b(?:[A-Z][A-Za-z]*-)+\d+\.\d+(?:-or-later|-only)?\b')
+NAMED_LICENCE = re.compile(r'\b[A-Z][A-Za-z]+ [Ll]icen[cs]e\b')
+
 # Pages a reader lands on, each of which states the grant.
 READER_FACING = ('README.md', 'docs/index.rst', 'docs/sharing.rst',
                  'context7.json')
@@ -96,6 +101,23 @@ class LicenceTest(unittest.TestCase):
         for relative in READER_FACING:
             with self.subTest(file=relative):
                 self.assertIn(GRANT, (REPO / relative).read_text())
+
+    def test_reader_facing_pages_name_only_the_viewers_grant(self):
+        """The viewer states its own licence and never the framework's,
+        which is licensed separately and states its licence in its own
+        manual (OpenSpec `release-0-8-0`). The patterns are generic: any
+        SPDX-shaped identifier, and any name written before the word."""
+        pages = ['README.md', 'CHANGELOG.md', 'context7.json']
+        pages += sorted(p.relative_to(REPO).as_posix()
+                        for p in (REPO / 'docs').rglob('*.rst')
+                        if '_build' not in p.parts)
+        for relative in pages:
+            text = (REPO / relative).read_text()
+            with self.subTest(file=relative):
+                self.assertEqual(
+                    [name for name in IDENTIFIER.findall(text)
+                     if name != GRANT], [])
+                self.assertEqual(NAMED_LICENCE.findall(text), [])
 
     def test_a_built_bundle_opens_with_the_grant(self):
         bundle = WIDGET / 'dist' / 'machinome-viewer.js'

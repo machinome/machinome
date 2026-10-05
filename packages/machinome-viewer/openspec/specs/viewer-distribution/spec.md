@@ -293,8 +293,8 @@ and capability-reporting contract.
 The shipped bundle and package description SHALL consistently report viewer API
 23 and supported document versions 1 through 10 after retained time-drive
 execution is implemented and verified. The package, its widget and the bundle
-banner SHALL all carry version 0.7.1, the version released with Machinome
-0.7.1; the version number identifies the distribution and does not declare a
+banner SHALL all carry version 0.8.0, the version released with Machinome
+0.8.0; the version number identifies the distribution and does not declare a
 capability, which `apiVersion` and `documentVersions` alone declare.
 
 API 23 supersedes earlier numeric capability declarations, including "A
@@ -310,7 +310,7 @@ single-source declaration, bundle-currency or legacy-compatibility guarantees.
 #### Scenario: The release pair is legible
 
 - **WHEN** a maker runs `machinome-viewer describe` or reads the bundle banner
-- **THEN** both report version 0.7.1 beside API 23 and document versions 1
+- **THEN** both report version 0.8.0 beside API 23 and document versions 1
   through 10, matching `pyproject.toml` and the widget's `package.json`
 
 ### Requirement: Installed viewer support identifies source-timed running
