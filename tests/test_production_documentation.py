@@ -19,7 +19,8 @@ def test_public_reference_documents_lazy_independent_draft_contract():
     ):
         assert term in api
     changelog = (root / "docs/project/changelog.rst").read_text()
+    released = changelog.split("Machinome 0.8.0\n---")[1]
     assert (
         "Independent production profiles"
-        in changelog.split("Machinome 0.7.1")[0]
+        in released.split("Machinome 0.7.1\n---")[0]
     )

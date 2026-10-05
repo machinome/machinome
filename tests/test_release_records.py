@@ -6,7 +6,8 @@
 `pyproject.toml` states the version once; every other file that carries
 it, and every record whose top entry must be the released version, is
 held to that one statement, so a release moves the files together or
-fails here naming the one left behind (change `release-0-7-1`).
+fails here naming the one left behind (changes `release-0-7-1` and
+`release-0-8-0`).
 """
 
 from datetime import datetime
@@ -126,8 +127,19 @@ class ReleaseRecordsTest(TestCase):
         self.assertNotIn('since |release|', status)
 
     def test_the_release_note_has_the_dated_section(self):
-        note = (ROOT / 'docs/releases/release-0.7.rst').read_text()
-        self.assertIn(f'{self.version}', sections(note)[-1])
+        """A release's note is the page of its major.minor line: a `.0`
+        release opens the page, whose title names the line; a patch adds
+        the page's last section, which names the version (change
+        `release-0-8-0`)."""
+        major, minor, patch = self.version.split('.')
+        page = ROOT / f'docs/releases/release-{major}.{minor}.rst'
+        self.assertTrue(page.is_file(), page.relative_to(ROOT).as_posix())
+        note = page.read_text()
+        if patch == '0':
+            title = note.splitlines()[0]
+            self.assertIn(f'Machinome {major}.{minor}', title)
+        else:
+            self.assertIn(self.version, sections(note)[-1])
         self.assertIn(self.date.strftime('%-d %B %Y'), note)
 
     def test_context7_states_the_release(self):
@@ -135,6 +147,7 @@ class ReleaseRecordsTest(TestCase):
         text = ' '.join(rules)
         self.assertIn(f'Machinome {self.version} '
                       f'(released {self.date.strftime("%Y-%m-%d")})', text)
-        self.assertIn(f'The matching viewer is {self.version}', text)
+        self.assertIn(f"The matching viewer is {conf_value('viewer_version')}, "
+                      f"API {conf_value('viewer_api')}", text)
         self.assertIn('Frame(', text)
         self.assertIn('machinome vet', text)

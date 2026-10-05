@@ -1,0 +1,32 @@
+## 1. Red first
+
+- [x] 1.1 Run `tests/test_release_records.py` on the unmodified bench and record it green at 0.7.1.
+- [x] 1.2 Move the five version statements to 0.8.0 by hand (`pyproject.toml`, `machinome/__init__.py`, `machinome/vet/universe.toml`, `setup.cfg`, `docs/conf.py` `release`; `version = '0.8'`), set `release_date = '5 October 2026'`, `viewer_version = '0.8.0'` and `viewer_api = '29'` (comment from the viewer's changelog: on-demand capture of a clocked machine), leave `document_versions` and `mechanics_version`; run `tests/test_release_records.py` again and record the red naming each record left behind.
+- [x] 1.3 Repoint `test_the_release_note_has_the_dated_section` to derive the page from the released version's major.minor (title for a `.0`, last section for a patch); have `test_context7_states_the_release` hold "The matching viewer is <viewer_version>, API <viewer_api>" to `conf.py`; run and record the red.
+- [x] 1.4 Write the licence pins in `tests/test_docs_structure.py`, spelling no licence but the two admitted: `framework_licence` among the substitutions; no `.rst` under `docs/` outside `docs/releases/` spells a licence identifier (regex `[A-Z][A-Za-z]*(-[A-Z]+)*-\d+\.\d+(-or-later|-only|\+)?`) other than `AGPL-3.0-or-later`; `README.rst` spells none but `AGPL-3.0-or-later` and `conf.py`'s `framework_licence`, which it states. Run and record the red.
+- [x] 1.5 Update `tests/test_machinome_identity.py`'s version literal; repoint `tests/test_production_documentation.py` to the 0.8.0 section; relax `tests/test_profile_documentation.py`'s `viewer_api = '27'` pin to "at least 27"; check `test_mates.py` and `test_frame_precision_docs.py` (they read the 0.7.1 section between its heading and 0.7.0's) need no edit.
+
+## 2. Release facts
+
+- [x] 2.1 Add `framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'` and `|framework_licence|` to `docs/conf.py`'s release block.
+- [x] 2.2 The changelog's 0.4 packaging line reads "Relicensed the project, with updated attribution and NOTICE."
+
+## 3. Records
+
+- [x] 3.1 Rewrite the changelog's `Unreleased` section as `Machinome 0.8.0`, `Released on 05/Oct/2026`: the opening (what a maker gets, a "Breaking changes" paragraph, one line each, to :doc:`upgrading`), the licence bullet first (from this release licensed GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the recipient's choice, as the current fact), then the families in the order a maker meets them, each bullet checked against the code at 0.8.0, its *Breaking* paragraphs kept and corrected to final addresses, no project or workspace named; add `../releases/release-0.8` to the toctree; leave the 0.7.1 and older sections unchanged.
+- [x] 3.2 Add `Machinome 0.8.0 (2026-10-05)` to `HISTORY.rst` above 0.7.1, in the 0.7.1 section's shape, with ADR numbers, archived change names and the originating machines described by kind.
+- [x] 3.3 Write `docs/releases/release-0.8.rst` in the shape of `release-0.7.rst`: title, "Released on 5 October 2026.", install only what you use, one path for every name, two engines named for what they consume, OpenSCAD one family among the node types, what is kept between runs, the licence, upgrading.
+- [x] 3.4 Rewrite `docs/project/status.rst` for 0.8.0: released on |release_date|, "What |version| is" for 0.8, the licence through the substitution, direction as fact (production profiles shipped; the package split not started, nothing published as a separate package).
+- [x] 3.5 Add "Upgrading from Machinome 0.7 to 0.8" to `docs/project/upgrading.rst` above the 0.6 to 0.7 part: the complete list of breaking changes with what to change, each verified on the bench; fold the three existing sections under it without *(unreleased)* or "the next release"; keep the 0.6 to 0.7 material intact.
+- [x] 3.6 `README.rst`: a 0.8 paragraph beside the 0.7 lineage paragraph, the licence lines in the words of the decision, the 0.8 release-note link.
+- [x] 3.7 `docs/start/install.rst` and `docs/why.rst`: the licence through the substitution; read both pages whole and correct any sentence 0.8's extras made stale; `install.rst` and `README.rst` say a framework installation without the viewer snapshots through OpenSCAD with the `openscad` extra.
+- [x] 3.8 `docs/architecture.md`: the sentence giving the framework's licence beside the viewer's states the current licence; the mechanics sentence loses its licence word. `docs/reference/manuals.rst`: the `machinome-mechanics` entry describes the package without stating its licence.
+- [x] 3.9 `context7.json`: the 0.8.0 version rule, "The matching viewer is 0.8.0, API 29, ...", and the B-rep/mesh and OpenSCAD rules rewritten for 0.8 (names from their modules, `machinome test --brep|--mesh`, `SOLID_TEST_ENGINE`, kernels and node types as extras, OpenSCAD needed only for its family and snapshot renderer), keeping `Frame(` and `machinome vet`.
+- [x] 3.10 Add one paragraph at the end of `workflow/ongoing/lean-core.md`'s last section: the line merged into framework `main` as 3435b35 on 5 October 2026 (a merge, `main` having taken three workflow-only commits since the fork), and the release state is the change `release-0-8-0`; nothing else in the file changes.
+- [x] 3.11 Write `workflow/ongoing/release-0.8.0.md`: the licence instruments not touched, by file and count only (counts by grep on the bench), and the note on files the 0.8 cycles created; the pilot's steps; the follow-ups outside the framework; why no distribution is built.
+
+## 4. Green and checked
+
+- [x] 4.1 Run the documentation tests (`test_release_records`, `test_machinome_identity`, `test_docs_structure`, `test_docs_exports`, `test_viewer_documentation_links`, `test_profile_documentation`, `test_production_documentation`, `test_frame_precision_docs`, `test_mates`, `test_tutorial_counter`, `test_sphinx_ext`, `test_node_root_exports_nothing`) with `-p no:cacheprovider`, green.
+- [x] 4.2 Build the manual (`python -m sphinx -b html -n -W --keep-going -E docs docs/_build/html`); read the status, changelog, upgrading, install and release-note pages in the built HTML as a reader.
+- [x] 4.3 Sync the spec delta into `openspec/specs/user-documentation/spec.md`; decide the ADR disposition (none expected: a release records and decides no architecture); record red, green, build and pages read in `evidence.md`; `openspec validate release-0-8-0 --strict`. The full suite, archival and commit 2 follow the orchestrator's run.

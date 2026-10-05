@@ -46,14 +46,14 @@ under `machinome <https://github.com/machinome>`_. Simulation and geometric test
 provide evidence about those models; they do not establish that every
 design has been manufactured or physically validated.
 
-Version 0.7 and the new name
-============================
+Version 0.8: a lean core
+========================
 
-Machinome 0.7 is the direct continuation of **solid-node 0.6.0**.
-The framework and GitHub organisation were renamed to avoid confusion
-with Tim Berners-Lee's Solid project: `solid-node` sounded like a Solid
-node, and `LibreSolid` like a libre edition of Solid. Machinome has no
-affiliation with that project.
+Machinome 0.8 installs only the CAD kernels a project's parts use: each
+kernel and node family is an extra. Every name is imported from the one
+module that defines it, and a test compares parts on the B-rep engine or the
+mesh engine, named for what each consumes. Machinome is licensed
+**GPL-2.0-or-later or CERN-OHL-S-2.0-or-later**, at the recipient's choice.
 
 Install it with the browser viewer and start a project:
 
@@ -71,9 +71,19 @@ with a B-rep CadQuery part. Each CAD kernel is an extra named for the
 module that needs it (``cadquery``, ``build123d``, ``step``, ``molejo``,
 ``openscad``, ``solid2``, the two engines' ``brep`` and ``mesh``, or
 ``all``). The
-`migration guide <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_
-maps imports, commands, configuration and viewer integration from 0.6.
-There is no ``solid_node`` import shim or ``solid`` command alias.
+`upgrading guide <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_
+lists every breaking change from 0.7 to 0.8 and what to change.
+
+Version 0.7 and the new name
+============================
+
+Machinome 0.7 is the direct continuation of **solid-node 0.6.0**.
+The framework and GitHub organisation were renamed to avoid confusion
+with Tim Berners-Lee's Solid project: `solid-node` sounded like a Solid
+node, and `LibreSolid` like a libre edition of Solid. Machinome has no
+affiliation with that project. The same guide maps imports, commands,
+configuration and viewer integration from 0.6; there is no ``solid_node``
+import shim or ``solid`` command alias.
 
 Learn it one machine at a time
 ==============================
@@ -89,16 +99,18 @@ live on `machinome.org <https://machinome.org/>`_, each beside its design
 source and licence.
 
 * `User manual <https://machinome.readthedocs.io/en/latest/>`_
+* `0.8 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.8.html>`_
 * `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
 * `Source repository <https://github.com/machinome/machinome>`_
 
 Machinome is licensed **GPL-2.0-or-later or CERN-OHL-S-2.0-or-later**, at
 the recipient's choice. The optional
 `Machinome Viewer <https://github.com/machinome/machinome-viewer>`_
-is **AGPL-3.0-or-later**, installed through ``viewer``.
-Ordinary ``machinome develop`` requires it. Without it, the framework
-builds, tests, exports with ``--no-widget``, watches with
-``develop --no-web``, and takes fixed-pose OpenSCAD snapshots.
+is a separate package, licensed **AGPL-3.0-or-later**, installed through
+``viewer``. Ordinary ``machinome develop`` requires it. Without it, the
+framework builds, tests, exports with ``--no-widget``, watches with
+``develop --no-web``, and takes fixed-pose OpenSCAD snapshots with the
+``openscad`` extra.
 
 The ``mechanics`` extra installs the independent
 ``machinome-mechanics`` helpers. The ``studio`` extra is reserved for
@@ -201,8 +213,9 @@ Notes:
 Where things live
 -----------------
 
-* ``machinome/node/`` — the node tree (base, assembly, fusion, leaf, CAD
-  backend adapters, operations)
+* ``machinome/node/`` — the node tree (base, assembly, fusion, the leaf
+  bases, one module per node type, operations)
+* ``machinome/engine/`` — the B-rep and mesh engines and their seams
 * ``machinome/manager/`` and ``machinome/cli.py`` — the ``machinome`` command:
   develop loop, test, snapshot, new, export
 * ``machinome/core/`` — build pipeline, loader, caching

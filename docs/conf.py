@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'Machinome'
 copyright = '2023-2026, Luis Henrique Cassis Fagundes'
 author = 'Luis Henrique Cassis Fagundes'
-release = '0.7.1'
-version = '0.7'
+release = '0.8.0'
+version = '0.8'
 html_title = 'Machinome — Source code for machines'
 
 # -- Release facts -----------------------------------------------------------
@@ -28,11 +28,12 @@ html_title = 'Machinome — Source code for machines'
 # substitutions below (|release| and |version| are Sphinx's own) so a
 # release edits this block and the status page and nothing else.
 
-release_date = '27 September 2026'
-viewer_version = '0.7.1'        # the matching machinome-viewer package
-viewer_api = '27'               # profile contact; two Turn handles on one part
+release_date = '5 October 2026'
+viewer_version = '0.8.0'        # the matching machinome-viewer package
+viewer_api = '29'               # a clocked machine captured on demand
 document_versions = '1 to 13'    # supported by the paired viewer
 mechanics_version = '0.1.0'     # the matching machinome-mechanics package
+framework_licence = 'GPL-2.0-or-later or CERN-OHL-S-2.0-or-later'
 
 rst_prolog = f'''
 .. |release_date| replace:: {release_date}
@@ -40,6 +41,7 @@ rst_prolog = f'''
 .. |viewer_api| replace:: {viewer_api}
 .. |document_versions| replace:: {document_versions}
 .. |mechanics_version| replace:: {mechanics_version}
+.. |framework_licence| replace:: {framework_licence}
 '''
 
 # -- General configuration ---------------------------------------------------

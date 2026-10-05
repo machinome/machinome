@@ -119,14 +119,14 @@ whose every compared part has B-rep geometry needs it only for
 Two packages, two licences
 --------------------------
 
-The framework is one package, ``machinome``, licensed GPL-2.0-or-later or CERN-OHL-S-2.0-or-later
-at the recipient's choice. The
-browser viewer is a separate package, `machinome-viewer
+The framework is one package, ``machinome``, licensed
+|framework_licence|, at the recipient's choice. The browser viewer is a
+separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``
 extra installs it. Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes
-OpenSCAD snapshots; with it, ``machinome develop`` opens the interactive
+OpenSCAD snapshots with the ``openscad`` extra; with it, ``machinome develop`` opens the interactive
 viewer, and every export carries the viewer page.
 
 Install
@@ -179,9 +179,10 @@ start.
 Upgrading
 ---------
 
-Coming from solid-node 0.6 or earlier? Read :doc:`/project/upgrading`
-first: the packages, imports, command and configuration were renamed for
-0.7, and a 0.5 environment must be recreated rather than upgraded in
-place.
+Coming from Machinome 0.7? Read :doc:`/project/upgrading` first: 0.8
+moves the kernels into extras, imports every name from its module and
+renames the engines' flags, with no aliases. Coming from solid-node 0.6 or
+earlier, the same page maps the names renamed for 0.7; a 0.5 environment
+must be recreated rather than upgraded in place.
 
 Next: :doc:`first-machine`.

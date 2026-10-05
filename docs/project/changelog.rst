@@ -3,117 +3,262 @@
 Changelog
 =========
 
-Unreleased
-----------
+Machinome 0.8.0
+---------------
 
-* **The node package's root exports nothing: every name is imported from its
-  module.** ``machinome.node`` is the package's path, its refusals and its
-  submodules (``from machinome.node import supported`` still imports the
-  module). Each name the root resolved a second time is imported from the
-  module that defines it, ``from machinome.node.assembly import
-  AssemblyNode``, ``from machinome.node.step import StepNode``, ``from
-  machinome.node.frames import Frame``, and the upgrading page maps all
-  twenty-one. Importing one of them from the root, or reading it off the
-  root, raises ``ImportError`` naming its module and the line to write; a
-  node type's class names are read for that refusal from the table of
-  supported node types. ``machinome new`` and ``machinome import-step``
-  write their import lines per module. ``machinome[jscad]`` and
-  ``machinome[stl]`` are extras, installing nothing today, so every node
-  type has the extra of its name and a manifest naming one stays valid when
-  the node packages are cut; ``machinome[all]`` includes both. No verdict,
-  artifact byte or golden value changes (ADR-181).
+Released on 05/Oct/2026
 
-  **Breaking (framework API):** the twenty-one names fail at
-  ``from machinome.node import ...`` with nothing aliasing them, a star import
-  from the root binds nothing, and ``machinome.node.__all__`` is empty.
+**A lean core.** A project installs only the CAD kernels its parts use,
+imports every name from the one module that defines it, and compares its
+parts on one of two engines named for what they consume: the B-rep engine,
+over boundary representations, and the mesh engine, over triangle meshes.
+OpenSCAD is one family of node types among the others, no longer part of
+every install. Leaves written outside machinome have a declared, versioned
+contract; production profiles turn a model into a bill of materials and
+maker instructions; and a second test run of an unchanged project is served
+the verdicts the first one decided. No verdict, golden value or artifact
+byte changes, and the published document does not move: exports declare
+document versions 1 to 13, as 0.7's do, so a 0.7 viewer reads them.
+
+**Breaking changes**, each with what to change on :doc:`the upgrading page
+<upgrading>`:
+
+- a bare ``pip install machinome`` carries no CAD kernel, no SolidPython and
+  no manifold3d; install the extras your parts use;
+- the root of ``machinome.node`` exports nothing: each of its twenty-one
+  names is imported from its module;
+- ``machinome.node.adapters`` is dissolved: ``machinome.node.adapters.<x>``
+  is ``machinome.node.<x>``;
+- ``machinome test --exact`` and ``--faceted`` are ``--brep`` and
+  ``--mesh``, and ``SOLID_TEST_KERNEL`` is refused for ``SOLID_TEST_ENGINE``;
+- ``machinome.exact`` and ``machinome.mesh_engine`` are removed: the B-rep
+  operations are ``machinome.engine.brep``'s and the seams and errors
+  ``machinome.engine``'s;
+- ``shape()`` returns the kernel's own ``TopoDS_Shape``, not a CadQuery
+  ``Shape``;
+- the B-rep leaf base is ``BrepLeafNode`` at ``machinome.node.brep_leaf``, a
+  node's flag ``brep``, and the leaf contract is version 3; the sheet and
+  flexible hooks lose their underscore;
+- ``Solid2Node``, ``OpenScadNode`` and the OpenSCAD renderer of
+  ``machinome snapshot`` need their extras; the SCAD members belong to the
+  family's leaf base, and ``as_scad`` is ``present``;
+- a build writes the ``.scad`` of an OpenSCAD-family part only;
+- ``machinome.scad_expression`` and ``machinome.openscad`` are removed, and a
+  symbolic value is machinome's own type;
+- ``machinome new`` and ``machinome import-step`` write imports from the
+  modules;
+- every project's kept verdicts recompute once, every mesh fusion's STL is
+  written again once to the same bytes, and a part whose module was rewritten
+  rebuilds once.
+
+* **Licence:** from this release Machinome is licensed
+  |framework_licence|, at the recipient's choice. The browser viewer,
+  ``machinome-viewer``, is a separate package under AGPL-3.0-or-later.
+
+* **Install only what your parts use.** Each CAD kernel is an extra named for
+  the last component of the module that needs it: ``machinome[cadquery]``,
+  ``[build123d]``, ``[step]``, ``[molejo]``, ``[brep]`` (the B-rep engine's
+  OCCT kernel, which the first four install too), ``[mesh]`` (manifold3d, for
+  the mesh engine), ``[openscad]`` (SolidPython), ``[solid2]`` (which installs
+  ``[openscad]``), ``[jscad]`` and ``[stl]``, which install nothing today, so
+  that every node type has the extra of its name and a manifest naming one
+  stays valid when the node types become packages of their own, and
+  ``[all]``. Without its extra a module refuses at import with the line that
+  installs it: ``machinome.node.cadquery (CadQueryNode) needs cadquery, which
+  is not installed; install it with 'pip install "machinome[cadquery]"'``.
+  ``machinome import-step`` without the ``step`` extra answers ``Error:
+  machinome import-step needs the step extra: ...`` and exits 1, and is still
+  listed by ``machinome -h``. Declaring a marking needs no kernel; building a
+  stale ``Svg`` marking needs ``machinome[build123d]`` and without it is
+  refused naming the part, the marking and the artwork. Without the mesh
+  engine, each path that needs it (a part without B-rep geometry compared,
+  ``machinome test --mesh``, ``assertAssemblySupported``, a mesh fusion, a
+  project calling manifold3d or ``trimesh.boolean`` itself) refuses naming
+  ``pip install "machinome[mesh]"``, and ``machinome test`` on the mesh
+  engine refuses at its start, before building anything; an all-B-rep project
+  needs it only for those. A project with its extras installed sees no
+  change, and no artifact byte changes (ADR-167, ADR-168, ADR-176).
+
+  **Breaking (install):** a bare ``pip install machinome`` carries no CAD
+  kernel, no SolidPython and no manifold3d; the tutorial's machine needs
+  ``machinome[cadquery]``. **Breaking (framework API):**
+  ``machinome.node.adapters`` is dissolved, and importing anything under it
+  fails at the import line naming the rule, ``machinome.node.adapters.<x>``
+  is now ``machinome.node.<x>``; for example ``from
+  machinome.node.adapters.step import StepAssembly`` becomes ``from
+  machinome.node.step import StepAssembly``. A node whose class is one of
+  the leaf classes itself, rather than a project's subclass, rebuilds once,
+  because its module is part of its recipe (:doc:`/start/install`).
+
+* **One path for every name.** Every leaf type is one module directly under
+  ``machinome.node``, named for its technology: ``machinome.node.cadquery``,
+  ``.build123d`` (which holds ``Build123dSheetNode`` too, and the reducer of
+  ``Svg`` artwork), ``.step`` (``StepNode``, ``StepAssembly``,
+  ``solids_from_faces``, ``cached_document``), ``.molejo``, ``.solid2``,
+  ``.openscad``, ``.jscad`` and ``.stl``. The root of ``machinome.node`` is
+  the package's path, its refusals and its submodules (``from machinome.node
+  import supported`` still imports the module), and exports no other name:
+  ``from machinome.node.assembly import AssemblyNode``, ``from
+  machinome.node.step import StepNode``, ``from machinome.node.frames import
+  Frame``. Importing one of the twenty-one names the root used to resolve,
+  or reading it off the root, raises ``ImportError`` naming its module and
+  the line to write. ``machinome new`` and ``machinome import-step`` write
+  their import lines per module (ADR-169, ADR-181).
+
+  **Breaking (framework API):** the twenty-one names fail at ``from
+  machinome.node import ...`` with nothing aliasing them, a star import from
+  the root binds nothing, and ``machinome.node.__all__`` is empty.
   **Breaking (generated source):** a project ``machinome new`` or
   ``machinome import-step`` writes imports from the modules. Each part whose
   module a rewrite touches rebuilds once, to the same bytes
-  (:doc:`upgrading`).
+  (:doc:`upgrading` maps all twenty-one).
 
-* **The engines are named for the representation each consumes: B-rep and
-  mesh.** The B-rep engine, over boundary representations, and the mesh
-  engine, over triangle meshes, are the modules ``machinome.engine.brep``
-  and ``machinome.engine.mesh`` of one engine package, ``machinome.engine``,
+* **Two engines, named for what they consume.** The B-rep engine and the
+  mesh engine are the modules ``machinome.engine.brep`` and
+  ``machinome.engine.mesh`` of one engine package, ``machinome.engine``,
   which holds both seams (``brep_engine``, ``require_brep_engine``,
   ``mesh_engine``, ``require_mesh_engine``, their error types and contract
-  versions) and admits a provider installed later as a portion. The B-rep
-  leaf base is ``BrepLeafNode`` at ``machinome.node.brep_leaf``, a node's
-  flag is ``brep``, and the memos and artifact publication are
-  ``machinome.brep_cache`` and ``machinome.brep_artifacts``. A test run
-  compares on an engine: ``machinome test --brep`` (the default) or
-  ``--mesh``, else ``SOLID_TEST_ENGINE``, ``brep`` or ``mesh``; its line,
-  summary note and messages say "the B-rep engine" and "the mesh engine".
-  Every verdict, every artifact byte and every golden value is what it was
-  (ADR-180).
+  versions) and admits a provider installed later. Every operation on a B-rep
+  shape lives in ``machinome.engine.brep``, written on the OCCT kernel alone
+  with no CadQuery, and every comparison on meshes in
+  ``machinome.engine.mesh``, the core calling none of manifold3d's API: a
+  model with no B-rep part never loads the B-rep engine, and a part whose
+  artifacts are current is reused without it. The operations a project calls
+  directly, ``intersect_shapes``, ``fuse_shapes``, ``placed_shape``,
+  ``solid_count`` and ``solid_volume``, keep their names and signatures in
+  ``machinome.engine.brep``, and the errors are
+  ``machinome.engine.BrepCommonInconsistency`` and
+  ``BrepCommonVerificationError``. ``shape()`` and those operations return
+  the kernel's own ``TopoDS_Shape``, so a B-rep part may render it directly
+  and build, fuse and test without CadQuery or build123d. A test run compares
+  on an engine: ``machinome test --brep`` (the default) or ``--mesh``, else
+  ``SOLID_TEST_ENGINE``, ``brep`` or ``mesh``; its line, summary note and
+  messages say "the B-rep engine" and "the mesh engine". Every verdict,
+  every artifact byte and every golden value is what it was (ADR-160,
+  ADR-161, ADR-162, ADR-180; :ref:`comparison-engine`).
 
   **Breaking (command line):** ``--exact`` and ``--faceted`` are
   unrecognised, and ``SOLID_TEST_KERNEL`` is refused whenever it is set,
   naming ``SOLID_TEST_ENGINE``: rename it in a checkout's ``.env``.
-  **Breaking (install):** the extras ``occt`` and ``manifold`` are ``brep``
-  and ``mesh``. **Breaking (framework API):** ``machinome.exact_engine``,
-  ``machinome.mesh_engine``, ``machinome.occt``, ``machinome.manifold``,
-  ``machinome.node.exact_leaf``, ``machinome.exact_cache`` and
-  ``machinome.exact_artifacts`` are removed with no alias, the error types
-  are ``BrepEngineUnavailable``, ``BrepCommonInconsistency`` and their
-  peers, and the leaf contract is version 3. Every project's kept verdicts
-  recompute once, and every mesh fusion's STL is written again once, to
-  the same bytes, because its recorded recipe is renamed; a source
-  checkout runs ``git clean -fdX machinome/occt machinome/manifold`` once
-  (:doc:`upgrading`).
+  **Breaking (framework API):** ``machinome.exact`` and
+  ``machinome.mesh_engine`` are removed with no alias; a project that calls
+  CadQuery's methods on a ``shape()`` wraps it,
+  ``cadquery.Shape.cast(node.shape())``. Every project's kept verdicts
+  recompute once, and every mesh fusion's STL is written again once, to the
+  same bytes, because its recorded recipe is renamed.
 
-* **The OpenSCAD family is a node package, and the core names no
-  technology.** ``OpenScadNode``, the family's leaf base ``ScadLeafNode``,
-  the SCAD writer and the OpenSCAD binary contract are the package
-  ``machinome.node.openscad``, and ``Solid2Node`` is ``machinome.node.solid2``
-  over it, which registers the adoption of SolidPython values with the
-  expression graph when it is imported. The core keeps nameless mechanisms:
-  a leaf declares its kind as one set on the leaf base (``rigid``,
+* **The leaf bases are a declared contract.** ``LeafNode``, ``BrepLeafNode``,
+  ``SheetLeafNode`` and ``FlexibleNode``, each imported from the module that
+  defines it (``machinome.node.leaf``, ``.brep_leaf``, ``.sheet_leaf``,
+  ``.flexible``), are the extension points a node type written outside
+  machinome subclasses, and the API reference documents what each declares.
+  A leaf declares its kind as one set the core reads directly (``rigid``,
   ``flexible``, ``brep``, ``optimize``, ``present``, ``presentation``,
   ``kept_artifacts``, ``generate_stl``, ``base_mesh``,
-  ``declared_markings``), which the core reads directly; the build keeps an
+  ``declared_markings``). The contract is versioned:
+  ``machinome.node.leaf.CONTRACT`` is ``3``, and a class declaring
+  ``leaf_contract`` in its own body is refused when it is created if the
+  numbers differ. A leaf writes an artifact of its own through one call,
+  ``publish_artifact(path, write)``, which stamps, records and replaces it
+  atomically and does nothing when it is current; a node states what decides
+  its artifacts beyond its tracked files as ``source_recipe``, and changing
+  it alone rebuilds them; the external-file identity mixin is public as
+  ``machinome.node.sources.ExternalSourceIdentity``. A loaded ``shape()`` is
+  keyed on its ``.brep``'s observation, so a ``.brep`` replaced under an
+  unchanged source stamp is never served stale. The core no longer decides
+  anything about a node by the spelling of its class name: the refusal
+  raised when OpenSCAD is missing names the node and its own class, ``node
+  housing (FacetedBox) requires the OpenSCAD binary because its STL is
+  rendered from SCAD by OpenSCAD; install OpenSCAD and ensure 'openscad' is
+  on PATH``. Artifacts, source records and identities are unchanged for a
+  node declaring no recipe (ADR-163, ADR-164, ADR-165, ADR-166). Born of a
+  B-rep leaf written outside machinome, reading FreeCAD's files, which
+  imported CadQuery only to cast its shape, evicted a private cache and
+  overrode the core's private currency.
+
+  **Breaking (framework API):** the B-rep leaf base is ``BrepLeafNode`` at
+  ``machinome.node.brep_leaf``, where it was ``ExactLeafNode`` at
+  ``machinome.node.exact_leaf``, and a node's flag is ``brep`` where it was
+  ``exact``. For subclasses of the two specialised bases only, the sheet
+  hooks ``_profile_faces``, ``_lies_on_xy_plane``, ``_extrude`` and
+  ``_write_dxf`` are ``profile_faces``, ``lies_on_xy_plane``, ``extrude`` and
+  ``write_dxf(face, path)``, which writes to the path it is given, and the
+  flexible hooks ``_shape_parameters``, ``_shape_spec``, ``_snapshot_mesh``,
+  ``_snapshot_stl`` and ``_snapshot_shape`` lose their underscore. A leaf
+  whose STL is not current after its materialization is refused naming it,
+  instead of being handed to OpenSCAD.
+
+* **OpenSCAD is one family among the node types.** ``OpenScadNode``, the
+  family's leaf base ``ScadLeafNode`` (``machinome.node.openscad.leaf``), the
+  SCAD writer (``.writer``) and the OpenSCAD binary contract (``.binary``)
+  are the package ``machinome.node.openscad``, and ``Solid2Node`` is
+  ``machinome.node.solid2`` over it, which registers the adoption of
+  SolidPython values with the expression graph when it is imported. The core
+  names no technology: one table of supported node types,
+  ``machinome.node.supported``, is where it names node types, for the node
+  root's refusals, ``import-step`` and the snapshot renderers. A node's
+  presentation is machinome's own description (``present``,
+  ``presentation()``, ``assemble()``), which the family's writer turns into
+  SCAD text, byte for byte the text it was: ``assemble()`` needs neither
+  SolidPython nor the family, and a project of B-rep, STEP or STL parts
+  builds, tests, exports and publishes without them. A build keeps an
   artifact because a node declares it in ``kept_artifacts()``, and removes on
   every build one published as transient, such as the root ``.scad`` an
-  interrupted OpenSCAD snapshot left; one table of supported node types,
-  ``machinome.node.supported``, is where the core names node types, for the
-  node root's refusals, ``import-step`` and the snapshot renderers. ``machinome
-  new`` scaffolds a ``Solid2Node`` where SolidPython is installed, a
-  ``CadQueryNode`` where only CadQuery is, and refuses naming both extras with
-  neither. Every ``.scad``, every node's SCAD text and every document are
-  byte for byte what they were (ADR-177, ADR-178, ADR-179).
+  interrupted OpenSCAD snapshot left. ``machinome new`` scaffolds a
+  ``Solid2Node`` where SolidPython is installed, a ``CadQueryNode`` where only
+  CadQuery is, and refuses naming both extras with neither (ADR-170 to
+  ADR-173, ADR-177, ADR-178, ADR-179).
 
-  **Breaking: ``pip install machinome`` no longer installs SolidPython.**
-  Install ``machinome[solid2]`` for ``Solid2Node`` and ``machinome[openscad]``
-  for ``OpenScadNode`` and the OpenSCAD renderer of ``machinome snapshot``
-  (``machinome[all]`` installs both); without it importing the node type,
-  and ``machinome snapshot`` with its default renderer, refuse naming the
-  extra. **Breaking (framework API):** ``machinome.scad_engine`` and the
-  OpenSCAD package under ``machinome`` are removed with no alias; the SCAD
-  members leave the node and leaf bases for ``ScadLeafNode``; ``as_scad`` is
-  ``present``; ``scad_expression`` is ``closed_expression`` and
-  ``OPENSCAD_FOV`` is ``DEFAULT_FOV``. A leaf whose STL is not current after
-  its materialization is refused naming it instead of being handed to
-  OpenSCAD, so a project leaf that only overrode ``as_scad`` subclasses
-  ``Solid2Node``. The leaf contract is version 3, and a leaf declaring an
-  earlier version is refused. A SolidPython value is an expression only in a process that
-  imported ``machinome.node.solid2``.
+  **Breaking (install):** ``Solid2Node`` needs ``machinome[solid2]``, and
+  ``OpenScadNode`` and the OpenSCAD renderer of ``machinome snapshot``
+  ``machinome[openscad]``; without it importing the node type, and
+  ``machinome snapshot`` with its default renderer, refuse naming the extra.
+  **Breaking (build output):** ``machinome build`` writes the ``.scad`` of an
+  OpenSCAD-family part (a ``Solid2Node``, an ``OpenScadNode``), from which
+  OpenSCAD renders its STL, and no other: not the ``.scad`` of an assembly,
+  of a fusion, of a flexible part or of a B-rep, STEP, STL, JSCAD or sheet
+  part, nor a flexible part's per-pose snapshot STL, and the next build
+  removes those an earlier build left. A machine's SCAD text is
+  ``scad_code(node)`` from ``machinome.node.openscad.writer``, for any node;
+  ``machinome snapshot --renderer openscad`` writes the root's ``.scad`` for
+  the pose it renders only while OpenSCAD draws it. The file of a coloured
+  OpenSCAD-family part declaring ``optimize = False`` is no longer
+  overwritten with its coloured presentation after the render, and a later
+  build, test or export process no longer replaces the ``.scad`` of a
+  current OpenSCAD-family part with an import of its own STL. **Breaking
+  (framework API):** the SCAD members (``scad_file``, ``scad_code``,
+  ``generate_scad``, ``fn``) leave the node and leaf bases for
+  ``ScadLeafNode``; ``as_scad`` is ``present``, and a project leaf that only
+  overrode ``as_scad`` subclasses ``Solid2Node``; ``assemble()``,
+  ``present()`` and ``artifact_import()`` return machinome's presentation
+  description instead of a SolidPython object (render it with the writer's
+  ``scad_text``); ``Rotation.scad()`` and ``Translation.scad()`` are removed,
+  and ``Builder`` no longer takes ``scad_output``; the OpenSCAD binary
+  helpers ``require_openscad``, ``openscad_binary`` and
+  ``OpenScadUnavailable`` are imported from ``machinome.node.openscad.binary``
+  where they were ``machinome.openscad``'s.
 
-* **The mesh engine is a provider, installed by its extra.** manifold3d,
-  which decides every comparison on meshes, is reached only through the
-  mesh engine ``machinome.engine.mesh``, resolved by its seam in
-  ``machinome.engine`` with a versioned contract, and the core calls
-  none of its API, ``assertJoined``'s union of meshes included. Verdicts,
-  refusals and fused meshes are bit for bit what they were.
+* **Symbolic values are machinome's own.** Animation time, driver reads and
+  what ``machinome.math`` returns for them are
+  ``machinome.expression_graph.GraphValue``, a type the core defines, and
+  importing ``machinome.math`` imports no SolidPython. Arithmetic,
+  comparisons, degree math and their text are unchanged, and so is every
+  SCAD file and published document, byte for byte; the expression modules
+  are documented as machinome's expression language. Asking a symbolic value
+  for its truth raises ``SymbolicTruthError``, an ``Exception``, naming it.
+  The animation time a part reads is ``self.time`` inside ``simulate()``.
+  SolidPython's own values (``solid2.get_animation_time()``,
+  ``scad_inline(...)``) are accepted by ``machinome.math``, laws and bounds
+  in a process that imported ``machinome.node.solid2``; with one on the LEFT
+  of an operator, SolidPython builds the result as its own text, which
+  machinome reads back wherever it is used (ADR-170, ADR-171).
 
-  **Breaking: ``pip install machinome`` no longer installs manifold3d.**
-  Install ``machinome[mesh]`` (or ``machinome[all]``) for a project
-  that compares a part without B-rep geometry, runs ``machinome test
-  --mesh``, calls ``assertAssemblySupported``, fuses meshes, or imports
-  manifold3d or calls ``trimesh.boolean`` itself. Without it each of those
-  refuses naming the install line, and ``machinome test`` on the mesh
-  engine refuses at its start, before building anything; an all-B-rep
-  project needs nothing new. The verdict store starts afresh once, and a
-  manifold3d upgrade no longer discards B-rep verdicts (ADR-176).
+  **Breaking (framework API):** ``machinome.scad_expression`` is removed and
+  its names (``get_animation_time``, ``GraphValue``, ...) are imported from
+  ``machinome.expression_graph``; ``scad_expression`` is
+  ``closed_expression`` in ``machinome.core.expressions``, and
+  ``OPENSCAD_FOV`` is ``DEFAULT_FOV``. A SolidPython value is an expression
+  only in a process that imported ``machinome.node.solid2``.
 
 * **Independent production profiles:** bind typed acquisition choices and
   nested maker instructions to the actual existing model, then read BOM,
@@ -123,205 +268,55 @@ Unreleased
   while explicit component requirements govern sourced consolidation.
   Atomic portable exports retain diagnostic gaps and pinned STL/DXF bytes
   and are always draft. A read-only model facade supports actual active
-  children without simulation or a model rewrite (:doc:`/reference/api`).
+  children without simulation or a model rewrite (:doc:`/reference/api`,
+  ADR-174, ADR-175). Born of a mechanical calculator whose printed and
+  bought parts come from one STEP file and whose author's bill of materials
+  states quantities, infill and finishing that geometry cannot.
 
-* **The SCAD presentation is the OpenSCAD engine's:** machinome's node
-  base no longer imports SolidPython. ``assemble()`` composes a
-  description of the node's SCAD presentation (artifact imports, colours,
-  rotations, translations, unions and the geometry an OpenSCAD-family part
-  authored) and the OpenSCAD engine, ``machinome.openscad``, writes the
-  ``.scad`` text from it, byte for byte as before. ``assemble()`` therefore
-  needs neither SolidPython nor the engine, and it writes no file of SCAD:
-  without them a project of B-rep, STEP or STL parts builds, tests,
-  exports and publishes, while asking for SCAD text (``scad_code``,
-  ``generate_scad()``, an OpenSCAD-family part, ``machinome snapshot
-  --renderer openscad``) refuses naming the missing module and its
-  install.
-
-  **Breaking, for OpenSCAD users: a ``.scad`` is written only where
-  machinome reads it.** ``machinome build`` writes the ``.scad`` of an
-  OpenSCAD-family part (a ``Solid2Node``, an ``OpenScadNode``, a part
-  overriding ``as_scad``), from which OpenSCAD renders its STL, and no
-  other: it no longer writes the ``.scad`` of an assembly, of a fusion or
-  of a flexible part (nor of a B-rep, STEP, STL, JSCAD or sheet part, nor
-  a flexible part's per-pose snapshot STL), and the next build removes
-  those an earlier build left in the build directory. A machine's SCAD
-  text is ``node.scad_code``, for any node; ``machinome snapshot
-  --renderer openscad`` writes the root's ``.scad`` for the pose it
-  renders only while OpenSCAD draws it, and removes it afterwards. Every
-  ``.scad`` a build writes is the text OpenSCAD renders the part's STL
-  from, byte for byte what it was, except that the file of a coloured
-  OpenSCAD-family part declaring ``optimize = False`` is no longer
-  overwritten with its coloured presentation after the render. This also
-  fixes a defect: a later build, test or export process no longer replaces
-  the ``.scad`` of a current OpenSCAD-family part with an import of its own
-  STL. Breaking for code
-  outside projects: ``assemble()``, ``as_scad()`` and
-  ``artifact_import()`` return machinome's presentation description
-  instead of a SolidPython object (render it with the engine's
-  ``scad_text``), ``Rotation.scad()`` and ``Translation.scad()`` are
-  removed, and ``Builder`` no longer takes ``scad_output``; no project
-  uses any of them. ``OpenScadUnavailable`` is now a
-  ``machinome.scad_engine.ScadEngineUnavailable`` (ADR-172, ADR-173).
-* **Symbolic values are machinome's own:** animation time, driver reads
-  and what ``machinome.math`` returns for them are
-  ``machinome.expression_graph.GraphValue``, a type the core defines; they
-  no longer derive from SolidPython's ``OpenSCADConstant``, and importing
-  ``machinome.math`` no longer imports SolidPython. Arithmetic,
-  comparisons, degree math and their text are unchanged, and so is every
-  SCAD file and published document, byte for byte. SolidPython's own
-  values (``solid2.get_animation_time()``, ``scad_inline(...)``) are still
-  accepted by ``machinome.math``, laws and bounds, read by the OpenSCAD
-  engine, now the package ``machinome.openscad``; with a SolidPython value
-  on the LEFT of an operator, SolidPython builds the result as its own
-  text, which machinome reads back wherever it is used. Asking a symbolic
-  value for its truth raises ``SymbolicTruthError`` naming it, where
-  SolidPython raised a bare ``Exception``. Breaking:
-  ``machinome.scad_expression`` is removed and its names
-  (``get_animation_time``, ``GraphValue``, ...) are imported from
-  ``machinome.expression_graph``; the OpenSCAD binary helpers
-  ``require_openscad``, ``openscad_binary`` and ``OpenScadUnavailable``
-  are imported from ``machinome.openscad.binary`` (ADR-170, ADR-171).
-* **The CAD kernels are extras, and each leaf has its final address:**
-  every leaf type is one module directly under ``machinome.node``, named
-  for its technology: ``machinome.node.cadquery``, ``.build123d`` (which
-  holds ``Build123dSheetNode`` too, and the reducer of ``Svg`` artwork),
-  ``.step`` (``StepNode``, ``StepAssembly``, ``solids_from_faces``,
-  ``cached_document``), ``.molejo``, ``.solid2``, ``.openscad``, ``.jscad``
-  and ``.stl``, each class imported from its module (the root of
-  ``machinome.node`` exports nothing; see the first entry). Breaking: ``machinome.node.adapters`` is
-  dissolved, and importing anything under it fails at the import line
-  naming the rule, ``machinome.node.adapters.<x>`` is now
-  ``machinome.node.<x>``; for example ``from machinome.node.adapters.step
-  import StepAssembly`` becomes ``from machinome.node.step import
-  StepAssembly``. Breaking for installation: a bare ``pip install
-  machinome`` carries no CAD kernel. The extras ``cadquery``,
-  ``build123d``, ``step``, ``molejo``, ``brep``, ``mesh`` and ``all``
-  install them,
-  each named by the last component of the module that needs it, and
-  without its extra a module refuses at import with its install line:
-  ``machinome.node.cadquery (CadQueryNode) needs cadquery, which is not
-  installed; install it with 'pip install "machinome[cadquery]"'``, the
-  same through ``from machinome.node.cadquery import CadQueryNode``. ``machinome
-  import-step`` without the ``step`` extra answers ``Error: machinome
-  import-step needs the step extra: ...`` and exits 1, and is still listed
-  by ``machinome -h``. Declaring a marking needs no kernel; building a
-  stale ``Svg`` marking needs ``machinome[build123d]`` and without it is
-  refused naming the part, the marking and the artwork. A project with its
-  extras installed sees no change, and no artifact byte changes; a node
-  whose class is one of the leaf classes itself, rather than a project's
-  subclass, rebuilds once, because its module is part of its recipe
-  (ADR-167, ADR-168, ADR-169).
-* **No node type is recognised by its class name:** the core no longer
-  decides anything about a node by the spelling of its class name, or of
-  any class it derives from. The one place it did, the refusal raised when
-  a node's STL must be rendered by OpenSCAD and ``openscad`` is not on the
-  PATH, now names the node and its own class and says why: ``node housing
-  (Solid2Node backend) requires the OpenSCAD binary because its backend
-  renders this STL through OpenSCAD; ...`` is now ``node housing
-  (FacetedBox) requires the OpenSCAD binary because its STL is rendered
-  from SCAD by OpenSCAD; install OpenSCAD and ensure 'openscad' is on
-  PATH``. A leaf written outside machinome and presented as SCAD is
-  reported in the same words, with its own name and class, where it used
-  to have its own class called a backend. When OpenSCAD is checked and
-  launched is unchanged, and no build behaviour, artifact, record or
-  identity changes (ADR-166).
-* **The leaf bases are a declared contract:** ``LeafNode``,
-  ``BrepLeafNode``, ``SheetLeafNode`` and ``FlexibleNode``, each imported
-  from the module that defines it (``machinome.node.leaf``,
-  ``.brep_leaf``, ``.sheet_leaf``, ``.flexible``), are the extension
-  points a node type written outside machinome subclasses, and the API
-  reference documents what each declares. The contract is versioned:
-  ``machinome.node.leaf.CONTRACT`` is ``3``, and a class declaring
-  ``leaf_contract`` in its own body is refused when it is created if the
-  numbers differ. A leaf writes an artifact of its own through one call,
-  ``publish_artifact(path, write)``, which stamps, records and replaces it
-  atomically and does nothing when it is current; a node states what
-  decides its artifacts beyond its tracked files as ``source_recipe``, and
-  changing it alone rebuilds them; the external-file identity mixin is
-  public as ``machinome.node.sources.ExternalSourceIdentity``. A loaded
-  ``shape()`` is now keyed on its ``.brep``'s observation, so a ``.brep``
-  replaced under an unchanged source stamp is never served stale and no
-  subclass evicts anything. Breaking, for subclasses of the two
-  specialised bases only: the sheet hooks ``_profile_faces``,
-  ``_lies_on_xy_plane``, ``_extrude`` and ``_write_dxf`` are now
-  ``profile_faces``, ``lies_on_xy_plane``, ``extrude`` and
-  ``write_dxf(face, path)``, which writes to the path it is given, and the
-  flexible hooks ``_shape_parameters``, ``_shape_spec``,
-  ``_snapshot_mesh``, ``_snapshot_stl`` and ``_snapshot_shape`` lose their
-  underscore. Artifacts, source records and identities are unchanged for a
-  node declaring no recipe (ADR-163, ADR-164, ADR-165). Born of
-  machinome-freecad's B-rep leaf, which imported CadQuery only to cast its
-  shape, evicted a private cache when its native recipe replaced a BREP,
-  overrode the core's private currency, and pinned a machinome release
-  that could not see the contract it depended on change.
-* **B-rep geometry is the B-rep engine's:** every operation on a B-rep
-  shape now lives in one module, ``machinome.engine.brep``, written on the
-  OCCT kernel alone with no CadQuery, and the core reaches it through its
-  seam in ``machinome.engine``, only on the paths that do B-rep work: a
-  model with no B-rep part never loads it, and a part whose artifacts are
-  current is reused without it. ``machinome.exact`` is removed. Its
-  operations a project calls directly, ``intersect_shapes``,
-  ``fuse_shapes``, ``placed_shape``, ``solid_count`` and ``solid_volume``,
-  are imported from ``machinome.engine.brep`` under the same names and
-  signatures, and the errors ``BrepCommonInconsistency`` and
-  ``BrepCommonVerificationError`` from ``machinome.engine``. ``shape()`` and those operations now
-  return the kernel's own ``TopoDS_Shape`` rather than a CadQuery
-  ``Shape``; a project that calls CadQuery's methods on one wraps it,
-  ``cadquery.Shape.cast(node.shape())``. A B-rep part may render the
-  kernel's shape directly and build, fuse and test without CadQuery or
-  build123d. BREP and STL artifacts are byte-for-byte unchanged, and every
-  verdict is the same; the verdict store starts afresh once. A missing
-  engine is refused naming ``pip install "machinome[brep]"``, and the
-  ``brep`` extra is declared (ADR-160, ADR-161, ADR-162). Born of
-  machinome-freecad's B-rep leaf, which reads a FreeCAD BREP into the
-  kernel's shape and had to import CadQuery only to cast it.
 * **Verdicts kept between runs:** a second ``machinome test`` of an
   unchanged project is served every intersection verdict the first one
-  decided, without running a boolean. Verdicts are kept in the build
-  root's ``.verdicts`` directory, shared by every declared model, and are
-  identified by state, never by a path or a time: the content of each
-  rigid part's artifact, a flexible part's bound values and
-  specification, and the pair's quantised relative placement. A flexible
-  pair is now remembered within a run as well, where before it was
-  computed at every ask. Each verdict is bound to the framework's source,
-  the installed kernels and molejo, and the platform, so an upgrade
-  starts the store afresh; no verdict changes, and a damaged or
-  unwritable store is ignored. The store is on by default and silent;
-  ``--no-verdict-store`` or ``SOLID_TEST_VERDICT_STORE=off`` runs without
-  it and says so on the summary line, and deleting ``.verdicts`` is always
-  safe (:ref:`verdict-store`, ADR-156). Born of a 3D-printed wall clock
-  whose 22 tests took 1255.9 s in a fresh process and now take 27.8 s in
-  the next one, with the same 16 passed and 6 failed, and of a Strandbeest
-  walking demo, 163.5 s then 10.6 s.
-* **A project reached through a symbolic link builds in its own build
-  root:** a node whose module was imported through a path containing a
-  symbolic link, such as a symlinked ``PYTHONPATH``, measured its build
-  directory from the link to the project's resolved root and landed
-  outside the build root, or failed to create it. A node's source is now
-  taken as a resolved path, like the project root and every tracked
-  source, so both spellings of a project share one build directory and
-  what is built through one is current through the other. Born of
-  filming the clocked Curta, whose ``Sim`` raised ``PermissionError`` on
-  ``/mnt/home`` when the project was reached through the workspace's
-  symlinked ``projects/`` directory.
+  decided, without running a boolean. Verdicts are kept in the build root's
+  ``.verdicts`` directory, shared by every declared model, and are
+  identified by state, never by a path or a time: the content of each rigid
+  part's artifact, a flexible part's bound values and specification, and
+  the pair's quantised relative placement. A flexible pair is now remembered
+  within a run as well. Each verdict is bound to the framework's source, the
+  installed kernels and molejo, and the platform, so an upgrade starts the
+  store afresh; no verdict changes, and a damaged or unwritable store is
+  ignored. The store is on by default and silent; ``--no-verdict-store`` or
+  ``SOLID_TEST_VERDICT_STORE=off`` runs without it and says so on the summary
+  line, and deleting ``.verdicts`` is always safe (:ref:`verdict-store`,
+  ADR-156). Born of a 3D-printed wall clock whose tests took minutes in
+  every fresh process and take seconds in the next one, with the same
+  results, and of a walking linkage's demo, likewise.
+
+* **An export records its revision:** when the project is a Git repository
+  with a commit, ``machinome export`` writes a ``source`` object into
+  ``manifest.json``, the full hash of the commit checked out and ``dirty``,
+  true when ``git status`` lists a changed tracked file or an untracked file
+  the project does not ignore. A dirty project is exported all the same.
+  Outside a repository, or without ``git``, the manifest is unchanged; the
+  record moves no document version and a viewer needs nothing new
+  (:doc:`/concepts/publishing`, ADR-158). Born of filming a mechanical
+  calculator, whose film is held to the model it shows by that revision.
+
 * **A clocked simulation names its machine:** ``sim.identity`` is the
   machine's identity, the string an export of the same model carries as
-  ``clocked.identity``, whatever the bank holds, so a recording made
-  through ``Sim`` can be refused against an export whose machine differs;
-  a ``Sim`` that is not clocked refuses it by name
-  (:doc:`/reference/api`). Born of a film of a clocked calculator whose
-  take could read the identity only from a private attribute.
-* **An export records its revision:** when the project is a Git
-  repository with a commit, ``machinome export`` writes a ``source``
-  object into ``manifest.json``, the full hash of the commit checked out
-  and ``dirty``, true when ``git status`` lists a changed tracked file or
-  an untracked file the project does not ignore. A dirty project is
-  exported all the same. Outside a repository, or without ``git``, the
-  manifest is unchanged; the record moves no document version and a
-  viewer needs nothing new (:doc:`/concepts/publishing`, ADR-158). Born of
-  filming a mechanical calculator, whose film is held to the model it
-  shows by that revision and had to write it beside the export by hand.
+  ``clocked.identity``, whatever the bank holds, so a recording made through
+  ``Sim`` can be refused against an export whose machine differs; a ``Sim``
+  that is not clocked refuses it by name (:doc:`/reference/api`). Born of a
+  film of a clocked calculator whose take could read the identity only from
+  a private attribute.
+
+* **Correction:** a project reached through a symbolic link builds in its
+  own build root. A node whose module was imported through a path containing
+  a symbolic link, such as a symlinked ``PYTHONPATH``, measured its build
+  directory from the link to the project's resolved root and landed outside
+  the build root, or failed to create it. A node's source is now taken as a
+  resolved path, like the project root and every tracked source, so both
+  spellings of a project share one build directory and what is built through
+  one is current through the other. Found while filming a clocked
+  calculator reached through a linked directory.
 
 Machinome 0.7.1
 ---------------
@@ -603,6 +598,7 @@ constructor-based models and direct transforms remain supported.
 .. toctree::
    :maxdepth: 1
 
+   ../releases/release-0.8
    ../releases/release-0.7
 
 Releases below retain the names used when they were published.
@@ -943,8 +939,7 @@ Released on 20/Jul/2026
 
 * Migrated packaging to ``pyproject.toml`` and ensured compiled frontend assets
   ship in wheels.
-* Relicensed the project from AGPL-3.0 to Apache-2.0, with updated attribution
-  and NOTICE.
+* Relicensed the project, with updated attribution and NOTICE.
 * Added comprehensive API, CLI, tutorial, testing, embedding, and architecture
   documentation.
 * Removed obsolete CI configuration and refreshed contributor guidance.

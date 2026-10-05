@@ -44,14 +44,12 @@ CERN-OHL-S-2.0-or-later, at the recipient's choice**.
   test holds it to `conf.py`. The viewer stays a separate
   AGPL-3.0-or-later package. `machinome-mechanics` is described without
   stating its licence, on the sibling manuals page and in
-  `docs/architecture.md`; its own manual states it. The licence is stated as the current fact and
-  nothing more: no earlier licence is named anywhere this change writes,
-  no "was" or "formerly", no position on derivative works, no exception
-  text, no compatibility claim, no reason. The changelog reads as if it
-  had never carried another licence: its one older sentence naming an
-  earlier licence (in the 0.4 section's packaging list) is rewritten
-  minimally to name none, the one edit this change makes to an older
-  changelog section.
+  `docs/architecture.md`; its own manual states it. The licence is stated
+  as the current fact and nothing more: no comparison with any other
+  licence, no position on derivative works, no exception, no reason. A
+  page spells no licence identifier but the viewer's, and the framework's
+  reaches a page only through the one fact in `docs/conf.py`, matched by
+  `README.rst`.
 - **The licence instruments are not this change's.** `LICENSE`, `NOTICE`,
   `pyproject.toml`'s `license` field and classifiers, every
   `SPDX-License-Identifier` header (under `machinome/`, `tests/`, `tools/`
@@ -120,8 +118,9 @@ None.
 
 `pyproject.toml` (version only), `setup.cfg`, `machinome/__init__.py`,
 `machinome/vet/universe.toml`, `docs/conf.py` (release block),
-`docs/project/changelog.rst` (the 0.8.0 section, and one sentence of
-the 0.4 section), `docs/project/status.rst`,
+`docs/project/changelog.rst` (the 0.8.0 section; the 0.4 packaging line
+now reads "Relicensed the project, with updated attribution and NOTICE."),
+`docs/project/status.rst`,
 `docs/project/upgrading.rst`, `docs/releases/release-0.8.rst` (new),
 `docs/start/install.rst`, `docs/why.rst`, `docs/reference/manuals.rst`
 (the mechanics entry), `docs/architecture.md` (the framework's licence

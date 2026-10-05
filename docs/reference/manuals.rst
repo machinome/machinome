@@ -18,8 +18,8 @@ subject; this one links rather than restates.
     indexed advance, linear deltas, planar linkages, rolling motion and
     belts, each stating its frame, its zero and its sign, with a worked
     relation law. The package is ``machinome-mechanics``
-    |mechanics_version|, Apache-2.0, installed through the ``mechanics``
-    extra and imported from ``machinome_mechanics``.
+    |mechanics_version|, installed through the ``mechanics`` extra and
+    imported from ``machinome_mechanics``.
 
 `machinome.org <https://machinome.org/>`_
     The site of the whole ecosystem. Its Foundry shows simulations of

@@ -56,7 +56,8 @@ from one profile, or use a molejo shape for a flexible spring, belt or
 cable. A RepRap printer on machinome.org's Foundry reads its original
 OpenSCAD parts in place.
 
-A project may use one of these throughout or combine several. Machinome
+A project may use one of these throughout or combine several, and
+installs the extra of each kind it uses (:doc:`start/install`). Machinome
 adds the shared structure, relationships and operating behaviour around
 those parts.
 
@@ -83,9 +84,9 @@ lets a reader operate a running or a remembering machine in the browser.
 Exports carry the model to a static web page; readers inspect its parts
 and operate its inputs without installing a CAD stack.
 
-The framework is licensed GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
-recipient's choice. The independent browser viewer is
-AGPL-3.0-or-later, and example designs retain their own licences. Publishing
+The framework is licensed |framework_licence|, at the recipient's
+choice. The independent browser viewer is AGPL-3.0-or-later, and example
+designs retain their own licences. Publishing
 a design's source keeps its dimensions, relationships and tests available
 to the next person who needs to repair or adapt it.
 

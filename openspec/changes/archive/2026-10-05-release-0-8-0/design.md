@@ -41,8 +41,8 @@ What differs from 0.7.1:
 - The changelog tells a maker what 0.8 gives, in families, describing the
   code at 0.8.0, with no project named.
 - The tests refuse the state being fixed: a version file left behind, an
-  `Unreleased` section, an earlier licence named on a page or the
-  README, a README licence line disagreeing with `conf.py`.
+  `Unreleased` section, a licence identifier other than the viewer's
+  spelled on a page, a README licence line disagreeing with `conf.py`.
 
 **Non-Goals:**
 - No source change, no document version, no behaviour change.
@@ -78,25 +78,21 @@ What differs from 0.7.1:
    `|framework_licence|`; `ReleaseFactsTest.test_facts_are_substitutions`
    gains the name. `README.rst` is not built by Sphinx and states the words
    literally; a test reads `conf.py`'s value and requires it in the README.
-   The pilot's ruling: the former licence is never named in anything this
-   change writes, the tests' code included. The licence is the current
-   fact and nothing more: no "was", "formerly" or "up to 0.7.1", no
-   exception text, no derivative-work position, no compatibility claim, no
-   reason. The pin names no licence but the two it admits: every `.rst`
+   The licence is stated as the current fact and nothing more: no
+   comparison with any other licence, no position on derivative works, no
+   exception, no reason. The pin names no licence but the two it admits,
+   in the tests' code as on the pages: every `.rst`
    page under `docs/` outside `docs/releases/` spells no licence
    identifier literally (a token of the shape
    `[A-Z][A-Za-z]*(-[A-Z]+)*-\d+\.\d+(-or-later|-only|\+)?`) except the
    viewer's `AGPL-3.0-or-later`, so the framework's licence reaches a page
    only through `|framework_licence|`; `README.rst` spells no identifier
    but `AGPL-3.0-or-later` and the exact words of `conf.py`'s
-   `framework_licence`. On the bench the only identifiers on pages are
-   those two and the one being removed, so the pin is exact. The changelog
-   is not exempt: its one older sentence naming an earlier licence (the
-   v0.4.0 section's packaging list) becomes "Relicensed the project, with
-   updated attribution and NOTICE.", the one edit to an older section.
-   The sibling manuals page and `docs/architecture.md` describe
-   `machinome-mechanics` without its licence (the pilot's ruling; its own
-   manual states it). Alternative rejected for the framework's own
+   `framework_licence`. The changelog is a page like the others; its 0.4
+   packaging line now reads "Relicensed the project, with updated
+   attribution and NOTICE.". The sibling manuals page and
+   `docs/architecture.md` describe `machinome-mechanics` without its
+   licence; its own manual states it. Alternative rejected for the framework's own
    licence: a literal on each page pinned by a test, which would make the
    licence commit's author edit five pages.
 

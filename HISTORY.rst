@@ -2,17 +2,81 @@
 History
 =======
 
-Unreleased
-----------
+Machinome 0.8.0 (2026-10-05)
+----------------------------
 
-* **Machinome is GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
-  recipient's choice.** Every release up to 0.7.1 is Apache-2.0; from here
-  the framework is relicensed, with the consent of all contributors, under
-  the GNU General Public License version 2 or any later version, or the
-  CERN Open Hardware Licence Version 2 - Strongly Reciprocal version 2.0 or
-  any later version, so that a design under CERN-OHL-S can use the
-  framework under its own licence. Contributions are accepted under both.
-  Decided by the pilot on 4 October 2026.
+**A lean core.** The first layer of the lean-core campaign
+(``workflow/ongoing/lean-core.md``): the architecture of the package split
+built inside one repository and one distribution, before any package is
+cut. A bare install is the core alone, every name has one address, the two
+comparison engines are named for what they consume, and OpenSCAD is one
+node family among the others. From this release Machinome is licensed
+GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the recipient's choice.
+Nothing in the published document moves: exports declare document versions
+1 to 13. Each item names the archived OpenSpec change that carries its
+evidence.
+
+* **A decided verdict OUTLIVES the run (ADR-156).** A 3D-printed wall
+  clock's 22 tests took 1255.9 s in every fresh process because each run
+  recomputed the same booleans; verdicts are kept under the build root,
+  keyed on the state of the parts, and the next run takes 27.8 s with the
+  same results. Change ``persistent-verdict-memo``.
+* **An export RECORDS the revision it was made from (ADR-158).** A film of
+  a mechanical calculator is held to the model it shows; the manifest
+  gains an additive ``source`` record. Change
+  ``export-records-its-revision``.
+* **A clocked simulation NAMES its machine.** The same film's take read
+  the clocked identity from a private attribute; ``sim.identity`` is
+  public. Change ``sim-identity``; no ADR.
+* **A project reached through a symbolic link BUILDS in its own build
+  root.** The same calculator, reached through a linked directory, built
+  outside its build root; a node's source is a resolved path. Change
+  ``sim-through-a-symlink``; no ADR.
+* **The B-rep engine's currency is the KERNEL'S OWN SHAPE, and the core
+  holds no kernel code (ADR-160, ADR-161, ADR-162).** A B-rep leaf written
+  outside machinome, reading FreeCAD's files, imported CadQuery only to
+  cast its shape; the engine works on OCCT alone behind a versioned seam,
+  and ``machinome.exact`` goes. Change ``exact-engine``.
+* **The leaf bases are a DECLARED, VERSIONED contract (ADR-163, ADR-164,
+  ADR-165).** The same leaf evicted a private cache and overrode the
+  core's private currency; ``publish_artifact``, ``source_recipe``, the
+  observation-keyed shape cache and ``leaf_contract`` replace every reach.
+  Change ``leaf-contract``.
+* **The core recognises NO node type by its class name (ADR-166).** A
+  leaf outside the core was described as its own "backend"; the refusal
+  names the node and its class. Change ``backend-switch``.
+* **A kernel is an EXTRA, and each leaf type one module under the node
+  package (ADR-167, ADR-168, ADR-169).** A project on one
+  front end installed two it never used, about 5.5 s of import cost, and
+  the pinned pair blocked both upgrades; the adapters package is
+  dissolved. Change ``lean-install``.
+* **The core's symbolic value is its OWN TYPE (ADR-170, ADR-171).** Five
+  core modules imported SolidPython for an expression and nothing else.
+  Change ``expression-type``.
+* **SCAD is a PRESENTATION the core describes, written only where it is
+  read (ADR-172, ADR-173).** A build no longer writes the ``.scad`` of an
+  assembly, a fusion or a flexible part. Change ``scad-presentation``.
+* **Production is an INDEPENDENT, nested, lazy asset over a read-only model
+  (ADR-174, ADR-175).** A mechanical calculator's printed and bought parts
+  come from one STEP file, and its author's bill of materials states
+  quantities, infill and finishing geometry cannot. Change
+  ``production-layer``.
+* **The mesh engine is a PROVIDER installed by an extra (ADR-176).** The
+  core called manifold3d's API from the test framework and fusion; it now
+  asks the engine. Change ``mesh-engine``.
+* **The OpenSCAD family is a NODE PACKAGE, and the core names no technology
+  (ADR-177, ADR-178, ADR-179).** Two earlier cycles had put SCAD writing
+  behind a seam while fifteen core modules still presented, named and
+  swept SCAD; an acceptance scan finds ``scad`` only in the family. Change
+  ``openscad-out``.
+* **The engines are named for the REPRESENTATION each consumes (ADR-180).**
+  ``brep`` and ``mesh`` replace a claim ("exact") and a quality
+  ("faceted") in every address, flag, extra and value. Change
+  ``brep-mesh``.
+* **The node package's root EXPORTS NOTHING (ADR-181).** Every name is
+  imported from its module; the root refuses each of its former twenty-one
+  names naming the line to write. Change ``root-cleanup``.
+* **The release is RECORDED.** Change ``release-0-8-0``.
 
 Machinome 0.7.1 (2026-09-27)
 ----------------------------

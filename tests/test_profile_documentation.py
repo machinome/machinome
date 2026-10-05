@@ -1,5 +1,6 @@
 """Finite profile contact is documented as part of the 0.7.0 release."""
 
+import re
 import unittest
 from pathlib import Path
 
@@ -42,7 +43,10 @@ class ProfileDocumentationTest(unittest.TestCase):
         self.assertIn('compatible child replacement', released)
         self.assertIn('adr-144', history.split('0.6.0 (')[0])
         self.assertIn('adr-146', history.split('0.6.0 (')[0])
-        self.assertIn("viewer_api = '27'", conf)
+        # Profile contact and two Turn handles on one part arrived with
+        # viewer API 27; a later matching viewer keeps them.
+        api = re.search(r"^viewer_api = '(\d+)'", conf, flags=re.M)[1]
+        self.assertGreaterEqual(int(api), 27)
         self.assertIn("document_versions = '1 to 13'", conf)
 
 

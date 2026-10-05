@@ -15,20 +15,18 @@ licence; a page SHALL state each through its substitution
 `|document_versions|`, `|mechanics_version|`, `|framework_licence|`),
 never as a literal.
 
-From 0.8.0 the framework's licence SHALL be stated as GPL-2.0-or-later
-or CERN-OHL-S-2.0-or-later, at the recipient's choice, as the current
-fact and nothing more: no page or record SHALL name an earlier licence of
-the framework or compare with one, or state a position on derivative
-works, an exception, a compatibility claim or a reason. Every manual page that states the
-framework's licence SHALL use `|framework_licence|`, the only way the
-framework's licence reaches a page. No `.rst` page under `docs/` other
-than the historical release notes under `docs/releases/` SHALL spell a
-licence identifier literally, the one exception being the viewer's
-`AGPL-3.0-or-later`; `README.rst` SHALL spell no licence identifier but
-`AGPL-3.0-or-later` and the exact words of `docs/conf.py`'s
-`framework_licence`, which it SHALL state. The changelog SHALL read as if
-it had never carried another licence. The browser viewer SHALL still be
-stated as the separate AGPL-3.0-or-later package.
+The framework's licence SHALL be stated as GPL-2.0-or-later or
+CERN-OHL-S-2.0-or-later, at the recipient's choice, as the current fact
+and nothing more: no comparison with any other licence, no position on
+derivative works, no exception and no reason. The framework's licence
+SHALL reach a page only through the one fact in `docs/conf.py`,
+`|framework_licence|`, and `README.rst` SHALL state the same words. No
+`.rst` page under `docs/` other than the historical release notes under
+`docs/releases/` SHALL spell a licence identifier literally but the
+viewer's `AGPL-3.0-or-later`; `README.rst` SHALL spell no licence
+identifier but `AGPL-3.0-or-later` and the exact words of `docs/conf.py`'s
+`framework_licence`. The browser viewer SHALL be stated as the separate
+AGPL-3.0-or-later package.
 
 The changelog's first release section SHALL be `Machinome 0.8.0`, dated
 `Released on 05/Oct/2026`, with no `Unreleased` section; it SHALL open

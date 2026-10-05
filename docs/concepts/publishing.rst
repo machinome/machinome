@@ -197,4 +197,5 @@ image is the untimed rest pose at those driver values; a state carrying
 history is not posed from the command line. Neither renderer falls back
 to the other. The OpenSCAD renderer writes the root's ``.scad`` for the
 pose it renders, has OpenSCAD draw it, and removes it; the web renderer
-reads no SCAD. A machine's SCAD text, for any node, is its ``scad_code``.
+reads no SCAD. A machine's SCAD text, for any node, is ``scad_code(node)``
+from ``machinome.node.openscad.writer``, with the ``openscad`` extra.

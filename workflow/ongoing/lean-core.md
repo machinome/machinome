@@ -1622,3 +1622,8 @@ machinome/manifold machinome/openscad` once (the deleted packages'
 `__pycache__`); the primary `machinome/` takes the line when the pilot
 merges it into main. Deferred past 0.8 by the pilot: the viewer seam
 (`viewer-seam` above), with ADR-179's provisional column shipping.
+
+The line was merged into framework `main` as **3435b35** on 5 October 2026,
+a merge rather than a fast-forward, because `main` had taken three
+workflow-only commits since the fork (86a654e, d1efb70, 9fb85e2). The
+release state of Machinome 0.8.0 is the OpenSpec change `release-0-8-0`.

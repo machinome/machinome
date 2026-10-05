@@ -37,6 +37,15 @@ ALLOWED_CAVEATS = ('project/status.rst', 'releases/')
 # describes is licensed version-3-only, so the spelling is a stale fact.
 STALE_GRANT = 'AGPL-3.0-only'
 
+# A licence identifier as an SPDX expression spells it: a capitalised name,
+# capitalised parts, a version, and a suffix (change `release-0-8-0`). The
+# framework's licence reaches a page only through |framework_licence|, so
+# the one identifier a page may spell is the viewer's, and the README, which
+# Sphinx does not build, states the framework's in conf.py's own words.
+LICENCE_IDENTIFIER = re.compile(
+    r'(?<![\w.-])[A-Z][A-Za-z]*(?:-[A-Z]+)*-\d+\.\d+(?:-or-later|-only|\+)?')
+VIEWER_LICENCE = 'AGPL-3.0-or-later'
+
 # The real machines are shown on machinome.org; the examples page sends the
 # reader there and the manual pins no example repository.
 SITE_FOUNDRY = 'https://machinome.org/foundry/'
@@ -119,9 +128,10 @@ class KernelExtrasTest(unittest.TestCase):
              'machinome.node.adapters') + FORMER
 
     #: The changelog records the dissolution and the released names, and
-    #: the upgrading page maps every former name to its new one.
+    #: the upgrading page maps every former name to its new one, the
+    #: dissolved adapters' addresses included (change `release-0-8-0`).
     RECORDS = {'project/changelog.rst': ('machinome.node.adapters',) + FORMER,
-               'project/upgrading.rst': FORMER}
+               'project/upgrading.rst': ('machinome.node.adapters',) + FORMER}
 
     def test_the_installation_page_names_every_kernel_extra(self):
         page = (DOCS / 'start' / 'install.rst').read_text()
@@ -140,12 +150,18 @@ class KernelExtrasTest(unittest.TestCase):
                     self.assertNotIn(stale, text)
 
 
+def conf_value(name):
+    conf = (DOCS / 'conf.py').read_text()
+    return re.search(rf"^{name} = '([^']*)'", conf, flags=re.M)[1]
+
+
 class ReleaseFactsTest(unittest.TestCase):
 
     def test_facts_are_substitutions(self):
         conf = (DOCS / 'conf.py').read_text()
         for name in ('release_date', 'viewer_version', 'viewer_api',
-                     'document_versions', 'mechanics_version'):
+                     'document_versions', 'mechanics_version',
+                     'framework_licence'):
             with self.subTest(name=name):
                 self.assertIn(f'|{name}|', conf)
 
@@ -158,6 +174,32 @@ class ReleaseFactsTest(unittest.TestCase):
                 if found is not None:
                     self.fail(f'{relative} says {found.group(0)!r}; '
                               'publication state belongs on the status page')
+
+
+class LicenceFactTest(unittest.TestCase):
+    """The framework's licence is one release fact, stated as it is now
+    (change `release-0-8-0`): a page states it through |framework_licence|
+    and spells no licence identifier but the viewer's; the release notes
+    under `docs/releases/` are history and are not read."""
+
+    def test_no_page_spells_a_licence_but_the_viewers(self):
+        for relative, text in documents():
+            if relative.startswith('releases/'):
+                continue
+            with self.subTest(document=relative):
+                spelled = set(LICENCE_IDENTIFIER.findall(text)) - {VIEWER_LICENCE}
+                self.assertEqual(spelled, set(),
+                                 f'{relative} spells a licence literally; '
+                                 'the framework\'s is |framework_licence|')
+
+    def test_the_readme_states_the_framework_licence_of_conf(self):
+        licence = conf_value('framework_licence')
+        readme = ' '.join((REPO / 'README.rst').read_text().split())
+        self.assertTrue(licence in readme,
+                        f'README.rst does not state {licence!r}')
+        admitted = {VIEWER_LICENCE, *LICENCE_IDENTIFIER.findall(licence)}
+        self.assertEqual(set(LICENCE_IDENTIFIER.findall(readme)) - admitted,
+                         set())
 
 
 if __name__ == '__main__':
