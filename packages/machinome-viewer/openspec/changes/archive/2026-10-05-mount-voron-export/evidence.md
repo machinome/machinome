@@ -1,15 +1,19 @@
-# Voron-2 mounting investigation — planning evidence
+# Voron-2 mounting investigation — planning and implementation evidence
 
-Status: parent-reviewed planning, 5 October 2026, under the pilot's advance
-authorization. This file records pre-implementation diagnostics and partial
-application with a new red browser gate, not browser acceptance. Baseline sync, archive and integration remain gated
-on implementation and actual Voron adversarial review.
+Status: implementation and viewer/document acceptance completed, with parent
+adversarial-review task 4.3 accepted on 5 October 2026 in `parent-review.md`.
+Earlier planning/red records below remain historical evidence. Final results
+are recorded in the last replay section and retained under `acceptance/`.
+ADR amendment text and Proposed ADR-078 are drafted for parent text review;
+baseline sync, archive, implementation commit and integration remain on hold. A separate
+project-owned intended CoreXY geometry mismatch remains unresolved; successful
+document-language parity does not resolve it.
 
 ## Inputs and ownership
 
 - Viewer source: clean main `5838b97e1e1c10bf468d2f3a40a0c86a0a4448b7`.
 - Viewer worktree: `/home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export`, branch `mount-voron-export`, same base.
-- Project root: `/mnt/data/machinome-projects/3D-Printers/Voron-2`, `Voron2.4`; pinned export content inspected while clean at `a67893b88cd05e58eaa88bbf381455144f65117f`. Current HEAD is `52a9ad17439556648f7a3ab638e065137ad6d37d`, changing authority documentation only; subsequent unrelated project proposal files are owned by their separate cycle.
+- Project root: `/mnt/data/machinome-projects/3D-Printers/Voron-2`, `Voron2.4`; pinned export content inspected while clean at `a67893b88cd05e58eaa88bbf381455144f65117f`. The historical proposal-time HEAD was `52a9ad17439556648f7a3ab638e065137ad6d37d`, changing authority documentation only; later project commits and unrelated proposal files belong to their separate cycles. The acceptance source is the frozen export's file hashes, not a claim that this remains the current project HEAD.
 - Original portable export: `_build_resume_main_browser_export`, version 4; 232,347 bindings, 1,636 nodes, 1,565 model paths. Manifest approximately 26 MB.
 - Manifest SHA256: `e9fee11746ff36a1f585f24a3db154b472a207bfc83db00e183ebdc96f2cb0c7`.
 - Exported bundle SHA256: `a009e0ff0cbe320eb02869ef0553a19b4ad314e1acf608ae1edf76835aaea478`.
@@ -21,11 +25,12 @@ mounted printer or screenshot was obtained. The record identifies source framewo
 `d22d0a1` and viewer `ccc05a6`; the later viewer base adds documentation only.
 Existing document replay checks do not establish browser success.
 
-Current authority: the pilot approved propose/apply through parent review, then
+Authority: the pilot approved propose/apply through parent review, then
 local rebase/merge of verified fixes after actual Voron adversarial review and
-spec sync/archive. No pushing, publication or issues are authorized. This proposer
-stops at uncommitted planning; the parent reviews and commits it before a different
-agent applies.
+spec sync/archive. No pushing, publication or issues are authorized. At the
+proposal checkpoint, the proposer stopped at uncommitted planning for parent
+review/commit before different-agent application. The current document handoff
+stops before parent-owned baseline sync/archive/implementation commit.
 
 ## Bounded scratch experiments
 
@@ -356,3 +361,257 @@ use `scoped` with a 12-second bound and `memo`/`memo-evaluate` with 25-second
 bounds. This scratch memo is confined to one protected validation. Its
 module-level set has no cross-document/generation guard and must not be copied
 into product code. No browser or model resources are involved in these experiments.
+
+## Final application — historical handoff before parent review
+
+Application resumed only after the parent-reviewed geometry-loading amendment
+commit `66984ab7de224c57b0555ff57e3ee21f9dd8a5f1`. Production code remains
+uncommitted in the isolated worktree. The finite expression trigger is still
+125,000; there is no asynchronous expression scope, persistent negative-profile
+cache, new public loader option, retry, permanent STL cache or producer rewrite.
+
+The private geometry admission module shares four FIFO distinct-URL groups
+across the bundle/page. Models and markings reserve their mesh/material identity
+before queuing. Overlapping subscribers retain independent STLLoader parses and
+mutable geometry; groups stop accepting subscribers after any actual settlement.
+Owners cancel their own queued work, retain active admission until real settlement,
+and dispose late/prepared resources exactly once. Initial/reload failure and
+targeted preparations clean up their candidate work without replacing last-good
+geometry/driver state for an asset failure. Pending runtime readiness and pending
+trees are covered by handle disposal.
+
+### Additional controlled red/green ownership evidence
+
+The deferred-loader fan-out regression first observed **18 initially started,
+18 peak, 18 completed** jobs across two trees, models and markings. The admitted
+implementation reports **4 initially started, 4 peak, all 18 completed**, with
+reverse-order settlement. Queue tests cover cancellation without requests,
+active capacity held through settlement, exact original errors, completed-group
+closure, late-result disposal and failed prepare-before-mutation replacement.
+
+The parent's independently added geometry regression was red: cancellation in
+the microtask between the STL wrapper and admission continuation leaked the
+returned geometry (**0 disposals, expected 1**). Admission now owns an explicit
+abandoned-result disposer; the load consumer also cleans up a returned result if
+cancellation lands after admission. The parent regression and cancellation after
+0/1/2/3/4 microtasks pass with exactly one disposal and no late attachment.
+
+A separate runtime-readiness diagnostic freezes a second real running-fixture
+runtime's ready promise, disposes the handle, then releases readiness. A scratch
+instrumentation build removing only the post-await guard is red with **61
+post-disposal tree updates**. Current production source yields **0**, two runtime
+starts, two disposals and zero remaining canvases. The scratch-only red build does
+not edit production. Its raw results/scripts and owned-group cleanup are retained.
+
+Parent review identified an abandoned queued group's FIFO-position reuse. The
+deterministic red occupies four slots, queues X then Y, cancels X's owner, queues
+new X, and releases a slot: it observed **new X before Y**. Closing the emptied
+group's URL-map eligibility immediately turns this green (**Y before new X**);
+the queue may retain an inert tombstone, and identity-safe close cannot delete a
+newer group for the same URL. Geometry tests now pass **11**, plus the parent's
+one race regression. No speculative sequential-batch refactor was made: the
+owner-cancellation loop is synchronous, whereas active-slot release occurs in a
+promise-finally microtask and cannot interleave that supported failure path.
+
+### FIFO-corrected test and build gates (before final artifact guard)
+
+From the worktree widget directory, `npm test -- --maxWorkers=1` passed **1,700
+tests, 2 existing skips**, across **65 passing files, 1 skipped file** in 106.73
+seconds. The skips remain `profile-contact`'s missing actual Curta document and
+the missing installed Curta profile benchmark input.
+`npm run typecheck` and `npm run build` passed. An earlier concurrent full-suite
+attempt had **1 timing-only Pascaline throughput failure** (2,209 ticks/s versus
+the unchanged >2,400 requirement), **1,688 passes and 2 skips**; its focused
+14-test rerun passed at 2,593 ticks/s, and the subsequent isolated full suites
+passed. No timing requirement was weakened.
+
+With `PYTHONPATH` exactly the candidate worktree and the existing workspace
+`.venv/bin/python`, the final command
+`python -B -m pytest -q tests/test_asset_load_order.py tests/test_profile_document.py tests/test_bundle.py tests/test_widget_e2e.py`
+passed **81 tests, no skips, 33 existing Pillow deprecation warnings**, in 97.52
+seconds. The larger-than-budget pixel regression compares two simultaneous
+viewers, eight coincident model parts and two markings under reversed real server
+completion delays; disposing one owner leaves the other's PNG unchanged, and
+completion-order PNGs are equal.
+
+That extra small stress test initially reported Chromium `ERR_ABORTED` despite
+both parsed mounts completing and no fetch rejection. Paired base/candidate CDP
+diagnostics showed `canceled:true` Fetch events immediately **after** the same
+STL body was completely read, **before** any dispose/page close. Example candidate
+request `221660.11`, `plate3.stl`: body done at 1791222153.165, cancellation at
+1791222153.167927, both mounts ready at 1791222153.348. Base `221526.10`,
+`plate2.stl`: done at 1791222151.744, cancellation at 1791222151.745397, mounts
+ready at 1791222151.919. The parent approved only this bounded test-observer
+qualification: every expected unique STL must finish with HTTP 200 and the exact
+expected byte count; each canceled ERR_ABORTED consumes a distinct same-URL
+completed-body fact preceding that event. Pre-completion/other request failures,
+fetch/parse/page errors still fail. This is not product error suppression or a
+retry. Raw IDs/times and base comparison are retained. **The actual full portable
+page keeps the strict zero-request-errors gate unchanged.**
+
+### FIFO-corrected portable page and host acceptance (before final artifact guard)
+
+Final candidate production bundle SHA256:
+`0b48ad5bb9ceaa60dc7614ade946e557fc225d75a32e0ca51318903068e52894`.
+Final source-only host diagnostic SHA256:
+`8d6eb82cb995ffa4a661822e6e3d8a8d8473104f89e4f9731e43c6370a086e27`.
+Neither bundle was written into the original export.
+
+The production bundle route alone was substituted in the original complete
+portable page. Chromium 151.0.7922.34/ANGLE SwiftShader at 1400×1100 received
+**1,568 HTTP-200 responses, all 1,565 model paths, zero failed requests, zero
+page/HTTP errors**, with observed pending-model peak **4**. Complete mount/rest
+screenshot gate elapsed **59.328 seconds**. Raw JSON
+`acceptance/queued-public-fifo-final.json` SHA256:
+`f0e98ae5793670cb7901f3c6b448e028ebfc1465afe7c744664d6e520513abfe`.
+The screenshot was inspected and shows the assembled enclosure plus correct
+default readouts; SHA256
+`3c774d0b038c2dbae5a61a4d528049e7bc557e94e147d1a5fe42d39f7f9bdece`.
+Browser graceful close exceeded its five-second allowance, explicitly recorded
+as cleanup timeout, not render/request failure. The owned supervisor terminated
+the complete group and confirmed **zero survivors**.
+
+The separate source-instrumented host uses the **same full untouched document and
+all assets**, not reduced/fake geometry. It verified **1,636 nodes/1,565 model
+paths**, published defaults, Home **250/250/10/e0**, Center **125/125/20/e0**,
+Present **125/30/180/e20**, and restored defaults. It advances the actual public
+instruction handle using a controlled monotonic clock, not direct target posing.
+Nine representative world matrices (bed, gantry/crossbeam/head, chain endpoints
+and three belts) matched independent NumPy operation replay with maximum error
+**2.842170943040401e-14**. Three full flexible meshes matched independent Python
+molejo vertex arrays with maximum difference **0**, and their complete face/index
+arrays were exactly equal at all five poses: front-left belt **11,526 vertices /
+23,048 faces**, each CoreXY belt **37,126 / 74,248**.
+
+All whole-assembly bounds were finite. Rest/restored/reloaded bounds were
+min `[-90,-51,-143.0100235595703]`, max
+`[340,483.77757709704366,378.98999169921876]`. After reload, the harness explicitly
+rechecked the full 1,636/1,565 counts, default readbacks and finite bounds before
+disposal. It received **3,134 HTTP-200 responses** across mount and reload, with
+zero browser errors. Host gate elapsed **100.847 seconds**; JSON
+`acceptance/host-fifo-acceptance.json` SHA256:
+`f3bfd2e666ee2091d542ec88bdea33eae86e8cbc72f0ab0a5f7efa4e301f3167`.
+Rest, Present and supplemental Present-interior PNGs were inspected. The
+enclosure naturally hides the gantry; the supplemental image uses only the
+existing public `setVisible(['enclosure'],false)` control, then restores it.
+No resource/document pruning occurs. Present interior shows the raised gantry,
+toolhead and bed. PNG SHA256 values are respectively
+`cc0c1d5072efe044b2cebd969bec1f7a2ec961a1ffce6a761f4eace2f8c81363`,
+`2a57addd4a93e5d50030b67354dff775081b79c65627d50eb08baa30555f42c7`,
+`4b815208c1ba92c99c29f84a7383cee6ec3ef2a75a1e69786cf64941df3ed468`.
+
+Final supervised groups all returned zero with **survivors []**: widget 231798
+(107.44 seconds, peak aggregate sampled RSS 709,464 KiB); portable 234726
+(59.59 seconds, 232,688 KiB); host 234832 (101.66 seconds, 2,105,416 KiB); Python
+234957 (98.01 seconds, 667,964 KiB); runtime lifecycle 235075 (1.60 seconds,
+165,092 KiB). These are diagnostic process-group RSS samples, not a universal
+memory/performance guarantee. Each supervisor has a 225-second deadline plus
+bounded five-second TERM/KILL waits, below 240 seconds total.
+
+### Separate unresolved project geometry finding and stopping point
+
+The first independent physical-reference comparison genuinely failed: CoreXY
+`gantry/belt_a/strap` and `gantry/belt_b/strap` differ approximately **16.06 mm**
+from the unchanged Python floor-modulo prototype. The project's original helper
+uses Python `%`; the published document contract uses truncated remainder
+(`math.fmod` / OpenSCAD). A native OpenSCAD echo and parent contract review confirm
+the viewer's existing semantics. Only the scratch document-parity oracle was
+adapted to that contract. **This does not prove intended/native belt correctness.**
+
+Retained `project-sweep-divergence.json` SHA256
+`f6b2346e89a3311f23569ad0d335bc7e834f6887c8f13c5ecd3fb6daa0050155`
+records all five poses. Belt A parameters **a11/a17**, belt B **a3/a17** differ by
+2π; both CoreXY mesh differences are 16.05999755859375 mm at rest/Home/Center/
+restored and 16.059978485107422 mm at Present. The front-left drive belt agrees
+at all poses. Original expression-helper source SHA256 is
+`96c8fc39abc97e1ed8ca40e3173a6d6e6f30e1774337f56e0003a7c0bcd827ea`.
+The project proposer owns the separate `publish-voron-corexy-signed-wraps` cycle;
+this viewer change makes no numeric or frozen-input edits.
+
+All **1,568 original export file hashes / 127,961,024 bytes** were independently
+rechecked unchanged against `input-pins.json`; viewer primary `git status --short`
+is empty. No shared-venv installation, project input/cache/log write, push,
+publication, issue, baseline sync, ADR promotion, archive or implementation commit
+occurred. Reproduction scripts, raw red/green logs/JSON, cleanup records, hashes
+and inspected PNGs are retained under `acceptance/`, with explicit scratch-copy
+execution instructions. Implementation stops here for the parent's **task 4.3**
+adversarial acceptance review; downstream repository completion remains gated.
+
+### Final post-review artifact-disposal correction and current-bundle replay
+
+Parent review subsequently found a second bounded disposal race: after
+`artifactChanged`'s aggregate preparation promise resolved, disposal could occur
+before replacement attachment. The parent's parameterized 0–10 microtask test
+was independently reproduced red: **3 failed / 9 passed**, with late attachment
+at steps 3/4/5. A disposed check immediately after aggregate model/decal
+preparation now rejects before **either** commit route. Parent tests pass **12**;
+the geometry regression file now passes **15**, including four additional
+shared-path model-and-marking disposal timings. Red/green logs and cleanup
+records are retained as `artifact-disposal-*` and `artifact-marking-green-*`.
+
+All following results use the final guarded source, not the earlier FIFO-only
+bundle. Current production bundle SHA256:
+`02bde914f9d30f4d5866d2eb64cdb76abb73be1aac77a949ca3475ccc7a132b4`.
+Current separately instrumented host bundle SHA256:
+`f3c1cac84be8d2ef1fbea1f511a9f3a0e0903feabbd416eeb1c0fa8926f04cb4`.
+`npm run build`, `npm run typecheck` and `git diff --check` pass.
+
+The fresh complete `npm test -- --maxWorkers=1` result is **1,715 passed / the
+same 2 existing skips**, 65 passing files and one skipped file, **110.81 seconds**.
+The same candidate-PYTHONPATH relevant Python/browser command above passes
+**81 / no skips / 33 unchanged Pillow warnings**, **109.88 seconds**. The fresh
+runtime-ready disposal diagnostic still reports two starts, two disposals,
+**zero post-disposal updates and zero canvases**.
+
+Fresh unchanged portable-page acceptance: **1,568 HTTP 200, every 1,565 model
+path, zero HTTP/request/page errors, pending-model peak 4**. Probe elapsed
+**69.677 seconds**; the separate five-second graceful-close timeout remains
+truthfully recorded and the owned group has no survivors. Result
+`acceptance/queued-public-artifact-final.json` SHA256:
+`96fca8c188aace48cdf25c0bcba5fa04334c771cb166a7c7dc0fd9e779c98a94`.
+The current rest screenshot was inspected again and has the same assembled
+printer/default-control pixels (SHA256 `3c774d0b038c2dbae5a61a4d528049e7bc557e94e147d1a5fe42d39f7f9bdece`).
+
+Fresh full host acceptance repeats **rest/Home/Center/Present/restored**, all
+1,636 nodes/1,565 models and declared readbacks. All three flexible vertex
+arrays remain exact (**maximum delta 0**) with exactly equal face/index arrays;
+maximum representative matrix difference remains **2.842170943040401e-14**.
+Reload explicitly restores full counts/defaults and the same finite rest bounds.
+All **3,134 responses are HTTP 200**, with no browser errors; elapsed
+**114.810 seconds**. `acceptance/host-acceptance.json` SHA256:
+`c124c714bcf7a3561be57482620c5ba478e6252aac535bad3454b6928a946a9b`.
+Current rest, Present and interior PNG hashes match those above; rest and
+interior were visually inspected again. This remains document-language parity,
+**not** resolution of the preserved project physical-oracle mismatch.
+
+Final owned groups all exit **0, survivors []**: widget **253483** (111.62
+seconds, peak sampled aggregate RSS **676,764 KiB**), portable **257906**
+(70.14 seconds, **235,480 KiB**), host **258031** (115.54 seconds,
+**2,099,136 KiB**), Python **258175** (110.50 seconds, **653,360 KiB**), and
+runtime-ready **258303** (1.62 seconds, **168,952 KiB**). The same bounded
+225-second supervisors and termination fences apply. All 1,568 original input
+hashes were rechecked unchanged again. No additional production edits remain
+planned. At this replay handoff, tasks were **18/23 complete** and parent task
+4.3 was still pending. That historical stop is superseded by the accepted parent
+review and document-phase disposition below; the raw replay results are unchanged.
+
+### Accepted review and document-phase disposition — 5 October 2026
+
+The parent accepted task **4.3** in [parent-review.md](parent-review.md), after
+independent source/adversarial/full-manifest checks, all 1,568 original input
+hashes, final bundle/result hashes and current rest/Present-interior images.
+Acceptance remains viewer/document scoped; the graceful-close timeout and
+separate physical CoreXY finding retain the qualifications recorded above.
+
+ADR-043/044 now contain accepted dated implementation clarifications, and
+ADR-078 is **Accepted**, following parent text review. The portable-export
+portion of [the Voron wart](../../../../workflow/warts.md) is resolved by this
+reviewed worktree result, not described as integrated or published. The separate
+capture-fetch finding remains unresolved, as does the project-owned signed-wrap
+physical finding. No production code changed during this documentation phase.
+The parent completed tasks 4.4/4.5 and synchronized the two modified
+viewer-package requirements. An independent block comparison confirms exact
+agreement with both delta requirements and byte-for-byte preservation of every
+other baseline section. Task 5.2 is completed by the enclosing archive and
+implementation commit, after strict validation. Local integration is authorized
+as a separate next step; this record does not claim a push or publication.

@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/home/asa/devel/machinome/.venv/bin/python",
+    "-B",
+    "/tmp/voron-viewer-apply-Yi3m3o/host_acceptance.py"
+  ],
+  "group": 186513,
+  "returncode": 0,
+  "peak_group_rss_kib": 934448,
+  "elapsed_seconds": 85.32136797509156,
+  "survivors": []
+}

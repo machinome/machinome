@@ -164,3 +164,38 @@ greater retained headroom for a current large machine, not unbounded
 publication history. Terminal V8 heap/RSS samples varied enough that they
 do not establish a fixed memory budget for one export. The viewer API and
 document version remain unchanged.
+
+## Validation-boundary amendment — 5 October 2026
+
+Amendment accepted after parent text and actual Voron adversarial review under
+the pilot's advance authority; the preceding accepted decisions retain their
+status. Change: [mount-voron-export](../../../openspec/changes/archive/2026-10-05-mount-voron-export/).
+
+The full Voron-2 export demonstrated that protecting each expression check
+separately is not protecting validation. Its 232,347 bindings prepare a graph
+above the finite reclamation trigger; the next check could reclaim and rebuild
+the entire table. A counted low-trigger regression prepared one valid table
+91 times and changed generation 171 times within a single validation.
+
+`assertRenderable` therefore encloses **all synchronous validation** in the
+existing nestable `withExpressions` operation: table preparation, program and
+clocked loading, tree operation/flexible-parameter checks and final entry checks.
+Nested checks acquire and consume roots inside that same protected operation.
+The scope releases on success or refusal through the existing `finally` path.
+Fetching, geometry loading, runtime readiness and other asynchronous work stay
+outside it; no scope spans an `await` or a mounted session.
+
+The trigger remains **125,000**, not a hard limit on a protected live graph.
+Reclamation before a later outer operation and clearing after final-viewer
+disposal remain required. Source/postorder reconstruction and document-generation
+guards are unchanged. The corrected regression prepares the table once, changes
+generation zero times, then reconstructs the same value after forced reclamation.
+No numeric rules, API or document version change. The operation-owned structural
+facts are specified separately in ADR-044's amendment; network admission belongs
+to ADR-078, not the expression store.
+
+[Implementation evidence](../../../openspec/changes/archive/2026-10-05-mount-voron-export/evidence.md)
+and [parent adversarial acceptance](../../../openspec/changes/archive/2026-10-05-mount-voron-export/parent-review.md)
+record the counts, refusals, full unchanged export and measured cleanup. A large
+live validation graph still consumes memory; this establishes correct lifetime,
+not a universal memory budget or cross-browser performance guarantee.

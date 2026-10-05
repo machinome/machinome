@@ -83,6 +83,144 @@ def document():
 @needs_playwright
 @needs_pil
 class AssetLoadOrderTest(unittest.TestCase):
+    def test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership(self):
+        with tempfile.TemporaryDirectory(prefix='viewer-queued-order-') as temp:
+            stage = Path(temp)
+            shutil.copy2(bundle_path(), stage / 'viewer.js')
+            payload = document()
+            original = payload['root']['children']
+            payload['root']['children'] = [
+                {**original[index % 2], 'name': f'plate{index}',
+                 'model': f'plate{index}.stl'} for index in range(8)
+            ]
+            payload['root']['children'][0]['markings'] = [
+                {'name': 'first', 'model': 'mark0.stl', 'color': '#ffffff'},
+                {'name': 'second', 'model': 'mark1.stl', 'color': '#333333'},
+            ]
+            (stage / 'manifest.json').write_text(json.dumps(payload))
+            for name in [f'plate{i}' for i in range(8)] + ['mark0', 'mark1']:
+                (stage / f'{name}.stl').write_bytes(plate_stl())
+            (stage / 'index.html').write_text(
+                '<html><style>html,body{margin:0}.host{width:320px;'
+                'height:240px;display:inline-block;vertical-align:top}'
+                'canvas{display:block}</style>'
+                '<div id="a" class="host"></div><div id="b" class="host"></div>'
+                '<script src="viewer.js"></script></html>')
+            mode = {'reverse': False}
+
+            class DelayedHandler(QuietHandler):
+                protocol_version = 'HTTP/1.1'
+
+                def do_GET(self):
+                    path = urlsplit(self.path).path.rsplit('/', 1)[-1]
+                    if path.endswith('.stl'):
+                        index = int(path[5:-4]) if path.startswith('plate') else int(path[4:-4])
+                        delay = index % 4 if mode['reverse'] else 3-index % 4
+                        time.sleep(delay * .01)
+                    super().do_GET()
+
+            server = ThreadingHTTPServer(('127.0.0.1', 0),
+                partial(DelayedHandler, directory=str(stage)))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            self.addCleanup(thread.join, 2)
+            self.addCleanup(server.server_close)
+            self.addCleanup(server.shutdown)
+            url = f'http://127.0.0.1:{server.server_port}/'
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(args=[
+                    '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+                try:
+                    frames = []
+                    for reverse in (False, True):
+                        mode['reverse'] = reverse
+                        page = browser.new_page(viewport={'width': 640, 'height': 240})
+                        session = page.context.new_cdp_session(page)
+                        session.send('Network.enable')
+                        session.send('Network.setCacheDisabled', {'cacheDisabled': True})
+                        network_events = []
+                        session.on('Network.requestWillBeSent', lambda event, rows=network_events:
+                            rows.append({'event':'request','id':event['requestId'],
+                                'url':event['request']['url'],'at':time.time()}))
+                        session.on('Network.loadingFailed', lambda event, rows=network_events:
+                            rows.append({'event':'failed','at':time.time(),**event}))
+                        errors = []
+                        page.on('pageerror', lambda error, errors=errors: errors.append(str(error)))
+                        page.on('requestfailed', lambda request, errors=errors: errors.append(
+                            (request.url, request.failure)))
+                        # The server delays real responses inside each group;
+                        # the viewer owns all network and STL parsing work.
+                        page.goto(url)
+                        page.evaluate('''() => {
+                          window.fetchFailures=[];const oldFetch=window.fetch;
+                          window.phases=[];window.bodyDone=[];
+                          window.fetch=(...args)=>oldFetch(...args).then(response=>{
+                            if(response.body){const oldGet=response.body.getReader.bind(response.body);
+                              response.body.getReader=()=>{const reader=oldGet();const oldRead=reader.read.bind(reader);let bytes=0;
+                                reader.read=(...args)=>oldRead(...args).then(result=>{
+                                  if(result.value)bytes+=result.value.byteLength;
+                                  if(result.done)bodyDone.push({url:response.url,at:Date.now()/1000,bytes,status:response.status});return result});return reader};}
+                            return response;
+                          }).catch(error=>{fetchFailures.push(String(error));throw error});
+                        }''')
+                        result = page.evaluate('''async () => {
+                          const options={renderMode:'on-demand',animation:'external',
+                            autoplay:false,driverControls:'none',partControls:'none',
+                            view:{camera:[0,0,5],target:[0,0,0]}};
+                          phases.push({phase:'mount start',at:Date.now()/1000});
+                          [window.first,window.second]=await Promise.all([
+                            MachinomeViewer.mount('#a','/manifest.json',options),
+                            MachinomeViewer.mount('#b','/manifest.json',options)]);
+                          first.setView(first.view()); second.setView(second.view());
+                          phases.push({phase:'mount done',at:Date.now()/1000});
+                          return [first.assembly().children.length,second.assembly().children.length];
+                        }''')
+                        self.assertEqual(result, [8, 8])
+                        def check_loads():
+                            readings = page.evaluate('({phases,bodyDone,fetchFailures})')
+                            self.assertEqual(readings['fetchFailures'], [])
+                            expected = {url + name + '.stl' for name in
+                                [f'plate{i}' for i in range(8)] + ['mark0', 'mark1']}
+                            self.assertEqual({row['url'] for row in readings['bodyDone']}, expected)
+                            for row in readings['bodyDone']:
+                                self.assertEqual((row['status'], row['bytes']), (200, len(plate_stl())))
+                            requests = {row['id']: row['url'] for row in network_events
+                                        if row['event'] == 'request'}
+                            completed = list(readings['bodyDone'])
+                            failed = [row for row in network_events if row['event'] == 'failed']
+                            if errors:
+                                print('NETWORK_DIAGNOSIS', json.dumps({'events':network_events,
+                                    'readbacks':readings}), flush=True)
+                            # Chromium may report canceled ERR_ABORTED just AFTER
+                            # a completely consumed body (also reproduced on the
+                            # frozen base). Qualify only that exact observation;
+                            # pre-completion or other failures remain red. Each
+                            # failed request consumes its own completed-body fact.
+                            for row in failed:
+                                self.assertEqual((row.get('canceled'), row['errorText']),
+                                                 (True, 'net::ERR_ABORTED'))
+                                match = next((body for body in completed if
+                                    body['url'] == requests[row['requestId']] and
+                                    body['at'] <= row['at']), None)
+                                self.assertIsNotNone(match, 'request failed before its body completed')
+                                completed.remove(match)
+                            self.assertEqual(len(errors), len(failed), 'page or unqualified request failure')
+
+                        check_loads()
+                        before = page.locator('#b').screenshot()
+                        page.evaluate('first.dispose(); second.setView(second.view())')
+                        self.assertEqual(before, page.locator('#b').screenshot(),
+                                         'disposing a duplicate-URL viewer changed another owner')
+                        frames.append(before)
+                        check_loads()
+                        page.evaluate('second.dispose()')
+                        # Keep pages alive until both trials finish. Closing a
+                        # page can abort Chromium's trailing network events,
+                        # which are teardown rather than viewer readiness.
+                    self.assertEqual(frames[0], frames[1], 'queued identities depend on completion order')
+                finally:
+                    browser.close()
+
     def test_coincident_parts_have_identical_pngs_when_response_order_reverses(self):
         with tempfile.TemporaryDirectory(prefix='viewer-load-order-') as temp:
             stage = Path(temp)

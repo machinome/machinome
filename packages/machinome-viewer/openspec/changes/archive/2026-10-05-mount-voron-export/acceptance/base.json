@@ -1,0 +1,35 @@
+{
+  "mode": "base",
+  "export": "/mnt/data/machinome-projects/3D-Printers/Voron-2/_build_resume_main_browser_export",
+  "manifest_sha256": "e9fee11746ff36a1f585f24a3db154b472a207bfc83db00e183ebdc96f2cb0c7",
+  "page_sha256": "5a9b57d06fc62ff8acf1d4d3e7c51a7a9b1ee0a01415684a17aecbd3c1fa4605",
+  "original_bundle_sha256": "a009e0ff0cbe320eb02869ef0553a19b4ad314e1acf608ae1edf76835aaea478",
+  "supplied_bundle": null,
+  "supplied_bundle_sha256": null,
+  "requests": [
+    "http://127.0.0.1:46537/",
+    "http://127.0.0.1:46537/machinome-viewer.js",
+    "http://127.0.0.1:46537/manifest.json"
+  ],
+  "responses": [
+    {
+      "url": "http://127.0.0.1:46537/",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:46537/machinome-viewer.js",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:46537/manifest.json",
+      "status": 200
+    }
+  ],
+  "failed_requests": [],
+  "page_errors": [],
+  "console": [],
+  "browser_version": "151.0.7922.34",
+  "url": "http://127.0.0.1:46537/",
+  "elapsed_seconds": 31.40630619006697,
+  "probe_error": "TimeoutError: Locator.inner_text: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"body\")\n"
+}

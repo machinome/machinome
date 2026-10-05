@@ -41,7 +41,7 @@ import { republishPlan } from './run/republish';
 import type { RunIdentity } from './run/republish';
 import { EvalScope, freeVariables, TIME_ID } from './evaluator';
 import {
-  inspectProfileExpression, prepare, releaseExpressions, retainExpressions,
+  validationProfileInspector, prepare, releaseExpressions, retainExpressions,
   withExpressions,
 } from './expressions';
 import { BindingTable, bindingTable, EMPTY_BINDINGS } from './bindings';
@@ -459,6 +459,7 @@ export async function mount(
   };
 
   let tree: WidgetTree | undefined;
+  const pendingTrees = new Set<WidgetTree>();
   // The loaded document's bindings table (OpenSpec `read-expression-bindings`,
   // design D6): `EMPTY_BINDINGS` until the first successful load, and
   // installed into this field before the `tree.update(scope())` that
@@ -1655,15 +1656,23 @@ export async function mount(
     const { document, table, program, machine: loaded,
             controls: declared } = await loadDocument(sourceUrl);
     assertCaptureDocument(document);
-    drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
-    // Installed before the update that follows (design D6), in the same
-    // place and order `drivers.reconcile(...)` already runs before it.
-    bindingsTable = table;
-    startMachine(loaded);
-    await startRuntime(document, program);
-    const next = new WidgetTree(document.root, baseUrl, null, bindingsTable);
-    next.update(scope());
-    await next.loaded;
+    if (disposed) return;
+    // Prepare all geometry before replacing any of the last good document's
+    // driver, binding or runtime state. A failed required asset changes none.
+    const next = new WidgetTree(document.root, baseUrl, null, table);
+    pendingTrees.add(next);
+    try {
+      await next.loaded;
+      if (!disposed) {
+        drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
+        bindingsTable = table;
+        startMachine(loaded);
+        await startRuntime(document, program);
+        if (disposed) { runtime?.dispose(); runtime = undefined; }
+        else next.update(scope());
+      }
+    } catch (error) { next.dispose(); throw error; }
+    finally { pendingTrees.delete(next); }
     if (disposed) {
       next.dispose();
       return;
@@ -1924,7 +1933,16 @@ export async function mount(
   // raised inside replaceTree's loadDocument/assertRenderable --
   // never leaves a hold behind: no handle is ever produced for such
   // a mount, so no dispose() would ever exist to release it.
-  await mountRetained(() => replaceTree(resolved.view));
+  try { await mountRetained(() => replaceTree(resolved.view)); }
+  catch (error) {
+    runtime?.dispose();
+    drivers.dispose();
+    partSurface.dispose();
+    fullscreen.dispose();
+    controls.dispose();
+    renderer.dispose();
+    throw error;
+  }
 
   // The public channel, subscribed once per mount: a ramp moving a
   // driver reaches its slider exactly the way it reaches a host's
@@ -2028,6 +2046,7 @@ export async function mount(
       drivers.dispose();
       runtime?.dispose();
       runtime = undefined;
+      for (const pending of pendingTrees) pending.dispose();
       tree?.dispose();
       renderer.dispose();
       container.replaceChildren();
@@ -2075,19 +2094,21 @@ export async function mount(
       const { document, table, program, controls: declared } =
         await loadDocument(sourceUrl);
       assertCaptureDocument(document);
-      drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
       // Installed before the update that follows (design D6): a
       // republish carrying a different table invalidates the free set
       // of every node that reads it differently, whether or not that
       // node's own operations changed.
-      bindingsTable = table;
-      await startRuntime(document, program, true);
       // Cleared BEFORE the reconcile, because `setColor` replaces
       // materials and a lifted emissive would be restored onto a
       // material nothing is showing any more (design D7).
       partSurface.clear();
       presentation.forget();
-      await tree?.reconcile(document.root, baseUrl, null, bindingsTable);
+      await tree?.reconcile(document.root, baseUrl, null, table);
+      if (disposed) return;
+      drivers.reconcile(document.drivers ?? {}, document.instructions ?? {});
+      bindingsTable = table;
+      await startRuntime(document, program, true);
+      if (disposed) { runtime?.dispose(); runtime = undefined; return; }
       if (tree) {
         const rootChanged = assemblyNavigation.reconcile(tree);
         tree.update(scope());
@@ -2914,6 +2935,13 @@ export function assertMarkings(node: ManifestNode, sourceUrl: string): void {
 
 export function assertRenderable(document: Manifest,
                                  sourceUrl: string): LoadedDocument {
+  return withExpressions(() => assertRenderableScoped(document, sourceUrl));
+}
+
+/** Fetching and parsing finish before this complete synchronous validation.
+ * Its binding roots and negative inspection facts never cross an await. */
+function assertRenderableScoped(document: Manifest,
+                                sourceUrl: string): LoadedDocument {
   if (document.format !== DOCUMENT_FORMAT
       && document.format !== LEGACY_DOCUMENT_FORMAT) {
     throw new Error(
@@ -3001,9 +3029,10 @@ export function assertRenderable(document: Manifest,
   // BEFORE it is judged against the declared drivers. That is what makes
   // a binding name never reported as an undeclared driver, and what
   // still catches a name that is genuinely neither.
+  let inspect: ReturnType<typeof validationProfileInspector> | undefined;
   const note = (expression: string) => {
-    const profileCall = withExpressions(() =>
-      inspectProfileExpression(prepare(expression), table.roots()));
+    inspect ??= validationProfileInspector(table.roots());
+    const profileCall = inspect(prepare(expression));
     if (profileCall) {
       throw new Error(`${sourceUrl} uses profileOverlap outside a numeric Bound.`);
     }

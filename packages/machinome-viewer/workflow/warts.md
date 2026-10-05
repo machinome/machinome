@@ -489,8 +489,9 @@ film's frames in headless Chromium without a GPU (ANGLE on SwiftShader).
 
 # Voron-2 — portable export stalls before model loading (5 October 2026)
 
-**Status: recorded; triage open.** The pilot paused the unfinished printer
-goal during release work. Originating project:
+**Status: portable-export mounting resolved in the reviewed worktree;
+capture-fetch triage remains open.** The historical findings and release-work
+pause below are retained; the accepted disposition follows them. Originating project:
 `projects/3D-Printers/Voron-2`, integration `c08fa72`, evidence checkpoint
 `1fc9e9f`. Tested viewer: `cb39942e28145f0f988991681c968af38dfca4ec`, API 29,
 documents 1–13; producer: `8d811411b13174e9f78eb636fcecc4943a740f5b`.
@@ -567,3 +568,43 @@ diagnoses were not rerun or promoted to confirmed causes. All 84 production
 hashes remain unchanged; the viewer implementation was not changed. The pilot
 explicitly authorized rebasing and locally merging these documentation-only
 wart records into main, without pushing or authorizing a fix.
+
+## Portable-export disposition — 5 October 2026
+
+The subsequently authorized viewer change
+[mount-voron-export](../openspec/changes/archive/2026-10-05-mount-voron-export/) resolves the
+portable-export mounting finding in its isolated worktree. The parent's
+[accepted adversarial review](../openspec/changes/archive/2026-10-05-mount-voron-export/parent-review.md)
+and [implementation evidence](../openspec/changes/archive/2026-10-05-mount-voron-export/evidence.md)
+retain the red/green controls and full unchanged printer acceptance. This is
+not yet a publication or a claim that local integration has occurred.
+
+The confirmed validation costs were repeated complete binding-map preparation
+between individually scoped checks and repeated negative profile-subgraph
+traversal. Full synchronous validation protection and validation-owned proven
+negative facts remove those costs without changing the 125,000-node trigger,
+numeric semantics or malformed-document refusals. That candidate exposed a
+second actual-browser failure: unrestricted loading rejected 290 models with
+`ERR_INSUFFICIENT_RESOURCES`. The reviewed four-group shared FIFO correction
+preserves all model/marking resources, overlap, owner isolation and disposal.
+
+With final production bundle SHA256
+`02bde914f9d30f4d5866d2eb64cdb76abb73be1aac77a949ca3475ccc7a132b4`,
+the original portable page/manifest/assets mount with all 1,568 responses HTTP
+200, all 1,565 models, zero request/HTTP/page errors and peak four pending models.
+The manifest remains `e9fee11746ff36a1f585f24a3db154b472a207bfc83db00e183ebdc96f2cb0c7`;
+all 1,568 input file hashes are unchanged. Full host acceptance checks 1,636
+nodes, defaults and actual Home/Center/Present instruction targets, finite
+bounds, reload and independent published-document matrix/flexible-mesh parity.
+Rest and moved/interior screenshots were inspected. Final tests pass 1,715
+widget cases with two retained missing-input skips and 81 Python/browser cases
+without skips. The five-second graceful browser-close deadline still expires;
+bounded owned-group termination verifies no survivors, not graceful-close success.
+
+The **web-capture fetch finding above remains unresolved**: the portable-page
+result does not establish its failed resource or staged-capture behavior. A
+separate project physical-oracle comparison also found approximately 16.06 mm
+CoreXY belt disagreement caused by Python floor modulo versus published
+truncated remainder; its project-owned `publish-voron-corexy-signed-wraps`
+cycle remains separate. Viewer/document parity does not establish intended
+physical belt correctness or finish the whole-printer qualification.

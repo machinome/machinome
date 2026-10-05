@@ -185,3 +185,41 @@ and retained kink operands and path values carry reconstructible sources as
 specified in ADR-043's amendment. Binding closure still holds only names,
 so it remains generation-independent. The pass comparison still includes
 the document's binding meanings; page-scoped sharing never makes them global.
+
+## Validation-owned structural-facts amendment — 5 October 2026
+
+Amendment accepted after parent text and actual Voron adversarial review under
+the pilot's advance authority; the preceding accepted decisions retain their
+status. Change: [mount-voron-export](../../../openspec/changes/archive/2026-10-05-mount-voron-export/).
+
+The full Voron-2 export repeatedly traversed shared binding prefixes to establish
+that operation and flexible-parameter expressions contain no reserved profile
+call. Scoping validation alone prevents reclamation, but does not remove that
+repeated structural work. The counted regression visited 7,562 nodes for only
+303 distinct nodes before this correction, and 303 afterward.
+
+One protected synchronous validation owns an inspector tied to its **exact
+document binding map and expression generation**. Only after an entire walk
+successfully returns false may it retain the nodes proved free of profile calls.
+A positive or failed traversal publishes no negative facts. Later walks may
+skip these established negative subgraphs, but reserved-name direct-callee
+checks happen **before** either visited-node or negative-fact shortcuts. Existing
+node/argument traversal order, bare/indirect-name, arity, index, dead-branch and
+flexible-parameter refusals remain unchanged.
+
+These facts are discarded on validation exit, including refusal. They are not
+module-global, retained on a table or mount, shared between documents, or usable
+after a generation reset. Identical alias names in different documents keep
+their different meanings. Running Bounds retain the original inspector and
+their own profile-table/index context rather than consuming posed-validation
+facts. Binding order/closure validation still covers every entry, including an
+unreferenced malformed final binding.
+
+ADR-043's complete synchronous boundary protects acquisition and consumption
+of every raw node ID used here. The finite trigger, between-operation
+reclamation, final-viewer clear, numeric semantics and published host/document
+contracts are unchanged. [Evidence](../../../openspec/changes/archive/2026-10-05-mount-voron-export/evidence.md)
+and [parent review](../../../openspec/changes/archive/2026-10-05-mount-voron-export/parent-review.md)
+retain counted work, document/generation isolation, reserved-call refusals and
+the full-manifest refusal/restoration check. This is reuse of proven absence in
+one operation, not a generalized persistent graph analyser or validation bypass.

@@ -1,0 +1,4 @@
+response 1 200 http://127.0.0.1:46537/
+response 2 200 http://127.0.0.1:46537/machinome-viewer.js
+response 3 200 http://127.0.0.1:46537/manifest.json
+{"mode": "base", "elapsed_seconds": 31.40630619006697, "probe_error": "TimeoutError: Locator.inner_text: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"body\")\n"}

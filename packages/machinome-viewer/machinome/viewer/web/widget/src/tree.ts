@@ -19,6 +19,7 @@ import { EvalScope, evalExpr, freeVariables, TIME_ID } from './evaluator';
 import { bindingRootsEqual, withExpressions } from './expressions';
 import { BindingTable, EMPTY_BINDINGS } from './bindings';
 import { FlexibleShape } from './flexible';
+import { admitGeometry, GeometryBatch, GeometryOwner } from './geometry-admission';
 
 /** What changed since the last update, when not everything did.
  *
@@ -154,7 +155,13 @@ export interface LoadedMarking {
   freshFromArtifact: boolean;
 }
 
+const disposedMeshes = new WeakSet<THREE.Mesh>();
+const meshOwnership = new WeakMap<THREE.Mesh, () => void>();
 function disposeMesh(mesh: THREE.Mesh): void {
+  if (disposedMeshes.has(mesh)) return;
+  disposedMeshes.add(mesh);
+  meshOwnership.get(mesh)?.();
+  meshOwnership.delete(mesh);
   mesh.geometry.dispose();
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   materials.forEach((material) => material.dispose());
@@ -168,6 +175,9 @@ function markingRecord(entry: ManifestMarking, mesh: THREE.Mesh): LoadedMarking 
 }
 
 export class WidgetTree {
+  private owner: GeometryOwner;
+  private preparations = new Set<GeometryBatch>();
+  private disposed = false;
   group: THREE.Group;
   operations: RawOperation[];
   children: WidgetTree[];
@@ -224,7 +234,9 @@ export class WidgetTree {
 
   constructor(data: ManifestNode, baseUrl: string,
               inheritedColor: string | null = null,
-              bindings: BindingTable = EMPTY_BINDINGS) {
+              bindings: BindingTable = EMPTY_BINDINGS,
+              batch = new GeometryBatch()) {
+    this.owner = batch.owner();
     this.group = new THREE.Group();
     this.group.matrixAutoUpdate = false;
     this.name = data.name;
@@ -256,17 +268,21 @@ export class WidgetTree {
     }
 
     for (const childData of data.children ?? []) {
-      const child = new WidgetTree(childData, baseUrl, color, bindings);
+      const child = new WidgetTree(childData, baseUrl, color, bindings, batch);
       this.children.push(child);
       this.group.add(child.group);
       pending.push(child.loaded);
     }
 
-    this.loaded = Promise.all(pending).then(() => undefined);
+    this.loaded = Promise.all(pending).then(() => undefined, error => {
+      batch.cancel(); throw error;
+    });
   }
 
   private async loadModel(url: string, color: string | null): Promise<void> {
-    this.group.add(await loadMesh(url, color));
+    const mesh = await loadMesh(url, color, materialForColor, this.owner);
+    if (this.disposed) { disposeMesh(mesh); throw this.owner.cancellation; }
+    this.group.add(mesh);
   }
 
   /** Fetch every decal, then add them in DOCUMENT order -- the order
@@ -276,7 +292,8 @@ export class WidgetTree {
                              baseUrl: string): Promise<void> {
     const group = this.markingGroup();
     this.markings = await Promise.all(entries.map(async (entry) => markingRecord(
-      entry, await loadDecal(baseUrl + entry.model, entry.color))));
+      entry, await loadDecal(baseUrl + entry.model, entry.color, this.owner))));
+    if (this.disposed) throw this.owner.cancellation;
     this.markings.forEach((record) => group.add(record.mesh));
   }
 
@@ -291,6 +308,10 @@ export class WidgetTree {
   /** Replace every mesh that names this artifact.  Unknown artifacts are
    * deliberately harmless: a manifest update is authoritative for removals. */
   async artifactChanged(path: string, baseUrl: string): Promise<void> {
+    const batch = new GeometryBatch();
+    this.preparations.add(batch);
+    const owner = batch.owner();
+    try {
     const replacements: Array<{ tree: WidgetTree; mesh: THREE.Mesh }> = [];
     // The markings that name this artifact, beside the nodes that do
     // (design D5). Routing is exact string match, so there is no
@@ -311,12 +332,13 @@ export class WidgetTree {
     collect(this);
     await Promise.all([
       ...replacements.map(async (replacement) => {
-        replacement.mesh = await loadMesh(baseUrl + path, replacement.tree.color);
+        replacement.mesh = await loadMesh(baseUrl + path, replacement.tree.color, materialForColor, owner);
       }),
       ...decals.map(async (decal) => {
-        decal.mesh = await loadDecal(baseUrl + path, decal.record.color);
+        decal.mesh = await loadDecal(baseUrl + path, decal.record.color, owner);
       }),
     ]);
+    if (this.disposed) throw this.owner.cancellation;
     replacements.forEach(({ tree, mesh }) => {
       tree.replaceMesh(mesh);
       tree.freshFromArtifact = true;
@@ -328,6 +350,8 @@ export class WidgetTree {
       record.freshFromArtifact = true;
       tree.orderMarkings();
     });
+    } catch (error) { batch.cancel(); throw error; }
+    finally { this.preparations.delete(batch); }
   }
 
   /** Fetch every stale mesh before changing the live tree.  This makes a
@@ -335,18 +359,25 @@ export class WidgetTree {
   async reconcile(data: ManifestNode, baseUrl: string,
                   inheritedColor: string | null = null,
                   bindings: BindingTable = EMPTY_BINDINGS): Promise<void> {
-    const apply = await this.prepareReconcile(data, baseUrl, inheritedColor, bindings);
-    apply();
+    const batch = new GeometryBatch();
+    this.preparations.add(batch);
+    try {
+      const apply = await this.prepareReconcile(data, baseUrl, inheritedColor, bindings, batch);
+      if (this.disposed) throw this.owner.cancellation;
+      apply();
+    } catch (error) { batch.cancel(); throw error; }
+    finally { this.preparations.delete(batch); }
   }
 
   private async prepareReconcile(data: ManifestNode, baseUrl: string,
                                  inheritedColor: string | null,
-                                 bindings: BindingTable): Promise<() => void> {
+                                 bindings: BindingTable, batch: GeometryBatch): Promise<() => void> {
+    const owner = batch.owner();
     const nextColor = data.color ?? inheritedColor;
     const skipMtimeCheck = this.freshFromArtifact;
     const modelChanged = this.model !== data.model || (this.mtime !== data.mtime && !skipMtimeCheck);
     const replacement = data.model && modelChanged
-      ? await loadMesh(baseUrl + data.model, nextColor) : undefined;
+      ? await loadMesh(baseUrl + data.model, nextColor, materialForColor, owner) : undefined;
 
     // Built here rather than below for the reason the mesh above is:
     // a `tech` this viewer cannot evaluate must be refused BEFORE the
@@ -357,6 +388,7 @@ export class WidgetTree {
     const nextFlexible = data.flexible
       && !this.flexible?.describes(data.flexible)
       ? new FlexibleShape(data.name, data.flexible, nextColor, bindings) : undefined;
+    if (nextFlexible) batch.own(() => nextFlexible.dispose());
 
     // A decal's identity is its own `model` path and its own `mtime`,
     // exactly as a node's is, and the two are INDEPENDENT: the
@@ -377,7 +409,7 @@ export class WidgetTree {
           entry,
           current,
           mesh: stale
-            ? await loadDecal(baseUrl + entry.model, entry.color) : undefined,
+            ? await loadDecal(baseUrl + entry.model, entry.color, owner) : undefined,
         };
       }));
 
@@ -386,13 +418,14 @@ export class WidgetTree {
     const nextChildren = await Promise.all((data.children ?? []).map(async (childData) => {
       const child = existing.get(childData.name);
       if (!child || !incoming.has(childData.name)) {
-        const created = new WidgetTree(childData, baseUrl, nextColor, bindings);
+        const created = new WidgetTree(childData, baseUrl, nextColor, bindings, batch);
+        batch.own(() => created.dispose());
         await created.loaded;
         return { tree: created, apply: () => undefined };
       }
       return {
         tree: child,
-        apply: await child.prepareReconcile(childData, baseUrl, nextColor, bindings),
+        apply: await child.prepareReconcile(childData, baseUrl, nextColor, bindings, batch),
       };
     }));
 
@@ -528,9 +561,7 @@ export class WidgetTree {
     this.group.children.filter((child): child is THREE.Mesh => child instanceof THREE.Mesh)
       .forEach((mesh) => {
         this.group.remove(mesh);
-        mesh.geometry.dispose();
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        materials.forEach((material) => material.dispose());
+        disposeMesh(mesh);
       });
   }
 
@@ -667,14 +698,16 @@ export class WidgetTree {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.owner.cancel();
+    for (const batch of this.preparations) batch.cancel();
+    this.children.forEach(child => child.dispose());
     this.group.traverse((object) => {
       if (!(object instanceof THREE.Mesh)) {
         return;
       }
-      object.geometry.dispose();
-      const materials = Array.isArray(object.material)
-        ? object.material : [object.material];
-      materials.forEach((material) => material.dispose());
+      disposeMesh(object);
     });
   }
 }
@@ -713,6 +746,7 @@ function isPathPrefix(prefix: AssemblyPath, path: AssemblyPath): boolean {
 async function loadMesh(
   url: string, color: string | null,
   material: (color: string | null) => THREE.Material = materialForColor,
+  owner = new GeometryOwner(),
 ): Promise<THREE.Mesh> {
   // Reserve both render identities in document traversal order, before any
   // STL can finish. Equal-depth surfaces must not change their draw order
@@ -720,9 +754,16 @@ async function loadMesh(
   // attached to the scene; a ready mesh takes the existing attachment path.
   const placeholder = new THREE.BufferGeometry();
   const mesh = new THREE.Mesh(placeholder, material(color));
+  const forget = owner.own(() => disposeMesh(mesh));
+  meshOwnership.set(mesh, forget);
   let geometry: THREE.BufferGeometry | undefined;
   try {
-    geometry = await stlLoader.loadAsync(url);
+    geometry = await admitGeometry(url, owner, async () => {
+      const loaded = await stlLoader.loadAsync(url);
+      if (owner.cancelled) { loaded.dispose(); throw owner.cancellation; }
+      return loaded;
+    }, loaded => loaded.dispose());
+    if (owner.cancelled) throw owner.cancellation;
     geometry.computeVertexNormals();
     mesh.geometry = geometry;
     placeholder.dispose();
@@ -732,6 +773,7 @@ async function loadMesh(
     // Other successful or pending sibling loads retain their old lifecycle.
     if (geometry && geometry !== mesh.geometry) geometry.dispose();
     disposeMesh(mesh);
+    forget();
     throw error;
   }
 }
@@ -766,9 +808,9 @@ export function liftDecal(geometry: THREE.BufferGeometry): THREE.BufferGeometry 
  * artifact is a binary STL like any other, and nothing about it needs a
  * second loader, a second cache or a second failure mode. What is added
  * is the viewer's own rendering constant, and only that. */
-async function loadDecal(url: string, color: string): Promise<THREE.Mesh> {
+async function loadDecal(url: string, color: string, owner = new GeometryOwner()): Promise<THREE.Mesh> {
   const mesh = await loadMesh(url, color,
-                              (own) => markingMaterial(own as string));
+                              (own) => markingMaterial(own as string), owner);
   try {
     const loadedGeometry = mesh.geometry;
     mesh.geometry = liftDecal(loadedGeometry);

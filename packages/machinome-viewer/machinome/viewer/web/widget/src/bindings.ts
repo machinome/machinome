@@ -60,6 +60,11 @@ export const EMPTY_BINDINGS: BindingTable = {
   closure: (names) => names,
 };
 
+// Source-only count of complete root-map preparations, for pressure regressions.
+let preparations = 0;
+export function bindingPreparationMetrics(): number { return preparations; }
+export function resetBindingPreparationMetrics(): void { preparations = 0; }
+
 function truncate(expression: string): string {
   return expression.length > 80 ? `${expression.slice(0, 80)}…` : expression;
 }
@@ -175,6 +180,7 @@ export function bindingTable(document: Manifest, sourceUrl: string): BindingTabl
 
   const roots = (): ReadonlyMap<string, NodeId> => withExpressions(() => {
     if (cachedRoots === undefined || cachedGeneration !== expressionGeneration()) {
+      preparations += 1;
       const map = new Map<string, NodeId>();
       entries.forEach((entry) => map.set(entry.name, prepare(entry.expression)));
       cachedRoots = map;

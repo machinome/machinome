@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/home/asa/devel/machinome/.venv/bin/python",
+    "-B",
+    "-c",
+    "from pathlib import Path; import tests.test_asset_load_order as target; target.bundle_path=lambda:Path(\"/mnt/data/machinome-projects/3D-Printers/Voron-2/_build_resume_main_browser_export/machinome-viewer.js\"); import unittest; result=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([target.AssetLoadOrderTest(\"test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership\")])); raise SystemExit(not result.wasSuccessful())"
+  ],
+  "group": 221482,
+  "returncode": 1,
+  "peak_group_rss_kib": 165448,
+  "elapsed_seconds": 1.3531282210024074,
+  "survivors": []
+}

@@ -1,0 +1,17 @@
+{
+  "command": [
+    "/home/asa/devel/machinome/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/test_asset_load_order.py",
+    "tests/test_profile_document.py",
+    "tests/test_bundle.py",
+    "tests/test_widget_e2e.py"
+  ],
+  "group": 167349,
+  "returncode": 0,
+  "peak_group_rss_kib": 653560,
+  "elapsed_seconds": 86.86697494704276,
+  "survivors": []
+}

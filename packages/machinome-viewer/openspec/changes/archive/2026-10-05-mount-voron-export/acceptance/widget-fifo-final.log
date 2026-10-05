@@ -1,0 +1,201 @@
+
+> @machinome/viewer@0.8.0 test
+> vitest run --maxWorkers=1
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/machinome_viewer/widget
+
+stdout | src/run/source-timing-curta.test.ts > unchanged Curta diagnostic exports > curta-6: full banks, commands and records, whole and restored portions
+curta-6: bulk 2.401s; full replay 7.691s
+
+stdout | src/run/source-timing-curta.test.ts > unchanged Curta diagnostic exports > curta-7: full banks, commands and records, whole and restored portions
+curta-7: bulk 2.818s; full replay 9.038s
+
+stdout | src/run/source-timing-curta.test.ts > unchanged Curta diagnostic exports > curta-11: full banks, commands and records, whole and restored portions
+curta-11: bulk 4.850s; full replay 14.281s
+
+stdout | src/run/source-timing-curta.test.ts > unchanged Curta diagnostic exports > curta-11-constrained: full banks, commands and records, whole and restored portions
+curta-11-constrained: bulk 4.859s; full replay 14.917s
+
+ ✓ src/run/source-timing-curta.test.ts (4 tests) 46278ms
+   ✓ unchanged Curta diagnostic exports > curta-6: full banks, commands and records, whole and restored portions  7808ms
+   ✓ unchanged Curta diagnostic exports > curta-7: full banks, commands and records, whole and restored portions  9079ms
+   ✓ unchanged Curta diagnostic exports > curta-11: full banks, commands and records, whole and restored portions  14372ms
+   ✓ unchanged Curta diagnostic exports > curta-11-constrained: full banks, commands and records, whole and restored portions  15017ms
+stdout | src/run/cost.test.ts > the cost of a tick > solves an affine plan
+  CarryLead, affine plans: 20000 ticks in 0.438 s = 45663 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > searches when the same plan is not affine
+  CarryLead, plans forced to search: 1000 ticks in 0.069 s = 14454 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > pays nothing for a constraint in a machine that declares none
+  Train, no constraint: 20000 ticks in 0.332 s = 60166 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > samples a constraint through the corpus's blocking ticks
+  Captured, blocking ticks: 2000 ticks in 0.047 s = 42305 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > evaluates nothing when the lock stands idle
+  the lock, idle: 2400 ticks in 0.099 s = 24361 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > samples five bounds over a seven-edge sub-program
+  the lock, advancing the key: 2400 ticks in 3.836 s = 626 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > solves a self-read whose skeleton IS affine
+  Clearing, a solved self-read: 20000 ticks in 2.533 s = 7895 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > SOLVES six self-read dials through a `clamp01` window
+  the Curta fixture at dt = 1/240: 2400 ticks in 2.446 s = 981 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > costs about what its members cost, against a FROZEN TWIN and a tick that crosses the detent
+  ShiftedCarry, a quiet block tick: 20000 ticks in 5.873 s = 3405 ticks/s
+  ShiftedCarry, the frozen twin: 20000 ticks in 2.967 s = 6742 ticks/s
+  ShiftedCarry, a crossing tick: 4000 ticks in 2.217 s = 1804 ticks/s
+  a quiet block tick costs 2.0x the same laws with the carriage frozen, and a crossing tick 1.9x a quiet one (the producer measured 1.6x and 2.0x)
+
+stdout | src/run/cost.test.ts > the cost of a tick > runs the Curta carriage: ONE BLOCK OF SEVEN
+  the Curta carriage at dt = 0.02: 2000 ticks in 5.005 s = 400 ticks/s
+
+stdout | src/run/cost.test.ts > the cost of a tick > SEARCHES a stop on a block coordinate -- the expensive case
+  RangedBlock, a quiet tick (restored): 400 ticks in 0.051 s = 7811 ticks/s
+  RangedBlock, a SEARCHED stop (restored): 400 ticks in 0.361 s = 1109 ticks/s
+  a searched stop costs 7.0x a quiet tick of the same machine
+
+stdout | src/run/cost.test.ts > the cost of a tick > SOLVES the six self-read dials at their own kinks
+  the Curta fixture: 2436.0 evaluations/tick
+
+stdout | src/run/cost.test.ts > the cost of a tick > leaves search samples unchanged while saving equal path-piece work
+  Clearing: 459.1 evaluations/tick
+  Train: 31.0 evaluations/tick
+  the Curta carriage: 4301.9 evaluations/tick
+
+stdout | src/run/cost.test.ts > the cost of a tick > runs the acceptance machine far faster than real time
+  the Pascaline at dt = 1/240: 2400 ticks in 0.602 s = 3985 ticks/s
+
+ ✓ src/run/cost.test.ts (14 tests) 27606ms
+   ✓ the cost of a tick > solves an affine plan  447ms
+   ✓ the cost of a tick > pays nothing for a constraint in a machine that declares none  334ms
+   ✓ the cost of a tick > samples five bounds over a seven-edge sub-program  3838ms
+   ✓ the cost of a tick > solves a self-read whose skeleton IS affine  2535ms
+   ✓ the cost of a tick > SOLVES six self-read dials through a `clamp01` window  2449ms
+   ✓ the cost of a tick > costs about what its members cost, against a FROZEN TWIN and a tick that crosses the detent  11061ms
+   ✓ the cost of a tick > runs the Curta carriage: ONE BLOCK OF SEVEN  5010ms
+   ✓ the cost of a tick > SEARCHES a stop on a block coordinate -- the expensive case  413ms
+   ✓ the cost of a tick > leaves search samples unchanged while saving equal path-piece work  576ms
+   ✓ the cost of a tick > runs the acceptance machine far faster than real time  607ms
+ ✓ src/run/acceptance.test.ts (3 tests) 856ms
+   ✓ the Pascaline module > accumulates the carry over ten Add one  785ms
+stdout | src/expression-lifetime.test.ts > expression lifetime under cache pressure > keeps live documents separate and bounds successful/failed replacement history
+60 replacements plus refusals: at most 32 retained nodes (threshold 5)
+
+ ✓ src/expression-lifetime.test.ts (11 tests) 444ms
+   ✓ expression lifetime under cache pressure > retains a current large graph across adjacent operations within finite capacity  341ms
+ ✓ src/run/run.test.ts (120 tests) 455ms
+ ✓ src/documentation.test.ts (111 tests) 237ms
+ ✓ src/expressions.test.ts (87 tests) 219ms
+ ✓ src/run/time-drives.test.ts (32 tests) 189ms
+ ✓ src/run/profile-contact.test.ts (19 tests | 1 skipped) 180ms
+ ✓ src/run/source-timing.test.ts (20 tests) 173ms
+ ✓ src/run/running-corpus.test.ts (36 tests) 172ms
+stdout | src/clocked/cost.test.ts > what a PRESSED instruction costs against the same request > is the same request and two dictionary lookups (OpenSpec `play-the-instruction`, task 8.2)
+  Calculator move('crank', {by: 360}): median of 40 = 0.1691 ms
+  Calculator trigger('Stroke'): median of 40 = 0.1390 ms
+  the difference: -17.8%
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > cranks the Curta-shaped Calculator ONE STROKE
+  Calculator one stroke (crank by 360): 0.20 / 0.13 / 0.14 ms
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > sweeps its clearing ring, four relations reading what they write
+  Calculator one clearing sweep (ring by 500): 0.57 / 0.39 / 0.36 ms
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > CLIPS a selector move against three constraints, and fires nothing
+  Calculator one CLIPPED selector move (setting by 1): 0.94 / 0.24 / 0.18 ms
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > counts what ONE EVENT costs, on Counter's own ten-event request
+  Counter, ten events on one path (crank by 3700): 0.44 / 0.30 / 0.26 ms
+  Counter per EVENT: 0.044 / 0.030 / 0.026 ms
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > plays ONE FRAME of Regulator at x1, x60 and x3600
+  Regulator one frame at x1 (by 0.016666666666666666 s): 0.15 / 0.05 / 0.02 ms
+    ... 0 events in that frame
+  Regulator one frame at x60 (by 1 s): 0.07 / 0.03 / 0.05 ms
+    ... 1 events in that frame
+  Regulator one frame at x3600 (by 60 s): 1.94 / 1.17 / 1.10 ms
+    ... 60 events in that frame
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > counts what ONE EVENT of a played frame costs
+  Regulator, 240 events on one capped frame: 6.47 / 5.61 / 5.43 ms
+  Regulator per EVENT: 0.0269 / 0.0234 / 0.0226 ms
+
+stdout | src/clocked/cost.test.ts > what a clocked request costs > holds the whole corpus's 76 steps inside one frame budget
+  the whole corpus: 81 steps over 30 machines in 12.1 ms
+
+ ✓ src/clocked/cost.test.ts (8 tests) 84ms
+ ✓ src/run/constant-block-motion-reuse.test.ts (9 tests) 74ms
+ ✓ src/run/jumps.test.ts (84 tests) 70ms
+ ✓ src/clocked/clocked-corpus.test.ts (47 tests) 73ms
+ ✓ src/run/program.test.ts (98 tests) 63ms
+ ✓ src/tree.test.ts (61 tests) 72ms
+stdout | src/validation-pressure.test.ts > prepares one coherent validation graph above finite headroom and reconstructs afterward
+{ preparations: 1, generations: 0 }
+
+stdout | src/validation-pressure.test.ts > inspects a shared negative prefix once across operations and flexible parameters
+{ visits: 303, nodes: 303 }
+
+ ✓ src/validation-pressure.test.ts (11 tests) 48ms
+ ✓ src/clocked/split.test.ts (18 tests) 63ms
+ ✓ src/run/periodic-constraints.test.ts (18 tests) 44ms
+ ✓ src/clocked/machine.test.ts (44 tests) 44ms
+ ✓ src/flexible.test.ts (17 tests) 39ms
+ ✓ src/clocked/document.test.ts (45 tests) 43ms
+ ✓ src/document.test.ts (65 tests) 61ms
+ ✓ src/parity-fixture.test.ts (16 tests) 36ms
+ ✓ src/clocked/clock.test.ts (5 tests) 24ms
+ ✓ src/clocked/drawing.test.ts (16 tests) 21ms
+ ✓ src/run/kink-probe-cache.test.ts (8 tests) 14ms
+ ✓ src/run/edges.test.ts (23 tests) 21ms
+stdout | src/geometry-admission.test.ts > bounds active distinct geometry groups across two roots and markings while every required job completes
+{ initially: 4, peak: 4, total: 18 }
+
+ ✓ src/geometry-admission.test.ts (11 tests) 14ms
+ ✓ src/partControls.test.ts (52 tests) 15ms
+ ✓ src/run/profile-cache.test.ts (10 tests) 17ms
+ ✓ src/run/runtime.test.ts (8 tests) 14ms
+ ✓ src/evaluator.test.ts (25 tests) 15ms
+ ✓ src/selectedControls.test.ts (25 tests) 12ms
+ ✓ src/navtree.test.ts (40 tests) 13ms
+ ✓ src/run/republish.test.ts (7 tests) 12ms
+ ✓ src/assembly.test.ts (14 tests) 10ms
+ ✓ src/run/commands.test.ts (17 tests) 11ms
+ ✓ src/clocked/events.test.ts (10 tests) 11ms
+ ✓ src/run/source-timing-version.test.ts (5 tests) 11ms
+ ✓ src/options.test.ts (46 tests) 11ms
+ ✓ src/drivers.test.ts (28 tests) 9ms
+ ✓ src/controls.test.ts (41 tests) 7ms
+ ✓ src/presentation.test.ts (18 tests) 9ms
+ ✓ src/bindings.test.ts (15 tests) 7ms
+ ✓ src/clockedControls.test.ts (21 tests) 9ms
+ ✓ src/playback.test.ts (20 tests) 8ms
+ ✓ src/run/contact-proof.test.ts (5 tests) 8ms
+ ✓ src/run/pose.test.ts (6 tests) 6ms
+ ✓ src/camera.test.ts (31 tests) 7ms
+ ✓ src/screen.test.ts (9 tests) 7ms
+ ✓ src/runControls.test.ts (18 tests) 6ms
+ ✓ src/run/motion.test.ts (4 tests) 5ms
+ ✓ src/run/scope.test.ts (11 tests) 6ms
+ ✓ src/run/protocol.test.ts (7 tests) 4ms
+ ✓ src/parent-adversarial-geometry.test.ts (1 test) 3ms
+ ✓ src/version.test.ts (6 tests) 4ms
+ ↓ src/run/profile-installed-benchmark.test.ts (1 test | 1 skipped)
+ ✓ src/navigator.test.ts (26 tests) 166ms
+ ✓ src/fullscreen.test.ts (31 tests) 162ms
+ ✓ src/partSurface.test.ts (36 tests) 125ms
+ ✓ src/inspector.test.ts (22 tests) 67ms
+ ✓ src/develop.test.ts (7 tests) 56ms
+ ✓ src/reloader.test.ts (9 tests) 43ms
+ ✓ src/widget.test.ts (9 tests) 4ms
+
+ Test Files  65 passed | 1 skipped (66)
+      Tests  1700 passed | 2 skipped (1702)
+   Start at  17:47:25
+   Duration  106.73s (transform 1.78s, setup 0ms, collect 5.72s, tests 78.60s, environment 8.10s, prepare 5.29s)
+

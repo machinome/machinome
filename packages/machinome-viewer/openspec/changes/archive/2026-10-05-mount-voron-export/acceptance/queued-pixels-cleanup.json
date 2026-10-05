@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/home/asa/devel/machinome/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/test_asset_load_order.py"
+  ],
+  "group": 183822,
+  "returncode": 1,
+  "peak_group_rss_kib": 188644,
+  "elapsed_seconds": 6.802949634962715,
+  "survivors": []
+}

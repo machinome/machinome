@@ -528,6 +528,10 @@ export function releaseExpressions(): void {
 // ---------------------------------------------------------------------
 
 let resolutions = 0;
+let profileInspectionVisits = 0;
+
+/** Source-only structural work counter, never a host capability. */
+export function profileInspectionMetrics(): number { return profileInspectionVisits; }
 
 export function expressionMetrics(): { nodes: number; peakNodes: number; resolutions: number } {
   return { nodes: nodes.length, peakNodes, resolutions };
@@ -535,6 +539,7 @@ export function expressionMetrics(): { nodes: number; peakNodes: number; resolut
 
 export function resetExpressionMetrics(): void {
   resolutions = 0;
+  profileInspectionVisits = 0;
   peakNodes = nodes.length;
 }
 
@@ -821,6 +826,28 @@ export function valueOf(id: NodeId, scope: EvalScope): unknown {
 export function inspectProfileExpression(
   root: NodeId, bindings?: ReadonlyMap<string, NodeId>, profileCount?: number,
 ): boolean {
+  return inspectProfile(root, bindings, profileCount);
+}
+
+/** Validation-owned negative facts for one binding map and generation. Acquire,
+ * use and discard inside one synchronous withExpressions operation. Running
+ * Bounds keep inspectProfileExpression and their own profile-table context. */
+export function validationProfileInspector(bindings?: ReadonlyMap<string, NodeId>):
+  (root: NodeId) => boolean {
+  const generation = expressionGeneration();
+  const clear = new Set<NodeId>();
+  return (root) => {
+    if (generation !== expressionGeneration()) {
+      throw new Error('Profile inspection references escaped their expression generation');
+    }
+    return inspectProfile(root, bindings, undefined, clear);
+  };
+}
+
+function inspectProfile(
+  root: NodeId, bindings?: ReadonlyMap<string, NodeId>, profileCount?: number,
+  clear?: Set<NodeId>,
+): boolean {
   let found = false;
   const seen = new Set<NodeId>();
   const pending: { id: NodeId; calleeOfProfile: boolean }[] =
@@ -835,8 +862,11 @@ export function inspectProfileExpression(
       if (!calleeOfProfile) throw new Error('profileOverlap must be called directly');
       continue;
     }
-    if (seen.has(id)) continue;
+    // A reserved name's direct-callee context must be checked even when
+    // this node was visited in a different position of this same walk.
+    if (seen.has(id) || clear?.has(id)) continue;
     seen.add(id);
+    profileInspectionVisits += 1;
     switch (node.kind) {
       case 'name': {
         const binding = bindings?.get(node.parts[0]);
@@ -881,6 +911,9 @@ export function inspectProfileExpression(
       default: break;
     }
   }
+  // Publish only after the ENTIRE walk succeeds and contains no profile call.
+  // A positive or failed traversal contributes no negative structural facts.
+  if (!found && clear) for (const id of seen) clear.add(id);
   return found;
 }
 

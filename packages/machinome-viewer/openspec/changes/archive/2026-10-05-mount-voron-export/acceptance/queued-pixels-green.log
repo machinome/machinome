@@ -1,0 +1,80 @@
+..F                                                                      [100%]
+=================================== FAILURES ===================================
+_ AssetLoadOrderTest.test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership _
+
+self = <tests.test_asset_load_order.AssetLoadOrderTest testMethod=test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership>
+
+    def test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership(self):
+        from tests.support import serve_directory
+    
+        with tempfile.TemporaryDirectory(prefix='viewer-queued-order-') as temp:
+            stage = Path(temp)
+            shutil.copy2(bundle_path(), stage / 'viewer.js')
+            payload = document()
+            original = payload['root']['children']
+            payload['root']['children'] = [
+                {**original[index % 2], 'name': f'plate{index}',
+                 'model': f'plate{index}.stl'} for index in range(8)
+            ]
+            payload['root']['children'][0]['markings'] = [
+                {'name': 'first', 'model': 'mark0.stl', 'color': '#ffffff'},
+                {'name': 'second', 'model': 'mark1.stl', 'color': '#333333'},
+            ]
+            (stage / 'manifest.json').write_text(json.dumps(payload))
+            for name in [f'plate{i}' for i in range(8)] + ['mark0', 'mark1']:
+                (stage / f'{name}.stl').write_bytes(plate_stl())
+            (stage / 'index.html').write_text(
+                '<html><style>html,body{margin:0}.host{width:320px;'
+                'height:240px;display:inline-block}</style>'
+                '<div id="a" class="host"></div><div id="b" class="host"></div>'
+                '<script src="viewer.js"></script></html>')
+            with serve_directory(stage) as url, sync_playwright() as pw:
+                browser = pw.chromium.launch(args=[
+                    '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+                try:
+                    frames = []
+                    for reverse in (False, True):
+                        page = browser.new_page(viewport={'width': 640, 'height': 240})
+                        errors = []
+                        page.on('pageerror', lambda error: errors.append(str(error)))
+                        page.on('requestfailed', lambda request: errors.append(request.failure))
+                        # Delay response completion inside each admitted group
+                        # of assets. The viewer still owns all real STL parsing.
+                        def delayed(route):
+                            path = route.request.url.rsplit('/', 1)[-1]
+                            index = int(path[5:-4]) if path.startswith('plate') else int(path[4:-4])
+                            time.sleep((index % 4 if reverse else 3-index % 4) * .01)
+                            route.continue_()
+    
+                        page.route('**/*.stl', delayed)
+                        page.goto(url)
+                        result = page.evaluate('''async () => {
+                          const options={renderMode:'on-demand',animation:'external',
+                            autoplay:false,driverControls:'none',partControls:'none',
+                            view:{camera:[0,0,5],target:[0,0,0]}};
+                          [window.first,window.second]=await Promise.all([
+                            MachinomeViewer.mount('#a','/manifest.json',options),
+                            MachinomeViewer.mount('#b','/manifest.json',options)]);
+                          first.setView(first.view()); second.setView(second.view());
+                          return [first.assembly().children.length,second.assembly().children.length];
+                        }''')
+                        self.assertEqual(result, [8, 8])
+                        before = page.locator('#b').screenshot()
+                        page.evaluate('first.dispose(); second.setView(second.view())')
+                        self.assertEqual(before, page.locator('#b').screenshot(),
+                                         'disposing a duplicate-URL viewer changed another owner')
+                        frames.append(before)
+>                       self.assertEqual(errors, [])
+E                       AssertionError: Lists differ: ['net::ERR_ABORTED'] != []
+E                       
+E                       First list contains 1 additional elements.
+E                       First extra element 0:
+E                       'net::ERR_ABORTED'
+E                       
+E                       - ['net::ERR_ABORTED']
+E                       + []
+
+tests/test_asset_load_order.py:146: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_asset_load_order.py::AssetLoadOrderTest::test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership
+1 failed, 2 passed in 6.69s
