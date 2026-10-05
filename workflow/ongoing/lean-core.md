@@ -1465,3 +1465,36 @@ documentation embedding are a third, browser-only by nature.
 table, removed here; the `viewers` directory living beside the plan for
 three cycles; a second, small run of the rewrite script for the flag.
 Nothing in `brep-mesh` or `root-cleanup` touches a viewer.
+
+## Root cleanup decided; the viewer deferred; 0.8 after the root is clean (pilot, 5 October 2026)
+
+Three decisions for `root-cleanup`, the pilot's, taken while `brep-mesh`
+was in validation:
+
+1. **The node root exports nothing.** Every name is imported from its
+   module (`machinome.node.assembly`, `machinome.node.cadquery`, ...); each
+   of the twenty former root names refuses with the module's address, as
+   the moved port names do. The one-path rule, applied to the core's own
+   structural names as well as to the node types. The manual's examples
+   change with the code.
+2. **The script rewrites every repository.** The pilot stops work in
+   Voron-2 for it; Voron-2's `shape()` call sites (29 files calling CadQuery
+   methods on the engine's shape) are done by hand inside the same pass.
+   The orchestrator announces the pass; no session writes in a project
+   repository during it; a repository with uncommitted changes in a file
+   the script must rewrite is skipped and reported, never overwritten.
+3. **Rewrite and commit on whatever branch each repository has checked
+   out**, one commit per repository naming the cycle, only the rewritten
+   files in it; untracked `.env` files are rewritten and not committed;
+   worktrees inside a project (the Curta's `WTs/`) are other branches and
+   are reported, not rewritten.
+
+**The viewer cycle is deferred** past 0.8: the phase ends with
+`root-cleanup`; `viewer-seam` ("The last cycle of the phase" above) waits
+for the pilot's word after the release, and ADR-179's provisional
+renderer column ships as it is.
+
+**0.8 is released once the root is clean** (the pilot). Before or with the
+release, outside the framework: the studio's `machinome_test` tool and its
+two skills, and the workspace's `skills/simulate-project/SKILL.md`, still
+pass `--faceted`/`--exact` and break against the renamed flags.
