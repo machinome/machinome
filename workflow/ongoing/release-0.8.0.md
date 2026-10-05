@@ -19,15 +19,12 @@ CERN-OHL-S-2.0-or-later, at the recipient's choice, through one fact,
 `framework_licence` in `docs/conf.py`; `README.rst` states the same words and
 a test holds it to that fact.
 
-The matching viewer is provisional: `docs/conf.py` says `viewer_version =
-'0.8.0'` and `viewer_api = '29'`, and `context7.json` the same, because the
-viewer's main carries unreleased API 29 above 0.7.1. Whether the viewer
-releases as 0.8.0 (API 29) or stays 0.7.1 (API 27) is the pilot's choice; it
-lives in those two files only. Keeping 0.7.1 also retires
-`tests/test_release_records.py::VersionFilesTest::test_the_matching_viewer_is_numbered_with_the_framework`.
-No other page or record states the viewer's number: the changelog, the
-release note and `HISTORY.rst` say only that exports keep document versions
-1 to 13, which holds either way.
+The matching viewer is 0.8.0, API 29, reading document versions 1 to 13, as
+`docs/conf.py` and `context7.json` state: the pilot decided on 5 October
+2026 that the viewer releases as 0.8.0 beside the framework, and its release
+state is the change `release-0-8-0` in the viewer's own repository. The
+changelog, the release note and `HISTORY.rst` say only that exports keep
+document versions 1 to 13.
 
 ## (a) The licence instruments this change did not touch
 
@@ -73,10 +70,8 @@ sections of `HISTORY.rst` were not touched.
 4. The upload to PyPI, from distributions built fresh at the tagged commit.
 5. The Read the Docs build of `latest` and the `v0.8.0` version.
 6. The Context7 refresh from `context7.json`.
-7. The viewer's choice (0.8.0 at API 29, or 0.7.1 kept), its own release
-   change in its repository, its tag, push and upload; and, if the viewer
-   stays 0.7.1, the edit of `docs/conf.py` and `context7.json` and the
-   retirement of the one test named above.
+7. The viewer's own `v0.8.0` tag, push and upload, from its repository, where
+   its 0.8.0 is at released state with its distributions checked.
 
 ## (c) Follow-ups outside the framework
 
