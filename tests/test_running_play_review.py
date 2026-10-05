@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import Time, get_coordinate
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Play, Sim
 from machinome.simulation.run import StopInvariantError
 

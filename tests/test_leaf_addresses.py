@@ -10,8 +10,9 @@ The addresses are the final ones of the one-path rule: a node type at
 `machinome.node.<nodetype>`. The former package, `machinome.node.adapters`,
 is dissolved and refuses every spelling under it naming the rule, so a
 project that has not migrated fails at its import line with the line to
-write. The root's spellings (`from machinome.node import StepNode`) do not
-move in this change.
+write. Each leaf class is imported from its module only: the node root
+exports nothing (OpenSpec change `root-cleanup`) and refuses each naming
+its module.
 
 The path extension is observed in subprocesses whose `sys.path` carries a
 scratch directory after the framework: one holding a second copy of the
@@ -64,7 +65,8 @@ FORMER = (
 
 
 class LeafAddressTest(TestCase):
-    """(2.7) Each leaf at its module, the root resolving the same object."""
+    """(2.7) Each leaf at its module, the root refusing it naming that
+    module."""
 
     def test_every_leaf_is_defined_at_its_module(self):
         for module_name, names in LEAF_MODULES.items():
@@ -73,7 +75,10 @@ class LeafAddressTest(TestCase):
                 with self.subTest(name=name):
                     value = getattr(module, name)
                     self.assertEqual(value.__module__, module_name)
-                    self.assertIs(getattr(machinome.node, name), value)
+                    with self.assertRaises(ImportError) as raised:
+                        getattr(machinome.node, name)
+                    self.assertIn(f'its module, {module_name!r}',
+                                  str(raised.exception))
 
     def test_the_names_only_a_module_answers_are_there(self):
         for module_name, names in MODULE_ONLY.items():

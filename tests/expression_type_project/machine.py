@@ -18,7 +18,9 @@ from solid2 import cube
 
 import machinome.math as m
 from machinome.motion.ports import TranslationalPort
-from machinome.node import AssemblyNode, MolejoNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.molejo import MolejoNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver
 
 

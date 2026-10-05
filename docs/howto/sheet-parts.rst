@@ -14,7 +14,7 @@ and declares the ``thickness`` of the stock:
 .. code-block:: python
 
     from build123d import Circle, Rectangle
-    from machinome.node import Build123dSheetNode
+    from machinome.node.build123d import Build123dSheetNode
 
     class Panel(Build123dSheetNode):
 

@@ -9,7 +9,7 @@ that is a plain legacy class."""
 
 from solid2 import cube, cylinder
 
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from machinome.parameters import Length
 
 

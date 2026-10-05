@@ -31,7 +31,8 @@ from tests.test_content_verified_currency import (
 PARTS = '''\
 import cadquery as cq
 
-from machinome.node import CadQueryNode, FusionNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
 
 from . import trace
 from .dimensions import SIZE
@@ -70,7 +71,7 @@ class Stud(FusionNode):
 '''
 
 MACHINE = '''\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .parts import Pin, Stud
 

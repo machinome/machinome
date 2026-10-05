@@ -23,7 +23,9 @@ from solid2 import cube
 from machinome.motion.joints import (Free, Orbit, Prismatic, Revolute,
                                       declared_joints)
 from machinome.motion.ports import RotationalPort, declared_ports
-from machinome.node import AssemblyNode, Solid2Node, declared_children
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.declarative import declared_children
 from machinome.node.base import _build_uniq_id
 from machinome.node.declarative import ChildDeclaration, declared_child_nodes
 from machinome.parameters import (Count, Flag, Length, ParameterError, Ratio,
@@ -191,7 +193,7 @@ class DeclarativeSheetPartTest(BaseNodeTest):
     constructor argument. Everything else about the part can declare."""
 
     def test_thickness_stays_a_class_attribute(self):
-        from machinome.node import Build123dSheetNode
+        from machinome.node.build123d import Build123dSheetNode
 
         with self.assertRaises(TypeError) as ctx:
             class Bad(Build123dSheetNode):
@@ -200,7 +202,7 @@ class DeclarativeSheetPartTest(BaseNodeTest):
 
     def test_a_sheet_part_declares_its_other_parameters(self):
         from build123d import Rectangle
-        from machinome.node import Build123dSheetNode
+        from machinome.node.build123d import Build123dSheetNode
 
         class Panel(Build123dSheetNode):
             thickness = 3.0

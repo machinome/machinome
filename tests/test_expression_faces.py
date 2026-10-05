@@ -19,7 +19,7 @@ import math as pymath
 from unittest import TestCase
 
 import machinome.math as m
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from machinome.parameters import Angle, Ratio, evaluate
 
 from tests.expression_type_project.machine import SharedMotion

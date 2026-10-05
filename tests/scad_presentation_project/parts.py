@@ -17,8 +17,13 @@ from molejo import Circle, Helix, P, Shape
 from solid2 import cube, cylinder, import_stl, sphere
 
 from machinome.motion.ports import TranslationalPort
-from machinome.node import (AssemblyNode, CadQueryNode, FusionNode,
-                            MolejoNode, OpenScadNode, Solid2Node, StlNode)
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.molejo import MolejoNode
+from machinome.node.openscad import OpenScadNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.stl import StlNode
 
 
 class ColouredCube(Solid2Node):

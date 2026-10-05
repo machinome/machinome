@@ -6,7 +6,7 @@ import re
 import os
 import shutil
 from unittest import TestCase
-from machinome.node import StlRenderStart
+from machinome.node.base import StlRenderStart
 from .utils import format_codes
 
 

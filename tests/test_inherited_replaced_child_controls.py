@@ -2,7 +2,7 @@
 
 from machinome.motion.joints import Prismatic, Revolute
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Sim, Turn
 
 from .base import BaseNodeTest

@@ -1,6 +1,6 @@
 # ADR-167: A Kernel Is an Extra, and Its Module Refuses Its Absence at Import
 
-**Status:** Accepted; manifold3d's exception amended 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md); the table of supported node types admitted 2026-10-04 by [ADR-179](../BUILD/ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md); the extras `brep` and `mesh`, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
+**Status:** Accepted; manifold3d's exception amended 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md); the table of supported node types admitted 2026-10-04 by [ADR-179](../BUILD/ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md); the extras `brep` and `mesh`, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md); the three doors, amended 2026-10-05 by [ADR-181](ADR-181-the-node-packages-root-exports-nothing.md)
 **Date:** 2026-10-03
 **Change:** [`lean-install`](../../../openspec/changes/archive/2026-10-03-lean-install/)
 **Amends:** [ADR-161: The core holds no kernel code](ADR-161-the-core-holds-no-kernel-code.md) — an engine whose `occt` extra is not installed is an absent engine, not a broken one
@@ -156,3 +156,15 @@ module `machinome.manifold.engine` refuses its absence at import with
 `require_extra('manifold', 'the mesh engine (machinome.manifold.engine)',
 'manifold3d')`, which the mesh engine seam reads as an absent engine.
 `watchdog` stays required.
+
+## Amendment (2026-10-05)
+
+[ADR-181](ADR-181-the-node-packages-root-exports-nothing.md) makes the node package's root export
+nothing, so its lazy export is no longer a door. A kernel module's absence
+reaches a caller unchanged at three doors: the module's own import, however
+spelled (`from machinome.node.step import StepNode`, or through the package,
+`from machinome.node import step`, whose `_load` re-raises it without the
+broken-install splice); the table's `load(key)`, which reads it as an absent
+node type; and the CLI command that needs the module. The root's refusal of
+a class name imports no node type and is not a door. The extras `jscad` and
+`stl` are declared and install nothing.

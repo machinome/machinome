@@ -50,7 +50,7 @@ sys.meta_path.insert(0, RefuseHelpers())
 from machinome.math import sin
 from machinome.motion.couplings import Affine
 from machinome.motion.joints import Revolute, Prismatic
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 assert sin(90) == 1
 assert Affine(2, 3).inverse(11) == 4
 assert Revolute(axis=(0, 0, 1)).coordinate is not None

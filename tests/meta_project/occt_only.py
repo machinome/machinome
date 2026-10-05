@@ -22,7 +22,8 @@ from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Shape
 from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
 
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 from machinome.node.brep_leaf import BrepLeafNode
 
 

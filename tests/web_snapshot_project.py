@@ -4,7 +4,7 @@
 
 from solid2 import cube, translate
 
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class AsymmetricSnapshotPart(Solid2Node):

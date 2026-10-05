@@ -4,7 +4,7 @@
 
 import os
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 MARKER = os.path.join(os.path.dirname(__file__), 'marker')
 with open(MARKER, 'w') as stream:

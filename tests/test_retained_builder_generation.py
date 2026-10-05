@@ -528,7 +528,8 @@ class FreshProcessBatchTest(TestCase):
     PROJECT_SOURCE = '''\
 import os
 from solid2 import cube
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.parameters import Count, Length
 
 

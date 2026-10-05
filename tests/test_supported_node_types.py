@@ -60,15 +60,23 @@ class TheTableTest(TestCase):
             with self.subTest(key=key):
                 self.assertEqual(table[key].classes, classes)
 
-    def test_the_root_exports_the_same_objects(self):
+    def test_the_root_refuses_each_class_naming_its_module(self):
+        # The node root exports nothing (`root-cleanup`): each class name of
+        # a row is defined by `machinome.node.<key>` and refused at the root
+        # naming it.
         import machinome.node
+        self.assertEqual(machinome.node.__all__, [])
         for key, classes in NODE_TYPES.items():
             module = importlib.import_module(f'machinome.node.{key}')
             for name in classes:
                 with self.subTest(name=name):
-                    self.assertIn(name, machinome.node.__all__)
-                    self.assertIs(getattr(machinome.node, name),
-                                  getattr(module, name))
+                    self.assertEqual(getattr(module, name).__module__,
+                                     f'machinome.node.{key}')
+                    with self.assertRaises(ImportError) as raised:
+                        getattr(machinome.node, name)
+                    self.assertIn(
+                        f'`from machinome.node.{key} import {name}`',
+                        str(raised.exception))
 
     def test_one_renderer_is_contributed_and_it_is_the_default(self):
         table = supported()

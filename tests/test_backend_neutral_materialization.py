@@ -10,7 +10,8 @@ from unittest.mock import patch
 import trimesh
 
 from machinome import currency
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 from machinome.node.base import _atomic_write_bytes
 from machinome.node.cadquery import CadQueryNode
 from machinome.node.brep_leaf import BrepLeafNode

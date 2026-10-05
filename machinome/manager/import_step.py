@@ -120,6 +120,14 @@ def _is_identity_translation(translation):
 # parts.py
 
 
+def _import_line(cls):
+    """The line generated source imports `cls` with, composed from the
+    module and the name the class reports: the module that defines it,
+    never the node package's root, which exports nothing (OpenSpec change
+    `root-cleanup`), and spelled by no node type's module here."""
+    return f'from {cls.__module__} import {cls.__name__}'
+
+
 def _part_class_source(class_name, step_source, part_name, part_index):
     # `part_index` is emitted only when the product's name is shared
     # (design D3): the empty line here reproduces the original single
@@ -144,6 +152,9 @@ def generate_parts(assembly, step_file, into_dir):
     dropped or overwritten by another product of the same name (design
     D3) -- keyed on `product.identity`, not on `product.name`, because
     two distinct products can carry one name."""
+    from machinome.node import supported
+    StepNode = supported.load('step').StepNode
+
     step_relative = os.path.relpath(os.path.realpath(step_file),
                                     os.path.realpath(into_dir))
 
@@ -172,7 +183,7 @@ def generate_parts(assembly, step_file, into_dir):
         f"Generated once; edit freely -- running the command again\n"
         f"refuses to overwrite this file (see docs/cli.rst).\n"
         f'"""\n\n'
-        f"from machinome.node import StepNode\n\n\n")
+        f"{_import_line(StepNode)}\n\n\n")
     source = header + '\n\n'.join(bodies) + ('\n' if bodies else '')
     return source, class_names
 
@@ -323,6 +334,8 @@ def generate_assembly(assembly, model_name, step_file, class_names):
     named from `model_name` (spec "Generated assembly source"). The
     machine is placed at rest: no driver, no `simulate()` (design
     Non-Goals)."""
+    from machinome.node.assembly import AssemblyNode
+
     step_basename = os.path.basename(step_file)
     products_by_identity = {product.identity: product
                             for product in assembly.products}
@@ -362,7 +375,7 @@ def generate_assembly(assembly, model_name, step_file, class_names):
         f"the machine at rest: no driver, no simulate() -- add motion\n"
         f"once the layout looks right.\n"
         f'"""\n\n'
-        f"from machinome.node import AssemblyNode\n\n"
+        f"{_import_line(AssemblyNode)}\n\n"
         + (f"from .parts import {part_imports}\n\n\n" if part_imports
            else "\n\n"))
     source = header + '\n\n'.join(bodies)

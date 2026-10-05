@@ -32,7 +32,7 @@ REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FLAT_PROJECT = os.path.join(REPO_DIR, 'tests', 'flat_project')
 
 GOOD_SIMPLE_PIPE = '''\
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from solid2 import cylinder
 
 
@@ -43,7 +43,7 @@ class SimplePipe(Solid2Node):
 '''
 
 NAME_ERROR_SIMPLE_PIPE = '''\
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from solid2 import cylinder
 
 this_name_is_never_defined_anywhere
@@ -55,7 +55,7 @@ class SimplePipe(Solid2Node):
 '''
 
 SYNTAX_ERROR_SIMPLE_PIPE = '''\
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from solid2 import cylinder
 
 
@@ -67,7 +67,7 @@ class SimplePipe(Solid2Node):
 
 VANISHING_JSCAD_PIPE = '''\
 import os
-from machinome.node import JScadNode
+from machinome.node.jscad import JScadNode
 
 
 class SimplePipe(JScadNode):
@@ -83,7 +83,7 @@ class SimplePipe(JScadNode):
 # deleted from inside its own __init__ -- the construction-time refusal
 # (name-the-missing-file), not mtime_ns's currency check.
 ABSENT_JSCAD_PIPE = '''\
-from machinome.node import JScadNode
+from machinome.node.jscad import JScadNode
 
 
 class SimplePipe(JScadNode):
@@ -92,7 +92,7 @@ class SimplePipe(JScadNode):
 
 VANISHING_SIBLING_JSCAD_MODEL = '''\
 import os
-from machinome.node import JScadNode
+from machinome.node.jscad import JScadNode
 
 
 class SiblingAsset(JScadNode):
@@ -404,7 +404,7 @@ class ImportedStlWatchTest(TestCase):
             stream.write('')
         with open(os.path.join(package, 'bracket.py'), 'w') as stream:
             stream.write(
-                'from machinome.node import StlNode\n'
+                'from machinome.node.stl import StlNode\n'
                 'class Bracket(StlNode):\n'
                 '    stl_source = "bracket.stl"\n')
         self.source = os.path.join(package, 'bracket.stl')

@@ -20,7 +20,7 @@ is gone -- the declarations are the only place the defaults are
 written, and the build/test loader binds them.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Instruction
 
 from .parts import Cube

@@ -4,7 +4,9 @@ import unittest
 
 import numpy as np
 
-from machinome.node import Frame, Solid2Node, AssemblyNode
+from machinome.node.frames import Frame
+from machinome.node.solid2 import Solid2Node
+from machinome.node.assembly import AssemblyNode
 from machinome.node.frames import resolved_frames
 from machinome.parameters import Length, ParameterError
 from machinome.motion.joints import Revolute, declared_joints

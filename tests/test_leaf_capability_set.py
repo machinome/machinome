@@ -117,8 +117,10 @@ class TheBrepMemberTest(TestCase):
     `brep` (OpenSpec change `brep-mesh`, design.md Decision 4)."""
 
     def test_the_brep_leaf_base_and_its_subclasses(self):
-        from machinome.node import (Build123dNode, CadQueryNode,
-                                    SheetLeafNode, StepNode)
+        from machinome.node.build123d import Build123dNode
+        from machinome.node.cadquery import CadQueryNode
+        from machinome.node.sheet_leaf import SheetLeafNode
+        from machinome.node.step import StepNode
         from machinome.node.brep_leaf import BrepLeafNode
         for node_type in (SheetLeafNode, CadQueryNode, Build123dNode,
                           StepNode):
@@ -130,7 +132,9 @@ class TheBrepMemberTest(TestCase):
             importlib.import_module('machinome.node.' 'ex' 'act_leaf')
 
     def test_brep_answers_by_node_type(self):
-        from machinome.node import CadQueryNode, FusionNode, StlNode
+        from machinome.node.cadquery import CadQueryNode
+        from machinome.node.fusion import FusionNode
+        from machinome.node.stl import StlNode
         self.assertIs(object.__new__(CadQueryNode).brep, True)
         self.assertIs(object.__new__(StlNode).brep, False)
         fusion = object.__new__(FusionNode)
@@ -141,18 +145,24 @@ class TheBrepMemberTest(TestCase):
         self.assertIs(fusion.brep, False)
 
     def test_no_node_class_defines_the_former_member(self):
-        import machinome.node as package
+        # The node root exports nothing (`root-cleanup`), so the classes
+        # are walked from the table's modules and the core's leaf bases:
+        # every subclass of the base the imported modules define.
+        from machinome.node import supported
         from machinome.node.base import AbstractBaseNode
         former = 'ex' 'act'
         seen = set()
         pending = [AbstractBaseNode]
-        for name in package.__all__:
+        for module in ('leaf', 'brep_leaf', 'sheet_leaf', 'flexible',
+                       'assembly', 'fusion'):
+            importlib.import_module(f'machinome.node.{module}')
+        for key, node_type in supported.NODE_TYPES.items():
             try:
-                value = getattr(package, name)
+                module = supported.load(key)
             except ImportError:
                 continue
-            if isinstance(value, type):
-                pending.append(value)
+            pending.extend(getattr(module, name)
+                           for name in node_type.classes)
         while pending:
             cls = pending.pop()
             if cls in seen:
@@ -164,7 +174,7 @@ class TheBrepMemberTest(TestCase):
                     self.assertNotIn(former, vars(cls))
 
     def test_an_unassembled_internal_node_cannot_say(self):
-        from machinome.node import FusionNode
+        from machinome.node.fusion import FusionNode
         fusion = object.__new__(FusionNode)
         fusion.name = 'unassembled'
         with self.assertRaises(RuntimeError) as refused:

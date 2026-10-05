@@ -171,8 +171,9 @@ model rather than combining old facts with new bytes.
 Nodes
 =========
 
-All node classes are importable from ``machinome.node``; the parameters
-they declare come from ``machinome.parameters``. A project is a
+Each node class is imported from its module, the address beside it below;
+the root of ``machinome.node`` exports nothing. The parameters they declare
+come from ``machinome.parameters``. A project is a
 tree of nodes: leaf nodes generate solids with an underlying modelling
 library, internal nodes combine their children.
 
@@ -401,12 +402,12 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
 
 .. autofunction:: machinome.node.openscad.writer.generate_scad
 
-.. autoclass:: machinome.node.Solid2Node
+.. autoclass:: machinome.node.solid2.Solid2Node
    :members: as_number
 
-.. autoclass:: machinome.node.CadQueryNode
+.. autoclass:: machinome.node.cadquery.CadQueryNode
 
-.. autoclass:: machinome.node.Build123dNode
+.. autoclass:: machinome.node.build123d.Build123dNode
 
 .. autoclass:: machinome.node.sheet_leaf.SheetLeafNode
    :members: profile, profile_faces, lies_on_xy_plane, extrude, write_dxf,
@@ -423,10 +424,10 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
       Path of the node's nominal cut file, written beside its ``.stl``
       and ``.brep``.
 
-.. autoclass:: machinome.node.Build123dSheetNode
+.. autoclass:: machinome.node.build123d.Build123dSheetNode
    :members: profile
 
-.. autoclass:: machinome.node.OpenScadNode
+.. autoclass:: machinome.node.openscad.OpenScadNode
    :members: __init__
 
    .. attribute:: scad_source
@@ -440,7 +441,7 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
       Name of the module to call inside :attr:`scad_source`. Defaults to
       the file name without the ``.scad`` extension.
 
-.. autoclass:: machinome.node.JScadNode
+.. autoclass:: machinome.node.jscad.JScadNode
 
    .. attribute:: jscad_source
 
@@ -449,7 +450,7 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
       function. A path that resolves outside the project is refused when
       the node is constructed.
 
-.. autoclass:: machinome.node.StlNode
+.. autoclass:: machinome.node.stl.StlNode
 
    .. method:: adjust(mesh)
 
@@ -476,7 +477,7 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
       file. A multi-body file with no ``body`` fails with a per-body
       inventory of centroid, bounds and volume.
 
-.. autoclass:: machinome.node.StepNode
+.. autoclass:: machinome.node.step.StepNode
 
    A B-rep part selected from a STEP document. See :doc:`/howto/imported-parts`
    for source paths, product selection and `adjust()`.
@@ -485,7 +486,7 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
    :members: tech, shape_parameters, shape_spec, snapshot_mesh, snapshot_stl,
              snapshot_shape, brep
 
-.. autoclass:: machinome.node.MolejoNode
+.. autoclass:: machinome.node.molejo.MolejoNode
    :members: shape_tolerance
 
 The two engines
@@ -534,12 +535,12 @@ Internal nodes
 .. autoclass:: machinome.node.internal.InternalNode
    :members: connect
 
-.. autoclass:: machinome.node.AssemblyNode
+.. autoclass:: machinome.node.assembly.AssemblyNode
    :members: simulate, set_state, set_keyframe, clear_keyframe, time
 
 .. autoclass:: machinome.motion.ports.Time
 
-.. autoclass:: machinome.node.FusionNode
+.. autoclass:: machinome.node.fusion.FusionNode
    :members: time
 
    .. attribute:: linear_deflection
@@ -578,7 +579,7 @@ runtime input and changes every instant. See :doc:`Values </concepts/values>`.
 
 .. autofunction:: machinome.parameters.declared_parameters
 
-.. autofunction:: machinome.node.declared_children
+.. autofunction:: machinome.node.declarative.declared_children
 
 Ports
 =========
@@ -648,8 +649,8 @@ replace, the joint's original limits. The method needs no import; see
 Frames and mates
 ====================
 
-A frame is a named connector a node declares on itself, importable from
-``machinome.node.frames`` and from ``machinome.node``; a mate relates two
+A frame is a named connector a node declares on itself, imported from
+``machinome.node.frames``; a mate relates two
 frames in an assembly's class body, ``<child>.<frame>.on(<frame>,
 Revolute(...))`` or ``<child>.<frame>.on(<frame>, Prismatic(...))``, or
 ``<child>.<frame>.on(<frame>)`` for a part that is held, and needs no

@@ -24,7 +24,8 @@ subprocess), so no STL is ever built here (same pattern as
 tests/test_uniq_id.py).
 """
 
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 from .base import BaseNodeTest
 

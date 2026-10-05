@@ -8,7 +8,7 @@ asks the OpenSCAD engine for SCAD text."""
 
 from solid2 import cube
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.leaf import LeafNode
 
 from .native import Block

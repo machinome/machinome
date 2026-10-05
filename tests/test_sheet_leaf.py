@@ -23,8 +23,10 @@ import cadquery as cq
 import ezdxf
 
 from machinome.engine.brep import solid_count
-from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
-                             FusionNode, SheetLeafNode)
+from machinome.node.build123d import Build123dNode, Build123dSheetNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.sheet_leaf import SheetLeafNode
 from machinome.node.openscad.binary import openscad_binary
 
 from .sheet_project import frame_panel
@@ -504,7 +506,7 @@ class SheetImportCostTest(TestCase):
         result = subprocess.run(
             [sys.executable, '-c',
              'import sys; import machinome.node;'
-             ' from machinome.node import Build123dSheetNode;'
+             ' from machinome.node.build123d import Build123dSheetNode;'
              ' print("build123d" in sys.modules)'],
             capture_output=True, text=True, check=True)
 

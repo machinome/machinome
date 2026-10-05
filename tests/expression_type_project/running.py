@@ -17,7 +17,7 @@ expression at all.
 from solid2.core.object_base import scad_inline
 
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from tests.running_project.parts import Arbor

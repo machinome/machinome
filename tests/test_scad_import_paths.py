@@ -21,7 +21,7 @@ the path a caller -- or the OpenSCAD snapshot renderer, for the root -- takes.
 import os
 import re
 
-from machinome.node import StlRenderStart
+from machinome.node.base import StlRenderStart
 
 from .base import BaseNodeTest
 from .cross_package_project.parts import OwnImportLeaf

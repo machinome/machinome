@@ -20,7 +20,7 @@ the build/test loader binds them from the declarations.
 """
 
 import machinome.math as sn_math
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.motion.ports import TranslationalPort
 from machinome.simulation import Driver, Instruction
 

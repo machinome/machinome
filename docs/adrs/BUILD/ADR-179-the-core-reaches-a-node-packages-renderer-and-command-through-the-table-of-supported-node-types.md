@@ -1,6 +1,6 @@
 # ADR-179: The Core Reaches a Node Package's Renderer and Command Through the Table of Supported Node Types
 
-**Status:** Accepted (provisional: its renderer column is removed by the viewer cycle)
+**Status:** Accepted (provisional: its renderer column is removed by the viewer cycle); the `classes` column's readers amended 2026-10-05 by [NODE/ADR-181](../NODE/ADR-181-the-node-packages-root-exports-nothing.md)
 **Date:** 2026-10-04
 **Change:** [`openscad-out`](../../../openspec/changes/archive/2026-10-04-openscad-out/)
 **Amends:**
@@ -84,3 +84,12 @@ class exists.
 ## References
 
 - [`openscad-out` change](../../../openspec/changes/archive/2026-10-04-openscad-out/): design Decision 6, the `cli` and `kernel-extras` deltas
+
+## Amendment (2026-10-05)
+
+[NODE/ADR-181](../NODE/ADR-181-the-node-packages-root-exports-nothing.md) leaves the node root no export
+table. The `classes` column names the classes each node type's module defines
+for a project to import; its readers are the root's refusal, which refuses
+each of them naming `machinome.node.<key>`, and `load`'s message for a node
+type that is not installed. The table's other readers are unchanged, and
+`machinome import-step` reads it to load the `step` node type.

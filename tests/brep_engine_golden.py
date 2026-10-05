@@ -38,8 +38,12 @@ import build123d as b3d  # noqa: E402
 import cadquery as cq  # noqa: E402
 from OCP.BRepTools import BRepTools  # noqa: E402
 
-from machinome.node import (Build123dNode, Build123dSheetNode,  # noqa: E402
-                            CadQueryNode, FusionNode)
+from machinome.node.build123d import (  # noqa: E402
+    Build123dNode,
+    Build123dSheetNode,
+)
+from machinome.node.cadquery import CadQueryNode  # noqa: E402
+from machinome.node.fusion import FusionNode  # noqa: E402
 from machinome.engine import brep as engine  # noqa: E402
 from machinome import brep_cache  # noqa: E402
 

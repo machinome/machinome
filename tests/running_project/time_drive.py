@@ -12,7 +12,8 @@ import cadquery as cq
 
 from machinome.motion.joints import Bound, Prismatic, Revolute
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.simulation import Driver
 
 

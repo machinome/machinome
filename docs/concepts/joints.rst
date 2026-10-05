@@ -137,7 +137,8 @@ that moves:
 .. code-block:: python
 
     from machinome.motion.joints import Revolute
-    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.solid2 import Solid2Node
     from machinome.node.frames import Frame
     from machinome.parameters import Length
     from solid2 import cube
@@ -200,7 +201,8 @@ across the joint line, the line being the link's own ``z``:
 .. code-block:: python
 
     from machinome.motion.joints import Revolute
-    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.solid2 import Solid2Node
     from machinome.node.frames import Frame
     from solid2 import cube
 
@@ -286,7 +288,9 @@ a fresh freedom. The frames place it at rest without replacing the joint:
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode, Solid2Node, Frame
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.solid2 import Solid2Node
+    from machinome.node.frames import Frame
     from machinome.motion.joints import Revolute
     from solid2 import cube
 
@@ -411,7 +415,8 @@ function too, of the assembly that states the mate:
 .. code-block:: python
 
     from machinome.motion.joints import Revolute
-    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.solid2 import Solid2Node
     from machinome.node.frames import Frame
     from machinome.parameters import Flag
     from solid2 import cube
@@ -456,7 +461,8 @@ may be a ``Prismatic``:
 .. code-block:: python
 
     from machinome.motion.joints import Prismatic
-    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.solid2 import Solid2Node
     from machinome.node.frames import Frame
     from solid2 import cube
 
@@ -501,7 +507,8 @@ leave its freedom out for a part that is held:
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode, Solid2Node
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.solid2 import Solid2Node
     from machinome.node.frames import Frame
     from solid2 import cube
 

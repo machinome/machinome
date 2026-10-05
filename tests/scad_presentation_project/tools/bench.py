@@ -6,7 +6,7 @@
 so that every part it places, declared in the parent package, is imported
 across packages and its imports are re-anchored (ADR-116)."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from ..parts import (Block, Bracket, Coil, Empty, FineCylinder, Fused,
                      Legacy, OwnImport, Plate, Single, Unoptimized)

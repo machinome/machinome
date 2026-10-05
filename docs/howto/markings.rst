@@ -11,7 +11,7 @@ is how a part says what it carries on its surface.
 
 .. code-block:: python
 
-    from machinome.node import CadQueryNode
+    from machinome.node.cadquery import CadQueryNode
     from machinome.node.markings import Marking, Svg, Wrapped
 
     class ResultsDial(CadQueryNode):

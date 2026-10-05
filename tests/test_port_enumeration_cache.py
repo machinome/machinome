@@ -6,7 +6,7 @@ from unittest import TestCase
 
 from machinome.motion.joints import Bound, Prismatic, Revolute
 from machinome.motion.ports import Port, RotationalPort, declared_ports
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 
 class PortEnumerationCacheTest(TestCase):

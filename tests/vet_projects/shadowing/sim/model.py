@@ -4,7 +4,7 @@
 
 import json
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 LOAD = json.load
 

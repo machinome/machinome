@@ -40,7 +40,7 @@ from machinome.core.serializer import (
 )
 from machinome.expression_graph import postorder
 from machinome.motion.ports import Time, get_coordinate
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Instruction, Sim, Slide
 from machinome.simulation.enumeration import bind_declared_defaults
 from machinome.simulation.program import (_BISECTION_ROUNDS,

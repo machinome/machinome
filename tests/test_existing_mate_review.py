@@ -3,7 +3,8 @@
 
 """Independent review: alias normalization must not launder ownership."""
 
-from machinome.node import AssemblyNode, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
 from machinome.motion.joints import Revolute
 from .base import BaseNodeTest
 

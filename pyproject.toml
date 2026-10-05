@@ -146,8 +146,14 @@ openscad = [
 solid2 = [
     "machinome[openscad]",
 ]
+# `machinome.node.jscad` (JScadNode) runs the `jscad` command, a Node program
+# no pip extra installs; the extra names the node type and installs nothing.
+jscad = []
+# `machinome.node.stl` (StlNode) reads meshes with trimesh, which the core
+# requires; the extra names the node type and installs nothing.
+stl = []
 all = [
-    "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2]",
+    "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2,jscad,stl]",
 ]
 # Machinome Studio is still experimental and unpublished. Declaring its final
 # extra name now does not make the dependency available from a package index.

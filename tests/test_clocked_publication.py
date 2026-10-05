@@ -40,7 +40,7 @@ from .clocked_project.counter import Counter, Stateless
 def built(node):
     """`node` with its declared defaults bound and its artifacts on
     disk: what a producer is handed, and what the loader does for it."""
-    from machinome.node import StlRenderStart
+    from machinome.node.base import StlRenderStart
     from machinome.simulation.enumeration import bind_declared_defaults
 
     bind_declared_defaults(node)

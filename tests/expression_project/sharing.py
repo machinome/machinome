@@ -27,7 +27,8 @@ would defeat the change that shrinks it. This tree is small on purpose.
 from solid2 import cube
 
 import machinome.math as m
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver
 
 

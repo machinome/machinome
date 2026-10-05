@@ -502,7 +502,13 @@ the golden's JSON is not re-recorded. *Inferred*, to be confirmed by the leg:
 document without `mtime` and `source`), `brep_engine_golden.py` (B-rep and STL
 bytes, measurements) and `mesh_engine_golden.py` (verdict tuples) record nothing
 a source line feeds and stay identical; any difference there is a defect.
-Open Question 4.
+Open Question 4. *Found in implementation:* a second reader of the same
+digests, `tests/test_leaf_contract_recipe.py`'s
+`test_no_recipe_records_what_the_tree_recorded_before`, compared each record's
+`digest` with the golden JSON; by the orchestrator's ruling (5 October 2026)
+it now compares it with the node's plain source digest computed in the same
+run, keeping its intent ("no recipe changes nothing") without reading the
+golden, which is not re-recorded (evidence.md).
 
 ### 10. The manual
 

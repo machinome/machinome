@@ -23,7 +23,7 @@ import cadquery as cq
 from OCP.TopAbs import TopAbs_COMPOUND
 from OCP.TopoDS import TopoDS_Shape
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from . import brep_engine_golden as golden
 

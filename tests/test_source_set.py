@@ -248,7 +248,7 @@ class SourceClosureRootAnchoringTest(TestCase):
             stream.write('BEAM = 3.5\n')
         with open(os.path.join(self.root, 'boat', 'hull.py'), 'w') as stream:
             stream.write(
-                'from machinome.node import Solid2Node\n'
+                'from machinome.node.solid2 import Solid2Node\n'
                 'from solid2 import cube\n'
                 'from .dims import BEAM\n'
                 '\n'

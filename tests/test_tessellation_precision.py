@@ -31,7 +31,8 @@ from unittest.mock import patch
 import cadquery as cq
 import trimesh
 
-from machinome.node import CadQueryNode, FusionNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
 from machinome.brep_artifacts import deflections, write_stl
 import machinome.test as test_module
 
@@ -303,7 +304,7 @@ class DeflectionValidationTest(TestCase):
 PARTS = '''\
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from . import trace
 from .dimensions import SIZE
@@ -326,7 +327,7 @@ class Undeclared(CadQueryNode):
 '''
 
 MACHINE = '''\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .parts import Declared, Undeclared
 

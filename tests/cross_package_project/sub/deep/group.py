@@ -8,7 +8,7 @@ generated `.scad` and the root's above it must each hold a DIFFERENT
 spelling of the same import to both resolve (design.md, "What does not
 move")."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from ...parts import RigidLeaf
 

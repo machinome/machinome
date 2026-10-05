@@ -1155,7 +1155,7 @@ class SelfReadRestTest(BaseNodeTest):
         reaches the compile with the two disagreeing. The compile's own
         slot comparison stands behind this as a backstop for the
         invariant."""
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.motion.ports import Time
         from machinome.parameters import Angle
         from machinome.simulation import Driver

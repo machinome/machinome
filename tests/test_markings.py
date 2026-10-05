@@ -53,8 +53,10 @@ from solid2 import cube
 
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import TranslationalPort
-from machinome.node import (AssemblyNode, FlexibleNode, FusionNode,
-                             Solid2Node)
+from machinome.node.assembly import AssemblyNode
+from machinome.node.flexible import FlexibleNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.declarative import NodeMeta
 from machinome.node.sources import MissingSourceFile
 from machinome.parameters import Length, declared_parameters
@@ -471,16 +473,23 @@ class MalformedTest(BaseNodeTest):
 
 
 class PublicModuleTest(BaseNodeTest):
-    """(2.9) The four names resolve from the package, lazily."""
+    """(2.9) The four names are imported from `machinome.node.markings`;
+    the node root, which exports nothing (`root-cleanup`), refuses each
+    naming that module."""
 
-    def test_the_names_resolve_from_the_node_package(self):
+    def test_the_names_are_refused_at_the_node_root(self):
         import machinome.node as package
         import machinome.node.markings as module
 
         for name in ('Marking', 'Wrapped', 'Flat', 'Svg'):
             with self.subTest(name=name):
-                self.assertIn(name, package.__all__)
-                self.assertIs(getattr(package, name), getattr(module, name))
+                self.assertNotIn(name, package.__all__)
+                self.assertTrue(isinstance(getattr(module, name), type))
+                with self.assertRaises(ImportError) as raised:
+                    getattr(package, name)
+                self.assertIn(
+                    f'`from machinome.node.markings import {name}`',
+                    str(raised.exception))
 
     def test_naming_a_marking_imports_no_geometry_library(self):
         # build123d costs about 1.6 s and trimesh 0.64 s, and
@@ -488,7 +497,7 @@ class PublicModuleTest(BaseNodeTest):
         # project that declares a marking pays for the reduction when
         # the decal is BUILT, never when the name is read.
         result = probe(
-            'from machinome.node import Marking, Wrapped, Flat, Svg\n'
+            'from machinome.node.markings import Marking, Wrapped, Flat, Svg\n'
             'assert isinstance(Marking, type)\n'
             "print('DONE')\n")
         self.assertEqual(result.stdout.strip(), 'DONE', result.stderr)

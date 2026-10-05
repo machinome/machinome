@@ -85,7 +85,12 @@ class ThePackageTest(TestCase):
         from machinome.node.openscad import OpenScadNode
         import machinome.node
         self.assertEqual(OpenScadNode.__module__, 'machinome.node.openscad')
-        self.assertIs(machinome.node.OpenScadNode, OpenScadNode)
+        # The node root exports nothing (`root-cleanup`): the class name
+        # read off it is refused naming the one address.
+        with self.assertRaises(ImportError) as raised:
+            getattr(machinome.node, 'OpenScadNode')
+        self.assertIn("its module, 'machinome.node.openscad'",
+                      str(raised.exception))
 
     def test_both_node_types_are_family_leaves(self):
         from machinome.node.openscad import OpenScadNode
@@ -144,8 +149,14 @@ class TheThreeDoorsTest(TestCase):
     def test_solid2_refuses_naming_the_solid2_extra(self):
         self.assert_refused('import machinome.node.solid2', R2, 'solid2')
 
-    def test_the_root_export_carries_the_refusal(self):
-        self.assert_refused('from machinome.node import Solid2Node', R2,
+    def test_the_class_import_carries_the_refusal(self):
+        self.assert_refused('from machinome.node.solid2 import Solid2Node', R2,
+                            'solid2')
+
+    def test_the_package_door_carries_the_refusal(self):
+        # The node root exports nothing (`root-cleanup`): its door is the
+        # submodule, reached through the package, not the class name.
+        self.assert_refused('from machinome.node import solid2', R2,
                             'solid2')
 
     def test_a_project_without_the_family_loads_none_of_it(self):
@@ -449,7 +460,7 @@ class CountingWriterTest(TestCase):
         import os
         from types import SimpleNamespace
         from unittest.mock import MagicMock
-        from machinome.node import StlRenderStart
+        from machinome.node.base import StlRenderStart
         from machinome.viewers.openscad import OpenScadRenderer
         node, fine = self.machine()
         with patch('machinome.node.openscad.leaf.Popen',

@@ -553,6 +553,12 @@ is layer 1's design; layer 2, the split, has not started for any package
 and starts only on the pilot's word, for the architecture and the lean
 install.
 
+**Layer 1 complete, once integrated (5 October 2026).** The tenth cycle,
+`root-cleanup`, is done on `v0.8-split-root-cleanup` with every validation
+leg green (item 3 of "The next phase" below); layer 1 is complete once its
+integration into the line is recorded. The section below is
+the handoff of 4 October, kept as it was written.
+
 **Left in layer 1:**
 
 - Next, the eighth cycle: the STL runner into `machinome/openscad/`, `Solid2Node` and
@@ -1359,6 +1365,36 @@ layer 2 starts with an actual cut.
    back with no expected failure; the project repositories are committed
    one by one after the sweep is green. `jscad` and `stl` become packages
    here.
+   **Done** (5 October 2026): branch `v0.8-split-root-cleanup`, planning
+   commit deb5244 on 815ceb9, ratified with every recommendation of
+   design.md's Open Questions taken. The root
+   exports nothing: each of its 21 former names (not 20: `StlRenderStart`
+   was the eager one) is refused with `ImportError` naming its module, the
+   node types' names read from the table, the core's twelve from
+   `_DEFINED_IN`; `__all__` is empty and the namespace binds only
+   submodules; `machinome[jscad]` and `machinome[stl]` are extras that
+   install nothing, in `all`; `machinome new` and `machinome import-step`
+   write module imports (ADR-181). Counts of task 1.2 on
+   815ceb9: the gate 6 files / 8 offences in `machinome/`, 291 / 491 in
+   `tests/`, 20 / 58 in the docs, now zero in all three; `repoint.py` 3,
+   290 and 18 files, six hand files. Suite: 4600 passed, 4 skipped. Every
+   validation leg green: before the change the workspace's rewrite pass
+   changed 56 of 62 project repositories (910 files, one commit each, plus
+   the hand edits); the universe sweep against the change, 121 ok, 0
+   expected, the 2 pre-existing unexpected, 6 no-model; the lock's 11
+   `.scad` hashes and 2573 verdicts identical; the six goldens green, the
+   leaf-contract golden's 12 source digests read as expected. Evidence:
+   `openspec/changes/archive/2026-10-05-root-cleanup/evidence.md`; the
+   moved-names table is that archive's `moved-names.toml`. Follow-ups outside the
+   framework, none of them this cycle's edits: machinome-studio's
+   `shop-skills/machinome-api/SKILL.md` (six lines) and
+   `shop-skills/machinome/SKILL.md` (one) teach the root spelling, a paired
+   studio change at the release; machinome-mechanics'
+   `tests/test_motion.py`, `tests/test_declarative.py`,
+   `docs/examples/slider_crank.py` and `docs/examples/gear_phase.py` import
+   from the root, at its release pass; the workspace's
+   `scripts/load-projects.d/` gains `root-cleanup.toml` from this change's
+   `moved-names.toml`.
 4. The viewer cycle, the phase's last by the pilot's decision of 4 October
    2026: viewers become providers behind a seam `machinome.viewer`
    (`machinome.viewer.openscad`, `machinome.viewer.web`), done after the

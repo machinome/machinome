@@ -44,9 +44,9 @@ def build123d_shape(rendered):
     may freely mix build123d with any other B-rep backend.
 
     build123d is recognised by module name rather than imported.
-    ``machinome.node`` resolves its adapters on first use, and importing
-    build123d costs about 1.6 seconds, which a project modelling in another
-    backend should not pay.
+    ``machinome.node`` imports no node type's module, each is imported
+    only when a project imports it, and importing build123d costs about 1.6
+    seconds, which a project modelling in another backend should not pay.
 
     A builder is not itself geometry: ``with BuildPart() as part:`` is
     build123d's headline idiom, and returning the builder rather than its

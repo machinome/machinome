@@ -4,7 +4,9 @@
 """Existing-joint attachments retain the original dial endpoint."""
 
 from solid2 import cube
-from machinome.node import AssemblyNode, Solid2Node, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.frames import Frame
 from machinome.motion.joints import Bound, Free, Orbit, Prismatic, Revolute, declared_joints
 from machinome.motion.ports import RotationalPort, Time, declared_ports
 from machinome.motion.couplings import DoublyBound, declared_relations, coordinate_ref

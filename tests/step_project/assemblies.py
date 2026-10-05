@@ -11,7 +11,9 @@ merely if it reads a file.
 
 import cadquery as cq
 
-from machinome.node import AssemblyNode, CadQueryNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
 
 from .parts import ColouredPart, SingleProduct
 

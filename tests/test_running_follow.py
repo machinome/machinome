@@ -10,7 +10,7 @@ from machinome.core.serializer import document_version
 from machinome.math import floor, piecewise, sin
 from machinome.motion.joints import Bound, JointRangeError, Prismatic
 from machinome.motion.ports import Time, TranslationalPort
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Follow, Sim, UnsupportedLaw
 
 

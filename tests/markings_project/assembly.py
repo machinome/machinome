@@ -11,7 +11,7 @@ goes with it, with nothing about time or the joint in the decal itself.
 marking, which is what the document and geometry comparisons need.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from .dial import Dial

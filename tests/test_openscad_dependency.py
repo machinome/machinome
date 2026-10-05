@@ -14,8 +14,11 @@ from solid2 import cube
 from solid2.core.object_base import OpenSCADConstant
 
 from machinome.manager.snapshot import Snapshot
-from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
-                             JScadNode, Solid2Node)
+from machinome.node.build123d import Build123dNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.jscad import JScadNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.openscad.binary import OpenScadUnavailable, openscad_binary
 from machinome.viewers import openscad as openscad_viewer
 from machinome.viewers.openscad import OpenScadRenderer

@@ -66,7 +66,7 @@ def _forget_assembly(node):
 
 
 def _build_stl(node):
-    from machinome.node import StlRenderStart
+    from machinome.node.base import StlRenderStart
     for _ in range(20):
         try:
             node.trigger_stl()

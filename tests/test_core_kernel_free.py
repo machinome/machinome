@@ -121,14 +121,19 @@ EXTRA_OF = {
 #: (`kernel-extras`, "The core imports no kernel outside its kernel
 #: modules").
 SEAMS = {
-    'machinome/node/__init__.py': KERNEL_MODULES,
     'machinome/node/markings.py': {'machinome.node.build123d'},
     'machinome/node/step.py': {'machinome.node.cadquery'},
+    # A project's file `machinome new` copies, which imports its node type
+    # from its module (`root-cleanup`).
+    'machinome/manager/templates/project/root/cadquery.py':
+        {'machinome.node.cadquery'},
 }
 
 #: The modules that reach a kernel module through the table of supported
-#: node types (`machinome.node.supported`, `openscad-out`), naming none.
-TABLE_READERS = ('machinome/cli.py', 'machinome/manager/import_step.py')
+#: node types (`machinome.node.supported`, `openscad-out`), naming none:
+#: the node root reads it for its refusals (`root-cleanup`).
+TABLE_READERS = ('machinome/cli.py', 'machinome/manager/import_step.py',
+                 'machinome/node/__init__.py')
 
 
 def every_module():

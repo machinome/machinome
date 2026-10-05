@@ -776,7 +776,7 @@ class FailedOpenScadRenderMetaTest(TestCase):
     """A renderer error is a failed build and never a publication."""
 
     MODEL = (
-        'from machinome.node import OpenScadNode\n'
+        'from machinome.node.openscad import OpenScadNode\n'
         'class Part(OpenScadNode):\n'
         '    scad_source = "part.scad"\n'
     )

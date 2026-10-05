@@ -6,7 +6,7 @@
 
 from machinome.motion.joints import Free, Prismatic, Revolute
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Button, Driver, Instruction, Sim, Slide, Turn
 from machinome.simulation.program import ControlError, _published_span
 

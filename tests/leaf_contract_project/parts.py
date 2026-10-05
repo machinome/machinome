@@ -6,7 +6,9 @@
 
 from solid2 import cube, cylinder
 
-from machinome.node import JScadNode, OpenScadNode, Solid2Node
+from machinome.node.jscad import JScadNode
+from machinome.node.openscad import OpenScadNode
+from machinome.node.solid2 import Solid2Node
 
 
 class Washer(Solid2Node):

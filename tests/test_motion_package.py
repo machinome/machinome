@@ -42,7 +42,7 @@ class MotionPortsExportsTest(BaseNodeTest):
 
     def test_a_node_declares_binds_and_reads_through_the_moved_port(self):
         from machinome.motion.ports import RotationalPort
-        from machinome.node import Solid2Node
+        from machinome.node.solid2 import Solid2Node
 
         class Shaft(Solid2Node):
             angle = RotationalPort(out=True, unit='deg')
@@ -56,7 +56,7 @@ class MotionPortsExportsTest(BaseNodeTest):
 
     def test_a_root_declares_and_reads_the_moved_time_base(self):
         from machinome.motion.ports import Time
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
 
         class Root(AssemblyNode):
             time = Time(loop=60)
@@ -134,16 +134,24 @@ class OldPathRefusedTest(TestCase):
                 self.assertIn('machinome.motion.ports',
                               str(raised.exception))
 
-    def test_a_node_class_is_still_a_node_export(self):
-        from machinome.node import AssemblyNode
+    def test_a_node_class_is_imported_from_its_module(self):
+        # The node root exports nothing (`root-cleanup`): a node class is
+        # imported from its module, and the root refuses it naming that
+        # module.
+        from machinome.node.assembly import AssemblyNode
+        import machinome.node as node
 
         self.assertTrue(issubclass(AssemblyNode, object))
+        with self.assertRaises(ImportError) as raised:
+            getattr(node, 'AssemblyNode')
+        self.assertIn("its module, 'machinome.node.assembly'",
+                      str(raised.exception))
 
 
 PORT_SNIPPET = '''
 from solid2 import cube
 from machinome.motion.ports import RotationalPort
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Shaft(Solid2Node):

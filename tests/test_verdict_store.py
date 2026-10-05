@@ -1161,7 +1161,7 @@ class OffMeansOff(StoreTestCase):
 PAIR = """\
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 
 class Peg(CadQueryNode):
@@ -1177,7 +1177,7 @@ class Socket(CadQueryNode):
 """
 
 PAIRED_CLOCK = """\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from ..pair import Peg, Socket
 

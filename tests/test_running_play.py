@@ -9,7 +9,7 @@ from machinome.core.serializer import document_version
 from machinome.motion.couplings import CouplingError
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Play, Sim
 from machinome.simulation import UnsupportedLaw
 from machinome.viewers.browser import BrowserRenderer, BrowserSnapshotError

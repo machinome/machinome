@@ -11,7 +11,7 @@ them inherited from a plain mixin in another directory, so a part with
 two decals and the mixin rule are the same fixture.
 """
 
-from machinome.node import StlNode
+from machinome.node.stl import StlNode
 from machinome.node.markings import Marking, Svg, Wrapped
 
 from .decals.badge import BadgeDecal

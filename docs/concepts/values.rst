@@ -51,7 +51,9 @@ Where names come from
 
 Every kind, the ``Quantity`` base below and the errors a bad declaration
 raises come from ``machinome.parameters``, and nothing else does. Node
-classes come from ``machinome.node``; ports and the declared time base
+classes come from their modules under ``machinome.node``, each from the
+module that defines it (``machinome.node.assembly``,
+``machinome.node.cadquery``, ...); ports and the declared time base
 from ``machinome.motion.ports``; joints from ``machinome.motion.joints``;
 drivers, states, instructions and the simulation from
 ``machinome.simulation``. A module's import block therefore says which of
@@ -59,7 +61,8 @@ its names build the machine, which move it, and which drive it:
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode, CadQueryNode
+    from machinome.node.assembly import AssemblyNode
+    from machinome.node.cadquery import CadQueryNode
     from machinome.parameters import Count, Flag, Length
     from machinome.motion.ports import RotationalPort, Time
     from machinome.motion.joints import Revolute

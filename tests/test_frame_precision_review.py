@@ -5,7 +5,8 @@ import math
 import pickle
 import unittest
 
-from machinome.node import AssemblyNode, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
 from machinome.motion.joints import Revolute
 from .test_mate_rotation_adversarial import apply, rodrigues
 

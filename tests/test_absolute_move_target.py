@@ -9,7 +9,7 @@ import numpy as np
 from machinome.motion.joints import Bound, Prismatic
 from machinome.motion.ports import Time
 from machinome.math import sqrt
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Play, Sim
 
 from .running_project.parts import Carriage

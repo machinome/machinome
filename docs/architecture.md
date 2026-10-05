@@ -317,34 +317,59 @@ Each leaf type is one module, or one package, directly under
 (`StepNode`, `StepAssembly`), `.molejo`, `.solid2`, `.openscad` (a package,
 below), `.jscad` and `.stl`. The **table of supported node types**,
 `machinome/node/supported.py` (ADR-179), is the one place the core names them:
-`NODE_TYPES` maps each node type to the class names the node root resolves
-from its module, the renderers it contributes to `machinome snapshot` (a
+`NODE_TYPES` maps each node type to the class names its module defines, the
+renderers it contributes to `machinome snapshot` (a
 provisional column: the viewer cycle replaces it with a seam
 `machinome.viewer`) and the CLI commands that need its module; a node type's
 address and extra are its name, `machinome.node.<key>` and
 `machinome[<key>]`. `load(key)` imports a node type's module, refusing one
 that cannot be found as an absent extra; `renderer(name)` and
 `needed_by(command)` read the other two columns. The node root, the CLI, the
-snapshot command and `machinome new` read it, and importing it imports no
-node type. The node root resolves its exports from them, and the former
-`machinome.node.adapters` package is dissolved: its `__init__.py` raises an
-`ImportError` naming the rule, so every spelling beneath it fails at its
-import line. The CAD kernels are extras, not required dependencies
+snapshot and `import-step` commands and `machinome new` read it, and
+importing it imports no node type.
+
+**The node root exports nothing** (ADR-181). Every class, function and
+declaration of the node package has one address, the module that defines
+it — `from machinome.node.assembly import AssemblyNode`,
+`from machinome.node.step import StepNode` — so that cutting a node package
+moves a module and never a second spelling. `machinome/node/__init__.py`
+is the package's path (extended with portions, below), its refusals and its
+submodules: `__all__` is empty, its namespace binds no public name but
+submodules, and importing it imports neither `base` nor any node type's
+module. The twenty-one names it resolved until `root-cleanup` are refused
+with an `ImportError` naming the module and the line to write, from two
+sources: the node types' class names read from `NODE_TYPES` when a name is
+asked for (so the root spells none of them, and a new row's classes are
+refused with no edit there), and `_DEFINED_IN`, the closed record of the
+core's own twelve. The lookup is of the requested name in a mapping and
+decides only the words of the error, which is not class-name recognition
+(ADR-166). `_MOVED` still refuses the port and time-base names, and the
+former `machinome.node.adapters` package is dissolved: its `__init__.py`
+raises an `ImportError` naming the rule, so every spelling beneath it fails
+at its import line. A submodule is still reached through the package
+(`machinome.node.step`, `from machinome.node import supported`), imported
+on first read by `__getattr__`. The source `machinome new` and
+`machinome import-step` write imports from the modules too; `import-step`
+composes each line from the class's own `__module__` and `__name__`. The CAD kernels are extras, not required dependencies
 (ADR-167): each is installed by the extra named by the last component of
 the address of the module that needs it — `machinome[cadquery]`,
 `[build123d]`, `[step]`, `[molejo]`, `[brep]` and `[mesh]` for the engines'
 modules `machinome.engine.brep` and `machinome.engine.mesh`, and
 `[openscad]` and `[solid2]` (SolidPython, for the OpenSCAD node family and
-`Solid2Node`, the second including the first), and `[all]` — every OCCT kernel
+`Solid2Node`, the second including the first), `[jscad]` and `[stl]`, which
+install nothing (their modules need nothing the core does not require; they
+exist so every node type has the extra of its name), and `[all]` — every OCCT kernel
 extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
 before it imports a kernel; the check asks `find_spec` and imports nothing,
 and an absent kernel raises one `ExtraUnavailable`, a `ModuleNotFoundError`
 whose `name` is the missing kernel and which carries the extra. It reaches a
-caller unchanged at three doors: the module's own import, the node root's
-lazy export (`_load` re-raises it without its broken-install splice, since
-an absent extra is not a broken install), and the CLI command that needs the
-module. A kernel that is found and fails to import reports its own error.
+caller unchanged at three doors: the module's own import, however spelled —
+through the package too, `from machinome.node import step`, whose `_load`
+re-raises it without its broken-install splice, since an absent extra is not
+a broken install; the table's `load(key)`, which reads it as an absent node
+type; and the CLI command that needs the module. The root's refusal of a
+class name imports no node type, so it is not a door. A kernel that is found and fails to import reports its own error.
 `machinome` and `machinome.node` extend their `__path__` with
 `pkgutil.extend_path`, admitting only portions that ship no `__init__.py` of
 their own: a node package cut later resolves at the same address, and a
@@ -2260,9 +2285,10 @@ own it the enumeration that binding runs would recompute it from the
 drivers and discard the value. A non-zero `--time` on a running root is
 refused too: elapsed seconds never wrap, so there is no timeline to be a
 position on (ADR-110). Only the invoked
-command's module is imported, and the node and simulation packages resolve
-their exports on first access, so a command pays for the backends it uses and
-not for the rest (ADR-059) — `machinome viewer` answers from the viewer's entry
+command's module is imported, the node package imports no backend (its root
+exports nothing, ADR-181) and the simulation package resolves its exports on
+first access, so a command pays for the backends it uses and not for the rest
+(ADR-059) — `machinome viewer` answers from the viewer's entry
 point alone. Top-level `-h` is the exception: it renders every command's
 docstring, so it loads them all. The test framework defers the B-rep stack
 through the B-rep engine seam (ADR-161): its B-rep path resolves the engine

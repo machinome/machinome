@@ -18,7 +18,9 @@ reproducible -- ezdxf writes the clock, fresh GUIDs and a hash-ordered
 OBJECTS section into every file -- so its digest is `entities_sha256`,
 over the ENTITIES section that holds the cut geometry (`_dxf_entities`). Run on the unmodified tree it wrote
 `tests/data/leaf_contract_golden.json`; run with `--check` it compares
-everything against that file.
+everything against that file, reading the fields a later change was
+expected to move through its table (`ROOT_CLEANUP_EXPECTED`) and counting
+each such value as expected rather than different.
 
     python tests/leaf_contract_golden.py [--out PATH] [--check]
 
@@ -50,6 +52,15 @@ from machinome import currency  # noqa: E402
 
 #: Files beside an artifact that are not artifacts of their own.
 _NOT_ARTIFACTS = (currency.SIDECAR_SUFFIX, '.lock', '.tmp')
+
+#: The fields OpenSpec change `root-cleanup` expects to differ (design.md
+#: Decision 9): the `digest` of every artifact's source record. Each
+#: fixture's package imported its node classes from the node root, and the
+#: import line is part of the digested source, so repointing it to the
+#: module moves the digest and nothing else -- no artifact byte
+#: (`sha256`, `entities_sha256`), record version, `uniq_id` or match flag.
+#: A value read through this table must be a digest before and after.
+ROOT_CLEANUP_EXPECTED = ('digest',)
 
 
 def _sha256(path):
@@ -204,6 +215,13 @@ def _flatten(value, prefix=''):
         yield prefix, value
 
 
+def _expected(key, before, after):
+    """Whether a difference at flattened `key` is one `root-cleanup`
+    expects: a source record's digest, a digest on both sides."""
+    return (key.rpartition('.')[2] in ROOT_CLEANUP_EXPECTED
+            and isinstance(before, str) and isinstance(after, str))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default=GOLDEN)
@@ -216,13 +234,19 @@ def main():
         with open(GOLDEN) as handle:
             golden = dict(_flatten(json.load(handle)['fixtures']))
         now = dict(_flatten(measured))
-        differences = [(key, golden.get(key), now.get(key))
-                       for key in sorted(set(golden) | set(now))
-                       if golden.get(key) != now.get(key)]
+        changed = [(key, golden.get(key), now.get(key))
+                   for key in sorted(set(golden) | set(now))
+                   if golden.get(key) != now.get(key)]
+        expected = [change for change in changed if _expected(*change)]
+        differences = [change for change in changed
+                       if not _expected(*change)]
+        for change in expected:
+            print('EXPECTED: %s golden=%r now=%r' % change)
         for difference in differences:
             print('DIFFERS: %s golden=%r now=%r' % difference)
-        print('golden comparison: %d fixtures, %d values, %d differences'
-              % (len(measured), len(now), len(differences)))
+        print('golden comparison: %d fixtures, %d values, %d differences, '
+              '%d expected (root-cleanup: source digests)'
+              % (len(measured), len(now), len(differences), len(expected)))
         return 1 if differences else 0
     with open(arguments.out, 'w') as handle:
         json.dump({'bench_commit': _bench_commit(), 'fixtures': measured},

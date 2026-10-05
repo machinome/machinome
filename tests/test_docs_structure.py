@@ -105,7 +105,7 @@ class KernelExtrasTest(unittest.TestCase):
     flag, extra or variable."""
 
     EXTRAS = ('brep', 'mesh', 'cadquery', 'build123d', 'step', 'molejo',
-              'all')
+              'jscad', 'stl', 'all')
 
     #: The engines' former names (`brep-mesh`), spelled in pieces so this
     #: file's own reading of them is plain.

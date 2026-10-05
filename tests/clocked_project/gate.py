@@ -32,7 +32,7 @@ request (design section 10).
 
 from machinome.math import floor
 from machinome.motion.joints import Bound, Prismatic
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .parts import Slide

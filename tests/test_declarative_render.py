@@ -17,7 +17,9 @@ import os
 from solid2 import cube
 
 from machinome.core.serializer import serialize_node
-from machinome.node import AssemblyNode, FusionNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.declarative import StructureError
 from machinome.parameters import Count, Flag, Length
 

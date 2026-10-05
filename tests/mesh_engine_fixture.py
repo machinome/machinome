@@ -36,7 +36,9 @@ model = "mfixture.parts:Shelf"
 '''
 
 PARTS = '''\
-from machinome.node import AssemblyNode, FusionNode, StlNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
+from machinome.node.stl import StlNode
 
 
 class Block(StlNode):

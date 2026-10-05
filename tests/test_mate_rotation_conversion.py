@@ -5,7 +5,9 @@ import unittest
 import numpy as np
 
 from machinome.motion.mates import _axis_angle, _SNAP
-from machinome.node import AssemblyNode, Solid2Node, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.frames import Frame
 from .base import BaseNodeTest
 
 

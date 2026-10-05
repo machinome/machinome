@@ -12,7 +12,7 @@ RECORDED rather than papered over.
 """
 
 from machinome.math import floor
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 

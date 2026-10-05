@@ -66,7 +66,8 @@ Ports and time declarations live in ``machinome.motion.ports``, not
 
 .. code-block:: python
 
-   from machinome.node import AssemblyNode, CadQueryNode
+   from machinome.node.assembly import AssemblyNode
+   from machinome.node.cadquery import CadQueryNode
    from machinome.parameters import Length, Count
    from machinome.motion.ports import RotationalPort, TranslationalPort, Time
    from machinome.motion.joints import Revolute, Prismatic
@@ -238,6 +239,76 @@ leaf's artifacts are reused.
 A source checkout that pulls the change keeps the compiled caches of the
 two removed packages, which Python would import as empty packages: run
 ``git clean -fdX machinome/occt machinome/manifold`` once in it.
+
+Import every name from its module (unreleased)
+-----------------------------------------------
+
+The next release gives every name of the node package one address, the
+module that defines it. The package's root, ``machinome.node``, exports
+nothing: a class, function or declaration is imported from its module, and
+nothing aliases a former spelling. Importing one of the names below from the
+root, or reading it as an attribute of the root, fails at that line with an
+``ImportError`` naming the module and the line to write, for example::
+
+    ImportError: module 'machinome.node' has no attribute 'AssemblyNode':
+    the root of machinome.node exports nothing, and 'AssemblyNode' is
+    imported from its module, 'machinome.node.assembly'. Write
+    `from machinome.node.assembly import AssemblyNode`.
+
+Each name and the module to import it from:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
+
+   * - Name
+     - Module
+   * - ``AssemblyNode``
+     - ``machinome.node.assembly``
+   * - ``declared_children``
+     - ``machinome.node.declarative``
+   * - ``FusionNode``
+     - ``machinome.node.fusion``
+   * - ``CadQueryNode``
+     - ``machinome.node.cadquery``
+   * - ``Build123dNode``, ``Build123dSheetNode``
+     - ``machinome.node.build123d``
+   * - ``SheetLeafNode``
+     - ``machinome.node.sheet_leaf``
+   * - ``FlexibleNode``
+     - ``machinome.node.flexible``
+   * - ``MolejoNode``
+     - ``machinome.node.molejo``
+   * - ``Solid2Node``
+     - ``machinome.node.solid2``
+   * - ``OpenScadNode``
+     - ``machinome.node.openscad``
+   * - ``JScadNode``
+     - ``machinome.node.jscad``
+   * - ``StlNode``
+     - ``machinome.node.stl``
+   * - ``StepNode``
+     - ``machinome.node.step``
+   * - ``Marking``, ``Wrapped``, ``Flat``, ``Svg``
+     - ``machinome.node.markings``
+   * - ``Frame``
+     - ``machinome.node.frames``
+   * - ``property_as_number``
+     - ``machinome.node.decorators``
+   * - ``StlRenderStart``
+     - ``machinome.node.base``
+
+An import line naming several of them becomes one line per module. The
+package's submodules are still imported through it (``from machinome.node
+import supported``), and a star import from the root binds nothing. The
+files ``machinome new`` and ``machinome import-step`` write import from the
+modules too.
+
+A rewritten import line changes no artifact byte, but a part's module is
+part of its recorded source, so each part whose module was rewritten
+rebuilds once, on its next build, to the same bytes; and, as after any
+framework upgrade, the project's kept verdicts recompute once. Nothing is to
+be run by hand.
 
 Verify your project
 ---------------------

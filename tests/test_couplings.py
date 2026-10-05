@@ -33,7 +33,8 @@ from machinome.motion.joints import (Free, JointRangeError, Orbit, Prismatic,
                                       Revolute, declared_joints)
 from machinome.motion.ports import (RotationalPort, SignalPort, Time,
                                      TranslationalPort, declared_ports)
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.declarative import SidewaysReadError
 from machinome.node.qualified import DriverToken
 from machinome.parameters import Count, Length, Ratio

@@ -33,7 +33,9 @@ from unittest import TestCase, mock
 import cadquery as cq
 from solid2 import cube
 
-from machinome.node import CadQueryNode, FusionNode, Solid2Node
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.base import StlRenderStart
 
 from . import coarse_fs

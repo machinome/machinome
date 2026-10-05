@@ -27,7 +27,8 @@ from trimesh.creation import box
 from trimesh.util import concatenate
 
 from machinome.test import TestCase as AssertingTestCase
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 from machinome.node.base import AbstractBaseNode, _topmost_rigid_nodes
 from machinome.node.internal import InternalNode
 from machinome.node.operations import Translation

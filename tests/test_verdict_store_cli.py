@@ -49,7 +49,9 @@ model = "vfixture.machine:Machine"
 MACHINE = '''\
 import cadquery as cq
 
-from machinome.node import AssemblyNode, CadQueryNode, StlNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.stl import StlNode
 
 
 class Block(CadQueryNode):

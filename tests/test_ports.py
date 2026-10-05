@@ -18,7 +18,8 @@ serialized operation is that fact without an openscad build.
 
 from solid2 import cube
 
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.motion.joints import Free, Revolute
 from machinome.motion.ports import (BoundPort, Port, RotationalPort,
                                      SignalPort, TranslationalPort,

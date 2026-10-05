@@ -31,7 +31,7 @@ from unittest.mock import patch
 
 from solid2 import cube
 
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from machinome.node.openscad.binary import OpenScadUnavailable, openscad_binary
 
 from .contract_package.scad_stand_in import MeshScad
