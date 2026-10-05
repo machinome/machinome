@@ -1,0 +1,23 @@
+# Machinome - A framework for mechanical CAD projects
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+
+"""Test-only isolation seams for process-local exact geometry caches."""
+
+from machinome import brep_cache
+
+
+def clear_exact_shape_caches():
+    """Drop coherent exact-cache state between fixtures.
+
+    ``_shape_keys`` maps object ids to entries retained by ``_shape_cache``;
+    the bounds and placement caches depend on those same keys.  Clear every
+    dependent registry while the fixture still owns any shapes, then release
+    the shape cache so a future object-id reuse cannot acquire stale identity.
+    """
+    brep_cache._shape_keys.clear()
+    brep_cache._shape_observations.clear()
+    brep_cache._bounds_cache.clear()
+    brep_cache._face_box_cache.clear()
+    brep_cache._placement_cache.clear()
+    brep_cache._shape_cache.clear()

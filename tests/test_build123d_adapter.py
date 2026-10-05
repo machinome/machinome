@@ -26,7 +26,7 @@ from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
                              Solid2Node)
 from machinome.node.build123d import build123d_shape
 from machinome.node.cadquery import workplane_shape
-from machinome.occt import engine
+from machinome.engine import brep as engine
 
 
 class BuilderBox(Build123dNode):
@@ -151,8 +151,8 @@ class Build123dConversionTest(TestCase):
             cq.Shape.cast(build123d_shape(builder)).Volume(), 8.0, places=6)
 
     def test_conversion_survives_a_brep_roundtrip(self):
-        from machinome.exact_artifacts import write_brep
-        from machinome.exact_cache import cached_shape
+        from machinome.brep_artifacts import write_brep
+        from machinome.brep_cache import cached_shape
 
         shape = build123d_shape(b3d.Box(2, 2, 2))
         path = os.path.join(tempfile.mkdtemp(), 'part.brep')
@@ -241,9 +241,9 @@ class Build123dArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = BuilderBox()
-        with patch('machinome.node.exact_leaf.write_stl',
+        with patch('machinome.node.brep_leaf.write_stl',
                    side_effect=AssertionError('must not re-export')), \
-             patch('machinome.node.exact_leaf.write_brep',
+             patch('machinome.node.brep_leaf.write_brep',
                    side_effect=AssertionError('must not re-export')):
             assembled = second.present(second.render())
 
@@ -287,16 +287,16 @@ class Build123dArtifactTest(BuildDirTestCase):
 class Build123dExactnessTest(BuildDirTestCase):
 
     def test_the_adapter_is_exact_without_rendering(self):
-        self.assertTrue(object.__new__(Build123dNode).exact)
+        self.assertTrue(object.__new__(Build123dNode).brep)
 
     def test_a_fusion_mixing_exact_backends_is_exact(self):
         fusion = MixedBackendFusion()
         fusion.assemble()
 
-        self.assertTrue(fusion.exact)
+        self.assertTrue(fusion.brep)
 
     def test_a_fusion_mixing_exact_backends_fuses_to_one_solid(self):
-        from machinome.occt.engine import solid_count
+        from machinome.engine.brep import solid_count
 
         fusion = MixedBackendFusion()
         fusion.assemble()
@@ -307,7 +307,7 @@ class Build123dExactnessTest(BuildDirTestCase):
         fusion = MixedExactnessFusion()
         fusion.assemble()
 
-        self.assertFalse(fusion.exact)
+        self.assertFalse(fusion.brep)
 
 
 class ExactAdapterIdentityTest(TestCase):
@@ -327,7 +327,7 @@ class ExactAdapterIdentityTest(TestCase):
     def test_a_subclass_defines_with_the_cq_editor_metaclass_active(self):
         """CheckCQEditor drops the declared bases under CQ-editor. It names
         no base, so it is unaffected by the adapter now inheriting
-        ExactLeafNode -- but that is worth holding, since it rewrites the
+        BrepLeafNode -- but that is worth holding, since it rewrites the
         hierarchy at definition time."""
         import sys
         from types import ModuleType

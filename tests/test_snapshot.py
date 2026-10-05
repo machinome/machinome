@@ -1371,7 +1371,7 @@ class SnapshotRendererFromTheTableTest(TestCase):
         self.assertEqual(action.default, supported.DEFAULT_RENDERER)
 
     def assert_refused_before_loading(self, *arguments):
-        from tests.exact_engine_absent import run_python
+        from tests.brep_engine_absent import run_python
         build_dir = tempfile.mkdtemp(prefix='snapshot-refused-')
         self.addCleanup(shutil.rmtree, build_dir, ignore_errors=True)
         output = os.path.join(build_dir, 'shot.png')

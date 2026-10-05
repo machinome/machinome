@@ -15,7 +15,7 @@ by the expression graph only through the hook `machinome.node.solid2`
 registers when it is imported.
 
 Every test of an absent SolidPython runs in a subprocess under
-`tests/exact_engine_absent.py`'s finder, which refuses `solid2` the way an
+`tests/brep_engine_absent.py`'s finder, which refuses `solid2` the way an
 interpreter without its wheel does.
 """
 
@@ -26,7 +26,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from tests.exact_engine_absent import run_python
+from tests.brep_engine_absent import run_python
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -181,7 +181,7 @@ class UpToDateLeafTest(BaseNodeTest):
 
         again = Block()
         with mock.patch(
-                'machinome.node.exact_leaf.write_stl') as export:
+                'machinome.node.brep_leaf.write_stl') as export:
             scad = again.present(again.render())
 
         export.assert_not_called()
@@ -199,7 +199,7 @@ class UpToDateLeafTest(BaseNodeTest):
                 fh.write('solid empty\nendsolid empty\n')
 
         node = Block()
-        with mock.patch('machinome.node.exact_leaf.write_stl',
+        with mock.patch('machinome.node.brep_leaf.write_stl',
                         side_effect=export_stub) as export:
             node.present(node.render())
         export.assert_called_once()

@@ -295,7 +295,7 @@ class StlArtifactTest(BuildDirTestCase):
         second = parts.Bracket()
         with patch('machinome.node.stl._load_source_mesh',
                    side_effect=AssertionError('must not re-read source')), \
-             patch('machinome.exact_artifacts._atomic_export',
+             patch('machinome.brep_artifacts._atomic_export',
                    side_effect=AssertionError('must not rewrite artifact')):
             assembled = second.present(second.render())
 
@@ -573,7 +573,7 @@ class StlAdapterContractTest(BuildDirTestCase):
     """The mesh-import leaf joins the roster without disturbing it."""
 
     def test_the_adapter_is_not_exact(self):
-        self.assertFalse(object.__new__(StlNode).exact)
+        self.assertFalse(object.__new__(StlNode).brep)
 
     def test_the_adapter_exposes_no_exact_geometry(self):
         node = parts.Bracket()
@@ -595,7 +595,7 @@ class StlAdapterContractTest(BuildDirTestCase):
 
         fusion.assemble()
 
-        self.assertFalse(fusion.exact)
+        self.assertFalse(fusion.brep)
         self.assertTrue(fusion.rigid)
 
 

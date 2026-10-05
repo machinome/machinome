@@ -231,9 +231,9 @@ Leaf nodes
 A leaf produces one solid. Four bases make up the declared leaf contract,
 each imported from the module that defines it:
 :class:`~machinome.node.leaf.LeafNode`, the base of every leaf and the one
-a faceted leaf subclasses; :class:`~machinome.node.exact_leaf.ExactLeafNode`,
-for a leaf whose geometry is exact;
-:class:`~machinome.node.sheet_leaf.SheetLeafNode`, for an exact leaf cut
+a mesh leaf subclasses; :class:`~machinome.node.brep_leaf.BrepLeafNode`,
+for a leaf whose geometry is a B-rep, a boundary representation;
+:class:`~machinome.node.sheet_leaf.SheetLeafNode`, for a B-rep leaf cut
 from sheet stock; and :class:`~machinome.node.flexible.FlexibleNode`, for a
 leaf whose shape follows its bound ports. A node type written outside
 machinome subclasses one of them and uses only the members documented with
@@ -290,10 +290,10 @@ declares nothing is not checked.
       (:class:`~machinome.node.flexible.FlexibleNode`); false by default. A
       class attribute.
 
-   .. attribute:: exact
+   .. attribute:: brep
 
-      Whether the node exposes boundary-representation geometry through
-      ``shape()``; false by default. A property.
+      Whether the node exposes B-rep geometry, a boundary representation,
+      through ``shape()``; false by default. A property.
 
    .. attribute:: optimize
 
@@ -347,12 +347,12 @@ declares nothing is not checked.
 
 .. autoexception:: machinome.node.base.ArtifactNotProduced
 
-.. autoclass:: machinome.node.exact_leaf.ExactLeafNode
-   :members: shape_from_rendered, exact, shape
+.. autoclass:: machinome.node.brep_leaf.BrepLeafNode
+   :members: shape_from_rendered, brep, shape
 
    .. attribute:: brep_file
 
-      Path of the node's ``.brep`` artifact, its exact geometry.
+      Path of the node's ``.brep`` artifact, its B-rep geometry.
 
    .. attribute:: linear_deflection
 
@@ -478,15 +478,55 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
 
 .. autoclass:: machinome.node.StepNode
 
-   An exact part selected from a STEP document. See :doc:`/howto/imported-parts`
+   A B-rep part selected from a STEP document. See :doc:`/howto/imported-parts`
    for source paths, product selection and `adjust()`.
 
 .. autoclass:: machinome.node.flexible.FlexibleNode
    :members: tech, shape_parameters, shape_spec, snapshot_mesh, snapshot_stl,
-             snapshot_shape, exact
+             snapshot_shape, brep
 
 .. autoclass:: machinome.node.MolejoNode
    :members: shape_tolerance
+
+The two engines
+------------------
+
+Two engines do the geometry, each named for the representation it
+consumes: the **B-rep engine**, over boundary representations, and the
+**mesh engine**, over triangle meshes. Each is a module of the engine
+package, ``machinome.engine.brep`` (installed by ``machinome[brep]``) and
+``machinome.engine.mesh`` (installed by ``machinome[mesh]``), and the
+package's own module holds the two seams that resolve them on first use.
+A project rarely calls them: nodes, fusion and the assertions do. Which
+engine a test run compares on is chosen by the run
+(:doc:`/howto/fast-tests`).
+
+.. py:function:: machinome.engine.brep_engine()
+
+   The B-rep engine's module, resolved once per process, or ``None`` when
+   it is not installed.
+
+.. py:function:: machinome.engine.require_brep_engine(needed_by, reason)
+
+   The B-rep engine's module, or ``BrepEngineUnavailable`` naming
+   ``needed_by``, ``reason`` and ``pip install "machinome[brep]"``.
+
+.. py:function:: machinome.engine.mesh_engine()
+
+   The mesh engine's module, resolved once per process, or ``None`` when
+   it is not installed.
+
+.. py:function:: machinome.engine.require_mesh_engine(needed_by, reason)
+
+   The mesh engine's module, or ``MeshEngineUnavailable`` naming
+   ``needed_by``, ``reason`` and ``pip install "machinome[mesh]"``.
+
+The B-rep engine's operations a project may call directly are
+``intersect_shapes``, ``fuse_shapes``, ``placed_shape``, ``solid_count``
+and ``solid_volume``, from ``machinome.engine.brep``; see
+:doc:`assertions` for ``intersect_shapes`` and the two errors it raises,
+``BrepCommonInconsistency`` and ``BrepCommonVerificationError``, which
+``machinome.engine`` defines.
 
 Internal nodes
 ------------------

@@ -44,7 +44,7 @@ relation relates two ports, so that cost is unavoidable, and everything
 from the node package -- the declaring namespace, the child declaration,
 the driver declaration, the tree -- is reached inside the method that
 needs it, exactly as `Joint` reaches the operations. Importing this
-module pulls no CAD backend and no exact stack.
+module pulls no CAD backend and no B-rep stack.
 """
 
 from dataclasses import dataclass

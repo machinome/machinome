@@ -1,6 +1,6 @@
 # ADR-160: The OCCT Engine's Currency Is the Kernel's Own Shape
 
-**Status:** Accepted
+**Status:** Accepted; the provider's address, amended 2026-10-05 by [ADR-180](../NODE/ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-03
 **Change:** [`exact-engine`](../../../openspec/changes/archive/2026-10-03-exact-engine/)
 **Supersedes:** the chosen option of [ADR-047: One shared OCCT currency for every exact backend](../NODE/ADR-047-shared-occt-currency-for-exact-backends.md), adopting its option 2; its conversion-at-the-boundary rule stands

@@ -29,7 +29,7 @@ from machinome.node.sources import ExternalSourceIdentity, require_source_file
 class MeshPart(ExternalSourceIdentity, LeafNode):
     """A part whose geometry is a committed mesh file."""
 
-    leaf_contract = 2
+    leaf_contract = 3
 
     #: The committed mesh, relative to the wrapper module's directory.
     mesh_source = None

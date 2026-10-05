@@ -12,7 +12,7 @@ The build directory
 
 ``_build/`` (``SOLID_BUILD_DIR`` moves it; a named model builds in
 ``_build/<name>/``) is written directly and holds, per node,
-``<script>-<uniq_id>.stl``, plus ``.brep`` for an exact node, ``.dxf``
+``<script>-<uniq_id>.stl``, plus ``.brep`` for a B-rep node, ``.dxf``
 for a sheet part, ``.marking-<name>.stl`` per declared marking, and the
 ``.scad`` of OpenSCAD-family parts (a ``Solid2Node``, an ``OpenScadNode``),
 which OpenSCAD renders their STL from and which the part keeps: a build keeps

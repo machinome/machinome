@@ -1283,7 +1283,7 @@ class SolidIdentityTest(BaseNodeTest):
         self.assertEqual(piece_of(marked), piece_of(plain))
         # An StlNode is faceted: neither part writes exact geometry, so
         # the BREP half of the comparison is the exact pair's alone.
-        self.assertFalse(marked.exact)
+        self.assertFalse(marked.brep)
         self.assertFalse(os.path.exists(marked.brep_file))
         self.assertFalse(os.path.exists(plain.brep_file))
 
@@ -1340,10 +1340,10 @@ class NoSolidTest(BaseNodeTest):
     def test_every_verdict_is_the_same_under_both_kernels(self):
         marked, plain = self.trees()
 
-        for kernel in ('faceted', 'exact'):
-            with self.subTest(kernel=kernel):
+        for engine in ('mesh', 'brep'):
+            with self.subTest(engine=engine):
                 set_comparison_policy(
-                    resolve_comparison_policy(kernel=kernel))
+                    resolve_comparison_policy(engine=engine))
                 self.assertEqual(self.verdicts(marked),
                                  self.verdicts(plain))
                 self.assertEqual(self.verdicts(marked), ['passed', 'passed'])
@@ -1717,7 +1717,7 @@ class ArtworkSeamTest(TestCase):
     `machinome.node.build123d`'s, reached through a seam that refuses by
     the `build123d` extra (`markings` capability, "Artwork is reduced
     through a seam that names its extra"). An install without the extra is
-    stood in for by `tests/exact_engine_absent.py`'s finder refusing
+    stood in for by `tests/brep_engine_absent.py`'s finder refusing
     `build123d`."""
 
     def setUp(self):
@@ -1726,7 +1726,7 @@ class ArtworkSeamTest(TestCase):
         self.build_dir = scratch.name
 
     def build(self, blocked):
-        from .exact_engine_absent import run_python
+        from .brep_engine_absent import run_python
         import json
 
         run = run_python(BUILD_PLATE, blocked=blocked, absent=('build123d',),

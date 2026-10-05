@@ -94,7 +94,7 @@ EXACT_EXPORTS = ('FusionNode', 'CadQueryNode', 'Build123dNode',
 CADQUERY_EXPORTS = ('StepNode',)
 
 # Refuse `cadquery` the way an interpreter without the wheel does, in the
-# shape of the finders of tests/exact_engine_absent.py and
+# shape of the finders of tests/brep_engine_absent.py and
 # tests/mesh_engine_absent.py: a `sys.meta_path` finder that raises, rather
 # than a stub, so the deferred import fails for the real reason an install
 # without the `step` extra fails.
@@ -160,7 +160,7 @@ class NodePackageImportCost(TestCase):
         result = self._ran('import machinome.node\n')
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.node imported cadquery')
-        self.assertFalse(result.imported('machinome.occt.engine'),
+        self.assertFalse(result.imported('machinome.engine.brep'),
                          'importing machinome.node imported the exact engine')
 
     def test_importing_the_node_base_does_not_import_cadquery(self):
@@ -228,11 +228,11 @@ class NodePackageExports(TestCase):
         # in ways an attribute-forwarding test would not notice.
         from machinome.node import CadQueryNode
         from machinome.node.cadquery import CheckCQEditor
-        from machinome.node.exact_leaf import ExactLeafNode
+        from machinome.node.brep_leaf import BrepLeafNode
 
         self.assertIsInstance(CadQueryNode, type)
         self.assertIs(type(CadQueryNode), CheckCQEditor)
-        self.assertTrue(issubclass(CadQueryNode, ExactLeafNode))
+        self.assertTrue(issubclass(CadQueryNode, BrepLeafNode))
 
     def test_star_import_binds_every_exported_name(self):
         result = probe(

@@ -34,7 +34,7 @@ What a marking is not
 ---------------------
 
 A marking is **not a solid**: it has no volume and no bounds, and the
-part's STL, exact geometry, piece id, interference and connectivity
+part's STL, B-rep geometry, piece id, interference and connectivity
 contracts give exactly the answers they give without it. It is **not a
 child**: the tree, the part count and the pieces inventory are unchanged.
 It is **not a printed piece**: a decal is a surface you paint, apply or

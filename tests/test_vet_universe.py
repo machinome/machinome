@@ -46,11 +46,29 @@ class TheDeclarationTest(TestCase):
             'machinome.model.ModelSnapshot', 'machinome.production.profile',
             'machinome.source_generation', 'machinome.viewers',
             'machinome.sphinx', 'machinome.currency', 'machinome._artifact',
-            'machinome.exact_cache', 'machinome.exact_artifacts',
-            'machinome.occt.engine.read_brep',
-            'machinome.occt.engine.write_brep',
-            'machinome.occt.engine.write_stl',
+            'machinome.brep_cache', 'machinome.brep_artifacts',
+            'machinome.engine.brep.read_brep',
+            'machinome.engine.brep.write_brep',
+            'machinome.engine.brep.write_stl',
         ))
+
+    def test_the_engine_package_is_judged_by_its_new_addresses(self):
+        """(OpenSpec change `brep-mesh`) The seams and the B-rep engine's
+        operations a project calls are in the contract; the memos, the
+        publication and the provider's file operations are denied."""
+        from machinome.vet.assertions import judge_import, judge_reach
+
+        for name in ('machinome.engine', 'machinome.engine.brep'):
+            with self.subTest(name=name):
+                self.assertEqual(judge_import(self.universe, name), [])
+        self.assertEqual(judge_reach(
+            self.universe, 'machinome.engine.brep.intersect_shapes'), [])
+        for name in ('machinome.brep_cache', 'machinome.brep_artifacts',
+                     'machinome.engine.brep.read_brep',
+                     'machinome.engine.brep.write_brep',
+                     'machinome.engine.brep.write_stl'):
+            with self.subTest(name=name):
+                self.assertNotEqual(judge_reach(self.universe, name), [])
 
     def test_the_kernels(self):
         self.assertEqual(self.universe.kernels, (

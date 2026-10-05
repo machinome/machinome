@@ -9,7 +9,7 @@ Deferring `machinome.node`'s backend exports was not enough: a real
 through two chains that never touch the node package's exports at all.
 
 - `core/loader.py` imported `TestCase` at module scope, and
-  `machinome/test.py` imported `machinome.exact`. Every node-scoped
+  `machinome/test.py` imported `machinome.brep`. Every node-scoped
   command goes through the loader, so this is the chain that matters
   most: it is the shop floor's hot path, where `machinome build` runs on
   every project open.
@@ -98,7 +98,7 @@ EXPECTED_EXPORTS = {
 # geometry imports no CAD front end. An ABSENT `OCP` is not a broken engine
 # since the `lean-install` change -- the `occt` extra is simply not
 # installed, and the seam answers it as an absent engine
-# (tests/test_exact_engine_seam.py, `AbsentKernelTest`).
+# (tests/test_brep_engine_seam.py, `AbsentKernelTest`).
 KERNEL_BROKEN = '''
 import importlib.machinery
 import sys
@@ -216,7 +216,7 @@ class LoaderImportCost(TestCase):
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.core.loader imported cadquery')
         self.assertFalse(
-            result.imported('machinome.occt.engine'),
+            result.imported('machinome.engine.brep'),
             'importing machinome.core.loader imported the exact stack')
 
     def test_loading_a_node_does_not_import_the_test_framework(self):
@@ -429,13 +429,13 @@ class SimulationBrokenExport(TestCase):
     `__getattr__` looks, to anything that treats the accessor as a
     lookup, like the name simply not being there.
 
-    `ScenarioTest` used to reach `machinome.test` -> `machinome.exact`
+    `ScenarioTest` used to reach `machinome.test` -> `machinome.brep`
     -> `cadquery`, and these tests read a broken exact stack through it.
     Now that the test framework defers the exact stack too, that chain
     stops one step earlier: reading `ScenarioTest` no longer needs
     cadquery at all, so the guard follows the dependency to where it
     actually lives. Since the `exact-engine` change that is the exact
-    engine, resolved through `machinome.exact_engine` at the exact path's
+    engine, resolved through `machinome.engine` at the exact path's
     first use, and what breaks a broken engine is its kernel, `OCP`, found
     and failing to load (an absent `OCP` is an absent engine since the
     `lean-install` change, not a broken one). The trap is unchanged and so
@@ -465,7 +465,7 @@ class SimulationBrokenExport(TestCase):
             KERNEL_BROKEN +
             'import machinome.test\n'
             'try:\n'
-            "    machinome.test._exact_engine().intersect_shapes(\n"
+            "    machinome.test._brep_engine().intersect_shapes(\n"
             "        None, None, 'a', 'b')\n"
             'except AttributeError as wrong:\n'
             "    print('ATTRIBUTE_ERROR', wrong)\n"
@@ -503,9 +503,9 @@ class SimulationBrokenExport(TestCase):
         # look like the exact engine was never installed.
         result = ran(
             KERNEL_BROKEN +
-            'import machinome.exact_engine\n'
+            'import machinome.engine\n'
             'try:\n'
-            "    present = machinome.exact_engine.exact_engine() is not None\n"
+            "    present = machinome.engine.brep_engine() is not None\n"
             'except ImportError as failure:\n'
             "    print('IMPORT_ERROR', failure)\n"
             'else:\n'
@@ -528,7 +528,7 @@ class BuildImportCost(TestCase):
         result = build('flat_project/simple_cylinder.py')
         self.assertFalse(result.imported('cadquery'),
                          'building a Solid2Node project imported cadquery')
-        self.assertFalse(result.imported('machinome.occt.engine'),
+        self.assertFalse(result.imported('machinome.engine.brep'),
                          'building a Solid2Node project imported the '
                          'exact stack')
         self.assertFalse(result.imported('machinome.test'),
@@ -584,7 +584,7 @@ class TestFrameworkImportCost(TestCase):
         result = ran('import machinome.test\n')
         self.assertFalse(result.imported('cadquery'),
                          'importing machinome.test imported cadquery')
-        self.assertFalse(result.imported('machinome.occt.engine'),
+        self.assertFalse(result.imported('machinome.engine.brep'),
                          'importing machinome.test imported the exact stack')
 
     def test_a_faceted_test_run_imports_no_cadquery(self):
@@ -629,7 +629,7 @@ class ExactNamesStayPatchable(TestCase):
 
     Deferring the import moves WHEN the kernel loads, not where its names
     live. Since the `exact-engine` change an engine operation is defined
-    once, in `machinome.occt.engine`, and the test framework looks it up
+    once, in `machinome.engine.brep`, and the test framework looks it up
     there at the moment of the call; a caller that patches it there keeps
     working -- before the exact path has ever run, and after it has
     already resolved the engine.
@@ -639,7 +639,7 @@ class ExactNamesStayPatchable(TestCase):
                    'solid_count', 'solid_volume')
 
     def test_every_deferred_name_is_readable(self):
-        import machinome.occt.engine as engine
+        import machinome.engine.brep as engine
         for name in self.EXACT_NAMES:
             with self.subTest(name=name):
                 self.assertTrue(callable(getattr(engine, name)),
@@ -666,7 +666,7 @@ class ExactNamesStayPatchable(TestCase):
 _PATCH = '''
 import numpy as np
 
-import machinome.occt.engine as e
+import machinome.engine.brep as e
 
 
 class FakeShape:
@@ -690,7 +690,7 @@ def patched_verdict():
     record = (FakeSolid(), None, None, shape, None, None, np.eye(4),
               None, shape)
     stats = t._placed_intersection(record, record)
-    return 'PATCHED' if (stats.exact and stats.is_empty) else 'NOT PATCHED'
+    return 'PATCHED' if (stats.brep and stats.is_empty) else 'NOT PATCHED'
 '''
 
 PATCH_BEFORE_USE = 'import machinome.test as t\n' + _PATCH + '''
@@ -702,7 +702,7 @@ print(patched_verdict())
 # building geometry -- which is what makes the second half an assertion about
 # names patched AFTER the exact path has resolved the engine.
 PATCH_AFTER_USE = 'import machinome.test as t\n' + _PATCH + '''
-engine = t._exact_engine()
+engine = t._brep_engine()
 resolved = ('RESOLVED' if engine.solid_count(engine.compound([])) == 0
             else 'UNRESOLVED')
 print(resolved, patched_verdict())

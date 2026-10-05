@@ -58,20 +58,21 @@ Three architectural commitments shape almost every subsystem:
 1. **Geometry follows the strongest backend path available**
    (ADR-004/044/045/046/047/102). Native preparation precedes optional SCAD
    presentation. Solid2 and raw `.scad` leaves render through OpenSCAD because
-   it is their backend; faceted fusions compose current child meshes directly
+   it is their backend; mesh fusions compose current child meshes directly
    through the mesh engine. The OCCT backends — CadQuery and build123d — preserve
-   BREP geometry, and all-exact fusions compose and tessellate in OCCT
+   B-rep geometry, and all-B-rep fusions compose and tessellate on the B-rep engine
    without OpenSCAD, whichever of the two produced each child. JSCAD produces
    its STL through its own `jscad` tool, and a flexible part through molejo's
    evaluators — mesh, STL and B-rep from one analytic spec.
    OpenSCAD is therefore conditional on
    the paths that invoke it, not a universal framework prerequisite. The same
-   rule governs the mesh engine (ADR-052/102/176), the provider
-   `machinome.manifold.engine` over `manifold3d`, installed by the `manifold`
-   extra and resolved through the seam `machinome.mesh_engine`: it decides
-   faceted fusion and faceted comparison geometry, and is also required by
-   `assertAssemblySupported`, whose statics phase is faceted for every body,
-   and by a faceted `machinome test`, which refuses at its start without it.
+   rule governs the mesh engine (ADR-052/102/176/180), the provider
+   `machinome.engine.mesh` over `manifold3d`, installed by the `mesh` extra
+   and resolved through its seam in the engine package, `machinome.engine`:
+   it decides mesh fusion and mesh comparison geometry, and is also required
+   by `assertAssemblySupported`, whose statics phase is on meshes for every
+   body, and by `machinome test` on the mesh engine, which refuses at its
+   start without it.
    Both tools are resolved once per process at
    the point of use and report by name when absent.
 2. **The build artifact is the currency, mtime is its clock**
@@ -84,7 +85,7 @@ Three architectural commitments shape almost every subsystem:
    (ADR-081). Base-mesh and mesh-solid caches key the path together with its
    strong observable identity — device, inode, size, integer-nanosecond mtime
    and ctime — so a same-size restored-mtime replacement cannot serve old
-   faceted geometry (ADR-085). Artifact freshness remains the one invalidation
+   mesh geometry (ADR-085). Artifact freshness remains the one invalidation
    concept the whole system shares. The source set behind
    that clock is a node's own file plus the project-local modules it
    imports, transitively (ADR-033), so a contributing module edit
@@ -285,24 +286,25 @@ Leaf adapters (ADR-004) wrap the backends: `Solid2Node`,
 `OpenScadNode` (`scad_source` + module call), `JScadNode` (shells out to the
 `jscad` CLI), `StlNode` (`stl_source`, a mesh materialized with
 no backend at all), and `StepNode` (`step_source` + `part`, a STEP
-document's own kernel writing its artifacts). Every node exposes derived read-only exactness (ADR-044): the
-OCCT adapters are exact, the other leaf adapters are faceted, and an
-internal node is exact only when every child is. Exactness does not require
-one backend — every exact adapter converts its render result to the exact
+document's own kernel writing its artifacts). Every node exposes a derived
+read-only `brep` flag (ADR-044, named by ADR-180): the OCCT adapters have
+B-rep geometry, the other leaf adapters are mesh leaves, and an internal
+node is a B-rep only when every child is. B-rep geometry does not require
+one backend — every B-rep adapter converts its render result to the B-rep
 engine's one currency at the adapter boundary, a rewrap of the kernel object
-the result already holds, so every exact node returns a single type and a
+the result already holds, so every B-rep node returns a single type and a
 fusion may mix CadQuery and build123d children (ADR-047). That type is the
 engine's decision, and the OCCT engine's is the kernel's own
 `OCP.TopoDS.TopoDS_Shape` (ADR-160): `shape()` returns it, and a consumer
 that wants CadQuery's methods wraps it, `cadquery.Shape.cast(node.shape())`.
-`ExactLeafNode.shape_from_rendered` admits whatever the engine admits — its
+`BrepLeafNode.shape_from_rendered` admits whatever the engine admits — its
 currency, or an object carrying it as `.wrapped` — so a leaf rendering the
 kernel's own shape needs no override; `CadQueryNode` and `StepNode` add a
 `Workplane`'s values, `Build123dNode` a builder's finished part. Because that
 conversion makes everything after it backend-neutral, the contract itself —
-`exact`, `shape()`, native materialization and `present()` presentation —
-lives once on `ExactLeafNode`, the declared
-base every exact adapter extends; each supplies only its `namespace` and any
+`brep`, `shape()`, native materialization and `present()` presentation —
+lives once on `BrepLeafNode`, the declared
+base every B-rep adapter extends; each supplies only its `namespace` and any
 validation its own API needs. Adapters remain distinct types regardless of the
 bases they share. Because build123d
 groups solids, sketches and curves under one namespace, `Build123dNode`
@@ -330,10 +332,11 @@ node type. The node root resolves its exports from them, and the former
 import line. The CAD kernels are extras, not required dependencies
 (ADR-167): each is installed by the extra named by the last component of
 the address of the module that needs it — `machinome[cadquery]`,
-`[build123d]`, `[step]`, `[molejo]`, `[occt]` for the engine's package, and
+`[build123d]`, `[step]`, `[molejo]`, `[brep]` and `[mesh]` for the engines'
+modules `machinome.engine.brep` and `machinome.engine.mesh`, and
 `[openscad]` and `[solid2]` (SolidPython, for the OpenSCAD node family and
 `Solid2Node`, the second including the first), and `[all]` — every OCCT kernel
-extra including `occt`, so the OCCT range is stated once. Each of those
+extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
 before it imports a kernel; the check asks `find_spec` and imports nothing,
 and an absent kernel raises one `ExtraUnavailable`, a `ModuleNotFoundError`
@@ -348,14 +351,14 @@ their own: a node package cut later resolves at the same address, and a
 second copy of the core on `sys.path` — an editable checkout behind a
 development bench — is never merged into the package.
 
-The four leaf bases — `LeafNode` (`machinome.node.leaf`), `ExactLeafNode`
-(`machinome.node.exact_leaf`), `SheetLeafNode` (`machinome.node.sheet_leaf`)
+The four leaf bases — `LeafNode` (`machinome.node.leaf`), `BrepLeafNode`
+(`machinome.node.brep_leaf`), `SheetLeafNode` (`machinome.node.sheet_leaf`)
 and `FlexibleNode` (`machinome.node.flexible`) — are declared extension
 points, the `leaf-contract` capability (ADR-163): a node type written
 outside the core, as each node package will be, subclasses one of them at
 that one path and uses only the members it declares, and no core leaf
 reaches a private either. What a leaf provides is its render, its
-conversion hook if it is exact (`shape_from_rendered`, a rewrap only), the
+conversion hook if it has B-rep geometry (`shape_from_rendered`, a rewrap only), the
 public backend hooks of the sheet and flexible bases, and its source
 identity: `get_source_file()`, additions to `files`, and `source_recipe`, a
 string stating what decides its artifacts beyond its tracked files, which
@@ -373,11 +376,12 @@ none evicts a core cache. The contract is versioned:
 declaring `leaf_contract` in its own body is refused at class creation when
 the numbers differ (ADR-165), ADR-162's check moved to the moment an
 imported package's class meets the core; a class declaring nothing is not
-checked. Version 2 (ADR-178) is the current one.
+checked. Version 3 (ADR-180: the member `brep`, the base `BrepLeafNode`) is
+the current one.
 
 A leaf declares its kind as **one set** on the leaf base, which the core reads
 directly and never probes for with `getattr` and a default or `hasattr`
-(ADR-178): `rigid`, `flexible`, `exact`, `optimize`, `present(rendered)`,
+(ADR-178, ADR-180): `rigid`, `flexible`, `brep`, `optimize`, `present(rendered)`,
 `presentation()`, `kept_artifacts()` (the artifacts beyond its STL, BREP and
 markings a build keeps for it, none by default), `generate_stl()`, its
 artifact paths, `base_mesh()` and `declared_markings()`, each with its default
@@ -422,16 +426,16 @@ normalization is code — an `adjust(self, mesh)` hook over the trimesh — not
 constructor knobs. Because the wrapper module carries `body` and `adjust`, it
 joins the node's tracked source set (ADR-055) — a rule `StepNode` below
 also needs and for the same reason.
-`StlNode` is faceted: `exact` is false, mesh-only is settled doctrine for
-imported meshes, and a fusion containing one is faceted and composes child
+`StlNode` is a mesh leaf: `brep` is false, mesh-only is settled doctrine for
+imported meshes, and a fusion containing one is a mesh fusion and composes child
 meshes through the mesh engine (ADR-102, ADR-176).
 
 A second external-file leaf reads the *other* file every vendor
-publishes, and it is exact rather than faceted. `StepNode` declares
+publishes, and it has B-rep geometry rather than a mesh. `StepNode` declares
 `step_source` beside its wrapper module exactly as `StlNode` declares
-`stl_source`, and derives `ExactLeafNode` directly rather than writing
+`stl_source`, and derives `BrepLeafNode` directly rather than writing
 its own `present()`: a STEP product is a boundary representation the
-moment it is read, so `shape()`, the `.brep`, exact fusion and declared
+moment it is read, so `shape()`, the `.brep`, B-rep fusion and declared
 tessellation precision (ADR-077) all come from that base whole, and no
 external tool of any kind produces its artifacts. `part` selects one
 product out of the document by name — the candidates being every
@@ -507,8 +511,8 @@ inside, on the XY plane, rejected naming the node and the offending type
 before anything is written. `thickness` is required and positive at
 construction, and as a constructor argument it keys artifacts like any other
 parameter. The extrusion is an ordinary backend solid, so a sheet part is an
-exact leaf in every respect above — the exact path needed no change, and a
-fusion may mix a sheet part with any other exact child.
+B-rep leaf in every respect above — the B-rep path needed no change, and a
+fusion may mix a sheet part with any other B-rep child.
 
 One leaf kind carries no solid at all. `FlexibleNode` — a declared base,
 `MolejoNode` its v1 adapter, which implements its five public backend hooks
@@ -525,9 +529,9 @@ parameter name, and the two name sets are checked in both directions
 immediately after `render()`, an unbound port failing loudly rather than
 defaulting. `MolejoNode.render()` returns a molejo `Shape`, validated by
 the ordinary `namespace` mechanism: the render contract is the backend's
-object, as for every other adapter. It is exact by type, `shape()`
+object, as for every other adapter. It has B-rep geometry by type, `shape()`
 evaluating the bound instant through molejo's B-rep evaluator and
-returning molejo's own `TopoDS_Solid`, already the exact engine's currency
+returning molejo's own `TopoDS_Solid`, already the B-rep engine's currency
 (ADR-160), with the backend's declared
 approximation surfaced as `shape_tolerance` (`1e-6` for a helix or spline
 sweep, `0.0` where every surface is analytic) rather than hidden. Nothing
@@ -535,42 +539,50 @@ of that geometry is persisted: `shape()` computes on demand behind an
 in-memory memo keyed on the binding, because `(path, mtime)` keying is
 currency for a *source* and never for a *binding*.
 
-Exact nodes expose unplaced BREP geometry through
+B-rep nodes expose unplaced B-rep geometry through
 `shape()`; placement remains the caller's responsibility through the same
-composed matrices as the mesh path. An exact `FusionNode` fuses its placed
-children in OCCT and represents that fuse in both BREP and STL (ADR-045).
+composed matrices as the mesh path. A B-rep `FusionNode` fuses its placed
+children on the B-rep engine and represents that fuse in both BREP and STL
+(ADR-045).
 
-The core holds no kernel code (ADR-161). Every operation on an exact shape —
+The core holds no kernel code (ADR-161). The two engines are named for the
+representation each consumes (ADR-180): every operation on a B-rep shape —
 reading and writing BREP, tessellating to STL, placing, fusing, intersecting
 with the empty-common witness, counting solids, measuring volume, bounds and
-per-face boxes, classifying containment — is the exact engine's,
-`machinome.occt.engine`, one module on bare OCP under a `machinome.occt`
-package that exports nothing, each operation defined there once; it is also
-where a project imports the five exact operations it calls directly
+per-face boxes, classifying containment — is the B-rep engine's,
+`machinome.engine.brep`, one module on bare OCP, a module of the engine
+package `machinome.engine`, each operation defined there once; it is also
+where a project imports the five B-rep operations it calls directly
 (`intersect_shapes`, `fuse_shapes`, `placed_shape`, `solid_count`,
-`solid_volume`). The core reaches it through one seam,
-`machinome.exact_engine`: `CONTRACT`, the Protocols naming the thirteen
-operations the core calls, the error types, and `exact_engine()` /
-`require_exact_engine()`, which try-import the one known provider once per
-process, answer `None` or refuse naming `pip install "machinome[occt]"` when
+`solid_volume`). The core reaches it through one seam in the engine
+package's own module: `BREP_CONTRACT`, the Protocols naming the thirteen
+operations the core calls, the error types, and `brep_engine()` /
+`require_brep_engine()`, which try-import the one known provider once per
+process, answer `None` or refuse naming `pip install "machinome[brep]"` when
 it is absent, raise its own error when it is broken, and refuse a provider
-whose declared `CONTRACT` differs (ADR-162). To the core an exact shape is an
-opaque handle. What it keeps is what an abstract exact node needs: the exact
-leaf and fusion nodes; `machinome.exact_cache`, the memos over handles and
+whose declared `CONTRACT` differs (ADR-162). The mesh engine's seam,
+`mesh_engine()` / `require_mesh_engine()` and `MESH_CONTRACT`, sits beside it
+in the same module, and the package's path admits portions, so a provider
+cut from the core later installs its module there. No seam is named like
+its provider: resolving `machinome.engine.brep` binds that module as the
+package's attribute `brep`, which would replace a seam function of that
+name. To the core a B-rep shape is an
+opaque handle. What it keeps is what an abstract B-rep node needs: the B-rep
+leaf and fusion nodes; `machinome.brep_cache`, the memos over handles and
 artifact files, filled by engine operations, a loaded shape keyed on its
 `.brep`'s observation — path, device, inode, size, mtime and ctime from one
 `stat` — so a `.brep` replaced under an unchanged source stamp is read again
-and nothing outside the cache evicts it (ADR-164); `machinome.exact_artifacts`,
+and nothing outside the cache evicts it (ADR-164); `machinome.brep_artifacts`,
 which publishes what the engine writes; the test framework's culling order;
 and the verdict memo. A leaf converts its render result only inside the
 branch that writes a stale artifact, and a fusion resolves the engine only
-in its exact branch, so a node whose artifacts are current is reused
-without resolving the engine, and a model with no exact node never imports
+in its B-rep branch, so a node whose artifacts are current is reused
+without resolving the engine, and a model with no B-rep node never imports
 it. Outside the engine, only `machinome.node.step` imports OCP and cadquery
 (its reader and `adjust`), `machinome.node.build123d` build123d (inside its
 functions) and `machinome.node.molejo` molejo, each after checking its extra;
-the seam reads the engine's own `occt` refusal as an absent engine, so
-`require_exact_engine` names the install either way. The markings reach the
+the seam reads the engine's own `brep` refusal as an absent engine, so
+`require_brep_engine` names the install either way. The markings reach the
 `Svg` reducer through a seam of their own: `Svg.tessellate` resolves
 `machinome.node.build123d` on first use and refuses a reducer declaring
 another `SVG_REDUCER_CONTRACT`, so declaring a marking and reusing a current
@@ -579,7 +591,7 @@ is refused naming the part's class, the marking and its artwork.
 Each adapter can still present SCAD, as a description the OpenSCAD engine
 writes on demand, but artifact production follows its backend:
 Solid2 and raw OpenSCAD leaves use OpenSCAD, CadQuery and build123d — sheet
-parts included — use OCCT, JSCAD uses `jscad`, a flexible leaf uses molejo's
+parts included — use the B-rep engine, JSCAD uses `jscad`, a flexible leaf uses molejo's
 Python evaluator, and an imported mesh uses no
 tool whatsoever (ADR-046). Emitting SCAD
 does not itself require the OpenSCAD binary. A build writes the `.scad` of a
@@ -2073,8 +2085,8 @@ replaced, retargeted, newly selected or changed contributor returns
 
 STL generation is asynchronous only at an actual OpenSCAD backend:
 `StlRenderStart` carries that spawned process, PID lock files guard concurrency,
-and `build_stls()` loops until nothing is stale. Exact and imported producers
-run natively; faceted fusion unions current child meshes through the mesh
+and `build_stls()` loops until nothing is stale. B-rep and imported producers
+run natively; mesh fusion unions current child meshes through the mesh
 engine in dependency order. The metadata-only currency path is
 **artifact mtime equality plus source-set fingerprint equality** — generated
 files are back-dated with `os.utime` to the max source mtime (ADR-006), and a
@@ -2091,7 +2103,7 @@ millisecond-resolution filesystem it left every artifact permanently stale
 and this loop non-terminating (ADR-050).
 
 A producer recipe mismatch is first a hard cache miss for artifacts whose
-production semantics changed; faceted fusion includes child recipes so nested
+production semantics changed; mesh fusion includes child recipes so nested
 caches migrate. A timestamp or fingerprint mismatch then invokes the node-scoped content digest
 (ADR-060/071/102). Equal content restamps the artifact and refreshes the sidecar
 without rendering, which preserves cheap clone, checkout, relocation, and
@@ -2105,7 +2117,7 @@ that actually requires it (ADR-046/102), by the binary contract
 Solid2 symbolic-value evaluation, and the OpenSCAD snapshot renderer are the
 complete requiring set. A missing binary
 raises one actionable error naming the operation and remedy before subprocess
-launch; an all-exact build never performs the check.
+launch; an all-B-rep build never performs the check.
 
 A rigid, optimizing **leaf** whose artifacts are current assembles by
 importing its STL — `render()` and `present()` never run (ADR-033), so
@@ -2163,21 +2175,21 @@ build dir — file-based IPC, no broker
 the lock for a relevant repair, then exits `SOURCE_CHANGED` so the supervisor
 starts a fresh child and source generation.
 
-An exact rigid node has a private `.brep` beside its `.stl` (ADR-044). Both
+A B-rep rigid node has a private `.brep` beside its `.stl` (ADR-044). Both
 must match the node mtime for the build to be current; the BREP is spared by
 the artifact sweep but is never named in a viewer or export document. That
-freshness rule is why a flexible leaf persists no exact geometry at all: the
-`.brep` requirement is scoped to nodes that are both rigid and exact, the
+freshness rule is why a flexible leaf persists no B-rep geometry at all: the
+`.brep` requirement is scoped to nodes that are both rigid and B-rep, the
 sweep spares `.brep` files unconditionally by extension so per-binding ones
-could never be collected, and nothing reads them anyway — the exact
+could never be collected, and nothing reads them anyway — the B-rep
 composition path fuses the shapes children *return*, and a fusion refuses a
 flexible child (ADR-057). An
-all-exact fusion is the exception to the subprocess protocol: it writes its
+all-B-rep fusion is the exception to the subprocess protocol: it writes its
 BREP and tessellates its fused shape synchronously in process (ADR-045).
-Every exact artifact's STL, a leaf's or a fusion's, is written without the
+Every B-rep artifact's STL, a leaf's or a fusion's, is written without the
 zero-area triangles OCCT's mesher emits, so the mesh engine's edge pairing
 sees only the surface (ADR-074). The tessellation itself is at whatever
-`linear_deflection` (mm) and `angular_deflection` (rad) an `ExactLeafNode`
+`linear_deflection` (mm) and `angular_deflection` (rad) a `BrepLeafNode`
 or `FusionNode` subclass declares as a class attribute — 0.1 and 0.1,
 the framework's historical values, when it declares neither — read and
 validated once, immediately before each write (ADR-077). Precision is
@@ -2252,12 +2264,12 @@ command's module is imported, and the node and simulation packages resolve
 their exports on first access, so a command pays for the backends it uses and
 not for the rest (ADR-059) — `machinome viewer` answers from the viewer's entry
 point alone. Top-level `-h` is the exception: it renders every command's
-docstring, so it loads them all. The test framework defers the exact stack
-through the exact engine seam (ADR-161): its exact path resolves the engine
-at the first exact comparison and calls each engine operation, and each memo
-of `machinome.exact_cache`, as an attribute of its defining module at the
+docstring, so it loads them all. The test framework defers the B-rep stack
+through the B-rep engine seam (ADR-161): its B-rep path resolves the engine
+at the first B-rep comparison and calls each engine operation, and each memo
+of `machinome.brep_cache`, as an attribute of its defining module at the
 moment of the call, so a name patched where it is defined is honoured and
-`machinome.test` binds none of them. A faceted-only project runs its whole
+`machinome.test` binds none of them. A mesh-only project runs its whole
 suite without importing cadquery, OCP or the engine. Snapshot has an explicit renderer choice
 (ADR-021/041/046/068): OpenSCAD remains the external-tool default with xvfb
 fallback, whether or not the browser viewer is installed, while the
@@ -2308,18 +2320,19 @@ raises or an UNEXPECTED SUCCESS — which fails the run — when it does not
 
 Collision assertions (ADR-009/044) select the strongest shared representation
 the run allows: intersection-volume and connectivity questions use placed
-OCCT shapes when both operands are exact and retain trimesh and the mesh
-engine for mixed or faceted pairs. Which kernel a run compares on is the run's property,
-not the model's (ADR-073): `machinome test` resolves one comparison policy —
-`--exact`/`--faceted`, else `SOLID_TEST_KERNEL` from the project's ignored
-`.env`, else exact — and a faceted run answers every one of those questions
-on meshes, reads no `shape()`, applies one run-wide volume epsilon to every
-engine verdict after the memo is read, and labels itself before the first
-build and on its summary line. The exact run is unchanged, `node.exact`
+B-rep shapes when both operands have B-rep geometry and retain trimesh and the
+mesh engine for mixed or mesh pairs. Which engine a run compares on is the
+run's property, not the model's (ADR-073, named by ADR-180): `machinome test`
+resolves one comparison policy — `--brep`/`--mesh`, else `SOLID_TEST_ENGINE`
+from the project's ignored `.env`, else the B-rep engine; the former variable
+is refused when set — and a run on the mesh engine answers every one of those
+questions on meshes, reads no `shape()`, applies one run-wide volume epsilon
+to every engine verdict after the memo is read, and labels itself before the
+first build and on its summary line. The B-rep run is unchanged, `node.brep`
 still reports the geometry's capability, and the build does not depend on
-the kernel. That selection reaches the placement step too (ADR-052): a solid is
+the run's engine. That selection reaches the placement step too (ADR-052): a solid is
 placed into the spatial index from its cached bounds alone, and its
-mesh-engine solid is built only when a comparison really reads it, so an all-exact assembly
+mesh-engine solid is built only when a comparison really reads it, so an all-B-rep assembly
 builds none and needs no mesh engine. Distance and containment assertions
 remain mesh-sampled. This includes the
 **paired kinematic fit contract** (ADR-025): `assertBlockedBeyond` +
@@ -2333,28 +2346,28 @@ at exactly 0.0 mm³ **is** a foul until the test opts into an epsilon.
 
 The shared intersection path (ADR-029/044) caches one mesh-engine solid per
 strong artifact observation — canonical path, device, inode, size,
-nanosecond mtime and change time — built by the engine at the first faceted
+nanosecond mtime and change time — built by the engine at the first mesh
 read and judged there by the engine's own `fault` (ADR-074): a mesh the
 engine refuses raises by file name with the engine's word for the fault,
 a mesh trimesh doubts and the engine accepts is compared, and selection,
-the broad phase and the exact path never judge a mesh at all. It culls
+the broad phase and the B-rep path never judge a mesh at all. It culls
 provably disjoint pairs with a conservative world-AABB broad-phase of its
 own — always world axis here,
 whatever indexing frame the whole-assembly interference index below may
 have chosen for its own candidates (ADR-091) — and reads
 the engine's `is_empty` and `volume` straight off solids it placed lazily
-(`placed_solid`) — verdict-identical to the naive faceted path. The core
+(`placed_solid`) — verdict-identical to the naive mesh path. The core
 holds every mesh solid as an opaque handle and asks the mesh engine for each
 construction, admission, placement, Boolean, measurement and read-back,
 looked up on the provider at the moment of the call (ADR-176);
 `assertJoined`'s union of meshes and the `.mesh` fallback run the same steps
 through the engine rather than through `trimesh.boolean`, so no core path
-reaches `manifold3d` but the provider. Exact pairs share the same
+reaches `manifold3d` but the provider. B-rep pairs share the same
 world-AABB
 broad phase, then a second exact-negative tier (ADR-092) may decide the
 pair empty before any boolean: each solid's face boxes (the engine's
 `face_bounds`, `BRepBndLib.Add_s(face, box, False)`, a pure function of the
-exact surface, cached once per shape identity by `exact_cache`) are compared
+parametric surface, cached once per shape identity by `brep_cache`) are compared
 in one solid's own
 frame, enlarging only the other solid's boxes by a fixed margin, and if
 none meet, a containment guard — the engine's `mutually_outside`: one
@@ -2370,8 +2383,8 @@ strictly outside — falls through to OCCT common exactly as before, and
 flush contact still reaches the kernel because touching face boxes count
 as meeting, and interpret "contains no solid" as empty there; kernel
 failure raises and never falls back. `volume_epsilon` is
-ignored with a warning when every comparison in a call was exact.
-After an OCCT common reports no solids, the shared exact path makes one
+ignored with a warning when every comparison in a call was on B-rep geometry.
+After an OCCT common reports no solids, the shared B-rep path makes one
 bounded, independent native section/classifier check. A zero-tolerance
 point classified inside both solids and separated from every boundary face
 by more than that face's native tolerance contradicts that empty Boolean and
@@ -2385,7 +2398,7 @@ contacts and nonempty native commons retain their existing semantics
 Framework-owned native Common and Fuse, and the empty-common witness's
 Section, receive call-local deep copies of both operands before using OCCT's
 default operation mode. The caller-owned source and placed input B-reps remain
-reusable by subsequent exact comparisons; the copies do not enter the retained
+reusable by subsequent B-rep comparisons; the copies do not enter the retained
 shape caches (ADR-143). OCCT's nominal non-destructive mode is not used: it
 made a valid Curta fresh-input common invalid. Copy failure remains a named
 refusal, never a shared-input, mesh, or fuzzy fallback.
@@ -2401,13 +2414,13 @@ placement through each child's own chain leaves float noise between the two
 matrices, while a pair that genuinely moved relative to each other is not.
 The quantum is a stated property of the run (`placement_quantum`,
 `--placement-quantum`, `SOLID_TEST_PLACEMENT_QUANTUM`), resolved and
-validated before the kernel is chosen and carried by both kernels' policies;
+validated before the engine is chosen and carried by both engines' policies;
 its default of 1e-9 mm merges only placements IEEE 754 arithmetic could not
 have told apart in the first place, and `0` restores the exact-bytes key
 ADR-070 specified. This is a judgement about arithmetic noise, not about
 material: deciding that two placements differing by a real, INTENDED amount
 are one question stays the judgement `volume_epsilon` exists to leave with
-the project, and remains untouched by the quantum. Exact and faceted entries
+the project, and remains untouched by the quantum. B-rep and mesh entries
 never serve one another, a node with no file identity is never cached, a
 relative matrix carrying a non-finite entry is never cached either, and
 entries are evicted when a geometry identity changes, on the same discipline
@@ -2427,12 +2440,12 @@ flexible leaf's state identity — and bound to a STAMP of the store format,
 the machinome version, every Python source of the running package, the
 installed versions of `cadquery-ocp`, `cadquery`, `trimesh` and `molejo`,
 and the platform, read from metadata inside the stamp function and never by
-importing a kernel. A faceted verdict's key carries as well the name and
+importing a kernel. A mesh verdict's key carries as well the name and
 version the resolved mesh engine reports of itself (`identity`, ADR-176), so
-a `manifold3d` upgrade starts the faceted verdicts afresh and not the exact
-ones; an exact verdict's key carries none, and a faceted question whose
+a `manifold3d` upgrade starts the mesh verdicts afresh and not the B-rep
+ones; a B-rep verdict's key carries none, and a mesh question whose
 engine cannot name its version is computed without being kept. The store
-keeps raw verdicts (emptiness, volume bits, which kernel) as immutable
+keeps raw verdicts (emptiness, volume bits, which engine) as immutable
 checksummed segments published by atomic rename and merged on read, so
 concurrent runs need no lock; a reader that finds a listed segment gone
 lists once more, because compaction
@@ -2446,8 +2459,8 @@ failure direction is a miss: an identity that cannot be made persistent, a
 file changed since it was read, a foreign stamp, or a corrupt, unreadable
 or unwritable store computes exactly as a run without a store would, and
 the store never raises into an assertion.
-Bounding boxes, and the per-face bounding boxes the exact-only face-box
-tier above reads, share those stable geometry identities. Exact placements use a
+Bounding boxes, and the per-face bounding boxes the B-rep-only face-box
+tier above reads, share those stable geometry identities. B-rep placements use a
 512-entry LRU keyed by stable shape identity and the exact placement-matrix
 bytes, with no rounding; eviction merely recomputes the same placement and a
 new managed `machinome test` run starts empty. A stock `FlexibleNode` keeps a
@@ -2458,11 +2471,11 @@ A flexible leaf's verdicts are memoized in both tiers under its STATE
 identity, taken from the same coherent snapshot the geometry comes from:
 technology, defining module, project-relative source digest, full
 structural identity, exact bound values and spec digest — the geometry key
-without its absolute source path and source fingerprint. On the exact path
+without its absolute source path and source fingerprint. On the B-rep path
 the leaf records that identity beside the solid its per-instance
 last-binding memo built, so a key always names the geometry compared. A
 subclass that overrides the stock evaluation seam a comparison reads
-(`base_mesh` on the faceted path, `shape` on the exact path), or whose
+(`base_mesh` on the mesh path, `shape` on the B-rep path), or whose
 sources cannot be read, is conservatively uncached in both tiers.
 
 The root-level integrity boundary is the first rigid node on every branch
@@ -2488,15 +2501,15 @@ stays a necessary condition for intersection whichever frame was chosen.
 Given that box list, a sweep-and-prune index estimates interval pressure on
 X, Y and Z, chooses the least-pressure axis (X, then Y, then Z on ties), and
 emits the potentially interacting pairs in the historical X-order before each
-is settled by an exact same-kernel
+is settled by an exact same-engine
 intersection — the sole verification path, with no whole-assembly measurement.
 Exact zero-volume boundary contact passes, every positive candidate volume
 fails, and no public volume epsilon or private numerical tolerance is exposed.
-A finite negative faceted candidate also passes this assembly-only decision:
+A finite negative mesh candidate also passes this assembly-only decision:
 it does not report positive shared material. The raw engine emptiness and
 signed volume remain intact for strict pairwise and fit assertions, whose
 non-empty contact still fouls. Non-finite candidate volumes still fail, and
-exact-representation candidate decisions are unchanged. The candidate's
+B-rep candidate decisions are unchanged. The candidate's
 existing representation tag carries this distinction even in a mixed assembly.
 Correctness rests on the broad phase being complete in whichever frame it
 indexed, which is proved by
@@ -2526,7 +2539,7 @@ in an indexing frame chosen for the interference assertion above, because
 gravity is a world-frame fact (ADR-048) and a projection along it is only
 meaningful in that frame. The broad phase is the same sweep-and-prune, run over the
 displaced and placed boxes at once so an emitted cross-half pair is exactly a
-directed overlap; exact pairs still route to the kernel. Zero or one selected
+directed overlap; B-rep pairs still route to the B-rep engine. Zero or one selected
 solid passes without geometry work; a zero `gravity`, a non-positive
 `max_drop`, a negative `stability_margin`, and an unresolvable
 `ground`/`supports` entry are loud errors.
@@ -2547,8 +2560,8 @@ displacement drove into. Detection runs the drop sweep and a symmetric lift
 sweep through the same broad phase, the lift contributing contacts only so a
 snug hole's upper wall can complete a couple, never support-graph edges.
 Contact extraction and mass properties (placed facets, uniform unit density, so
-weight is volume) are faceted even for exact pairs, whose edge existence still
-routes to the kernel. With `ground=None` a virtual floor slab in the gravity
+weight is volume) are on meshes even for B-rep pairs, whose edge existence
+still routes to the B-rep engine. With `ground=None` a virtual floor slab in the gravity
 frame is the sole anchored body, so a default seed must balance on its real
 footprint; an explicit `ground` anchors exactly the resolved solids and no
 floor exists. A declared `supports` edge carries a free six-component wrench.
@@ -3142,7 +3155,7 @@ The short list that changes must not silently break:
 - An artifact is fresh **iff** its mtime equals the node's max source
   mtime, compared as integer nanoseconds and never as a float, **and** the
   recorded metadata fingerprint of every tracked source equals its current
-  path identity, size, mtime and change time (ADR-050/081); an exact node
+  path identity, size, mtime and change time (ADR-050/081); a B-rep node
   requires both STL and BREP current, and every
   cache keys on that signal, the base-mesh and loaded-shape caches on the
   artifact's full observation so that a replacement under an unchanged
@@ -3170,7 +3183,7 @@ The short list that changes must not silently break:
 - A **marking** contributes no solid and no piece (ADR-120). A part's
   volume, bounds, STL bytes, BREP bytes, `uniq_id` and piece id are
   identical whether or not it declares markings, every interference and
-  connectivity verdict is unchanged under both comparison kernels, and
+  connectivity verdict is unchanged under both comparison engines, and
   the tree, the part count and the published inventory never see one. It
   is enforced by construction rather than by care: a marking is not a
   `Declaration`, so no code path carries it into the artifact key, and
@@ -3207,8 +3220,8 @@ The short list that changes must not silently break:
   driver-tagged operations are swept (ADR-023).
 - All pose consumers compose own-ops-first, ancestors after, later
   operations outermost — Python and both browsers alike (ADR-027/028).
-- A non-empty, zero-volume **faceted** flush contact fouls at
-  `volume_epsilon=0`; exact boundary contact contains no solid and is empty.
+- A non-empty, zero-volume **mesh** flush contact fouls at
+  `volume_epsilon=0`; B-rep boundary contact contains no solid and is empty.
   Kinematic fit still needs the Blocked **and** Free pair (ADR-025/029/044).
 - The `machinome-export` format/version identifies a shared tree-document
   schema; breaking its tree shape or operation serialization means bumping the
@@ -3416,9 +3429,9 @@ pure model closures without rejecting their pure declaration records.
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
 | Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
-| Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them), `machinome/exact_engine.py`, `machinome/exact_cache.py`, `machinome/exact_artifacts.py` | `node-model`, `leaf-contract`, `exact-geometry`, `exact-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179 |
-| OCCT exact engine (leaves the core at the cut) | `machinome/occt/engine.py` | `occt-engine` | 160 (`docs/adrs/OCCT/`) |
-| Manifold mesh engine (leaves the core in layer 2) | `machinome/manifold/engine.py` | `manifold-engine` | 176 |
+| Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180 |
+| B-rep engine, on OCCT (leaves the core at the cut) | `machinome/engine/brep.py` | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180 |
+| Mesh engine, on manifold3d (leaves the core in layer 2) | `machinome/engine/mesh.py` | `mesh-engine` | 176, 180 |
 | OpenSCAD node family (leaves the core at the cut) | `machinome/node/openscad/` (`__init__.py`: `OpenScadNode`; `leaf.py`: `ScadLeafNode`; `writer.py`; `binary.py`), `machinome/node/solid2.py` (`Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency` | 046, 102, 172, 173, 177, 178 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
@@ -3427,7 +3440,7 @@ pure model closures without rejecting their pure declaration records.
 | Mechanics boundary | independent `machinome-mechanics` package | `mechanics-distribution` | 022, 076, 132 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
-| Test framework | `machinome/test.py`, `machinome/mesh_engine.py`, `machinome/exact_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176 |
+| Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

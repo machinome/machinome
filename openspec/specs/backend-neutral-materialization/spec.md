@@ -23,7 +23,7 @@ refused naming the leaf, never handed to OpenSCAD as a fallback.
 
 #### Scenario: Native export without assembly SCAD
 
-- **WHEN** a project containing exact leaves, imported STL leaves and a
+- **WHEN** a project containing B-rep leaves, imported STL leaves and a
   port-driven flexible leaf is exported with SCAD presentation disabled
 - **THEN** the complete export succeeds with its rigid geometry, flexible
   shape and interactive controls intact, without assembly SCAD or flexible
@@ -33,7 +33,7 @@ refused naming the leaf, never handed to OpenSCAD as a fallback.
 
 - **WHEN** a native multi-backend project with nested rotations and
   translations is built for tests without SCAD presentation
-- **THEN** its mesh and exact questions see the same local and world frames
+- **THEN** its mesh and B-rep questions see the same local and world frames
   and the same bound pose as its published machine
 
 #### Scenario: A SCAD leaf does not impose SCAD composition on siblings
@@ -52,10 +52,10 @@ refused naming the leaf, never handed to OpenSCAD as a fallback.
 
 Native geometry production SHALL preserve each built-in adapter's validation,
 source tracking, artifact freshness, native geometry and declared precision.
-Exact nodes SHALL retain exact geometry and their existing BREP/STL contract;
+B-rep nodes SHALL retain B-rep geometry and their existing BREP/STL contract;
 sheet parts SHALL retain DXF output; imported meshes SHALL retain explicit
 selection, adjustment and admission rules; JSCAD SHALL retain its own native
-tool. No common mesh representation SHALL replace exact geometry merely to
+tool. No common mesh representation SHALL replace B-rep geometry merely to
 prepare a machine.
 
 Current rigid geometry SHALL be reusable without re-running its CAD render.
@@ -63,10 +63,10 @@ Flexible shape SHALL remain a function of its current ports rather than enter
 the rigid artifact cache. A change of pose SHALL NOT change structural
 parameter identity.
 
-#### Scenario: Exact capabilities survive native composition
+#### Scenario: B-rep capabilities survive native composition
 
-- **WHEN** a project mixes CadQuery, build123d and STEP exact leaves in a fusion
-- **THEN** it retains exact fusion and the current BREP and tessellation
+- **WHEN** a project mixes CadQuery, build123d and STEP B-rep leaves in a fusion
+- **THEN** it retains B-rep fusion and the current BREP and tessellation
   behavior without requiring OpenSCAD or the mesh union engine
 
 #### Scenario: A current sheet part stays current
@@ -81,51 +81,6 @@ parameter identity.
   two numeric bindings
 - **THEN** publication retains its symbolic parameters, numeric geometry
   reflects each binding, and no rigid geometry identity is minted per pose
-
-### Requirement: Faceted fusions produce the union of their placed child meshes
-
-A non-exact `FusionNode` SHALL produce the geometric union of its children's
-current meshes in the fusion's local frame using the supported mesh union
-engine, without an OpenSCAD fusion render. Nested child fusions SHALL
-contribute their fused geometry once. The fusion's own placement and its
-ancestors' placements SHALL remain outside its artifact.
-
-The result SHALL preserve overlapping, contained, identical, disjoint and
-face-touching solid unions within the input mesh precision. A mixed fusion
-SHALL use its exact children's declared tessellations; it SHALL NOT claim an
-exact result. Different triangulation or STL bytes SHALL NOT by themselves
-constitute a geometry failure, and piece IDs SHALL still describe those bytes.
-Disconnected valid results SHALL remain permitted until the project asks for
-a connectivity assertion.
-
-#### Scenario: Overlapping solids fuse rather than concatenate
-
-- **WHEN** two valid box meshes of known dimensions overlap in a fusion
-- **THEN** the result has the analytic union volume and bounds, without an
-  internal duplicate surface or double-counted overlap
-
-#### Scenario: Identical and contained solids do not add material
-
-- **WHEN** one child is identical to, or wholly contained within, another
-- **THEN** the union occupies only the outer solid's volume
-
-#### Scenario: Disconnected material is not a build assertion
-
-- **WHEN** valid child meshes are disjoint and no connectivity test is requested
-- **THEN** the artifact contains both solids and the build does not reject
-  them solely for being disconnected
-
-#### Scenario: Faces that touch can join
-
-- **WHEN** valid box meshes meet exactly on one complete face
-- **THEN** the union contains their combined material without a spurious gap
-
-#### Scenario: Nested placement is applied once
-
-- **WHEN** a rotated nested fusion is translated within another fusion whose
-  root is also placed in an assembly
-- **THEN** the enclosing artifact includes the nested placement once, excludes
-  its own assembly placement, and displays correctly in the assembled machine
 
 ### Requirement: Fusion failures are explicit and preserve published state
 
@@ -192,7 +147,7 @@ development fallback.
 
 SCAD text is presentation, not the machine's identity. Equivalent output text
 is permitted where artifact references replace obsolete fusion expressions,
-but SCAD presentation SHALL NOT compute a second faceted fusion with a
+but SCAD presentation SHALL NOT compute a second mesh fusion with a
 different geometry engine.
 
 #### Scenario: A direct SCAD caller remains supported
@@ -206,14 +161,14 @@ different geometry engine.
 
 #### Scenario: assemble() writes no SCAD
 
-- **WHEN** `node.assemble()` is called on an assembly of exact, imported STL
+- **WHEN** `node.assemble()` is called on an assembly of B-rep, imported STL
   and flexible leaves with the OpenSCAD node package installed
 - **THEN** it returns the presentation description and no `.scad` is written
   for any node
 
 #### Scenario: assemble() without the engine
 
-- **WHEN** a project of exact and imported STL leaves calls `node.assemble()`
+- **WHEN** a project of B-rep and imported STL leaves calls `node.assemble()`
   and then `node.build_stls()` with SolidPython and the OpenSCAD node package
   absent
 - **THEN** both succeed, every node is linked and prepared, `mesh` answers in
@@ -222,7 +177,7 @@ different geometry engine.
 #### Scenario: A build writes SCAD only for SCAD-authored leaves
 
 - **WHEN** an ordinary `machinome build` of a project holding an assembly, a
-  fusion, a flexible leaf, an exact leaf and a `Solid2Node` leaf completes
+  fusion, a flexible leaf, a B-rep leaf and a `Solid2Node` leaf completes
   with the OpenSCAD node package installed
 - **THEN** the only `.scad` under its build directory is the `Solid2Node`
   leaf's, and repeated unchanged builds do not rewrite it
@@ -250,7 +205,7 @@ different geometry engine.
 
 #### Scenario: SCAD and browser view the same fused part
 
-- **WHEN** a faceted fusion is rendered from SCAD and in a browser export
+- **WHEN** a mesh fusion is rendered from SCAD and in a browser export
 - **THEN** both consume the canonical fused artifact rather than independently
   fusing the ingredients with different engines
 
@@ -267,4 +222,49 @@ different geometry engine.
   machine pose
 - **THEN** it writes the root's SCAD presentation for that pose on demand and
   renders it with OpenSCAD, with the existing snapshot behavior
+
+### Requirement: Mesh fusions produce the union of their placed child meshes
+
+A mesh `FusionNode` SHALL produce the geometric union of its children's
+current meshes in the fusion's local frame using the supported mesh union
+engine, without an OpenSCAD fusion render. Nested child fusions SHALL
+contribute their fused geometry once. The fusion's own placement and its
+ancestors' placements SHALL remain outside its artifact.
+
+The result SHALL preserve overlapping, contained, identical, disjoint and
+face-touching solid unions within the input mesh precision. A mixed fusion
+SHALL use its B-rep children's declared tessellations; it SHALL NOT claim a
+B-rep result. Different triangulation or STL bytes SHALL NOT by themselves
+constitute a geometry failure, and piece IDs SHALL still describe those bytes.
+Disconnected valid results SHALL remain permitted until the project asks for
+a connectivity assertion.
+
+#### Scenario: Overlapping solids fuse rather than concatenate
+
+- **WHEN** two valid box meshes of known dimensions overlap in a fusion
+- **THEN** the result has the analytic union volume and bounds, without an
+  internal duplicate surface or double-counted overlap
+
+#### Scenario: Identical and contained solids do not add material
+
+- **WHEN** one child is identical to, or wholly contained within, another
+- **THEN** the union occupies only the outer solid's volume
+
+#### Scenario: Disconnected material is not a build assertion
+
+- **WHEN** valid child meshes are disjoint and no connectivity test is requested
+- **THEN** the artifact contains both solids and the build does not reject
+  them solely for being disconnected
+
+#### Scenario: Faces that touch can join
+
+- **WHEN** valid box meshes meet exactly on one complete face
+- **THEN** the union contains their combined material without a spurious gap
+
+#### Scenario: Nested placement is applied once
+
+- **WHEN** a rotated nested fusion is translated within another fusion whose
+  root is also placed in an assembly
+- **THEN** the enclosing artifact includes the nested placement once, excludes
+  its own assembly placement, and displays correctly in the assembled machine
 

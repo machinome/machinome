@@ -249,7 +249,7 @@ import SolidPython, except the project template that scaffolds a `Solid2Node`.
 
 #### Scenario: A project without the family imports no SolidPython
 
-- **WHEN** a project of exact and imported STL leaves is loaded, built, tested
+- **WHEN** a project of B-rep and imported STL leaves is loaded, built, tested
   and published where `solid2` cannot be found
 - **THEN** everything succeeds, no `.scad` is written, and no SolidPython module
   and no module under `machinome.node.openscad` is imported

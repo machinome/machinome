@@ -119,12 +119,12 @@ class InternalNode(AbstractBaseNode):
                                   "must deal with animation time")
 
     @property
-    def exact(self):
+    def brep(self):
         if not self.children:
             raise RuntimeError(
-                f'{self.name} exactness is unavailable before its children '
-                'are linked by assemble()')
-        return all(child.exact for child in self.children)
+                f'{self.name} cannot say whether it is a B-rep before its '
+                'children are linked by assemble()')
+        return all(child.brep for child in self.children)
 
     def present(self, children):
         """The presentation description of the combined children: their

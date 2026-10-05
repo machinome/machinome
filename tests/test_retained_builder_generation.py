@@ -114,7 +114,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         fusion.brep_file = str(Path(self.temporary.name) / 'assembly.brep')
         fusion._up_to_date = Mock(return_value=False)
         fusion.children = [
-            SimpleNamespace(name=name, exact=True,
+            SimpleNamespace(name=name, brep=True,
                             shape=Mock(return_value=name))
             for name in ('first', 'second', 'third')
         ]
@@ -147,7 +147,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
                    return_value=object()), patch(
                        'machinome.node.fusion.cached_placement',
                        side_effect=lambda shape, matrix: shape), patch(
-                           'machinome.occt.engine.fuse_shapes',
+                           'machinome.engine.brep.fuse_shapes',
                            side_effect=fuse), patch(
                                'machinome.core.builder.load_node',
                                return_value=self.node):

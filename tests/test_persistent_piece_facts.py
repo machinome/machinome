@@ -51,7 +51,7 @@ class RenamedNode(CurrentNode):
 
 
 class GeometryNode:
-    exact = False
+    brep = False
     flexible = False
     rigid = True
 
@@ -341,7 +341,7 @@ class LowerGeometryIdentityTest(TestCase):
         other_identity = test_module._geometry_identity(str(other))
         matrix = np.eye(4)
         old_key = test_module._verdict_key(
-            old_identity, matrix, other_identity, matrix, 'faceted')
+            old_identity, matrix, other_identity, matrix, 'mesh')
         self.assertEqual(test_module._memoized(old_key, lambda: 'old'), 'old')
 
         replacement = self.path.with_name('replacement.stl')
@@ -354,7 +354,7 @@ class LowerGeometryIdentityTest(TestCase):
         new_manifold, _, _ = test_module._cached_mesh_solid(str(self.path))
         new_identity = test_module._geometry_identity(str(self.path))
         new_key = test_module._verdict_key(
-            new_identity, matrix, other_identity, matrix, 'faceted')
+            new_identity, matrix, other_identity, matrix, 'mesh')
         self.assertAlmostEqual(old_mesh.volume, 6.0, places=4)
         self.assertAlmostEqual(new_mesh.volume, 120.0, places=4)
         self.assertFalse(np.array_equal(old_bounds, new_bounds))

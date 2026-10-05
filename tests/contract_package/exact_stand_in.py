@@ -24,7 +24,7 @@ from OCP.BRepTools import BRepTools
 from OCP.TopoDS import TopoDS_Shape
 from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
 
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 
 
 def _pin_brep(radius):
@@ -48,10 +48,10 @@ NATIVE_BREPS = {
 RECIPE = 'native-v1'
 
 
-class NativeSolid(ExactLeafNode):
+class NativeSolid(BrepLeafNode):
     """A solid whose geometry a native tool produced."""
 
-    leaf_contract = 2
+    leaf_contract = 3
 
     @property
     def source_recipe(self):

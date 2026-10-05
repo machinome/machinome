@@ -215,7 +215,7 @@ class DeclarativeSheetPartTest(BaseNodeTest):
         self.assertEqual(wide.width, 60.0)
         self.assertNotEqual(narrow.uniq_id, wide.uniq_id)
         wide.assemble()
-        self.assertTrue(wide.exact)
+        self.assertTrue(wide.brep)
 
 
 class DerivedParameterTest(BaseNodeTest):

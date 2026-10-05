@@ -17,9 +17,9 @@ from scipy.sparse import coo_matrix, eye as sparse_eye
 from scipy.sparse import hstack as sparse_hstack
 from unittest import TestCase as BaseTestCase
 
-from machinome import _verdict_store, exact_cache
-from machinome.exact_engine import require_exact_engine
-from machinome.mesh_engine import mesh_engine, require_mesh_engine
+from machinome import _verdict_store, brep_cache
+from machinome.engine import (mesh_engine, require_brep_engine,
+                              require_mesh_engine)
 from machinome._artifact import (ArtifactChanged, ArtifactObservation,
                                  artifact_cache_key)
 from machinome.node.base import (cached_base_mesh, _compose_solid_matrix,
@@ -29,36 +29,35 @@ from machinome.node.flexible import FlexibleNode
 from machinome.node.operations import Rotation, Translation
 
 
-_EXACT_NEEDED_BY = 'Comparing exact geometry'
-_EXACT_REASON = ('two exact parts are compared on the boundary-representation '
-                 'kernel')
+_BREP_NEEDED_BY = 'Comparing B-rep geometry'
+_BREP_REASON = 'two B-rep parts are compared on the B-rep engine'
 
 
-def _exact_engine(needed_by=_EXACT_NEEDED_BY):
-    """The exact engine, resolved for the exact path of a comparison.
+def _brep_engine(needed_by=_BREP_NEEDED_BY):
+    """The B-rep engine, resolved for the B-rep path of a comparison.
 
-    The test framework holds no exact operation of its own: it decides the
+    The test framework holds no B-rep operation of its own: it decides the
     order in which a pair is culled and compared, and asks the engine for
     every bound, placement, classification, Boolean and measurement --
-    directly, or through a memo of `machinome.exact_cache`. Both are looked
+    directly, or through a memo of `machinome.brep_cache`. Both are looked
     up as attributes where they are defined, at the moment of the call, so
-    a name patched in its defining module is honoured whether or not an
-    exact comparison has yet run, and importing this module imports
+    a name patched in its defining module is honoured whether or not a
+    B-rep comparison has yet run, and importing this module imports
     neither the engine nor its kernel (the `cli-startup-cost` capability).
     """
-    return require_exact_engine(needed_by, _EXACT_REASON)
+    return require_brep_engine(needed_by, _BREP_REASON)
 
 
 def _mesh_engine(needed_by, reason):
     """The mesh engine, resolved for a path that compares on meshes.
 
     The test framework holds no mesh operation of its own either: it
-    orders the faceted comparisons, keeps the caches over the engine's
+    orders the mesh comparisons, keeps the caches over the engine's
     solids, and asks the engine for every construction, admission,
     placement, Boolean, measurement and read-back. The engine's
     operations are looked up as attributes of the provider at the moment
     of the call, so an operation patched where it is defined
-    (`machinome.manifold.engine`) is honoured by every path, and importing
+    (`machinome.engine.mesh`) is honoured by every path, and importing
     this module imports neither the engine nor its kernel.
     """
     return require_mesh_engine(needed_by, _engine_reason(reason))
@@ -68,7 +67,7 @@ def _mesh_engine(needed_by, reason):
 class IntersectionStats:
     is_empty: bool
     volume: float
-    exact: bool
+    brep: bool
 
     def __iter__(self):
         # Preserve the long-standing two-value private helper unpacking while
@@ -80,11 +79,11 @@ class IntersectionStats:
 ########################################
 # Comparison policy
 #
-# The kernel a run compares on is a property of the RUN, never of the
-# model. A node's `exact` keeps reporting what its geometry can do; the
-# policy says whether this run asks it to. Exact is the default and is
-# today's run untouched. Faceted answers every geometric question on the
-# parts' meshes -- the path a non-exact node already takes -- at
+# The engine a run compares on is a property of the RUN, never of the
+# model. A node's `brep` keeps reporting what its geometry can do; the
+# policy says whether this run asks it to. The B-rep engine is the default
+# and is today's run untouched. The mesh engine answers every geometric
+# question on the parts' meshes -- the path a mesh node already takes -- at
 # tessellation precision, roughly 30x cheaper on a flexible part
 # (spike/interference/FINDINGS.md, finding 6), and carries the one
 # volume epsilon that exists only for it: meshes touch where solids
@@ -96,12 +95,12 @@ class IntersectionStats:
 # two COMPUTED matrices are the same rigid placement -- a property of
 # double-precision arithmetic, not of any project's manufacturing
 # intent, which is why it may have a default where the epsilon may not.
-# It applies under both kernels, unlike the epsilon.
+# It applies under both engines, unlike the epsilon.
 #
 # And it carries the verdict-store switch (ADR-156, amending ADR-070): whether
 # a verdict this run decides is kept in the project's build directory and
 # served to a later process asking the same question of the same state. On
-# by default and under both kernels; a served verdict is the verdict the same
+# by default and under both engines; a served verdict is the verdict the same
 # key produced, so the default run's output does not change, and only a run
 # with the store off says so.
 #
@@ -109,7 +108,7 @@ class IntersectionStats:
 # and sets it before the first build; any other entry (a ScenarioTest
 # under pytest, an assertion driven directly) resolves it from the
 # environment at the first comparison. Resolved once per process: a run
-# does not change kernel halfway.
+# does not change engine halfway.
 
 # ADR-090: the default is far below any placement difference a design
 # could mean, and far above the float noise of composing one rigid
@@ -118,10 +117,12 @@ DEFAULT_PLACEMENT_QUANTUM = 1e-9
 
 ComparisonPolicy = namedtuple(
     'ComparisonPolicy',
-    'kernel volume_epsilon placement_quantum verdict_store',
+    'engine volume_epsilon placement_quantum verdict_store',
     defaults=(DEFAULT_PLACEMENT_QUANTUM, True))
 
-KERNELS = ('exact', 'faceted')
+#: The two engines a run may compare on, by the representation each
+#: consumes: `SOLID_TEST_ENGINE`'s two accepted values.
+ENGINES = ('brep', 'mesh')
 
 #: `SOLID_TEST_VERDICT_STORE`'s two accepted values.
 VERDICT_STORE_SETTINGS = {'on': True, 'off': False}
@@ -129,24 +130,30 @@ VERDICT_STORE_SETTINGS = {'on': True, 'off': False}
 _policy = None
 
 
-def resolve_comparison_policy(kernel=None, volume_epsilon=None,
+def resolve_comparison_policy(engine=None, volume_epsilon=None,
                               placement_quantum=None, verdict_store=None,
                               environ=None):
     """The run's comparison policy from explicit values, then the
     environment, then the defaults.
 
-    An explicit `kernel` (a flag) beats `SOLID_TEST_KERNEL`; an explicit
-    `volume_epsilon` beats `SOLID_TEST_VOLUME_EPSILON`; an explicit
-    `placement_quantum` beats `SOLID_TEST_PLACEMENT_QUANTUM`; an explicit
-    `verdict_store` beats `SOLID_TEST_VERDICT_STORE` (`on` or `off`), whose
-    default is on. The epsilon exists only for the faceted kernel: offered
-    explicitly to the exact kernel it is refused, and the environment's
-    value is not even read there, so a checkout's `.env` may carry both
-    lines while CI overrides the kernel alone. The placement quantum and
-    the verdict-store switch are resolved and validated before the kernel
-    is even branched on, and BOTH kernels carry them: they identify a
-    question and where its answer is kept, not a quantity of material, and
-    both kernels' verdicts pass through the same memo.
+    An explicit `engine` (a flag) beats `SOLID_TEST_ENGINE` (`brep` or
+    `mesh`); an explicit `volume_epsilon` beats
+    `SOLID_TEST_VOLUME_EPSILON`; an explicit `placement_quantum` beats
+    `SOLID_TEST_PLACEMENT_QUANTUM`; an explicit `verdict_store` beats
+    `SOLID_TEST_VERDICT_STORE` (`on` or `off`), whose default is on. The
+    epsilon exists only for the mesh engine: offered explicitly to the
+    B-rep engine it is refused, and the environment's value is not even
+    read there, so a checkout's `.env` may carry both lines while CI
+    overrides the engine alone. The placement quantum and the verdict-store
+    switch are resolved and validated before the engine is even branched
+    on, and BOTH engines carry them: they identify a question and where its
+    answer is kept, not a quantity of material, and both engines' verdicts
+    pass through the same memo.
+
+    The former variable `SOLID_TEST_KERNEL`, set to anything but an empty
+    value, is refused before the engine is read, whatever flag or
+    `SOLID_TEST_ENGINE` is given: a variable nobody reads would silently
+    move a checkout's runs to another engine.
     """
     environ = os.environ if environ is None else environ
     if placement_quantum is None:
@@ -186,20 +193,25 @@ def resolve_comparison_policy(kernel=None, volume_epsilon=None,
                 f"SOLID_TEST_VERDICT_STORE must be 'on' or 'off', not "
                 f"{raw!r}")
     verdict_store = bool(verdict_store)
-    if kernel is None:
-        kernel = environ.get('SOLID_TEST_KERNEL') or 'exact'
-        if kernel not in KERNELS:
+    if environ.get('SOLID_TEST_KERNEL'):
+        raise ValueError(
+            "SOLID_TEST_KERNEL is not read: the run's engine is set by "
+            "SOLID_TEST_ENGINE, 'brep' or 'mesh'; rename the variable where "
+            "it is set (a checkout's .env)")
+    if engine is None:
+        engine = environ.get('SOLID_TEST_ENGINE') or 'brep'
+        if engine not in ENGINES:
             raise ValueError(
-                f"SOLID_TEST_KERNEL must be 'exact' or 'faceted', not "
-                f"{kernel!r}")
-    elif kernel not in KERNELS:
-        raise ValueError(f"unknown comparison kernel {kernel!r}")
-    if kernel == 'exact':
+                f"SOLID_TEST_ENGINE must be 'brep' or 'mesh', not "
+                f"{engine!r}")
+    elif engine not in ENGINES:
+        raise ValueError(f"unknown comparison engine {engine!r}")
+    if engine == 'brep':
         if volume_epsilon is not None:
             raise ValueError(
-                'the exact kernel has nothing for a volume epsilon to '
-                'absorb: drop --volume-epsilon or select --faceted')
-        return ComparisonPolicy('exact', 0.0, placement_quantum,
+                'the B-rep engine has nothing for a volume epsilon to '
+                'absorb: drop --volume-epsilon or select --mesh')
+        return ComparisonPolicy('brep', 0.0, placement_quantum,
                                 verdict_store)
     if volume_epsilon is None:
         raw = environ.get('SOLID_TEST_VOLUME_EPSILON') or '0'
@@ -213,7 +225,7 @@ def resolve_comparison_policy(kernel=None, volume_epsilon=None,
     if volume_epsilon < 0:
         raise ValueError(
             f'the volume epsilon must not be negative ({volume_epsilon})')
-    return ComparisonPolicy('faceted', volume_epsilon, placement_quantum,
+    return ComparisonPolicy('mesh', volume_epsilon, placement_quantum,
                             verdict_store)
 
 
@@ -231,16 +243,16 @@ def comparison_policy():
     return _policy
 
 
-def _routes_exact(node):
-    """Whether this run compares `node` through its exact geometry."""
-    return comparison_policy().kernel == 'exact' and node.exact
+def _routes_brep(node):
+    """Whether this run compares `node` through its B-rep geometry."""
+    return comparison_policy().engine == 'brep' and node.brep
 
 
 def _engine_reason(reason):
-    """Why the mesh engine is needed: the caller's reason under the exact
-    kernel, the run's choice under the faceted one."""
-    if comparison_policy().kernel == 'faceted':
-        return 'the run compares on the faceted kernel'
+    """Why the mesh engine is needed: the caller's reason under the
+    B-rep engine, the run's choice under the mesh one."""
+    if comparison_policy().engine == 'mesh':
+        return 'the run compares on the mesh engine'
     return reason
 
 
@@ -255,7 +267,7 @@ def _settled(stats):
     """
     epsilon = comparison_policy().volume_epsilon
     if epsilon > 0 and not stats.is_empty and abs(stats.volume) <= epsilon:
-        return IntersectionStats(True, 0.0, stats.exact)
+        return IntersectionStats(True, 0.0, stats.brep)
     return stats
 
 
@@ -287,8 +299,8 @@ _flexible_mesh_solid_cache = OrderedDict()
 # -- and eager -- for every selected solid whether or not the mesh engine
 # is installed. It
 # judges nothing: selecting a solid, placing it in the broad phase or
-# comparing it on the exact kernel never asks whether its mesh is one
-# the engine would accept. Only a faceted read asks, below.
+# comparing it on the B-rep engine never asks whether its mesh is one
+# the engine would accept. Only a mesh read asks, below.
 _bounds_cache = {}
 
 
@@ -300,7 +312,7 @@ def _cached_local_bounds(stl_file, observation=None):
     new bounds under an old identity.
 
     This half of the old combined cache deliberately needs no mesh
-    engine: it is what lets the spatial index place an exact solid.
+    engine: it is what lets the spatial index place a B-rep solid.
     """
     key = ((os.fspath(stl_file), observation) if observation is not None
            else artifact_cache_key(stl_file))
@@ -335,15 +347,15 @@ def _admitted(solid, mesh, what, engine):
         f"Repair or replace the mesh; nothing is repaired here")
 
 
-_FACETED_NEEDED_BY = 'Comparing faceted geometry'
-_FACETED_REASON = ('a part without exact geometry is compared through its '
-                   'mesh')
+_MESH_NEEDED_BY = 'Comparing mesh geometry'
+_MESH_REASON = ('a part without B-rep geometry is compared through its '
+                'mesh')
 _JOINED_REASON = ('the union whose bodies it counts is computed on the '
                   "parts' meshes")
 
 
-def _cached_mesh_solid(stl_file, needed_by=_FACETED_NEEDED_BY,
-                       reason=_FACETED_REASON, observation=None):
+def _cached_mesh_solid(stl_file, needed_by=_MESH_NEEDED_BY,
+                       reason=_MESH_REASON, observation=None):
     """(solid, local_bounds, identity) for one strong observation, the
     solid being the mesh engine's.
 
@@ -353,10 +365,10 @@ def _cached_mesh_solid(stl_file, needed_by=_FACETED_NEEDED_BY,
     changed, rebuilding raises instead of combining identities.
 
     This is the ONE place a rigid part's mesh-engine solid is built, and
-    therefore the one place the faceted path requires the mesh engine. It
-    is reached only when a comparison actually reads faceted geometry --
+    therefore the one place the mesh path requires the mesh engine. It
+    is reached only when a comparison actually reads mesh geometry --
     never merely because a solid was selected -- so an assembly decided
-    entirely by the boundary-representation kernel never calls it.
+    entirely by the B-rep engine never calls it.
     """
     key = ((os.fspath(stl_file), observation) if observation is not None
            else artifact_cache_key(stl_file))
@@ -374,8 +386,8 @@ def _cached_mesh_solid(stl_file, needed_by=_FACETED_NEEDED_BY,
     return cached[0], cached[1], key
 
 
-def _flexible_mesh_solid(node, needed_by=_FACETED_NEEDED_BY,
-                         reason=_FACETED_REASON):
+def _flexible_mesh_solid(node, needed_by=_MESH_NEEDED_BY,
+                         reason=_MESH_REASON):
     """(solid, local_bounds) for a flexible leaf at its current binding,
     the solid being the mesh engine's, built from ``base_mesh()`` -- never
     from ``stl_file``, which for a flexible leaf names an artifact it does
@@ -384,8 +396,8 @@ def _flexible_mesh_solid(node, needed_by=_FACETED_NEEDED_BY,
     return _flexible_geometry(node, needed_by, reason)[:2]
 
 
-def _flexible_geometry(node, needed_by=_FACETED_NEEDED_BY,
-                       reason=_FACETED_REASON):
+def _flexible_geometry(node, needed_by=_MESH_NEEDED_BY,
+                       reason=_MESH_REASON):
     """(solid, local_bounds, verdict_identity) for a flexible leaf.
 
     The verdict identity is the leaf's STATE identity (ADR-156), taken from
@@ -450,7 +462,7 @@ def _body_count(mesh):
 
 def _mesh_boolean(meshes, combine, needed_by, reason):
     """The Boolean of trimesh meshes, computed by the mesh engine and read
-    back as a trimesh mesh: the steps trimesh's own manifold backend runs,
+    back as a trimesh mesh: the steps trimesh's own Boolean backend runs,
     each one asked of the engine, so the core reaches the engine's kernel
     through the engine alone.
 
@@ -768,9 +780,9 @@ class _DeferredMeshSolid:
     reads it and not before.
 
     Placement is what the spatial index needs; the engine's solid is what
-    a FACETED comparison needs. Separating them is the whole of the
-    conditional mesh-engine contract: a pair the boundary-representation
-    kernel decides never calls ``placed()``, so it never builds a mesh
+    a MESH comparison needs. Separating them is the whole of the
+    conditional mesh-engine contract: a pair the B-rep engine decides
+    never calls ``placed()``, so it never builds a mesh
     solid and never requires the mesh engine. Construction still routes
     through ``_cached_mesh_solid``, so the one-build-per-strong-observation
     guarantee is unchanged however many placements share a file.
@@ -794,7 +806,7 @@ class _DeferredMeshSolid:
 def _placed_mesh_solid(record, needed_by, reason):
     """Read a placement record's mesh-engine solid, forcing a deferred one.
 
-    The single funnel every faceted consumer goes through, so the
+    The single funnel every mesh consumer goes through, so the
     virtual floor -- which is built as a real solid rather than
     deferred, having no STL behind it -- can share the same records.
     """
@@ -805,32 +817,32 @@ def _placed_mesh_solid(record, needed_by, reason):
 
 
 def _solid_geometry(solid):
-    """``(stl_file, local bounds, exact shape or None, identity)`` for one
+    """``(stl_file, local bounds, B-rep shape or None, identity)`` for one
     selected solid: everything a placement needs that does not depend on
     WHERE the solid is being placed. Read once per solid so an assertion
     placing the same solid twice (see ``_dropped_assembly_solids``) pays
     for one ``shape()`` and one cache lookup, not two.
 
-    Bounds come from the cached base mesh for EVERY solid, exact or
-    faceted, so the conservative world boxes the broad phase, the
+    Bounds come from the cached base mesh for EVERY solid, B-rep or
+    mesh, so the conservative world boxes the broad phase, the
     grounded seeds and the virtual floor are all computed from -- and
     the candidate pairs they emit -- do not depend on whether a solid
-    carries exact geometry.
+    carries B-rep geometry.
     """
     identity = artifact_cache_key(solid.stl_file)
     local_bounds = _cached_local_bounds(
         solid.stl_file, observation=identity[1])
     identity = _geometry_identity(
         solid.stl_file, observation=identity[1])
-    shape = solid.shape() if _routes_exact(solid) else None
+    shape = solid.shape() if _routes_brep(solid) else None
     return solid.stl_file, local_bounds, shape, identity
 
 
 def _place_solid(solid, stl_file, local_bounds, matrix, shape,
-                 faceted_identity):
+                 mesh_identity):
     """One placed-solid record: ``(solid, deferred_placed_mesh_solid,
-    world_bounds, placed_exact_shape_or_None, faceted_identity,
-    exact_identity, matrix, local_bounds, local_exact_shape_or_None)``.
+    world_bounds, placed_brep_shape_or_None, mesh_identity,
+    brep_identity, matrix, local_bounds, local_brep_shape_or_None)``.
 
     The three fields after ``world_bounds`` carry what the verdict memo
     needs and nothing reads otherwise: one identity per evaluation path,
@@ -848,7 +860,7 @@ def _place_solid(solid, stl_file, local_bounds, matrix, shape,
     keeps using unchanged.
 
     ``record[8]`` (ADR-092) is the same ``None``-or-shape ``shape``
-    argument this function already receives -- the solid's LOCAL exact
+    argument this function already receives -- the solid's LOCAL B-rep
     shape, not the placed copy at ``record[3]``. The face-box tier's
     per-shape cache (``cached_face_boxes``) keys on the LOCAL shape's
     cache identity, which the placed copy does not carry, so the record
@@ -858,12 +870,12 @@ def _place_solid(solid, stl_file, local_bounds, matrix, shape,
     as ``cached_bounding_box``/``cached_face_boxes`` already treat one.
     """
     return (solid, _DeferredMeshSolid(
-                stl_file, matrix, faceted_identity[1]),
+                stl_file, matrix, mesh_identity[1]),
             _world_bounds(local_bounds, matrix),
             None if shape is None
-            else exact_cache.cached_placement(shape, matrix),
-            faceted_identity,
-            None if shape is None else exact_cache.shape_identity(shape),
+            else brep_cache.cached_placement(shape, matrix),
+            mesh_identity,
+            None if shape is None else brep_cache.shape_identity(shape),
             matrix,
             local_bounds,
             shape)
@@ -922,7 +934,7 @@ def _dropped_assembly_solids(solids, offset):
 ########################################
 # Face-box culling with a containment guard (ADR-092)
 #
-# A second exact-negative tier for a pair of EXACT solids, run after the
+# A second exact-negative tier for a pair of B-REP solids, run after the
 # AABB cull and before any boolean: it decides a pair PROVEN empty with no
 # `BRepAlgoAPI_Common` at all. It exists for the pair a whole-solid box can
 # never separate -- a wheel running between two plates, whose box encloses
@@ -951,7 +963,7 @@ def _dropped_assembly_solids(solids, offset):
 #
 # Disjoint face boxes alone are NOT a verdict -- they prove disjoint
 # BOUNDARIES, and a solid wholly inside another has disjoint boundaries
-# too. The containment guard -- the exact engine's `mutually_outside` --
+# too. The containment guard -- the B-rep engine's `mutually_outside` --
 # is what tells the two cases apart, and both classification directions
 # are load-bearing: only the CONTAINED shape's own representative points
 # reveal containment.
@@ -966,12 +978,12 @@ def _dropped_assembly_solids(solids, offset):
 # exactly as it is without the tier.
 #
 # This module computes no box and classifies nothing: the face boxes come
-# from the exact engine's `face_bounds`, through the memo
-# `exact_cache.cached_face_boxes`, and the containment guard is the
+# from the B-rep engine's `face_bounds`, through the memo
+# `brep_cache.cached_face_boxes`, and the containment guard is the
 # engine's `mutually_outside`. Only the order, the transform of one
 # shape's boxes into the other's frame and the overlap test are the
-# framework's. A faceted run never reaches this tier at all (a mesh-engine
-# solid has no faces), so it never resolves the exact engine.
+# framework's. A mesh run never reaches this tier at all (a mesh-engine
+# solid has no faces), so it never resolves the B-rep engine.
 
 # The fixed absolute margin (mm) a transformed face box is enlarged by
 # before it is compared, absorbing the residue of the one inversion and
@@ -1031,7 +1043,7 @@ def _faces_disjoint(shape1, placed1, shape2, placed2, relative):
     no material -- never a false claim of emptiness, only a decline when
     it cannot tell.
 
-    ``shape1``/``shape2`` are the two solids' LOCAL exact shapes (what
+    ``shape1``/``shape2`` are the two solids' LOCAL B-rep shapes (what
     ``cached_face_boxes`` keys on); ``placed1``/``placed2`` are the same
     two solids already placed in the WORLD frame (what the containment
     guard classifies); ``relative`` is ``inv(matrix1) @ matrix2``, the
@@ -1048,8 +1060,8 @@ def _faces_disjoint(shape1, placed1, shape2, placed2, relative):
     """
     if not np.all(np.isfinite(relative)):
         return False
-    boxes1 = exact_cache.cached_face_boxes(shape1)
-    boxes2 = exact_cache.cached_face_boxes(shape2)
+    boxes1 = brep_cache.cached_face_boxes(shape1)
+    boxes2 = brep_cache.cached_face_boxes(shape2)
     if boxes1.shape[0] == 0 or boxes2.shape[0] == 0:
         return False
     boxes2 = _transformed_face_boxes(boxes2, relative)
@@ -1062,29 +1074,29 @@ def _faces_disjoint(shape1, placed1, shape2, placed2, relative):
         disjoint = np.any((high1 < low2) | (high2 < low1), axis=-1)
         if not np.all(disjoint):
             return False
-    return _exact_engine().mutually_outside(placed1, placed2)
+    return _brep_engine().mutually_outside(placed1, placed2)
 
 
-def _placed_intersection(first, second, needed_by=_FACETED_NEEDED_BY,
-                         reason=_FACETED_REASON):
+def _placed_intersection(first, second, needed_by=_MESH_NEEDED_BY,
+                         reason=_MESH_REASON):
     """Engine-native emptiness and volume for two placed solid records,
     with the run's volume epsilon applied.
 
-    A pair of exact records is read by the boundary-representation kernel;
-    any other pair (faceted, or one of each) by the placed mesh-engine solids.
+    A pair of B-rep records is read by the B-rep engine; any other pair
+    (mesh, or one of each) by the placed mesh-engine solids.
 
-    The exact branch returns before either record's solid is read, so
-    it is also the branch that requires no mesh engine. Only the faceted
+    The B-rep branch returns before either record's solid is read, so
+    it is also the branch that requires no mesh engine. Only the mesh
     branch below forces the deferred placements -- for BOTH records,
-    including an exact one paired with a faceted partner, because that
+    including a B-rep one paired with a mesh partner, because that
     pair really is decided by the mesh boolean.
     """
     if first[3] is not None and second[3] is not None:
-        engine = _exact_engine(_EXACT_NEEDED_BY
-                               if needed_by == _FACETED_NEEDED_BY
-                               else needed_by)
+        engine = _brep_engine(_BREP_NEEDED_BY
+                              if needed_by == _MESH_NEEDED_BY
+                              else needed_by)
 
-        def exact():
+        def brep_verdict():
             relative = np.linalg.inv(first[6]) @ second[6]
             if _faces_disjoint(first[8], first[3], second[8], second[3],
                                relative):
@@ -1096,9 +1108,9 @@ def _placed_intersection(first, second, needed_by=_FACETED_NEEDED_BY,
                                      True)
 
         return _settled(
-            _memoized(_record_key(first, second, 5, 'exact'), exact))
+            _memoized(_record_key(first, second, 5, 'brep'), brep_verdict))
 
-    def faceted():
+    def mesh_verdict():
         engine = _mesh_engine(needed_by, reason)
         result = engine.intersect_solids(
             _placed_mesh_solid(first, needed_by, reason),
@@ -1108,12 +1120,12 @@ def _placed_intersection(first, second, needed_by=_FACETED_NEEDED_BY,
             is_empty, 0.0 if is_empty else engine.volume(result), False)
 
     return _settled(
-        _memoized(_record_key(first, second, 4, 'faceted'), faceted))
+        _memoized(_record_key(first, second, 4, 'mesh'), mesh_verdict))
 
 
 def _candidate_intersection(solids, first, second,
-                            needed_by=_FACETED_NEEDED_BY,
-                            reason=_FACETED_REASON):
+                            needed_by=_MESH_NEEDED_BY,
+                            reason=_MESH_REASON):
     """Engine-native emptiness and volume for one placed solid pair."""
     return _placed_intersection(
         solids[first], solids[second], needed_by, reason)
@@ -1267,21 +1279,21 @@ def _grounded_solids(edges, seeds):
 # whole assembly by one linear feasibility program (ADR-049).
 
 # `assertAssemblySupported` is a REQUIRING path for any multi-solid
-# assembly, exact solids included: contact extraction is always faceted
+# assembly, B-rep solids included: contact extraction is always on meshes
 # (ADR-049 -- statics needs a patch's extent and direction, not Boolean
 # validity) and the virtual floor is a meshed slab. There is no
-# exact-only route to offer, so the assertion says so plainly rather
+# B-rep-only route to offer, so the assertion says so plainly rather
 # than failing obscurely somewhere inside the equilibrium program.
 _STATICS_NEEDED_BY = 'assertAssemblySupported'
 _STATICS_REASON = (
     'proving frictionless static equilibrium extracts contact patches from '
-    'meshed intersections for every body, exact solids included, and stands '
+    'meshed intersections for every body, B-rep solids included, and stands '
     'the assembly on a meshed virtual floor')
 
 
 def _statics_engine():
     """The mesh engine, for the statics phase of ``assertAssemblySupported``,
-    which meshes and intersects every body whatever the run's kernel."""
+    which meshes and intersects every body whatever the run's engine."""
     return require_mesh_engine(_STATICS_NEEDED_BY, _STATICS_REASON)
 
 
@@ -1315,7 +1327,7 @@ _FLOOR = _VirtualFloor()
 
 @dataclass(frozen=True)
 class _Body:
-    """One rigid body as statics sees it: its placed faceted geometry,
+    """One rigid body as statics sees it: its placed mesh geometry,
     the weight and centre of mass of a uniform unit density under unit
     gravity, and whether the assembly's anchors already answer for its
     balance."""
@@ -1394,10 +1406,10 @@ def _interface_contacts(displaced, supported, supporter, offset,
     classified to the boundary it came from by nearest-surface distance.
     The supporter's faces are the interface: the supporter never moved,
     so those positions and normals lie on its real resting surface
-    rather than on a displaced one. Contact extraction is always faceted,
-    including for a pair of exact solids -- statics needs a patch's
+    rather than on a displaced one. Contact extraction is always on
+    meshes, including for a pair of B-rep solids -- statics needs a patch's
     extent and direction, not Boolean validity, and support-edge
-    existence keeps its own exact-kernel routing.
+    existence keeps its own B-rep engine routing.
 
     ``sense`` is +1 for the drop sweep, which keeps the surfaces facing
     against gravity, and -1 for the lift sweep, which keeps the overhead
@@ -1661,7 +1673,7 @@ def _verdict_key(identity1, matrix1, identity2, matrix2, path):
     The key is ``(identity1, identity2, path, quantum, placement)``, in
     that order, so (A, B) and (B, A) stay two questions. An identity is a
     rigid solid's in-process identity -- ``(brep path, float mtime)`` on the
-    exact path, ``(stl path, ArtifactObservation)`` on the faceted one -- or
+    B-rep path, ``(stl path, ArtifactObservation)`` on the mesh one -- or
     a flexible leaf's ``('flexible', state digest)``. The verdict store
     keeps the same fields with each identity made persistent (see
     ``_persisted_key``).
@@ -1683,9 +1695,9 @@ def _verdict_key(identity1, matrix1, identity2, matrix2, path):
     cell differ per entry by less than the quantum, so at the default
     quantum every point of one solid in the other's frame moves by at
     most a few nanometres -- far below any tolerance this framework's
-    assertions or OCCT's own precision distinguish (ADR-090). A quantum
-    of `0` restores the exact-bytes key ADR-070 specified, keying on
-    `relative.tobytes()` with no cell arithmetic at all.
+    assertions or the B-rep engine's own precision distinguish (ADR-090).
+    A quantum of `0` restores the exact-bytes key ADR-070 specified, keying
+    on `relative.tobytes()` with no cell arithmetic at all.
     """
     if identity1 is None or identity2 is None:
         return None
@@ -1706,7 +1718,7 @@ def _record_key(first, second, identity_index, path):
     the virtual floor is a mesh-engine solid with no geometry file behind
     it and carries no identity, so it is never cached. A real ``_place_solid``
     record is now a 9-tuple (``record[7]`` holds local bounds, ADR-091;
-    ``record[8]`` the solid's local exact shape, ADR-092 -- the trailing
+    ``record[8]`` the solid's local B-rep shape, ADR-092 -- the trailing
     field ADR-091's comment anticipated), so the ``len(...) <= 6``
     threshold still separates the two: any FUTURE trailing field appended
     to ``_place_solid`` must keep this guard's intent true by staying
@@ -1749,7 +1761,7 @@ def _memoized(key, compute):
     cached = compute()
     _remember(key, cached)
     if persisted is not None:
-        store.record(persisted, cached.is_empty, cached.volume, cached.exact)
+        store.record(persisted, cached.is_empty, cached.volume, cached.brep)
     return cached
 
 
@@ -1772,8 +1784,8 @@ def _persistent_identity(identity, path):
 
     A rigid solid becomes ``('artifact', kind, sha256)`` of the bytes its
     compared geometry was READ from: the STL whose observation keyed its
-    mesh-engine solid on the faceted path, the BREP whose load observation
-    ``cached_shape`` recorded on the exact path. If that file has changed
+    mesh-engine solid on the mesh path, the BREP whose load observation
+    ``cached_shape`` recorded on the B-rep path. If that file has changed
     since, or the load was not observed coherently, there is no persistent
     identity and the pair is kept in process only. A flexible leaf's state
     identity is persistent already.
@@ -1782,12 +1794,12 @@ def _persistent_identity(identity, path):
         return identity
     if not (isinstance(identity, tuple) and len(identity) == 2):
         return None
-    if path == 'faceted':
+    if path == 'mesh':
         if not isinstance(identity[1], ArtifactObservation):
             return None
         kind, observation = 'stl', identity[1]
-    elif path == 'exact':
-        kind, observation = 'brep', exact_cache.shape_load_observation(
+    elif path == 'brep':
+        kind, observation = 'brep', brep_cache.shape_load_observation(
             identity)
         if observation is None:
             return None
@@ -1801,14 +1813,14 @@ def _engine_identity(path):
     """What binds a kept verdict of `path` to the engine that decided it,
     or None when no binding can be named.
 
-    A faceted verdict is the mesh engine's, so it carries the identity,
+    A mesh verdict is the mesh engine's, so it carries the identity,
     name and version, the engine resolved for this process reports of
     itself; with no engine, or one that reports no version, there is
-    nothing to bind it to and the verdict is kept in process only. An
-    exact verdict carries none: the mesh engine never decided it, and
+    nothing to bind it to and the verdict is kept in process only. A
+    B-rep verdict carries none: the mesh engine never decided it, and
     asking would resolve the engine in a run that never needs it.
     """
-    if path != 'faceted':
+    if path != 'mesh':
         return ()
     engine = mesh_engine()
     if engine is None:
@@ -1824,7 +1836,7 @@ def _persisted_key(key):
 
     The evaluation path, the quantum and the placement cells are the
     in-process key's own; only the identities change, and the store adds
-    its stamp and, for a faceted verdict, the mesh engine's identity. Any
+    its stamp and, for a mesh verdict, the mesh engine's identity. Any
     doubt -- an identity that cannot be made persistent, an engine that
     cannot name itself, or anything unexpected while deriving one -- is
     None: a miss, which costs what computing costs and never a wrong
@@ -1848,25 +1860,25 @@ def _persisted_key(key):
         return None
 
 
-def _exact_verdict(shape1, matrix1, shape2, matrix2, name1, name2):
-    """The exact path's verdict for one pair: the AABB cull, then the
+def _brep_verdict(shape1, matrix1, shape2, matrix2, name1, name2):
+    """The B-rep path's verdict for one pair: the AABB cull, then the
     face-box tier with its containment guard (ADR-092), then the boolean.
 
     Each placement is materialised once for each side, through the memo
-    ``exact_cache.cached_placement``, and handed to BOTH the tier and, if it
+    ``brep_cache.cached_placement``, and handed to BOTH the tier and, if it
     declines, the boolean -- so a pair the AABB culls never pays a
     placement, and a pair the tier decides pays one placement per side
     rather than two.
     """
-    engine = _exact_engine()
-    low1, high1 = exact_cache.cached_bounding_box(shape1)
-    low2, high2 = exact_cache.cached_bounding_box(shape2)
+    engine = _brep_engine()
+    low1, high1 = brep_cache.cached_bounding_box(shape1)
+    low2, high2 = brep_cache.cached_bounding_box(shape2)
     box1 = _world_bounds((np.array(low1), np.array(high1)), matrix1)
     box2 = _world_bounds((np.array(low2), np.array(high2)), matrix2)
     if _boxes_disjoint(box1, box2):
         return IntersectionStats(True, 0.0, True)
-    placed1 = exact_cache.cached_placement(shape1, matrix1)
-    placed2 = exact_cache.cached_placement(shape2, matrix2)
+    placed1 = brep_cache.cached_placement(shape1, matrix1)
+    placed2 = brep_cache.cached_placement(shape2, matrix2)
     relative = np.linalg.inv(matrix1) @ matrix2
     if _faces_disjoint(shape1, placed1, shape2, placed2, relative):
         return IntersectionStats(True, 0.0, True)
@@ -1875,9 +1887,9 @@ def _exact_verdict(shape1, matrix1, shape2, matrix2, name1, name2):
     return IntersectionStats(count == 0, engine.solid_volume(result), True)
 
 
-def _faceted_verdict(solid1, bounds1, matrix1,
-                     solid2, bounds2, matrix2):
-    """The faceted path's verdict for one pair, broad phase included.
+def _mesh_verdict(solid1, bounds1, matrix1,
+                  solid2, bounds2, matrix2):
+    """The mesh path's verdict for one pair, broad phase included.
 
     Verdict semantics are untouched: ``is_empty`` is the engine's own
     emptiness, and ``volume`` is read only when non-empty, so a real flush
@@ -1888,7 +1900,7 @@ def _faceted_verdict(solid1, bounds1, matrix1,
     box2 = _world_bounds(bounds2, matrix2)
     if _boxes_disjoint(box1, box2):
         return IntersectionStats(True, 0.0, False)
-    engine = _mesh_engine(_FACETED_NEEDED_BY, _FACETED_REASON)
+    engine = _mesh_engine(_MESH_NEEDED_BY, _MESH_REASON)
     placed1 = engine.placed_solid(solid1, matrix1)
     placed2 = engine.placed_solid(solid2, matrix2)
     result = engine.intersect_solids(placed1, placed2)
@@ -1906,9 +1918,9 @@ def _intersection_stats(node1, node2, compose_matrix=_compose_world_matrix):
 
 
 def _engine_intersection_stats(node1, node2, compose_matrix):
-    """The engine's own (is_empty, volume) for node1 ∩ node2. Two exact
-    nodes take the exact path when the run's kernel is exact. When BOTH
-    nodes expose the fast-path attributes (see _fast_geometry):
+    """The engine's own (is_empty, volume) for node1 ∩ node2. Two B-rep
+    nodes take the B-rep path when the run's engine is the B-rep engine.
+    When BOTH nodes expose the fast-path attributes (see _fast_geometry):
 
     - An AABB broad-phase runs first (fix 2): if the parts' world
       boxes are disjoint, the exact intersection is provably empty
@@ -1942,17 +1954,17 @@ def _engine_intersection_stats(node1, node2, compose_matrix):
     attributes at all (e.g. the FakeNode test doubles in
     tests/test_assertions.py).
     """
-    if _routes_exact(node1) and _routes_exact(node2):
-        _exact_engine()
+    if _routes_brep(node1) and _routes_brep(node2):
+        _brep_engine()
         shape1 = node1.shape()
         shape2 = node2.shape()
         matrix1 = compose_matrix(node1)
         matrix2 = compose_matrix(node2)
         return _memoized(
-            _verdict_key(_exact_identity(node1, shape1), matrix1,
-                         _exact_identity(node2, shape2), matrix2, 'exact'),
-            lambda: _exact_verdict(shape1, matrix1, shape2, matrix2,
-                                   node1.name, node2.name))
+            _verdict_key(_brep_identity(node1, shape1), matrix1,
+                         _brep_identity(node2, shape2), matrix2, 'brep'),
+            lambda: _brep_verdict(shape1, matrix1, shape2, matrix2,
+                                  node1.name, node2.name))
 
     fast1 = _fast_geometry(node1, compose_matrix)
     fast2 = _fast_geometry(node2, compose_matrix)
@@ -1960,17 +1972,17 @@ def _engine_intersection_stats(node1, node2, compose_matrix):
         solid1, bounds1, matrix1, identity1 = fast1
         solid2, bounds2, matrix2, identity2 = fast2
         return _memoized(
-            _verdict_key(identity1, matrix1, identity2, matrix2, 'faceted'),
-            lambda: _faceted_verdict(solid1, bounds1, matrix1,
-                                     solid2, bounds2, matrix2))
+            _verdict_key(identity1, matrix1, identity2, matrix2, 'mesh'),
+            lambda: _mesh_verdict(solid1, bounds1, matrix1,
+                                  solid2, bounds2, matrix2))
     intersection = _mesh_boolean([node1.mesh, node2.mesh], 'intersection',
-                                 _FACETED_NEEDED_BY, _FACETED_REASON)
+                                 _MESH_NEEDED_BY, _MESH_REASON)
     volume = 0.0 if intersection.is_empty else intersection.volume
     return IntersectionStats(intersection.is_empty, volume, False)
 
 
-def _exact_identity(node, shape):
-    """The exact path's verdict identity for the shape `node.shape()` just
+def _brep_identity(node, shape):
+    """The B-rep path's verdict identity for the shape `node.shape()` just
     returned, or None.
 
     A rigid solid's is its ``shape_identity``. A flexible leaf's solid is
@@ -1983,8 +1995,8 @@ def _exact_identity(node, shape):
     if node.flexible:
         if getattr(node.shape, '__func__', None) is not FlexibleNode.shape:
             return None
-        return node._exact_state_identity(shape)
-    return exact_cache.shape_identity(shape)
+        return node._brep_state_identity(shape)
+    return brep_cache.shape_identity(shape)
 
 
 def _mesh_in_frame(node, compose_matrix):
@@ -2188,7 +2200,7 @@ class TestCase(BaseTestCase):
         if volume_epsilon > 0 and paths and all(paths):
             warnings.warn(
                 f'{assertion} ignored volume_epsilon={volume_epsilon} '
-                'because every comparison used exact geometry',
+                'because every comparison used B-rep geometry',
                 UserWarning,
                 stacklevel=3,
             )
@@ -2245,7 +2257,7 @@ class TestCase(BaseTestCase):
             stats = _intersection_stats(node, against)
             is_empty, volume = stats
             is_fouling = (
-                not is_empty if stats.exact or volume_epsilon <= 0
+                not is_empty if stats.brep or volume_epsilon <= 0
                 else abs(volume) > volume_epsilon)
             if expect_intersect and not is_fouling:
                 if is_empty:
@@ -2264,7 +2276,7 @@ class TestCase(BaseTestCase):
                 if volume_epsilon > 0:
                     message += f", exceeds epsilon {volume_epsilon}"
                 raise AssertionError(message)
-            return stats.exact
+            return stats.brep
         finally:
             node.operations.remove(operation)
 
@@ -2280,10 +2292,10 @@ class TestCase(BaseTestCase):
         than independent parts.
         """
         for solid in _topmost_rigid_nodes(node):
-            if _routes_exact(solid):
-                engine = _exact_engine('assertNoDisconnectedSolids')
+            if _routes_brep(solid):
+                engine = _brep_engine('assertNoDisconnectedSolids')
                 bodies = engine.solid_count(solid.shape())
-                source = 'exact geometry'
+                source = 'B-rep geometry'
             else:
                 bodies = len(cached_base_mesh(solid.stl_file).split(
                     only_watertight=False))
@@ -2300,9 +2312,9 @@ class TestCase(BaseTestCase):
         The topmost rigid nodes are placed in world coordinates at the testing
         instant already selected by the runner. Empty and zero-volume boundary
         contact pass; every positive candidate intersection reported by the
-        kernel fails. A finite negative faceted volume is not positive shared
+        kernel fails. A finite negative mesh volume is not positive shared
         material; its raw engine verdict remains untouched for strict pairwise
-        assertions. Exact and non-finite candidate verdicts are unchanged.
+        assertions. B-rep and non-finite candidate verdicts are unchanged.
         There is intentionally no public overlap epsilon:
         manufacturing clearances are length-based project contracts, not a
         globally permitted volume of interpenetration.
@@ -2331,12 +2343,12 @@ class TestCase(BaseTestCase):
                 _indexing_frame_boxes(solids)):
             stats = _candidate_intersection(
                 solids, first, second, 'assertNoSolidInterference',
-                'one of the two solids in a candidate pair has no exact '
+                'one of the two solids in a candidate pair has no B-rep '
                 'geometry, so the pair is compared through their meshes')
             is_empty, volume = stats
             if is_empty or volume == 0.0:
                 continue
-            if volume < 0.0 and math.isfinite(volume) and not stats.exact:
+            if volume < 0.0 and math.isfinite(volume) and not stats.brep:
                 continue
             solid1 = solids[first][0]
             solid2 = solids[second][0]
@@ -2566,11 +2578,11 @@ class TestCase(BaseTestCase):
             )
         _, weld_volume = _intersection_stats(
             node1, node2, compose_matrix=_compose_solid_matrix)
-        if _routes_exact(node1) and _routes_exact(node2):
-            engine = _exact_engine('assertJoined')
-            shape1 = exact_cache.cached_placement(
+        if _routes_brep(node1) and _routes_brep(node2):
+            engine = _brep_engine('assertJoined')
+            shape1 = brep_cache.cached_placement(
                 node1.shape(), _compose_solid_matrix(node1))
-            shape2 = exact_cache.cached_placement(
+            shape2 = brep_cache.cached_placement(
                 node2.shape(), _compose_solid_matrix(node2))
             union = engine.fuse_shapes(shape1, shape2, node1.name, node2.name)
             bodies = engine.solid_count(union)
@@ -2628,11 +2640,11 @@ class TestCase(BaseTestCase):
         paths = []
         for leaf1, leaf2 in itertools.combinations(leaves, 2):
             stats = _intersection_stats(leaf1, leaf2)
-            paths.append(stats.exact)
+            paths.append(stats.brep)
             is_empty, volume = stats
             if is_empty:
                 continue
-            if (not stats.exact and volume_epsilon > 0
+            if (not stats.brep and volume_epsilon > 0
                     and abs(volume) <= volume_epsilon):
                 continue
             message = (

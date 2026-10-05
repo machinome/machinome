@@ -8,7 +8,7 @@ blanket requirement of the assertion module (OpenSpec changes
 `mesh-engine-dependency`).
 
 These tests run the framework in subprocesses where `manifold3d`, the
-engine's package `machinome.manifold`, or both are genuinely unimportable,
+engine's package `machinome.engine.mesh`, or both are genuinely unimportable,
 or where `manifold3d` is found and broken (see tests/mesh_engine_absent.py).
 They pin the two halves of the contract -- what keeps working without the
 mesh engine, and what fails naming it and the extra that installs it --
@@ -34,17 +34,17 @@ from .mesh_engine_fixture import write_fixture
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 META_BUILD_DIR = os.path.join(BASEDIR, '_build_meta')
 HAVE_ENGINE = mesh_engine_is_installed()
-INSTALL = 'pip install "machinome[manifold]"'
+INSTALL = 'pip install "machinome[mesh]"'
 NEEDS_ENGINE = ('the absent-engine subprocess is only meaningful when this '
                 'interpreter genuinely has the mesh engine to withhold')
 
-#: design.md Decision 8's refusal, written out here.
+#: design.md Decision 8's refusal (brep-mesh's R3 and R9), written out here.
 FACETED_START_REFUSAL = (
-    'Error: machinome test on the faceted kernel requires the mesh engine '
+    'Error: machinome test on the mesh engine requires the mesh engine '
     "because every pair the run compares is compared on the parts' meshes; "
-    'install it with \'pip install "machinome[manifold]"\'. Exact geometry '
-    'does not need it: a model whose every compared part is exact is '
-    'decided by the boundary-representation kernel')
+    'install it with \'pip install "machinome[mesh]"\'. B-rep geometry '
+    'does not need it: a model whose every compared part has B-rep geometry '
+    'is decided by the B-rep engine')
 
 
 class _NoAsksOfTheEngine:
@@ -52,7 +52,7 @@ class _NoAsksOfTheEngine:
     def assert_engine_never_asked(self, run):
         """No process asked for the engine's package; every ask of its
         kernel was one of trimesh's own probes at its import."""
-        self.assertEqual(run.asks('machinome.manifold'), 0, run.output)
+        self.assertEqual(run.asks('machinome.engine.mesh'), 0, run.output)
         self.assertLessEqual(run.askers('manifold3d'), TRIMESH_PROBES,
                              run.output)
 
@@ -78,7 +78,7 @@ class AssertionModuleImportTest(_NoAsksOfTheEngine, TestCase):
         run = run_python('import machinome.test\n')
 
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertNotIn('machinome.manifold.engine', run.imported)
+        self.assertNotIn('machinome.engine.mesh', run.imported)
         self.assert_engine_never_asked(run)
         self.assertEqual(run.askers('manifold3d'), TRIMESH_PROBES,
                          'trimesh asks for manifold3d at its own import')
@@ -175,19 +175,19 @@ class FacetedRunRefusesAtItsStartTest(TestCase):
         self.assertEqual(run.returncode, 1, run.output)
         self.assertIn(FACETED_START_REFUSAL, run.stderr.splitlines(),
                       run.output)
-        self.assertNotIn('Comparing on the faceted kernel', run.stdout)
+        self.assertNotIn('Comparing on the mesh engine', run.stdout)
         self.assertEqual(glob.glob(os.path.join(self.build_dir, '**', '*.stl'),
                                    recursive=True), [])
 
     def test_the_faceted_flag_refuses_before_building(self):
         self.assert_refused_at_start(run_machinome(
-            'test', '--faceted', 'tests/meta_project/flush.py',
+            'test', '--mesh', 'tests/meta_project/flush.py',
             build_dir=self.build_dir))
 
     def test_the_faceted_environment_refuses_before_building(self):
         self.assert_refused_at_start(run_machinome(
             'test', 'tests/meta_project/flush.py', build_dir=self.build_dir,
-            env={'SOLID_TEST_KERNEL': 'faceted'}))
+            env={'SOLID_TEST_ENGINE': 'mesh'}))
 
 
 @skipUnless(HAVE_ENGINE, NEEDS_ENGINE)
@@ -222,6 +222,6 @@ class BuildWithoutTheMeshEngineTest(_NoAsksOfTheEngine, TestCase):
                             cwd=self.project, build_dir=self.build_dir)
 
         self.assertNotEqual(run.returncode, 0, run.output)
-        self.assertIn('faceted fusion Fused', run.output)
+        self.assertIn('mesh fusion Fused', run.output)
         self.assertIn('requires the mesh engine', run.output)
         self.assertIn(INSTALL, run.output)

@@ -5,10 +5,10 @@
 import hashlib
 import numpy as np
 
-from machinome.exact_artifacts import deflections, write_brep, write_stl
-from machinome.exact_cache import cached_placement, cached_shape
-from machinome.exact_engine import require_exact_engine
-from machinome.mesh_engine import require_mesh_engine
+from machinome.brep_artifacts import deflections, write_brep, write_stl
+from machinome.brep_cache import cached_placement, cached_shape
+from machinome.engine import require_brep_engine
+from machinome.engine import require_mesh_engine
 from .base import (_atomic_write_bytes, _compose_solid_matrix,
                    cached_base_mesh)
 from .internal import InternalNode
@@ -24,9 +24,9 @@ class FusionNode(InternalNode):
     _type = 'FusionNode'
 
     #: The tessellation precision of this fusion's OWN fused solid --
-    #: see `ExactLeafNode.linear_deflection`/`angular_deflection` for the
+    #: see `BrepLeafNode.linear_deflection`/`angular_deflection` for the
     #: declaration shape, the currency and identity consequences, and the
-    #: OCCT quantities these name. A fusion does NOT inherit either
+    #: B-rep engine's quantities these name. A fusion does NOT inherit either
     #: attribute from its children: the fuse is a different shape than
     #: any of them, and there is no defensible way to pick a winner among
     #: children that disagree.
@@ -35,15 +35,15 @@ class FusionNode(InternalNode):
 
     @property
     def geometry_recipe(self):
-        if self.exact:
-            return 'exact-fusion-occt-v1'
+        if self.brep:
+            return 'brep-fusion-v1'
         ingredients = '\0'.join(child.geometry_recipe
                                  for child in self.children)
-        return 'faceted-fusion-manifold-v1:' + hashlib.sha256(
+        return 'mesh-fusion-v1:' + hashlib.sha256(
             ingredients.encode()).hexdigest()
 
     def _artifact_recipe(self, path):
-        if path == self.stl_file and self.children and not self.exact:
+        if path == self.stl_file and self.children and not self.brep:
             return self.geometry_recipe
         return super()._artifact_recipe(path)
 
@@ -78,18 +78,18 @@ class FusionNode(InternalNode):
                     "fuse solids first, then assemble them")
 
     def shape(self):
-        """The fused exact solid, in this fusion's own frame.
+        """The fused B-rep solid, in this fusion's own frame.
 
         A current BREP is loaded through the shape memo. Otherwise the
-        exact engine is resolved -- the one point a fusion needs it -- and
+        B-rep engine is resolved -- the one point a fusion needs it -- and
         each child's shape is placed in this frame and fused in turn.
         """
-        if not self.exact:
+        if not self.brep:
             return super().shape()
         if self._up_to_date(self.brep_file):
             return cached_shape(self.brep_file)
-        engine = require_exact_engine(f'exact fusion {self.name}',
-                                      'fusing its exact children')
+        engine = require_brep_engine(f'B-rep fusion {self.name}',
+                                     'fusing its B-rep children')
         placed = [
             cached_placement(child.shape(), _compose_solid_matrix(child))
             for child in self.children
@@ -101,13 +101,13 @@ class FusionNode(InternalNode):
         return result
 
     def generate_stl(self):
-        if not self.exact:
-            return self._generate_faceted_stl()
+        if not self.brep:
+            return self._generate_mesh_stl()
         if (self._up_to_date(self.stl_file)
                 and self._up_to_date(self.brep_file)):
             return
-        require_exact_engine(f'exact fusion {self.name}',
-                             'writing its fused exact artifacts')
+        require_brep_engine(f'B-rep fusion {self.name}',
+                            'writing its fused B-rep artifacts')
         shape = self.shape()
         digest = self.source_digest
         fingerprint = self.source_fingerprint
@@ -116,13 +116,13 @@ class FusionNode(InternalNode):
         write_stl(shape, self.stl_file, self.mtime_ns,
                   linear_deflection, angular_deflection, digest, fingerprint)
 
-    def _generate_faceted_stl(self):
+    def _generate_mesh_stl(self):
         """Union current child artifacts in this fusion's local frame,
         through the mesh engine."""
         if self._up_to_date(self.stl_file):
             return
         engine = require_mesh_engine(
-            f"faceted fusion {self.name}",
+            f"mesh fusion {self.name}",
             "directly unioning its children's mesh artifacts")
 
         solids = []
@@ -133,7 +133,7 @@ class FusionNode(InternalNode):
             fault = engine.fault(solid)
             if fault is not None:
                 raise ValueError(
-                    f"faceted fusion {self.name} cannot admit child "
+                    f"mesh fusion {self.name} cannot admit child "
                     f"{child.name}: {engine.identity()[0]} reported {fault}")
             solids.append(solid)
 
@@ -141,7 +141,7 @@ class FusionNode(InternalNode):
         fault = engine.fault(result)
         if fault is not None:
             raise ValueError(
-                f"faceted fusion {self.name} failed: "
+                f"mesh fusion {self.name} failed: "
                 f"{engine.identity()[0]} reported {fault}")
 
         vertices, faces = engine.mesh_arrays(result)

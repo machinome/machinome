@@ -722,7 +722,7 @@ class Builder(FileSystemEventHandler):
             if node.rigid and not node._up_to_date(
                     node.stl_file):
                 return False
-            if (node.rigid and node.exact
+            if (node.rigid and node.brep
                     and not node._up_to_date(node.brep_file)):
                 return False
             # A marking's currency is checked on every build of its

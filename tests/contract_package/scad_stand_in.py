@@ -19,7 +19,7 @@ from machinome.node.solid2 import Solid2Node
 class MeshScad(Solid2Node):
     """A 2 mm cube presented to OpenSCAD as SCAD."""
 
-    leaf_contract = 2
+    leaf_contract = 3
 
     def render(self):
         return cube(2)

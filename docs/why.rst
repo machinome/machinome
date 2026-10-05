@@ -49,7 +49,7 @@ each one owns.
 Supply the parts in their natural form
 --------------------------------------
 
-Keep useful design source. CadQuery and build123d provide exact solids;
+Keep useful design source. CadQuery and build123d provide B-rep solids;
 OpenSCAD, SolidPython and JSCAD supply their own geometry. Import a
 vendor's STEP part or an existing STL, derive a sheet part and its DXF
 from one profile, or use a molejo shape for a flexible spring, belt or
@@ -65,8 +65,8 @@ Check the design as it changes
 
 Tests state concrete requirements: these parts must not interfere, this
 piece must be one body, this fit must allow its intended motion, this
-assembly must stand under gravity. Exact geometry is compared on the OCCT
-kernel; mesh geometry on faceted comparisons. A scenario adds a sequence
+assembly must stand under gravity. B-rep geometry is compared on the B-rep
+engine; mesh geometry on the mesh engine. A scenario adds a sequence
 of inputs and checks what happens along it, at the tick it happens.
 
 These checks give evidence about the model and the states tested. They

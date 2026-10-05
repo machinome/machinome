@@ -89,7 +89,7 @@ before OpenSCAD is launched.
 
 The default renderer SHALL NOT vary with the availability of either renderer,
 with whether the viewer package is installed, nor with whether the project's
-model is exact. A default that followed availability would be substitution by
+model has B-rep geometry. A default that followed availability would be substitution by
 another name, and one that followed the project's backends would silently
 change the appearance of snapshots taken of an existing project.
 
@@ -124,10 +124,10 @@ change the appearance of snapshots taken of an existing project.
 - **THEN** the command fails naming the missing binary and the web renderer as
   the alternative, and writes no image
 
-#### Scenario: The default is unchanged by an exact model
+#### Scenario: The default is unchanged by a B-rep model
 
 - **WHEN** a snapshot is rendered without choosing a renderer for a project
-  whose model is entirely exact
+  whose model is entirely B-rep
 - **THEN** the OpenSCAD renderer is selected, exactly as for any other project
 
 #### Scenario: The OpenSCAD engine is unavailable

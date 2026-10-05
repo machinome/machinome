@@ -503,7 +503,7 @@ class Wrapped:
 
 #: The tessellation precision a part that declares none is meshed at:
 #: the framework's historical default, the same number
-#: `ExactLeafNode.linear_deflection` and `FusionNode.linear_deflection`
+#: `BrepLeafNode.linear_deflection` and `FusionNode.linear_deflection`
 #: carry. An `StlNode` declares neither, so its decals are meshed at
 #: this -- which is why it is in the marking artifact's producer recipe
 #: (`AbstractBaseNode._artifact_recipe`) and not only in its sources.

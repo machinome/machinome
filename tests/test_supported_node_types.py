@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 from unittest import TestCase
 
-from tests.exact_engine_absent import run_python
+from tests.brep_engine_absent import run_python
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED = ROOT / 'machinome' / 'node' / 'supported.py'

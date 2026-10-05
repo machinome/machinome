@@ -125,7 +125,7 @@ ordering SHALL hold for native preparation and SCAD compatibility consumers.
 #### Scenario: Assemble writes no SCAD
 
 - **WHEN** `assemble()` is called with the OpenSCAD node package installed on
-  an assembly of an exact leaf and a `Solid2Node` leaf whose artifacts are
+  an assembly of a B-rep leaf and a `Solid2Node` leaf whose artifacts are
   current
 - **THEN** it returns the presentation description and no `.scad` file is
   written or rewritten, the assembly's included
@@ -318,15 +318,16 @@ DXF is produced and guarded under the same rule, and the flexible adapter's
 snapshot artifact is guarded per binding as the `flexible-parts` capability
 specifies.
 
-An adapter whose backend is a boundary-representation kernel SHALL additionally
-expose its geometry exactly, under the `exact-geometry` capability.
+An adapter whose backend is a boundary-representation kernel SHALL
+additionally expose its geometry as a boundary representation, under the
+`brep-geometry` capability.
 `CadQueryNode`, `Build123dNode`, `Build123dSheetNode`, `StepNode` and
 `MolejoNode` are
-such adapters: each is exact and provides `shape()`.
+such adapters: each has B-rep geometry and provides `shape()`.
 `Solid2Node`, `OpenScadNode`, `JScadNode` and `StlNode` produce geometry only
-as meshes and are not exact. Exposing exact geometry SHALL NOT change an
-adapter's presentation or its mesh artifact, so a project that never asks an
-exact question is unaffected.
+as meshes and have no B-rep geometry. Exposing B-rep geometry SHALL NOT change an
+adapter's presentation or its mesh artifact, so a project that never asks a
+B-rep question is unaffected.
 
 #### Scenario: OpenSCAD source adapter
 
@@ -396,20 +397,20 @@ exact question is unaffected.
 - **THEN** no export or external renderer runs, and the returned presentation
   is unchanged
 
-#### Scenario: Only the B-rep backends are exact
+#### Scenario: Only the B-rep backends declare `brep`
 
-- **WHEN** `exact` is read across one instance of each adapter
+- **WHEN** `brep` is read across one instance of each adapter
 - **THEN** the `CadQueryNode`, `Build123dNode`, `Build123dSheetNode`,
   `StepNode` and
   `MolejoNode` report true and the `Solid2Node`, `OpenScadNode`,
   `JScadNode` and `StlNode` report false
 
-#### Scenario: Exactness does not disturb the SCAD path
+#### Scenario: Declaring `brep` does not disturb the SCAD path
 
-- **WHEN** a `CadQueryNode` is assembled in a project that asks no exact
+- **WHEN** a `CadQueryNode` is assembled in a project that asks no B-rep
   question
 - **THEN** its presentation and STL artifact are what they were before the
-  adapter became exact
+  adapter declared `brep`
 
 #### Scenario: A B-rep adapter compiles without OpenSCAD
 
@@ -617,18 +618,18 @@ to share.
 
 This constrains how shared adapter behaviour may be factored. It does not
 require any particular factoring. The shared leaf bases — `LeafNode`,
-`ExactLeafNode`, `SheetLeafNode` and `FlexibleNode` — are the declared
+`BrepLeafNode`, `SheetLeafNode` and `FlexibleNode` — are the declared
 extension points of the `leaf-contract` capability; declaring them does not
 make two adapters sharing one interchangeable, and an adapter written outside
 the core against one of them is as distinct a type as the core's own.
 
-Sharing a base SHALL NOT change which framework path a leaf reaches: an exact
-adapter, whatever bases it shares, writes its STL through the exact engine and
+Sharing a base SHALL NOT change which framework path a leaf reaches: a B-rep
+adapter, whatever bases it shares, writes its STL through the B-rep engine and
 SHALL NOT reach the OpenSCAD rendering path.
 
 #### Scenario: Adapters sharing a base stay distinct
 
-- **WHEN** the exact adapters `CadQueryNode` and `Build123dNode` are tested
+- **WHEN** the B-rep adapters `CadQueryNode` and `Build123dNode` are tested
   against each other with `isinstance`
 - **THEN** neither is an instance of the other, and each remains its own type
 
@@ -640,11 +641,11 @@ SHALL NOT reach the OpenSCAD rendering path.
 
 #### Scenario: An adapter written outside the core is its own type
 
-- **WHEN** an `ExactLeafNode` subclass defined outside `machinome/` is tested
+- **WHEN** an `BrepLeafNode` subclass defined outside `machinome/` is tested
   against `CadQueryNode` and `Build123dNode` with `isinstance`
 - **THEN** it is an instance of neither, and neither is an instance of it
 
-#### Scenario: A shared base does not route an exact adapter through OpenSCAD
+#### Scenario: A shared base does not route a B-rep adapter through OpenSCAD
 
 - **WHEN** a `CadQueryNode`, a `Build123dNode` or a `Build123dSheetNode` leaf
   is prepared and its STL generated with OpenSCAD's availability check and

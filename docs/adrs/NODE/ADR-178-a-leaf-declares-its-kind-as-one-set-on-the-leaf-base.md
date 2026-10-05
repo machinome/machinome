@@ -1,6 +1,6 @@
 # ADR-178: A Leaf Declares Its Kind as One Set on the Leaf Base
 
-**Status:** Accepted
+**Status:** Accepted; the member `exact` is `brep`, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-04
 **Change:** [`openscad-out`](../../../openspec/changes/archive/2026-10-04-openscad-out/)
 **Amends:**

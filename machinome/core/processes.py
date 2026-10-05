@@ -7,15 +7,15 @@
 Not the platform default. On Linux that default is `fork`, and a build
 command forks late: `machinome build` resolves the model in its own process to
 tell a missing model from a failed build, and resolving it imports and runs
-the model's geometry. That leaves OCCT's OpenMP worker team live -- in a
-real project, one thread becomes forty-six.
+the model's geometry. That leaves the B-rep engine's kernel's OpenMP
+worker team live -- in a real project, one thread becomes forty-six.
 
 `fork()` copies the address space but not the threads. The child inherits
 libgomp's record of a worker team none of whose threads exist in it, and the
-first parallel OCCT call -- tessellation during STL export -- waits on that
-team's barrier and never wakes. Not a slow build: a permanent stop, at no
-CPU, with nothing in flight. It hides whenever the build directory is already
-current, because the child then reports CURRENT without tessellating
+first parallel call of that kernel -- tessellation during STL export -- waits
+on that team's barrier and never wakes. Not a slow build: a permanent stop, at
+no CPU, with nothing in flight. It hides whenever the build directory is
+already current, because the child then reports CURRENT without tessellating
 anything.
 
 So build subprocesses start from a fresh interpreter, which inherits no

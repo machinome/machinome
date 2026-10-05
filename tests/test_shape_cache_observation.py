@@ -24,10 +24,10 @@ import numpy as np
 from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCP.gp import gp_Pnt
 
-from machinome import exact_cache
+from machinome import brep_cache
 from machinome._artifact import observe_artifact
-from machinome.exact_artifacts import write_brep
-from machinome.occt import engine
+from machinome.brep_artifacts import write_brep
+from machinome.engine import brep as engine
 
 STAMP = 1_790_000_000_123_456_789
 
@@ -45,42 +45,42 @@ class ShapeCacheObservationTest(TestCase):
 
     def test_a_replacement_under_the_same_stamp_is_not_served_stale(self):
         write_brep(_box(2), self.path, STAMP)
-        first = exact_cache.cached_shape(self.path)
-        key = exact_cache.shape_identity(first)
-        exact_cache.cached_bounding_box(first)
-        exact_cache.cached_face_boxes(first)
-        exact_cache.cached_placement(first, np.eye(4))
-        self.assertIn(key, exact_cache._bounds_cache)
+        first = brep_cache.cached_shape(self.path)
+        key = brep_cache.shape_identity(first)
+        brep_cache.cached_bounding_box(first)
+        brep_cache.cached_face_boxes(first)
+        brep_cache.cached_placement(first, np.eye(4))
+        self.assertIn(key, brep_cache._bounds_cache)
 
         write_brep(_box(3), self.path, STAMP)
         self.assertEqual(os.stat(self.path).st_mtime_ns, STAMP)
-        second = exact_cache.cached_shape(self.path)
+        second = brep_cache.cached_shape(self.path)
 
         self.assertAlmostEqual(engine.solid_volume(second), 27.0)
         self.assertIsNot(second, first)
-        self.assertNotIn(key, exact_cache._shape_cache)
-        self.assertNotIn(key, exact_cache._bounds_cache)
-        self.assertNotIn(key, exact_cache._face_box_cache)
-        self.assertEqual([placement for placement in exact_cache._placement_cache
+        self.assertNotIn(key, brep_cache._shape_cache)
+        self.assertNotIn(key, brep_cache._bounds_cache)
+        self.assertNotIn(key, brep_cache._face_box_cache)
+        self.assertEqual([placement for placement in brep_cache._placement_cache
                           if placement[0] == key], [])
 
     def test_a_repeated_request_reads_the_file_once(self):
         write_brep(_box(2), self.path, STAMP)
-        first = exact_cache.cached_shape(self.path)
+        first = brep_cache.cached_shape(self.path)
 
-        with patch('machinome.occt.engine.read_brep',
+        with patch('machinome.engine.brep.read_brep',
                    wraps=engine.read_brep) as read:
-            again = exact_cache.cached_shape(self.path)
+            again = brep_cache.cached_shape(self.path)
 
         self.assertIs(again, first)
         self.assertEqual(read.call_count, 0)
 
     def test_the_load_observation_is_the_files(self):
         write_brep(_box(2), self.path, STAMP)
-        shape = exact_cache.cached_shape(self.path)
+        shape = brep_cache.cached_shape(self.path)
 
-        self.assertEqual(exact_cache.shape_load_observation(
-            exact_cache.shape_identity(shape)), observe_artifact(self.path))
+        self.assertEqual(brep_cache.shape_load_observation(
+            brep_cache.shape_identity(shape)), observe_artifact(self.path))
 
 
 class RecipeReplacementTest(TestCase):

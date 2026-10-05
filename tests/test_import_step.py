@@ -792,7 +792,7 @@ class ImportStepKernelAbsentTest(TestCase):
         self.scratch = scratch.name
 
     def run_cli(self, *arguments):
-        from .exact_engine_absent import run_machinome
+        from .brep_engine_absent import run_machinome
         return run_machinome(*arguments, absent=('cadquery',),
                              cwd=self.scratch)
 

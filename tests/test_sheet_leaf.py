@@ -7,7 +7,7 @@
 What is worth testing here is the invariant the type exists for: the solid
 in the tree and the cut file on disk both derive from the one authored
 profile, so they cannot drift apart. Everything else -- exactness, the STL
-and BREP, the freshness guard -- is `ExactLeafNode`'s and is only checked
+and BREP, the freshness guard -- is `BrepLeafNode`'s and is only checked
 where the sheet leaf extends it: the DXF joins the artifact set, and the
 profile has a contract of its own that a generic render result does not.
 """
@@ -22,7 +22,7 @@ import build123d as b3d
 import cadquery as cq
 import ezdxf
 
-from machinome.occt.engine import solid_count
+from machinome.engine.brep import solid_count
 from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
                              FusionNode, SheetLeafNode)
 from machinome.node.openscad.binary import openscad_binary
@@ -439,7 +439,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
     """The sheet adapter joins the exact roster without disturbing it."""
 
     def test_the_adapter_is_exact_without_rendering(self):
-        self.assertTrue(object.__new__(Build123dSheetNode).exact)
+        self.assertTrue(object.__new__(Build123dSheetNode).brep)
 
     def test_the_sheet_adapter_is_not_the_solid_build123d_adapter(self):
         sheet = Plate()
@@ -483,7 +483,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
         fusion = SheetAndBossFusion()
         fusion.assemble()
 
-        self.assertTrue(fusion.exact)
+        self.assertTrue(fusion.brep)
 
     def test_a_fusion_of_a_sheet_and_a_cadquery_child_fuses_to_one_solid(self):
         fusion = SheetAndBossFusion()

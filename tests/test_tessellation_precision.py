@@ -7,7 +7,7 @@
 A node cannot say how finely its solid should be tessellated: every exact
 STL artifact went through `exact.write_stl`, which fixed
 `tolerance=0.1, angularTolerance=0.1` in its own body. This change lets an
-`ExactLeafNode` or a `FusionNode` declare `linear_deflection` (mm) and
+`BrepLeafNode` or a `FusionNode` declare `linear_deflection` (mm) and
 `angular_deflection` (radians) as class attributes that shape its own STL
 artifact, while leaving `shape()` and the `.brep` untouched.
 
@@ -32,10 +32,10 @@ import cadquery as cq
 import trimesh
 
 from machinome.node import CadQueryNode, FusionNode
-from machinome.exact_artifacts import deflections, write_stl
+from machinome.brep_artifacts import deflections, write_stl
 import machinome.test as test_module
 
-from tests.exact_test_support import clear_exact_shape_caches
+from tests.brep_test_support import clear_exact_shape_caches
 from tests.test_content_verified_currency import (
     DIMENSIONS, TRACE, ScratchProjectTest)
 
@@ -289,7 +289,7 @@ class DeflectionValidationTest(TestCase):
         shape = Shape()
         with tempfile.TemporaryDirectory() as directory:
             path = os.path.join(directory, 'leaf.stl')
-            with patch('machinome.occt.engine.write_stl', engine_write_stl):
+            with patch('machinome.engine.brep.write_stl', engine_write_stl):
                 write_stl(shape, path, 1 * 10 ** 9, 0.05, 0.5)
 
         self.assertEqual(shape.tolerance, 0.05)
@@ -489,7 +489,7 @@ class FacetedPrecisionTest(TestCase):
         self.assertLess(direct_coarse_count, direct_default_count)
 
         test_module.set_comparison_policy(
-            test_module.ComparisonPolicy('faceted', 0.0))
+            test_module.ComparisonPolicy('mesh', 0.0))
 
         with patch.object(coarse, 'shape', side_effect=AssertionError(
                 'a faceted comparison must not read shape()')), \
@@ -499,7 +499,7 @@ class FacetedPrecisionTest(TestCase):
             coarse_mesh_faces = len(coarse.mesh.faces)
             default_mesh_faces = len(default.mesh.faces)
 
-        self.assertFalse(stats.exact)
+        self.assertFalse(stats.brep)
         self.assertEqual(coarse_mesh_faces, direct_coarse_count,
                          "the faceted kernel's mesh for the coarse node "
                          'must be the coarse artifact it declared, not a '

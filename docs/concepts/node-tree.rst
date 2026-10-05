@@ -56,7 +56,7 @@ Build identity and caching
 
 Every generated artifact lives in the build directory (``_build`` by
 default; ``SOLID_BUILD_DIR`` moves it): the STL of every rigid part, a
-``.brep`` beside it for an exact part, a ``.dxf`` beside a sheet part, a
+``.brep`` beside it for a B-rep part, a ``.dxf`` beside a sheet part, a
 marking artifact per declared marking, and the ``viewer.json`` document
 that publishes the whole. Artifacts mirror the project's package layout.
 

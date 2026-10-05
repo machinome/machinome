@@ -26,9 +26,9 @@ not current after its own materialization is refused under the `node-model`
 capability, naming it, rather than rendered from a `.scad` nothing wrote.
 
 No other operation SHALL require it. In particular, a project whose model is
-entirely exact under the `exact-geometry` capability SHALL build, test, publish,
+entirely B-rep under the `brep-geometry` capability SHALL build, test, publish,
 and develop through an installed browser viewer with no OpenSCAD binary on the
-PATH. Adding an exact backend SHALL NOT
+PATH. Adding a B-rep backend SHALL NOT
 extend this list: `Build123dNode` writes its own STL and BREP through the same
 OCCT kernel `CadQueryNode` uses, so a project of `Build123dNode` leaves — or
 of `CadQueryNode` and `Build123dNode` leaves mixed — carries no OpenSCAD
@@ -44,19 +44,19 @@ and actionable failure — is deferred to a later cycle; until then a missing
 `jscad` still fails at its subprocess launch.
 
 The retained requiring paths SHALL preserve their behavior when the binary
-is present. Faceted fusion SHALL instead use its direct mesh-composition
+is present. Mesh fusion SHALL instead use its direct mesh-composition
 capability, independent of OpenSCAD availability; its OpenSCAD-authored children
 still require the binary when their own geometry must be produced.
 
-#### Scenario: An all-exact project needs no OpenSCAD
+#### Scenario: An all-B-rep project needs no OpenSCAD
 
-- **WHEN** a project whose every node is exact is built, tested and published
+- **WHEN** a project whose every node has B-rep geometry is built, tested and published
   on a machine with no `openscad` on the PATH
 - **THEN** the build, the test run and the publication all succeed
 
-#### Scenario: An all-exact project develops without OpenSCAD
+#### Scenario: An all-B-rep project develops without OpenSCAD
 
-- **WHEN** `machinome develop` runs for an all-exact project with the browser
+- **WHEN** `machinome develop` runs for an all-B-rep project with the browser
   viewer installed and no `openscad` on the PATH
 - **THEN** the build and browser viewer run normally and no OpenSCAD
   availability check occurs
@@ -160,6 +160,6 @@ never reaches a requiring path is never asked for the binary.
 
 #### Scenario: An unreached path is never checked
 
-- **WHEN** an all-exact project is built on a machine with no `openscad`
+- **WHEN** an all-B-rep project is built on a machine with no `openscad`
 - **THEN** no availability check fails, because no requiring path is reached
 

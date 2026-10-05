@@ -43,7 +43,7 @@ import trimesh
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.manifold import engine
+from machinome.engine import mesh as engine
 from machinome.node.base import AbstractBaseNode
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase

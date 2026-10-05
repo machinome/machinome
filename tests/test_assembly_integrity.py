@@ -14,7 +14,7 @@ import numpy as np
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.manifold import engine
+from machinome.engine import mesh as engine
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
 from tests.stand_in import StandIn
@@ -258,13 +258,13 @@ class AssemblyIntegrityTestCase(TestCase):
     def test_finite_negative_faceted_candidates_pass_without_epsilon(self):
         first, second = self.part('First'), self.part('Second')
         root = Assembly('Root', (first, second))
-        for kernel in ('exact', 'faceted'):
+        for engine in ('brep', 'mesh'):
             for volume in (-9.947598300641403e-14,
                            np.nextafter(0.0, -1.0), -1.0):
-                with self.subTest(kernel=kernel, volume=volume):
+                with self.subTest(engine=engine, volume=volume):
                     stats = test_module.IntersectionStats(False, volume, False)
                     with patch.object(test_module, '_policy',
-                                      test_module.ComparisonPolicy(kernel, 0)), \
+                                      test_module.ComparisonPolicy(engine, 0)), \
                          patch.object(test_module, '_candidate_intersection',
                                       return_value=stats):
                         asserter.assertNoSolidInterference(root)
@@ -318,7 +318,7 @@ class AssemblyIntegrityTestCase(TestCase):
             with self.subTest(volume=volume):
                 stats = test_module.IntersectionStats(False, volume, False)
                 with patch.object(test_module, '_policy',
-                                  test_module.ComparisonPolicy('faceted', 0)), \
+                                  test_module.ComparisonPolicy('mesh', 0)), \
                      patch.object(test_module, '_engine_intersection_stats',
                                   return_value=stats):
                     self.assertIs(test_module._intersection_stats(first, second),

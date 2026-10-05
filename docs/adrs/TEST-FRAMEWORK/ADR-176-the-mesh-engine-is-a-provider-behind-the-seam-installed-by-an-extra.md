@@ -1,6 +1,6 @@
 # ADR-176: The Mesh Engine Is a Provider Behind the Seam, Installed by an Extra
 
-**Status:** Accepted
+**Status:** Accepted; the mesh provider's address and extra, amended 2026-10-05 by [ADR-180](../NODE/ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-04
 **Change:** [`mesh-engine`](../../../openspec/changes/archive/2026-10-04-mesh-engine/)
 **Amends:**

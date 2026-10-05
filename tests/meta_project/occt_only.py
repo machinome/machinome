@@ -23,7 +23,7 @@ from OCP.TopoDS import TopoDS_Shape
 from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
 
 from machinome.node import AssemblyNode, FusionNode
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 
 
 def _brep_bytes(shape):
@@ -42,7 +42,7 @@ def _box(corner, size):
     return BRepPrimAPI_MakeBox(gp_Pnt(*corner), *size).Shape()
 
 
-class Block(ExactLeafNode):
+class Block(BrepLeafNode):
 
     namespace = 'OCP'
 
@@ -50,7 +50,7 @@ class Block(ExactLeafNode):
         return _box((-10, -10, 0), (20, 20, 10))
 
 
-class Pin(ExactLeafNode):
+class Pin(BrepLeafNode):
 
     namespace = 'OCP'
 
@@ -71,7 +71,7 @@ class PinnedBlock(FusionNode):
         return [self.block, self.pin]
 
 
-class Probe(ExactLeafNode):
+class Probe(BrepLeafNode):
     """Overlaps the block on a 5 mm cube: 125 mm^3."""
 
     namespace = 'OCP'
@@ -80,7 +80,7 @@ class Probe(ExactLeafNode):
         return _box((5, 5, 5), (10, 10, 10))
 
 
-class Far(ExactLeafNode):
+class Far(BrepLeafNode):
     """Clear of everything."""
 
     namespace = 'OCP'

@@ -1,6 +1,6 @@
 # ADR-162: A Resolved Provider Declares the Contract Version It Implements
 
-**Status:** Accepted
+**Status:** Accepted; the constants named per role in one module, the B-rep contract 2, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-03
 **Change:** [`exact-engine`](../../../openspec/changes/archive/2026-10-03-exact-engine/)
 **Related to:**

@@ -303,7 +303,7 @@ class AcrossProcesses(TestCase):
 
 class WithoutTheMeshEngine(TestCase):
     """Task 6.6: an all-exact project keeps its store where neither
-    `manifold3d` nor the mesh engine's package `machinome.manifold` can be
+    `manifold3d` nor the mesh engine's package `machinome.engine.mesh` can be
     imported (the finder of `tests/mesh_engine_absent.py`, in every
     process of both runs), and neither run asks for the engine."""
 
@@ -323,7 +323,7 @@ class WithoutTheMeshEngine(TestCase):
                                (second, second_reports)):
             self.assertEqual(child.returncode, 0, child.stderr)
             self.assertNotIn('manifold3d', child.stdout)
-            self.assertEqual(reports.asks('machinome.manifold'), 0)
+            self.assertEqual(reports.asks('machinome.engine.mesh'), 0)
             self.assertLessEqual(reports.askers('manifold3d'),
                                  mesh_engine_absent.TRIMESH_PROBES)
         self.assertGreater(first.counts['computations'], 0)

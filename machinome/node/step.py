@@ -6,8 +6,8 @@
 
 STEP is the format every CAD package and every vendor publishes. Unlike
 `StlNode`'s mesh, a STEP product is a boundary representation the
-moment it is read, so this leaf derives `ExactLeafNode` instead of
-writing its own artifact: `shape()`, the `.brep`, exact fusion and the
+moment it is read, so this leaf derives `BrepLeafNode` instead of
+writing its own artifact: `shape()`, the `.brep`, B-rep fusion and the
 declared-tessellation-precision path all come from that base for free.
 `StlNode`'s three rules carry over onto a document instead of a pack:
 
@@ -15,7 +15,7 @@ The part is admitted, not assumed. Geometry that holds no solid after
 `adjust` fails at build time naming the node, the file, the part, and
 what it does hold -- shells and faces -- and writes nothing. There is
 no escape hatch: a face-only product is not a defect a flag can wave
-past, because the exact kernel has no use for a shape with no volume.
+past, because the B-rep engine has no use for a shape with no volume.
 Sewing one into a solid is a project's own, explicit `adjust` call to
 `solids_from_faces`, promoted here from openvmp's hand-written helper.
 
@@ -42,7 +42,7 @@ And the document is read at most once per file per process: XCAF's
 transfer is expensive (11.79 s measured on a 35 MB vendor assembly) and
 every node over one file shares the one cached read, keyed on the file's
 complete observable identity and evicted when it changes -- the shape of
-`machinome.exact_cache`'s loaded-shape cache, which keys on an artifact's
+`machinome.brep_cache`'s loaded-shape cache, which keys on an artifact's
 observation the same way (ADR-164).
 """
 
@@ -74,9 +74,9 @@ from OCP.TDocStd import TDocStd_Document
 from OCP.XCAFApp import XCAFApp_Application
 from OCP.XCAFDoc import XCAFDoc_ColorSurf, XCAFDoc_DocumentTool
 
-from machinome.exact_engine import require_exact_engine
+from machinome.engine import require_brep_engine
 from machinome.node.cadquery import workplane_shape
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 from machinome.node.sources import (require_source_file, source_closure,
                                     ExternalSourceIdentity)
 from machinome.source_generation import consumed_source
@@ -363,7 +363,7 @@ def _read_document(path):
 
 
 #: One document per complete observable source identity, in the shape of
-#: `machinome.exact_cache`'s loaded-shape cache, keyed on an observation
+#: `machinome.brep_cache`'s loaded-shape cache, keyed on an observation
 #: (design D6, ADR-164): a key miss for a path
 #: drops every entry for that path before reading, so at most one live
 #: entry exists per file, and the process pays the read once.
@@ -392,7 +392,7 @@ def solids_from_faces(shape, tolerance):
     """Sew `shape`'s faces into one solid per closed shell.
 
     This is openvmp's own `solids_from_faces`, promoted: a vendor STEP
-    product published as bare surfaces has no volume the exact kernel
+    product published as bare surfaces has no volume the B-rep engine
     can use, so `StepNode`'s admission gate refuses it -- and this is
     the explicit, knowing correction an `adjust` hook calls instead of
     the framework guessing a tolerance for a file it has never seen.
@@ -421,7 +421,7 @@ def solids_from_faces(shape, tolerance):
 # The node
 
 
-class StepNode(ExternalSourceIdentity, ExactLeafNode):
+class StepNode(ExternalSourceIdentity, BrepLeafNode):
     """A part that comes from one product of a STEP document.
 
     Declare the file with `step_source`, as a path relative to the
@@ -450,9 +450,10 @@ class StepNode(ExternalSourceIdentity, ExactLeafNode):
     product a vendor published as bare surfaces with the module-level
     `solids_from_faces` helper, called knowingly from `adjust`.
 
-    Unlike `StlNode`, this leaf is exact: it derives `ExactLeafNode` and
-    supplies nothing beyond its own reading and selection, so `shape()`,
-    the `.brep`, exact fusion and the declared tessellation precision
+    Unlike `StlNode`, this leaf has B-rep geometry: it derives
+    `BrepLeafNode` and supplies nothing beyond its own reading and
+    selection, so `shape()`, the `.brep`, B-rep fusion and the declared
+    tessellation precision
     are inherited whole.
     """
 
@@ -516,9 +517,9 @@ class StepNode(ExternalSourceIdentity, ExactLeafNode):
         """The engine's currency for this node's `Workplane`, exactly as
         `CadQueryNode` converts one: `adjust` still receives and returns
         a CadQuery `Shape`, which the conversion unwraps."""
-        return workplane_shape(rendered, require_exact_engine(
-            f'exact leaf {self.name}',
-            'its STEP product becomes exact geometry'))
+        return workplane_shape(rendered, require_brep_engine(
+            f'B-rep leaf {self.name}',
+            'its STEP product becomes B-rep geometry'))
 
     #: A subclass that declares its own `color` shadows this property
     #: entirely with a plain class attribute (ordinary Python attribute

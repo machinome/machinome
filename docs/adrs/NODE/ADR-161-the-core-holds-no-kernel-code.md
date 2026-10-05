@@ -1,6 +1,6 @@
 # ADR-161: The Core Holds No Kernel Code: the Exact Engine Seam and Its Address
 
-**Status:** Accepted; absent-engine case amended 2026-10-03 by [ADR-167](ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md); extended to the mesh engine 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
+**Status:** Accepted; absent-engine case amended 2026-10-03 by [ADR-167](ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md); extended to the mesh engine 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md); the seam's address and names, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-03
 **Change:** [`exact-engine`](../../../openspec/changes/archive/2026-10-03-exact-engine/)
 **Related to:**

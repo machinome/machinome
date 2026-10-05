@@ -30,7 +30,7 @@ import trimesh
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.occt import engine as occt_engine
+from machinome.engine import brep as occt_engine
 from machinome.node.operations import Translation
 from machinome.test import TestCase as AssertingTestCase
 
@@ -44,7 +44,7 @@ class ExactRigidNode(RigidNode):
     """A selected solid that also exposes exact B-rep geometry, so the
     pair routing (exact kernel vs cached Manifolds) can be observed."""
 
-    exact = True
+    brep = True
 
     def __init__(self, name, stl_file, shape):
         super().__init__(name, stl_file)
@@ -527,7 +527,7 @@ class ExactRoutingTest(SupportFixture):
         base = self.exact_block('base', (-1, 1), (-1, 1))
         top = self.exact_block('top', (-1, 1), (1, 3))
 
-        with patch('machinome.occt.engine.intersect_shapes',
+        with patch('machinome.engine.brep.intersect_shapes',
                    wraps=occt_engine.intersect_shapes) as kernel:
             with patch('machinome.test._interface_contacts',
                        wraps=test_module._interface_contacts) as extract:
@@ -546,7 +546,7 @@ class ExactRoutingTest(SupportFixture):
         base = self.exact_block('base', (-1, 1), (-1, 1))
         top = self.block('top', (-1, 1), (1, 3))
 
-        with patch('machinome.occt.engine.intersect_shapes',
+        with patch('machinome.engine.brep.intersect_shapes',
                    wraps=occt_engine.intersect_shapes) as kernel:
             asserter.assertAssemblySupported(Assembly('root', (base, top)))
 

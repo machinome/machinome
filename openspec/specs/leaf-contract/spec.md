@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The declared leaf extension contract: the four leaf bases a node type written outside the core subclasses, each at one import path; what a faceted, an exact, a sheet and a flexible leaf provides and may override; the optional namespace guard; artifact publication through `publish_artifact`; source identity through `get_source_file`, `files`, `source_recipe` and the external-file helpers; what a subclass must not override; what the core guarantees a leaf; and the contract version checked at class creation.
+The declared leaf extension contract: the four leaf bases a node type written outside the core subclasses, each at one import path; what a mesh, a B-rep, a sheet and a flexible leaf provides and may override; the optional namespace guard; artifact publication through `publish_artifact`; source identity through `get_source_file`, `files`, `source_recipe` and the external-file helpers; what a subclass must not override; what the core guarantees a leaf; and the contract version checked at class creation.
 ## Requirements
 ### Requirement: The leaf bases are declared extension points
 
@@ -10,11 +10,11 @@ The system SHALL declare four leaf bases as the extension points through which
 a node type outside the core produces geometry, each at exactly one import
 path, the module that defines it:
 
-- `LeafNode` at `machinome.node.leaf`, for every leaf, and the base a faceted
+- `LeafNode` at `machinome.node.leaf`, for every leaf, and the base a mesh
   leaf subclasses;
-- `ExactLeafNode` at `machinome.node.exact_leaf`, for a leaf whose geometry is
-  exact;
-- `SheetLeafNode` at `machinome.node.sheet_leaf`, for an exact leaf cut from
+- `BrepLeafNode` at `machinome.node.brep_leaf`, for a leaf whose geometry is a
+  boundary representation;
+- `SheetLeafNode` at `machinome.node.sheet_leaf`, for a B-rep leaf cut from
   sheet stock;
 - `FlexibleNode` at `machinome.node.flexible`, for a leaf whose shape is a
   function of its bound ports.
@@ -25,16 +25,16 @@ extends:
 - `LeafNode`: `render`, `validate`, `namespace`, `present`, `presentation`,
   `materialize`, `generate_stl`, `kept_artifacts`, `publish_artifact`,
   `get_source_file`, `files`, `source_recipe`, `artifact_import`, `basepath`,
-  `local_stl`, `stl_file`, `model`, `rigid`, `flexible`, `exact`, `optimize`,
+  `local_stl`, `stl_file`, `model`, `rigid`, `flexible`, `brep`, `optimize`,
   `base_mesh`, `declared_markings`, `leaf_contract`, and the signal
   `StlRenderStart` (`machinome.node.base`) a leaf rendering its STL in a
   subprocess raises;
-- `ExactLeafNode`: `shape_from_rendered`, `linear_deflection`,
-  `angular_deflection`, `exact`, `shape`, `brep_file`;
+- `BrepLeafNode`: `shape_from_rendered`, `linear_deflection`,
+  `angular_deflection`, `brep`, `shape`, `brep_file`;
 - `SheetLeafNode`: `profile`, `profile_faces`, `lies_on_xy_plane`, `extrude`,
   `write_dxf`, `thickness`, `validated_profile`, `dxf_file`;
 - `FlexibleNode`: `tech`, `shape_parameters`, `shape_spec`, `snapshot_mesh`,
-  `snapshot_stl`, `snapshot_shape`, `exact`.
+  `snapshot_stl`, `snapshot_shape`, `brep`.
 
 `files`, `basepath`, `local_stl`, `stl_file`, `brep_file`, `dxf_file` and
 `model` are instance attributes set by the base's constructor; the others are
@@ -52,7 +52,7 @@ Each base's docstring SHALL state that it is a declared extension point and
 name this capability, and the API reference SHALL document each base with its
 declared members.
 
-#### Scenario: A faceted leaf written outside the core
+#### Scenario: A mesh leaf written outside the core
 
 - **WHEN** a module outside `machinome/` defines a `LeafNode` subclass that
   renders from a committed mesh file, publishes its STL through
@@ -62,18 +62,18 @@ declared members.
   without rendering, and the mesh-based assertions compare it like any other
   rigid leaf
 
-#### Scenario: An exact leaf written outside the core
+#### Scenario: A B-rep leaf written outside the core
 
-- **WHEN** a module outside `machinome/` defines an `ExactLeafNode` subclass
-  whose `render()` returns the exact engine's currency and that declares no
+- **WHEN** a module outside `machinome/` defines a `BrepLeafNode` subclass
+  whose `render()` returns the B-rep engine's currency and that declares no
   `namespace` and overrides nothing
 - **THEN** it builds its `.brep` and `.stl`, its `shape()` is that solid,
-  it fuses exactly with a core adapter's leaf, and an exact assertion
-  reaches its verdict on it
+  it fuses on the B-rep engine with a core adapter's leaf, and an assertion
+  in a run on the B-rep engine reaches its verdict on it
 
 #### Scenario: The bases document themselves as extension points
 
-- **WHEN** the docstrings of `LeafNode`, `ExactLeafNode`, `SheetLeafNode` and
+- **WHEN** the docstrings of `LeafNode`, `BrepLeafNode`, `SheetLeafNode` and
   `FlexibleNode` are read
 - **THEN** each says it is a declared extension point and names the
   `leaf-contract` capability, and none says it is framework-internal
@@ -92,8 +92,8 @@ the core SHALL do everything else:
 
 - **Every leaf** implements `render()`, returning one geometry object, never a
   list and never `None`. It MAY extend `validate(rendered)`, calling the
-  base's first. Its exactness is fixed by its type.
-- **A faceted leaf** produces its own STL: it implements
+  base's first. Its `brep` is fixed by its type.
+- **A mesh leaf** produces its own STL: it implements
   `materialize(rendered)` and writes `stl_file` through `publish_artifact`,
   or, when its tool runs as a subprocess, implements `generate_stl()` to
   start it and raise `StlRenderStart`. It need not implement `present`: the
@@ -108,8 +108,8 @@ the core SHALL do everything else:
 - **A leaf that keeps an artifact beyond its STL, BREP and markings**
   declares its path in `kept_artifacts()`, and the build keeps it while the
   leaf is in the published tree.
-- **An exact leaf** returns from `render()` an object its conversion hook
-  `shape_from_rendered(rendered)` turns into the exact engine's currency; the
+- **A B-rep leaf** returns from `render()` an object its conversion hook
+  `shape_from_rendered(rendered)` turns into the B-rep engine's currency; the
   default hook admits whatever the engine admits as its currency, and a
   subclass whose front end returns something else overrides the hook. It MAY
   declare `linear_deflection` and `angular_deflection` as class attributes.
@@ -122,7 +122,7 @@ the core SHALL do everything else:
   returns its backend's shape object from `render()`, and implements the five
   backend hooks `shape_parameters(rendered)`, `shape_spec(rendered)`,
   `snapshot_mesh(rendered, values)`, `snapshot_stl(rendered, values)` and,
-  when it declares `exact` true, `snapshot_shape(rendered, values)`.
+  when it declares `brep` true, `snapshot_shape(rendered, values)`.
 
 A subclass MAY extend `materialize(rendered)` on any base by calling the
 base's implementation; the artifacts it then holds are the ones the base
@@ -131,7 +131,7 @@ published.
 A subclass that declares its own metaclass SHALL derive it from the metaclass
 of the base it subclasses (`NodeMeta`, at `machinome.node.declarative`).
 
-#### Scenario: A SCAD-presented faceted leaf needs no producer of its own
+#### Scenario: A SCAD-presented mesh leaf needs no producer of its own
 
 - **WHEN** a subclass of the OpenSCAD node family's leaf base implements only
   `render()` returning a solid2 object, and is built with OpenSCAD available
@@ -148,7 +148,7 @@ of the base it subclasses (`NodeMeta`, at `machinome.node.declarative`).
   path that resolves from the parent's `.scad` directory, exactly as a core
   adapter's does; a build writes no `.scad` for the leaf itself
 
-#### Scenario: A self-materializing faceted leaf needs no SCAD hook
+#### Scenario: A self-materializing mesh leaf needs no SCAD hook
 
 - **WHEN** a `LeafNode` subclass implements `render()` and `materialize()`
   publishing its STL, and no `present()`
@@ -172,7 +172,7 @@ of the base it subclasses (`NodeMeta`, at `machinome.node.declarative`).
 
 #### Scenario: Extending materialize keeps the base's artifacts
 
-- **WHEN** an `ExactLeafNode` subclass extends `materialize()` and calls the
+- **WHEN** a `BrepLeafNode` subclass extends `materialize()` and calls the
   base's implementation inside it
 - **THEN** the `.brep` and `.stl` written are those the base would have
   written, with the same stamps and source records
@@ -184,9 +184,9 @@ SHALL refuse a render result whose type's module does not start with that
 prefix, naming the node, the namespace and the type, before any artifact is
 written. When it declares none, no module check is made.
 
-`ExactLeafNode` SHALL declare no namespace. An exact leaf whose render returns
+`BrepLeafNode` SHALL declare no namespace. A B-rep leaf whose render returns
 the engine's currency SHALL be admitted without declaring one: admission of
-an exact render is the conversion hook's, under the `exact-geometry`
+a B-rep render is the conversion hook's, under the `brep-geometry`
 capability, and does not depend on the module of the kernel binding.
 
 #### Scenario: A declared namespace refuses a foreign render
@@ -196,9 +196,9 @@ capability, and does not depend on the module of the kernel binding.
 - **THEN** validation raises naming the node, `solid2` and the type, and no
   artifact is written
 
-#### Scenario: An exact leaf rendering the engine's currency declares nothing
+#### Scenario: A B-rep leaf rendering the engine's currency declares nothing
 
-- **WHEN** an `ExactLeafNode` subclass with no `namespace` renders the
+- **WHEN** a `BrepLeafNode` subclass with no `namespace` renders the
   engine's currency
 - **THEN** it is validated, converted and built as if it had declared the
   binding's module
@@ -290,7 +290,7 @@ even though the project contract that `vet` enforces does not offer
 
 #### Scenario: A source recipe alone makes artifacts stale
 
-- **WHEN** an exact leaf declaring a `source_recipe` is built, and is then
+- **WHEN** a B-rep leaf declaring a `source_recipe` is built, and is then
   constructed again with the same tracked files and a different recipe
 - **THEN** its `.brep` and `.stl` are not current, and building writes them
   again with the new digest and fingerprint recorded
@@ -317,7 +317,7 @@ even though the project contract that `vet` enforces does not offer
 ### Requirement: What a subclass must not override
 
 A subclass SHALL NOT override the framework's lifecycle or currency:
-`assemble()`, `shape()` on `ExactLeafNode`, `render()` on `SheetLeafNode`,
+`assemble()`, `shape()` on `BrepLeafNode`, `render()` on `SheetLeafNode`,
 `mtime_ns`, `mtime`, `source_digest`, `source_fingerprint`, `uniq_id`,
 `children`, `time`, or any member whose name begins with an underscore. What a
 subclass overrides beyond the members this capability declares is outside the
@@ -333,7 +333,7 @@ contract, and the core makes no promise about it across contract versions.
 
 For a subclass that keeps to the contract, the core SHALL guarantee:
 
-- its artifact paths, `stl_file` and, for an exact leaf, `brep_file`, named
+- its artifact paths, `stl_file` and, for a B-rep leaf, `brep_file`, named
   from its source file and its parameter-hashed `uniq_id`, under its
   project's build directory, with `basepath` their common stem, under which a
   leaf names any other artifact it keeps, and `local_stl` the STL's name for
@@ -343,21 +343,21 @@ For a subclass that keeps to the contract, the core SHALL guarantee:
 - that each artifact is produced only when it is not current, is stamped with
   the node's `mtime_ns`, carries the record of its sources, and replaces the
   previous artifact by rename, so a reader never sees a partial file;
-- for an exact leaf, `exact` true, `shape()` in the node's local frame in the
+- for a B-rep leaf, `brep` true, `shape()` in the node's local frame in the
   engine's currency, reloaded from a current `.brep` without rendering, and
-  never a stale shape for a replaced `.brep` (the `exact-geometry`
+  never a stale shape for a replaced `.brep` (the `brep-geometry`
   capability);
 - its place in the tree: naming from the parent's attribute, placement
   operations, joints and frames, and its entry in the viewer document;
-- that the exact engine is resolved only on the paths the
-  `exact-engine-dependency` capability lists.
+- that the B-rep engine is resolved only on the paths the
+  `brep-engine-dependency` capability lists.
 
 No subclass SHALL need to evict, invalidate or reset a core cache to keep
 these guarantees.
 
 #### Scenario: A replaced artifact needs no eviction by the subclass
 
-- **WHEN** an exact leaf's `.brep` is replaced by the core's publication under
+- **WHEN** a B-rep leaf's `.brep` is replaced by the core's publication under
   an unchanged source mtime and the leaf's `shape()` is read again in the
   same process
 - **THEN** the new shape is returned without the subclass calling anything to
@@ -366,11 +366,14 @@ these guarantees.
 ### Requirement: The contract is versioned and a declaration is checked
 
 The core SHALL declare one integer, the leaf contract version it speaks, as
-`CONTRACT` in `machinome.node.leaf`, which is `2`: version 2 removed `as_scad`,
-`scad_file` and `generate_scad` from `LeafNode`, declared `present` and the
-capability set of "A leaf declares its kind as one set on the leaf base", and
-changed `generate_stl`, which no longer hands a leaf to OpenSCAD. A change to the meaning of a declared
-member, or the removal of one, SHALL change that number in the same change.
+`CONTRACT` in `machinome.node.leaf`, which is `3`: version 2 removed
+`as_scad`, `scad_file` and `generate_scad` from `LeafNode`, declared `present`
+and the capability set of "A leaf declares its kind as one set on the leaf
+base", and changed `generate_stl`, which no longer hands a leaf to OpenSCAD;
+version 3 renamed the declared member `exact` to `brep` and the base
+`ExactLeafNode` at `machinome.node.exact_leaf` to `BrepLeafNode` at
+`machinome.node.brep_leaf`. A change to the meaning of a declared member, or
+the removal or renaming of one, SHALL change that number in the same change.
 
 A class MAY declare the version it was written against as the class attribute
 `leaf_contract`, as an integer literal in its own body. When a subclass of
@@ -384,15 +387,15 @@ its parent's declaration without being checked again.
 
 #### Scenario: A matching declaration is admitted
 
-- **WHEN** a `LeafNode` subclass declares `leaf_contract = 2` and the core
-  speaks 2
+- **WHEN** a `LeafNode` subclass declares `leaf_contract = 3` and the core
+  speaks 3
 - **THEN** the class is created and its instances build normally
 
 #### Scenario: A mismatched declaration is refused naming both versions
 
-- **WHEN** an `ExactLeafNode` subclass declares `leaf_contract = 1` and the
-  core speaks 2
-- **THEN** defining the class raises `TypeError` naming the class, 1, 2 and
+- **WHEN** a `BrepLeafNode` subclass declares `leaf_contract = 2` and the
+  core speaks 3
+- **THEN** defining the class raises `TypeError` naming the class, 2, 3 and
   `machinome.node.leaf`
 
 #### Scenario: A project leaf declares nothing and is not checked
@@ -411,7 +414,7 @@ on `LeafNode` with this meaning:
 - `rigid`, a class attribute: the node is a time-invariant solid with a cached
   STL, in the piece and artifact sets;
 - `flexible`, a class attribute: its shape is a function of its bound ports;
-- `exact`, a property: it exposes boundary-representation geometry through
+- `brep`, a property: it exposes boundary-representation geometry through
   `shape()`;
 - `optimize`, a class attribute: a presentation imports its STL when true, and
   carries what it rendered when false, in which case it is prepared on every
@@ -443,7 +446,7 @@ reads.
 - **WHEN** a `LeafNode` subclass defined outside `machinome/` that declares
   only `render()` and `materialize()` is asked each member of the set
 - **THEN** each answers with the base's default meaning: rigid, not flexible,
-  not exact, optimizing, presenting an import of its STL, keeping no other
+  not `brep`, optimizing, presenting an import of its STL, keeping no other
   artifact
 
 #### Scenario: A kept artifact survives the sweep by declaration

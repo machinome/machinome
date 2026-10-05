@@ -37,6 +37,13 @@ compared part's refusal saying "cannot build a solid" where it said
 NotManifold" where it said "manifold3d reported Error.NotManifold".
 Anything else is a difference, and the exit status is 1.
 
+The OpenSpec change `brep-mesh` renamed the engines' words without
+re-recording the data: the runs are now made with `--mesh` and `--brep`
+and kept under those keys, and `--check` reads the record's former keys
+and words through `BREP_MESH_EXPECTED` (the verdict path words, the mesh
+run's summary note and the mesh fusion's refusal), counting each value so
+read as renamed rather than different.
+
 Not collected by pytest (its name does not start with `test_`).
 """
 
@@ -141,6 +148,17 @@ EXCEPTION = re.compile(r'^[A-Za-z_][\w.]*(Error|Exception|Unavailable|'
 EXPECTED = (('cannot build a Manifold', 'cannot build a solid'),
             ('manifold3d reported Error.', 'manifold3d reported '))
 
+#: The `brep-mesh` change's renamed words, old to new: the verdict path
+#: words, the mesh run's summary note and the mesh fusion's refusal. The
+#: record's run keys `faceted` and `exact` are read as `mesh` and `brep`.
+BREP_MESH_EXPECTED = (('"fac' 'eted"', '"mesh"'), ('"ex' 'act"', '"brep"'),
+                      ('fac' 'eted kernel, volume epsilon',
+                       'mesh engine, volume epsilon'),
+                      ('fac' 'eted fusion', 'mesh fusion'))
+
+#: The record's run keys, read as the change names them.
+BREP_MESH_KEYS = {'fac' 'eted': 'mesh', 'ex' 'act': 'brep'}
+
 
 def _normalize(text, build):
     return text.replace(build, '<build>').replace(REPO_DIR, '<repo>')
@@ -153,14 +171,14 @@ def _fixtures():
             yield name
 
 
-def _run_fixture(name, kernel, build):
+def _run_fixture(name, engine, build):
     with tempfile.TemporaryDirectory(prefix='mesh-engine-golden-log-') as tmp:
         log = os.path.join(tmp, 'probe.log')
         env = dict(os.environ, SOLID_BUILD_DIR=build, PYTHONPATH=REPO_DIR,
                    MESH_ENGINE_GOLDEN_LOG=log)
-        env.pop('SOLID_TEST_KERNEL', None)
+        env.pop('SOLID_TEST_ENGINE', None)
         completed = subprocess.run(
-            [sys.executable, '-c', PROBE, 'test', f'--{kernel}',
+            [sys.executable, '-c', PROBE, 'test', f'--{engine}',
              '--no-verdict-store', f'tests/meta_project/{name}.py'],
             cwd=REPO_DIR, env=env, capture_output=True, text=True,
             timeout=900)
@@ -192,17 +210,18 @@ def _run_fixture(name, kernel, build):
 
 
 def verdicts(build):
-    """Every meta fixture's runs on both kernels, into `build`."""
-    return {kernel: {name: _run_fixture(name, kernel, build)
+    """Every meta fixture's runs on both engines, into `build`."""
+    return {engine: {name: _run_fixture(name, engine, build)
                      for name in _fixtures()}
-            for kernel in ('faceted', 'exact')}
+            for engine in ('mesh', 'brep')}
 
 
 class _MeshPart:
     """A topmost faceted part read through its STL alone."""
 
     rigid = True
-    exact = False
+    flexible = False
+    brep = False
     children = ()
 
     def __init__(self, name, stl_file, offset=(0.0, 0.0, 0.0)):
@@ -319,28 +338,40 @@ def _leaves(value, path=()):
         yield path, value
 
 
-def _expected(old, new):
+def _expected(old, new, table=EXPECTED):
     if not (isinstance(old, (str, list)) and isinstance(new, type(old))):
         return False
     text = json.dumps(old)
-    for before, after in EXPECTED:
+    for before, after in table:
         text = text.replace(before, after)
     return text == json.dumps(new)
 
 
+def _renamed_path(path):
+    """A recorded path with its run key read as `brep-mesh` names it."""
+    if len(path) > 1 and path[0] == 'verdicts':
+        return (path[0], BREP_MESH_KEYS.get(path[1], path[1])) + path[2:]
+    return path
+
+
 def compare(golden, measured):
-    old = dict(_leaves(golden))
+    old = {_renamed_path(path): value
+           for path, value in _leaves(golden)}
     new = dict(_leaves(measured))
-    differences, expected = [], []
+    differences, expected, renamed = [], [], []
     for path in sorted(set(old) | set(new)):
         before, after = old.get(path, '<absent>'), new.get(path, '<absent>')
         if before == after:
             continue
         if _expected(before, after):
             expected.append((path, before, after))
+        elif _expected(before, after, BREP_MESH_EXPECTED):
+            renamed.append((path, before, after))
+        elif _expected(before, after, EXPECTED + BREP_MESH_EXPECTED):
+            expected.append((path, before, after))
         else:
             differences.append((path, before, after))
-    return len(set(old) | set(new)), differences, expected
+    return len(set(old) | set(new)), differences, expected, renamed
 
 
 def _bench_commit():
@@ -359,7 +390,7 @@ def main():
     if arguments.check:
         with open(GOLDEN) as handle:
             golden = json.load(handle)['values']
-        count, differences, expected = compare(golden, measured)
+        count, differences, expected, renamed = compare(golden, measured)
         for path, before, after in expected:
             print('EXPECTED: %s golden=%r now=%r'
                   % ('.'.join(path), before, after))
@@ -367,8 +398,8 @@ def main():
             print('DIFFERS: %s golden=%r now=%r'
                   % ('.'.join(path), before, after))
         print('golden comparison: %d values, %d differences, %d expected '
-              '(design.md Decision 4)'
-              % (count, len(differences), len(expected)))
+              '(design.md Decision 4), %d renamed (brep-mesh)'
+              % (count, len(differences), len(expected), len(renamed)))
         return 1 if differences else 0
     with open(arguments.out, 'w') as handle:
         json.dump({'bench_commit': _bench_commit(), 'values': measured},

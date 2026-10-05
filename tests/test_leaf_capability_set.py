@@ -3,15 +3,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """A leaf declares its kind as one set on the leaf base (OpenSpec change
-`openscad-out`, capability `leaf-contract`, design.md Decision 5).
+`openscad-out`, capability `leaf-contract`, design.md Decision 5; the
+member `brep` and version 3 by the change `brep-mesh`).
 
 What the core asks a node of a leaf kind is one set of members with a
-default on the node base: `rigid`, `flexible`, `exact`, `optimize`,
+default on the node base: `rigid`, `flexible`, `brep`, `optimize`,
 `present`, `presentation`, `kept_artifacts`, `generate_stl`, the artifact
 paths, `base_mesh` and `declared_markings`. The core reads them directly,
 never through `getattr` with a default or `hasattr`, and a leaf whose STL is
 still not current after its materialization is refused naming it, instead of
-being handed to OpenSCAD. The leaf contract is version 2.
+being handed to OpenSCAD. The leaf contract is version 3.
 """
 
 import ast
@@ -31,7 +32,7 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 
 #: The declared set (design.md Decision 5's table).
 THE_SET = frozenset((
-    'rigid', 'flexible', 'exact', 'optimize', 'present', 'presentation',
+    'rigid', 'flexible', 'brep', 'optimize', 'present', 'presentation',
     'kept_artifacts', 'generate_stl', 'stl_file', 'brep_file', 'basepath',
     'local_stl', 'base_mesh', 'declared_markings'))
 
@@ -94,21 +95,84 @@ def _leaf_classes():
     return MeshBlock, Silent
 
 
-class ContractVersionTwoTest(TestCase):
+class ContractVersionThreeTest(TestCase):
 
-    def test_the_core_speaks_contract_two(self):
+    def test_the_core_speaks_contract_three(self):
         from machinome.node import leaf
-        self.assertEqual(leaf.CONTRACT, 2)
+        self.assertEqual(leaf.CONTRACT, 3)
 
-    def test_a_declaration_of_one_is_refused_naming_both_versions(self):
+    def test_a_declaration_of_two_is_refused_naming_both_versions(self):
         from machinome.node.leaf import LeafNode
         with self.assertRaises(TypeError) as refused:
             class Old(LeafNode):
-                leaf_contract = 1
+                leaf_contract = 2
         message = str(refused.exception)
-        self.assertIn('leaf contract 1', message)
         self.assertIn('leaf contract 2', message)
+        self.assertIn('leaf contract 3', message)
         self.assertIn('machinome.node.leaf', message)
+
+
+class TheBrepMemberTest(TestCase):
+    """The B-rep leaf base is `BrepLeafNode` and the declared member is
+    `brep` (OpenSpec change `brep-mesh`, design.md Decision 4)."""
+
+    def test_the_brep_leaf_base_and_its_subclasses(self):
+        from machinome.node import (Build123dNode, CadQueryNode,
+                                    SheetLeafNode, StepNode)
+        from machinome.node.brep_leaf import BrepLeafNode
+        for node_type in (SheetLeafNode, CadQueryNode, Build123dNode,
+                          StepNode):
+            with self.subTest(node_type=node_type.__name__):
+                self.assertTrue(issubclass(node_type, BrepLeafNode))
+
+    def test_the_former_module_is_not_found(self):
+        with self.assertRaises(ModuleNotFoundError):
+            importlib.import_module('machinome.node.' 'ex' 'act_leaf')
+
+    def test_brep_answers_by_node_type(self):
+        from machinome.node import CadQueryNode, FusionNode, StlNode
+        self.assertIs(object.__new__(CadQueryNode).brep, True)
+        self.assertIs(object.__new__(StlNode).brep, False)
+        fusion = object.__new__(FusionNode)
+        fusion.children = [object.__new__(CadQueryNode)]
+        self.assertIs(fusion.brep, True)
+        fusion.children = [object.__new__(CadQueryNode),
+                           object.__new__(StlNode)]
+        self.assertIs(fusion.brep, False)
+
+    def test_no_node_class_defines_the_former_member(self):
+        import machinome.node as package
+        from machinome.node.base import AbstractBaseNode
+        former = 'ex' 'act'
+        seen = set()
+        pending = [AbstractBaseNode]
+        for name in package.__all__:
+            try:
+                value = getattr(package, name)
+            except ImportError:
+                continue
+            if isinstance(value, type):
+                pending.append(value)
+        while pending:
+            cls = pending.pop()
+            if cls in seen:
+                continue
+            seen.add(cls)
+            pending.extend(cls.__subclasses__())
+            if issubclass(cls, AbstractBaseNode):
+                with self.subTest(cls=cls.__qualname__):
+                    self.assertNotIn(former, vars(cls))
+
+    def test_an_unassembled_internal_node_cannot_say(self):
+        from machinome.node import FusionNode
+        fusion = object.__new__(FusionNode)
+        fusion.name = 'unassembled'
+        with self.assertRaises(RuntimeError) as refused:
+            _ = fusion.brep
+        self.assertEqual(
+            str(refused.exception),
+            'unassembled cannot say whether it is a B-rep before its '
+            'children are linked by assemble()')
 
 
 class TheSetHasDefaultsTest(_BuildDir):
@@ -118,7 +182,7 @@ class TheSetHasDefaultsTest(_BuildDir):
         node = MeshBlock()
         self.assertIs(node.rigid, True)
         self.assertIs(node.flexible, False)
-        self.assertIs(node.exact, False)
+        self.assertIs(node.brep, False)
         self.assertIs(node.optimize, True)
         self.assertEqual(node.kept_artifacts(), ())
         self.assertEqual(node.declared_markings(), {})

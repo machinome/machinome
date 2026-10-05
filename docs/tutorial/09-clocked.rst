@@ -108,7 +108,7 @@ What this model is
 ------------------
 
 The counter is now three things at once, and each is a separate,
-declared choice: a machine whose parts are exact solids with tests over
+declared choice: a machine whose parts are B-rep solids with tests over
 them, whose pose is a function of one input and two remembered digits,
 and whose memory changes only at events the machine locates exactly. It
 publishes a document that carries its compiled events and constraints, so
