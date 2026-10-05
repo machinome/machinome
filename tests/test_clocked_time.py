@@ -21,7 +21,7 @@ import math
 
 from machinome.motion.joints import JointRangeError
 from machinome.motion.ports import Time
-from machinome.scad_expression import GraphValue
+from machinome.expression_graph import GraphValue
 from machinome.simulation import Sim
 from machinome.simulation import clocked as clocked_module
 from machinome.simulation.clocked import ClockedError
@@ -167,7 +167,7 @@ class BankTest(BaseNodeTest):
         """The no-collision claim, ASSERTED: a bare bank id belongs only
         to a root-declared driver or state, and one named `time` never
         reaches the bank at all."""
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver
 
         with self.assertRaises(TypeError) as caught:
@@ -452,7 +452,7 @@ class ClockAsASourceTest(BaseNodeTest):
             return lambda time, engaged, count: count + 1
 
         from machinome.math import floor
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver, State
 
         class Watched(AssemblyNode):
@@ -486,7 +486,7 @@ class ClockAsASourceTest(BaseNodeTest):
     def test_the_clock_under_another_base_is_refused_at_class_definition(
             self):
         from machinome.math import floor
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver, State
 
         def level(sources, targets):
@@ -513,7 +513,8 @@ class ClockAsASourceTest(BaseNodeTest):
             self):
         from machinome.math import floor
         from machinome.motion.joints import Revolute
-        from machinome.node import AssemblyNode, Solid2Node
+        from machinome.node.assembly import AssemblyNode
+        from machinome.node.solid2 import Solid2Node
         from machinome.simulation import Driver, State
         from solid2 import cube
 
@@ -605,7 +606,7 @@ class ProducerTest(BaseNodeTest):
     """
 
     def _built(self, node):
-        from machinome.node import StlRenderStart
+        from machinome.node.base import StlRenderStart
         from machinome.simulation.enumeration import bind_declared_defaults
 
         bind_declared_defaults(node)

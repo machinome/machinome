@@ -1,0 +1,73 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's fourth cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-lean-install; record
+# in the framework's openspec/changes/archive/<date>-lean-install/.
+#
+# Every leaf module left machinome.node.adapters for machinome.node, and the
+# adapters package was dissolved: importing anything under it raises an
+# ImportError naming `machinome.node.adapters` and the rule, never a submodule,
+# so a failing load is explained by the package row below. The root spellings
+# (`from machinome.node import StepNode`) did not move.
+
+cycle = "lean-install"
+date = "2026-10-03"
+
+[[moved]]
+name = "machinome.node.adapters"
+to = "machinome.node.<x> (each leaf module directly under machinome.node; build123d_sheet folded into machinome.node.build123d)"
+
+[[moved]]
+name = "machinome.node.adapters.cadquery"
+to = "machinome.node.cadquery"
+
+[[moved]]
+name = "machinome.node.adapters.build123d"
+to = "machinome.node.build123d"
+
+[[moved]]
+name = "machinome.node.adapters.step"
+to = "machinome.node.step"
+
+[[moved]]
+name = "machinome.node.adapters.molejo"
+to = "machinome.node.molejo"
+
+[[moved]]
+name = "machinome.node.adapters.solid2"
+to = "machinome.node.solid2"
+
+[[moved]]
+name = "machinome.node.adapters.openscad"
+to = "machinome.node.openscad"
+
+[[moved]]
+name = "machinome.node.adapters.jscad"
+to = "machinome.node.jscad"
+
+[[moved]]
+name = "machinome.node.adapters.stl"
+to = "machinome.node.stl"
+
+[[moved]]
+name = "machinome.node.adapters.build123d_sheet"
+to = "machinome.node.build123d"
+
+[[moved]]
+name = "machinome.node.adapters.step.StepAssembly"
+to = "machinome.node.step.StepAssembly"
+
+[[moved]]
+name = "machinome.node.adapters.step.solids_from_faces"
+to = "machinome.node.step.solids_from_faces"
+
+[[moved]]
+name = "machinome.node.adapters.step.cached_document"
+to = "machinome.node.step.cached_document"
+
+# Not an import line: the artwork reducer left the core's Svg declaration.
+[[moved]]
+name = "machinome.node.markings.Svg.regions"
+to = "machinome.node.build123d.svg_regions(path)"
+also = ["Svg.regions"]

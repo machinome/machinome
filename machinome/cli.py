@@ -7,7 +7,8 @@ import os
 import sys
 from importlib import import_module
 
-#: Command name -> the module and class that implement it, in the order
+#: Command name -> the module and class that implement it, and the one module
+#: of the framework it needs beyond them (or None), in the order
 #: `machinome -h` lists them.
 #:
 #: The table holds locations rather than instances because almost nothing
@@ -21,17 +22,28 @@ from importlib import import_module
 #: the one risk: a rename or a move fails when that command is invoked
 #: rather than when the CLI loads. tests/test_cli_lazy_imports.py walks the
 #: whole table once so the failure lands in the suite instead.
+#:
+#: The third column names the node type a command cannot run without, whose
+#: kernel is an extra: `import-step` reads with the `step` node type's module,
+#: which the `step` extra installs. The node type is the table of supported
+#: node types' (`machinome.node.supported`, its `commands`), which names its
+#: module. Dispatching the command imports that module first, and where it
+#: refuses because its kernel is absent the CLI answers the command with the
+#: extra the refusal names -- stated once, by the module that needs it, never
+#: copied here -- instead of a traceback or an unknown command. The help path
+#: imports no such module, so every command is listed whether or not its
+#: extra is installed (OpenSpec change `lean-install`; ADR-168, ADR-179).
 COMMANDS = {
-    'build': ('machinome.manager.build', 'Build'),
-    'develop': ('machinome.manager.develop', 'Develop'),
-    'test': ('machinome.manager.test', 'Test'),
-    'snapshot': ('machinome.manager.snapshot', 'Snapshot'),
-    'new': ('machinome.manager.new', 'New'),
-    'export': ('machinome.manager.export', 'Export'),
-    'viewer': ('machinome.manager.viewer', 'Viewer'),
-    'models': ('machinome.manager.models', 'Models'),
-    'import-step': ('machinome.manager.import_step', 'ImportStep'),
-    'vet': ('machinome.manager.vet', 'Vet'),
+    'build': ('machinome.manager.build', 'Build', None),
+    'develop': ('machinome.manager.develop', 'Develop', None),
+    'test': ('machinome.manager.test', 'Test', None),
+    'snapshot': ('machinome.manager.snapshot', 'Snapshot', None),
+    'new': ('machinome.manager.new', 'New', None),
+    'export': ('machinome.manager.export', 'Export', None),
+    'viewer': ('machinome.manager.viewer', 'Viewer', None),
+    'models': ('machinome.manager.models', 'Models', None),
+    'import-step': ('machinome.manager.import_step', 'ImportStep', 'step'),
+    'vet': ('machinome.manager.vet', 'Vet', None),
 }
 
 #: The tokens that make the top-level parser print its own help. That is the
@@ -74,8 +86,31 @@ def resolve_command(name):
     A failing import is left to propagate: a broken installation should say
     which module it could not load, not disappear into a missing command.
     """
-    module, class_name = COMMANDS[name]
+    module, class_name, _ = COMMANDS[name]
     return getattr(import_module(module), class_name)()
+
+
+def require_needed_module(name):
+    """Import the module of the node type command `name` needs, through the
+    table of supported node types, or answer the command by the extra that
+    installs it.
+
+    A refusal for an absent kernel (`ExtraUnavailable`) is written as one
+    line naming the command and the extra, and the CLI exits 1 before the
+    command parses or runs. Any other import error propagates, as
+    `resolve_command` requires of a broken installation.
+    """
+    needs = COMMANDS[name][2]
+    if needs is None:
+        return
+    from machinome.extras import ExtraUnavailable
+    from machinome.node import supported
+    try:
+        supported.load(needs)
+    except ExtraUnavailable as absent:
+        sys.stderr.write(f'Error: machinome {name} needs the {absent.extra} '
+                         f'extra: {absent}\n')
+        sys.exit(1)
 
 
 def add_command_parser(subparsers, name, command):
@@ -137,6 +172,7 @@ def manage():
     selected = next((arg for arg in sys.argv[1:] if arg in COMMANDS), None)
 
     if selected is not None:
+        require_needed_module(selected)
         resolved = {selected: resolve_command(selected)}
     elif len(sys.argv) == 1 or sys.argv[1] in HELP_FLAGS:
         # Each command's help is its docstring, and only the class carries

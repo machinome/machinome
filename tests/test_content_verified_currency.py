@@ -40,6 +40,7 @@ from machinome import currency
 from machinome.core import pieces
 from machinome.core.builder import Builder, BuildOutcome
 from machinome.core.loader import load_node
+from machinome.node.openscad.writer import scad_file
 
 
 # Each test gets its own project package name. The loader keeps imported
@@ -64,7 +65,7 @@ SIZE = 4.0
 BLOCK = '''\
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from . import trace
 from .dimensions import SIZE
@@ -80,7 +81,7 @@ class Block(CadQueryNode):
 PIN = '''\
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from . import trace
 
@@ -94,7 +95,7 @@ class Pin(CadQueryNode):
 '''
 
 MACHINE = '''\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .block import Block
 from .pin import Pin
@@ -344,7 +345,7 @@ class ContentVerifiedCurrencyTest(ScratchProjectTest):
         stale = load_node(self.reference)
         self.assertFalse(stale.block._up_to_date(stale.block.stl_file))
         self.assertFalse(stale.block._up_to_date(stale.block.brep_file))
-        self.assertFalse(stale.block._up_to_date(stale.block.scad_file))
+        self.assertFalse(stale.block._up_to_date(scad_file(stale.block)))
 
         self.build()
 
@@ -399,8 +400,11 @@ class ContentVerifiedCurrencyTest(ScratchProjectTest):
 
     def test_every_published_artifact_records_its_source_fingerprint(self):
         node = self.build()
+        # A build writes no `.scad` for an exact leaf (`scad-presentation`):
+        # its published artifacts are the STL and the BREP.
         for owner in (node.block, node.pin):
-            for artifact in (owner.scad_file, owner.stl_file, owner.brep_file):
+            self.assertFalse(os.path.exists(scad_file(owner)))
+            for artifact in (owner.stl_file, owner.brep_file):
                 self.assertEqual(currency.recorded_fingerprint(artifact),
                                  owner.source_fingerprint)
 
@@ -528,3 +532,48 @@ class SweptSidecarTest(ScratchProjectTest):
             document = published.read()
 
         self.assertNotIn(currency.SIDECAR_SUFFIX, document)
+
+
+class TransientRecordTest(TestCase):
+    """(`openscad-out`, 2.8) A writer declares an artifact transient in its
+    currency record; a record without the mark is not transient."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix='transient-record-')
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        self.artifact = os.path.join(self.root, 'part.out')
+        with open(self.artifact, 'w') as handle:
+            handle.write('artifact\n')
+
+    def record(self):
+        with open(currency.sidecar(self.artifact)) as handle:
+            return json.loads(handle.read())
+
+    def test_a_transient_record_carries_the_mark(self):
+        currency.record(self.artifact, 'a' * 64, 'b' * 64, transient=True)
+        record = self.record()
+        self.assertIs(record['transient'], True)
+        self.assertEqual((record['digest'], record['fingerprint']),
+                         ('a' * 64, 'b' * 64))
+        self.assertIs(currency.recorded_transient(self.artifact), True)
+        self.assertEqual(currency.recorded_digest(self.artifact), 'a' * 64)
+        self.assertEqual(currency.recorded_fingerprint(self.artifact),
+                         'b' * 64)
+
+    def test_a_record_without_the_mark_is_not_transient(self):
+        currency.record(self.artifact, 'a' * 64, 'b' * 64)
+        self.assertNotIn('transient', self.record())
+        self.assertIs(currency.recorded_transient(self.artifact), False)
+        currency.record(self.artifact, 'a' * 64, 'b' * 64, recipe='r')
+        self.assertIs(currency.recorded_transient(self.artifact), False)
+
+    def test_no_record_is_not_transient(self):
+        self.assertIs(currency.recorded_transient(self.artifact), False)
+
+    def test_publish_passes_the_mark(self):
+        temporary = os.path.join(self.root, 'part.tmp')
+        with open(temporary, 'w') as handle:
+            handle.write('new\n')
+        currency.publish(temporary, self.artifact, 'c' * 64, 'd' * 64,
+                         transient=True)
+        self.assertIs(currency.recorded_transient(self.artifact), True)

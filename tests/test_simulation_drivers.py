@@ -17,7 +17,7 @@ produce is numbers, and an STL would only make the suite slower without
 answering a single question asked below.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, RampProgram
 from machinome.simulation.driver import declared_drivers, driver_states
 

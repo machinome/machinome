@@ -42,15 +42,15 @@ reason: `machinome/node/` never imports `machinome/simulation/`.
   MEANS (native units, dtype rounding, ramps) stays in the simulation
   layer, which owns the `Driver` that subclasses this. `Port` next
   door is the same shape for the same reason.
-- `DriverToken` is the symbolic read of one driver. Its compatibility
-  facade subclasses solid2's `OpenSCADConstant`, but ordinary arithmetic
-  and degree math retain a native graph. Only publication produces text.
+- `DriverToken` is the symbolic read of one driver: the core's own
+  symbolic value (`machinome.expression_graph.GraphValue`), so ordinary
+  arithmetic and degree math retain a native graph. Only publication
+  produces text.
 """
 
 import re
 
-from machinome.scad_expression import GraphValue
-from machinome.expression_graph import ExpressionNode
+from machinome.expression_graph import ExpressionNode, GraphValue
 
 from .phase import note_read
 
@@ -210,8 +210,9 @@ class StateDeclaration(DriverDeclaration):
 
 
 # A segment of a qualified id must be a name in every runtime that
-# evaluates the expression it lands in -- jokenizer in the widget,
-# OpenSCAD on the scad path. `_attr_name_for` derives `<attr>-<index>`
+# evaluates the expression it lands in -- jokenizer in the widget, the
+# native evaluator on a written presentation. `_attr_name_for` derives
+# `<attr>-<index>`
 # for a list-held child, which is a perfectly good NODE name and parses
 # as a subtraction here. v1 forbids it loudly; bijective sanitization is
 # a recorded, compatible extension for when a project needs drivers on
@@ -266,9 +267,9 @@ class DriverToken(GraphValue):
     """A symbolic read of one driver: a constant whose string IS its
     qualified id.
 
-    The graph facade retains SolidPython type compatibility while preserving
-    operand references through arithmetic and degree math. The qualified id
-    is final when the token is created; compound text is an output only.
+    A `GraphValue` over one name node, so arithmetic and degree math keep
+    operand references. The qualified id is final when the token is
+    created; compound text is an output only.
     """
 
     def __init__(self, qualified_id):
@@ -338,7 +339,7 @@ def drive_tree(root, resolve, visit=None, collected=None):
     `resolve(node, path, name, declaration)` returns.
 
     The ORDER is the load-bearing part, and mirrors
-    `InternalNode.as_scad` and `core/serializer.serialize_node`: bind
+    `InternalNode.present` and `core/serializer.serialize_node`: bind
     EVERY node's drivers over the tree, linking each child before
     recursing into it so a child's own read already knows its derived
     name and parent -- then render the tree, ONCE, which is where

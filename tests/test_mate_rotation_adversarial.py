@@ -4,7 +4,8 @@ import math
 import random
 import unittest
 
-from machinome.node import AssemblyNode, Frame
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
 from machinome.motion.joints import Revolute
 from machinome.motion.mates import _axis_angle
 

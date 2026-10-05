@@ -1,6 +1,6 @@
 # ADR-102: Native materialization precedes optional SCAD presentation
 
-**Status:** Accepted, OpenSCAD viewer consequence amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md)
+**Status:** Accepted, OpenSCAD viewer consequence amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); compatibility consumer amended 2026-10-04 by [ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md) and [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md); legacy SCAD-only override removed 2026-10-04 by [ADR-177](ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 
 **Date:** 2026-09-11
 
@@ -60,6 +60,19 @@ without changing public node identity or artifact filenames.
 - Preparation and SCAD presentation have separate per-instance memo state;
   the node tree and operation list remain the sole structure and placement
   authorities.
+
+## Amendment (2026-10-04)
+
+[ADR-172](ADR-172-the-core-describes-its-scad-presentation-and-the-openscad-engine-writes-it.md)
+makes the compatibility consumer a description: `assemble()` and `as_scad()`
+return the core's presentation description (`machinome.node.presentation`),
+and `scad_code` and `generate_scad()` have the OpenSCAD engine write its text,
+so the consumer needs neither SolidPython nor the engine until SCAD text is
+asked for. [ADR-173](../BUILD/ADR-173-scad-is-written-only-where-it-is-read.md)
+withdraws "Ordinary builds still request that output": a build writes the
+`.scad` of a SCAD-authored leaf only, `assemble()` writes none, and the
+OpenSCAD snapshot renderer writes the root's for its own render. Preparation,
+native materialization and the faceted fusion are unchanged.
 
 ## Evidence
 

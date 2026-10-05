@@ -35,7 +35,7 @@ import math
 from machinome.math import abs as sym_abs, clamp01, cos as sym_cos, floor
 from machinome.math import max as sym_max, sin as sym_sin, sqrt as sym_sqrt
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Angle
 from machinome.simulation import Driver
 

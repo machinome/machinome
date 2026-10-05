@@ -75,7 +75,7 @@ from machinome.node.qualified import (
     DriverToken, declared_drivers_of, driver_id, drive_tree,
 )
 from machinome.motion.ports import CLOCK_NAME, declared_time
-from machinome.scad_expression import symbol
+from machinome.expression_graph import symbol
 from machinome.simulation.enumeration import tree_declares_drivers
 
 
@@ -956,14 +956,11 @@ def marking_entries(node, marking_path):
     set, the artwork included -- so a consumer that reloads on change
     sees a redrawn decal without the part appearing to change.
     """
-    # `getattr`, as the producers already ask a node whether it is
-    # `exact`: a node DOUBLE -- the parity fixtures, the lifecycle
-    # fakes -- is a stand-in for the two or three attributes a producer
-    # reads, and a part that declares no marking publishes nothing here
-    # either way.
-    declared = getattr(node, 'declared_markings', None)
-    if declared is None:
-        return []
+    # Read directly: `declared_markings` is a member of the set every
+    # node declares (the `leaf-contract` capability), and a node double of
+    # the suite declares it too (`tests/stand_in.py`). A part that declares
+    # no marking publishes nothing here.
+    declared = node.declared_markings
     entries = []
     for name, marking in declared().items():
         artifact = node.marking_file(name)

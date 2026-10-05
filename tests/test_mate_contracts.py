@@ -7,7 +7,8 @@ from solid2 import cube
 
 from machinome.motion.joints import Bound, JointRangeError, Prismatic, Revolute, declared_joints
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.frames import Frame
 from machinome.simulation import Button, Driver, Instruction, Sim, Slide, State, Turn, UnsupportedLaw
 from machinome.parameters import ParameterError

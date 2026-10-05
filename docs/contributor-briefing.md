@@ -10,7 +10,10 @@ architectural choice, read [`docs/adrs/`](adrs/README.md).
 
 - `machinome/node/` — the node tree: `base.py` defines
   `AbstractBaseNode`; `internal.py`, `assembly.py`, `fusion.py`, and `leaf.py`
-  define the tree roles; `adapters/` contains CAD backends; and
+  define the tree roles; each CAD backend's leaf type is one module
+  directly beside them (`cadquery.py`, `build123d.py`, `step.py`,
+  `molejo.py`, `solid2.py`, `openscad.py`, `jscad.py`, `stl.py`), the four
+  whose kernel is an extra refusing its absence at import; and
   `operations.py` defines transformations.
 - `machinome/manager/` and `machinome/cli.py` — the `machinome` command and its
   commands, including development, testing, snapshots, scaffolding, and

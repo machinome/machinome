@@ -15,7 +15,7 @@ once per build.
 `StepNode` is `StlNode`'s three rules -- admitted not assumed, selected
 not guessed, corrected in code -- over a solid instead of a mesh, and it
 is exact where `StlNode` is faceted: a STEP product is a B-rep the
-moment it is read, so this leaf derives `ExactLeafNode` and inherits its
+moment it is read, so this leaf derives `BrepLeafNode` and inherits its
 whole contract (`exact`, `shape()`, the `.brep`, and an `as_scad` that
 needs no external tool).
 
@@ -40,10 +40,10 @@ from unittest.mock import patch
 import cadquery as cq
 import trimesh
 
-from machinome.exact import cached_shape
-from machinome.node import StepNode
-from machinome.node.adapters import step as step_module
-from machinome.node.adapters.step import STEPCAFControl_Reader
+from machinome.brep_cache import cached_shape
+from machinome.node.step import StepNode
+from machinome.node import step as step_module
+from machinome.node.step import STEPCAFControl_Reader
 
 from .step_project import assemblies, parts
 from .utils import edit_source
@@ -303,14 +303,14 @@ class StepSelectionTest(BuildDirTestCase):
         node.assemble()
 
         self.assertTrue(node._up_to_date(node.stl_file))
-        self.assertAlmostEqual(node.shape().Volume(), 125.0, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 125.0, places=3)
 
     def test_one_part_wrapped_in_an_assembly_needs_no_selection(self):
         node = parts.WrappedSinglePart()
 
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 216.0, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 216.0, places=3)
 
     def test_several_candidates_without_part_reports_the_inventory(self):
         message = self.inventory_error(parts.UnselectedTwoProducts)
@@ -333,7 +333,7 @@ class StepSelectionTest(BuildDirTestCase):
 
         node.assemble()
 
-        self.assertEqual(len(node.shape().Solids()), 2)
+        self.assertEqual(len(cq.Shape.cast(node.shape()).Solids()), 2)
 
     def test_a_name_the_file_does_not_carry_reports_the_inventory(self):
         message = self.inventory_error(parts.MissingProduct)
@@ -347,7 +347,7 @@ class StepSelectionTest(BuildDirTestCase):
 
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 27.0, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 27.0, places=3)
 
     def test_a_repeated_part_is_one_inventory_line_with_its_occurrence_count(self):
         message = self.inventory_error(parts.MissingProduct)
@@ -364,8 +364,8 @@ class StepSelectionTest(BuildDirTestCase):
 
         node.assemble()
 
-        self.assertEqual(len(node.shape().Solids()), 1)
-        self.assertAlmostEqual(node.shape().Volume(), 8.0, places=3)
+        self.assertEqual(len(cq.Shape.cast(node.shape()).Solids()), 1)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 8.0, places=3)
 
     def test_an_ambiguous_name_is_refused_describing_both(self):
         message = self.inventory_error(parts.AmbiguousPin)
@@ -388,8 +388,8 @@ class StepSelectionTest(BuildDirTestCase):
         first.assemble()
         second.assemble()
 
-        self.assertAlmostEqual(first.shape().Volume(), 1.000, places=3)
-        self.assertAlmostEqual(second.shape().Volume(), 8.000, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(first.shape()).Volume(), 1.000, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(second.shape()).Volume(), 8.000, places=3)
 
     def test_an_index_beyond_the_products_of_the_name_is_refused(self):
         message = self.inventory_error(parts.OutOfRangePinIndex)
@@ -443,7 +443,7 @@ class StepFrameTest(BuildDirTestCase):
 
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
         center = ((bounds.xmin + bounds.xmax) / 2,
                  (bounds.ymin + bounds.ymax) / 2,
                  (bounds.zmin + bounds.zmax) / 2)
@@ -455,7 +455,7 @@ class StepFrameTest(BuildDirTestCase):
 
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
         center = ((bounds.xmin + bounds.xmax) / 2,
                  (bounds.ymin + bounds.ymax) / 2,
                  (bounds.zmin + bounds.zmax) / 2)
@@ -478,7 +478,7 @@ class StepAdjustTest(BuildDirTestCase):
 
         factor = parts.SCALE_FACTOR ** 3
         self.assertAlmostEqual(
-            scaled.shape().Volume() / verbatim.shape().Volume(),
+            cq.Shape.cast(scaled.shape()).Volume() / cq.Shape.cast(verbatim.shape()).Volume(),
             factor, places=3)
 
     def test_a_node_without_the_hook_imports_the_product_verbatim(self):
@@ -486,7 +486,7 @@ class StepAdjustTest(BuildDirTestCase):
 
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 125.0, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 125.0, places=3)
 
     def test_the_adapter_offers_no_scale_unit_recenter_or_sew_knob(self):
         self.assertFalse(hasattr(StepNode, 'scale'))
@@ -522,7 +522,7 @@ class StepAdmissionTest(BuildDirTestCase):
 
         node.assemble()
 
-        self.assertGreaterEqual(len(node.shape().Solids()), 1)
+        self.assertGreaterEqual(len(cq.Shape.cast(node.shape()).Solids()), 1)
 
     def test_a_hook_that_returns_no_solid_is_still_rejected(self):
         node = parts.BrokenAdjustPart()
@@ -644,9 +644,9 @@ class StepExactnessTest(BuildDirTestCase):
     def test_exact_is_true_and_shape_is_the_selected_adjusted_geometry(self):
         node = parts.ScaledSingleProduct()
 
-        self.assertTrue(node.exact)
+        self.assertTrue(node.brep)
         node.assemble()
-        self.assertAlmostEqual(node.shape().Volume(),
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(),
                                125.0 * parts.SCALE_FACTOR ** 3, places=3)
 
     def test_a_fusion_over_a_step_node_is_exact_and_fuses_to_one_solid(self):
@@ -654,8 +654,8 @@ class StepExactnessTest(BuildDirTestCase):
 
         fusion.assemble()
 
-        self.assertTrue(fusion.exact)
-        self.assertEqual(len(fusion.shape().Solids()), 1)
+        self.assertTrue(fusion.brep)
+        self.assertEqual(len(cq.Shape.cast(fusion.shape()).Solids()), 1)
 
     def test_the_brep_is_written_and_reloaded(self):
         node = parts.SingleProduct()
@@ -664,11 +664,12 @@ class StepExactnessTest(BuildDirTestCase):
 
         self.assertTrue(os.path.exists(node.brep_file))
         reloaded = cached_shape(node.brep_file)
-        self.assertAlmostEqual(reloaded.Volume(), 125.0, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(reloaded).Volume(), 125.0,
+                               places=3)
 
     def test_a_project_of_step_leaves_builds_with_no_openscad_on_the_path(self):
-        with patch('machinome.openscad.shutil.which', return_value=None), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.openscad.binary.shutil.which', return_value=None), \
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = assemblies.TwoStepParts()
             node.build_stls()

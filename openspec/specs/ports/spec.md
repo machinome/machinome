@@ -7,7 +7,6 @@ by the parent's causal `connect()`. The reserved flow slot keeps the
 door open for later acausal (bond-graph) modeling without renaming
 project code.
 ## Requirements
-
 ### Requirement: A reused-joint mate handle shares the child slot
 
 Reading a reused-joint mate on an instance SHALL return the same bound coordinate slot as its referenced child's joint; assigning through either spelling SHALL use the same original joint binding and placement path. The handle SHALL create no port slot on its assembly and SHALL not be reported as an assembly-owned coordinate by declared_ports. The child's joint SHALL remain reported once under its original name. Domain and unit of declaration references to the handle SHALL come from that joint without renaming its port metadata. Existing one-binder, wiring and run-owned refusals SHALL apply to the physical child slot regardless of spelling.
@@ -474,7 +473,7 @@ same message.
 #### Scenario: The old path is refused
 
 - **WHEN** a project runs
-  `from machinome.node import AssemblyNode, RotationalPort, SignalPort, Time`
+  `from machinome.node import RotationalPort, SignalPort, Time`
 - **THEN** the import raises `ImportError`, the message names
   `machinome.motion.ports` and shows the import line that replaces it,
   and no port or time-base name is bound
@@ -486,12 +485,15 @@ same message.
 - **THEN** the read fails with a message naming
   `machinome.motion.ports`, and no such module exists on disk
 
-#### Scenario: A node class is still a node export
+#### Scenario: A node class is imported from its module
 
-- **WHEN** a project runs `from machinome.node import AssemblyNode`
-  after the move
-- **THEN** it receives the same class it received before, so only the
-  names that answer a different question have left the package
+- **WHEN** a project runs `from machinome.node.assembly import AssemblyNode`
+  after the move, and `from machinome.node import AssemblyNode`
+- **THEN** the first receives the class, and the second raises `ImportError`
+  naming `machinome.node.assembly`, not `machinome.motion.ports`: a node class
+  is imported from its own module (`node-model`, "The node package's root
+  exports nothing"), and only the port and time-base names are redirected to
+  the motion package
 
 ### Requirement: A run-owned coordinate has one binder, the run
 
@@ -528,3 +530,4 @@ SHALL leave a run-bound slot alone.
   on a coordinate the run owns
 - **THEN** the binding is refused by the same rule, naming the coordinate
   and the run
+

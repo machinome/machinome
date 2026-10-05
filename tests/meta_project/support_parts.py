@@ -13,7 +13,7 @@ puts its centre of mass.
 
 from solid2 import cube
 
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Block(Solid2Node):

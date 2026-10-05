@@ -16,7 +16,7 @@ Commit the ``.stl`` beside the module that declares it, and name it:
 
 .. code-block:: python
 
-    from machinome.node import StlNode
+    from machinome.node.stl import StlNode
 
     class Bracket(StlNode):
 
@@ -98,13 +98,12 @@ watertight gate judges.
 What a mesh costs
 ~~~~~~~~~~~~~~~~~
 
-An ``StlNode`` is faceted, and it makes any fusion holding it faceted:
-the fusion routes through OpenSCAD and CGAL, which needs the ``openscad``
-binary and can take minutes on a dense mesh. Assembling imported parts
-without fusing them costs nothing extra. Mesh-only is the doctrine for
-imported STLs: a mesh is not a boundary representation, and rebuilding
-one from triangles guesses at intent. Model the part in a CAD backend if
-you need it exact.
+An ``StlNode`` is a mesh, and it makes any fusion holding it a mesh
+fusion: the fusion is unioned by the mesh engine, on meshes. Assembling
+imported parts without fusing them costs nothing extra. Mesh-only is the
+doctrine for imported STLs: a mesh is not a boundary representation, and
+rebuilding one from triangles guesses at intent. Model the part in a CAD
+backend if you need it as a B-rep.
 
 .. _step-import:
 
@@ -113,13 +112,13 @@ A part from a STEP document
 
 STEP is what every CAD package and every vendor publishes, and a STEP
 product is a boundary representation the moment it is read. ``StepNode``
-is exact: ``shape()``, the ``.brep`` artifact, exact fusion, the spatial
-assertions and tessellation precision all come for free, with no
+has B-rep geometry: ``shape()``, the ``.brep`` artifact, B-rep fusion, the
+spatial assertions and tessellation precision all come for free, with no
 external tool.
 
 .. code-block:: python
 
-    from machinome.node import StepNode
+    from machinome.node.step import StepNode
 
     class Bracket(StepNode):
 
@@ -174,7 +173,7 @@ knowingly:
 
 .. code-block:: python
 
-    from machinome.node.adapters.step import solids_from_faces
+    from machinome.node.step import solids_from_faces
 
     class Battery(StepNode):
 
@@ -200,7 +199,7 @@ artifacts are current never triggers a read.
 Tessellation precision
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Every exact leaf writes its STL by tessellating its solid, and may
+Every B-rep leaf writes its STL by tessellating its solid, and may
 declare how finely:
 
 .. code-block:: python
@@ -218,8 +217,8 @@ fillets and threads, and 0.1 radian over such a part costs an order of
 magnitude for surface a viewer cannot see: the shaft above measured
 19.9 MB at the default and 1.8 MB at 0.5. Only the mesh changes; the
 ``.brep`` and ``shape()`` are identical whatever is declared. A coarser
-mesh moves faceted-kernel verdicts and changes the printed-piece id, and
-never touches the exact kernel. A fusion declares its own precision and
+mesh moves the mesh engine's verdicts and changes the printed-piece id,
+and never touches the B-rep engine. A fusion declares its own precision and
 does not inherit a child's.
 
 Scaffold an assembly from a STEP document

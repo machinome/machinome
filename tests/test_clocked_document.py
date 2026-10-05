@@ -25,7 +25,7 @@ from .base import BaseNodeTest
 
 def text(graph):
     """One published expression graph as the document's own text."""
-    from machinome.scad_expression import GraphValue, as_node
+    from machinome.expression_graph import GraphValue, as_node
 
     return str(GraphValue(as_node(graph)))
 
@@ -327,7 +327,7 @@ def evaluated(expression, values):
     DOCUMENT's own expression semantics, whose `%` is the truncated
     remainder both runtimes already agree on."""
     from machinome.core.expressions import parse
-    from machinome.scad_expression import GraphValue
+    from machinome.expression_graph import GraphValue
 
     return GraphValue(parse(expression)).evaluate(values)
 
@@ -375,7 +375,7 @@ class PublishedRemainderTest(BaseNodeTest):
         import struct
 
         from machinome.core.expressions import parse
-        from machinome.scad_expression import GraphValue, symbol
+        from machinome.expression_graph import GraphValue, symbol
         from machinome.simulation.clocked import _floored_remainder
 
         graph = _floored_remainder(symbol('a') % symbol('b'))
@@ -425,7 +425,7 @@ class PublishedRemainderTest(BaseNodeTest):
         computed; desugaring one would make the document disagree with
         the framework."""
         from machinome.simulation.clocked import _floored_remainder
-        from machinome.scad_expression import GraphValue, symbol
+        from machinome.expression_graph import GraphValue, symbol
         from .clocked_project.units import JumpsOnly
 
         published = _written(compiled(JumpsOnly).published({}))
@@ -441,7 +441,7 @@ class PublishedRemainderTest(BaseNodeTest):
         """`%` IS a jump, and an `at` admits exactly one jump node which
         must be a floor, ceil, sign or comparison."""
         from machinome.math import floor
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver, State
         from machinome.simulation.clocked import ClockedError
 
@@ -533,7 +533,7 @@ class OwnNameTest(BaseNodeTest):
         """(3.2) A tree declaring a driver literally named `_own`."""
         from machinome.math import floor
         from machinome.motion.joints import Revolute
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver, State
         from machinome.simulation.enumeration import bind_declared_defaults
 
@@ -926,7 +926,7 @@ class ClockAndAnimationVariableTest(BaseNodeTest):
         simulation takes one, so a clocked root carrying one is refused
         in the publication walk and again at `Sim` construction."""
         from machinome.core.serializer import symbolic_document
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver, State, Turn
         from machinome.simulation.enumeration import bind_declared_defaults
 
@@ -980,7 +980,7 @@ def _instructed(declare=True):
     differ in `clocked` for a reason that has nothing to do with
     instructions.
     """
-    from machinome.node import AssemblyNode
+    from machinome.node.assembly import AssemblyNode
     from machinome.simulation import Driver, Instruction, State
 
     from .clocked_project.counter import DIGIT, advance, strokes
@@ -1067,7 +1067,7 @@ class InstructionsUnderAClockedRootTest(BaseNodeTest):
         compile refuses it at simulation construction, every producer
         compiles before it publishes, and the re-aimed gate refuses a
         clocked tree published without a machine."""
-        from machinome.node import AssemblyNode
+        from machinome.node.assembly import AssemblyNode
         from machinome.simulation import Driver, Instruction, State
         from machinome.simulation.clocked import ClockedError
 

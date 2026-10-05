@@ -11,7 +11,7 @@ to be exempt: a top-heavy solid whose centre of mass falls outside its
 own footprint on the unmodelled floor.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .support_parts import Block, TopHeavy
 

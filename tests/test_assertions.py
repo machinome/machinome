@@ -17,12 +17,13 @@ from trimesh.creation import box
 
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
+from tests.stand_in import StandIn
 
 
 asserter = AssertingTestCase()
 
 
-class FakeNode:
+class FakeNode(StandIn):
     """Minimal stand-in for AbstractBaseNode: a real .operations list
     (the assertions insert/remove real Rotation instances into it),
     and a .mesh property that applies those operations to a base
@@ -87,7 +88,7 @@ class CountingFarAway(FarAway):
         return FarAway.mesh.fget(self)
 
 
-class IntersectsWhenPositive:
+class IntersectsWhenPositive(StandIn):
     """An `against` whose mesh overlaps `node`'s box only while
     node's current Rotation has a POSITIVE angle -- lets a test prove
     the negative direction is genuinely, separately checked."""
@@ -229,7 +230,7 @@ class FreeWithinAngleListTest(TestCase):
         self.assertEqual(against.calls, 6)
 
 
-class FixedVolumeOverlap:
+class FixedVolumeOverlap(StandIn):
     """An `against` whose overlap with `node`'s unit box is a CONSTANT
     volume regardless of node's rotation about Z: a big-footprint
     (10x10) box, so node's rotated 1x1 footprint is always fully
@@ -348,7 +349,7 @@ class VolumeEpsilonPerturbationTest(TestCase):
 # below for two more, explicit, pins on that resolution).
 #
 
-class IntersectsWhenTranslationPositive:
+class IntersectsWhenTranslationPositive(StandIn):
     """Translation analogue of IntersectsWhenPositive. Unlike
     rotation about the origin, a translation genuinely relocates
     node's box away from the origin -- so, unlike IntersectsWhenPositive,
@@ -764,7 +765,7 @@ class Pin(FakeNode):
         return mesh
 
 
-class Bore:
+class Bore(StandIn):
     """A real bore: a block with a cylindrical hole of `radius`
     through it, built with a genuine boolean difference (not a fudged
     stand-in), computed once since it does not depend on node's

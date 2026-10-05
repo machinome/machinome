@@ -5,7 +5,6 @@
 import os
 import io
 import re
-import copy
 import time
 import inspect
 import hashlib
@@ -14,16 +13,14 @@ import logging
 import tempfile
 import numpy as np
 from decimal import Decimal
-from subprocess import CalledProcessError, Popen
-from solid2 import scad_render, import_stl, color
+from subprocess import CalledProcessError
 from machinome import currency
 from machinome._artifact import (ArtifactChanged, ArtifactSnapshot,
                                   artifact_cache_key)
-from machinome.openscad import require_openscad
-from machinome.source_generation import (
-    current_census, current_generation, current_phase, track_sources,
-)
+from machinome.extras import ExtraUnavailable
+from machinome.source_generation import current_census, track_sources
 from .frames import resolve_declared_frames
+from .presentation import ArtifactImport, Color, described, reanchored
 from .markings import DEFAULT_DEFLECTION, declared_markings
 from .sources import source_closure, source_scope
 from . import phase as _phase
@@ -49,94 +46,27 @@ def _seconds(mtime_ns):
     return seconds + nanoseconds * 1e-9
 
 
-def _atomic_write_text(path, content, mtime_ns, digest=None, fingerprint=None):
-    desired = content.encode()
-    try:
-        with ArtifactSnapshot(path) as existing:
-            unchanged = existing.read_bytes() == desired
-            existing_mtime_ns = existing.observation.mtime_ns
-    except (ArtifactChanged, OSError):
-        unchanged = False
-        existing_mtime_ns = None
-
-    if unchanged:
-        if existing_mtime_ns != mtime_ns:
-            currency.restamp(path, mtime_ns)
-        currency.record(path, digest, fingerprint)
-        return
-
-    directory = os.path.dirname(path) or '.'
-    os.makedirs(directory, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(
-        prefix=f'.{os.path.basename(path)}.', suffix='.tmp', dir=directory)
-    try:
-        with os.fdopen(descriptor, 'wb') as output:
-            output.write(desired)
-        os.utime(temporary, ns=(time.time_ns(), mtime_ns))
-        currency.publish(temporary, path, digest, fingerprint)
-    except Exception:
-        if os.path.exists(temporary):
-            os.remove(temporary)
-        raise
-
-
-def _publish_scad(path, content, mtime_ns, digest, fingerprint):
-    """Publish one captured SCAD state and update process-local currentness."""
-    _atomic_write_text(path, content, mtime_ns, digest, fingerprint)
-    generation = current_generation()
-    if generation is not None:
-        generation.remember_scad_artifact(
-            path, (mtime_ns, digest, fingerprint))
-    logger.info('%s generated with %s!', path, _seconds(mtime_ns))
-
-
-class _ArtifactImport(import_stl):
-    """An `import()` of a build artifact the framework itself emitted.
-
-    `import_stl.__init__` passes the OpenSCAD call name `'import'` to its
-    base (`solid2.core.builtins.openscad_primitives`), so this subclass
-    renders byte-identically to a plain `import_stl` -- the marker exists
-    only in Python, never in the SCAD text. It is what lets
-    `_reanchor_artifact_imports` tell a path THIS layer is free to
-    re-anchor from a path a project wrote itself in its own `render()`,
-    which must be left exactly as written (verified against the installed
-    solid2 in `evidence/probe_reanchor.py`; a `str` subclass on `file`
-    does NOT survive -- `import_stl` normalises it through
-    `_Path(file).as_posix()`, which returns a plain `str`).
-
-    Its path is anchored on the build directory of the whole build
-    (`get_build_dir`, see `AbstractBaseNode.artifact_import`) until a node
-    writes its OWN `.scad`, at which point `_reanchor_artifact_imports`
-    rewrites it onto that file's directory (`_model_for_own_scad`).
-    """
-
-
-def _reanchor_artifact_imports(node, build_dir, own_build_dir):
-    """Rewrite every `_ArtifactImport` under `node` from its build-wide
-    anchor onto `own_build_dir`, the directory of the `.scad` about to
-    hold it.
-
-    Walks solid2 privates (`_children`, `_params`) -- confined to this one
-    helper so a solid2 upgrade that renames them fails loudly here rather
-    than silently emitting a bad path elsewhere. The caller passes a
-    `copy.deepcopy` of the tree being re-anchored, so a parent's own
-    inlined copy of the same child is untouched (ADR-116).
-    """
-    if isinstance(node, _ArtifactImport):
-        anchored = node._params['file']
-        node._params['file'] = os.path.relpath(
-            os.path.join(build_dir, anchored), own_build_dir)
-    for child in node._children:
-        _reanchor_artifact_imports(child, build_dir, own_build_dir)
+def _with_recipe(value, recipe):
+    """A source digest or fingerprint with a node's `source_recipe` folded
+    in: the value itself when either is None, so a node declaring no
+    recipe -- and a source set that cannot be read -- answer exactly as
+    they did before recipes existed."""
+    if value is None or recipe is None:
+        return value
+    folded = hashlib.sha256()
+    folded.update(value.encode('ascii'))
+    folded.update(b'\0source-recipe\0')
+    folded.update(recipe.encode('utf-8', 'surrogatepass'))
+    return folded.hexdigest()
 
 
 def _atomic_write_bytes(path, content, mtime_ns, digest=None,
                         fingerprint=None, recipe=None):
-    """`_atomic_write_text` for a binary artifact.
+    """Publish a binary artifact: written to a temporary file beside it,
+    stamped, and put in place with its record (`currency.publish`).
 
-    Same contract, and it matters for the same reason: the stamp is
-    applied before the rename, so the file at `path` is never a
-    half-written mesh and never carries a build-time mtime that would
+    The stamp is applied before the rename, so the file at `path` is never
+    a half-written mesh and never carries a build-time mtime that would
     make it look newer than the source it came from.
     """
     directory = os.path.dirname(path) or '.'
@@ -584,8 +514,6 @@ class AbstractBaseNode(metaclass=NodeMeta):
     LeafNode and InternalNode.
     """
 
-    fn = None
-
     # The rendering colors
     color = None
 
@@ -603,13 +531,26 @@ class AbstractBaseNode(metaclass=NodeMeta):
     children = tuple()
 
     # The internal node this node was assembled under, set by the
-    # parent's as_scad(). Used to compose ancestor operations into
+    # parent's present(). Used to compose ancestor operations into
     # this node's mesh.
     _parent = None
 
-    # Set to false to present this node's SCAD directly instead of importing
-    # its optimized STL.
+    # Set to false for a presentation to carry what this node rendered
+    # instead of importing its optimized STL; such a node is prepared on
+    # every build.
     optimize = True
+
+    #: What decides this node's artifacts beyond its tracked files, as a
+    #: string, or None. A node whose geometry also depends on something no
+    #: tracked file holds -- a native tool's interpretation of a document,
+    #: say -- states it here, and the core folds it into the source digest
+    #: and fingerprint of every artifact the node publishes, so changing
+    #: it alone makes them stale. Read whenever the core computes either,
+    #: so a node may raise `machinome.source_generation.SourceChanged`
+    #: from it to refuse a source generation that is no longer the one it
+    #: was built from. None, the default, changes nothing: the digest and
+    #: fingerprint are exactly those of the tracked files (ADR-163).
+    source_recipe = None
 
     # Whether the render in progress left this node out of the machine.
     # Set by omit(), cleared by the parent's render before it runs.
@@ -698,7 +639,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         self.checkpoint = None
 
         # The source file for this Node is stored and used as
-        # a base for scad and stl file paths.
+        # a base for its artifact paths.
         #
         # Resolved, because every path it is measured against is: the
         # project root is discovered as a resolved path, and the source
@@ -744,16 +685,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         basename = f'{script}-{self.uniq_id}'
         basepath = os.path.join(self.build_dir, basename)
 
-        # The base scad file, and respective rendered stl,
-        # without transformations, used for building and assembling
-        # on parent node
-        self.scad_file = f'{basepath}.scad'
+        # The rendered stl and B-rep geometry, without transformations,
+        # used for building and assembling on parent node
         self.stl_file = f'{basepath}.stl'
         self.brep_file = f'{basepath}.brep'
 
-        # A scad file and mesh with transformations applied,
-        # used for mesh generation for spatial calculations, specially tests
-        self.mesh_scad_file = f'{basepath}.mesh.scad'
+        # A mesh with transformations applied, used for mesh generation
+        # for spatial calculations, specially tests
         self.mesh_stl_file = f'{basepath}.mesh.stl'
 
         # Lock file for stl, for concurrency management (not implemented yet)
@@ -779,7 +717,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # Holds the result of render()
         self.model = None
 
-        # Native preparation is independent of SCAD presentation.  The
+        # Native preparation is independent of presentation.  The
         # rendered value belongs to this instance only; artifact currency is
         # still on disk and no prepared tree is shared globally.
         self._prepared = False
@@ -853,7 +791,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return None
 
     def get_source_file(self):
-        """Finds the source file of this node"""
+        """The file this node's build directory and artifact names are
+        anchored on: the module defining its class, by default.
+
+        A leaf whose part comes from a file outside Python returns that
+        file, and sets whatever attribute declares it before calling the
+        base constructor, which reads it.
+        """
         return inspect.getfile(self.__class__)
 
     @property
@@ -903,8 +847,15 @@ class AbstractBaseNode(metaclass=NodeMeta):
         pass
 
     def assemble(self, root=None):
-        """Renders this node and returns an optimized version
-        with all operations applied"""
+        """Prepare this node and return its presentation: a description in
+        the core's own types (`machinome.node.presentation`), with its
+        optimized imports, its colour and every operation applied in order.
+
+        It writes no presentation file, at this node or any other, and
+        needs no modelling technology: an installed node package writes a
+        presentation only where a path reads it, under the
+        `backend-neutral-materialization` capability.
+        """
         if self._assembled:
             return self._assembled
 
@@ -914,33 +865,31 @@ class AbstractBaseNode(metaclass=NodeMeta):
             # Everything below would recompute an artifact that is
             # already on disk and already current. import_optimized()
             # imports it instead; self.model stays unset and is
-            # rendered lazily if something actually asks for the scad.
+            # rendered lazily if something actually asks for the
+            # presentation.
             if self.model is None:
                 self.model = self.artifact_import(self.local_stl)
-            self.generate_scad()
             assembled = self.import_optimized()
         else:
             rendered = self._require_rendered()
-            self.model = self.as_scad(rendered)
+            self.model = self.present(rendered)
             if not self.optimize:
                 self.model = self._colorize(self.model)
-            self.generate_scad()
 
             if self.optimize:
                 assembled = self.import_optimized()
             else:
-                assembled = self.model
+                assembled = described(self.model)
 
         for operation in self.operations:
-            # Apply scad operation
-            assembled = operation.scad(assembled)
+            assembled = operation.presented(assembled)
 
         self._assembled = assembled
 
         return assembled
 
     def _prepare(self, root=None):
-        """Prepare native structure and geometry without presenting SCAD.
+        """Prepare native structure and geometry without presenting it.
 
         Every declared marking is visited here too, AFTER and
         INDEPENDENTLY of the solid's skip decision: the pass sits
@@ -961,14 +910,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
             rendered = self.render()
             self.validate(rendered)
             self._prepared_rendered = rendered
-            if self._uses_legacy_scad_materialization():
-                # A project adapter that overrides the established SCAD hook
-                # is an explicit request to keep using that artifact path.
-                # Preserve it without making SCAD the path for native leaves.
-                self.model = self.as_scad(rendered)
-                self.generate_scad()
-            else:
-                self.materialize(rendered)
+            self.materialize(rendered)
         self._build_markings()
         self._prepared = True
         return self
@@ -981,54 +923,53 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return self._prepared_rendered
 
     def materialize(self, rendered):
-        """Produce backend-owned artifacts from one validated render."""
+        """Produce this node's own artifacts from one validated render.
+
+        Called by the core when the node is prepared and its artifacts are
+        not all current -- on every build for a node declaring
+        `optimize = False` -- so each artifact is still produced only when
+        it is stale: `publish_artifact` checks. A mesh leaf that
+        produces its own STL implements it, publishing through
+        `publish_artifact`; a leaf on another base may extend it, calling
+        the base's.
+        """
 
     def _prepare_can_be_skipped(self):
         return False
 
-    def _uses_legacy_scad_materialization(self):
-        return False
-
-    def _render_can_be_skipped(self):
-        """Whether assemble() can import this node's artifact instead of
-        producing it. False here: an internal node's file set is the
-        union of its children's, and it only learns that by walking them
-        (see InternalNode.as_scad), so it cannot know whether it is
-        current without doing the very work the answer would skip. A
-        leaf can -- its set is known at construction. LeafNode overrides.
-        """
-        return False
-
     def _require_model(self):
-        """This node's own geometry as scad.
+        """This node's own presentation.
 
         A leaf whose artifact was already current never rendered, so
         self.model is unset. Nothing in the build path needs it -- the
         parent imports the STL -- but a caller that genuinely wants the
-        scad gets it rendered on demand rather than getting None.
+        presentation gets it rendered on demand rather than getting None.
         """
         if self.model is None:
             self._prepare()
             rendered = self._require_rendered()
-            self.model = self.as_scad(rendered)
+            self.model = self.present(rendered)
             if not self.optimize:
                 self.model = self._colorize(self.model)
         return self.model
 
     def artifact_import(self, local_path):
-        """Build the anchored import of one of THIS node's own artifact
-        files -- `local_path` relative to `self.build_dir`, as every
-        caller already spells it (`self.local_stl`,
-        `self.local_snapshot_stl(values)`).
+        """The presentation description of the anchored import of one of
+        THIS node's own artifact files (`machinome.node.presentation.
+        ArtifactImport`) -- `local_path` relative to `self.build_dir`, as
+        every caller already spells it (`self.local_stl`,
+        `self.local_snapshot_stl(values)`). A leaf presenting its own
+        artifact returns it from `present` as it is; it is not an authored
+        object and is not composed into one.
 
         Anchored on `get_build_dir(self.src)`, the build directory of the
         whole build -- the same anchor the published document already
         names artifacts relative to (design.md) -- never on
         `self.build_dir`, this node's own subdirectory mirroring its
         package. A parent inlines this path UNCHANGED when it assembles
-        this node (`InternalNode.as_scad` -> `child.assemble()`); only
-        `_model_for_own_scad`, when a node writes its OWN `.scad`,
-        re-anchors it onto that file's directory (ADR-116).
+        this node (`InternalNode.present` -> `child.assemble()`); only
+        `presentation()`, a node's OWN presentation, re-anchors it onto
+        this node's own build directory (ADR-116).
         """
         # Local import avoids the loader -> node.base import cycle (see
         # the same import in __init__).
@@ -1036,47 +977,45 @@ class AbstractBaseNode(metaclass=NodeMeta):
         build_dir = get_build_dir(self.src)
         anchored = os.path.relpath(
             os.path.join(self.build_dir, local_path), build_dir)
-        return _ArtifactImport(anchored)
+        return ArtifactImport(anchored)
 
-    def _model_for_own_scad(self):
-        """This node's own model, with every framework artifact import
-        re-anchored from the build-wide anchor onto THIS node's own
-        build directory -- the directory the `.scad` about to hold it
-        will actually sit in (ADR-116).
+    def presentation(self):
+        """This node's own presentation description, with every framework
+        artifact import re-anchored from the build-wide anchor onto THIS
+        node's own build directory -- the directory a file holding it,
+        written beside the node's artifacts, will actually sit in
+        (ADR-116).
 
-        A no-op copy when this node's build directory already IS the
-        build-wide anchor (a root declared at the top of the source
-        tree): `os.path.relpath` of a path against itself is `'.'`, so
-        re-anchoring would rewrite nothing, and skipping it avoids
-        `copy.deepcopy`-ing a tree for no reason. Every other node --
-        every real project, whose models live under a package such as
-        `simulation/` -- pays one deep copy per `.scad` write; task 2.9
-        measures it, and it is not free (reviewer's note).
+        `reanchored` is a pure function over the core's own description:
+        it shares every node holding no artifact import and never enters
+        authored geometry, so a project's own `import_stl` is left exactly
+        as written. Nothing to do when this node's build directory already
+        IS the build-wide anchor (a root declared at the top of the source
+        tree).
         """
-        model = self._require_model()
+        model = described(self._require_model())
         from machinome.core.builder import get_build_dir
         build_dir = os.path.normpath(get_build_dir(self.src))
         own_build_dir = os.path.normpath(self.build_dir)
         if build_dir == own_build_dir:
             return model
-        reanchored = copy.deepcopy(model)
-        _reanchor_artifact_imports(reanchored, build_dir, own_build_dir)
-        return reanchored
+        return reanchored(model, build_dir, own_build_dir)
 
     def import_optimized(self):
         if self.rigid and self._up_to_date(self.stl_file):
             return self._colorize(self.artifact_import(self.local_stl))
         return self._colorize(self.model)
 
-    def _colorize(self, scad_code):
+    def _colorize(self, presented):
+        """`presented` in this node's colour, as a description."""
         if self.color is None:
-            return scad_code
+            return described(presented)
         hex_code = self.color.lstrip('#')
         if len(hex_code) != 6:
             raise ValueError(f"Invalid self.color at {self}. "
                              "It should be in the format #RRGGBB")
-        colors = [int(hex_code[i:i + 2], 16) / 255 for i in (0, 2, 4)]
-        return color(colors, 1)(scad_code)
+        colors = tuple(int(hex_code[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        return Color(colors, 1, described(presented))
 
     @property
     def stl(self):
@@ -1102,12 +1041,28 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return max(os.stat(path).st_mtime_ns for path in files)
 
     def _tracked_digest(self, files):
-        """What one tracked source set says, as one digest."""
-        return currency.source_digest(files, self._project_root, self.scope)
+        """What one tracked source set says, as one digest, with this
+        node's `source_recipe` folded in when it declares one."""
+        recipe = self._declared_recipe()
+        return _with_recipe(currency.source_digest(
+            files, self._project_root, self.scope), recipe)
 
     def _tracked_fingerprint(self, files):
-        """The observable metadata state of one tracked source set."""
-        return currency.source_fingerprint(files, self._project_root)
+        """The observable metadata state of one tracked source set, with
+        this node's `source_recipe` folded in when it declares one."""
+        recipe = self._declared_recipe()
+        return _with_recipe(currency.source_fingerprint(
+            files, self._project_root), recipe)
+
+    def _declared_recipe(self):
+        """`source_recipe`, read once per digest or fingerprint, and
+        refused unless it is a string or None."""
+        recipe = self.source_recipe
+        if recipe is not None and not isinstance(recipe, str):
+            raise TypeError(
+                f'{self.name}.source_recipe must be a string or None, not '
+                f'{type(recipe).__name__}')
+        return recipe
 
     @property
     def mtime_ns(self):
@@ -1170,55 +1125,40 @@ class AbstractBaseNode(metaclass=NodeMeta):
         return _seconds(self.mtime_ns)
 
     def render(self):
+        """What this node is made of.
+
+        A leaf returns one object of its modelling library -- never a
+        list, never None -- and the core turns it into the leaf's
+        artifacts; an internal node returns its children. Every node type
+        implements it.
+        """
         raise NotImplementedError
 
     @property
-    def exact(self):
-        """Whether this node exposes exact boundary-representation geometry."""
+    def brep(self):
+        """Whether this node exposes B-rep (boundary-representation)
+        geometry."""
         return False
 
     def shape(self):
-        raise RuntimeError(f'{self.name} does not expose exact geometry')
+        raise RuntimeError(f'{self.name} does not expose B-rep geometry')
 
-    def as_scad(self, rendered):
-        """Converts the output of render() to solid2 object"""
+    def present(self, rendered):
+        """This node's presentation of what render() returned: a
+        presentation description (`machinome.node.presentation`), or the
+        object a leaf authored, which the core holds as `Authored`."""
         raise NotImplementedError
+
+    def kept_artifacts(self):
+        """The paths of the artifacts beyond its STL, BREP and markings
+        that a build keeps for this node while it is in the published tree.
+        None here."""
+        return ()
 
     def as_number(self, n):
         if type(n) not in (int, float, Decimal):
             raise TypeError(f'{n!r} is not a number')
         return n
-
-    @property
-    def scad_code(self):
-        code = scad_render(self._model_for_own_scad())
-        if self.fn:
-            code = f'$fn = {self.fn};\n\n{code}'
-        return code
-
-    def generate_scad(self):
-        mtime_ns = self.mtime_ns
-        digest = self.source_digest
-        fingerprint = self.source_fingerprint
-        identity = (mtime_ns, digest, fingerprint)
-        generation = current_generation()
-        shareable = self.rigid and generation is not None
-        if (shareable
-                and generation.has_scad_artifact(self.scad_file, identity)):
-            logger.info('%s reused in this source generation', self.scad_file)
-            return
-
-        content = self.scad_code
-        phase = current_phase()
-        if (not self.rigid and not self.flexible and phase is not None
-                and phase.coalesces_scad):
-            phase.defer_scad(
-                self.scad_file, content, mtime_ns, digest, fingerprint,
-                _publish_scad)
-            return
-
-        _publish_scad(
-            self.scad_file, content, mtime_ns, digest, fingerprint)
 
     def trigger_stl(self):
         self._prepare()
@@ -1250,50 +1190,22 @@ class AbstractBaseNode(metaclass=NodeMeta):
             return True
 
     def generate_stl(self):
+        """Make this node's STL current.
+
+        Nothing when it is current, the node is not rigid or another
+        process holds its render lock. A leaf whose tool runs in a
+        subprocess starts it here and raises `StlRenderStart`; otherwise a
+        rigid node's STL is its materialization's, and one still not
+        current after it is refused, naming the node, before any process
+        is started (`ArtifactNotProduced`).
+        """
         if self._up_to_date(self.stl_file):
             return logger.info('STL up to date')
         if not self.rigid:
             return logger.info('Non rigid node, no STL to generate')
         if self._stl_generation_locked:
             return logger.info('Cannot generate, locked')
-
-        backend = next(
-            (cls.__name__ for cls in type(self).__mro__
-             if cls.__name__ in ('Solid2Node', 'OpenScadNode', 'FusionNode')),
-            type(self).__name__)
-        node_name = getattr(self, 'name', type(self).__name__)
-        openscad = require_openscad(
-            f'node {node_name} ({backend} backend)',
-            'its backend renders this STL through OpenSCAD')
-
-        fh = open(self.lock_file, 'w')
-
-        os.makedirs(os.path.dirname(self.stl_file) or '.', exist_ok=True)
-        descriptor, temporary = tempfile.mkstemp(
-            prefix=f'.{os.path.basename(self.stl_file)}.', suffix='.tmp',
-            dir=os.path.dirname(self.stl_file) or '.')
-        os.close(descriptor)
-        command = self.stl_builder_command_for(temporary)
-        command[0] = openscad
-        proc = Popen(command)
-
-        fh.write(f'{proc.pid}')
-        fh.close()
-        logger.info(f'Job started with pid {proc.pid}')
-        raise StlRenderStart(proc, self.stl_file, temporary, self.mtime_ns,
-                             self.lock_file, self.source_digest,
-                             self.source_fingerprint)
-
-    @property
-    def stl_builder_command(self):
-        return self.stl_builder_command_for(self.stl_file)
-
-    def stl_builder_command_for(self, output):
-        return [
-            'openscad', self.scad_file,
-            '-o', output,
-            '--export-format', 'binstl',
-        ]
+        raise ArtifactNotProduced(self)
 
     ##############################################
     # Child naming (skill-repo improvements.md #16)
@@ -1309,7 +1221,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
     def _link_child(self, child, name_index=None):
         """Link `child` to this node as its parent, and derive its
         name from the attribute holding it. Called from the same spot
-        the tree links parent/child today (InternalNode.as_scad) and
+        the tree links parent/child today (InternalNode.present) and
         from the shared viewer serializer, which walks render() output
         directly without a full assemble(). Idempotent: re-deriving
         the same attribute mapping twice (e.g. a second assemble())
@@ -1361,7 +1273,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         list/tuple membership, even if the list hit comes first in
         definition order (two passes, not one). Private attributes
         (leading underscore) are skipped, and so is `children`, the
-        framework's own linked list (InternalNode.as_scad): an
+        framework's own linked list (InternalNode.present): an
         assembly's rest render is kept and returned again, so the
         same instances are in that list on every later link and would
         otherwise be renamed `children-<index>`. Returns None if
@@ -1545,8 +1457,8 @@ class AbstractBaseNode(metaclass=NodeMeta):
         break the invariant it exists for: `node.files` is what
         `mtime_ns`, `source_digest` and `source_fingerprint` are
         computed over, so an artwork edit would invalidate the STL, the
-        BREP, the `.scad` and, through the parent's union, every
-        ancestor.
+        BREP, every artifact the node keeps and, through the parent's
+        union, every ancestor.
         """
         artwork = marking.artwork.resolved
         return self.files | ({artwork} if artwork else set())
@@ -1576,13 +1488,25 @@ class AbstractBaseNode(metaclass=NodeMeta):
 
         Never reached for a non-rigid node: a marking is refused on one
         at class creation, so there is nothing to visit.
+
+        Reducing a stale marking's artwork needs the `build123d` extra (the
+        markings' artwork seam); without it the refusal is raised again
+        naming this part's class, the marking and its artwork, before any
+        marking artifact is written. A current marking resolves no reducer.
         """
         for name, marking in self.declared_markings().items():
             path = self.marking_file(name)
             sources = self.marking_sources(marking)
             if self._up_to_date(path, sources):
                 continue
-            content = marking.mesh_bytes(self.marking_tolerance())
+            try:
+                content = marking.mesh_bytes(self.marking_tolerance())
+            except ExtraUnavailable as absent:
+                raise ExtraUnavailable(
+                    absent.extra,
+                    f'marking {name} of {type(self).__qualname__} '
+                    f'(artwork {marking.artwork.path})',
+                    absent.name) from absent
             _atomic_write_bytes(
                 path, content, self._tracked_mtime_ns(sources),
                 self._tracked_digest(sources),
@@ -1605,8 +1529,8 @@ class AbstractBaseNode(metaclass=NodeMeta):
         defers to `super()` and records nothing, as it always has.
         """
         # The prefix test first, so the common path -- the STL, the
-        # BREP, the `.scad`, asked about on every currency check of
-        # every node -- costs one string comparison and enumerates
+        # BREP, every kept artifact, asked about on every currency check
+        # of every node -- costs one string comparison and enumerates
         # nothing.
         if (path.startswith(f'{self.basepath}.marking-')
                 and path in self._marking_files()):
@@ -1632,6 +1556,17 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # The build directory is absolute once anchored on the project root,
         # so create the whole chain at once rather than walking it.
         os.makedirs(self.build_dir, exist_ok=True)
+
+
+class ArtifactNotProduced(RuntimeError):
+    """A rigid node whose STL is not current after its materialization: it
+    published nothing, and no tool of the core produces it in its place."""
+
+    def __init__(self, node):
+        self.node = node
+        super().__init__(
+            f'node {node.name} ({type(node).__qualname__}) produced no STL: '
+            f'its materialization published nothing at {node.stl_file}')
 
 
 class StlRenderStart(Exception):

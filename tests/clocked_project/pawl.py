@@ -25,7 +25,7 @@ HAND; the bounds below are never called to produce one.
 
 from machinome.math import floor
 from machinome.motion.joints import Prismatic, Revolute
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .counter import DIGIT, advance, strokes

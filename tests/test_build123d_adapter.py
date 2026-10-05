@@ -19,11 +19,16 @@ from unittest.mock import patch
 
 import build123d as b3d
 import cadquery as cq
+from OCP.TopoDS import TopoDS_Shape
 from solid2 import cube
 
-from machinome.exact import shape_from_rendered
-from machinome.node import (Build123dNode, CadQueryNode, FusionNode,
-                             Solid2Node)
+from machinome.node.build123d import Build123dNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.build123d import build123d_shape
+from machinome.node.cadquery import workplane_shape
+from machinome.engine import brep as engine
 
 
 class BuilderBox(Build123dNode):
@@ -133,44 +138,47 @@ class Build123dConversionTest(TestCase):
         with b3d.BuildPart() as builder:
             b3d.Box(2, 2, 2)
 
-        shape = shape_from_rendered(builder.part)
+        shape = build123d_shape(builder.part)
 
-        self.assertIsInstance(shape, cq.Shape)
-        self.assertAlmostEqual(shape.Volume(), builder.part.volume, places=6)
-        self.assertAlmostEqual(shape.Volume(), 8.0, places=6)
+        self.assertIsInstance(shape, TopoDS_Shape)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(),
+                               builder.part.volume, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(), 8.0, places=6)
 
     def test_builder_is_converted_through_its_finished_part(self):
         with b3d.BuildPart() as builder:
             b3d.Box(2, 2, 2)
 
-        self.assertAlmostEqual(shape_from_rendered(builder).Volume(), 8.0,
-                               places=6)
+        self.assertAlmostEqual(
+            cq.Shape.cast(build123d_shape(builder)).Volume(), 8.0, places=6)
 
     def test_conversion_survives_a_brep_roundtrip(self):
-        from machinome.exact import cached_shape, write_brep
+        from machinome.brep_artifacts import write_brep
+        from machinome.brep_cache import cached_shape
 
-        shape = shape_from_rendered(b3d.Box(2, 2, 2))
+        shape = build123d_shape(b3d.Box(2, 2, 2))
         path = os.path.join(tempfile.mkdtemp(), 'part.brep')
         write_brep(shape, path, 1)
 
-        self.assertAlmostEqual(cached_shape(path).Volume(), 8.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(cached_shape(path)).Volume(),
+                               8.0, places=6)
 
     def test_cadquery_conversion_is_untouched(self):
         rendered = cq.Workplane('XY').box(2, 2, 2)
 
-        self.assertAlmostEqual(shape_from_rendered(rendered).Volume(), 8.0,
-                               places=6)
+        self.assertAlmostEqual(
+            cq.Shape.cast(workplane_shape(rendered, engine)).Volume(), 8.0,
+            places=6)
 
     def test_shapes_from_both_backends_fuse_into_one_solid(self):
-        from machinome.exact import fuse_shapes, solid_count
+        cadquery_shape = workplane_shape(cq.Workplane('XY').box(2, 2, 2),
+                                         engine)
+        build123d_part = build123d_shape(b3d.Box(2, 2, 2))
 
-        cadquery_shape = shape_from_rendered(cq.Workplane('XY').box(2, 2, 2))
-        build123d_shape = shape_from_rendered(b3d.Box(2, 2, 2))
+        fused = engine.fuse_shapes(cadquery_shape, build123d_part,
+                                   'cadquery', 'build123d')
 
-        fused = fuse_shapes(cadquery_shape, build123d_shape,
-                            'cadquery', 'build123d')
-
-        self.assertEqual(solid_count(fused), 1)
+        self.assertEqual(engine.solid_count(fused), 1)
 
 
 class Build123dRenderValidationTest(BuildDirTestCase):
@@ -216,7 +224,7 @@ class Build123dRenderValidationTest(BuildDirTestCase):
                      SolidBox()):
             with self.subTest(node=type(node).__name__):
                 node.assemble()
-                self.assertAlmostEqual(node.shape().Volume(), 8.0, places=6)
+                self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 8.0, places=6)
 
 
 class Build123dArtifactTest(BuildDirTestCase):
@@ -235,11 +243,11 @@ class Build123dArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = BuilderBox()
-        with patch('machinome.node.exact_leaf.write_stl',
+        with patch('machinome.node.brep_leaf.write_stl',
                    side_effect=AssertionError('must not re-export')), \
-             patch('machinome.node.exact_leaf.write_brep',
+             patch('machinome.node.brep_leaf.write_brep',
                    side_effect=AssertionError('must not re-export')):
-            assembled = second.as_scad(second.render())
+            assembled = second.present(second.render())
 
         self.assertIn(second.local_stl, str(assembled))
 
@@ -252,14 +260,14 @@ class Build123dArtifactTest(BuildDirTestCase):
                 'a current BREP must avoid rerendering')):
             shape = node.shape()
 
-        self.assertAlmostEqual(shape.Volume(), 8.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(shape).Volume(), 8.0, places=6)
 
     def test_shape_is_local_and_does_not_apply_node_operations(self):
         node = BuilderBox()
         node.translate([20, 0, 0])
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
 
         self.assertAlmostEqual(bounds.xmin, -1.0, places=6)
         self.assertAlmostEqual(bounds.xmax, 1.0, places=6)
@@ -268,10 +276,10 @@ class Build123dArtifactTest(BuildDirTestCase):
         node = BuilderBox()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'an exact backend must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -281,16 +289,16 @@ class Build123dArtifactTest(BuildDirTestCase):
 class Build123dExactnessTest(BuildDirTestCase):
 
     def test_the_adapter_is_exact_without_rendering(self):
-        self.assertTrue(object.__new__(Build123dNode).exact)
+        self.assertTrue(object.__new__(Build123dNode).brep)
 
     def test_a_fusion_mixing_exact_backends_is_exact(self):
         fusion = MixedBackendFusion()
         fusion.assemble()
 
-        self.assertTrue(fusion.exact)
+        self.assertTrue(fusion.brep)
 
     def test_a_fusion_mixing_exact_backends_fuses_to_one_solid(self):
-        from machinome.exact import solid_count
+        from machinome.engine.brep import solid_count
 
         fusion = MixedBackendFusion()
         fusion.assemble()
@@ -301,13 +309,13 @@ class Build123dExactnessTest(BuildDirTestCase):
         fusion = MixedExactnessFusion()
         fusion.assemble()
 
-        self.assertFalse(fusion.exact)
+        self.assertFalse(fusion.brep)
 
 
 class ExactAdapterIdentityTest(TestCase):
     """The exact adapters share an implementation base. Sharing it must not
     make them interchangeable to a type test, which is what a project's
-    `isinstance` check and the backend lookup in generate_stl both rely on."""
+    `isinstance` check relies on."""
 
     def test_the_exact_adapters_are_not_instances_of_each_other(self):
         cadquery_node = CadQueryBox()
@@ -318,20 +326,10 @@ class ExactAdapterIdentityTest(TestCase):
         self.assertIsNot(type(cadquery_node).__mro__[1],
                          type(build123d_node))
 
-    def test_neither_adapter_resolves_to_a_mesh_rendering_backend(self):
-        """generate_stl names the backend by walking the MRO for adapter
-        class names. A shared ancestor must not introduce one."""
-        mesh_backends = {'Solid2Node', 'OpenScadNode', 'FusionNode'}
-
-        for adapter in (CadQueryNode, Build123dNode):
-            with self.subTest(adapter=adapter.__name__):
-                names = {cls.__name__ for cls in adapter.__mro__}
-                self.assertEqual(names & mesh_backends, set())
-
     def test_a_subclass_defines_with_the_cq_editor_metaclass_active(self):
         """CheckCQEditor drops the declared bases under CQ-editor. It names
         no base, so it is unaffected by the adapter now inheriting
-        ExactLeafNode -- but that is worth holding, since it rewrites the
+        BrepLeafNode -- but that is worth holding, since it rewrites the
         hierarchy at definition time."""
         import sys
         from types import ModuleType

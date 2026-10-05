@@ -44,7 +44,7 @@ relation relates two ports, so that cost is unavoidable, and everything
 from the node package -- the declaring namespace, the child declaration,
 the driver declaration, the tree -- is reached inside the method that
 needs it, exactly as `Joint` reaches the operations. Importing this
-module pulls no CAD backend and no exact stack.
+module pulls no CAD backend and no B-rep stack.
 """
 
 from dataclasses import dataclass
@@ -177,7 +177,7 @@ class Affine:
     """`driven = ratio * driver + offset`, and its algebraic inverse.
 
     Ordinary arithmetic, deliberately: a `DriverToken` or `$t` for the
-    operand builds the wire expression solid2 builds, and a number gives
+    operand builds the framework's own symbolic graph, and a number gives
     a number. A ratio of one and an offset of zero are skipped rather
     than multiplied and added, so an identity never publishes `(x * 1)`.
 
@@ -2636,7 +2636,7 @@ def clear_solved(assembly):
     otherwise fills, on a run where the ancestor reaches it first -- is
     left alone: it is not stale, it is fresh, and clearing it here would
     erase a value the current pass already produced correctly, before
-    this assembly's own phase (later in the same cascade) even runs.
+    this assembly's own phase (later in the same pass) even runs.
     `_enum_marker` (set by every `bind`) is what tells the two apart.
 
     The value's drop is what licenses a drop of its JOINT's placement

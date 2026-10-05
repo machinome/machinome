@@ -25,7 +25,9 @@ from unittest.mock import patch
 import trimesh
 from solid2 import cube
 
-from machinome.node import AssemblyNode, FusionNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.motion.ports import TranslationalPort
 from machinome.node.base import _topmost_rigid_nodes
 from machinome.node.flexible import FlexibleNode
@@ -50,15 +52,15 @@ class StubFlexibleNode(FlexibleNode):
     which is enough to tell one binding's geometry from another's.
     """
 
-    def _shape_parameters(self, rendered):
+    def shape_parameters(self, rendered):
         return rendered.params
 
-    def _snapshot_mesh(self, rendered, values):
+    def snapshot_mesh(self, rendered, values):
         side = sum(values.values())
         return trimesh.creation.box((side, side, side))
 
-    def _snapshot_stl(self, rendered, values):
-        return self._snapshot_mesh(rendered, values).export(file_type='stl')
+    def snapshot_stl(self, rendered, values):
+        return self.snapshot_mesh(rendered, values).export(file_type='stl')
 
 
 class Spring(StubFlexibleNode):
@@ -187,16 +189,16 @@ class FlexibleRigidityTest(BaseNodeTest):
         rig = bound_rig()
         rig.assemble()
 
-        self.assertFalse(rig.spring._render_can_be_skipped())
+        self.assertFalse(rig.spring._prepare_can_be_skipped())
 
     def test_it_generates_no_cached_rigid_artifact(self):
         rig = bound_rig()
         rig.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'a flexible part must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'a flexible part must not launch OpenSCAD')):
             rig.spring.generate_stl()
 

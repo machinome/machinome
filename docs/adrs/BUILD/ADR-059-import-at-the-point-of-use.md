@@ -1,6 +1,6 @@
 # ADR-059: Import at the Point of Use
 
-**Status:** Accepted
+**Status:** Accepted; amended 2026-10-03 by [ADR-168](./ADR-168-the-command-table-names-the-module-a-command-needs.md)
 **Date:** 2026-08-30
 **Depends on:**
 - [ADR-024: Command-First CLI Grammar and Duck-Typed Command Registry](./ADR-024-command-first-cli-grammar-and-duck-typed-command-registry.md)
@@ -132,3 +132,14 @@ PEP 562 hands back the real object.
 - `solid_node/core/loader.py` — deferred `TestCase`
 - `tests/import_probe.py` — fresh-subprocess import reporting
 - OpenSpec change `fast-cli-startup`, capability `cli-startup-cost`
+
+## Amendment (2026-10-03)
+
+[ADR-168](./ADR-168-the-command-table-names-the-module-a-command-needs.md)
+adds one import before the selected command's: the module its registry
+entry names as needed, so a command whose kernel is an extra is answered by
+that extra instead of failing inside the command. And since
+[ADR-167](../NODE/ADR-167-a-kernel-is-an-extra-and-its-module-refuses-its-absence-at-import.md)
+an absent extra is not a broken installation: a deferred import that fails
+with a kernel module's `ExtraUnavailable` is raised unmodified, its message
+naming the install line, rather than spliced as a broken install.

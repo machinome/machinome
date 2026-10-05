@@ -39,7 +39,7 @@ without touching the code, from the shell:
 
     Ran 3 tests in 1.31 seconds: 2 passed, 1 failed
 
-The exact kernel measured 69 cubic millimetres of shared material, and the
+The B-rep engine measured 69 cubic millimetres of shared material, and the
 message names both parts. Run again without the override and the test
 passes. Now it is evidence.
 
@@ -94,14 +94,15 @@ A guard refuses what the numbers already rule out; a test finds what only
 the geometry shows. Keep both. ``check()`` runs before any child is
 realized; the tests run on built solids.
 
-Which kernel decided
+Which engine decided
 --------------------
 
-Every intersection above was decided on the **exact** kernel: the drums,
-the crank and the base are OCCT solids, so boundary contact is exactly
-empty and there is no tolerance anywhere. A part that has no exact
+Every intersection above was decided on the **B-rep** engine: the drums,
+the crank and the base are B-rep solids, so boundary contact is exactly
+empty and there is no tolerance anywhere. A part that has no B-rep
 geometry, an imported STL or an OpenSCAD part, is compared on its mesh.
-A whole run can be switched to meshes for speed, and
-:doc:`/howto/fast-tests` shows when and how; a release run stays exact.
+A whole run can be switched to the mesh engine for speed, and
+:doc:`/howto/fast-tests` shows when and how; a release run stays on the
+B-rep engine.
 
 Next: :doc:`07-scenario`.

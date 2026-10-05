@@ -17,13 +17,17 @@ import os
 from solid2 import cube
 
 from machinome.core.serializer import serialize_node
-from machinome.node import AssemblyNode, FusionNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.declarative import StructureError
 from machinome.parameters import Count, Flag, Length
 
 from .base import BaseNodeTest
 from .declarative_project.engine import Cylinders, Engine
 from .declarative_project.windmill import Windmill
+from tests.base import scad_code
+from machinome.node.openscad.writer import scad_file
 
 
 class Box(Solid2Node):
@@ -75,7 +79,7 @@ class RenderReturnsNothingTest(BaseNodeTest):
         self.assertEqual(rack.render(), [])
         rack.assemble()
         self.assertEqual(rack.children, [])
-        self.assertEqual(rack.scad_code.strip(), 'union();')
+        self.assertEqual(scad_code(rack).strip(), 'union();')
         self.assertEqual(
             serialize_node(rack, lambda rigid: rigid.name)['children'], [])
 
@@ -89,7 +93,7 @@ class RenderReturnsNothingTest(BaseNodeTest):
         empty.assemble()
 
         self.assertEqual(empty.children, [])
-        self.assertEqual(empty.scad_code.strip(), 'union();')
+        self.assertEqual(scad_code(empty).strip(), 'union();')
         self.assertEqual(
             serialize_node(empty, lambda rigid: rigid.name)['children'], [])
 
@@ -151,7 +155,7 @@ class RenderReturnsNothingTest(BaseNodeTest):
                          ['base', 'post'])
         self.assertEqual([op.serialized for op in weldment.post.operations],
                          [['t', ['0', '0', '3.0']]])
-        self.assertIn('union', weldment.scad_code)
+        self.assertIn('union', scad_code(weldment))
 
     def test_a_leaf_render_returning_none_is_still_an_error(self):
         class Empty(Solid2Node):
@@ -197,7 +201,7 @@ class OmissionTest(BaseNodeTest):
         self.assertEqual([child.name for child in bare.children],
                          ['tower', 'rotor'])
         self.assertIsNone(bare.guard._parent)
-        self.assertNotIn(bare.guard.uniq_id, bare.scad_code)
+        self.assertNotIn(bare.guard.uniq_id, scad_code(bare))
         document = serialize_node(bare, lambda rigid: rigid.name)
         self.assertEqual([child['name'] for child in document['children']],
                          ['tower', 'rotor'])
@@ -245,7 +249,7 @@ class OmissionTest(BaseNodeTest):
 
         self.assertEqual([child.name for child in weldment.children],
                          ['base'])
-        self.assertNotIn(weldment.post.uniq_id, weldment.scad_code)
+        self.assertNotIn(weldment.post.uniq_id, scad_code(weldment))
         self.assertNotEqual(Weldment().uniq_id, weldment.uniq_id)
 
     def test_time_cannot_change_structure(self):
@@ -309,7 +313,7 @@ class EmptyFusionTest(BaseNodeTest):
         with self.assertRaisesRegex(
                 Exception, rf"{type(fusion).__name__}.*at least one.*child"):
             fusion.assemble()
-        for path in (fusion.scad_file, fusion.brep_file, fusion.stl_file):
+        for path in (scad_file(fusion), fusion.brep_file, fusion.stl_file):
             self.assertFalse(os.path.exists(path), path)
 
     def test_an_explicit_empty_fusion_is_refused(self):

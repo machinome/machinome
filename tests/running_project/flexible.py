@@ -15,7 +15,7 @@ CadQuery in, and every other running fixture is answerable to neither.
 
 from machinome.motion.joints import Prismatic
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from ..flexible_project.spring import FREE_HEIGHT, Spring

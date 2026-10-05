@@ -2,10 +2,10 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 import os
 
-from machinome.node import StepNode
+from machinome.node.step import StepNode
 
 HERE = os.path.dirname(__file__)
 

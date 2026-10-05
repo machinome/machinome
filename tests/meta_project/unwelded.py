@@ -2,7 +2,8 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 
 from .parts import Cube
 

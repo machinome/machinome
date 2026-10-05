@@ -25,14 +25,14 @@ from unittest import TestCase, mock
 from machinome import currency
 from machinome.core.builder import Builder, BuildOutcome
 from machinome.core.loader import load_node, project_source_generation
-from machinome.node import JScadNode
+from machinome.node.jscad import JScadNode
 from machinome.node.base import StlRenderStart
 from machinome.source_generation import SourceChanged, SourceGeneration
 
 
 MODEL = '''\
 from solid2 import cube
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from .dimensions import VALUE
 
 
@@ -261,7 +261,8 @@ class BuilderGenerationGuardTest(ScratchLoadProject):
         artifact = os.path.join(self.root, 'part.stl')
         with open(artifact, 'w') as output:
             output.write('solid part\nendsolid part\n')
-        node = SimpleNamespace(
+        from tests.stand_in import NodeDouble
+        node = NodeDouble(
             rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact, files={source})
         builder = Builder('model.py', build_dir=self.root, watch=False)
@@ -332,7 +333,7 @@ class AsyncRendererGenerationGuardTest(TestCase):
 class ForeignSourceCacheTest(TestCase):
 
     def test_step_document_cache_rejects_same_mtime_replacement(self):
-        from machinome.node.adapters import step
+        from machinome.node import step
 
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, 'part.step')
@@ -356,7 +357,7 @@ class ForeignSourceCacheTest(TestCase):
             self.assertEqual(read.call_count, 2)
 
     def test_step_read_before_phase_rejects_replacement_during_read(self):
-        from machinome.node.adapters import step
+        from machinome.node import step
 
         with tempfile.TemporaryDirectory() as root:
             path = os.path.join(root, 'part.step')
@@ -395,7 +396,7 @@ class JScadGenerationGuardTest(TestCase):
         currency.record(self.target, 'old-digest', 'old-fingerprint')
 
     def node(self):
-        return SimpleNamespace(
+        node = SimpleNamespace(
             jscad_source=self.source,
             stl_file=self.target,
             local_stl='part.stl',
@@ -405,6 +406,11 @@ class JScadGenerationGuardTest(TestCase):
             _up_to_date=lambda path: False,
             artifact_import=mock.Mock(),
         )
+        # `present` is the leaf base's, which materializes a stale STL
+        # through the node's own `materialize`: the JSCAD one.
+        node.materialize = lambda rendered: JScadNode.materialize(
+            node, rendered)
+        return node
 
     def test_source_replacement_after_renderer_preserves_old_artifact(self):
         old_mtime = os.stat(self.source).st_mtime_ns
@@ -425,11 +431,11 @@ class JScadGenerationGuardTest(TestCase):
             return process
 
         with SourceGeneration(self.root) as generation, \
-             mock.patch('machinome.node.adapters.jscad.Popen',
+             mock.patch('machinome.node.jscad.Popen',
                         side_effect=launch):
             with self.assertRaises(SourceChanged):
                 with generation.phase([self.source], label='assembly'):
-                    JScadNode.as_scad(self.node(), None)
+                    JScadNode.present(self.node(), None)
 
         with open(self.target, 'rb') as artifact:
             self.assertEqual(artifact.read(), b'old artifact')
@@ -446,10 +452,10 @@ class JScadGenerationGuardTest(TestCase):
             process.communicate.side_effect = render
             return process
 
-        with mock.patch('machinome.node.adapters.jscad.Popen',
+        with mock.patch('machinome.node.jscad.Popen',
                         side_effect=launch):
             with self.assertRaises(CalledProcessError):
-                JScadNode.as_scad(self.node(), None)
+                JScadNode.present(self.node(), None)
 
         with open(self.target, 'rb') as artifact:
             self.assertEqual(artifact.read(), b'old artifact')

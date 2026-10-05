@@ -34,14 +34,21 @@ from machinome.source_generation import observation_key
 FRAMEWORK_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
-class _ExternalWrapperIdentity:
-    """Internal participation of the four external-file leaf adapters.
+class ExternalSourceIdentity:
+    """The identity of a leaf whose part comes from a file outside Python.
 
-    The asset determines artifact placement, but the Python wrapper decides
-    which producer owns it. Keep its origin relative to the already resolved
-    asset project; a wrapper outside a project is still an admitted wrapper.
-    Site specializations retain the author's module and therefore source.
-    No geometry or source contents are read here.
+    A declared member of the `leaf-contract` capability (ADR-155,
+    ADR-163), mixed in before the leaf base by a leaf whose
+    `get_source_file()` returns an asset -- a mesh, a STEP document, a
+    script of another modelling language -- as the core's `StlNode`,
+    `StepNode` and `JScadNode` and a node package's own leaves do. The
+    asset determines artifact
+    placement, but the Python wrapper decides which producer owns it, so
+    the wrapper module's project-relative path joins the node's
+    `uniq_id`: two wrappers of one asset are two artifacts. A wrapper
+    outside a project is still an admitted wrapper, and a site
+    specialization keeps the author's module and therefore its source. No
+    geometry or source contents are read here.
     """
 
     def _external_identity_origin(self, root):
@@ -123,7 +130,7 @@ def require_source_file(klass, attribute, declared, path):
     """Refuse a leaf whose declared source file is not there.
 
     Called by each source-bound adapter (`StlNode`, `StepNode`,
-    `JScadNode`, `OpenScadNode`) immediately after it resolves its
+    `JScadNode`, and a node package's own) immediately after it resolves its
     declared attribute into an absolute `path`, before `super().__init__`
     reads anything from it. `klass` is the constructing subclass;
     `attribute` and `declared` are the class attribute's name and the

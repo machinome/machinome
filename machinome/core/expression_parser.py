@@ -1,7 +1,7 @@
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""Stack-driven scalar parser, including SCAD-local let closures.
+"""Stack-driven scalar parser, including local `let` closures.
 
 Grammar calls yield child parsers to a trampoline. Neither parenthesis depth
 nor operator depth consumes Python's call stack. Local names resolve to graph

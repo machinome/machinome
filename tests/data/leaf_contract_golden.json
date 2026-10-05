@@ -1,0 +1,136 @@
+{
+  "bench_commit": "eebedf2503f474d3c71434411327f26d86e6119b",
+  "fixtures": {
+    "build123d_sheet_panel": {
+      "artifacts": {
+        ".brep": {
+          "digest": "a23191b69f1ed84f2b7ff4dec2140e29577cee64e163bbd868060ec2239421a4",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "ee623ac60579c5f36def034592351720e9bc6eabed37ab7c1d063ce922a4eca4",
+          "stamp_matches": true
+        },
+        ".dxf": {
+          "digest": "a23191b69f1ed84f2b7ff4dec2140e29577cee64e163bbd868060ec2239421a4",
+          "entities_sha256": "fab024cdfcff361cff66df6d7212250ea1ecf21da34faadabc02c3bea9808929",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "stamp_matches": true
+        },
+        ".stl": {
+          "digest": "a23191b69f1ed84f2b7ff4dec2140e29577cee64e163bbd868060ec2239421a4",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "9dc0fb2c48772df0e9f620f54277efafea89576a036678e6bf4c6e8d64f1bd29",
+          "stamp_matches": true
+        }
+      },
+      "uniq_id": "FramePanel-347a8fc9fd91"
+    },
+    "exact_leaf_with_marking": {
+      "artifacts": {
+        ".brep": {
+          "digest": "f5793c6b461752fe471b8edb411d4682c3e4e5b84135e006beb22e46f07bbcaf",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "eb2077fa4d228d5c752288b679c27816a72c9eaa6b614f9507250bc445050e72",
+          "stamp_matches": true
+        },
+        ".marking-digits.stl": {
+          "digest": "879a2091d9b5f30c04de382a80a9c0090c2477db699b03e0eb28fb12c8472b09",
+          "fingerprint_matches": true,
+          "record_version": 3,
+          "sha256": "bd3dacd344bd50504ba27a50d6779ab9f12b3847b48a28a9e13dbb4339f57531",
+          "stamp_matches": true
+        },
+        ".stl": {
+          "digest": "f5793c6b461752fe471b8edb411d4682c3e4e5b84135e006beb22e46f07bbcaf",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "62f6c453fd9282cb90c4011a6bafb4c235989551fae269e75d60b269da9d0ad8",
+          "stamp_matches": true
+        }
+      },
+      "uniq_id": "Dial-9f2c3557d753"
+    },
+    "jscad_node": {
+      "skipped": "jscad is not on the PATH"
+    },
+    "molejo_snapshot": {
+      "artifacts": {
+        "-741c57989c14.stl": {
+          "digest": "519b524ef285f8846de1e69dba19aadc868ee2a15eb1d110022561ee31cc56b8",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "b82876ab2a6608242f9aa97e595e27f61eeab9ad38c84d0d026bc33cd8f1d09f",
+          "stamp_matches": true
+        }
+      },
+      "uniq_id": "Spring-db29e82a9287"
+    },
+    "openscad_node": {
+      "artifacts": {
+        ".scad": {
+          "digest": "8d9fdaa8031d8137d3ba412b5378b667582707199575dbca710b63678d925fe1",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "aa013ab2370fc4d34233cbcd1332a57a6247cd1062b548548a209aa982305dcf",
+          "stamp_matches": true
+        },
+        ".stl": {
+          "digest": "8d9fdaa8031d8137d3ba412b5378b667582707199575dbca710b63678d925fe1",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "f0dae9212ad29d986ca72eaf780a271e435e410791c3ffbd43f4a34557855ea1",
+          "stamp_matches": true
+        }
+      },
+      "uniq_id": "__Block_,_leaf_contract_project_parts.py__-845ed072074a"
+    },
+    "solid2_node": {
+      "artifacts": {
+        ".scad": {
+          "digest": "125e8ae977ba70d095d5c3fc6a66872579264eec7a95cd9d28b7d5bc9d1a9732",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "9425d5158ab14238d2df9bfadc7a6f02e9a1b306770ac78cb41e94294d60e7dc",
+          "stamp_matches": true
+        },
+        ".stl": {
+          "digest": "125e8ae977ba70d095d5c3fc6a66872579264eec7a95cd9d28b7d5bc9d1a9732",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "244a20775add5aaebb63644caeb8a89c8c7a4cb14db27cff706b14dcb5c5cea0",
+          "stamp_matches": true
+        }
+      },
+      "uniq_id": "Washer-feb6a91bcb05"
+    },
+    "stl_node_with_markings": {
+      "artifacts": {
+        ".marking-badge.stl": {
+          "digest": "bd528dc91f9cdbf8089d68699993d2c5c9feb3717c8adac5eb7f70ab5bd4a051",
+          "fingerprint_matches": true,
+          "record_version": 3,
+          "sha256": "ff24e82d90c28677ae076d9f2b66ad54a9d44b980561d338d5158a3660311ed9",
+          "stamp_matches": true
+        },
+        ".marking-band.stl": {
+          "digest": "842c66e0a514e3e8f547affe62a50ac92df3a84440d4a28b40e39cb1616fa04a",
+          "fingerprint_matches": true,
+          "record_version": 3,
+          "sha256": "e492ab49a5dbb307836f5eb982be13d809b6d69261b12c30dc15bbecf1741420",
+          "stamp_matches": true
+        },
+        ".stl": {
+          "digest": "e09aa8c778782550c6bf6f538f2a3c2a413d3753f0489d41645450b419a089a8",
+          "fingerprint_matches": true,
+          "record_version": 2,
+          "sha256": "2d8a0cac2bd190025f8e8b3cbb4c13d7e97839419e92df7b3d4effa4a98e504a",
+          "stamp_matches": true
+        }
+      },
+      "uniq_id": "__Plate_,_markings_project_plate.py__-d5c4be96a4d1"
+    }
+  }
+}

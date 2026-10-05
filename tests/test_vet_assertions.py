@@ -79,6 +79,43 @@ class FrameworkInternalTest(TestCase):
                'framework-internal', 'machinome.core.builder'),
         })
 
+    def test_production_writers_do_not_enter_the_pure_model_contract(self):
+        fixture = 'production_writers'
+        self.assertEqual(findings(run_vet(fixture)), {
+            at(fixture, 'from machinome.model import ModelSnapshot',
+               'framework-internal', 'machinome.model.ModelSnapshot'),
+            at(fixture, 'from machinome.production.profile import Production',
+               'framework-internal', 'machinome.production.profile'),
+        })
+
+
+class ExactEngineInternalTest(TestCase):
+    """The exact internals and the engine's file operations are framework
+    internals; the engine's other operations and the seam's error types are
+    contract (OpenSpec change `exact-engine`, design.md Decision 14)."""
+
+    def test_internals_are_found_and_the_contract_passes(self):
+        fixture = 'exact_engine_internals'
+
+        self.assertEqual(findings(run_vet(fixture)), {
+            at(fixture, 'from machinome.engine.brep import write_brep',
+               'framework-internal', 'machinome.engine.brep.write_brep'),
+            at(fixture, 'import machinome.brep_artifacts',
+               'framework-internal', 'machinome.brep_artifacts'),
+            at(fixture, 'LOAD = machinome.brep_cache.cached_shape',
+               'framework-internal', 'machinome.brep_cache'),
+        })
+
+
+class LeafModuleTest(TestCase):
+    """The leaf modules at their final addresses are contract members
+    (OpenSpec change `lean-install`, `vet` "A framework internal is a
+    finding"): vet judges a name by its place in the universe, so this
+    passes before the change as after it."""
+
+    def test_a_leaf_module_passes(self):
+        self.assertEqual(findings(run_vet('leaf_modules')), set())
+
 
 class FileWriteTest(TestCase):
     """(5.3)"""

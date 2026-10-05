@@ -33,7 +33,9 @@ from unittest import TestCase, mock
 import cadquery as cq
 from solid2 import cube
 
-from machinome.node import CadQueryNode, FusionNode, Solid2Node
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.base import StlRenderStart
 
 from . import coarse_fs
@@ -203,15 +205,20 @@ class CoarseFilesystemTest(BaseNodeTest):
                 f'({float_to_ns(node.mtime)} ns as a float)')
 
     def test_exact_leaf_caches_on_a_millisecond_filesystem(self):
-        """A CadQuery leaf's .stl, .scad and .brep must all report current
-        after a build whose stamps could only be recorded to the
-        millisecond."""
+        """A CadQuery leaf's .stl and .brep, and its .scad when one is
+        generated, must all report current after a build whose stamps could
+        only be recorded to the millisecond. (Since `scad-presentation`
+        `assemble()` writes no `.scad`; the OpenSCAD writer's
+        `generate_scad(node)` does, through the same stamping writer,
+        `currency.publish_text`.)"""
+        from machinome.node.openscad.writer import generate_scad, scad_file
         with millisecond_filesystem():
             node = ExactLeaf()
             self.quantise_sources(node)
             node.assemble()
+            generate_scad(node)
 
-            self.assertArtifactsCurrent(node, node.stl_file, node.scad_file,
+            self.assertArtifactsCurrent(node, node.stl_file, scad_file(node),
                                         node.brep_file)
 
     def test_an_unchanged_exact_leaf_is_not_rebuilt(self):
@@ -244,7 +251,8 @@ class CoarseFilesystemTest(BaseNodeTest):
 
     def test_faceted_leaf_caches_on_a_millisecond_filesystem(self):
         """The OpenSCAD path stamps its STL in StlRenderStart.finish and
-        its scad in _atomic_write_text -- different writers, same rule."""
+        its scad in currency.publish_text -- different writers, same
+        rule."""
         if shutil.which('openscad') is None:
             self.skipTest('openscad is not installed')
 
@@ -343,9 +351,12 @@ class NativeFilesystemTest(BaseNodeTest):
     def test_exact_equality_still_holds_natively(self):
         node = ExactLeaf()
         node.assemble()
+        # `assemble()` writes no `.scad` (`scad-presentation`).
+        from machinome.node.openscad.writer import generate_scad, scad_file
+        generate_scad(node)
 
         self.assertTrue(node._up_to_date(node.stl_file))
-        self.assertTrue(node._up_to_date(node.scad_file))
+        self.assertTrue(node._up_to_date(scad_file(node)))
         self.assertTrue(node._up_to_date(node.brep_file))
         self.assertEqual(os.stat(node.stl_file).st_mtime_ns,
                          os.stat(node.brep_file).st_mtime_ns)

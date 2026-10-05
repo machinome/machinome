@@ -9,8 +9,9 @@ ADR-010 (TestCaseMixin embedded tests), ADR-011 (animation testing
 decorators), ADR-025 (perturbation-based kinematic fit assertions), and
 ADR-029 (Manifold cache and AABB broad-phase for intersection assertions),
 ADR-039 (topmost-rigid solid integrity), ADR-040 (topmost-rigid assembly
-integrity certificate), and ADR-073 (the comparison kernel as a property of
-the test run).
+integrity certificate), ADR-073 (the comparison engine, which it called the
+kernel, as a property of the test run), and ADR-180 (the run's engine,
+`brep` or `mesh`).
 
 Code: `machinome/test.py`, `machinome/manager/test.py`. The framework's own
 regression net is `tests/test_meta.py` over fixtures in `tests/meta_project/`
@@ -96,11 +97,11 @@ failed`, continued by `, S skipped`, `, X expected failures` and
 SHALL exit 1 when any test failed or any test succeeded unexpectedly, and 0
 otherwise; `--failfast` stops at the first test that fails the run. A run in
 which nothing was skipped, expected to fail, or unexpectedly successful
-SHALL print that line with none of those continuations. Under the faceted
-comparison kernel that summary line SHALL continue with
-` (faceted kernel, volume epsilon E mm³)`, and the run SHALL announce the
-kernel and epsilon on a line of its own before the first node is built; under
-the exact kernel the run's output is unchanged.
+SHALL print that line with none of those continuations. In a run on the
+mesh engine that summary line SHALL continue with
+` (mesh engine, volume epsilon E mm³)`, and the run SHALL announce the
+engine and epsilon on a line of its own before the first node is built; on
+the B-rep engine the run's output is unchanged.
 
 #### Scenario: Failing contract fails the run
 
@@ -140,18 +141,18 @@ the exact kernel the run's output is unchanged.
   classes and no companion test file
 - **THEN** both nodes are built and the run reports zero tests
 
-#### Scenario: A faceted run is labelled as one
+#### Scenario: A mesh run is labelled as one
 
-- **WHEN** `machinome test --faceted --volume-epsilon 0.5` runs a project
-- **THEN** a line before the first build names the faceted kernel and the
-  epsilon, and the summary line ends with `(faceted kernel, volume epsilon
+- **WHEN** `machinome test --mesh --volume-epsilon 0.5` runs a project
+- **THEN** a line before the first build names the mesh engine and the
+  epsilon, and the summary line ends with `(mesh engine, volume epsilon
   0.5 mm³)`
 
-#### Scenario: An exact run reads as it always did
+#### Scenario: A B-rep run reads as it always did
 
-- **WHEN** `machinome test` runs without a kernel selection and without
-  `SOLID_TEST_KERNEL` in the environment
-- **THEN** no kernel line is printed and, when no test was skipped,
+- **WHEN** `machinome test` runs without an engine selection and without
+  `SOLID_TEST_ENGINE` in the environment
+- **THEN** no engine line is printed and, when no test was skipped,
   expected to fail, or unexpectedly successful, the summary line is exactly
   `Ran N tests in X seconds: P passed, F failed`
 
@@ -218,7 +219,7 @@ compute a separate trimesh intersection of their own.
 `assertInside`, `assertClose` and `assertFar` are distance and containment
 questions rather than volume questions. They SHALL continue to sample one
 node's mesh vertices against the other's mesh surface, unchanged, whether or
-not the nodes are exact.
+not the nodes have B-rep geometry.
 
 #### Scenario: Intersection detected
 
@@ -232,11 +233,11 @@ not the nodes are exact.
 - **THEN** both read the same measured volume from the shared helper and
   cannot reach contradictory verdicts
 
-#### Scenario: Distance assertions are unaffected by exactness
+#### Scenario: Distance assertions are unaffected by `brep`
 
-- **WHEN** `assertClose` or `assertFar` is called on two exact nodes
+- **WHEN** `assertClose` or `assertFar` is called on two B-rep nodes
 - **THEN** it measures mesh vertices against a mesh surface exactly as it does
-  for faceted nodes
+  for mesh nodes
 
 ### Requirement: Perturbation-based fit assertions
 
@@ -262,13 +263,13 @@ checks both signs; `'forward'` only the positive.
 when `abs(volume) > volume_epsilon`, filtering flush-contact boolean noise.
 
 `volume_epsilon` applies only where flush-contact noise can arise, which is
-the faceted path. When a comparison routes exact, the assertion SHALL ignore
+the mesh path. When a comparison routes to the B-rep engine, the assertion SHALL ignore
 `volume_epsilon` and apply the strict verdict. When `volume_epsilon` was
-supplied and EVERY comparison the call performed routed exact, the assertion
+supplied and EVERY comparison the call performed routed to the B-rep engine, the assertion
 SHALL emit a warning naming the assertion, so a test does not silently keep
 recording a tolerance it no longer applies. When any comparison routed
-faceted, the epsilon remains live for those comparisons and no warning is
-emitted. Under the faceted comparison kernel no comparison routes exact, so
+mesh, the epsilon remains live for those comparisons and no warning is
+emitted. In a run on the mesh engine no comparison routes to the B-rep engine, so
 `volume_epsilon` is live for every comparison and the warning never fires;
 the run's own volume epsilon has already been applied to each verdict the
 assertion reads, so the two compose as a floor and a filter.
@@ -309,21 +310,21 @@ limit AND Free within it; `assertBlockedBeyond` alone is insufficient
 #### Scenario: An epsilon with nothing to absorb is reported
 
 - **WHEN** a perturbation assertion is given `volume_epsilon=1e-6` and both
-  compared nodes are exact
+  compared nodes have B-rep geometry
 - **THEN** the verdict is the strict one and a warning names the assertion
   whose epsilon was ignored
 
-#### Scenario: An epsilon still applies to a faceted comparison
+#### Scenario: An epsilon still applies to a mesh comparison
 
 - **WHEN** a perturbation assertion is given `volume_epsilon` and the
-  comparison routes faceted
+  comparison routes mesh
 - **THEN** the epsilon filters the verdict as before and no warning is emitted
 
-#### Scenario: A faceted run keeps every epsilon live
+#### Scenario: A mesh run keeps every epsilon live
 
 - **WHEN** a perturbation assertion is given `volume_epsilon=1e-6` on two
-  exact nodes and the run's kernel is faceted
-- **THEN** the epsilon filters the faceted verdict and no warning is emitted
+  B-rep nodes and the run's engine is `mesh`
+- **THEN** the epsilon filters the mesh verdict and no warning is emitted
 
 ### Requirement: Accelerated intersection evaluation
 
@@ -333,33 +334,38 @@ All intersection-volume assertions (`assertNotIntersecting`,
 sweep) SHALL route through one shared `(is_empty, volume)` helper.
 
 The helper SHALL select its evaluation path from the compared nodes and from
-the run's comparison kernel:
+the run's comparison engine:
 
-- When the run's kernel is exact and BOTH nodes are exact, it SHALL use the
-  EXACT path: each node's
+- When the run's engine is `brep` and BOTH nodes have B-rep geometry, it SHALL use the
+  B-rep path: each node's
   `shape()` is placed by its composed matrix and the two are intersected by
-  the boundary-representation kernel. The result is empty when it contains no
+  the B-rep engine. The result is empty when it contains no
   solid — boundary contact between coincident faces yields no solid and is
   therefore exactly empty with zero volume — and otherwise its volume is the
   summed volume of the solids it contains. A kernel failure raises under the
-  `exact-geometry` capability rather than falling back.
-- Otherwise, when both nodes expose an `stl_file`, it SHALL use the faceted
-  fast path, unchanged. Under the faceted kernel this is the path every pair
-  of built solids takes, exact or not: a node's `shape()` is never read, and
-  the exact-geometry stack is not imported by the test framework.
-- Otherwise (e.g. test doubles implementing only `.mesh`) it falls back to a
-  plain trimesh boolean over `.mesh` with identical verdict semantics.
+  `brep-geometry` capability rather than falling back.
+- Otherwise, when both nodes expose an `stl_file`, it SHALL use the mesh
+  fast path, unchanged. Under the mesh engine this is the path every pair
+  of built solids takes, B-rep or not: a node's `shape()` is never read, and
+  the B-rep stack is not imported by the test framework.
+- Otherwise (e.g. test doubles implementing only `.mesh`) it falls back to
+  intersecting the two `.mesh` geometries through the mesh engine, after
+  trimesh's own check that each is a volume and with trimesh's own message
+  when one is not, reading emptiness and volume off the resulting mesh as
+  trimesh reads them, with identical verdict semantics. It SHALL NOT call
+  `trimesh.boolean`, whose backend is the mesh engine's kernel reached outside
+  the mesh engine.
 
 The AABB broad-phase SHALL run ahead of every path: each part's local
 bounding-box corners are transformed by its composed world matrix into a
 conservative world AABB, and if the two boxes are disjoint the intersection is
 reported as exactly empty without running any boolean. This is an
 exact-negative shortcut that never changes a verdict, and it is what keeps the
-exact path's cost proportional to interacting pairs.
+B-rep path's cost proportional to interacting pairs.
 
-For a pair of EXACT solids a SECOND exact-negative tier MAY run after that
+For a pair of B-rep solids a SECOND exact-negative tier MAY run after that
 broad phase and before any boolean: a FACE-BOX tier with a containment guard.
-It SHALL report the pair exactly empty with zero volume, on the exact path,
+It SHALL report the pair exactly empty with zero volume, on the B-rep path,
 only when both of the following hold:
 
 - no bounding box of any face of either solid meets any bounding box of any
@@ -370,7 +376,7 @@ only when both of the following hold:
   OUTSIDE every solid of the other shape's placed geometry, each classification
   being of one point against one solid rather than against a shape as a whole.
 
-Each face's bounding box SHALL enclose that face's exact surface, and a box
+Each face's bounding box SHALL enclose that face's B-rep surface, and a box
 carried into the common frame MAY be enlarged by a fixed absolute margin
 absorbing the arithmetic of that frame change; enlargement SHALL only make the
 tier decline, never make it decide. Both classification directions SHALL be
@@ -391,9 +397,10 @@ verdict the kernel reports for it too. The tier SHALL run inside the memoized
 computation, so its verdict is cached and served under the same identity any
 boolean verdict is. The margin, the comparison frame and any internal chunking
 of the comparison are internal tuning values and SHALL NOT be exposed as an
-assertion argument, flag, or environment variable. The faceted path SHALL NOT
-have this tier: a faceted verdict is read from cached Manifolds, which carry
-no faces, and a faceted run reads no solid's exact geometry at all.
+assertion argument, flag, or environment variable. The mesh path SHALL NOT
+have this tier: a mesh verdict is read from the mesh engine's cached
+solids, which carry no faces, and a mesh run reads no solid's B-rep
+geometry at all.
 
 The per-STL cache SHALL be split by what each part of it needs:
 
@@ -401,150 +408,152 @@ The per-STL cache SHALL be split by what each part of it needs:
   `mesh` property uses, keyed by `(stl_file, mtime)` with stale entries
   evicted on rebuild, whenever a solid is selected. This half SHALL NOT
   require the mesh engine and SHALL NOT judge the mesh: selecting a solid,
-  placing it in the broad phase, or comparing it on the exact kernel never
+  placing it in the broad phase, or comparing it on the B-rep engine never
   raises for the state of its mesh;
-- one `manifold3d.Manifold` per `(stl_file, mtime)` (module-level, stale
-  entries evicted on rebuild) is built from that same cached base mesh at the
-  FIRST comparison that actually reads it, and never for a solid whose every
-  comparison is decided by the boundary-representation kernel. Repeated reads
-  SHALL reuse the one cached Manifold, so deferring construction SHALL NOT
-  increase the number of Manifolds built for any assembly. The mesh engine's
-  own construction status is the admissibility verdict: a Manifold whose
-  `status()` is not `NoError` SHALL raise a `ValueError` naming the STL file
-  and the engine's status, with trimesh's watertightness verdict as a
-  diagnostic, and SHALL NOT be cached; a mesh the engine accepts
-  is compared whatever trimesh says of it. A flexible leaf's Manifold, built
-  from its evaluated mesh at the current binding, is judged the same way and
-  the error names the node.
+- one mesh-engine solid per `(stl_file, mtime)` (module-level, stale
+  entries evicted on rebuild) is built by the mesh engine from that same
+  cached base mesh at the FIRST comparison that actually reads it, and never
+  for a solid whose every comparison is decided by the B-rep
+  engine. The core SHALL hold the solid as an opaque handle and ask the mesh
+  engine for every operation on it. Repeated reads SHALL reuse the one cached
+  solid, so deferring construction SHALL NOT increase the number of solids
+  built for any assembly. The mesh engine's own judgement of the solid it
+  built is the admissibility verdict: a solid the engine does not admit SHALL
+  raise a `ValueError` naming the STL file and the engine's own word for the
+  fault, with trimesh's watertightness verdict as a diagnostic, and SHALL NOT
+  be cached; a mesh the engine accepts is compared whatever trimesh says of
+  it. A flexible leaf's solid, built from its evaluated mesh at the current
+  binding, is judged the same way and the error names the node.
 
-The faceted fast path SHALL then place the cached Manifolds with a lazy
-`transform()` and intersect them directly, reading `is_empty()` and `volume()`
-off the result with no conversion back to trimesh, reading `volume` only when
+The mesh fast path SHALL then place the cached solids by the mesh
+engine's placement, which re-meshes and re-judges nothing, and intersect them
+directly through the engine, reading the engine's emptiness and volume off the
+result with no conversion back to trimesh, reading the volume only when
 non-empty.
 
-Under the faceted kernel the helper SHALL apply the run's volume epsilon to
-every verdict it returns, on either faceted path: a result whose volume does
+Under the mesh engine the helper SHALL apply the run's volume epsilon to
+every verdict it returns, on either mesh path: a result whose volume does
 not exceed the epsilon is reported as empty with zero volume. At the default
 epsilon of 0.0 this changes nothing.
 
-Verdict semantics on the FACETED path SHALL be preserved exactly: `is_empty`
+Verdict semantics on the MESH path SHALL be preserved exactly: `is_empty`
 is the boolean engine's own emptiness — a non-empty result with exactly
 0.0 mm³ volume (real flush contact) still counts as fouling at the strict
 `volume_epsilon=0` default, and only a `volume_epsilon > 0` comparison may
 treat it as clear (the volume-epsilon contract of ADR-025 depends on this;
 folding zero volume into emptiness is explicitly rejected — ADR-029). On the
-EXACT path that construction does not arise: flush contact produces no solid
+B-rep path that construction does not arise: flush contact produces no solid
 and is genuinely empty, so there is no float-noise sliver for an epsilon to
 absorb.
 
 The bounding boxes the broad phase transforms SHALL come from the cached base
-mesh for every solid, exact or faceted. The candidate pairs a given assembly
-emits SHALL NOT depend on whether its solids carry exact geometry.
+mesh for every solid, B-rep or mesh. The candidate pairs a given assembly
+emits SHALL NOT depend on whether its solids carry B-rep geometry.
 
 #### Scenario: Distant parts skip the boolean
 
 - **WHEN** `assertNoPairwiseIntersections` sweeps an assembly where most
   leaf pairs are far apart
-- **THEN** disjoint-box pairs are culled without any exact boolean and the
+- **THEN** disjoint-box pairs are culled without any B-rep Boolean and the
   verdicts are identical to the unculled computation
 
 #### Scenario: Flush contact still strict
 
-- **WHEN** two FACETED parts share a flush face producing a non-empty,
+- **WHEN** two MESH parts share a flush face producing a non-empty,
   zero-volume intersection and `volume_epsilon` is 0
 - **THEN** the assertion reports a foul, forcing an explicit
   `volume_epsilon` opt-in
 
 #### Scenario: Non-watertight part
 
-- **WHEN** a faceted fast-path assertion reads an STL from which the mesh
-  engine builds a Manifold whose status is not `NoError` (a box missing a
-  triangle, say)
-- **THEN** it raises a `ValueError` naming that STL file and the engine's
-  status, and the Manifold is not cached
+- **WHEN** a mesh fast-path assertion reads an STL from which the mesh
+  engine builds a solid it does not admit (a box missing a triangle, say)
+- **THEN** it raises a `ValueError` naming that STL file and the engine's own
+  word for the fault (`NotManifold` from the provider this framework
+  resolves), and the solid is not cached
 
 #### Scenario: A mesh trimesh doubts and the engine accepts
 
-- **WHEN** a faceted fast-path assertion reads an STL whose edges are shared
+- **WHEN** a mesh fast-path assertion reads an STL whose edges are shared
   by four faces, so trimesh reports it non-watertight, and the mesh engine
-  builds it with `NoError`
+  admits the solid it builds from it
 - **THEN** the assertion compares the part and reaches the engine's verdict,
   with no error
 
-#### Scenario: An exact run never judges a mesh
+#### Scenario: A B-rep run never judges a mesh
 
-- **WHEN** the run's kernel is exact, two exact solids are compared, and one
+- **WHEN** the run's engine is `brep`, two B-rep solids are compared, and one
   of them has an STL the mesh engine would refuse
-- **THEN** the verdict is the boundary-representation kernel's, no Manifold
-  is built, and the STL's state raises nothing
+- **THEN** the verdict is the B-rep engine's, no
+  mesh-engine solid is built, and the STL's state raises nothing
 
 #### Scenario: The broad phase does not judge a mesh
 
 - **WHEN** `assertNoSolidInterference` selects a solid whose STL the mesh
-  engine would refuse and no candidate pair compares it faceted
+  engine would refuse and no candidate pair compares it mesh
 - **THEN** the sweep completes with the kernel's verdicts and the solid's
   bounding box culls its pairs as any other's does
 
-#### Scenario: An exact tight fit is not interference
+#### Scenario: A B-rep tight fit is not interference
 
-- **WHEN** two exact solids meet on coincident cylindrical faces at zero
+- **WHEN** two B-rep solids meet on coincident cylindrical faces at zero
   nominal clearance, and one is rotated relative to the other
-- **THEN** the exact intersection contains no solid, the helper reports empty
+- **THEN** the B-rep intersection contains no solid, the helper reports empty
   with zero volume, and the facet phase of either part is irrelevant to the
   verdict
 
-#### Scenario: A mixed pair uses the faceted path
+#### Scenario: A mixed pair uses the mesh path
 
-- **WHEN** one compared node is exact and the other is not
-- **THEN** the helper uses the faceted path and its verdict semantics are
+- **WHEN** one compared node has B-rep geometry and the other is not
+- **THEN** the helper uses the mesh path and its verdict semantics are
   those of that path
 
-#### Scenario: An exact assembly builds no Manifold
+#### Scenario: A B-rep assembly builds no mesh-engine solid
 
 - **WHEN** `assertNoSolidInterference` verifies an assembly whose every selected
-  solid is exact
-- **THEN** no `manifold3d.Manifold` is constructed for any of those solids, and
+  solid has B-rep geometry
+- **THEN** no mesh-engine solid is constructed for any of those solids, and
   the verdict is the one the kernel reaches
 
-#### Scenario: A mixed assembly builds a Manifold only for the solids it compares faceted
+#### Scenario: A mixed assembly builds a mesh-engine solid only for the solids it compares on meshes
 
-- **WHEN** an assembly's selected solids include exact and faceted parts and only
-  some candidate pairs route faceted
-- **THEN** a Manifold is built for each solid a faceted comparison reads, once
-  each, and for no other solid
+- **WHEN** an assembly's selected solids include B-rep and mesh parts and only
+  some candidate pairs route mesh
+- **THEN** a mesh-engine solid is built for each solid a mesh comparison
+  reads, once each, and for no other solid
 
-#### Scenario: A faceted run compares exact parts on their meshes
+#### Scenario: A mesh run compares B-rep parts on their meshes
 
-- **WHEN** the run's kernel is faceted and both compared nodes are exact
-- **THEN** the helper uses the faceted fast path over the nodes' built STLs,
+- **WHEN** the run's engine is `mesh` and both compared nodes have B-rep geometry
+- **THEN** the helper uses the mesh fast path over the nodes' built STLs,
   reads neither node's `shape()`, and the verdict semantics are those of the
-  faceted path
+  mesh path
 
 #### Scenario: The run's epsilon absorbs tessellation contact
 
-- **WHEN** the run's kernel is faceted with a volume epsilon of 0.5 mm³ and
-  two parts' meshes share 0.2 mm³ where their exact solids only touch
+- **WHEN** the run's engine is `mesh` with a volume epsilon of 0.5 mm³ and
+  two parts' meshes share 0.2 mm³ where their B-rep solids only touch
 - **THEN** the helper reports the pair empty with zero volume, and
   `assertNotIntersecting` passes
 
 #### Scenario: A real overlap survives the run's epsilon
 
-- **WHEN** the run's kernel is faceted with a volume epsilon of 0.5 mm³ and
+- **WHEN** the run's engine is `mesh` with a volume epsilon of 0.5 mm³ and
   two parts share 12 mm³
 - **THEN** the helper reports the measured volume and the assertion fails as
-  it does on the exact kernel
+  it does on the B-rep engine
 
-#### Scenario: An enclosed exact pair skips the boolean
+#### Scenario: An enclosed B-rep pair skips the boolean
 
-- **WHEN** two exact solids' whole-solid bounds overlap — one solid lying
+- **WHEN** two B-rep solids' whole-solid bounds overlap — one solid lying
   inside the region the other spans — while no face of either comes near any
   face of the other
-- **THEN** the helper reports the pair empty with zero volume on the exact
+- **THEN** the helper reports the pair empty with zero volume on the B-rep
   path without running any boolean
 
 #### Scenario: Containment is not mistaken for separation
 
-- **WHEN** one exact solid lies wholly inside another, so their boundaries do
+- **WHEN** one B-rep solid lies wholly inside another, so their boundaries do
   not meet at all
 - **THEN** the containment guard finds a representative point inside the
   partner, the boolean runs, and the helper reports the positive intersection
@@ -552,22 +561,22 @@ emits SHALL NOT depend on whether its solids carry exact geometry.
 
 #### Scenario: A solid in a cavity is empty
 
-- **WHEN** one exact solid lies wholly inside a cavity of another, touching no
+- **WHEN** one B-rep solid lies wholly inside a cavity of another, touching no
   face of it
 - **THEN** the helper reports the pair empty with zero volume, the same
-  verdict the boundary-representation kernel reports for it
+  verdict the B-rep engine reports for it
 
 #### Scenario: Flush contact still reaches the kernel
 
-- **WHEN** two exact solids meet on a coincident face, their touching face
+- **WHEN** two B-rep solids meet on a coincident face, their touching face
   boxes overlapping
 - **THEN** the face-box tier declines, the boolean runs, and the verdict is
-  the kernel's own — empty with zero volume for coincident exact faces, as it
+  the kernel's own — empty with zero volume for coincident B-rep faces, as it
   is without the tier
 
 #### Scenario: A compound whose components straddle the partner
 
-- **WHEN** one exact shape is a compound of two solids, one of them wholly
+- **WHEN** one B-rep shape is a compound of two solids, one of them wholly
   inside the other shape and one wholly outside it, and no boundaries meet
 - **THEN** the per-solid containment guard, classifying each shape's solids
   against each solid of the other, finds the inside component, the boolean
@@ -575,18 +584,26 @@ emits SHALL NOT depend on whether its solids carry exact geometry.
 
 #### Scenario: A shape the tier cannot represent falls through
 
-- **WHEN** an exact shape presented to the tier carries no faces, or a solid
+- **WHEN** a B-rep shape presented to the tier carries no faces, or a solid
   of it carries no representative point, or the pair's relative placement is
   not finite
 - **THEN** the tier decides nothing and the pair is settled by the boolean
   exactly as it is without the tier
 
-#### Scenario: A faceted pair has no face-box tier
+#### Scenario: A mesh pair has no face-box tier
 
-- **WHEN** a pair is evaluated on the faceted path, whether because a solid is
-  faceted or because the run's kernel is faceted
-- **THEN** no face bounding box is computed, no solid's exact geometry is
-  read, and the verdict is the cached Manifolds' own
+- **WHEN** a pair is evaluated on the mesh path, whether because a solid has no B-rep geometry or because the run's engine is `mesh`
+- **THEN** no face bounding box is computed, no solid's B-rep geometry is
+  read, and the verdict is the mesh engine's own, read off its cached
+  solids
+
+#### Scenario: Mesh-only nodes are intersected through the mesh engine
+
+- **WHEN** two test doubles that expose only `.mesh` are compared
+- **THEN** their meshes are intersected by the mesh engine, emptiness and
+  volume are those trimesh reads off the resulting mesh, exactly the values
+  `trimesh.boolean.intersection` returned for them, and `trimesh.boolean` is
+  not called
 
 ### Requirement: Whole-assembly solid interference assertion
 
@@ -604,14 +621,14 @@ bounds — taken on world axes, or in the indexing frame the index chose under
 the `Broad-phase completeness` requirement — SHALL be the sole verification
 path: it emits every potentially
 interacting solid pair without first materializing every pairwise combination,
-and each emitted pair is evaluated by exact Boolean intersection of the two
-solids placed by their composed world transforms. Under the exact comparison
-kernel a pair of exact solids SHALL be evaluated by the boundary-representation
-kernel and any other pair by the cached Manifolds as before; under the faceted
-kernel every pair SHALL be evaluated by the cached Manifolds and no solid's
-exact geometry is read.
+and each emitted pair is evaluated by B-rep Boolean intersection of the two
+solids placed by their composed world transforms. In a run on the B-rep
+engine a pair of B-rep solids SHALL be evaluated by the B-rep
+engine and any other pair by the cached mesh-engine solids as before; on the mesh
+engine every pair SHALL be evaluated by the cached mesh-engine solids and no solid's
+B-rep geometry is read.
 
-An emitted pair of exact solids MAY be decided empty BEFORE any boolean by the
+An emitted pair of B-rep solids MAY be decided empty BEFORE any boolean by the
 face-box tier of the `Accelerated intersection evaluation` requirement, which
 is an exact-negative shortcut of the same kind as the bounds index above it:
 it may only remove boolean work, and may not change which pairs are emitted,
@@ -622,27 +639,27 @@ aggregate volume, Boolean union, or other whole-assembly measurement of the
 selected solids.
 
 Placing a solid for the spatial index SHALL NOT of itself construct that solid's
-faceted representation. A solid's Manifold SHALL be built only when a candidate
+mesh representation. A solid's mesh-engine solid SHALL be built only when a candidate
 pair it belongs to is actually evaluated by the mesh engine, so an assembly whose
-every selected solid is exact SHALL require no mesh engine at all — see the
+every selected solid has B-rep geometry SHALL require no mesh engine at all — see the
 `mesh-engine-dependency` capability.
 
 Positive-volume overlap SHALL fail. Empty intersection and non-empty
 zero-volume boundary contact SHALL pass. The assertion SHALL expose no overlap
 epsilon and SHALL apply no numerical tolerance of its own: every positive
-intersection volume reported by the kernel is interference. Under the faceted
-kernel the verdicts it reads have already had the run's volume epsilon
+intersection volume reported by the kernel is interference. Under the mesh
+engine the verdicts it reads have already had the run's volume epsilon
 applied, like every other volume question in that run; the assertion adds
 nothing to it.
 
-For a candidate evaluated on the faceted representation, a finite negative
+For a candidate evaluated on the mesh representation, a finite negative
 intersection volume SHALL NOT count as positive-volume interference and the
 assertion SHALL continue to the remaining candidates. This rule SHALL NOT
 alter the engine's raw emptiness or measured volume, apply a magnitude cutoff,
 or change the shared verdict consumed by pairwise or fit assertions. The
-representation of the candidate, not only the run's selected kernel, SHALL
+representation of the candidate, not only the run's selected engine, SHALL
 determine whether this rule applies. Non-empty candidates with non-finite
-volume SHALL still fail; exact-representation candidate behavior SHALL remain
+volume SHALL still fail; B-rep candidate behavior SHALL remain
 unchanged.
 
 When an offending candidate is found, the assertion SHALL raise
@@ -670,7 +687,7 @@ project test code calls it; builders and non-test commands SHALL NOT invoke it.
 - **THEN** the assertion fails naming those solids and their intersection
   volume
 
-#### Scenario: Exact boundary contact is not material interference
+#### Scenario: B-rep boundary contact is not material interference
 
 - **WHEN** two topmost rigid solids meet only on a boundary and the kernel
   reports zero shared volume
@@ -720,37 +737,37 @@ project test code calls it; builders and non-test commands SHALL NOT invoke it.
   solid — one per candidate indexing frame considered, each from the same
   eight local-bounds corners
 
-#### Scenario: An exact assembly is verified exactly
+#### Scenario: A B-rep assembly is verified on the B-rep engine
 
-- **WHEN** every selected solid in the assembly is exact
-- **THEN** each candidate pair is evaluated by the boundary-representation
-  kernel, and a nominally exact fit between two of them does not register as
+- **WHEN** every selected solid in the assembly has B-rep geometry
+- **THEN** each candidate pair is evaluated by the B-rep
+  engine, and a nominally exact fit between two of them does not register as
   interference
 
-#### Scenario: An exact assembly is verified without the mesh engine
+#### Scenario: A B-rep assembly is verified without the mesh engine
 
-- **WHEN** every selected solid in the assembly is exact and `manifold3d` cannot
+- **WHEN** every selected solid in the assembly has B-rep geometry and `manifold3d` cannot
   be imported
 - **THEN** the assertion reaches the same verdict it reaches with the mesh
   engine installed
 
 #### Scenario: A mixed assembly verifies each pair by what it has
 
-- **WHEN** some selected solids are exact and others are not
-- **THEN** pairs of exact solids are evaluated exactly, pairs involving a
-  faceted solid are evaluated by the cached Manifolds, and one assertion
+- **WHEN** some selected solids have B-rep geometry and others are not
+- **THEN** pairs of B-rep solids are evaluated on the B-rep engine, pairs involving a
+  mesh solid are evaluated by the cached mesh-engine solids, and one assertion
   reports over both
 
-#### Scenario: A faceted run verifies an exact assembly on its meshes
+#### Scenario: A mesh run verifies a B-rep assembly on its meshes
 
-- **WHEN** every selected solid is exact and the run's kernel is faceted
-- **THEN** each candidate pair is evaluated by the cached Manifolds, no
+- **WHEN** every selected solid has B-rep geometry and the run's engine is `mesh`
+- **THEN** each candidate pair is evaluated by the cached mesh-engine solids, no
   solid's `shape()` is read, and a pair whose meshes share no more than the
   run's volume epsilon passes
 
 #### Scenario: A solid enclosed by another's bounds but touching none of its faces
 
-- **WHEN** an exact assembly places a solid inside the region another solid
+- **WHEN** a B-rep assembly places a solid inside the region another solid
   spans — a wheel between two plates, say — so their bounds overlap in every
   frame, while no face of one comes near any face of the other
 - **THEN** the index emits that pair, the face-box tier decides it empty
@@ -758,40 +775,40 @@ project test code calls it; builders and non-test commands SHALL NOT invoke it.
 
 #### Scenario: A solid wholly inside another still fails
 
-- **WHEN** one topmost rigid exact solid lies wholly inside another, their
+- **WHEN** one topmost rigid B-rep solid lies wholly inside another, their
   boundaries not meeting
 - **THEN** the assertion fails naming both solids and their intersection
   volume, the containment guard having sent the pair to the boolean
 
 #### Scenario: A solid inside another's cavity passes
 
-- **WHEN** one topmost rigid exact solid lies wholly inside a cavity of
+- **WHEN** one topmost rigid B-rep solid lies wholly inside a cavity of
   another, touching none of its faces
 - **THEN** the assertion passes that candidate, the two sharing no material
 
-#### Scenario: Flush contact in an exact assembly still reaches the kernel
+#### Scenario: Flush contact in a B-rep assembly still reaches the kernel
 
-- **WHEN** two topmost rigid exact solids meet on a coincident face
+- **WHEN** two topmost rigid B-rep solids meet on a coincident face
 - **THEN** the boolean runs for that pair and reports it non-empty with
   exactly zero volume, which the assertion passes without a public epsilon
 
 #### Scenario: A compound solid with one component inside the partner fails
 
-- **WHEN** a topmost rigid exact solid comprises two solids, one wholly inside
+- **WHEN** a topmost rigid B-rep solid comprises two solids, one wholly inside
   another topmost rigid solid and one wholly outside it
 - **THEN** the assertion fails naming that pair, the containment guard being
   applied to every solid of a shape rather than to the shape as a whole
 
-#### Scenario: Negative faceted volume is not positive shared material
+#### Scenario: Negative mesh volume is not positive shared material
 
-- **WHEN** a non-empty faceted candidate reports a finite negative volume,
+- **WHEN** a non-empty mesh candidate reports a finite negative volume,
   including −9.947598300641403e−14 mm³, at zero run epsilon
 - **THEN** the assembly assertion passes that candidate without rewriting
   its raw measurement or emptiness and continues checking the assembly
 
 #### Scenario: A later positive candidate still fails
 
-- **WHEN** a negative-volume faceted candidate is followed by a positive-volume
+- **WHEN** a negative-volume mesh candidate is followed by a positive-volume
   candidate at zero run epsilon
 - **THEN** the assertion fails naming the positive pair and its volume
 
@@ -804,10 +821,10 @@ project test code calls it; builders and non-test commands SHALL NOT invoke it.
 
 #### Scenario: Mixed assembly preserves the representation boundary
 
-- **WHEN** a pair involving a faceted solid is evaluated on meshes during
-  an exact run and reports a finite negative volume
-- **THEN** the assembly assertion passes that candidate, while an
-  exact-representation non-empty negative result retains its failure
+- **WHEN** a pair involving a mesh solid is evaluated on meshes during
+  a B-rep run and reports a finite negative volume
+- **THEN** the assembly assertion passes that candidate, while a
+  B-rep non-empty negative result retains its failure
 
 #### Scenario: Non-finite volume is not a passing measurement
 
@@ -817,7 +834,7 @@ project test code calls it; builders and non-test commands SHALL NOT invoke it.
 
 #### Scenario: Strict pairwise contact remains strict
 
-- **WHEN** the faceted engine reports a non-empty negative or zero-volume
+- **WHEN** the mesh engine reports a non-empty negative or zero-volume
   result at zero run epsilon and the caller uses `assertNotIntersecting`
 - **THEN** that pairwise assertion still fails under its engine-emptiness
   contract, even when the assembly integrity assertion passes the same pair
@@ -853,8 +870,8 @@ overhead restraints can complete force couples. Each interface's contact
 points and outward normals SHALL lie on the undisplaced surface of the
 supporting solid. Lift-detected contacts SHALL contribute contact interfaces
 only; they SHALL NOT add support-graph edges. Contact extraction and mass
-properties SHALL be evaluated on the placed faceted geometry at uniform
-density; support-edge existence keeps its exact-kernel routing.
+properties SHALL be evaluated on the placed mesh geometry at uniform
+density; support-edge existence keeps its B-rep engine routing.
 
 When `ground` is `None`, the grounded seeds SHALL be the selected solids whose
 conservative world extent along gravity comes within `max_drop` of the
@@ -881,8 +898,8 @@ equilibrium decision, so a positive margin rejects balances that depend on
 the boundary of a contact patch; at the default the check SHALL be pure
 feasibility. A negative `stability_margin` SHALL raise an error.
 
-A pair of exact solids SHALL be evaluated by the boundary-representation
-kernel; any other pair SHALL be evaluated by the cached Manifolds placed by
+A pair of B-rep solids SHALL be evaluated by the B-rep
+engine; any other pair SHALL be evaluated by the cached mesh-engine solids placed by
 composed world transforms with the displacement applied as a world-frame
 translation. Only pairs whose conservative displaced-versus-placed world
 bounds overlap SHALL be evaluated by Boolean intersection, in the drop and
@@ -969,12 +986,12 @@ dynamic effects are NOT.
 - **THEN** the assertion raises an error instead of passing or silently
   ignoring the argument
 
-#### Scenario: An exact assembly is verified exactly
+#### Scenario: A B-rep assembly is verified on the B-rep engine
 
-- **WHEN** every selected solid in the assembly is exact
+- **WHEN** every selected solid in the assembly has B-rep geometry
 - **THEN** each evaluated drop pair's support-edge existence is decided by the
-  boundary-representation kernel, while contact interfaces and mass
-  properties come from the placed faceted geometry
+  B-rep engine, while contact interfaces and mass
+  properties come from the placed mesh geometry
 
 #### Scenario: Sparse assembly avoids exhaustive pair booleans
 
@@ -1047,10 +1064,10 @@ The system SHALL retain the deprecated
 `assertNoPairwiseIntersections(node, volume_epsilon=0.0)` compatibility API.
 It SHALL preserve its historical behavior of walking the assembled tree to
 its leaves, checking every leaf pair, and using `volume_epsilon` to filter
-flush-contact noise on faceted comparisons. As with the perturbation
-assertions, `volume_epsilon` SHALL be ignored for a pair that routes exact,
+flush-contact noise on mesh comparisons. As with the perturbation
+assertions, `volume_epsilon` SHALL be ignored for a pair that routes to the B-rep engine,
 and a warning SHALL be emitted when an epsilon was supplied and every pair the
-sweep evaluated routed exact. Each call SHALL emit a standard deprecation
+sweep evaluated routed to the B-rep engine. Each call SHALL emit a standard deprecation
 warning that points to `assertNoSolidInterference` and explains that the
 replacement checks topmost rigid solids without a public overlap epsilon.
 Current documentation SHALL NOT recommend the deprecated sweep for new tests.
@@ -1058,7 +1075,7 @@ Current documentation SHALL NOT recommend the deprecated sweep for new tests.
 #### Scenario: Existing caller keeps its historical verdict
 
 - **WHEN** an existing project calls the deprecated sweep on an assembly where
-  two faceted leaves overlap by more than its supplied epsilon
+  two mesh leaves overlap by more than its supplied epsilon
 - **THEN** an `AssertionError` still names the offending leaf pair
 
 #### Scenario: Caller receives migration guidance
@@ -1067,10 +1084,10 @@ Current documentation SHALL NOT recommend the deprecated sweep for new tests.
 - **THEN** an explicitly captured deprecation warning points to
   `assertNoSolidInterference` and states the topmost-rigid scope difference
 
-#### Scenario: An all-exact sweep reports its ignored epsilon
+#### Scenario: An all-B-rep sweep reports its ignored epsilon
 
 - **WHEN** the deprecated sweep is given an epsilon and every leaf pair it
-  evaluates is exact
+  evaluates has B-rep geometry
 - **THEN** the epsilon is ignored and a warning says so, alongside the
   deprecation warning
 
@@ -1081,10 +1098,10 @@ The system SHALL provide `assertNoDisconnectedSolids(node)` as an ordinary
 
 Starting from `node`, the assertion SHALL descend through non-rigid nodes and
 SHALL stop at the first rigid node on each branch, so each selected node is one
-printed solid. Under the exact comparison kernel, for an exact solid the
-assertion SHALL count the solids in that node's exact geometry and require
-exactly one. For a solid that is not exact, or for every solid under the
-faceted kernel, it SHALL read that node's own built STL, split it without filtering to watertight
+printed solid. In a run on the B-rep engine, for a B-rep solid the
+assertion SHALL count the solids in that node's B-rep geometry and require
+exactly one. For a solid that has no B-rep geometry, or for every solid on the
+mesh engine, it SHALL read that node's own built STL, split it without filtering to watertight
 components, and require exactly one connected component. A rigid node passed
 directly SHALL be its own only selected solid, and rigid ingredients inside a
 selected solid SHALL NOT be checked independently.
@@ -1140,19 +1157,18 @@ mixin, decorator, or registry SHALL cause it to run.
 - **WHEN** the assertion is called on one subassembly of a larger model
 - **THEN** only the solids within that subtree are selected and checked
 
-#### Scenario: An exact solid is counted exactly
+#### Scenario: A B-rep solid is counted exactly
 
-- **WHEN** the assertion runs on an exact solid whose geometry comprises two
+- **WHEN** the assertion runs on a B-rep solid whose geometry comprises two
   disjoint solids
 - **THEN** it fails naming that solid and two bodies, established from the
-  exact geometry rather than from a mesh split
+  B-rep geometry rather than from a mesh split
 
-#### Scenario: A faceted run counts bodies on the STL
+#### Scenario: A mesh run counts bodies on the STL
 
-- **WHEN** the assertion runs on an exact solid and the run's kernel is
-  faceted
+- **WHEN** the assertion runs on a B-rep solid and the run's engine is `mesh`
 - **THEN** the bodies are counted by splitting that solid's own STL and the
-  exact geometry is not read
+  B-rep geometry is not read
 
 ### Requirement: Connectivity assertions
 
@@ -1160,9 +1176,9 @@ The system SHALL provide two connectivity assertions:
 
 - `assertJoined(node1, node2, min_weld_volume=0.0)` — the two nodes are
   exactly one body, so the two features are genuinely the same printed part.
-  Under the exact comparison kernel, for two exact nodes this SHALL be
+  In a run on the B-rep engine, for two B-rep nodes this SHALL be
   established by fusing their shapes and requiring the fuse to yield exactly
-  one solid; otherwise, and for every pair under the faceted kernel, by
+  one solid; otherwise, and for every pair on the mesh engine, by
   requiring the union of their meshes to be exactly one connected component.
   `min_weld_volume` (mm³) additionally requires the volume they share to reach
   that value. Solids that only touch tangentially SHALL NOT count as joined.
@@ -1245,16 +1261,16 @@ express a required weld volume.
   `assertNoDisconnectedParts`
 - **THEN** the attribute does not exist on the test case
 
-#### Scenario: Two exact features are joined by their fuse
+#### Scenario: Two B-rep features are joined by their fuse
 
-- **WHEN** `assertJoined` runs on two overlapping exact features of one solid
+- **WHEN** `assertJoined` runs on two overlapping B-rep features of one solid
 - **THEN** the verdict comes from fusing their shapes and finding one solid,
-  and the weld volume from their exact intersection
+  and the weld volume from their B-rep intersection
 
-#### Scenario: A faceted run welds on meshes
+#### Scenario: A mesh run welds on meshes
 
-- **WHEN** `assertJoined` is called on two exact features and the run's
-  kernel is faceted
+- **WHEN** `assertJoined` is called on two B-rep features and the run's
+  engine is `mesh`
 - **THEN** the verdict comes from the union of their meshes and neither
   shape is fused
 
@@ -1420,8 +1436,8 @@ nothing else:
   and applied to the other's — QUANTISED to the run's placement quantum;
 - the run's placement quantum itself, so entries made under two different
   quanta in one process can never serve one another;
-- the evaluation path taken (exact, faceted, or the `.mesh` fallback), so a
-  pair is never served an exact answer from a faceted entry or the reverse.
+- the evaluation path taken (`brep`, `mesh`, or the `.mesh` fallback), so a
+  pair is never served a B-rep answer from a mesh entry or the reverse.
 
 The relative placement is sufficient because intersection emptiness and volume
 are invariant under a common rigid transform: two solids moved together share
@@ -1450,7 +1466,7 @@ differently and are recomputed, exactly as they are today, so quantisation can
 only add cache hits and never widens a verdict at a boundary.
 
 Quantisation SHALL apply ONLY to the verdict key. The geometry a comparison is
-handed SHALL still be placed by its own exact matrix, the exact placement and
+handed SHALL still be placed by its own exact matrix, the B-rep placement and
 bounding-box caches SHALL keep their exact keys, and the world-AABB broad phase
 SHALL keep reading the real matrices.
 
@@ -1468,8 +1484,8 @@ question, and a flexible part at a binding already asked is not.
 A node whose geometry has no stable identity SHALL NOT be cached, and its
 comparisons SHALL be computed exactly as they are today. Such nodes are: a
 test double exposing only `.mesh`; a flexible leaf whose class overrides the
-stock evaluation seam the comparison reads (`base_mesh` on the faceted path,
-`shape` on the exact path); and a flexible leaf whose tracked sources cannot
+stock evaluation seam the comparison reads (`base_mesh` on the mesh path,
+`shape` on the B-rep path); and a flexible leaf whose tracked sources cannot
 be read.
 
 Beneath this per-run cache, the verdict store of "A decided verdict is kept
@@ -1480,7 +1496,7 @@ between runs of a project" MAY serve a comparison the run has not yet decided.
 - **WHEN** an assertion compares the same two solids in the same relative
   placement a second time within one run
 - **THEN** the verdict returned equals the first verdict exactly, and no
-  boolean is run by either kernel
+  boolean is run by either engine
 
 #### Scenario: A moved pair is recomputed
 
@@ -1524,11 +1540,11 @@ between runs of a project" MAY serve a comparison the run has not yet decided.
   corresponding entries are `-0.0` and `0.0`, with a nonzero quantum
 - **THEN** the second comparison is served from the cache
 
-#### Scenario: The exact kernel quantises too
+#### Scenario: The B-rep engine quantises too
 
-- **WHEN** an exact run compares a pair of exact solids twice at relative
+- **WHEN** a B-rep run compares a pair of B-rep solids twice at relative
   placements that differ by less than the placement quantum
-- **THEN** the second comparison is served from the cache and no OCCT boolean
+- **THEN** the second comparison is served from the cache and no B-rep Boolean
   is run
 
 #### Scenario: A rebuilt part invalidates its entries
@@ -1561,7 +1577,7 @@ between runs of a project" MAY serve a comparison the run has not yet decided.
 #### Scenario: A flexible leaf with a custom evaluation seam is not cached
 
 - **WHEN** a comparison involves a flexible leaf whose class overrides
-  `base_mesh` (faceted path) or `shape` (exact path)
+  `base_mesh` (mesh path) or `shape` (B-rep path)
 - **THEN** the comparison is computed as it is today, and no cache entry
   serves a later comparison in its place
 
@@ -1576,240 +1592,14 @@ between runs of a project" MAY serve a comparison the run has not yet decided.
 - **WHEN** the same solid is compared at two relative placements differing by
   less than the placement quantum
 - **THEN** each comparison that runs is handed geometry placed by its own
-  exact matrix, and the exact placement cache keys those placements on their
+  exact matrix, and the B-rep placement cache keys those placements on their
   exact matrix bytes
-
-### Requirement: An exact placement is computed once per shape and matrix
-
-On the exact path, the placed shape and the local bounding box a comparison needs SHALL be reused by their exact identities, in the same spirit as the per-STL Manifold cache. A placement SHALL be computed once per `(shape identity, exact matrix bytes)` while its cache entry is retained. Placed-shape retention SHALL be access ordered and limited to a finite internal number of entries. A hit SHALL reuse its placed shape; insertion beyond the limit SHALL dispose the least-recently-used cache entry. A later lookup for an evicted placement SHALL recompute it exactly and MAY retain it under the same bound, even if another caller still holds the previously returned placed object.
-
-Placement caching and eviction SHALL NOT change the geometry or verdict any comparison sees: a cached or recomputed placed shape SHALL be the shape the kernel produces for that exact matrix, no tolerance or rounding SHALL enter the key, and a shape rebuilt under a new identity SHALL NOT be served a placement built from the old one. A shape with no stable identity SHALL remain uncached. Local bounding-box caching SHALL remain tied to current shape identity and disposed when that identity is replaced.
-
-The exact module SHALL own the bounded cache. A fresh build/develop process SHALL begin empty and disposal of that process SHALL dispose its cache. The test manager SHALL clear run caches when establishing a new comparison run. Direct in-process callers MAY share only the current interpreter's bounded cache and internal isolation tests SHALL be able to reset it.
-
-#### Scenario: One retained placement serves repeated comparisons
-
-- **WHEN** the same solid is placed by the same matrix for several comparisons while its entry remains in the working set
-- **THEN** the placement is constructed once and the later comparisons reuse it
-
-#### Scenario: A different placement is constructed
-
-- **WHEN** the same solid is placed by a different exact matrix
-- **THEN** a placement for that matrix is constructed and used
-
-#### Scenario: A long changing trajectory plateaus
-
-- **WHEN** one shape is placed at more distinct transforms than the internal limit
-- **THEN** retained placed-shape entries never exceed the limit and old entries are disposed in least-recently-used order
-
-#### Scenario: An evicted placement recomputes without changing verdict
-
-- **WHEN** a transform is requested after its placement entry was evicted
-- **THEN** the exact transform is recomputed and every Boolean result equals an uncached evaluation at that matrix
-
-#### Scenario: A useful working set still hits
-
-- **WHEN** a long run cycles among fewer distinct shape/matrix keys than the internal limit
-- **THEN** each placement is constructed once after warm-up and later requests hit the bounded cache
-
-### Requirement: Run-level comparison kernel
-
-The test framework SHALL hold, for each run, one comparison kernel (`exact`
-or `faceted`), one volume epsilon in mm³, one placement quantum in mm and one
-verdict-store switch (on or off). Together these are the run's comparison
-policy. The kernel is a property of the run,
-never of the model: a node's `exact` attribute SHALL keep reporting whether
-its geometry is exact, and neither the build nor any artifact SHALL depend on
-the kernel a test run selects.
-
-`machinome test` SHALL resolve the kernel from the mutually exclusive `--exact` /
-`--faceted` flags, else from the `SOLID_TEST_KERNEL` environment variable
-(`exact` or `faceted`; any other value is an error naming the variable), else
-`exact`. It SHALL resolve the epsilon from `--volume-epsilon`, else from
-`SOLID_TEST_VOLUME_EPSILON`, else `0.0`; a negative value is an error. The
-epsilon exists only for the faceted kernel: `--volume-epsilon` together with
-an exact run is an error saying the exact kernel has nothing to absorb, and
-`SOLID_TEST_VOLUME_EPSILON` is not read under the exact kernel. The
-environment is the project's, loaded through the CLI's `.env` rule, so a
-setting in an ignored checkout-local `.env` selects the kernel for every run
-in that checkout and nowhere else.
-
-It SHALL resolve the placement quantum from `--placement-quantum`, else from
-`SOLID_TEST_PLACEMENT_QUANTUM`, else the framework's default of `1e-9` mm. A
-negative or non-finite value is an error naming the flag or the variable; an
-environment value that is not a number is an error naming
-`SOLID_TEST_PLACEMENT_QUANTUM` and saying it is a length in mm. Unlike the
-volume epsilon, the placement quantum SHALL apply under BOTH kernels and
-SHALL be accepted by the exact kernel, because it identifies a question and
-not a quantity of material, and both kernels' verdicts pass through the same
-memo. A quantum of `0` SHALL be accepted and SHALL mean the exact-bytes key.
-
-It SHALL resolve the verdict-store switch from `--verdict-store` /
-`--no-verdict-store`, else from `SOLID_TEST_VERDICT_STORE`, else on. The
-variable's value SHALL be `on` or `off`. Any other non-empty value is an
-error naming the variable and the two accepted values, raised before any
-node is built. Like the placement quantum, the switch SHALL apply under BOTH
-kernels. With the switch off, a run SHALL neither read nor write the verdict
-store; its per-run cache is unaffected.
-
-Outside `machinome test` — a `ScenarioTest` under pytest, an assertion driven
-directly — the framework SHALL resolve the same policy from the environment
-at the first comparison of the process, with the same defaults and the same
-errors.
-
-Under the exact kernel every assertion behaves as specified elsewhere in
-this capability. Under the faceted kernel every intersection, containment,
-connectivity and weld question SHALL be answered from the compared nodes'
-meshes exactly as it is answered today for a node that is not exact, and the
-verdicts of the shared intersection helper SHALL have the run's epsilon
-applied before any assertion reads them.
-
-A run at the default placement quantum SHALL produce exactly the output it
-produces today: no announcement, and no change to the summary line. A run at
-any other placement quantum SHALL name it on the summary line, after the
-preserved summary prefix and beside the faceted label when both apply.
-
-A run with the verdict store on SHALL produce exactly the output it produces
-without the store, whether or not any verdict was served from it. A run with
-the store off SHALL say so on the summary line, after the preserved summary
-prefix, in the same parenthesis as the faceted label and a non-default
-quantum when those apply.
-
-#### Scenario: The default run is the exact run
-
-- **WHEN** `machinome test` runs with no kernel flag and no `SOLID_TEST_KERNEL`
-- **THEN** every comparison of two exact nodes uses the boundary-representation
-  kernel and the run's output is unchanged
-
-#### Scenario: A checkout selects the faceted kernel once
-
-- **WHEN** the project's `.env` contains `SOLID_TEST_KERNEL=faceted` and
-  `machinome test` runs without a kernel flag
-- **THEN** every comparison uses the faceted path and the run says so
-
-#### Scenario: A flag overrides the environment
-
-- **WHEN** `SOLID_TEST_KERNEL=faceted` is set and `machinome test --exact` runs
-- **THEN** the run uses the exact kernel and prints no kernel line
-
-#### Scenario: An epsilon offered to the exact kernel is refused
-
-- **WHEN** `machinome test --exact --volume-epsilon 0.5` or
-  `machinome test --volume-epsilon 0.5` with no faceted selection is run
-- **THEN** the command exits with an error saying the exact kernel has nothing
-  for an epsilon to absorb, before any node is built
-
-#### Scenario: An unknown kernel name is refused
-
-- **WHEN** `SOLID_TEST_KERNEL=fast` is set
-- **THEN** `machinome test` exits with an error naming the variable and the two
-  accepted values
-
-#### Scenario: The default placement quantum needs no selection
-
-- **WHEN** `machinome test` runs with no `--placement-quantum` and no
-  `SOLID_TEST_PLACEMENT_QUANTUM`
-- **THEN** the run's policy carries the framework's default quantum and the
-  run's output is byte-for-byte what it is without this option
-
-#### Scenario: A quantum offered to the exact kernel is accepted
-
-- **WHEN** `machinome test --exact --placement-quantum 1e-6` runs
-- **THEN** the run compares on the exact kernel with that quantum, and no
-  error is raised
-
-#### Scenario: A checkout selects a placement quantum
-
-- **WHEN** the project's `.env` contains `SOLID_TEST_PLACEMENT_QUANTUM=1e-6`
-  and `machinome test` runs without the flag
-- **THEN** the run's policy carries `1e-6` mm
-
-#### Scenario: The quantum flag beats the environment
-
-- **WHEN** `SOLID_TEST_PLACEMENT_QUANTUM=1e-6` is set and
-  `machinome test --placement-quantum 0` runs
-- **THEN** the run's policy carries `0` and the memo keys on exact matrix
-  bytes
-
-#### Scenario: A negative or non-finite quantum is refused
-
-- **WHEN** `machinome test --placement-quantum -1` runs, or
-  `SOLID_TEST_PLACEMENT_QUANTUM=-1` is set, or `machinome test
-  --placement-quantum inf` runs, or `SOLID_TEST_PLACEMENT_QUANTUM=nan` is set
-- **THEN** the command exits with an error naming the flag or the variable,
-  before any node is built
-
-#### Scenario: A non-numeric quantum in the environment is refused
-
-- **WHEN** `SOLID_TEST_PLACEMENT_QUANTUM=tight` is set
-- **THEN** `machinome test` exits with an error naming the variable and saying the
-  value is a length in mm
-
-#### Scenario: A non-default quantum is named on the summary line
-
-- **WHEN** a run uses a placement quantum other than the default
-- **THEN** the summary line keeps its prefix verbatim and names the quantum,
-  beside the faceted label and volume epsilon when the run is faceted
-
-#### Scenario: The verdict store is on by default
-
-- **WHEN** `machinome test` runs with no verdict-store flag and no
-  `SOLID_TEST_VERDICT_STORE`
-- **THEN** the run's policy has the store on, and the run's output is
-  byte-for-byte what it is without this option
-
-#### Scenario: A checkout turns the verdict store off
-
-- **WHEN** the project's `.env` contains `SOLID_TEST_VERDICT_STORE=off` and
-  `machinome test` runs without a verdict-store flag
-- **THEN** the run neither reads nor writes the store, and its summary line
-  says the store is off
-
-#### Scenario: The verdict-store flag beats the environment
-
-- **WHEN** `SOLID_TEST_VERDICT_STORE=off` is set and
-  `machinome test --verdict-store` runs, or `SOLID_TEST_VERDICT_STORE=on` is
-  set and `machinome test --no-verdict-store` runs
-- **THEN** the flag decides the run's switch
-
-#### Scenario: An unknown verdict-store value is refused
-
-- **WHEN** `SOLID_TEST_VERDICT_STORE=sometimes` is set
-- **THEN** `machinome test` exits with an error naming the variable and the
-  two accepted values, before any node is built
-
-#### Scenario: A run without the store says so beside the other notes
-
-- **WHEN** `machinome test --faceted --volume-epsilon 0.5 --no-verdict-store`
-  runs
-- **THEN** the summary line keeps its prefix verbatim and names the faceted
-  kernel, the epsilon and the store being off, in one parenthesis
-
-#### Scenario: A faceted run of an exact project never reaches the exact stack
-
-- **WHEN** an all-exact project is tested under the faceted kernel in a fresh
-  interpreter and its build is current
-- **THEN** the test framework imports no `cadquery` and reads no node's
-  `shape()`, and the verdicts are those of the faceted path
-
-#### Scenario: The model is unaware of the kernel
-
-- **WHEN** a test reads `node.exact` under the faceted kernel
-- **THEN** it reports the geometry's exactness as it does under the exact
-  kernel
-
-#### Scenario: A scenario test under pytest reads the environment
-
-- **WHEN** a `ScenarioTest` runs under plain pytest with
-  `SOLID_TEST_KERNEL=faceted` in the environment
-- **THEN** its geometric assertions use the faceted path with the
-  environment's epsilon
 
 ### Requirement: Broad-phase work adapts to sparse orientation without changing candidates or order
 
 For a set of conservative world AABBs, the spatial index SHALL estimate active-interval pressure on X, Y, and Z in bounded `O(N log N)` work and SHALL use the least-pressure axis for candidate discovery, tie-breaking X then Y then Z. Touching, degenerate, coincident, contained, and rotated conservative bounds SHALL retain the inclusive overlap semantics of the existing X sweep.
 
-The emitted candidate set and order SHALL equal the existing X-axis sweep: each pair is canonicalized by input index, and accepted pairs are ordered by current-X-order rank then active-X-order rank. The implementation MAY buffer sparse accepted candidates only up to a finite internal limit. If that limit is reached, it SHALL discard the adaptive result and stream the existing X sweep so a dense true-overlap case does not retain `O(N²)` pair memory. Every emitted candidate SHALL still reach the selected narrow phase; the adaptive index SHALL NOT decide geometry or change exact/faceted routing.
+The emitted candidate set and order SHALL equal the existing X-axis sweep: each pair is canonicalized by input index, and accepted pairs are ordered by current-X-order rank then active-X-order rank. The implementation MAY buffer sparse accepted candidates only up to a finite internal limit. If that limit is reached, it SHALL discard the adaptive result and stream the existing X sweep so a dense true-overlap case does not retain `O(N²)` pair memory. Every emitted candidate SHALL still reach the selected narrow phase; the adaptive index SHALL NOT decide geometry or change B-rep/mesh routing.
 
 #### Scenario: Unfavourable X orientation uses a sparse axis
 
@@ -1886,7 +1676,7 @@ level, because a skip is not a failure.
 
 #### Scenario: A test that skips itself
 
-- **WHEN** a test method calls `skipTest('no exact kernel here')` and every
+- **WHEN** a test method calls `skipTest('no B-rep engine here')` and every
   other test passes
 - **THEN** the run names that test as skipped with its reason, counts it as
   neither passed nor failed, reports one skipped test in the summary, and
@@ -1998,30 +1788,6 @@ unexpected success, which is a failure of the run.
 - **WHEN** `--failfast` is given and a test marked as expected to fail passes
 - **THEN** the run stops there and exits 1
 
-### Requirement: An empty exact common contradicted by strict shared interior is refused
-
-When an exact intersection Boolean reports no solids, the system SHALL refuse that result as a clearance verdict if an independent native section and zero-tolerance solid classifiers find one point classified inside both operands and demonstrably separated from every boundary face by more than that face's native tolerance. A point unresolved at the boundary SHALL NOT count as a contradiction. The system SHALL NOT infer an overlap volume from that point, a section curve alone, or a faceted result. The same behavior SHALL apply to direct `machinome.exact.intersect_shapes` calls and to exact test assertions that use that comparison path. A finite search with no resolved witness SHALL retain the prior Boolean verdict, without claiming universal certification of its emptiness.
-
-#### Scenario: Curta sphere/frame false-empty
-- **WHEN** the unchanged Curta Type I positioning sphere and native frame are compared at the documented outer radial position and either 0.2 mm axial perturbation, where OCCT common is empty but a point is reliably inside both solids beyond their native face tolerances
-- **THEN** the exact comparison refuses the inconsistent empty result instead of reporting clearance or manufacturing a positive volume
-
-#### Scenario: Curta planar carry-guide contact
-- **WHEN** a candidate lies within the native face tolerance of both opposed carry-slider and guide contact faces despite zero-tolerance classifiers reporting IN
-- **THEN** that candidate does not contradict the empty common, and the finite search continues without an overlap waiver
-
-#### Scenario: Zero-volume boundary contact
-- **WHEN** exact solids only meet at a face or edge and no point is reliably inside both
-- **THEN** the guard does not turn the contact into positive overlap or change its existing empty/non-empty and zero-volume policy
-
-#### Scenario: Ordinary disjoint, overlapping and contained solids
-- **WHEN** an exact common is correctly empty for disjoint solids, or correctly non-empty for overlapping or contained solids
-- **THEN** the comparison retains the native Boolean's existing count and volume semantics
-
-#### Scenario: Independent check fails
-- **WHEN** the native section, classifier, face distance, or native face tolerance cannot be evaluated while checking an empty common
-- **THEN** the exact comparison refuses to return a clearance verdict from that failed check
-
 ### Requirement: A decided verdict is kept between runs of a project
 
 When a run's comparison policy has the verdict store on and the project under
@@ -2042,8 +1808,8 @@ A question kept across runs SHALL be identified by state, never by location or
 time:
 
 - a rigid solid by the CONTENT of the artifact its compared geometry was read
-  from: its exact-geometry artifact on the exact path, its mesh artifact on the
-  faceted path. An artifact rewritten with identical content is still the same
+  from: its `.brep` artifact on the B-rep path, its mesh artifact on the
+  mesh path. An artifact rewritten with identical content is still the same
   question, and so is a project moved or copied together with its build
   directory. An artifact whose content changed is a different question even
   when its modification time and size are unchanged;
@@ -2058,8 +1824,16 @@ evaluator on the verdict path, and to the platform. A verdict kept under any
 other framework source, kernel or evaluator version, or platform SHALL NOT be
 served.
 
+A verdict decided on the mesh path SHALL also be bound to the identity,
+name and version, that the mesh engine resolved for the process reports of
+itself; a verdict decided on the B-rep path SHALL NOT be bound to the mesh
+engine. A mesh question whose mesh engine cannot be resolved, or reports no
+version, SHALL be computed without being kept or served. What binds every
+verdict SHALL be computed without importing a kernel; only a mesh
+question SHALL ask the mesh engine for its identity.
+
 The store SHALL hold the kernel's raw verdict (emptiness, volume, and whether
-the exact kernel produced it) and no geometry. The run's volume epsilon SHALL
+the B-rep engine produced it) and no geometry. The run's volume epsilon SHALL
 be applied after a kept verdict is read, exactly as after a per-run hit. A
 served verdict SHALL therefore be identical to the verdict the kernel produced
 for the same question, including flush contact's non-empty 0.0 mm³, and SHALL
@@ -2094,7 +1868,7 @@ used. The bound SHALL NOT be exposed as a flag or an environment variable.
 Deleting the store SHALL always be safe: the next run SHALL compute what it
 is no longer served, and SHALL reach the same verdicts.
 
-Keeping the store SHALL require neither the mesh engine nor the exact-geometry
+Keeping the store SHALL require neither the mesh engine nor the B-rep
 stack. A run that does not import them without the store SHALL NOT import them
 with it.
 
@@ -2131,6 +1905,14 @@ with it.
   or evaluator on the verdict path, differs from the one under which a
   verdict was kept
 - **THEN** that verdict is not served and the comparison is computed
+
+#### Scenario: A mesh engine upgrade invalidates mesh verdicts only
+
+- **WHEN** a project's store holds mesh and B-rep verdicts kept under one
+  version of the mesh engine, and a later run's mesh engine reports another
+  version, everything else unchanged
+- **THEN** the later run computes every mesh comparison again and is served
+  every B-rep one
 
 #### Scenario: A flexible pair is served at an equal state and recomputed at another
 
@@ -2202,16 +1984,281 @@ with it.
 - **THEN** the later run is served that verdict without running a boolean,
   whether each run tests one model or every model with `--all`
 
-#### Scenario: A faceted run of an exact project still never reaches the exact stack
+#### Scenario: A mesh run of a B-rep project still never reaches the B-rep stack
 
-- **WHEN** an all-exact project whose build is current is tested under the
-  faceted kernel, in a fresh interpreter, with the store on
+- **WHEN** an all-B-rep project whose build is current is tested on the
+  mesh engine, in a fresh interpreter, with the store on
 - **THEN** the test framework imports no `cadquery`, and reads no node's
   `shape()`
 
-#### Scenario: An all-exact project keeps its store without the mesh engine
+#### Scenario: An all-B-rep project keeps its store without the mesh engine
 
-- **WHEN** an all-exact project is tested twice, with the store on, on a
-  machine where `manifold3d` cannot be imported
-- **THEN** both runs complete as they do without the store, and the second is
-  served from it
+- **WHEN** an all-B-rep project is tested twice, with the store on, on a
+  machine where the mesh engine is absent, neither `manifold3d` nor
+  `machinome.engine.mesh` being importable
+- **THEN** both runs complete as they do without the store, the second is
+  served from it, and neither asks for the mesh engine
+
+### Requirement: A B-rep placement is computed once per shape and matrix
+
+On the B-rep path, the placed shape and the local bounding box a comparison needs SHALL be reused by their exact identities, in the same spirit as the per-STL mesh-solid cache. A placement SHALL be computed once per `(shape identity, exact matrix bytes)` while its cache entry is retained. Placed-shape retention SHALL be access ordered and limited to a finite internal number of entries. A hit SHALL reuse its placed shape; insertion beyond the limit SHALL dispose the least-recently-used cache entry. A later lookup for an evicted placement SHALL recompute it exactly and MAY retain it under the same bound, even if another caller still holds the previously returned placed object.
+
+Placement caching and eviction SHALL NOT change the geometry or verdict any comparison sees: a cached or recomputed placed shape SHALL be the shape the kernel produces for that exact matrix, no tolerance or rounding SHALL enter the key, and a shape rebuilt under a new identity SHALL NOT be served a placement built from the old one. A shape with no stable identity SHALL remain uncached. Local bounding-box caching SHALL remain tied to current shape identity and disposed when that identity is replaced.
+
+The B-rep memo module `machinome.brep_cache` SHALL own the bounded cache. A fresh build/develop process SHALL begin empty and disposal of that process SHALL dispose its cache. The test manager SHALL clear run caches when establishing a new comparison run. Direct in-process callers MAY share only the current interpreter's bounded cache and internal isolation tests SHALL be able to reset it.
+
+#### Scenario: One retained placement serves repeated comparisons
+
+- **WHEN** the same solid is placed by the same matrix for several comparisons while its entry remains in the working set
+- **THEN** the placement is constructed once and the later comparisons reuse it
+
+#### Scenario: A different placement is constructed
+
+- **WHEN** the same solid is placed by a different exact matrix
+- **THEN** a placement for that matrix is constructed and used
+
+#### Scenario: A long changing trajectory plateaus
+
+- **WHEN** one shape is placed at more distinct transforms than the internal limit
+- **THEN** retained placed-shape entries never exceed the limit and old entries are disposed in least-recently-used order
+
+#### Scenario: An evicted placement recomputes without changing verdict
+
+- **WHEN** a transform is requested after its placement entry was evicted
+- **THEN** the exact transform is recomputed and every Boolean result equals an uncached evaluation at that matrix
+
+#### Scenario: A useful working set still hits
+
+- **WHEN** a long run cycles among fewer distinct shape/matrix keys than the internal limit
+- **THEN** each placement is constructed once after warm-up and later requests hit the bounded cache
+
+### Requirement: An empty B-rep common contradicted by strict shared interior is refused
+
+When a B-rep intersection Boolean reports no solids, the system SHALL refuse that result as a clearance verdict if an independent native section and zero-tolerance solid classifiers find one point classified inside both operands and demonstrably separated from every boundary face by more than that face's native tolerance. A point unresolved at the boundary SHALL NOT count as a contradiction. The system SHALL NOT infer an overlap volume from that point, a section curve alone, or a mesh result. The same behavior SHALL apply to direct `machinome.engine.brep.intersect_shapes` calls, which the `brep-engine` capability specifies, and to B-rep test assertions, which reach that same operation through the B-rep engine seam. A finite search with no resolved witness SHALL retain the prior Boolean verdict, without claiming universal certification of its emptiness.
+
+#### Scenario: Curta sphere/frame false-empty
+- **WHEN** the unchanged Curta Type I positioning sphere and native frame are compared at the documented outer radial position and either 0.2 mm axial perturbation, where the B-rep engine's common is empty but a point is reliably inside both solids beyond their native face tolerances
+- **THEN** the B-rep comparison refuses the inconsistent empty result instead of reporting clearance or manufacturing a positive volume
+
+#### Scenario: Curta planar carry-guide contact
+- **WHEN** a candidate lies within the native face tolerance of both opposed carry-slider and guide contact faces despite zero-tolerance classifiers reporting IN
+- **THEN** that candidate does not contradict the empty common, and the finite search continues without an overlap waiver
+
+#### Scenario: Zero-volume boundary contact
+- **WHEN** B-rep solids only meet at a face or edge and no point is reliably inside both
+- **THEN** the guard does not turn the contact into positive overlap or change its existing empty/non-empty and zero-volume policy
+
+#### Scenario: Ordinary disjoint, overlapping and contained solids
+- **WHEN** a B-rep common is correctly empty for disjoint solids, or correctly non-empty for overlapping or contained solids
+- **THEN** the comparison retains the native Boolean's existing count and volume semantics
+
+#### Scenario: Independent check fails
+- **WHEN** the native section, classifier, face distance, or native face tolerance cannot be evaluated while checking an empty common
+- **THEN** the B-rep comparison refuses to return a clearance verdict from that failed check
+
+### Requirement: Run-level comparison engine
+
+The test framework SHALL hold, for each run, one comparison engine (`brep`
+or `mesh`), one volume epsilon in mm³, one placement quantum in mm and one
+verdict-store switch (on or off). Together these are the run's comparison
+policy. The engine is a property of the run,
+never of the model: a node's `brep` attribute SHALL keep reporting whether
+its geometry is a boundary representation, and neither the build nor any artifact SHALL depend on
+the engine a test run selects.
+
+`machinome test` SHALL resolve the engine from the mutually exclusive `--brep` /
+`--mesh` flags, else from the `SOLID_TEST_ENGINE` environment variable
+(`brep` or `mesh`; any other value is an error naming the variable), else
+`brep`. `SOLID_TEST_KERNEL`, the variable's former name, SHALL NOT be read:
+when it is set to a non-empty value, resolving the policy SHALL be an error
+naming `SOLID_TEST_ENGINE` and its two accepted values, whatever its value
+and whether or not an engine flag or `SOLID_TEST_ENGINE` is given, so a
+checkout's stale setting cannot silently select another engine. It SHALL resolve the epsilon from `--volume-epsilon`, else from
+`SOLID_TEST_VOLUME_EPSILON`, else `0.0`; a negative value is an error. The
+epsilon exists only for the mesh engine: `--volume-epsilon` together with
+a B-rep run is an error saying the B-rep engine has nothing to absorb, and
+`SOLID_TEST_VOLUME_EPSILON` is not read on the B-rep engine. The
+environment is the project's, loaded through the CLI's `.env` rule, so a
+setting in an ignored checkout-local `.env` selects the engine for every run
+in that checkout and nowhere else.
+
+It SHALL resolve the placement quantum from `--placement-quantum`, else from
+`SOLID_TEST_PLACEMENT_QUANTUM`, else the framework's default of `1e-9` mm. A
+negative or non-finite value is an error naming the flag or the variable; an
+environment value that is not a number is an error naming
+`SOLID_TEST_PLACEMENT_QUANTUM` and saying it is a length in mm. Unlike the
+volume epsilon, the placement quantum SHALL apply under BOTH engines and
+SHALL be accepted by the B-rep engine, because it identifies a question and
+not a quantity of material, and both engines' verdicts pass through the same
+memo. A quantum of `0` SHALL be accepted and SHALL mean the exact-bytes key.
+
+It SHALL resolve the verdict-store switch from `--verdict-store` /
+`--no-verdict-store`, else from `SOLID_TEST_VERDICT_STORE`, else on. The
+variable's value SHALL be `on` or `off`. Any other non-empty value is an
+error naming the variable and the two accepted values, raised before any
+node is built. Like the placement quantum, the switch SHALL apply under BOTH
+engines. With the switch off, a run SHALL neither read nor write the verdict
+store; its per-run cache is unaffected.
+
+Outside `machinome test` — a `ScenarioTest` under pytest, an assertion driven
+directly — the framework SHALL resolve the same policy from the environment
+at the first comparison of the process, with the same defaults and the same
+errors.
+
+Under the B-rep engine every assertion behaves as specified elsewhere in
+this capability. Under the mesh engine every intersection, containment,
+connectivity and weld question SHALL be answered from the compared nodes'
+meshes exactly as it is answered today for a node that has no B-rep geometry, and the
+verdicts of the shared intersection helper SHALL have the run's epsilon
+applied before any assertion reads them.
+
+A run at the default placement quantum SHALL produce exactly the output it
+produces today: no announcement, and no change to the summary line. A run at
+any other placement quantum SHALL name it on the summary line, after the
+preserved summary prefix and beside the mesh label when both apply.
+
+A run with the verdict store on SHALL produce exactly the output it produces
+without the store, whether or not any verdict was served from it. A run with
+the store off SHALL say so on the summary line, after the preserved summary
+prefix, in the same parenthesis as the mesh label and a non-default
+quantum when those apply.
+
+#### Scenario: The default run is the B-rep run
+
+- **WHEN** `machinome test` runs with no engine flag and no `SOLID_TEST_ENGINE`
+- **THEN** every comparison of two B-rep nodes uses the B-rep
+  engine and the run's output is unchanged
+
+#### Scenario: A checkout selects the mesh engine once
+
+- **WHEN** the project's `.env` contains `SOLID_TEST_ENGINE=mesh` and
+  `machinome test` runs without an engine flag
+- **THEN** every comparison uses the mesh path and the run says so
+
+#### Scenario: A flag overrides the environment
+
+- **WHEN** `SOLID_TEST_ENGINE=mesh` is set and `machinome test --brep` runs
+- **THEN** the run uses the B-rep engine and prints no engine line
+
+#### Scenario: An epsilon offered to the B-rep engine is refused
+
+- **WHEN** `machinome test --brep --volume-epsilon 0.5` or
+  `machinome test --volume-epsilon 0.5` with no mesh selection is run
+- **THEN** the command exits with an error saying the B-rep engine has nothing
+  for an epsilon to absorb, before any node is built
+
+#### Scenario: An unknown engine name is refused
+
+- **WHEN** `SOLID_TEST_ENGINE=fast` is set
+- **THEN** `machinome test` exits with an error naming the variable and the two
+  accepted values
+
+#### Scenario: The former variable is refused
+
+- **WHEN** `SOLID_TEST_KERNEL` is set, to `mesh`, `faceted` or any other
+  non-empty value, and `machinome test` runs with no engine flag, with
+  `--brep` or with `--mesh`
+- **THEN** the command exits with an error naming `SOLID_TEST_ENGINE` and its
+  two accepted values, before any node is built, and the former variable's
+  value selects nothing
+
+#### Scenario: The default placement quantum needs no selection
+
+- **WHEN** `machinome test` runs with no `--placement-quantum` and no
+  `SOLID_TEST_PLACEMENT_QUANTUM`
+- **THEN** the run's policy carries the framework's default quantum and the
+  run's output is byte-for-byte what it is without this option
+
+#### Scenario: A quantum offered to the B-rep engine is accepted
+
+- **WHEN** `machinome test --brep --placement-quantum 1e-6` runs
+- **THEN** the run compares on the B-rep engine with that quantum, and no
+  error is raised
+
+#### Scenario: A checkout selects a placement quantum
+
+- **WHEN** the project's `.env` contains `SOLID_TEST_PLACEMENT_QUANTUM=1e-6`
+  and `machinome test` runs without the flag
+- **THEN** the run's policy carries `1e-6` mm
+
+#### Scenario: The quantum flag beats the environment
+
+- **WHEN** `SOLID_TEST_PLACEMENT_QUANTUM=1e-6` is set and
+  `machinome test --placement-quantum 0` runs
+- **THEN** the run's policy carries `0` and the memo keys on exact matrix
+  bytes
+
+#### Scenario: A negative or non-finite quantum is refused
+
+- **WHEN** `machinome test --placement-quantum -1` runs, or
+  `SOLID_TEST_PLACEMENT_QUANTUM=-1` is set, or `machinome test
+  --placement-quantum inf` runs, or `SOLID_TEST_PLACEMENT_QUANTUM=nan` is set
+- **THEN** the command exits with an error naming the flag or the variable,
+  before any node is built
+
+#### Scenario: A non-numeric quantum in the environment is refused
+
+- **WHEN** `SOLID_TEST_PLACEMENT_QUANTUM=tight` is set
+- **THEN** `machinome test` exits with an error naming the variable and saying the
+  value is a length in mm
+
+#### Scenario: A non-default quantum is named on the summary line
+
+- **WHEN** a run uses a placement quantum other than the default
+- **THEN** the summary line keeps its prefix verbatim and names the quantum,
+  beside the mesh label and volume epsilon when the run's engine is `mesh`
+
+#### Scenario: The verdict store is on by default
+
+- **WHEN** `machinome test` runs with no verdict-store flag and no
+  `SOLID_TEST_VERDICT_STORE`
+- **THEN** the run's policy has the store on, and the run's output is
+  byte-for-byte what it is without this option
+
+#### Scenario: A checkout turns the verdict store off
+
+- **WHEN** the project's `.env` contains `SOLID_TEST_VERDICT_STORE=off` and
+  `machinome test` runs without a verdict-store flag
+- **THEN** the run neither reads nor writes the store, and its summary line
+  says the store is off
+
+#### Scenario: The verdict-store flag beats the environment
+
+- **WHEN** `SOLID_TEST_VERDICT_STORE=off` is set and
+  `machinome test --verdict-store` runs, or `SOLID_TEST_VERDICT_STORE=on` is
+  set and `machinome test --no-verdict-store` runs
+- **THEN** the flag decides the run's switch
+
+#### Scenario: An unknown verdict-store value is refused
+
+- **WHEN** `SOLID_TEST_VERDICT_STORE=sometimes` is set
+- **THEN** `machinome test` exits with an error naming the variable and the
+  two accepted values, before any node is built
+
+#### Scenario: A run without the store says so beside the other notes
+
+- **WHEN** `machinome test --mesh --volume-epsilon 0.5 --no-verdict-store`
+  runs
+- **THEN** the summary line keeps its prefix verbatim and names the mesh
+  engine, the epsilon and the store being off, in one parenthesis
+
+#### Scenario: A mesh run of a B-rep project never reaches the B-rep stack
+
+- **WHEN** an all-B-rep project is tested on the mesh engine in a fresh
+  interpreter and its build is current
+- **THEN** the test framework imports no `cadquery` and reads no node's
+  `shape()`, and the verdicts are those of the mesh path
+
+#### Scenario: The model is unaware of the engine
+
+- **WHEN** a test reads `node.brep` on the mesh engine
+- **THEN** it reports the geometry's `brep` as it does on the B-rep
+  engine
+
+#### Scenario: A scenario test under pytest reads the environment
+
+- **WHEN** a `ScenarioTest` runs under plain pytest with
+  `SOLID_TEST_ENGINE=mesh` in the environment
+- **THEN** its geometric assertions use the mesh path with the
+  environment's epsilon
+

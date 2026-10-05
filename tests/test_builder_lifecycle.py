@@ -8,7 +8,6 @@ import os
 import shutil
 import tempfile
 from contextlib import contextmanager
-from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -21,6 +20,7 @@ from machinome.core.builder import (Builder, BuildOutcome, atomic_write,
 from machinome.node.base import StlRenderStart
 
 from .test_build_lock import lock_is_held
+from tests.stand_in import NodeDouble, StandIn
 
 
 class BuilderLifecycleTest(TestCase):
@@ -45,9 +45,9 @@ class BuilderLifecycleTest(TestCase):
         current = os.path.join(self.root, 'part.stl')
         open(old, 'w').write('old')
         open(current, 'w').write('current')
-        node = SimpleNamespace(rigid=True, name='part', _type='Machinome',
-                               color=None, mtime=0, operations=(),
-                               stl_file=current)
+        node = NodeDouble(rigid=True, name='part', _type='Machinome',
+                          color=None, mtime=0, operations=(),
+                          stl_file=current)
         self.builder.node = node
         self.builder._write_viewer_snapshot()
         self.assertTrue(os.path.isfile(os.path.join(self.root, 'viewer.json')))
@@ -58,7 +58,7 @@ class BuilderLifecycleTest(TestCase):
         write_error('previous', self.root)
         current = os.path.join(self.root, 'part.stl')
         open(current, 'w').write('current')
-        self.builder.node = SimpleNamespace(
+        self.builder.node = NodeDouble(
             rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=current)
         self.builder._write_viewer_snapshot()
@@ -67,7 +67,7 @@ class BuilderLifecycleTest(TestCase):
     def test_unchanged_snapshot_clears_error_without_rewriting_document(self):
         artifact = os.path.join(self.root, 'part.stl')
         open(artifact, 'w').write('current')
-        self.builder.node = SimpleNamespace(
+        self.builder.node = NodeDouble(
             rigid=True, name='part', _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact)
         self.assertTrue(self.builder._write_viewer_snapshot())
@@ -155,7 +155,7 @@ class BuilderWatchDispatchTest(TestCase):
         self.assertTrue(self.builder.file_changed.done())
 
 
-class FakeNode:
+class FakeNode(StandIn):
     """A node stand-in with the real artifact-currency rule.
 
     A `Mock` cannot be used where currency is under test: `_up_to_date`
@@ -533,7 +533,7 @@ class ViewerSnapshotContentTest(TestCase):
         artifact = os.path.join(root, 'part.stl')
         with open(artifact, 'w') as handle:
             handle.write('solid part')
-        builder.node = SimpleNamespace(
+        builder.node = NodeDouble(
             name='part', rigid=True, _type='Machinome', color=None, mtime=0,
             operations=(), stl_file=artifact)
 
@@ -580,11 +580,11 @@ class PublicationOrderingTest(TestCase):
             path = os.path.join(self.root, f'{name}.stl')
             with open(path, 'w') as artifact:
                 artifact.write(name)
-            return SimpleNamespace(name=name, rigid=True, _type='Machinome',
-                                   color=None, mtime=0, operations=(),
-                                   stl_file=path)
+            return NodeDouble(name=name, rigid=True, _type='Machinome',
+                              color=None, mtime=0, operations=(),
+                              stl_file=path)
         children = [leaf(name) for name in names]
-        return SimpleNamespace(name='assembly', rigid=False, flexible=False,
+        return NodeDouble(name='assembly', rigid=False, flexible=False,
                                _type='Assembly',
                                color=None, mtime=0, operations=(),
                                children=children,
@@ -653,8 +653,48 @@ class PublicationOrderingTest(TestCase):
         self.builder._write_viewer_snapshot()
 
         remaining = set(os.listdir(self.root))
-        self.assertLessEqual({'part.scad', 'part.stl.lock',
-                              '.part.stl.abc123.tmp'}, remaining)
+        self.assertLessEqual({'part.stl.lock', '.part.stl.abc123.tmp'},
+                             remaining)
+        # A `.scad` is kept by reference, not by kind (`scad-presentation`):
+        # `part` is not SCAD-authored, so its `.scad` is no build's.
+        self.assertNotIn('part.scad', remaining)
+
+    def test_the_sweep_keeps_a_scad_authored_parts_scad(self):
+        """(`scad-presentation`, `openscad-out`) A file a node of the tree
+        declares in `kept_artifacts()` is kept by declaration, with its
+        record; any other unreferenced file goes on a changed document. On
+        an unchanged one, a file published transient goes with its record,
+        and nothing else does."""
+        from machinome import currency
+        self.builder.node = self.node_for('part')
+        part = self.builder.node.children[0]
+        kept = os.path.join(self.root, 'part.scad')
+        part.kept_artifacts = lambda: (kept,)
+        for name in ('part.scad', 'part.scad.sources', 'old.scad',
+                     'old.scad.sources'):
+            with open(os.path.join(self.root, name), 'w') as handle:
+                handle.write('seed')
+
+        self.builder._write_viewer_snapshot()
+
+        remaining = set(os.listdir(self.root))
+        self.assertLessEqual({'part.scad', 'part.scad.sources'}, remaining)
+        self.assertFalse({'old.scad', 'old.scad.sources'} & remaining)
+
+        for name in ('stray.scad', 'other.scad', 'stray.stl'):
+            with open(os.path.join(self.root, name), 'w') as handle:
+                handle.write('seed')
+        currency.record(os.path.join(self.root, 'stray.scad'), 'a' * 64,
+                        'b' * 64, transient=True)
+        currency.record(os.path.join(self.root, 'other.scad'), 'a' * 64,
+                        'b' * 64)
+        self.builder._write_viewer_snapshot()
+
+        remaining = set(os.listdir(self.root))
+        self.assertLessEqual({'part.scad', 'part.scad.sources', 'stray.stl',
+                              'other.scad', 'other.scad.sources'},
+                             remaining)
+        self.assertFalse({'stray.scad', 'stray.scad.sources'} & remaining)
 
     def verdict_store_in(self, directory):
         """A verdict store as test runs leave it: published segments, one

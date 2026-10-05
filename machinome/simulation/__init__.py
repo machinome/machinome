@@ -23,9 +23,10 @@ exports that way. Importing a submodule runs this file first, so the
 eager re-export list this replaces meant that
 `from machinome.simulation.enumeration import tree_declares_drivers`
 -- what the serializer does on every publication, and the loader on
-every node load -- ran `.scenario`, which imports `machinome.test`
-and through it `machinome.exact` and `cadquery`. A project that runs
-no scenario paid for the whole exact stack to publish a document.
+every node load -- ran `.scenario`, which imports `machinome.test`,
+and through it, at the time, the B-rep layer and `cadquery`. A project
+that runs no scenario paid for the whole B-rep stack to publish a
+document.
 
 Deferral is safe here for the same reason it is safe there: nothing
 dispatches on a registry built by these imports, so none of them is

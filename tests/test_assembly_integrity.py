@@ -14,15 +14,16 @@ import numpy as np
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome.mesh_engine import mesh_engine
+from machinome.engine import mesh as engine
 from machinome.node.operations import Rotation, Translation
 from machinome.test import TestCase as AssertingTestCase
+from tests.stand_in import StandIn
 
 
 asserter = AssertingTestCase()
 
 
-class RigidNode:
+class RigidNode(StandIn):
 
     rigid = True
 
@@ -37,7 +38,7 @@ class RigidNode:
         return float(value)
 
 
-class Assembly:
+class Assembly(StandIn):
 
     rigid = False
 
@@ -70,7 +71,7 @@ class AssemblyIntegrityTestCase(TestCase):
     def test_rigid_root_passes_without_loading_geometry(self):
         leaf = RigidNode('LeafWithoutBuiltGeometry')
 
-        with patch('machinome.test._cached_manifold',
+        with patch('machinome.test._cached_mesh_solid',
                    side_effect=AssertionError('geometry must not load')):
             asserter.assertNoSolidInterference(leaf)
 
@@ -207,7 +208,7 @@ class AssemblyIntegrityTestCase(TestCase):
 
     def test_no_whole_assembly_union_is_computed(self):
         """The point of the change: the assertion reaches its verdict
-        through the spatial index alone. No Manifold batch union, no
+        through the spatial index alone. No mesh-engine union, no
         Trimesh union, no aggregate measurement of any kind -- those
         cost time proportional to the assembly's total triangle count on
         every passing run and named no offending pair."""
@@ -215,7 +216,7 @@ class AssemblyIntegrityTestCase(TestCase):
         second = self.part('Second', [10, 0, 0])
 
         with patch.object(
-                mesh_engine()[0], 'batch_boolean',
+                engine, 'unite_solids',
                 side_effect=AssertionError('no whole-assembly union')), \
              patch('machinome.test.trimesh.boolean.union',
                    side_effect=AssertionError('no whole-assembly union')):
@@ -257,13 +258,13 @@ class AssemblyIntegrityTestCase(TestCase):
     def test_finite_negative_faceted_candidates_pass_without_epsilon(self):
         first, second = self.part('First'), self.part('Second')
         root = Assembly('Root', (first, second))
-        for kernel in ('exact', 'faceted'):
+        for engine in ('brep', 'mesh'):
             for volume in (-9.947598300641403e-14,
                            np.nextafter(0.0, -1.0), -1.0):
-                with self.subTest(kernel=kernel, volume=volume):
+                with self.subTest(engine=engine, volume=volume):
                     stats = test_module.IntersectionStats(False, volume, False)
                     with patch.object(test_module, '_policy',
-                                      test_module.ComparisonPolicy(kernel, 0)), \
+                                      test_module.ComparisonPolicy(engine, 0)), \
                          patch.object(test_module, '_candidate_intersection',
                                       return_value=stats):
                         asserter.assertNoSolidInterference(root)
@@ -317,7 +318,7 @@ class AssemblyIntegrityTestCase(TestCase):
             with self.subTest(volume=volume):
                 stats = test_module.IntersectionStats(False, volume, False)
                 with patch.object(test_module, '_policy',
-                                  test_module.ComparisonPolicy('faceted', 0)), \
+                                  test_module.ComparisonPolicy('mesh', 0)), \
                      patch.object(test_module, '_engine_intersection_stats',
                                   return_value=stats):
                     self.assertIs(test_module._intersection_stats(first, second),

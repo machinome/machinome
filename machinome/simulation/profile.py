@@ -316,13 +316,11 @@ def profile_overlap(left, right, left_angle, right_angle, *,
     a running Bound retains its existing path-sampling limit. The caller
     must independently prove that its authored loops cover installed parts.
     """
-    from solid2.core.object_base import OpenSCADConstant
-    from machinome.expression_graph import ExpressionNode
-    from machinome.scad_expression import GraphValue, as_node
+    from machinome.expression_graph import (ExpressionNode, GraphValue,
+                                            as_node, symbolic)
     positions = (left_angle, left_xy[0], left_xy[1],
                  right_angle, right_xy[0], right_xy[1])
-    if any(isinstance(value, (OpenSCADConstant, ExpressionNode))
-           for value in positions):
+    if any(symbolic(value) is not None for value in positions):
         if not isinstance(left, ConvexProfile) or not isinstance(right, ConvexProfile):
             raise TypeError('profile_overlap requires ConvexProfile operands')
         root = ExpressionNode('call', 'profileOverlap', (

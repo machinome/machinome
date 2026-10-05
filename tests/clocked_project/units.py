@@ -17,7 +17,7 @@ rounded ONCE, at the commit, to the nearest one.
 """
 
 from machinome.math import floor
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .parts import Dial

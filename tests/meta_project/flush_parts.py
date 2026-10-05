@@ -26,7 +26,7 @@ peg_slot.py -- see that module's docstring for the ~13.05deg play
 derivation.
 """
 
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 from solid2 import cube, cylinder
 
 from .peg_slot import (

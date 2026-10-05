@@ -1,0 +1,45 @@
+{
+  "bench_commit": "ae64c2db75c378719498f5ad3146a0ebf04e526d",
+  "fixtures": {
+    "artworks": {
+      "badge": {
+        "regions": [
+          1
+        ],
+        "triangles": 2,
+        "triangles_sha256": "2977c5193730126168b703ccd65f18e667b518f14b3b1c54e55b15ffebd20152",
+        "vertices": 4
+      },
+      "label": {
+        "regions": [
+          2
+        ],
+        "triangles": 10,
+        "triangles_sha256": "3b458227c603e79de9843bb8cc76d1bdd92d3e5fc53d897339b11b871c8ab99b",
+        "vertices": 12
+      },
+      "label_scaled": {
+        "regions": [
+          2
+        ],
+        "triangles": 10,
+        "triangles_sha256": "ddcc25d8999be64a63af326a61ac2fbd2f46d5948b7f26b784a3bffaa347e8ca",
+        "vertices": 12
+      }
+    },
+    "markings": {
+      "exact_dial": {
+        "digits": "bd3dacd344bd50504ba27a50d6779ab9f12b3847b48a28a9e13dbb4339f57531"
+      },
+      "faceted_plate": {
+        "badge": "ff24e82d90c28677ae076d9f2b66ad54a9d44b980561d338d5158a3660311ed9",
+        "band": "e492ab49a5dbb307836f5eb982be13d809b6d69261b12c30dc15bbecf1741420"
+      },
+      "scaled_plate": {
+        "badge": "ff24e82d90c28677ae076d9f2b66ad54a9d44b980561d338d5158a3660311ed9",
+        "band": "e492ab49a5dbb307836f5eb982be13d809b6d69261b12c30dc15bbecf1741420",
+        "stamp": "a3d76865622f16ed2e15f25977431189ff3ca8c750c098048d824dcb3ae29abd"
+      }
+    }
+  }
+}

@@ -17,7 +17,7 @@ is declared on the DIAL, the relation on the ROOT that can see both ends,
 and the target is named through the path `dial.digit`.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .parts import Dial

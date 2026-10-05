@@ -19,7 +19,7 @@ earlier one committed.
 
 import math
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .parts import Dial

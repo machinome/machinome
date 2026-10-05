@@ -23,7 +23,7 @@ own and not a way to write a variant.
 """
 
 from machinome.math import floor, max as sym_max
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .parts import Dial

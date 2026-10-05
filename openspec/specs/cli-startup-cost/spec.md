@@ -79,91 +79,12 @@ capture or rendering code, because the entry point answers without them.
 - **THEN** it prints nothing on standard output, names the extra on standard
   error, and exits 1
 
-### Requirement: Node backend exports resolve on first use
-
-The system SHALL expose from `machinome.node` the node classes and the
-declarative structure helpers, each resolved when it is first
-accessed rather than when the package is imported. It SHALL NOT expose the
-build-parameter kinds, the `Quantity` base or the parameter enumerator;
-those belong to the dedicated build-parameter module and SHALL be reachable
-only from there. It SHALL NOT expose the port kinds, the port declaration
-enumerator or the time-base declaration; those belong to the dedicated
-motion module and SHALL be reachable only from there. Importing
-`machinome.node`, or any module beneath it,
-SHALL NOT import a backend the caller has not named.
-
-In particular, importing `machinome.node` SHALL NOT import `cadquery`, and
-SHALL NOT import the boundary-representation kernel's STEP reader. The
-exact-geometry stack SHALL be imported when a name that depends on it —
-`FusionNode`, `CadQueryNode`, `Build123dNode`, `Build123dSheetNode`,
-`StepNode`, or a
-module reached through them — is first accessed, and the STEP reader when
-`StepNode` is.
-
-Attribute access SHALL resolve submodules of `machinome.node` as well as the
-exported classes, so a consumer reading `machinome.node.<submodule>` after
-importing only the package keeps working.
-
-A name that is not exported SHALL raise `AttributeError`, as it does today.
-A name that has moved to another module SHALL raise `ImportError` whose
-message names the module that now answers for it: an `ImportError` rather
-than an `AttributeError` because `from machinome.node import <name>`
-discards an `AttributeError`'s message and substitutes its own generic
-text, so only an `ImportError` carries the redirect to the failing import
-line.
-
-#### Scenario: An OpenSCAD-only project imports no exact stack
-
-- **WHEN** a project whose model uses only `Solid2Node` is built
-- **THEN** the build produces the same artifacts as before and `cadquery` is
-  absent from the build process's imported modules
-
-#### Scenario: A named backend is resolved
-
-- **WHEN** a module runs `from machinome.node import CadQueryNode`
-- **THEN** it receives the same class it receives today, and `cadquery` is
-  imported
-
-#### Scenario: The STEP reader is not imported by the node package
-
-- **WHEN** `machinome.node` is imported in a fresh interpreter
-- **THEN** the kernel's STEP reader is absent from the process's imported
-  modules, and it is imported when `StepNode` is first accessed
-
-#### Scenario: A submodule is reached through the package
-
-- **WHEN** a consumer imports `machinome.node` and then reads
-  `machinome.node.assembly`
-- **THEN** the submodule is returned
-
-#### Scenario: An unknown name still fails
-
-- **WHEN** a consumer reads a name `machinome.node` does not export
-- **THEN** `AttributeError` is raised
-
-#### Scenario: A parameter kind is not a node export
-
-- **WHEN** a consumer reads a build-parameter name off `machinome.node`
-- **THEN** `AttributeError` is raised naming it, so
-  `from machinome.node import Length` fails at the import, and the
-  package's export list carries no build-parameter name
-
-#### Scenario: A port kind is not a node export
-
-- **WHEN** a consumer reads `RotationalPort`, `SignalPort`,
-  `TranslationalPort`, `Port`, `declared_ports` or `Time` off
-  `machinome.node`
-- **THEN** `ImportError` is raised naming `machinome.motion.ports`, so
-  `from machinome.node import RotationalPort` fails at the import with
-  that message, and the package's export list carries no port or time-base
-  name
-
 ### Requirement: The test framework is imported by the paths that run tests
 
 The system SHALL import `machinome.test` where tests are discovered or run,
 not at the module scope of the loader that every node-scoped command goes
 through. Importing `machinome.core.loader` SHALL NOT import
-`machinome.test`, and therefore SHALL NOT import the exact-geometry stack.
+`machinome.test`, and therefore SHALL NOT import the B-rep stack.
 
 The system SHALL likewise resolve `machinome.simulation`'s exports on first
 access rather than at package import, so reaching
@@ -231,17 +152,34 @@ not a mesh has yet been read.
 
 ### Requirement: Deferred imports do not hide a broken installation
 
-When a deferred import fails, the system SHALL raise the underlying import
-error at the point the deferred name is first used, naming that name. It SHALL
-NOT be swallowed, retried against a substitute, or reported as a missing
-attribute.
+When a deferred import fails because something installed is broken, the
+system SHALL raise the underlying import error at the point the deferred name
+is first used, naming that name. It SHALL NOT be swallowed, retried against a
+substitute, or reported as a missing attribute. The node package's deferred
+names are its submodules, imported when first read through the package
+(`machinome.node.step`, `from machinome.node import step`); its root resolves
+no other name.
+
+An extra that is not installed is not a broken installation. When the deferred
+import fails with a kernel module's absent-kernel refusal (the `kernel-extras`
+capability), the system SHALL raise that refusal unmodified, so its message
+names the node types and the install line and nothing suggests a broken
+install. It SHALL NOT be reported as a missing attribute either.
 
 #### Scenario: A broken backend reports its own failure
 
-- **WHEN** a name whose backend cannot be imported is accessed from
-  `machinome.node`
-- **THEN** the underlying import error is raised, naming the requested name,
-  rather than an `AttributeError`
+- **WHEN** a node type's submodule whose kernel is found but fails to import
+  is read through `machinome.node` (`machinome.node.step`)
+- **THEN** the underlying import error is raised, naming the requested
+  submodule, rather than an `AttributeError`
+
+#### Scenario: An absent extra is reported by its install line
+
+- **WHEN** `from machinome.node.step import StepNode` or
+  `from machinome.node import step` runs where `cadquery` cannot be found
+- **THEN** the raised error is the `step` module's refusal, unmodified: it
+  names `StepNode` and `pip install "machinome[step]"`, and `hasattr` on
+  `machinome.node` for `step` raises it rather than answering `False`
 
 ### Requirement: The build-parameter module costs nothing to import
 
@@ -263,53 +201,6 @@ a deferred accessor, because there is no expensive import to defer.
 - **THEN** each exported name is already an attribute of the module object,
   resolved without a module-level accessor
 
-### Requirement: The test framework does not import the exact-geometry stack
-
-The system SHALL import `machinome.exact`, and through it the
-boundary-representation stack, at the exact path's first use rather than at
-`machinome.test` module scope. Importing `machinome.test` in a fresh
-interpreter SHALL NOT import `cadquery`.
-
-This completes the deferral the loader requirement already states from the
-other side: loading a node imports neither the test framework nor cadquery,
-and now importing the test framework does not import cadquery either. A
-project that models entirely in solid2 and asserts entirely over meshes
-therefore runs its tests without ever loading the exact stack.
-
-The deferral SHALL NOT make exact geometry optional or change any exact
-verdict. A comparison between two exact nodes SHALL import the same stack it
-imports today and produce the same result; only the moment of the import
-moves. The names `machinome.test` resolves from `machinome.exact` today
-SHALL remain resolvable as attributes of `machinome.test`, so a caller that
-patches one keeps working whether or not an exact comparison has yet run.
-
-A failure of the deferred import SHALL surface under the existing
-deferred-import requirement: the underlying error is raised at first use,
-naming the name, never swallowed or substituted.
-
-#### Scenario: Importing the test framework loads no exact stack
-
-- **WHEN** `machinome.test` is imported in a fresh interpreter
-- **THEN** `cadquery` is absent from `sys.modules`
-
-#### Scenario: A faceted project's test run loads no exact stack
-
-- **WHEN** a project whose nodes are all faceted runs its tests to completion
-- **THEN** the run reports the same results as today and `cadquery` is absent
-  from `sys.modules`
-
-#### Scenario: An exact comparison still loads the stack
-
-- **WHEN** two exact nodes are compared by an intersection assertion
-- **THEN** the exact stack is imported and the comparison returns the verdict
-  it returns today
-
-#### Scenario: A patched name still resolves
-
-- **WHEN** a caller patches an exact-kernel name on `machinome.test` before
-  any exact comparison has run
-- **THEN** the exact path uses the patched object
-
 ### Requirement: The motion package is cheap to import
 
 The system SHALL keep `machinome.motion` free of geometry. Importing
@@ -318,7 +209,7 @@ top-level `machinome` package itself — its parent, which the import
 machinery necessarily creates and whose `__init__` carries version
 metadata only — and no CAD backend.
 Importing `machinome.motion.ports` SHALL import no
-CAD backend and no exact-geometry stack: it reaches into
+CAD backend and no B-rep stack: it reaches into
 `machinome.node` only for the render-phase reporter, and the node
 classes it needs to validate and read a time base SHALL be imported
 inside the methods that need them, never at module scope.
@@ -331,7 +222,7 @@ else they need from the node package — the tree, the operations, the
 lifecycle phase, the declaring namespace, the driver declaration —
 SHALL be imported inside the methods that need them, never at module
 scope. Importing either SHALL import no CAD backend and no
-exact-geometry stack.
+B-rep stack.
 
 Neither `machinome.motion.ports` nor any module beneath
 `machinome.motion` SHALL be imported as a side effect of importing
@@ -347,7 +238,7 @@ Neither `machinome.motion.ports` nor any module beneath
 #### Scenario: Ports pull no geometry backend
 
 - **WHEN** `machinome.motion.ports` is imported in a fresh interpreter
-- **THEN** `cadquery`, the boundary-representation kernel and the STEP
+- **THEN** `cadquery`, the kernel binding `OCP` and the STEP
   reader are absent from the process's imported modules
 
 #### Scenario: Joints and couplings cost what ports cost
@@ -357,7 +248,7 @@ Neither `machinome.motion.ports` nor any module beneath
   one's imported `machinome` modules are compared with those of an
   interpreter that imported only `machinome.motion.ports`
 - **THEN** each set is the same but for the module itself, and
-  `cadquery`, the boundary-representation kernel and the STEP reader
+  `cadquery`, the kernel binding `OCP` and the STEP reader
   are absent from all three
 
 #### Scenario: Either import order works
@@ -400,7 +291,8 @@ of a run binder SHALL add no import to it.
 
 - **WHEN** a `Sim` is constructed over a root declaring `Time.running()`
 - **THEN** the compile step and the engine are imported then, and no CAD
-  backend and no exact-geometry stack with them
+  backend and no B-rep stack with them
+
 ### Requirement: The vet command and the manifest reader load no geometry stack
 
 The system SHALL keep manifest discovery and model declaration in a
@@ -441,3 +333,146 @@ numeric backend.
 - **THEN** the process has imported the `vet` command's module and no
   other command's module, and `machinome.core.loader`, `numpy` and
   `cadquery` are absent from its imported modules
+
+### Requirement: The test framework does not import the B-rep stack
+
+The system SHALL resolve the B-rep engine, and through it the
+boundary-representation stack, at the B-rep path's first use rather than at
+`machinome.test` module scope. Importing `machinome.test` in a fresh
+interpreter SHALL NOT import `cadquery`, `OCP` or the B-rep engine.
+
+This completes the deferral the loader requirement already states from the
+other side: loading a node imports neither the test framework nor cadquery,
+and importing the test framework imports neither cadquery nor the kernel. A
+project that models entirely in solid2 and asserts entirely over meshes
+therefore runs its tests without ever loading the B-rep stack.
+
+The deferral SHALL NOT make B-rep geometry optional or change any B-rep
+verdict. A comparison between two B-rep nodes SHALL resolve the B-rep engine
+through the seam the `brep-engine-dependency` capability specifies and
+produce the same result as before; only the moment of the import moves.
+
+The B-rep path SHALL look up each name it calls where that name is defined,
+at the moment of the call: an engine operation (`intersect_shapes`,
+`fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume`, `bounds`,
+`face_bounds`, `mutually_outside`) as an attribute of the resolved engine, and
+a core memo (`cached_bounding_box`, `cached_face_boxes`, `cached_placement`,
+`shape_identity`, `shape_load_observation`) as an attribute of the core module
+that defines it. A caller that patches a name in its defining module SHALL
+therefore be honoured whether or not a B-rep comparison has yet run.
+`machinome.test` SHALL NOT bind those names as attributes of its own, so each
+keeps one path.
+
+A failure to import the B-rep engine SHALL surface under the existing
+deferred-import requirement and the `brep-engine-dependency` capability: an
+absent engine is refused naming its install, a broken one raises its own
+import error at first use, and neither is swallowed or substituted.
+
+#### Scenario: Importing the test framework loads no B-rep stack
+
+- **WHEN** `machinome.test` is imported in a fresh interpreter
+- **THEN** `cadquery`, `OCP` and the B-rep engine module are absent from
+  `sys.modules`
+
+#### Scenario: A mesh project's test run loads no B-rep stack
+
+- **WHEN** a project whose nodes are all mesh runs its tests to completion
+- **THEN** the run reports the same results as today and `cadquery`, `OCP` and
+  the B-rep engine module are absent from `sys.modules`
+
+#### Scenario: A B-rep comparison still loads the stack
+
+- **WHEN** two B-rep nodes are compared by an intersection assertion
+- **THEN** the B-rep engine is resolved and the comparison returns the verdict
+  it returns today
+
+#### Scenario: A name patched where it is defined is used
+
+- **WHEN** a caller patches `intersect_shapes` on the engine module, or
+  `cached_face_boxes` on the core module that defines it, before any B-rep
+  comparison has run
+- **THEN** the B-rep path uses the patched object
+
+### Requirement: Importing the node package imports no backend
+
+The system SHALL expose from the root of `machinome.node` no name of its
+own, under the `node-model` requirement "The node package's root exports
+nothing": the node classes and the declarative structure helpers are imported
+from the modules that define them. The build-parameter kinds, the `Quantity`
+base and the parameter enumerator belong to the dedicated build-parameter
+module and SHALL be reachable only from there; the port kinds, the port
+declaration enumerator and the time-base declaration belong to the dedicated
+motion module and SHALL be reachable only from there. Importing
+`machinome.node`, or any module beneath it,
+SHALL NOT import a backend the caller has not named.
+
+In particular, importing `machinome.node` SHALL NOT import `cadquery`,
+`build123d`, `molejo` or the kernel binding `OCP`, and SHALL NOT import a
+module of a node type. A node type is reached by importing the leaf module that
+defines it (the `node-model` capability's table), which imports what that
+module needs and nothing else:
+`StepNode` imports CadQuery and the kernel's STEP reader, `MolejoNode` imports
+molejo, and `CadQueryNode`, `Build123dNode` and `Build123dSheetNode` import
+no CAD front end, since a project's own module imports it to render.
+
+Attribute access SHALL resolve submodules of `machinome.node`, imported
+when first read, so a consumer reading `machinome.node.<submodule>` after
+importing only the package keeps working.
+
+A name that is neither a submodule nor refused SHALL raise `AttributeError`.
+A name that has moved to another module, or that the root resolved until the
+OpenSpec change `root-cleanup`, SHALL raise `ImportError` whose message names
+the module that now answers for it: an `ImportError` rather than an
+`AttributeError` because `from machinome.node import <name>` discards an
+`AttributeError`'s message and substitutes its own generic text, so only an
+`ImportError` carries the redirect to the failing import line. A submodule
+that refuses an absent kernel SHALL raise that refusal, which is an
+`ImportError`, for the same reason.
+
+#### Scenario: An OpenSCAD-only project imports no B-rep stack
+
+- **WHEN** a project whose model uses only `Solid2Node` is built
+- **THEN** the build produces the same artifacts as before and `cadquery` is
+  absent from the build process's imported modules
+
+#### Scenario: A named backend is resolved
+
+- **WHEN** a module runs `from machinome.node.cadquery import CadQueryNode`
+- **THEN** it receives the class `machinome.node.cadquery` defines, and
+  `cadquery` is not imported by the import
+
+#### Scenario: The STEP reader is not imported by the node package
+
+- **WHEN** `machinome.node` is imported in a fresh interpreter
+- **THEN** the kernel's STEP reader and every node type's module are absent
+  from the process's imported modules, and the reader is imported when
+  `machinome.node.step` is first imported
+
+#### Scenario: A submodule is reached through the package
+
+- **WHEN** a consumer imports `machinome.node` and then reads
+  `machinome.node.assembly` or `machinome.node.cadquery`
+- **THEN** the submodule is returned
+
+#### Scenario: An unknown name still fails
+
+- **WHEN** a consumer reads a name that is neither a submodule of
+  `machinome.node` nor a refused name
+- **THEN** `AttributeError` is raised
+
+#### Scenario: A parameter kind is not a node export
+
+- **WHEN** a consumer reads a build-parameter name off `machinome.node`
+- **THEN** `AttributeError` is raised naming it, so
+  `from machinome.node import Length` fails at the import, and the
+  package's export list is empty
+
+#### Scenario: A port kind is not a node export
+
+- **WHEN** a consumer reads `RotationalPort`, `SignalPort`,
+  `TranslationalPort`, `Port`, `declared_ports` or `Time` off
+  `machinome.node`
+- **THEN** `ImportError` is raised naming `machinome.motion.ports`, so
+  `from machinome.node import RotationalPort` fails at the import with
+  that message, and the package's export list is empty
+

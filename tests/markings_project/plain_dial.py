@@ -13,7 +13,7 @@ only so that the two parts have artifact paths of their own to compare.
 import cadquery as cq
 
 from machinome.motion.joints import Revolute
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 from .dial import DIAL_DEFLECTION, DIAL_HEIGHT, DIAL_RADIUS
 

@@ -10,9 +10,7 @@ findings that say why not. Vet checks what a project declares; it is not a
 sandbox, and the runtime that lacks a capability is. Encodes ADR-149.
 
 Code: `machinome/vet/`, `machinome/manifest.py`, `machinome/manager/vet.py`.
-
 ## Requirements
-
 ### Requirement: The universe is a versioned declaration shipped with the framework
 
 The system SHALL carry one universe declaration as a data file inside the
@@ -229,12 +227,41 @@ denied modules: `machinome.cli`, `machinome.manager`,
 `machinome.core.builder`, `machinome.core.processes`,
 `machinome.core.loader`, `machinome.core.export`,
 `machinome.core.pieces`, `machinome.source_generation`,
-`machinome.viewers`, `machinome.sphinx`, `machinome.currency` and
-`machinome._artifact`. The finding SHALL name the denied module
-reached. Every other name beneath the contract members,
-including `machinome.node`, `machinome.simulation`, `machinome.motion`,
-`machinome.math`, `machinome.parameters`, `machinome.test`,
-`machinome.exact` and `machinome.openscad`, SHALL pass.
+`machinome.viewers`, `machinome.sphinx`, `machinome.currency`,
+`machinome._artifact`, `machinome.brep_cache`, `machinome.brep_artifacts`,
+and the B-rep engine's file operations `machinome.engine.brep.read_brep`,
+`machinome.engine.brep.write_brep` and `machinome.engine.brep.write_stl`.
+The finding SHALL name the denied name reached. Every other name beneath
+the contract members, including `machinome.node`, `machinome.simulation`,
+`machinome.motion`, `machinome.math`, `machinome.parameters`,
+`machinome.test`, `machinome.engine`, `machinome.engine.brep` and its
+other operations, and the leaf modules `machinome.node.cadquery`,
+`machinome.node.build123d`, `machinome.node.step`, `machinome.node.molejo`,
+`machinome.node.solid2`, `machinome.node.jscad` and `machinome.node.stl` and the
+package `machinome.node.openscad` with its modules, SHALL pass.
+
+`machinome.openscad` and `machinome.scad_engine` no longer exist: the OpenSCAD
+writer and binary contract are `machinome.node.openscad.writer` and
+`machinome.node.openscad.binary`. An import of a removed module is not a vet
+finding; it fails when the project runs.
+
+`machinome.exact` no longer exists: the B-rep operations a project calls
+directly are defined in `machinome.engine.brep` and are reached there. Vet
+judges a name by its place in the universe, not by whether a module defines
+it, so an import of the removed module is not a vet finding; it fails when the
+project runs.
+
+`machinome.node.adapters` no longer holds the leaf modules: each is
+`machinome.node.<x>`. An import beneath the dissolved package is, likewise, not
+a vet finding; it fails when the project runs, naming the new address. Whether
+a kernel's extra is installed does not enter a verdict.
+
+The node package's root resolves no name (`node-model`, "The node package's
+root exports nothing"): every node class is imported from its module,
+`machinome.node.assembly`, `machinome.node.cadquery` and the others, which are
+beneath the contract members and pass. An import of a former root name, such as
+`from machinome.node import AssemblyNode`, is, likewise, not a vet finding; it
+fails when the project runs, naming the module that defines the name.
 
 #### Scenario: The loader through an import
 
@@ -253,8 +280,29 @@ including `machinome.node`, `machinome.simulation`, `machinome.motion`,
 
 #### Scenario: The public contract passes
 
-- **WHEN** a vetted module imports from `machinome.node`,
-  `machinome.simulation`, `machinome.motion` and `machinome.exact`
+- **WHEN** a vetted module imports from `machinome.node.assembly`,
+  `machinome.node.cadquery`, `machinome.node.stl`, `machinome.simulation`,
+  `machinome.motion` and `machinome.engine.brep`
+- **THEN** vet reports no finding for those imports
+
+#### Scenario: The engine's B-rep operations pass
+
+- **WHEN** a vetted module runs `from machinome.engine.brep import
+  intersect_shapes, placed_shape, solid_volume`
+- **THEN** vet reports no finding for that import
+
+#### Scenario: The engine's file operations are internals
+
+- **WHEN** a vetted module runs `from machinome.engine.brep import
+  write_brep`, or names `machinome.brep_cache.cached_shape`
+- **THEN** vet reports kind `framework-internal`, naming
+  `machinome.engine.brep.write_brep` or `machinome.brep_cache`
+
+#### Scenario: A leaf module passes
+
+- **WHEN** a vetted module runs `from machinome.node.cadquery import
+  CadQueryNode` and `from machinome.node.step import StepAssembly,
+  solids_from_faces`
 - **THEN** vet reports no finding for those imports
 
 ### Requirement: A file write is a finding
@@ -684,3 +732,4 @@ vets. The system SHALL read those files as bytes and parse them.
 
 - **WHEN** vet runs twice over an unchanged tree
 - **THEN** the two JSON reports are byte-identical
+

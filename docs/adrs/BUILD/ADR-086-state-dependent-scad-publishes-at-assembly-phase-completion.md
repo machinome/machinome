@@ -1,6 +1,6 @@
 # ADR-086: State-Dependent SCAD Publishes at Assembly Phase Completion
 
-**Status:** Accepted
+**Status:** Accepted, production producer removed 2026-10-04 by [ADR-173](ADR-173-scad-is-written-only-where-it-is-read.md); coalescing removed 2026-10-04 by [ADR-177](../NODE/ADR-177-the-openscad-family-is-a-node-package-and-the-core-names-no-technology.md)
 **Date:** 2026-09-07
 **Change:** `bound-framework-performance-costs`
 **Extends:**
@@ -108,6 +108,15 @@ assembly SCAD; it does not restore complete-set publication.
   ADR-038 already permits, but never a torn file or a manifest naming stale
   work.
 - Flexible and direct callers keep their existing publication timing.
+
+## Amendment (2026-10-04)
+
+[ADR-173](ADR-173-scad-is-written-only-where-it-is-read.md) removes the
+builder's `assembly` phase and its `assemble()`, which wrote every non-rigid
+node's `.scad`: the coalescing below has no production producer. The
+mechanism (`Phase.coalesces_scad`, `defer_scad`) stays, exercised by its tests
+and by any caller that generates non-rigid SCAD inside an assembly phase;
+removing it is a candidate, not decided.
 
 ## References
 

@@ -13,6 +13,7 @@ from unittest import TestCase
 from unittest.mock import Mock, patch, MagicMock
 
 from machinome.manager.snapshot import Snapshot, COLORSCHEMES, VIEW_OPTIONS
+from machinome.node.openscad.writer import scad_file
 from machinome.viewers.openscad import OpenScadRenderer
 from tests.test_build_lock import lock_is_held
 
@@ -123,7 +124,8 @@ class SnapshotTimeValidationTest(TestCase):
         # Should not raise or exit for valid time
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
             with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
@@ -133,7 +135,8 @@ class SnapshotTimeValidationTest(TestCase):
         args = self._make_args(1.0)
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
             with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
@@ -143,7 +146,8 @@ class SnapshotTimeValidationTest(TestCase):
         args = self._make_args(0.5)
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
             with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
@@ -199,7 +203,8 @@ class SnapshotViewValidationTest(TestCase):
         args = self._make_args('axes')
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
             with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
@@ -209,7 +214,8 @@ class SnapshotViewValidationTest(TestCase):
         args = self._make_args('axes,edges,wireframe')
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
             with patch('machinome.manager.snapshot.run'):
                 self.snapshot.handle(args)
@@ -236,7 +242,8 @@ class SnapshotCommandBuildingTest(TestCase):
         self.renderer = OpenScadRenderer()
         self.output = 'test_output.png'
         self.mock_node = Mock()
-        self.mock_node.scad_file = '/tmp/test_node.scad'
+        self.mock_node.basepath = '/tmp/test_node'
+        self.mock_node.kept_artifacts.return_value = ()
 
     def _make_args(self, **kwargs):
         """Create args with defaults that can be overridden"""
@@ -378,9 +385,11 @@ class SnapshotNodePreparationTest(TestCase):
             mock_node.set_keyframe.assert_called_once_with(0.75)
 
     def test_assemble_is_called(self):
-        """Test that assemble is called on the node"""
+        """The table renderer presents the node: it is what assembles it
+        (`openscad-out`; the web renderer composes no presentation)."""
         self.snapshot.path = '/test/path/node.py'
         self.snapshot.time = 0.0
+        self.snapshot.presenter = Mock()
 
         with patch('machinome.manager.snapshot.load_node') as mock_load:
             mock_node = Mock()
@@ -388,7 +397,8 @@ class SnapshotNodePreparationTest(TestCase):
 
             self.snapshot._load_and_prepare_node()
 
-            mock_node.assemble.assert_called_once()
+            self.snapshot.presenter.present.assert_called_once_with(
+                mock_node)
 
 
 class SnapshotErrorHandlingTest(TestCase):
@@ -439,7 +449,8 @@ class SnapshotErrorHandlingTest(TestCase):
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
 
             with patch('machinome.manager.snapshot.run') as mock_run:
@@ -458,7 +469,8 @@ class SnapshotErrorHandlingTest(TestCase):
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test.scad'
+            mock_node.basepath = '/tmp/test'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
 
             with patch('machinome.manager.snapshot.run') as mock_run:
@@ -498,7 +510,8 @@ class SnapshotErrorHandlingTest(TestCase):
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test_missing_import.scad'
+            mock_node.basepath = '/tmp/test_missing_import'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
 
             stdout = ("WARNING: Can't open import file "
@@ -526,7 +539,8 @@ class SnapshotErrorHandlingTest(TestCase):
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test_clean.scad'
+            mock_node.basepath = '/tmp/test_clean'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
 
             stdout = ("Compiling design (CSG Products normalization)...\n"
@@ -552,7 +566,8 @@ class SnapshotErrorHandlingTest(TestCase):
 
         with patch.object(self.snapshot, '_load_and_prepare_node') as mock_load:
             mock_node = Mock()
-            mock_node.scad_file = '/tmp/test_warn.scad'
+            mock_node.basepath = '/tmp/test_warn'
+            mock_node.kept_artifacts.return_value = ()
             mock_load.return_value = mock_node
 
             stdout = "WARNING: Ignoring unknown module 'nonexistent'\n"
@@ -574,7 +589,8 @@ class SnapshotErrorHandlingTest(TestCase):
 
 
 class OpenScadRendererDiagnosticsTest(TestCase):
-    """The renderer's own contract, beneath `machinome snapshot`: promote
+    """The renderer's own contract, beneath `machinome snapshot` (its
+    `draw`, which `render` reports the failures of): promote
     what OpenSCAD reports on either stream to a level a normal run
     shows, and raise a named error when a line reports a file it could
     not open (import-the-artifact-by-path)."""
@@ -582,7 +598,8 @@ class OpenScadRendererDiagnosticsTest(TestCase):
     def setUp(self):
         self.renderer = OpenScadRenderer()
         self.node = Mock()
-        self.node.scad_file = '/tmp/diagnostics.scad'
+        self.node.basepath = '/tmp/diagnostics'
+        self.node.kept_artifacts.return_value = ()
 
     def _args(self):
         return argparse.Namespace(
@@ -601,7 +618,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
                 stderr='')
 
         with self.assertRaises(OpenScadImportError) as cm:
-            self.renderer.render(self.node, self._args(), 'out.png', runner)
+            self.renderer.draw(self.node, self._args(), 'out.png', runner)
 
         self.assertEqual(cm.exception.missing_file, '/tmp/missing-part.stl')
         self.assertEqual(cm.exception.scad_file, '/tmp/diagnostics.scad')
@@ -619,7 +636,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
                         "'/tmp/missing-part.stl', import() at line 5\n"))
 
         with self.assertRaises(OpenScadImportError):
-            self.renderer.render(self.node, self._args(), 'out.png', runner)
+            self.renderer.draw(self.node, self._args(), 'out.png', runner)
 
     def test_clean_render_raises_nothing(self):
         def runner(command, **kwargs):
@@ -628,7 +645,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
                 stdout="Compiling design (CSG Products normalization)...\n",
                 stderr='')
 
-        self.renderer.render(self.node, self._args(), 'out.png', runner)
+        self.renderer.draw(self.node, self._args(), 'out.png', runner)
 
     def test_unrelated_warning_is_promoted_to_warning_level(self):
         def runner(command, **kwargs):
@@ -638,7 +655,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
                 stderr='')
 
         with self.assertLogs('viewers.openscad', level='WARNING') as logs:
-            self.renderer.render(self.node, self._args(), 'out.png', runner)
+            self.renderer.draw(self.node, self._args(), 'out.png', runner)
 
         self.assertTrue(any('nonexistent' in m for m in logs.output))
 
@@ -651,7 +668,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
                 returncode=0, stdout="Geometries in cache: 2\n", stderr='')
 
         with self.assertLogs('viewers.openscad', level='DEBUG') as logs:
-            self.renderer.render(self.node, self._args(), 'out.png', runner)
+            self.renderer.draw(self.node, self._args(), 'out.png', runner)
 
         self.assertTrue(
             all(record.levelno < logging.WARNING for record in logs.records),
@@ -829,6 +846,7 @@ class SnapshotIntegrationTest(TestCase):
         )
         self.snapshot.path = node_path
         self.snapshot.time = 0.0
+        self.snapshot.presenter = OpenScadRenderer()
 
         node = self.snapshot._load_and_prepare_node()
 
@@ -842,11 +860,28 @@ class SnapshotIntegrationTest(TestCase):
         )
         self.snapshot.path = node_path
         self.snapshot.time = 0.0
+        # The root's SCAD is written on demand for the OpenSCAD renderer
+        # only (`scad-presentation`), as `handle` selects it from the table.
+        self.snapshot.renderer = 'openscad'
+        self.snapshot.presenter = OpenScadRenderer()
 
         node = self.snapshot._load_and_prepare_node()
 
-        self.assertTrue(hasattr(node, 'scad_file'))
-        self.assertTrue(os.path.exists(node.scad_file))
+        self.assertTrue(os.path.exists(scad_file(node)))
+
+    def test_load_and_prepare_for_the_web_renderer_writes_no_root_scad(self):
+        """(`scad-presentation`) The web renderer reads no SCAD, so none is
+        written for the root."""
+        node_path = os.path.join(
+            BASEDIR, 'flat_project', 'two_cylinders.py'
+        )
+        self.snapshot.path = node_path
+        self.snapshot.time = 0.0
+        self.snapshot.renderer = 'web'
+
+        node = self.snapshot._load_and_prepare_node()
+
+        self.assertFalse(os.path.exists(scad_file(node)))
 
     def test_assembly_node_with_time(self):
         """Test that set_keyframe works with AssemblyNode"""
@@ -998,7 +1033,7 @@ class SnapshotHeadlessRenderTest(TestCase):
 
         with patch.dict(os.environ, _env_without_display(), clear=True):
             with patch(
-                'machinome.manager.snapshot.OPENSCAD_RENDERER.find_xvfb_run',
+                'machinome.viewers.openscad.OpenScadRenderer.find_xvfb_run',
                 return_value=None,
             ):
                 with self.assertRaises(SystemExit) as cm:
@@ -1028,13 +1063,16 @@ class SnapshotBuildLockTest(TestCase):
 
     def test_lock_is_held_during_preparation_and_released_before_render(self):
         node = Mock()
-        node.scad_file = '/tmp/test.scad'
+        presenter = Mock()
+        node.basepath = '/tmp/test'
+        node.kept_artifacts.return_value = ()
         observed = {}
-        node.assemble.side_effect = lambda: observed.update(
+        presenter.present.side_effect = lambda node: observed.update(
             held=lock_is_held(BUILD_DIR))
 
         self.snapshot.path = 'model.py'
         self.snapshot.time = 0.0
+        self.snapshot.presenter = presenter
 
         with patch('machinome.manager.snapshot.load_node', return_value=node):
             self.snapshot._load_and_prepare_node()
@@ -1215,7 +1253,7 @@ class SnapshotDriveTest(TestCase):
              patch('machinome.manager.snapshot.load_node',
                    return_value=node), \
              patch('machinome.manager.snapshot.project_build_lock'), \
-             patch('machinome.manager.snapshot.OPENSCAD_RENDERER.render') as drawn, \
+             patch('machinome.viewers.openscad.OpenScadRenderer.render') as drawn, \
              patch.object(node, 'assemble'), \
              patch.object(sys, 'stderr', errors):
             selected.return_value.reference = 'model.py'
@@ -1288,3 +1326,89 @@ class ClockedSnapshotTest(TestCase):
         self.assertIn('w0.digit', message)
         self.assertIn('crank', message)
         self.assertIn('ring', message)
+
+
+#: R4 of `openscad-out` design.md Decision 8, with R1 inside it, spelled out
+#: here rather than read from the code under test.
+R4 = ('Error: machinome snapshot --renderer openscad needs the openscad '
+      'extra: machinome.node.openscad (OpenScadNode and the OpenSCAD writer) '
+      'needs solid2, which is not installed; install it with '
+      '\'pip install "machinome[openscad]"\'; or use --renderer web')
+
+#: `machinome snapshot` in a subprocess with `load_node` replaced by a
+#: refusal, so a run that reaches it fails loudly; the arguments follow.
+SNAPSHOT_WITHOUT_LOADING = '''
+import sys
+from unittest.mock import patch
+import machinome.manager.snapshot as snapshot
+
+def refuse(*arguments, **keywords):
+    raise AssertionError('load_node was called')
+
+sys.argv = ['machinome', 'snapshot', *{arguments!r}]
+with patch.object(snapshot, 'load_node', refuse):
+    from machinome.cli import manage
+    manage()
+'''
+
+
+class SnapshotRendererFromTheTableTest(TestCase):
+    """(`openscad-out`, 2.5) The renderers are the table's: `--renderer`
+    offers `web` and the table's renderer names, defaults to the table's
+    `DEFAULT_RENDERER`, and a renderer whose package is absent is refused
+    before the node is loaded, naming its extra. The web renderer composes
+    no presentation."""
+
+    def test_the_choices_and_the_default_come_from_the_table(self):
+        from machinome.node import supported
+        parser = argparse.ArgumentParser()
+        Snapshot().add_arguments(parser)
+        action = next(action for action in parser._actions
+                      if action.dest == 'renderer')
+        names = [name for node_type in supported.NODE_TYPES.values()
+                 for name, _ in node_type.renderers]
+        self.assertEqual(list(action.choices), ['web', *names])
+        self.assertEqual(action.default, supported.DEFAULT_RENDERER)
+
+    def assert_refused_before_loading(self, *arguments):
+        from tests.brep_engine_absent import run_python
+        build_dir = tempfile.mkdtemp(prefix='snapshot-refused-')
+        self.addCleanup(shutil.rmtree, build_dir, ignore_errors=True)
+        output = os.path.join(build_dir, 'shot.png')
+        run = run_python(
+            SNAPSHOT_WITHOUT_LOADING.format(arguments=[
+                os.path.join(BASEDIR, 'flat_project', 'simple_cylinder.py'),
+                '-o', output, *arguments]),
+            absent=('solid2',), build_dir=build_dir)
+        self.assertEqual(run.returncode, 1, run.output)
+        self.assertEqual(run.stderr.strip().splitlines()[-1], R4, run.output)
+        self.assertNotIn('load_node was called', run.output)
+        written = [os.path.join(root, name)
+                   for root, _, names in os.walk(build_dir)
+                   for name in names if name.endswith('.scad')]
+        self.assertEqual(written, [])
+        self.assertFalse(os.path.exists(output))
+
+    def test_the_default_renderer_is_refused_naming_its_extra(self):
+        self.assert_refused_before_loading()
+
+    def test_the_named_renderer_is_refused_naming_its_extra(self):
+        self.assert_refused_before_loading('--renderer', 'openscad')
+
+    def test_the_web_renderer_composes_no_presentation(self):
+        from tests.flat_project.two_cylinders import TwoCylinders
+        node = TwoCylinders()
+        snapshot = Snapshot.__new__(Snapshot)
+        snapshot.path = 'model.py'
+        snapshot.time = 0.0
+        snapshot.overrides = []
+        snapshot.drives = []
+        snapshot.renderer = 'web'
+
+        def refuse():
+            raise AssertionError('assemble() was called')
+
+        with patch('machinome.manager.snapshot.load_node',
+                   return_value=node), \
+             patch.object(node, 'assemble', side_effect=refuse):
+            self.assertIs(snapshot._load_and_prepare_node(), node)

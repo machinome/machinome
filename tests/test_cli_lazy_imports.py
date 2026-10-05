@@ -246,7 +246,7 @@ class HelpFidelityTest(TestCase):
         help_text = ''.join(run_help('-h').split())
 
         for name in COMMAND_ORDER:
-            module, class_name = COMMANDS[name]
+            module, class_name, _ = COMMANDS[name]
             command = getattr(import_module(module), class_name)
             expected = name + ''.join(command.__doc__.split())
             self.assertIn(expected, help_text, name)
@@ -290,7 +290,7 @@ class RegistryConformanceTest(TestCase):
     proved in one place instead of in production."""
 
     def test_every_entry_resolves_and_honours_the_duck_typed_contract(self):
-        for name, (module, class_name) in COMMANDS.items():
+        for name, (module, class_name, _) in COMMANDS.items():
             with self.subTest(command=name):
                 command_class = getattr(import_module(module), class_name)
                 # A command name may hyphenate ('import-step') where a
@@ -308,6 +308,74 @@ class RegistryConformanceTest(TestCase):
                 self.assertIsInstance(getattr(command, 'needs_node', True),
                                       bool)
 
+    def test_every_needed_module_imports(self):
+        # The third column names the one node type a command needs beyond
+        # its own implementation (OpenSpec changes `lean-install` and
+        # `openscad-out`), whose module the table of supported node types
+        # loads; with every extra installed, as the suite runs, each must
+        # import.
+        from machinome.node import supported
+        needed = {name: needs for name, (_, _, needs) in COMMANDS.items()}
+
+        self.assertEqual({name: needs for name, needs in needed.items()
+                          if needs is not None},
+                         {'import-step': 'step'})
+        for name, needs in needed.items():
+            if needs is not None:
+                with self.subTest(command=name):
+                    self.assertEqual(supported.load(needs).__name__,
+                                     f'machinome.node.{needs}')
+
+
+#: Refuse `cadquery` in the probed interpreter, the way an install without
+#: the `step` extra does (tests/brep_engine_absent.py's finder, inline).
+CADQUERY_ABSENT = """
+import sys
+
+
+class _CadQueryAbsent:
+
+    def find_spec(self, name, target=None, path=None):
+        if name == 'cadquery' or name.startswith('cadquery.'):
+            raise ModuleNotFoundError(
+                "No module named 'cadquery'", name='cadquery')
+        return None
+
+
+sys.meta_path.insert(0, _CadQueryAbsent())
+"""
+
+#: Every leaf module under the node package (the `node-model` table).
+LEAF_MODULES = {f'machinome.node.{name}' for name in (
+    'cadquery', 'build123d', 'step', 'molejo', 'solid2', 'openscad', 'jscad',
+    'stl')}
+
+
+class CommandNeedsTest(TestCase):
+    """A command that needs an extra is listed without it and answered by
+    it (`cli` capability, "A command that needs an extra is answered by the
+    extra")."""
+
+    def test_help_lists_import_step_without_its_extra(self):
+        result = probe(CADQUERY_ABSENT + DISPATCH, argv=['-h'])
+
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertIn('import-step', result.stdout)
+        self.assertNotIn('Traceback', result.stderr)
+        self.assertFalse(result.imported('machinome.node.step'))
+
+    def test_help_imports_no_needed_module(self):
+        result = probe(DISPATCH, argv=['-h'])
+
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertFalse(result.imported('machinome.node.step'))
+        self.assertFalse(result.imported('cadquery'))
+
+    def test_a_command_needing_no_module_imports_no_leaf(self):
+        result = probe(DISPATCH, argv=['viewer'])
+
+        self.assertEqual(result.modules & LEAF_MODULES, set())
+
 
 class VerdictStoreImportWeight(TestCase):
     """The verdict store adds no metadata, platform or kernel import to the
@@ -320,7 +388,7 @@ class VerdictStoreImportWeight(TestCase):
     """
 
     WATCHED = ('importlib.metadata', 'platform', 'cadquery', 'OCP',
-               'manifold3d', 'trimesh', 'molejo')
+               'manifold3d', 'machinome.engine.mesh', 'trimesh', 'molejo')
 
     #: What a `machinome build -h` dispatch loaded of WATCHED at bf24687,
     #: before this change (task 1.4): the ceiling it must stay under.

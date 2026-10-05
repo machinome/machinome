@@ -14,7 +14,7 @@ and declares the ``thickness`` of the stock:
 .. code-block:: python
 
     from build123d import Circle, Rectangle
-    from machinome.node import Build123dSheetNode
+    from machinome.node.build123d import Build123dSheetNode
 
     class Panel(Build123dSheetNode):
 
@@ -84,7 +84,7 @@ exact profile, so an offsetting exporter remains possible), importing a
 profile from SVG or DXF, engraving, material and process metadata, and
 nesting several parts onto one sheet.
 
-A sheet part is exact. It fuses exactly with CadQuery and build123d
-parts, needs no OpenSCAD, and may declare tessellation precision for its
-STL as any exact leaf may (:doc:`imported-parts`); the DXF comes from the
+A sheet part has B-rep geometry. It fuses exactly with CadQuery and
+build123d parts, needs no OpenSCAD, and may declare tessellation precision
+for its STL as any B-rep leaf may (:doc:`imported-parts`); the DXF comes from the
 nominal profile, not from the tessellation.

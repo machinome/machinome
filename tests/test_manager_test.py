@@ -587,7 +587,7 @@ class ReportSummaryLineTest(TestCase):
         runner.num_skipped = 1
         runner.num_expected_failures = 2
         runner.num_unexpected_successes = 1
-        runner.policy = framework.ComparisonPolicy('faceted', 0.0)
+        runner.policy = framework.ComparisonPolicy('mesh', 0.0)
 
         out = io.StringIO()
         with redirect_stdout(out):
@@ -596,7 +596,7 @@ class ReportSummaryLineTest(TestCase):
         self.assertIn(
             'Ran 8 tests in 1.00 seconds: 4 passed, 0 failed, '
             '1 skipped, 2 expected failures, 1 unexpected success '
-            '(faceted kernel, volume epsilon 0 mm³)',
+            '(mesh engine, volume epsilon 0 mm³)',
             out.getvalue())
 
 
@@ -1046,7 +1046,7 @@ class MultiTestCaseFixture(TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
 
-SKIP_ONLY_SOURCE = '''from machinome.node import Solid2Node
+SKIP_ONLY_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1069,7 +1069,7 @@ class WidgetTest(TestCase):
         self.skipTest('the exact kernel is not available here')
 '''
 
-UNEXPECTED_SUCCESS_SOURCE = '''from machinome.node import Solid2Node
+UNEXPECTED_SUCCESS_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1116,7 +1116,7 @@ class UnusualResultExitCodeTest(MultiTestCaseFixture):
         self.assertIn('1 unexpected success', stdout)
 
 
-WINDMILL_SOURCE = '''from machinome.node import Solid2Node
+WINDMILL_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1173,7 +1173,7 @@ class CompanionMultipleTestCasesRunTest(MultiTestCaseFixture):
         self.assertIn('2 passed, 0 failed', stdout)
 
 
-HULL_SOURCE = '''from machinome.node import Solid2Node
+HULL_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1219,7 +1219,7 @@ class UndeclaredTestCaseInMultiNodeModuleTest(MultiTestCaseFixture):
         self.assertNotIn('passed', stdout)
 
 
-MAST_SOURCE = '''from machinome.node import Solid2Node
+MAST_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 
@@ -1259,10 +1259,12 @@ class UndeclaredTestCaseBesideSingleNodeModuleTest(MultiTestCaseFixture):
         self.assertIn('1 passed, 0 failed', stdout)
 
 
-class ComparisonKernelSelectionTest(TestCase):
-    """The kernel a run compares on is a property of the run, resolved
-    once from the flags, then the environment, then the exact default --
-    and refused loudly when the pieces do not fit together."""
+class ComparisonEngineSelectionTest(TestCase):
+    """The engine a run compares on is a property of the run, resolved
+    once from the flags, then the environment, then the B-rep default --
+    and refused loudly when the pieces do not fit together (the run's
+    engine named by the change `brep-mesh`, design.md Decisions 6 and
+    13)."""
 
     def tearDown(self):
         framework.set_comparison_policy(None)
@@ -1273,71 +1275,71 @@ class ComparisonKernelSelectionTest(TestCase):
         Runner().add_arguments(parser)
         return parser
 
-    def test_exact_and_faceted_are_mutually_exclusive(self):
+    def test_brep_and_mesh_are_mutually_exclusive(self):
         with redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
-                self.parser().parse_args(['--exact', '--faceted'])
+                self.parser().parse_args(['--brep', '--mesh'])
 
-    def test_flags_parse_into_a_kernel_and_an_epsilon(self):
-        args = self.parser().parse_args(['--faceted', '--volume-epsilon', '0.5'])
-        self.assertEqual((args.kernel, args.volume_epsilon), ('faceted', 0.5))
+    def test_flags_parse_into_an_engine_and_an_epsilon(self):
+        args = self.parser().parse_args(['--mesh', '--volume-epsilon', '0.5'])
+        self.assertEqual((args.engine, args.volume_epsilon), ('mesh', 0.5))
         args = self.parser().parse_args([])
-        self.assertEqual((args.kernel, args.volume_epsilon), (None, None))
+        self.assertEqual((args.engine, args.volume_epsilon), (None, None))
 
-    def test_the_default_is_the_exact_kernel(self):
+    def test_the_default_is_the_brep_engine(self):
         policy = framework.resolve_comparison_policy(environ={})
-        self.assertEqual(policy, ('exact', 0.0,
+        self.assertEqual(policy, ('brep', 0.0,
                                   framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
-    def test_faceted_without_an_epsilon_is_strict(self):
-        policy = framework.resolve_comparison_policy('faceted', environ={})
-        self.assertEqual(policy, ('faceted', 0.0,
+    def test_mesh_without_an_epsilon_is_strict(self):
+        policy = framework.resolve_comparison_policy('mesh', environ={})
+        self.assertEqual(policy, ('mesh', 0.0,
                                   framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
-    def test_the_environment_selects_the_faceted_kernel(self):
+    def test_the_environment_selects_the_mesh_engine(self):
         policy = framework.resolve_comparison_policy(
-            environ={'SOLID_TEST_KERNEL': 'faceted',
+            environ={'SOLID_TEST_ENGINE': 'mesh',
                      'SOLID_TEST_VOLUME_EPSILON': '0.25'})
-        self.assertEqual(policy, ('faceted', 0.25,
+        self.assertEqual(policy, ('mesh', 0.25,
                                   framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_a_flag_beats_the_environment(self):
         policy = framework.resolve_comparison_policy(
-            'exact', environ={'SOLID_TEST_KERNEL': 'faceted',
+            'brep', environ={'SOLID_TEST_ENGINE': 'mesh',
                               'SOLID_TEST_VOLUME_EPSILON': '0.25'})
-        self.assertEqual(policy, ('exact', 0.0,
+        self.assertEqual(policy, ('brep', 0.0,
                                   framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
-    def test_an_unknown_kernel_name_is_refused_naming_the_variable(self):
+    def test_an_unknown_engine_name_is_refused_naming_the_variable(self):
         with self.assertRaisesRegex(
-                ValueError, r"SOLID_TEST_KERNEL.*'exact'.*'faceted'.*fast"):
+                ValueError, r"SOLID_TEST_ENGINE.*'brep'.*'mesh'.*fast"):
             framework.resolve_comparison_policy(
-                environ={'SOLID_TEST_KERNEL': 'fast'})
+                environ={'SOLID_TEST_ENGINE': 'fast'})
 
     def test_a_negative_epsilon_is_refused(self):
         with self.assertRaisesRegex(ValueError, 'negative'):
             framework.resolve_comparison_policy(
-                'faceted', -1.0, environ={})
+                'mesh', -1.0, environ={})
         with self.assertRaisesRegex(ValueError, 'negative'):
             framework.resolve_comparison_policy(
-                environ={'SOLID_TEST_KERNEL': 'faceted',
+                environ={'SOLID_TEST_ENGINE': 'mesh',
                          'SOLID_TEST_VOLUME_EPSILON': '-2'})
 
     def test_a_non_numeric_environment_epsilon_is_refused(self):
         with self.assertRaisesRegex(ValueError, 'SOLID_TEST_VOLUME_EPSILON'):
             framework.resolve_comparison_policy(
-                'faceted', environ={'SOLID_TEST_VOLUME_EPSILON': 'tiny'})
+                'mesh', environ={'SOLID_TEST_VOLUME_EPSILON': 'tiny'})
 
-    def test_an_epsilon_offered_to_the_exact_kernel_is_refused(self):
+    def test_an_epsilon_offered_to_the_brep_engine_is_refused(self):
         with self.assertRaisesRegex(ValueError, 'nothing.*absorb'):
-            framework.resolve_comparison_policy('exact', 0.5, environ={})
+            framework.resolve_comparison_policy('brep', 0.5, environ={})
         with self.assertRaisesRegex(ValueError, 'nothing.*absorb'):
             framework.resolve_comparison_policy(None, 0.5, environ={})
 
-    def test_the_environment_epsilon_is_not_read_by_the_exact_kernel(self):
+    def test_the_environment_epsilon_is_not_read_by_the_brep_engine(self):
         policy = framework.resolve_comparison_policy(
             environ={'SOLID_TEST_VOLUME_EPSILON': 'tiny'})
-        self.assertEqual(policy, ('exact', 0.0,
+        self.assertEqual(policy, ('brep', 0.0,
                                   framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_a_two_argument_construction_means_the_default_quantum(self):
@@ -1346,7 +1348,7 @@ class ComparisonKernelSelectionTest(TestCase):
         # own tests are none of them edited to pass a quantum (design.md
         # §6); this is what makes that mean "at the default quantum".
         self.assertEqual(
-            framework.ComparisonPolicy('exact', 0.0).placement_quantum,
+            framework.ComparisonPolicy('brep', 0.0).placement_quantum,
             framework.DEFAULT_PLACEMENT_QUANTUM)
 
     def test_the_placement_quantum_flag_parses(self):
@@ -1355,11 +1357,11 @@ class ComparisonKernelSelectionTest(TestCase):
         args = self.parser().parse_args([])
         self.assertIsNone(args.placement_quantum)
 
-    def test_the_placement_quantum_is_not_in_the_kernel_group(self):
+    def test_the_placement_quantum_is_not_in_the_engine_group(self):
         args = self.parser().parse_args(
-            ['--exact', '--placement-quantum', '1e-6'])
-        self.assertEqual((args.kernel, args.placement_quantum),
-                         ('exact', 1e-6))
+            ['--brep', '--placement-quantum', '1e-6'])
+        self.assertEqual((args.engine, args.placement_quantum),
+                         ('brep', 1e-6))
 
     def test_the_default_placement_quantum(self):
         policy = framework.resolve_comparison_policy(environ={})
@@ -1382,19 +1384,19 @@ class ComparisonKernelSelectionTest(TestCase):
             placement_quantum=0, environ={})
         self.assertEqual(policy.placement_quantum, 0.0)
 
-    def test_the_exact_kernel_accepts_a_placement_quantum(self):
-        # Unlike --volume-epsilon, refused by the exact kernel.
+    def test_the_brep_engine_accepts_a_placement_quantum(self):
+        # Unlike --volume-epsilon, refused by the B-rep engine.
         policy = framework.resolve_comparison_policy(
-            'exact', placement_quantum=1e-6, environ={})
-        self.assertEqual(policy, ('exact', 0.0, 1e-6, True))
+            'brep', placement_quantum=1e-6, environ={})
+        self.assertEqual(policy, ('brep', 0.0, 1e-6, True))
 
-    def test_the_environment_quantum_is_read_under_both_kernels(self):
-        exact_policy = framework.resolve_comparison_policy(
+    def test_the_environment_quantum_is_read_under_both_engines(self):
+        brep_policy = framework.resolve_comparison_policy(
             environ={'SOLID_TEST_PLACEMENT_QUANTUM': '1e-6'})
-        faceted_policy = framework.resolve_comparison_policy(
-            'faceted', environ={'SOLID_TEST_PLACEMENT_QUANTUM': '1e-6'})
-        self.assertEqual(exact_policy.placement_quantum, 1e-6)
-        self.assertEqual(faceted_policy.placement_quantum, 1e-6)
+        mesh_policy = framework.resolve_comparison_policy(
+            'mesh', environ={'SOLID_TEST_PLACEMENT_QUANTUM': '1e-6'})
+        self.assertEqual(brep_policy.placement_quantum, 1e-6)
+        self.assertEqual(mesh_policy.placement_quantum, 1e-6)
 
     def test_a_negative_placement_quantum_is_refused(self):
         # Unlike the epsilon's negative-value error, the spec requires
@@ -1438,7 +1440,7 @@ class ComparisonKernelSelectionTest(TestCase):
                 environ={'SOLID_TEST_PLACEMENT_QUANTUM': 'tight'})
 
     def test_an_empty_environment_quantum_means_unset(self):
-        # Matches the kernel's and epsilon's siblings: environ.get(...)
+        # Matches the engine's and epsilon's siblings: environ.get(...)
         # or default, so a blank line in .env is unset, not an error.
         policy = framework.resolve_comparison_policy(
             environ={'SOLID_TEST_PLACEMENT_QUANTUM': ''})
@@ -1448,7 +1450,7 @@ class ComparisonKernelSelectionTest(TestCase):
     def test_the_runner_refuses_before_building_anything(self):
         stdout, stderr = io.StringIO(), io.StringIO()
         args = Namespace(path='whatever.py', failfast=False,
-                         kernel=None, volume_epsilon=0.5)
+                         engine=None, volume_epsilon=0.5)
         with patch.object(Runner, 'build_node',
                           side_effect=AssertionError('must not build')):
             with redirect_stdout(stdout), redirect_stderr(stderr):
@@ -1460,22 +1462,22 @@ class ComparisonKernelSelectionTest(TestCase):
 
     def test_the_framework_resolves_lazily_from_the_environment(self):
         framework.set_comparison_policy(None)
-        with patch.dict(os.environ, {'SOLID_TEST_KERNEL': 'faceted',
+        with patch.dict(os.environ, {'SOLID_TEST_ENGINE': 'mesh',
                                      'SOLID_TEST_VOLUME_EPSILON': '0.5'}):
             # The suite pins SOLID_TEST_VERDICT_STORE=off
             # (tests/conftest.py), and the lazy resolution reads it.
             self.assertEqual(framework.comparison_policy(),
-                             ('faceted', 0.5,
+                             ('mesh', 0.5,
                               framework.DEFAULT_PLACEMENT_QUANTUM, False))
         # Resolved once: the environment changing afterwards does not
         # move a run that has already chosen.
-        with patch.dict(os.environ, {'SOLID_TEST_KERNEL': 'exact'}):
-            self.assertEqual(framework.comparison_policy().kernel, 'faceted')
+        with patch.dict(os.environ, {'SOLID_TEST_ENGINE': 'brep'}):
+            self.assertEqual(framework.comparison_policy().engine, 'mesh')
 
     def test_the_runner_sets_the_policy_it_resolved(self):
         stdout, stderr = io.StringIO(), io.StringIO()
         args = Namespace(path='whatever.py', failfast=False,
-                         kernel='faceted', volume_epsilon=0.5)
+                         engine='mesh', volume_epsilon=0.5)
         seen = {}
 
         def record(path):
@@ -1490,16 +1492,16 @@ class ComparisonKernelSelectionTest(TestCase):
                     Runner().handle(args)
         # The runner reads the suite's pinned SOLID_TEST_VERDICT_STORE=off
         # (tests/conftest.py) when no flag is given.
-        self.assertEqual(seen['policy'], ('faceted', 0.5,
+        self.assertEqual(seen['policy'], ('mesh', 0.5,
                                           framework.DEFAULT_PLACEMENT_QUANTUM,
                                           False))
-        self.assertIn('faceted kernel', stdout.getvalue())
+        self.assertIn('mesh engine', stdout.getvalue())
         self.assertIn('0.5', stdout.getvalue())
 
-    def test_an_exact_run_announces_nothing(self):
+    def test_a_brep_run_announces_nothing(self):
         stdout, stderr = io.StringIO(), io.StringIO()
         args = Namespace(path='whatever.py', failfast=False,
-                         kernel=None, volume_epsilon=None)
+                         engine=None, volume_epsilon=None)
         with patch('machinome.manager.test.resolve_node',
                    side_effect=SystemExit(0)):
             with redirect_stdout(stdout), redirect_stderr(stderr):
@@ -1507,18 +1509,18 @@ class ComparisonKernelSelectionTest(TestCase):
                     Runner().handle(args)
         self.assertEqual(stdout.getvalue(), '')
 
-    def test_the_summary_line_names_a_faceted_run(self):
+    def test_the_summary_line_names_a_mesh_run(self):
         runner = Runner()
-        runner.policy = framework.ComparisonPolicy('faceted', 0.5)
+        runner.policy = framework.ComparisonPolicy('mesh', 0.5)
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             runner.report(1.0)
         self.assertRegex(
             stdout.getvalue(),
             r'Ran 0 tests in 1\.00 seconds: 0 passed, 0 failed '
-            r'\(faceted kernel, volume epsilon 0\.5 mm³\)')
+            r'\(mesh engine, volume epsilon 0\.5 mm³\)')
 
-    def test_the_summary_line_of_an_exact_run_is_unchanged(self):
+    def test_the_summary_line_of_a_brep_run_is_unchanged(self):
         runner = Runner()
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -1529,7 +1531,7 @@ class ComparisonKernelSelectionTest(TestCase):
 
     def test_the_summary_line_is_unchanged_at_the_default_quantum(self):
         runner = Runner()
-        runner.policy = framework.ComparisonPolicy('exact', 0.0)
+        runner.policy = framework.ComparisonPolicy('brep', 0.0)
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             runner.report(1.0)
@@ -1539,7 +1541,7 @@ class ComparisonKernelSelectionTest(TestCase):
 
     def test_the_summary_line_names_a_non_default_quantum(self):
         runner = Runner()
-        runner.policy = framework.ComparisonPolicy('exact', 0.0, 1e-06)
+        runner.policy = framework.ComparisonPolicy('brep', 0.0, 1e-06)
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             runner.report(1.0)
@@ -1548,16 +1550,16 @@ class ComparisonKernelSelectionTest(TestCase):
             r'Ran 0 tests in 1\.00 seconds: 0 passed, 0 failed '
             r'\(placement quantum 1e-06 mm\)')
 
-    def test_the_summary_line_names_the_quantum_beside_the_faceted_label(self):
+    def test_the_summary_line_names_the_quantum_beside_the_mesh_label(self):
         runner = Runner()
-        runner.policy = framework.ComparisonPolicy('faceted', 0.5, 1e-06)
+        runner.policy = framework.ComparisonPolicy('mesh', 0.5, 1e-06)
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             runner.report(1.0)
         self.assertRegex(
             stdout.getvalue(),
             r'Ran 0 tests in 1\.00 seconds: 0 passed, 0 failed '
-            r'\(faceted kernel, volume epsilon 0\.5 mm³, '
+            r'\(mesh engine, volume epsilon 0\.5 mm³, '
             r'placement quantum 1e-06 mm\)')
 
     # -- the verdict store switch (persistent-verdict-memo, ADR-156) -------
@@ -1565,12 +1567,12 @@ class ComparisonKernelSelectionTest(TestCase):
     def test_every_positional_construction_means_the_store_on(self):
         # Two- and three-argument constructions are none of them edited:
         # the fourth field defaults on, like the quantum defaults before it.
-        self.assertIs(framework.ComparisonPolicy('exact', 0.0).verdict_store,
+        self.assertIs(framework.ComparisonPolicy('brep', 0.0).verdict_store,
                       True)
         self.assertIs(framework.ComparisonPolicy(
-            'faceted', 0.5, 1e-6).verdict_store, True)
-        self.assertEqual(framework.ComparisonPolicy('faceted', 0.5),
-                         ('faceted', 0.5,
+            'mesh', 0.5, 1e-6).verdict_store, True)
+        self.assertEqual(framework.ComparisonPolicy('mesh', 0.5),
+                         ('mesh', 0.5,
                           framework.DEFAULT_PLACEMENT_QUANTUM, True))
 
     def test_the_verdict_store_flags_parse(self):
@@ -1581,11 +1583,11 @@ class ComparisonKernelSelectionTest(TestCase):
             parser.parse_args(['--no-verdict-store']).verdict_store, False)
         self.assertIsNone(parser.parse_args([]).verdict_store)
 
-    def test_the_verdict_store_flags_are_not_in_the_kernel_group(self):
-        args = self.parser().parse_args(['--exact', '--no-verdict-store'])
-        self.assertEqual((args.kernel, args.verdict_store), ('exact', False))
-        args = self.parser().parse_args(['--faceted', '--verdict-store'])
-        self.assertEqual((args.kernel, args.verdict_store), ('faceted', True))
+    def test_the_verdict_store_flags_are_not_in_the_engine_group(self):
+        args = self.parser().parse_args(['--brep', '--no-verdict-store'])
+        self.assertEqual((args.engine, args.verdict_store), ('brep', False))
+        args = self.parser().parse_args(['--mesh', '--verdict-store'])
+        self.assertEqual((args.engine, args.verdict_store), ('mesh', True))
 
     def test_the_verdict_store_flag_beats_the_environment_both_ways(self):
         self.assertIs(framework.resolve_comparison_policy(
@@ -1611,20 +1613,20 @@ class ComparisonKernelSelectionTest(TestCase):
             framework.resolve_comparison_policy(
                 environ={'SOLID_TEST_VERDICT_STORE': 'sometimes'})
 
-    def test_the_verdict_store_is_read_under_both_kernels(self):
-        for kernel in ('exact', 'faceted'):
-            with self.subTest(kernel=kernel):
+    def test_the_verdict_store_is_read_under_both_engines(self):
+        for engine in ('brep', 'mesh'):
+            with self.subTest(engine=engine):
                 self.assertIs(framework.resolve_comparison_policy(
-                    kernel, environ={'SOLID_TEST_VERDICT_STORE': 'off'}
+                    engine, environ={'SOLID_TEST_VERDICT_STORE': 'off'}
                 ).verdict_store, False)
                 self.assertIs(framework.resolve_comparison_policy(
-                    kernel, verdict_store=False, environ={}).verdict_store,
+                    engine, verdict_store=False, environ={}).verdict_store,
                     False)
 
     def test_an_unknown_verdict_store_value_is_refused_before_building(self):
         stdout, stderr = io.StringIO(), io.StringIO()
         args = Namespace(path='whatever.py', failfast=False,
-                         kernel=None, volume_epsilon=None)
+                         engine=None, volume_epsilon=None)
         with patch.dict(os.environ,
                         {'SOLID_TEST_VERDICT_STORE': 'sometimes'}), \
                 patch.object(Runner, 'build_node',
@@ -1639,7 +1641,7 @@ class ComparisonKernelSelectionTest(TestCase):
     def test_the_summary_line_names_a_run_without_the_store(self):
         runner = Runner()
         runner.policy = framework.ComparisonPolicy(
-            'exact', 0.0, framework.DEFAULT_PLACEMENT_QUANTUM, False)
+            'brep', 0.0, framework.DEFAULT_PLACEMENT_QUANTUM, False)
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             runner.report(1.0)
@@ -1659,13 +1661,13 @@ class ComparisonKernelSelectionTest(TestCase):
             stdout.getvalue(),
             '\nRan 0 tests in 1.00 seconds: 0 passed, 0 failed\n')
 
-    def test_the_store_note_follows_the_faceted_label_and_the_quantum(self):
+    def test_the_store_note_follows_the_mesh_label_and_the_quantum(self):
         args = self.parser().parse_args(
-            ['--faceted', '--volume-epsilon', '0.5',
+            ['--mesh', '--volume-epsilon', '0.5',
              '--placement-quantum', '1e-6', '--no-verdict-store'])
         runner = Runner()
         runner.policy = framework.resolve_comparison_policy(
-            args.kernel, args.volume_epsilon, args.placement_quantum,
+            args.engine, args.volume_epsilon, args.placement_quantum,
             args.verdict_store, environ={})
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -1673,12 +1675,12 @@ class ComparisonKernelSelectionTest(TestCase):
         self.assertEqual(
             stdout.getvalue(),
             '\nRan 0 tests in 1.00 seconds: 0 passed, 0 failed '
-            '(faceted kernel, volume epsilon 0.5 mm³, '
+            '(mesh engine, volume epsilon 0.5 mm³, '
             'placement quantum 1e-06 mm, verdict store off)\n')
 
     def test_a_run_without_the_store_announces_nothing_before_building(self):
         stdout, stderr = io.StringIO(), io.StringIO()
-        args = Namespace(path='whatever.py', failfast=False, kernel=None,
+        args = Namespace(path='whatever.py', failfast=False, engine=None,
                          volume_epsilon=None, verdict_store=False)
         seen = {}
 
@@ -1693,8 +1695,132 @@ class ComparisonKernelSelectionTest(TestCase):
         self.assertIs(seen['policy'].verdict_store, False)
         self.assertEqual(stdout.getvalue(), '')
 
+    # -- the run's engine (brep-mesh, design.md Decisions 6 and 13) -------
 
-ROBOT_SOURCE = '''from machinome.node import Solid2Node
+    R7 = "SOLID_TEST_ENGINE must be 'brep' or 'mesh', not {!r}"
+    R30 = ("SOLID_TEST_KERNEL is not read: the run's engine is set by "
+           "SOLID_TEST_ENGINE, 'brep' or 'mesh'; rename the variable where "
+           "it is set (a checkout's .env)")
+
+    def test_the_engines_are_brep_and_mesh(self):
+        self.assertEqual(framework.ENGINES, ('brep', 'mesh'))
+        self.assertFalse(hasattr(framework, 'KERNELS'))
+
+    def test_the_policy_names_its_engine(self):
+        fields = framework.ComparisonPolicy._fields
+        self.assertEqual(fields[0], 'engine')
+        self.assertNotIn('kernel', fields)
+        self.assertEqual(framework.resolve_comparison_policy(
+            environ={}).engine, 'brep')
+
+    def test_the_engine_argument(self):
+        self.assertEqual(framework.resolve_comparison_policy(
+            engine='mesh', environ={}).engine, 'mesh')
+        with self.assertRaises(TypeError):
+            framework.resolve_comparison_policy(kernel='mesh', environ={})
+
+    def test_the_flags_parse_into_the_engine(self):
+        self.assertEqual(self.parser().parse_args(['--brep']).engine, 'brep')
+        self.assertEqual(self.parser().parse_args(['--mesh']).engine, 'mesh')
+        self.assertIsNone(self.parser().parse_args([]).engine)
+
+    def test_the_former_flags_are_not_recognised(self):
+        for flag in ('--ex' 'act', '--fac' 'eted'):
+            with self.subTest(flag=flag):
+                stderr = io.StringIO()
+                with redirect_stderr(stderr):
+                    with self.assertRaises(SystemExit) as stop:
+                        self.parser().parse_args([flag])
+                self.assertEqual(stop.exception.code, 2)
+                self.assertIn('unrecognized arguments', stderr.getvalue())
+
+    def test_the_environment_selects_the_mesh_engine_by_its_word(self):
+        self.assertEqual(framework.resolve_comparison_policy(
+            environ={'SOLID_TEST_ENGINE': 'mesh'}).engine, 'mesh')
+        self.assertEqual(framework.resolve_comparison_policy(
+            environ={'SOLID_TEST_ENGINE': ''}).engine, 'brep')
+
+    def test_the_former_values_are_refused_naming_the_variable(self):
+        for value in ('fac' 'eted', 'ex' 'act'):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError) as refused:
+                    framework.resolve_comparison_policy(
+                        environ={'SOLID_TEST_ENGINE': value})
+                self.assertEqual(str(refused.exception), self.R7.format(value))
+
+    def test_the_former_variable_is_refused_whatever_its_value_and_flag(self):
+        for value in ('mesh', 'fac' 'eted', 'brep'):
+            for engine in (None, 'brep', 'mesh'):
+                with self.subTest(value=value, engine=engine):
+                    with self.assertRaises(ValueError) as refused:
+                        framework.resolve_comparison_policy(
+                            engine, environ={'SOLID_TEST_KERNEL': value,
+                                             'SOLID_TEST_ENGINE': 'mesh'})
+                    self.assertEqual(str(refused.exception), self.R30)
+
+    def test_an_empty_former_variable_is_unset(self):
+        self.assertEqual(framework.resolve_comparison_policy(
+            environ={'SOLID_TEST_KERNEL': ''}).engine, 'brep')
+
+    def test_the_runner_refuses_the_former_variable_before_building(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        args = Namespace(path='whatever.py', failfast=False, engine='mesh',
+                         volume_epsilon=None)
+        with patch.dict(os.environ, {'SOLID_TEST_KERNEL': 'fac' 'eted'}), \
+                patch.object(Runner, 'build_node',
+                             side_effect=AssertionError('must not build')):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                with self.assertRaises(SystemExit) as stop:
+                    Runner().handle(args)
+        self.assertEqual(stop.exception.code, 1)
+        self.assertEqual(stderr.getvalue(), f'Error: {self.R30}\n')
+        self.assertEqual(stdout.getvalue(), '')
+
+    def test_an_unknown_explicit_engine_is_refused(self):
+        with self.assertRaises(ValueError) as refused:
+            framework.resolve_comparison_policy(engine='fast', environ={})
+        self.assertEqual(str(refused.exception),
+                         "unknown comparison engine 'fast'")
+
+    def test_an_epsilon_on_a_brep_run_is_refused_in_the_engines_words(self):
+        with self.assertRaises(ValueError) as refused:
+            framework.resolve_comparison_policy('brep', 0.5, environ={})
+        self.assertEqual(
+            str(refused.exception),
+            'the B-rep engine has nothing for a volume epsilon to absorb: '
+            'drop --volume-epsilon or select --mesh')
+
+    def test_the_mesh_run_line_and_note(self):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        args = Namespace(path='whatever.py', failfast=False, engine='mesh',
+                         volume_epsilon=0.5)
+        with patch('machinome.manager.test.resolve_node',
+                   side_effect=SystemExit(0)):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                with self.assertRaises(SystemExit):
+                    Runner().handle(args)
+        self.assertEqual(
+            stdout.getvalue(),
+            'Comparing on the mesh engine (volume epsilon 0.5 mm³): verdicts '
+            "are at tessellation precision, not the B-rep engine's.\n")
+        runner = Runner()
+        runner.policy = framework.ComparisonPolicy('mesh', 0.5)
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            runner.report(1.0)
+        self.assertEqual(
+            stdout.getvalue(),
+            '\nRan 0 tests in 1.00 seconds: 0 passed, 0 failed '
+            '(mesh engine, volume epsilon 0.5 mm³)\n')
+
+    def test_a_verdict_says_which_representation_supplied_it(self):
+        fields = {field.name for field in
+                  framework.IntersectionStats.__dataclass_fields__.values()}
+        self.assertIn('brep', fields)
+        self.assertNotIn('ex' 'act', fields)
+
+
+ROBOT_SOURCE = '''from machinome.node.solid2 import Solid2Node
 from solid2 import cube
 
 

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import functools
-from machinome.scad_expression import get_animation_time
+from machinome.expression_graph import get_animation_time
 from . import phase as _phase
 from .internal import InternalNode
 from .qualified import (declared_drivers_of, declared_states_of,
@@ -217,7 +217,7 @@ def _lifecycle_render(render):
     return wrapped
 
 
-def _rest_children(assembly):
+def _rest_children(assembly, *, structure_only=False):
     """The children a REST-ONLY walk descends into: `_rest`'s own
     idempotent render, LINKED, with no phase and no enumeration touched.
 
@@ -233,7 +233,18 @@ def _rest_children(assembly):
     """
     original = getattr(type(assembly).render, '__wrapped__',
                        type(assembly).render)
-    children = _linked(_rest(assembly, original))
+    if structure_only and assembly.__dict__.get('_legacy_render'):
+        raise ValueError(f'{assembly.name}: stateful legacy render cannot '
+                         'supply structure-only facts')
+    token = _phase._structure_only.set(True) if structure_only else None
+    try:
+        rendered = _rest(assembly, original)
+        if structure_only:
+            assembly.validate(rendered)
+        children = _linked(rendered)
+    finally:
+        if token is not None:
+            _phase._structure_only.reset(token)
     assembly._link_children(children)
     return children
 
@@ -671,7 +682,7 @@ class AssemblyNode(InternalNode):
 
     def clear_keyframe(self):
         """The inverse of set_keyframe: drop the fixed time so this
-        assembly renders against solid2's symbolic $t again, leaving
+        assembly renders against the symbolic $t again, leaving
         any other bound driver in place."""
         self.clear_state('time')
 
@@ -680,8 +691,9 @@ class AssemblyNode(InternalNode):
         """The $t variable, the animation time from 0 to 1.
 
         One entry of the snapshot, with the ADR-008 fallback: an
-        assembly nobody bound a time on still animates symbolically,
-        which is what the build and viewer paths depend on. Only time
+        assembly nobody bound a time on still animates symbolically, on
+        the framework's own `$t` (`machinome.expression_graph`), which is
+        what the build and viewer paths depend on. Only time
         falls back -- any other unbound driver fails loudly, because a
         default invented here would bind the simulation layer to a
         contract it never chose.
@@ -714,7 +726,8 @@ def read_time(node):
     under test, or loaded alone -- uses its own declaration.
 
     The walk relies on the link every tree walker makes before it
-    recurses (`_link_child` from the scad, serializer and state passes);
+    recurses (`_link_child` from the presentation, serializer and state
+    passes);
     a bare `render()` links nothing, by contract, so a child rendered by
     hand before any walker reached it is its own root for that read.
     """

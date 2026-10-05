@@ -36,6 +36,7 @@ from .base import BaseNodeTest
 from .meta_project.axis import Axis as RootAxis
 from .meta_project.machine import Machine
 from .meta_project.nested import Nested
+from tests.base import scad_code
 
 
 def operations_of(document, *path):
@@ -312,7 +313,7 @@ class ScadSubstitutionTest(BaseNodeTest):
         machine = Machine()
         machine.set_state(**snapshot)
         machine.assemble()
-        return machine.scad_code
+        return scad_code(machine)
 
     def test_bound_drivers_substitute_numerically_and_time_stays_live(self):
         code = self.scad({'x_axis.motor': 8000, 'y_axis.motor': 2000})

@@ -7,7 +7,7 @@
 What is worth testing here is the invariant the type exists for: the solid
 in the tree and the cut file on disk both derive from the one authored
 profile, so they cannot drift apart. Everything else -- exactness, the STL
-and BREP, the freshness guard -- is `ExactLeafNode`'s and is only checked
+and BREP, the freshness guard -- is `BrepLeafNode`'s and is only checked
 where the sheet leaf extends it: the DXF joins the artifact set, and the
 profile has a contract of its own that a generic render result does not.
 """
@@ -22,10 +22,12 @@ import build123d as b3d
 import cadquery as cq
 import ezdxf
 
-from machinome.exact import solid_count
-from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
-                             FusionNode, SheetLeafNode)
-from machinome.openscad import openscad_binary
+from machinome.engine.brep import solid_count
+from machinome.node.build123d import Build123dNode, Build123dSheetNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.sheet_leaf import SheetLeafNode
+from machinome.node.openscad.binary import openscad_binary
 
 from .sheet_project import frame_panel
 
@@ -210,13 +212,13 @@ class SheetSolidTest(BuildDirTestCase):
         node.assemble()
 
         volume = PLATE_WIDTH * PLATE_HEIGHT * PLATE_THICKNESS
-        self.assertAlmostEqual(node.shape().Volume(), volume, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), volume, places=6)
 
     def test_the_solid_runs_from_the_xy_plane_to_the_thickness(self):
         node = Plate()
         node.assemble()
 
-        bounds = node.shape().BoundingBox()
+        bounds = cq.Shape.cast(node.shape()).BoundingBox()
 
         self.assertAlmostEqual(bounds.zmin, 0.0, places=6)
         self.assertAlmostEqual(bounds.zmax, PLATE_THICKNESS, places=6)
@@ -229,20 +231,20 @@ class SheetSolidTest(BuildDirTestCase):
                 - 3.141592653589793 * HOLE_RADIUS ** 2
                 - SLOT_WIDTH * SLOT_HEIGHT)
 
-        self.assertAlmostEqual(node.shape().Volume(),
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(),
                                area * PLATE_THICKNESS, places=4)
 
     def test_a_face_profile_is_accepted(self):
         node = FaceProfilePlate()
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 200.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 200.0, places=6)
 
     def test_a_sketch_builder_profile_is_accepted(self):
         node = BuilderProfilePlate()
         node.assemble()
 
-        self.assertAlmostEqual(node.shape().Volume(), 200.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(), 200.0, places=6)
 
     def test_render_is_not_the_extension_point(self):
         """The base owns render(), so a subclass that never writes one still
@@ -285,8 +287,8 @@ class SheetThicknessTest(BuildDirTestCase):
         thick = Panel(6)
         thick.assemble()
 
-        self.assertAlmostEqual(thin.shape().Volume(), 300.0, places=6)
-        self.assertAlmostEqual(thick.shape().Volume(), 600.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(thin.shape()).Volume(), 300.0, places=6)
+        self.assertAlmostEqual(cq.Shape.cast(thick.shape()).Volume(), 600.0, places=6)
 
 
 class SheetProfileValidationTest(BuildDirTestCase):
@@ -391,9 +393,9 @@ class SheetDxfArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = PerforatedPlate()
-        with patch('machinome.node.adapters.build123d_sheet._export_dxf',
+        with patch('machinome.node.build123d._export_dxf',
                    side_effect=AssertionError('must not re-export')):
-            assembled = second.as_scad(second.render())
+            assembled = second.present(second.render())
 
         self.assertIn(second.local_stl, str(assembled))
 
@@ -403,7 +405,7 @@ class SheetDxfArtifactTest(BuildDirTestCase):
 
         second = PerforatedPlate()
 
-        self.assertTrue(second._render_can_be_skipped())
+        self.assertTrue(second._prepare_can_be_skipped())
 
     def test_a_missing_dxf_alone_forces_regeneration(self):
         node = PerforatedPlate()
@@ -413,7 +415,7 @@ class SheetDxfArtifactTest(BuildDirTestCase):
         second = PerforatedPlate()
         self.assertTrue(second._up_to_date(second.stl_file))
         self.assertTrue(second._up_to_date(second.brep_file))
-        self.assertFalse(second._render_can_be_skipped())
+        self.assertFalse(second._prepare_can_be_skipped())
 
         second.assemble()
 
@@ -439,7 +441,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
     """The sheet adapter joins the exact roster without disturbing it."""
 
     def test_the_adapter_is_exact_without_rendering(self):
-        self.assertTrue(object.__new__(Build123dSheetNode).exact)
+        self.assertTrue(object.__new__(Build123dSheetNode).brep)
 
     def test_the_sheet_adapter_is_not_the_solid_build123d_adapter(self):
         sheet = Plate()
@@ -452,22 +454,14 @@ class SheetAdapterContractTest(BuildDirTestCase):
         self.assertFalse(issubclass(Build123dSheetNode, CadQueryNode))
         self.assertFalse(issubclass(CadQueryNode, Build123dSheetNode))
 
-    def test_the_backend_walk_resolves_no_mesh_backend(self):
-        """generate_stl names the backend by walking the MRO for adapter
-        class names. The sheet base must not introduce one."""
-        mesh_backends = {'Solid2Node', 'OpenScadNode', 'FusionNode'}
-        names = {cls.__name__ for cls in Build123dSheetNode.__mro__}
-
-        self.assertEqual(names & mesh_backends, set())
-
     def test_the_stl_never_reaches_the_openscad_renderer(self):
         node = Plate()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an exact backend must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'an exact backend must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -477,8 +471,8 @@ class SheetAdapterContractTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('machinome.openscad.shutil.which', return_value=None), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.openscad.binary.shutil.which', return_value=None), \
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'the subprocess must not be attempted')):
             node = PerforatedPlate()
             node.assemble()
@@ -491,7 +485,7 @@ class SheetAdapterContractTest(BuildDirTestCase):
         fusion = SheetAndBossFusion()
         fusion.assemble()
 
-        self.assertTrue(fusion.exact)
+        self.assertTrue(fusion.brep)
 
     def test_a_fusion_of_a_sheet_and_a_cadquery_child_fuses_to_one_solid(self):
         fusion = SheetAndBossFusion()
@@ -512,7 +506,7 @@ class SheetImportCostTest(TestCase):
         result = subprocess.run(
             [sys.executable, '-c',
              'import sys; import machinome.node;'
-             ' from machinome.node import Build123dSheetNode;'
+             ' from machinome.node.build123d import Build123dSheetNode;'
              ' print("build123d" in sys.modules)'],
             capture_output=True, text=True, check=True)
 
@@ -547,13 +541,13 @@ class FramePanelProjectTest(BuildDirTestCase):
     def test_the_panel_is_its_profile_in_the_declared_stock(self):
         expected = self.profile_area() * frame_panel.STOCK_THICKNESS
 
-        self.assertAlmostEqual(self.node.shape().Volume(), expected, places=3)
+        self.assertAlmostEqual(cq.Shape.cast(self.node.shape()).Volume(), expected, places=3)
 
     def test_the_panel_is_one_solid_the_thickness_of_its_stock(self):
         # OCCT pads a bounding box around curved faces, and this panel has
         # bolt holes, so the extent is checked to a manufacturing tolerance
         # rather than to the kernel's last bit.
-        bounds = self.node.shape().BoundingBox()
+        bounds = cq.Shape.cast(self.node.shape()).BoundingBox()
 
         self.assertEqual(solid_count(self.node.shape()), 1)
         self.assertAlmostEqual(bounds.zmin, 0.0, delta=0.01)

@@ -24,7 +24,7 @@ class JScadIntegrationTest(BaseNodeTest):
 
     def test_native_jscad_producer_builds_without_openscad(self):
         node = JsBlock()
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError('OpenSCAD boundary used')):
             node.build_stls()
 

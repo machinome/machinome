@@ -49,7 +49,8 @@ SIZE = 3.0
 CLOCK = '''\
 import cadquery as cq
 
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 
 from ..shared import SIZE
 
@@ -465,7 +466,7 @@ class TestCommandTest(NamedProjectTest):
         with open(path, 'w') as source:
             source.write(
                 'from solid2 import cube\n'
-                'from machinome.node import Solid2Node\n\n'
+                'from machinome.node.solid2 import Solid2Node\n\n'
                 'class AClock(Solid2Node):\n' + failures[stage]
                 + f'\n# cache discriminator: {stage * 3}\n')
         self.forget_project()

@@ -1,6 +1,8 @@
 # ADR-047: One shared OCCT currency for every exact backend
 
-**Status:** Accepted; amended 2026-08-22 by `exact-leaf-node-base`
+**Status:** Accepted; amended 2026-08-22 by `exact-leaf-node-base`; chosen option **Superseded** 2026-10-03 by ADR-160; "framework-internal base" sentence **superseded in part** 2026-10-03 by [ADR-163](ADR-163-the-leaf-bases-are-declared-extension-points.md): `ExactLeafNode` is a declared extension point
+
+**Superseded by:** [ADR-160: The OCCT engine's currency is the kernel's own shape](../OCCT/ADR-160-the-occt-engines-currency-is-the-kernels-own-shape.md) — the chosen option, CadQuery's `Shape` as the one currency, is replaced by this ADR's option 2, the bare `TopoDS_Shape`, now that cadquery has left the exact path (ADR-161). The conversion at the adapter boundary, as a rewrap, stands.
 
 **Date:** 2026-08-22
 
@@ -84,7 +86,9 @@ Three consequences follow directly:
   only its `namespace` and whatever validation its own API needs. This was
   not drawn when the ADR was first written, because there was then only one
   copy of the contract to look at. `ExactLeafNode` is a framework-internal
-  base, not a declared extension point.
+  base, not a declared extension point. *(Superseded in part by ADR-163,
+  2026-10-03: `ExactLeafNode` is now a declared extension point of the
+  `leaf-contract` capability.)*
 
   Sharing a base carries one obligation, now recorded in `node-model`: the
   adapters must remain distinct types, so that an `isinstance` check or the

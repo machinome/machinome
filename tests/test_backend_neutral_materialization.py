@@ -8,13 +8,13 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import trimesh
-from solid2 import cube
 
 from machinome import currency
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 from machinome.node.base import _atomic_write_bytes
-from machinome.node.adapters.cadquery import CadQueryNode
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.brep_leaf import BrepLeafNode
 from machinome.node.leaf import LeafNode
 
 
@@ -59,6 +59,26 @@ class NativePair(FusionNode):
         return [self.left, self.right]
 
 
+class BoxLeaf(CadQueryNode):
+    def __init__(self, offset=0, **kwargs):
+        self.offset = offset
+        super().__init__(offset=offset, **kwargs)
+
+    def render(self):
+        import cadquery as cq
+        return cq.Workplane('XY').box(2, 2, 2).translate((self.offset, 0, 0))
+
+
+class BrepPair(FusionNode):
+    def __init__(self):
+        self.left = BoxLeaf()
+        self.right = BoxLeaf(offset=1)
+        super().__init__()
+
+    def render(self):
+        return [self.left, self.right]
+
+
 class NativeAssembly(AssemblyNode):
     def __init__(self):
         self.pair = NativePair()
@@ -83,9 +103,9 @@ class BackendNeutralMaterializationTest(TestCase):
 
     def test_native_fusion_builds_without_scad_or_openscad(self):
         machine = NativeAssembly()
-        with patch.object(NativeMeshLeaf, 'as_scad',
+        with patch.object(NativeMeshLeaf, 'present',
                           side_effect=AssertionError('SCAD boundary used')), \
-             patch('machinome.node.base.require_openscad',
+             patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError('OpenSCAD boundary used')):
             machine.build_stls()
 
@@ -98,11 +118,11 @@ class BackendNeutralMaterializationTest(TestCase):
 
         machine = NativeAssembly()
         output = os.path.join(self.directory.name, 'export')
-        with patch.object(NativeMeshLeaf, 'as_scad',
+        with patch.object(NativeMeshLeaf, 'present',
                           side_effect=AssertionError('SCAD leaf used')), \
-             patch.object(FusionNode, 'as_scad',
+             patch.object(FusionNode, 'present',
                           side_effect=AssertionError('SCAD fusion used')), \
-             patch.object(AssemblyNode, 'as_scad',
+             patch.object(AssemblyNode, 'present',
                           side_effect=AssertionError('SCAD assembly used')):
             manifest = export_node(machine, output, widget=False)
 
@@ -167,7 +187,7 @@ class BackendNeutralMaterializationTest(TestCase):
         fusion._prepare()
         with patch('machinome.node.fusion.require_mesh_engine',
                    side_effect=RuntimeError('manifold unavailable')), \
-             patch('machinome.node.base.require_openscad') as openscad:
+             patch('machinome.node.openscad.binary.require_openscad') as openscad:
             with self.assertRaisesRegex(RuntimeError, 'manifold unavailable'):
                 fusion.generate_stl()
         openscad.assert_not_called()
@@ -178,12 +198,15 @@ class BackendNeutralMaterializationTest(TestCase):
         invalid = trimesh.creation.box((2, 2, 2))
         invalid.update_faces(range(len(invalid.faces) - 1))
         invalid.export(fusion.right.stl_file)
-        with patch('machinome.node.base.require_openscad') as openscad:
+        with patch('machinome.node.openscad.binary.require_openscad') as openscad:
             with self.assertRaisesRegex(ValueError, r'right: manifold3d'):
                 fusion.generate_stl()
         openscad.assert_not_called()
 
-    def test_builtin_subclass_as_scad_override_selects_legacy_bridge(self):
+    def test_an_as_scad_override_selects_no_legacy_bridge(self):
+        """(`openscad-out`) The legacy SCAD-only seam is gone: a builtin
+        subclass overriding `as_scad` is materialized by its own native
+        hook, and the override is never called."""
         import cadquery as cq
 
         class LegacyCadQuery(CadQueryNode):
@@ -191,12 +214,63 @@ class BackendNeutralMaterializationTest(TestCase):
                 return cq.Workplane('XY').box(2, 2, 2)
 
             def as_scad(self, rendered):
-                return cube(3)
+                raise AssertionError('the legacy seam was used')
 
         node = LegacyCadQuery()
-        with patch.object(ExactLeafNode, 'materialize',
-                          side_effect=AssertionError('native hook used')), \
-             patch.object(node, 'generate_scad') as generate:
+        with patch.object(BrepLeafNode, 'materialize') as native:
             node._prepare()
-        generate.assert_called_once_with()
-        self.assertIn('cube', str(node.model))
+        native.assert_called_once()
+
+
+class RecipeIdentityTest(TestCase):
+    """The fusion recipe identities name the engine's role, not its
+    technology (OpenSpec change `brep-mesh`, design.md Decision 8), and
+    what a change of identity rebuilds."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        environment = patch.dict(os.environ,
+                                 {'SOLID_BUILD_DIR': self.directory.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_a_brep_fusion_is_brep_fusion_v1(self):
+        fusion = BrepPair()
+        fusion.assemble()
+        self.assertEqual(fusion.geometry_recipe, 'brep-fusion-v1')
+
+    def test_a_mesh_fusion_is_mesh_fusion_v1_and_its_stl_records_it(self):
+        fusion = NativePair()
+        fusion.build_stls()
+
+        self.assertRegex(fusion.geometry_recipe,
+                         r'^mesh-fusion-v1:[0-9a-f]{64}$')
+        self.assertEqual(currency.recorded_recipe(fusion.stl_file),
+                         fusion.geometry_recipe)
+
+    def test_a_mesh_fusion_under_the_former_recipe_rebuilds_the_same(self):
+        fusion = NativePair()
+        fusion.build_stls()
+        digest = fusion.geometry_recipe.rsplit(':', 1)[1]
+        with open(fusion.stl_file, 'rb') as handle:
+            before = handle.read()
+        currency.record(fusion.stl_file, fusion.source_digest,
+                        fusion.source_fingerprint,
+                        'fac' 'eted-fusion-mani' 'fold-v1:' + digest)
+
+        self.assertFalse(fusion._up_to_date(fusion.stl_file))
+        fusion.generate_stl()
+
+        with open(fusion.stl_file, 'rb') as handle:
+            self.assertEqual(handle.read(), before)
+        self.assertEqual(currency.recorded_recipe(fusion.stl_file),
+                         'mesh-fusion-v1:' + digest)
+
+    def test_a_current_brep_fusion_stays_current(self):
+        fusion = BrepPair()
+        fusion.build_stls()
+
+        self.assertTrue(fusion._up_to_date(fusion.stl_file))
+        self.assertTrue(fusion._up_to_date(fusion.brep_file))
+        self.assertIsNone(currency.recorded_recipe(fusion.brep_file))

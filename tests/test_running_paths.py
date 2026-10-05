@@ -124,7 +124,7 @@ class FixedEvaluationCountTest(BaseNodeTest):
         evaluations are now bound path points. This is the guard task
         5.5 asks for: an implementation that forgot to teach the probe
         about `_PathValue` would pass silently otherwise."""
-        from machinome.scad_expression import GraphValue
+        from machinome.expression_graph import GraphValue
 
         sim = Sim(Clearing(), dt=.1)
         sim.move('ring', by=600.0, duration=1.0)

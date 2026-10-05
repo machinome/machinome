@@ -5,11 +5,175 @@
 API Reference
 =================
 
+Production assets
+=================
+
+``Production[Model]`` from ``machinome.production.profile`` binds independent
+production choices to an existing model. Several profiles can consume the
+same instance without selecting a current profile on the model or changing
+its simulation. Import each name from its defining module; neither
+``machinome`` nor ``machinome.production`` reexports these names.
+
+A partial calculator profile can delegate its actual crank assembly and
+source explicitly named fasteners. The following example omits the model
+modules and the two attributed Markdown instruction files that the author
+supplies beside the profile module:
+
+.. code-block:: python
+
+   from machinome.model import Reference
+   from machinome.components import Standard
+   from machinome.production.profile import Production
+   from machinome.production.item import Item
+   from machinome.production.process import Printed, Sourced
+   from machinome.production.instruction import Step, Markdown
+   from models.calculator import Calculator, CrankAssembly
+
+   class CrankProduction(Production[CrankAssembly]):
+       pin = Item(Reference(CrankAssembly, ("crank_handle_pin",)), Printed())
+       screw = Item(
+           Reference(CrankAssembly, ("crank_handle_1", "crank_handle_pin_screw")),
+           Printed(),
+       )
+       finish = Step(screw, instructions=Markdown("file-and-thread-pin.md"))
+
+   class CalculatorProduction(Production[Calculator]):
+       crank = CrankProduction(Reference(Calculator, ("main_drive", "crank")))
+       limitations = Step(crank, instructions=Markdown("draft-limitations.md"))
+
+   model = Calculator()
+   production = CalculatorProduction(model)
+   production.findings
+   production.crank.bom
+   production.export("draft-calculator")
+
+The child consumes the existing assembly with its actual resolved parameters.
+No default crank is constructed. ``parameters`` exposes the bound scope's
+read-only parameter mapping. References select actual active occurrences;
+lists and repetitions expand in model order, a zero repetition contributes
+nothing, and an omitted named target is an explicit finding. A nonempty tuple
+of references selects named siblings. Repeated child bindings are tuples,
+including a one-member repetition. Concrete profile inheritance is refused.
+
+``Item(target, process, *, mass=None)`` comes from
+``machinome.production.item``. An instance field returns a read-only
+``BoundItem`` with ``target_paths``, ``process``, ``mass_basis`` and
+``declaration_path``. Select a compatible model class itself for the bound
+root. ``Printed(material=None)``, ``Cut(stock)`` and
+``Sourced(requirement, *, offer=None)`` come from
+``machinome.production.process``. Unspecified printed material stays unknown;
+infill, finishing and wire bending are maker instructions. They do not become
+an invented polymer, mass multiplier or purchased finished spring.
+
+``Material(name, *, density_kg_m3=None)`` is defined in
+``machinome.production.material`` and
+``Sheet(material, *, thickness_mm)`` in ``machinome.production.stock``.
+Density and thickness, when supplied, must be finite and positive.
+Cut requires a declared sheet part with matching thickness and nominal-DXF
+capability. ``stock`` reports finished-part count and an unknown purchased
+sheet quantity; it performs no nesting or kerf compensation.
+
+``Standard(name, *, designation, grade=None)`` and
+``Product(manufacturer, part_number, *, conforms_to=())`` are neutral
+records in ``machinome.components``. ``Offer(product, supplier, sku,
+*, url=None)`` from ``machinome.production.sourcing`` identifies a distinct
+supplier listing. Its product must match the Product requirement or explicitly
+assert conformance to the Standard requirement. These records do no supplier
+search and make no certification claim.
+
+``Step(*subjects, instructions=Markdown(path))`` and ``Markdown(path)``
+come from ``machinome.production.instruction``. Subjects are Item or child
+declarations belonging to that profile. Paths resolve beside the declaring
+module, with canonical traversal and symlink escape refused. Child steps
+precede parent steps, preserving declaration order and model subject paths.
+Version-one text accepts plain Markdown, external HTTP/HTTPS links and
+same-document fragments. Unsupported local links, images, reference
+dependencies and raw HTML dependencies are refused. A missing instruction
+file refuses requested steps or export without producing a partial bundle.
+
+``MeasuredMass(grams, *, evidence)`` and ``SolidMass()`` are defined in
+``machinome.production.mass``. Measured grams apply per occurrence and require
+local evidence. ``SolidMass`` explicitly requests a homogeneous-solid
+calculation: positive watertight volume in mm³ times density in kg/m³ divided
+by 1,000,000 gives grams. Missing density, invalid volume and flexible volume
+stay unknown. The model's simulation and support assumptions do not change.
+
+Read ``bom``, ``stock``, ``steps``, ``mass`` and ``findings`` directly; there
+is no evaluate call. Construction performs no geometry work. Structural
+findings, instructions and sourced BOMs need no geometry. Manufactured BOM
+grouping requests canonical geometry content, with complete process/material,
+mass declaration and every directly applicable Step fingerprint. Different
+materials or finishing instructions remain separate. Sourced grouping uses
+the requirement and chosen offer rather than the visual mesh.
+
+``bom`` is a tuple of ``BomLine`` records. Each line retains status, quantity,
+occurrence paths, declaration paths, source paths and finding codes, plus its
+typed process, material, requirement, offer and optional geometry identity.
+Unassigned candidates appear separately with quantity one and no invented
+identity; invalid recipes retain their requested process but no usable
+process; absent targets have quantity zero. Delegation reserves its subtree.
+Sourcing a whole assembly replaces its internals with one purchased item.
+Overlapping owners remain inspectable in ``findings`` and refuse other reports
+with ``ProductionConflictError``.
+
+``MassSummary`` exposes ``known_grams``, ``complete``, ``unknown_occurrences``
+and a tuple of per-occurrence ``MassBasis`` records. A known subtotal is not
+a complete total. Unassigned and invalid candidates remain in the denominator;
+a valid sourced assembly replaces the descendants' weight with its own basis.
+Report records and mappings are immutable. The report types, ``Finding``,
+``ResolvedStep`` and ``ExportResult`` are defined in
+``machinome.production.results``; errors are defined in
+``machinome.production.errors``.
+
+``Finding.check_status`` describes only the structural check represented by
+that finding. Its ``checked`` value does not establish an unrequested geometry
+or mass check; export explicitly requests those checks.
+
+``export(destination)`` atomically creates a new portable directory and
+refuses an existing nonempty destination. ``production.json`` is the
+authoritative version-one ``machinome-production`` manifest, accompanied by
+``bom.csv``, ``stock.csv`` and ``instructions.md``. Explicitly consumed files
+live under ``files/<sha256>/<basename>``; selected Printed STL and Cut nominal
+DXF files live under ``artifacts/<sha256>.<extension>``. Facts and copied bytes
+describe the same pinned artifacts. Every export is a draft; coverage
+completeness does not certify fabrication readiness.
+
+Model consumption
+-----------------
+
+``machinome.model.ModelSnapshot(model)`` exposes immutable ``occurrences``,
+``select(reference, *, scope=None)``, ``geometry(occurrence)`` and
+``copy_artifact(occurrence, kind, destination)``. Occurrences distinguish
+assemblies, rigid pieces, rigid features and flexible pieces. Markings and
+frames add no production item; fusion ingredients are features of one piece.
+Each occurrence retains its root-relative path (``.`` for the root), model
+type, resolved parameters, source paths and declared sheet facts.
+``GeometryFacts`` retains full canonical content identity separately from
+artifact byte SHA-256, extents, volume and watertightness.
+
+``Reference(model_type, path)`` takes a tuple of public attribute names and
+supports constructor-created children without rewriting the model.
+``is_reference`` and ``reference_path`` adapt supported declarations;
+``empty_selection`` and ``selection_is_many`` distinguish absent targets
+from repetition shape. ``validate``, ``observe_input``, read-only
+``input_hashes`` and ``executed_code_provenance`` support a shared root/child
+input generation, without an extra author lifecycle.
+
+Rest-only structural reading preserves the running state and refuses
+stateful legacy rendering. Directly constructed models carry
+``unverified-direct-binding`` provenance: observing current source bytes
+cannot prove what Python imported earlier. Models loaded through the sealed
+source-generation loader retain verified provenance. A source, instruction,
+evidence or consumed artifact replacement invalidates the whole shared
+production with ``ProductionInputChangedError``; reload code and bind a fresh
+model rather than combining old facts with new bytes.
+
 Nodes
 =========
 
-All node classes are importable from ``machinome.node``; the parameters
-they declare come from ``machinome.parameters``. A project is a
+Each node class is imported from its module, the address beside it below;
+the root of ``machinome.node`` exports nothing. The parameters they declare
+come from ``machinome.parameters``. A project is a
 tree of nodes: leaf nodes generate solids with an underlying modelling
 library, internal nodes combine their children.
 
@@ -48,16 +212,6 @@ Common node API
       numbers, e.g. ``.translate([100, 0, 0])``. Chains like
       :meth:`rotate`, and the node itself is returned.
 
-   .. attribute:: fn
-
-      Number of facets used to approximate curved surfaces, applied as
-      OpenSCAD's ``$fn`` to the generated code. Only meaningful for
-      OpenSCAD-based nodes (``Solid2Node``, ``OpenScadNode``); the
-      OCCT-backed leaves (``CadQueryNode``, ``Build123dNode``, the
-      sheet leaves, ``MolejoNode``) export high-resolution STLs on
-      their own. Default is ``None``, which keeps OpenSCAD's coarse
-      default.
-
    .. attribute:: name
 
       The node's name, used in viewer and test failure messages. Defaults
@@ -75,19 +229,139 @@ Common node API
 Leaf nodes
 --------------
 
-.. autoclass:: machinome.node.leaf.LeafNode
-   :members: time
+A leaf produces one solid. Four bases make up the declared leaf contract,
+each imported from the module that defines it:
+:class:`~machinome.node.leaf.LeafNode`, the base of every leaf and the one
+a mesh leaf subclasses; :class:`~machinome.node.brep_leaf.BrepLeafNode`,
+for a leaf whose geometry is a B-rep, a boundary representation;
+:class:`~machinome.node.sheet_leaf.SheetLeafNode`, for a B-rep leaf cut
+from sheet stock; and :class:`~machinome.node.flexible.FlexibleNode`, for a
+leaf whose shape follows its bound ports. A node type written outside
+machinome subclasses one of them and uses only the members documented with
+it here; currency, stamps, source records, the tree, assembly, fusion,
+export, the viewer document and the test framework are machinome's. A
+subclass never overrides ``assemble``, ``mtime_ns``, ``mtime``,
+``source_digest``, ``source_fingerprint``, ``uniq_id``, ``children``,
+``time``, nor any member whose name begins with an underscore.
 
-.. autoclass:: machinome.node.exact_leaf.ExactLeafNode
-   :members: exact, shape
+The contract is versioned. :data:`machinome.node.leaf.CONTRACT` is the
+version this machinome speaks; a class that declares ``leaf_contract`` in
+its own body is compared with it when the class is created, and refused
+with a ``TypeError`` naming both numbers when they differ. A class that
+declares nothing is not checked.
+
+.. autodata:: machinome.node.leaf.CONTRACT
+
+.. autoclass:: machinome.node.leaf.LeafNode
+   :members: render, validate, namespace, present, materialize,
+             publish_artifact, get_source_file, source_recipe,
+             artifact_import, leaf_contract, time
+
+   .. method:: presentation()
+
+      This node's own presentation description, its artifact imports
+      resolving from its own build directory: what a node package writes
+      when it writes this node's presentation in its own language.
+
+   .. method:: kept_artifacts()
+
+      The paths of the artifacts beyond the STL, BREP and markings that a
+      build keeps for this node while it is in the published tree, by this
+      declaration and never by kind. None by default; an OpenSCAD-family
+      leaf keeps its ``.scad``.
+
+   .. method:: generate_stl()
+
+      Make the node's STL current. Nothing when it is current, the node is
+      not rigid or another process holds its render lock. A leaf whose tool
+      runs in a subprocess starts it here and raises
+      :exc:`~machinome.node.base.StlRenderStart`; otherwise a rigid leaf
+      whose STL is still not current after its materialization is refused
+      with :exc:`~machinome.node.base.ArtifactNotProduced`, naming it,
+      before any process starts.
+
+   .. attribute:: rigid
+
+      True for a time-invariant solid with a cached STL, in the piece and
+      artifact sets: the default. A class attribute.
+
+   .. attribute:: flexible
+
+      True for a leaf whose shape is a function of its bound ports
+      (:class:`~machinome.node.flexible.FlexibleNode`); false by default. A
+      class attribute.
+
+   .. attribute:: brep
+
+      Whether the node exposes B-rep geometry, a boundary representation,
+      through ``shape()``; false by default. A property.
+
+   .. attribute:: optimize
+
+      True, the default, for a presentation to import the leaf's STL;
+      false for it to carry what the leaf rendered, in which case the leaf
+      is prepared on every build. A class attribute.
+
+   .. method:: base_mesh()
+
+      The node's geometry in its own frame: its cached STL, or, for a
+      flexible leaf, its evaluated binding.
+
+   .. method:: declared_markings()
+
+      The markings the node's class declares, by attribute name.
+
+   The core reads every member of this set directly: a leaf declares its
+   kind through them, and the core never probes for one.
+
+   .. attribute:: files
+
+      The node's tracked source set: its defining module and that
+      module's project-local import closure. A subclass may add files to
+      it after the base constructor has run; every artifact's currency is
+      computed over it.
+
+   .. attribute:: basepath
+
+      The common stem of every artifact the node owns, under its project's
+      build directory, named from its source file and its parameter-hashed
+      identity. :meth:`publish_artifact` accepts only paths beginning with
+      it.
+
+   .. attribute:: stl_file
+
+      Path of the node's ``.stl`` artifact.
+
+   .. attribute:: local_stl
+
+      The ``.stl`` artifact's name relative to the node's build directory,
+      as :meth:`artifact_import` takes it.
+
+   .. attribute:: model
+
+      The node's presentation once assembled, or ``None`` before: the
+      object :meth:`present` returned, or machinome's description of it. An
+      OpenSCAD-family leaf sets it to its render result before writing its
+      ``.scad``.
+
+.. autoexception:: machinome.node.base.StlRenderStart
+
+.. autoexception:: machinome.node.base.ArtifactNotProduced
+
+.. autoclass:: machinome.node.brep_leaf.BrepLeafNode
+   :members: shape_from_rendered, brep, shape
+
+   .. attribute:: brep_file
+
+      Path of the node's ``.brep`` artifact, its B-rep geometry.
 
    .. attribute:: linear_deflection
 
       The maximum distance, in millimetres, between this node's ``.stl``
       artifact and the surface it approximates (OCCT's own
       ``theLinDeflection``). Declared as a class attribute, like
-      :attr:`~machinome.node.SheetLeafNode.thickness`; defaults to
-      ``0.1``. See :ref:`tessellation-precision`.
+      :attr:`~machinome.node.sheet_leaf.SheetLeafNode.thickness`; defaults
+      to ``0.1``. See :ref:`tessellation-precision`.
 
    .. attribute:: angular_deflection
 
@@ -96,15 +370,48 @@ Leaf nodes
       ``theAngDeflection``). Defaults to ``0.1``. See
       :ref:`tessellation-precision`.
 
-.. autoclass:: machinome.node.Solid2Node
+The OpenSCAD node family is the package ``machinome.node.openscad``
+(``OpenScadNode``, its leaf base, its writer and its binary contract), with
+``Solid2Node`` at ``machinome.node.solid2`` over it; SolidPython is its
+kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
+
+.. autoclass:: machinome.node.openscad.leaf.ScadLeafNode
+   :members: present, materialize, kept_artifacts, generate_stl,
+             generate_scad, stl_builder_command_for
+
+   .. attribute:: fn
+
+      Number of facets used to approximate curved surfaces, applied as
+      OpenSCAD's ``$fn`` to the leaf's ``.scad``. The OCCT-backed leaves
+      (``CadQueryNode``, ``Build123dNode``, the sheet leaves,
+      ``MolejoNode``) export high-resolution STLs on their own. Default is
+      ``None``, which keeps OpenSCAD's coarse default.
+
+   .. attribute:: scad_file
+
+      Path of the leaf's ``.scad``, beside its STL: written by its
+      materialization and kept by the build.
+
+   .. attribute:: scad_code
+
+      The leaf's own SCAD text.
+
+.. autofunction:: machinome.node.openscad.writer.scad_text
+
+.. autofunction:: machinome.node.openscad.writer.scad_code
+
+.. autofunction:: machinome.node.openscad.writer.generate_scad
+
+.. autoclass:: machinome.node.solid2.Solid2Node
    :members: as_number
 
-.. autoclass:: machinome.node.CadQueryNode
+.. autoclass:: machinome.node.cadquery.CadQueryNode
 
-.. autoclass:: machinome.node.Build123dNode
+.. autoclass:: machinome.node.build123d.Build123dNode
 
-.. autoclass:: machinome.node.SheetLeafNode
-   :members: profile, render, validated_profile
+.. autoclass:: machinome.node.sheet_leaf.SheetLeafNode
+   :members: profile, profile_faces, lies_on_xy_plane, extrude, write_dxf,
+             render, validated_profile
 
    .. attribute:: thickness
 
@@ -117,10 +424,10 @@ Leaf nodes
       Path of the node's nominal cut file, written beside its ``.stl``
       and ``.brep``.
 
-.. autoclass:: machinome.node.Build123dSheetNode
+.. autoclass:: machinome.node.build123d.Build123dSheetNode
    :members: profile
 
-.. autoclass:: machinome.node.OpenScadNode
+.. autoclass:: machinome.node.openscad.OpenScadNode
    :members: __init__
 
    .. attribute:: scad_source
@@ -134,7 +441,7 @@ Leaf nodes
       Name of the module to call inside :attr:`scad_source`. Defaults to
       the file name without the ``.scad`` extension.
 
-.. autoclass:: machinome.node.JScadNode
+.. autoclass:: machinome.node.jscad.JScadNode
 
    .. attribute:: jscad_source
 
@@ -143,7 +450,7 @@ Leaf nodes
       function. A path that resolves outside the project is refused when
       the node is constructed.
 
-.. autoclass:: machinome.node.StlNode
+.. autoclass:: machinome.node.stl.StlNode
 
    .. method:: adjust(mesh)
 
@@ -170,15 +477,57 @@ Leaf nodes
       file. A multi-body file with no ``body`` fails with a per-body
       inventory of centroid, bounds and volume.
 
-.. autoclass:: machinome.node.StepNode
+.. autoclass:: machinome.node.step.StepNode
 
-   An exact part selected from a STEP document. See :doc:`/howto/imported-parts`
+   A B-rep part selected from a STEP document. See :doc:`/howto/imported-parts`
    for source paths, product selection and `adjust()`.
 
-.. autoclass:: machinome.node.FlexibleNode
+.. autoclass:: machinome.node.flexible.FlexibleNode
+   :members: tech, shape_parameters, shape_spec, snapshot_mesh, snapshot_stl,
+             snapshot_shape, brep
 
-.. autoclass:: machinome.node.MolejoNode
+.. autoclass:: machinome.node.molejo.MolejoNode
    :members: shape_tolerance
+
+The two engines
+------------------
+
+Two engines do the geometry, each named for the representation it
+consumes: the **B-rep engine**, over boundary representations, and the
+**mesh engine**, over triangle meshes. Each is a module of the engine
+package, ``machinome.engine.brep`` (installed by ``machinome[brep]``) and
+``machinome.engine.mesh`` (installed by ``machinome[mesh]``), and the
+package's own module holds the two seams that resolve them on first use.
+A project rarely calls them: nodes, fusion and the assertions do. Which
+engine a test run compares on is chosen by the run
+(:doc:`/howto/fast-tests`).
+
+.. py:function:: machinome.engine.brep_engine()
+
+   The B-rep engine's module, resolved once per process, or ``None`` when
+   it is not installed.
+
+.. py:function:: machinome.engine.require_brep_engine(needed_by, reason)
+
+   The B-rep engine's module, or ``BrepEngineUnavailable`` naming
+   ``needed_by``, ``reason`` and ``pip install "machinome[brep]"``.
+
+.. py:function:: machinome.engine.mesh_engine()
+
+   The mesh engine's module, resolved once per process, or ``None`` when
+   it is not installed.
+
+.. py:function:: machinome.engine.require_mesh_engine(needed_by, reason)
+
+   The mesh engine's module, or ``MeshEngineUnavailable`` naming
+   ``needed_by``, ``reason`` and ``pip install "machinome[mesh]"``.
+
+The B-rep engine's operations a project may call directly are
+``intersect_shapes``, ``fuse_shapes``, ``placed_shape``, ``solid_count``
+and ``solid_volume``, from ``machinome.engine.brep``; see
+:doc:`assertions` for ``intersect_shapes`` and the two errors it raises,
+``BrepCommonInconsistency`` and ``BrepCommonVerificationError``, which
+``machinome.engine`` defines.
 
 Internal nodes
 ------------------
@@ -186,12 +535,12 @@ Internal nodes
 .. autoclass:: machinome.node.internal.InternalNode
    :members: connect
 
-.. autoclass:: machinome.node.AssemblyNode
+.. autoclass:: machinome.node.assembly.AssemblyNode
    :members: simulate, set_state, set_keyframe, clear_keyframe, time
 
 .. autoclass:: machinome.motion.ports.Time
 
-.. autoclass:: machinome.node.FusionNode
+.. autoclass:: machinome.node.fusion.FusionNode
    :members: time
 
    .. attribute:: linear_deflection
@@ -230,7 +579,7 @@ runtime input and changes every instant. See :doc:`Values </concepts/values>`.
 
 .. autofunction:: machinome.parameters.declared_parameters
 
-.. autofunction:: machinome.node.declared_children
+.. autofunction:: machinome.node.declarative.declared_children
 
 Ports
 =========
@@ -300,8 +649,8 @@ replace, the joint's original limits. The method needs no import; see
 Frames and mates
 ====================
 
-A frame is a named connector a node declares on itself, importable from
-``machinome.node.frames`` and from ``machinome.node``; a mate relates two
+A frame is a named connector a node declares on itself, imported from
+``machinome.node.frames``; a mate relates two
 frames in an assembly's class body, ``<child>.<frame>.on(<frame>,
 Revolute(...))`` or ``<child>.<frame>.on(<frame>, Prismatic(...))``, or
 ``<child>.<frame>.on(<frame>)`` for a part that is held, and needs no

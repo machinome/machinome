@@ -4,7 +4,7 @@
 
 from unittest import TestCase
 
-from machinome.core.camera import OPENSCAD_FOV, parse_camera
+from machinome.core.camera import DEFAULT_FOV, parse_camera
 
 
 class CameraConversionTest(TestCase):
@@ -51,8 +51,8 @@ class CameraConversionTest(TestCase):
         )
 
     def test_openscad_field_of_view_is_emitted(self):
-        self.assertEqual(parse_camera("0,0,10,0,0,0").fov, OPENSCAD_FOV)
-        self.assertEqual(OPENSCAD_FOV, 22.5)
+        self.assertEqual(parse_camera("0,0,10,0,0,0").fov, DEFAULT_FOV)
+        self.assertEqual(DEFAULT_FOV, 22.5)
 
     def test_wrong_number_count_is_clear(self):
         with self.assertRaisesRegex(ValueError, "6 numbers.*7 numbers"):

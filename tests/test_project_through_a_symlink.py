@@ -33,6 +33,7 @@ from unittest.mock import patch
 
 from machinome.core.builder import unanchor_build_dir
 from machinome.simulation import Sim
+from machinome.node.openscad.writer import scad_file
 
 
 PACKAGES = itertools.count()
@@ -41,7 +42,7 @@ ARBOR = '''\
 from solid2 import cylinder
 
 from machinome.motion.joints import Revolute
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Arbor(Solid2Node):
@@ -53,7 +54,7 @@ class Arbor(Solid2Node):
 '''
 
 MACHINE = '''\
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 
 from .parts.arbor import Arbor
@@ -166,5 +167,5 @@ class ProjectThroughASymlinkTest(TestCase):
                                            (linked.arbor, real.arbor)):
             self.assertEqual(through_link.build_dir, through_real.build_dir)
             self.assertEqual(through_link.stl_file, through_real.stl_file)
-            self.assertEqual(through_link.scad_file, through_real.scad_file)
+            self.assertEqual(scad_file(through_link), scad_file(through_real))
             self.assertEqual(through_link.src, through_real.src)

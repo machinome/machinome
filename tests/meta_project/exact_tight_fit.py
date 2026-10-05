@@ -4,7 +4,8 @@
 
 import cadquery as cq
 
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 
 
 class ExactShaft(CadQueryNode):

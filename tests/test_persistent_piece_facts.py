@@ -25,6 +25,7 @@ from machinome.core.export import export_node
 from machinome.node import base
 from machinome import test as test_module
 from tests.test_export import Cube
+from tests.stand_in import StandIn
 
 
 def content_sha256(data):
@@ -36,7 +37,7 @@ def box_bytes(extents):
     return trimesh.creation.box(extents).export(file_type='stl')
 
 
-class CurrentNode:
+class CurrentNode(StandIn):
     def __init__(self, path, source=__file__):
         self.stl_file = str(path)
         self.src = source
@@ -50,7 +51,7 @@ class RenamedNode(CurrentNode):
 
 
 class GeometryNode:
-    exact = False
+    brep = False
     flexible = False
     rigid = True
 
@@ -325,7 +326,7 @@ class LowerGeometryIdentityTest(TestCase):
         self.path.write_bytes(box_bytes((1, 2, 3)))
         base._base_mesh_cache.clear()
         test_module._bounds_cache.clear()
-        test_module._manifold_cache.clear()
+        test_module._mesh_solid_cache.clear()
         test_module._verdict_cache.clear()
         test_module._verdict_observations.clear()
 
@@ -333,14 +334,14 @@ class LowerGeometryIdentityTest(TestCase):
         old_mtime = self.path.stat().st_mtime_ns
         old_mesh = base.cached_base_mesh(str(self.path))
         old_bounds = test_module._cached_local_bounds(str(self.path))
-        old_manifold, _, _ = test_module._cached_manifold(str(self.path))
+        old_manifold, _, _ = test_module._cached_mesh_solid(str(self.path))
         old_identity = test_module._geometry_identity(str(self.path))
         other = Path(self.temporary.name) / 'other.stl'
         other.write_bytes(box_bytes((1, 1, 1)))
         other_identity = test_module._geometry_identity(str(other))
         matrix = np.eye(4)
         old_key = test_module._verdict_key(
-            old_identity, matrix, other_identity, matrix, 'faceted')
+            old_identity, matrix, other_identity, matrix, 'mesh')
         self.assertEqual(test_module._memoized(old_key, lambda: 'old'), 'old')
 
         replacement = self.path.with_name('replacement.stl')
@@ -350,10 +351,10 @@ class LowerGeometryIdentityTest(TestCase):
 
         new_mesh = base.cached_base_mesh(str(self.path))
         new_bounds = test_module._cached_local_bounds(str(self.path))
-        new_manifold, _, _ = test_module._cached_manifold(str(self.path))
+        new_manifold, _, _ = test_module._cached_mesh_solid(str(self.path))
         new_identity = test_module._geometry_identity(str(self.path))
         new_key = test_module._verdict_key(
-            new_identity, matrix, other_identity, matrix, 'faceted')
+            new_identity, matrix, other_identity, matrix, 'mesh')
         self.assertAlmostEqual(old_mesh.volume, 6.0, places=4)
         self.assertAlmostEqual(new_mesh.volume, 120.0, places=4)
         self.assertFalse(np.array_equal(old_bounds, new_bounds))
@@ -425,7 +426,7 @@ class LowerGeometryIdentityTest(TestCase):
         self.assertEqual(raced[0][4], old_identity)
         self.assertEqual(list(test_module._bounds_candidates(
             [record[2] for record in raced])), [])
-        self.assertAlmostEqual(test_module._placed_manifold(
+        self.assertAlmostEqual(test_module._placed_mesh_solid(
             raced[0], 'test', 'test').volume(), 1.0, places=4)
 
         with patch.object(test_module, '_compose_world_matrix',

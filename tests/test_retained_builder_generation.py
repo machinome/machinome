@@ -97,7 +97,10 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         self.assertEqual(self.builder.generate_stl.await_count, 4)
         self.assertEqual(pass_roots, [self.node] * 4)
         self.assertTrue(all(root is self.node for root in pass_roots))
-        self.node.assemble.assert_called_once_with()
+        # One preparation of the one loaded tree; the builder presents no
+        # SCAD since `scad-presentation`, so it never assembles.
+        self.node._prepare.assert_called_once_with()
+        self.node.assemble.assert_not_called()
         self.builder._write_viewer_snapshot.assert_called_once_with()
 
     def test_retained_passes_do_not_repeat_or_reorder_exact_fusion(self):
@@ -111,7 +114,7 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
         fusion.brep_file = str(Path(self.temporary.name) / 'assembly.brep')
         fusion._up_to_date = Mock(return_value=False)
         fusion.children = [
-            SimpleNamespace(name=name, exact=True,
+            SimpleNamespace(name=name, brep=True,
                             shape=Mock(return_value=name))
             for name in ('first', 'second', 'third')
         ]
@@ -121,7 +124,9 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
             fusion_order.append((first_name, second_name))
             return (first, second)
 
-        self.node.assemble.side_effect = fusion.shape
+        # The one place the builder composes the tree: its preparation
+        # (it no longer assembles, `scad-presentation`).
+        self.node._prepare.side_effect = fusion.shape
         outcomes = iter([
             BuildOutcome.RENDERED,
             BuildOutcome.RENDERED,
@@ -140,16 +145,17 @@ class RetainedPassLoopTest(_InProcessBuilderTest):
 
         with patch('machinome.node.fusion._compose_solid_matrix',
                    return_value=object()), patch(
-                       'machinome.node.fusion.placed_shape',
+                       'machinome.node.fusion.cached_placement',
                        side_effect=lambda shape, matrix: shape), patch(
-                           'machinome.node.fusion.fuse_shapes',
+                           'machinome.engine.brep.fuse_shapes',
                            side_effect=fuse), patch(
                                'machinome.core.builder.load_node',
                                return_value=self.node):
             outcome = asyncio.run(self.builder._start())
 
         self.assertEqual(outcome, BuildOutcome.CURRENT)
-        self.node.assemble.assert_called_once_with()
+        self.node._prepare.assert_called_once_with()
+        self.node.assemble.assert_not_called()
         self.assertEqual(fusion_order, [
             ('assembly', 'second'),
             ('assembly', 'third'),
@@ -522,7 +528,8 @@ class FreshProcessBatchTest(TestCase):
     PROJECT_SOURCE = '''\
 import os
 from solid2 import cube
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.parameters import Count, Length
 
 

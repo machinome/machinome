@@ -17,7 +17,7 @@ fixtures, assembled in-process, with the serialized operations
 inspected directly rather than parsed out of `machinome test` output.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from .base import BaseNodeTest
 from .meta_project.conrod import Conrod
@@ -57,7 +57,7 @@ class ClearKeyframeRestoresSymbolicTimeTest(BaseNodeTest):
 
         node.clear_keyframe()
 
-        # Symbolic time is solid2's $t, an OpenSCADConstant -- not a
+        # Symbolic time is the framework's own $t, a GraphValue -- not a
         # float, and it must have reached the nested assembly too.
         self.assertNotIsInstance(node.time, float)
         self.assertNotIsInstance(node.inner.time, float)

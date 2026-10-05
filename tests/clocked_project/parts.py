@@ -12,7 +12,7 @@ turns is enough to read that pose off. No fixture here builds a mesh.
 from solid2 import cube, cylinder
 
 from machinome.motion.joints import Prismatic, Revolute
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Dial(Solid2Node):

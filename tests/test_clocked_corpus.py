@@ -459,7 +459,7 @@ class ExactnessGuardTest(TestCase):
         parity fixture (evidence.md, "What the parity fixture pins").
         """
         from machinome import math as sn_math
-        from machinome.scad_expression import GraphValue, as_node
+        from machinome.expression_graph import GraphValue, as_node
         from tools.generate_parity_fixture import vocabulary_cases
         from tools.generate_running_corpus import REQUIRED as RUNNING
 

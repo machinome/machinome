@@ -25,7 +25,8 @@ import math
 from solid2 import cube
 
 from machinome.motion.joints import Revolute
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.frames import Frame
 from machinome.simulation import Driver
 

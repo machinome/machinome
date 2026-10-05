@@ -18,12 +18,14 @@ identity, the evaluation path, the placement quantum and ADR-090's
 quantised relative placement. That key also carries the STAMP: the store
 format, the machinome version, a digest of every Python source of the
 running package, the installed versions of the kernels and evaluators on
-the verdict path, and the platform. A record kept under any other stamp is
-never served, so a framework edit, a kernel upgrade or a format change
-starts the store afresh with no maintainer action.
+the verdict path, and the platform; a mesh verdict's key carries as well
+the name and version the mesh engine reports of itself. A record kept under
+any other stamp is never served, so a framework edit, a kernel upgrade or a
+format change starts the store afresh with no maintainer action, and a mesh
+engine upgrade starts its mesh verdicts afresh.
 
 The store holds raw engine verdicts -- emptiness, the volume's exact
-IEEE-754 bits, and whether the exact kernel produced it -- and no geometry,
+IEEE-754 bits, and whether the B-rep engine produced it -- and no geometry,
 path, name or matrix. The run's volume epsilon is applied after it is
 read, exactly as after an in-process hit.
 
@@ -77,7 +79,7 @@ RECORD = struct.Struct('<32sBdQ')
 CHECKSUM_SIZE = 32
 
 _EMPTY = 1
-_EXACT = 2
+_BREP = 2
 
 #: At most this many records across every stamp: about 12 MiB on disk and
 #: about 60 MiB of index in memory at the full bound. Internal, in the
@@ -104,12 +106,14 @@ TEMPORARY_NAME = re.compile(
     r'^\.[0-9a-f]{16}-[0-9]+-[0-9]+-[0-9a-f]{8}\.seg\.tmp$')
 
 #: The distributions whose installed version is part of every stamp, each
-#: beside the top-level module it provides: the exact path's kernel and its
-#: front end, the faceted path's engine and the decoder of the STL its
-#: Manifold is built from, and the flexible evaluator on both paths.
+#: beside the top-level module it provides: the B-rep path's kernel and its
+#: front end, the decoder of the STL a mesh solid is built from, and the
+#: flexible evaluator on both paths. The mesh path's engine is not here:
+#: a mesh verdict's key carries the identity the mesh engine reports of
+#: itself (`persisted_key`'s `engine`), and a B-rep verdict none, so
+#: computing the stamp never resolves the mesh engine.
 KERNELS = (('cadquery-ocp', 'OCP'), ('cadquery', 'cadquery'),
-           ('manifold3d', 'manifold3d'), ('trimesh', 'trimesh'),
-           ('molejo', 'molejo'))
+           ('trimesh', 'trimesh'), ('molejo', 'molejo'))
 
 
 #: Private counters for tests and probes. Nothing announces them.
@@ -232,16 +236,18 @@ def _platform_token():
 # Keys and digests
 
 
-def persisted_key(path, quantum, identity1, identity2, placement):
+def persisted_key(path, quantum, identity1, identity2, placement, engine):
     """The 32-byte digest a verdict is kept under.
 
     The in-process key's own fields -- evaluation path, quantum and
     placement cells, in its order, so (A, B) and (B, A) stay two
-    questions -- with the two identities replaced by persistent ones and
-    the stamp added. Nothing else enters it.
+    questions -- with the two identities replaced by persistent ones, the
+    stamp added, and `engine`: a tuple of strings naming the engine that
+    decided the verdict, `(name, version)` of the mesh engine for a
+    mesh verdict and empty for a B-rep one. Nothing else enters it.
     """
     return hashlib.sha256(_encode((
-        str(FORMAT_VERSION), stamp(), path,
+        str(FORMAT_VERSION), stamp(), path, tuple(engine),
         struct.pack('<d', float(quantum)), identity1, identity2,
         bytes(placement)))).digest()
 
@@ -295,9 +301,9 @@ def segment_name(segment_stamp):
 def _encode_segment(records, segment_stamp):
     body = bytearray(HEADER.pack(MAGIC, FORMAT_VERSION, segment_stamp,
                                  len(records)))
-    for key, is_empty, volume, exact, last_use in records:
+    for key, is_empty, volume, brep, last_use in records:
         body += RECORD.pack(key, (_EMPTY if is_empty else 0)
-                            | (_EXACT if exact else 0), volume,
+                            | (_BREP if brep else 0), volume,
                             int(last_use))
     body += hashlib.sha256(body).digest()
     return bytes(body)
@@ -320,10 +326,10 @@ def _decode_segment(data, segment_stamp):
     records = []
     for key, flags, volume, last_use in RECORD.iter_unpack(
             body[HEADER.size:]):
-        if flags & ~(_EMPTY | _EXACT):
+        if flags & ~(_EMPTY | _BREP):
             return None
         records.append((key, bool(flags & _EMPTY), volume,
-                        bool(flags & _EXACT), last_use))
+                        bool(flags & _BREP), last_use))
     return records
 
 
@@ -396,7 +402,7 @@ class Store:
     def __init__(self, root):
         self.root = root
         self.directory = os.path.join(root, VERDICT_STORE_DIRECTORY)
-        #: key -> (is_empty, volume, exact, last_use)
+        #: key -> (is_empty, volume, brep, last_use)
         self.index = {}
         #: Records to publish at the next flush: new verdicts, and one
         #: touch per key first served from the store in this process.
@@ -449,10 +455,10 @@ class Store:
 
         index = {}
         for records in read.values():
-            for key, is_empty, volume, exact, last_use in records:
+            for key, is_empty, volume, brep, last_use in records:
                 known = index.get(key)
                 if known is None or last_use > known[3]:
-                    index[key] = (is_empty, volume, exact, last_use)
+                    index[key] = (is_empty, volume, brep, last_use)
         self.index = index
         counters['loaded'] += len(index)
 
@@ -543,7 +549,7 @@ class Store:
     # -- serving and keeping -------------------------------------------------
 
     def lookup(self, key):
-        """`(is_empty, volume, exact)` kept under `key`, or None."""
+        """`(is_empty, volume, brep)` kept under `key`, or None."""
         if not self.loaded:
             self.load()
         if self.failed is not None:
@@ -562,11 +568,11 @@ class Store:
             self._flush_if_due()
         return found[:3]
 
-    def record(self, key, is_empty, volume, exact):
+    def record(self, key, is_empty, volume, brep):
         """Keep one newly computed raw verdict."""
         if self.failed is not None:
             return
-        value = (bool(is_empty), float(volume), bool(exact),
+        value = (bool(is_empty), float(volume), bool(brep),
                  int(time.time()))
         self.index[key] = value
         self.pending[key] = value

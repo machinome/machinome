@@ -28,7 +28,7 @@ import math
 from machinome.simulation import Sim
 from machinome.simulation.clocked import TooManyEvents
 from machinome.math import floor, min as sym_min
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, State
 
 from .base import BaseNodeTest

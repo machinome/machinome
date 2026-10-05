@@ -17,7 +17,7 @@ from pathlib import Path
 from machinome.cli import manage
 from machinome.core.builder import Builder
 from machinome.core.export import export_node, WidgetBundleMissing
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.base import AbstractBaseNode
 
 from .base import BaseNodeTest
@@ -63,7 +63,7 @@ class Cube(AbstractBaseNode):
 class ExportPathContainmentTest(TestCase):
 
     project_source = (
-        'from machinome.node import Solid2Node\n'
+        'from machinome.node.solid2 import Solid2Node\n'
         'from solid2 import cube\n'
         'class Part(Solid2Node):\n'
         '    def render(self):\n'

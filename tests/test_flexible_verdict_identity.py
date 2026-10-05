@@ -7,7 +7,7 @@
 ADR-070 kept flexible pairs out of the verdict memo "by construction": its
 census keyed pairs by NAME, and two instants at one relative placement are
 different questions when the flexible part's binding differs. That argument
-is right about names and does not reach state. `_faceted_cache_snapshot`
+is right about names and does not reach state. `_mesh_cache_snapshot`
 already computes the leaf's full state -- technology, defining module,
 source digest, structural identity, bound values, spec digest -- to key its
 own Manifold cache, and `_fast_geometry` threw it away; on the exact path an
@@ -32,6 +32,7 @@ from unittest.mock import PropertyMock, patch
 from trimesh.creation import box
 
 import machinome.test as test_module
+from machinome.engine import brep as occt_engine
 from machinome.core.loader import import_module_from_path
 from machinome.node import base as base_module
 
@@ -76,8 +77,8 @@ class FlexiblePairTestCase(StoreTestCase):
             self.brep('plate', (30, 30, 4))
         return ExactFakeNode('Plate', path)
 
-    def plate(self, kernel):
-        return (self.exact_plate() if kernel == 'exact'
+    def plate(self, engine):
+        return (self.exact_plate() if engine == 'brep'
                 else self.faceted_plate())
 
 class ExactPathKeysFlexiblePairs(FlexiblePairTestCase):
@@ -87,8 +88,8 @@ class ExactPathKeysFlexiblePairs(FlexiblePairTestCase):
     def test_one_binding_runs_one_boolean_and_another_binding_another(self):
         spring = self.spring(4.0)
         plate = self.exact_plate()
-        with patch.object(test_module, 'intersect_shapes',
-                          wraps=test_module.intersect_shapes) as boolean:
+        with patch.object(occt_engine, 'intersect_shapes',
+                          wraps=occt_engine.intersect_shapes) as boolean:
             first = test_module._intersection_stats(spring, plate)
             second = test_module._intersection_stats(spring, plate)
             self.assertEqual(boolean.call_count, 1,
@@ -107,24 +108,24 @@ class AcrossAFreshProcess(FlexiblePairTestCase):
     binding is computed, on both paths."""
 
     def test_both_paths(self):
-        for kernel in ('faceted', 'exact'):
-            with self.subTest(kernel=kernel):
+        for engine in ('mesh', 'brep'):
+            with self.subTest(engine=engine):
                 shutil.rmtree(self.store_directory, ignore_errors=True)
                 self.fresh_process()
-                self.set_policy(kernel=kernel)
+                self.set_policy(engine=engine)
                 with self.counted() as computed:
                     decided = test_module._intersection_stats(
-                        self.spring(4.0), self.plate(kernel))
+                        self.spring(4.0), self.plate(engine))
                 self.assertEqual(computed.count, 1)
                 self.fresh_process()
 
                 with self.counted() as computed:
                     served = test_module._intersection_stats(
-                        self.spring(4.0), self.plate(kernel))
+                        self.spring(4.0), self.plate(engine))
                     self.assertEqual(computed.count, 0,
                                      'the equal binding was not served')
                     test_module._intersection_stats(
-                        self.spring(8.0), self.plate(kernel))
+                        self.spring(8.0), self.plate(engine))
                 self.assertEqual(computed.count, 1,
                                  'a different binding was served')
                 self.assertBitIdentical(served, decided)
@@ -134,7 +135,7 @@ COIL_SOURCE = '''\
 from molejo import Circle, Helix, P, Shape
 
 from machinome.motion.ports import TranslationalPort
-from machinome.node import MolejoNode
+from machinome.node.molejo import MolejoNode
 
 
 class Coil(MolejoNode):
@@ -192,7 +193,7 @@ class StateIdentityIsState(FlexiblePairTestCase):
         self.write_project(root)
         before = self.coil(root)
         identity = self.identity(before)
-        geometry_key = before._faceted_cache_snapshot()[0]
+        geometry_key = before._mesh_cache_snapshot()[0]
 
         moved = os.path.join(self.scratch, 'elsewhere', 'flex')
         os.makedirs(os.path.dirname(moved))
@@ -201,7 +202,7 @@ class StateIdentityIsState(FlexiblePairTestCase):
 
         self.assertEqual(self.identity(after), identity,
                          'moving the project changed the state identity')
-        self.assertNotEqual(after._faceted_cache_snapshot()[0], geometry_key,
+        self.assertNotEqual(after._mesh_cache_snapshot()[0], geometry_key,
                             'the Manifold key names no absolute path, so '
                             'this move proves nothing')
         self.assertNotIn(root, json.dumps(identity))
@@ -238,8 +239,8 @@ class StateIdentityIsState(FlexiblePairTestCase):
                             identity, 'a bound value is not in the identity')
 
         node = self.coil(root)
-        original = node._shape_spec
-        with patch.object(node, '_shape_spec', side_effect=lambda rendered: {
+        original = node.shape_spec
+        with patch.object(node, 'shape_spec', side_effect=lambda rendered: {
                 **original(rendered), 'revision': 'next'}):
             self.assertNotEqual(self.identity(node), identity,
                                 'the spec is not in the identity')
@@ -255,7 +256,7 @@ class CustomSeamsStayUncached(FlexiblePairTestCase):
     the serialized spec, so nothing is kept for it in either tier."""
 
     def test_a_base_mesh_override_is_uncached_on_the_faceted_path(self):
-        self.set_policy(kernel='faceted')
+        self.set_policy(engine='mesh')
         spring = self.spring(4.0, TranslatedMeshSpring)
         plate = self.faceted_plate()
         with self.counted() as computed:
@@ -299,9 +300,9 @@ class IdentityNamesTheComparedGeometry(FlexiblePairTestCase):
         self.assertEqual(rendered.call_count, 1)
         self.assertEqual(len(snapshots), 1)
         self.assertIsNotNone(snapshots[0][1])
-        self.assertEqual(spring._exact_state_identity(solid),
+        self.assertEqual(spring._brep_state_identity(solid),
                          snapshots[0][1])
-        self.assertIsNone(spring._exact_state_identity(object()),
+        self.assertIsNone(spring._brep_state_identity(object()),
                           'a shape the leaf did not build carries its '
                           'identity')
 
@@ -317,8 +318,8 @@ class IdentityNamesTheComparedGeometry(FlexiblePairTestCase):
 
         with patch.object(spring, 'current_shape',
                           side_effect=current_shape) as current, \
-                patch.object(spring, '_snapshot_mesh',
-                             wraps=spring._snapshot_mesh) as evaluated:
+                patch.object(spring, 'snapshot_mesh',
+                             wraps=spring.snapshot_mesh) as evaluated:
             _, _, identity = test_module._flexible_geometry(spring)
 
         self.assertEqual(current.call_count, 1)
@@ -327,7 +328,7 @@ class IdentityNamesTheComparedGeometry(FlexiblePairTestCase):
         self.assertEqual(identity, expected)
 
     def test_a_shortened_binding_hash_collision_shares_no_verdict(self):
-        self.set_policy(kernel='faceted')
+        self.set_policy(engine='mesh')
         spring = self.spring(0.0)
         plate = self.faceted_plate()
         with patch.object(base_module, '_HASH_LEN', 0), \
@@ -342,14 +343,14 @@ class IdentityNamesTheComparedGeometry(FlexiblePairTestCase):
         spring = self.spring(0.0)
         with patch.object(base_module, '_HASH_LEN', 0):
             first = spring.shape()
-            identity = spring._exact_state_identity(first)
+            identity = spring._brep_state_identity(first)
             spring.height.value = fixture.FREE_HEIGHT - 5.0
             second = spring.shape()
             # The collision serves the older binding's solid; the identity
             # it carries is that older binding's too, so a verdict keyed on
             # it still names the geometry compared.
             self.assertIs(second, first)
-            self.assertEqual(spring._exact_state_identity(second), identity)
+            self.assertEqual(spring._brep_state_identity(second), identity)
             current, _, _ = spring._state_snapshot()
         self.assertNotEqual(current, identity)
 
@@ -358,12 +359,12 @@ class UnobservableSource(FlexiblePairTestCase):
     """Task 3.7: no source digest, no identity; computed every time."""
 
     def test_an_unreadable_source_is_never_kept(self):
-        for kernel in ('faceted', 'exact'):
-            with self.subTest(kernel=kernel):
+        for engine in ('mesh', 'brep'):
+            with self.subTest(engine=engine):
                 self.fresh_process()
-                self.set_policy(kernel=kernel)
+                self.set_policy(engine=engine)
                 spring = self.spring(3.0)
-                plate = self.plate(kernel)
+                plate = self.plate(engine)
                 with patch.object(type(spring), 'source_digest',
                                   new_callable=PropertyMock,
                                   return_value=None), \

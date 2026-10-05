@@ -72,7 +72,7 @@ def sources_of(sim, name):
 def span_names(sim, identifier, side):
     """The free names a compiled bound reads, sorted."""
     from machinome.expression_graph import free_names
-    from machinome.scad_expression import as_node
+    from machinome.expression_graph import as_node
 
     for entry in sim.program.spans:
         if entry[0] == identifier:

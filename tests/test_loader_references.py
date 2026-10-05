@@ -7,7 +7,7 @@ from machinome.core.loader import (AmbiguousNodeError, ProjectManifestError,
                                     discover_project, load_node, resolve_node)
 
 
-SOURCE = '''from machinome.node import Solid2Node
+SOURCE = '''from machinome.node.solid2 import Solid2Node
 class Sail(Solid2Node):
     def render(self): return None
 class Hull(Solid2Node):
@@ -87,7 +87,7 @@ class ProjectManifestReferenceTest(TestCase):
             os.mkdir(os.path.join(elsewhere, 'shed'))
             open(os.path.join(elsewhere, 'shed', '__init__.py'), 'w').close()
             with open(os.path.join(elsewhere, 'shed', 'sail.py'), 'w') as stream:
-                stream.write('from machinome.node import Solid2Node\n'
+                stream.write('from machinome.node.solid2 import Solid2Node\n'
                              'class Sail(Solid2Node):\n'
                              '    def render(self): return None\n')
             with open(os.path.join(elsewhere, 'pyproject.toml'), 'w') as stream:

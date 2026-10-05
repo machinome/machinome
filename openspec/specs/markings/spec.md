@@ -9,8 +9,9 @@ The system SHALL accept a **marking** as a class-body declaration on a node
 class: an attribute holding `Marking(artwork, placement, color=...)`, where
 `artwork` names the drawing, `placement` says where on the part it sits, and
 `color` is its colour. `Marking`, together with the artwork source `Svg` and
-the placements `Wrapped` and `Flat`, SHALL be importable from
-`machinome.node.markings` and SHALL also resolve from `machinome.node`.
+the placements `Wrapped` and `Flat`, SHALL be imported from
+`machinome.node.markings`, their one import path: the node root resolves none
+of them (`node-model`, "The node package's root exports nothing").
 
 A marking SHALL take its name from the attribute it is assigned to, SHALL be
 recorded in declaration order, and SHALL be inherited through the method
@@ -392,8 +393,8 @@ other source edit does.
 A marking SHALL contribute no solid. A part's volume, bounds, STL bytes, BREP
 bytes and piece id SHALL be identical whether or not it declares markings, and
 `assertNoIntersectingSolids`, `assertNoDisconnectedSolids` and every pairwise
-interference sweep SHALL return the same verdict, under the faceted and the
-exact comparison kernel alike.
+interference sweep SHALL return the same verdict, on the mesh engine and the
+B-rep engine alike.
 
 A marking SHALL NOT be a node and SHALL NOT be a child. A part's `children`,
 the shape of the tree, an assembly's part count and the published piece
@@ -414,8 +415,9 @@ a marking is not a parameter.
 #### Scenario: A marking changes no geometric verdict
 
 - **WHEN** an assembly whose parts carry markings runs
-  `assertNoIntersectingSolids` and `assertNoDisconnectedSolids`, faceted and
-  exact
+  `assertNoIntersectingSolids` and `assertNoDisconnectedSolids`, on the mesh
+  engine and on the B-rep engine
+
 - **THEN** every verdict equals the verdict the same assembly gives with the
   markings removed
 
@@ -431,3 +433,61 @@ a marking is not a parameter.
   realized, one declaring a marking and one declaring none
 - **THEN** both report the same `uniq_id`, so the marking changed no artifact
   key
+
+### Requirement: Artwork is reduced through a seam that names its extra
+
+The marking declarations `Marking`, `Wrapped`, `Flat` and `Svg` SHALL need no
+CAD kernel: importing `machinome.node.markings`, creating a class that
+declares a marking (the artwork path's resolution and refusals included), and
+building a part whose marking artifacts are current SHALL NOT import
+`build123d` and SHALL NOT resolve the artwork reducer.
+
+Reducing `Svg` artwork to its closed regions and their triangles SHALL be done
+by the reducer in `machinome.node.build123d`, which the markings module
+resolves on first use by importing that one known module, and never imports at
+its own top. The reducer SHALL declare the reducer contract version it
+implements; the markings module SHALL declare the version it speaks and refuse
+a reducer that declares another, or none, naming both versions and the
+reducer's module, before any artwork is reduced.
+
+When a marking must be built and the reducer's module refuses because
+`build123d` cannot be found, the build SHALL fail with one error that names
+the part's class and the marking's attribute, the artwork file, and
+`pip install "machinome[build123d]"`, and SHALL write no marking artifact.
+
+The reduction SHALL produce the same regions, triangles and marking bytes as
+before this change.
+
+#### Scenario: Declaring a marking needs no kernel
+
+- **WHEN** a class declaring `Marking(Svg('results_dial.svg'), Wrapped(...))`
+  is created in an interpreter where `build123d` cannot be found
+- **THEN** the class is created, the artwork path is resolved and checked as
+  before, and `build123d` is not imported
+
+#### Scenario: A stale marking without the extra is refused by its install line
+
+- **WHEN** that part's marking artifact is stale and the part is built where
+  `build123d` cannot be found
+- **THEN** the build fails naming the class, the marking's attribute,
+  `results_dial.svg` and `pip install "machinome[build123d]"`, and no marking
+  artifact is written
+
+#### Scenario: A current marking needs no reducer
+
+- **WHEN** a part whose marking artifacts are current is built again where
+  `build123d` cannot be found
+- **THEN** the build succeeds and the marking artifacts keep their bytes
+
+#### Scenario: A reducer of another contract is refused
+
+- **WHEN** the reducer's module declares a reducer contract version other
+  than the one the markings module speaks
+- **THEN** reducing an artwork raises an error naming both versions and
+  `machinome.node.build123d`, and no artwork is reduced
+
+#### Scenario: The reduction is unchanged
+
+- **WHEN** a marking fixture is built after this change
+- **THEN** its marking artifact's bytes equal those recorded before it
+

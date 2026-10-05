@@ -1,0 +1,50 @@
+{
+  "bench_commit": "2c9d65f8f56c92ebfa1b4c20ba2780317cee1dd2",
+  "fixture": {
+    "operations": {
+      "SharedMotion": [],
+      "arm": [
+        {
+          "length": 121,
+          "sha256": "0af8dc59f192c3740da6c2a6e774eae751185f40f4981b6e8d6b35d0a9dc0149"
+        }
+      ],
+      "coil": [],
+      "slider": [
+        {
+          "length": 213,
+          "sha256": "b346cff539a7a5890aa89d185b7abeb50f18e207dc33c39c0835ce7c6549d5e2"
+        }
+      ]
+    },
+    "published": {
+      "bindings": {
+        "length": 251,
+        "sha256": "e74371d4e59d0fc0825b9b2fde23d32fb9b71c01c73abf44bab1c22f3e0eb4fd"
+      },
+      "document": {
+        "length": 1495,
+        "sha256": "d1d6c99300a121c9513b13982d281a42d52b52dc2211086a24c9fb73fdca37fd"
+      },
+      "version": 4
+    },
+    "scad_code": {
+      "SharedMotion": {
+        "length": 445,
+        "sha256": "8e6e2f71cc99933625147e9fb6ba865df9d125b2d44d0f1aefd336a71c0d48f9"
+      },
+      "arm": {
+        "length": 31,
+        "sha256": "6951141e12a6756f2f68c570d871025692c2af1afb3269d39b1337f48a1ec255"
+      },
+      "coil": {
+        "length": 9,
+        "sha256": "1653da2b47e6d0e68764638c64d608231927977003ce7695bee6cfcba8eb5c83"
+      },
+      "slider": {
+        "length": 31,
+        "sha256": "6951141e12a6756f2f68c570d871025692c2af1afb3269d39b1337f48a1ec255"
+      }
+    }
+  }
+}

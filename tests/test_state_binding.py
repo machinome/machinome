@@ -25,7 +25,7 @@ inspected directly. Only the scenario that is explicitly about pose
 builds STLs, because only a mesh can answer it.
 """
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.qualified import DriverIdError
 from machinome.simulation import Driver
 

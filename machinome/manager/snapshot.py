@@ -2,19 +2,24 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-import os
 import sys
 import logging
-from subprocess import run, CalledProcessError
+from subprocess import run
 from machinome.core.loader import ProjectManifestError, load_node, select_model
+from machinome.extras import ExtraUnavailable
 from machinome.motion.ports import declared_time
 from machinome.core.builder import project_build_lock
-from machinome.viewers.openscad import OpenScadImportError, OpenScadRenderer
-from machinome.openscad import OpenScadUnavailable
+from machinome.node import supported
 
 
 logger = logging.getLogger('manager.snapshot')
-OPENSCAD_RENDERER = OpenScadRenderer()
+
+
+def renderer_names():
+    """The renderers the table of supported node types contributes, by
+    name, in table order."""
+    return [name for node_type in supported.NODE_TYPES.values()
+            for name, _ in node_type.renderers]
 
 
 class SnapshotOptionError(ValueError):
@@ -22,7 +27,7 @@ class SnapshotOptionError(ValueError):
     still image cannot be posed by."""
 
 
-# OpenSCAD color schemes
+# The color schemes the default renderer offers
 COLORSCHEMES = [
     'Cornfield', 'Metallic', 'Sunset', 'Starnight', 'BeforeDawn',
     'Nature', 'DeepOcean', 'Solarized', 'Tomorrow', 'Tomorrow Night', 'Monotone'
@@ -33,17 +38,23 @@ VIEW_OPTIONS = ['axes', 'crosshairs', 'edges', 'scales', 'wireframe']
 
 
 class Snapshot:
-    """Renders a node to a PNG image, through the OpenSCAD CLI by default
-    or through the browser viewer with --renderer web for a transparent
+    """Renders a node to a PNG image, through the default renderer or
+    through the browser viewer with --renderer web for a transparent
     background. Enables AI agents to visually inspect their work without
     human intervention."""
 
     needs_node = True
 
+    #: The table renderer resolved for this invocation, or None for the web
+    #: renderer: it presents the posed root inside the build lock and draws
+    #: it after (`machinome.node.supported.renderer`).
+    presenter = None
+
     def add_arguments(self, parser):
         parser.add_argument(
-            '--renderer', choices=['openscad', 'web'], default='openscad',
-            help='Image renderer (default: openscad)',
+            '--renderer', choices=['web', *renderer_names()],
+            default=supported.DEFAULT_RENDERER,
+            help=f'Image renderer (default: {supported.DEFAULT_RENDERER})',
         )
         # Output options
         parser.add_argument(
@@ -65,7 +76,7 @@ class Snapshot:
         parser.add_argument(
             '--camera',
             type=str,
-            help='Camera specification in OpenSCAD format. '
+            help='Camera specification. '
                  'Gimbal: translate_x,y,z,rot_x,y,z,dist or '
                  'Vector: eye_x,y,z,center_x,y,z'
         )
@@ -108,7 +119,7 @@ class Snapshot:
             '--render',
             action='store_true',
             default=False,
-            help='Full render (OpenSCAD default, slower but accurate)'
+            help='Full render (the default, slower but accurate)'
         )
         render_group.add_argument(
             '--preview',
@@ -148,7 +159,8 @@ class Snapshot:
         self.drives = list(getattr(args, 'drive', None) or [])
         self.output = args.output
         self.time = args.time
-        renderer = getattr(args, 'renderer', 'openscad')
+        renderer = getattr(args, 'renderer', supported.DEFAULT_RENDERER)
+        self.renderer = renderer
 
         if renderer == 'web':
             unsupported = [
@@ -187,6 +199,19 @@ class Snapshot:
                            f"Expected WxH (e.g., 1920x1080)\n")
             sys.exit(1)
 
+        # A table renderer is its node type's: refuse an absent one, by the
+        # extra that installs it, before anything is loaded or written.
+        self.presenter = None
+        if renderer != 'web':
+            try:
+                self.presenter = supported.renderer(renderer)
+            except ExtraUnavailable as error:
+                sys.stderr.write(
+                    f'Error: machinome snapshot --renderer {renderer} needs '
+                    f'the {error.extra} extra: {error}; or use --renderer '
+                    f'web\n')
+                raise SystemExit(1)
+
         # Load and prepare the node
         try:
             node = self._load_and_prepare_node()
@@ -211,28 +236,9 @@ class Snapshot:
             print(f"Snapshot saved to {self.output}")
             return
 
-        # Execute OpenSCAD
-        try:
-            OPENSCAD_RENDERER.render(node, args, self.output, run)
-            print(f"Snapshot saved to {self.output}")
-        except OpenScadImportError as error:
-            # OpenSCAD itself already wrote whatever it could render --
-            # the picture with the missing part -- straight to self.output;
-            # the spec is that a failed snapshot leaves no image behind.
-            if os.path.exists(self.output):
-                os.remove(self.output)
-            sys.stderr.write(f"Error: {error}\n")
-            sys.exit(1)
-        except CalledProcessError as e:
-            sys.stderr.write(f"OpenSCAD rendering failed:\n{e.stderr}\n")
-            sys.exit(1)
-        except FileNotFoundError:
-            sys.stderr.write("Error: OpenSCAD not found in PATH. "
-                           "Please install OpenSCAD and ensure it is accessible.\n")
-            sys.exit(1)
-        except OpenScadUnavailable as error:
-            sys.stderr.write(f'Error: {error}\n')
-            raise SystemExit(1)
+        # The table renderer draws, and reports its own failures.
+        self.presenter.render(node, args, self.output, run)
+        print(f"Snapshot saved to {self.output}")
 
     def _validate_imgsize(self, imgsize):
         """Validate image size format (WxH)."""
@@ -246,8 +252,10 @@ class Snapshot:
             return False
 
     def _load_and_prepare_node(self):
-        """Load the node, pose its named drivers, and prepare it for
-        rendering."""
+        """Load the node, pose its named drivers, and, for a table
+        renderer, have it present the root for that pose, in the same
+        locked step. The web renderer composes no presentation: it builds
+        and stages the published document itself."""
         with project_build_lock():
             node = load_node(self.path,
                              overrides=getattr(self, 'overrides', None))
@@ -270,7 +278,8 @@ class Snapshot:
                     f'simulation itself starts from.')
             node.set_keyframe(self.time * loop if loop is not None
                               else self.time)
-            node.assemble()
+            if self.presenter is not None:
+                self.presenter.present(node)
 
         return node
 

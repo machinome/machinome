@@ -1,6 +1,6 @@
 # ADR-156: A Decided Verdict Outlives the Run
 
-**Status:** Accepted
+**Status:** Accepted; the mesh engine's binding amended 2026-10-04 by [ADR-176](ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
 **Date:** 2026-09-29
 **Amends:**
 - [ADR-070: Relative Placement as the Identity of an Intersection Question](./ADR-070-relative-placement-as-the-identity-of-an-intersection-question.md)
@@ -265,3 +265,16 @@ State keys have no collision, the pilot directed otherwise, and v8-engine's
 - OpenSpec change `persistent-verdict-memo` and its `evidence.md`,
   capabilities `test-framework`, `flexible-parts`, `cli`, `build-pipeline`,
   `user-documentation`
+
+## Amendment (2026-10-04)
+
+[ADR-176](ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md) removes `manifold3d` from the stamp's distributions
+(`KERNELS`): the stamp is computed in every run, all-exact ones included,
+and the mesh engine is resolved only where a faceted question is asked. A
+faceted verdict's persisted key carries instead the identity, name and
+version, the resolved engine reports of itself (`persisted_key`'s
+`engine`); an exact verdict's carries none. A faceted question whose engine
+is absent or reports no version is computed without being kept. A
+manifold3d upgrade therefore starts the faceted verdicts afresh and keeps
+the exact ones; the record and segment layouts, and `FORMAT_VERSION`, are
+unchanged.

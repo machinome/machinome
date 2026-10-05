@@ -8,7 +8,7 @@ package). The root's own generated `.scad` has always resolved this
 import; the intermediate's is the other half of the bug this change
 fixes."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 
 from ..sub.deep.group import Group
 

@@ -23,7 +23,7 @@ import time
 from contextlib import chdir
 from unittest import TestCase, mock
 
-from solid2 import scad_render
+from machinome.node.openscad import writer
 
 from machinome import currency
 from .base import BaseNodeTest
@@ -172,7 +172,8 @@ class UpToDateLeafTest(BaseNodeTest):
     def test_skipped_leaf_assembles_the_same_scad(self):
         rendered = Block().assemble()
         skipped = Block().assemble()
-        self.assertEqual(scad_render(skipped), scad_render(rendered))
+        engine = writer
+        self.assertEqual(engine.scad_text(skipped), engine.scad_text(rendered))
 
     def test_cadquery_does_not_reexport_a_current_artifact(self):
         node = Block()
@@ -180,11 +181,12 @@ class UpToDateLeafTest(BaseNodeTest):
 
         again = Block()
         with mock.patch(
-                'machinome.node.exact_leaf.write_stl') as export:
-            scad = again.as_scad(again.render())
+                'machinome.node.brep_leaf.write_stl') as export:
+            scad = again.present(again.render())
 
         export.assert_not_called()
-        self.assertEqual(scad_render(scad), scad_render(node.model))
+        engine = writer
+        self.assertEqual(engine.scad_text(scad), engine.scad_text(node.model))
 
     def test_cadquery_exports_when_the_artifact_is_missing(self):
         # The stand-in still has to produce the file: the adapter
@@ -197,9 +199,9 @@ class UpToDateLeafTest(BaseNodeTest):
                 fh.write('solid empty\nendsolid empty\n')
 
         node = Block()
-        with mock.patch('machinome.node.exact_leaf.write_stl',
+        with mock.patch('machinome.node.brep_leaf.write_stl',
                         side_effect=export_stub) as export:
-            node.as_scad(node.render())
+            node.present(node.render())
         export.assert_called_once()
 
     def test_jscad_does_not_respawn_for_a_current_artifact(self):
@@ -210,16 +212,16 @@ class UpToDateLeafTest(BaseNodeTest):
         currency.record(node.stl_file, node.source_digest,
                         node.source_fingerprint)
 
-        with mock.patch('machinome.node.adapters.jscad.Popen') as popen:
-            node.as_scad(None)
+        with mock.patch('machinome.node.jscad.Popen') as popen:
+            node.present(None)
 
         popen.assert_not_called()
 
     def test_jscad_runs_when_the_artifact_is_missing(self):
         node = JsBlock()
-        with mock.patch('machinome.node.adapters.jscad.Popen') as popen:
+        with mock.patch('machinome.node.jscad.Popen') as popen:
             popen.return_value.returncode = 0
-            node.as_scad(None)
+            node.present(None)
         popen.assert_called_once()
 
 
@@ -246,7 +248,7 @@ class SourceClosureRootAnchoringTest(TestCase):
             stream.write('BEAM = 3.5\n')
         with open(os.path.join(self.root, 'boat', 'hull.py'), 'w') as stream:
             stream.write(
-                'from machinome.node import Solid2Node\n'
+                'from machinome.node.solid2 import Solid2Node\n'
                 'from solid2 import cube\n'
                 'from .dims import BEAM\n'
                 '\n'

@@ -250,7 +250,7 @@ class Builder(FileSystemEventHandler):
     """Monitor model sources. On any relevant change, exit for a rebuild."""
     def __init__(self, path, is_reload=False, build_dir=None,
                  watch=True, callback=None,
-                 lifecycle=False, overrides=None, scad_output=True):
+                 lifecycle=False, overrides=None):
         super().__init__()
         self.path = path
         # The root's `--set` words, carried into every load this builder
@@ -270,7 +270,6 @@ class Builder(FileSystemEventHandler):
         self.watch = watch
         self.callback = callback
         self.lifecycle = lifecycle
-        self.scad_output = scad_output
 
         self.file_changed = None
         self._watched_sources = set()
@@ -373,7 +372,7 @@ class Builder(FileSystemEventHandler):
 
             try:
                 # Preparation discovers structure and lets native adapters
-                # materialize without constructing an assembly-wide SCAD tree.
+                # materialize without composing an assembly-wide presentation.
                 if self._source_generation is None:
                     self.node._prepare()
                 else:
@@ -426,7 +425,6 @@ class Builder(FileSystemEventHandler):
                 # it.
                 logger.info('Published artifacts are already current')
                 try:
-                    self._present_scad_if_requested()
                     if self._source_generation is None:
                         published = self._write_viewer_snapshot()
                     else:
@@ -465,7 +463,6 @@ class Builder(FileSystemEventHandler):
                             # result; only a renderer this child completed may
                             # continue the retained generation.
                             return outcome
-                    self._present_scad_if_requested()
                     if self._source_generation is None:
                         self._write_viewer_snapshot()
                     else:
@@ -491,16 +488,6 @@ class Builder(FileSystemEventHandler):
         if not self.watch:
             return BuildOutcome.CURRENT
         return await self.wait_for_change()
-
-    def _present_scad_if_requested(self):
-        """Publish compatibility SCAD only for a consumer that requested it."""
-        if not self.scad_output:
-            return
-        if self._source_generation is None:
-            self.node.assemble()
-            return
-        with self._source_generation.phase(self.node.files, label='assembly'):
-            self.node.assemble()
 
     async def _on_reload_exception(self, exc, stage, error_message=None):
         """Handle an exception raised while (re)importing project
@@ -696,6 +683,12 @@ class Builder(FileSystemEventHandler):
         inventory.validate()
         recovered = clear_errors(self.build_dir)
         if self._published_document() == document:
+            # A transient artifact never survives a successful build,
+            # whatever the document did: the rest of the sweep waits for a
+            # changed document, as it always has, but a file its writer
+            # published for one process's own use -- a presentation a
+            # killed snapshot left -- goes now (ADR-177).
+            self._sweep_unreferenced_artifacts(snapshot, transient_only=True)
             return recovered
         # An old error must be gone before this manifest exposes new work.
         atomic_write(os.path.join(self.build_dir, 'viewer.json'), document)
@@ -729,7 +722,7 @@ class Builder(FileSystemEventHandler):
             if node.rigid and not node._up_to_date(
                     node.stl_file):
                 return False
-            if (node.rigid and getattr(node, 'exact', False)
+            if (node.rigid and node.brep
                     and not node._up_to_date(node.brep_file)):
                 return False
             # A marking's currency is checked on every build of its
@@ -738,8 +731,7 @@ class Builder(FileSystemEventHandler):
             # republished names it. The check reads the marking's own
             # tracked set, so a stale decal costs the artifact pass and
             # never a render (see `AbstractBaseNode._build_markings`).
-            declared = (getattr(node, 'declared_markings', None)
-                        if node.rigid else None)
+            declared = node.declared_markings if node.rigid else None
             for name, marking in (declared() if declared else {}).items():
                 if not node._up_to_date(node.marking_file(name),
                                         node.marking_sources(marking)):
@@ -748,15 +740,22 @@ class Builder(FileSystemEventHandler):
 
         return current(self.node)
 
-    def _sweep_unreferenced_artifacts(self, snapshot):
+    def _sweep_unreferenced_artifacts(self, snapshot, transient_only=False):
+        """Remove every file of the build directory the published tree does
+        not reference and no node of it keeps, sparing what the rules below
+        spare. With `transient_only`, remove only those whose currency
+        record marks them transient (`currency.recorded_transient`), with
+        their records: the rule that holds on every successful build. No
+        rule names the kind of an artifact a node keeps or a writer marks
+        transient."""
         referenced = set()
 
         def collect(node):
             if 'model' in node:
                 referenced.add(os.path.normpath(node['model']))
             # A marking is spared by REFERENCE, not by kind: unlike the
-            # `.brep` and the `.scad`, which no document names, the
-            # snapshot names a marking beside the part's model -- so a
+            # `.brep`, which no document names, the snapshot names a
+            # marking beside the part's model -- so a
             # marking still declared is kept, and one whose declaration
             # was deleted is swept exactly as a renamed node's artifact
             # is.
@@ -765,24 +764,20 @@ class Builder(FileSystemEventHandler):
             for child in node.get('children', []):
                 collect(child)
 
-        def collect_snapshots(node):
-            """The per-binding artifacts the assembled tree imports.
-
-            A flexible leaf's snapshot is addressed by its binding as well
-            as by the node, and the published document is serialized
-            symbolically -- it describes the machine, not the pose -- so
-            the document cannot name the file the assembled SCAD actually
-            imports. The tree can, and it is the same tree this
-            publication describes. Every other binding's snapshot is
-            therefore unreferenced, which is exactly what the sweep
-            collects.
+        def collect_kept(node):
+            """Every artifact a node of the published tree declares in
+            `kept_artifacts()`, kept by DECLARATION rather than by kind,
+            while the node is in the tree, whether or not this build
+            rewrote it. A renamed node's are unreferenced, and swept with
+            their currency records. No build composes a presentation
+            either, so no flexible leaf's per-binding snapshot is
+            referenced: the next build removes those an `assemble()` left.
             """
-            artifact = getattr(node, 'snapshot_file', None)
-            if artifact:
+            for path in node.kept_artifacts():
                 referenced.add(os.path.normpath(
-                    os.path.relpath(artifact, self.build_dir)))
-            for child in getattr(node, 'children', ()):
-                collect_snapshots(child)
+                    os.path.relpath(path, self.build_dir)))
+            for child in node.children:
+                collect_kept(child)
 
         def kept(relative, filename):
             # `.lock` spares a declared model's build lock, which lies inside
@@ -790,11 +785,11 @@ class Builder(FileSystemEventHandler):
             # acquirer open a fresh inode and lock nothing.
             return (relative in referenced or
                     filename in ('viewer.json', 'errors.json') or
-                    filename.endswith(('.scad', '.brep', '.stl.lock',
+                    filename.endswith(('.brep', '.stl.lock',
                                        '.lock', '.tmp')))
 
         collect(snapshot['root'])
-        collect_snapshots(self.node)
+        collect_kept(self.node)
         # A declared model's directory is its own to sweep: the build root's
         # walk does not descend into one. Nor into the test framework's
         # verdict store (ADR-156): test state no document names, written by
@@ -825,6 +820,23 @@ class Builder(FileSystemEventHandler):
                 described = currency.describes(relative)
                 if described is None:
                     described = pieces.describes(relative)
+                if transient_only:
+                    artifact = described if described is not None \
+                        else relative
+                    if (kept(artifact, os.path.basename(artifact)) or
+                            not currency.recorded_transient(os.path.join(
+                                self.build_dir, artifact))):
+                        continue
+                    # The artifact and its record go together, whichever
+                    # of the two the walk meets first.
+                    for each in (path, os.path.join(self.build_dir, artifact),
+                                 currency.sidecar(os.path.join(
+                                     self.build_dir, artifact))):
+                        try:
+                            os.remove(each)
+                        except FileNotFoundError:
+                            pass
+                    continue
                 if described is not None:
                     if not kept(described, os.path.basename(described)):
                         os.remove(path)

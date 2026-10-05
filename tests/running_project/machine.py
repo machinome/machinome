@@ -39,7 +39,7 @@ import math
 from machinome.math import abs, clamp01, floor, min, sign, sin, wrap
 from machinome.motion.joints import Bound, Free, Prismatic, Revolute
 from machinome.motion.ports import RotationalPort, Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Angle, Flag
 from machinome.simulation import (Button, Driver, Instruction, Play, Slide,
                                   Turn)

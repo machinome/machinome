@@ -5,7 +5,7 @@
 """machinome.math: dual-mode degree trig (issue #19).
 
 AssemblyNode.time is numeric under set_keyframe() (tests) but
-symbolic ($t, an OpenSCADConstant) in the viewer/build path. Plain
+symbolic ($t, the framework's own GraphValue) in the viewer/build path. Plain
 math.asin(...) et al. raise TypeError on the symbolic value the
 instant a non-linear expression touches it, killing `machinome develop`
 at the first non-linear mechanism. machinome.math must (a) match
@@ -19,8 +19,10 @@ import math as pymath
 import re
 from unittest import TestCase
 
-from solid2 import get_animation_time
+from solid2 import get_animation_time as solidpython_time
 from solid2.core.object_base import OpenSCADConstant
+
+from machinome.expression_graph import GraphValue, get_animation_time
 
 from machinome import math as snmath
 from machinome.parameters import (Angle, DimensionError, Length, Ratio,
@@ -93,37 +95,54 @@ class NumericModeTest(TestCase):
 
 
 class SymbolicModeTest(TestCase):
-    """Any symbolic arg (an OpenSCADConstant, like solid2's $t) must
-    return an OpenSCADConstant expression, never raise, and never
-    silently fall through to Python's radians-based math."""
+    """Any symbolic arg (the framework's own $t) must return the
+    framework's symbolic value, never raise, and never silently fall
+    through to Python's radians-based math."""
 
-    def test_returns_openscad_constant(self):
-        t = get_animation_time()
+    time = staticmethod(get_animation_time)
+
+    def test_returns_a_symbolic_value(self):
+        t = self.time()
         for fn, name in [
             (snmath.sin, 'sin'), (snmath.cos, 'cos'), (snmath.tan, 'tan'),
             (snmath.asin, 'asin'), (snmath.acos, 'acos'),
             (snmath.atan, 'atan'), (snmath.sqrt, 'sqrt'),
         ]:
             result = fn(t)
-            self.assertIsInstance(result, OpenSCADConstant)
+            self.assertIsInstance(result, GraphValue)
             self.assertEqual(str(result), f'{name}($t)')
 
     def test_atan2_mixed_symbolic_and_numeric(self):
-        t = get_animation_time()
+        t = self.time()
         result = snmath.atan2(t, 1.0)
-        self.assertIsInstance(result, OpenSCADConstant)
+        self.assertIsInstance(result, GraphValue)
         self.assertEqual(str(result), 'atan2($t, 1.0)')
 
     def test_composed_nonlinear_expression(self):
         """The exact shape from the bug report: a linear expression in
-        self.time survives symbolically through solid2's own operator
+        self.time survives symbolically through the value's own operator
         overloads (720.0 * $t); wrapping it in sin/asin must nest
         correctly instead of raising."""
-        t = get_animation_time()
+        t = self.time()
         theta = 720.0 * t
         expr = snmath.asin(0.25 * snmath.sin(theta))
-        self.assertIsInstance(expr, OpenSCADConstant)
+        self.assertIsInstance(expr, GraphValue)
         self.assertEqual(str(expr), 'asin((0.25 * sin((720.0 * $t))))')
+
+
+class LegacySolidPythonTimeTest(SymbolicModeTest):
+    """SolidPython's own $t, adopted through the OpenSCAD engine: the same
+    vocabulary gives the framework's value with the same text
+    (`motion-expression-sharing`, "Supported legacy expressions retain
+    their behavior"). `720.0 * $t` is SolidPython's own text constant
+    here, which `sin` reads back."""
+
+    time = staticmethod(solidpython_time)
+
+    def test_the_operand_is_solidpythons(self):
+        self.assertIsInstance(self.time(), OpenSCADConstant)
+        self.assertNotIsInstance(self.time(), GraphValue)
+        self.assertIsInstance(720.0 * self.time(), OpenSCADConstant)
 
 
 def _eval_openscad_expr(expr, t):
@@ -195,7 +214,8 @@ class NumericSymbolicAgreementTest(TestCase):
 # Thirteen project kinematics modules rebuilt this arithmetic themselves --
 # four of them over `sqrt(x * x)`, for a viewer limitation that never
 # existed, and four clock models by reaching into solid2's OpenSCADConstant
-# to emit `floor`. These pin the module's own vocabulary on all three faces.
+# (the facade's base class until `expression-type`) to emit `floor`. These
+# pin the module's own vocabulary on all three faces.
 
 
 DIRECT_BUILTINS = ('abs', 'floor', 'ceil', 'sign')
@@ -210,14 +230,14 @@ class SymbolicBuiltinStringTest(TestCase):
         t = get_animation_time()
         for name in DIRECT_BUILTINS:
             result = getattr(snmath, name)(t)
-            self.assertIsInstance(result, OpenSCADConstant)
+            self.assertIsInstance(result, GraphValue)
             self.assertEqual(str(result), f'{name}($t)')
 
     def test_two_argument_builtins(self):
         t = get_animation_time()
         for name in ('min', 'max'):
             result = getattr(snmath, name)(t, 1.0)
-            self.assertIsInstance(result, OpenSCADConstant)
+            self.assertIsInstance(result, GraphValue)
             self.assertEqual(str(result), f'{name}($t, 1.0)')
 
     def test_inventory_holds_every_emitted_name(self):

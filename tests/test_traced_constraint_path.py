@@ -7,7 +7,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from machinome.expression_graph import ExpressionNode
-from machinome.scad_expression import GraphValue
+from machinome.expression_graph import GraphValue
 from machinome.simulation.program import _PathValue, _SUBDIVISIONS
 from machinome.simulation.run import Run
 from machinome.simulation.trajectory import Motion, Propagation

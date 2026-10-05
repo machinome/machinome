@@ -13,7 +13,7 @@ wraps its export is what the round trip proves.
 
 import cadquery as cq
 
-from machinome.node import CadQueryNode
+from machinome.node.cadquery import CadQueryNode
 
 
 BRACKET_LENGTH = 20

@@ -1778,3 +1778,195 @@ definition (export spec, ADR-128) that the import module is part of it, or
 anchor the identity on the project-relative module as the manifest's
 `[tool.machinome.models]` names it, so the spelling of `PYTHONPATH` cannot
 change a machine.
+
+## OpenAstroMount — a scenario test refused by the exact common guard (3 October 2026)
+
+Found validating the framework change `exact-engine` on a branch of the
+project. `OpenAstroMountScenarioTest.test_every_instruction_reaches_its_documented_end_state`
+fails on the project's `master` against the unmodified framework (feb23f2)
+and against the change alike, with `ExactCommonInconsistency`: the exact
+common of `housing` and `rolamento_uc206_valor_predeterminado_1` is empty
+while a point near (-2.02, 265.56, 442.98) classifies strictly inside both
+solids beyond their face tolerances. Same pair, same witness to the last
+digit before and after the change, so it is not the engine's doing. Either
+the housing and the bearing genuinely overlap at that pose, or the guard
+witnesses a false empty on a valid common. Not triaged; the project's other
+eight tests pass. Evidence: `openspec/changes/archive/2026-10-03-exact-engine/evidence.md`, §6.
+
+## A first build's sweep removes fused children's STLs (3 October 2026, framework)
+
+Observed in the `exact-engine` cycle's fixture
+`tests/meta_project/exact_fusion_current.py`: the first build of an exact
+fusion leaves the fused children's `.stl` artifacts removed by the sweep,
+and a second build restores them, so a test that needs every artifact
+current must build twice. Pre-existing behaviour, observed and left
+unchanged by the cycle. Not triaged: whether a fused child's STL is an
+artifact the sweep should keep is a build-pipeline question.
+
+## Findings from the framework cycle `backend-switch` (3 October 2026)
+
+- **A self-materializing leaf that publishes nothing falls through to the
+  OpenSCAD path.** `AbstractBaseNode.generate_stl` launches OpenSCAD for
+  any rigid, unlocked node whose STL is not current after preparation; its
+  gate is staleness, not "this node is presented as SCAD". A `LeafNode`
+  subclass whose `materialize` returns without publishing its STL reaches
+  `require_openscad`, and with OpenSCAD present would launch it on a
+  `.scad` preparation never wrote (inferred from the code; not run with the
+  binary). Probed on the bench with OpenSCAD absent: `node SilentProducer
+  (SilentProducer) requires the OpenSCAD binary because its STL is rendered
+  from SCAD by OpenSCAD; ...`. `JScadNode.materialize` is the core's one
+  instance: its branch `if not os.path.exists(temporary): return`
+  (`node/adapters/jscad.py`) means a `jscad` run that exits 0 and writes
+  nothing ends in OpenSCAD, which `openscad-dependency` says a `JScadNode`
+  never launches. No project uses `JScadNode` (lean-core plan's count: 0)
+  and no self-materializing leaf outside the core exists, so the cycle
+  recorded it and changed nothing (design.md, "Findings"). The remedy
+  shape, should a project meet it: a refusal naming the node that produced
+  no STL, made where `materialize` returns. Evidence:
+  `openspec/changes/archive/2026-10-03-backend-switch/evidence.md`, §1.3.
+  **Untriaged.**
+
+## Findings from the framework cycle `lean-install` (3 October 2026)
+
+- **A `machinome build` in a fresh project worktree hung for three hours.**
+  During the cycle's deep validation, a `machinome build` of
+  Actuators/Internal-Cycloidal-Actuator in a fresh git worktree
+  (`WTs/lean-core-validation` under the project, on its virtiofs path
+  `/mnt/data/machinome-projects/...`, with the ignored 35 MB vendor STEP
+  copied in) hung: the `machinome build` process alive with 4 s of CPU, an
+  empty `_build/actuator.lock`, no artifact written and no child process;
+  killed by the orchestrator after three hours, at 18:29. The same build in
+  the project's primary checkout, where artifacts exist, completed in under
+  a minute. Not reproduced; the worktree was removed. Evidence:
+  `openspec/changes/archive/2026-10-03-lean-install/evidence.md`, §5.1.
+  **Untriaged.**
+
+  *4 October 2026, the framework cycle `mesh-engine`:* a `machinome build`
+  in a project whose sources were written moments earlier restarts every
+  second without end: each build generation, a fresh spawned interpreter,
+  ends `SOURCE_CHANGED` (11), and `machinome build` starts the next,
+  printing `START` once a second. In a temporary project of `StlNode` parts,
+  outside any import finder, `timeout 60 machinome build
+  mfixture/parts.py:Shelf` exited 124 after 50 `START` lines; with every
+  source dated an hour back, the same build printed one `START` and exited
+  0. (Here a child is spawned every second; the hang above saw none, so the
+  two may yet differ in their last step.) Evidence:
+  `openspec/changes/archive/2026-10-04-mesh-engine/evidence.md`, §2.
+  **Reproduced, mechanism found; untriaged.**
+
+## Findings from the framework cycle `expression-type` (3 October 2026)
+
+- **OpenSCAD's STL output is not reproducible run to run.** Two renders of
+  byte-identical SCAD under the same OpenSCAD binary gave different STL
+  bytes for several parts of Pin_tumbler_lock (Body, Core, DriverPin,
+  Key, ...), and a piece's mesh volume therefore differed by one unit in the
+  last place between two exports (`pieces[1].volume`
+  `21065.08699624388` against `21065.086996243885`); exporting twice from
+  the same build directory gives the same volume. Any byte-pinned
+  validation across builds must hash the SCAD, never the STL or a
+  mesh-derived number; the export manifest's `volume` carries that noise.
+  Evidence: `openspec/changes/archive/2026-10-03-expression-type/evidence.md`,
+  §6.1. **Untriaged.**
+- **For the record, outside this repository.** machinome-mechanics' tests
+  name solid2's `OpenSCADConstant` as the test of symbolic-ness
+  (`tests/test_motion.py:46`, `tests/test_mechanisms.py:349`), now
+  corrected by a mechanics cycle asserting
+  `machinome.expression_graph.symbolic` (the pilot, 3 October 2026); and
+  machinome-viewer carries a stray root-level `openscad.py`, outside its
+  package and imported by nothing, importing
+  `machinome.openscad.require_openscad`, which this cycle moved to
+  `machinome.openscad.binary`. Evidence: the same file, §6.3, §6.5.
+
+## Findings from the adversarial review of the framework cycle `production-layer` (4 October 2026)
+
+Reviewed after the cycle was merged into `v0.8-split` (69c7019) at the
+pilot's direction, so every item below is on the campaign line. The cycle's
+focused suite (94 tests), its package fingerprint `cba98e72…`, its stated
+base and its Curta and studio commits were all reproduced; the items are
+what the review found beyond the record. Probes ran on the `v0.8-production`
+bench against a faceted `FusionNode` of two self-materializing boxes with
+one child translated in `render()`.
+
+- **Defect: binding a production after a build doubles the placements of
+  children positioned in a rigid internal node's `render()`.** The
+  `model-consumption` spec's scenario "Read an advanced machine" promises
+  that structural reading leaves established operation values unchanged.
+  It holds when the facade reads first and fails when the lifecycle ran
+  first: `ModelSnapshot.occurrences` (`machinome/model.py:354-365`) calls
+  `render()` on every non-assembly internal node unless its own
+  `_production_rest` cache exists, and a node already rendered by
+  `_prepare()` or `assemble()` has no such cache, so the author's `render()`
+  runs a second time and re-applies every `translate`/`rotate` to the same
+  declared children. The doubled structure is then cached and returned by
+  every later `render()` (`machinome/node/internal.py:39-42`); nothing
+  raises. Measured: child operations 1 in the facade-only, lifecycle-only
+  and facade-then-lifecycle orders, 2 in the lifecycle-then-facade order,
+  also with the fusion inside a prepared assembly; a regeneration after the
+  doubling fused a different solid (content id `f966a273…` became
+  `c49003bd…`). The cycle's test
+  `test_rigid_rest_placements_reused_by_normal_lifecycle` covers the
+  facade-first order only, and the Curta slice prints leaves, so neither
+  could meet it. Exposed by any process that builds, snapshots or serves a
+  model and then binds a `Production` to the same instance. Remedy shape:
+  the walk reuses the node's `_prepared_rendered` when the lifecycle
+  already rendered it and renders once otherwise, pinned by a red test in
+  the lifecycle-first order that compares operations and the regenerated
+  content id. **Untriaged.**
+- **A missing input file at binding escapes `Production(model)` as the
+  facade's own error.** A node whose `files` names a path that does not
+  exist makes the constructor raise
+  `machinome.model.ModelInputChangedError("input observation failed: …")`:
+  `Production.__init__` (`machinome/production/profile.py:281-288`) wraps
+  only `OSError`, so the production error taxonomy is bypassed, and the
+  message says a file changed when it never existed. **Untriaged.**
+- **The draft bundle is not portable.** Every key of the manifest's
+  `input_hashes` and `files`, every `source_paths` entry and every
+  `instruction_path` is an absolute local path; the snapshot observes the
+  framework's own source files through each node's MRO
+  (`ModelSnapshot._sources`), so on the bench all seven input-hash keys of
+  a sourced-only bundle were framework files under the worktree, and an
+  installed framework will write its `site-packages` path into every
+  maker's bundle. Root-relative keys, with the framework identified by its
+  version, is the remedy shape. **Untriaged.**
+- **The Markdown gate refuses text that is not a dependency.** `_markdown`
+  (`profile.py:143-181`) rejected `if a<b then c>d ok` and a code span
+  containing a tag as an "unsupported HTML dependency". Version 1 was meant
+  to refuse dependencies a bundle cannot carry, not inequalities or quoted
+  markup. **Untriaged.**
+- **An overlap anywhere in the root blocks an unambiguous child's reports.**
+  With an overlap under `right`, `production.left.bom` raises
+  `ProductionConflictError`: `_read` (`profile.py:361-374`) checks every
+  overlap finding of the shared root, not the ones inside the queried
+  scope. The design refuses ambiguous totals; the child's totals are not
+  ambiguous. **Untriaged.**
+- **Declaration paths change shape with the repetition count.** A
+  one-member repeated child binding is named `kids/arbitrary_name` and a
+  two-member one `kids-0/arbitrary_name` (`profile.py:1083-1085`), although
+  the binding is a tuple in both cases, as the spec requires. A consumer
+  test pinning a declaration path breaks when a count parameter moves from
+  one to two. **Untriaged.**
+- **`Finding.check_status` is always `"checked"`.** No code path produces
+  another value, and the export manifest's `checks` block is a constant.
+  The design's "an unrequested geometry-dependent check is not advertised
+  as passed" has no runtime shape beyond omitting the finding. Either give
+  the field a value or drop it before the contract is released.
+  **Untriaged.**
+- **The facade re-implements the preparation lifecycle by hand.**
+  `ModelSnapshot._ensure.prepare` (`model.py:469-492`) copies `_prepare`
+  and `InternalNode.materialize` minus markings, scope aggregation,
+  `track_sources` and the `_prepared` flag. Fidelity held on the bench: the
+  facade's fused STL and the lifecycle's had the same canonical content id.
+  But the mesh-engine cycle is about to move these seams, and a copy this
+  size drifts silently. Design debt, not a defect today. **Untriaged.**
+- **Consumed STL bytes are held in memory for the life of a binding.**
+  `ModelSnapshot.geometry` keeps `(observation, facts, data)` per artifact
+  so a later copy pairs the same bytes with the same facts. Right for a
+  partial Curta; a whole-machine export holds every printed part's STL at
+  once. Scalability note. **Untriaged.**
+- **Checked and found sound, for the record.** Vet reports the
+  attribute-chain route (`import machinome.model as facade;
+  facade.ModelSnapshot(...)`) as framework-internal, so the new deny
+  entries are not bypassed that way. A mated assembly
+  (`tests/mate_project/arm.py`) reads structure-only in both orders
+  although mates bind ports at rest. The Curta consumer uses public members
+  only and changed no simulation source.

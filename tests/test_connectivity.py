@@ -27,16 +27,18 @@ from trimesh.creation import box
 from trimesh.util import concatenate
 
 from machinome.test import TestCase as AssertingTestCase
-from machinome.node import AssemblyNode, FusionNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.fusion import FusionNode
 from machinome.node.base import AbstractBaseNode, _topmost_rigid_nodes
 from machinome.node.internal import InternalNode
 from machinome.node.operations import Translation
+from tests.stand_in import NodeDouble, StandIn
 
 
 asserter = AssertingTestCase()
 
 
-class FakeNode:
+class FakeNode(StandIn):
     """Minimal stand-in for a rigid node: a name and a .mesh, which is
     all the connectivity assertions read."""
 
@@ -51,7 +53,7 @@ class FakeNode:
         return self._mesh.copy()
 
 
-class StlNode:
+class StlNode(StandIn):
     """Small real-STL node for exercising matrix composition paths."""
 
     def __init__(self, stl_file, name, parent=None):
@@ -124,9 +126,9 @@ class AssertNoDisconnectedSolidsTest(TestCase):
     def stl_node(self, name, mesh, *, rigid=True, children=(), parent=None):
         path = os.path.join(self.directory.name, f'{name}.stl')
         mesh.export(path)
-        return SimpleNamespace(name=name, stl_file=path, rigid=rigid,
-                               children=children, _parent=parent,
-                               operations=[])
+        return NodeDouble(name=name, stl_file=path, rigid=rigid,
+                          children=children, _parent=parent,
+                          operations=[])
 
     def test_names_disconnected_solid_and_body_count(self):
         broken = self.stl_node('broken-gear', two_bodies())
@@ -208,7 +210,7 @@ class FusionHierarchyTest(TestCase):
 
         InternalNode.validate(outer, [inner])
 
-    def test_as_scad_does_not_shadow_type_determined_rigidity(self):
+    def test_present_does_not_shadow_type_determined_rigidity(self):
         fusion = object.__new__(FusionNode)
         fusion.root = None
         fusion.files = set()
@@ -221,7 +223,7 @@ class FusionHierarchyTest(TestCase):
             assemble=Mock(return_value=object()),
         )
 
-        InternalNode.as_scad(fusion, [child])
+        InternalNode.present(fusion, [child])
 
         self.assertNotIn('rigid', fusion.__dict__)
 

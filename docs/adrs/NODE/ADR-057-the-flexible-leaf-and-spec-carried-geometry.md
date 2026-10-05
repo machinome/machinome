@@ -1,6 +1,6 @@
 # ADR-057: The flexible leaf, whose geometry travels as a spec
 
-**Status:** Accepted
+**Status:** Accepted ("framework-internal base" superseded in part by [ADR-163](ADR-163-the-leaf-bases-are-declared-extension-points.md), 2026-10-03: `FlexibleNode` is a declared extension point and its backend hooks are public, `shape_parameters`, `shape_spec`, `snapshot_mesh`, `snapshot_stl`, `snapshot_shape`; everything else below stands)
 
 **Date:** 2026-08-28
 
@@ -106,7 +106,7 @@ Chosen option: **a flexible leaf is a non-rigid leaf whose shape is a
 pure function of its declared ports' bound values, and whose geometry
 travels as its evaluator's spec rather than as any mesh.**
 `FlexibleNode` (`solid_node/node/flexible.py`) is the framework-internal
-base; `MolejoNode` (`solid_node/node/adapters/molejo.py`) is the v1
+base *(a declared extension point since ADR-163)*; `MolejoNode` (`solid_node/node/adapters/molejo.py`) is the v1
 adapter, exactly the `SheetLeafNode`→`Build123dSheetNode` shape ADR-053
 established.
 

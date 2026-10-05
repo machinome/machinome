@@ -113,7 +113,7 @@ class Sim:
     step independently and the id a scenario writes is the id the
     serialized document publishes.
 
-    `meshes=True` additionally assembles the node and builds its STLs,
+    `meshes=True` additionally prepares the node and builds its STLs,
     which is what a scenario asserting on geometry needs and what a
     scenario asserting on state should not pay for. Per-tick re-renders
     never touch the artifact path, so this happens once, here.
@@ -212,7 +212,6 @@ class Sim:
                  for identifier, driver in self.drivers.items()},
                 self.states, self.instructions, state=state, record=record)
             if meshes:
-                node.assemble()
                 node.build_stls()
             return
         self._bind_initial(state)
@@ -228,7 +227,6 @@ class Sim:
 
             self._run = Run(self, record)
         if meshes:
-            node.assemble()
             node.build_stls()
 
     def _bind_initial(self, state):

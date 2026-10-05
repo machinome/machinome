@@ -24,8 +24,17 @@ deny = [
   "machinome.core.builder", "machinome.core.processes",
   "machinome.core.loader", "machinome.core.export",
   "machinome.core.pieces",
+  # Independent consumers may copy/export artifacts; pure model code cannot.
+  "machinome.model.ModelSnapshot", "machinome.production.profile",
   "machinome.source_generation", "machinome.viewers", "machinome.sphinx",
   "machinome.currency", "machinome._artifact",
+  # The B-rep layer's internals: the memos load a BREP from a caller-chosen
+  # path, and artifact publication writes through `currency.publish`.
+  "machinome.brep_cache", "machinome.brep_artifacts",
+  # The B-rep engine's file operations, which read or write a caller-chosen
+  # path; its other operations are contract.
+  "machinome.engine.brep.read_brep", "machinome.engine.brep.write_brep",
+  "machinome.engine.brep.write_stl",
 ]
 
 [kernels]                   # allowed, minus the denylists below

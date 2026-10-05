@@ -8,7 +8,7 @@ fail loudly -- naming this file, both candidate classes, and the
 remedy (name a class in the reference) -- instead of silently
 instantiating whichever one happens to be defined first."""
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from .parts import Cube
 
 

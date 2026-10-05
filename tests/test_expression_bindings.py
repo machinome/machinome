@@ -19,7 +19,6 @@ import os
 import re
 import shutil
 import tempfile
-from types import SimpleNamespace
 
 from solid2 import cube
 from solid2.core.object_base import scad_inline
@@ -32,7 +31,8 @@ from machinome.core.serializer import (
     animation_block, bind_document, document_version, drivers_table,
     instructions_table, serialize_node, symbolic_document,
 )
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.simulation import Driver
 from machinome.simulation.enumeration import bind_declared_defaults
 import machinome.math as m
@@ -40,6 +40,7 @@ import machinome.math as m
 from .base import BaseNodeTest
 from .flexible_project.spring import Engine as SpringEngine
 from .meta_project.nested import Nested
+from tests.base import scad_code
 
 
 class Leaf(Solid2Node):
@@ -463,7 +464,7 @@ class ScadPathUntouchedTest(BaseNodeTest):
     """Task 3.2: the generated `.scad` for a tree carrying heavy sharing
     is byte-identical before and after publishing the document.
 
-    `operation.scad(...)` reads `self.angle` / `self.translation`
+    `operation.presented(...)` reads `self.angle` / `self.translation`
     directly, never `operation.serialized` -- the only thing
     `bind_document` ever rewrites, and only on the plain-dict document
     `serialize_node` returns, never on the live `Rotation`/`Translation`
@@ -474,7 +475,7 @@ class ScadPathUntouchedTest(BaseNodeTest):
     def test_scad_is_unchanged_by_publishing_a_document_with_bindings(self):
         node = bound(CrossNodeSharedTree())
         node.assemble()
-        before = node.scad_code
+        before = scad_code(node)
 
         out_dir = os.path.join(self.build_dir, 'export_out')
         manifest = export_node(bound(CrossNodeSharedTree()), out_dir,
@@ -482,7 +483,7 @@ class ScadPathUntouchedTest(BaseNodeTest):
         self.assertTrue(manifest['bindings'])  # sharing really happened
 
         node.assemble()
-        after = node.scad_code
+        after = scad_code(node)
 
         self.assertEqual(before, after)
         for entry in manifest['bindings']:
@@ -492,7 +493,7 @@ class ScadPathUntouchedTest(BaseNodeTest):
         node = bound(CrossNodeSharedTree())
         node.assemble()
 
-        code = node.scad_code
+        code = scad_code(node)
 
         # The shared subexpression's own text, not a binding reference:
         # solid2's `$t` and `floor` reach OpenSCAD exactly as they did
@@ -531,7 +532,8 @@ class RepublicationStabilityTest(BaseNodeTest):
         os.utime(artifact, (0, 0))
 
         shared = '(($t * 2.0) + 1.0)'
-        node = SimpleNamespace(
+        from tests.stand_in import NodeDouble
+        node = NodeDouble(
             name='part', _type='Machinome', color=None, mtime=0,
             operations=[
                 _FakeOperation(['r', shared, [0, 0, 1]]),

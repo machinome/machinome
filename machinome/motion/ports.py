@@ -28,7 +28,7 @@ flow slot cannot quietly come to depend on a wrong one.
 
 The root's own time channel lives here too, as `Time`. `AssemblyNode.time`
 is one entry of the driver snapshot with a symbolic fallback (ADR-008):
-bound, it reports the bound number; unbound, solid2's `$t`, the
+bound, it reports the bound number; unbound, the symbolic `$t`, the
 normalized 0..1 turn every document consumer plays. What that number
 MEANS was the binder's choice -- a keyframe bound a fraction, a stepped
 simulation bound seconds -- and nothing let the model settle it.

@@ -17,7 +17,6 @@ import importlib.abc
 import importlib.machinery
 import os
 import sys
-from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 
@@ -41,18 +40,6 @@ class SourceObservation:
     def metadata(self):
         return (self.device, self.inode, self.size,
                 self.mtime_ns, self.ctime_ns)
-
-
-@dataclass(frozen=True)
-class _PendingScadPublication:
-    """One immutable desired path state captured during assembly."""
-
-    path: str
-    content: str
-    mtime_ns: int
-    digest: str | None
-    fingerprint: str | None
-    publish: object
 
 
 def _observation(path, stat):
@@ -355,11 +342,6 @@ class SourcePhase:
         self.initial_paths = tuple(paths)
         self.label = label
         self.census = SourceCensus(generation.root)
-        # Only the Builder's assembly producer owns the lifetime needed to
-        # delay non-rigid SCAD publication safely. Other source phases retain
-        # their existing immediate behavior.
-        self.coalesces_scad = label == 'assembly'
-        self._pending_scad = OrderedDict()
         self._token = None
 
     def __enter__(self):
@@ -379,45 +361,10 @@ class SourcePhase:
     def __exit__(self, exc_type, exc, traceback):
         try:
             if exc_type is None:
-                if self.coalesces_scad:
-                    self.checkpoint(label=f'{self.label} pre-flush')
-                    self._flush_scad()
-                    self.checkpoint(label=f'{self.label} post-flush')
-                else:
-                    self.checkpoint(label=f'{self.label} post')
+                self.checkpoint(label=f'{self.label} post')
         finally:
-            # Body/pre-flush failure discards every desired state. A flush
-            # failure may leave already completed atomic publications, but no
-            # later queued path is attempted and no request survives the
-            # phase.
-            self._pending_scad.clear()
             self.census.seal()
             _current_phase.reset(self._token)
-
-    @property
-    def pending_scad_count(self):
-        return len(self._pending_scad)
-
-    def defer_scad(self, path, content, mtime_ns, digest, fingerprint,
-                   publish):
-        """Retain the last immutable desired state for a canonical path."""
-        if not self.coalesces_scad:
-            raise RuntimeError('SCAD publication requires an assembly phase')
-        canonical = os.path.realpath(path)
-        # Re-insertion moves the path to its last occurrence relative to all
-        # other paths, preserving the order the immediate implementation left
-        # observable when a later publication fails.
-        self._pending_scad.pop(canonical, None)
-        self._pending_scad[canonical] = _PendingScadPublication(
-            os.fspath(path), content, mtime_ns, digest, fingerprint, publish)
-
-    def _flush_scad(self):
-        pending = tuple(self._pending_scad.values())
-        self._pending_scad.clear()
-        for desired in pending:
-            desired.publish(
-                desired.path, desired.content, desired.mtime_ns,
-                desired.digest, desired.fingerprint)
 
     def _merge_generation_sources(self, fresh):
         """Bring the generation union into this phase's one pre-census.
@@ -479,7 +426,7 @@ class SourceGeneration:
         self._spellings = {}
         # Canonical path -> the full identity actually published there now.
         # Historical membership is unsafe: A -> B -> A must publish all three.
-        self._scad_artifacts = {}
+        self._published = {}
         self._finder = _ProjectSourceFinder(self)
         self._token = None
 
@@ -594,19 +541,19 @@ class SourceGeneration:
     def phase(self, paths=(), label='phase'):
         return SourcePhase(self, paths, label)
 
-    def has_scad_artifact(self, path, identity):
+    def has_published(self, path, identity):
         """Whether this identity is the path's current published state."""
         if any(value is None for value in identity):
             return False
-        return self._scad_artifacts.get(os.path.realpath(path)) == identity
+        return self._published.get(os.path.realpath(path)) == identity
 
-    def remember_scad_artifact(self, path, identity):
+    def remember_published(self, path, identity):
         """Record or invalidate the path state after successful publication."""
         canonical = os.path.realpath(path)
         if any(value is None for value in identity):
-            self._scad_artifacts.pop(canonical, None)
+            self._published.pop(canonical, None)
         else:
-            self._scad_artifacts[canonical] = identity
+            self._published[canonical] = identity
 
 
 def track_sources(paths):

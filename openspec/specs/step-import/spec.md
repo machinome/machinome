@@ -1,7 +1,7 @@
 # step-import Specification
 
 ## Purpose
-The STEP part leaf: how a STEP document becomes an exact part -- its declaration and freshness, the product selected by name with the inventory as the failure, the product's own frame, correction in code, the solid-admission gate, colour from the document, one read per file per process, and its exactness.
+The STEP part leaf: how a STEP document becomes a B-rep part -- its declaration and freshness, the product selected by name with the inventory as the failure, the product's own frame, correction in code, the solid-admission gate, colour from the document, one read per file per process, and its `brep` capability.
 ## Requirements
 ### Requirement: STEP source declaration and freshness
 
@@ -379,24 +379,25 @@ at all for the sake of rebuilding them.
 - **THEN** its geometry is not re-derived and its artifacts are not
   rewritten
 
-### Requirement: The STEP part is an exact leaf
+### Requirement: The STEP part is a B-rep leaf
 
-`StepNode` SHALL be an exact adapter under the `exact-geometry` capability:
-`exact` is true, `shape()` returns the selected, adjusted, admitted
+`StepNode` SHALL be a B-rep adapter under the `brep-geometry` capability:
+`brep` is true, `shape()` returns the selected, adjusted, admitted
 geometry in the node's own frame, its `.brep` artifact is persisted and
-reloaded like any exact leaf's, it fuses exactly with the other exact
-adapters, and the spatial assertions answer on its B-rep. Its STL artifact
-SHALL be written by the exact leaf path and SHALL therefore honour the
+reloaded like any B-rep leaf's, it fuses on the B-rep engine with the other
+B-rep adapters,
+ and the spatial assertions answer on its B-rep. Its STL artifact
+SHALL be written by the B-rep leaf path and SHALL therefore honour the
 `linear_deflection` and `angular_deflection` the node declares, at the same
-defaults every exact leaf has.
+defaults every B-rep leaf has.
 
 Producing its artifacts SHALL NOT require OpenSCAD or any other external
 tool, and reading a STEP file SHALL NOT be a cost paid by a project that
 declares no `StepNode`.
 
-#### Scenario: The adapter is exact
+#### Scenario: The adapter declares `brep`
 
-- **WHEN** `exact` is read on a `StepNode`
+- **WHEN** `brep` is read on a `StepNode`
 - **THEN** it is true, and `shape()` returns the part's geometry in its own
   frame
 
@@ -404,10 +405,11 @@ declares no `StepNode`.
 
 - **WHEN** a `FusionNode` fuses a `StepNode` with an overlapping
   `CadQueryNode`
-- **THEN** the fusion is exact and its shape is one solid
+- **THEN** the fusion has B-rep geometry and its shape is one solid
 
 #### Scenario: A declared precision shapes the STEP part's mesh
 
 - **WHEN** a `StepNode` declares `angular_deflection = 0.5`
 - **THEN** its STL artifact holds strictly fewer triangles than the same
   node declaring nothing, and its `.brep` is unchanged
+

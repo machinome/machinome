@@ -40,7 +40,10 @@ from unittest import TestCase
 
 from unittest.mock import patch
 
-from machinome.node import AssemblyNode, Solid2Node, StepNode, StlNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.step import StepNode
+from machinome.node.stl import StlNode
 from machinome.node.declarative import ChildDeclaration
 from machinome.node.markings import Marking, Svg, Wrapped
 
@@ -247,7 +250,7 @@ class ForeignScratchSourceTest(TestCase):
 
     def test_an_absent_jscad_source_fails_at_construction(self):
         module = self._load_leaf(
-            'from machinome.node import JScadNode\n\n\n'
+            'from machinome.node.jscad import JScadNode\n\n\n'
             'class AbsentJscad(JScadNode):\n'
             '    jscad_source = "no-such-shape.js"\n')
         path = os.path.join(self.project, 'no-such-shape.js')
@@ -264,7 +267,7 @@ class ForeignScratchSourceTest(TestCase):
 
     def test_an_absent_openscad_source_names_the_class(self):
         module = self._load_leaf(
-            'from machinome.node import OpenScadNode\n\n\n'
+            'from machinome.node.openscad import OpenScadNode\n\n\n'
             'class AbsentScad(OpenScadNode):\n'
             '    scad_source = "no-such-shape.scad"\n')
         path = os.path.join(self.project, 'no-such-shape.scad')
@@ -405,11 +408,11 @@ class ScratchContainmentTest(TestCase):
     def test_an_openscad_source_above_the_root_runs_nothing(self):
         self.manifest()
         module = self.load(
-            'from machinome.node import OpenScadNode\n\n\n'
+            'from machinome.node.openscad import OpenScadNode\n\n\n'
             'class Outside(OpenScadNode):\n'
             '    scad_source = "../outside.scad"\n')
 
-        with patch('machinome.node.adapters.openscad.coherent_read') as read:
+        with patch('machinome.node.openscad.coherent_read') as read:
             self.assertOutside(module.Outside, 'Outside', 'scad_source',
                                '../outside.scad',
                                os.path.join(self.base, 'outside.scad'))
@@ -420,7 +423,7 @@ class ScratchContainmentTest(TestCase):
         os.symlink(os.path.join(self.base, 'outside.scad'),
                    os.path.join(self.project, 'link.scad'))
         module = self.load(
-            'from machinome.node import OpenScadNode\n\n\n'
+            'from machinome.node.openscad import OpenScadNode\n\n\n'
             'class Linked(OpenScadNode):\n'
             '    scad_source = "link.scad"\n')
 
@@ -430,7 +433,7 @@ class ScratchContainmentTest(TestCase):
     def test_a_jscad_source_above_the_root(self):
         self.manifest()
         module = self.load(
-            'from machinome.node import JScadNode\n\n\n'
+            'from machinome.node.jscad import JScadNode\n\n\n'
             'class Outside(JScadNode):\n'
             '    jscad_source = "../outside.js"\n')
 
@@ -443,7 +446,7 @@ class ScratchContainmentTest(TestCase):
         os.symlink(os.path.join(self.base, 'outside.js'),
                    os.path.join(self.project, 'link.js'))
         module = self.load(
-            'from machinome.node import JScadNode\n\n\n'
+            'from machinome.node.jscad import JScadNode\n\n\n'
             'class Linked(JScadNode):\n'
             '    jscad_source = "link.js"\n')
 
@@ -462,7 +465,7 @@ class ScratchContainmentTest(TestCase):
         with open(os.path.join(elsewhere, 'shape.scad'), 'w') as source:
             source.write('cube(1);\n')
         module = self.load(
-            'from machinome.node import OpenScadNode\n\n\n'
+            'from machinome.node.openscad import OpenScadNode\n\n\n'
             'class Loose(OpenScadNode):\n'
             '    scad_source = "../elsewhere/shape.scad"\n')
 

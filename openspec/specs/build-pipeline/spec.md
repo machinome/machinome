@@ -204,18 +204,25 @@ Whichever directory a command was run from, a project therefore has one build
 directory per model and — because the build lock is derived from it — one
 build lock per model.
 
-The ordinary `machinome build` and SCAD presentation path SHALL retain `.scad`
-(base geometry, no transforms) deliverables. Geometry/document-only consumers
-under `backend-neutral-materialization` SHALL NOT require or generate assembly
-SCAD deliverables, but SHALL still produce SCAD source when a selected backend
-needs it. Other artifacts remain `.stl` (rendered) and `.stl.lock` during
-external rendering. A node that is exact under the `exact-geometry` capability
+A build SHALL write a `.scad` (base geometry, no transforms) only for a leaf
+of the OpenSCAD node family — a `Solid2Node`, an `OpenScadNode`, or another
+subclass of the family's leaf base — because OpenSCAD renders that leaf's
+`.stl` from it; the family leaf writes it through the OpenSCAD node package
+(the `openscad-node` capability). It SHALL write no `.scad` for an assembly, a
+fusion, a flexible leaf or any other leaf, whatever is installed, and SHALL log
+nothing about SCAD. The root's `.scad` is written in the build directory
+only by `machinome snapshot --renderer openscad`, under the `web-snapshot`
+capability, which removes it once rendered; it is not a build artifact. Geometry/document-only consumers under
+`backend-neutral-materialization` SHALL NOT require or generate assembly SCAD,
+but SHALL still produce SCAD source when a selected backend needs it. Other
+artifacts remain `.stl` (rendered) and `.stl.lock` during
+external rendering. A node that has B-rep geometry under the `brep-geometry` capability
 SHALL additionally write
-`.brep`, holding that node's unplaced exact geometry under the same basename.
+`.brep`, holding that node's unplaced B-rep geometry under the same basename.
 World-space spatial math does not use on-disk artifacts — the `mesh`
 property loads the plain `.stl` and applies operations in memory (the
-`.mesh.scad`/`.mesh.stl` path attributes exist but are vestigial; nothing
-writes or reads them). Every build directory SHALL be an ordinary directory
+`.mesh.stl` path attribute exists but is vestigial; nothing writes or reads
+it). Every build directory SHALL be an ordinary directory
 that every builder writes into directly; the system SHALL NOT publish through
 a symlink, a versioned sibling directory, or a private candidate copy. A build
 path left as a symlink by an earlier layout SHALL be converted by moving the
@@ -274,19 +281,19 @@ SHALL NOT alter any document's schema.
 - **THEN** the stage and every artifact linked into it remain available to the
   capture process
 
-#### Scenario: An exact node writes exact geometry beside its mesh
+#### Scenario: A B-rep node writes B-rep geometry beside its mesh
 
-- **WHEN** an exact rigid node is built
+- **WHEN** a B-rep rigid node is built
 - **THEN** a `.brep` artifact sits beside its `.stl` under the same basename
 
-#### Scenario: A faceted node writes no exact artifact
+#### Scenario: A mesh node writes no B-rep artifact
 
-- **WHEN** a rigid node that is not exact is built
+- **WHEN** a rigid node that has no B-rep geometry is built
 - **THEN** no `.brep` artifact is written for it
 
-#### Scenario: Published documents do not name exact geometry
+#### Scenario: Published documents do not name B-rep geometry
 
-- **WHEN** a build publishes its viewer snapshot for a project of exact nodes
+- **WHEN** a build publishes its viewer snapshot for a project of B-rep nodes
 - **THEN** the document references only `.stl` models and names no `.brep`
 
 #### Scenario: Two declared models publish side by side
@@ -329,6 +336,22 @@ SHALL NOT alter any document's schema.
 - **THEN** its build directory holds exactly the artifacts it held before
   markings existed
 
+#### Scenario: A build writes SCAD only for SCAD-authored leaves
+
+- **WHEN** a project holding an assembly, a mesh fusion, a flexible leaf,
+  a B-rep leaf and a `Solid2Node` leaf is built with the OpenSCAD node
+  package installed
+- **THEN** the only `.scad` under its build directory is the `Solid2Node`
+  leaf's, beside that leaf's `.stl` under the same basename, and no
+  per-binding snapshot of the flexible leaf is written
+
+#### Scenario: A build without the OpenSCAD engine writes no SCAD
+
+- **WHEN** a project of B-rep and imported STL leaves is built with
+  SolidPython and the OpenSCAD node package absent
+- **THEN** its `.stl`, `.brep` and `viewer.json` are written as with them, no
+  `.scad` exists under its build directory, and nothing is logged about SCAD
+
 ### Requirement: External wrappers own independent current artifacts
 
 Different source-bound wrapper classes distinguished by their defining Python
@@ -348,7 +371,7 @@ and producer-recipe currency checks SHALL otherwise remain unchanged.
   geometry, and both artifacts and currency records are current together
 - **AND** rebuilding the unchanged model does not regenerate either STL
 
-#### Scenario: STEP wrappers retain both exact and faceted artifacts
+#### Scenario: STEP wrappers retain both B-rep and mesh artifacts
 
 - **WHEN** two same-qualname wrappers defined in different Python files select
   one STEP source and apply different adjustments, and both are built
@@ -453,9 +476,9 @@ through the content fallback even when artifact mtime equality succeeds, and
 upgrade a matching record without re-deriving geometry. An unknown or malformed
 record SHALL NOT certify an artifact.
 
-For an exact node the `.brep` artifact SHALL participate exactly as the `.stl`
+For a B-rep node the `.brep` artifact SHALL participate exactly as the `.stl`
 does: the node's artifacts are current only when both are. A build directory
-produced before the node became exact therefore rebuilds once.
+produced before the node became a B-rep therefore rebuilds once.
 
 Mtime and source fingerprint decide source currency, never binding currency. A
 flexible leaf's snapshot artifact is addressed by a name containing a hash of
@@ -572,11 +595,11 @@ SHALL track more files rather than fewer.
   the STL mtime and source-set fingerprint match
 - **THEN** no OpenSCAD process is launched
 
-#### Scenario: Missing exact geometry is not current
+#### Scenario: Missing B-rep geometry is not current
 
-- **WHEN** an exact node's `.stl` and `.scad` are current but its `.brep` is
+- **WHEN** a B-rep node's `.stl` and `.scad` are current but its `.brep` is
   absent
-- **THEN** the node is rendered and produces both exact artifacts
+- **THEN** the node is rendered and produces both B-rep artifacts
 
 #### Scenario: Sub-second source mtimes cache on a coarse-resolution filesystem
 
@@ -584,9 +607,9 @@ SHALL track more files rather than fewer.
   a filesystem storing timestamps to the millisecond
 - **THEN** the second build reports every artifact current and renders nothing
 
-#### Scenario: Exact artifacts cache on a coarse-resolution filesystem
+#### Scenario: B-rep artifacts cache on a coarse-resolution filesystem
 
-- **WHEN** an exact rigid node is built twice without edits on a filesystem
+- **WHEN** a B-rep rigid node is built twice without edits on a filesystem
   storing timestamps to the millisecond
 - **THEN** its `.stl` and `.brep` report current and neither is rewritten
 
@@ -666,7 +689,7 @@ the kernel releases it when the holding process ends.
 
 #### Scenario: An assembly-time producer waits
 
-- **WHEN** a cold exact or imported-file node starts through a framework entry
+- **WHEN** a cold B-rep or imported-file node starts through a framework entry
   point while another process holds its project build lock
 - **THEN** no SCAD, BREP, or STL artifact is materialized until the lock is
   released, after which the entry point completes normally
@@ -766,10 +789,13 @@ the build.
 
 ### Requirement: Asynchronous STL render protocol
 
-The system SHALL launch OpenSCAD renders as subprocesses
-(`openscad <scad> -o <stl> --export-format binstl`) signalled by raising
-`StlRenderStart`, which carries the process, target file, mtime, and lock
-file. `build_stls()` SHALL loop, waiting on each started render
+A leaf that renders its STL in a subprocess SHALL signal it by raising
+`StlRenderStart` from its `generate_stl()`, carrying the process, target file,
+mtime, and lock file; the leaves of the OpenSCAD node family launch OpenSCAD
+renders this way (`openscad <scad> -o <stl> --export-format binstl`). The core
+SHALL launch no renderer of its own: the node base's `generate_stl()` starts no
+process, and a rigid leaf whose STL is still not current after its
+materialization is refused under the `node-model` capability. `build_stls()` SHALL loop, waiting on each started render
 (`job.wait()`), until no renders remain. Waiting SHALL inspect the subprocess
 exit status before finishing the render. A zero exit status SHALL finish the
 render by stamping and atomically replacing the target STL and removing the
@@ -777,23 +803,23 @@ lock. A nonzero exit status SHALL remove the temporary output and lock, SHALL
 leave any previously published target and its currency record unchanged, and
 SHALL raise a build failure. Non-rigid nodes SHALL be skipped.
 
-This protocol is one of the paths that require the OpenSCAD binary under the
-`openscad-dependency` capability. Before launching the subprocess for a node
+For the OpenSCAD node family this protocol is one of the paths that require
+the OpenSCAD binary under the `openscad-dependency` capability. Before launching the subprocess for a node
 the system SHALL confirm the binary is available and, when it is not, SHALL
 fail naming that node and why its backend needs OpenSCAD, rather than letting
 the subprocess launch fail. A build that reaches no such node SHALL make no
 availability check.
 
-A `FusionNode` whose subtree is exact SHALL NOT use this protocol. It composes
-its own geometry under the `exact-geometry` capability and SHALL produce its
+A `FusionNode` whose subtree has B-rep geometry SHALL NOT use this protocol. It composes
+its own geometry under the `brep-geometry` capability and SHALL produce its
 `.stl` by tessellating that composition in process, stamping the mtime as any
 other artifact producer does, without launching a subprocess and without
-raising `StlRenderStart`. A fusion with any non-exact descendant SHALL
+raising `StlRenderStart`. A fusion with any mesh descendant SHALL
 produce its artifact through direct mesh composition under
 `backend-neutral-materialization`, not this OpenSCAD subprocess protocol.
 Its OpenSCAD-authored children still use this protocol where required.
 
-Tessellation of an exact composition SHALL use the same deflection the
+Tessellation of a B-rep composition SHALL use the same deflection the
 `CadQueryNode` adapter already uses for leaf STL export, so a fused solid's
 mesh is of the same quality as the leaves around it.
 
@@ -816,16 +842,16 @@ mesh is of the same quality as the leaves around it.
 - **THEN** the build fails, the temporary STL and render lock are removed, and
   the previous target STL and viewer snapshot remain unchanged
 
-#### Scenario: An exact fusion renders in process
+#### Scenario: A B-rep fusion renders in process
 
-- **WHEN** a `FusionNode` whose subtree is exact is built
+- **WHEN** a `FusionNode` whose subtree has B-rep geometry is built
 - **THEN** its `.stl` is produced by tessellating its own composition, no
   OpenSCAD subprocess is launched for it, and `build_stls()` returns without
   waiting on a render job for that node
 
-#### Scenario: A faceted fusion composes current child meshes
+#### Scenario: A mesh fusion composes current child meshes
 
-- **WHEN** a `FusionNode` holding a non-exact descendant is built
+- **WHEN** a `FusionNode` holding a mesh descendant is built
 - **THEN** its child artifacts become current before the fusion unions them
   directly, and no OpenSCAD render job is launched for the fusion itself
 
@@ -836,11 +862,18 @@ mesh is of the same quality as the leaves around it.
 - **THEN** the build fails naming that node and the reason its backend needs
   OpenSCAD, and no subprocess launch error surfaces in its place
 
-#### Scenario: An all-exact build makes no availability check
+#### Scenario: An all-B-rep build makes no availability check
 
-- **WHEN** `build_stls()` completes for a tree whose every rigid node is exact
+- **WHEN** `build_stls()` completes for a tree whose every rigid node has B-rep geometry
 - **THEN** no OpenSCAD availability check is performed and the absence of the
   binary is never reported
+
+#### Scenario: A leaf outside the family never starts OpenSCAD
+
+- **WHEN** a rigid `LeafNode` subclass outside the OpenSCAD node family has no
+  current STL after its materialization and `build_stls()` reaches it
+- **THEN** it fails naming the node, its class and its STL path, and no
+  `StlRenderStart` is raised and no subprocess is launched for it
 
 ### Requirement: Build subprocesses are isolated from the parent process
 
@@ -1012,14 +1045,17 @@ snapshot is in place.
 
 ### Requirement: A successful build sweeps unreferenced artifacts
 
-After a successful publication the system SHALL remove files in the build
-directory that the current viewer snapshot does not reference. It SHALL NOT
-remove:
+After a successful publication of a changed document the system SHALL remove
+files in the build directory that the current viewer snapshot does not
+reference and that no node of the published tree keeps. A build that finds the
+document it would publish already published SHALL remove only transient
+artifacts (below). It SHALL NOT remove:
 
 - the snapshot;
 - the error file;
-- `.scad` inputs;
-- `.brep` exact geometry;
+- an artifact a node of the published tree declares in `kept_artifacts()`
+  (the `leaf-contract` capability), such as a family leaf's `.scad`;
+- `.brep` B-rep geometry;
 - live render lock files;
 - temporaries belonging to a build in progress;
 - the test framework's verdict store, the directory `.verdicts` at the top of
@@ -1032,9 +1068,25 @@ state, not a build artifact, and no published document names it. It is
 written by test runs that may be in progress while a build publishes.
 
 `.brep` artifacts are spared by kind rather than by reference, because no
-published document names them. As with `.scad` inputs, a superseded one is
-therefore not removed by the sweep; mtime-equality caching means a superseded
-artifact is never read.
+published document names them. A superseded one is therefore not removed by
+the sweep; mtime-equality caching means a superseded artifact is never read.
+
+A kept artifact is spared by **declaration of the tree being published**,
+never by its suffix: the sweep SHALL keep every path a node of that tree
+declares in `kept_artifacts()`, with its currency record, whether or not this
+build rewrote it, and SHALL treat every other file as any unreferenced file: a
+`.scad` an earlier build wrote for an assembly, a fusion, a flexible leaf or
+another leaf, one an interrupted OpenSCAD snapshot left for a root, and one of a
+family leaf no longer in the tree are removed by the next build that publishes a
+changed document. No rule of the sweep SHALL name a `.scad` suffix.
+
+A **transient** artifact is removed by **every** successful build, changed
+document or not, together with its currency record: an artifact whose writer
+published it for one process's own use and declared that in its record
+(`machinome.currency`, `record(..., transient=True)`), such as the root
+presentation the OpenSCAD viewer writes for one snapshot and removes itself.
+A build that publishes an unchanged document removes nothing else. No rule of
+the sweep SHALL name the kind of a transient artifact.
 
 A **marking** artifact under the `markings` capability is spared by
 **reference**, not by kind, because the published snapshot names it beside the
@@ -1053,11 +1105,43 @@ successful publication, exactly as a renamed node's artifact is.
 - **WHEN** a build fails
 - **THEN** no artifact is removed from the build directory
 
-#### Scenario: Exact geometry survives the sweep
+#### Scenario: B-rep geometry survives the sweep
 
-- **WHEN** a build of exact nodes publishes successfully and sweeps
+- **WHEN** a build of B-rep nodes publishes successfully and sweeps
 - **THEN** every `.brep` written for a current node is still present, though
   the published snapshot names none of them
+
+#### Scenario: A SCAD-authored leaf's SCAD survives the sweep
+
+- **WHEN** a project holding a `Solid2Node` leaf whose `.stl` is already
+  current is rebuilt and publishes successfully
+- **THEN** that leaf's `.scad` and its currency record are still present,
+  though this build did not rewrite them
+
+#### Scenario: Presentation SCAD left by an earlier build is removed
+
+- **WHEN** a build directory holds the `.scad` files an earlier build wrote
+  for the project's assemblies, fusions, flexible leaves, B-rep leaves and
+  root, and the project is rebuilt and publishes a changed document
+- **THEN** every one of them is gone with its currency record, and the only
+  `.scad` files left are those the tree's family leaves declare in
+  `kept_artifacts()`
+
+#### Scenario: A renamed SCAD-authored leaf leaves no SCAD behind
+
+- **WHEN** a `Solid2Node` leaf is renamed and the project is rebuilt
+  successfully
+- **THEN** the `.scad` under the old name is gone and the `.scad` under the
+  new name is present
+
+#### Scenario: A build removes any SCAD no current node writes
+
+- **WHEN** an interrupted `machinome snapshot --renderer openscad` has left
+  the root's `.scad`, published as transient, in the build directory, and the
+  project is built publishing the document already published
+- **THEN** that build removes the root's `.scad` and its currency record and
+  nothing else: every artifact a node of the tree keeps is still present, and
+  so is an `.stl` an earlier test run wrote for another parameter set
 
 #### Scenario: The verdict store survives the sweep
 
@@ -1183,7 +1267,7 @@ The project build lock SHALL continue to cover every artifact-producing phase an
 #### Scenario: Artifact continuation keeps one assembled tree
 
 - **WHEN** one stable generation needs several artifact passes
-- **THEN** its root constructor, structural render, full assembly, and exact-fusion order occur once, and later passes continue pending artifacts on that same linked tree
+- **THEN** its root constructor, structural render, full assembly, and B-rep-fusion order occur once, and later passes continue pending artifacts on that same linked tree
 
 #### Scenario: One-shot failure recovery gets a new interpreter
 
@@ -1204,13 +1288,11 @@ The project build lock SHALL continue to cover every artifact-producing phase an
 
 Within one sealed source generation, the system SHALL maintain a request-local metadata census. One census SHALL observe each distinct tracked contributor once and SHALL serve overlapping node source-fingerprint and digest work only for that observation. A later currency or publication boundary SHALL take a fresh census before deciding that the generation is still stable. No census SHALL survive the builder process or a generation change.
 
-Rigid base SCAD generation SHALL occur at most once for the currently published full source/currency identity at a canonical artifact path in an assembly, regardless of how many repeated instances reference that artifact. A different identity at the same path SHALL replace what is current; a later return to an earlier identity SHALL NOT be reused merely because that identity appeared historically.
+A text artifact a rigid node publishes through the generation's published-state record — a family leaf's base `.scad`, under the `openscad-node` capability — SHALL be generated at most once for the currently published full source/currency identity at a canonical artifact path in a source generation, regardless of how many repeated instances reference that artifact. A different identity at the same path SHALL replace what is current; a later return to an earlier identity SHALL NOT be reused merely because that identity appeared historically. The record SHALL be named for what it records, a path's published state, and SHALL name no technology.
 
-When non-rigid, non-flexible assembly instances produce several desired SCAD states for one canonical path during an assembly, every instance SHALL retain its distinct in-memory composition, placement, node address, and parent-document contribution. Only the last desired text, timestamp, digest, and fingerprint for that path SHALL reach artifact comparison at successful assembly completion, in the order of the paths' last occurrences. The resulting file SHALL match the historical last-occurrence value. Flexible publication and direct generation outside an assembly phase SHALL retain their existing immediate behavior.
+Every publication of a text artifact SHALL be immediate: the source phases SHALL hold no queue of deferred publications, and the assembly phase SHALL end with the same post-phase source check as every other phase. A source change detected at a phase boundary SHALL prevent viewer-document publication and end the generation source-changed.
 
-The system SHALL verify the complete source generation immediately before and after making final coalesced values visible, while the assembly remains inside the project build lock. A body or pre-publication source failure SHALL discard the pending values. A write failure SHALL follow the existing assembly failure path; a post-publication source mismatch SHALL prevent viewer-document publication and end the generation source-changed.
-
-Atomic text and currency publication SHALL compare the desired state with the state on disk. When SCAD bytes, timestamp, and currency record already match, the system SHALL replace none of them. When source metadata changes but node-scoped contents remain equal, the system SHALL perform the required restamp and currency-record refresh without rewriting identical SCAD bytes. Write suppression SHALL NOT bypass source-fingerprint comparison, content verification, lock ownership, generation checks, or atomic replacement of changed content.
+Atomic text and currency publication (`machinome.currency.publish_text`) SHALL compare the desired state with the state on disk. When the text's bytes, timestamp, and currency record already match, the system SHALL replace none of them. When source metadata changes but node-scoped contents remain equal, the system SHALL perform the required restamp and currency-record refresh without rewriting identical bytes. Write suppression SHALL NOT bypass source-fingerprint comparison, content verification, lock ownership, generation checks, or atomic replacement of changed content.
 
 #### Scenario: Repeated rigid parts generate one SCAD artifact
 
@@ -1219,8 +1301,8 @@ Atomic text and currency publication SHALL compare the desired state with the st
 
 #### Scenario: Repeated non-rigid path publishes its final value once
 
-- **WHEN** non-rigid, non-flexible assembly instances produce different SCAD text at one canonical path under one stable source generation
-- **THEN** every instance contributes its own in-memory composition, only the last desired path value reaches comparison in last-occurrence order, and a second and third unchanged build replace neither that SCAD nor its currency record
+- **WHEN** non-rigid, non-flexible assembly instances of one class are built under one stable source generation
+- **THEN** every instance contributes its own in-memory composition, no `.scad` is written for any of them, and a second and third unchanged build replace no artifact and no currency record
 
 #### Scenario: Historical identity is not current identity
 
@@ -1229,13 +1311,13 @@ Atomic text and currency publication SHALL compare the desired state with the st
 
 #### Scenario: Coalesced publication cannot certify a changed generation
 
-- **WHEN** assembly fails before final publication or a contributor changes immediately before or during coalesced publication
-- **THEN** pending values are discarded before publication when possible, no viewer document certifies stale work, and a detected source mismatch ends the generation source-changed
+- **WHEN** assembly fails, or a contributor changes before the assembly phase's post-phase check
+- **THEN** no viewer document certifies stale work, and a detected source mismatch ends the generation source-changed
 
 #### Scenario: Flexible and direct generation remain immediate
 
-- **WHEN** flexible bindings emit several snapshot imports at one SCAD path or a caller generates SCAD without an assembly phase
-- **THEN** each call retains its existing immediate publication behavior and is not folded into non-rigid assembly coalescing
+- **WHEN** flexible bindings publish several snapshot STLs, or a caller has the OpenSCAD node package write a node's SCAD, inside or outside an assembly phase
+- **THEN** each publication is immediate, and no source phase defers or folds one
 
 #### Scenario: A shared source is observed once per census
 
@@ -1244,7 +1326,7 @@ Atomic text and currency publication SHALL compare the desired state with the st
 
 #### Scenario: Unchanged text is not replaced
 
-- **WHEN** a complete build computes SCAD bytes, timestamp, and a currency record identical to those already on disk
+- **WHEN** a complete build computes a family leaf's SCAD bytes, timestamp, and a currency record identical to those already on disk
 - **THEN** the existing SCAD and currency files retain their inode, mtime, and ctime
 
 #### Scenario: Metadata-only source change keeps currency correct
@@ -1262,7 +1344,7 @@ legacy recipe record SHALL be incompatible for a producer changed by this
 cycle, while unchanged producer recipes SHALL retain legacy source-record
 compatibility.
 
-A faceted fusion SHALL incorporate the current direct-mesh recipe and the
+A mesh fusion SHALL incorporate the current direct-mesh recipe and the
 relevant recipes of its child geometry into its currency. Nested fusions
 SHALL NOT reuse an enclosing artifact produced using superseded child
 geometry recipes. Recipe identity SHALL NOT change node names, parameter
@@ -1287,9 +1369,9 @@ ordering, and SHALL NOT turn every framework edit into an all-project rebuild.
   fusion's production recipe has changed
 - **THEN** both affected fusion artifacts are rebuilt in dependency order
 
-#### Scenario: Unchanged exact geometry stays cached
+#### Scenario: Unchanged B-rep geometry stays cached
 
-- **WHEN** exact leaf and exact fusion artifacts have unchanged source state
+- **WHEN** B-rep leaf and B-rep fusion artifacts have unchanged source state
   and unchanged production recipes
 - **THEN** upgrading this cycle does not re-derive their geometry merely
   because the framework version changed
@@ -1306,11 +1388,16 @@ Every import of a build artifact that the system writes into a generated
 `.scad` SHALL name that artifact by a path which resolves, from the
 directory holding that `.scad` file, to the artifact itself — because that
 is how OpenSCAD resolves an `import()`. This SHALL hold for every leaf kind
-that presents its geometry as an artifact (`Solid2Node`, the exact adapters,
+that presents its geometry as an artifact (`Solid2Node`, the B-rep adapters,
 `StlNode`, `JScadNode`, and a flexible leaf's per-binding snapshot), for a
 node at any depth of the tree, whether or not the artifact was already
-current when the tree was assembled, and whatever package the importing node
-is declared in relative to the node whose artifact it names. An assembly
+current when the tree was assembled, whatever package the importing node
+is declared in relative to the node whose artifact it names, and whichever
+path wrote the `.scad`: a family leaf's materialization, the OpenSCAD
+snapshot renderer's root, or a caller's
+`machinome.node.openscad.writer.generate_scad(node)`. The writer SHALL take the
+imports from the node's own presentation (`presentation()`), whose artifact
+imports the core re-anchors onto the node's own build directory. An assembly
 declared in a different package from a part it places SHALL therefore
 render exactly the geometry it renders when the two are declared together.
 
@@ -1324,15 +1411,16 @@ directory; the two files SHALL NOT be required to hold the same text.
 
 #### Scenario: A parent in another package imports every leaf kind
 
-- **WHEN** an assembly declared in `sim/tools/` places a rigid leaf, an
-  exact leaf and a flexible leaf all declared in `sim/`, and the model is
-  built
+- **WHEN** an assembly declared in `sim/tools/` places a rigid leaf, a
+  B-rep leaf and a flexible leaf all declared in `sim/`, the model is
+  built, and the assembly's `.scad` is then generated
 - **THEN** every `import(file = …)` in the assembly's generated `.scad`
   names a file that exists relative to that `.scad`'s own directory
 
 #### Scenario: The second build spells it the same way
 
-- **WHEN** that model is built again with every artifact already current
+- **WHEN** that model is built again with every artifact already current and
+  the assembly's `.scad` is generated again
 - **THEN** each import in the assembly's generated `.scad` still resolves
   from that `.scad`'s directory, and the geometry the document presents is
   unchanged
@@ -1340,11 +1428,19 @@ directory; the two files SHALL NOT be required to hold the same text.
 #### Scenario: An intermediate assembly's own SCAD resolves from its own directory
 
 - **WHEN** a root in `sim/tools/` places an assembly declared in
-  `sim/sub/deep/` which places a leaf declared in `sim/`, and the model is
-  built
+  `sim/sub/deep/` which places a leaf declared in `sim/`, the model is
+  built, and the intermediate assembly's and the root's `.scad` are then
+  generated
 - **THEN** the import in the intermediate assembly's own generated `.scad`
   resolves from `sim/sub/deep`'s build directory, and the import in the
   root's generated `.scad` resolves from the root's build directory
+
+#### Scenario: The snapshot renderer's root SCAD resolves
+
+- **WHEN** `machinome snapshot --renderer openscad` writes the root's `.scad`
+  of a model whose root is declared in another package than its parts
+- **THEN** every `import(file = …)` in it names a file that exists relative
+  to that `.scad`'s own directory
 
 #### Scenario: A project's own import is reproduced verbatim
 
@@ -1355,8 +1451,8 @@ directory; the two files SHALL NOT be required to hold the same text.
 
 #### Scenario: A parent beside its parts is unchanged
 
-- **WHEN** an assembly and the leaves it places are declared in one package
-  and the model is built
+- **WHEN** an assembly and the leaves it places are declared in one package,
+  the model is built, and the assembly's `.scad` is then generated
 - **THEN** each leaf artifact is imported by its bare basename, exactly as
   before this rule was stated
 

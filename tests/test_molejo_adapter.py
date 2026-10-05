@@ -21,6 +21,7 @@ import os
 import time
 from unittest.mock import patch
 
+import cadquery as cq
 import molejo
 import molejo.brep
 import numpy as np
@@ -28,8 +29,8 @@ import trimesh
 from solid2 import cube
 
 from machinome.core.builder import Builder
-from machinome.exact import solid_count, solid_volume
-from machinome.node import MolejoNode
+from machinome.engine.brep import solid_count, solid_volume
+from machinome.node.molejo import MolejoNode
 from machinome.node.base import binding_hash
 from machinome.node.flexible import FlexibleNode
 from machinome.node.qualified import DriverToken
@@ -37,6 +38,7 @@ from machinome.test import TestCase as GeometryTestCase, _intersection_stats
 
 from .base import BaseNodeTest
 from .flexible_project import spring as fixture
+from tests.base import scad_code
 
 
 asserter = GeometryTestCase()
@@ -182,12 +184,12 @@ class MolejoExactTest(BaseNodeTest):
     and where it is depends on the machine -- so the exact geometry of a
     flexible leaf is per-instant, evaluated from the same spec and the
     same bound values the mesh comes from. Exactness itself is not:
-    `MolejoNode.exact` is fixed by adapter type, like every exact
+    `MolejoNode.brep` is fixed by adapter type, like every exact
     adapter's, so a type test never has to render anything.
     """
 
     def test_the_adapter_is_exact_by_type_without_rendering(self):
-        self.assertTrue(object.__new__(MolejoNode).exact)
+        self.assertTrue(object.__new__(MolejoNode).brep)
 
     def test_the_shape_is_one_closed_solid_at_the_binding(self):
         node = bound_valvetrain(lift=4.0)
@@ -196,7 +198,7 @@ class MolejoExactTest(BaseNodeTest):
         shape = node.spring.shape()
 
         self.assertEqual(solid_count(shape), 1)
-        self.assertTrue(shape.isValid())
+        self.assertTrue(cq.Shape.cast(shape).isValid())
         self.assertGreater(solid_volume(shape), 0.0)
 
     def test_the_shape_is_molejos_brep_evaluation_of_the_same_spec(self):
@@ -306,9 +308,9 @@ class MolejoExactAssertionTest(BaseNodeTest):
     def test_an_assembly_of_a_spring_and_a_rigid_exact_part_is_exact(self):
         node = self.assembled()
 
-        self.assertTrue(node.spring.exact)
-        self.assertTrue(node.retainer.exact)
-        self.assertTrue(node.exact)
+        self.assertTrue(node.spring.brep)
+        self.assertTrue(node.retainer.brep)
+        self.assertTrue(node.brep)
 
     def test_the_pair_decides_through_the_exact_path(self):
         node = self.assembled()
@@ -317,7 +319,7 @@ class MolejoExactAssertionTest(BaseNodeTest):
                 'an exact question must not read the flexible mesh')):
             stats = _intersection_stats(node.spring, node.retainer)
 
-        self.assertTrue(stats.exact)
+        self.assertTrue(stats.brep)
 
     def test_the_public_assertion_decides_on_the_brep_solids(self):
         node = self.assembled()
@@ -362,7 +364,7 @@ class MolejoTimeFedSnapshotTest(BaseNodeTest):
 
         node.assemble()
 
-        self.assertNotIn('.stl', node.valvetrain.spring.scad_code)
+        self.assertNotIn('.stl', scad_code(node.valvetrain.spring))
 
     def test_the_document_still_carries_the_symbolic_expression(self):
         node = fixture.TimedEngine()
@@ -410,7 +412,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         node.assemble()
 
         self.assertIn(os.path.basename(node.spring.snapshot_file),
-                      node.spring.scad_code)
+                      scad_code(node.spring))
 
     def test_the_snapshot_holds_molejos_evaluation(self):
         node = bound_valvetrain(lift=4.0)
@@ -435,10 +437,10 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
 
         again = bound_valvetrain(lift=4.0)
         rendered = again.spring.render()
-        with patch.object(type(again.spring), '_snapshot_stl',
+        with patch.object(type(again.spring), 'snapshot_stl',
                           side_effect=AssertionError(
                               'a current snapshot must not be re-evaluated')):
-            assembled = again.spring.as_scad(rendered)
+            assembled = again.spring.present(rendered)
 
         self.assertIn(os.path.basename(node.spring.snapshot_file),
                       str(assembled))
@@ -469,7 +471,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         node = fixture.Spring()
 
         with self.assertRaises(Exception) as raised:
-            node.as_scad(node.render())
+            node.present(node.render())
 
         message = str(raised.exception)
         self.assertIn('Spring', message)
@@ -480,7 +482,7 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
         node.height.value = DriverToken('valvetrain.lift')
 
         with self.assertRaises(Exception) as raised:
-            node.as_scad(node.render())
+            node.present(node.render())
 
         message = str(raised.exception)
         self.assertIn('Spring', message)
@@ -489,7 +491,10 @@ class MolejoSnapshotArtifactTest(BaseNodeTest):
 
 
 class MolejoSnapshotSweepTest(BaseNodeTest):
-    """A superseded binding's artifact is collected; the bound one is not."""
+    """A per-binding snapshot is presentation: no build composes one since
+    `scad-presentation` (design.md Decision 3), so a publication that sweeps
+    collects every snapshot an `assemble()` left, the bound one included,
+    and a publication that changes nothing sweeps none."""
 
     def publish(self, node):
         builder = Builder('model.py', build_dir=self.build_dir)
@@ -498,13 +503,14 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
         with open(os.path.join(self.build_dir, 'viewer.json')) as document:
             return json.load(document)
 
-    def test_the_referenced_snapshot_survives_the_sweep(self):
+    def test_a_snapshot_an_assemble_left_is_swept(self):
         node = bound_valvetrain(lift=0.0)
         node.assemble()
+        self.assertTrue(os.path.isfile(node.spring.snapshot_file))
 
         self.publish(node)
 
-        self.assertTrue(os.path.isfile(node.spring.snapshot_file))
+        self.assertFalse(os.path.exists(node.spring.snapshot_file))
 
     def touch_sources(self):
         """Age the fixture's source, as the edit a later build follows.
@@ -523,7 +529,8 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
     def test_a_binding_change_alone_republishes_nothing(self):
         """The document is symbolic, so moving the machine does not
         change it -- and a publication that changed nothing sweeps
-        nothing, leaving the previous binding's snapshot where it is."""
+        nothing but `.scad`, leaving the snapshot an `assemble()` wrote
+        since where it is."""
         node = bound_valvetrain(lift=0.0)
         node.assemble()
         self.publish(node)
@@ -536,7 +543,7 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
 
         self.assertFalse(builder._write_viewer_snapshot())
         self.assertNotEqual(moved.spring.snapshot_file, at_rest)
-        self.assertTrue(os.path.isfile(at_rest))
+        self.assertTrue(os.path.isfile(moved.spring.snapshot_file))
 
     def test_a_superseded_snapshot_is_collected(self):
         node = bound_valvetrain(lift=0.0)
@@ -550,8 +557,9 @@ class MolejoSnapshotSweepTest(BaseNodeTest):
         self.publish(moved)
 
         self.assertNotEqual(moved.spring.snapshot_file, superseded)
-        self.assertTrue(os.path.isfile(moved.spring.snapshot_file))
         self.assertFalse(os.path.exists(superseded))
+        # The bound one goes too: no build references a snapshot.
+        self.assertFalse(os.path.exists(moved.spring.snapshot_file))
 
     def test_the_rigid_sibling_keeps_its_own_artifact(self):
         node = bound_valvetrain(lift=0.0)
@@ -591,7 +599,7 @@ class MolejoMeshPathPairTest(BaseNodeTest):
         return node
 
     def faceted(self, node):
-        return patch.object(type(node.retainer), 'exact', False)
+        return patch.object(type(node.retainer), 'brep', False)
 
     def test_the_mixed_pair_does_not_require_a_rigid_artifact(self):
         node = self.assembled()
@@ -600,7 +608,7 @@ class MolejoMeshPathPairTest(BaseNodeTest):
         with self.faceted(node):
             stats = _intersection_stats(node.spring, node.retainer)
 
-        self.assertFalse(stats.exact)
+        self.assertFalse(stats.brep)
         self.assertTrue(stats.is_empty or stats.volume == 0.0)
 
     def test_a_stale_rigid_artifact_cannot_answer_for_the_binding(self):
@@ -620,8 +628,8 @@ class MolejoMeshPathPairTest(BaseNodeTest):
         node = self.assembled(lift=7.25)
 
         with self.faceted(node):
-            with patch.object(node.spring, '_snapshot_mesh',
-                              wraps=node.spring._snapshot_mesh) as evaluated:
+            with patch.object(node.spring, 'snapshot_mesh',
+                              wraps=node.spring.snapshot_mesh) as evaluated:
                 _intersection_stats(node.spring, node.retainer)
                 _intersection_stats(node.spring, node.retainer)
 

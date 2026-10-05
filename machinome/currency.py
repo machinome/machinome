@@ -368,6 +368,19 @@ def recorded_recipe(artifact):
     return _recorded_source(artifact)[2]
 
 
+def recorded_transient(artifact):
+    """Whether `artifact`'s writer published it as transient: for one
+    process's own use, so every successful build removes it with its record
+    (`record(..., transient=True)`). False for a record without the mark,
+    an unreadable one and none at all."""
+    try:
+        with open(sidecar(artifact)) as stream:
+            record = json.loads(stream.read())
+    except (OSError, json.JSONDecodeError, TypeError):
+        return False
+    return isinstance(record, dict) and record.get('transient') is True
+
+
 def drop(artifact):
     """Forget whatever was recorded for `artifact`."""
     try:
@@ -379,12 +392,16 @@ def drop(artifact):
                      artifact, error)
 
 
-def record(artifact, digest, fingerprint=None, recipe=None):
+def record(artifact, digest, fingerprint=None, recipe=None, transient=False):
     """Vouch for `artifact`, or for nothing when `digest` is None.
 
     A fingerprint produces the current versioned record. Omitting it writes the
     legacy digest form deliberately retained for compatibility and migration
     tests; such a record cannot take the metadata-only path.
+
+    `transient` marks the artifact as published for one process's own use
+    (`"transient": true` in a version 3 record): every successful build
+    removes it, with its record (`recorded_transient`).
 
     An identical record is left untouched.  Once a different record is known,
     the old one is dropped before replacement, so a failure leaves no record
@@ -396,7 +413,14 @@ def record(artifact, digest, fingerprint=None, recipe=None):
         return
     directory = os.path.dirname(artifact) or '.'
     path = sidecar(artifact)
-    if fingerprint is None:
+    if transient:
+        content = {'version': 3, 'digest': digest, 'fingerprint': fingerprint,
+                   'transient': True}
+        if recipe is not None:
+            content['recipe'] = recipe
+        desired = (json.dumps(content, sort_keys=True,
+                              separators=(',', ':')) + '\n').encode()
+    elif fingerprint is None:
         desired = f'{digest}\n'.encode()
     elif recipe is None:
         desired = (json.dumps(
@@ -434,7 +458,8 @@ def record(artifact, digest, fingerprint=None, recipe=None):
         logger.debug('Could not record the sources of %s: %s', artifact, error)
 
 
-def publish(temporary, artifact, digest, fingerprint=None, recipe=None):
+def publish(temporary, artifact, digest, fingerprint=None, recipe=None,
+            transient=False):
     """Move a finished artifact into place with its source record.
 
     The ordering is the contract: the old record goes BEFORE the new
@@ -446,7 +471,48 @@ def publish(temporary, artifact, digest, fingerprint=None, recipe=None):
     """
     drop(artifact)
     os.replace(temporary, artifact)
-    record(artifact, digest, fingerprint, recipe)
+    record(artifact, digest, fingerprint, recipe, transient)
+
+
+def publish_text(path, content, mtime_ns, digest=None, fingerprint=None,
+                 transient=False):
+    """Publish text at `path`, stamped `mtime_ns` and recorded, replacing
+    nothing that already matches (`build-pipeline`, "Unchanged text is not
+    replaced").
+
+    When the bytes on disk are already `content`, only the stamp is
+    restored, if it differs, and the record refreshed; otherwise the text is
+    written to a temporary file in the same directory, stamped, and put in
+    place with its record by `publish`. `transient` passes to the record.
+    """
+    desired = content.encode()
+    try:
+        with ArtifactSnapshot(path) as existing:
+            unchanged = existing.read_bytes() == desired
+            existing_mtime_ns = existing.observation.mtime_ns
+    except (ArtifactChanged, OSError):
+        unchanged = False
+        existing_mtime_ns = None
+
+    if unchanged:
+        if existing_mtime_ns != mtime_ns:
+            restamp(path, mtime_ns)
+        record(path, digest, fingerprint, transient=transient)
+        return
+
+    directory = os.path.dirname(path) or '.'
+    os.makedirs(directory, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=f'.{os.path.basename(path)}.', suffix='.tmp', dir=directory)
+    try:
+        with os.fdopen(descriptor, 'wb') as output:
+            output.write(desired)
+        os.utime(temporary, ns=(time.time_ns(), mtime_ns))
+        publish(temporary, path, digest, fingerprint, transient=transient)
+    except Exception:
+        if os.path.exists(temporary):
+            os.remove(temporary)
+        raise
 
 
 def restamp(artifact, mtime_ns):

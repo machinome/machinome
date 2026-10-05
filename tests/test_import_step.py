@@ -30,13 +30,12 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-from machinome.manager import import_step
 from machinome.manager.import_step import (
     ImportStep, _attribute_name_base, _class_name_base, generate_assembly,
     generate_parts,
 )
-from machinome.node.adapters import step as step_module
-from machinome.node.adapters.step import StepAssembly
+from machinome.node import step as step_module
+from machinome.node.step import StepAssembly
 from machinome.node.base import _compose_world_matrix
 
 from .step_project import parts as _parts_module
@@ -355,6 +354,35 @@ class GeneratedAssemblyTest(ColdCacheTestCase):
 
 
 ##############################################
+# Section 3 (continued): the generated import lines (`root-cleanup`)
+
+
+class GeneratedImportsTest(ColdCacheTestCase):
+    """The generated source imports each name from its module, never from
+    the node package's root, which exports nothing (OpenSpec change
+    `root-cleanup`, `cli` capability)."""
+
+    def test_the_parts_import_step_node_from_its_module(self):
+        assembly = StepAssembly(SIMPLE_STEP)
+
+        source, _ = generate_parts(assembly, SIMPLE_STEP, PROJECT)
+
+        self.assertIn('\nfrom machinome.node.step import StepNode\n', source)
+        self.assertNotIn('from machinome.node import', source)
+
+    def test_the_assembly_imports_assembly_node_from_its_module(self):
+        assembly = StepAssembly(SIMPLE_STEP)
+        _, class_names = generate_parts(assembly, SIMPLE_STEP, PROJECT)
+
+        source, _ = generate_assembly(
+            assembly, 'actuator', SIMPLE_STEP, class_names)
+
+        self.assertIn('\nfrom machinome.node.assembly import AssemblyNode\n',
+                      source)
+        self.assertNotIn('from machinome.node import', source)
+
+
+##############################################
 # Section 3 (continued): every generated module parses (task 1.7)
 
 
@@ -486,7 +514,7 @@ class GeneratedModelFaithfulnessTest(ColdCacheTestCase):
         products, matching by name alone would silently pair a leaf with
         WHICHEVER of them the name-only lookup found first, the exact
         defect this change repairs."""
-        from machinome.node.adapters.step import StepNode
+        from machinome.node.step import StepNode
         from machinome.node.declarative import declared_child_nodes
 
         root_node.set_state()
@@ -697,15 +725,6 @@ class ImportStepScaffoldTest(ImportStepCommandTestCase):
         self.assertEqual(raised.exception.code, 1)
         self.assertFalse(os.path.exists('nowhere'))
 
-    def test_the_kernel_missing_is_a_checked_failure(self):
-        with patch.object(import_step, '_load_step_assembly',
-                          side_effect=ImportError('no module named cadquery')):
-            with self.assertRaises(SystemExit) as raised:
-                self.run_command(SIMPLE_STEP, into='actuator')
-
-        self.assertEqual(raised.exception.code, 1)
-        self.assertFalse(os.path.exists('actuator'))
-
     def test_it_loads_no_node(self):
         """needs_node is False, and the command never imports project
         source -- there is none to import, but the generated modules
@@ -774,6 +793,56 @@ class ImportStepCliHelpTest(TestCase):
         from machinome.cli import COMMANDS
 
         self.assertIn('import-step', COMMANDS)
-        module, class_name = COMMANDS['import-step']
+        module, class_name, needs = COMMANDS['import-step']
         self.assertEqual(module, 'machinome.manager.import_step')
         self.assertEqual(class_name, 'ImportStep')
+        # The node type, whose module the table of supported node types
+        # names (`openscad-out`).
+        self.assertEqual(needs, 'step')
+
+
+#: What the CLI answers `import-step` with where the `step` extra's kernel
+#: is absent (design.md Decision 7), spelled out independently.
+KERNEL_ABSENT = (
+    'Error: machinome import-step needs the step extra: '
+    'machinome.node.step (StepNode, StepAssembly) needs cadquery, which is '
+    'not installed; install it with \'pip install "machinome[step]"\'\n')
+
+
+class ImportStepKernelAbsentTest(TestCase):
+    """The kernel is missing: the CLI answers `import-step` by its extra
+    before the command parses or runs (`cli` capability, "Import-step
+    command"). Observed in a subprocess whose `sys.meta_path` refuses
+    `cadquery`, the way an install without the `step` extra does."""
+
+    def setUp(self):
+        scratch = tempfile.TemporaryDirectory(prefix='import-step-absent-')
+        self.addCleanup(scratch.cleanup)
+        self.scratch = scratch.name
+
+    def run_cli(self, *arguments):
+        from .brep_engine_absent import run_machinome
+        return run_machinome(*arguments, absent=('cadquery',),
+                             cwd=self.scratch)
+
+    def assert_refused(self, run):
+        self.assertEqual(run.returncode, 1, run.output)
+        self.assertEqual(run.stderr, KERNEL_ABSENT)
+        self.assertEqual(run.stdout, '')
+        self.assertNotIn('Traceback', run.output)
+        self.assertEqual(os.listdir(self.scratch), [])
+
+    def test_the_kernel_missing_is_answered_by_the_extra(self):
+        self.assert_refused(self.run_cli(
+            'import-step', SIMPLE_STEP, '--into',
+            os.path.join(self.scratch, 'sim')))
+
+    def test_help_for_the_command_is_answered_the_same_way(self):
+        self.assert_refused(self.run_cli('import-step', '-h'))
+
+    def test_the_command_is_still_listed(self):
+        run = self.run_cli('-h')
+
+        self.assertEqual(run.returncode, 0, run.output)
+        self.assertIn('import-step', run.stdout)
+        self.assertNotIn('Traceback', run.output)

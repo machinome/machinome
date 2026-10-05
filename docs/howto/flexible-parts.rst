@@ -20,7 +20,7 @@ dimensions left as parameters fed through ports:
 .. code-block:: python
 
     from molejo import Circle, Helix, P, Shape
-    from machinome.node import MolejoNode
+    from machinome.node.molejo import MolejoNode
     from machinome.motion.ports import TranslationalPort
 
     class ValveSpring(MolejoNode):
@@ -53,7 +53,7 @@ name, and the owning assembly binds them in ``simulate()``:
 
 .. code-block:: python
 
-    from machinome.node import AssemblyNode
+    from machinome.node.assembly import AssemblyNode
     from machinome.simulation import Driver
 
     FREE_HEIGHT = 46.8
@@ -95,12 +95,12 @@ A document holding one declares version 3 or above. OpenSCAD has no live
 evaluator, so the SCAD output and the OpenSCAD snapshot get a still: the
 part evaluated at the bound state.
 
-A flexible part is exact: ``shape()`` gives the OCCT solid for the state
-currently bound, so a spring at a given lift answers interference and fit
-questions on real boundary geometry. Where the sweep has no closed form,
+A flexible part has B-rep geometry: ``shape()`` gives the OCCT solid for
+the state currently bound, so a spring at a given lift answers
+interference and fit questions on real boundary geometry. Where the sweep has no closed form,
 a helix, a spline, the solid is approximated and ``shape_tolerance``
 reports the approximation (``0.0`` when every surface is analytic). On
-the exact kernel a flexible comparison costs about thirty times a mesh
+the B-rep engine a flexible comparison costs about thirty times a mesh
 comparison; :doc:`fast-tests` is the answer for the development loop.
 
 What a flexible part is not

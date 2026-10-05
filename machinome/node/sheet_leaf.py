@@ -2,10 +2,10 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 
 
-class SheetLeafNode(ExactLeafNode):
+class SheetLeafNode(BrepLeafNode):
     """Base for the leaf adapters whose part is cut from sheet stock.
 
     A sheet part is authored as a two-dimensional profile plus a declared
@@ -22,15 +22,22 @@ class SheetLeafNode(ExactLeafNode):
     constant, how to reconstruct a curve from a slice. So the profile is the
     source and the solid is derived, not the other way round.
 
-    A subclass supplies what genuinely differs between backends: how a
-    profile result is reduced to one planar face, how a face is extruded,
-    and how a face is written as a cut file. The *rules* -- one planar face,
-    one part per leaf, on the XY plane, a positive thickness -- are here, so
-    every sheet backend rejects the same authoring mistakes with the same
-    wording.
+    A declared extension point of the `leaf-contract` capability (ADR-163),
+    at this one path. A subclass supplies what genuinely differs between
+    backends, through four public hooks: how a profile result is reduced
+    to its planar faces (`profile_faces`), whether a face lies on the XY
+    plane (`lies_on_xy_plane`), how a face is extruded (`extrude`), and how
+    a face is written as a cut file to the path it is given (`write_dxf`).
+    The *rules* -- one planar face, one part per leaf, on the XY plane, a
+    positive thickness -- are here, so every sheet backend rejects the same
+    authoring mistakes with the same wording, and so is the DXF's
+    publication. A project subclasses a concrete sheet adapter; a sheet
+    backend subclasses this.
 
-    Like ExactLeafNode this is a framework-internal base: projects subclass
-    a concrete sheet adapter, not this.
+    Declared members: `profile`, `profile_faces`, `lies_on_xy_plane`,
+    `extrude`, `write_dxf`, `thickness`, `validated_profile`, `dxf_file`.
+
+    `dxf_file` is set by the constructor; the others are class members.
     """
 
     #: Stock thickness, declared per node as a class attribute or passed as
@@ -55,7 +62,7 @@ class SheetLeafNode(ExactLeafNode):
         # set, under the same basename and the same freshness rules.
         self.dxf_file = f'{self.basepath}.dxf'
 
-        # The validated profile of this render, kept because as_scad() needs
+        # The validated profile of this render, kept because present() needs
         # the very face render() extruded -- deriving the cut file from a
         # second, independent call to profile() is exactly the divergence
         # this class exists to prevent.
@@ -86,7 +93,7 @@ class SheetLeafNode(ExactLeafNode):
         Not an extension point: overriding it would let the solid and the
         cut file describe different parts.
         """
-        return self._extrude(self.validated_profile())
+        return self.extrude(self.validated_profile())
 
     def validated_profile(self):
         """The one planar face this part's solid and cut file both come
@@ -103,7 +110,7 @@ class SheetLeafNode(ExactLeafNode):
         Raised before anything is written: an unmanufacturable profile must
         not leave an artifact behind for a cutter to find.
         """
-        faces = self._profile_faces(profile)
+        faces = self.profile_faces(profile)
 
         if not faces:
             raise ValueError(
@@ -120,7 +127,7 @@ class SheetLeafNode(ExactLeafNode):
 
         face = faces[0]
 
-        if not self._lies_on_xy_plane(face):
+        if not self.lies_on_xy_plane(face):
             raise ValueError(
                 f"{self.name} is a sheet part and its profile() must lie on "
                 f"the XY plane, since the solid is the profile extruded from "
@@ -154,15 +161,6 @@ class SheetLeafNode(ExactLeafNode):
     ##############################################
     # The cut file, in the artifact lifecycle
 
-    def _render_can_be_skipped(self):
-        """The cut file is an artifact of this node like the STL and the
-        BREP, so the build's work is only skippable while it too is
-        current -- otherwise a lost DXF would never come back."""
-        return (
-            super()._render_can_be_skipped()
-            and self._up_to_date(self.dxf_file)
-        )
-
     def _prepare_can_be_skipped(self):
         return (
             super()._prepare_can_be_skipped()
@@ -170,37 +168,42 @@ class SheetLeafNode(ExactLeafNode):
         )
 
     def materialize(self, rendered):
-        """The exact adapter's STL and BREP, plus this part's cut file.
+        """The B-rep adapter's STL and BREP, plus this part's cut file.
 
         Same guard as the other artifacts: produced only when it is not
-        already the file these sources would produce, and the returned SCAD
-        is the same either way.
+        already the file these sources would produce, published through
+        `publish_artifact` like any artifact a leaf owns, and the returned
+        presentation is the same either way.
         """
         super().materialize(rendered)
-        if not self._up_to_date(self.dxf_file):
-            self._write_dxf(self.validated_profile(), self.dxf_file,
-                            self.mtime_ns, self.source_digest,
-                            self.source_fingerprint)
+        self.publish_artifact(
+            self.dxf_file,
+            lambda temporary: self.write_dxf(self.validated_profile(),
+                                             temporary))
 
     ##############################################
     # Backend hooks
 
-    def _profile_faces(self, profile):
+    def profile_faces(self, profile):
         """The planar faces of a backend profile result, or an empty list
         when it is not a two-dimensional object at all."""
         raise NotImplementedError
 
-    def _lies_on_xy_plane(self, face):
+    def lies_on_xy_plane(self, face):
         """Whether a validated face lies on the plane the extrusion starts
         from."""
         raise NotImplementedError
 
-    def _extrude(self, face):
+    def extrude(self, face):
         """The face extruded along +Z by this node's thickness, in the
         backend's own terms."""
         raise NotImplementedError
 
-    def _write_dxf(self, face, path, mtime_ns, digest=None,
-                   fingerprint=None):
-        """Write the nominal cut file for a validated face."""
+    def write_dxf(self, face, path):
+        """Write the nominal cut file for a validated face to `path`.
+
+        `path` is a temporary file beside the node's `dxf_file`; the base
+        stamps it, records it and puts it in place (`publish_artifact`), so
+        the hook writes bytes and nothing else.
+        """
         raise NotImplementedError

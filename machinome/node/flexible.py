@@ -50,23 +50,22 @@ fail loudly, naming the node, the offending name and both sets. A
 missing binding fails too -- never a silent default, matching the driver
 read discipline.
 
-This is a framework-internal base, like `ExactLeafNode` and
-`SheetLeafNode`: it holds everything the framework needs regardless of
-which technology evaluates the sweep, and a concrete adapter (today
-`MolejoNode`) supplies the three backend hooks at the bottom of this
-module. Sharing the base never makes two adapters interchangeable to a
-type test.
+This is a declared extension point of the `leaf-contract` capability,
+like `BrepLeafNode` and `SheetLeafNode` (ADR-163): it holds everything
+the framework needs regardless of which technology evaluates the sweep,
+and a concrete adapter (today `MolejoNode`) supplies the five public
+backend hooks at the bottom of this module. Sharing the base never makes
+two adapters interchangeable to a type test.
 """
 
 import hashlib
 import json
 import os
 
-from solid2 import union
-from machinome.scad_expression import depends_on_time, scalar
+from .presentation import Union
+from machinome.expression_graph import depends_on_time, scalar
 
-from machinome.node.base import (_atomic_write_bytes, _canonical_serialization,
-                                  binding_hash)
+from machinome.node.base import _canonical_serialization, binding_hash
 from machinome.node.declarative import identity_values, is_declarative
 from machinome.node.leaf import LeafNode
 from machinome.motion.ports import declared_ports
@@ -77,13 +76,20 @@ def _names(names):
 
 
 class FlexibleNode(LeafNode):
-    """Base for the leaf adapters whose part deforms with machine state.
+    """The base of a leaf whose part deforms with machine state.
 
-    A subclass declares one port per shape parameter, returns its
-    backend's shape object from `render()`, and implements the three
-    backend hooks. Everything else -- rigidity, the parameter-surface
-    check, the resolved binding, the per-binding snapshot artifact and
-    the mesh seam -- is here, so a correction to the contract lands once.
+    A declared extension point of the `leaf-contract` capability (ADR-163),
+    at this one path. A subclass declares one port per shape parameter,
+    declares its `tech`, returns its backend's shape object from
+    `render()`, and implements the backend hooks: `shape_parameters`,
+    `shape_spec`, `snapshot_mesh`, `snapshot_stl` and, when it declares
+    `brep` true, `snapshot_shape`. Everything else -- rigidity, the
+    parameter-surface check, the resolved binding, the per-binding snapshot
+    artifact, its publication and the mesh seam -- is here, so a correction
+    to the contract lands once.
+
+    Declared members: `tech`, `shape_parameters`, `shape_spec`,
+    `snapshot_mesh`, `snapshot_stl`, `snapshot_shape`, `brep`.
     """
 
     #: The one non-rigid leaf kind. Its geometry is a function of bound
@@ -103,16 +109,10 @@ class FlexibleNode(LeafNode):
     #: the concrete adapter, like `namespace`.
     tech = None
 
-    def _uses_legacy_scad_materialization(self):
-        # Flexible SCAD is a per-binding snapshot presentation, never a
-        # time-invariant native artifact. Geometry-only preparation carries
-        # the analytic spec and binding and deliberately produces no snapshot.
-        return False
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # `uniq_id` is deliberately a short artifact name.  The faceted
+        # `uniq_id` is deliberately a short artifact name.  The mesh
         # working set must instead retain the full canonical structural
         # identity that produced it.  Declarative nodes have resolved values
         # by the time the base constructor returns; legacy nodes use the same
@@ -125,24 +125,24 @@ class FlexibleNode(LeafNode):
             self._flexible_structural_identity = _canonical_serialization(
                 type(self), args, kwargs)
 
-        #: The snapshot artifact this node's last `as_scad()` imported,
-        #: or None before one ran. Public because the build's post-build
-        #: sweep has to know which per-binding artifact is still
-        #: referenced: the published document is serialized symbolically
-        #: and so cannot name one, while the assembled tree can.
+        #: The snapshot artifact this node's last `present()` imported,
+        #: or None before one ran, or when a time-fed port left nothing to
+        #: photograph. No build reads it: a build composes no presentation
+        #: (ADR-173), so the next build's sweep removes every per-binding
+        #: snapshot.
         self.snapshot_file = None
 
-        #: The last binding whose exact solid was built, and the result.
+        #: The last binding whose B-rep solid was built, and the result.
         #: An assertion asks a pair the same question twice -- once for
-        #: emptiness, once for connectivity -- and an exact leaf answers
+        #: emptiness, once for connectivity -- and a B-rep leaf answers
         #: the second from its cached `.brep`; this leaf has none to read
         #: (see `shape`), so the memo is where that saving lives instead.
-        self._exact_binding = None
-        self._exact_result = None
-        #: The state identity of the snapshot `_exact_result` was built
+        self._brep_binding = None
+        self._brep_result = None
+        #: The state identity of the snapshot `_brep_result` was built
         #: from (see `_snapshot`), so a verdict about that solid is keyed on
         #: exactly the state it came from.
-        self._exact_identity = None
+        self._brep_identity = None
 
     ##############################################
     # The parameter surface
@@ -183,7 +183,7 @@ class FlexibleNode(LeafNode):
 
         The symbolic counterpart of `bound_values()`, and the document's
         parameter surface. Under symbolic serialization the parent's
-        `connect()` has already bound each port to ordinary solid2
+        `connect()` has already bound each port to ordinary symbolic
         arithmetic over driver tokens, so the wire expression is finished
         before this reads it and `str` is the whole serialization -- the
         same `str(value)` an operation publishes, carrying the same
@@ -213,7 +213,7 @@ class FlexibleNode(LeafNode):
         """
         return {
             'tech': self.tech,
-            'spec': self._shape_spec(self.current_shape()),
+            'spec': self.shape_spec(self.current_shape()),
             'params': self.bound_expressions(graph=graph),
         }
 
@@ -226,7 +226,7 @@ class FlexibleNode(LeafNode):
         """
         super().validate(rendered)
 
-        parameters = set(self._shape_parameters(rendered))
+        parameters = set(self.shape_parameters(rendered))
         ports = set(declared_ports(type(self)))
 
         unfed = sorted(parameters - ports)
@@ -264,8 +264,9 @@ class FlexibleNode(LeafNode):
         return f'{self.basepath}-{binding_hash(values)}.stl'
 
     def local_snapshot_stl(self, values):
-        """`snapshot_stl_file` as the SCAD document imports it, beside
-        the scad -- the local form `local_stl` is for a rigid leaf."""
+        """`snapshot_stl_file` as a presentation imports it, beside the
+        file holding it -- the local form `local_stl` is for a rigid
+        leaf."""
         return f'{os.path.basename(self.basepath)}-{binding_hash(values)}.stl'
 
     def _unbound_ports(self):
@@ -279,7 +280,7 @@ class FlexibleNode(LeafNode):
 
         Narrower than "symbolic" on purpose. Time is the ONE thing
         nothing can bind here -- `AssemblyNode.time` falls back to
-        solid2's `$t` precisely so the build and viewer paths animate --
+        the symbolic `$t` precisely so the build and viewer paths animate --
         so a time-fed port is a part with no instant, not a mistake.
         Every other symbolic value IS a mistake: the loader binds
         declared driver defaults, so a port still carrying a raw driver
@@ -290,16 +291,17 @@ class FlexibleNode(LeafNode):
             name for name in declared_ports(type(self))
             if depends_on_time(getattr(self, name).value))
 
-    def as_scad(self, rendered):
-        """Evaluate this instant and import it, so the assembled SCAD
-        document stays as complete as it honestly can for the OpenSCAD
-        GUI.
+    def present(self, rendered):
+        """Evaluate this instant and import it, so the presentation
+        description stays as complete as it honestly can for whatever
+        writes it -- the root's, for a snapshot renderer, or any caller's
+        `presentation()`.
 
-        A snapshot camera, never animation: OpenSCAD gets the geometry of
+        A snapshot camera, never animation: the writer gets the geometry of
         the bound state, the same treatment drivers already get. Produced
         only when the artifact for THIS binding is not already the file
-        these sources would produce, and the returned SCAD is the same
-        either way.
+        these sources would produce, and the returned description is the
+        same either way.
 
         A port fed by animation time has no instant to photograph. The
         loader binds declared driver defaults, so a driver-fed port
@@ -316,14 +318,16 @@ class FlexibleNode(LeafNode):
         """
         if not self._unbound_ports() and self._time_fed_ports():
             self.snapshot_file = None
-            return union()
+            return Union(())
 
         values = self.bound_values()
         snapshot = self.snapshot_stl_file(values)
-        if not self._up_to_date(snapshot):
-            _atomic_write_bytes(snapshot, self._snapshot_stl(rendered, values),
-                                self.mtime_ns, self.source_digest,
-                                self.source_fingerprint)
+
+        def write(temporary):
+            with open(temporary, 'wb') as output:
+                output.write(self.snapshot_stl(rendered, values))
+
+        self.publish_artifact(snapshot, write)
         self.snapshot_file = snapshot
         return self.artifact_import(self.local_snapshot_stl(values))
 
@@ -339,7 +343,7 @@ class FlexibleNode(LeafNode):
         -- `mesh` in world coordinates, `_mesh_in_frame` in the solid
         frame -- the same geometry it would have had from an artifact.
         """
-        return self._snapshot_mesh(self.current_shape(), self.bound_values())
+        return self.snapshot_mesh(self.current_shape(), self.bound_values())
 
     def _snapshot(self, values=None, geometry_key=False):
         """ONE coherent read of this leaf's state, serving both paths.
@@ -362,15 +366,15 @@ class FlexibleNode(LeafNode):
         claim the fingerprint only guards. None when a source cannot be
         read -- a coherent miss.
 
-        The GEOMETRY key, asked for with `geometry_key`, keys the faceted
-        Manifold working set exactly as before: the same values plus the
+        The GEOMETRY key, asked for with `geometry_key`, keys the mesh
+        solid cache's working set exactly as before: the same values plus the
         source's real path and its fingerprint, and None when either the
         fingerprint or the digest is unknown.
         """
         if values is None:
             values = self.bound_values()
         rendered = self.current_shape()
-        spec = self._shape_spec(rendered)
+        spec = self.shape_spec(rendered)
         serialized_spec = json.dumps(
             spec, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
         spec_digest = hashlib.sha256(
@@ -407,10 +411,10 @@ class FlexibleNode(LeafNode):
             )
         return key, identity, rendered, values
 
-    def _faceted_cache_snapshot(self):
-        """The coherent current shape and full geometry key for one faceted
+    def _mesh_cache_snapshot(self):
+        """The coherent current shape and full geometry key for one mesh
         read: ``(key, rendered, values)``. The test framework owns the
-        bounded Manifold cache this keys (see `_snapshot`)."""
+        bounded mesh solid cache this keys (see `_snapshot`)."""
         key, _, rendered, values = self._snapshot(geometry_key=True)
         return key, rendered, values
 
@@ -427,26 +431,26 @@ class FlexibleNode(LeafNode):
         return rendered
 
     ##############################################
-    # Exact geometry
+    # B-rep geometry
 
     def shape(self):
-        """This instant's exact solid, computed rather than loaded.
+        """This instant's B-rep solid, computed rather than loaded.
 
-        An exact leaf reads its `.brep` back when the artifact on disk is
+        A rigid B-rep leaf reads its `.brep` back when the artifact on disk is
         the one its sources would produce, and that shortcut is exactly
         what a flexible part cannot have: mtime answers whether the
         SOURCE changed, never whether the BINDING did, and a part whose
         shape follows the machine has one solid per instant rather than
         one per source. Persistence is structurally about rigid nodes
         anyway -- the build requires a `.brep` only where a node is both
-        rigid and exact, the exact composition path fuses the shapes its
+        rigid and B-rep, the B-rep composition path fuses the shapes its
         children RETURN rather than files they wrote, and a fusion
         refuses a flexible child outright -- so nothing downstream is
         waiting for a file, and a per-binding one would be swept by
         nothing (the sweep spares every `.brep` unconditionally). The
         binding memo below is the whole of the caching this needs.
         """
-        return self._exact_solid()[0]
+        return self._brep_solid()[0]
 
     @property
     def shape_tolerance(self):
@@ -457,23 +461,23 @@ class FlexibleNode(LeafNode):
         rather than hidden -- a swept helix is honestly tolerant, and a
         caller reading an exact answer deserves to know how exact.
         """
-        return self._exact_solid()[1]
+        return self._brep_solid()[1]
 
-    def _exact_solid(self):
+    def _brep_solid(self):
         """`(shape, tolerance)` for the current binding, built once.
 
         Built from one coherent state snapshot, whose state identity is
-        recorded beside the result (see `_exact_state_identity`)."""
+        recorded beside the result (see `_brep_state_identity`)."""
         values = self.bound_values()
         key = binding_hash(values)
-        if key != self._exact_binding:
+        if key != self._brep_binding:
             identity, rendered, values = self._state_snapshot(values)
-            self._exact_result = self._snapshot_shape(rendered, values)
-            self._exact_identity = identity
-            self._exact_binding = key
-        return self._exact_result
+            self._brep_result = self.snapshot_shape(rendered, values)
+            self._brep_identity = identity
+            self._brep_binding = key
+        return self._brep_result
 
-    def _exact_state_identity(self, shape):
+    def _brep_state_identity(self, shape):
         """The state identity recorded with `shape`, if it is the solid
         this leaf last built, else None.
 
@@ -483,32 +487,32 @@ class FlexibleNode(LeafNode):
         older binding's too: a verdict keyed on it still names the geometry
         compared.
         """
-        result = self._exact_result
+        result = self._brep_result
         if result is not None and result[0] is shape:
-            return self._exact_identity
+            return self._brep_identity
         return None
 
     ##############################################
     # Backend hooks
 
-    def _shape_parameters(self, rendered):
+    def shape_parameters(self, rendered):
         """The parameter names the rendered shape references."""
         raise NotImplementedError
 
-    def _shape_spec(self, rendered):
+    def shape_spec(self, rendered):
         """The rendered shape as the document the framework embeds."""
         raise NotImplementedError
 
-    def _snapshot_mesh(self, rendered, values):
+    def snapshot_mesh(self, rendered, values):
         """The backend's evaluation of `rendered` at `values`, as a
         trimesh in the node's own frame."""
         raise NotImplementedError
 
-    def _snapshot_stl(self, rendered, values):
+    def snapshot_stl(self, rendered, values):
         """The same evaluation as binary STL bytes."""
         raise NotImplementedError
 
-    def _snapshot_shape(self, rendered, values):
-        """The same evaluation as `(exact shape, tolerance)`, in the
-        shared boundary representation every exact node trades in."""
+    def snapshot_shape(self, rendered, values):
+        """The same evaluation as `(B-rep shape, tolerance)`, the shape in
+        the B-rep engine's currency every B-rep node trades in."""
         raise NotImplementedError

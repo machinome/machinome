@@ -8,7 +8,7 @@ from .base import AbstractBaseNode
 from .declarative import (StructureError, declared_child_nodes,
                           declared_children)
 from machinome.motion.ports import bind
-from solid2 import union
+from .presentation import Union
 
 
 def _declarative_render(render):
@@ -18,7 +18,7 @@ def _declarative_render(render):
     only positions and selects. A returned list is the author's and
     keeps its contract to the letter.
 
-    Every tree walker -- as_scad, the serializer, the driver walk, state
+    Every tree walker -- present, the serializer, the driver walk, state
     propagation -- calls render() and treats a non-list as "no
     children", so this is the one place that turns None into the list
     before any of them see it. On an assembly it sits INSIDE the
@@ -36,6 +36,10 @@ def _declarative_render(render):
 
     @functools.wraps(render)
     def wrapped(self):
+        if '_production_rest' in self.__dict__:
+            # A rigid consumer already ran and validated this instance's
+            # rest structure. Native preparation must reuse its placements.
+            return self.__dict__['_production_rest']
         if self.__dict__.get('_rendering'):
             return render(self)
         declared = declared_child_nodes(self)
@@ -115,20 +119,21 @@ class InternalNode(AbstractBaseNode):
                                   "must deal with animation time")
 
     @property
-    def exact(self):
+    def brep(self):
         if not self.children:
             raise RuntimeError(
-                f'{self.name} exactness is unavailable before its children '
-                'are linked by assemble()')
-        return all(child.exact for child in self.children)
+                f'{self.name} cannot say whether it is a B-rep before its '
+                'children are linked by assemble()')
+        return all(child.brep for child in self.children)
 
-    def as_scad(self, children):
-        """Renders a scad of the combined children"""
-        scads = []
+    def present(self, children):
+        """The presentation description of the combined children: their
+        union, the one child itself, or an empty union"""
+        presented = []
 
         self._link_children(children)
         for child in children:
-            scads.append(child.assemble(self.root))
+            presented.append(child.assemble(self.root))
             self.files.update(child.files)
             for path, names in child.scope.items():
                 self.scope[path] = self.scope.get(path, frozenset()) | names
@@ -141,15 +146,16 @@ class InternalNode(AbstractBaseNode):
         # name" fallback (skill-repo improvements.md #16).
         self.children = children
 
-        if len(scads) > 1:
-            rendered = union()(scads)
-        elif scads:
-            rendered = scads[0]
+        if len(presented) > 1:
+            rendered = Union(tuple(presented))
+        elif presented:
+            rendered = presented[0]
         else:
             # A non-rigid assembly may contain no present parts. Keep the
-            # ordinary composable result through assemble()/scad_code without
-            # inventing geometry; FusionNode rejects this list in validate().
-            rendered = union()()
+            # ordinary composable result through assemble()/presentation()
+            # without inventing geometry; FusionNode rejects this list in
+            # validate().
+            rendered = Union(())
 
         return rendered
 

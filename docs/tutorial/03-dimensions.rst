@@ -21,7 +21,7 @@ Replace the literals in the base with declarations:
 a lower bound. Inside ``render()``, ``self.bore`` is a plain float. The
 kinds come from ``machinome.parameters``: ``Length``, ``Angle``, ``Count``
 (an integer), ``Ratio``, ``Flag`` (a boolean) and ``Scalar`` (unchecked).
-Node classes come from ``machinome.node``, drivers from
+Node classes come from their modules under ``machinome.node``, drivers from
 ``machinome.simulation``, and joints and ports from ``machinome.motion``,
 so an import block says which names build the machine, which move it and
 which drive it.

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 from solid2 import cube
-from machinome.node import Solid2Node
+from machinome.node.solid2 import Solid2Node
 
 
 class Lonely(Solid2Node):

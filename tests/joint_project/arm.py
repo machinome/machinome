@@ -29,7 +29,7 @@ there is something for its own frame to differ from.
 """
 
 from machinome.motion.joints import Revolute
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.parameters import Count, Length
 from machinome.simulation import Driver
 

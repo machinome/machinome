@@ -1,6 +1,6 @@
 # ADR-073: The Comparison Kernel Is a Property of the Test Run
 
-**Status:** Accepted
+**Status:** Accepted; the run's comparison kernel is its comparison engine, amended 2026-10-05 by [ADR-180](../NODE/ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-09-05
 **Extends:**
 - [ADR-044: Derived exact geometry capability](../NODE/ADR-044-derived-exact-geometry-capability.md)

@@ -31,10 +31,14 @@ from unittest.mock import patch
 import numpy as np
 import trimesh
 
-from machinome.node import (Build123dNode, Build123dSheetNode, CadQueryNode,
-                             FusionNode, JScadNode, OpenScadNode, Solid2Node,
-                             StlNode)
-from machinome.openscad import openscad_binary
+from machinome.node.build123d import Build123dNode, Build123dSheetNode
+from machinome.node.cadquery import CadQueryNode
+from machinome.node.fusion import FusionNode
+from machinome.node.jscad import JScadNode
+from machinome.node.openscad import OpenScadNode
+from machinome.node.solid2 import Solid2Node
+from machinome.node.stl import StlNode
+from machinome.node.openscad.binary import openscad_binary
 
 from .stl_project import originals, parts, rack
 from .utils import edit_source
@@ -293,11 +297,11 @@ class StlArtifactTest(BuildDirTestCase):
         node.assemble()
 
         second = parts.Bracket()
-        with patch('machinome.node.adapters.stl._load_source_mesh',
+        with patch('machinome.node.stl._load_source_mesh',
                    side_effect=AssertionError('must not re-read source')), \
-             patch('machinome.node.adapters.stl._write_binary_stl',
+             patch('machinome.brep_artifacts._atomic_export',
                    side_effect=AssertionError('must not rewrite artifact')):
-            assembled = second.as_scad(second.render())
+            assembled = second.present(second.render())
 
         self.assertIn(second.local_stl, str(assembled))
 
@@ -321,10 +325,10 @@ class StlArtifactTest(BuildDirTestCase):
         node = parts.Bracket()
         node.assemble()
 
-        with patch('machinome.node.base.require_openscad',
+        with patch('machinome.node.openscad.binary.require_openscad',
                    side_effect=AssertionError(
                        'an imported mesh must not check OpenSCAD')), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'an imported mesh must not launch OpenSCAD')):
             node.generate_stl()
 
@@ -334,8 +338,8 @@ class StlArtifactTest(BuildDirTestCase):
         openscad_binary.cache_clear()
         self.addCleanup(openscad_binary.cache_clear)
 
-        with patch('machinome.openscad.shutil.which', return_value=None), \
-             patch('machinome.node.base.Popen', side_effect=AssertionError(
+        with patch('machinome.node.openscad.binary.shutil.which', return_value=None), \
+             patch('machinome.node.openscad.leaf.Popen', side_effect=AssertionError(
                  'no external renderer may be launched')):
             node = rack.Rack()
             node.build_stls()
@@ -573,7 +577,7 @@ class StlAdapterContractTest(BuildDirTestCase):
     """The mesh-import leaf joins the roster without disturbing it."""
 
     def test_the_adapter_is_not_exact(self):
-        self.assertFalse(object.__new__(StlNode).exact)
+        self.assertFalse(object.__new__(StlNode).brep)
 
     def test_the_adapter_exposes_no_exact_geometry(self):
         node = parts.Bracket()
@@ -590,20 +594,12 @@ class StlAdapterContractTest(BuildDirTestCase):
             self.assertFalse(issubclass(StlNode, other))
             self.assertFalse(issubclass(other, StlNode))
 
-    def test_the_backend_walk_resolves_no_mesh_backend(self):
-        """generate_stl names the backend by walking the MRO for adapter
-        class names; an imported mesh introduces none."""
-        mesh_backends = {'Solid2Node', 'OpenScadNode', 'FusionNode'}
-        names = {cls.__name__ for cls in StlNode.__mro__}
-
-        self.assertEqual(names & mesh_backends, set())
-
     def test_a_fusion_over_an_imported_mesh_is_not_exact(self):
         fusion = rack.PostedBracket()
 
         fusion.assemble()
 
-        self.assertFalse(fusion.exact)
+        self.assertFalse(fusion.brep)
         self.assertTrue(fusion.rigid)
 
 

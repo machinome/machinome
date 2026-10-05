@@ -34,9 +34,11 @@ rebuilt and the page reloads. Leave it running.
 Give it an input
 ----------------
 
-The starter part is written in SolidPython and needs OpenSCAD. Replace the
-whole of ``myproject/myproject.py`` with a CadQuery block and an assembly
-that lifts it:
+The starter part is a CadQuery part when, as on the installation page's
+route, only ``machinome[cadquery]`` is installed, and a SolidPython part,
+which needs OpenSCAD, where SolidPython is installed too. Replace the whole
+of ``myproject/myproject.py`` with a CadQuery block and an assembly that
+lifts it:
 
 .. literalinclude:: ../tutorial/counter/first_machine.py
    :language: python
@@ -76,7 +78,7 @@ Look in the build directory
 ---------------------------
 
 ``_build/`` holds what the build produced: an STL per part, a ``.brep``
-beside it with the exact geometry of an OCCT-backed part, and the
+beside it with the B-rep geometry of a B-rep part, and the
 ``viewer.json`` document that the viewer reads. Nothing in it is edited
 by hand.
 

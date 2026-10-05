@@ -347,7 +347,7 @@ class ArtifactAssemblyContentionTest(TestCase):
 
     def test_cadquery_build_materializes_nothing_before_lock_release(self):
         self.write_project(
-            'from machinome.node import CadQueryNode\n'
+            'from machinome.node.cadquery import CadQueryNode\n'
             'import cadquery as cq\n'
             'class Part(CadQueryNode):\n'
             '    def render(self):\n'
@@ -366,7 +366,7 @@ class ArtifactAssemblyContentionTest(TestCase):
         source_stl = os.path.join(self.root, 'design', 'source.stl')
         trimesh.creation.box().export(source_stl, file_type='stl')
         self.write_project(
-            'from machinome.node import StlNode\n'
+            'from machinome.node.stl import StlNode\n'
             'class Part(StlNode):\n'
             '    stl_source = "source.stl"\n',
             'from machinome.test import TestCase\n'
@@ -429,7 +429,7 @@ class PublishedModelFollowsSourceTest(TestCase):
 
     def edit(self, radius):
         with open(self.source, 'w') as source:
-            source.write('from machinome.node import Solid2Node\n'
+            source.write('from machinome.node.solid2 import Solid2Node\n'
                          'from solid2 import cylinder\n\n\n'
                          'class SimplePipe(Solid2Node):\n\n'
                          '    def render(self):\n'

@@ -9,7 +9,9 @@ and node identity/naming. Encodes ADR-001 (composite pattern), ADR-002
 backend adapters), and ADR-026 (parameter-hashed artifact keys vs tree names).
 
 Code: `machinome/node/` (`base.py`, `internal.py`, `leaf.py`, `fusion.py`,
-`assembly.py`, `declarative.py`, `adapters/`).
+`assembly.py`, `declarative.py`, and the leaf modules `cadquery.py`,
+`build123d.py`, `step.py`, `molejo.py`, `solid2.py`, `openscad.py`,
+`jscad.py`, `stl.py`).
 ## Requirements
 ### Requirement: Composite node tree
 
@@ -22,8 +24,9 @@ the framework substitutes the realized declared children minus the omitted
 ones before any consumer sees the result. A `LeafNode.render()` SHALL
 return a single geometry object, never a list and never `None`. Validation
 runs during framework preparation before geometry production or SCAD
-presentation. Public `assemble()` uses that same preparation and retains its
-SCAD result; neutral consumers compose the tree without a SCAD union.
+presentation. Public `assemble()` uses that same preparation and returns its
+presentation description; neutral consumers compose the tree without a SCAD
+union.
 
 #### Scenario: Internal node returns children
 
@@ -55,11 +58,22 @@ SCAD result; neutral consumers compose the tree without a SCAD union.
 
 The system SHALL control preparation, validation, native artifact production
 and placement through a framework-owned lifecycle. Users SHALL NOT override
-that lifecycle. Native geometry consumers SHALL NOT require `as_scad()` or
-SCAD generation to prepare the tree or produce its native artifacts.
-Public `assemble()` SHALL remain a SCAD compatibility entry point over the
-same prepared tree: it requests SCAD presentation, preserves optimized imports
-and colours, and applies queued operations in their existing order.
+that lifecycle. Native geometry consumers SHALL NOT require `present()` or
+any presentation to prepare the tree or produce its native artifacts.
+Public `assemble()` SHALL remain the presentation entry point over the same
+prepared tree: it composes the node's presentation description
+(`machinome.node.presentation`) through each node's `present()`, preserves
+optimized imports and colours, applies queued operations in their existing
+order, and returns that description. It SHALL write no artifact of a
+presentation: no `.scad` for any node, and SHALL require no node package. A
+node's `.scad` is written only by the OpenSCAD node package, under the
+`openscad-node` and `backend-neutral-materialization` capabilities.
+
+A rigid leaf whose STL is still not current after its materialization SHALL be
+refused when its STL is generated, before any process is launched, with an
+error naming the node, its own class and its STL path: `node {name} ({class})
+produced no STL: its materialization published nothing at {stl_file}`. The core
+SHALL NOT hand such a leaf to another tool.
 `assemble()` SHALL be idempotent — the result is memoized and `render()` is
 called at most once per instance. On an assembly the framework SHALL run
 `simulate()` after `render()` ONCE PER ENUMERATION of the tree, under the
@@ -81,8 +95,8 @@ ordering SHALL hold for native preparation and SCAD compatibility consumers.
 #### Scenario: Optimized import of cached STL
 
 - **WHEN** a node has `optimize = True`, is rigid, and its STL is up to date
-- **THEN** `assemble()` imports the STL (`import_stl`) instead of inlining
-  the SCAD model, and queued operations are applied after the import
+- **THEN** `assemble()` presents an import of the STL artifact instead of
+  inlining the SCAD model, and queued operations are applied after the import
 
 #### Scenario: An up-to-date leaf is not rendered
 
@@ -107,6 +121,29 @@ ordering SHALL hold for native preparation and SCAD compatibility consumers.
 - **THEN** both subtrees' `simulate()` methods ran before the first
   subtree's geometry was composed, so a coordinate bound while the
   second subtree simulated still moves a body in the first
+
+#### Scenario: Assemble writes no SCAD
+
+- **WHEN** `assemble()` is called with the OpenSCAD node package installed on
+  an assembly of a B-rep leaf and a `Solid2Node` leaf whose artifacts are
+  current
+- **THEN** it returns the presentation description and no `.scad` file is
+  written or rewritten, the assembly's included
+
+#### Scenario: Assemble without the OpenSCAD engine
+
+- **WHEN** `assemble()` is called on an assembly of native artifact-owning
+  leaves with SolidPython and the OpenSCAD node package absent
+- **THEN** it renders, validates, links, simulates and prepares exactly as with
+  them, returns the same presentation description, writes no `.scad`, and
+  imports no module of the package
+
+#### Scenario: A leaf that produced no STL is refused
+
+- **WHEN** a `LeafNode` subclass whose `materialize()` returns without
+  publishing its STL is built, with an `openscad` executable on the PATH
+- **THEN** the build fails naming the node, its class and its STL path, and no
+  process is launched for it
 
 #### Scenario: Native preparation is independent of SCAD presentation
 
@@ -225,11 +262,14 @@ solid-import leaf, `StepNode` (with `step_source` and `part`), whose part is
 one product of a STEP document under the `step-import`
 capability, and one
 flexible leaf kind, `MolejoNode`, whose part is a molejo shape spec fed by
-ports under the `flexible-parts` capability. Native adapters SHALL provide
-geometry through their artifact/evaluation capability without requiring a
-custom `as_scad()` implementation. SCAD output SHALL remain available through
-the compatibility presentation layer. Existing SCAD-only adapter overrides
-SHALL remain usable through the explicit legacy boundary; adapters
+ports under the `flexible-parts` capability. `Solid2Node` and `OpenScadNode` are
+the OpenSCAD node family, defined in `machinome.node.solid2` and the package
+`machinome.node.openscad` under the `openscad-node` capability. Native adapters
+SHALL provide geometry through their artifact/evaluation capability without
+requiring a custom `present()` implementation. SCAD output SHALL remain
+available through the OpenSCAD node package, which writes any node's
+presentation. A project leaf that only overrides a method named `as_scad` is not
+handed to OpenSCAD: a leaf authoring SCAD subclasses `Solid2Node`. Adapters
 declaring a `namespace` (`Solid2Node`, `CadQueryNode`, `Build123dNode`,
 `OpenScadNode`, `Build123dSheetNode`, `StepNode`, `MolejoNode`) get
 namespace-based render
@@ -254,7 +294,7 @@ document behavior are specified by the `flexible-parts` capability.
 
 OpenSCAD SHALL be the compilation target for the adapters that emit SCAD for
 it to render: `Solid2Node` and `OpenScadNode` have their STL rendered by
-OpenSCAD from the SCAD each emits. An adapter that produces its own artifact
+OpenSCAD from the SCAD each emits, through the family's leaf base. An adapter that produces its own artifact
 through another tool SHALL NOT additionally require OpenSCAD to do so —
 `CadQueryNode`, `Build123dNode`, `Build123dSheetNode` and `StepNode` through
 their own
@@ -263,73 +303,76 @@ Python evaluator, and `StlNode` through no
 external tool at all: its artifact is materialized from the committed mesh.
 `StepNode` needs no external tool either: the kernel that reads its document
 is the one that writes its artifacts.
-Every adapter SHALL remain representable on the SCAD output path, so the
-assembled document retains its existing coverage, including the flexible-part
-snapshot limitations. SCAD presentation does not imply OpenSCAD artifact
-production and SHALL NOT be a prerequisite for a native adapter's geometry.
+Every adapter SHALL remain representable in a presentation, so the SCAD the
+OpenSCAD node package writes of an assembled tree retains its existing
+coverage, including the flexible-part snapshot limitations. A presentation does
+not imply OpenSCAD artifact production and SHALL NOT be a prerequisite for a
+native adapter's geometry.
 
 An adapter's native artifact producer SHALL produce an artifact only when it
-is not up to date. A compatibility `as_scad()` request SHALL reuse that same
-producer when needed and SHALL return equivalent SCAD presentation whether the
-artifact was already current or just materialized. This covers every artifact
+is not up to date. A `present()` request SHALL reuse that same producer when
+needed and SHALL return an equivalent presentation whether the artifact was
+already current or just materialized. This covers every artifact
 the adapter owns; the sheet adapter's
 DXF is produced and guarded under the same rule, and the flexible adapter's
 snapshot artifact is guarded per binding as the `flexible-parts` capability
 specifies.
 
-An adapter whose backend is a boundary-representation kernel SHALL additionally
-expose its geometry exactly, under the `exact-geometry` capability.
+An adapter whose backend is a boundary-representation kernel SHALL
+additionally expose its geometry as a boundary representation, under the
+`brep-geometry` capability.
 `CadQueryNode`, `Build123dNode`, `Build123dSheetNode`, `StepNode` and
 `MolejoNode` are
-such adapters: each is exact and provides `shape()`.
+such adapters: each has B-rep geometry and provides `shape()`.
 `Solid2Node`, `OpenScadNode`, `JScadNode` and `StlNode` produce geometry only
-as meshes and are not exact. Exposing exact geometry SHALL NOT change an
-adapter's SCAD output or its mesh artifact, so a project that never asks an
-exact question is unaffected.
+as meshes and have no B-rep geometry. Exposing B-rep geometry SHALL NOT change an
+adapter's presentation or its mesh artifact, so a project that never asks a
+B-rep question is unaffected.
 
 #### Scenario: OpenSCAD source adapter
 
 - **WHEN** an `OpenScadNode` subclass declares `scad_source` and is
   instantiated with args/kwargs
 - **THEN** the referenced `.scad` module is called with those args in the
-  generated SCAD, with `module_name` defaulting to the file's basename
+  SCAD the OpenSCAD node package writes, with `module_name` defaulting to the
+  file's basename
 
 #### Scenario: CadQuery adapter routes through STL
 
 - **WHEN** a `CadQueryNode` is assembled
-- **THEN** the CadQuery object is exported to STL and re-imported via
-  `import_stl` in the SCAD output
+- **THEN** the CadQuery object is exported to STL and its presentation is an
+  import of that STL, which the SCAD output writes as `import`
 
 #### Scenario: build123d adapter routes through STL
 
 - **WHEN** a `Build123dNode` is assembled
-- **THEN** the build123d object is exported to STL and re-imported via
-  `import_stl` in the SCAD output
+- **THEN** the build123d object is exported to STL and its presentation is an
+  import of that STL
 
 #### Scenario: Sheet adapter routes through STL
 
 - **WHEN** a `Build123dSheetNode` is assembled
-- **THEN** its extruded solid is exported to STL and re-imported via
-  `import_stl` in the SCAD output, as for the other kernel-owned adapters
+- **THEN** its extruded solid is exported to STL and its presentation is an
+  import of that STL, as for the other kernel-owned adapters
 
 #### Scenario: STEP adapter routes through its own artifact
 
 - **WHEN** a `StepNode` is assembled
-- **THEN** the product it selected is exported to STL and re-imported via
-  `import_stl` in the SCAD output, as for the other kernel-owned adapters,
-  and no external tool is required to produce it
+- **THEN** the product it selected is exported to STL and its presentation is
+  an import of that STL, as for the other kernel-owned adapters, and no
+  external tool is required to produce it
 
 #### Scenario: STL adapter routes through its materialized artifact
 
 - **WHEN** an `StlNode` is assembled
-- **THEN** its materialized artifact is imported via `import_stl` in the
-  SCAD output, as for the other artifact-owning adapters
+- **THEN** its presentation is an import of its materialized artifact, as for
+  the other artifact-owning adapters
 
 #### Scenario: Flexible adapter routes through its snapshot
 
 - **WHEN** a `MolejoNode` is assembled at a bound numeric snapshot
-- **THEN** its per-binding snapshot STL is imported via `import_stl` in the
-  SCAD output, as the `flexible-parts` capability specifies
+- **THEN** its presentation is an import of its per-binding snapshot STL, as
+  the `flexible-parts` capability specifies
 
 #### Scenario: A builder result is accepted
 
@@ -347,27 +390,27 @@ exact question is unaffected.
 
 #### Scenario: An adapter does not rewrite a current artifact
 
-- **WHEN** `as_scad()` runs on a `CadQueryNode`, `Build123dNode`,
+- **WHEN** `present()` runs on a `CadQueryNode`, `Build123dNode`,
   `Build123dSheetNode`, `JScadNode`, `StlNode` or `MolejoNode` whose
   artifacts are up to date (for the flexible adapter: current for the
   unchanged binding)
-- **THEN** no export or external renderer runs, and the returned SCAD output
+- **THEN** no export or external renderer runs, and the returned presentation
   is unchanged
 
-#### Scenario: Only the B-rep backends are exact
+#### Scenario: Only the B-rep backends declare `brep`
 
-- **WHEN** `exact` is read across one instance of each adapter
+- **WHEN** `brep` is read across one instance of each adapter
 - **THEN** the `CadQueryNode`, `Build123dNode`, `Build123dSheetNode`,
   `StepNode` and
   `MolejoNode` report true and the `Solid2Node`, `OpenScadNode`,
   `JScadNode` and `StlNode` report false
 
-#### Scenario: Exactness does not disturb the SCAD path
+#### Scenario: Declaring `brep` does not disturb the SCAD path
 
-- **WHEN** a `CadQueryNode` is assembled in a project that asks no exact
+- **WHEN** a `CadQueryNode` is assembled in a project that asks no B-rep
   question
-- **THEN** its SCAD output and STL artifact are what they were before the
-  adapter became exact
+- **THEN** its presentation and STL artifact are what they were before the
+  adapter declared `brep`
 
 #### Scenario: A B-rep adapter compiles without OpenSCAD
 
@@ -391,23 +434,27 @@ exact question is unaffected.
 
 #### Scenario: SCAD is still emitted by every adapter
 
-- **WHEN** a `CadQueryNode` project is assembled
-- **THEN** its `.scad` artifacts are written as before, so the OpenSCAD GUI
-  viewer can open the project when the binary is available
+- **WHEN** a `CadQueryNode` project is assembled and the OpenSCAD node package
+  writes its root's SCAD
+- **THEN** the text imports every leaf's STL, and no `.scad` is written by the
+  build for any of its leaves
 
 #### Scenario: Native adapter participation needs no SCAD hook
 
 - **WHEN** a native adapter provides its validated local mesh artifact but no
   custom SCAD conversion method
-- **THEN** it participates in assembly, export and geometry tests, and explicit
-  SCAD presentation can import that artifact through the compatibility layer
+- **THEN** it participates in assembly, export and geometry tests, and its
+  presentation imports that artifact, which the OpenSCAD node package writes as
+  SCAD when asked
 
 #### Scenario: A legacy adapter override is honored
 
-- **WHEN** a project supplies geometry by overriding only the historical
-  `as_scad()` hook, including on a built-in adapter subclass
-- **THEN** the legacy boundary honors that override rather than silently using
-  an inherited native producer that would return different geometry
+- **WHEN** a project supplies geometry by overriding only a method named
+  `as_scad()`, including on a built-in adapter subclass
+- **THEN** the core does not call it: a built-in adapter subclass keeps its
+  native producer, and a `LeafNode` subclass that produces no STL is refused
+  naming it, so geometry never silently comes from a hook the contract no
+  longer declares
 
 ### Requirement: Parameter-hashed artifact identity
 
@@ -535,7 +582,7 @@ Direct reassignment, alias changes, replacement, append/removal, and same-length
 #### Scenario: The linked list never names
 
 - **WHEN** an assembly's once-only `render()` returns fresh unnamed children and the tree is linked, assembled and serialized more than once
-- **THEN** every link derives the same class-name fallback, never `children-<index>` from the list `as_scad` keeps
+- **THEN** every link derives the same class-name fallback, never `children-<index>` from the list `present` keeps
 
 ### Requirement: Color declaration
 
@@ -566,16 +613,23 @@ Each leaf adapter SHALL be a distinct type, and no adapter SHALL be an
 instance of another. Adapters that share an implementation base SHALL NOT
 thereby become interchangeable to a type test: a project or a framework path
 that distinguishes backends by `isinstance` or by walking the method
-resolution order SHALL get the same answer whatever bases the adapters
-happen to share.
+resolution order SHALL get the same answer whatever bases the adapters happen
+to share.
 
 This constrains how shared adapter behaviour may be factored. It does not
-require any particular factoring, and it does not make a shared base part of
-the public interface.
+require any particular factoring. The shared leaf bases — `LeafNode`,
+`BrepLeafNode`, `SheetLeafNode` and `FlexibleNode` — are the declared
+extension points of the `leaf-contract` capability; declaring them does not
+make two adapters sharing one interchangeable, and an adapter written outside
+the core against one of them is as distinct a type as the core's own.
+
+Sharing a base SHALL NOT change which framework path a leaf reaches: a B-rep
+adapter, whatever bases it shares, writes its STL through the B-rep engine and
+SHALL NOT reach the OpenSCAD rendering path.
 
 #### Scenario: Adapters sharing a base stay distinct
 
-- **WHEN** the exact adapters `CadQueryNode` and `Build123dNode` are tested
+- **WHEN** the B-rep adapters `CadQueryNode` and `Build123dNode` are tested
   against each other with `isinstance`
 - **THEN** neither is an instance of the other, and each remains its own type
 
@@ -585,12 +639,19 @@ the public interface.
   other with `isinstance`
 - **THEN** neither is an instance of the other, though both drive build123d
 
-#### Scenario: The backend lookup is not confused by a shared ancestor
+#### Scenario: An adapter written outside the core is its own type
 
-- **WHEN** a node's STL generation resolves the backend name by walking the
-  method resolution order for adapter class names
-- **THEN** an exact adapter resolves to no mesh-rendering backend, as it did
-  before any base was shared, and never launches OpenSCAD
+- **WHEN** an `BrepLeafNode` subclass defined outside `machinome/` is tested
+  against `CadQueryNode` and `Build123dNode` with `isinstance`
+- **THEN** it is an instance of neither, and neither is an instance of it
+
+#### Scenario: A shared base does not route a B-rep adapter through OpenSCAD
+
+- **WHEN** a `CadQueryNode`, a `Build123dNode` or a `Build123dSheetNode` leaf
+  is prepared and its STL generated with OpenSCAD's availability check and
+  subprocess launch both made to fail
+- **THEN** its STL is written and neither the check nor the launch is
+  attempted
 
 ### Requirement: Empty internal composition
 
@@ -704,3 +765,179 @@ sources are read for freshness.
 - **WHEN** a source-bound leaf is declared in a module with no
   `[tool.machinome]` manifest above it, and its source file exists
 - **THEN** construction succeeds as before
+
+### Requirement: No node type is recognised by its class name
+
+The core SHALL NOT decide anything about a node by the spelling of its class
+name, or of any class in its method resolution order: no module under
+`machinome/` SHALL compare a class's `__name__` or `__qualname__` with a
+string literal, nor a string literal naming a class defined under
+`machinome/` with any value. What a path needs to know about a node it SHALL
+learn from members the node declares or inherits, so a node type written
+outside the core is treated exactly as a core type that declares the same
+members. A class name MAY be displayed, as in a refusal naming a node and its
+class.
+
+#### Scenario: No core module compares a class name to a string
+
+- **WHEN** every module under `machinome/` is parsed and each comparison is
+  examined
+- **THEN** none compares a `__name__` or `__qualname__` attribute with a
+  string literal or a collection of string literals, and none compares a
+  string literal that spells a class defined under `machinome/`
+
+#### Scenario: A refusal describes a node by its own class only
+
+- **WHEN** a `Solid2Node` subclass `ScadPart` reaches STL generation with no
+  `openscad` on the PATH, and a `LeafNode` subclass `MeshScad` defined outside
+  `machinome/` reaches it having published no STL
+- **THEN** each refusal names its own node and its own class, and neither
+  names `Solid2Node`, another core class or a backend
+
+### Requirement: Each leaf type is one module under the node package
+
+Each leaf type the core ships SHALL be defined at one address directly under
+`machinome.node`, named for its technology, and imported from there: a module,
+or, for the OpenSCAD node family, the package `machinome.node.openscad`, whose
+`__init__` defines the node type and whose other modules are its machinery
+under the `openscad-node` capability. Which node types exist, with the class
+names each node type's module defines for a project to import, SHALL be stated
+once, in the table of supported node types `machinome.node.supported`:
+
+| module | defines |
+|---|---|
+| `machinome.node.cadquery` | `CadQueryNode` |
+| `machinome.node.build123d` | `Build123dNode`, `Build123dSheetNode`, and the reducer of `Svg` artwork |
+| `machinome.node.step` | `StepNode`, `StepAssembly`, `solids_from_faces`, `cached_document` |
+| `machinome.node.molejo` | `MolejoNode` |
+| `machinome.node.solid2` | `Solid2Node` |
+| `machinome.node.openscad` (a package) | `OpenScadNode` |
+| `machinome.node.jscad` | `JScadNode` |
+| `machinome.node.stl` | `StlNode` |
+
+Each of those classes SHALL be imported from its node type's module and from
+nowhere else: the node root resolves none of them, and refuses each naming its
+module, under the requirement "The node package's root exports nothing".
+
+The package `machinome.node.adapters` SHALL hold no leaf. Importing it, or any
+module or name beneath it, SHALL raise `ImportError` at the import line, whose
+message names `machinome.node.adapters` as dissolved, states that
+`machinome.node.adapters.<x>` is now `machinome.node.<x>` with
+`build123d_sheet` folded into `machinome.node.build123d`, and shows the
+import to write. It SHALL NOT re-export, alias or forward any name.
+
+#### Scenario: A leaf is imported from its module
+
+- **WHEN** a module runs `from machinome.node.step import StepAssembly,
+  StepNode` and `from machinome.node.build123d import Build123dSheetNode`
+- **THEN** it receives the classes those modules define, and
+  `from machinome.node import StepNode` and
+  `from machinome.node import Build123dSheetNode` each raise `ImportError`
+  naming `machinome.node.step` and `machinome.node.build123d` respectively
+
+#### Scenario: A former address is refused naming the new one
+
+- **WHEN** a module runs `from machinome.node.adapters.step import
+  StepAssembly`, `from machinome.node.adapters import step` or
+  `import machinome.node.adapters.cadquery`
+- **THEN** each raises `ImportError` whose message names
+  `machinome.node.adapters`, the rule `machinome.node.<x>`, and an import
+  line to write instead, and no leaf module is imported by the attempt
+
+#### Scenario: The node root's refusals come from the table
+
+- **WHEN** each class name the table of supported node types lists is imported
+  from `machinome.node`, and then from `machinome.node.<key>` of its row
+- **THEN** the first raises `ImportError` naming `machinome.node.<key>`, the
+  second returns the class that module defines, and no class name the table
+  lists is in `machinome.node.__all__`
+
+#### Scenario: Two types in one module stay distinct
+
+- **WHEN** `Build123dNode` and `Build123dSheetNode`, both defined in
+  `machinome.node.build123d`, are tested against each other with
+  `isinstance`
+- **THEN** neither is an instance of the other
+
+### Requirement: The node package's root exports nothing
+
+The package `machinome.node` SHALL resolve no name of its own: every class,
+function and declaration a project imports from the node package SHALL be
+imported from the module that defines it, at one address. Its `__all__` SHALL
+be empty, so `from machinome.node import *` binds nothing, and the names its
+module namespace binds SHALL be only its submodules, dunder metadata and
+private names; it SHALL keep extending its path with node packages installed
+as portions.
+
+Each of the twenty-one names the root resolved until the OpenSpec change
+`root-cleanup` SHALL be
+refused, both as `from machinome.node import <name>` and as an attribute read
+of `machinome.node`, with `ImportError` (not `AttributeError`, whose message
+the import machinery discards), whose message is exactly
+
+```
+module 'machinome.node' has no attribute '<name>': the root of machinome.node exports nothing, and '<name>' is imported from its module, '<module>'. Write `from <module> import <name>`.
+```
+
+for the name and module of this table:
+
+| name | module |
+|---|---|
+| `AssemblyNode` | `machinome.node.assembly` |
+| `declared_children` | `machinome.node.declarative` |
+| `FusionNode` | `machinome.node.fusion` |
+| `SheetLeafNode` | `machinome.node.sheet_leaf` |
+| `FlexibleNode` | `machinome.node.flexible` |
+| `Marking`, `Wrapped`, `Flat`, `Svg` | `machinome.node.markings` |
+| `Frame` | `machinome.node.frames` |
+| `property_as_number` | `machinome.node.decorators` |
+| `StlRenderStart` | `machinome.node.base` |
+| each class name of a row of the table of supported node types (`CadQueryNode`, `Build123dNode`, `Build123dSheetNode`, `StepNode`, `MolejoNode`, `Solid2Node`, `OpenScadNode`, `JScadNode`, `StlNode`) | `machinome.node.<key>` of its row |
+
+The node types' names SHALL be read from the table of supported node types,
+never spelled in the root; the refusal SHALL be a lookup of the requested name,
+never a comparison with a class's name, and it SHALL decide nothing but the
+words of the error. Nothing SHALL alias, re-export or forward a refused name.
+
+The root SHALL keep refusing the port and time-base names under the `ports`
+capability, and the package `machinome.node.adapters` SHALL keep refusing
+every spelling beneath it, each with its own message. A submodule of the
+package SHALL still be reachable through it: `from machinome.node import
+supported` and an attribute read `machinome.node.step` return the module, and
+a submodule whose kernel is absent raises that module's own refusal,
+unmodified. Any other name SHALL raise `AttributeError`.
+
+#### Scenario: A former root name is refused naming its module
+
+- **WHEN** a module runs `from machinome.node import AssemblyNode`
+- **THEN** it raises `ImportError` whose message is the sentence above for
+  `AssemblyNode` and `machinome.node.assembly`, and binds nothing
+
+#### Scenario: Every former root name is refused
+
+- **WHEN** each of the twenty-one names is imported from `machinome.node`, and
+  read with `getattr(machinome.node, name)` and `hasattr(machinome.node, name)`
+- **THEN** each raises `ImportError` naming the module of the table, and the
+  same name imported from that module is the object the module defines
+
+#### Scenario: The root binds no public name but its submodules
+
+- **WHEN** `machinome.node` is imported and its namespace and `__all__` are read
+- **THEN** `__all__` is empty, `from machinome.node import *` binds nothing,
+  and every name of the namespace that does not begin with an underscore is a
+  submodule of the package
+
+#### Scenario: A submodule is still imported through the package
+
+- **WHEN** a module runs `from machinome.node import supported, phase, step`
+- **THEN** it receives the three modules, and where the `step` extra is absent
+  the third raises the `step` module's own refusal naming
+  `pip install "machinome[step]"`, unmodified
+
+#### Scenario: A table row's classes are refused with their module
+
+- **WHEN** a node type is added to the table of supported node types with its
+  class names, and one of them is imported from `machinome.node`
+- **THEN** the refusal names `machinome.node.<key>` of the new row, and no
+  module of the core but the table spells the class name
+

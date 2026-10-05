@@ -26,9 +26,9 @@ import cadquery as cq
 import numpy as np
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Dir, gp_Pnt, gp_Trsf, gp_Vec
 
-from machinome.node.adapters.step import STEPCAFControl_Reader, StepAssembly
+from machinome.node.step import STEPCAFControl_Reader, StepAssembly
 from machinome.node.operations import Rotation, Translation
-from machinome.node.adapters import step as step_module
+from machinome.node import step as step_module
 
 from .step_project import parts as _parts_module
 

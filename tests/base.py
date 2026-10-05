@@ -6,7 +6,7 @@ import re
 import os
 import shutil
 from unittest import TestCase
-from machinome.node import StlRenderStart
+from machinome.node.base import StlRenderStart
 from .utils import format_codes
 
 
@@ -14,6 +14,17 @@ BASEDIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_DIR = os.path.join(BASEDIR, '_build')
 
 os.environ['SOLID_BUILD_DIR'] = BUILD_DIR
+
+def scad_code(node):
+    """A node's SCAD text: a family leaf's own (`OpenScadNode` composes it
+    with its source) or a stand-in's, any other node's through the OpenSCAD
+    node family's writer (OpenSpec change `openscad-out`)."""
+    if (getattr(type(node), 'scad_code', None) is not None
+            or 'scad_code' in vars(node)):
+        return node.scad_code
+    from machinome.node.openscad.writer import scad_code as written
+    return written(node)
+
 
 def _forget_assembly(node):
     node._assembled = False
@@ -46,7 +57,7 @@ class BaseNodeTest(TestCase):
     def get_scad(self, NodeClass, *args, **kwargs):
         solid = NodeClass(*args, **kwargs)
         solid.assemble()
-        return solid.scad_code.strip()
+        return scad_code(solid).strip()
 
     def load_solid(self, index, stl_level=0):
         self.solid = self.models[index]()
@@ -71,10 +82,10 @@ class BaseNodeTest(TestCase):
         return self.solid
 
     def assertCode(self, code):
-        scad_code, code = format_codes(self.solid.scad_code, code)
+        text, code = format_codes(scad_code(self.solid), code)
 
         expected = re.sub(r'\s+', ' ', code.strip())
-        generated = re.sub(r'\s+', ' ', scad_code.strip())
+        generated = re.sub(r'\s+', ' ', text.strip())
 
         if expected == generated:
             return
@@ -82,7 +93,7 @@ class BaseNodeTest(TestCase):
         print('EXPECTED:')
         print(code.strip())
         print('GOT:')
-        print(scad_code.strip())
+        print(text.strip())
 
         # Compare the full token sequences (not just as far as the
         # shorter one reaches): a strict-prefix generated used to pass
@@ -147,7 +158,7 @@ def expression_evaluations(sim, ticks):
     what falls is the cost INSIDE one evaluation, which
     `graph_node_visits` below is the probe that can see.
     """
-    from machinome.scad_expression import GraphValue
+    from machinome.expression_graph import GraphValue
     import machinome.simulation.program as program_module
 
     original_evaluate = GraphValue.evaluate

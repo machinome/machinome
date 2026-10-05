@@ -2,12 +2,18 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""Convert OpenSCAD command-line camera values into viewer vectors."""
+"""Convert `--camera` values into viewer vectors.
+
+`--camera` takes two forms: six numbers, the eye and the target (the vector
+form), or seven, the target translation, three rotations in degrees and a
+distance (the gimbal form). `DEFAULT_FOV` is the vertical field of view, in
+degrees, the gimbal form's view transform is defined with.
+"""
 
 from dataclasses import dataclass
 from math import cos, radians, sin
 
-OPENSCAD_FOV = 22.5
+DEFAULT_FOV = 22.5
 
 
 @dataclass(frozen=True)
@@ -15,11 +21,11 @@ class Camera:
     eye: tuple[float, float, float]
     target: tuple[float, float, float]
     up: tuple[float, float, float]
-    fov: float = OPENSCAD_FOV
+    fov: float = DEFAULT_FOV
 
 
 def parse_camera(specification):
-    """Parse either OpenSCAD ``--camera`` form.
+    """Parse either ``--camera`` form.
 
     Six values are the vector form (eye followed by target). Seven are the
     gimbal form (target translation, rotations, and distance).
@@ -40,8 +46,8 @@ def parse_camera(specification):
 
     target = values[:3]
     rx, ry, rz, distance = values[3:]
-    # OpenSCAD's model view is LookAt((0,-d,0), origin, Z-up), followed
-    # by Rx(90-rx), Ry(-ry), Rz(-rz), then translation by -target.
+    # The gimbal form's model view is LookAt((0,-d,0), origin, Z-up),
+    # followed by Rx(90-rx), Ry(-ry), Rz(-rz), then translation by -target.
     # A Three.js camera needs the inverse transform in world coordinates.
     inverse = _multiply(
         _rotation_z(rz),

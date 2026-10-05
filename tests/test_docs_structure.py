@@ -97,6 +97,49 @@ class LicenceWordingTest(unittest.TestCase):
                 self.assertNotIn(STALE_GRANT, text)
 
 
+class KernelExtrasTest(unittest.TestCase):
+    """The CAD kernels are extras (OpenSpec changes `lean-install`,
+    `mesh-engine` and `brep-mesh`): the installation page names each, and
+    no page a reader lands on says the package carries them, sends a reader
+    to the dissolved adapters package, or names an engine by a former name,
+    flag, extra or variable."""
+
+    EXTRAS = ('brep', 'mesh', 'cadquery', 'build123d', 'step', 'molejo',
+              'jscad', 'stl', 'all')
+
+    #: The engines' former names (`brep-mesh`), spelled in pieces so this
+    #: file's own reading of them is plain.
+    FORMER = ('machinome.' 'occt', 'machinome.' 'manifold',
+              'exact' '_engine', 'machinome.mesh' '_engine',
+              '--' 'faceted', '--' 'exact ', '--' 'exact`',
+              'Exact' 'LeafNode', 'machinome[' 'occt]',
+              'machinome[' 'manifold]', 'SOLID_TEST_' 'KERNEL')
+
+    STALE = ('Everything else comes with the package',
+             'machinome.node.adapters') + FORMER
+
+    #: The changelog records the dissolution and the released names, and
+    #: the upgrading page maps every former name to its new one.
+    RECORDS = {'project/changelog.rst': ('machinome.node.adapters',) + FORMER,
+               'project/upgrading.rst': FORMER}
+
+    def test_the_installation_page_names_every_kernel_extra(self):
+        page = (DOCS / 'start' / 'install.rst').read_text()
+        for extra in self.EXTRAS:
+            with self.subTest(extra=extra):
+                self.assertIn(f'machinome[{extra}]', page)
+
+    def test_no_reader_page_carries_the_kernels_or_the_old_addresses(self):
+        pages = list(documents()) + [('README.rst',
+                                      (REPO / 'README.rst').read_text())]
+        for relative, text in pages:
+            for stale in self.STALE:
+                if stale in self.RECORDS.get(relative, ()):
+                    continue
+                with self.subTest(document=relative, stale=stale):
+                    self.assertNotIn(stale, text)
+
+
 class ReleaseFactsTest(unittest.TestCase):
 
     def test_facts_are_substitutions(self):

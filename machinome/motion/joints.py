@@ -110,7 +110,7 @@ Module scope imports `machinome.motion.ports` and nothing else: a joint
 owns a port, so that cost is unavoidable, and everything from the node
 package -- the operations, the placement seam, the tree -- is reached
 inside the method that needs it, exactly as `Time` reaches
-`AssemblyNode`. Importing this module pulls no CAD backend, no exact
+`AssemblyNode`. Importing this module pulls no CAD backend, no B-rep
 stack and no `trimesh`; the `matrix()` calls that pull `trimesh` happen
 at binding time, inside a live render where geometry is loaded anyway.
 """
@@ -1069,9 +1069,9 @@ class Orbit(Joint):
                 f"off that line with carries=, in {frame} frame.")
 
         # The framework's own DEGREE trigonometry: numeric for a plain
-        # binding, and for a symbolic one the OpenSCAD builtins `cos`
-        # and `sin`, which the parity corpus covers and the viewer
-        # already evaluates (ADR-022). No new operation kind, and no
+        # binding, and for a symbolic one the expression language's
+        # builtins `cos` and `sin`, which the parity corpus covers and the
+        # viewer already evaluates (ADR-022). No new operation kind, and no
         # document key.
         turned = cos(value) - 1
         swept = sin(value)

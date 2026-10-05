@@ -275,7 +275,7 @@ argument error. `machinome build` SHALL NOT accept a callback option.
 ### Requirement: Test command
 
 The system SHALL provide `machinome test [reference]` with `--failfast`, the
-mutually exclusive kernel selectors `--exact` and `--faceted`,
+mutually exclusive engine selectors `--brep` and `--mesh`,
 `--volume-epsilon MM3`, `--placement-quantum MM`, and the pair
 `--verdict-store` / `--no-verdict-store`. It accepts a node reference in any
 accepted spelling, or the path of a companion test file, which resolves to
@@ -283,15 +283,16 @@ the node module it exercises. Without a flag, each setting comes from its
 environment variable, read through the same `.env` rule as the other
 `SOLID_*` settings:
 
-- the kernel from `SOLID_TEST_KERNEL`;
-- a faceted run's epsilon from `SOLID_TEST_VOLUME_EPSILON`;
+- the engine from `SOLID_TEST_ENGINE` (`SOLID_TEST_KERNEL`, its former
+  name, is refused when set);
+- a mesh run's epsilon from `SOLID_TEST_VOLUME_EPSILON`;
 - the run's placement quantum from `SOLID_TEST_PLACEMENT_QUANTUM`, else the
   framework's default;
 - whether the run keeps and consults the project's verdict store from
   `SOLID_TEST_VERDICT_STORE` (`on` or `off`), else on.
 
 Unlike the volume epsilon, the placement quantum and the verdict-store switch
-are accepted under both kernels. Runner behavior, the resolution order and the
+are accepted under both engines. Runner behavior, the resolution order and the
 errors are specified in the test-framework capability.
 
 `machinome test --all` SHALL run, as one test run reported once, the tests of every
@@ -317,22 +318,33 @@ project that declares no models.
 - **THEN** the runner builds `Gear` and runs its own test methods and the test
   cases bound to it
 
-#### Scenario: A developer runs the fast kernel by flag
+#### Scenario: A developer runs the fast engine by flag
 
-- **WHEN** a user runs `machinome test --faceted --volume-epsilon 0.5`
+- **WHEN** a user runs `machinome test --mesh --volume-epsilon 0.5`
 - **THEN** the runner compares every pair on meshes with that epsilon and
-  labels the run as faceted
+  labels the run as a mesh-engine run
 
 #### Scenario: Both selectors together are refused
 
-- **WHEN** a user runs `machinome test --exact --faceted`
+- **WHEN** a user runs `machinome test --brep --mesh`
 - **THEN** argument parsing fails naming the two flags as mutually exclusive
+
+#### Scenario: The former selectors are not accepted
+
+- **WHEN** a user runs `machinome test --faceted` or `machinome test
+  --exact`, or `machinome test` with `SOLID_TEST_ENGINE=faceted` or
+  `SOLID_TEST_ENGINE=exact`, or `machinome test` with the former variable
+  `SOLID_TEST_KERNEL` set to any non-empty value
+- **THEN** argument parsing fails naming the unrecognised flag, or the run
+  exits with status 1 before any node is built, with an error naming
+  `SOLID_TEST_ENGINE`, `'brep'`, `'mesh'` and, for a former value, the
+  value given
 
 #### Scenario: A developer sets the placement quantum
 
 - **WHEN** a user runs `machinome test --placement-quantum 0`
 - **THEN** the run's verdict memo keys on the exact bytes of the relative
-  placement, under whichever kernel the run selected
+  placement, under whichever engine the run selected
 
 #### Scenario: A developer runs without the verdict store
 
@@ -376,8 +388,14 @@ node), `--time` (0.0–1.0, validated, default
 `--projection` (`ortho`|`perspective`), `--colorscheme` (the 11 OpenSCAD
 schemes, default Cornfield), mutually exclusive `--render`/`--preview`,
 `--view` (comma-separated of axes, crosshairs, edges, scales, wireframe),
-`--renderer` (`openscad`|`web`, default `openscad`), and `--drive NAME=VALUE`
-(repeatable).
+`--renderer` (`web` and the renderers the table of supported node types
+lists, today `openscad`; default the table's `DEFAULT_RENDERER`, `openscad`),
+and `--drive NAME=VALUE` (repeatable). The snapshot command SHALL name no
+renderer technology itself: it SHALL reach every renderer other than `web`
+through the table of supported node types (`machinome.node.supported`), whose
+`openscad` entry names the OpenSCAD renderer at `machinome.viewers.openscad` in
+a provisional column, until the viewers become providers behind
+`machinome.viewer`.
 
 `--drive` SHALL bind a DECLARED DRIVER by its qualified id, to a value parsed
 as a number and checked by the declaration exactly as `set_state` checks it,
@@ -400,7 +418,7 @@ admissible by construction. A state carrying HISTORY is not posed from the
 command line: only a run knows which banks are reachable.
 
 The default renderer SHALL remain `openscad` regardless of whether the
-project's model is exact, regardless of whether the binary is installed, and
+project's model has B-rep geometry, regardless of whether the binary is installed, and
 regardless of whether the viewer package is installed. Choosing a renderer by
 availability, or by the project's backends, would change the appearance of
 snapshots taken of existing projects; the renderer is selected explicitly and
@@ -408,9 +426,17 @@ never substituted, as the web-snapshot capability requires.
 
 With `--renderer openscad` the image is produced by the OpenSCAD CLI; without a
 `DISPLAY` it SHALL wrap the render under `xvfb-run -a`, and error clearly if
-xvfb is also unavailable. When the OpenSCAD binary itself is unavailable the
-command SHALL fail naming it and naming `--renderer web` as the alternative,
-and SHALL write no image.
+xvfb is also unavailable. When the renderer's node type cannot be imported —
+the `openscad` extra's SolidPython is absent, or the OpenSCAD node package is
+not installed — the command SHALL fail at its start, before loading the node,
+with one line `Error: machinome snapshot --renderer openscad needs the openscad
+extra: <the refusal>; or use --renderer web`, exit 1, and write nothing. When
+the OpenSCAD binary itself is unavailable the command SHALL fail naming it and
+naming `--renderer web` as the alternative, and SHALL write no image.
+
+The OpenSCAD renderer alone SHALL compose the root's presentation for the
+image (it calls `assemble()` inside the build lock); the web renderer SHALL
+prepare the tree and build its STLs without composing one.
 
 With `--renderer web` the image is produced by the installed viewer package's
 capture, run as a separate process on a staging directory the framework
@@ -481,17 +507,27 @@ produced.
 - **THEN** the command fails, reporting that `--colorscheme` is not supported
   by the web renderer, and writes no image
 
+#### Scenario: The OpenSCAD extra is missing
+
+- **WHEN** an agent runs `machinome snapshot` without choosing a renderer in an
+  installation where `solid2` cannot be found
+- **THEN** the command fails before loading the node with the line naming
+  `machinome snapshot --renderer openscad`, the `openscad` extra,
+  `pip install "machinome[openscad]"` and `--renderer web`, exits 1, and writes
+  no image and no `.scad`
+
 #### Scenario: The OpenSCAD binary is missing
 
-- **WHEN** an agent runs `machinome snapshot` on an all-exact project on a
+- **WHEN** an agent runs `machinome snapshot` on an all-B-rep project on a
   machine with no `openscad` on the PATH
 - **THEN** the command fails naming the missing binary and `--renderer web`,
   and writes no image
 
 #### Scenario: The default does not follow the project's backends
 
-- **WHEN** a snapshot is taken of an all-exact project without choosing a
-  renderer, on a machine where OpenSCAD is installed
+- **WHEN** a snapshot is taken of an all-B-rep project without choosing a
+  renderer, on a machine where OpenSCAD and the `openscad` extra are
+  installed
 - **THEN** the OpenSCAD renderer produces the image, as it does for any other
   project
 
@@ -563,7 +599,10 @@ create:
 - `<package>/pyproject.toml`, declaring
   `model = "<package>.<package>:<ClassName>"`;
 - `<package>/<package>/__init__.py`;
-- `<package>/<package>/<package>.py`, defining the model node;
+- `<package>/<package>/<package>.py`, defining the model node: a
+  `Solid2Node` from the `solid2` template when `machinome.node.solid2` imports,
+  otherwise a `CadQueryNode` from the `cadquery` template when
+  `machinome.node.cadquery` imports;
 - `<package>/<package>/test_<package>.py`, defining a companion `TestCase`
   whose generated `test_solid_integrity` calls
   `assertNoDisconnectedSolids(self.node)` and whose generated
@@ -577,6 +616,14 @@ source: visible, editable, and deletable, with no registration or automatic
 execution outside `machinome test`. The assembly test SHALL use the runner's
 default testing instant and SHALL remain valid when the generated model is a
 single rigid node.
+
+When neither node type imports, the command SHALL write nothing and fail with
+`Error: machinome new scaffolds its first part with SolidPython or CadQuery,
+and neither is installed; install one with 'pip install "machinome[solid2]"' or
+'pip install "machinome[cadquery]"'`, exit 1. It SHALL reach the two node types
+through the table of supported node types, and the template it copies SHALL be
+the only module of the framework, outside the OpenSCAD node family, that
+imports SolidPython.
 
 The command SHALL refuse to overwrite an existing target directory (exit 1)
 and SHALL print next steps for entering the generated directory and running
@@ -605,6 +652,14 @@ command owns viewer selection, configured ports, and dependency diagnostics.
 - **WHEN** a freshly scaffolded project is run with `machinome build`,
   `machinome develop`, or `machinome snapshot`
 - **THEN** the generated tests are not discovered or executed
+
+#### Scenario: The template follows the installed extras
+
+- **WHEN** `machinome new my-project` runs where `solid2` cannot be found and
+  CadQuery is installed, and again where neither is installed
+- **THEN** the first writes a `CadQueryNode` model whose generated source
+  compiles, builds and passes its two tests with the mesh engine installed, and
+  the second writes nothing and fails naming both extras
 
 #### Scenario: Existing target is preserved
 
@@ -797,10 +852,14 @@ The command SHALL NOT modify `pyproject.toml`. It SHALL print the manifest
 lines that declare the generated model, for the pilot to add, together with
 the next steps for building it.
 
-The command needs the exact-geometry kernel, as every exact path does. When
-`cadquery` or the STEP reader cannot be imported it SHALL report that the
-command needs them, name the extra that installs them, and exit 1, rather
-than fail with an import traceback.
+The command needs the STEP reader, `machinome.node.step`, which the `step`
+extra installs. When that module refuses because its kernel cannot be found,
+the CLI SHALL answer `import-step` before the command parses its arguments or
+runs: it SHALL print one line on standard error naming `import-step`, the
+`step` extra and the install line `pip install "machinome[step]"`, write
+nothing, and exit 1, rather than fail with an import traceback or report an
+unknown command. A STEP reader whose kernel is found but fails to import SHALL
+report its own import error.
 
 A `FILE` that does not exist, or that the STEP reader cannot read or
 transfer, SHALL be reported on standard error with exit status 1 and no
@@ -852,10 +911,17 @@ judged.
 
 #### Scenario: The kernel is missing
 
-- **WHEN** the command is run in an installation without the exact-geometry
-  kernel
-- **THEN** it reports that `import-step` needs it, names the extra that
-  installs it, exits 1, and writes nothing
+- **WHEN** `machinome import-step vendor/actuator.step --into sim` is run in
+  an installation without the `step` extra's kernel
+- **THEN** standard error names `import-step` and `pip install
+  "machinome[step]"`, nothing is created or written, no traceback is printed,
+  and the command exits 1
+
+#### Scenario: Help for the command is answered the same way
+
+- **WHEN** `machinome import-step -h` is run in an installation without the
+  `step` extra's kernel
+- **THEN** the same refusal is printed and the command exits 1
 
 #### Scenario: An unreadable file is reported
 
@@ -956,3 +1022,82 @@ status 2 and nothing on standard output.
 - **THEN** the command writes an error naming the accepted reference
   spellings to standard error, prints nothing on standard output, and
   exits 2
+
+### Requirement: A command that needs an extra is answered by the extra
+
+The command registry SHALL be able to name, for a command, the one node type
+of the table of supported node types (`machinome.node.supported`) that command
+needs beyond its own implementation, whose module is `machinome.node.<type>`;
+the registry and the command's implementation SHALL NOT spell that module
+themselves. Dispatching
+that command SHALL import that module first; when the module refuses because
+its kernel cannot be found (the `kernel-extras` capability), the CLI SHALL
+print one line on standard error naming the command and the install line the
+refusal names, and exit 1, without running or parsing the command. The extra
+SHALL be the one the module's refusal names, not a second copy kept in the
+CLI.
+
+The command SHALL stay registered and listed whether or not its extra is
+installed: `machinome -h` SHALL list it with its docstring help and SHALL NOT
+import the module it needs, and an invocation of it SHALL never be reported as
+an unknown command. `import-step` is the one such command; its entry names
+the node type `step`, whose module is `machinome.node.step`, and the table's
+`step` entry lists `import-step` among the commands that need it. No entry-point group or plugin registry SHALL be
+consulted to find a command.
+
+#### Scenario: The command is listed without its extra
+
+- **WHEN** `machinome -h` is run in an installation without the `step`
+  extra's kernel
+- **THEN** the command list includes `import-step` with its docstring help,
+  the command exits 0, and `machinome.node.step` is not imported
+
+#### Scenario: Dispatching a command imports the module it needs
+
+- **WHEN** `machinome import-step FILE` is dispatched with the `step` extra
+  installed
+- **THEN** `machinome.node.step` is imported before the command runs, and the
+  command behaves as the Import-step command requirement states
+
+#### Scenario: A command needing no module imports none
+
+- **WHEN** `machinome viewer` is dispatched
+- **THEN** no leaf module under `machinome.node` is imported
+
+### Requirement: Generated project source imports every name from its module
+
+The source the CLI writes into a project SHALL import every framework name from
+the module that defines it, never from the node package's root, which resolves
+no name (`node-model`, "The node package's root exports nothing"):
+
+- the model module `machinome new` scaffolds SHALL import its node type from
+  that node type's module: `from machinome.node.solid2 import Solid2Node` from
+  the `solid2` template, `from machinome.node.cadquery import CadQueryNode` from
+  the `cadquery` template;
+- the `parts.py` `machinome import-step` writes SHALL import `StepNode` from
+  `machinome.node.step`, and its `assembly.py` SHALL import `AssemblyNode` from
+  `machinome.node.assembly`.
+
+The import-step command SHALL compose each of its import lines from the class it
+names, its module and its name as the class reports them, so the command's own
+module spells no node type's module (`kernel-extras`, "The core imports no
+kernel outside its kernel modules"); the templates are a project's files and
+spell their own node type's module.
+
+#### Scenario: The scaffolded part imports its node type from its module
+
+- **WHEN** `machinome new my-project` runs where SolidPython is installed, and
+  again where only CadQuery is
+- **THEN** the first model module's import line is
+  `from machinome.node.solid2 import Solid2Node` and the second's
+  `from machinome.node.cadquery import CadQueryNode`, neither generated file
+  contains `from machinome.node import`, and each generated project builds and
+  passes its two tests as the "New command" requirement states
+
+#### Scenario: The STEP scaffold imports from the modules
+
+- **WHEN** `machinome import-step` scaffolds a document into a package
+- **THEN** `parts.py` holds `from machinome.node.step import StepNode`,
+  `assembly.py` holds `from machinome.node.assembly import AssemblyNode`,
+  neither holds `from machinome.node import`, and both modules import
+

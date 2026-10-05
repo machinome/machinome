@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from machinome.simulation.profile import ConvexProfile, profile_overlap
-from machinome.scad_expression import GraphValue, symbol
+from machinome.expression_graph import GraphValue, symbol
 from machinome.expression_graph import ExpressionNode
 from machinome.simulation.program import (_PathValue, _checked_bound_graph,
                                           checked_expression)

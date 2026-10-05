@@ -1,6 +1,7 @@
 # ADR-101: Motion sharing begins at construction
 
-**Status:** Accepted
+**Status:** Accepted; the SolidPython-compatible facade amended 2026-10-03 by
+[ADR-170](ADR-170-the-core-s-symbolic-value-is-its-own-type.md)
 
 **Date:** 2026-09-11
 
@@ -80,3 +81,19 @@ expansion remains outside the construction bound. Each SCAD output site may
 contain its own compact closure. No geometry backend, dependency extra,
 licensing boundary or assembly lifecycle is removed in this cycle. The
 negative-remainder caveat in ADR-022 remains unchanged.
+
+## Amendment (2026-10-03)
+
+[ADR-170](ADR-170-the-core-s-symbolic-value-is-its-own-type.md) removes the
+SolidPython-compatible facade. The value time, driver reads and
+`machinome.math` produce is `machinome.expression_graph.GraphValue`, the
+core's own type over the same native nodes, deriving from no SolidPython
+class and refusing a truth test with `SymbolicTruthError`;
+`machinome/scad_expression.py` is gone. Arithmetic, comparisons, `abs`,
+degree math, evaluation and the compact text are unchanged, and so is
+everything this decision publishes. Legacy SolidPython constants are still
+accepted, read by the OpenSCAD engine
+([ADR-171](../NODE/ADR-171-the-openscad-engine-is-machinome-openscad.md));
+with one on the LEFT of a framework value, SolidPython's own operator now
+builds the result as its text, which the framework reads back, where the
+facade's subclass relation gave the framework's reflected method priority.

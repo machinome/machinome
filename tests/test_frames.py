@@ -26,7 +26,8 @@ from solid2 import cube
 
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import RotationalPort
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.node.markings import Marking, Svg, Wrapped
 from machinome.parameters import Length, ParameterError
 
@@ -111,7 +112,7 @@ class DeclarationTest(BaseNodeTest):
         self.assertEqual(list(_frames().declared_frames(Refusing)), ['pin'])
 
     def test_frame_resolves_from_the_node_package_too(self):
-        from machinome.node import Frame
+        from machinome.node.frames import Frame
 
         self.assertIs(Frame, _frames().Frame)
 

@@ -1,0 +1,105 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's tenth cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-split-root-cleanup;
+# record in the framework's openspec/changes/archive/<date>-root-cleanup/.
+#
+# The node package's root, machinome/node/__init__.py, exports nothing
+# (pilot, 5 October 2026). Each of the twenty-one names it resolved at
+# 815ceb9 is imported from the module that defines it, and importing it from
+# the root raises an ImportError whose message begins
+#   module 'machinome.node' has no attribute '<name>':
+# and names that module, so a failing load is explained by the row of its
+# name. No alias, no deprecation path (ADR-169). A module import of the
+# package's own submodules (`from machinome.node import supported`, `phase`,
+# `step`, ...) is not a moved name and still resolves. The rows are the
+# twenty-one [[import]] rows of the workspace's
+# scripts/rewrite-projects.d/root-cleanup.toml, root block, name for name.
+
+cycle = "root-cleanup"
+date = "2026-10-05"
+
+[[moved]]
+name = "machinome.node.AssemblyNode"
+to = "machinome.node.assembly.AssemblyNode"
+
+[[moved]]
+name = "machinome.node.declared_children"
+to = "machinome.node.declarative.declared_children"
+
+[[moved]]
+name = "machinome.node.FusionNode"
+to = "machinome.node.fusion.FusionNode"
+
+[[moved]]
+name = "machinome.node.CadQueryNode"
+to = "machinome.node.cadquery.CadQueryNode"
+
+[[moved]]
+name = "machinome.node.Build123dNode"
+to = "machinome.node.build123d.Build123dNode"
+
+[[moved]]
+name = "machinome.node.Build123dSheetNode"
+to = "machinome.node.build123d.Build123dSheetNode"
+
+[[moved]]
+name = "machinome.node.SheetLeafNode"
+to = "machinome.node.sheet_leaf.SheetLeafNode"
+
+[[moved]]
+name = "machinome.node.FlexibleNode"
+to = "machinome.node.flexible.FlexibleNode"
+
+[[moved]]
+name = "machinome.node.MolejoNode"
+to = "machinome.node.molejo.MolejoNode"
+
+[[moved]]
+name = "machinome.node.Solid2Node"
+to = "machinome.node.solid2.Solid2Node"
+
+[[moved]]
+name = "machinome.node.OpenScadNode"
+to = "machinome.node.openscad.OpenScadNode"
+
+[[moved]]
+name = "machinome.node.JScadNode"
+to = "machinome.node.jscad.JScadNode"
+
+[[moved]]
+name = "machinome.node.StlNode"
+to = "machinome.node.stl.StlNode"
+
+[[moved]]
+name = "machinome.node.Marking"
+to = "machinome.node.markings.Marking"
+
+[[moved]]
+name = "machinome.node.Wrapped"
+to = "machinome.node.markings.Wrapped"
+
+[[moved]]
+name = "machinome.node.Flat"
+to = "machinome.node.markings.Flat"
+
+[[moved]]
+name = "machinome.node.Svg"
+to = "machinome.node.markings.Svg"
+
+[[moved]]
+name = "machinome.node.Frame"
+to = "machinome.node.frames.Frame"
+
+[[moved]]
+name = "machinome.node.StepNode"
+to = "machinome.node.step.StepNode"
+
+[[moved]]
+name = "machinome.node.property_as_number"
+to = "machinome.node.decorators.property_as_number"
+
+[[moved]]
+name = "machinome.node.StlRenderStart"
+to = "machinome.node.base.StlRenderStart"

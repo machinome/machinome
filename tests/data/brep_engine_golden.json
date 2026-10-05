@@ -1,0 +1,145 @@
+{
+  "bench_commit": "8c146a7165b529c8b4be6cb82de6d963865e1c22",
+  "fixtures": {
+    "build123d_bored_block": {
+      "bounding_box": [
+        "-10.0",
+        "-10.0",
+        "-5.0",
+        "10.0",
+        "10.0",
+        "5.0"
+      ],
+      "brep_sha256": "e1126d6c20cd38f3534adb063c5293d8a58cc060760aa71909d65e14aa82e813",
+      "face_boxes_sha256": "f1abc37527f9310db8cd33d6153448aeceff3b8dc59c9fc99f393798fff9ecb1",
+      "face_boxes_shape": [
+        7,
+        2,
+        3
+      ],
+      "solid_count": 1,
+      "stl_sha256": "7c2d8b23c7f912434037c9524a1bbff20930fd2e4560faf25160842c153157ab",
+      "volume": "3497.345175425631"
+    },
+    "build123d_sheet_panel": {
+      "bounding_box": [
+        "-20.0",
+        "-15.0",
+        "0.0",
+        "20.0",
+        "15.0",
+        "3.0"
+      ],
+      "brep_sha256": "ad4dc517d0eaa90c0e5007d5d81efa7ae6cc8db6ef1b6cc89cea1fcc7849eb87",
+      "face_boxes_sha256": "de53c50159522b094c7ac7ca7e6f8fcdf4e32af9582a3e4ab616e29cfe1a33a0",
+      "face_boxes_shape": [
+        7,
+        2,
+        3
+      ],
+      "solid_count": 1,
+      "stl_sha256": "c56509d6b75c2369d9449ecf1f5a56e76e786ac4daac48c34a39101daeba6252",
+      "volume": "3364.3805509807644"
+    },
+    "cadquery_bored_block": {
+      "bounding_box": [
+        "-10.0",
+        "-10.0",
+        "-5.0",
+        "10.0",
+        "10.0",
+        "5.0"
+      ],
+      "brep_sha256": "0ae8a99bf686bf5ad306491c6a4ff67ec2ac47c3309257b3f2663f959092560a",
+      "face_boxes_sha256": "f1abc37527f9310db8cd33d6153448aeceff3b8dc59c9fc99f393798fff9ecb1",
+      "face_boxes_shape": [
+        7,
+        2,
+        3
+      ],
+      "solid_count": 1,
+      "stl_sha256": "94624c82a5eb078e458b26bb5567dfaca0377f0035933edc51b942b120d05a71",
+      "volume": "3497.3451754256325"
+    },
+    "exact_fusion_shaft_in_bore": {
+      "bounding_box": [
+        "-6.0",
+        "-6.0",
+        "0.0",
+        "6.0",
+        "6.0",
+        "20.0"
+      ],
+      "brep_sha256": "1867a326ee1d94641ccbd6f5754789a56242c1eb7f9a3f771ccb880fcb1c8d81",
+      "face_boxes_sha256": "9a595bedd08bd4393c8c986d3f5b1aeb0d765ac1d3b9a3c295af59b4e5cd641a",
+      "face_boxes_shape": [
+        6,
+        2,
+        3
+      ],
+      "solid_count": 1,
+      "stl_sha256": "f6c311c891adf148c41b3b6ed5a49bd559954ff10189b31368e78f6e4a4e2a3b",
+      "volume": "1244.0706908215589"
+    },
+    "mixed_backend_fusion": {
+      "bounding_box": [
+        "-10.0",
+        "-10.0",
+        "-5.0",
+        "10.0",
+        "10.0",
+        "14.0"
+      ],
+      "brep_sha256": "41d2b8fd409930aa554e7da85de3299f0315e2dc8156de127e19ea8d769e743b",
+      "face_boxes_sha256": "6d44937833276da849c63e275239c906b1637e1f0e9f6154b824ef0a5518eb35",
+      "face_boxes_shape": [
+        10,
+        2,
+        3
+      ],
+      "solid_count": 2,
+      "stl_sha256": "a4a57ac3e200fa2062a017eb9ac4b6d4550b88cab437def060768f0e1350f543",
+      "volume": "3648.1416227979425"
+    },
+    "molejo_spring": {
+      "bounding_box": [
+        "-30.00000114234624",
+        "-16.0000011424333",
+        "-1.994420223705536",
+        "2.000001142346274",
+        "16.00000022280233",
+        "44.794420223705586"
+      ],
+      "brep_sha256": "203e22d67025fa7e62ae834faa31d183e547c94de46ee9e8e39d348fb26759e4",
+      "face_boxes_sha256": "9b549d7ee5a4d8f445c719ddc7eec3bd6f1accd83e30dedbed7cae3c2e128369",
+      "face_boxes_shape": [
+        3,
+        2,
+        3
+      ],
+      "solid_count": 1,
+      "stl_sha256": "b82876ab2a6608242f9aa97e595e27f61eeab9ad38c84d0d026bc33cd8f1d09f",
+      "volume": "7205.1728234619995"
+    },
+    "step_product": {
+      "bounding_box": [
+        "-3.0",
+        "-3.0",
+        "-3.0",
+        "3.0",
+        "3.0",
+        "3.0"
+      ],
+      "brep_sha256": "202b835527f4241ac518945b0d6fb6c31d2d7a50f9dd0dfb134a33da058a764a",
+      "face_boxes_sha256": "6efe7f54c496b76898b1854ea7fb41acc22b1f688c0805904e3aeaf8b4d2afc4",
+      "face_boxes_shape": [
+        6,
+        2,
+        3
+      ],
+      "solid_count": 1,
+      "stl_sha256": "5c54ec16656bdf79153427c90a76f8306e3d9782e5e8a61e8a5f9fb7e003c16d",
+      "volume": "216.0"
+    }
+  }
+}

@@ -26,6 +26,10 @@ machinome new
 
 Creates a new project directory ``<name>`` with a package, model module,
 ``pyproject.toml`` manifest, and ``.gitignore``. Fails if ``<name>`` exists.
+The model module's starter part is a ``Solid2Node`` where SolidPython is
+installed (``machinome[solid2]``), otherwise a ``CadQueryNode`` where CadQuery
+is (``machinome[cadquery]``). With neither, the command writes nothing and
+exits 1 naming both extras.
 
 machinome develop
 =================
@@ -115,7 +119,7 @@ machinome test
 ::
 
     machinome test [reference] [--set NAME=VALUE ...] [--failfast]
-              [--exact | --faceted] [--volume-epsilon MM3]
+              [--brep | --mesh] [--volume-epsilon MM3]
               [--placement-quantum MM]
               [--verdict-store | --no-verdict-store]
     machinome test --all [--failfast]
@@ -148,25 +152,27 @@ fail the run — the marking is now a false statement about the machine. See
     expected failure are not failures and never stop it; an unexpected
     success does.
 
-``--exact`` / ``--faceted``
-    The kernel every geometric assertion decides on: exact parts on their
-    boundary-representation solids (the default), or every pair on the
-    parts' meshes at tessellation precision — the fast development loop.
-    Without a flag ``SOLID_TEST_KERNEL`` decides, else the run is exact.
-    A faceted run names itself before the first build and on its summary
-    line. See :ref:`Run tests fast <comparison-kernel>`.
+``--brep`` / ``--mesh``
+    The engine every geometric assertion decides on: the B-rep engine,
+    which compares parts that have B-rep geometry on their
+    boundary-representation solids (the default), or the mesh engine,
+    which compares every pair on the parts' meshes at tessellation
+    precision — the fast development loop. Without a flag
+    ``SOLID_TEST_ENGINE`` decides, else the run is on the B-rep engine. A
+    run on the mesh engine names itself before the first build and on its
+    summary line. See :ref:`Run tests fast <comparison-engine>`.
 
 ``--volume-epsilon MM3``
-    Under ``--faceted``, report an intersection of at most this volume as
+    Under ``--mesh``, report an intersection of at most this volume as
     empty for the whole run. Default ``SOLID_TEST_VOLUME_EPSILON``, else 0.
-    Refused with the exact kernel, which has nothing to absorb.
+    Refused with the B-rep engine, which has nothing to absorb.
 
 ``--placement-quantum MM``
     Merge two relative placements into one verdict-memo question when
     they differ by less than this, absorbing the float noise of composing
     one rigid motion by two different routes. Default
     ``SOLID_TEST_PLACEMENT_QUANTUM``, else ``1e-9``. Accepted by both
-    kernels; ``0`` restores the exact-bytes key. A non-default quantum
+    engines; ``0`` restores the exact-bytes key. A non-default quantum
     names itself on the summary line. See :ref:`The placement quantum
     <placement-quantum>`.
 
@@ -175,7 +181,7 @@ fail the run — the marking is now a false statement about the machine. See
     and serve it to a later run asking the same question of the same
     state, or run without the store, neither reading nor writing it.
     Default ``SOLID_TEST_VERDICT_STORE``, else on. Accepted by both
-    kernels. A run without the store names itself on the summary line;
+    engines. A run without the store names itself on the summary line;
     a run with it prints what it would print without it. See
     :ref:`Verdicts kept between runs <verdict-store>`.
 
@@ -205,9 +211,12 @@ in headless Chromium and preserves a real alpha channel for compositing.
 
 ``--renderer``
     ``openscad`` (default) or ``web``. The default stays ``openscad``
-    whether or not the browser viewer is installed. Install the web renderer
-    with ``pip install "machinome[web-snapshot]"`` (the viewer package with
-    its browser driver) and download the browser separately with
+    whether or not the browser viewer is installed. The OpenSCAD renderer
+    needs ``pip install "machinome[openscad]"`` and the OpenSCAD executable;
+    without the extra the command exits 1 before loading the model, naming
+    the extra and ``--renderer web``. Install the web renderer with
+    ``pip install "machinome[web-snapshot]"`` (the viewer package with its
+    browser driver) and download the browser separately with
     ``playwright install chromium``. Neither renderer ever falls back to the
     other when its dependency is unavailable.
 
@@ -399,7 +408,7 @@ the document under the root — because a declared source outside its
 project is refused at construction and the scaffold could not build.
 
 It takes no node reference and loads no node — like ``machinome models``, it
-never imports project code — but it does need the exact-geometry kernel
+never imports project code — but it does need the B-rep geometry kernel
 to read the document, exactly as ``StepNode`` does; an installation
 without it is told so by name, with the remedy, rather than failing with
 an import traceback.
@@ -560,28 +569,30 @@ Environment variables
     Legacy frontend-port setting, default 3000. The current viewer has no
     separate frontend server and ignores the forwarded setting.
 
-``SOLID_TEST_KERNEL``
-    The comparison kernel of ``machinome test`` when no ``--exact`` /
-    ``--faceted`` flag is given: ``exact`` (the default) or ``faceted``.
-    Any other value is refused by name.
+``SOLID_TEST_ENGINE``
+    The comparison engine of ``machinome test`` when no ``--brep`` /
+    ``--mesh`` flag is given: ``brep`` (the default) or ``mesh``. Any
+    other value is refused by name. The former name of this variable is
+    refused when it is set, whatever its value, naming this one: rename
+    the line where it is set (see :doc:`../project/upgrading`).
 
 ``SOLID_TEST_VOLUME_EPSILON``
-    The volume epsilon (mm³) of a faceted ``machinome test`` run when no
-    ``--volume-epsilon`` is given. Default: 0. Not read by the exact
-    kernel.
+    The volume epsilon (mm³) of a ``machinome test`` run on the mesh
+    engine when no ``--volume-epsilon`` is given. Default: 0. Not read by
+    the B-rep engine.
 
 ``SOLID_TEST_PLACEMENT_QUANTUM``
     The placement quantum (mm) of the verdict memo when no
     ``--placement-quantum`` is given. Default: ``1e-9``. Read by both
-    kernels.
+    engines.
 
 ``SOLID_TEST_VERDICT_STORE``
     Whether ``machinome test`` keeps and consults the project's verdict
     store when neither ``--verdict-store`` nor ``--no-verdict-store`` is
     given: ``on`` (the default) or ``off``. Any other value is refused by
-    name. Read by both kernels.
+    name. Read by both engines.
 
 The ``machinome`` command loads a ``.env`` file from the working directory
 at startup, so a project can pin its ports there — and a developer can
-select the faceted test kernel for one checkout without the choice
+select the mesh engine for its test runs in one checkout without the choice
 reaching CI, which has no such file. ``machinome new`` ignores ``.env``.

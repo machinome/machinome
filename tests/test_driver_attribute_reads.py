@@ -20,7 +20,7 @@ and a collision would be silent.
 """
 
 from machinome.core.serializer import symbolic_drivers
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.node.qualified import DriverToken, declared_drivers_of
 from machinome.simulation import Driver
 

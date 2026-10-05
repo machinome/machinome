@@ -1,0 +1,450 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+#
+# The names the lean-core campaign's ninth cycle moved, for
+# scripts/load-projects --moved. Framework branch v0.8-split-brep-mesh;
+# record in the framework's openspec/changes/archive/<date>-brep-mesh/.
+#
+# The two engines are named for the representation each consumes (pilot,
+# 4 October 2026): `brep`, a boundary representation of parametric surfaces
+# (OCCT today), and `mesh`, a polyhedral triangle mesh (manifold3d today).
+# Both seams live in the engine package's __init__, machinome.engine, whose
+# path admits portions; the providers are machinome.engine.brep and
+# machinome.engine.mesh. machinome.exact_engine, machinome.mesh_engine,
+# machinome.occt and machinome.manifold are removed (Python's own
+# ModuleNotFoundError; no alias, ADR-169). ExactLeafNode is BrepLeafNode at
+# machinome.node.brep_leaf; the capability `exact` is `brep`; the memos and
+# the artifact publication are machinome.brep_cache and
+# machinome.brep_artifacts. The run's choice is its engine (pilot, at
+# ratification): machinome.test.KERNELS is ENGINES, ComparisonPolicy.kernel
+# is .engine, and SOLID_TEST_KERNEL is SOLID_TEST_ENGINE, the former
+# variable refused when set. The rows marked informational name a flag, an
+# environment variable or value, an extra or a recipe identity: no load
+# fails on them, and the root cleanup's rewrite applies them to command
+# lines, `.env` files and manifests.
+
+cycle = "brep-mesh"
+date = "2026-10-04"
+
+[[moved]]
+name = "machinome.exact_engine"
+to = "machinome.engine (the B-rep seam: brep_engine, require_brep_engine, BrepEngineUnavailable, BrepEngineIncompatible, BrepCommonInconsistency, BrepCommonVerificationError, BREP_CONTRACT, BREP_PROVIDER)"
+
+[[moved]]
+name = "machinome.exact_engine.exact_engine"
+to = "machinome.engine.brep_engine"
+
+[[moved]]
+name = "machinome.exact_engine.require_exact_engine"
+to = "machinome.engine.require_brep_engine"
+
+[[moved]]
+name = "machinome.exact_engine.ExactEngineUnavailable"
+to = "machinome.engine.BrepEngineUnavailable"
+
+[[moved]]
+name = "machinome.exact_engine.ExactEngineIncompatible"
+to = "machinome.engine.BrepEngineIncompatible"
+
+[[moved]]
+name = "machinome.exact_engine.ExactCommonInconsistency"
+to = "machinome.engine.BrepCommonInconsistency"
+
+[[moved]]
+name = "machinome.exact_engine.ExactCommonVerificationError"
+to = "machinome.engine.BrepCommonVerificationError"
+
+[[moved]]
+name = "machinome.exact_engine.ExactShape"
+to = "machinome.engine.BrepShape"
+
+[[moved]]
+name = "machinome.exact_engine.ExactCurrency"
+to = "machinome.engine.BrepCurrency"
+
+[[moved]]
+name = "machinome.exact_engine.ExactComposition"
+to = "machinome.engine.BrepComposition"
+
+[[moved]]
+name = "machinome.exact_engine.ExactComparison"
+to = "machinome.engine.BrepComparison"
+
+[[moved]]
+name = "machinome.exact_engine.ExactEngine"
+to = "machinome.engine.BrepEngine"
+
+[[moved]]
+name = "machinome.exact_engine.PROVIDER"
+to = "machinome.engine.BREP_PROVIDER"
+
+[[moved]]
+name = "machinome.exact_engine.CONTRACT"
+to = "machinome.engine.BREP_CONTRACT (now 2: the error types it names were renamed)"
+
+[[moved]]
+name = "machinome.mesh_engine"
+to = "machinome.engine (the mesh seam keeps its names: mesh_engine, require_mesh_engine, MeshEngineUnavailable, MeshEngineIncompatible)"
+
+[[moved]]
+name = "machinome.mesh_engine.mesh_engine"
+to = "machinome.engine.mesh_engine"
+
+[[moved]]
+name = "machinome.mesh_engine.require_mesh_engine"
+to = "machinome.engine.require_mesh_engine"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshEngineUnavailable"
+to = "machinome.engine.MeshEngineUnavailable"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshEngineIncompatible"
+to = "machinome.engine.MeshEngineIncompatible"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshSolid"
+to = "machinome.engine.MeshSolid"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshSolids"
+to = "machinome.engine.MeshSolids"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshComposition"
+to = "machinome.engine.MeshComposition"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshComparison"
+to = "machinome.engine.MeshComparison"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshIdentity"
+to = "machinome.engine.MeshIdentity"
+
+[[moved]]
+name = "machinome.mesh_engine.MeshEngine"
+to = "machinome.engine.MeshEngine"
+
+[[moved]]
+name = "machinome.mesh_engine.CONTRACT"
+to = "machinome.engine.MESH_CONTRACT (still 1)"
+
+[[moved]]
+name = "machinome.mesh_engine.PROVIDER"
+to = "machinome.engine.MESH_PROVIDER"
+
+[[moved]]
+name = "machinome.occt"
+to = "machinome.engine.brep (the package is removed; the provider is one module of machinome.engine)"
+
+[[moved]]
+name = "machinome.occt.engine"
+to = "machinome.engine.brep"
+
+[[moved]]
+name = "machinome.occt.engine.intersect_shapes"
+to = "machinome.engine.brep.intersect_shapes"
+
+[[moved]]
+name = "machinome.occt.engine.fuse_shapes"
+to = "machinome.engine.brep.fuse_shapes"
+
+[[moved]]
+name = "machinome.occt.engine.placed_shape"
+to = "machinome.engine.brep.placed_shape"
+
+[[moved]]
+name = "machinome.occt.engine.solid_count"
+to = "machinome.engine.brep.solid_count"
+
+[[moved]]
+name = "machinome.occt.engine.solid_volume"
+to = "machinome.engine.brep.solid_volume"
+
+[[moved]]
+name = "machinome.occt.engine.as_shape"
+to = "machinome.engine.brep.as_shape"
+
+[[moved]]
+name = "machinome.occt.engine.compound"
+to = "machinome.engine.brep.compound"
+
+[[moved]]
+name = "machinome.occt.engine.read_brep"
+to = "machinome.engine.brep.read_brep"
+
+[[moved]]
+name = "machinome.occt.engine.write_brep"
+to = "machinome.engine.brep.write_brep"
+
+[[moved]]
+name = "machinome.occt.engine.write_stl"
+to = "machinome.engine.brep.write_stl"
+
+[[moved]]
+name = "machinome.occt.engine.bounds"
+to = "machinome.engine.brep.bounds"
+
+[[moved]]
+name = "machinome.occt.engine.face_bounds"
+to = "machinome.engine.brep.face_bounds"
+
+[[moved]]
+name = "machinome.occt.engine.mutually_outside"
+to = "machinome.engine.brep.mutually_outside"
+
+[[moved]]
+name = "machinome.occt.engine.CONTRACT"
+to = "machinome.engine.brep.CONTRACT (now 2)"
+
+[[moved]]
+name = "machinome.manifold"
+to = "machinome.engine.mesh (the package is removed; the provider is one module of machinome.engine)"
+
+[[moved]]
+name = "machinome.manifold.engine"
+to = "machinome.engine.mesh"
+
+[[moved]]
+name = "machinome.manifold.engine.solid_from_mesh"
+to = "machinome.engine.mesh.solid_from_mesh"
+
+[[moved]]
+name = "machinome.manifold.engine.fault"
+to = "machinome.engine.mesh.fault"
+
+[[moved]]
+name = "machinome.manifold.engine.mesh_arrays"
+to = "machinome.engine.mesh.mesh_arrays"
+
+[[moved]]
+name = "machinome.manifold.engine.centred_box"
+to = "machinome.engine.mesh.centred_box"
+
+[[moved]]
+name = "machinome.manifold.engine.placed_solid"
+to = "machinome.engine.mesh.placed_solid"
+
+[[moved]]
+name = "machinome.manifold.engine.unite_solids"
+to = "machinome.engine.mesh.unite_solids"
+
+[[moved]]
+name = "machinome.manifold.engine.intersect_solids"
+to = "machinome.engine.mesh.intersect_solids"
+
+[[moved]]
+name = "machinome.manifold.engine.is_empty"
+to = "machinome.engine.mesh.is_empty"
+
+[[moved]]
+name = "machinome.manifold.engine.volume"
+to = "machinome.engine.mesh.volume"
+
+[[moved]]
+name = "machinome.manifold.engine.identity"
+to = "machinome.engine.mesh.identity"
+
+[[moved]]
+name = "machinome.manifold.engine.CONTRACT"
+to = "machinome.engine.mesh.CONTRACT"
+
+[[moved]]
+name = "machinome.exact_cache"
+to = "machinome.brep_cache"
+
+[[moved]]
+name = "machinome.exact_cache.cached_shape"
+to = "machinome.brep_cache.cached_shape"
+
+[[moved]]
+name = "machinome.exact_cache.cached_bounding_box"
+to = "machinome.brep_cache.cached_bounding_box"
+
+[[moved]]
+name = "machinome.exact_cache.cached_face_boxes"
+to = "machinome.brep_cache.cached_face_boxes"
+
+[[moved]]
+name = "machinome.exact_cache.cached_placement"
+to = "machinome.brep_cache.cached_placement"
+
+[[moved]]
+name = "machinome.exact_cache.shape_identity"
+to = "machinome.brep_cache.shape_identity"
+
+[[moved]]
+name = "machinome.exact_cache.shape_load_observation"
+to = "machinome.brep_cache.shape_load_observation"
+
+[[moved]]
+name = "machinome.exact_cache._reset_placement_cache"
+to = "machinome.brep_cache._reset_placement_cache"
+
+[[moved]]
+name = "machinome.exact_artifacts"
+to = "machinome.brep_artifacts"
+
+[[moved]]
+name = "machinome.exact_artifacts.write_brep"
+to = "machinome.brep_artifacts.write_brep"
+
+[[moved]]
+name = "machinome.exact_artifacts.write_stl"
+to = "machinome.brep_artifacts.write_stl"
+
+[[moved]]
+name = "machinome.exact_artifacts.deflections"
+to = "machinome.brep_artifacts.deflections"
+
+[[moved]]
+name = "machinome.exact_artifacts._atomic_export"
+to = "machinome.brep_artifacts._atomic_export"
+
+[[moved]]
+name = "machinome.node.exact_leaf"
+to = "machinome.node.brep_leaf"
+
+[[moved]]
+name = "machinome.node.exact_leaf.ExactLeafNode"
+to = "machinome.node.brep_leaf.BrepLeafNode"
+also = ["ExactLeafNode"]
+
+[[moved]]
+name = "machinome.node.base.AbstractBaseNode.exact"
+to = "machinome.node.base.AbstractBaseNode.brep (the declared capability; leaf contract 3)"
+
+[[moved]]
+name = "machinome.node.leaf.LeafNode.exact"
+to = "machinome.node.leaf.LeafNode.brep"
+
+[[moved]]
+name = "machinome.node.exact_leaf.ExactLeafNode.exact"
+to = "machinome.node.brep_leaf.BrepLeafNode.brep"
+
+[[moved]]
+name = "machinome.node.internal.InternalNode.exact"
+to = "machinome.node.internal.InternalNode.brep"
+
+[[moved]]
+name = "machinome.node.molejo.MolejoNode.exact"
+to = "machinome.node.molejo.MolejoNode.brep"
+
+[[moved]]
+name = "machinome.node.flexible.FlexibleNode._exact_solid"
+to = "machinome.node.flexible.FlexibleNode._brep_solid"
+
+[[moved]]
+name = "machinome.node.flexible.FlexibleNode._exact_state_identity"
+to = "machinome.node.flexible.FlexibleNode._brep_state_identity"
+
+[[moved]]
+name = "machinome.node.flexible.FlexibleNode._faceted_cache_snapshot"
+to = "machinome.node.flexible.FlexibleNode._mesh_cache_snapshot"
+
+[[moved]]
+name = "machinome.node.fusion.FusionNode._generate_faceted_stl"
+to = "machinome.node.fusion.FusionNode._generate_mesh_stl"
+
+[[moved]]
+name = "machinome.test.IntersectionStats.exact"
+to = "machinome.test.IntersectionStats.brep"
+
+[[moved]]
+name = "machinome.test._exact_engine"
+to = "machinome.test._brep_engine"
+
+[[moved]]
+name = "machinome.test._routes_exact"
+to = "machinome.test._routes_brep"
+
+[[moved]]
+name = "machinome.test._exact_verdict"
+to = "machinome.test._brep_verdict"
+
+[[moved]]
+name = "machinome.test._faceted_verdict"
+to = "machinome.test._mesh_verdict"
+
+[[moved]]
+name = "machinome.test._exact_identity"
+to = "machinome.test._brep_identity"
+
+[[moved]]
+name = "machinome.test._EXACT_NEEDED_BY"
+to = "machinome.test._BREP_NEEDED_BY"
+
+[[moved]]
+name = "machinome.test._EXACT_REASON"
+to = "machinome.test._BREP_REASON"
+
+[[moved]]
+name = "machinome.test._FACETED_NEEDED_BY"
+to = "machinome.test._MESH_NEEDED_BY"
+
+[[moved]]
+name = "machinome.test._FACETED_REASON"
+to = "machinome.test._MESH_REASON"
+
+[[moved]]
+name = "machinome.test.KERNELS"
+to = "machinome.test.ENGINES (the values 'brep', 'mesh')"
+
+[[moved]]
+name = "machinome.test.ComparisonPolicy.kernel"
+to = "machinome.test.ComparisonPolicy.engine (and resolve_comparison_policy's argument kernel= is engine=)"
+
+[[moved]]
+name = "machinome._verdict_store._EXACT"
+to = "machinome._verdict_store._BREP (the same bit, 2)"
+
+[[moved]]
+name = "machinome test --faceted"
+to = "machinome test --mesh"
+informational = true
+
+[[moved]]
+name = "machinome test --exact"
+to = "machinome test --brep"
+informational = true
+
+[[moved]]
+name = "SOLID_TEST_KERNEL"
+to = "SOLID_TEST_ENGINE (SOLID_TEST_KERNEL, when set, is refused naming it)"
+informational = true
+
+[[moved]]
+name = "SOLID_TEST_KERNEL=faceted"
+to = "SOLID_TEST_ENGINE=mesh"
+informational = true
+
+[[moved]]
+name = "SOLID_TEST_KERNEL=exact"
+to = "SOLID_TEST_ENGINE=brep"
+informational = true
+
+[[moved]]
+name = "machinome.test.KERNELS values exact, faceted"
+to = "machinome.test.ENGINES values 'brep', 'mesh' (ComparisonPolicy.engine and the verdict path words)"
+informational = true
+
+[[moved]]
+name = "machinome[occt]"
+to = "machinome[brep]"
+informational = true
+
+[[moved]]
+name = "machinome[manifold]"
+to = "machinome[mesh]"
+informational = true
+
+[[moved]]
+name = "recipe exact-fusion-occt-v1"
+to = "brep-fusion-v1 (recorded on no artifact of its own; an ingredient of an enclosing mesh fusion)"
+informational = true
+
+[[moved]]
+name = "recipe faceted-fusion-manifold-v1"
+to = "mesh-fusion-v1 (every mesh fusion STL rebuilds once, byte-identical)"
+informational = true

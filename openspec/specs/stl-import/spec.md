@@ -92,21 +92,21 @@ is not judged. Construction SHALL NOT read the mesh before this check.
 
 ### Requirement: Materialized artifact
 
-`StlNode.as_scad()` SHALL always materialize the node's own STL
-artifact from the source file when that artifact is not up to date —
+`StlNode.present()`, the leaf base's, SHALL always materialize the node's
+own STL artifact from the source file when that artifact is not up to date —
 selected body extracted, `adjust` applied, written in binary form, and
 mtime-stamped to the node's source mtime — and SHALL return the same
-SCAD import of that artifact whether or not it was rebuilt. There is no
+presentation, an import of that artifact, whether or not it was rebuilt. There is no
 import-in-place path: downstream consumers (fusion, piece identity,
 export, the viewer) SHALL see only the node's own artifact. Producing
 the artifact SHALL NOT require OpenSCAD or any external tool.
 
 #### Scenario: A current artifact is not rewritten
 
-- **WHEN** `as_scad()` runs on an `StlNode` whose artifact is up to
+- **WHEN** `present()` runs on an `StlNode` whose artifact is up to
   date
 - **THEN** the source STL is not re-read for materialization, no
-  artifact is written, and the returned SCAD output is unchanged
+  artifact is written, and the returned presentation is unchanged
 
 #### Scenario: The leaf builds without OpenSCAD
 
@@ -206,22 +206,24 @@ recenter constructor parameters — normalization is code, not knobs.
 - **THEN** the artifact geometry equals the selected source geometry
   unchanged
 
-### Requirement: Mesh-only faceted participation
+### Requirement: Mesh-only participation
 
-`StlNode` SHALL be a faceted adapter: `exact` is false, it exposes no
+`StlNode` SHALL be a mesh adapter: `brep` is false, it exposes no
 `shape()`, and it participates in a `FusionNode` through the mesh
-union path, making the enclosing fusion faceted. Mesh-only is settled
-doctrine for this adapter: the framework SHALL NOT offer an exact or
-faceted-B-rep STL import route, and this is a recorded non-goal rather
+union path, making the enclosing fusion a mesh fusion. Mesh-only is settled
+doctrine for this adapter: the framework SHALL NOT offer a B-rep or
+triangle-faced B-rep STL import route, and this is a recorded non-goal rather
 than an open question.
 
-#### Scenario: The adapter is not exact
+#### Scenario: The adapter does not declare `brep`
 
-- **WHEN** `exact` is read on an `StlNode` instance
+- **WHEN** `brep` is read on an `StlNode` instance
 - **THEN** it reports false, and reading `shape()` raises
 
 #### Scenario: A fusion over an imported STL takes the mesh path
 
-- **WHEN** a `FusionNode` combines an `StlNode` with an exact leaf
-- **THEN** the fusion reports not exact and its union is produced
-  through the mesh path, per the exact-fusion composition rule
+- **WHEN** a `FusionNode` combines an `StlNode` with a B-rep leaf
+- **THEN** the fusion's `brep` is false and its union is produced
+
+  through the mesh path, per the B-rep fusion composition rule
+

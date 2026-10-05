@@ -18,7 +18,8 @@ from unittest import TestCase
 
 import machinome.math as snmath
 from machinome.math import acos, asin, atan, atan2, cos, sin, sqrt, tan
-from machinome.node import AssemblyNode, Solid2Node
+from machinome.node.assembly import AssemblyNode
+from machinome.node.solid2 import Solid2Node
 from machinome.parameters import (Angle, Count, DimensionError, Flag, Length,
                                    Quantity, Ratio, Scalar)
 

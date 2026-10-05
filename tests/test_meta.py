@@ -776,7 +776,7 @@ class FailedOpenScadRenderMetaTest(TestCase):
     """A renderer error is a failed build and never a publication."""
 
     MODEL = (
-        'from machinome.node import OpenScadNode\n'
+        'from machinome.node.openscad import OpenScadNode\n'
         'class Part(OpenScadNode):\n'
         '    scad_source = "part.scad"\n'
     )
@@ -874,7 +874,7 @@ class FacetedKernelMetaTest(TestCase):
     """A faceted run decides on meshes, says so, and the exact run is
     byte-for-byte what it was."""
 
-    FACETED_LINE = 'Comparing on the faceted kernel'
+    FACETED_LINE = 'Comparing on the mesh engine'
 
     def faceted(self, fixture, *arguments, env=None):
         """A run at the defaults but for `arguments` and `env`.
@@ -893,24 +893,24 @@ class FacetedKernelMetaTest(TestCase):
                  **(env or {})}))
 
     def test_a_zero_clearance_fit_is_interference_on_meshes(self):
-        run = self.faceted('exact_tight_fit', '--faceted')
+        run = self.faceted('exact_tight_fit', '--mesh')
         self.assertEqual(run.results, {
             'test_zero_clearance_round_fit_has_no_solid_interference':
                 'failed',
         })
         self.assertIn('intersection volume', run.stdout)
         self.assertIn(self.FACETED_LINE, run.stdout)
-        self.assertIn('(faceted kernel, volume epsilon 0 mm³)', run.stdout)
+        self.assertIn('(mesh engine, volume epsilon 0 mm³)', run.stdout)
         self.assertNotEqual(run.returncode, 0)
 
     def test_an_epsilon_absorbs_the_tessellation_slivers(self):
-        run = self.faceted('exact_tight_fit', '--faceted',
+        run = self.faceted('exact_tight_fit', '--mesh',
                            '--volume-epsilon', '100')
         self.assertEqual(run.results, {
             'test_zero_clearance_round_fit_has_no_solid_interference':
                 'passed',
         })
-        self.assertIn('(faceted kernel, volume epsilon 100 mm³)', run.stdout)
+        self.assertIn('(mesh engine, volume epsilon 100 mm³)', run.stdout)
         self.assertEqual(run.returncode, 0)
 
     def test_the_exact_run_reads_as_it_always_did(self):
@@ -923,7 +923,7 @@ class FacetedKernelMetaTest(TestCase):
 
     def test_the_environment_selects_the_faceted_kernel(self):
         run = self.faceted('exact_clearance',
-                           env={'SOLID_TEST_KERNEL': 'faceted'})
+                           env={'SOLID_TEST_ENGINE': 'mesh'})
         self.assertEqual(run.results, {
             'test_cleared_round_fit_has_no_solid_interference': 'passed',
         })
@@ -931,8 +931,8 @@ class FacetedKernelMetaTest(TestCase):
         self.assertEqual(run.returncode, 0)
 
     def test_a_flag_overrides_the_environment(self):
-        run = self.faceted('exact_clearance', '--exact',
-                           env={'SOLID_TEST_KERNEL': 'faceted'})
+        run = self.faceted('exact_clearance', '--brep',
+                           env={'SOLID_TEST_ENGINE': 'mesh'})
         self.assertNotIn(self.FACETED_LINE, run.stdout)
         self.assertEqual(run.returncode, 0)
 
@@ -945,6 +945,6 @@ class FacetedKernelMetaTest(TestCase):
 
     def test_an_unknown_kernel_is_refused(self):
         proc = run_solid('test', 'tests/meta_project/exact_clearance.py',
-                         env={'SOLID_TEST_KERNEL': 'fast'})
+                         env={'SOLID_TEST_ENGINE': 'fast'})
         self.assertNotEqual(proc.returncode, 0)
-        self.assertIn('SOLID_TEST_KERNEL', proc.stderr)
+        self.assertIn('SOLID_TEST_ENGINE', proc.stderr)

@@ -6,7 +6,7 @@
 from machinome.math import floor
 from machinome.motion.joints import Bound
 from machinome.motion.ports import Time
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver
 from .running_project.parts import Arbor
 

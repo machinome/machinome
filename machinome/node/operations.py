@@ -4,26 +4,28 @@
 
 """
 The operations that can be applied to a solid are represented
-here as classes that are able to handle scad and mesh, other than
-serializing themselves for the web frontend. This way the same results
-can be obtained in browser and in tests.
+here as classes that are able to handle the presentation and mesh,
+other than serializing themselves for the web frontend. This way the same
+results can be obtained in browser and in tests.
 The operation is also able to revert itself.
+
+An operation presents itself in the core's presentation description
+(`machinome.node.presentation`), holding its own values; an installed node
+package writes that description in its own language where a path reads it.
 """
 
 import math
 import trimesh
-from machinome.scad_expression import GraphValue, scalar, restore_scalar
-from solid2 import (
-    rotate as scad_rotate,
-    translate as scad_translate,
-)
+from machinome.expression_graph import GraphValue, scalar, restore_scalar
+from machinome.node.presentation import Rotate, Translate, described
 
 
 def _as_number(node, value):
-    """Converts value to a plain number. When a node is available its
-    as_number is used, so solid2 animated expressions can be resolved;
-    otherwise falls back to a plain float() conversion (used when an
-    operation was rebuilt through unserialize(), which has no node)."""
+    """Converts value to a plain number. A symbolic value of the framework
+    evaluates itself; otherwise, when a node is available its as_number
+    is used, so SolidPython's own animated expressions can be resolved,
+    and without one falls back to a plain float() conversion (used when
+    an operation was rebuilt through unserialize(), which has no node)."""
     if node is None or isinstance(value, GraphValue):
         return float(value)
     return node.as_number(value)
@@ -50,15 +52,16 @@ class Rotation:
         """Return an operation that reverses the rotation"""
         return Rotation(-self.angle, self.axis, self.node)
 
-    def scad(self, scad_object):
-        """Returns a scad object with a rotation applied"""
-        return scad_rotate(self.angle, self.axis)(scad_object)
+    def presented(self, child):
+        """The presentation description of `child` rotated, holding this
+        operation's own angle and axis"""
+        return Rotate(self.angle, self.axis, described(child))
 
     def matrix(self):
         """The 4x4 world rotation matrix for this operation (skill-repo
         docs/performance-improvement.md fix 1), resolved through the
         node's as_number() AT ACCESS TIME -- never cached, since angle
-        can be a solid2 animated expression that changes with the
+        can be a symbolic animated expression that changes with the
         keyframe. Used by AbstractBaseNode.mesh to compose a whole
         operation chain into a single world matrix instead of applying
         each operation as a separate mesh pass."""
@@ -100,9 +103,10 @@ class Translation:
             self.node,
         )
 
-    def scad(self, scad_object):
-        """Returns a scad object with a translation applied"""
-        return scad_translate(self.translation)(scad_object)
+    def presented(self, child):
+        """The presentation description of `child` translated, holding
+        this operation's own vector"""
+        return Translate(self.translation, described(child))
 
     def matrix(self):
         """The 4x4 world translation matrix for this operation

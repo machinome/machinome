@@ -173,8 +173,8 @@ def _digest_bytes(data):
     """Patchable counter seam for full artifact hashing.
 
     The digest is of the artifact's canonical content, not of its raw
-    bytes: OpenSCAD 2021.01 writes one triangle set in a run-dependent
-    facet order, so raw bytes split one printed piece in two.
+    bytes: a mesh writer may write one triangle set in a run-dependent
+    facet order, so raw bytes would split one printed piece in two.
     """
     return hashlib.sha256(_canonical_content(data)).hexdigest()
 
@@ -245,9 +245,7 @@ def _publish_fact_record(path, observation, facts):
 def _project_relative_source(node):
     from machinome.core.loader import project_root, ProjectManifestError
 
-    src = getattr(node, 'src', None)
-    if src is None:
-        return getattr(node, 'stl_file', repr(node))
+    src = node.src
     try:
         root = project_root(src)
         return os.path.relpath(src, root)

@@ -5,7 +5,7 @@
 """`machinome import-step`: scaffold declarative source from a STEP document.
 
 One-shot, project-owned, never a node: this module reads a document's
-assembly structure through `machinome.node.adapters.step.StepAssembly`
+assembly structure through the `step` node type's `StepAssembly`
 and writes `parts.py` (one `StepNode` subclass per part) and
 `assembly.py` (one `AssemblyNode` subclass per assembly product, placed
 at rest), in the declarative class-body idiom of `docs/declaring.rst`.
@@ -13,10 +13,14 @@ Neither generated file is ever overwritten, and nothing here loads a
 node or touches `pyproject.toml` -- the manifest lines are printed for
 the pilot to add (design D6, D9, D10 of step-assembly-import).
 
-The exact-geometry kernel is imported lazily, inside `handle()`, so
-`machinome -h` costs nothing here and a broken or absent installation is a
-checked failure naming the remedy, not a traceback (design D6's risk
-note, CLI spec "the kernel is missing").
+The STEP reader is imported lazily, inside `handle()`, so `machinome -h`
+costs nothing here. Its absence is not this module's to report: the reader
+is the `step` node type's module, which the `step` extra installs, and the CLI's
+command table names it as the module this command needs, so where its
+kernel is absent the CLI answers `import-step` with the extra to install
+before this command parses or runs (OpenSpec change `lean-install`, CLI
+spec "the kernel is missing"). A reader whose kernel is present and broken
+reports its own import error.
 """
 
 import os
@@ -116,6 +120,14 @@ def _is_identity_translation(translation):
 # parts.py
 
 
+def _import_line(cls):
+    """The line generated source imports `cls` with, composed from the
+    module and the name the class reports: the module that defines it,
+    never the node package's root, which exports nothing (OpenSpec change
+    `root-cleanup`), and spelled by no node type's module here."""
+    return f'from {cls.__module__} import {cls.__name__}'
+
+
 def _part_class_source(class_name, step_source, part_name, part_index):
     # `part_index` is emitted only when the product's name is shared
     # (design D3): the empty line here reproduces the original single
@@ -140,6 +152,9 @@ def generate_parts(assembly, step_file, into_dir):
     dropped or overwritten by another product of the same name (design
     D3) -- keyed on `product.identity`, not on `product.name`, because
     two distinct products can carry one name."""
+    from machinome.node import supported
+    StepNode = supported.load('step').StepNode
+
     step_relative = os.path.relpath(os.path.realpath(step_file),
                                     os.path.realpath(into_dir))
 
@@ -168,7 +183,7 @@ def generate_parts(assembly, step_file, into_dir):
         f"Generated once; edit freely -- running the command again\n"
         f"refuses to overwrite this file (see docs/cli.rst).\n"
         f'"""\n\n'
-        f"from machinome.node import StepNode\n\n\n")
+        f"{_import_line(StepNode)}\n\n\n")
     source = header + '\n\n'.join(bodies) + ('\n' if bodies else '')
     return source, class_names
 
@@ -181,8 +196,8 @@ def _ordered_assembly_identities(assembly):
     """Every class `assembly.py` must declare, children before parents
     (design D6's generator note: a class body may only reference a
     name Python has already defined) -- `None`, standing for the
-    document's own root, is always last, whether OCCT calls the root
-    product a `part` or an assembly: the generated model always has
+    document's own root, is always last, whether the STEP reader calls
+    the root product a `part` or an assembly: the generated model always has
     one outermost class.
 
     Walked by PRODUCT IDENTITY, not by name (design D3): two distinct
@@ -319,6 +334,8 @@ def generate_assembly(assembly, model_name, step_file, class_names):
     named from `model_name` (spec "Generated assembly source"). The
     machine is placed at rest: no driver, no `simulate()` (design
     Non-Goals)."""
+    from machinome.node.assembly import AssemblyNode
+
     step_basename = os.path.basename(step_file)
     products_by_identity = {product.identity: product
                             for product in assembly.products}
@@ -358,18 +375,11 @@ def generate_assembly(assembly, model_name, step_file, class_names):
         f"the machine at rest: no driver, no simulate() -- add motion\n"
         f"once the layout looks right.\n"
         f'"""\n\n'
-        f"from machinome.node import AssemblyNode\n\n"
+        f"{_import_line(AssemblyNode)}\n\n"
         + (f"from .parts import {part_imports}\n\n\n" if part_imports
            else "\n\n"))
     source = header + '\n\n'.join(bodies)
     return source, root_class_name
-
-
-def _load_step_assembly():
-    """The one seam a test patches to simulate a missing exact-geometry
-    kernel (CLI spec "the kernel is missing"; task 6.5)."""
-    from machinome.node.adapters.step import StepAssembly
-    return StepAssembly
 
 
 def _default_model_name(assembly, file_path):
@@ -430,15 +440,8 @@ class ImportStep:
                  "the document's root product, or the file's stem)")
 
     def handle(self, args):
-        try:
-            StepAssembly = _load_step_assembly()
-        except ImportError as error:
-            sys.stderr.write(
-                'Error: import-step needs the exact-geometry kernel '
-                '(cadquery, the OCP binding) to read a STEP document; '
-                f"install it with 'pip install cadquery'. ({error})\n")
-            sys.exit(1)
-            return
+        from machinome.node import supported
+        StepAssembly = supported.load('step').StepAssembly
 
         try:
             assembly = StepAssembly(args.file)
