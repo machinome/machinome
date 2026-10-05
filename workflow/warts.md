@@ -1970,3 +1970,144 @@ one child translated in `render()`.
   (`tests/mate_project/arm.py`) reads structure-only in both orders
   although mates bind ports at rest. The Curta consumer uses public members
   only and changed no simulation source.
+
+## Voron-2 — native contact measurements and snapshot arguments (5 October 2026)
+
+**Status: recorded; triage open, printer goal paused by the pilot during the
+release.** Originating project: `projects/3D-Printers/Voron-2`, integration
+`c08fa72`, evidence checkpoint `1fc9e9f`. These measurements used framework
+`8d811411b13174e9f78eb636fcecc4943a740f5b` through an explicit `PYTHONPATH`,
+CadQuery 2.7.0, molejo 0.2.1, SciPy 1.18.1 and Shapely 2.1.2 on Linux.
+Installed 0.7.0 metadata did not identify that checkout. These original
+measurements precede the release; the scoped main-branch recheck is below.
+Recording them proposes no API,
+source repair, collision epsilon or change to a release.
+
+### Six screw/T-nut commons are false-empty; independent sections do not settle the volume
+
+- **Symptom.** The printer cannot complete its native contact inventory for
+  source pairs `(1290,1425)`, `(1305,1431)`, `(1306,1434)`, `(1319,918)`,
+  `(1421,1083)` and `(1422,1084)`. Raw OCCT commons report valid empty
+  shapes, but independently checked positive balls lie inside both originals.
+  The framework correctly refuses clearance with `BrepCommonInconsistency`.
+- **Evidence.** The project's `docs/evidence/thread-seat-actual-contacts.json`
+  retains twelve ordered refusals and R0.01 mm balls independently cut and
+  intersected against each actual operand. Those balls prove positive
+  subvolume, not the complete overlap. For 1290/1425, axial section estimates
+  are near 20.41077 mm3 while the transverse estimate is
+  20.415075336799003 mm3; refinement has not established agreement or a
+  rigorous error bound. See `thread-seat-section-diagnostics.json` and the
+  retained area-accuracy/population records in the same evidence directory.
+- **Smaller boundary reproduction.** Original nut 1290, section normal to Z
+  at -43.06996213697989 mm: a section reported valid has curve endpoints up
+  to 0.0013420880185748274 mm from their nearest topological vertices. Fine
+  independent polygon sampling at 1e-6 mm rejects a self-intersection; an
+  X section also fails. Direct trim endpoints and arclength endpoints agree
+  exactly in this reproduction. Coarse sampling hiding the crossing is not
+  an accepted answer. The project retains
+  `simulation/tools/section_boundary_probe.py`, `polygon_section_probe.py`
+  and `docs/evidence/resumed-integrated-validation.json`.
+- **Ownership and workaround.** ADR-142's refusal is working as specified;
+  no Machinome conformance defect is established. Sections use CadQuery/OCCT
+  directly. Source validity alone does not certify a usable section or
+  successful Boolean, and the evidence does not establish source corruption.
+  There is no accepted workaround: bespoke witnesses/section diagnostics
+  retain the contradiction rather than convert a false zero to clearance.
+  Full native scan command: `machinome test --brep
+  simulation/nominal_integrity.py:NominalIntegrity`, from the project with
+  the recorded framework checkout on `PYTHONPATH`. It was deliberately
+  stopped at the pilot's pause with twelve ordered failures still present.
+- **Triage.** CAD-dependency investigation needed; complete overlap volumes
+  remain unmeasured. No framework fix or replacement measurement is ratified.
+
+### Copying before local relief defeats the material-containment proof for source 580
+
+- **Symptom.** The strict subtractive-relief check for source 580 reports
+  almost the whole fitted body as outside its original. This assertion calls
+  a B-rep helper even when the enclosing fixture is invoked with `--mesh`;
+  it is not evidence of a tessellation discrepancy.
+- **Evidence.** `simulation/fits.py` uses `shape.copy().cut(cutter)`;
+  `simulation/test_fits.py` requires `construction.cut(placed).Volume() ==
+  0.0`. The retained `resume-components-mesh-022.log` reports
+  93.68519567017215 mm3. A framework-free CadQuery reproduction on the
+  unchanged extracted solids distinguishes topology copies:
+
+  ```python
+  import cadquery as cq
+
+  source = cq.importers.importStep("simulation/.cache/part-0580.step").val()
+  rail = cq.importers.importStep("simulation/.cache/part-1368.step").val()
+  face = cq.Workplane("XY", obj=rail).section(0).faces().vals()[0]
+  wire = face.outerWire().offset2D(.001)[0]
+  tool = cq.Solid.extrudeLinear(wire, [], (0, 0, 600))
+  tool = tool.translate((0, 0, -300))
+  tool = tool.translate((6.963318810448982e-11, -.001, 0))
+  for copied in (False, True):
+      original = source.copy()
+      operand = original.copy() if copied else original
+      construction = operand.cut(tool.copy())
+      outside = construction.cut(original)
+      print(copied, construction.Volume(), outside.Volume(), outside.isValid())
+  ```
+
+  Both construction bodies are valid with volume 93.68519566365575 mm3.
+  Without the extra copy, outside volume is 0 and valid; with it, outside
+  volume is 93.68519567017212 mm3 and **invalid**. That invalid result is not
+  proof that the relief added material. Direct topology passing does not
+  independently certify the copied production artifact.
+- **Workaround that failed.** The project test's comment says to keep shared
+  topology for containment because reimported coincident faces can produce
+  a catastrophically wrong whole-body difference. The actual construction
+  copies before cutting, so that rationale no longer proves its artifact.
+  The strict gate remains red; the construction was not changed to force it
+  green.
+- **Triage.** CAD-dependency investigation; no framework intersection policy
+  participates in the minimal reproduction. The responsible copying,
+  tolerance/topology, cleanup or source characteristic remains unresolved.
+
+### A negative-leading camera vector is rejected at the viewer subprocess boundary
+
+- **Symptom/evidence.** `machinome snapshot --renderer web --autocenter
+  --viewall --imgsize 1400x1100 --camera 0,0,0,65,0,35,1400` fails with
+  `argument --up: expected one argument`. The tested framework's
+  `viewers/browser.py` emits `--up` and its comma tuple as separate tokens.
+  This camera produces `(-0.242403876506104, 0.34618861305875415,
+  0.9063077870366499)`; the negative-leading tuple is rejected by the viewer
+  argument parser. The same construction is used for `--view`.
+- **Workaround and limits.** Omitting the requested camera passes parsing,
+  but that separate capture then reports `Failed to fetch`; it is not a
+  successful replacement snapshot. OpenSCAD rendered the requested views.
+  Commands, errors and inspected images are recorded in the project's
+  `docs/evidence/resumed-snapshots.json`.
+- **Triage.** Framework subprocess argument construction, not a new camera
+  API. No fix implemented. The separate static-export browser stall belongs
+  in the viewer's `workflow/warts.md`.
+
+The same project also reproduced existing **item 14**, the bare OpenSCAD
+`--preview` consuming the following filename. No duplicate wart is opened:
+Voron's argument trace and successful captures without the optional flag
+are additional evidence for that existing finding.
+
+The project's original `CAD/Voron_2.4r2_Assembly_STEP.zip` remains unchanged,
+SHA256 `36c6c58e096aa89aa05a0ef22f3b49cbceedc950424332772461ab0c779cc1c6`.
+All project evidence paths above are relative to that independent repository;
+the framework owns these findings, not the project's geometry or tests.
+
+### Main-branch recheck, 5 October 2026
+
+At the pilot's direction, scoped checks used framework main `d22d0a1`,
+viewer main `ccc05a6` and project `df9ad29`, with no campaign `PYTHONPATH`
+override. Both source packages report 0.8.0; installed metadata still says
+0.7.0. Source 580 remains 1/2: the strict outside-volume assertion reports
+`93.68519567017215 != 0.0` mm3. All twelve ordered thread-seat measurements
+still raise `BrepCommonInconsistency`; all six independent positive witnesses
+pass. The 3/3 diagnostic fixture result does not establish complete overlap
+volumes. Root travel/connectivity tests pass 10/10, not the full inventory.
+
+The project retains commands, terminal statuses, hashes and full witness
+records in `docs/evidence/resumed-main-validation.json`. All 84 frozen
+production hashes and the upstream archive hash match. The multi-hour final
+gates and snapshot-argument reproductions were not rerun. No geometry,
+collision tolerance, framework implementation or triage decision changed.
+The pilot explicitly authorized rebasing and locally merging these wart
+records into main without pushing; this is evidence filing, not a fix.
