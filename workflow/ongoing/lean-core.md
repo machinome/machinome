@@ -1627,3 +1627,14 @@ The line was merged into framework `main` as **3435b35** on 5 October 2026,
 a merge rather than a fast-forward, because `main` had taken three
 workflow-only commits since the fork (86a654e, d1efb70, 9fb85e2). The
 release state of Machinome 0.8.0 is the OpenSpec change `release-0-8-0`.
+
+**5 October 2026, the grant.** The core's licence did change, by a commit
+injected right after v0.7.1 (`bf24687`): machinome is GPL-2.0-or-later OR
+CERN-OHL-S-2.0+ at the recipient's choice, and every commit of this campaign
+was rewritten to carry the same instruments
+(`workflow/archive/relicense-2026-10-05/`). The premise above that
+Apache-2.0 must stay out from under the core, and the dependency table's
+"Apache-2.0" column as a constraint, are history: the Apache-2.0
+dependencies combine with the framework under GPLv3, which "or later" gives
+every recipient, and are Available Components under CERN-OHL-S. The split's
+architecture stands on its own reasons.

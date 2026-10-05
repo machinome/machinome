@@ -1,0 +1,33 @@
+ok    licence commit f5556a61c2a583da04c648bb46d8b6c596bbf3eb
+ok    licence commit's parent is bf24687
+ok    75 commits after the licence commit
+ok    8 merges
+ok    dume-native-freecad is one commit beyond main
+ok    native-freecad-assembly is one commit beyond main
+ok    record-voron-warts is one commit beyond main
+ok    main: authors, dates, messages identical
+ok    dume-native-freecad: authors, dates, messages identical
+ok    native-freecad-assembly: authors, dates, messages identical
+ok    record-voron-warts: authors, dates, messages identical
+ok    main: graph identical
+ok    every rewritten commit carries the instruments and no old header
+--- files that differ between old main and new main, by directory:
+      1 AI-USE.md
+      1 CREDITS.md
+      1 LICENSE
+      2 LICENSES/
+      1 MANIFEST.in
+      1 NOTICE
+      1 docs/
+    103 machinome/
+     33 openspec/
+      1 pyproject.toml
+    532 tests/
+      7 tools/
+      1 workflow/
+ok    old main -> new main: only instruments and headers differ
+ok    README.rst untouched at the tip
+ok    HISTORY.rst untouched at the tip
+ok    docs/architecture.md untouched at the tip
+ok    main is a fast-forward of bf24687
+tip: e87cf52e8fff6f18b7c5a4437bbbc25a3df86400   licence commit: f5556a61c2a583da04c648bb46d8b6c596bbf3eb

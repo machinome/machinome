@@ -63,7 +63,11 @@ sections of `HISTORY.rst` were not touched.
 
 ## (b) The pilot's steps
 
-1. The licence commit, injected into the history (see (a)).
+1. The licence commit, injected into the history (see (a)). **Done,
+   5 October 2026**: `f5556a6` sits right after v0.7.1 (`bf24687`) and
+   every later commit was rewritten to carry the same instruments, so
+   the counts in (a) are moot; `main` moved from `dc8067c` to `e87cf52`
+   (`workflow/archive/relicense-2026-10-05/`). Not pushed.
 2. The `v0.8.0` tag, at the commit that carries both the release state and
    the licence instruments.
 3. The push of `main` and the tag.

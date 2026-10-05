@@ -1,0 +1,19 @@
+licence: Machinome is GPL-2.0-or-later or CERN-OHL-S-2.0+ at the recipient's choice
+
+Machinome is relicensed from Apache-2.0 to the GNU General Public License
+version 2 or any later version, or the CERN Open Hardware Licence Version 2
+- Strongly Reciprocal version 2.0 or any later version, at the recipient's
+choice, with the consent of all contributors. Every release up to 0.7.1
+stays Apache-2.0. The dual offer lets a design under CERN-OHL-S use the
+framework under its own licence; contributions are accepted under both.
+
+Decided by the pilot on 4 October 2026 and recorded in the workspace's
+workflow/ongoing/machinome-license.md. The instruments: LICENSE restated
+with the two full texts under LICENSES/, NOTICE removed, the pyproject
+licence expression and licence files with the setuptools floor raised to
+77, every SPDX header, CREDITS, AI-USE, the framework-identity spec, the
+README and manual sentences that named the grant, and an Unreleased entry
+in HISTORY. This commit sits right after v0.7.1 (bf24687); every later
+commit was rewritten to carry the same instruments.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>

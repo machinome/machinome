@@ -1,0 +1,80 @@
+# old commit -> new commit, machinome relicensing of 5 October 2026
+# the rewritten history is bf24687 -> f5556a61c2a583da04c648bb46d8b6c596bbf3eb (licence commit) -> the 75 commits below (topological order, newest first)
+dc8067cb31e9a50b3e6950777a9f30d390fb0c67 e87cf52e8fff6f18b7c5a4437bbbc25a3df86400  release handoff: the viewer releases as 0.8.0 beside the framework
+ee26e81793121ea8d69a8e993f16f25c0cdbce2b bd976691602f80ecc812df93c5adb3803a86fa17  Implement release-0-8-0: Machinome 0.8.0, the lean core released
+3b2b6b24a9a0fdd966cd2ad64a51c2a64614005c 3c04623d6b793617caaa023f0974ee8ae699ee48  Propose release-0-8-0: Machinome 0.8.0 records the lean core as released
+3435b3537f0692c77f9d2b7fff5d7b11c1b6d00b 2ac9dc93088937c25772ecc02e88ac196cf7ec30  Merge branch 'v0.8-split' into main: lean-core layer 1, the root is clean
+8d811411b13174e9f78eb636fcecc4943a740f5b db063bc2f1f73dc3c1df4c6936bf90a28cd408e5  lean-core plan: layer 1 complete, the root is clean; handoff for the 0.8 release
+d025677e1c93a8fbeae7825cc80fc5aca0a95082 24a835542db24113afacb05e7eb9e8da747c58e1  Merge branch 'v0.8-split-root-cleanup' into v0.8-split
+756b611093fc4723a97a81c62c0099b084e6b192 9ebef77d6bc1dd46238d598f8ebb9caaf9cdee9d  root-cleanup: the node root exports nothing (ADR-181)
+deb52446cf1b37989ab7526df478512fa02b6ad1 04d35825412a72d1b57f6e4d771736ac1082ba0c  root-cleanup: plan the node root that exports nothing (decided 5 October 2026)
+c5036cdc6b9ec9924de062e71a874e692d899734 891fe0db3c64cba75356f7c1338808ccf485c218  lean-core plan: the rewrite pass over the projects is done; every project loads
+815ceb9d0725caae9a7a3fb6d7e125a28bcb1045 64cfa06d2fd79c5725579c26d85977441366d6b7  Merge branch 'v0.8-split-brep-mesh' into v0.8-split
+50b37bc9c9291e5789c233ff4e10da4b11aa46c6 b17d680a3dba446020df19c839e18b397341c86d  brep-mesh: name the engines brep and mesh (ADR-180)
+dfc968114a300c47161a56b73aae7003b402e180 e1409fcecf524aeb8dc231d886ef7f7427bb37a2  brep-mesh: plan the engines' rename to brep and mesh (ratified 4 October 2026)
+ffa36d4b663f11670c1e3b6fc3484b00e8fc1c4d 4e6159f4dbb2d897837089211661cb2829970230  lean-core plan: root-cleanup decided; the viewer deferred past 0.8
+faf1c806e82316210307e062d5258c2d651a40ea 016a61d98e4c9d23863ea1dbf72e6c2cdc79ea10  lean-core plan: openscad-out integrated; next brep-mesh
+04809f7189b2fd010995ac9dc01f4c6220ddcfc5 04bde4374b3b347fb3d6a3f4b93750e3c179c0d0  Merge branch 'v0.8-split-openscad-out' into v0.8-split
+f51b4de6c72afd7384efbfa48d65f26ec2abffa0 79cf70db5e018dd5740002243355db3f791ab416  openscad-out: the OpenSCAD family is a node package, and the core names no technology
+f76aa20adba40d2788f3ed40fc8c306488ca3efa 6b9800be33813981c464adb82e17a0595a629f48  openscad-out: plan the OpenSCAD removal cycle (ratified 4 October 2026)
+5d7bf0ec8d8ef1f12e5a8020bad870104140d285 355a9b8d9a9eedf028dd79261845afcd0de5f159  lean-core plan: viewer-seam is the phase's last cycle
+a16d45ad9561056cd8225979240e6947769a4238 3736f4278495891324982f8afa56db6fa7eacac0  lean-core plan: the phase that makes the architecture ready for the split
+57928eb3fea94547b223a59eec1d1723a38dd9c8 3a92ebde6304abb74fb05f62c42edcc41455887b  lean-core plan: brep and mesh locked; the OpenSCAD removal is one gated cycle
+697f8155a5c8cdaec8a194efc52796f5db472c11 2bf3930a88ab591bb9dede78a2770027b9739ead  lean-core plan: no SCAD in the core; engines named as engines
+1734ac576f2a4788929aaef13af5890beadb62ba 6b8916184d18e6a2c25209b57d7606dd7787e2ba  lean-core plan: every node type is a package; openscad is not an engine
+5a48b356349dae3b72fffa0eeefbff6d7ab7e6ca 9d54d58964af52ba0e845446a9478d642ec0ca58  lean-core plan: state of the campaign at the end of cycle 7
+d4eb5c092f4a3a5551cb2bc45741dfea71764f31 7e11176e7e409d5f2769b2f887bf42381bd6865d  Merge branch 'v0.8-split-mesh-engine' into v0.8-split
+5b47f70b7360403cfac7c449efa5e73db67a5a79 df123e2c91bfe6dbbc9a91d9e27375f914c3ff0f  mesh-engine: manifold3d behind the mesh seam, installed by its extra
+872d8a3494c245c3a876a2959522d08061193175 7d1e338b485a9d6ac156bbf4e59aea3d21be2fcb  openspec(mesh-engine): propose the mesh engine as a provider behind the seam
+a66aee526f51c18cd175662bfdf32af94858769e 04154630633c590b4d752a88d211597e1349268f  warts: findings from the adversarial review of production-layer
+69c70191bc1f0a94240b7730205f4fe896156adb 222b90042e66192edeafc63d70dbf9c11640a8fc  Merge branch 'v0.8-production' into v0.8-split
+ea2d6fab434f85bb124397e36ef6e04e51a491a8 9a9f1391b844a906e18c0c7886dce36c43f07121  Implement independent nested production assets
+41d24cef37817f2a8c0c79ea9014eb93b77a0261 1addf9a19daa48acfd7467ad5b7b231855abaab3  openspec(production-layer): plan independent nested production assets
+063fb5603b3ba9abb887577e246adf7c538e587a 363a452648efa64fd745b2e640a89e8e234b00a8  lean-core plan: the grant stays Apache-2.0; the split is architecture, not licensing
+dc7fd08a0f00c6b999194c56a4651f2f4e85b16e 8b40b396d7736f89214541f681f533e539a19bb7  lean-core plan: state of the campaign at the end of cycle 6
+4c80ea01a439cc52daf39b7b5747ab7431918116 52b7a60e397e9e1985724d76ff97d3c234679924  lean-core plan: the campaign line is v0.8-split
+cca76c5332111d6460c8372ce8c26f5cf557c458 35487b13365a10b58aeeb787bfa3ee9b99f8e130  lean-core plan: the licence policy is reopened by the pilot
+e570068287c56e84f6ccb4ed73f0bae7bed5a07c 948224ed4fe18c73c09214cda401b1a9f000decf  scad-presentation: archive the change, sync the specs
+bcdfc79de6709ae6cf77c01374676399db2b3fdb 6dfe4138ee16b2f142720d70eae05aa2edb85225  scad-presentation: record the full suite's run of record
+63c887ed69ebccd2d5a78af4dc75ebeee1acdab1 6e5f19f4c0562bafba076408248c85c962ff2d45  scad-presentation: re-record the leaf-contract golden
+eebedf2503f474d3c71434411327f26d86e6119b a262442b11ea1dd51848ff47746be2e37d1264a6  scad-presentation: the core describes its SCAD presentation, the engine writes it
+9a894d459c83a5ff9bad5285821d785643e1b4df f6b61efebc392a4da2c2216ca59d867636c5d338  openspec(scad-presentation): propose SCAD presentation behind the seam
+a4a1f8467f703a84240b884e5f3908d8d5bfd07a cfa762dd05c838b69740e419d94601ac2ded6308  expression-type: the core's symbolic value is its own type
+2c9d65f8f56c92ebfa1b4c20ba2780317cee1dd2 1efccb42853213c721b6ad37b4054e14edf9806f  openspec(expression-type): propose the core's own expression type
+edff84edde68793fe163402781c62138fcea55e3 5368b5cd6e28e0c758a249c6f05e7df06149e326  lean-install: the CAD kernels are extras, each leaf at machinome.node.<x>
+cf45474e22c7a9f7fdd5bcf83a51965d5bc0e8e2 65ce100bd57580c0a7f2c4c1a1007f4f14acf021  openspec(lean-install): propose the lean install
+51fcd1f0f977a2a16a28b43aee2a34fdf28e8fb6 759ce2a869256cc94d04e6d0a50608dfdd775f89  workflow: lock the production layer design
+433b7b9b2fd3fc7be77d5462bebe3041a12a1443 5bd40412dfaedbdb942f45a736c1b134cfdbeb07  workflow(lean-core): layers; the split deferred behind the whole architecture
+0675617b686fd14db6b48dfb1fee19c270c66980 a35f3d9470beb439caf1b0dd34128e48b5560e01  backend-switch: recognise no node type by its class name
+677f9c76e5ef974be30e1b687e13f99ddd966b3b 7693125f284fffbc8baca3b8e95ee70d6ac24979  openspec(backend-switch): propose removing the class-name switch
+e98b74a4f41ffdc97ee6ade9e67eb3b357b48179 335284682df6c7c419368f432c1d1f22328d86a9  workflow(lean-core): the orchestrator runs the validators; splitflap for the switch
+b8aac4d13fb7bf6c02124d204af4345c99abc965 c313a67385e1a7a5206fdabba31c2e6b38b4c7a9  leaf-contract: declare the leaf bases as the extension contract
+159cf78d9b7dc536c030c10cb96dad2272429766 a0de3ad417dddfbe2fc02dac5de9d03757631732  openspec(leaf-contract): propose the declared leaf contract
+5c163ea60c5102027a96c23970249faf0ee429ca f5a7aa9991b536b041f65e9cbed224d14ee2b2e9  workflow(lean-core): validation per cycle; two findings; ADR-069 amended
+22d09048927fc402b37b5b0bfa7e9fa9104a053b 3900122ceb7f5a1faf478f9ac53fd2b6cc4c6d34  exact-engine: the exact engine seam and the OCCT engine
+8c146a7165b529c8b4be6cb82de6d963865e1c22 ca48dc91f3fb0c2eb2d3596d8ae18c72f6a0e5a0  openspec(exact-engine): propose the exact engine seam and the OCCT engine
+9fb85e2e229ce6133786e2e1ac2226a4be4af444 ec37fd014d95fe2d33d43a611aabf16a54647a6a  workflow: game assets, the direction with the Thor spike inside it
+d1efb70b7f96350d02bf37f5d93746976978e6f7 82aef9ddd12f3baa734fffa190ae316d5dbeda51  workflow: spike, Thor as a rigged GLB game asset with no runtime
+86a654e1c148d1d2bb1b7dd3abe16483dfe7b05a 743f8ab8cafefd4718dbcc70804c46313defb7fa  workflow: warts keeps open findings only
+feb23f265a006c0d794ab4d65a64eb3650baf235 6d86b220c9d71731b70efc45ec7d6eb7f864cde1  workflow(lean-core): machinome-occt is LGPL-2.1, matching OCCT
+0afccd047e7e6df6953bdecda0dad6972741a606 f0c895b03b9eb5ad7cf513be3afa56e5f614146a  workflow: the lean-core campaign plan
+3e071c2f4643cb23475276dae7ac9f211105489d 15ccb457fc616aece98cb35305cbe77022b21077  warts: a machine's identity depends on the import module
+096217f1219662bb6b981d1395521a820d7086a5 b4b130d1e31538fa1f4bae6e5b194d2c517a1891  workflow: archive the curta-film-findings bench, complete
+974e1894f35b4e8c9a2f96e48cb3b53689d3eba3 3e3f70e2fdd3304743f03f3ef88e50d0322f787b  workflow(curta-findings): export-records-its-revision merged; finding 3 triaged, three findings filed
+b55e34e01c20153d597b343d34117c91aa0919e9 e3b0409977aef01548d7382d904b95759e97501c  Merge branch 'export-records-its-revision' into curta-findings
+5e1ac798e67c33606b413de88ea4acfd595b61e4 4311f625c392c2341859cdd06d24b167965de5e9  export-records-its-revision: the export manifest records the source revision it was made from (ADR-158)
+02ebc265040b3eb22854d0b2f52960a3a19309bc 06704aa5a15e0d15b9feea2660babf65e9bf7aaf  openspec(export-records-its-revision): propose recording the source revision in the export manifest
+bc438a9387b5f1d8ce897d48729257bc1abf8dda d7dc6591ae799d26ba83c645520bc58415c8d0a3  workflow(curta-findings): sim-identity merged; finding 2 triaged, four findings filed
+3685a12174bc1d91323784b8f423a9c62ac3a91f 3b5a76157d31ac156af3a57259cb44e05ce04e9a  Merge branch 'sim-identity' into curta-findings
+c77cf30403d3595d763c01f691780cc1d2339293 219b88b9be52105496a5fea7cb8d041618face40  sim-identity: a clocked Sim publishes its machine's identity
+664a40650d1c5b024fbeaeb2699794aaf2f6ea90 a81ebc64225adb13f43206d51b55956cfcf5566e  openspec(sim-identity): propose a public Sim.identity for a clocked machine
+744e17d284848435252f82329ba2c9e56c64c139 ae51438348716dbd28c15c8679ef267d22d32611  workflow(curta-findings): sim-through-a-symlink merged; finding 1 triaged
+6d49854cb4603bb6eb730f2569618a803e158673 df0d00ff1f3a86fae7955b80806c2bab091bb1b0  sim-through-a-symlink: a node's source is a resolved path, so a project reached through a symlink builds in its own build root
+707a8c857fcbf5f301c41d9f4abae02cf51f9380 f3b3a39543ef49e4534115709882fd1ef7b99936  openspec(sim-through-a-symlink): propose resolving a node's source so a project reached through a symlink builds in its own build root
+4d1440a72f74b54dc6a8216981146bc1c71c0cce 044ca4adf1d9d1a6d7c4b447941ba2e9c24f45b4  workflow: plan for the three findings from filming the clocked Curta
+8a8a26711bcd7fd33c6daf7f8866d10004574f8c e15ecbb04ab1c8f3ff8a3d2eeeafa77a5d894cb6  warts: three findings from filming the clocked Curta
+6a575f02dc63acefdc7b791b471e3c5291530f81 021dfa0edc4a96b366dea0863537926240ce7b64  Implement persistent-verdict-memo: a decided verdict outlives the run (ADR-156)
+6e6c0b28afead86f41b8ec7410b779bbc2468b6d 35701f2323c6306142c8e6857eca8b4156b98f35  openspec(persistent-verdict-memo): propose keeping decided verdicts between runs
+0adff7040dc29839b30844a4ccb02e0769c2423b c82f54d5ce3516b75df61949180955807a2a881a  docs: record Dum-E native FreeCAD simulation finding  [branch dume-native-freecad]
+99d539f9bff1d437506830430f5d94603c5399e7 baf8d8e87441aef5af3acc7463046c1dab1e8862  docs: ratify Dum-E interface and move implementation to LGPL adapter  [branch native-freecad-assembly]
+49a8c4d4fd9de3d3337f551469ac52178e3cbf98 5f75c2c5b37f4e55743fa7755154f685f58faccb  docs(workflow): record Voron native geometry and capture warts  [branch record-voron-warts]
