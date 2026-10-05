@@ -486,3 +486,84 @@ film's frames in headless Chromium without a GPU (ANGLE on SwiftShader).
 - **Triage.** Recorded as data for the pilot's decision about a GPU for
   filming; the viewer's antialiasing is a drawing decision, not a
   performance switch, and nothing is proposed here.
+
+# Voron-2 — portable export stalls before model loading (5 October 2026)
+
+**Status: recorded; triage open.** The pilot paused the unfinished printer
+goal during release work. Originating project:
+`projects/3D-Printers/Voron-2`, integration `c08fa72`, evidence checkpoint
+`1fc9e9f`. Tested viewer: `cb39942e28145f0f988991681c968af38dfca4ec`, API 29,
+documents 1–13; producer: `8d811411b13174e9f78eb636fcecc4943a740f5b`.
+Installed 0.7.0 distribution metadata does not identify those source commits.
+These are findings, not proposed interfaces or release changes.
+
+## A successful export does not mount in the recorded browser environment
+
+- **Symptom.** `machinome export -o _build_resume_browser_export` succeeds,
+  but its unmodified page never mounts in headless Chromium with SwiftShader
+  on Linux. The renderer remains active while the page stops answering.
+- **Evidence.** A temporary loopback HTTP server records only three requests:
+  HTTP 200 for `/`, `/machinome-viewer.js` and `/manifest.json` (about 26 MB).
+  No model requests follow. After a 30 s settling period, the long observation
+  times out in `Locator.inner_text` after another 180,000 ms. No page errors,
+  failed requests or HTTP errors were reported before the stall. No working
+  printer mount or screenshot was obtained.
+- **What already passes.** Independent document replay checks 1,636 nodes,
+  1,565 model paths and 232,347 finite bindings for default/Home/Center/Present.
+  Twelve exported belt meshes match independent route evaluation. Those
+  checks do not execute the browser and are not a browser acceptance result.
+- **Source investigation, not confirmed cause.** `viewer.ts` fetches/parses
+  the document and synchronously runs `assertRenderable` before constructing
+  `WidgetTree` and requesting models. Its per-expression `note` calls
+  `table.roots()`; `bindings.ts` prepares all table entries again after the
+  expression-store generation changes. `expressions.ts` resets that store
+  at the next outer operation once it reaches 125,000 nodes. With 232,347
+  bindings this is an amplification risk worth profiling, not demonstrated
+  cache thrashing: binding count is not distinct interned-node count.
+- **Diagnostic limits.** Two attempted CPU profiles stalled at `Profiler.stop`.
+  The first owned diagnostic browser was deliberately terminated; the later
+  bounded attempt timed out and exited cleanly. The same bounded profiler
+  succeeded on a plain local HTML control. There is no successful printer
+  profile and no smaller isolated reproduction of the dominant cost.
+- **Project workaround/evidence.** No functioning browser workaround was
+  accepted. The project retains `simulation/tools/browser_export_probe.py`,
+  immutable job logs/status records, and
+  `docs/evidence/resumed-browser-blocker.json` with artifact hashes. Serving
+  the unmodified export through that loopback probe is the demonstrated
+  reproduction. Its inspected OpenSCAD snapshots prove only those rendered
+  views, not browser delivery. No literal skill workaround exists to delete.
+- **Triage.** Viewer document loading/validation investigation. Producer size
+  is evidence, not proof of a producer defect. No implementation authorized
+  or interface ratified by this record.
+
+## Web capture's fetch failure does not identify the failing resource
+
+- **Symptom/evidence.** The project's default-camera web snapshot ends with
+  `Browser viewer failed to mount: TypeError: Failed to fetch`. The error
+  record names no failed URL, and the framework removes the staged directory
+  afterward. Existing evidence cannot distinguish staging, serving, model or
+  other-resource fetch, or browser resource pressure.
+- **Triage.** Unresolved capture/diagnostic finding. It is separate from the
+  portable-export stall; no shared cause is established. The earlier gimbal
+  camera failure occurs before capture because the producer passes a
+  negative-leading `--up` tuple as a separate argv token; that producer-owned
+  finding is in the framework's Voron-2 wart entry. Neither capture passed.
+
+## Main-branch recheck, 5 October 2026
+
+The pilot directed use of the merged environment main branches. Framework
+`d22d0a1`, viewer `ccc05a6` and project `df9ad29`, with no campaign
+`PYTHONPATH` override, produce a new `_build_resume_main_browser_export`
+successfully from the existing browser build directory. This is not a cold
+build. The bounded unmodified-page probe again gets exactly three HTTP 200
+responses (page, bundle, manifest), then fails the body read after the 30 s
+settling period and 180 s timeout. No models are requested, no screenshot is
+obtained, and no page, request or HTTP errors identify a cause. The diagnostic
+browser exits cleanly; the job finishes at 12:45:19 UTC.
+
+The project keeps commands, terminal status and export/bundle/log hashes in
+`docs/evidence/resumed-main-validation.json`. The old CPU-profile and capture
+diagnoses were not rerun or promoted to confirmed causes. All 84 production
+hashes remain unchanged; the viewer implementation was not changed. The pilot
+explicitly authorized rebasing and locally merging these documentation-only
+wart records into main, without pushing or authorizing a fix.
