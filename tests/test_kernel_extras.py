@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The CAD kernels are extras, and a kernel module refuses an absent one
-(OpenSpec changes `lean-install` and `mesh-engine`, capability
+(OpenSpec changes `lean-install`, `mesh-engine` and `brep-mesh`, capability
 `kernel-extras`).
 
 Two halves. The metadata is read from `pyproject.toml`, `requirements.txt`
@@ -12,7 +12,7 @@ extra named by the last component of the address of the module that needs
 it, and the development install, CI and tox install them all. The refusal
 is observed in subprocesses: the workspace and CI install every kernel, so
 an install without one is stood in for by the `sys.meta_path` finder of
-`tests/exact_engine_absent.py`, refusing the kernel the way an interpreter
+`tests/brep_engine_absent.py`, refusing the kernel the way an interpreter
 without its wheel does, or finding it and failing from inside, the way a
 broken one does.
 """
@@ -25,7 +25,7 @@ from unittest import TestCase
 
 from packaging.requirements import Requirement
 
-from .exact_engine_absent import run_python
+from .brep_engine_absent import run_python
 from .import_probe import probe
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,16 +37,16 @@ KERNEL_DISTRIBUTIONS = ('cadquery', 'build123d', 'ocp-gordon', 'molejo',
 #: Each extra and the requirements it lists, design.md Decision 3, written
 #: out here rather than read from the file under test.
 EXTRAS = {
-    'occt': {'cadquery-ocp>=7.8.1,<7.9'},
-    'manifold': {'manifold3d'},
-    'cadquery': {'cadquery==2.7.*', 'machinome[occt]'},
+    'brep': {'cadquery-ocp>=7.8.1,<7.9'},
+    'mesh': {'manifold3d'},
+    'cadquery': {'cadquery==2.7.*', 'machinome[brep]'},
     'build123d': {'build123d==0.10.*', 'ocp-gordon>=0.2.2,<0.3',
-                  'machinome[occt]'},
-    'step': {'cadquery==2.7.*', 'machinome[occt]'},
-    'molejo': {'molejo[brep]==0.2.*', 'machinome[occt]'},
+                  'machinome[brep]'},
+    'step': {'cadquery==2.7.*', 'machinome[brep]'},
+    'molejo': {'molejo[brep]==0.2.*', 'machinome[brep]'},
     'openscad': {'solidpython2==2.1.*'},
     'solid2': {'machinome[openscad]'},
-    'all': {'machinome[cadquery,build123d,step,molejo,occt,manifold,'
+    'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
             'openscad,solid2]'},
 }
 
@@ -63,10 +63,10 @@ MODULES = {
         ('cadquery', 'OCP')),
     'machinome.node.molejo': (
         'molejo', 'machinome.node.molejo (MolejoNode)', ('molejo', 'OCP')),
-    'machinome.occt.engine': (
-        'occt', 'the exact engine (machinome.occt.engine)', ('OCP',)),
-    'machinome.manifold.engine': (
-        'manifold', 'the mesh engine (machinome.manifold.engine)',
+    'machinome.engine.brep': (
+        'brep', 'the B-rep engine (machinome.engine.brep)', ('OCP',)),
+    'machinome.engine.mesh': (
+        'mesh', 'the mesh engine (machinome.engine.mesh)',
         ('manifold3d',)),
     'machinome.node.openscad': (
         'openscad', 'machinome.node.openscad (OpenScadNode and the OpenSCAD '
@@ -134,12 +134,19 @@ class KernelMetadataTest(TestCase):
             with self.subTest(extra=extra):
                 self.assertEqual(set(extras[extra]), expected)
 
-    def test_every_kernel_extra_includes_the_occt_extra(self):
+    def test_every_kernel_extra_includes_the_brep_extra(self):
         extras = project()['optional-dependencies']
 
         for extra in ('cadquery', 'build123d', 'step', 'molejo'):
             with self.subTest(extra=extra):
-                self.assertIn('machinome[occt]', extras[extra])
+                self.assertIn('machinome[brep]', extras[extra])
+
+    def test_the_former_engine_extras_are_gone(self):
+        extras = project()['optional-dependencies']
+
+        for extra in ('occt', 'manifold'):
+            with self.subTest(extra=extra):
+                self.assertNotIn(extra, extras)
 
     def test_no_node_extra_includes_the_mesh_engine(self):
         extras = project()['optional-dependencies']
@@ -147,15 +154,15 @@ class KernelMetadataTest(TestCase):
         for extra in ('cadquery', 'build123d', 'step', 'molejo'):
             with self.subTest(extra=extra):
                 self.assertFalse(any(
-                    'manifold' in Requirement(line).extras
+                    'mesh' in Requirement(line).extras
                     for line in extras[extra]))
 
     def test_all_names_every_kernel_extra(self):
         (line,) = project()['optional-dependencies']['all']
 
         self.assertEqual(Requirement(line).extras,
-                         {'cadquery', 'build123d', 'step', 'molejo', 'occt',
-                          'manifold', 'openscad', 'solid2'})
+                         {'cadquery', 'build123d', 'step', 'molejo', 'brep',
+                          'mesh', 'openscad', 'solid2'})
 
     def test_the_solid2_extra_installs_the_openscad_extra(self):
         (line,) = project()['optional-dependencies']['solid2']
@@ -181,7 +188,7 @@ class KernelMetadataTest(TestCase):
         with open(os.path.join(ROOT, 'requirements.txt')) as stream:
             listed = {line.strip() for line in stream
                       if line.strip() and not line.startswith('#')}
-        concrete = {line for extra in ('occt', 'manifold', 'cadquery',
+        concrete = {line for extra in ('brep', 'mesh', 'cadquery',
                                        'build123d', 'step', 'molejo',
                                        'openscad', 'solid2')
                     for line in EXTRAS[extra]
@@ -232,7 +239,7 @@ class KernelRefusalTest(TestCase):
 
     def test_a_broken_kernel_reports_its_own_failure(self):
         for module, kernel in (('machinome.node.step', 'cadquery'),
-                               ('machinome.manifold.engine', 'manifold3d')):
+                               ('machinome.engine.mesh', 'manifold3d')):
             with self.subTest(module=module):
                 report, run = imported(module, broken=(kernel,),
                                        blocked=False)

@@ -12,7 +12,7 @@ already know and by what the part needs; a project may mix them freely.
 
    * - Class
      - You write
-     - Exact
+     - B-rep
      - Needs
    * - ``CadQueryNode``
      - ``render()`` returning a ``Workplane``
@@ -51,11 +51,11 @@ already know and by what the part needs; a project may mix them freely.
      - yes
      - nothing (:doc:`flexible-parts`)
 
-**Exact** parts keep their boundary representation: a ``.brep`` beside
-the STL, an exact fusion with other exact parts, and geometric tests
-decided by the OCCT kernel with no tolerance. Faceted parts are meshes
-from the moment they are built, and a fusion holding one becomes faceted
-and routes through OpenSCAD.
+**B-rep** parts keep their boundary representation: a ``.brep`` beside
+the STL, a B-rep fusion with other B-rep parts, and geometric tests
+decided by the B-rep engine with no tolerance. Mesh parts are meshes
+from the moment they are built, and a fusion holding one becomes a mesh
+fusion, unioned by the mesh engine.
 
 CadQuery
 --------
@@ -198,7 +198,7 @@ count:
         fn = 256
 
 ``fn`` affects only ``Solid2Node`` and ``OpenScadNode``. The OCCT-backed
-kinds tessellate their exact geometry themselves, and
+kinds tessellate their B-rep geometry themselves, and
 :doc:`imported-parts` shows how to set that tessellation's precision.
 
 JSCAD

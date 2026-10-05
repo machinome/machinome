@@ -289,7 +289,7 @@ class TemplateByInstalledExtrasTest(TestCase):
         self.addCleanup(self.tmpdir.cleanup)
 
     def scaffold(self, absent):
-        from tests.exact_engine_absent import run_machinome
+        from tests.brep_engine_absent import run_machinome
         target = os.path.join(self.tmpdir.name, 'myproj')
         run = run_machinome('new', target, absent=absent)
         return target, run

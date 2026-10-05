@@ -22,11 +22,11 @@ from unittest.mock import patch
 BASEDIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.dirname(BASEDIR)
 SPEC = os.path.join(REPO_DIR, 'openspec', 'specs', 'leaf-contract', 'spec.md')
-DELTA = os.path.join(REPO_DIR, 'openspec', 'changes', 'openscad-out',
+DELTA = os.path.join(REPO_DIR, 'openspec', 'changes', 'brep-mesh',
                      'specs', 'leaf-contract', 'spec.md')
 API = os.path.join(REPO_DIR, 'docs', 'reference', 'api.rst')
 
-BASES = ('LeafNode', 'ExactLeafNode', 'SheetLeafNode', 'FlexibleNode')
+BASES = ('LeafNode', 'BrepLeafNode', 'SheetLeafNode', 'FlexibleNode')
 
 
 def _spec_text():
@@ -121,17 +121,17 @@ class _Instances:
             from tests.flexible_project.spring import Spring
             from tests.sheet_project.frame_panel import FramePanel
             self.by_base = {'LeafNode': Cube(),
-                            'ExactLeafNode': NativeSolid(),
+                            'BrepLeafNode': NativeSolid(),
                             'SheetLeafNode': FramePanel(),
                             'FlexibleNode': Spring()}
 
 
 def _bases():
-    from machinome.node.exact_leaf import ExactLeafNode
+    from machinome.node.brep_leaf import BrepLeafNode
     from machinome.node.flexible import FlexibleNode
     from machinome.node.leaf import LeafNode
     from machinome.node.sheet_leaf import SheetLeafNode
-    return {'LeafNode': LeafNode, 'ExactLeafNode': ExactLeafNode,
+    return {'LeafNode': LeafNode, 'BrepLeafNode': BrepLeafNode,
             'SheetLeafNode': SheetLeafNode, 'FlexibleNode': FlexibleNode}
 
 

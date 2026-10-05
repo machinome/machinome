@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 from machinome.node import AssemblyNode
-from machinome.occt.engine import write_brep
-import machinome.exact_artifacts
-from machinome.occt.engine import intersect_shapes, placed_shape, solid_volume
-from machinome.exact_engine import ExactCommonInconsistency
+from machinome.engine.brep import write_brep
+import machinome.brep_artifacts
+from machinome.engine.brep import intersect_shapes, placed_shape, solid_volume
+from machinome.engine import BrepCommonInconsistency
 
-LOAD = machinome.exact_cache.cached_shape
+LOAD = machinome.brep_cache.cached_shape
 OPERATIONS = (write_brep, intersect_shapes, placed_shape, solid_volume,
-              ExactCommonInconsistency)
+              BrepCommonInconsistency)
 
 
 class Machine(AssemblyNode):

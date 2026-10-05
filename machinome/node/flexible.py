@@ -51,7 +51,7 @@ missing binding fails too -- never a silent default, matching the driver
 read discipline.
 
 This is a declared extension point of the `leaf-contract` capability,
-like `ExactLeafNode` and `SheetLeafNode` (ADR-163): it holds everything
+like `BrepLeafNode` and `SheetLeafNode` (ADR-163): it holds everything
 the framework needs regardless of which technology evaluates the sweep,
 and a concrete adapter (today `MolejoNode`) supplies the five public
 backend hooks at the bottom of this module. Sharing the base never makes
@@ -83,13 +83,13 @@ class FlexibleNode(LeafNode):
     declares its `tech`, returns its backend's shape object from
     `render()`, and implements the backend hooks: `shape_parameters`,
     `shape_spec`, `snapshot_mesh`, `snapshot_stl` and, when it declares
-    `exact` true, `snapshot_shape`. Everything else -- rigidity, the
+    `brep` true, `snapshot_shape`. Everything else -- rigidity, the
     parameter-surface check, the resolved binding, the per-binding snapshot
     artifact, its publication and the mesh seam -- is here, so a correction
     to the contract lands once.
 
     Declared members: `tech`, `shape_parameters`, `shape_spec`,
-    `snapshot_mesh`, `snapshot_stl`, `snapshot_shape`, `exact`.
+    `snapshot_mesh`, `snapshot_stl`, `snapshot_shape`, `brep`.
     """
 
     #: The one non-rigid leaf kind. Its geometry is a function of bound
@@ -112,7 +112,7 @@ class FlexibleNode(LeafNode):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # `uniq_id` is deliberately a short artifact name.  The faceted
+        # `uniq_id` is deliberately a short artifact name.  The mesh
         # working set must instead retain the full canonical structural
         # identity that produced it.  Declarative nodes have resolved values
         # by the time the base constructor returns; legacy nodes use the same
@@ -132,17 +132,17 @@ class FlexibleNode(LeafNode):
         #: snapshot.
         self.snapshot_file = None
 
-        #: The last binding whose exact solid was built, and the result.
+        #: The last binding whose B-rep solid was built, and the result.
         #: An assertion asks a pair the same question twice -- once for
-        #: emptiness, once for connectivity -- and an exact leaf answers
+        #: emptiness, once for connectivity -- and a B-rep leaf answers
         #: the second from its cached `.brep`; this leaf has none to read
         #: (see `shape`), so the memo is where that saving lives instead.
-        self._exact_binding = None
-        self._exact_result = None
-        #: The state identity of the snapshot `_exact_result` was built
+        self._brep_binding = None
+        self._brep_result = None
+        #: The state identity of the snapshot `_brep_result` was built
         #: from (see `_snapshot`), so a verdict about that solid is keyed on
         #: exactly the state it came from.
-        self._exact_identity = None
+        self._brep_identity = None
 
     ##############################################
     # The parameter surface
@@ -366,7 +366,7 @@ class FlexibleNode(LeafNode):
         claim the fingerprint only guards. None when a source cannot be
         read -- a coherent miss.
 
-        The GEOMETRY key, asked for with `geometry_key`, keys the faceted
+        The GEOMETRY key, asked for with `geometry_key`, keys the mesh
         solid cache's working set exactly as before: the same values plus the
         source's real path and its fingerprint, and None when either the
         fingerprint or the digest is unknown.
@@ -411,10 +411,10 @@ class FlexibleNode(LeafNode):
             )
         return key, identity, rendered, values
 
-    def _faceted_cache_snapshot(self):
-        """The coherent current shape and full geometry key for one faceted
+    def _mesh_cache_snapshot(self):
+        """The coherent current shape and full geometry key for one mesh
         read: ``(key, rendered, values)``. The test framework owns the
-        bounded faceted solid cache this keys (see `_snapshot`)."""
+        bounded mesh solid cache this keys (see `_snapshot`)."""
         key, _, rendered, values = self._snapshot(geometry_key=True)
         return key, rendered, values
 
@@ -431,26 +431,26 @@ class FlexibleNode(LeafNode):
         return rendered
 
     ##############################################
-    # Exact geometry
+    # B-rep geometry
 
     def shape(self):
-        """This instant's exact solid, computed rather than loaded.
+        """This instant's B-rep solid, computed rather than loaded.
 
-        An exact leaf reads its `.brep` back when the artifact on disk is
+        A rigid B-rep leaf reads its `.brep` back when the artifact on disk is
         the one its sources would produce, and that shortcut is exactly
         what a flexible part cannot have: mtime answers whether the
         SOURCE changed, never whether the BINDING did, and a part whose
         shape follows the machine has one solid per instant rather than
         one per source. Persistence is structurally about rigid nodes
         anyway -- the build requires a `.brep` only where a node is both
-        rigid and exact, the exact composition path fuses the shapes its
+        rigid and B-rep, the B-rep composition path fuses the shapes its
         children RETURN rather than files they wrote, and a fusion
         refuses a flexible child outright -- so nothing downstream is
         waiting for a file, and a per-binding one would be swept by
         nothing (the sweep spares every `.brep` unconditionally). The
         binding memo below is the whole of the caching this needs.
         """
-        return self._exact_solid()[0]
+        return self._brep_solid()[0]
 
     @property
     def shape_tolerance(self):
@@ -461,23 +461,23 @@ class FlexibleNode(LeafNode):
         rather than hidden -- a swept helix is honestly tolerant, and a
         caller reading an exact answer deserves to know how exact.
         """
-        return self._exact_solid()[1]
+        return self._brep_solid()[1]
 
-    def _exact_solid(self):
+    def _brep_solid(self):
         """`(shape, tolerance)` for the current binding, built once.
 
         Built from one coherent state snapshot, whose state identity is
-        recorded beside the result (see `_exact_state_identity`)."""
+        recorded beside the result (see `_brep_state_identity`)."""
         values = self.bound_values()
         key = binding_hash(values)
-        if key != self._exact_binding:
+        if key != self._brep_binding:
             identity, rendered, values = self._state_snapshot(values)
-            self._exact_result = self.snapshot_shape(rendered, values)
-            self._exact_identity = identity
-            self._exact_binding = key
-        return self._exact_result
+            self._brep_result = self.snapshot_shape(rendered, values)
+            self._brep_identity = identity
+            self._brep_binding = key
+        return self._brep_result
 
-    def _exact_state_identity(self, shape):
+    def _brep_state_identity(self, shape):
         """The state identity recorded with `shape`, if it is the solid
         this leaf last built, else None.
 
@@ -487,9 +487,9 @@ class FlexibleNode(LeafNode):
         older binding's too: a verdict keyed on it still names the geometry
         compared.
         """
-        result = self._exact_result
+        result = self._brep_result
         if result is not None and result[0] is shape:
-            return self._exact_identity
+            return self._brep_identity
         return None
 
     ##############################################
@@ -513,6 +513,6 @@ class FlexibleNode(LeafNode):
         raise NotImplementedError
 
     def snapshot_shape(self, rendered, values):
-        """The same evaluation as `(exact shape, tolerance)`, the shape in
-        the exact engine's currency every exact node trades in."""
+        """The same evaluation as `(B-rep shape, tolerance)`, the shape in
+        the B-rep engine's currency every B-rep node trades in."""
         raise NotImplementedError

@@ -33,27 +33,26 @@ What a fusion is made of
 
 A fusion is computed on the strongest representation its children share.
 
-**Exact children fuse exactly.** When every child is OCCT-backed
+**B-rep children fuse exactly.** When every child has B-rep geometry
 (``CadQueryNode``, ``Build123dNode``, ``StepNode``, the sheet leaves), the
-fusion is performed by the OCCT kernel on true solids: the result is
-itself exact, persists a ``.brep`` beside its STL, and geometric
-assertions against it are answered by the kernel. The children need not
-share one backend.
+fusion is performed by the B-rep engine on true solids: the result is
+itself a B-rep, persists a ``.brep`` beside its STL, and geometric
+assertions against it are answered by the B-rep engine. The children need
+not share one backend.
 
-**One faceted child makes the fusion faceted.** A ``Solid2Node``,
+**One mesh child makes the fusion a mesh.** A ``Solid2Node``,
 ``OpenScadNode``, ``JScadNode`` or ``StlNode`` child routes the whole
-fusion through OpenSCAD and CGAL, which needs the ``openscad`` binary and
-answers questions on tessellated geometry. On a dense imported mesh that
-can take minutes. When a fused part matters to exact assertions, author
-its children on an OCCT backend.
+fusion through the mesh engine, which unions the children's meshes and
+answers questions on tessellated geometry. When a fused part matters to
+B-rep assertions, author its children on a B-rep backend.
 
 .. _fusion-tessellation-precision:
 
 Tessellation precision
 ----------------------
 
-An exact fusion may declare ``linear_deflection`` and
-``angular_deflection`` for the solid it fuses, as any exact leaf may
+A B-rep fusion may declare ``linear_deflection`` and
+``angular_deflection`` for the solid it fuses, as any B-rep leaf may
 (:doc:`imported-parts`). A fusion does not inherit a declaration from its
 children: the fused solid is a different shape from any of them, and
 asking which child's precision should win has no defensible answer. Each

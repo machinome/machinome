@@ -2,10 +2,10 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 
 
-class SheetLeafNode(ExactLeafNode):
+class SheetLeafNode(BrepLeafNode):
     """Base for the leaf adapters whose part is cut from sheet stock.
 
     A sheet part is authored as a two-dimensional profile plus a declared
@@ -168,7 +168,7 @@ class SheetLeafNode(ExactLeafNode):
         )
 
     def materialize(self, rendered):
-        """The exact adapter's STL and BREP, plus this part's cut file.
+        """The B-rep adapter's STL and BREP, plus this part's cut file.
 
         Same guard as the other artifacts: produced only when it is not
         already the file these sources would produce, published through

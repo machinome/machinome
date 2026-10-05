@@ -4,10 +4,10 @@
 
 """Run framework code in interpreters where the mesh engine is absent.
 
-The shape of `tests/exact_engine_absent.py`, for the mesh engine of the
+The shape of `tests/brep_engine_absent.py`, for the mesh engine of the
 `mesh-engine` change: a `sys.meta_path` finder, installed by a
 `sitecustomize` module on the subprocess's path, refuses `manifold3d`, the
-engine's package `machinome.manifold`, or both, and everything beneath
+engine's package `machinome.engine.mesh`, or both, and everything beneath
 them, so every import of them raises `ModuleNotFoundError` exactly as it
 would where they are not installed. Being a `sitecustomize`, it is in
 every interpreter of a run from its first import: `machinome build` runs
@@ -24,11 +24,11 @@ load does.
 Every interpreter of a run appends one line to a shared log at exit: for
 each refused root, the modules that asked for it, once per ask -- the
 first frame on the stack outside the import system and the finder -- and
-which of `machinome.manifold.engine` and `manifold3d` it imported. The
+which of `machinome.engine.mesh` and `manifold3d` it imported. The
 asker matters because trimesh asks for `manifold3d` at its own import
 (`trimesh/boolean.py` begins `try: from manifold3d import ...`) and copes
 with its absence: "manifold3d was never asked for" cannot hold in any
-process that imports trimesh, and what can is "machinome.manifold was
+process that imports trimesh, and what can is "machinome.engine.mesh was
 never asked for, and every ask of manifold3d was trimesh.boolean's".
 """
 
@@ -138,7 +138,7 @@ if _listed('MESH_ENGINE_BROKEN_NAMES'):
 
 
 def _report():
-    imported = sorted(name for name in ('machinome.manifold.engine',
+    imported = sorted(name for name in ('machinome.engine.mesh',
                                         'manifold3d')
                       if sys.modules.get(name) is not None)
     with open(_LOG, 'a') as log:
@@ -156,7 +156,7 @@ TRIMESH_PROBES = frozenset({'trimesh.boolean', 'trimesh.util'})
 
 #: What the finder refuses unless a caller lists otherwise: the kernel and
 #: the engine's package.
-ABSENT = ('manifold3d', 'machinome.manifold')
+ABSENT = ('manifold3d', 'machinome.engine.mesh')
 
 
 class Report:
@@ -264,7 +264,7 @@ def _run(code, arguments=(), blocked=True, build_dir=None, cwd=REPO_DIR,
 def run_python(snippet, blocked=True, build_dir=None, absent=ABSENT,
                broken=(), cwd=REPO_DIR, env=None):
     """Run `snippet` in a subprocess, the `absent` roots (`manifold3d` and
-    `machinome.manifold` by default) refused if `blocked`, and the `broken`
+    `machinome.engine.mesh` by default) refused if `blocked`, and the `broken`
     ones failing to import from inside."""
     return _run(snippet, blocked=blocked, build_dir=build_dir, cwd=cwd,
                 absent=absent, broken=broken, env=env)

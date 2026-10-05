@@ -18,10 +18,15 @@ from .base import AbstractBaseNode
 #: for that technology's own leaf base;
 #: `present`, `presentation`,
 #: `kept_artifacts`, `generate_stl` and the set a leaf declares its kind by
-#: (`rigid`, `flexible`, `exact`, `optimize`, `base_mesh`,
+#: (`rigid`, `flexible`, the B-rep flag, `optimize`, `base_mesh`,
 #: `declared_markings`) were declared; and `generate_stl` no longer hands a
 #: leaf whose STL is not current to another tool.
-CONTRACT = 2
+#:
+#: 3 (ADR-180): the engines are named for the representation each
+#: consumes; the declared member that says a leaf has B-rep geometry is
+#: `brep`, and the B-rep leaf base is `BrepLeafNode`
+#: (`machinome.node.brep_leaf`).
+CONTRACT = 3
 
 
 class LeafNode(AbstractBaseNode):
@@ -29,7 +34,7 @@ class LeafNode(AbstractBaseNode):
 
     A declared extension point of the `leaf-contract` capability (ADR-163),
     at this one path: a node type written outside the core subclasses it,
-    or one of the three bases that extend it (`ExactLeafNode`,
+    or one of the three bases that extend it (`BrepLeafNode`,
     `SheetLeafNode`, `FlexibleNode`), and uses only the members declared
     here and on those bases. Each technology renders its solid its own
     way and produces its own STL: in `materialize`, publishing it through
@@ -45,7 +50,7 @@ class LeafNode(AbstractBaseNode):
     `presentation`, `materialize`, `generate_stl`, `kept_artifacts`,
     `publish_artifact`, `get_source_file`, `files`, `source_recipe`,
     `artifact_import`, `basepath`, `local_stl`, `stl_file`, `model`,
-    `rigid`, `flexible`, `exact`, `optimize`, `base_mesh`,
+    `rigid`, `flexible`, `brep`, `optimize`, `base_mesh`,
     `declared_markings`, `leaf_contract`, `StlRenderStart`.
 
     `files`, `basepath`, `local_stl`, `stl_file` and `model` are set by the
@@ -55,19 +60,19 @@ class LeafNode(AbstractBaseNode):
     A leaf declares its kind as one set, which the core reads directly and
     never probes for: `rigid` (a time-invariant solid with a cached STL, in
     the piece and artifact sets; true), `flexible` (its shape is a function
-    of its bound ports; false), `exact` (it exposes boundary-representation
-    geometry through `shape()`; false), `optimize` (a presentation imports
-    its STL when true, and carries what it rendered when false, in which
-    case it is prepared on every build; true), `present(rendered)` (its
-    presentation of one render: an import of its own STL, materialized
-    first when stale), `presentation()` (its own presentation, its artifact
-    imports resolving from its own build directory), `kept_artifacts()`
-    (the artifacts beyond its STL, BREP and markings a build keeps for it;
-    none), `generate_stl()` (make its STL current; a rigid leaf whose STL
-    is still not current after its materialization is refused, naming
-    it), its artifact paths, `base_mesh()` (its geometry in its own frame)
-    and `declared_markings()`. Each has its default on the node base, so
-    every node answers it.
+    of its bound ports; false), `brep` (it exposes B-rep geometry, a
+    boundary representation, through `shape()`; false), `optimize` (a
+    presentation imports its STL when true, and carries what it rendered
+    when false, in which case it is prepared on every build; true),
+    `present(rendered)` (its presentation of one render: an import of its
+    own STL, materialized first when stale), `presentation()` (its own
+    presentation, its artifact imports resolving from its own build
+    directory), `kept_artifacts()` (the artifacts beyond its STL, BREP and
+    markings a build keeps for it; none), `generate_stl()` (make its STL
+    current; a rigid leaf whose STL is still not current after its
+    materialization is refused, naming it), its artifact paths,
+    `base_mesh()` (its geometry in its own frame) and `declared_markings()`.
+    Each has its default on the node base, so every node answers it.
     """
 
     _type = 'LeafNode'
@@ -129,7 +134,7 @@ class LeafNode(AbstractBaseNode):
             self.optimize
             and self.rigid
             and self._up_to_date(self.stl_file)
-            and (not self.exact or self._up_to_date(self.brep_file))
+            and (not self.brep or self._up_to_date(self.brep_file))
         )
 
     def present(self, rendered):
@@ -173,9 +178,9 @@ class LeafNode(AbstractBaseNode):
                 f'paths begin with {self.basepath}; {spelling} is not one')
         if self._up_to_date(spelling):
             return False
-        # Imported here, as the exact base does: the publication sequence
-        # is the exact artifacts', and this module stays as light as base.
-        from machinome.exact_artifacts import _atomic_export
+        # Imported here, as the B-rep base does: the publication sequence
+        # is the B-rep artifacts', and this module stays as light as base.
+        from machinome.brep_artifacts import _atomic_export
         _atomic_export(spelling, self.mtime_ns, write, self.source_digest,
                        self.source_fingerprint)
         return True

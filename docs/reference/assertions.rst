@@ -30,23 +30,24 @@ Pairs of parts
     Every mesh vertex of ``node2`` is at most, or at least, that far from
     ``node1``'s surface.
 
-The intersection questions are answered on the exact kernel when both
-parts are exact and on meshes otherwise (:doc:`/howto/fast-tests`).
-For a direct comparison of two already-placed exact shapes,
-``machinome.occt.engine.intersect_shapes(first, second, first_name,
-second_name)`` returns their native common, named by the two names in any
-error. It takes the exact engine's currency, the OCCT ``TopoDS_Shape`` that
+The intersection questions are answered on the B-rep engine when both
+parts have B-rep geometry and on meshes otherwise
+(:doc:`/howto/fast-tests`). For a direct comparison of two already-placed
+B-rep shapes, ``machinome.engine.brep.intersect_shapes(first, second,
+first_name, second_name)`` returns their native common, named by the two
+names in any error. It takes the B-rep engine's currency, the OCCT
+``TopoDS_Shape`` that
 ``shape()`` returns (a CadQuery or build123d shape is accepted too), and
 returns one; wrap it with ``cadquery.Shape.cast(...)`` for CadQuery's
 methods. If OCCT reports an empty common but an independent native section
 and zero-tolerance solid classification find a point inside both shapes,
 resolved farther from every boundary face than that face's native tolerance,
-it raises ``ExactCommonInconsistency`` rather than claiming
+it raises ``BrepCommonInconsistency`` rather than claiming
 clearance or inventing a volume. If that independent check cannot complete,
-it raises ``ExactCommonVerificationError``. Both error types are imported
-from ``machinome.exact_engine``. Native face tolerance here
+it raises ``BrepCommonVerificationError``. Both error types are imported
+from ``machinome.engine``. Native face tolerance here
 qualifies the witness only; it never waives a positive intersection volume.
-Exact intersection assertions
+B-rep intersection assertions
 use the same path. The bounded witness search does not certify every empty
 common: no witness leaves the ordinary Boolean verdict in place. Face and
 edge contact remain subject to the existing zero-volume policy.
@@ -77,8 +78,9 @@ before every operation of the node, so its rotations, a leading one
 included, carry the direction. ``axis`` and ``along`` are mutually
 exclusive. ``directions='forward'`` checks only the positive sense, for a
 deliberately one-sided contract. ``volume_epsilon`` counts an
-intersection below that volume as none; it applies only on the faceted
-path, is ignored with a warning when every comparison routed exact, and
+intersection below that volume as none; it applies only on the mesh
+path, is ignored with a warning when every comparison was on B-rep
+geometry, and
 is a smell rather than a tool.
 
 .. code-block:: python
@@ -100,8 +102,8 @@ descend into a fusion's ingredients. Neither runs automatically;
 ``machinome new`` scaffolds the first two into the root test file.
 
 ``assertNoDisconnectedSolids(node)``
-    Every printed solid is exactly one body: the exact geometry's solid
-    count for an exact part, a split of the part's own STL otherwise,
+    Every printed solid is exactly one body: the B-rep geometry's solid
+    count for a B-rep part, a split of the part's own STL otherwise,
     with no operations composed, so the verdict is the same at every
     instant. Watertightness is not connectedness.
 
@@ -192,7 +194,7 @@ with ``set_state`` in a loop.
 Skipping a test and marking a known gap
 ---------------------------------------
 
-A test that does not apply, the exact kernel not installed, a part this
+A test that does not apply, the B-rep engine not installed, a part this
 project does not have, says so with ``self.skipTest(reason)`` anywhere in
 the method or in ``setUp``; ``unittest``'s own decorators work too, on a
 method or a whole class. A skipped test is reported by name with its

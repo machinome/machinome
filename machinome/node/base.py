@@ -685,7 +685,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         basename = f'{script}-{self.uniq_id}'
         basepath = os.path.join(self.build_dir, basename)
 
-        # The rendered stl and exact geometry, without transformations,
+        # The rendered stl and B-rep geometry, without transformations,
         # used for building and assembling on parent node
         self.stl_file = f'{basepath}.stl'
         self.brep_file = f'{basepath}.brep'
@@ -928,7 +928,7 @@ class AbstractBaseNode(metaclass=NodeMeta):
         Called by the core when the node is prepared and its artifacts are
         not all current -- on every build for a node declaring
         `optimize = False` -- so each artifact is still produced only when
-        it is stale: `publish_artifact` checks. A faceted leaf that
+        it is stale: `publish_artifact` checks. A mesh leaf that
         produces its own STL implements it, publishing through
         `publish_artifact`; a leaf on another base may extend it, calling
         the base's.
@@ -1135,12 +1135,13 @@ class AbstractBaseNode(metaclass=NodeMeta):
         raise NotImplementedError
 
     @property
-    def exact(self):
-        """Whether this node exposes exact boundary-representation geometry."""
+    def brep(self):
+        """Whether this node exposes B-rep (boundary-representation)
+        geometry."""
         return False
 
     def shape(self):
-        raise RuntimeError(f'{self.name} does not expose exact geometry')
+        raise RuntimeError(f'{self.name} does not expose B-rep geometry')
 
     def present(self, rendered):
         """This node's presentation of what render() returned: a

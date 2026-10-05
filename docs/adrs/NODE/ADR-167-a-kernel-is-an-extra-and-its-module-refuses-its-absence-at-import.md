@@ -1,6 +1,6 @@
 # ADR-167: A Kernel Is an Extra, and Its Module Refuses Its Absence at Import
 
-**Status:** Accepted; manifold3d's exception amended 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md); the table of supported node types admitted 2026-10-04 by [ADR-179](../BUILD/ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md)
+**Status:** Accepted; manifold3d's exception amended 2026-10-04 by [ADR-176](../TEST-FRAMEWORK/ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md); the table of supported node types admitted 2026-10-04 by [ADR-179](../BUILD/ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md); the extras `brep` and `mesh`, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-03
 **Change:** [`lean-install`](../../../openspec/changes/archive/2026-10-03-lean-install/)
 **Amends:** [ADR-161: The core holds no kernel code](ADR-161-the-core-holds-no-kernel-code.md) — an engine whose `occt` extra is not installed is an absent engine, not a broken one

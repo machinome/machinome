@@ -174,7 +174,7 @@ keyword.
 | surface | words | where |
 | --- | --- | --- |
 | `assertBlockedBeyond`, `assertFreeWithin` `directions=` | `'both'`, `'forward'` | `machinome/machinome/test.py:2046` |
-| test kernel, via `SOLID_TEST_KERNEL` | `'exact'`, `'faceted'` | `test.py:126`, `:175` |
+| test engine, via `SOLID_TEST_ENGINE` | `'brep'`, `'mesh'` | `test.py:125`, `:202` |
 | `Time` declaration `.mode` | `'loop'`, `'running'`, `'elapsed'` | `ports.py:657`, `:675` |
 | move and rate handle `.status` | `'active'`, `'completed'`, `'blocked'`, `'refused'`, `'cancelled'` | `run.py:144` |
 | move and rate handle `.kind` | `'move'`, `'rate'` | `run.py:470`, `:494` |
@@ -182,15 +182,15 @@ keyword.
 
 `directions=` is the only one a caller passes to change behaviour. It
 selects what an assertion proves, and `'Both'` is refused at the call.
-The kernel choice has proper flags on the command line (`--faceted`,
-`--exact`); only its environment spelling is a string. The rest are
+The engine choice has proper flags on the command line (`--mesh`,
+`--brep`); only its environment spelling is a string. The rest are
 results: a test asserts `command.status == 'blocked'` and a typo there is
 simply a false comparison, never an error, which is the silent failure
 mode of an output vocabulary.
 
 The environment variables themselves are a second, smaller finding: the
 test and build settings still carry the pre-rename `SOLID_` prefix
-(`SOLID_TEST_KERNEL`, `SOLID_TEST_VOLUME_EPSILON`,
+(`SOLID_TEST_ENGINE`, `SOLID_TEST_VOLUME_EPSILON`,
 `SOLID_TEST_PLACEMENT_QUANTUM`, `SOLID_BUILD_DIR`).
 
 ## 6. Unit strings

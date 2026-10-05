@@ -50,11 +50,12 @@ leaf has one job, ``render()``, which returns a solid in that library's
 own vocabulary. Here it is a CadQuery ``Workplane``: a box moved down so
 its top face is at ``z = 0``, a hole cut through it, and a post united to
 it. The framework tessellates the solid into an STL for the viewer and
-keeps the exact geometry in a ``.brep`` beside it for tests.
+keeps the B-rep geometry, the boundary representation, in a ``.brep``
+beside it for tests.
 
 Leaves come in several kinds, one per modelling technology, and they all
 work the same way from the outside. ``CadQueryNode`` and ``Build123dNode``
-are exact, each installed by its extra, ``machinome[cadquery]`` or
+have B-rep geometry, each installed by its extra, ``machinome[cadquery]`` or
 ``machinome[build123d]`` (:doc:`/start/install`). ``Solid2Node``
 and ``OpenScadNode`` are OpenSCAD's, ``JScadNode`` is JSCAD's, and three
 more bring in parts from files or describe parts that flex.

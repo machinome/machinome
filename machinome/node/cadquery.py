@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import sys
-from machinome.exact_engine import require_exact_engine
+from machinome.engine import require_brep_engine
 from machinome.extras import require_extra
 from machinome.node.declarative import NodeMeta
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 
 # A project names this module to render with CadQuery, so without the
 # `cadquery` extra it is refused here, at the import line, with the line
@@ -17,7 +17,7 @@ require_extra('cadquery', 'machinome.node.cadquery (CadQueryNode)',
 
 
 def workplane_shape(rendered, engine):
-    """The exact engine's currency for a CadQuery render result.
+    """The B-rep engine's currency for a CadQuery render result.
 
     A `Workplane` is a stack of values, not a shape: its values are taken,
     one becomes the currency as it is and several become one compound. A
@@ -37,7 +37,7 @@ def workplane_shape(rendered, engine):
 class CheckCQEditor(NodeMeta):
     """This metaclass will check if we are in the context of
     CQ-editor, if so, use no base classes, otherwise inherit
-    ExactLeafNode.
+    BrepLeafNode.
 
     It drops whatever bases were declared rather than naming one, so it is
     unaffected by what the adapter inherits from.
@@ -54,17 +54,17 @@ class CheckCQEditor(NodeMeta):
         return super().__new__(mcs, name, bases, namespace)
 
 
-class CadQueryNode(ExactLeafNode, metaclass=CheckCQEditor):
+class CadQueryNode(BrepLeafNode, metaclass=CheckCQEditor):
     """
     Represents a 3D object created using the CadQuery tool.
 
-    The exact-adapter contract -- exact, shape(), present() -- is
-    ExactLeafNode's; CadQuery adds its namespace, the CQ-editor metaclass,
+    The B-rep leaf contract -- brep, shape(), present() -- is
+    BrepLeafNode's; CadQuery adds its namespace, the CQ-editor metaclass,
     and the conversion of a `Workplane` to the engine's currency.
     """
     namespace = 'cadquery.cq'
 
     def shape_from_rendered(self, rendered):
-        return workplane_shape(rendered, require_exact_engine(
-            f'exact leaf {self.name}',
-            'its render result becomes exact geometry'))
+        return workplane_shape(rendered, require_brep_engine(
+            f'B-rep leaf {self.name}',
+            'its render result becomes B-rep geometry'))

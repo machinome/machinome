@@ -25,7 +25,7 @@ from types import SimpleNamespace
 class StandIn:
     """A node double's answers to the declared set."""
 
-    exact = False
+    brep = False
     flexible = False
     stl_file = None
     base_mesh = None

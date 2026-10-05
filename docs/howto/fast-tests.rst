@@ -2,79 +2,80 @@ Run tests fast
 ==============
 
 Every intersection, containment, connectivity and weld question a test
-asks is decided by one of two kernels, and which one is a property of the
+asks is decided by one of two engines, and which one is a property of the
 run, not of the model.
 
-.. _comparison-kernel:
+.. _comparison-engine:
 
-The two kernels
+The two engines
 ---------------
 
-The **exact** kernel compares two exact parts (CadQuery, build123d, STEP,
-sheet and molejo parts) on their boundary-representation solids. Boundary
-contact is exactly empty, a nominally exact fit is not interference, and
-there is no tolerance anywhere. It is the default, and the kernel a
-release or a CI run uses.
+The **B-rep** engine compares two parts that have B-rep geometry, a
+boundary representation (CadQuery, build123d, STEP, sheet and molejo
+parts), on their solids. Boundary contact is exactly empty, a nominally
+exact fit is not interference, and there is no tolerance anywhere. It is
+the default, and the engine a release or a CI run uses.
 
-The **faceted** kernel compares every pair on the parts' meshes, the path
-a part without exact geometry always takes, at tessellation precision. It
+The **mesh** engine compares every pair on the parts' meshes, the path a
+part without B-rep geometry always takes, at tessellation precision. It
 is the fast development loop: a flexible part such as a valve spring
 costs about 14 ms per comparison on meshes against about 430 ms on the
-exact kernel, and on one engine's root suite the run went from 28 minutes
+B-rep engine, and on one engine's root suite the run went from 28 minutes
 to a minute and a half with the same verdict on every comparison.
 
-Select the kernel
+Select the engine
 -----------------
 
 .. code-block:: bash
 
-    $ machinome test --faceted
-    $ machinome test --exact
+    $ machinome test --mesh
+    $ machinome test --brep
 
-Without a flag the ``SOLID_TEST_KERNEL`` environment variable decides
-(``exact`` or ``faceted``), and without that the run is exact. The
-``machinome`` command loads the project's ``.env`` at startup, so record
-the fast loop once, in that ignored checkout-local file:
+Without a flag the ``SOLID_TEST_ENGINE`` environment variable decides
+(``brep`` or ``mesh``), and without that the run is on the B-rep engine.
+The ``machinome`` command loads the project's ``.env`` at startup, so
+record the fast loop once, in that ignored checkout-local file:
 
 .. code-block:: text
 
-    SOLID_TEST_KERNEL=faceted
+    SOLID_TEST_ENGINE=mesh
 
-A CI runner has no such file and needs no configuration: its runs are
-exact. ``machinome new`` ignores ``.env``, so the choice never travels.
+A CI runner has no such file and needs no configuration: its runs are on
+the B-rep engine. ``machinome new`` ignores ``.env``, so the choice never
+travels.
 
-The faceted kernel compares through the mesh engine, which the
-``manifold`` extra installs (``pip install "machinome[manifold]"``, or
-``machinome[all]``). Without it a faceted run refuses at its start, before
-it builds anything, naming that line. An exact run needs it only for a
-pair it compares on meshes, one with a part that has no exact geometry.
+The mesh engine is installed by the ``mesh`` extra (``pip install
+"machinome[mesh]"``, or ``machinome[all]``). Without it a run on the mesh
+engine refuses at its start, before it builds anything, naming that line.
+A run on the B-rep engine needs it only for a pair it compares on meshes,
+one with a part that has no B-rep geometry.
 
-A faceted run says what it is: a line before the first build names the
-kernel, and the summary line ends with ``(faceted kernel, volume epsilon
-E mm³)``, so a green fast run is never mistaken for an exact one in a log
-or a commit message. A faceted verdict is at the precision of the STL
+A run on the mesh engine says what it is: a line before the first build
+names the engine, and the summary line ends with ``(mesh engine, volume
+epsilon E mm³)``, so a green fast run is never mistaken for a B-rep one in
+a log or a commit message. A mesh verdict is at the precision of the STL
 tessellation, a chord may deviate from the true surface by up to 0.1 mm,
 so a clearance thinner than that can read as overlap and interference
 thinner than that can be missed. Commit evidence and release checks come
-from the exact run.
+from the run on the B-rep engine.
 
 The volume epsilon
 ------------------
 
 Where solids meet exactly, a boss seated on a plate, a shaft at zero
-nominal clearance in its bore, their meshes overlap by slivers the exact
-kernel never sees. The volume epsilon is your stated size for that noise:
+nominal clearance in its bore, their meshes overlap by slivers the B-rep
+engine never sees. The volume epsilon is your stated size for that noise:
 
 .. code-block:: bash
 
-    $ machinome test --faceted --volume-epsilon 0.5
+    $ machinome test --mesh --volume-epsilon 0.5
 
-or ``SOLID_TEST_VOLUME_EPSILON=0.5`` beside the kernel line in ``.env``
+or ``SOLID_TEST_VOLUME_EPSILON=0.5`` beside the engine line in ``.env``
 reports every intersection of at most 0.5 mm³ as empty for the whole run,
 before any assertion reads it. The default is 0, and a project whose
 clearances exceed the tessellation deviation needs none. The epsilon
-exists only for the faceted kernel; the exact kernel refuses it, because
-it has nothing to absorb. It is not a production allowance: where parts
+exists only for the mesh engine; the B-rep engine refuses it, because it
+has nothing to absorb. It is not a production allowance: where parts
 must run free, encode physical clearance in the model and state a fit
 contract with a manufacturing margin in length.
 
@@ -101,10 +102,10 @@ in the same cell are one question.
 
 or ``SOLID_TEST_PLACEMENT_QUANTUM`` in ``.env``; the default is 1e-9 mm,
 and ``0`` restores the exact-bytes key. Unlike the epsilon it applies
-under both kernels, because it identifies a question rather than a
+under both engines, because it identifies a question rather than a
 quantity of material. At the default, two placements sharing a cell move
 every point of one solid by at most a few nanometres at metre scale, far
-below the exact kernel's own precision or any clearance a machine is
+below the B-rep engine's own precision or any clearance a machine is
 designed to hold; a pair that straddles a cell boundary simply misses and
 recomputes. Raising it well past the default is a judgement about
 arithmetic noise, never about material, and the run names a non-default
@@ -128,8 +129,8 @@ decided once.
 A question is identified by state, never by a path or a time:
 
 * a rigid part by the content of the artifact its compared geometry was
-  read from, the ``.brep`` on the exact kernel and the ``.stl`` on the
-  faceted one. A rebuild that reproduces the same bytes, or a project
+  read from, the ``.brep`` on the B-rep engine and the ``.stl`` on the
+  mesh one. A rebuild that reproduces the same bytes, or a project
   moved or copied with its build directory, still reuses the store; a
   part whose content changed is a new question, even if its file kept
   its modification time and size;
@@ -138,7 +139,7 @@ A question is identified by state, never by a path or a time:
   spring at the same length is the same question and at another length a
   new one;
 * the pair's relative placement, rounded by the placement quantum as
-  above, the kernel, and the quantum itself.
+  above, the engine, and the quantum itself.
 
 Each kept verdict is also bound to the framework's own source code, to
 the installed versions of the geometry kernels and of molejo, and to the
@@ -146,8 +147,8 @@ platform. Upgrading the framework or a kernel, or editing the framework
 in a development checkout, starts the store afresh with no action from
 you; the first run after it costs what a first run costs.
 
-The store never changes a verdict. It keeps the kernel's own answer,
-emptiness, volume and which kernel decided it, and the volume epsilon is
+The store never changes a verdict. It keeps the engine's own answer,
+emptiness, volume and which engine decided it, and the volume epsilon is
 applied after a kept verdict is read, exactly as after one decided in the
 same run: a flush contact still comes back non-empty at 0.0 mm³ and still
 fails at the strict default. A comparison whose answer cannot be tied to

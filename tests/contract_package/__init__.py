@@ -5,7 +5,7 @@
 """Leaves written outside the core, against the declared leaf contract.
 
 The stand-ins of the `leaf-contract` change: what a node package written
-against `LeafNode` and `ExactLeafNode` looks like when it uses only the
+against `LeafNode` and `BrepLeafNode` looks like when it uses only the
 members the `leaf-contract` capability declares. `exact_stand_in` mirrors
 machinome-freecad's exact leaf (a bare `TopoDS_Shape` read from BREP
 bytes, a native recipe deciding the geometry); `faceted_stand_in` is a

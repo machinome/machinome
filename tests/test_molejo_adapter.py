@@ -29,7 +29,7 @@ import trimesh
 from solid2 import cube
 
 from machinome.core.builder import Builder
-from machinome.occt.engine import solid_count, solid_volume
+from machinome.engine.brep import solid_count, solid_volume
 from machinome.node import MolejoNode
 from machinome.node.base import binding_hash
 from machinome.node.flexible import FlexibleNode
@@ -184,12 +184,12 @@ class MolejoExactTest(BaseNodeTest):
     and where it is depends on the machine -- so the exact geometry of a
     flexible leaf is per-instant, evaluated from the same spec and the
     same bound values the mesh comes from. Exactness itself is not:
-    `MolejoNode.exact` is fixed by adapter type, like every exact
+    `MolejoNode.brep` is fixed by adapter type, like every exact
     adapter's, so a type test never has to render anything.
     """
 
     def test_the_adapter_is_exact_by_type_without_rendering(self):
-        self.assertTrue(object.__new__(MolejoNode).exact)
+        self.assertTrue(object.__new__(MolejoNode).brep)
 
     def test_the_shape_is_one_closed_solid_at_the_binding(self):
         node = bound_valvetrain(lift=4.0)
@@ -308,9 +308,9 @@ class MolejoExactAssertionTest(BaseNodeTest):
     def test_an_assembly_of_a_spring_and_a_rigid_exact_part_is_exact(self):
         node = self.assembled()
 
-        self.assertTrue(node.spring.exact)
-        self.assertTrue(node.retainer.exact)
-        self.assertTrue(node.exact)
+        self.assertTrue(node.spring.brep)
+        self.assertTrue(node.retainer.brep)
+        self.assertTrue(node.brep)
 
     def test_the_pair_decides_through_the_exact_path(self):
         node = self.assembled()
@@ -319,7 +319,7 @@ class MolejoExactAssertionTest(BaseNodeTest):
                 'an exact question must not read the flexible mesh')):
             stats = _intersection_stats(node.spring, node.retainer)
 
-        self.assertTrue(stats.exact)
+        self.assertTrue(stats.brep)
 
     def test_the_public_assertion_decides_on_the_brep_solids(self):
         node = self.assembled()
@@ -599,7 +599,7 @@ class MolejoMeshPathPairTest(BaseNodeTest):
         return node
 
     def faceted(self, node):
-        return patch.object(type(node.retainer), 'exact', False)
+        return patch.object(type(node.retainer), 'brep', False)
 
     def test_the_mixed_pair_does_not_require_a_rigid_artifact(self):
         node = self.assembled()
@@ -608,7 +608,7 @@ class MolejoMeshPathPairTest(BaseNodeTest):
         with self.faceted(node):
             stats = _intersection_stats(node.spring, node.retainer)
 
-        self.assertFalse(stats.exact)
+        self.assertFalse(stats.brep)
         self.assertTrue(stats.is_empty or stats.volume == 0.0)
 
     def test_a_stale_rigid_artifact_cannot_answer_for_the_binding(self):

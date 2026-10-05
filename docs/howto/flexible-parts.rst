@@ -95,12 +95,12 @@ A document holding one declares version 3 or above. OpenSCAD has no live
 evaluator, so the SCAD output and the OpenSCAD snapshot get a still: the
 part evaluated at the bound state.
 
-A flexible part is exact: ``shape()`` gives the OCCT solid for the state
-currently bound, so a spring at a given lift answers interference and fit
-questions on real boundary geometry. Where the sweep has no closed form,
+A flexible part has B-rep geometry: ``shape()`` gives the OCCT solid for
+the state currently bound, so a spring at a given lift answers
+interference and fit questions on real boundary geometry. Where the sweep has no closed form,
 a helix, a spline, the solid is approximated and ``shape_tolerance``
 reports the approximation (``0.0`` when every surface is analytic). On
-the exact kernel a flexible comparison costs about thirty times a mesh
+the B-rep engine a flexible comparison costs about thirty times a mesh
 comparison; :doc:`fast-tests` is the answer for the development loop.
 
 What a flexible part is not

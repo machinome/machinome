@@ -14,7 +14,7 @@ Needed only for OpenSCAD-family parts and OpenSCAD snapshots:
 * **OpenSCAD**, the executable. It builds the STL files of
   ``Solid2Node`` and ``OpenScadNode`` parts and renders the fixed-pose
   snapshots of ``machinome snapshot``, which also need the ``openscad``
-  extra below. A project whose parts are all OCCT-backed
+  extra below. A project whose parts all have B-rep geometry
   (``CadQueryNode``, ``Build123dNode``, ``StepNode`` and the sheet leaves)
   builds, tests and exports without it. The tutorial's machine is one of
   those, so you can follow it without OpenSCAD. The starter part that
@@ -60,14 +60,14 @@ same name: the extra is the last component of the module's address.
      - ``machinome.node.molejo``
      - `molejo <https://molejo.readthedocs.io>`_ with its B-rep evaluator,
        for ``MolejoNode``
-   * - ``machinome[occt]``
-     - ``machinome.occt.engine``
-     - the OCCT kernel of the exact engine, which every extra above
+   * - ``machinome[brep]``
+     - ``machinome.engine.brep``
+     - the OCCT kernel of the B-rep engine, which every extra above
        installs too
-   * - ``machinome[manifold]``
-     - ``machinome.manifold.engine``
-     - manifold3d, the mesh engine, for every comparison on meshes: a part
-       without exact geometry, ``machinome test --faceted``,
+   * - ``machinome[mesh]``
+     - ``machinome.engine.mesh``
+     - manifold3d, for the mesh engine, for every comparison on meshes: a
+       part without B-rep geometry, ``machinome test --mesh``,
        ``assertAssemblySupported``, a fusion of such parts
    * - ``machinome[openscad]``
      - ``machinome.node.openscad``
@@ -82,7 +82,7 @@ same name: the extra is the last component of the module's address.
      - every kernel
 
 ``JScadNode`` and ``StlNode`` need no extra to build. Their parts are compared on their meshes, by the mesh
-engine, so a project that tests them installs ``machinome[manifold]``.
+engine, so a project that tests them installs ``machinome[mesh]``.
 Without its extra, importing a module refuses with the line that installs
 it, for example::
 
@@ -94,13 +94,13 @@ The same refusal answers ``from machinome.node import CadQueryNode`` and
 ``machinome import-step``. A project that imports ``cadquery`` or
 ``build123d`` itself, in its own modules, needs the extra of that name, and
 one that imports ``manifold3d`` or calls ``trimesh.boolean`` needs
-``machinome[manifold]``.
+``machinome[mesh]``.
 
 Without the mesh engine, each path that needs it refuses at its point of use
-naming ``pip install "machinome[manifold]"``, and ``machinome test`` on the
-faceted kernel refuses at its start, before it builds anything. A project
-whose every compared part is exact needs it only for
-``assertAssemblySupported`` and for runs on the faceted kernel.
+naming ``pip install "machinome[mesh]"``, and ``machinome test`` on the
+mesh engine refuses at its start, before it builds anything. A project
+whose every compared part has B-rep geometry needs it only for
+``assertAssemblySupported`` and for runs on the mesh engine.
 
 Two packages, two licences
 --------------------------
@@ -128,12 +128,12 @@ with the viewer and CadQuery, which the tutorial models with:
     $ python -m pip install "machinome[viewer,cadquery]"
 
 Name the extras your parts need instead, ``all`` for every kernel, or
-``manifold`` for a project whose parts are all OpenSCAD, JSCAD or STL:
+``mesh`` for a project whose parts are all OpenSCAD, JSCAD or STL:
 
 .. code-block:: bash
 
     $ python -m pip install "machinome[viewer,all]"
-    $ python -m pip install "machinome[manifold]"
+    $ python -m pip install "machinome[mesh]"
 
 If you will author OpenSCAD or SolidPython parts, install OpenSCAD too. On
 Debian-based systems:

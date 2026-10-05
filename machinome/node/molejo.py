@@ -66,11 +66,12 @@ class MolejoNode(FlexibleNode):
     tech = 'molejo'
 
     @property
-    def exact(self):
+    def brep(self):
         """molejo evaluates the same document to a B-rep solid, so this
-        adapter is exact -- fixed by type, like every other adapter's,
-        never by installation state or by which instant is bound. The
-        OCCT kernel `molejo[brep]` needs is the exact engine's own, and
+        adapter has B-rep geometry -- fixed by type, like every other
+        adapter's, never by installation state or by which instant is
+        bound. The OCCT kernel `molejo[brep]` needs is the B-rep engine's
+        own, and
         the `molejo` extra installs both, so a module that imports at all
         has both.
         """
@@ -83,7 +84,7 @@ class MolejoNode(FlexibleNode):
         return rendered.to_dict()
 
     def snapshot_shape(self, rendered, values):
-        # molejo's solid is a bare `TopoDS_Solid`, already the exact
+        # molejo's solid is a bare `TopoDS_Solid`, already the B-rep
         # engine's currency (ADR-160), so placement, Booleans and volume
         # need no molejo special case and a spring composes with a
         # CadQuery part by the ordinary rule.

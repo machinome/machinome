@@ -98,19 +98,30 @@ class LicenceWordingTest(unittest.TestCase):
 
 
 class KernelExtrasTest(unittest.TestCase):
-    """The CAD kernels are extras (OpenSpec changes `lean-install` and
-    `mesh-engine`): the installation page names each, and no page a reader
-    lands on says the package carries them or sends a reader to the
-    dissolved adapters package."""
+    """The CAD kernels are extras (OpenSpec changes `lean-install`,
+    `mesh-engine` and `brep-mesh`): the installation page names each, and
+    no page a reader lands on says the package carries them, sends a reader
+    to the dissolved adapters package, or names an engine by a former name,
+    flag, extra or variable."""
 
-    EXTRAS = ('occt', 'manifold', 'cadquery', 'build123d', 'step', 'molejo',
+    EXTRAS = ('brep', 'mesh', 'cadquery', 'build123d', 'step', 'molejo',
               'all')
 
-    STALE = ('Everything else comes with the package',
-             'machinome.node.adapters')
+    #: The engines' former names (`brep-mesh`), spelled in pieces so this
+    #: file's own reading of them is plain.
+    FORMER = ('machinome.' 'occt', 'machinome.' 'manifold',
+              'exact' '_engine', 'machinome.mesh' '_engine',
+              '--' 'faceted', '--' 'exact ', '--' 'exact`',
+              'Exact' 'LeafNode', 'machinome[' 'occt]',
+              'machinome[' 'manifold]', 'SOLID_TEST_' 'KERNEL')
 
-    #: The changelog records the dissolution, so it names the old package.
-    RECORDS = {'project/changelog.rst': ('machinome.node.adapters',)}
+    STALE = ('Everything else comes with the package',
+             'machinome.node.adapters') + FORMER
+
+    #: The changelog records the dissolution and the released names, and
+    #: the upgrading page maps every former name to its new one.
+    RECORDS = {'project/changelog.rst': ('machinome.node.adapters',) + FORMER,
+               'project/upgrading.rst': FORMER}
 
     def test_the_installation_page_names_every_kernel_extra(self):
         page = (DOCS / 'start' / 'install.rst').read_text()

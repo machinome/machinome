@@ -6,13 +6,16 @@
 capability `exact-engine-dependency`), and imports a kernel only in its
 kernel modules (OpenSpec change `lean-install`, capability
 `kernel-extras`), and holds no mesh engine code either (OpenSpec change
-`mesh-engine`, capability `mesh-engine-dependency`).
+`mesh-engine`, capability `mesh-engine-dependency`). The providers are
+modules of the engine package, `machinome.engine.brep` and
+`machinome.engine.mesh`, and the seams its `__init__` (OpenSpec change
+`brep-mesh`).
 
 Read from the source, not from a running interpreter: the core imports
-`OCP` and `cadquery` nowhere outside the engine's own package except the
-STEP module (its reader and `adjust`, which move with their package), it
-names the engine's package in exactly one module -- the seam -- and the
-test framework binds none of the exact layer's names as its own. Every
+`OCP` and `cadquery` nowhere outside the B-rep engine's provider except
+the STEP module (its reader and `adjust`, which move with their package),
+it names the provider in exactly one module -- the seam -- and the test
+framework binds none of the B-rep layer's names as its own. Every
 CAD kernel is imported only by the module its extra is named for, which
 checks its kernel before importing it, and a kernel module is named only
 at the seams that reach it.
@@ -27,13 +30,13 @@ import machinome.test
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'machinome'
-ENGINE_PACKAGE = PACKAGE / 'occt'
-PROVIDER_NAME = re.compile(r'^machinome\.occt(\.\w+)*$')
+PROVIDERS = (PACKAGE / 'engine' / 'brep.py', PACKAGE / 'engine' / 'mesh.py')
+PROVIDER_NAME = re.compile(r'^machinome\.engine\.brep(\.\w+)*$')
 
 
 def core_modules():
     for path in sorted(PACKAGE.rglob('*.py')):
-        if ENGINE_PACKAGE in path.parents:
+        if path in PROVIDERS:
             continue
         yield path.relative_to(ROOT).as_posix(), ast.parse(path.read_text())
 
@@ -51,9 +54,10 @@ def imported_roots(tree):
 
 
 def names_the_provider(tree):
-    """Whether a module imports, or spells by name, `machinome.occt`."""
+    """Whether a module imports, or spells by name, `machinome.engine.brep`."""
     for name in imported_roots(tree):
-        if name == 'machinome.occt' or name.startswith('machinome.occt.'):
+        if name == 'machinome.engine.brep' \
+                or name.startswith('machinome.engine.brep.'):
             return True
     return any(isinstance(node, ast.Constant) and isinstance(node.value, str)
                and PROVIDER_NAME.match(node.value)
@@ -66,7 +70,7 @@ class CoreHoldsNoKernelTest(TestCase):
         naming = [path for path, tree in core_modules()
                   if names_the_provider(tree)]
 
-        self.assertEqual(naming, ['machinome/exact_engine.py'])
+        self.assertEqual(naming, ['machinome/engine/__init__.py'])
 
     def test_no_core_module_imports_the_kernel_or_cadquery(self):
         importing = {}
@@ -103,14 +107,14 @@ KERNEL_MODULES = {'machinome.node.cadquery', 'machinome.node.build123d',
                   'machinome.node.step', 'machinome.node.molejo'}
 
 #: Each kernel module, as a path, with the extra its address names (the
-#: last component; the package's for the engine).
+#: last component).
 EXTRA_OF = {
     'machinome/node/cadquery.py': 'cadquery',
     'machinome/node/build123d.py': 'build123d',
     'machinome/node/step.py': 'step',
     'machinome/node/molejo.py': 'molejo',
-    'machinome/occt/engine.py': 'occt',
-    'machinome/manifold/engine.py': 'manifold',
+    'machinome/engine/brep.py': 'brep',
+    'machinome/engine/mesh.py': 'mesh',
 }
 
 #: The core modules that name a kernel module, and the ones each names
@@ -192,9 +196,9 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         self.assertEqual(importing, {
             'machinome/node/build123d.py': ['build123d'],
             'machinome/node/molejo.py': ['molejo'],
-            'machinome/manifold/engine.py': ['manifold3d'],
+            'machinome/engine/mesh.py': ['manifold3d'],
             'machinome/node/step.py': ['OCP', 'cadquery'],
-            'machinome/occt/engine.py': ['OCP'],
+            'machinome/engine/brep.py': ['OCP'],
             # The template `machinome new` scaffolds a CadQuery part from
             # (`openscad-out`): a project's file, which the core copies and
             # never imports.
@@ -238,8 +242,8 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                      if number < line], [])
 
 
-MESH_PROVIDER_PACKAGE = PACKAGE / 'manifold'
-MESH_PROVIDER_NAME = re.compile(r'^machinome\.manifold(\.\w+)*$')
+MESH_PROVIDER = PACKAGE / 'engine' / 'mesh.py'
+MESH_PROVIDER_NAME = re.compile(r'^machinome\.engine\.mesh(\.\w+)*$')
 
 
 def boolean_reaches(tree):
@@ -264,10 +268,10 @@ def boolean_reaches(tree):
 
 def names_the_mesh_provider(tree):
     """Whether a module imports, or spells as a whole string,
-    `machinome.manifold` or anything beneath it."""
+    `machinome.engine.mesh` or anything beneath it."""
     for name in imported_roots(tree):
-        if name == 'machinome.manifold' \
-                or name.startswith('machinome.manifold.'):
+        if name == 'machinome.engine.mesh' \
+                or name.startswith('machinome.engine.mesh.'):
             return True
     return any(isinstance(node, ast.Constant) and isinstance(node.value, str)
                and MESH_PROVIDER_NAME.match(node.value)
@@ -287,7 +291,7 @@ class CoreHoldsNoMeshEngineTest(TestCase):
 
     def test_the_seam_is_the_only_core_module_naming_the_provider(self):
         naming = [path for path, tree in every_module()
-                  if MESH_PROVIDER_PACKAGE not in (ROOT / path).parents
+                  if ROOT / path != MESH_PROVIDER
                   and names_the_mesh_provider(tree)]
 
-        self.assertEqual(naming, ['machinome/mesh_engine.py'])
+        self.assertEqual(naming, ['machinome/engine/__init__.py'])

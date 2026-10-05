@@ -392,8 +392,8 @@ other source edit does.
 A marking SHALL contribute no solid. A part's volume, bounds, STL bytes, BREP
 bytes and piece id SHALL be identical whether or not it declares markings, and
 `assertNoIntersectingSolids`, `assertNoDisconnectedSolids` and every pairwise
-interference sweep SHALL return the same verdict, under the faceted and the
-exact comparison kernel alike.
+interference sweep SHALL return the same verdict, on the mesh engine and the
+B-rep engine alike.
 
 A marking SHALL NOT be a node and SHALL NOT be a child. A part's `children`,
 the shape of the tree, an assembly's part count and the published piece
@@ -414,8 +414,9 @@ a marking is not a parameter.
 #### Scenario: A marking changes no geometric verdict
 
 - **WHEN** an assembly whose parts carry markings runs
-  `assertNoIntersectingSolids` and `assertNoDisconnectedSolids`, faceted and
-  exact
+  `assertNoIntersectingSolids` and `assertNoDisconnectedSolids`, on the mesh
+  engine and on the B-rep engine
+
 - **THEN** every verdict equals the verdict the same assembly gives with the
   markings removed
 

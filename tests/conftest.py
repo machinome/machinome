@@ -9,14 +9,14 @@
 # read by `machinome vet` as bytes and never imported or run at all. The
 # leaf-contract stand-ins (tests/contract_package/) carry solid-runner test
 # modules that only `machinome test` runs, in the subprocesses of
-# tests/test_leaf_contract_exact.py and tests/test_leaf_contract_faceted.py.
+# tests/test_leaf_contract_brep.py and tests/test_leaf_contract_mesh.py.
 collect_ignore = ['meta_project', 'vet_projects', 'contract_package']
 
 # The verdict store (ADR-156) is on by default and keeps verdicts under a
 # project's build root between runs. The framework's own suite runs with it
 # OFF: `tests/base.py` and the meta-tests use one absolute build directory
 # across runs, and the boolean-counting tests (test_intersection_memo.py,
-# test_flexible_cache_performance.py, test_exact_placement_cache.py,
+# test_flexible_cache_performance.py, test_brep_placement_cache.py,
 # test_broad_phase_culling.py) would otherwise be served one another's
 # verdicts. The environment pin reaches every `machinome test` subprocess;
 # suspending the store in this process also covers the policies tests

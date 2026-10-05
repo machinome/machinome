@@ -30,16 +30,16 @@ STAND_INS = sorted(glob.glob(os.path.join(BASEDIR, 'contract_package',
                                           '*.py')))
 
 #: Modules no leaf outside the core may import.
-INTERNAL_MODULES = {'machinome.currency', 'machinome.exact_cache',
-                    'machinome.exact_artifacts', 'machinome._artifact'}
+INTERNAL_MODULES = {'machinome.currency', 'machinome.brep_cache',
+                    'machinome.brep_artifacts', 'machinome._artifact'}
 
 #: The core modules a leaf package imports: the four bases, and the
 #: helpers and seam the contract declares.
 DECLARED_MODULES = {
-    'machinome.node.leaf', 'machinome.node.exact_leaf',
+    'machinome.node.leaf', 'machinome.node.brep_leaf',
     'machinome.node.sheet_leaf', 'machinome.node.flexible',
     'machinome.node.sources', 'machinome.source_generation',
-    'machinome.exact_engine',
+    'machinome.engine',
 }
 
 #: Imports a leaving adapter makes from outside `DECLARED_MODULES`, each
@@ -64,12 +64,12 @@ def _private_base_members():
     """Every non-dunder underscore member of the four bases and of
     AbstractBaseNode."""
     from machinome.node.base import AbstractBaseNode
-    from machinome.node.exact_leaf import ExactLeafNode
+    from machinome.node.brep_leaf import BrepLeafNode
     from machinome.node.flexible import FlexibleNode
     from machinome.node.leaf import LeafNode
     from machinome.node.sheet_leaf import SheetLeafNode
     names = set()
-    for cls in (AbstractBaseNode, LeafNode, ExactLeafNode, SheetLeafNode,
+    for cls in (AbstractBaseNode, LeafNode, BrepLeafNode, SheetLeafNode,
                 FlexibleNode):
         names.update(name for name in vars(cls)
                      if name.startswith('_') and not name.startswith('__'))

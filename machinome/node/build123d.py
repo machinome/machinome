@@ -19,9 +19,9 @@ should not pay.
 
 import logging
 
-from machinome.exact_engine import require_exact_engine
+from machinome.engine import require_brep_engine
 from machinome.extras import require_extra
-from machinome.node.exact_leaf import ExactLeafNode
+from machinome.node.brep_leaf import BrepLeafNode
 from machinome.node.sheet_leaf import SheetLeafNode
 
 # Refused here, without the `build123d` extra, by the line that installs
@@ -37,11 +37,11 @@ def build123d_shape(rendered):
     ``rendered`` did not come from build123d.
 
     build123d is a front end over OCCT: every object of it wraps a single
-    TopoDS_Shape, exposed as ``.wrapped``, which is the exact engine's
+    TopoDS_Shape, exposed as ``.wrapped``, which is the B-rep engine's
     currency itself (ADR-160). Taking that shape is therefore the whole
     conversion, and every consumer after it -- placement, fuse, common,
     BREP persistence, volume -- needs no backend special case, so a fusion
-    may freely mix build123d with any other exact backend.
+    may freely mix build123d with any other B-rep backend.
 
     build123d is recognised by module name rather than imported.
     ``machinome.node`` resolves its adapters on first use, and importing
@@ -61,13 +61,13 @@ def build123d_shape(rendered):
     return getattr(rendered, 'wrapped', None)
 
 
-class Build123dNode(ExactLeafNode):
+class Build123dNode(BrepLeafNode):
     """
     Represents a 3D object created using the build123d tool.
 
     build123d is a boundary-representation backend over the same OCCT that
-    CadQueryNode uses, so the exact-adapter contract -- exact, shape(),
-    present() -- is ExactLeafNode's. What is build123d's own is the namespace
+    CadQueryNode uses, so the B-rep leaf contract -- brep, shape(),
+    present() -- is BrepLeafNode's. What is build123d's own is the namespace
     and the solid-shaped-result rule below.
 
     Note that this module never imports build123d. See build123d_shape().
@@ -91,16 +91,16 @@ class Build123dNode(ExactLeafNode):
         returned sketch would fail later and far less legibly, inside the STL
         export.
 
-        The check stays here rather than on ExactLeafNode because it is not
-        the exact contract's: a CadQuery render is legitimately a Workplane,
-        which is not a solid until shape_from_rendered unwraps it. The
-        solids are counted by the exact engine.
+        The check stays here rather than on BrepLeafNode because it is not
+        the B-rep leaf contract's: a CadQuery render is legitimately a
+        Workplane, which is not a solid until shape_from_rendered unwraps
+        it. The solids are counted by the B-rep engine.
         """
         super().validate(rendered)
 
         shape = build123d_shape(rendered)
-        if shape is None or not require_exact_engine(
-                f'exact leaf {self.name}',
+        if shape is None or not require_brep_engine(
+                f'B-rep leaf {self.name}',
                 'its render result is checked for a solid'
                 ).solid_count(shape):
             raise Exception(
@@ -149,11 +149,11 @@ class Build123dSheetNode(SheetLeafNode):
     The whole adapter is the backend-specific hooks SheetLeafNode declares
     -- reduce a profile result to its planar faces, say whether a face lies
     on the XY plane, extrude it, write it as a cut file. The contract around
-    them is the sheet base's, and the exact-adapter contract under that is
-    ExactLeafNode's: the
+    them is the sheet base's, and the B-rep leaf contract under that is
+    BrepLeafNode's: the
     extrusion is an ordinary build123d Part, so namespace validation,
     the rewrap to the engine's currency, and the STL/BREP writes are the
-    ones every other exact adapter already goes through.
+    ones every other B-rep adapter already goes through.
 
     This is not a Build123dNode, though both are defined in this module.
     Both drive build123d, but a Build123dNode renders a solid it authored,

@@ -54,9 +54,9 @@ document's schema version. Historical release records retain the old names.
 
 The prefix migration applies to former ``SOLID_NODE_*`` settings.
 The current implementation still reads ``SOLID_BUILD_DIR``,
-``SOLID_TEST_KERNEL``, ``SOLID_TEST_VOLUME_EPSILON`` and
-``SOLID_TEST_PLACEMENT_QUANTUM`` under those names; do not mechanically
-rename them. See :doc:`/reference/cli` for the complete environment table.
+``SOLID_TEST_VOLUME_EPSILON`` and ``SOLID_TEST_PLACEMENT_QUANTUM`` under
+those names; do not mechanically rename them. The run's engine is
+``SOLID_TEST_ENGINE`` in the next release (see below). See :doc:`/reference/cli` for the complete environment table.
 
 Update port imports
 --------------------
@@ -169,7 +169,75 @@ internal OpenSCAD seam and engine modules are gone, with no alias (the
 leaf base's former hook, rather than subclassing ``Solid2Node``, is no
 longer handed to OpenSCAD: it is refused for producing no STL, naming it.
 Subclass ``Solid2Node`` instead. A leaf declaring ``leaf_contract = 1`` is
-refused: the leaf contract is version 2.
+refused: the leaf contract is version 3 (see below).
+
+Use the engines' new names (unreleased)
+----------------------------------------
+
+The next release names the two engines for the representation each
+consumes: the **B-rep engine**, over boundary representations, and the
+**mesh engine**, over triangle meshes. The words *exact* and *faceted* and
+the libraries' names leave every address, flag, extra and value; nothing
+aliases a former name.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
+
+   * - Former name
+     - Next release
+   * - ``machinome test --exact`` / ``--faceted``
+     - ``machinome test --brep`` / ``--mesh``
+   * - ``SOLID_TEST_KERNEL=exact`` / ``=faceted``
+     - ``SOLID_TEST_ENGINE=brep`` / ``=mesh``
+   * - ``machinome[occt]`` / ``machinome[manifold]``
+     - ``machinome[brep]`` / ``machinome[mesh]``
+   * - ``machinome.occt.engine`` (``intersect_shapes``, ``fuse_shapes``,
+       ``placed_shape``, ``solid_count``, ``solid_volume``)
+     - ``machinome.engine.brep``
+   * - ``machinome.manifold.engine``
+     - ``machinome.engine.mesh``
+   * - ``machinome.exact_engine`` (``exact_engine``,
+       ``require_exact_engine``, ``ExactEngineUnavailable``,
+       ``ExactCommonInconsistency``, ``ExactCommonVerificationError``)
+     - ``machinome.engine`` (``brep_engine``, ``require_brep_engine``,
+       ``BrepEngineUnavailable``, ``BrepCommonInconsistency``,
+       ``BrepCommonVerificationError``)
+   * - ``machinome.mesh_engine`` (``mesh_engine``, ``require_mesh_engine``)
+     - ``machinome.engine``, the same names
+   * - ``machinome.node.exact_leaf.ExactLeafNode``
+     - ``machinome.node.brep_leaf.BrepLeafNode``
+   * - a node's ``exact`` flag
+     - ``brep``
+   * - ``machinome.exact_cache`` / ``machinome.exact_artifacts``
+     - ``machinome.brep_cache`` / ``machinome.brep_artifacts``
+
+A former flag is refused as an unrecognised argument. ``SOLID_TEST_KERNEL``
+is not read and not ignored: when it is set to anything, ``machinome test``
+exits before it builds, naming ``SOLID_TEST_ENGINE``, so rename the line in
+every checkout's ``.env`` (the file is not tracked, so a search of the
+repository does not find it) and in any CI job that exports it. A
+``SOLID_TEST_ENGINE`` set to ``exact`` or ``faceted`` is refused naming the
+two accepted values. pip warns about an unknown extra and installs nothing
+for it, so update a manifest's ``machinome[occt]`` or ``machinome[manifold]``.
+
+A leaf written outside the core subclasses ``BrepLeafNode`` where it
+subclassed ``ExactLeafNode``, reads and declares ``brep`` where it read
+``exact``, and declares ``leaf_contract = 3`` where it declared a version:
+the leaf contract is version 3, and a class declaring 2 is refused naming
+both versions.
+
+Two things recompute once, on their own, with nothing to run by hand:
+every project's kept verdicts (``_build/.verdicts``), because a verdict's
+key names the engine path and the framework's sources changed, so the
+first ``machinome test`` after the upgrade costs what a first run costs;
+and the STL of every mesh fusion, whose recorded recipe is renamed, which
+the next build writes again to the same bytes. B-rep fusions and every
+leaf's artifacts are reused.
+
+A source checkout that pulls the change keeps the compiled caches of the
+two removed packages, which Python would import as empty packages: run
+``git clean -fdX machinome/occt machinome/manifold`` once in it.
 
 Verify your project
 ---------------------

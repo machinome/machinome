@@ -216,9 +216,9 @@ capability, which removes it once rendered; it is not a build artifact. Geometry
 `backend-neutral-materialization` SHALL NOT require or generate assembly SCAD,
 but SHALL still produce SCAD source when a selected backend needs it. Other
 artifacts remain `.stl` (rendered) and `.stl.lock` during
-external rendering. A node that is exact under the `exact-geometry` capability
+external rendering. A node that has B-rep geometry under the `brep-geometry` capability
 SHALL additionally write
-`.brep`, holding that node's unplaced exact geometry under the same basename.
+`.brep`, holding that node's unplaced B-rep geometry under the same basename.
 World-space spatial math does not use on-disk artifacts — the `mesh`
 property loads the plain `.stl` and applies operations in memory (the
 `.mesh.stl` path attribute exists but is vestigial; nothing writes or reads
@@ -281,19 +281,19 @@ SHALL NOT alter any document's schema.
 - **THEN** the stage and every artifact linked into it remain available to the
   capture process
 
-#### Scenario: An exact node writes exact geometry beside its mesh
+#### Scenario: A B-rep node writes B-rep geometry beside its mesh
 
-- **WHEN** an exact rigid node is built
+- **WHEN** a B-rep rigid node is built
 - **THEN** a `.brep` artifact sits beside its `.stl` under the same basename
 
-#### Scenario: A faceted node writes no exact artifact
+#### Scenario: A mesh node writes no B-rep artifact
 
-- **WHEN** a rigid node that is not exact is built
+- **WHEN** a rigid node that has no B-rep geometry is built
 - **THEN** no `.brep` artifact is written for it
 
-#### Scenario: Published documents do not name exact geometry
+#### Scenario: Published documents do not name B-rep geometry
 
-- **WHEN** a build publishes its viewer snapshot for a project of exact nodes
+- **WHEN** a build publishes its viewer snapshot for a project of B-rep nodes
 - **THEN** the document references only `.stl` models and names no `.brep`
 
 #### Scenario: Two declared models publish side by side
@@ -338,8 +338,8 @@ SHALL NOT alter any document's schema.
 
 #### Scenario: A build writes SCAD only for SCAD-authored leaves
 
-- **WHEN** a project holding an assembly, a faceted fusion, a flexible leaf,
-  an exact leaf and a `Solid2Node` leaf is built with the OpenSCAD node
+- **WHEN** a project holding an assembly, a mesh fusion, a flexible leaf,
+  a B-rep leaf and a `Solid2Node` leaf is built with the OpenSCAD node
   package installed
 - **THEN** the only `.scad` under its build directory is the `Solid2Node`
   leaf's, beside that leaf's `.stl` under the same basename, and no
@@ -347,7 +347,7 @@ SHALL NOT alter any document's schema.
 
 #### Scenario: A build without the OpenSCAD engine writes no SCAD
 
-- **WHEN** a project of exact and imported STL leaves is built with
+- **WHEN** a project of B-rep and imported STL leaves is built with
   SolidPython and the OpenSCAD node package absent
 - **THEN** its `.stl`, `.brep` and `viewer.json` are written as with them, no
   `.scad` exists under its build directory, and nothing is logged about SCAD
@@ -371,7 +371,7 @@ and producer-recipe currency checks SHALL otherwise remain unchanged.
   geometry, and both artifacts and currency records are current together
 - **AND** rebuilding the unchanged model does not regenerate either STL
 
-#### Scenario: STEP wrappers retain both exact and faceted artifacts
+#### Scenario: STEP wrappers retain both B-rep and mesh artifacts
 
 - **WHEN** two same-qualname wrappers defined in different Python files select
   one STEP source and apply different adjustments, and both are built
@@ -476,9 +476,9 @@ through the content fallback even when artifact mtime equality succeeds, and
 upgrade a matching record without re-deriving geometry. An unknown or malformed
 record SHALL NOT certify an artifact.
 
-For an exact node the `.brep` artifact SHALL participate exactly as the `.stl`
+For a B-rep node the `.brep` artifact SHALL participate exactly as the `.stl`
 does: the node's artifacts are current only when both are. A build directory
-produced before the node became exact therefore rebuilds once.
+produced before the node became a B-rep therefore rebuilds once.
 
 Mtime and source fingerprint decide source currency, never binding currency. A
 flexible leaf's snapshot artifact is addressed by a name containing a hash of
@@ -595,11 +595,11 @@ SHALL track more files rather than fewer.
   the STL mtime and source-set fingerprint match
 - **THEN** no OpenSCAD process is launched
 
-#### Scenario: Missing exact geometry is not current
+#### Scenario: Missing B-rep geometry is not current
 
-- **WHEN** an exact node's `.stl` and `.scad` are current but its `.brep` is
+- **WHEN** a B-rep node's `.stl` and `.scad` are current but its `.brep` is
   absent
-- **THEN** the node is rendered and produces both exact artifacts
+- **THEN** the node is rendered and produces both B-rep artifacts
 
 #### Scenario: Sub-second source mtimes cache on a coarse-resolution filesystem
 
@@ -607,9 +607,9 @@ SHALL track more files rather than fewer.
   a filesystem storing timestamps to the millisecond
 - **THEN** the second build reports every artifact current and renders nothing
 
-#### Scenario: Exact artifacts cache on a coarse-resolution filesystem
+#### Scenario: B-rep artifacts cache on a coarse-resolution filesystem
 
-- **WHEN** an exact rigid node is built twice without edits on a filesystem
+- **WHEN** a B-rep rigid node is built twice without edits on a filesystem
   storing timestamps to the millisecond
 - **THEN** its `.stl` and `.brep` report current and neither is rewritten
 
@@ -689,7 +689,7 @@ the kernel releases it when the holding process ends.
 
 #### Scenario: An assembly-time producer waits
 
-- **WHEN** a cold exact or imported-file node starts through a framework entry
+- **WHEN** a cold B-rep or imported-file node starts through a framework entry
   point while another process holds its project build lock
 - **THEN** no SCAD, BREP, or STL artifact is materialized until the lock is
   released, after which the entry point completes normally
@@ -810,16 +810,16 @@ fail naming that node and why its backend needs OpenSCAD, rather than letting
 the subprocess launch fail. A build that reaches no such node SHALL make no
 availability check.
 
-A `FusionNode` whose subtree is exact SHALL NOT use this protocol. It composes
-its own geometry under the `exact-geometry` capability and SHALL produce its
+A `FusionNode` whose subtree has B-rep geometry SHALL NOT use this protocol. It composes
+its own geometry under the `brep-geometry` capability and SHALL produce its
 `.stl` by tessellating that composition in process, stamping the mtime as any
 other artifact producer does, without launching a subprocess and without
-raising `StlRenderStart`. A fusion with any non-exact descendant SHALL
+raising `StlRenderStart`. A fusion with any mesh descendant SHALL
 produce its artifact through direct mesh composition under
 `backend-neutral-materialization`, not this OpenSCAD subprocess protocol.
 Its OpenSCAD-authored children still use this protocol where required.
 
-Tessellation of an exact composition SHALL use the same deflection the
+Tessellation of a B-rep composition SHALL use the same deflection the
 `CadQueryNode` adapter already uses for leaf STL export, so a fused solid's
 mesh is of the same quality as the leaves around it.
 
@@ -842,16 +842,16 @@ mesh is of the same quality as the leaves around it.
 - **THEN** the build fails, the temporary STL and render lock are removed, and
   the previous target STL and viewer snapshot remain unchanged
 
-#### Scenario: An exact fusion renders in process
+#### Scenario: A B-rep fusion renders in process
 
-- **WHEN** a `FusionNode` whose subtree is exact is built
+- **WHEN** a `FusionNode` whose subtree has B-rep geometry is built
 - **THEN** its `.stl` is produced by tessellating its own composition, no
   OpenSCAD subprocess is launched for it, and `build_stls()` returns without
   waiting on a render job for that node
 
-#### Scenario: A faceted fusion composes current child meshes
+#### Scenario: A mesh fusion composes current child meshes
 
-- **WHEN** a `FusionNode` holding a non-exact descendant is built
+- **WHEN** a `FusionNode` holding a mesh descendant is built
 - **THEN** its child artifacts become current before the fusion unions them
   directly, and no OpenSCAD render job is launched for the fusion itself
 
@@ -862,9 +862,9 @@ mesh is of the same quality as the leaves around it.
 - **THEN** the build fails naming that node and the reason its backend needs
   OpenSCAD, and no subprocess launch error surfaces in its place
 
-#### Scenario: An all-exact build makes no availability check
+#### Scenario: An all-B-rep build makes no availability check
 
-- **WHEN** `build_stls()` completes for a tree whose every rigid node is exact
+- **WHEN** `build_stls()` completes for a tree whose every rigid node has B-rep geometry
 - **THEN** no OpenSCAD availability check is performed and the absence of the
   binary is never reported
 
@@ -1055,7 +1055,7 @@ artifacts (below). It SHALL NOT remove:
 - the error file;
 - an artifact a node of the published tree declares in `kept_artifacts()`
   (the `leaf-contract` capability), such as a family leaf's `.scad`;
-- `.brep` exact geometry;
+- `.brep` B-rep geometry;
 - live render lock files;
 - temporaries belonging to a build in progress;
 - the test framework's verdict store, the directory `.verdicts` at the top of
@@ -1105,9 +1105,9 @@ successful publication, exactly as a renamed node's artifact is.
 - **WHEN** a build fails
 - **THEN** no artifact is removed from the build directory
 
-#### Scenario: Exact geometry survives the sweep
+#### Scenario: B-rep geometry survives the sweep
 
-- **WHEN** a build of exact nodes publishes successfully and sweeps
+- **WHEN** a build of B-rep nodes publishes successfully and sweeps
 - **THEN** every `.brep` written for a current node is still present, though
   the published snapshot names none of them
 
@@ -1121,7 +1121,7 @@ successful publication, exactly as a renamed node's artifact is.
 #### Scenario: Presentation SCAD left by an earlier build is removed
 
 - **WHEN** a build directory holds the `.scad` files an earlier build wrote
-  for the project's assemblies, fusions, flexible leaves, exact leaves and
+  for the project's assemblies, fusions, flexible leaves, B-rep leaves and
   root, and the project is rebuilt and publishes a changed document
 - **THEN** every one of them is gone with its currency record, and the only
   `.scad` files left are those the tree's family leaves declare in
@@ -1267,7 +1267,7 @@ The project build lock SHALL continue to cover every artifact-producing phase an
 #### Scenario: Artifact continuation keeps one assembled tree
 
 - **WHEN** one stable generation needs several artifact passes
-- **THEN** its root constructor, structural render, full assembly, and exact-fusion order occur once, and later passes continue pending artifacts on that same linked tree
+- **THEN** its root constructor, structural render, full assembly, and B-rep-fusion order occur once, and later passes continue pending artifacts on that same linked tree
 
 #### Scenario: One-shot failure recovery gets a new interpreter
 
@@ -1344,7 +1344,7 @@ legacy recipe record SHALL be incompatible for a producer changed by this
 cycle, while unchanged producer recipes SHALL retain legacy source-record
 compatibility.
 
-A faceted fusion SHALL incorporate the current direct-mesh recipe and the
+A mesh fusion SHALL incorporate the current direct-mesh recipe and the
 relevant recipes of its child geometry into its currency. Nested fusions
 SHALL NOT reuse an enclosing artifact produced using superseded child
 geometry recipes. Recipe identity SHALL NOT change node names, parameter
@@ -1369,9 +1369,9 @@ ordering, and SHALL NOT turn every framework edit into an all-project rebuild.
   fusion's production recipe has changed
 - **THEN** both affected fusion artifacts are rebuilt in dependency order
 
-#### Scenario: Unchanged exact geometry stays cached
+#### Scenario: Unchanged B-rep geometry stays cached
 
-- **WHEN** exact leaf and exact fusion artifacts have unchanged source state
+- **WHEN** B-rep leaf and B-rep fusion artifacts have unchanged source state
   and unchanged production recipes
 - **THEN** upgrading this cycle does not re-derive their geometry merely
   because the framework version changed
@@ -1388,7 +1388,7 @@ Every import of a build artifact that the system writes into a generated
 `.scad` SHALL name that artifact by a path which resolves, from the
 directory holding that `.scad` file, to the artifact itself — because that
 is how OpenSCAD resolves an `import()`. This SHALL hold for every leaf kind
-that presents its geometry as an artifact (`Solid2Node`, the exact adapters,
+that presents its geometry as an artifact (`Solid2Node`, the B-rep adapters,
 `StlNode`, `JScadNode`, and a flexible leaf's per-binding snapshot), for a
 node at any depth of the tree, whether or not the artifact was already
 current when the tree was assembled, whatever package the importing node
@@ -1411,8 +1411,8 @@ directory; the two files SHALL NOT be required to hold the same text.
 
 #### Scenario: A parent in another package imports every leaf kind
 
-- **WHEN** an assembly declared in `sim/tools/` places a rigid leaf, an
-  exact leaf and a flexible leaf all declared in `sim/`, the model is
+- **WHEN** an assembly declared in `sim/tools/` places a rigid leaf, a
+  B-rep leaf and a flexible leaf all declared in `sim/`, the model is
   built, and the assembly's `.scad` is then generated
 - **THEN** every `import(file = …)` in the assembly's generated `.scad`
   names a file that exists relative to that `.scad`'s own directory

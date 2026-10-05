@@ -1327,6 +1327,29 @@ layer 2 starts with an actual cut.
    recomputes once after the rename; no migration code (the orchestrator's
    preference, for the pilot at ratification). Moved-names table
    `brep-mesh.toml`.
+   **Done** (5 October 2026): branch `v0.8-split-brep-mesh`, planning
+   commit dfc9681 on faf1c80, ratified with every recommendation of
+   design.md's Open Questions but the second, ruled the other way: the
+   run's choice is its engine (`SOLID_TEST_ENGINE`, `--brep`/`--mesh`,
+   `ComparisonPolicy.engine`, `ENGINES`), the former variable refused when
+   set (ADR-180). The gate is at zero, the suite green (4568 passed, 4
+   skipped), the five goldens and every validation leg green (the lock's
+   2573, Prusa3-vanilla's 15935 and OpenAstroMount's 1302 verdicts identical
+   but for the path word; the universe one new expected row,
+   OpenAstroMount). Evidence:
+   `openspec/changes/archive/2026-10-05-brep-mesh/evidence.md`; the
+   moved-names table is that archive's `moved-names.toml`.
+   Follow-ups the campaign owes outside the framework, none of them this
+   cycle's edits: machinome-studio's `machinome_test` tool
+   (`floor/mcp_server.py`) and its test pass `--faceted`/`--exact`, and its
+   `machinome-api` and `machinome` skills spell those flags and
+   `SOLID_TEST_KERNEL` (now `SOLID_TEST_ENGINE`), a paired studio change
+   when the line merges into `main`; the workspace's
+   `skills/simulate-project/SKILL.md` spells the former flags; the
+   workspace's `scripts/load-projects.d/` gains `brep-mesh.toml` from this
+   change's `moved-names.toml`; every checkout's `.env` setting
+   `SOLID_TEST_KERNEL` is refused until renamed; machinome-freecad's
+   retarget subclasses `BrepLeafNode` and declares leaf contract 3.
 3. `root-cleanup`. The node root stops re-exporting: each of its 20 names
    refuses with the module's address, as the moved port names do. A new
    rewrite script, modelled on `scripts/migrate-projects-to-machinome`,

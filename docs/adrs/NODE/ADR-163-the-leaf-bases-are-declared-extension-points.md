@@ -1,6 +1,6 @@
 # ADR-163: The Leaf Bases Are Declared Extension Points
 
-**Status:** Accepted, declared members amended 2026-10-04 by [ADR-178](ADR-178-a-leaf-declares-its-kind-as-one-set-on-the-leaf-base.md)
+**Status:** Accepted, declared members amended 2026-10-04 by [ADR-178](ADR-178-a-leaf-declares-its-kind-as-one-set-on-the-leaf-base.md); the B-rep leaf base's name and module, amended 2026-10-05 by [ADR-180](ADR-180-the-engines-are-named-for-the-representation-each-consumes.md)
 **Date:** 2026-10-03
 **Change:** [`leaf-contract`](../../../openspec/changes/archive/2026-10-03-leaf-contract/)
 **Supersedes in part:**

@@ -93,7 +93,7 @@ motion module and SHALL be reachable only from there. Importing
 SHALL NOT import a backend the caller has not named.
 
 In particular, importing `machinome.node` SHALL NOT import `cadquery`,
-`build123d`, `molejo` or the boundary-representation kernel `OCP`. A name is
+`build123d`, `molejo` or the kernel binding `OCP`. A name is
 resolved by importing the leaf module that defines it (the `node-model`
 capability's table), which imports what that module needs and nothing else:
 `StepNode` imports CadQuery and the kernel's STEP reader, `MolejoNode` imports
@@ -113,7 +113,7 @@ text, so only an `ImportError` carries the redirect to the failing import
 line. A name whose leaf module refuses an absent kernel SHALL raise that
 refusal, which is an `ImportError`, for the same reason.
 
-#### Scenario: An OpenSCAD-only project imports no exact stack
+#### Scenario: An OpenSCAD-only project imports no B-rep stack
 
 - **WHEN** a project whose model uses only `Solid2Node` is built
 - **THEN** the build produces the same artifacts as before and `cadquery` is
@@ -164,7 +164,7 @@ refusal, which is an `ImportError`, for the same reason.
 The system SHALL import `machinome.test` where tests are discovered or run,
 not at the module scope of the loader that every node-scoped command goes
 through. Importing `machinome.core.loader` SHALL NOT import
-`machinome.test`, and therefore SHALL NOT import the exact-geometry stack.
+`machinome.test`, and therefore SHALL NOT import the B-rep stack.
 
 The system SHALL likewise resolve `machinome.simulation`'s exports on first
 access rather than at package import, so reaching
@@ -278,65 +278,6 @@ a deferred accessor, because there is no expensive import to defer.
 - **THEN** each exported name is already an attribute of the module object,
   resolved without a module-level accessor
 
-### Requirement: The test framework does not import the exact-geometry stack
-
-The system SHALL resolve the exact engine, and through it the
-boundary-representation stack, at the exact path's first use rather than at
-`machinome.test` module scope. Importing `machinome.test` in a fresh
-interpreter SHALL NOT import `cadquery`, `OCP` or the exact engine.
-
-This completes the deferral the loader requirement already states from the
-other side: loading a node imports neither the test framework nor cadquery,
-and importing the test framework imports neither cadquery nor the kernel. A
-project that models entirely in solid2 and asserts entirely over meshes
-therefore runs its tests without ever loading the exact stack.
-
-The deferral SHALL NOT make exact geometry optional or change any exact
-verdict. A comparison between two exact nodes SHALL resolve the exact engine
-through the seam the `exact-engine-dependency` capability specifies and
-produce the same result as before; only the moment of the import moves.
-
-The exact path SHALL look up each name it calls where that name is defined,
-at the moment of the call: an engine operation (`intersect_shapes`,
-`fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume`, `bounds`,
-`face_bounds`, `mutually_outside`) as an attribute of the resolved engine, and
-a core memo (`cached_bounding_box`, `cached_face_boxes`, `cached_placement`,
-`shape_identity`, `shape_load_observation`) as an attribute of the core module
-that defines it. A caller that patches a name in its defining module SHALL
-therefore be honoured whether or not an exact comparison has yet run.
-`machinome.test` SHALL NOT bind those names as attributes of its own, so each
-keeps one path.
-
-A failure to import the exact engine SHALL surface under the existing
-deferred-import requirement and the `exact-engine-dependency` capability: an
-absent engine is refused naming its install, a broken one raises its own
-import error at first use, and neither is swallowed or substituted.
-
-#### Scenario: Importing the test framework loads no exact stack
-
-- **WHEN** `machinome.test` is imported in a fresh interpreter
-- **THEN** `cadquery`, `OCP` and the exact engine module are absent from
-  `sys.modules`
-
-#### Scenario: A faceted project's test run loads no exact stack
-
-- **WHEN** a project whose nodes are all faceted runs its tests to completion
-- **THEN** the run reports the same results as today and `cadquery`, `OCP` and
-  the exact engine module are absent from `sys.modules`
-
-#### Scenario: An exact comparison still loads the stack
-
-- **WHEN** two exact nodes are compared by an intersection assertion
-- **THEN** the exact engine is resolved and the comparison returns the verdict
-  it returns today
-
-#### Scenario: A name patched where it is defined is used
-
-- **WHEN** a caller patches `intersect_shapes` on the engine module, or
-  `cached_face_boxes` on the core module that defines it, before any exact
-  comparison has run
-- **THEN** the exact path uses the patched object
-
 ### Requirement: The motion package is cheap to import
 
 The system SHALL keep `machinome.motion` free of geometry. Importing
@@ -345,7 +286,7 @@ top-level `machinome` package itself — its parent, which the import
 machinery necessarily creates and whose `__init__` carries version
 metadata only — and no CAD backend.
 Importing `machinome.motion.ports` SHALL import no
-CAD backend and no exact-geometry stack: it reaches into
+CAD backend and no B-rep stack: it reaches into
 `machinome.node` only for the render-phase reporter, and the node
 classes it needs to validate and read a time base SHALL be imported
 inside the methods that need them, never at module scope.
@@ -358,7 +299,7 @@ else they need from the node package — the tree, the operations, the
 lifecycle phase, the declaring namespace, the driver declaration —
 SHALL be imported inside the methods that need them, never at module
 scope. Importing either SHALL import no CAD backend and no
-exact-geometry stack.
+B-rep stack.
 
 Neither `machinome.motion.ports` nor any module beneath
 `machinome.motion` SHALL be imported as a side effect of importing
@@ -374,7 +315,7 @@ Neither `machinome.motion.ports` nor any module beneath
 #### Scenario: Ports pull no geometry backend
 
 - **WHEN** `machinome.motion.ports` is imported in a fresh interpreter
-- **THEN** `cadquery`, the boundary-representation kernel and the STEP
+- **THEN** `cadquery`, the kernel binding `OCP` and the STEP
   reader are absent from the process's imported modules
 
 #### Scenario: Joints and couplings cost what ports cost
@@ -384,7 +325,7 @@ Neither `machinome.motion.ports` nor any module beneath
   one's imported `machinome` modules are compared with those of an
   interpreter that imported only `machinome.motion.ports`
 - **THEN** each set is the same but for the module itself, and
-  `cadquery`, the boundary-representation kernel and the STEP reader
+  `cadquery`, the kernel binding `OCP` and the STEP reader
   are absent from all three
 
 #### Scenario: Either import order works
@@ -427,7 +368,7 @@ of a run binder SHALL add no import to it.
 
 - **WHEN** a `Sim` is constructed over a root declaring `Time.running()`
 - **THEN** the compile step and the engine are imported then, and no CAD
-  backend and no exact-geometry stack with them
+  backend and no B-rep stack with them
 
 ### Requirement: The vet command and the manifest reader load no geometry stack
 
@@ -469,4 +410,63 @@ numeric backend.
 - **THEN** the process has imported the `vet` command's module and no
   other command's module, and `machinome.core.loader`, `numpy` and
   `cadquery` are absent from its imported modules
+
+### Requirement: The test framework does not import the B-rep stack
+
+The system SHALL resolve the B-rep engine, and through it the
+boundary-representation stack, at the B-rep path's first use rather than at
+`machinome.test` module scope. Importing `machinome.test` in a fresh
+interpreter SHALL NOT import `cadquery`, `OCP` or the B-rep engine.
+
+This completes the deferral the loader requirement already states from the
+other side: loading a node imports neither the test framework nor cadquery,
+and importing the test framework imports neither cadquery nor the kernel. A
+project that models entirely in solid2 and asserts entirely over meshes
+therefore runs its tests without ever loading the B-rep stack.
+
+The deferral SHALL NOT make B-rep geometry optional or change any B-rep
+verdict. A comparison between two B-rep nodes SHALL resolve the B-rep engine
+through the seam the `brep-engine-dependency` capability specifies and
+produce the same result as before; only the moment of the import moves.
+
+The B-rep path SHALL look up each name it calls where that name is defined,
+at the moment of the call: an engine operation (`intersect_shapes`,
+`fuse_shapes`, `placed_shape`, `solid_count`, `solid_volume`, `bounds`,
+`face_bounds`, `mutually_outside`) as an attribute of the resolved engine, and
+a core memo (`cached_bounding_box`, `cached_face_boxes`, `cached_placement`,
+`shape_identity`, `shape_load_observation`) as an attribute of the core module
+that defines it. A caller that patches a name in its defining module SHALL
+therefore be honoured whether or not a B-rep comparison has yet run.
+`machinome.test` SHALL NOT bind those names as attributes of its own, so each
+keeps one path.
+
+A failure to import the B-rep engine SHALL surface under the existing
+deferred-import requirement and the `brep-engine-dependency` capability: an
+absent engine is refused naming its install, a broken one raises its own
+import error at first use, and neither is swallowed or substituted.
+
+#### Scenario: Importing the test framework loads no B-rep stack
+
+- **WHEN** `machinome.test` is imported in a fresh interpreter
+- **THEN** `cadquery`, `OCP` and the B-rep engine module are absent from
+  `sys.modules`
+
+#### Scenario: A mesh project's test run loads no B-rep stack
+
+- **WHEN** a project whose nodes are all mesh runs its tests to completion
+- **THEN** the run reports the same results as today and `cadquery`, `OCP` and
+  the B-rep engine module are absent from `sys.modules`
+
+#### Scenario: A B-rep comparison still loads the stack
+
+- **WHEN** two B-rep nodes are compared by an intersection assertion
+- **THEN** the B-rep engine is resolved and the comparison returns the verdict
+  it returns today
+
+#### Scenario: A name patched where it is defined is used
+
+- **WHEN** a caller patches `intersect_shapes` on the engine module, or
+  `cached_face_boxes` on the core module that defines it, before any B-rep
+  comparison has run
+- **THEN** the B-rep path uses the patched object
 

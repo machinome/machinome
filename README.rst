@@ -64,12 +64,13 @@ Install it with the browser viewer and start a project:
    cd myproject
    machinome develop
 
-With that install the starter part is an exact CadQuery part; where
+With that install the starter part is a B-rep CadQuery part; where
 SolidPython is installed too (``machinome[solid2]``) it is a SolidPython part,
 which needs the OpenSCAD executable, and the manual's first page replaces it
-with an exact CadQuery part. Each CAD kernel is an extra named for the
+with a B-rep CadQuery part. Each CAD kernel is an extra named for the
 module that needs it (``cadquery``, ``build123d``, ``step``, ``molejo``,
-``openscad``, ``solid2``, or ``all``). The
+``openscad``, ``solid2``, the two engines' ``brep`` and ``mesh``, or
+``all``). The
 `migration guide <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_
 maps imports, commands, configuration and viewer integration from 0.6.
 There is no ``solid_node`` import shim or ``solid`` command alias.
@@ -120,18 +121,18 @@ its widget live in the separate `machinome-viewer
 that need a viewer skip unless that package is installed. `OpenSCAD
 <https://openscad.org/>`_ is conditional: put it on the PATH when working on
 SolidPython2/Solid2 or raw OpenSCAD nodes, or the default OpenSCAD snapshot
-renderer. All-exact projects — CadQuery,
+renderer. All-B-rep projects — CadQuery,
 build123d, or the two mixed — build, test, and export without it; use
 ``machinome snapshot --renderer web`` for snapshots on a machine without OpenSCAD.
 
-`manifold3d <https://pypi.org/project/manifold3d/>`_, the mesh engine, is the
-``manifold`` extra (``pip install "machinome[manifold]"``, included in
-``all``) and is conditional in the same sense: it decides faceted geometry,
-so it is needed whenever an assertion compares a part that has no exact
-geometry, by ``machinome test --faceted``, and by
+`manifold3d <https://pypi.org/project/manifold3d/>`_, the mesh engine's
+kernel, is the ``mesh`` extra (``pip install "machinome[mesh]"``, included
+in ``all``) and is conditional in the same sense: it decides mesh geometry,
+so it is needed whenever an assertion compares a part that has no B-rep
+geometry, by ``machinome test --mesh``, and by
 ``assertAssemblySupported``, whose statics phase reads contact patches off
-meshed intersections for every body. An all-exact project's other geometric
-assertions are decided by the OCCT kernel and run without it — useful on a
+meshed intersections for every body. An all-B-rep project's other
+geometric assertions are decided by the B-rep engine and run without it — useful on a
 platform with no compiled wheel, such as WebAssembly. A path that needs it
 and cannot import it says so by name, naming the extra.
 

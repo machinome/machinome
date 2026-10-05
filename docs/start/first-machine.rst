@@ -78,7 +78,7 @@ Look in the build directory
 ---------------------------
 
 ``_build/`` holds what the build produced: an STL per part, a ``.brep``
-beside it with the exact geometry of an OCCT-backed part, and the
+beside it with the B-rep geometry of a B-rep part, and the
 ``viewer.json`` document that the viewer reads. Nothing in it is edited
 by hand.
 

@@ -17,7 +17,7 @@ OpenSCAD snapshot renderer, which removes it once drawn. A build sweeps every
 other, and a transient one whatever its document did.
 
 The tests of an absent SolidPython or family run in subprocesses under
-`tests/exact_engine_absent.py`'s finder, once for each missing module.
+`tests/brep_engine_absent.py`'s finder, once for each missing module.
 """
 
 import argparse
@@ -35,7 +35,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from machinome import currency
-from tests.exact_engine_absent import run_machinome, run_python
+from tests.brep_engine_absent import run_machinome, run_python
 from tests.test_expression_type import (core_modules, names_the_engine_package,
                                         solid2_imports)
 

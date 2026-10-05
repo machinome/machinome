@@ -98,12 +98,12 @@ class ExactEngineInternalTest(TestCase):
         fixture = 'exact_engine_internals'
 
         self.assertEqual(findings(run_vet(fixture)), {
-            at(fixture, 'from machinome.occt.engine import write_brep',
-               'framework-internal', 'machinome.occt.engine.write_brep'),
-            at(fixture, 'import machinome.exact_artifacts',
-               'framework-internal', 'machinome.exact_artifacts'),
-            at(fixture, 'LOAD = machinome.exact_cache.cached_shape',
-               'framework-internal', 'machinome.exact_cache'),
+            at(fixture, 'from machinome.engine.brep import write_brep',
+               'framework-internal', 'machinome.engine.brep.write_brep'),
+            at(fixture, 'import machinome.brep_artifacts',
+               'framework-internal', 'machinome.brep_artifacts'),
+            at(fixture, 'LOAD = machinome.brep_cache.cached_shape',
+               'framework-internal', 'machinome.brep_cache'),
         })
 
 

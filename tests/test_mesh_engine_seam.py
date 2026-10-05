@@ -2,7 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The mesh engine seam, `machinome.mesh_engine` (OpenSpec change
+"""The mesh engine seam, `machinome.engine` (OpenSpec change
 `mesh-engine`, capability `mesh-engine-dependency`).
 
 The core names its mesh engine in one place and resolves it on first use,
@@ -30,17 +30,17 @@ from typing import Protocol
 from unittest import TestCase
 from unittest.mock import patch
 
-import machinome.mesh_engine as seam
+import machinome.engine as seam
 
 ROOT = Path(__file__).resolve().parents[1]
-PROVIDER = 'machinome.manifold.engine'
+PROVIDER = 'machinome.engine.mesh'
 
 #: design.md Decision 2's refusal, written out here.
 REFUSAL = (
-    'faceted fusion Bracket requires the mesh engine because unioning its '
-    'children; install it with \'pip install "machinome[manifold]"\'. Exact '
-    'geometry does not need it: a model whose every compared part is exact '
-    'is decided by the boundary-representation kernel')
+    'mesh fusion Bracket requires the mesh engine because unioning its '
+    'children; install it with \'pip install "machinome[mesh]"\'. B-rep '
+    'geometry does not need it: a model whose every compared part has B-rep '
+    'geometry is decided by the B-rep engine')
 
 
 def contract_members():
@@ -68,9 +68,9 @@ class ProviderTest(_SeamCacheCleared):
 
         self.assertIsInstance(engine, types.ModuleType)
         self.assertEqual(engine.__name__, PROVIDER)
-        self.assertEqual(seam.CONTRACT, 1)
-        self.assertEqual(engine.CONTRACT, seam.CONTRACT)
-        self.assertEqual(seam.PROVIDER, PROVIDER)
+        self.assertEqual(seam.MESH_CONTRACT, 1)
+        self.assertEqual(engine.CONTRACT, seam.MESH_CONTRACT)
+        self.assertEqual(seam.MESH_PROVIDER, PROVIDER)
         self.assertIs(seam.require_mesh_engine('a test', 'it asks'), engine)
 
     def test_the_contract_names_ten_operations(self):
@@ -100,19 +100,17 @@ class ProviderTest(_SeamCacheCleared):
         self.assertIsNotNone(first)
         self.assertEqual(imported.call_count, 1)
 
-    def test_the_package_metadata_declares_a_manifold_extra(self):
+    def test_the_package_metadata_declares_a_mesh_extra(self):
         project = tomllib.loads(
             (ROOT / 'pyproject.toml').read_text())['project']
 
-        self.assertIn('manifold', project['optional-dependencies'])
+        self.assertIn('mesh', project['optional-dependencies'])
 
     def test_the_package_exports_no_operation(self):
-        import machinome.manifold
-
         for name in sorted(contract_members()):
             with self.subTest(name):
                 with self.assertRaises(AttributeError):
-                    getattr(machinome.manifold, name)
+                    getattr(seam, name)
 
 
 class AbsentEngineTest(_SeamCacheCleared):
@@ -124,7 +122,7 @@ class AbsentEngineTest(_SeamCacheCleared):
     def test_requiring_names_the_engine_the_caller_and_the_install(self):
         with patch.dict(sys.modules, {PROVIDER: None}):
             with self.assertRaises(seam.MeshEngineUnavailable) as raised:
-                seam.require_mesh_engine('faceted fusion Bracket',
+                seam.require_mesh_engine('mesh fusion Bracket',
                                          'unioning its children')
 
         self.assertEqual(str(raised.exception), REFUSAL)
@@ -185,10 +183,9 @@ class _BrokenProviderFinder(importlib.abc.MetaPathFinder,
 class BrokenEngineTest(_SeamCacheCleared):
 
     def test_an_import_error_from_inside_the_provider_surfaces(self):
-        import machinome.manifold as package
-
+        package = seam
         finder = _BrokenProviderFinder()
-        saved = getattr(package, 'engine', None)
+        saved = getattr(package, 'mesh', None)
         sys.meta_path.insert(0, finder)
         try:
             with patch.dict(sys.modules):
@@ -202,21 +199,21 @@ class BrokenEngineTest(_SeamCacheCleared):
         finally:
             sys.meta_path.remove(finder)
             if saved is not None:
-                package.engine = saved
+                package.mesh = saved
 
 
 #: Ask the seam whether the engine is there, then require it, and report
 #: both as JSON on the last line.
 ASK_AND_REQUIRE = '''
 import json
-import machinome.mesh_engine as seam
+import machinome.engine as seam
 report = {}
 try:
     report['asked'] = repr(seam.mesh_engine())
 except ImportError as raised:
     report['asked'] = f'{type(raised).__name__}: {raised}'
 try:
-    seam.require_mesh_engine('faceted fusion Bracket',
+    seam.require_mesh_engine('mesh fusion Bracket',
                              'unioning its children')
 except Exception as raised:
     report['required'] = f'{type(raised).__name__}: {raised}'
@@ -245,7 +242,7 @@ class AbsentKernelTest(TestCase):
                          f'MeshEngineUnavailable: {REFUSAL}')
 
     def test_an_absent_provider_is_an_absent_engine(self):
-        report = self.ask(absent=('machinome.manifold',))
+        report = self.ask(absent=('machinome.engine.mesh',))
 
         self.assertEqual(report['asked'], 'None')
         self.assertEqual(report['required'],

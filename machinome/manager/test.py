@@ -17,8 +17,8 @@ from machinome.core.loader import (
     AmbiguousNodeError, project_root, _defined_classes,
 )
 from machinome.core.builder import project_build_lock
-from machinome import exact_cache
-from machinome.mesh_engine import MeshEngineUnavailable, require_mesh_engine
+from machinome import brep_cache
+from machinome.engine import MeshEngineUnavailable, require_mesh_engine
 from machinome.node.base import AbstractBaseNode
 from machinome.test import (ComparisonPolicy, DEFAULT_PLACEMENT_QUANTUM,
                              resolve_comparison_policy, set_comparison_policy)
@@ -31,14 +31,14 @@ class StopTestRun(Exception):
 
 
 def _reset_placement_cache_for_run():
-    """Clear exact placement retention for a new run.
+    """Clear B-rep placement retention for a new run.
 
     A fresh CLI process has no placement cache. This only matters when a
-    managed run is established in an interpreter that already used exact
-    geometry. The memo module imports no exact engine, so clearing it
-    costs a faceted-only run nothing.
+    managed run is established in an interpreter that already used B-rep
+    geometry. The memo module imports no B-rep engine, so clearing it
+    costs a mesh-only run nothing.
     """
-    exact_cache._reset_placement_cache()
+    brep_cache._reset_placement_cache()
 
 
 class Test:
@@ -61,29 +61,28 @@ class Test:
         parser.add_argument('--failfast',
                             action='store_true',
                             help='Stop the test run on the first error.')
-        kernel = parser.add_mutually_exclusive_group()
-        kernel.add_argument(
-            '--exact', dest='kernel', action='store_const', const='exact',
-            help='Compare exact parts on the boundary-representation '
-                 'kernel (the default, and what SOLID_TEST_KERNEL=exact '
-                 'selects).')
-        kernel.add_argument(
-            '--faceted', dest='kernel', action='store_const', const='faceted',
+        engine = parser.add_mutually_exclusive_group()
+        engine.add_argument(
+            '--brep', dest='engine', action='store_const', const='brep',
+            help='Compare B-rep parts on the B-rep engine (the default, and '
+                 'what SOLID_TEST_ENGINE=brep selects).')
+        engine.add_argument(
+            '--mesh', dest='engine', action='store_const', const='mesh',
             help='Compare every pair on the parts\' meshes, at tessellation '
                  'precision: the fast development loop, selected for a '
-                 'checkout by SOLID_TEST_KERNEL=faceted in its .env.')
+                 'checkout by SOLID_TEST_ENGINE=mesh in its .env.')
         parser.add_argument(
             '--volume-epsilon', type=float, default=None, metavar='MM3',
-            help='Under --faceted, report an intersection of at most this '
+            help='Under --mesh, report an intersection of at most this '
                  'volume as empty (default SOLID_TEST_VOLUME_EPSILON, else '
-                 '0). The exact kernel refuses it.')
+                 '0). The B-rep engine refuses it.')
         parser.add_argument(
             '--placement-quantum', type=float, default=None, metavar='MM',
             help='Merge two relative placements into one verdict-memo '
                  'question when they differ by less than this (default '
                  'SOLID_TEST_PLACEMENT_QUANTUM, else '
                  f'{DEFAULT_PLACEMENT_QUANTUM:g}). Accepted by both '
-                 'kernels; 0 restores the exact-bytes key.')
+                 'engines; 0 restores the exact-bytes key.')
         parser.add_argument(
             '--verdict-store', action=argparse.BooleanOptionalAction,
             default=None,
@@ -99,7 +98,7 @@ class Test:
     def handle(self, args):
         try:
             self.policy = resolve_comparison_policy(
-                getattr(args, 'kernel', None),
+                getattr(args, 'engine', None),
                 getattr(args, 'volume_epsilon', None),
                 getattr(args, 'placement_quantum', None),
                 getattr(args, 'verdict_store', None))
@@ -107,20 +106,20 @@ class Test:
             self.fail(str(error))
         set_comparison_policy(self.policy)
         _reset_placement_cache_for_run()
-        if self.policy.kernel == 'faceted':
-            # Every pair a faceted run compares is compared on meshes, so
-            # the run needs the mesh engine before it builds anything.
+        if self.policy.engine == 'mesh':
+            # Every pair a mesh run compares is compared on meshes, so the
+            # run needs the mesh engine before it builds anything.
             try:
                 require_mesh_engine(
-                    'machinome test on the faceted kernel',
+                    'machinome test on the mesh engine',
                     "every pair the run compares is compared on the parts' "
                     'meshes')
             except MeshEngineUnavailable as error:
                 self.fail(str(error))
             sys.stdout.write(
-                'Comparing on the faceted kernel (volume epsilon '
+                'Comparing on the mesh engine (volume epsilon '
                 f'{self.policy.volume_epsilon:g} mm³): verdicts are at '
-                'tessellation precision, not exact.\n')
+                "tessellation precision, not the B-rep engine's.\n")
         self.failfast = args.failfast
         self.overrides = list(getattr(args, 'set', None) or [])
         if getattr(args, 'all', False):
@@ -324,11 +323,11 @@ class Test:
         if self.num_unexpected_successes:
             noun = 'success' if self.num_unexpected_successes == 1 else 'successes'
             summary += f", {self.num_unexpected_successes} unexpected {noun}"
-        policy = getattr(self, 'policy', ComparisonPolicy('exact', 0.0))
+        policy = getattr(self, 'policy', ComparisonPolicy('brep', 0.0))
         notes = []
-        if policy.kernel == 'faceted':
-            # A green fast run must never read as an exact one in a log.
-            notes.append(f"faceted kernel, volume epsilon "
+        if policy.engine == 'mesh':
+            # A green fast run must never read as a B-rep one in a log.
+            notes.append(f"mesh engine, volume epsilon "
                         f"{policy.volume_epsilon:g} mm³")
         if policy.placement_quantum != DEFAULT_PLACEMENT_QUANTUM:
             # The default run's output must stay byte-for-byte what it is

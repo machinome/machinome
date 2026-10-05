@@ -48,10 +48,10 @@ import numpy as np
 from trimesh.creation import box
 
 import machinome.test as test_module
-from machinome import exact_cache
-from machinome.exact_artifacts import write_brep
-from machinome.exact_cache import _placement_cache, cached_shape
-from machinome.occt import engine as occt_engine
+from machinome import brep_cache
+from machinome.brep_artifacts import write_brep
+from machinome.brep_cache import _placement_cache, cached_shape
+from machinome.engine import brep as occt_engine
 from machinome.node.base import AbstractBaseNode, _compose_world_matrix
 from machinome.node.operations import Rotation, Translation
 from tests.stand_in import StandIn
@@ -62,7 +62,7 @@ class FakeNode(StandIn):
     reusing the REAL mesh getter -- the same pattern as
     tests/test_broad_phase_culling.py's FakeNode."""
 
-    exact = False
+    brep = False
 
     def __init__(self, name, stl_file):
         self.name = name
@@ -83,7 +83,7 @@ class MeshOnlyNode(StandIn):
     `.mesh` fallback exists for. It has no stable identity, so it must
     never be cached."""
 
-    exact = False
+    brep = False
 
     def __init__(self, name, mesh):
         self.name = name
@@ -93,10 +93,10 @@ class MeshOnlyNode(StandIn):
 class ExactFakeNode(StandIn):
     """A minimal exact node whose shape has the stable cache identity the
     exact path's memo key needs -- the same `cached_shape`/`write_brep`
-    technique `tests/test_exact_geometry.py`'s exact fixtures use, kept
+    technique `tests/test_brep_geometry.py`'s exact fixtures use, kept
     self-contained here rather than imported across test modules."""
 
-    exact = True
+    brep = True
 
     def __init__(self, name, brep_path):
         self.name = name
@@ -137,7 +137,7 @@ class MemoTestCase(TestCase):
         overrides it -- while leaving the kernel and epsilon at what
         every scenario in this file already assumes: exact, strict."""
         test_module.set_comparison_policy(
-            test_module.ComparisonPolicy('exact', 0.0, quantum))
+            test_module.ComparisonPolicy('brep', 0.0, quantum))
 
     def _translated(self, name, translation):
         node = FakeNode(name, self.box_path)
@@ -170,8 +170,8 @@ class MemoTestCase(TestCase):
         observable. The engine's `intersect_solids` is the operation the
         fast path performs; counting calls to the helper that performs it
         is what distinguishes a served verdict from a recomputed one."""
-        return patch.object(test_module, '_faceted_verdict',
-                            wraps=test_module._faceted_verdict)
+        return patch.object(test_module, '_mesh_verdict',
+                            wraps=test_module._mesh_verdict)
 
 
 class RepeatedComparisons(MemoTestCase):
@@ -274,12 +274,12 @@ class CacheValidity(MemoTestCase):
         first = self._translated('First', [0, 0, 0])
         second = self._translated('Second', [1.5, 0, 0])
         faceted = test_module._intersection_stats(first, second)
-        self.assertFalse(faceted.exact)
+        self.assertFalse(faceted.brep)
 
         entries = list(test_module._verdict_cache)
         self.assertTrue(entries, 'the faceted comparison was not cached')
         for key in entries:
-            self.assertIn('faceted', key,
+            self.assertIn('mesh', key,
                           'a cache key does not record its evaluation path')
 
 
@@ -396,9 +396,9 @@ class SignedZeroDoesNotSplitACell(MemoTestCase):
             'scenario proves nothing')
 
         negative_key = test_module._verdict_key(
-            'a', base, 'b', negative_zero, 'exact')
+            'a', base, 'b', negative_zero, 'brep')
         positive_key = test_module._verdict_key(
-            'a', base, 'b', positive_zero, 'exact')
+            'a', base, 'b', positive_zero, 'brep')
 
         self.assertEqual(negative_key, positive_key)
 
@@ -441,12 +441,12 @@ class NonFiniteRelativeMatrixYieldsNoKey(MemoTestCase):
         degenerate = np.eye(4)
         degenerate[0, 0] = np.nan
         self.assertIsNone(test_module._verdict_key(
-            'a', degenerate, 'b', np.eye(4), 'exact'))
+            'a', degenerate, 'b', np.eye(4), 'brep'))
 
     def test_a_non_finite_relative_matrix_is_never_cached(self):
         non_finite = np.eye(4) * np.nan
         key = test_module._verdict_key(
-            'a', np.eye(4), 'b', non_finite, 'exact')
+            'a', np.eye(4), 'b', non_finite, 'brep')
         self.assertIsNone(key)
 
         computed = []
@@ -474,10 +474,10 @@ class TwoQuantaNeverCrossServe(MemoTestCase):
 
         self._set_quantum(q)
         key_q = test_module._verdict_key(
-            'a', np.eye(4), 'b', matrix_at_q, 'exact')
+            'a', np.eye(4), 'b', matrix_at_q, 'brep')
         self._set_quantum(2 * q)
         key_double_q = test_module._verdict_key(
-            'a', np.eye(4), 'b', matrix_at_double_q, 'exact')
+            'a', np.eye(4), 'b', matrix_at_double_q, 'brep')
 
         self.assertNotEqual(
             key_q, key_double_q,
@@ -499,7 +499,7 @@ class PlacedGeometryIsNotQuantised(MemoTestCase):
             [test_module.DEFAULT_PLACEMENT_QUANTUM / 4, 0, 0], second))
         test_module._intersection_stats(first, second)
 
-        identity = exact_cache.shape_identity(second.shape())
+        identity = brep_cache.shape_identity(second.shape())
         matrices = [key[1] for key in _placement_cache if key[0] == identity]
         self.assertEqual(len(matrices), 2,
                          'two comparisons at different exact placements '

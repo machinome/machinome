@@ -9,10 +9,10 @@ import. Importing any submodule runs this file first, so the eager
 re-export list this replaces meant that `from machinome.node.base import
 AbstractBaseNode` -- what the loader, the builder, the piece inventory,
 the test manager and the simulation enumerator all do -- pulled the
-exact layer of the time and therefore `cadquery` into every `machinome`
-invocation, including ones that touch no geometry at all. Exact geometry
-is now the exact engine's, resolved through `machinome.exact_engine` only
-by the paths that use it.
+B-rep layer of the time and therefore `cadquery` into every `machinome`
+invocation, including ones that touch no geometry at all. B-rep geometry
+is now the B-rep engine's, resolved through its seam in the engine
+package, `machinome.engine`, only by the paths that use it.
 
 Each node type is one module directly under this package, named for it.
 The table of supported node types (`machinome.node.supported`) names each

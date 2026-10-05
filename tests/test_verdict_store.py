@@ -46,17 +46,17 @@ from trimesh.creation import box
 import machinome
 import machinome.test as test_module
 from machinome import _verdict_store as store
-from machinome import exact_cache
+from machinome import brep_cache
 from machinome._artifact import VERDICT_STORE_DIRECTORY, observe_artifact
 from machinome.core.builder import unanchor_build_dir
-from machinome.exact_artifacts import write_brep
-from machinome.exact_engine import ExactCommonInconsistency
-from machinome.occt import engine as occt_engine
+from machinome.brep_artifacts import write_brep
+from machinome.engine import BrepCommonInconsistency
+from machinome.engine import brep as occt_engine
 from machinome.node import base as base_module
 from machinome.node.operations import Translation
 
 from . import verdict_store_workers as workers
-from .exact_test_support import clear_exact_shape_caches
+from .brep_test_support import clear_exact_shape_caches
 from .import_probe import probe
 from .test_assembly_integrity import Assembly, RigidNode
 from .test_intersection_memo import ExactFakeNode, FakeNode, MeshOnlyNode
@@ -128,11 +128,11 @@ class StoreTestCase(TestCase):
 
     # -- the run -------------------------------------------------------
 
-    def set_policy(self, kernel='exact', epsilon=0.0,
+    def set_policy(self, engine='brep', epsilon=0.0,
                    quantum=test_module.DEFAULT_PLACEMENT_QUANTUM,
                    verdict_store=True):
         test_module.set_comparison_policy(test_module.ComparisonPolicy(
-            kernel, epsilon, quantum, verdict_store))
+            engine, epsilon, quantum, verdict_store))
 
     def fresh_process(self):
         """End this 'process' as a run does, flushing, and start another."""
@@ -143,10 +143,10 @@ class StoreTestCase(TestCase):
     def counted(self):
         """Count verdict computations on either path: a served verdict
         never reaches the helper that decides a pair."""
-        with patch.object(test_module, '_exact_verdict',
-                          wraps=test_module._exact_verdict) as exact, \
-                patch.object(test_module, '_faceted_verdict',
-                             wraps=test_module._faceted_verdict) as faceted:
+        with patch.object(test_module, '_brep_verdict',
+                          wraps=test_module._brep_verdict) as exact, \
+                patch.object(test_module, '_mesh_verdict',
+                             wraps=test_module._mesh_verdict) as faceted:
             yield Counter(exact, faceted)
 
     # -- artifacts -----------------------------------------------------
@@ -217,8 +217,8 @@ class StoreTestCase(TestCase):
 
     def assertBitIdentical(self, served, decided):
         self.assertIsInstance(served, test_module.IntersectionStats)
-        self.assertEqual((served.is_empty, served.exact),
-                         (decided.is_empty, decided.exact))
+        self.assertEqual((served.is_empty, served.brep),
+                         (decided.is_empty, decided.brep))
         self.assertEqual(bits(served.volume), bits(decided.volume))
 
     def assertNothingKept(self):
@@ -292,7 +292,7 @@ class ServedAfterAFreshProcess(StoreTestCase):
             decided = test_module._intersection_stats(
                 *self.exact_pair(first, second, [0.5, 0, 0]))
         self.assertEqual(computed.count, 1)
-        self.assertTrue(decided.exact)
+        self.assertTrue(decided.brep)
         self.assertFalse(decided.is_empty)
 
         self.fresh_process()
@@ -403,8 +403,8 @@ class MovedProject(StoreTestCase):
     """Task 2.5: nothing absolute is persisted."""
 
     def test_a_moved_project_is_served_and_no_path_is_persisted(self):
-        names = {'faceted': ('first.stl', 'second.stl'),
-                 'exact': ('exact_first.brep', 'exact_second.brep')}
+        names = {'mesh': ('first.stl', 'second.stl'),
+                 'brep': ('exact_first.brep', 'exact_second.brep')}
         self.stl('first', box((2, 2, 2)))
         self.stl('second', box((2, 2, 2)))
         self.brep('exact_first')
@@ -413,10 +413,10 @@ class MovedProject(StoreTestCase):
         def ask(build_root):
             parts = os.path.join(build_root, 'parts')
             faceted = test_module._intersection_stats(*self.faceted_pair(
-                *[os.path.join(parts, name) for name in names['faceted']],
+                *[os.path.join(parts, name) for name in names['mesh']],
                 [1.5, 0, 0]))
             exact = test_module._intersection_stats(*self.exact_pair(
-                *[os.path.join(parts, name) for name in names['exact']],
+                *[os.path.join(parts, name) for name in names['brep']],
                 [0.5, 0, 0]))
             return faceted, exact
 
@@ -524,17 +524,17 @@ class QuantumInThePersistedKey(StoreTestCase):
         identity = ('artifact', 'stl', b'\x01' * 32)
 
         self.set_policy(quantum=self.Q)
-        key_q = test_module._verdict_key('a', np.eye(4), 'b', at_q, 'faceted')
+        key_q = test_module._verdict_key('a', np.eye(4), 'b', at_q, 'mesh')
         self.set_policy(quantum=2 * self.Q)
         key_double_q = test_module._verdict_key(
-            'a', np.eye(4), 'b', at_double_q, 'faceted')
+            'a', np.eye(4), 'b', at_double_q, 'mesh')
         self.assertEqual(key_q[4], key_double_q[4],
                          'the cells do not coincide; this proves nothing')
 
         self.assertNotEqual(
-            store.persisted_key('faceted', self.Q, identity, identity,
+            store.persisted_key('mesh', self.Q, identity, identity,
                                 key_q[4], ENGINE),
-            store.persisted_key('faceted', 2 * self.Q, identity, identity,
+            store.persisted_key('mesh', 2 * self.Q, identity, identity,
                                 key_double_q[4], ENGINE))
 
     def test_a_verdict_kept_at_one_quantum_is_not_served_at_another(self):
@@ -621,7 +621,7 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         non_finite = np.eye(4)
         non_finite[0, 3] = np.nan
         key = test_module._verdict_key(identity, np.eye(4), identity,
-                                       non_finite, 'faceted')
+                                       non_finite, 'mesh')
         self.assertIsNone(key)
         test_module._memoized(
             key, lambda: test_module.IntersectionStats(True, 0.0, False))
@@ -631,7 +631,7 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         first = self.brep('first')
         second = self.brep('second')
         for error in (RuntimeError('OCCT failed'),
-                      ExactCommonInconsistency('false-empty common')):
+                      BrepCommonInconsistency('false-empty common')):
             with self.subTest(error=type(error).__name__):
                 with patch.object(occt_engine, 'intersect_shapes',
                                   side_effect=error):
@@ -667,10 +667,10 @@ class NothingKeptForTheUncacheable(StoreTestCase):
         before = os.stat(second)
         os.replace(replacement, second)
         os.utime(second, ns=(before.st_atime_ns, before.st_mtime_ns))
-        metadata = exact_cache._metadata
+        metadata = brep_cache._metadata
         held = (before.st_dev, before.st_ino, before.st_size,
                 before.st_mtime_ns, before.st_ctime_ns)
-        with patch.object(exact_cache, '_metadata', side_effect=lambda path:
+        with patch.object(brep_cache, '_metadata', side_effect=lambda path:
                           held if path == second else metadata(path)):
             self.assertIs(pair[1].shape(), loaded)
 
@@ -1247,10 +1247,10 @@ class DeclaredModelsShareOneStore(NamedProjectTest):
         namespace.update(arguments)
         stdout = io.StringIO()
         code = None
-        with patch.object(test_module, '_exact_verdict',
-                          wraps=test_module._exact_verdict) as exact, \
-                patch.object(test_module, '_faceted_verdict',
-                             wraps=test_module._faceted_verdict) as faceted, \
+        with patch.object(test_module, '_brep_verdict',
+                          wraps=test_module._brep_verdict) as exact, \
+                patch.object(test_module, '_mesh_verdict',
+                             wraps=test_module._mesh_verdict) as faceted, \
                 chdir(self.root), redirect_stdout(stdout), \
                 redirect_stderr(io.StringIO()):
             try:
@@ -1334,7 +1334,7 @@ class MeshEngineIdentityBindsFacetedVerdicts(StoreTestCase):
         self.assertEqual(computed.count, 2)
         self.fresh_process()
 
-        with patch('machinome.manifold.engine.identity',
+        with patch('machinome.engine.mesh.identity',
                    return_value=('manifold3d', 'another version')), \
                 self.counted() as computed:
             faceted, exact = ask()
@@ -1357,7 +1357,7 @@ class MeshEngineIdentityBindsFacetedVerdicts(StoreTestCase):
             second)
         key = test_module._verdict_key(first_identity, first_matrix,
                                        second_identity, second_matrix,
-                                       'faceted')
+                                       'mesh')
         self.assertIsNotNone(test_module._persisted_key(key),
                              'the fixture key is not persistent at all')
         return key
@@ -1371,6 +1371,78 @@ class MeshEngineIdentityBindsFacetedVerdicts(StoreTestCase):
     def test_an_engine_reporting_no_version_keeps_nothing(self):
         key = self.faceted_key()
 
-        with patch('machinome.manifold.engine.identity',
+        with patch('machinome.engine.mesh.identity',
                    return_value=('manifold3d', None)):
             self.assertIsNone(test_module._persisted_key(key))
+
+
+class ThePathWords(StoreTestCase):
+    """The verdict paths are named for the two engines, `brep` and `mesh`
+    (OpenSpec change `brep-mesh`, design.md Decision 7): the in-process key
+    carries the word, the record's bit is `_BREP`, and a record kept under
+    a former word is never served."""
+
+    def path_words(self):
+        return {key[2] for key in test_module._verdict_cache}
+
+    def default_run(self, verdict_store=True):
+        """The policy of a run that names no engine: the B-rep engine."""
+        test_module.set_comparison_policy(
+            test_module.resolve_comparison_policy(
+                verdict_store=verdict_store, environ={}))
+
+    def test_a_brep_comparison_keys_on_brep(self):
+        self.default_run()
+        test_module._intersection_stats(*self.exact_pair(
+            self.brep('first'), self.brep('second'), [0.5, 0, 0]))
+
+        self.assertEqual(self.path_words(), {'brep'})
+
+    def test_a_mesh_comparison_keys_on_mesh(self):
+        self.set_policy('mesh')
+        test_module._intersection_stats(*self.faceted_pair(
+            self.stl('first', box((2, 2, 2))),
+            self.stl('second', box((2, 2, 2))), [1.5, 0, 0]))
+
+        self.assertEqual(self.path_words(), {'mesh'})
+
+    def test_a_brep_record_reads_back_with_the_brep_bit(self):
+        self.assertEqual(store._BREP, 2)
+        kept = store.active()
+        key = bytes(32)
+        kept.record(key, False, 1.5, brep=True)
+        self.fresh_process()
+
+        self.assertEqual(store.active().lookup(key), (False, 1.5, True))
+
+    def test_a_record_under_the_former_path_word_is_not_served(self):
+        first = self.brep('first')
+        second = self.brep('second')
+        self.default_run(verdict_store=False)
+        test_module._intersection_stats(*self.exact_pair(first, second,
+                                                         [0.5, 0, 0]))
+        (key,) = test_module._verdict_cache
+        captured = []
+        original = store.persisted_key
+
+        def capture(path, *rest):
+            captured.append(rest)
+            return original(path, *rest)
+
+        with patch.object(store, 'persisted_key', side_effect=capture):
+            self.assertIsNotNone(test_module._persisted_key(key))
+        (rest,) = captured
+        former = original('ex' 'act', *rest)
+        self.fresh_process()
+        self.default_run()
+        store.active().record(former, True, 0.0, True)
+        self.fresh_process()
+
+        with self.counted() as computed:
+            decided = test_module._intersection_stats(*self.exact_pair(
+                first, second, [0.5, 0, 0]))
+
+        self.assertEqual(computed.count, 1,
+                         'a record kept under the former path word was '
+                         'served')
+        self.assertFalse(decided.is_empty)

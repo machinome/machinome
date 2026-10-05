@@ -328,7 +328,7 @@ class RegistryConformanceTest(TestCase):
 
 
 #: Refuse `cadquery` in the probed interpreter, the way an install without
-#: the `step` extra does (tests/exact_engine_absent.py's finder, inline).
+#: the `step` extra does (tests/brep_engine_absent.py's finder, inline).
 CADQUERY_ABSENT = """
 import sys
 
@@ -388,7 +388,7 @@ class VerdictStoreImportWeight(TestCase):
     """
 
     WATCHED = ('importlib.metadata', 'platform', 'cadquery', 'OCP',
-               'manifold3d', 'machinome.manifold.engine', 'trimesh', 'molejo')
+               'manifold3d', 'machinome.engine.mesh', 'trimesh', 'molejo')
 
     #: What a `machinome build -h` dispatch loaded of WATCHED at bf24687,
     #: before this change (task 1.4): the ceiling it must stay under.

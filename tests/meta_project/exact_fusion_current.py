@@ -6,7 +6,7 @@
 
 One leaf declares `optimize = False`, so the builder prepares it on every
 build whether or not its artifacts are current: the case that made
-`ExactLeafNode.materialize` convert, and so resolve the exact engine, for
+`BrepLeafNode.materialize` convert, and so resolve the exact engine, for
 nothing (design.md Decision 7).
 """
 

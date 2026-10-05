@@ -24,7 +24,7 @@ TUTORIAL = REPO / 'docs' / 'tutorial'
 def machinome(*args, build_dir):
     env = dict(os.environ, SOLID_BUILD_DIR=str(build_dir),
                PYTHONPATH=str(REPO))
-    env.pop('SOLID_TEST_KERNEL', None)
+    env.pop('SOLID_TEST_ENGINE', None)
     return subprocess.run(
         [sys.executable, '-c', 'from machinome.cli import manage; manage()',
          *args],

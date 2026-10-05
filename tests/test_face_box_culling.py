@@ -44,12 +44,12 @@ from unittest.mock import patch
 import cadquery as cq
 import numpy as np
 
-import machinome.exact_cache as exact_cache
-import machinome.occt.engine as engine
+import machinome.brep_cache as brep_cache
+import machinome.engine.brep as engine
 import machinome.test as test_module
-from machinome.exact_artifacts import write_brep
-from machinome.exact_cache import cached_shape
-from tests.exact_test_support import clear_exact_shape_caches
+from machinome.brep_artifacts import write_brep
+from machinome.brep_cache import cached_shape
+from tests.brep_test_support import clear_exact_shape_caches
 
 
 def _frame_and_wheel():
@@ -91,10 +91,10 @@ class FaceBoxCullingTestCase(TestCase):
 
     def exact_pair(self, shape1, matrix1, shape2, matrix2,
                   name1='first', name2='second'):
-        """The verdict path around the tier: `_exact_verdict`'s own AABB
+        """The verdict path around the tier: `_brep_verdict`'s own AABB
         cull, the face-box tier, then the boolean -- the real call site,
         not a reimplementation of it."""
-        return test_module._exact_verdict(
+        return test_module._brep_verdict(
             shape1, matrix1, shape2, matrix2, name1, name2)
 
     def no_boolean(self):
@@ -119,8 +119,8 @@ class BetweenPlatesTest(FaceBoxCullingTestCase):
         wheel_shape = self.brep(wheel, 'wheel')
         identity = np.eye(4)
 
-        frame_low, frame_high = exact_cache.cached_bounding_box(frame_shape)
-        wheel_low, wheel_high = exact_cache.cached_bounding_box(wheel_shape)
+        frame_low, frame_high = brep_cache.cached_bounding_box(frame_shape)
+        wheel_low, wheel_high = brep_cache.cached_bounding_box(wheel_shape)
         world_frame = (np.array(frame_low), np.array(frame_high))
         world_wheel = (np.array(wheel_low), np.array(wheel_high))
         self.assertFalse(
@@ -136,7 +136,7 @@ class BetweenPlatesTest(FaceBoxCullingTestCase):
 
         self.assertTrue(stats.is_empty)
         self.assertEqual(stats.volume, 0.0)
-        self.assertTrue(stats.exact)
+        self.assertTrue(stats.brep)
 
 
 class ContainmentTest(FaceBoxCullingTestCase):
@@ -212,8 +212,8 @@ class FlushContactTest(FaceBoxCullingTestCase):
         # rotated fixture: it would be flaky at margin 0 by design, which
         # is the very reason the margin exists.
         left, right, offset = self._pair()
-        placed_left = exact_cache.cached_placement(left, np.eye(4))
-        placed_right = exact_cache.cached_placement(right, offset)
+        placed_left = brep_cache.cached_placement(left, np.eye(4))
+        placed_right = brep_cache.cached_placement(right, offset)
 
         with patch.object(test_module, '_FACE_BOX_MARGIN', 0.0):
             proven = test_module._faces_disjoint(
@@ -237,10 +237,10 @@ class ClassifierLoadedSolidBySolidTest(FaceBoxCullingTestCase):
         frame_shape = self.brep(frame, 'frame')
         wheel_shape = self.brep(wheel, 'wheel')
         identity = np.eye(4)
-        placed_frame = exact_cache.cached_placement(frame_shape, identity)
-        placed_wheel = exact_cache.cached_placement(wheel_shape, identity)
+        placed_frame = brep_cache.cached_placement(frame_shape, identity)
+        placed_wheel = brep_cache.cached_placement(wheel_shape, identity)
 
-        with patch('machinome.occt.engine.BRepClass3d_SolidClassifier',
+        with patch('machinome.engine.brep.BRepClass3d_SolidClassifier',
                    wraps=Real) as classifier:
             proven = test_module._faces_disjoint(
                 frame_shape, placed_frame, wheel_shape, placed_wheel,
@@ -268,8 +268,8 @@ class MarginTest(FaceBoxCullingTestCase):
 
     def test_a_gap_under_the_margin_declines(self):
         left, right, matrix = self._pair(test_module._FACE_BOX_MARGIN / 10)
-        placed_left = exact_cache.cached_placement(left, np.eye(4))
-        placed_right = exact_cache.cached_placement(right, matrix)
+        placed_left = brep_cache.cached_placement(left, np.eye(4))
+        placed_right = brep_cache.cached_placement(right, matrix)
 
         proven = test_module._faces_disjoint(
             left, placed_left, right, placed_right, matrix)
@@ -280,8 +280,8 @@ class MarginTest(FaceBoxCullingTestCase):
 
     def test_a_gap_well_beyond_the_margin_is_decided(self):
         left, right, matrix = self._pair(1000 * test_module._FACE_BOX_MARGIN)
-        placed_left = exact_cache.cached_placement(left, np.eye(4))
-        placed_right = exact_cache.cached_placement(right, matrix)
+        placed_left = brep_cache.cached_placement(left, np.eye(4))
+        placed_right = brep_cache.cached_placement(right, matrix)
 
         proven = test_module._faces_disjoint(
             left, placed_left, right, placed_right, matrix)
@@ -295,8 +295,8 @@ class MarginTest(FaceBoxCullingTestCase):
         tolerance enlargement, which alone is well under this gap), is
         what moved the boundary."""
         left, right, matrix = self._pair(test_module._FACE_BOX_MARGIN / 2)
-        placed_left = exact_cache.cached_placement(left, np.eye(4))
-        placed_right = exact_cache.cached_placement(right, matrix)
+        placed_left = brep_cache.cached_placement(left, np.eye(4))
+        placed_right = brep_cache.cached_placement(right, matrix)
 
         with patch.object(test_module, '_FACE_BOX_MARGIN', 0.0):
             proven = test_module._faces_disjoint(
@@ -345,8 +345,8 @@ class CompoundStraddlingTest(FaceBoxCullingTestCase):
         compound_shape = self.brep(compound, 'compound')
         big_shape = self.brep(big, 'big')
         identity = np.eye(4)
-        placed_compound = exact_cache.cached_placement(compound_shape, identity)
-        placed_big = exact_cache.cached_placement(big_shape, identity)
+        placed_compound = brep_cache.cached_placement(compound_shape, identity)
+        placed_big = brep_cache.cached_placement(big_shape, identity)
 
         def one_solid_only(placed1, placed2):
             from OCP.Precision import Precision
@@ -408,8 +408,8 @@ class BothDirectionsNeededTest(FaceBoxCullingTestCase):
         small = self.brep(cq.Workplane('XY').box(2, 2, 2).val(), 'small')
         big = self.brep(cq.Workplane('XY').box(10, 10, 10).val(), 'big')
         identity = np.eye(4)
-        placed_small = exact_cache.cached_placement(small, identity)
-        placed_big = exact_cache.cached_placement(big, identity)
+        placed_small = brep_cache.cached_placement(small, identity)
+        placed_big = brep_cache.cached_placement(big, identity)
 
         with self._direction_only('second'):
             proven = test_module._faces_disjoint(
@@ -436,8 +436,8 @@ class BothDirectionsNeededTest(FaceBoxCullingTestCase):
             cq.Workplane('XY').box(1, 1, 1).translate((8, 8, 8)).val(),
             'embedded')
         identity = np.eye(4)
-        placed_hollow = exact_cache.cached_placement(hollow, identity)
-        placed_embedded = exact_cache.cached_placement(embedded, identity)
+        placed_hollow = brep_cache.cached_placement(hollow, identity)
+        placed_embedded = brep_cache.cached_placement(embedded, identity)
 
         with self._direction_only('first'):
             proven = test_module._faces_disjoint(
@@ -458,8 +458,8 @@ class DeclineTest(FaceBoxCullingTestCase):
         edge = cq.Edge.makeLine(cq.Vector(0, 0, 0),
                                 cq.Vector(1, 0, 0)).wrapped
         box = self.brep(cq.Workplane('XY').box(2, 2, 2).val(), 'box')
-        placed_edge = exact_cache.cached_placement(edge, np.eye(4))
-        placed_box = exact_cache.cached_placement(box, np.eye(4))
+        placed_edge = brep_cache.cached_placement(edge, np.eye(4))
+        placed_box = brep_cache.cached_placement(box, np.eye(4))
 
         proven = test_module._faces_disjoint(
             edge, placed_edge, box, placed_box, np.eye(4))
@@ -475,8 +475,8 @@ class DeclineTest(FaceBoxCullingTestCase):
         far = self.brep(cq.Workplane('XY').box(2, 2, 2).val(), 'far')
         matrix = np.eye(4)
         matrix[0, 3] = 100
-        placed_shell = exact_cache.cached_placement(shell, np.eye(4))
-        placed_far = exact_cache.cached_placement(far, matrix)
+        placed_shell = brep_cache.cached_placement(shell, np.eye(4))
+        placed_far = brep_cache.cached_placement(far, matrix)
 
         proven = test_module._faces_disjoint(
             shell, placed_shell, far, placed_far, matrix)
@@ -488,8 +488,8 @@ class DeclineTest(FaceBoxCullingTestCase):
         shape2 = self.brep(cq.Workplane('XY').box(2, 2, 2).val(), 'b')
         matrix = np.eye(4)
         matrix[0, 3] = 100
-        placed1 = exact_cache.cached_placement(shape1, np.eye(4))
-        placed2 = exact_cache.cached_placement(shape2, matrix)
+        placed1 = brep_cache.cached_placement(shape1, np.eye(4))
+        placed2 = brep_cache.cached_placement(shape2, matrix)
 
         # The engine finds no vertex on any solid, as on a solid that
         # carries none.
@@ -502,7 +502,7 @@ class DeclineTest(FaceBoxCullingTestCase):
     def test_a_non_finite_relative_matrix_declines(self):
         shape1 = self.brep(cq.Workplane('XY').box(2, 2, 2).val(), 'a')
         shape2 = self.brep(cq.Workplane('XY').box(2, 2, 2).val(), 'b')
-        placed1 = exact_cache.cached_placement(shape1, np.eye(4))
+        placed1 = brep_cache.cached_placement(shape1, np.eye(4))
         degenerate = np.eye(4)
         degenerate[0, 0] = np.nan
 
@@ -516,15 +516,15 @@ class DeclineTest(FaceBoxCullingTestCase):
         frame_shape = self.brep(frame, 'frame')
         wheel_shape = self.brep(wheel, 'wheel')
         identity = np.eye(4)
-        placed_frame = exact_cache.cached_placement(frame_shape, identity)
-        placed_wheel = exact_cache.cached_placement(wheel_shape, identity)
+        placed_frame = brep_cache.cached_placement(frame_shape, identity)
+        placed_wheel = brep_cache.cached_placement(wheel_shape, identity)
         return frame_shape, placed_frame, wheel_shape, placed_wheel, identity
 
     def _decline_with(self, stub_classifier):
         (frame_shape, placed_frame, wheel_shape, placed_wheel,
          identity) = self._classifier_states()
 
-        with patch('machinome.occt.engine.BRepClass3d_SolidClassifier',
+        with patch('machinome.engine.brep.BRepClass3d_SolidClassifier',
                    return_value=stub_classifier):
             proven = test_module._faces_disjoint(
                 frame_shape, placed_frame, wheel_shape, placed_wheel,
@@ -587,7 +587,7 @@ class DeclineTest(FaceBoxCullingTestCase):
         (frame_shape, placed_frame, wheel_shape, placed_wheel,
          identity) = self._classifier_states()
 
-        with patch('machinome.occt.engine.BRepClass3d_SolidClassifier',
+        with patch('machinome.engine.brep.BRepClass3d_SolidClassifier',
                    side_effect=raising):
             proven = test_module._faces_disjoint(
                 frame_shape, placed_frame, wheel_shape, placed_wheel,
@@ -623,7 +623,7 @@ class RecordCarriesLocalShapeTest(FaceBoxCullingTestCase):
         self.assertIs(frame_record[8], frame_shape)
         self.assertIsNot(frame_record[8], frame_record[3])
         self.assertEqual(
-            exact_cache.shape_identity(frame_record[8]), frame_record[5])
+            brep_cache.shape_identity(frame_record[8]), frame_record[5])
         # Positions 0-7 hold what they held before.
         self.assertEqual(frame_record[6].tolist(), np.eye(4).tolist())
         self.assertIsNotNone(frame_record[3])
@@ -634,17 +634,17 @@ class RecordCarriesLocalShapeTest(FaceBoxCullingTestCase):
 
         self.assertIsNone(
             test_module._record_key(
-                virtual_floor_shaped, wheel_record, 5, 'exact'),
+                virtual_floor_shaped, wheel_record, 5, 'brep'),
             'a short virtual-floor-shaped record was treated as real')
         self.assertIsNotNone(
-            test_module._record_key(frame_record, wheel_record, 5, 'exact'))
+            test_module._record_key(frame_record, wheel_record, 5, 'brep'))
 
     def test_the_tier_measures_face_boxes_from_the_local_shape(self):
         frame_shape, wheel_shape, frame_record, wheel_record = (
             self._records())
 
-        with patch.object(exact_cache, 'cached_face_boxes',
-                          wraps=exact_cache.cached_face_boxes) as boxes:
+        with patch.object(brep_cache, 'cached_face_boxes',
+                          wraps=brep_cache.cached_face_boxes) as boxes:
             with self.no_boolean():
                 test_module._placed_intersection(frame_record, wheel_record)
 
@@ -665,8 +665,8 @@ class FaceBoxCacheTest(FaceBoxCullingTestCase):
         faces = len(cq.Shape.cast(shape).Faces())
         with patch.object(BRepBndLib, 'Add_s',
                           wraps=BRepBndLib.Add_s) as add:
-            first = exact_cache.cached_face_boxes(shape)
-            second = exact_cache.cached_face_boxes(shape)
+            first = brep_cache.cached_face_boxes(shape)
+            second = brep_cache.cached_face_boxes(shape)
 
         self.assertEqual(
             add.call_count, faces,
@@ -676,31 +676,31 @@ class FaceBoxCacheTest(FaceBoxCullingTestCase):
         self.assertEqual(first.dtype, np.float64)
 
     def test_a_rebuild_evicts_the_cached_face_boxes(self):
-        from machinome.exact_cache import _face_box_cache, _shape_keys
+        from machinome.brep_cache import _face_box_cache, _shape_keys
 
         path = os.path.join(self.tmpdir.name, 'evict.brep')
         write_brep(cq.Workplane('XY').box(2, 2, 2).val().wrapped, path,
                    1 * 10 ** 9)
         shape = cached_shape(path)
-        exact_cache.cached_face_boxes(shape)
+        brep_cache.cached_face_boxes(shape)
         key = _shape_keys[id(shape)]
         self.assertIn(key, _face_box_cache)
 
         write_brep(cq.Workplane('XY').box(4, 4, 4).val().wrapped, path,
                    2 * 10 ** 9)
         rebuilt = cached_shape(path)
-        exact_cache.cached_face_boxes(rebuilt)
+        brep_cache.cached_face_boxes(rebuilt)
 
         self.assertNotIn(key, _face_box_cache,
                          'a rebuild did not evict the old face boxes')
 
     def test_a_shape_with_no_identity_is_measured_and_not_cached(self):
-        from machinome.exact_cache import _face_box_cache
+        from machinome.brep_cache import _face_box_cache
 
         shape = cq.Workplane('XY').box(2, 2, 2).val().wrapped
         before = len(_face_box_cache)
 
-        boxes = exact_cache.cached_face_boxes(shape)
+        boxes = brep_cache.cached_face_boxes(shape)
 
         self.assertEqual(len(_face_box_cache), before)
         self.assertEqual(boxes.shape, (6, 2, 3))
@@ -719,7 +719,7 @@ class ConservativeUnderTriangulationTest(FaceBoxCullingTestCase):
             cq.Workplane('XY').circle(5).extrude(10).val(), 'cylinder')
         BRepMesh_IncrementalMesh(shape, 0.5)
 
-        boxes = exact_cache.cached_face_boxes(shape)
+        boxes = brep_cache.cached_face_boxes(shape)
 
         low = boxes[:, 0, :].min(axis=0)
         high = boxes[:, 1, :].max(axis=0)

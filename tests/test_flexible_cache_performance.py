@@ -188,9 +188,9 @@ class FlexibleFacetedCacheTest(TestCase):
     def test_signed_zero_binding_values_remain_distinct_cache_identities(self):
         node = self.flexible_at(fixture.Spring, 2.0)
         node.height.value = 0.0
-        positive_key, _, _ = node._faceted_cache_snapshot()
+        positive_key, _, _ = node._mesh_cache_snapshot()
         node.height.value = -0.0
-        negative_key, _, _ = node._faceted_cache_snapshot()
+        negative_key, _, _ = node._mesh_cache_snapshot()
 
         self.assertNotEqual(positive_key, negative_key)
 
@@ -287,9 +287,9 @@ class FlexibleFacetedCacheTest(TestCase):
                 box((1, 1, 1)).export(path)
 
             test_module._verdict_cache.clear()
-            with patch.object(type(machine.retainer), 'exact', False), \
-                    patch.object(test_module, '_faceted_verdict',
-                                 wraps=test_module._faceted_verdict) as verdict:
+            with patch.object(type(machine.retainer), 'brep', False), \
+                    patch.object(test_module, '_mesh_verdict',
+                                 wraps=test_module._mesh_verdict) as verdict:
                 first = test_module._intersection_stats(
                     machine.spring, machine.retainer)
                 served = test_module._intersection_stats(
@@ -313,11 +313,11 @@ class FlexibleFacetedCacheTest(TestCase):
                           return_value=('first', 0.0)) as first_shape, \
                 patch.object(second, 'snapshot_shape',
                              return_value=('second', 0.0)) as second_shape:
-            self.assertEqual(first._exact_solid(), ('first', 0.0))
-            self.assertEqual(first._exact_solid(), ('first', 0.0))
+            self.assertEqual(first._brep_solid(), ('first', 0.0))
+            self.assertEqual(first._brep_solid(), ('first', 0.0))
             first.height.value = fixture.FREE_HEIGHT - 4.0
-            self.assertEqual(first._exact_solid(), ('first', 0.0))
-            self.assertEqual(second._exact_solid(), ('second', 0.0))
+            self.assertEqual(first._brep_solid(), ('first', 0.0))
+            self.assertEqual(second._brep_solid(), ('second', 0.0))
 
         self.assertEqual((first_shape.call_count, second_shape.call_count),
                          (2, 1))

@@ -1,0 +1,81 @@
+# Scenario titles the brep-mesh archive task renames in openspec/specs/ after
+# `openspec archive` (design.md, Decision 11): OpenSpec 1.6.0 refuses a MODIFIED
+# requirement that drops a scenario name, so the deltas keep these titles and
+# the archive task replaces each, in its spec, by the title beside it. The
+# rows naming the run's kernel follow the pilot's ruling at ratification
+# (design.md, Open Question 2): a run's choice is its engine.
+# spec<TAB>title in the baseline<TAB>title after this change
+backend-neutral-materialization	Exact capabilities survive native composition	B-rep capabilities survive native composition
+build-pipeline	An exact node writes exact geometry beside its mesh	A B-rep node writes B-rep geometry beside its mesh
+build-pipeline	A faceted node writes no exact artifact	A mesh node writes no B-rep artifact
+build-pipeline	Published documents do not name exact geometry	Published documents do not name B-rep geometry
+build-pipeline	STEP wrappers retain both exact and faceted artifacts	STEP wrappers retain both B-rep and mesh artifacts
+build-pipeline	Missing exact geometry is not current	Missing B-rep geometry is not current
+build-pipeline	Exact artifacts cache on a coarse-resolution filesystem	B-rep artifacts cache on a coarse-resolution filesystem
+build-pipeline	An exact fusion renders in process	A B-rep fusion renders in process
+build-pipeline	A faceted fusion composes current child meshes	A mesh fusion composes current child meshes
+build-pipeline	An all-exact build makes no availability check	An all-B-rep build makes no availability check
+build-pipeline	Exact geometry survives the sweep	B-rep geometry survives the sweep
+build-pipeline	Unchanged exact geometry stays cached	Unchanged B-rep geometry stays cached
+cli	A developer runs the fast kernel by flag	A developer runs the fast engine by flag
+cli-startup-cost	An OpenSCAD-only project imports no exact stack	An OpenSCAD-only project imports no B-rep stack
+cli-startup-cost	Importing the test framework loads no exact stack	Importing the test framework loads no B-rep stack
+cli-startup-cost	A faceted project's test run loads no exact stack	A mesh project's test run loads no B-rep stack
+cli-startup-cost	An exact comparison still loads the stack	A B-rep comparison still loads the stack
+flexible-parts	A spring instant answers an exact question	A spring instant answers a B-rep question
+flexible-parts	Exact last-binding behavior is unchanged	B-rep last-binding behavior is unchanged
+leaf-contract	A faceted leaf written outside the core	A mesh leaf written outside the core
+leaf-contract	An exact leaf written outside the core	A B-rep leaf written outside the core
+leaf-contract	A SCAD-presented faceted leaf needs no producer of its own	A SCAD-presented mesh leaf needs no producer of its own
+leaf-contract	A self-materializing faceted leaf needs no SCAD hook	A self-materializing mesh leaf needs no SCAD hook
+leaf-contract	An exact leaf rendering the engine's currency declares nothing	A B-rep leaf rendering the engine's currency declares nothing
+mesh-engine-dependency	An all-exact project asserts with no mesh engine installed	An all-B-rep project asserts with no mesh engine installed
+mesh-engine-dependency	A faceted comparison still requires it	A mesh comparison still requires it
+mesh-engine-dependency	Faceted fusion names its missing engine	Mesh fusion names its missing engine
+mesh-engine-dependency	A faceted interference check names the missing dependency	A mesh interference check names the missing dependency
+mesh-engine-dependency	A faceted run refuses at its start	A mesh run refuses at its start
+node-model	Only the B-rep backends are exact	Only the B-rep backends declare `brep`
+node-model	Exactness does not disturb the SCAD path	Declaring `brep` does not disturb the SCAD path
+node-model	A shared base does not route an exact adapter through OpenSCAD	A shared base does not route a B-rep adapter through OpenSCAD
+openscad-dependency	An all-exact project needs no OpenSCAD	An all-B-rep project needs no OpenSCAD
+openscad-dependency	An all-exact project develops without OpenSCAD	An all-B-rep project develops without OpenSCAD
+step-import	The adapter is exact	The adapter declares `brep`
+stl-import	The adapter is not exact	The adapter does not declare `brep`
+test-framework	A faceted run is labelled as one	A mesh run is labelled as one
+test-framework	An exact run reads as it always did	A B-rep run reads as it always did
+test-framework	Distance assertions are unaffected by exactness	Distance assertions are unaffected by `brep`
+test-framework	An epsilon still applies to a faceted comparison	An epsilon still applies to a mesh comparison
+test-framework	A faceted run keeps every epsilon live	A mesh run keeps every epsilon live
+test-framework	An exact run never judges a mesh	A B-rep run never judges a mesh
+test-framework	An exact tight fit is not interference	A B-rep tight fit is not interference
+test-framework	A mixed pair uses the faceted path	A mixed pair uses the mesh path
+test-framework	An exact assembly builds no Manifold	A B-rep assembly builds no mesh-engine solid
+test-framework	A mixed assembly builds a Manifold only for the solids it compares faceted	A mixed assembly builds a mesh-engine solid only for the solids it compares on meshes
+test-framework	A faceted run compares exact parts on their meshes	A mesh run compares B-rep parts on their meshes
+test-framework	An enclosed exact pair skips the boolean	An enclosed B-rep pair skips the boolean
+test-framework	A faceted pair has no face-box tier	A mesh pair has no face-box tier
+test-framework	Exact boundary contact is not material interference	B-rep boundary contact is not material interference
+test-framework	An exact assembly is verified exactly	A B-rep assembly is verified on the B-rep engine
+test-framework	An exact assembly is verified without the mesh engine	A B-rep assembly is verified without the mesh engine
+test-framework	A faceted run verifies an exact assembly on its meshes	A mesh run verifies a B-rep assembly on its meshes
+test-framework	Flush contact in an exact assembly still reaches the kernel	Flush contact in a B-rep assembly still reaches the kernel
+test-framework	Negative faceted volume is not positive shared material	Negative mesh volume is not positive shared material
+test-framework	An all-exact sweep reports its ignored epsilon	An all-B-rep sweep reports its ignored epsilon
+test-framework	An exact solid is counted exactly	A B-rep solid is counted exactly
+test-framework	A faceted run counts bodies on the STL	A mesh run counts bodies on the STL
+test-framework	Two exact features are joined by their fuse	Two B-rep features are joined by their fuse
+test-framework	A faceted run welds on meshes	A mesh run welds on meshes
+test-framework	The exact kernel quantises too	The B-rep engine quantises too
+test-framework	The default run is the exact run	The default run is the B-rep run
+test-framework	A checkout selects the faceted kernel once	A checkout selects the mesh engine once
+test-framework	An epsilon offered to the exact kernel is refused	An epsilon offered to the B-rep engine is refused
+test-framework	An unknown kernel name is refused	An unknown engine name is refused
+test-framework	A quantum offered to the exact kernel is accepted	A quantum offered to the B-rep engine is accepted
+test-framework	A faceted run of an exact project never reaches the exact stack	A mesh run of a B-rep project never reaches the B-rep stack
+test-framework	The model is unaware of the kernel	The model is unaware of the engine
+test-framework	A mesh engine upgrade invalidates faceted verdicts only	A mesh engine upgrade invalidates mesh verdicts only
+test-framework	A faceted run of an exact project still never reaches the exact stack	A mesh run of a B-rep project still never reaches the B-rep stack
+test-framework	An all-exact project keeps its store without the mesh engine	An all-B-rep project keeps its store without the mesh engine
+user-documentation	An all-exact project	An all-B-rep project
+vet	The engine's exact operations pass	The engine's B-rep operations pass
+web-snapshot	The default is unchanged by an exact model	The default is unchanged by a B-rep model

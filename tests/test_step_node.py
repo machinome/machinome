@@ -15,7 +15,7 @@ once per build.
 `StepNode` is `StlNode`'s three rules -- admitted not assumed, selected
 not guessed, corrected in code -- over a solid instead of a mesh, and it
 is exact where `StlNode` is faceted: a STEP product is a B-rep the
-moment it is read, so this leaf derives `ExactLeafNode` and inherits its
+moment it is read, so this leaf derives `BrepLeafNode` and inherits its
 whole contract (`exact`, `shape()`, the `.brep`, and an `as_scad` that
 needs no external tool).
 
@@ -40,7 +40,7 @@ from unittest.mock import patch
 import cadquery as cq
 import trimesh
 
-from machinome.exact_cache import cached_shape
+from machinome.brep_cache import cached_shape
 from machinome.node import StepNode
 from machinome.node import step as step_module
 from machinome.node.step import STEPCAFControl_Reader
@@ -644,7 +644,7 @@ class StepExactnessTest(BuildDirTestCase):
     def test_exact_is_true_and_shape_is_the_selected_adjusted_geometry(self):
         node = parts.ScaledSingleProduct()
 
-        self.assertTrue(node.exact)
+        self.assertTrue(node.brep)
         node.assemble()
         self.assertAlmostEqual(cq.Shape.cast(node.shape()).Volume(),
                                125.0 * parts.SCALE_FACTOR ** 3, places=3)
@@ -654,7 +654,7 @@ class StepExactnessTest(BuildDirTestCase):
 
         fusion.assemble()
 
-        self.assertTrue(fusion.exact)
+        self.assertTrue(fusion.brep)
         self.assertEqual(len(cq.Shape.cast(fusion.shape()).Solids()), 1)
 
     def test_the_brep_is_written_and_reloaded(self):

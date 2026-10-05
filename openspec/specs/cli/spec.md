@@ -275,7 +275,7 @@ argument error. `machinome build` SHALL NOT accept a callback option.
 ### Requirement: Test command
 
 The system SHALL provide `machinome test [reference]` with `--failfast`, the
-mutually exclusive kernel selectors `--exact` and `--faceted`,
+mutually exclusive engine selectors `--brep` and `--mesh`,
 `--volume-epsilon MM3`, `--placement-quantum MM`, and the pair
 `--verdict-store` / `--no-verdict-store`. It accepts a node reference in any
 accepted spelling, or the path of a companion test file, which resolves to
@@ -283,15 +283,16 @@ the node module it exercises. Without a flag, each setting comes from its
 environment variable, read through the same `.env` rule as the other
 `SOLID_*` settings:
 
-- the kernel from `SOLID_TEST_KERNEL`;
-- a faceted run's epsilon from `SOLID_TEST_VOLUME_EPSILON`;
+- the engine from `SOLID_TEST_ENGINE` (`SOLID_TEST_KERNEL`, its former
+  name, is refused when set);
+- a mesh run's epsilon from `SOLID_TEST_VOLUME_EPSILON`;
 - the run's placement quantum from `SOLID_TEST_PLACEMENT_QUANTUM`, else the
   framework's default;
 - whether the run keeps and consults the project's verdict store from
   `SOLID_TEST_VERDICT_STORE` (`on` or `off`), else on.
 
 Unlike the volume epsilon, the placement quantum and the verdict-store switch
-are accepted under both kernels. Runner behavior, the resolution order and the
+are accepted under both engines. Runner behavior, the resolution order and the
 errors are specified in the test-framework capability.
 
 `machinome test --all` SHALL run, as one test run reported once, the tests of every
@@ -317,22 +318,33 @@ project that declares no models.
 - **THEN** the runner builds `Gear` and runs its own test methods and the test
   cases bound to it
 
-#### Scenario: A developer runs the fast kernel by flag
+#### Scenario: A developer runs the fast engine by flag
 
-- **WHEN** a user runs `machinome test --faceted --volume-epsilon 0.5`
+- **WHEN** a user runs `machinome test --mesh --volume-epsilon 0.5`
 - **THEN** the runner compares every pair on meshes with that epsilon and
-  labels the run as faceted
+  labels the run as a mesh-engine run
 
 #### Scenario: Both selectors together are refused
 
-- **WHEN** a user runs `machinome test --exact --faceted`
+- **WHEN** a user runs `machinome test --brep --mesh`
 - **THEN** argument parsing fails naming the two flags as mutually exclusive
+
+#### Scenario: The former selectors are not accepted
+
+- **WHEN** a user runs `machinome test --faceted` or `machinome test
+  --exact`, or `machinome test` with `SOLID_TEST_ENGINE=faceted` or
+  `SOLID_TEST_ENGINE=exact`, or `machinome test` with the former variable
+  `SOLID_TEST_KERNEL` set to any non-empty value
+- **THEN** argument parsing fails naming the unrecognised flag, or the run
+  exits with status 1 before any node is built, with an error naming
+  `SOLID_TEST_ENGINE`, `'brep'`, `'mesh'` and, for a former value, the
+  value given
 
 #### Scenario: A developer sets the placement quantum
 
 - **WHEN** a user runs `machinome test --placement-quantum 0`
 - **THEN** the run's verdict memo keys on the exact bytes of the relative
-  placement, under whichever kernel the run selected
+  placement, under whichever engine the run selected
 
 #### Scenario: A developer runs without the verdict store
 
@@ -406,7 +418,7 @@ admissible by construction. A state carrying HISTORY is not posed from the
 command line: only a run knows which banks are reachable.
 
 The default renderer SHALL remain `openscad` regardless of whether the
-project's model is exact, regardless of whether the binary is installed, and
+project's model has B-rep geometry, regardless of whether the binary is installed, and
 regardless of whether the viewer package is installed. Choosing a renderer by
 availability, or by the project's backends, would change the appearance of
 snapshots taken of existing projects; the renderer is selected explicitly and
@@ -506,14 +518,14 @@ produced.
 
 #### Scenario: The OpenSCAD binary is missing
 
-- **WHEN** an agent runs `machinome snapshot` on an all-exact project on a
+- **WHEN** an agent runs `machinome snapshot` on an all-B-rep project on a
   machine with no `openscad` on the PATH
 - **THEN** the command fails naming the missing binary and `--renderer web`,
   and writes no image
 
 #### Scenario: The default does not follow the project's backends
 
-- **WHEN** a snapshot is taken of an all-exact project without choosing a
+- **WHEN** a snapshot is taken of an all-B-rep project without choosing a
   renderer, on a machine where OpenSCAD and the `openscad` extra are
   installed
 - **THEN** the OpenSCAD renderer produces the image, as it does for any other

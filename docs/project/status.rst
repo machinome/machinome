@@ -19,7 +19,7 @@ mechanical stops, and clocked machines with retained state written at
 events. Geometry and operation are checked in Python, and versioned
 documents carry them to the independent browser viewer.
 
-Exact STEP parts and assembly import, sheet cutting profiles, flexible
+B-rep STEP parts and assembly import, sheet cutting profiles, flexible
 parts, surface markings, named project models, native geometry builds
 and incremental artifact reuse are implemented. A part declares its
 connectors as frames and an assembly places it by a mate, one sentence

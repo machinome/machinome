@@ -206,23 +206,24 @@ recenter constructor parameters — normalization is code, not knobs.
 - **THEN** the artifact geometry equals the selected source geometry
   unchanged
 
-### Requirement: Mesh-only faceted participation
+### Requirement: Mesh-only participation
 
-`StlNode` SHALL be a faceted adapter: `exact` is false, it exposes no
+`StlNode` SHALL be a mesh adapter: `brep` is false, it exposes no
 `shape()`, and it participates in a `FusionNode` through the mesh
-union path, making the enclosing fusion faceted. Mesh-only is settled
-doctrine for this adapter: the framework SHALL NOT offer an exact or
-faceted-B-rep STL import route, and this is a recorded non-goal rather
+union path, making the enclosing fusion a mesh fusion. Mesh-only is settled
+doctrine for this adapter: the framework SHALL NOT offer a B-rep or
+triangle-faced B-rep STL import route, and this is a recorded non-goal rather
 than an open question.
 
-#### Scenario: The adapter is not exact
+#### Scenario: The adapter does not declare `brep`
 
-- **WHEN** `exact` is read on an `StlNode` instance
+- **WHEN** `brep` is read on an `StlNode` instance
 - **THEN** it reports false, and reading `shape()` raises
 
 #### Scenario: A fusion over an imported STL takes the mesh path
 
-- **WHEN** a `FusionNode` combines an `StlNode` with an exact leaf
-- **THEN** the fusion reports not exact and its union is produced
-  through the mesh path, per the exact-fusion composition rule
+- **WHEN** a `FusionNode` combines an `StlNode` with a B-rep leaf
+- **THEN** the fusion's `brep` is false and its union is produced
+
+  through the mesh path, per the B-rep fusion composition rule
 

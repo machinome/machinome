@@ -185,8 +185,8 @@ def _ordered_assembly_identities(assembly):
     """Every class `assembly.py` must declare, children before parents
     (design D6's generator note: a class body may only reference a
     name Python has already defined) -- `None`, standing for the
-    document's own root, is always last, whether OCCT calls the root
-    product a `part` or an assembly: the generated model always has
+    document's own root, is always last, whether the STEP reader calls
+    the root product a `part` or an assembly: the generated model always has
     one outermost class.
 
     Walked by PRODUCT IDENTITY, not by name (design D3): two distinct
