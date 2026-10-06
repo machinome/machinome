@@ -110,10 +110,19 @@ Each names the entry, what was found, and the choice.)
   attributes instead; seven of them publish sixty dial islands and forty
   other parts with no colour today because of exactly that read. The
   orchestrator chose to refuse (the finding's point is that a silent
-  wrong model becomes an error) and made the companion rewrite as direct
-  project work on the project branch `children-reads` (worktree
-  `projects/3DPrintedClocks/WTs/children-reads`), validated against
-  this bench. Your decisions: merge that branch into the project's
-  working branch (`solid-node-simulation`), and in which order the two
-  land; until the project branch is merged, those eight clocks refuse
-  to load against this framework.
+  wrong model becomes an error) and started the companion rewrite as
+  direct project work on the project branch `children-reads` (worktree
+  `projects/3DPrintedClocks/WTs/children-reads`, commit `58ff90e`:
+  clocks 12, 25 and 28 rewritten, validated against this bench, their
+  77 uncoloured parts now coloured). The rewrite of clocks 32, 36, 37,
+  39 and 40 stopped there: in this session every Edit of a project file
+  prompts for permission (worktree and checkout alike, through the
+  `./projects` spelling), the pilot declined the prompts, and the
+  orchestrator may not add the allow rule itself. Your decisions: the
+  one-line allow rule for `Edit`/`Write` under the projects tree in
+  `.claude/settings.local.json`; the remaining five clocks (each loop
+  over its declared attributes, as the three done show); merging
+  `children-reads` into `solid-node-simulation` and the order in which
+  it and this change land. Until then those eight clocks refuse to
+  load against this framework, and the project's checkout carries the
+  untracked `WTs/` directory of that worktree.
