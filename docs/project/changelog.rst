@@ -38,6 +38,15 @@ Unreleased
   the class is defined, saying so, where it used to be refused only when
   the machine was solved, as an unreached or doubly bound coordinate
   (name-what-is-refused).
+* **A read of children before they are linked is refused.** Inside an
+  assembly's ``render()`` or ``simulate()``, a read of an internal node's
+  ``children`` before the framework has linked them is refused with a
+  ``StructureError`` naming the assembly, the phase, the read and the
+  declared attributes to address instead (``self.near, self.far``). It used to
+  answer an empty list, so a loop over it did nothing and said nothing:
+  a shin rotated that way never turned, and a dial's parts coloured that
+  way stayed uncoloured. A read after linking, or outside any phase,
+  answers as before (children-refuse-early-reads).
 
 Machinome 0.8.0
 ---------------

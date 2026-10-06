@@ -261,7 +261,10 @@ its ordinary lifecycle and serializes explicitly as `children: []`
 serialized. Structure varies with parameters, never with time: `omit()`
 raises in `simulate()`, and on the legacy path the wrapper records the
 omitted set of an instance's first render and raises on a later render
-whose set differs. The reference's rename of `render()` is dropped
+whose set differs. A read of an internal node's `children` inside a
+`render()` or `simulate()` phase, before `present()` or `materialize()`
+has assigned it, raises `StructureError` naming the declared attributes
+to address instead. The reference's rename of `render()` is dropped
 (ADR-066): *render* also means *to make*.
 
 Two concrete internal nodes encode the **rigid/non-rigid** axis

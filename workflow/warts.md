@@ -164,21 +164,6 @@ trajectories the ESP32 replays.
 
 ## Framework
 
-- **`self.children` is empty during `simulate()`, and iterating it fails
-  silently.** `LowerLeg.simulate()` was written as `for piece in
-  self.children: piece.rotate(self.knee.value, AXIS)`. The port was
-  bound and correct, the list was empty, the loop applied nothing, and
-  nothing raised — the shin simply never turned about its knee, and the
-  published model was a robot whose knees did not bend. Every contract
-  passed, because a test calls `set_state` before measuring and by then
-  the children are linked; only a snapshot showed it. The workaround is
-  to address the declared attributes (`self.near`, `self.far`), which
-  works in both phases, and that is what
-  `projects/Robots/AlbertPro/simulation/leg.py` does. A documented
-  empty-during-simulate contract, or a `.children` that raises there
-  rather than reading as empty, would turn a silent wrong model into an
-  error. This is the one worth filing.
-
 - **A driver's `range` is presentation metadata and nothing enforces
   it.** `height` has a hard geometric range — outside it the machine has
   no pose — and there is no per-driver validator or clamp hook. The
@@ -786,8 +771,6 @@ delegation. Its items 1 to 9 are integrated on main. What remains of it:
 - **`%` on a symbolic value disagrees across runtimes** (item 7 above; see
   also "The framework's two meanings of `%`" below). Cycle
   `expression-remainder`, never started.
-- **`self.children` reads empty during `simulate()`** (AlbertPro). Cycle
-  `children-refuse-early-reads`, never started.
 - **`tools/generate_parity_fixture.py` cannot run from a worktree** (item 9)
   and **`machinome snapshot --preview` sends a bare `--preview`** (item 14).
   Cycle `tooling-paths-and-flags`, never started.
@@ -1656,6 +1639,31 @@ not fixed, until the pilot triages them.
   change. Evidence:
   `openspec/changes/archive/2026-10-06-name-what-is-refused/design.md`,
   "Open Questions". **Recorded.**
+
+## Findings from the framework cycle `children-refuse-early-reads` (2026-10-06)
+
+- **Eight clock models refuse to load until their colour loops are
+  rewritten.** 3DPrintedClocks wall clocks 12, 25, 28, 32, 36, 37, 39 and
+  40 colour parts in `render()` by looping over `self.children` (clock
+  12 over `self.numerals.children`), eighteen reads in all. The list is
+  always empty there, so in seven of the clocks sixty dial islands and
+  forty other parts were published uncoloured; clock 40's three loops
+  were dead code beside class-level colours. Since this change each of
+  the eight is refused at load, naming the assembly and the attributes
+  to address. The rewrite is project work on the project branch
+  `children-reads` (worktree
+  `projects/3DPrintedClocks/WTs/children-reads`, not merged): clocks 12,
+  25 and 28 are rewritten there (`58ff90e`) and load with their colours
+  against this framework; 32, 36, 37, 39 and 40 are not yet rewritten. Clock 36
+  also holds a nineteenth read in a `WindingKey` class its tree never
+  instantiates. Evidence:
+  `openspec/changes/archive/2026-10-06-children-refuse-early-reads/evidence.md`,
+  §4. **Recorded.**
+- **A read outside any phase before linking still answers an empty
+  list.** A helper walking `node.children` on a root nobody has
+  assembled reads an empty tree and passes vacuously. No measured case:
+  AlbertPro's and the clocks' test walkers run after assembly. Left as
+  it was; design.md, Open Question 2, of the same change. **Recorded.**
 
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 

@@ -86,8 +86,34 @@ in the same cycle.
   OpenArm's unchanged; three entries moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`, the two questions it
   left recorded in `../warts.md`.
+- 6 October 2026: cycle 3, `children-refuse-early-reads`, applied: a read
+  of an internal node's `children` inside `render()` or `simulate()`
+  before the framework has linked them is refused naming the declared
+  attributes; AlbertPro's runs unchanged (35 and 12); the eight clocks
+  refuse at load as expected. On the project branch `children-reads`
+  clocks 12, 25 and 28 are rewritten and load with their colours; the
+  edits of 32, 36, 37, 39 and 40 were refused by the harness and are not
+  made. The entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; the clocks and reads
+  outside any phase are recorded in `../warts.md`.
 
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.
 Each names the entry, what was found, and the choice.)
+
+- **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
+  refusal of a `self.children` read inside `render()` (always empty
+  there, since `render()` is what decides the children) makes
+  3DPrintedClocks' wall clocks 12, 25, 28, 32, 36, 37, 39 and 40 refuse
+  to load until their eighteen such reads loop over the declared
+  attributes instead; seven of them publish sixty dial islands and forty
+  other parts with no colour today because of exactly that read. The
+  orchestrator chose to refuse (the finding's point is that a silent
+  wrong model becomes an error) and made the companion rewrite as direct
+  project work on the project branch `children-reads` (worktree
+  `projects/3DPrintedClocks/WTs/children-reads`), validated against
+  this bench. Your decisions: merge that branch into the project's
+  working branch (`solid-node-simulation`), and in which order the two
+  land; until the project branch is merged, those eight clocks refuse
+  to load against this framework.

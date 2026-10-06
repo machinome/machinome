@@ -212,3 +212,50 @@ defined. A driver or a
 repeat named at both ends keeps its own end refusal. No class in the
 catalogue writes the shape (a literal scan of 4238 `.drives(` lines in 552
 files under `projects/`).
+
+## `children-refuse-early-reads`
+
+From "AlbertPro (2026-09-07, simulate the Albert quadruped)", "Framework":
+
+- **`self.children` is empty during `simulate()`, and iterating it fails
+  silently.** `LowerLeg.simulate()` was written as `for piece in
+  self.children: piece.rotate(self.knee.value, AXIS)`. The port was
+  bound and correct, the list was empty, the loop applied nothing, and
+  nothing raised — the shin simply never turned about its knee, and the
+  published model was a robot whose knees did not bend. Every contract
+  passed, because a test calls `set_state` before measuring and by then
+  the children are linked; only a snapshot showed it. The workaround is
+  to address the declared attributes (`self.near`, `self.far`), which
+  works in both phases, and that is what
+  `projects/Robots/AlbertPro/simulation/leg.py` does. A documented
+  empty-during-simulate contract, or a `.children` that raises there
+  rather than reading as empty, would turn a silent wrong model into an
+  error. This is the one worth filing.
+
+**What shipped.** `children-refuse-early-reads`
+(`openspec/changes/archive/2026-10-06-children-refuse-early-reads/`) made
+`InternalNode.children` a property over the list `present()` and
+`materialize()` assign. Inside an assembly's `render()` or `simulate()`,
+a read of an internal node's `children` before anything has assigned them
+raises `StructureError` naming the assembly, the phase, the read
+(`self.children` or `<child>.children`) and the declared attributes to
+address instead, or, for a node declaring none, that its own `render()`
+builds them. A read after linking, or outside any phase, answers as
+before. The refusal covers both phases: in `render()` the list can never
+be there, since `render()` is what decides it, and in `simulate()` it is
+there only on a pass after something has presented the node, which is why
+AlbertPro's tests passed while its published document did not move.
+AlbertPro's two documented runs (35 and 12) are unchanged. The search
+for other readers found a second, silent sighting: eighteen reads in
+3DPrintedClocks wall clocks 12, 25, 28, 32, 36, 37, 39 and 40, each a
+colour loop in `render()` that saw an empty list, so sixty dial islands
+and forty other parts in seven of those clocks were published uncoloured
+(clock 40's three loops were dead code beside a class-level colour).
+Each of the eight is now refused at load until its loops address the
+declared attributes. The orchestrator chose to refuse in both phases and
+to make the companion rewrite in the project on its branch
+`children-reads`; at the time of this cycle clocks 12, 25 and 28 were
+rewritten there (`58ff90e`) and the other five were not, and the merge is the
+pilot's (`../../ongoing/fix-warts-3.md`, "Deferred to the pilot"). What
+remains is recorded under "Findings from the framework cycle
+`children-refuse-early-reads` (2026-10-06)" in `../../warts.md`.

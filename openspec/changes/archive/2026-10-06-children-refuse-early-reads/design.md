@@ -397,7 +397,9 @@ framework before this change too, so a project can make it first.
    of that repository (tasks §4.3), so the project's checkout does not
    move and the pilot decides its merge; until that branch is merged,
    the eight clocks refuse to load against this framework, which the
-   campaign note records under "Deferred to the pilot".
+   campaign note records under "Deferred to the pilot". As applied, the
+   branch carries clocks 12, 25 and 28 (`58ff90e`); the edits of the other
+   five were refused by the harness and are not made (evidence.md, §4.3).
 2. **Reads outside any phase stay silent.** A helper walking
    `node.children` on a root nobody has assembled reads an empty tree
    and passes vacuously. No measured case (AlbertPro's and the clocks'

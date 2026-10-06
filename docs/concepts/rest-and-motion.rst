@@ -21,6 +21,11 @@ one place drivers, time and ports are read and bound. Every operation it
 applies is motion: stated absolutely for its instant, dropped before the
 next run, and composed **inside** the part's rest placement.
 
+Both methods reach a child through the attribute that declares it
+(``self.crank``, ``self.caps``), as the example below does. ``children``
+is the framework's linked list, linked after both have run, so reading
+it inside either is refused with an error naming the attributes to use.
+
 .. code-block:: python
 
     class Block(AssemblyNode):

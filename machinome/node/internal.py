@@ -4,11 +4,39 @@
 
 import functools
 
+from . import phase as _phase
 from .base import AbstractBaseNode
 from .declarative import (StructureError, declared_child_nodes,
                           declared_children)
 from machinome.motion.ports import bind
 from .presentation import Union
+
+
+def _early_read(node, phase):
+    """The refusal of a read of `node.children` inside `phase`, before
+    anything has linked `node`'s children: it names the assembly whose
+    phase is running, the phase, the read, and what to address
+    instead."""
+    owner = phase.assembly
+    if node is owner:
+        spelled, prefix = 'self.children', 'self'
+    else:
+        spelled, prefix = f'{node.name}.children', node.name
+    declared = declared_children(type(node))
+    if declared:
+        instead = ('Address the children by the attributes that declare '
+                   'them: '
+                   + ', '.join(f'{prefix}.{name}' for name in declared)
+                   + '.')
+    else:
+        instead = (f'{type(node).__name__} declares no children: they are '
+                   f'the list its own render() returns, and it is there '
+                   f'that they are addressed.')
+    return StructureError(
+        f"{type(owner).__name__} '{owner.name}' read {spelled} in "
+        f"{phase.kind}(): the framework links an assembly's children after "
+        f"the tree's render() and simulate() have run, so here the list is "
+        f"not there yet and a loop over it does nothing. {instead}")
 
 
 def _declarative_render(render):
@@ -110,6 +138,29 @@ class InternalNode(AbstractBaseNode):
         exactly as an operation value does.
         """
         return bind(sink, source)
+
+    @property
+    def children(self):
+        """The children preparation or presentation last linked under
+        this node: the list `present()` or `materialize()` assigned,
+        after the tree's `render()` and `simulate()` phases have run.
+
+        Before anything has assigned it, a read outside any lifecycle
+        phase answers an empty tuple, and a read inside an assembly's
+        `render()` or `simulate()` is refused with a `StructureError`
+        naming the declared attributes to address instead: there the
+        list is not there yet, and a loop over it would do nothing."""
+        linked = self.__dict__.get('children')
+        if linked is not None:
+            return linked
+        current = _phase.current()
+        if current is None:
+            return ()
+        raise _early_read(self, current)
+
+    @children.setter
+    def children(self, children):
+        self.__dict__['children'] = children
 
     @property
     def time(self):
