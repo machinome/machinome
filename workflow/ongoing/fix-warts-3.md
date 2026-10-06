@@ -70,6 +70,14 @@ in the same cycle.
   whole; SO-ARM100's frames, axes and pose operations unchanged; entry
   moved to `../archive/fix-warts-3-2026-10-06/resolved.md`, the two snaps
   it left recorded in `../warts.md`.
+- 6 October 2026: cycle 2, `build-settles-on-a-grown-source-set`, applied
+  (promoted ahead of the rest: it blocked the full suite): a part source
+  newer than its module no longer restarts a build without end; the
+  fixture, a scratch project and a fresh worktree of
+  Robots/hexapod_spiderbot_model build in one generation, and the full
+  suite runs with nothing deselected; the `mesh-engine` addendum moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`, the three-hour hang
+  left in `../warts.md` with a Remaining note.
 
 ## Deferred to the pilot
 

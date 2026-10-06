@@ -386,9 +386,16 @@ class Builder(FileSystemEventHandler):
                 # out so that wait happens only after the lock is released.
                 assembly_failure = (error, traceback.format_exc())
 
-            # Assembly discovers the complete source union. An edit during it
-            # invalidates the loaded classes before any later publication.
+            # Without a source generation -- reached only through a patched
+            # loader, since a reference outside a project does not load --
+            # the loaded maximum is this branch's only record of what was
+            # loaded. With one, the assembly phase's closing check has
+            # already compared every contributor with its own observation,
+            # those that joined during assembly included (ADR-084): a newer
+            # file joining moves the grown set's maximum without any source
+            # having changed, and must not stand the build down.
             if (assembly_failure is None and
+                    self._source_generation is None and
                     self.node.mtime_ns != loaded_source_mtime_ns):
                 return BuildOutcome.SOURCE_CHANGED
 

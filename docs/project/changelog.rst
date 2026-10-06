@@ -17,6 +17,13 @@ Unreleased
   reads unit to ``1e-12``, and a mate stating no axis turns its child about
   exactly the ``z`` ``resolved_frames`` reads for the moving frame
   (snap-keeps-the-triad-unit).
+* **A build of a fresh checkout finishes.** ``machinome build`` and
+  ``machinome develop`` no longer start over without end when a file a
+  part reads, such as an ``StlNode``'s mesh, is newer than the module
+  declaring it, as a fresh clone or worktree leaves a mesh checked out
+  after its module. Each source is compared with what the build first
+  saw of it, so a build stands down only for a file that changed after
+  the build read it (build-settles-on-a-grown-source-set).
 
 Machinome 0.8.0
 ---------------

@@ -1836,18 +1836,18 @@ artifact the sweep should keep is a build-pipeline question.
   `openspec/changes/archive/2026-10-03-lean-install/evidence.md`, §5.1.
   **Untriaged.**
 
-  *4 October 2026, the framework cycle `mesh-engine`:* a `machinome build`
-  in a project whose sources were written moments earlier restarts every
-  second without end: each build generation, a fresh spawned interpreter,
-  ends `SOURCE_CHANGED` (11), and `machinome build` starts the next,
-  printing `START` once a second. In a temporary project of `StlNode` parts,
-  outside any import finder, `timeout 60 machinome build
-  mfixture/parts.py:Shelf` exited 124 after 50 `START` lines; with every
-  source dated an hour back, the same build printed one `START` and exited
-  0. (Here a child is spawned every second; the hang above saw none, so the
-  two may yet differ in their last step.) Evidence:
-  `openspec/changes/archive/2026-10-04-mesh-engine/evidence.md`, §2.
-  **Reproduced, mechanism found; untriaged.**
+  **Remaining (2026-10-06):** the restart loop the `mesh-engine` cycle
+  added here (a build whose sources were written moments earlier starting
+  a new generation every second) is closed by
+  `build-settles-on-a-grown-source-set`: a mesh or other part source newer
+  than its module no longer stands a build down (see
+  `archive/fix-warts-3-2026-10-06/resolved.md`). The three-hour hang
+  itself is not claimed. Its vendor STEP was copied into the worktree after
+  the checkout, the newest file there, so the same mechanism is plausible;
+  but its recorded observations, no child process and no artifact after
+  three hours, are not the loop's, which spawns a child each generation and
+  writes assembly-time artifacts. Not repeated (the change's design.md,
+  Open Question 1).
 
 ## Findings from the framework cycle `expression-type` (3 October 2026)
 

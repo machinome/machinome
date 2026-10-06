@@ -16,7 +16,9 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
+import time
 from contextlib import contextmanager
 from unittest import TestCase
 from unittest.mock import AsyncMock, Mock, call, patch
@@ -462,6 +464,118 @@ class FilesystemGenerationRaceTest(_InProcessBuilderTest):
         self.builder._write_viewer_snapshot.assert_not_called()
 
 
+_HOUR_NS = 3600 * 10 ** 9
+
+
+class _GrowingNode:
+    """Node double whose source maximum is read from its current files.
+
+    ``AbstractBaseNode.mtime_ns`` is the largest mtime over the node's
+    ``files`` as they are when it is read, and assembly grows that set: a
+    parent unions in every child's sources, an ``StlNode``'s mesh among
+    them.  ``_StableNode`` stores a fixed value and cannot show that.
+    """
+
+    def __init__(self, files):
+        self.files = set(files)
+        self.children = ()
+        self.rigid = False
+        self._prepare = Mock()
+        self.assemble = Mock()
+
+    @property
+    def mtime_ns(self):
+        return max(os.stat(path).st_mtime_ns for path in self.files)
+
+
+class JoinedContributorTest(_InProcessBuilderTest):
+    """A source joining during assembly is judged by its own observation.
+
+    A part's mesh, STEP or SCAD file joins the root's source set while the
+    builder prepares the tree.  Being newer than the loaded modules -- as a
+    fresh checkout leaves a mesh written after its module -- is not a
+    change; being replaced after the build observed it is.
+    """
+
+    def make_project(self, joiner_offset):
+        temporary = tempfile.TemporaryDirectory(prefix='machinome-joiner-')
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / 'pyproject.toml').write_text(
+            '[tool.machinome]\nmodel = "model.py"\n')
+        source = root / 'model.py'
+        source.write_text('VALUE = 1\n')
+        joiner = root / 'part.stl'
+        joiner.write_text('solid part\nendsolid part\n')
+        module_ns = time.time_ns() - _HOUR_NS
+        os.utime(source, ns=(module_ns, module_ns))
+        joined_ns = joiner_offset(module_ns)
+        os.utime(joiner, ns=(joined_ns, joined_ns))
+        return root, source, joiner
+
+    def build(self, root, source, joiner, after_joining=None):
+        from machinome.source_generation import track_sources
+
+        node = _GrowingNode({str(source)})
+
+        def prepare():
+            # What a child's `_prepare` and its parent's union do: declare
+            # the child's sources to the assembly census, then add them to
+            # the root's set.
+            track_sources([str(joiner)])
+            node.files.add(str(joiner))
+            if after_joining is not None:
+                after_joining()
+
+        node._prepare.side_effect = prepare
+        builder = Builder(
+            str(source), build_dir=str(root / '_build'), watch=False)
+        builder._published_model_is_current = Mock(return_value=False)
+        builder.generate_stl = AsyncMock(return_value=BuildOutcome.CURRENT)
+        builder._write_viewer_snapshot = Mock(return_value=True)
+        with patch('machinome.core.builder.load_node', return_value=node):
+            outcome = asyncio.run(builder._start())
+        return builder, node, outcome
+
+    def test_a_newer_contributor_joining_during_assembly_builds(self):
+        offsets = {
+            '1 ms after the module': lambda module: module + 10 ** 6,
+            '1 s after the module': lambda module: module + 10 ** 9,
+            'an hour after the present':
+                lambda module: time.time_ns() + _HOUR_NS,
+        }
+        for label, offset in offsets.items():
+            with self.subTest(label):
+                root, source, joiner = self.make_project(offset)
+                builder, node, outcome = self.build(root, source, joiner)
+
+                self.assertGreater(node.mtime_ns,
+                                   os.stat(source).st_mtime_ns)
+                self.assertEqual(outcome, BuildOutcome.CURRENT)
+                node._prepare.assert_called_once_with()
+                builder.generate_stl.assert_awaited_once_with()
+                builder._write_viewer_snapshot.assert_called_once_with()
+
+    def test_a_contributor_replaced_after_joining_stands_down(self):
+        root, source, joiner = self.make_project(
+            lambda module: module + 10 ** 6)
+
+        def replace_beneath_its_own_mtime():
+            old_mtime = os.stat(joiner).st_mtime_ns
+            replacement = root / '.part.stl'
+            replacement.write_text('solid edited\nendsolid edited\n')
+            os.utime(replacement, ns=(old_mtime, old_mtime))
+            os.replace(replacement, joiner)
+            self.assertEqual(os.stat(joiner).st_mtime_ns, old_mtime)
+
+        builder, node, outcome = self.build(
+            root, source, joiner, after_joining=replace_beneath_its_own_mtime)
+
+        self.assertEqual(outcome, BuildOutcome.SOURCE_CHANGED)
+        builder.generate_stl.assert_not_awaited()
+        builder._write_viewer_snapshot.assert_not_called()
+
+
 class BuildSupervisorGenerationTest(TestCase):
     """Only source movement and no-progress contention are retry outcomes."""
 
@@ -656,3 +770,116 @@ class Machine(AssemblyNode):
         self.assertEqual(
             artifact_hashes, self.artifact_hashes(self.reference_root),
             'retained continuation changed the complete filename/SHA-256 map')
+
+
+class FreshCheckoutBuildTest(TestCase):
+    """A project whose mesh is newer than its module builds once.
+
+    A git checkout writes a project's files in path order, so a mesh beside
+    or below its module is written after it.  Every file is older than the
+    build and none changes while it runs, so one spawned builder must build
+    and publish the model.
+    """
+
+    PARTS_SOURCE = '''\
+from machinome.node.assembly import AssemblyNode
+from machinome.node.stl import StlNode
+
+
+class Tab(StlNode):
+    stl_source = 'tab.stl'
+
+
+class Bench(AssemblyNode):
+
+    def render(self):
+        return [Tab()]
+'''
+
+    def make_project(self, package, offset_ns):
+        import trimesh
+
+        temporary = tempfile.TemporaryDirectory(prefix='machinome-checkout-')
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        directory = root / package
+        directory.mkdir()
+        (root / 'pyproject.toml').write_text(
+            f'[tool.machinome]\nmodel = "{package}.parts:Bench"\n')
+        (directory / '__init__.py').write_text('')
+        (directory / 'parts.py').write_text(self.PARTS_SOURCE)
+        mesh = directory / 'tab.stl'
+        trimesh.creation.box().export(str(mesh), file_type='stl')
+        module_ns = time.time_ns() - _HOUR_NS
+        for path in (root / 'pyproject.toml', directory / '__init__.py',
+                     directory / 'parts.py'):
+            os.utime(path, ns=(module_ns, module_ns))
+        os.utime(mesh, ns=(module_ns + offset_ns, module_ns + offset_ns))
+        # `Build.build` resolves the model in this process first; its module
+        # cache must not outlive the subtest's project.
+        self.addCleanup(self.forget_package, package)
+        return root
+
+    @staticmethod
+    def forget_package(package):
+        for name in list(sys.modules):
+            if name == package or name.startswith(package + '.'):
+                del sys.modules[name]
+
+    @contextmanager
+    def project_environment(self, root):
+        previous = os.getcwd()
+        os.chdir(root)
+        try:
+            with patch.dict(os.environ, {
+                    'SOLID_BUILD_DIR': str(root / '_build'),
+                    'PYTHONDONTWRITEBYTECODE': '1',
+            }):
+                yield
+        finally:
+            os.chdir(previous)
+
+    def build(self, root, package):
+        import machinome.manager.build as build_module
+
+        real_process = build_module.Process
+        children = []
+
+        def one_builder_only(*args, **kwargs):
+            if children:
+                # The test's own bound: a second generation means the first
+                # stood down, and every later one would do the same.
+                raise AssertionError(
+                    f'a second builder was spawned; the first exited '
+                    f'{children[0].exitcode}')
+            child = real_process(*args, **kwargs)
+            children.append(child)
+            return child
+
+        command = build_module.Build()
+        command.overrides = []
+        with self.project_environment(root), patch.object(
+                build_module, 'Process', side_effect=one_builder_only):
+            status = command.build(f'{package}.parts:Bench')
+        return status, children
+
+    def test_a_mesh_newer_than_its_module_builds_in_one_generation(self):
+        for package, offset_ns in (('checkout_ms', 10 ** 6),
+                                   ('checkout_s', 10 ** 9)):
+            with self.subTest(package):
+                root = self.make_project(package, offset_ns)
+
+                status, children = self.build(root, package)
+
+                self.assertEqual(status, 0)
+                self.assertEqual(
+                    [child.exitcode for child in children], [0])
+                build_dir = root / '_build'
+                document = json.loads(
+                    (build_dir / 'viewer.json').read_text())
+                children = document['root']['children']
+                self.assertEqual(
+                    [child['name'] for child in children], ['Tab'])
+                model = children[0]['model']
+                self.assertTrue(model.startswith(f'{package}/tab-'), model)
+                self.assertTrue((build_dir / model).is_file())

@@ -15,7 +15,10 @@ exit 0 without starting a watcher or viewer. Its exit status SHALL reflect
 whether the model built. When its builder stands down because the source moved
 while it waited for the project build lock, the command SHALL build again from
 the source on disk rather than exiting, so what it publishes is the current
-model.
+model. The order of the project's file timestamps SHALL NOT by itself make
+its builder stand down: a project none of whose files change during the
+command, such as a fresh clone or worktree, SHALL build as it would with
+every file dated alike.
 
 #### Scenario: Build the project model
 
@@ -37,6 +40,14 @@ model.
   project build lock
 - **THEN** the command rebuilds from the edited source and exits 0 with the
   current model published
+
+#### Scenario: A freshly checked-out project builds once
+
+- **WHEN** a user runs `machinome build` in a project whose part reads a mesh
+  file dated later than the module declaring the part, every file older than
+  the command and none edited while it runs
+- **THEN** the command builds the model with one builder, publishes it and
+  exits 0
 
 ### Requirement: Missing model is a distinct build outcome
 
