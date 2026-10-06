@@ -143,3 +143,28 @@ place, `python -m pytest python/tests/test_cli.py -q` gave `5 passed in
 mutation still in place, `5 failed in 0.79s`, each child exiting 97 with the
 mutation's message. With the mutation removed, `5 passed in 4.96s`, and the
 whole Python suite 298 passed in 28.0 s.
+
+## status-claims
+
+Status: done on the same branch, its own commit, 6 October 2026; a narrow
+adjustment (status honesty) for `warts.md`, Catch-up 3.
+
+machinome-viewer 0.8.0 is on PyPI (0.7.0, 0.7.1 and 0.8.0 listed), tagged
+`v0.8.0` in its repository, and its `CHANGELOG.md` says it "declares viewer
+API 29". Three pages said API 28 and 29 were in the source checkout only:
+
+- `README.md`: the API 28 sentence loses its release clause, and the API 29
+  sentence ends "machinome-viewer 0.8.0 declares it", the release stated
+  once (API 29 carries 28). The README is 97 bytes and one line shorter.
+- `AGENTS.md`, "Current status": API 28 and API 29 are each "which
+  machinome-viewer 0.8.0 declares".
+- `docs/FORMAT.md`, "Format 0.3": the parenthesis keeps what API 28 adds and
+  drops the release clause, the README being where the release is stated.
+
+README line 139 ("For a 0.3 episode that needs Viewer API 28 it also reads
+the selected bundle's `viewer API` banner") states no release and is
+unchanged. No pin asserted the old wording. A pin in
+`test/repository.test.mjs` (`status-claims`) now refuses the old phrases in
+the three pages and asks the README for the release; it failed on the old
+text ("README.md: the viewer's release") and passes on the new. Node `pure`
+project 252 passed (25 files, 4.3 s); Python suite 298 passed (27.5 s).

@@ -29,13 +29,12 @@ Requires Node 22+, FFmpeg/ffprobe, and a Machinome Viewer API 21 bundle with
 `setView` and on-demand rendering. Viewer API 27 is used by the release-film
 study. Episodes in the draft format 0.3 that point at parts (`annotations`),
 highlight them (`highlight`) or change field of view or up between cameras
-need Viewer API 28, available in the machinome-viewer source checkout but not
-yet declared by a published release; `check`, `preview` and `render` refuse them against an
+need Viewer API 28; `check`, `preview` and `render` refuse them against an
 older bundle. Format 0.4 needs no newer viewer than the cues it uses: easing
 and transitions between shots run on Viewer API 21, and rings, being
 annotations, need Viewer API 28 as annotations do. A movie on a clocked take
 needs Viewer API 29, which mounts a clocked machine under on-demand
-rendering and poses a restored bank; no published release declares it yet.
+rendering and poses a restored bank; machinome-viewer 0.8.0 declares it.
 Text animation is page-only
 and adds no viewer requirement. Stills and clips are page-only too; FFprobe
 checks their frames and timestamps, while FFmpeg extracts clip frames for

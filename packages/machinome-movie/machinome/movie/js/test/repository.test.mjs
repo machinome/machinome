@@ -237,3 +237,10 @@ test('the manual and the records say how the player shows a film and a take, and
   assert.doesNotMatch(agents,/the player page that drives them is not built/,'AGENTS.md: the status line');
   assert.ok((await read('docs/declaring-a-movie.md')).includes('`watch` evaluates the movie as `evaluate` does'),'declaring-a-movie.md: watch');
 });
+
+test('the manual and the records name the published viewer that declares API 28 and 29 (status-claims)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  for(const path of ['README.md','AGENTS.md','docs/FORMAT.md'])
+    assert.doesNotMatch(await read(path),/no published release|not yet declared by a published release|not yet a published release|source checkout provides/,`${path}: the viewer's release`);
+  assert.ok((await read('README.md')).includes('machinome-viewer 0.8.0 declares it'),'README: the release that declares API 29');
+});
