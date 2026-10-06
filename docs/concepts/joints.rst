@@ -385,11 +385,15 @@ Supplying both directions explicitly retains full floating-point precision:
 their cross product, without component snap. Even an explicit default
 ``z=(0, 0, 1)`` counts: ``Frame(z=(0, 0, 1), x=...)`` retains precision,
 whereas ``Frame(x=...)`` with ``z`` omitted keeps the old snapped path.
-Omitted ``x`` or ``x=None`` also keeps that path: components within ``1e-9``
-of ``0``, ``1`` or ``-1`` become those integers, with the same principal
-inference and zero/parallel refusals. These are the same cached numbers the
-mate composes, not a separately altered readout; read them, do not assign.
-Final mate angle/axis snap and Joint axis snapping remain unchanged.
+Omitted ``x`` or ``x=None`` also keeps that path: a direction whose every
+component lies within ``1e-9`` of ``0``, ``1`` or ``-1`` becomes that
+principal axis in integers, and in any other direction only the components
+within ``1e-9`` of ``0`` become ``0``, so a direction a few millionths off an
+axis stays unit; the principal inference and zero/parallel refusals are the
+same. These are the same cached numbers the mate composes, not a separately
+altered readout; read them, do not assign.
+A joint's axis snaps by the same rule; the final mate angle/axis snap is
+unchanged.
 
 A mate's ``name`` is its coordinate's, when it states a freedom. Its ``moving`` end reads
 ``written`` as ``'<child>.<frame>'``; its ``fixed`` end is either such a

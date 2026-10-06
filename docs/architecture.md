@@ -210,8 +210,12 @@ directions explicitly retains normalized/projected/cross-product precision
 without component snap, including an explicit default z. A private wrapped
 initializer records z presence while preserving the public literal signature
 and handling subclass super-initialization. With z omitted or x omitted/None,
-the existing `1e-9` component snap remains. Readout and mate composition use
-the same cached basis; final mate and Joint snaps are unchanged. An omitted
+each direction snaps as a whole (`joints._snapped_direction`, shared with the
+joint's axis): exactly a principal axis, in integers, when every component is
+within `1e-9` of `0`, `1` or `-1`, otherwise only components within `1e-9` of
+`0` become `0`, so every resolved direction is unit to `1e-12`. Readout and
+mate composition use the same cached basis; the final mate snap is unchanged.
+An omitted
 `x` is derived only for a principal `z` (the next principal axis, where
 `Wrapped`'s zero lands) and refused for any other. A frame builds nothing; it is the end
 of a **mate** (Kinematics, below).
@@ -902,7 +906,9 @@ uses the resolved axis, anchor and any further declared point AS THEY
 RESOLVED, with no transformation — a joint's operations were always
 placed innermost, before every rest operation, in the body's own frame,
 so there is nothing to carry them through. The normalized axis is
-snapped to an exact 0/1/−1 within `1e-9`; an anchor is published exactly
+snapped as a whole: exactly a principal axis, in integers, when every
+component is within `1e-9` of 0/1/−1, otherwise only its components within
+`1e-9` of 0 become 0, so it stays unit; an anchor is published exactly
 as the author wrote it. The framework applies ordinary
 `Rotation`/`Translation` objects — `translate(-anchor)`,
 `rotate(value, axis)`, `translate(anchor)` for a revolute, the two

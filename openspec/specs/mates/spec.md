@@ -158,18 +158,25 @@ and the argument, whether or not any mate names it.
 A resolved frame SHALL be an origin and three unit directions `x`, `y`,
 `z`: `z` the declared `z` normalized; `x` the declared `x` with its
 component along `z` removed, then normalized; `y` equal to `z × x`.
-Neither `z` nor `x` need be written as a unit vector.
+Neither `z` nor `x` need be written as a unit vector. Each resolved
+direction SHALL be unit to within `1e-12`.
 
 When BOTH `x` and `z` are explicitly supplied, resolution SHALL preserve
 full floating-point precision of the normalized `z`, projected and normalized
 `x`, and cross-product `y`, without snapping direction components to `0`, `1`
 or `-1`. This includes literal, parameter/formula and callable vectors, and
 an explicitly supplied `z=(0, 0, 1)`. Supplying `x` while omitting `z` SHALL
-retain the previous snapped path, as SHALL omitting `x` (including `x=None`).
-On that path, direction components within `1e-9` of `0`, `1` or `-1` SHALL be
-that integer. No new public argument SHALL select this behavior. Projection,
-normalization and zero/parallel refusal thresholds SHALL remain unchanged.
-This precision rule SHALL NOT alter final mate rotation-angle/axis snapping.
+take the snapped path, as SHALL omitting `x` (including `x=None`). On that
+path each of `z`, `x` and `y` SHALL be snapped as a whole: a direction whose
+every component lies within `1e-9` of `0`, `1` or `-1` — a direction within
+`1e-9` of a principal axis — SHALL be exactly that axis, its components the
+integers `0`, `1` and `-1`; in any other direction a component within `1e-9`
+of `0` SHALL be the integer `0` and no component SHALL be made `1` or `-1`,
+so a direction a few millionths off a principal axis is read as the unit
+direction it is. No new public argument SHALL select this behavior.
+Projection, normalization and zero/parallel refusal thresholds SHALL remain
+unchanged. This precision rule SHALL NOT alter final mate
+rotation-angle/axis snapping.
 
 When `x` is omitted and `z` lies along a principal axis, `x` SHALL be
 the next principal axis in right-hand order — the rule a wrapped
@@ -247,6 +254,19 @@ or when `x` is parallel to `z`.
   the existing snap threshold
 - **THEN** the prior snapped principal direction and inferred x remain, and
   nonprincipal z outside that rule is still refused for lacking x
+
+#### Scenario: A frame with z omitted and x a few millionths off an axis reads a unit triad
+
+- **WHEN** a part declares, omitting `z`,
+  `pin = Frame(x=(6.326794896668469e-06, -0.9999999999799858, 0))` — the
+  `x` of a URDF's `rpy="0 0 -1.57079"` — and
+  `jaw = Frame(x=(-0.9999999999199434, 1.2653589793083688e-05, 0))`, and a
+  realized part is read
+- **THEN** each frame's `x`, `y` and `z` have length `1` within `1e-12`
+  and are pairwise perpendicular within `1e-12`, `z` is `(0, 0, 1)` in
+  integers, `x` equals the declared `x` within `1e-15`, no component of
+  `x` or `y` is the integer `1` or `-1`, and the third component of `x`
+  and of `y` is the integer `0`
 
 ### Requirement: An assembly mates a child's frame onto another frame
 
@@ -981,8 +1001,11 @@ numbers in the node's own rest frame, and a `rotation()` giving the 3×3
 matrix, as three rows, whose columns are `x`, `y` and `z`. `at` SHALL be
 three floats. When both direction vectors were explicitly supplied, their
 normalized/projected/cross-product components SHALL retain full floating-point
-precision as required by frame resolution; otherwise a direction component
-within `1e-9` of `0`, `1` or `-1` SHALL be that integer.
+precision as required by frame resolution; otherwise each direction SHALL be
+snapped as a whole, as frame resolution requires: exactly a principal axis in
+integers when every component lies within `1e-9` of `0`, `1` or `-1`, and
+otherwise only its components within `1e-9` of `0` made the integer `0`.
+Either way each direction SHALL be unit to within `1e-12`.
 
 The read SHALL be exactly what a mate composes with: the same resolution
 made once when the node was constructed, not a second one, so a function

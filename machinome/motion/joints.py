@@ -132,8 +132,11 @@ __all__ = ['Bound', 'Free', 'Joint', 'JointRangeError', 'Orbit',
 # floating-point residue -- `(0, 0, 3)` comes back as `(0, 0,
 # 0.9999999999999999)` -- and whatever comes back is what the published
 # document carries, so the residue is snapped away before anything reads
-# it. An anchor is never snapped: it is published exactly as the author
-# wrote it.
+# it. A direction snaps to `1` or `-1` only as a whole
+# (`_snapped_direction`): an axis a few millionths off a principal one
+# keeps its components, only those within `_SNAP` of `0` becoming `0`,
+# so it stays unit. An anchor is never snapped: it is published exactly
+# as the author wrote it.
 _SNAP = 1e-9
 
 _MISSING = object()
@@ -260,6 +263,31 @@ def _snapped(value):
         if abs(value - exact) <= _SNAP:
             return exact
     return value
+
+
+def _snapped_direction(components):
+    """The normalized direction `components`, snapped only as a whole:
+    exactly the principal axis it lies along, in the integers `0`, `1`
+    and `-1`, when EVERY component is within `_SNAP` of one of them;
+    otherwise each component within `_SNAP` of `0` is the integer `0`
+    and every other component is kept as computed.
+
+    Snapping one component to `-1` while another stays `6.33e-6` -- the
+    direction a URDF's `rpy="1.57079 0 0"` states -- would leave the
+    direction `1 + 2e-11` long; a direction snapped this way stays unit
+    (snap-keeps-the-triad-unit). Used for a joint's axis and for a
+    frame's `x`, `y` and `z` on its snapped path alike."""
+    components = tuple(components)
+    nearest = []
+    for component in components:
+        for exact in (0, 1, -1):
+            if abs(component - exact) <= _SNAP:
+                nearest.append(exact)
+                break
+        else:
+            return tuple(0 if abs(component) <= _SNAP else component
+                         for component in components)
+    return tuple(nearest)
 
 
 def _where(node):
@@ -499,9 +527,11 @@ class Joint(Coordinate):
 
     def resolve(self, node, values):
         """This instance's `(axis, at, range)`: every component a plain
-        number, the axis normalized and SNAPPED to an exact `0`, `1` or
-        `-1` within `1e-9` of one, or `ParameterError` naming the class,
-        the joint and the argument at fault. The anchor is NOT snapped:
+        number, the axis normalized and snapped as a whole by
+        `_snapped_direction` -- exactly the principal axis it is within
+        `1e-9` of in every component, else only its components within
+        `1e-9` of `0` made `0`, so it stays unit --, or `ParameterError`
+        naming the class, the joint and the argument at fault. The anchor is NOT snapped:
         it is published exactly as the author wrote it.
 
         A subclass that declares a further argument -- an `Orbit`'s
@@ -519,8 +549,8 @@ class Joint(Coordinate):
                 node, 'axis',
                 f'{self.axis!r} has no direction: an axis of zero length '
                 f'states no line to move about')
-        normalized = tuple(_snapped(component / length) for component
-                           in axis)
+        normalized = _snapped_direction(component / length
+                                        for component in axis)
         return normalized, anchor, span
 
     def _refusal(self, node, argument, detail):

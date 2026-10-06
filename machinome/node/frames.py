@@ -63,10 +63,13 @@ __all__ = ['Frame', 'ResolvedFrame', 'declared_frames',
            'resolve_declared_frames', 'resolved_frames']
 
 
-# On the omitted-direction path, how close to 0, 1 or -1 a component must be
-# before it IS that value: the joint's own `_SNAP`, for the same reason
-# -- normalizing `(0, 0, 2)` must give the exact `(0, 0, 1)` a reader
-# wrote, not residue.
+# On the omitted-direction path, how close to 0, 1 or -1 every component of
+# a direction must be before the direction IS that principal axis: the
+# joint's own `_SNAP`, for the same reason -- normalizing `(0, 0, 2)` must
+# give the exact `(0, 0, 1)` a reader wrote, not residue. A direction
+# snaps only as a whole, by the joint's `_snapped_direction`, so it stays
+# unit (snap-keeps-the-triad-unit); here `_SNAP` also refuses a
+# zero-length `z`.
 _SNAP = 1e-9
 
 # How nearly parallel `x` may be to `z` before nothing of it is left
@@ -83,13 +86,6 @@ def _is_frame(value):
     `machinome.node.declarative` can ask without importing this
     module."""
     return getattr(type(value), 'frame_kind', None) == 'frame'
-
-
-def _snapped(value):
-    for exact in (0, 1, -1):
-        if abs(value - exact) <= _SNAP:
-            return exact
-    return value
 
 
 def _dot(first, second):
@@ -128,12 +124,17 @@ class ResolvedFrame:
     - `x`, `y`, `z`: a right-handed triad of unit directions -- `z` the
       declared `z` normalized, `x` the declared `x` squared up against
       `z` and normalized (or, left out, the next principal axis after a
-      principal `z`), `y` equal to `z` cross `x`. Supplying both directions explicitly
-      retains normalized/projected/cross-product precision without component
+      principal `z`), `y` equal to `z` cross `x`, each unit to within
+      `1e-12`. Supplying both directions explicitly retains
+      normalized/projected/cross-product precision without component
       snap, including an explicit default `z=(0, 0, 1)`. With `z` omitted,
-      or `x` omitted or None, components within `1e-9` of `0`, `1` or `-1`
-      are those integers. Final mate angle/axis snap and Joint axis snapping
-      are unchanged.
+      or `x` omitted or None, each direction snaps as a whole: one whose
+      EVERY component is within `1e-9` of `0`, `1` or `-1` IS that
+      principal axis, in `int`, so `z=(0, 0, 2)` reads `(0, 0, 1)`; in any
+      other direction only a component within `1e-9` of `0` is the `int`
+      `0`, so a direction a few millionths off an axis reads as the unit
+      direction it is. A joint's axis snaps by the same rule; the final
+      mate angle/axis snap is unchanged.
     - `rotation()`: the 3x3 as a list of three rows whose columns are
       `x`, `y` and `z`, the rotation carrying the frame's axes onto the
       declarer's.
@@ -188,10 +189,13 @@ class Frame:
     Supplying both directions explicitly retains full floating-point precision:
     normalize `z`, project and normalize `x`, then cross `z` with `x`, without
     component snap. An explicit default `z=(0, 0, 1)` counts; `Frame(x=...)`
-    with `z` omitted keeps snapping, as does omitted `x` or `x=None`.
-    Zero/parallel refusals are unchanged. `resolved_frames` reads the same
-    cached basis mates use. Final mate angle/axis snap and Joint axis snapping
-    remain unchanged.
+    with `z` omitted snaps, as does omitted `x` or `x=None`: each direction
+    snaps as a whole, exactly a principal axis when every component is
+    within `1e-9` of `0`, `1` or `-1`, otherwise only its components within
+    `1e-9` of `0` made `0`, so it stays unit. Zero/parallel refusals are
+    unchanged. `resolved_frames` reads the same cached basis mates use. A
+    joint's axis snaps by the same rule; the final mate angle/axis snap is
+    unchanged.
 
     An ordinary class attribute, NOT a data descriptor and NOT a
     `Declaration` -- the marking's reasons, restated in
@@ -251,7 +255,8 @@ class Frame:
         """This frame, resolved against the realized `node` that
         declares it: a `ResolvedFrame`, or `ParameterError` naming the
         class, the frame and the argument."""
-        from machinome.motion.joints import resolved_vector
+        from machinome.motion.joints import (_snapped_direction,
+                                             resolved_vector)
 
         def refusal(argument, detail):
             return self._refusal(node, argument, detail)
@@ -259,13 +264,13 @@ class Frame:
         at = resolved_vector(node, self.at, 'at', refusal)
         z = resolved_vector(node, self.z, 'z', refusal)
         precise = self._z_explicit and self.x is not None
-        component_value = (lambda value: value) if precise else _snapped
+        direction = tuple if precise else _snapped_direction
         length = math.sqrt(_dot(z, z))
         if length < _SNAP:
             raise refusal(
                 'z', f'{self.z!r} has no direction: a z of zero length '
                 f'states no line')
-        z = tuple(component_value(component / length) for component in z)
+        z = direction(component / length for component in z)
         if self.x is None:
             x = _principal_next(z)
             if x is None:
@@ -286,8 +291,8 @@ class Frame:
                 raise refusal(
                     'x', f'{self.x!r} is parallel to z={self.z!r}, so it '
                     f'fixes no attitude about it. State an x across z.')
-            x = tuple(component_value(component / size) for component in across)
-        y = tuple(component_value(component) for component in _cross(z, x))
+            x = direction(component / size for component in across)
+        y = direction(_cross(z, x))
         return ResolvedFrame(at, x, y, z)
 
     def __repr__(self):

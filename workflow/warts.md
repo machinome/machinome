@@ -1599,27 +1599,22 @@ project's guard reads only documented surfaces (`resolved_frames`,
 `declared_mates`, the mate's ends and freedom). Two findings; both
 recorded, not fixed, until the pilot triages them.
 
-- **A snapped triad component leaves the triad non-unit.** `frames.py`
-  normalizes a declared direction and then snaps each component within
-  `_SNAP = 1e-9` of 0, 1 or -1 onto that value, one component at a time
-  and without renormalizing. A URDF rpy of `1.57079` gives
-  `z = (0, -0.99999999998, 6.33e-6)`: the second component snaps to
-  exactly `-1` while the third stays, and the resolved `z` has length
-  `1 + 2e-11`; `3.14158` gives `1 + 8e-11`, on `z` and `x` both. Four of
-  the SO-100's six fixed frames resolve so. No pose shows it (the mate's
-  axis-angle extraction goes through `atan2`) and the placement is within
-  1e-10, but the documented read promises a unit triad, and the project's
-  test had to compare resolved directions at 1e-9 rather than 1e-12. The
-  snap should keep the triad orthonormal: snap a component only when the
-  snapped vector is still unit to `_SNAP` (the other components within
-  the snap of 0), or renormalize after snapping. A small fix in
-  `frames.py`; the joint's own `_SNAP` shares the rule and should be
-  checked with it. **Recorded.**
-
-  **Remaining (2026-10-04):** `explicit-frame-direction-precision`
-  (`fabfc3d`) no longer snaps a frame stated with both `x` and `z`; with
-  `x` omitted, `frames.py` still snaps each component without
-  renormalizing, and the joint's `_snapped` axis does too.
+- **Two direction snaps still work one component at a time.** Since
+  `snap-keeps-the-triad-unit` (6 October 2026) a joint's axis and a
+  frame's directions on its snapped path snap to a principal axis only as
+  a whole (`machinome.motion.joints._snapped_direction`), so they stay
+  unit. Two other directions still pass each component through a
+  per-component snap: the axes a SITE-declared joint carries into the
+  child's own rest frame (`Joint`'s carry in `machinome/motion/joints.py`:
+  the inverse rest placement, normalized, then `_snapped` on each
+  component), and the axis of a mate's rest rotation (`mates._axis_angle`,
+  each component through `mates._snapped`, nearest integer within
+  `1e-9`). Either can leave a direction a few millionths off a principal
+  axis `1 + 2e-11` long, as the frame and the joint did. No project is
+  known to reach either: the SO-100 declares no site joint, and its rest
+  rotations publish exact axes (`[1, 0, 0]`, `[0, 1, 0]`, `[-1, 0, 0]`).
+  Each would be a one-call change to `_snapped_direction`, with its own
+  red test. **Recorded.**
 
 ## Findings from the OpenArm project's migration onto mates (2026-09-26)
 

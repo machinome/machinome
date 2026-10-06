@@ -3,6 +3,21 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* **A direction a few millionths off an axis stays unit.** A joint's axis,
+  and a frame's directions when ``z`` or ``x`` is omitted, snap to a
+  principal axis only as a whole: a direction whose every component lies
+  within ``1e-9`` of ``0``, ``1`` or ``-1`` is that axis in integers, as
+  before, and any other keeps its components, only those within ``1e-9`` of
+  ``0`` becoming ``0``. A direction such as the ``z`` a URDF's
+  ``rpy="1.57079 0 0"`` states, ``(0, -0.99999999998, 6.33e-6)``, used to
+  have its second component made ``-1`` and read ``1 + 2e-11`` long; it now
+  reads unit to ``1e-12``, and a mate stating no axis turns its child about
+  exactly the ``z`` ``resolved_frames`` reads for the moving frame
+  (snap-keeps-the-triad-unit).
+
 Machinome 0.8.0
 ---------------
 

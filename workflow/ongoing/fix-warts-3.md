@@ -64,6 +64,11 @@ in the same cycle.
 ## Progress
 
 - 6 October 2026: bench opened; this note written.
+- 6 October 2026: cycle 1, `snap-keeps-the-triad-unit`, applied: a joint's
+  axis and a frame's snapped-path directions snap to an axis only as a
+  whole; SO-ARM100's frames, axes and pose operations unchanged; entry
+  moved to `../archive/fix-warts-3-2026-10-06/resolved.md`, the two snaps
+  it left recorded in `../warts.md`.
 
 ## Deferred to the pilot
 

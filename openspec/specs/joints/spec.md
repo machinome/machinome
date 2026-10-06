@@ -8,7 +8,6 @@ Binding the coordinate places the body on top of its rest placement, so
 the frame arithmetic projects wrote by hand leaves them, and a coordinate
 can be wired down to children as a token.
 ## Requirements
-
 ### Requirement: Reused-joint mechanical contracts preserve original scope
 
 A Bound read, constrain target or explicit control reference naming an existing-joint mate SHALL resolve to its original joint. Added constraints SHALL retain their own declaring assembly scope and intersect with the original joint range. Attaching an existing joint SHALL not change the declarer of its original Bounds, shift its original argument frame or grant new binding permission. Self and duplicate Bound reads through handle/child aliases SHALL be refused canonically.
@@ -1289,10 +1288,16 @@ joint and the operation at fault; a CLASS-declared joint on the same body
 is unaffected, because nothing about it is carried.
 
 The framework SHALL normalize a declared `axis` to unit length and SHALL
-snap each component of the normalized axis within `1e-9` of `0`, `1` or
-`-1` to that exact value, so the normalization's floating-point residue
-never reaches the published document as an axis of `(0, 1, 6e-17)`. An
-anchor SHALL NOT be adjusted: it is published as the author stated it.
+snap the normalized axis as a whole: an axis whose every component lies
+within `1e-9` of `0`, `1` or `-1` — an axis within `1e-9` of a principal
+axis — SHALL be exactly that axis, its components the integers `0`, `1`
+and `-1`; in any other axis a component within `1e-9` of `0` SHALL be the
+integer `0` and no component SHALL be made `1` or `-1`. The
+normalization's floating-point residue therefore never reaches the
+published document as an axis of `(0, 1, 6e-17)`, and an axis a few
+millionths off a principal axis resolves to the unit direction it is: the
+normalized declared axis SHALL be unit to within `1e-12`. An anchor SHALL
+NOT be adjusted: it is published as the author stated it.
 
 #### Scenario: A joint through the body's own origin needs no anchor
 
@@ -1366,6 +1371,34 @@ anchor SHALL NOT be adjusted: it is published as the author stated it.
 - **THEN** the binding raises naming the node, the joint and the
   operation whose value is not a number, and a class-declared joint on
   the same body still binds
+
+#### Scenario: An axis within the snap of a principal axis resolves to exact integers
+
+- **WHEN** a class declares `turn = Revolute(axis=(0, 0, 3), unit='deg')`
+  and `tilt = Revolute(axis=(1e-12, 1, 0), unit='deg')` and an instance
+  is realized
+- **THEN** `turn`'s resolved axis is `(0, 0, 1)` and `tilt`'s is
+  `(0, 1, 0)`, every component an integer
+
+#### Scenario: An axis a few millionths off a principal axis resolves unit
+
+- **WHEN** a class declares
+  `turn = Revolute(axis=(0, -0.9999999999799858, 6.326794896668469e-06), unit='deg')`
+  — the axis a URDF's `rpy="1.57079 0 0"` turns `z` onto — and an
+  instance is realized
+- **THEN** the resolved axis has length `1` within `1e-12` and equals the
+  declared axis within `1e-15`, its first component is the integer `0`
+  and its second is not the integer `-1`
+
+#### Scenario: A mate's joint turns about its moving frame's z a few millionths off an axis
+
+- **WHEN** an assembly states `turn = link.hinge.on(pin, Revolute())`,
+  where the link's class declares
+  `hinge = Frame(z=(0, -0.9999999999799858, 6.326794896668469e-06), x=(1, 0, 0))`,
+  and the assembly is realized
+- **THEN** the link's `turn` joint's resolved axis has length `1` within
+  `1e-12` and equals the link's resolved `hinge` frame's `z` within
+  `1e-15`, component for component
 
 ### Requirement: A joint declared where a child is placed
 
@@ -1811,3 +1844,4 @@ child name, and SHALL preserve that joint's Bound scope. This SHALL preserve the
 
 - **WHEN** a Bound names a rigid mate in reads
 - **THEN** it is refused by name because the mate owns no coordinate
+

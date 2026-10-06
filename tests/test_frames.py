@@ -449,6 +449,48 @@ class TriadTest(BaseNodeTest):
             self.assertAlmostEqual(component, expected, places=12)
         self.assertEqual(frame.x, (1, 0, 0))
 
+    def test_an_x_a_few_millionths_off_an_axis_reads_a_unit_triad(self):
+        """With `z` omitted, an `x` a few millionths off a principal
+        axis -- the `x` of a URDF's `rpy="0 0 -1.57079"`, and one off by
+        `3.14158` -- had one component snapped to `1` or `-1` while
+        another stayed, leaving `x` and `y` `1 + 2e-11` and
+        `1 + 8.01e-11` long. A direction snaps to a principal axis only
+        as a whole (snap-keeps-the-triad-unit)."""
+        frames = _frames()
+
+        class Holder(AssemblyNode):
+            pin = frames.Frame(x=(6.326794896668469e-06,
+                                  -0.9999999999799858, 0))
+            jaw = frames.Frame(x=(-0.9999999999199434,
+                                  1.2653589793083688e-05, 0))
+
+        read = frames.resolved_frames(Holder())
+        for name, declared in (('pin', Holder.pin.x), ('jaw', Holder.jaw.x)):
+            with self.subTest(frame=name):
+                frame = read[name]
+                triad = {'x': frame.x, 'y': frame.y, 'z': frame.z}
+                for axis, direction in triad.items():
+                    with self.subTest(axis=axis):
+                        self.assertLessEqual(
+                            abs(math.sqrt(sum(c * c for c in direction))
+                                - 1), 1e-12)
+                for first, second in (('x', 'y'), ('y', 'z'), ('x', 'z')):
+                    with self.subTest(pair=first + second):
+                        self.assertLessEqual(abs(sum(
+                            a * b for a, b in zip(triad[first],
+                                                  triad[second]))), 1e-12)
+                self.assertEqual(frame.z, (0, 0, 1))
+                for component in frame.z:
+                    self.assertIs(type(component), int)
+                for resolved_c, declared_c in zip(frame.x, declared):
+                    self.assertLessEqual(abs(resolved_c - declared_c), 1e-15)
+                for component in frame.x + frame.y:
+                    self.assertFalse(type(component) is int
+                                     and component in (1, -1))
+                for direction in (frame.x, frame.y):
+                    self.assertIs(type(direction[2]), int)
+                    self.assertEqual(direction[2], 0)
+
     def test_a_z_of_zero_length_is_refused(self):
         with self.assertRaises(ParameterError) as raised:
             self.frame(z=(0, 0, 0))

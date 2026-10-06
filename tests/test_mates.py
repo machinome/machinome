@@ -1037,6 +1037,36 @@ class InstalledJointTest(BaseNodeTest):
         self.assertEqual(arm.forearm.uniq_id,
                          MatedForearm(reach=160).uniq_id)
 
+    def test_the_joint_turns_about_a_moving_z_a_few_millionths_off(self):
+        """A mate stating no axis turns the child about its moving
+        frame's `z`. Stated with `x`, that `z` reads at full precision;
+        the joint's axis snapped its `-0.99999999998` to `-1` while the
+        `6.33e-6` stayed, so the two differed and the axis was
+        `1 + 2e-11` long. A direction snaps to a principal axis only as
+        a whole (snap-keeps-the-triad-unit)."""
+
+        class Link(Solid2Node):
+            hinge = Frame(z=(0, -0.9999999999799858, 6.326794896668469e-06),
+                          x=(1, 0, 0))
+
+            def render(self):
+                return cube(2, center=True)
+
+        class Stand(AssemblyNode):
+            pin = Frame(at=(0, 0, 10))
+            link = Link()
+            turn = link.hinge.on(pin, Revolute())
+
+        stand = Stand()
+        axis = declared_joints(type(stand.link))['turn'].arguments(
+            stand.link)[0]
+        z = resolved_frames(stand.link)['hinge'].z
+        self.assertLessEqual(
+            abs(math.sqrt(sum(c * c for c in axis)) - 1), 1e-12)
+        for index, (joint_c, frame_c) in enumerate(zip(axis, z)):
+            with self.subTest(component=index):
+                self.assertLessEqual(abs(joint_c - frame_c), 1e-15)
+
 
 class MateCoordinateTest(BaseNodeTest):
     """5.11 to 5.14: the coordinate a mate owns on the assembly."""

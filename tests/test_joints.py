@@ -618,6 +618,51 @@ class NumericHygieneTest(BaseNodeTest):
             with self.subTest(component=component):
                 self.assertNotIn('e-', str(component))
 
+    def test_an_axis_within_the_snap_of_a_principal_axis_is_integers(self):
+        """An axis within `1e-9` of a principal axis in every component
+        IS that axis, its components the integers `0`, `1` and `-1`
+        (snap-keeps-the-triad-unit keeps what the snap gave)."""
+
+        class Axial(Solid2Node):
+            turn = Revolute(axis=(0, 0, 3), unit='deg')
+            tilt = Revolute(axis=(1e-12, 1, 0), unit='deg')
+
+            def render(self):
+                return cube(2, center=True)
+
+        node = Axial()
+        joints = declared_joints(Axial)
+        for name, expected in (('turn', (0, 0, 1)), ('tilt', (0, 1, 0))):
+            with self.subTest(joint=name):
+                axis = joints[name].arguments(node)[0]
+                self.assertEqual(axis, expected)
+                for component in axis:
+                    self.assertIs(type(component), int)
+
+    def test_an_axis_a_few_millionths_off_a_principal_axis_is_unit(self):
+        """`(0, -0.9999999999799858, 6.33e-6)` is the axis a URDF's
+        `rpy="1.57079 0 0"` turns `z` onto. Snapping its second component
+        to `-1` while the third stays left it `1 + 2e-11` long; a
+        direction snaps to a principal axis only as a whole
+        (snap-keeps-the-triad-unit)."""
+        declared = (0, -0.9999999999799858, 6.326794896668469e-06)
+
+        class Tilted(Solid2Node):
+            turn = Revolute(axis=declared, unit='deg')
+
+            def render(self):
+                return cube(2, center=True)
+
+        node = Tilted()
+        axis = declared_joints(Tilted)['turn'].arguments(node)[0]
+        self.assertLessEqual(
+            abs(math.sqrt(sum(c * c for c in axis)) - 1), 1e-12)
+        for resolved, stated in zip(axis, declared):
+            self.assertLessEqual(abs(resolved - stated), 1e-15)
+        self.assertIs(type(axis[0]), int)
+        self.assertEqual(axis[0], 0)
+        self.assertFalse(type(axis[1]) is int and axis[1] == -1)
+
     def test_an_anchor_is_published_as_written(self):
         """An anchor is not snapped: it is what the author wrote, not
         what the axis is. A `3e-17` anchor still omits the centring pair
