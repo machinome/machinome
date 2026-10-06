@@ -487,20 +487,29 @@ test('a movie document is refused before its takes, then speaks from cached take
 });
 
 // Takes layer: a provider double stands in for the service; the key is a
-// placeholder the double never sends anywhere.
-test('speech generates one take per chapter from the unresolved document, and only once',async t=>{
-  const {file,document:doc}=await fixtureMovie(t,'tour',{takes:false});
-  const fetch=globalThis.fetch,key=process.env.ELEVENLABS_API_KEY,requests=[];
+// placeholder the double never sends anywhere. It serves one fixture movie at
+// a time: a request for a chapter's narration is answered with that chapter's
+// fixture take (fixtures/takes/<movie>/<chapter>.json), as silence of its
+// duration in the format the request names and its alignment, and counted.
+function speechDouble(t){
+  const fetch=globalThis.fetch,key=process.env.ELEVENLABS_API_KEY,double={requests:[],movie:null,
+    serve(name,doc){this.movie={name,doc};this.requests.length=0;return this.requests;}};
   process.env.ELEVENLABS_API_KEY='double-key-never-sent';
   t.onTestFinished(()=>{globalThis.fetch=fetch;if(key===undefined)delete process.env.ELEVENLABS_API_KEY;else process.env.ELEVENLABS_API_KEY=key;});
   globalThis.fetch=async(url,init)=>{
-    const body=JSON.parse(init.body),chapter=doc.chapters.find(c=>c.narration===body.text);
-    requests.push({url:String(url),text:body.text,previous:body.previous_text,next:body.next_text});
-    const take=await readJson(join(fixtures,'takes','tour',`${chapter.id}.json`));
-    const pcm=Buffer.alloc(Math.round(take.duration*24000)*2);
-    return new Response(JSON.stringify({audio_base64:pcm.toString('base64'),alignment:take.alignment}),
+    const {name,doc}=double.movie,body=JSON.parse(init.body),chapter=doc.chapters.find(c=>c.narration===body.text);
+    double.requests.push({url:String(url),text:body.text,previous:body.previous_text,next:body.next_text});
+    const take=await readJson(join(fixtures,'takes',name,`${chapter.id}.json`));
+    const audio=new URL(String(url)).searchParams.get('output_format')==='pcm_24000'?Buffer.alloc(Math.round(take.duration*24000)*2):
+      execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','anullsrc=r=44100:cl=mono','-t',String(take.duration),'-c:a','libmp3lame','-b:a','128k','-f','mp3','pipe:1']);
+    return new Response(JSON.stringify({audio_base64:audio.toString('base64'),alignment:take.alignment}),
       {status:200,headers:{'content-type':'application/json'}});
   };
+  return double;
+}
+test('speech generates one take per chapter from the unresolved document, and only once',async t=>{
+  const {file,document:doc}=await fixtureMovie(t,'tour',{takes:false});
+  const requests=speechDouble(t).serve('tour',doc);
   const first=await generateMovieTakes(file);
   assert.deepEqual(first,doc.chapters.map(c=>({id:c.id,generated:true})));
   assert.deepEqual(requests.map(r=>[r.text,r.previous,r.next]),doc.chapters.map(c=>[c.narration,undefined,undefined]),
@@ -511,4 +520,67 @@ test('speech generates one take per chapter from the unresolved document, and on
   assert.equal(requests.length,doc.chapters.length);
   const e=await loadEpisode(file);
   assert.deepEqual(e.chapters,(await readJson(join(fixtures,'resolved','tour.json'))).chapters);
+});
+
+// Wart 31 of the Curta film Addition (speech-loads-first): the speech step
+// makes every check of the film's load that needs no take before it asks for
+// one, so a film its load refuses buys nothing, and the refusal is the
+// load's, word for word. One fault at a time, on a copy with no take cached.
+const OTHER_REVISION='0123456789abcdef0123456789abcdef01234567';
+async function revisionDiffers({dir,document:doc}){
+  const manifest=join(dir,'export','seesaw','manifest.json'),path=await realpath(manifest);
+  await editDocument(manifest,m=>{m.source={revision:OTHER_REVISION,dirty:false};});
+  return `model.sourceRevision is ${doc.model.sourceRevision}, and the export ${path} was made from source.revision ${OTHER_REVISION}; pin the revision the export records (evaluate a movie again), or export the model again from ${doc.model.sourceRevision}`;
+}
+test('the speech step refuses what the load refuses without a take, and requests none',async t=>{
+  const double=speechDouble(t),outcomes=[];
+  // Each fault's refusal, whether it is the load's word for word, and the
+  // takes requested before it, all gathered before one assertion.
+  const refusedBeforeTakes=async(fault,name,make)=>{
+    const movie=await fixtureMovie(t,name,{takes:false});
+    const words=await make(movie),requests=double.serve(name,movie.document);
+    // The speech command's two steps on a document: its takes, then its load.
+    const refusal=await generateMovieTakes(movie.file).then(()=>loadEpisode(movie.file)).then(()=>null,error=>error.message);
+    assert.equal(refusal,words,`${fault}: the load's refusal`);
+    outcomes.push({fault,requested:requests.length});
+  };
+  // The export records another revision than the document pins (ADR-019).
+  await refusedBeforeTakes('revision differs','tour',revisionDiffers);
+  // The export is missing.
+  await refusedBeforeTakes('export missing','tour',async({dir})=>{
+    const manifest=join(await realpath(dir),'export','seesaw','manifest.json');
+    await rm(join(dir,'export','seesaw'),{recursive:true});
+    return `ENOENT: no such file or directory, realpath '${manifest}'`;
+  });
+  // An excerpt's file changed after the pinned commit, outside its lines.
+  await refusedBeforeTakes('excerpt differs','tour',async({dir})=>{
+    await appendFile(join(dir,'models','seesaw.py'),'# changed after the commit\n');
+    return 'Source differs from pinned model revision: models/seesaw.py';
+  });
+  // The export publishes a running program.
+  await refusedBeforeTakes('running program','tour',async({dir})=>{
+    await editDocument(join(dir,'export','seesaw','manifest.json'),m=>{m.program={};});
+    return 'The export publishes a running program (its manifest has a program block); a running machine is not filmable';
+  });
+  // The take was recorded on another machine than the export publishes.
+  await refusedBeforeTakes('identity differs','count',async({dir,document:doc})=>{
+    const other='models.other:Counter';
+    await editDocument(join(dir,'export','counter','manifest.json'),m=>{m.clocked.identity=other;});
+    return `take.identity ${doc.take.identity} differs from the machine the export publishes, clocked.identity ${other}; the document was recorded against another machine`;
+  });
+  assert.deepEqual(outcomes,['revision differs','export missing','excerpt differs','running program','identity differs'].map(fault=>({fault,requested:0})),
+    'no take is requested before a refusal of the load');
+});
+
+test('speech and build from the command line refuse a film its load refuses, before they try to buy a take',async t=>{
+  const calls=noNetwork(t);
+  const movie=await fixtureMovie(t,'tour',{takes:false}),words=await revisionDiffers(movie);
+  for(const command of ['speech','build']){
+    const refused=cli(command,movie.file);
+    assert.equal(refused.code,1,refused.out);
+    assert.ok(refused.out.split('\n').includes(words),refused.out);
+    assert.doesNotMatch(refused.out,/network request|No ElevenLabs key/,`${command} tried to buy a take`);
+  }
+  assert.deepEqual(await readdir(join(movie.build,'audio')).catch(()=>[]),[],'no take was written');
+  assert.deepEqual(calls,[]);
 });

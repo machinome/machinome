@@ -6,6 +6,16 @@ lands it.
 
 ## Unreleased
 
+- `speech` on a movie document, and `build` without `--silent`, now make
+  every check of the film's load that needs no take before they request
+  one: the export's manifest and the revision it records, the parts,
+  tokens and a take's identity, inputs and bank against the export and
+  the excerpts, the stage modules, a running program, a clocked export
+  filmed as a loop, the loop's length, the output and the cameras, the
+  evidence files, the excerpts at the pinned revision and the pictures. A
+  film its load refuses is refused with the same words and buys no take;
+  before, each missing take was bought first. The checks made on the
+  resolved film still follow its takes. (`speech-loads-first`)
 - `videomaker live` opens in a browser as a film player and a take
   player. At `/` the session now serves the player page, built once per
   session from `player/` (plain DOM over the take transport) and named by

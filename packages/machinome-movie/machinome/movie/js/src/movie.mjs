@@ -639,8 +639,16 @@ export async function pendingMovie(file){
   return {movie:MOVIE_FORMAT,audio:doc.audio,paths:{episode:documentPath,base,build},
     chapters:doc.chapters.map(c=>({id:c.id,narration:c.narration}))};
 }
-// The speech command's first step on a document: generate each missing take.
-export async function generateMovieTakes(file){return generateTakes(await pendingMovie(file));}
+// The speech command's first step on a document: every check of the load
+// that needs no take, in the load's order and words, then each missing take
+// generated (speech-loads-first, design D2).
+export async function generateMovieTakes(file){
+  const opened=await openMovie(file);
+  await checkBeforeTakes(opened);
+  const {doc,documentPath,base,build}=opened;
+  return generateTakes({movie:MOVIE_FORMAT,audio:doc.audio,paths:{episode:documentPath,base,build},
+    chapters:doc.chapters.map(c=>({id:c.id,narration:c.narration}))});
+}
 
 // The text of each source excerpt's lines, read through the root, for the
 // token checks (the Python side reads the same).
@@ -675,9 +683,11 @@ export function movieViewerApi(film){
   return {api:take?29:unique.length?28:21,reasons:unique};
 }
 
-// Load, check, resolve against the cached takes, write the resolved document,
-// then check it against the project (design D1.4).
-export async function loadMovie(file){
+// The document read and held against its project, the first half of the
+// load: its export's manifest, the revision the export records, the
+// document's names against the export and its excerpts, the project
+// repository and the stage modules. Needs no take (speech-loads-first, D2).
+async function openMovie(file){
   const {doc,documentPath,base,build}=await readMovie(file);
   const manifestPath=await realpath(resolve(base,doc.model.manifest));
   const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
@@ -694,6 +704,23 @@ export async function loadMovie(file){
     need(found,`stage.modules: ${module} does not exist (${path})`);
     need(contained(repository,await realpath(path)),`stage.modules: ${module} is outside the project repository`);
   }
+  return {doc,documentPath,base,build,manifestPath,manifest,exported,repository};
+}
+// The checks the load makes after resolving that need no take, made on the
+// unresolved document in the load's order: the export against the document
+// (all but the frame count), the evidence files, the source excerpts at the
+// pinned revision and the pictures. Writes nothing.
+async function checkBeforeTakes({doc,base,manifest,repository}){
+  checkProject(doc,manifest);
+  for(const path of Object.values(doc.evidence))await readFile(resolve(base,path));
+  await loadSourceCode({sourceCode:doc.sourceCode,model:doc.model,paths:{base,repository}});
+  await loadPictures({source:'movie',stills:doc.stills,clips:doc.clips,paths:{base,repository}});
+}
+
+// Load, check, resolve against the cached takes, write the resolved document,
+// then check it against the project (design D1.4).
+export async function loadMovie(file){
+  const {doc,documentPath,base,build,manifestPath,manifest,exported,repository}=await openMovie(file);
   const pending={audio:doc.audio,paths:{build},chapters:doc.chapters.map(c=>({id:c.id,narration:c.narration}))};
   const needed=chaptersNeedingTakes(doc),takes={},wordTiming={};
   for(const [i,chapter] of doc.chapters.entries()){
@@ -737,8 +764,11 @@ export function checkProject(film,manifest){
   need(finite(film.model.expectedDurationSeconds)&&film.model.expectedDurationSeconds>0,'Invalid model duration');
   for(const k of ['width','height','fps'])need(Number.isInteger(film.output[k])&&film.output[k]>0,`Invalid output ${k}`);
   need(film.output.width%2===0&&film.output.height%2===0,'Video dimensions must be even');
-  const frames=film.output.durationSeconds*film.output.fps;
-  need(Math.abs(frames-Math.round(frames))<1e-6,'Video duration must be a whole number of frames');
+  // The film's length is known once its anchors are resolved from the takes.
+  if(film.resolved){
+    const frames=film.output.durationSeconds*film.output.fps;
+    need(Math.abs(frames-Math.round(frames))<1e-6,'Video duration must be a whole number of frames');
+  }
   for(const [name,c] of Object.entries(film.cameras)){
     need(c.position.length===3&&c.target.length===3&&c.up.length===3,`Invalid camera ${name}`);
     need(c.position.some((v,i)=>v!==c.target[i]),`Camera ${name} coincides with target`);

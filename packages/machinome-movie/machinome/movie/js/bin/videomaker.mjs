@@ -36,7 +36,9 @@ try{
     process.once('SIGINT',stop);process.once('SIGTERM',stop);
   }else{
     // A movie document's takes need only its narration: speech generates them
-    // before the anchors that depend on them are resolved (movie-document D4).
+    // before the anchors that depend on them are resolved (movie-document D4),
+    // once every check of the load that needs no take has passed
+    // (speech-loads-first).
     if(extname(source).toLowerCase()==='.json'&&(command==='speech'||command==='build'&&!values.silent))await generateMovieTakes(source);
     const numbers={width:values.width?Number(values.width):undefined,fps:values.fps?Number(values.fps):undefined};
     // check's body is checkSource (src/check.mjs), which live loads with too.

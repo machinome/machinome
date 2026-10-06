@@ -149,11 +149,14 @@ placeholder key, answers each request with the fixture take of its
 chapter (`fixtures/takes/<movie>/<chapter>.json`) and counts the requests.
 Its take lookup is generalized by movie name, so the same double serves a
 `count` copy; the takes it answers with are the fixture's, in the
-document's own audio format. Since D2 puts the checks inside
-`generateMovieTakes`, the proof calls it on copies of the fixture project
-(`fixtureMovie`, no takes installed), one fault at a time, and asserts that
-it rejects with the load's refusal (literal) and that `requests.length` is
-0:
+document's own audio format. The proof runs the speech command's two
+steps on a document in process, `generateMovieTakes` and then
+`loadEpisode`, on copies of the fixture project (`fixtureMovie`, no takes
+installed), one fault at a time; it asserts that they are refused with the
+load's refusal (literal) and, once every fault has run, that the double
+recorded no request for any of them. (Before the change
+`generateMovieTakes` alone refuses none of these faults: the refusal is the
+load's, after it; so the two steps are run, not the first alone.)
 
 - `tour` (three chapters): the export's `source.revision` changed (step
   3); the export's directory removed (step 2, the bare `ENOENT` of its
