@@ -60,7 +60,7 @@ in the same cycle.
 | 16 | `release-metadata-and-vestiges` | `viewer` extra floor; vestigial `mesh_stl_file`; a leaf's `.scad` becoming a self-import (if still so) | fixture projects |
 | 17 | investigations | build restart loop; artifact freshness; OpenAstroMount's refused scenario; `networkx` on the mesh path; the exact-geometry flake; Thor's seat inventory; wall clock 02 | each its project |
 | 18 | exact suite timings | fold commit `a659cc7` against main, two or three projects | catalogue |
-| 19 | outside the framework | studio API skill's `cancel()` warning, and its Frame paragraph's per-component snap sentences (companion of cycle 1, lines ~814 and ~995); viewer's stray `openscad.py`; the viewer's committed parity fixture is behind the framework's (cycle 5 found 249 expressions now rewritten over a 145-entry bindings table against the committed 4; same keys and values) | studio, viewer repositories |
+| 19 | outside the framework | studio API skill's `cancel()` warning, and its Frame paragraph's per-component snap sentences (companion of cycle 1, lines ~814 and ~995); viewer's stray `openscad.py`; the viewer's committed parity fixture is behind the framework's (cycle 5 found 249 expressions now rewritten over a 145-entry bindings table against the committed 4; same keys and values); the viewer's `running-corpus.test.ts` keeps its crossing and stop counters through a restore while its `Run.restore` clears the rings, the same latent omission cycle 7 fixed in the framework's generator and replay | studio, viewer repositories |
 
 ## Progress
 
