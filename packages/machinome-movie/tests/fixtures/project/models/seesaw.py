@@ -1,6 +1,6 @@
 """A seesaw: the fixture machine of the Videomaker test suite."""
-
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.motion.ports import Time
 
 class Block(CadQueryNode):

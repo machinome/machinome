@@ -8,10 +8,10 @@ beside it. The framework is licensed Apache-2.0; nothing here is changed
 but the imports and the name of chapter 3's crank, `PlainCrank`.
 """
 import cadquery as cq
-
 from machinome.math import clamp01, floor
 from machinome.motion.joints import Revolute
-from machinome.node import AssemblyNode, CadQueryNode
+from machinome.node.assembly import AssemblyNode
+from machinome.node.cadquery import CadQueryNode
 from machinome.node.markings import Marking, Svg, Wrapped
 from machinome.parameters import Length
 from machinome.simulation import Driver, Instruction, State

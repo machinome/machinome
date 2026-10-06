@@ -8,13 +8,15 @@ import sys
 
 import pytest
 
-from conftest import FIXTURES, PROJECT
+from conftest import FIXTURES, PROJECT, PYTHON
 
 
 def run(*args):
+    # This checkout's package, not whichever one the environment installed.
     return subprocess.run([sys.executable, '-m', 'machinome_movie', *map(str, args)],
                           capture_output=True, text=True, env={'PATH': '/usr/bin:/bin',
-                                                              'PYTHONDONTWRITEBYTECODE': '1'})
+                                                              'PYTHONDONTWRITEBYTECODE': '1',
+                                                              'PYTHONPATH': str(PYTHON)})
 
 
 @pytest.fixture

@@ -250,11 +250,11 @@ plus the cues below. They are accepted only in 0.3 and later: a 0.2 episode carr
 refused and asked to change its format, never rendered with the cue silently
 missing. A 0.2 episode keeps its exact behaviour and any Viewer API 21 or later.
 
-An episode that uses a 0.3 cue needs Viewer API 28 (the machinome-viewer source
-that adds `partOnScreen`, `project`, `highlight` and `setView` up/field of view;
-not yet a published release). `check` reads the `viewer API <n>` banner of the
-selected bundle and refuses an older or unmarked one; `preview` and `render`
-refuse on mount against the running viewer's `apiVersion`, before capturing:
+An episode that uses a 0.3 cue needs Viewer API 28 (which adds `partOnScreen`,
+`project`, `highlight` and `setView` up/field of view). `check` reads the
+`viewer API <n>` banner of the selected bundle and refuses an older or unmarked
+one; `preview` and `render` refuse on mount against the running viewer's
+`apiVersion`, before capturing:
 
     This episode needs Viewer API 28 for annotations (shot pawls); the selected
     viewer declares API 27. Select a newer machinome-viewer bundle with --viewer.
