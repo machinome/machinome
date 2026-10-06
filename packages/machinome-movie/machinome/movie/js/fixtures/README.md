@@ -90,8 +90,8 @@ posed export (`export/seesaw/`, which the framework's command writes,
 `machinome export seesaw --fps 30 --frames 600 --no-widget`, and which the
 viewer layer poses), a clocked
 counter (`models/counter.py` and `models/digits.svg`, copied from the
-framework tutorial's chapter 9 with the pieces it imports, Apache-2.0 as
-the project's `NOTICE` says) and its clocked export (`export/counter/`,
+framework tutorial's chapter 9 with the pieces it imports,
+GPL-2.0-or-later OR CERN-OHL-S-2.0-or-later as the project's `NOTICE` says) and its clocked export (`export/counter/`,
 `machinome export counter --no-widget`), a still
 (`media/plate.png`), the takes the fixture movies film (`videos/takes.py`:
 the seesaw's loop `Playground` and the counter's take `Turns`) and the

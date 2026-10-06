@@ -202,7 +202,7 @@ unchanged.
 
 `models/counter.py` is the tutorial's chapter-9 model with the classes of
 chapters 3, 4 and 8 it imports, in one file, unchanged but for its imports,
-with a header naming its source, commit and licence (Apache-2.0), and
+with a header naming its source, commit and licence, and
 `models/digits.svg` beside it, which its drum's marking reads. Registered as
 `counter` in the project's models table and exported by the framework's
 command (`machinome export counter -o export/counter --no-widget`): four

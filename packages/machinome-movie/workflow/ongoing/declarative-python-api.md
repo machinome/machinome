@@ -333,7 +333,8 @@ first episode that needs it, through that repository's own process.
 - **Licence.** The stage binds to the AGPL viewer, so it and a project's
   elements carry AGPL; `roadmap-0.8.md` already holds the open line that the
   Foundry licensing policy needs for project views, and movies fall under
-  it. The Python declarations belong with the framework under Apache-2.0.
+  it. The Python declarations belong with the framework under its licence,
+  GPL-2.0-or-later OR CERN-OHL-S-2.0-or-later.
 
 ## Left out on purpose
 

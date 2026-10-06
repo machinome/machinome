@@ -4,8 +4,8 @@ Copied from the machinome framework's tutorial, `docs/tutorial/counter/`
 at framework commit 6a575f02dc63acefdc7b791b471e3c5291530f81: the model of
 chapter 9 (`c09_clocked.py`, "a machine that remembers") with the pieces of
 chapters 3, 4 and 8 it imports, gathered in one file, and `digits.svg`
-beside it. The framework is licensed Apache-2.0; nothing here is changed
-but the imports and the name of chapter 3's crank, `PlainCrank`.
+beside it. The framework is licensed GPL-2.0-or-later OR CERN-OHL-S-2.0-or-later;
+nothing here is changed but the imports and chapter 3's crank's name, `PlainCrank`.
 """
 import cadquery as cq
 from machinome.math import clamp01, floor

@@ -104,12 +104,12 @@ def test_the_counter_is_the_framework_tutorials_clocked_export():
     # The fixture's clocked machine is copied, not invented, and exported for
     # real: its manifest is a clocked root's, document version 8.
     source = (PROJECT / 'models' / 'counter.py').read_text()
-    assert 'docs/tutorial/counter/' in source and 'Apache-2.0' in source
+    assert 'docs/tutorial/counter/' in source and 'GPL-2.0-or-later OR CERN-OHL-S-2.0-or-later' in source
     manifest = json.loads((PROJECT / 'export' / 'counter' / 'manifest.json').read_text())
     assert manifest['version'] == 8 and manifest['clocked']['identity']
     assert set(manifest['drivers']) == {'crank'} and set(manifest['states']) == {'units', 'tens'}
     notice = (PROJECT / 'NOTICE').read_text()
-    assert 'models/counter.py' in notice and 'Apache-2.0' in notice
+    assert 'models/counter.py' in notice and 'GPL-2.0-or-later OR CERN-OHL-S-2.0-or-later' in notice
 
 
 PAGE = REPOSITORY / 'docs' / 'declaring-a-movie.md'

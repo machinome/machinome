@@ -40,7 +40,7 @@
     "expectedDurationSeconds": 8,
     "manifest": "../../export/counter/manifest.json",
     "readiness": "Exported by machinome export; the drums count the crank's turns and carry.",
-    "sourceRevision": "20bb29a7783c3840bae32d3f7ae10a26acb22eab",
+    "sourceRevision": "e14e6852e38eec9adc53793f054f387f23cee974",
     "timeMode": "take"
   },
   "root": "../../python/tests/fixtures/project/videos/count",

@@ -84,7 +84,7 @@ and compared its sha256 (every restore matched):
 
 - `models/counter.py`: the tutorial's chapter 9 with the classes of
   chapters 3, 4 and 8 it imports, unchanged but for imports; header naming
-  `docs/tutorial/counter/`, framework commit `6a575f0` and Apache-2.0;
+  `docs/tutorial/counter/`, framework commit `6a575f0` and the framework's licence;
   `models/digits.svg` byte-identical (`cmp`). `NOTICE` says both keep their
   licence.
 - `export/counter/`, written by `machinome export counter -o export/counter
