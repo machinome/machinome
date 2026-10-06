@@ -400,8 +400,14 @@ Refusals name an anchor's field by its path in the shot: `until`,
 
 1. Chapters play in order; shots play in order within them; the film starts
    at 0 and a shot starts where the previous one ended.
-2. `speech` needs only the narration and runs on the unresolved document. It
-   caches one take per chapter under `_build/audio/`, keyed as today.
+2. `speech` needs only the narration and runs on the unresolved document,
+   after every check of the load that needs no take: the export and the
+   revision it records, what the document names against the export and its
+   excerpts, the stage modules, the export against the document's time mode
+   and length, the output, the cameras, the evidence files, the excerpts at
+   the pinned revision and the pictures. A document they refuse requests no
+   take. It caches one take per chapter under `_build/audio/`, keyed as
+   today.
 3. `check`, `preview`, `render` and `build` resolve every anchor against the
    cached takes. A document with spoken anchors and no cached take for a
    chapter is refused, naming the chapter and asking for `speech` first;
