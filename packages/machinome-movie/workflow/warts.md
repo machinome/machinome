@@ -559,3 +559,11 @@ by the pilot's ruling, to be lifted at the migration.
 13. **The real viewer styles the element it is mounted in** (`position: relative`), which collapsed an absolutely placed host to 150 px; the bank proof could not see it, a screenshot did. Found by `player-page`; the take surface mounts in a target inside a host, and layer 6 asserts the canvas fills the surface. Worth the viewer's log.
 14. **The viewer's handle declares no way to release an instance**: a remounted take viewer, which renders continuously, is left to garbage collection. Found by `player-page`. Worth the viewer's log.
 15. **The fixture counter's mark `ten` is reached by no frame of the fixture film**, so the movie ruler flags only `one` and `nine`; the take surface shows all three. Found by `player-page`. Recorded.
+
+## Catch-up (6 October 2026): Videomaker under machinome 0.8
+
+Findings met by the catch-up campaign's cycles
+(`workflow/ongoing/catch-up-0-8/`), each recorded in its cycle's report.
+
+1. **The fixture project does not load under machinome 0.8**: both fixture models (`models/seesaw.py`, `models/counter.py`) imported `AssemblyNode` and `CadQueryNode` from the root of `machinome.node`, which exports nothing since 0.8, so `python -m pytest python/tests` stopped at collection of `test_declarations.py`, `test_evaluation.py` and `test_take.py`. Found 6 October 2026 on `main` fb54df7 against the workspace venv (machinome 0.8.0). The other roots the fixture and the package use still export. Triage: fixed by `fixture-under-0-8` (narrow adjustment).
+2. **`scripts/pin-fixture-project.mjs` writes as it goes**: it replaces each export and evaluates each document in turn, so a run refused part way (here at `tour`, after `export/counter/`, `export/seesaw/` and `documents/minimal.json` were written) leaves the tree half re-pinned; its header does not say so. Found by `fixture-under-0-8`; its second, accepted run rewrote everything. Triage: recorded; the next re-pin that is refused will meet it; no cycle.
