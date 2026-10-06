@@ -648,3 +648,32 @@ failure's cause or a shared cause with the portable-export stall. No new
 all-resource HTTP-count/no-network-error claim, universal capture guarantee,
 mechanical certification or publication is made. The separate producer
 negative-leading `--up` argv wart remains untested and unfixed.
+
+# Videomaker's player (2026-10-06, filed from the player campaign of 4 October)
+
+Found by Videomaker's `player-page` change while mounting the viewer alone
+on a take surface (its `openspec/changes/archive/2026-10-04-player-page/evidence.md`,
+finding 4). **Status: recorded; triage open.** The viewer's handle's missing
+release that the same campaign recorded was checked before filing and is
+not the viewer's: `ViewerHandle.dispose()` is declared in `viewer.ts` and
+documented in `docs/reference/mount.rst`; Videomaker's own handle type
+omits it, and that is recorded in Videomaker's log instead.
+
+## The mount styles the element it is mounted in
+
+- **Symptom.** A page that mounts the viewer in an element placed by
+  `position: absolute; inset: 0` loses that placement: the host collapsed
+  to 150 px and the model drew small in the top left of the surface. The
+  page's bank proof passed regardless; a screenshot showed it.
+
+- **Cause.** `mount` sets `container.style.position = 'relative'` on the
+  host it is given (`viewer.ts`, beside the renderer's creation), so that
+  the chrome it adds inside can be placed against it. The assignment
+  replaces whatever position the host had; nothing in `mount.rst` says the
+  host's position is taken over.
+
+- **Worked around on the embedding side.** Videomaker mounts in a target
+  element inside the placed host and asserts the canvas fills the surface.
+  Either the mount should wrap its own relatively placed element instead
+  of restyling the host, or the manual should state that a host is
+  positioned by the mount; which is the pilot's.
