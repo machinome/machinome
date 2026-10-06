@@ -7,6 +7,7 @@ model = "c09"
 
 [tool.machinome.models]
 first = "counter.first_machine:Lifter"
+readme = "counter.readme:Counter"
 c01 = "counter.c01_part:Base"
 c02 = "counter.c02_input:Counter"
 c03 = "counter.c03_dimensions:Counter"

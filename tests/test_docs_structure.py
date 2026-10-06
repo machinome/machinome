@@ -11,6 +11,7 @@ the status page.
 """
 
 import re
+import textwrap
 import unittest
 from pathlib import Path
 
@@ -200,6 +201,116 @@ class LicenceFactTest(unittest.TestCase):
         admitted = {VIEWER_LICENCE, *LICENCE_IDENTIFIER.findall(licence)}
         self.assertEqual(set(LICENCE_IDENTIFIER.findall(readme)) - admitted,
                          set())
+
+
+class ReadmeTest(unittest.TestCase):
+    """The README describes the package, not its releases (change
+    `readme-for-readers`): no heading or sentence of it names a version of
+    Machinome, and every Python block in it is the verbatim text of a
+    tutorial module the suite builds."""
+
+    README = REPO / 'README.rst'
+    COUNTER = DOCS / 'tutorial' / 'counter'
+
+    #: A version of Machinome, or of its former name, stated in prose.
+    VERSION = re.compile(
+        r'(?:Version|Machinome|machinome|solid-node)\s+\d+\.\d')
+
+    @staticmethod
+    def headings(text):
+        """The section titles: a line whose next line is one punctuation
+        character repeated at least to its length."""
+        lines = text.split('\n')
+        for line, underline in zip(lines, lines[1:]):
+            title = line.strip()
+            if (title and underline and len(set(underline)) == 1
+                    and underline[0] in '=-~^"\'`#*+_'
+                    and len(underline) >= len(line.rstrip())):
+                yield title
+
+    @staticmethod
+    def python_blocks(text):
+        """The dedented body of each `.. code-block:: python` directive."""
+        blocks = []
+        lines = text.split('\n')
+        i = 0
+        while i < len(lines):
+            if lines[i].strip() != '.. code-block:: python':
+                i += 1
+                continue
+            i += 1
+            while i < len(lines) and (not lines[i].strip()
+                                      or lines[i].startswith('   :')):
+                i += 1
+            body = []
+            while i < len(lines) and (not lines[i] or lines[i][0] == ' '):
+                body.append(lines[i])
+                i += 1
+            blocks.append(textwrap.dedent('\n'.join(body)).strip('\n'))
+        return blocks
+
+    #: The README's sections, in order: the title and six more. A section
+    #: added, renamed or reordered fails here by name.
+    SECTIONS = ['Machinome', "A machine's source", 'What the framework does',
+                'Install', 'Documentation', 'Licence', 'Contributing']
+
+    #: The README's size: an addition is a trade for something already there.
+    WORDS = 1500
+
+    def test_the_readme_has_these_sections(self):
+        headings = list(self.headings(self.README.read_text()))
+        self.assertEqual(headings, self.SECTIONS,
+                         'README.rst has sections it is not meant to have; '
+                         'a fact is edited in place, a section is never added')
+
+    def test_the_readme_fits(self):
+        count = len(self.README.read_text().split())
+        self.assertLessEqual(
+            count, self.WORDS,
+            f'README.rst is {count} words; at most {self.WORDS}, so an '
+            'addition is a trade for something already there')
+
+    def test_the_readme_names_no_version(self):
+        text = self.README.read_text()
+        for heading in self.headings(text):
+            with self.subTest(heading=heading):
+                self.assertIsNone(
+                    re.search(r'\d', heading),
+                    f'README.rst has a section named {heading!r}; a release '
+                    'is recorded in the changelog, the release notes and the '
+                    'status page, not in the README')
+        found = self.VERSION.search(' '.join(text.split()))
+        if found is not None:
+            self.fail(f'README.rst says {found.group(0)!r}; the version of '
+                      'Machinome belongs on the status page, in the '
+                      'changelog and on the upgrading page, which the '
+                      'README links')
+
+    def test_the_readme_example_places_parts_by_mates(self):
+        blocks = self.python_blocks(self.README.read_text())
+        for number, block in enumerate(blocks, 1):
+            with self.subTest(block=number):
+                self.assertNotIn(
+                    'translate(', block,
+                    f'Python block {number} of README.rst places a part by '
+                    'hand; the example places its parts by frames and mates '
+                    '(concepts/joints, "Frames and mates")')
+        self.assertTrue(any('.on(' in block for block in blocks),
+                        'no Python block of README.rst states a mate; the '
+                        'example places its parts by frames and mates')
+
+    def test_the_readme_example_is_tutorial_source(self):
+        blocks = self.python_blocks(self.README.read_text())
+        self.assertTrue(blocks, "README.rst shows no Python; a machine's "
+                                'source is the thing it describes')
+        modules = {p.name: p.read_text() for p in self.COUNTER.glob('*.py')}
+        for number, block in enumerate(blocks, 1):
+            with self.subTest(block=number):
+                self.assertTrue(
+                    any(block in module for module in modules.values()),
+                    f'Python block {number} of README.rst is not the text '
+                    'of a module under docs/tutorial/counter/, which the '
+                    f'suite builds:\n{block}')
 
 
 if __name__ == '__main__':

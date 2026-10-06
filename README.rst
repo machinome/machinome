@@ -16,46 +16,149 @@ Machinome
    :target: https://machinome.readthedocs.io/en/latest/
    :alt: Documentation status
 
-Machinome is a Python framework for giving a machine source code.
-Describe its parts, the dimensions they share, how they fit together,
-what moves, and the relationships that make the whole machine work.
-Its geometry, operating behaviour and tests belong to the same project.
+Machinome is a Python framework for describing a whole machine in source
+code: its parts, the dimensions they share, the joints they move on, the
+relations that connect one movement to another, the inputs a person
+operates, and what the machine remembers. Geometry, operating behaviour
+and tests belong to one description, so a design can be inspected, changed
+and checked as a whole.
 
-A gear ratio connects the gears you see to the movement you test.
-An input moves the parts it drives. A spring follows the mechanism
-that compresses it. A calculator remembers its digits when the crank
-returns to rest. These relationships are explicit in the machine's
-source, where they can be inspected, changed and tested.
+A gear ratio connects the gears you see to the movement you test. An input
+moves the parts it drives. A spring follows the mechanism that compresses
+it. A calculator keeps its digits when the crank returns to rest. These
+relationships are written in the machine's source, where a reader can
+follow them, a change propagates through them, and a test holds them.
 
-Supply parts using CadQuery, build123d, OpenSCAD/SolidPython or JSCAD;
-reuse STEP and STL designs; derive sheet parts from cutting profiles;
-and describe flexible springs, belts and cables with
-`molejo <https://molejo.readthedocs.io>`_.
-Machinome binds the pieces together through assemblies, shared parameters,
-joints, laws, inputs and stored state. Incremental builds give feedback
-as you edit. The optional browser viewer lets people operate and explore
-the machine, including from an exported static web page.
+Parts are supplied in their natural form: CadQuery and build123d solids,
+OpenSCAD, SolidPython and JSCAD geometry, STEP and STL files from a vendor
+or an earlier design, sheet parts cut from a profile, and flexible
+springs, belts and cables described with
+`molejo <https://molejo.readthedocs.io>`_. Machinome describes how they
+belong together.
 
-Machinome is developed empirically from mechanical projects, with
-AI-assisted design and implementation; `AI-USE.md <AI-USE.md>`_ records
-which agents, since when, and how the history marks their work. The
-`Machinome Foundry <https://github.com/machinome-foundry>`_ organisation
-holds simulations of open-source machines built with it, each beside the
-design it simulates; the framework, viewer and mechanics packages live
-under `machinome <https://github.com/machinome>`_. Simulation and geometric tests
-provide evidence about those models; they do not establish that every
-design has been manufactured or physically validated.
+A machine's source
+==================
 
-Version 0.8: a lean core
-========================
+The manual's tutorial builds a hand-cranked tally counter: a crank on a
+base, two drums on the crank's arbor, and a post to read them against.
+Here is its revolution-counter stage, every moving part placed by a frame
+on a frame; the framework's own test suite builds it:
 
-Machinome 0.8 installs only the CAD kernels a project's parts use: each
-kernel and node family is an extra. Every name is imported from the one
-module that defines it, and a test compares parts on the B-rep engine or the
-mesh engine, named for what each consumes. Machinome is licensed
-**GPL-2.0-or-later or CERN-OHL-S-2.0-or-later**, at the recipient's choice.
+.. code-block:: python
 
-Install it with the browser viewer and start a project:
+    class Drum(CadQueryNode):
+        """A number drum: a ring that runs on the arbor."""
+
+        color = '#2b2d42'
+
+        bore = Length(8.2, min=1)
+
+        axle = Frame()                  # the bore's line, z up
+
+        def render(self):
+            return (cq.Workplane('XY')
+                    .circle(DRUM_RADIUS).circle(self.bore / 2)
+                    .extrude(DRUM_HEIGHT))
+
+
+    class Counter(AssemblyNode):
+        """The drums follow the crank at a fixed ratio: a revolution counter."""
+
+        shaft = Length(8.0, min=1)
+        clearance = Length(0.1, min=0)
+        arm_length = Length(40.0, min=10)
+        arm_height = Length(40.0, min=1)
+        post_offset = Length(28.0, min=1)
+        post_height = Length(36.0, min=1)
+
+        bore = shaft + 2 * clearance
+
+        units_seat = Frame(at=(0, 0, UNITS_SEAT))
+        tens_seat = Frame(at=(0, 0, TENS_SEAT))
+
+        crank = Driver(default=0.0, range=(0.0, 3600.0), unit='deg')
+
+        base = Base(bore=bore, post_offset=post_offset, post_height=post_height)
+        handle = Crank(diameter=shaft, arm_length=arm_length,
+                       arm_height=arm_height)
+        units_drum = Drum(bore=bore)
+        tens_drum = Drum(bore=bore)
+
+        turn = handle.arbor.on(base.axle, Revolute())
+        units = units_drum.axle.on(units_seat, Revolute())
+        tens = tens_drum.axle.on(tens_seat, Revolute())
+
+        crank.drives(turn)
+        turn.drives(units, ratio=0.1)
+        units.drives(tens, ratio=0.1)
+
+        def check(self):
+            if self.arm_length + KNOB_RADIUS > PLATE_LENGTH / 2:
+                raise ValueError(
+                    f'{self.name}: an arm of {self.arm_length} mm hangs the knob '
+                    f'past the plate, which is {PLATE_LENGTH} mm long')
+
+The dimensions the parts share sit on the assembly and are passed to the
+parts that need them, ``bore`` derived once from two of them. ``crank`` is
+a driver, an input with a range and a unit. ``axle`` is the drum's
+connector; the three mates in ``Counter`` put the crank's arbor on the
+base's bore and each drum's axle on its seat, free to turn. ``drives``
+connects the mates' coordinates: the crank turns the units drum at a tenth
+of its speed, and the units drum the tens drum. ``check`` refuses a crank
+arm that would hang the knob past the plate. Turn the crank, in the browser
+or in a test, and everything that depends on it follows.
+
+``Base`` and ``Crank`` are in the same module,
+`docs/tutorial/counter/readme.py <https://github.com/machinome/machinome/blob/main/docs/tutorial/counter/readme.py>`_,
+with the imports this excerpt relies on. The
+`joints <https://machinome.readthedocs.io/en/latest/concepts/joints.html>`_ page explains frames and mates, and
+the tutorial builds the counter one lesson at a time, from a part to a
+machine that counts.
+
+What the framework does
+=======================
+
+``machinome develop`` watches the project, rebuilds the parts whose source
+changed and reuses the rest, and serves the machine to the browser, where
+the viewer shows the assembly, its movement and its controls, and a reader
+drags the crank. ``machinome test`` runs the project's tests: that two
+parts do not interfere, that a piece is one body, that a fit allows its
+intended motion, that an assembly stands under gravity, and scenarios that
+drive a sequence of inputs and check what happens along it, at the tick it
+happens. Parts with B-rep geometry are compared on the B-rep engine and
+mesh parts on the mesh engine, and a verdict once decided is kept between
+runs.
+
+Some machines are posed from their inputs alone. Others depend on what
+happened before: a running machine advances its coordinates through time,
+locating the crossings of its laws and stopping at its mechanical stops,
+and a machine with declared state retains memory at events, as a
+calculator keeps its digits after the crank returns to rest. Each is an
+explicit modelling choice, and the viewer operates all three.
+
+With the viewer installed, ``machinome export`` writes the machine as a
+static web page, with its inputs and controls, that any file host serves
+and a reader operates without installing a CAD stack. ``machinome
+snapshot`` photographs a pose, ``machinome import-step`` scaffolds
+declarative source from a STEP assembly, and ``machinome vet`` checks,
+statically, that a project stays inside the framework's universe.
+
+These tests and simulations give evidence about the model and the states
+tested. They do not calculate every physical effect, and they do not
+establish that a mechanism can be manufactured and operated safely.
+
+Install
+=======
+
+Machinome is one package, licensed GPL-2.0-or-later or
+CERN-OHL-S-2.0-or-later, at the recipient's choice. The browser viewer is
+a separate package,
+`Machinome Viewer <https://github.com/machinome/machinome-viewer>`_,
+licensed AGPL-3.0-or-later, which the framework reaches only as a separate
+process; the ``viewer`` extra installs it. The CAD kernels are extras too,
+each named for the module that needs it, so a project installs only what
+its parts use. Install the framework with the viewer and CadQuery, which
+the tutorial models with, and start a project:
 
 .. code-block:: bash
 
@@ -64,234 +167,73 @@ Install it with the browser viewer and start a project:
    cd myproject
    machinome develop
 
-With that install the starter part is a B-rep CadQuery part; where
-SolidPython is installed too (``machinome[solid2]``) it is a SolidPython part,
-which needs the OpenSCAD executable, and the manual's first page replaces it
-with a B-rep CadQuery part. Each CAD kernel is an extra named for the
-module that needs it (``cadquery``, ``build123d``, ``step``, ``molejo``,
-``openscad``, ``solid2``, the two engines' ``brep`` and ``mesh``, or
-``all``). The
-`upgrading guide <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_
-lists every breaking change from 0.7 to 0.8 and what to change.
+The other kernel extras are ``build123d``, ``step`` (CadQuery's STEP
+reader), ``molejo``, ``openscad`` and ``solid2`` (SolidPython; the OpenSCAD
+executable is installed separately), ``jscad`` and ``stl``; ``brep`` and
+``mesh`` install the kernels of the two comparison engines, and ``all``
+installs every one. A module whose kernel is missing says so at the line
+that imports it, with the line that installs it. ``mechanics`` installs
+`Machinome Mechanics <https://machinome-mechanics.readthedocs.io>`_, an
+independent package of gear, screw, cam, belt and linkage formulas.
 
-Version 0.7 and the new name
-============================
+Without the viewer the framework builds, tests, exports with
+``--no-widget``, watches with ``machinome develop --no-web`` and takes
+fixed-pose OpenSCAD snapshots with the ``openscad`` extra; with it,
+``machinome develop`` opens the interactive viewer and every export carries
+the viewer page. Machinome runs on Linux with Python 3.11 or newer; other
+platforms are untested.
 
-Machinome 0.7 is the direct continuation of **solid-node 0.6.0**.
-The framework and GitHub organisation were renamed to avoid confusion
-with Tim Berners-Lee's Solid project: `solid-node` sounded like a Solid
-node, and `LibreSolid` like a libre edition of Solid. Machinome has no
-affiliation with that project. The same guide maps imports, commands,
-configuration and viewer integration from 0.6; there is no ``solid_node``
-import shim or ``solid`` command alias.
+Documentation
+=============
 
-Learn it one machine at a time
-==============================
+The `user manual <https://machinome.readthedocs.io/en/latest/>`_ is organised by what a
+reader wants to do:
 
-The `tutorial <https://machinome.readthedocs.io/en/latest/tutorial/01-part.html>`_
-builds a hand-cranked tally counter from a part to a machine with memory:
-an input moving a body through a joint, shared dimensions, relations and
-laws, buttons, fit tests proved red first, a stepped scenario, a running
-machine with a ratchet, and retained digits written at events.
+* `Why Machinome <https://machinome.readthedocs.io/en/latest/why.html>`_ is the idea in one page;
+  `Install <https://machinome.readthedocs.io/en/latest/start/install.html>`_ and
+  `Your first machine <https://machinome.readthedocs.io/en/latest/start/first-machine.html>`_ set up and move a
+  part from a slider in ten minutes.
+* The `tutorial <https://machinome.readthedocs.io/en/latest/tutorial/01-part.html>`_ builds a machine that
+  counts, from a part to a machine with memory, one lesson per chapter,
+  every chapter's code real and tested.
+* The `how-to guides <https://machinome.readthedocs.io/en/latest/howto/backends.html>`_ are one job per page:
+  parts in each modelling library, imported STEP and STL parts, sheet
+  parts, flexible parts, markings, several models in one project, fast
+  tests, and giving an existing design a simulation.
+* `How it works <https://machinome.readthedocs.io/en/latest/concepts/node-tree.html>`_ explains the node tree,
+  values, relations, joints, rest and motion, running and clocked
+  machines, and publishing.
+* The `reference <https://machinome.readthedocs.io/en/latest/reference/cli.html>`_ covers the command line, the
+  API, the assertions, the Sphinx extension and the sibling manuals.
+* The `changelog <https://machinome.readthedocs.io/en/latest/project/changelog.html>`_,
+  `upgrading <https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_ from an earlier version, and
+  the `project status <https://machinome.readthedocs.io/en/latest/project/status.html>`_.
 
-Real machines built with Machinome, posed, running and clocked, are shown
-live on `machinome.org <https://machinome.org/>`_, each beside its design
-source and licence.
+Real machines built with Machinome, printers, clocks and calculators among
+them, are shown live on `machinome.org <https://machinome.org/>`_, each
+beside its design source and licence; their simulations are kept in the
+`Machinome Foundry <https://github.com/machinome-foundry>`_ organisation,
+each beside the design it simulates. The framework, the viewer and the
+mechanics package live under `machinome <https://github.com/machinome>`_.
 
-* `User manual <https://machinome.readthedocs.io/en/latest/>`_
-* `0.8 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.8.html>`_
-* `0.7 release notes <https://machinome.readthedocs.io/en/latest/releases/release-0.7.html>`_
-* `Source repository <https://github.com/machinome/machinome>`_
+Licence
+=======
 
-Machinome is licensed **GPL-2.0-or-later or CERN-OHL-S-2.0-or-later**, at
-the recipient's choice. The optional
-`Machinome Viewer <https://github.com/machinome/machinome-viewer>`_
-is a separate package, licensed **AGPL-3.0-or-later**, installed through
-``viewer``. Ordinary ``machinome develop`` requires it. Without it, the
-framework builds, tests, exports with ``--no-widget``, watches with
-``develop --no-web``, and takes fixed-pose OpenSCAD snapshots with the
-``openscad`` extra.
-
-The ``mechanics`` extra installs the independent
-``machinome-mechanics`` helpers. The ``studio`` extra is reserved for
-Machinome Studio, an experimental, unpublished harness; it cannot yet
-resolve from a package index.
-
-Working on Machinome itself
-============================
-
-This section is for contributors — humans and coding agents — who modify the
-framework in this repository. For *using* machinome in your own mechanical
-project, see the documentation above.
-
-Development environment
------------------------
-
-Requirements: Python >= 3.11. Node.js is not needed: the browser viewer and
-its widget live in the separate `machinome-viewer
-<https://github.com/machinome/machinome-viewer>`_ repository, and the tests
-that need a viewer skip unless that package is installed. `OpenSCAD
-<https://openscad.org/>`_ is conditional: put it on the PATH when working on
-SolidPython2/Solid2 or raw OpenSCAD nodes, or the default OpenSCAD snapshot
-renderer. All-B-rep projects — CadQuery,
-build123d, or the two mixed — build, test, and export without it; use
-``machinome snapshot --renderer web`` for snapshots on a machine without OpenSCAD.
-
-`manifold3d <https://pypi.org/project/manifold3d/>`_, the mesh engine's
-kernel, is the ``mesh`` extra (``pip install "machinome[mesh]"``, included
-in ``all``) and is conditional in the same sense: it decides mesh geometry,
-so it is needed whenever an assertion compares a part that has no B-rep
-geometry, by ``machinome test --mesh``, and by
-``assertAssemblySupported``, whose statics phase reads contact patches off
-meshed intersections for every body. An all-B-rep project's other
-geometric assertions are decided by the B-rep engine and run without it — useful on a
-platform with no compiled wheel, such as WebAssembly. A path that needs it
-and cannot import it says so by name, naming the extra.
-
-Clone the repository (the tutorial's machine under ``docs/tutorial/`` is
-built and tested by the suite; the real machines the manual points to are
-on machinome.org, not in this repository):
-
-.. code-block:: bash
-
-    $ git clone https://github.com/machinome/machinome.git
-    $ cd machinome
-
-Create a virtualenv and install the package in editable mode with the dev
-dependencies:
-
-.. code-block:: bash
-
-    $ python -m venv .venv
-    $ source .venv/bin/activate
-    $ pip install -e ".[dev]"
-
-The ``machinome`` CLI entrypoint (``machinome/cli.py``) is now on the PATH of
-the virtualenv.
-
-Running tests
--------------
-
-The test suite is pytest, run from the repository root:
-
-.. code-block:: bash
-
-    $ make test          # equivalent to: pytest
-    $ pytest tests/test_builder_lifecycle.py   # a single file
-    $ make lint          # flake8 + black --check
-    $ make test-all      # tox across supported Python versions
-
-Notes:
-
-* Rendering tests invoke the real ``openscad`` binary. On a headless machine,
-  snapshot-related tests may need ``xvfb-run -a pytest ...``.
-* Browser-snapshot tests are mandatory for changes to that renderer. Install
-  a matching viewer with its ``snapshot`` extra (from source while it is
-  unpublished), then install Chromium and run the real capture explicitly:
-
-  .. code-block:: bash
-
-      $ playwright install chromium
-      $ MACHINOME_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
-
-  The ordinary suite leaves this environment variable unset and skips the
-  capture, even when the viewer is installed. With the opt-in set, a missing
-  viewer or browser is a setup failure. The dedicated CI browser-snapshot job
-  installs both dependencies, sets the opt-in, and runs this same test.
-* ``tests/meta_project/`` together with ``tests/test_meta.py`` is the
-  end-to-end meta-project harness: it runs small real machinome projects —
-  both deliberately green and deliberately red fixtures — to prove the
-  loading, rendering, and ``machinome test`` subprocess paths. Use it when a
-  change touches behavior that direct unit tests cannot establish; see
-  `docs/contributor-briefing.md <docs/contributor-briefing.md>`_ for when and
-  why.
-* The browser viewer's own tests live in the ``machinome-viewer``
-  repository. ``tools/generate_parity_fixture.py`` produces, from this
-  framework's render results, the parity fixture that repository commits
-  beside its expression evaluator.
-
-Where things live
------------------
-
-* ``machinome/node/`` — the node tree (base, assembly, fusion, the leaf
-  bases, one module per node type, operations)
-* ``machinome/engine/`` — the B-rep and mesh engines and their seams
-* ``machinome/manager/`` and ``machinome/cli.py`` — the ``machinome`` command:
-  develop loop, test, snapshot, new, export
-* ``machinome/core/`` — build pipeline, loader, caching
-* ``machinome/simulation/`` — drivers, instructions, the stepped ``Sim``
-  loop, and ``ScenarioTest``
-* ``machinome/test.py`` — mesh-oriented test cases and assertions
-* ``machinome/viewers/`` — the OpenSCAD snapshot renderer, the lookup
-  of the installed ``machinome-viewer`` package, and the staging half of the
-  web snapshot renderer (the photograph itself is the viewer's)
-* ``tests/`` — Python test suite
-* ``docs/`` — Sphinx documentation, architecture synthesis, ADRs
-* ``openspec/`` — OpenSpec change proposals and baseline specs
-
-Development discipline
-======================
-
-This repository is developed agentically and follows a strict
-spec-first discipline. **Every behavioral change starts as an OpenSpec
-change proposal and is ratified before implementation.** Drive-by edits,
-unrecorded redesigns, and "fix it first, document it later" are not how
-this project moves — this applies equally to human contributors and to
-coding agents operating autonomously.
-
-OpenSpec changes
-----------------
-
-Behavioral contracts live in ``openspec/specs/``. Changes are proposed,
-reviewed, implemented, and archived through the OpenSpec workflow
-(`OpenSpec <https://openspec.ai>`_, CLI v1.x; the repo's
-``openspec/config.yaml`` carries project context and rules):
-
-1. **Propose** — create a change under ``openspec/changes/<name>/`` with
-   ``proposal.md`` (why, what changes, capabilities, impact), ``design.md``
-   (how), and ``tasks.md`` (implementation steps). The change describes
-   *deltas* against the current specs.
-2. **Review** — the proposal is inspected and refined before any code is
-   written. Specs describe observable behavior only; no aspirational
-   requirements.
-3. **Apply** — implement the ratified proposal, task by task, TDD-style:
-   red evidence first (a failing test that pins the contract), then the
-   smallest change that satisfies it.
-4. **Archive** — when the change lands, its spec deltas are merged into
-   ``openspec/specs/`` and the change moves to ``openspec/changes/archive/``.
-
-The proposal and completed record belong in this repository's
-``openspec/`` directory. See `CONTRIBUTING.rst <CONTRIBUTING.rst>`_
-for the contribution workflow.
-
-Architecture Decision Records
------------------------------
-
-*Why* the system is the way it is lives in ``docs/adrs/`` (see
-`docs/adrs/README.md <docs/adrs/README.md>`_ for the index and the full
-discipline):
-
-* One decision per ADR, numbered sequentially, filed under the subsystem it
-  affects (NODE, BUILD, IPC, MATH, TEST-FRAMEWORK, VIEWER-WEB, EXPORT).
-* Statuses flow ``Proposed`` → ``Accepted``; later ADRs may mark earlier ones
-  ``Superseded``. Superseded ADRs stay in the log — they are the history that
-  makes current decisions legible.
-* When an OpenSpec change carries an architectural shift, its ADR is written
-  alongside the change and the architecture synthesis
-  (`docs/architecture.md <docs/architecture.md>`_) is updated as part of
-  landing it.
-
-Read order for orientation: **architecture synthesis first**
-(``docs/architecture.md``), **then the specs** for exact observable behavior
-(``openspec/specs/``), **then an ADR** when you need to know why
-(``docs/adrs/``). The contributor briefing
-(`docs/contributor-briefing.md <docs/contributor-briefing.md>`_) adds
-verification guidance: how to choose between direct pytest coverage and the
-meta-project harness, and the red-first evidence principle.
+Machinome is licensed GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
+recipient's choice; see `LICENSE <LICENSE>`_. Machinome Viewer is a
+separate AGPL-3.0-or-later package. The designs simulated with Machinome
+keep their own licences.
 
 Contributing
 ============
 
-Bug reports and pull requests are welcome at
-https://github.com/machinome/machinome — see
-`CONTRIBUTING.rst <CONTRIBUTING.rst>`_ and the development discipline above.
+Machinome is developed empirically from real mechanical projects: a
+requirement begins as something a machine needs, and the change is
+validated in the machine that asked for it. Design and implementation are
+AI-assisted; `AI-USE.md <AI-USE.md>`_ records which agents, since when,
+and how the history marks their work. `CONTRIBUTING.rst <CONTRIBUTING.rst>`_
+says how to set up a development environment, run the tests and propose a
+change under the repository's spec-first discipline, and
+`docs/contributor-briefing.md <docs/contributor-briefing.md>`_ is the
+orientation to the code. Report issues and propose changes at
+https://github.com/machinome/machinome.
