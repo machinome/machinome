@@ -42,7 +42,8 @@ in the same cycle.
 | # | Change | Closes | Validated in |
 |---|---|---|---|
 | 1 | `snap-keeps-the-triad-unit` | SO-ARM100 triad snap (frames with `x` omitted; the joint's own snap) | SO-ARM100 |
-| 2 | `name-what-is-refused` | axis-less refusal names a Revolute for a Prismatic; `JointRangeError` names the installed joint, not the mate's coordinate; `a.drives(a)` deadlocks instead of naming itself | OpenMANIPULATOR-X |
+| 2 | `build-settles-on-a-grown-source-set` | `machinome build` restarts every second when a data source is newer than its module (the lean-install hang; the mesh-engine addendum); promoted here on 6 October because it blocks the full suite on this bench (seven `test_scad_presentation` tests) | the fixture project; a fresh worktree of a small STL-backed project |
+| 2a | `name-what-is-refused` | axis-less refusal names a Revolute for a Prismatic; `JointRangeError` names the installed joint, not the mate's coordinate; `a.drives(a)` deadlocks instead of naming itself | OpenMANIPULATOR-X |
 | 3 | `children-refuse-early-reads` | `self.children` reads empty during `simulate()` | AlbertPro |
 | 4 | `resolve-repeated-joints-per-copy` | a `.repeat()` copy's joint callable reads `index` before it exists | Prusa3-vanilla |
 | 5 | `tooling-paths-and-flags` | parity fixture generator from a worktree; bare `--preview`; negative-leading camera `--up` | 3DPrintedClocks, Voron-2 snapshot commands |
@@ -59,7 +60,7 @@ in the same cycle.
 | 16 | `release-metadata-and-vestiges` | `viewer` extra floor; vestigial `mesh_stl_file`; a leaf's `.scad` becoming a self-import (if still so) | fixture projects |
 | 17 | investigations | build restart loop; artifact freshness; OpenAstroMount's refused scenario; `networkx` on the mesh path; the exact-geometry flake; Thor's seat inventory; wall clock 02 | each its project |
 | 18 | exact suite timings | fold commit `a659cc7` against main, two or three projects | catalogue |
-| 19 | outside the framework | studio API skill's `cancel()` warning; viewer's stray `openscad.py` | studio, viewer repositories |
+| 19 | outside the framework | studio API skill's `cancel()` warning, and its Frame paragraph's per-component snap sentences (companion of cycle 1, lines ~814 and ~995); viewer's stray `openscad.py` | studio, viewer repositories |
 
 ## Progress
 
