@@ -382,6 +382,11 @@ def run_machine(entry):
     for step in range(1, entry['steps'] + 1):
         for action in script.get(step, ()):
             apply_action(sim, action, handles, snapshots)
+            if 'restore' in action:
+                # A restore clears the run's crossing and stop rings: count this
+                # step's records from the cleared rings, or a record the step
+                # makes after the restore is sliced away with the old ones.
+                crossings_seen = stops_seen = 0
         sim.run(entry['dt'])
         crossings = sim.crossings[crossings_seen:]
         stops = sim.stops[stops_seen:]

@@ -74,6 +74,15 @@ Unreleased
   not interfere with third.wheel``, where it used to read ``wheel should
   not interfere with wheel``. A direct child of the node under test reads
   as before (name-solids-by-path).
+* **The running corpus keeps a stop made after a restore.**
+  ``tools/generate_running_corpus.py``, and the suite's replay of
+  ``tests/running-corpus.json``, counted a step's crossings and stops from
+  where the run's record stood before a scripted restore, although the
+  restore clears that record. A crossing or stop that the same step then
+  made was left out of the step's entry, and the replay agreed with the
+  omission. Both now count from the cleared record, as the time-drive
+  generator already did. No committed corpus has such a step, and none
+  changes (keep-the-corpus-cursor-honest).
 
 Machinome 0.8.0
 ---------------

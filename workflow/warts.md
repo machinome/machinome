@@ -1316,21 +1316,6 @@ watched turning it. Nothing here is a defect.
   **Remaining (2026-10-04):** the clocked API section is in the manual;
   only the export question stays.
 
-# Corpus record cursor across restore (2026-09-20)
-
-**Status: observed while validating Curta; deferred, no external issue filed.**
-`tools/generate_running_corpus.py::run_machine` and the matching test replay
-helper retain their record-list cursors across a scripted `restore`, while
-the real run clears its record rings. If the same script step immediately
-creates a new stop, the old cursor can omit it from that step's corpus record.
-Direct runtime snapshot tests still compare the actual stop correctly.
-
-The periodic-contact corpus restores on its own recorded step before the
-next request, so both stops are present. No general corpus cursor repair is
-included in that cycle. A future repair should be red-first for restore plus
-an immediate same-step stop, and check crossings as well as stops; it should
-  not change machine state or command semantics to repair evidence collection.
-
 # Review of the cycles landed after the 0.7.0 fold (2026-09-23)
 
 **Status: review findings, recorded for the pilot; nothing here is triaged.**
@@ -1637,6 +1622,26 @@ not fixed, until the pilot triages them.
   through those helpers on the per-pair path. Evidence:
   `openspec/changes/archive/2026-10-06-name-solids-by-path/design.md`,
   Decision 4, second table. **Recorded.**
+
+## Findings from the framework cycle `keep-the-corpus-cursor-honest` (2026-10-06)
+
+- **The crossing and stop rings are bounded in entries, not ticks.**
+  `_ring(record)` in `machinome/simulation/run.py` is
+  `deque(maxlen=record)` for all three of a running `Sim`'s rings: the
+  trajectory, the crossings and the stops. Its refusal message calls
+  `record=N` "a ring of the most recent N ticks", and `Sim.crossings`
+  documents "the bounded ring `record=` asked for", but a run that records
+  more than `record` crossings, or stops, drops the oldest ones however
+  few ticks they came from. A corpus counter (`crossings_seen`,
+  `stops_seen` in `tools/generate_running_corpus.py` and its replay) that
+  has reached a full ring's length can no longer advance, so a corpus
+  generated from such a run would silently record nothing more. The
+  generator sizes `record` as `steps + 1`; the fullest committed scenario,
+  `RangedBlock`, holds 3 crossings in a ring of 9, so nothing is lost
+  today. Evidence:
+  `openspec/changes/archive/2026-10-06-keep-the-corpus-cursor-honest/design.md`,
+  Open Question 2. Not reached by any corpus; a generator guard or a
+  change to the ring's unit is a decision of its own. **Recorded.**
 
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 

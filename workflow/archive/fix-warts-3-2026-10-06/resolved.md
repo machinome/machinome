@@ -439,3 +439,43 @@ twice. On Thor, `path_name` gives each of the 438 printed solids the string
 `seats.qualified_names()` builds by hand, so the project's walk may be
 dropped by the project. The labels the engines put in their own errors
 still print a bare name; that residue is filed in `../../warts.md`.
+
+## `keep-the-corpus-cursor-honest`
+
+From "Corpus record cursor across restore (2026-09-20)":
+
+**Status: observed while validating Curta; deferred, no external issue filed.**
+`tools/generate_running_corpus.py::run_machine` and the matching test replay
+helper retain their record-list cursors across a scripted `restore`, while
+the real run clears its record rings. If the same script step immediately
+creates a new stop, the old cursor can omit it from that step's corpus record.
+Direct runtime snapshot tests still compare the actual stop correctly.
+
+The periodic-contact corpus restores on its own recorded step before the
+next request, so both stops are present. No general corpus cursor repair is
+included in that cycle. A future repair should be red-first for restore plus
+an immediate same-step stop, and check crossings as well as stops; it should
+  not change machine state or command semantics to repair evidence collection.
+
+**What shipped.** `keep-the-corpus-cursor-honest`
+(`openspec/changes/archive/2026-10-06-keep-the-corpus-cursor-honest/`)
+closes it in evidence collection only. `run_machine` and the suite's
+replay, `CorpusReplayTest.replay` in `tests/test_running_corpus.py`, now
+start both counters, `crossings_seen` and `stops_seen`, at `0` after a
+script action that restores, so a step's record is counted from the rings
+`Run.restore` has just cleared, as `tools/generate_time_drive_corpus.py`
+already did. Two tests were red first on the corpus machine `StopAndJump`,
+whose single tick carries a `wrap` crossing and a stop: a script that
+snapshots and moves in step 1, then restores and repeats the move in
+step 2. The generator's record of step 2 had neither the crossing nor the
+stop the run held, and now equals step 1's record and a one-step run's;
+the replay refused the honest entry (`0 != 1 : StopAndJump tick 1`) and
+accepted one with that crossing and stop removed, and now does the
+reverse. The run, its commands and every machine are unchanged. No
+committed corpus changed: a regeneration of the running corpus into the
+scratchpad is byte-identical to the regeneration before the change, and
+`tests/running-corpus.json`, `tests/clocked-corpus.json` and
+`tests/time-drive-corpus.json` were not written. The viewer's replay keeps
+the old counting; it still passes, since no committed scenario restores
+and records in one step. The rings' bound in entries rather than ticks is
+filed in `../../warts.md`.

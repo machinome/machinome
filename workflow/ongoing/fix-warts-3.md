@@ -128,6 +128,14 @@ in the same cycle.
   `../archive/fix-warts-3-2026-10-06/resolved.md`; the engines' bare-name
   labels recorded in `../warts.md`.
 
+- 6 October 2026: cycle 7, `keep-the-corpus-cursor-honest`, applied: the
+  running-corpus generator and the replay reset their crossing and stop
+  counters after a scripted restore, so a record made in the step that
+  restores is kept; no committed corpus value changed (regenerated
+  byte-identical); the entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`, the entry-bounded
+  rings recorded in `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

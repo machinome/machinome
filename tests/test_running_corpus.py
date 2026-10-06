@@ -51,6 +51,24 @@ def machine_class(name):
     return found
 
 
+# A step that restores a snapshot and then, before its tick, repeats the
+# move that took the machine into a bound. `StopAndJump` carries a `wrap`
+# crossing and a stop in that one tick, so the restored step replays the
+# first step exactly: its honest record is the first step's.
+RESTORE_MOVE = {'input': 'crank', 'by': 30.0, 'duration': 0.05}
+RESTORE_AND_STOP = {'name': 'StopAndJump', 'dt': 0.05, 'steps': 2, 'script': [
+    {'tick': 1, 'snapshot': 'a'},
+    {'tick': 1, 'move': dict(RESTORE_MOVE), 'handle': 'h0'},
+    {'tick': 2, 'restore': 'a'},
+    {'tick': 2, 'move': dict(RESTORE_MOVE), 'handle': 'h0'},
+]}
+# The same move with no snapshot or restore, run for one step: the honest
+# record, which does not depend on how a step's records are counted.
+ONE_STEP = {'name': 'StopAndJump', 'dt': 0.05, 'steps': 1, 'script': [
+    {'tick': 1, 'move': dict(RESTORE_MOVE), 'handle': 'h0'},
+]}
+
+
 class CorpusReplayTest(BaseNodeTest):
     """(5.1) The framework reproduces its own corpus, tick by tick."""
 
@@ -82,6 +100,12 @@ class CorpusReplayTest(BaseNodeTest):
             # fixture lists is every step the run took.
             for action in script.get(step, ()):
                 self.apply(sim, action, handles, snapshots)
+                if 'restore' in action:
+                    # A restore clears the run's crossing and stop rings:
+                    # count this step's records from the cleared rings, or
+                    # a record the step makes after the restore is sliced
+                    # away with the old ones.
+                    crossings_seen = stops_seen = 0
             sim.run(entry['dt'])
             crossings = sim.crossings[crossings_seen:]
             stops = sim.stops[stops_seen:]
@@ -169,6 +193,34 @@ class CorpusReplayTest(BaseNodeTest):
                     self.assertEqual(item['tick'], previous + 1,
                                      f'{entry["name"]} step {step}')
                     previous = item['tick']
+
+    def test_the_generator_records_a_stop_made_in_the_step_that_restores(self):
+        """A restore clears the run's crossing and stop rings. A crossing
+        or stop the same step then makes is in that step's entry."""
+        from tools.generate_running_corpus import run_machine
+
+        ticks = run_machine(RESTORE_AND_STOP)
+        self.assertEqual(len(ticks), 2)
+        first, restored = ticks
+        self.assertEqual(len(first['crossings']), 1)
+        self.assertEqual(len(first['stops']), 1)
+        self.assertEqual(restored, first)
+        self.assertEqual(restored, run_machine(ONE_STEP)[0])
+
+    def test_the_replay_refuses_an_entry_missing_a_record_made_after_a_restore(
+            self):
+        from copy import deepcopy
+        from tools.generate_running_corpus import run_machine
+
+        once = run_machine(ONE_STEP)[0]
+        entry = dict(RESTORE_AND_STOP, ticks=[deepcopy(once), deepcopy(once)])
+        self.replay(entry)
+
+        doctored = deepcopy(entry)
+        doctored['ticks'][1]['crossings'] = []
+        doctored['ticks'][1]['stops'] = []
+        with self.assertRaises(self.failureException):
+            self.replay(doctored)
 
 
 class CorpusDocumentTest(BaseNodeTest):

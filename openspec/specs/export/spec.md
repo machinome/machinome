@@ -1206,6 +1206,15 @@ stops located in that tick, and every command created so far with its status
 and the travel it has admitted. A sampled fixture SHALL NOT be accepted: a
 divergence that heals between two samples is a divergence.
 
+A tick's crossings and stops SHALL be every crossing and stop the run
+recorded from the end of the previous step to the end of that step's tick,
+those the step's own script actions recorded before the tick included. A
+restore clears the run's record of crossings and stops, so a step whose
+script restores SHALL count from the cleared record: a crossing or a stop
+the run records after that restore, in the same step, SHALL be in that
+step's entry. The generator and the framework's replay SHALL count the same
+way, so the replay refuses an entry that omits such a record.
+
 Agreement SHALL be EXACT for discrete state — tick numbers, command
 statuses, coordinate, relation, primitive, bound and input names, crossing
 surface levels, and the ORDER of every list — and within a stated RELATIVE
@@ -1274,6 +1283,16 @@ cannot drift from the producer it claims to come from.
 
 - **WHEN** a fixture machine runs for forty ticks
 - **THEN** the fixture lists forty tick entries, in order, with no gaps
+
+#### Scenario: A stop made in the step that restores is recorded
+
+- **WHEN** a script snapshots a machine and moves it into a bound in one
+  step, and in a later step restores that snapshot and repeats the same
+  move before the step's tick
+- **THEN** the later step's entry carries the crossing and the stop the run
+  recorded in its tick, equal to the first step's entry, and the
+  framework's replay refuses the same entry with that crossing and stop
+  left out
 
 #### Scenario: A corpus missing a bound reading another coordinate is refused
 
