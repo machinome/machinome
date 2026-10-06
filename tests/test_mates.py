@@ -2429,6 +2429,76 @@ class SlidingMateTest(BaseNodeTest):
             Prismatic(range=(0, 10))
         self.assertIn('axis', str(raised.exception))
 
+    # OpenSpec change ``name-what-is-refused``: what the refusals of a
+    # sliding mate name.
+    def test_a_prismatic_freedom_written_axis_none_names_the_mate(self):
+        Finger = slide_fixtures().Finger
+
+        with self.assertRaises(TypeError) as raised:
+            class Palm(AssemblyNode):
+                seat = Frame(at=(10, 0, 0))
+                finger = Finger()
+                grip = finger.origin.on(seat, Prismatic(
+                    axis=None, range=(-11, 20), unit='mm'))
+
+        message = str(raised.exception)
+        for fragment in ('Palm.grip', "the mate's freedom", 'Prismatic',
+                         'required everywhere'):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+        self.assertNotIn('is a Revolute', message)
+        self.assertNotIn('Finger.grip', message)
+
+    def test_a_range_refusal_on_a_mates_joint_names_the_mate(self):
+        slide = slide_fixtures()
+
+        with self.assertRaises(JointRangeError) as raised:
+            self.posed(slide.Gripper, 25)
+        message = str(raised.exception)
+        self.assertTrue(message.startswith(
+            "wrist.palm: mate 'left_grip' declares the range -11 to 20 mm"),
+            message)
+        self.assertIn('25', message)
+        self.assertNotIn('left_finger', message)
+
+        palm = slide.Palm()
+        with self.assertRaises(JointRangeError) as raised:
+            palm.left_grip = 25
+            palm.render()
+        message = str(raised.exception)
+        self.assertTrue(message.startswith("Palm (Palm): mate 'left_grip'"),
+                        message)
+        self.assertNotIn('left_finger', message)
+
+    def test_a_bound_judged_at_the_close_names_the_mate(self):
+        from machinome.motion.ports import TranslationalPort
+        from machinome.simulation import Driver
+
+        Finger = slide_fixtures().Finger
+
+        class PortGatedPalm(AssemblyNode):
+            gate = TranslationalPort(unit='mm')
+            seat = Frame(at=(10, 0, 0))
+            finger = Finger()
+            grip = finger.origin.on(seat, Prismatic(
+                axis=(1, 0, 0), unit='mm',
+                range=(0, Bound(lambda own, gate: gate, reads=(gate,)))))
+
+        class HeldGate(AssemblyNode):
+            gate = Driver(default=0.0, unit='mm')
+            push = Driver(default=0.0, unit='mm')
+            palm = PortGatedPalm()
+            gate.drives(palm.gate)
+            push.drives(palm.grip)
+
+        with self.assertRaises(JointRangeError) as raised:
+            HeldGate().set_state(gate=3, push=5)
+        message = str(raised.exception)
+        self.assertIn("palm: mate 'grip' -- the coordinate palm.grip --",
+                      message)
+        self.assertIn('0 to 3 mm', message)
+        self.assertNotIn('finger', message)
+
     def test_a_slides_stated_anchor_moves_nothing(self):
         slide = slide_fixtures()
         anchored = slide.AnchoredPalm()

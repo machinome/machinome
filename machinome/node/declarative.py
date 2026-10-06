@@ -314,19 +314,26 @@ class ChildDeclaration:
                     f"and " + _owns_no_coordinate(value.name))
             if (_is_joint(value) and value.owner is None
                     and not _in_current_body(value)):
-                from machinome.motion.joints import (Revolute,
-                                                      axisless_refusal)
+                from machinome.motion.joints import (
+                    Orbit, Prismatic, Revolute, axisless_refusal)
 
-                if isinstance(value, Revolute) and value.axis is None:
+                if (isinstance(value, (Revolute, Prismatic, Orbit))
+                        and value.axis is None):
                     # A `Revolute` left without an axis is a mate's
-                    # freedom and nothing else: refused here, before it
-                    # could specialize anything (tasks 3.2).
+                    # freedom and nothing else, and every other kind that
+                    # declares an axis states it everywhere: refused
+                    # here, before it could specialize anything, naming
+                    # the class whose body wrote it (OpenSpec change
+                    # ``name-what-is-refused``). A `Free` has no axis by
+                    # design and is not listed.
 
                     body = executing_body()
                     declaring = ((body or {}).get('__qualname__')
                                  or '<class>')
                     raise TypeError(axisless_refusal(
-                        declaring, key, site=node_class.__name__))
+                        type(value),
+                        f"{declaring}: the joint '{key}' passed where "
+                        f"{node_class.__name__} is declared"))
                 # Marked the moment it is claimed: `Joint.place` reads
                 # this to decide whether its arguments need carrying,
                 # and nothing else ever sets it.

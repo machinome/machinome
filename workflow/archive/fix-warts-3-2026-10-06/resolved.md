@@ -95,3 +95,120 @@ and a fresh worktree of Robots/hexapod_spiderbot_model builds with one
 `START` in 8.2 s (before: 33 `START` lines in 120 s). The seven
 `tests/test_scad_presentation.py` tests the cycle `snap-keeps-the-triad-unit`
 had to deselect pass on the checkout's own timestamps.
+
+## `name-what-is-refused`
+
+Three entries, one change: each refusal kept its verdict and named, in its
+message, something the author could not act on. The change is archived at
+`openspec/changes/archive/2026-10-06-name-what-is-refused/`.
+
+From "Findings from the framework cycle `slide-by-mate` (2026-09-26)" (the
+section's only entry; the section went with it):
+
+- **The axis-less refusal names a `Revolute` for any kind.**
+  `Joint.__set_name__`'s `axisless_refusal` was written when only a
+  `Revolute` could lack an axis; a `Prismatic(axis=None)` written in a
+  class body, or as a mate's freedom, is refused by it with "is a
+  Revolute without an axis ... where the moving frame supplies it",
+  which is wrong on both counts for a `Prismatic` (a `Prismatic` freedom
+  states its axis, ADR-151). Found in the orchestrator's review of
+  `slide-by-mate`; the cycle left the wording alone because widening it
+  was struck with the axis-less `Prismatic`. A one-line wording fix
+  naming the kind and, for a `Prismatic`, saying the axis is required
+  everywhere. **Recorded.**
+
+**What shipped.** `axisless_refusal` takes the joint's kind and the words
+naming the declaration. A `Revolute`'s text is unchanged; any other kind is
+named as itself, its axis said to be required everywhere (for a `Prismatic`,
+"a mate's freedom included"), and only a `Revolute` said to leave its axis
+out, as a mate's freedom. A joint a mate installed from an axis-less
+freedom is refused naming the mate on the assembly that states it
+(`Palm.grip: the mate's freedom is a Prismatic without an axis. ...`)
+rather than the moving child's class, and the declaration-site check
+covers `Prismatic` and `Orbit` beside `Revolute`, so a site
+`Prismatic(axis=None)` names the declaring class (`Rail: the joint 'travel'
+passed where Slider is declared is a Prismatic without an axis. ...`)
+rather than `Slider.travel`. No project declares an axis-less `Prismatic`;
+the proof is `tests/test_joints.py::AxislessKindTest` and
+`tests/test_mates.py::SlidingMateTest::test_a_prismatic_freedom_written_axis_none_names_the_mate`.
+
+From "Findings from the OpenMANIPULATOR-X project's migration onto mates
+(2026-09-26)", the section's last entry (its other findings had left it in
+the warts hygiene of 4 October 2026); the section went with it, its
+introduction kept here:
+
+> The validation of `slide-by-mate` (ADR-151) in its originating project:
+> the four revolutes and the two prismatic finger joints of
+> OpenMANIPULATOR-X stated as mates referencing the URDF transcription
+> (branch `frames-and-mates`, commits `597e18c`, `5548c4b`, `eb8ec16`;
+> framework `6f11aba`), `capture_poses.py compare` at maximum deviation 0
+> (unrounded 0.0) over 23 poses and 43 leaves, the documented suites at
+> their `main` counts with no test edited, `machinome export` identical
+> but for mtimes, `Rest`/`Present` snapshots byte-identical. Nothing
+> refused; the `Prismatic` freedom, its translational coordinate and the
+> mimic as a relation between two mates expressed the URDF with nothing
+> left over. The workspace's `capture_poses.py compare` silently skips
+> ports whose names move between nodes, which every mate migration does;
+> the matrices carry the proof, and the tool could say what it skipped.
+> Three findings, all consequences, recorded for the pilot's triage.
+
+- **`JointRangeError` names the child's installed joint, not the mate's
+  coordinate.** `set_state(grip=21)` is refused as
+  `...link5.left_finger: joint 'left_travel' declares the range -11.0
+  to 20.0 mm`, naming the joint the mate installed on the finger, while
+  the only place it can be bound is `Link5Assembly.left_travel`; the
+  names match, so a reader finds it, but the message points at the
+  node a reader cannot bind. A wording candidate for the next mates
+  cycle. **Recorded.**
+
+**What shipped.** One helper, `machinome.motion.joints._binding_site`,
+says where a joint's coordinate is bound: for a joint a mate installed, the
+assembly that states the mate (the child's linked parent) and `mate
+'<name>'`; for any other joint, the node and `joint '<name>'` as before.
+Every range refusal that can judge a mate's joint takes its head from it:
+the binding-time refusals in `joints.py`, the judgement of a `Bound` that
+reads other coordinates when the enumeration closes (`couplings.py`), and
+the clocked simulation's construction and commit refusals
+(`simulation/clocked.py`), which still quote the coordinate's bank id. In
+OpenMANIPULATOR-X, against the bench, `set_state(grip=21)` is now refused
+as `arm.link2.link3.link4.link5: mate 'left_travel' declares the range
+-11.0 to 20.0 mm, and 21 is outside it. ...`, and a binding on a
+`Link5Assembly` of its own as `Link5Assembly (Link5Assembly): mate
+'left_travel' ...`; its documented suites (11 and 4) and OpenArm's (10),
+whose guards assert the mate's name, pass unchanged. A joint given at a
+declaration site keeps naming the child, where it is bound. The
+constraint-intersection refusals, which name a bank id, were left as they
+are and recorded in `../../warts.md`.
+
+From "read-the-driven-coordinate (2026-09-15, found while fixing)", whose
+other entries stay in `../../warts.md`:
+
+- **`a.drives(a)`, one to one, still deadlocks into `UnreachedCoordinate`
+  instead of naming itself.** ADR-100 declined to widen its shared-coordinate
+  refusal to the one-to-one shape and ADR-121 does not either: recognition is
+  scoped to a relation naming SEVERAL ends, which is the only shape that is
+  forward-only, so `a.drives(a)` is not checked at class definition at all.
+  Measured on this worktree (`evidence.md` §1 E): it raises
+  `UnreachedCoordinate: wheel.turn drives wheel.turn: nothing bound either
+  end` at the close of the enumeration, which says nothing about the shape. A
+  one-to-one self-read has no second source to carry slope, so the skeleton
+  test would refuse every such law anyway — the message, not the verdict, is
+  what is wrong.
+
+**What shipped.** `relate` compares a relation's one source with its one
+driven end after both ends' own checks, the comparison the several-ends
+self-read already made, with the node standing for its one joint expanded,
+and refuses a match at class definition with a `TypeError`: `wheel.turn
+drives wheel.turn: the relation's one source, wheel.turn, is its own driven
+end, wheel.turn. ...`, pointing to `(source & wheel.turn).drives(wheel.turn,
+law=...)` under a running root as the way a law reads the coordinate it
+drives. Every spelling probed is caught: a written path, with or without a
+`law=`, a port of the class, the node standing for its one joint
+(`wheel.drives(wheel.turn)`) and a reused-joint mate's handle
+(`mount.drives(body.turn)`). No machine that could be posed before is
+refused now: each shape was refused at its first enumeration, as
+`UnreachedCoordinate` or `DoublyBound`, and is now refused when the class is
+defined. A driver or a
+repeat named at both ends keeps its own end refusal. No class in the
+catalogue writes the shape (a literal scan of 4238 `.drives(` lines in 552
+files under `projects/`).

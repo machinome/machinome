@@ -1415,11 +1415,12 @@ def _constrained(chains, drivers, identifier, node, joint, unit, side, bound,
                  read_ids):
     """One side of one declared range, as the level a request is clipped
     against, with every refusal design section 3 and section 5 state."""
-    from machinome.motion.joints import _where
+    from machinome.motion.joints import _binding_site, _where
 
     def refuse(detail):
+        site, named = _binding_site(node, joint)
         raise ClockedError(
-            f"{_where(node)}: joint '{joint.name}' -- the coordinate "
+            f"{_where(site)}: {named} -- the coordinate "
             f"'{identifier}' -- declares a {side} bound, and {detail}")
 
     chain = chains.of(identifier, refuse, f"the coordinate '{identifier}'")
@@ -1539,12 +1540,14 @@ def _commit_out_of_range(level, held, input_id, by, to):
     commit that carries a joint out of range is cycle 1's behaviour
     unchanged: the request commits NOTHING and never poses.
     """
-    from machinome.motion.joints import JointRangeError, _where
+    from machinome.motion.joints import (JointRangeError, _binding_site,
+                                         _where)
 
     bounded = level.bounded
     asked = f'by={by!r}' if to is None else f'to={to!r}'
+    site, named = _binding_site(bounded.node, bounded.joint)
     return JointRangeError(
-        f"{_where(bounded.node)}: joint '{bounded.joint.name}' -- the "
+        f"{_where(site)}: {named} -- the "
         f"coordinate '{bounded.coordinate}' -- declares a {bounded.side} "
         f'bound of {bounded.bound.evaluate(held)} '
         f"{bounded.unit or 'units'}, and the request "

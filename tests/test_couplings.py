@@ -3796,3 +3796,93 @@ class SelfReadTest(BaseNodeTest):
                 self.assertIn(root_class.__name__, message)
                 self.assertIn('INCREMENTS', message)
                 self.assertIn('Time.running()', message)
+
+    # OpenSpec change ``name-what-is-refused``: the one-to-one shape.
+    def test_a_relation_whose_one_source_is_its_driven_end_is_refused(self):
+        from machinome.node.frames import Frame
+
+        def law(driver, driven):
+            return lambda turn: turn + 1
+
+        def written():
+            class Selfish(AssemblyNode):
+                wheel = OneTurn()
+                wheel.turn.drives(wheel.turn)
+
+        def with_a_law():
+            class Selfish(AssemblyNode):
+                wheel = OneTurn()
+                wheel.turn.drives(wheel.turn, law=law)
+
+        def own_port():
+            class Ported(AssemblyNode):
+                turn = RotationalPort(unit='deg')
+                turn.drives(turn)
+
+        def inferred():
+            class Inferred(AssemblyNode):
+                wheel = OneTurn()
+                wheel.drives(wheel.turn)
+
+        class Axled(Solid2Node):
+            axle = Frame()
+            turn = Revolute(axis=(0, 0, 1), unit='deg')
+
+            def render(self):
+                return cube(2, center=True)
+
+        def reused_joint_mate():
+            class Mounted(AssemblyNode):
+                seat = Frame(at=(5, 0, 0))
+                body = Axled()
+                mount = body.axle.on(seat, body.turn)
+                mount.drives(body.turn)
+
+        for form, relation in ((written, 'wheel.turn drives wheel.turn'),
+                               (with_a_law, 'wheel.turn drives wheel.turn'),
+                               (own_port, 'turn drives turn'),
+                               (inferred, 'wheel drives wheel.turn'),
+                               (reused_joint_mate, 'mount drives body.turn')):
+            with self.subTest(form=form.__name__):
+                message = self._class_body(form)
+                self.assertIn(relation, message)
+                self.assertIn('one source', message)
+                self.assertIn('its own driven end', message)
+                self.assertIn('.drives(', message)
+                self.assertIn('& ', message)
+
+    def test_the_end_checks_and_the_read_stand_beside_it(self):
+        def driver_self():
+            class Cranked(AssemblyNode):
+                crank = Driver(default=0.0, unit='deg')
+                crank.drives(crank)
+
+        def repeat_self():
+            class Wheels(AssemblyNode):
+                wheels = OneTurn().repeat(3)
+                wheels.turn.drives(wheels.turn)
+
+        with self.subTest(form='driver'):
+            self.assertIn('cannot be the driven end',
+                          self._class_body(driver_self))
+        with self.subTest(form='repeat'):
+            self.assertIn('cannot be the SOURCE',
+                          self._class_body(repeat_self))
+
+        class Pair(AssemblyNode):
+            rack = Driver(default=0.0, unit='deg')
+            wheel = OneTurn()
+
+            (rack & wheel.turn).drives(wheel.turn, law=SelfReadTest.gate)
+
+        self.assertEqual(declared_relations(Pair)[0].self_read, 1)
+
+
+class OneTurn(Solid2Node):
+    """One joint: the node a relation of one coordinate at each end
+    names (OpenSpec change ``name-what-is-refused``)."""
+
+    turn = Revolute(axis=(0, 0, 1), unit='deg')
+
+    def render(self):
+        return cube(2, center=True)

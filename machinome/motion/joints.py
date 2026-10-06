@@ -313,6 +313,28 @@ def _where(node):
     return f'{node.name} ({type(node).__name__})'
 
 
+def _binding_site(node, joint):
+    """Where `joint`'s coordinate on `node` is bound, for the head of a
+    range refusal: `(site, named)`, the node to name with `_where` and
+    the words naming the coordinate there.
+
+    A joint a MATE installed from its freedom is bound only through the
+    mate's coordinate on the assembly that states it, so the refusal
+    names that assembly -- the node's linked parent -- and `mate
+    '<name>'` (OpenSpec change ``name-what-is-refused``). Anything else,
+    a joint of the node's own or given at a declaration site, is named
+    as it always was: the node and `joint '<name>'`. So is a mate's
+    joint whose child is not linked under that assembly yet, since there
+    is no assembly in hand to name.
+    """
+    mate = getattr(joint, 'installed_by', None)
+    parent = getattr(node, '_parent', None)
+    if (mate is not None and parent is not None
+            and isinstance(parent, mate.owner)):
+        return parent, f"mate '{mate.name}'"
+    return node, f"joint '{joint.name}'"
+
+
 class Joint(Coordinate):
     """The shared base of the one-coordinate lower pairs.
 
@@ -389,7 +411,15 @@ class Joint(Coordinate):
 
     def __set_name__(self, owner, name):
         if self.axis is None and not self._mate_freedom:
-            raise TypeError(axisless_refusal(owner.__name__, name))
+            mate = getattr(self, 'installed_by', None)
+            # A joint a mate installed from its freedom is refused naming
+            # the MATE on the assembly that states it: `owner` here is
+            # the moving child's specialized class, which the author
+            # never wrote this joint on.
+            where = (f"{mate.owner.__name__}.{mate.name}: the mate's "
+                     f"freedom" if mate is not None
+                     else f"{owner.__name__}.{name}")
+            raise TypeError(axisless_refusal(type(self), where))
         self._refuse_shadowing(owner, name)
         self.name = name
         self.owner = owner
@@ -685,16 +715,18 @@ class Joint(Coordinate):
         low = self._bound_at(node, span[0], value, 'lower')
         high = self._bound_at(node, span[1], value, 'upper')
         if low is not None and high is not None and low > high:
+            site, named = _binding_site(node, self)
             raise JointRangeError(
-                f"{_where(node)}: joint '{self.name}' declares a range "
+                f"{_where(site)}: {named} declares a range "
                 f"whose bounds evaluate at {value!r} to ({low}, {high}), "
                 f"which is reversed: a range is (lo, hi). A bound stated "
                 f"as an expression is evaluated at the value being bound, "
                 f"and it has to order with the other one there.")
         if (low is None or low <= value) and (high is None or value <= high):
             return
+        site, named = _binding_site(node, self)
         raise JointRangeError(
-            f"{_where(node)}: joint '{self.name}' declares the range "
+            f"{_where(site)}: {named} declares the range "
             f"{'unbounded' if low is None else low} to "
             f"{'unbounded' if high is None else high} "
             f"{self.unit or 'units'}, and {value!r} is "
@@ -725,16 +757,18 @@ class Joint(Coordinate):
         try:
             evaluated = bound(value)
         except Exception as failure:
+            site, named = _binding_site(node, self)
             raise JointRangeError(
-                f"{_where(node)}: joint '{self.name}' states its {side} "
+                f"{_where(site)}: {named} states its {side} "
                 f'bound as an expression over its own coordinate, and '
                 f'evaluating it at {value!r} raised '
                 f'{type(failure).__name__}: {failure}. A bound is applied '
                 f'to the value being bound, so it has to be a function of '
                 f'it alone.') from None
         if not _is_number(evaluated):
+            site, named = _binding_site(node, self)
             raise JointRangeError(
-                f"{_where(node)}: joint '{self.name}' states its {side} "
+                f"{_where(site)}: {named} states its {side} "
                 f'bound as an expression over its own coordinate, and at '
                 f'{value!r} it evaluates to {evaluated!r}, which is not a '
                 f'number. A bound states where the coordinate may be, in '
@@ -1463,18 +1497,33 @@ _declared_cache = {}
 
 
 
-def axisless_refusal(owner, name, site=None):
-    """The message refusing a `Revolute` written without an axis
-    anywhere but as a mate's freedom."""
-    where = (f"{owner}: the joint '{name}' passed where {site} is "
-             f"declared" if site is not None
-             else f"{owner}.{name}")
+def axisless_refusal(kind, where):
+    """The message refusing a joint of class `kind` written without an
+    axis where it may not be: a `Revolute` anywhere but as a mate's
+    freedom, any other kind anywhere. `where` names the declaration the
+    author wrote -- the class and the joint, the declaring class and the
+    site, or the assembly and the mate -- and is built by the caller
+    (OpenSpec change ``name-what-is-refused``). The kind is told by its
+    class, never by the spelling of its name (ADR-166)."""
+    if issubclass(kind, Revolute):
+        return (
+            f"{where} is a Revolute without an axis. An axis may be left "
+            f"out only in a mate's freedom -- moving.on(fixed, "
+            f"Revolute(...)) -- where the moving frame supplies it; "
+            f"everywhere else a joint states the line it turns about: "
+            f"Revolute(axis=(x, y, z), ...).")
+    name = kind.__name__
+    article = 'an' if name[:1] in 'AEIOU' else 'a'
+    # A `Prismatic` is the one other kind a mate takes as its freedom,
+    # and there too it states its axis (ADR-151).
+    freedom = (", a mate's freedom included" if issubclass(kind, Prismatic)
+               else '')
     return (
-        f"{where} is a Revolute without an axis. An axis may be left out "
-        f"only in a mate's freedom -- moving.on(fixed, Revolute(...)) -- "
-        f"where the moving frame supplies it; everywhere "
-        f"else a joint states the line it turns about: "
-        f"Revolute(axis=(x, y, z), ...).")
+        f"{where} is {article} {name} without an axis. {article.title()} "
+        f"{name}'s axis is required everywhere{freedom}: "
+        f"{name}(axis=(x, y, z), ...). Only a Revolute may leave its axis "
+        f"out, and only as a mate's freedom, where the moving frame "
+        f"supplies it.")
 
 
 def resolved_operand(node, operand, argument, refusal):

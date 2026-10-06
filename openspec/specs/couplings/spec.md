@@ -15,7 +15,6 @@ compositions over expression math).
 
 Code: `machinome/motion/couplings.py`.
 ## Requirements
-
 ### Requirement: Existing-joint mate aliases obey physical endpoint identity
 
 Bare and descendant-path references to a reused-joint mate SHALL resolve to its original child joint for sources, targets and derived-coordinate terms. Canonical endpoint comparison SHALL identify the handle, explicit child-joint path and any supported inferred-node reference as the same coordinate. Duplicate writers and repeated grouped read/target entries SHALL be refused under the existing relation rules even when their written spellings differ. A supported law reading the retained coordinate it drives SHALL retain that meaning when either side names its handle. Bound self reads SHALL remain refused rather than inherit the retained-law exception. Foreign same-name declaration references SHALL not be redirected into an unrelated tree.
@@ -1312,6 +1311,17 @@ and the class that stated it and saying that a relation reading its own
 driven end states increments, which only a run integrates — rather than
 standing silently inert over a coordinate nothing moves.
 
+A relation naming ONE coordinate at each end whose source IS its driven
+end — `wheel.turn.drives(wheel.turn)`, or the same coordinate spelled
+two ways: a node standing for its one joint and that joint's path, or a
+reused-joint mate's handle and the joint it reuses — is NOT a read of
+its driven end, and SHALL be REFUSED at class definition, after the
+checks either end already has, naming the relation as written and saying
+that its one source is its own driven end, so that it has no other value
+to compute the driven one from, and how a law that reads the coordinate
+it drives is written instead: with another source beside it, under a
+root declaring `Time.running()`.
+
 #### Scenario: A pawl deflects from two drums
 
 - **WHEN** a position states
@@ -1395,6 +1405,18 @@ standing silently inert over a coordinate nothing moves.
   the class that stated it, and says that a relation reading its own
   driven end states increments, which only a run integrates, and to
   declare `time = Time.running()`
+
+#### Scenario: A relation whose one source is its own driven end is refused
+
+- **WHEN** a class states `wheel.turn.drives(wheel.turn)`, with or without
+  a `law=`; or `turn.drives(turn)` over a port it declares; or
+  `wheel.drives(wheel.turn)`, `wheel` declaring that one joint; or
+  `mount = body.axle.on(seat, body.turn)` and `mount.drives(body.turn)`
+- **THEN** class definition raises, naming the relation as written and
+  saying that its one source is its own driven end, and pointing to a
+  law that names another source beside it; while `crank.drives(crank)`
+  over a `Driver` and `wheels.turn.drives(wheels.turn)` over a repeat
+  are still refused by their own end checks, with their own messages
 
 ### Requirement: A grouped source commits states at an event
 
@@ -1778,3 +1800,4 @@ identity relation. These exceptions SHALL not change fresh-freedom mates.
   the joint a mate of `arm` installed on `art3`, and binds `angle`
 - **THEN** the binding is refused, naming `arm.elbow` as the coordinate
   to bind
+

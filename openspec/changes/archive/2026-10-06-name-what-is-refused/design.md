@@ -134,10 +134,16 @@ projects.
 ### 1. The axis-less refusal takes the kind and the place the author wrote
 
 `axisless_refusal(owner, name, site=None)` becomes
-`axisless_refusal(kind, where)`: `kind` the joint's class name, `where`
-the phrase naming the declaration, built by each caller. Text:
+`axisless_refusal(kind, where)`: `kind` the joint's class, `where`
+the phrase naming the declaration, built by each caller. The kind is
+told by `issubclass(kind, Revolute)` / `issubclass(kind, Prismatic)` and
+displayed by `kind.__name__`: comparing the class's name to a string is
+what `node-model`'s "No node type is recognised by its class name"
+(ADR-166) forbids, and `tests/test_no_class_name_recognition.py` refused
+the first implementation, which passed `type(self).__name__` and compared
+it with `'Revolute'` and `'Prismatic'` (evidence.md, §4.3). Text:
 
-- `kind == 'Revolute'`: exactly today's text after `where` — "is a
+- a `Revolute`: exactly today's text after `where` — "is a
   Revolute without an axis. An axis may be left out only in a mate's
   freedom -- moving.on(fixed, Revolute(...)) -- where the moving frame
   supplies it; everywhere else a joint states the line it turns about:
@@ -157,7 +163,7 @@ The callers:
   `getattr(self, 'installed_by', None)` is a mate — `_install` sets it
   before `_specialize` fires `__set_name__`, and `declare_mates` runs after
   the mate's own `__set_name__` gave it its owner — and otherwise
-  `f"{owner.__name__}.{name}"`, as today. Kind: `type(self).__name__`.
+  `f"{owner.__name__}.{name}"`, as today. Kind: `type(self)`.
 - `ChildDeclaration.__init__` (`declarative.py:315`): the test widens
   from `isinstance(value, Revolute)` to
   `isinstance(value, (Revolute, Prismatic, Orbit))` — every kind that

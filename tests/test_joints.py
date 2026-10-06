@@ -4834,3 +4834,55 @@ class AxislessRevoluteTest(BaseNodeTest):
         spinner = Spinner()
         spinner.turn = 30
         self.assertEqual(serialized(spinner), [['r', '30', [0, 0, 1]]])
+
+
+class AxislessKindTest(BaseNodeTest):
+    """A joint of another kind written with `axis=None` is refused naming
+    ITS kind and saying its axis is required everywhere: only a
+    `Revolute` may leave its axis out, and only as a mate's freedom.
+
+    OpenSpec change ``name-what-is-refused``. The mate's freedom is
+    `tests/test_mates.py`'s `SlidingMateTest`."""
+
+    def assertNamesTheKind(self, message, *fragments):
+        for fragment in fragments + ('required everywhere',):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, message)
+        self.assertNotIn('is a Revolute', message)
+
+    def test_a_class_body_prismatic_without_an_axis_names_its_kind(self):
+        with self.assertRaises(TypeError) as raised:
+            class Loose(Solid2Node):
+                slide = Prismatic(axis=None, unit='mm')
+
+                def render(self):
+                    return cube(1, center=True)
+
+        self.assertNamesTheKind(str(raised.exception), 'Loose.slide',
+                                'Prismatic', "a mate's freedom included")
+
+    def test_a_site_prismatic_without_an_axis_names_the_declaring_class(self):
+        class Slider(Solid2Node):
+            def render(self):
+                return cube(1, center=True)
+
+        with self.assertRaises(TypeError) as raised:
+            class Rail(AssemblyNode):
+                car = Slider(travel=Prismatic(axis=None))
+
+        message = str(raised.exception)
+        self.assertNamesTheKind(message, 'Rail', 'Slider', 'travel',
+                                'Prismatic')
+        self.assertNotIn('Slider.travel', message)
+
+    def test_an_orbit_without_an_axis_names_its_kind(self):
+        with self.assertRaises(TypeError) as raised:
+            class Loose(Solid2Node):
+                orbit = Orbit(axis=None, carries=(0, 0, 1))
+
+                def render(self):
+                    return cube(1, center=True)
+
+        message = str(raised.exception)
+        self.assertNamesTheKind(message, 'Loose.orbit', 'an Orbit')
+        self.assertNotIn("a mate's freedom included", message)

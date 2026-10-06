@@ -26,9 +26,15 @@ OpenSpec change ``a-bound-stops-the-request``.
 
 import math
 
+from solid2 import cube
+
 from machinome.expression_graph import free_names
 from machinome.expression_graph import as_node
-from machinome.simulation import Sim
+from machinome.motion.joints import Bound, Prismatic
+from machinome.node.assembly import AssemblyNode
+from machinome.node.frames import Frame
+from machinome.node.solid2 import Solid2Node
+from machinome.simulation import Driver, Sim, State
 from machinome.simulation.clocked import TooManyEvents
 
 from .base import BaseNodeTest
@@ -38,7 +44,7 @@ from .clocked_project.bounds_unsupported import (Chattering, Curved,
                                                  SelfReadChain,
                                                  UnreachedRead)
 from .clocked_project.decorative import Decorative, Untouchable
-from .clocked_project.gate import Gate, Shut
+from .clocked_project.gate import Gate, Shut, hundredth, reaches, shuts
 from .clocked_project.lock import Kinked, Lock
 from .clocked_project.calculator import Standing
 from .clocked_project.outside import Outside
@@ -123,6 +129,52 @@ class RefusalTest(BaseNodeTest):
         message = self.refusal(SelfReadChain)
         self.assertIn('reads wheel.turn, the coordinate it drives',
                       message)
+
+    def test_a_commit_out_of_a_mates_range_names_the_mate(self):
+        # OpenSpec change ``name-what-is-refused``: `Shut` with its
+        # shutter placed by a mate whose freedom carries the range. The
+        # refusal names the mate on the assembly that states it, never
+        # the joint the mate installed on the shutter; the coordinate's
+        # bank id is quoted as before.
+        from machinome.motion.joints import JointRangeError
+
+        sim = Sim(MatedShut(), record=8)
+        with self.assertRaises(JointRangeError) as caught:
+            sim.move('crank', by=400.0)
+        message = str(caught.exception)
+        self.assertIn("mate 'travel' -- the coordinate 'shutter.travel' --",
+                      message)
+        self.assertIn('high bound of 0.0', message)
+        self.assertIn('committed nothing', message)
+        self.assertNotIn('shutter: joint', message)
+
+
+class MatedCarriage(Solid2Node):
+    """`Slide`'s body with a connector at its own origin."""
+
+    origin = Frame()
+
+    def render(self):
+        return cube([20, 6, 6], center=True)
+
+
+class MatedShut(AssemblyNode):
+    """`tests/clocked_project/gate.py`'s `Shut`, its shutter placed by a
+    mate whose freedom carries the range."""
+
+    crank = Driver(default=0.0, unit='deg')
+    shutting = State(default=0, dtype=int)
+
+    seat = Frame()
+    shutter = MatedCarriage()
+    travel = shutter.origin.on(seat, Prismatic(
+        axis=(1, 0, 0), unit='mm',
+        range=(0, Bound(lambda travel, shut: 3 - 3 * shut,
+                        reads=(shutting,)))))
+
+    (crank & shutting).commits(shutting, at=reaches, law=shuts)
+
+    crank.drives(travel, law=hundredth)
 
 
 class AuthorityNameTest(BaseNodeTest):

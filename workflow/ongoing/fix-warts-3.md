@@ -78,6 +78,14 @@ in the same cycle.
   suite runs with nothing deselected; the `mesh-engine` addendum moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`, the three-hour hang
   left in `../warts.md` with a Remaining note.
+- 6 October 2026: cycle 2a, `name-what-is-refused`, applied: an axis-less
+  `Prismatic` or `Orbit` is refused naming its kind, a range refusal on a
+  mate's joint names the mate on its assembly, and `a.drives(a)` is refused
+  by name at class definition; OpenMANIPULATOR-X's refusal now heads
+  `arm.link2.link3.link4.link5: mate 'left_travel'`, its suites and
+  OpenArm's unchanged; three entries moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`, the two questions it
+  left recorded in `../warts.md`.
 
 ## Deferred to the pilot
 

@@ -24,6 +24,20 @@ Unreleased
   after its module. Each source is compared with what the build first
   saw of it, so a build stands down only for a file that changed after
   the build read it (build-settles-on-a-grown-source-set).
+* **A refusal names what it refused.** A ``Prismatic`` or an ``Orbit``
+  written with ``axis=None`` is refused naming its own kind and saying its
+  axis is required everywhere, where it used to be called a ``Revolute``
+  that a mate's moving frame could complete; written at a declaration site
+  or as a mate's freedom, the refusal names the class or the mate the
+  author wrote. A binding outside the range of a mate's freedom is refused
+  naming the mate on the assembly that states it, the one place it can be
+  bound, as ``arm.link2.link3.link4.link5: mate 'left_travel' declares the
+  range -11.0 to 20.0 mm``, rather than the joint the mate installed on the
+  moving child. And a relation naming one coordinate as its one source and
+  its one driven end, ``wheel.turn.drives(wheel.turn)``, is refused when
+  the class is defined, saying so, where it used to be refused only when
+  the machine was solved, as an unreached or doubly bound coordinate
+  (name-what-is-refused).
 
 Machinome 0.8.0
 ---------------

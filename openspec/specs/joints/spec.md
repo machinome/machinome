@@ -526,7 +526,16 @@ outside a joint's declared `range`, raising an error of a kind exported
 from the joints module and naming the joint, the value, the range, the
 unit and the node — by its path in the tree when the node is linked
 under a root, and otherwise by its name and class, because a node bound
-before any walker linked it has no path to name. A binding that is not a plain
+before any walker linked it has no path to name. For a joint a MATE gave
+the node — the joint a fresh freedom installs on the moving child — the
+error SHALL name, in place of the joint and the node, the MATE and the
+assembly that states it, by that assembly's path, or its name and class
+when it is the root: the mate's coordinate on that assembly is the one
+place the value can be bound, and the joint on the child is written
+nowhere. A child not yet linked under that assembly SHALL be named as
+any unlinked node is. Every refusal of this requirement, and the clocked
+simulation's refusals of a bound it compiled for such a coordinate, SHALL
+name a mate's coordinate so. A binding that is not a plain
 number — a symbolic expression, a driver token — SHALL NOT be checked at
 bind time, because its value is not known there; a joint with no
 declared range, and a bound stated as `None`, SHALL accept any binding
@@ -662,6 +671,16 @@ close of the next enumeration that binds the coordinate again.
 - **THEN** the binding is refused here, naming the node, the joint, `20` and
   the range, because a construction has no path to clip and a machine cannot
   be put where it cannot be
+
+#### Scenario: A range refusal on a mate's joint names the mate
+
+- **WHEN** a root `Gripper` holds `wrist`, which holds `palm`, which
+  states the mate `left_grip = left_finger.origin.on(left_seat,
+  Prismatic(axis=(0, 1, 0), range=(-11, 20), unit='mm'))`, and the root's
+  `grip` driver, driving `wrist.palm.left_grip`, is bound to `25`
+- **THEN** the binding is refused with a message beginning
+  `wrist.palm: mate 'left_grip' declares the range -11 to 20 mm`, naming
+  `25`, and not naming the moving child `left_finger`
 
 ### Requirement: A joint takes part in a relation
 
@@ -882,7 +901,15 @@ wherever it is declared except as a mate's freedom — as a class
 attribute, at a declaration site, or held by anything else — naming the
 class, the joint and the mate as the only place an axis may be left out.
 Every other joint kind's `axis`, where it has one, SHALL remain
-required. `at`
+required. A joint of such a kind written with `axis=None` — as a class
+attribute, at a declaration site, or as a mate's freedom — SHALL be
+refused at class definition, naming where it was written (the class and
+the joint; at a declaration site the declaring class, the joint and the
+child's class; as a mate's freedom the assembly that states the mate and
+the mate), naming its KIND, and saying that kind's axis is required
+everywhere — for a `Prismatic`, a mate's freedom included; the refusal
+SHALL NOT call it a `Revolute` nor say that a moving frame supplies its
+axis. `at`
 SHALL default to that body's OWN origin, which is the case of a joint
 whose line passes through the origin of the body it moves. `range` SHALL
 be a `(lo, hi)` pair in `unit`, and `unit` SHALL be the label the
@@ -978,6 +1005,20 @@ definition naming the name and both declarations.
 - **WHEN** a class body declares `turn = Revolute((0, 0, 1))`, the axis
   passed by position as before this change
 - **THEN** the class carries the joint with that axis, exactly as before
+
+#### Scenario: A joint of another kind written without an axis is refused naming its kind
+
+- **WHEN** a class `Loose` declares `slide = Prismatic(axis=None,
+  unit='mm')`; or a parent `Rail` declares `car = Slider(travel=Prismatic(axis=None))`;
+  or a palm `Palm` states the mate
+  `grip = finger.origin.on(seat, Prismatic(axis=None, range=(-11, 20), unit='mm'))`;
+  or a class declares `orbit = Orbit(axis=None, carries=(0, 0, 1))`
+- **THEN** each class definition raises, naming respectively `Loose.slide`;
+  `Rail`, `travel` and `Slider`; `Palm.grip` as the mate's freedom; and the
+  orbit's class and `orbit` — never the moving child's class for the
+  mate — naming the kind, `Prismatic` or `Orbit`, and saying its axis is
+  required everywhere, for the `Prismatic` a mate's freedom included; and
+  none of the messages calls the joint a `Revolute`
 
 ### Requirement: A joint owns one or more coordinates, and each is a port
 

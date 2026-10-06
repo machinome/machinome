@@ -959,17 +959,6 @@ own migration) is not recorded as done here. Condensed 2026-10-04.
   comparison reads disengaged. That is the landing's arithmetic and not a
   promise: a single float is still not a gap, and nothing guarantees another
   model's numbers land on the surface rather than past it.
-- **`a.drives(a)`, one to one, still deadlocks into `UnreachedCoordinate`
-  instead of naming itself.** ADR-100 declined to widen its shared-coordinate
-  refusal to the one-to-one shape and ADR-121 does not either: recognition is
-  scoped to a relation naming SEVERAL ends, which is the only shape that is
-  forward-only, so `a.drives(a)` is not checked at class definition at all.
-  Measured on this worktree (`evidence.md` §1 E): it raises
-  `UnreachedCoordinate: wheel.turn drives wheel.turn: nothing bound either
-  end` at the close of the enumeration, which says nothing about the shape. A
-  one-to-one self-read has no second source to carry slope, so the skeleton
-  test would refuse every such law anyway — the message, not the verdict, is
-  what is wrong.
 - **ADR-113's pushing test is net over the stretch, not local at `t*`.**
   Recorded by ADR-113 itself and untouched here, but a self-read gate makes
   the limit easier to reach: an input that pushes a coordinate over the first
@@ -1643,45 +1632,30 @@ not fixed, until the pilot triages them.
   resolved axis, anchor and range for that instance, beside
   `resolved_frames`. **Recorded.**
 
-## Findings from the framework cycle `slide-by-mate` (2026-09-26)
+## Findings from the framework cycle `name-what-is-refused` (2026-10-06)
 
-- **The axis-less refusal names a `Revolute` for any kind.**
-  `Joint.__set_name__`'s `axisless_refusal` was written when only a
-  `Revolute` could lack an axis; a `Prismatic(axis=None)` written in a
-  class body, or as a mate's freedom, is refused by it with "is a
-  Revolute without an axis ... where the moving frame supplies it",
-  which is wrong on both counts for a `Prismatic` (a `Prismatic` freedom
-  states its axis, ADR-151). Found in the orchestrator's review of
-  `slide-by-mate`; the cycle left the wording alone because widening it
-  was struck with the axis-less `Prismatic`. A one-line wording fix
-  naming the kind and, for a `Prismatic`, saying the axis is required
-  everywhere. **Recorded.**
-
-## Findings from the OpenMANIPULATOR-X project's migration onto mates (2026-09-26)
-
-The validation of `slide-by-mate` (ADR-151) in its originating project:
-the four revolutes and the two prismatic finger joints of
-OpenMANIPULATOR-X stated as mates referencing the URDF transcription
-(branch `frames-and-mates`, commits `597e18c`, `5548c4b`, `eb8ec16`;
-framework `6f11aba`), `capture_poses.py compare` at maximum deviation 0
-(unrounded 0.0) over 23 poses and 43 leaves, the documented suites at
-their `main` counts with no test edited, `machinome export` identical
-but for mtimes, `Rest`/`Present` snapshots byte-identical. Nothing
-refused; the `Prismatic` freedom, its translational coordinate and the
-mimic as a relation between two mates expressed the URDF with nothing
-left over. The workspace's `capture_poses.py compare` silently skips
-ports whose names move between nodes, which every mate migration does;
-the matrices carry the proof, and the tool could say what it skipped.
-Three findings, all consequences, recorded for the pilot's triage.
-
-- **`JointRangeError` names the child's installed joint, not the mate's
-  coordinate.** `set_state(grip=21)` is refused as
-  `...link5.left_finger: joint 'left_travel' declares the range -11.0
-  to 20.0 mm`, naming the joint the mate installed on the finger, while
-  the only place it can be bound is `Link5Assembly.left_travel`; the
-  names match, so a reader finds it, but the message points at the
-  node a reader cannot bind. A wording candidate for the next mates
-  cycle. **Recorded.**
+- **Two comparisons and two messages that cycle left as they were.**
+  Neither is reached by a known project. (1) The several-ends self-read
+  check does not expand an inferred node: `(rack &
+  wheel).drives(wheel.turn, law=...)`, the node standing for its one
+  joint as a source beside the driven `wheel.turn`, is not recognized as
+  a READ of the driven end unless a reused-joint mate's handle is among
+  the ends, because `couplings._alias_comparison_key` expands inferred
+  nodes only then. `name-what-is-refused` expands them for the
+  one-to-one comparison alone, where a match is only ever refused;
+  expanding them in the several-ends comparison would turn an
+  unrecognized shape into a read, which is semantics rather than a
+  message. (2) The constraint-intersection refusals name a bank id or a
+  class: `simulation/program.py`'s `'{identifier}: constraint
+  intersection (lo, hi) is empty'` and `motion/constraints.py`'s
+  `'{Class}.{joint}: constraint intersection ...'` would name the joint a
+  mate installed on the moving child (its bank id is
+  `...left_finger.left_travel`) or the child's class, not the mate, for a
+  mate's coordinate an ancestor constrains. The bank id is what the run
+  and the published document carry, so renaming it is not a message
+  change. Evidence:
+  `openspec/changes/archive/2026-10-06-name-what-is-refused/design.md`,
+  "Open Questions". **Recorded.**
 
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 

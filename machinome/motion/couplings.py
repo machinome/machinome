@@ -1224,6 +1224,38 @@ def _self_read_index(driver_ref, driven_ref):
     return None
 
 
+def _names_one_coordinate(driver_ref, driven_ref):
+    """Whether a relation naming ONE coordinate at each end names the
+    same coordinate at both: `wheel.turn.drives(wheel.turn)`, however
+    spelled -- a written path, the node standing for its one joint
+    (`wheel`), or a reused-joint mate's handle (`mount`).
+
+    The comparison `_self_read_index` makes for a group, with inferred
+    nodes expanded unconditionally: a match here is only ever refused,
+    never read, so expanding them widens nothing. Called after both
+    ends' checks, so `declaration()` of an inferred node resolves
+    (OpenSpec change ``name-what-is-refused``).
+    """
+    return (_alias_comparison_key(driver_ref, True)
+            == _alias_comparison_key(driven_ref, True))
+
+
+def _refuse_one_source_driving_itself(driver_ref, driven_ref):
+    relation = f'{driver_ref.described()} drives {driven_ref.described()}'
+    source = driver_ref.described()
+    end = driven_ref.described()
+    return TypeError(
+        f"{relation}: the relation's one source, {source}, is its own "
+        f"driven end, {end}. A relation naming one coordinate at each end "
+        f"computes the driven value from the source's, and here there is "
+        f"no other value to compute it from: bound at either end it is "
+        f"the same coordinate bound twice, and bound at neither nothing "
+        f"reaches it. Drive {end} from another coordinate; a law that "
+        f"reads the coordinate it drives names another source beside it, "
+        f"(source & {end}).drives({end}, law=...), under a root declaring "
+        f"time = Time.running().")
+
+
 def _under_running_root(record):
     """Whether the tree this record hangs in is posed by a run.
 
@@ -2385,6 +2417,13 @@ def relate(driver, driven, ratio=None, offset=None, law=None):
             continue
         member.check('driver')
     driven_ref.check('driven')
+    if not several and _names_one_coordinate(driver_ref, driven_ref):
+        # One coordinate at each end, the same one: not a read, which
+        # only a relation naming several ends makes, but a relation with
+        # nothing to compute its driven end from. Refused here by name,
+        # where the several-ends shape is judged, rather than left to
+        # the enumeration (OpenSpec change ``name-what-is-refused``).
+        raise _refuse_one_source_driving_itself(driver_ref, driven_ref)
     if several:
         if law is None:
             raise TypeError(
@@ -2829,7 +2868,8 @@ def refuse_bounds(enumeration):
     binding. A coordinate a CLOCKED simulation compiled a constraint for
     is not judged at the pose a REQUEST makes, for exactly that reason.
     """
-    from machinome.motion.joints import Bound, JointRangeError, _where
+    from machinome.motion.joints import (Bound, JointRangeError,
+                                         _binding_site, _where)
 
     for node, joint, value in enumeration.bounds:
         slot = joint.coordinate.__get__(node)
@@ -2852,16 +2892,18 @@ def refuse_bounds(enumeration):
         named = ', '.join(f'{description} = {read!r}'
                           for description, read in read_values.items())
         if low is not None and high is not None and low > high:
+            site, coordinate = _binding_site(node, joint)
             raise JointRangeError(
-                f"{_where(node)}: joint '{joint.name}' -- the coordinate "
-                f"{_where(node)}.{joint.name} -- declares a range "
+                f"{_where(site)}: {coordinate} -- the coordinate "
+                f"{_where(site)}.{joint.name} -- declares a range "
                 f"whose bounds evaluate at {value!r}, with {named}, to "
                 f"({low}, {high}), which is reversed: a range is (lo, hi).")
         if (low is None or low <= value) and (high is None or value <= high):
             continue
+        site, coordinate = _binding_site(node, joint)
         raise JointRangeError(
-            f"{_where(node)}: joint '{joint.name}' -- the coordinate "
-            f"{_where(node)}.{joint.name} -- declares the range "
+            f"{_where(site)}: {coordinate} -- the coordinate "
+            f"{_where(site)}.{joint.name} -- declares the range "
             f"{'unbounded' if low is None else low} to "
             f"{'unbounded' if high is None else high} "
             f"{joint.unit or 'units'}, and {value!r} is outside it. The "
@@ -2899,10 +2941,12 @@ def _bound_side(node, joint, bound, value, side, read_values):
         values.append(read)
     evaluated = bound.arguments(value, values)
     if isinstance(evaluated, bool) or not isinstance(evaluated, (int, float)):
-        from machinome.motion.joints import JointRangeError, _where
+        from machinome.motion.joints import (JointRangeError, _binding_site,
+                                             _where)
 
+        site, coordinate = _binding_site(node, joint)
         raise JointRangeError(
-            f"{_where(node)}: joint '{joint.name}' states its {side} bound "
+            f"{_where(site)}: {coordinate} states its {side} bound "
             f"over the coordinates it reads, and at {value!r} it evaluates "
             f"to {evaluated!r}, which is not a number. A bound states where "
             f"the coordinate may be, in {joint.unit or 'units'}.")
