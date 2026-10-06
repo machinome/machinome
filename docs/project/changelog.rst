@@ -67,6 +67,13 @@ Unreleased
   refused by the viewer's command line (``argument --up: expected one
   argument``); the framework now hands the viewer each camera vector in
   one token with its option (tooling-paths-and-flags).
+* **A failing assertion names a part by its path.** Every assertion of
+  ``machinome.test`` names a part by its path below the node under test,
+  the path the viewer's tree shows and a qualified driver id is built
+  from, so two instances of one class read apart: ``centre.wheel should
+  not interfere with third.wheel``, where it used to read ``wheel should
+  not interfere with wheel``. A direct child of the node under test reads
+  as before (name-solids-by-path).
 
 Machinome 0.8.0
 ---------------

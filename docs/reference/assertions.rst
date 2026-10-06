@@ -8,7 +8,11 @@ live next to the model. The runner builds the node under test, hands it
 over as ``self.node`` and as the snake-case name of the test class
 (``SpurGearTest`` gives ``self.spur_gear``), and runs every ``test_``
 method once per declared instant, restoring operation checkpoints
-between. All the standard ``unittest`` assertions are available.
+between. A failure names a part by its path below the node under test,
+as ``movement.train.third.wheel``: the path the viewer's tree shows and a
+qualified driver id is built from, so two instances of one class read
+apart. A direct child of the node under test reads as its bare name. All
+the standard ``unittest`` assertions are available.
 
 Pairs of parts
 --------------

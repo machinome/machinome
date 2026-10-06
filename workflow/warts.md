@@ -254,18 +254,6 @@ things worth fixing. None is filed.
   its archived change. Telling James Bruton is your call; I have not
   contacted anyone.
 
-# 3DPrintedClocks (2026-09-07, shared simulation package)
-
-- No public way to give a declared child an instance-specific tree name.
-  Mantel clock 34's `TrainArbor` (one class, six instances) set
-  `part.name` and the private `_explicit_name` on its `wheel` and `rod`
-  children so the viewer tree and interference failures said which wheel
-  was which. The refactor dropped the private and relies on the hierarchy
-  (`train.centre.wheel`); an interference failure still names the leaf
-  only (`wheel should not interfere with wheel`). A public per-instance
-  name, or failure messages that print the qualified path, would close
-  it.
-
 # Robots/Thor (2026-09-07, full simulation with fasteners)
 
 507 printed and bought solids, six joints and a gripper, every part exact.
@@ -310,12 +298,6 @@ the project rather than fixed there.
   inventory pattern first-class instead of a raid on the internals. It
   would also let it follow the run's kernel, which the hand-rolled version
   could not.
-
-  Related: neither the assertion nor the pair helpers can name a solid by
-  its path. `seats.qualified_names()` walks the tree to build
-  `{id(node): 'shoulder.art2.art3.art4.art56.gt2x40_pulley_1'}`, because
-  `solid.name` is `gt2x40_pulley_1` and this machine has two. Same gap as
-  the 3DPrintedClocks entry above, from the other side.
 
 # science-jubilee (2026-09-08)
 
@@ -719,9 +701,6 @@ delegation. Its items 1 to 9 are integrated on main. What remains of it:
 
 ## Planned, never done
 
-- **Interference failures name the leaf, not its path** (3DPrintedClocks
-  mantel 34, Thor). Cycle `name-solids-by-path`: proposed on the unmerged
-  branch `fix-warts` (`c8c0b6f`), not implemented.
 - **`%` on a symbolic value disagrees across runtimes** (item 7 above; see
   also "The framework's two meanings of `%`" below). Cycle
   `expression-remainder`, never started.
@@ -1641,6 +1620,23 @@ not fixed, until the pilot triages them.
   after it. Candidate fix: print standard output when standard error is
   empty. Evidence: the same change's design.md, Context §2 and Open
   Question 2. **Recorded.**
+
+## Findings from the framework cycle `name-solids-by-path` (2026-10-06)
+
+- **An engine's own error still names a part by its bare name.** Every
+  assertion message of `machinome.test` now names a part by its path below
+  the node under test, but the labels the engines carry into their own
+  errors are still `node.name`: the mesh engine's refusal of a flexible
+  part's mesh (`f"{node.name} at this binding"`, handed to `_admitted`),
+  the B-rep engine's `intersect_shapes` labels for an assembly candidate
+  pair, `_brep_verdict`'s labels in `_intersection_stats`, and
+  `fuse_shapes`'s labels in `assertJoined`. They are passed from
+  module-level helpers that hold no node under test, so a reader can see
+  `wheel` in an engine error beside `centre.wheel` in an assertion. No
+  project has asked about them; qualifying them means threading a root
+  through those helpers on the per-pair path. Evidence:
+  `openspec/changes/archive/2026-10-06-name-solids-by-path/design.md`,
+  Decision 4, second table. **Recorded.**
 
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 

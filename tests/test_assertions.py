@@ -830,3 +830,83 @@ class TranslationalPinInBoreTest(TestCase):
         self.assertIn('displaced', message)
         self.assertIn('along', message)
         self.assertIn('no intersection', message)
+
+
+def _linked_double(name, parent=None):
+    node = FakeNode(name)
+    node._parent = parent
+    return node
+
+
+class NamedByPathTest(TestCase):
+    """A failing assertion names a node by its path below the node under
+    test (OpenSpec change `name-solids-by-path`): two instances of one
+    class, `centre` and `third`, each holding a `wheel`, read apart. A
+    direct child, the node under test itself and an unlinked node read as
+    their bare names, as before."""
+
+    def setUp(self):
+        self.root = _linked_double('Root')
+        self.centre = _linked_double('centre', self.root)
+        self.third = _linked_double('third', self.root)
+        self.centre_wheel = _linked_double('wheel', self.centre)
+        self.third_wheel = _linked_double('wheel', self.third)
+        self.lever = _linked_double('lever', self.root)
+        self.case = AssertingTestCase()
+        self.case.set_node(self.root)
+
+    def failure(self, case, assertion, *args, **kwargs):
+        with self.assertRaises(AssertionError) as caught:
+            getattr(case, assertion)(*args, **kwargs)
+        return str(caught.exception)
+
+    def test_two_instances_of_one_class_read_apart(self):
+        message = self.failure(self.case, 'assertNotIntersecting',
+                               self.centre_wheel, self.third_wheel)
+
+        self.assertTrue(message.startswith(
+            'centre.wheel should not intersect third.wheel '
+            '(intersection volume'), message)
+
+    def test_the_perturbation_pair_reads_apart(self):
+        message = self.failure(self.case, 'assertFreeWithin',
+                               self.centre_wheel, 1, self.third_wheel)
+
+        self.assertTrue(message.startswith(
+            'centre.wheel should be free at 1deg against third.wheel'),
+            message)
+
+    def test_a_direct_child_keeps_its_bare_name(self):
+        message = self.failure(self.case, 'assertNotIntersecting',
+                               self.lever, self.centre_wheel)
+
+        self.assertTrue(message.startswith(
+            'lever should not intersect centre.wheel (intersection volume'),
+            message)
+
+    def test_the_node_under_test_keeps_its_bare_name(self):
+        message = self.failure(self.case, 'assertNotIntersecting',
+                               self.root, self.centre_wheel)
+
+        self.assertTrue(message.startswith(
+            'Root should not intersect centre.wheel (intersection volume'),
+            message)
+
+    def test_unlinked_nodes_read_as_before(self):
+        message = self.failure(self.case, 'assertNotIntersecting',
+                               FakeNode(), FakeNode())
+
+        self.assertTrue(message.startswith(
+            'Node should not intersect Node (intersection volume'), message)
+
+    def test_no_bound_node_names_below_the_tree_top(self):
+        unbound = AssertingTestCase()
+        of_a_class = AssertingTestCase()
+        of_a_class.set_node(FakeNode)
+
+        for case in (unbound, of_a_class):
+            message = self.failure(case, 'assertNotIntersecting',
+                                   self.centre_wheel, self.third_wheel)
+            self.assertTrue(message.startswith(
+                'centre.wheel should not intersect third.wheel '
+                '(intersection volume'), message)

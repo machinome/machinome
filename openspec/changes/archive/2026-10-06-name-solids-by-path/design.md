@@ -338,7 +338,11 @@ publish, unchanged.
   documented run stays at 20 tests, 15 passed, 5 failed, its interference
   failures now naming `movement.pendulum.bob.shell` and
   `movement.pendulum.bob.lid_screw_right`; the provoked failure names
-  `movement.train.third.wheel` and `movement.train.fourth.wheel`. Thor's
+  `movement.train.third.wheel` and `movement.train.fourth.wheel`, and the
+  whole-train assertion names the first pair its sweep meets by its
+  paths (measured: `movement.train.centre.wheel.wheel` against
+  `movement.train.fourth.wheel`, a pair the old message printed as
+  `wheel` twice; evidence.md, 6.2). Thor's
   path comparison is re-run and its result set beside the framework's new
   wording on a Thor solid (`path_name` of
   `...gt2x40_pulley_1` equals `qualified_names()`'s string).

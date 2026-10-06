@@ -387,3 +387,55 @@ direction begins with a negative component reaches the viewer intact;
 Voron-2's camera, run on the framework's own snapshot fixture, writes its
 image. The separate static-export stall Voron-2 saw without a camera stays
 the viewer's.
+
+## `name-solids-by-path`
+
+From "3DPrintedClocks (2026-09-07, shared simulation package)":
+
+- No public way to give a declared child an instance-specific tree name.
+  Mantel clock 34's `TrainArbor` (one class, six instances) set
+  `part.name` and the private `_explicit_name` on its `wheel` and `rod`
+  children so the viewer tree and interference failures said which wheel
+  was which. The refactor dropped the private and relies on the hierarchy
+  (`train.centre.wheel`); an interference failure still names the leaf
+  only (`wheel should not interfere with wheel`). A public per-instance
+  name, or failure messages that print the qualified path, would close
+  it.
+
+From "Robots/Thor (2026-09-07, full simulation with fasteners)", the last
+paragraph of its second entry (the interference inventory, which stays
+open in `../../warts.md`):
+
+  Related: neither the assertion nor the pair helpers can name a solid by
+  its path. `seats.qualified_names()` walks the tree to build
+  `{id(node): 'shoulder.art2.art3.art4.art56.gt2x40_pulley_1'}`, because
+  `solid.name` is `gt2x40_pulley_1` and this machine has two. Same gap as
+  the 3DPrintedClocks entry above, from the other side.
+
+**What shipped.** `name-solids-by-path`
+(`openspec/changes/archive/2026-10-06-name-solids-by-path/`) closes it with
+the second remedy the clock entry names: failure messages print the path.
+Every assertion of `machinome.test` that names a node names it by its path
+below the node under test, the dotted linked child names the serialized
+document publishes and a qualified driver id is built from (ADR-056), so
+`wheel should not interfere with wheel` reads `centre.wheel should not
+interfere with third.wheel`. One internal helper, `path_name` in
+`machinome/node/qualified.py`, beside `instance_path` and reading the same
+segments, builds every name and never raises: the node under test, a node
+linked under nothing and the support assertion's floor keep their bare
+names, a node outside the node under test is named below the top of its
+own tree, and a message naming only direct children is unchanged. No
+public per-instance name was added. Mantel clock 34's documented run stays
+at 20 tests, 15 passed and the same 5 failed, its failures now reading
+`movement.pendulum.bob.shell should not interfere with
+movement.pendulum.bob.lid_screw_right` and `case.plates.edging should be
+one connected body, ...`; a scratch script pulling the fourth arbor onto
+the third reads `movement.train.third.wheel should not intersect
+movement.train.fourth.wheel`, and the whole train's sweep now shows that
+the first pair it meets is the centre arbor's lantern wheel against the
+fourth (`movement.train.centre.wheel.wheel should not interfere with
+movement.train.fourth.wheel`), which the old message printed as `wheel`
+twice. On Thor, `path_name` gives each of the 438 printed solids the string
+`seats.qualified_names()` builds by hand, so the project's walk may be
+dropped by the project. The labels the engines put in their own errors
+still print a bare name; that residue is filed in `../../warts.md`.

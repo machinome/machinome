@@ -315,6 +315,30 @@ class ChildNamingMetaTest(TestCase):
         self.assertEqual(run.returncode, 0)
 
 
+class NamedByPathMetaTest(TestCase):
+    """Two instances of one class under one parent, each holding a
+    `wheel`, the wheels overlapping (3DPrintedClocks' mantel clock 34):
+    a failure names each wheel by its path below the node under test,
+    the path the document and the viewer's tree give it, rather than
+    the same leaf name twice (OpenSpec change `name-solids-by-path`)."""
+
+    def test_two_instances_of_one_class_are_named_apart(self):
+        run = solid_test('two_arbors')
+        self.assertEqual(run.results, {
+            'test_no_interference': 'failed',
+            'test_wheels_apart': 'failed',
+        })
+        self.assertEqual((run.total, run.passed, run.failed), (2, 0, 2))
+        self.assertIn(
+            'centre.wheel should not interfere with third.wheel '
+            '(intersection volume', run.stdout)
+        self.assertIn(
+            'centre.wheel should not intersect third.wheel '
+            '(intersection volume', run.stdout)
+        self.assertNotIn('wheel should not interfere with wheel', run.stdout)
+        self.assertNotEqual(run.returncode, 0)
+
+
 class NonLinearSymbolicMathMetaTest(TestCase):
     """Bug: AssemblyNode.time is numeric under set_keyframe() (tests)
     but symbolic ($t, a solid2 OpenSCADConstant) in the viewer/build
@@ -412,7 +436,7 @@ class PairwiseAdjacencyMetaTest(TestCase):
         run = solid_test('separated_overlap')
         self.assertEqual(run.results,
                          {'test_no_pairwise_intersections': 'failed'})
-        self.assertIn('a should not intersect c', run.stdout)
+        self.assertIn('a should not intersect group.c', run.stdout)
         self.assertNotEqual(run.returncode, 0)
 
 
@@ -469,11 +493,11 @@ class AssemblySupportMetaTest(TestCase):
         # Every unsupported solid is named, including the one that
         # correctly rests on a floating part, with the drop and gravity
         # that were used.
-        self.assertIn('floater, rider should be supported against gravity',
-                      run.stdout)
+        self.assertIn('chain.floater, chain.rider should be supported '
+                      'against gravity', run.stdout)
         self.assertIn('dropped 1mm along gravity (0, 0, -1)', run.stdout)
-        self.assertIn('left, right should be supported against gravity',
-                      run.stdout)
+        self.assertIn('leaning.left, leaning.right should be supported '
+                      'against gravity', run.stdout)
         self.assertIn('dropped 1.5mm along gravity (0, 0, -1)', run.stdout)
         self.assertNotEqual(run.returncode, 0)
 
@@ -533,11 +557,11 @@ class AssemblySupportMetaTest(TestCase):
             'test_tippy_seed_is_reported': 'failed',
         })
         self.assertEqual((run.total, run.passed, run.failed), (2, 0, 2))
-        self.assertIn('bar cannot rest in frictionless static equilibrium',
-                      run.stdout)
+        self.assertIn('cantilever.bar cannot rest in frictionless static '
+                      'equilibrium', run.stdout)
         self.assertIn('(unbalanced torque)', run.stdout)
-        self.assertIn('tippy cannot rest in frictionless static equilibrium',
-                      run.stdout)
+        self.assertIn('tippy.tippy cannot rest in frictionless static '
+                      'equilibrium', run.stdout)
         self.assertIn('supports=[(supported, supporter)]', run.stdout)
         self.assertNotIn('neighbour cannot rest', run.stdout)
         self.assertNotEqual(run.returncode, 0)
@@ -594,7 +618,8 @@ class ExactGeometryMetaTest(TestCase):
             r'Running AssemblyIntegrityAnimatedTest\.test_assembly_integrity'
             r'\.\.\.FAIL!',
         )
-        self.assertIn('fixed should not interfere with moving', run.stdout)
+        self.assertIn('fixed should not interfere with carriage.moving',
+                      run.stdout)
         self.assertIn('intersection volume', run.stdout)
         self.assertNotEqual(run.returncode, 0)
 
@@ -614,7 +639,8 @@ class ExactGeometryMetaTest(TestCase):
             r'Running AssemblyIntegrityAnimatedTest\.test_assembly_integrity'
             r'\.\.\.FAIL!',
         )
-        self.assertIn('fixed should not interfere with moving', stdout)
+        self.assertIn('fixed should not interfere with carriage.moving',
+                      stdout)
         self.assertNotEqual(proc.returncode, 0)
 
 

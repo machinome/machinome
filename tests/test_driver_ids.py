@@ -21,7 +21,7 @@ change exists to remove).
 import machinome.math as sn_math
 from machinome.node.qualified import (
     DriverIdError, DriverToken, declared_drivers_of, driver_id,
-    drive_tree, instance_path,
+    drive_tree, instance_path, path_name,
 )
 
 from .base import BaseNodeTest
@@ -82,6 +82,75 @@ class QualifiedIdTest(BaseNodeTest):
     def test_declarations_are_read_off_the_class(self):
         self.assertEqual(sorted(declared_drivers_of(Axis)), ['motor'])
         self.assertEqual(declared_drivers_of(Machine), {})
+
+
+def _linked(machine):
+    drive_tree(machine, lambda node, path, name, declaration:
+               declaration.default)
+    return machine
+
+
+class PathNameTest(BaseNodeTest):
+    """`path_name` names a node in a failure message by the same
+    segments `instance_path` gives a driver id, and never raises: a
+    message that could not be built would replace the failure it
+    reports (OpenSpec change `name-solids-by-path`)."""
+
+    def nodes_below(self, machine):
+        found = []
+        for axis in (machine.x_axis, machine.y_axis):
+            found.append(axis)
+            found.extend((axis.carriage, axis.pulley, axis.cover))
+        return found
+
+    def test_the_path_is_the_instance_path_a_driver_id_is_built_from(self):
+        machine = _linked(Machine())
+
+        for node in self.nodes_below(machine):
+            self.assertEqual(path_name(node, machine),
+                             '.'.join(instance_path(node, machine)))
+        self.assertEqual(path_name(machine.x_axis.carriage, machine),
+                         'x_axis.carriage')
+        self.assertEqual(path_name(machine.y_axis.carriage, machine),
+                         'y_axis.carriage')
+        self.assertEqual(path_name(machine.y_axis.cover, machine),
+                         'y_axis.cover')
+
+    def test_the_root_is_named_by_its_bare_name(self):
+        machine = _linked(Machine())
+
+        self.assertEqual(path_name(machine, machine), machine.name)
+
+    def test_an_unlinked_node_is_named_by_its_bare_name(self):
+        fresh = Machine()
+
+        with self.assertRaises(DriverIdError):
+            instance_path(fresh.x_axis, fresh)
+        self.assertEqual(path_name(fresh.x_axis, fresh), fresh.x_axis.name)
+        self.assertEqual(path_name(fresh.x_axis.carriage, fresh),
+                         fresh.x_axis.carriage.name)
+
+    def test_a_node_of_another_tree_is_named_below_its_own_top(self):
+        machine = _linked(Machine())
+        other = _linked(Machine())
+
+        self.assertEqual(path_name(other.x_axis.carriage, machine),
+                         'x_axis.carriage')
+        self.assertEqual(path_name(other.x_axis.carriage), 'x_axis.carriage')
+        self.assertEqual(path_name(machine.y_axis.pulley), 'y_axis.pulley')
+
+    def test_a_list_held_segment_is_printed_as_derived(self):
+        """`drive_tree` refuses `axes-0` as a driver-id segment before it
+        links the axes' own children, so this tree is linked the way a
+        render links it, one sibling batch per parent."""
+        machine = ListMachine()
+        machine._link_children(list(machine.axes))
+        for axis in machine.axes:
+            axis._link_children([axis.carriage, axis.pulley, axis.cover])
+
+        self.assertEqual(path_name(machine.axes[0].carriage, machine),
+                         'axes-0.carriage')
+        self.assertEqual(path_name(machine.axes[1], machine), 'axes-1')
 
 
 class DriverTokenTest(BaseNodeTest):

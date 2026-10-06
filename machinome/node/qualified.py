@@ -263,6 +263,36 @@ def instance_path(node, root):
     return tuple(reversed(parts))
 
 
+def path_name(node, root=None):
+    """`node`'s name in a message: its dotted path of linked names below
+    `root`, or its bare name when it has no path.
+
+    The segments are the ones `instance_path` reads, by the same walk up
+    `_parent`, so a failure message names a node exactly as its driver
+    ids and the serialized document do (`train.third.wheel`). It is not
+    a relaxed `instance_path`: a driver id must fail loudly where it
+    cannot be derived (the module docstring), and a message must never
+    fail at all, since a naming error would replace the failure it
+    reports. So when the walk never meets `root` -- `root` is None, a
+    class, or not an ancestor -- the path is taken below the topmost
+    node `node` is linked under; and the root itself, or a node linked
+    under nothing, is named by its bare name.
+
+    No segment rule applies: a message is prose, not an expression, so a
+    list-held child's `<attribute>-<index>` is printed as derived rather
+    than refused or rewritten.
+    """
+    parts = []
+    current = node
+    while current is not root:
+        parent = getattr(current, '_parent', None)
+        if parent is None:
+            break
+        parts.append(current.name)
+        current = parent
+    return '.'.join(reversed(parts)) if parts else node.name
+
+
 class DriverToken(GraphValue):
     """A symbolic read of one driver: a constant whose string IS its
     qualified id.

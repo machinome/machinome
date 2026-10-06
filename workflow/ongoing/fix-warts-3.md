@@ -113,6 +113,20 @@ in the same cycle.
   its image on the framework's own fixture. Three entries moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`; `--render`'s meaning
   and the empty failure message recorded in `../warts.md`.
+- 6 October 2026: cycle 6, `name-solids-by-path`, applied: every
+  assertion of `machinome.test` names a part by its path below the node
+  under test, the segments the document and driver ids already use, so
+  two instances of one class read apart (`centre.wheel should not
+  interfere with third.wheel`); a direct child, the node under test and an
+  unlinked node read as before. Mantel clock 34's documented run stays at
+  20 tests, 15 passed, 5 failed, its failures now naming
+  `movement.pendulum.bob.shell` and
+  `movement.pendulum.bob.lid_screw_right`; a provoked failure names
+  `movement.train.third.wheel` and `movement.train.fourth.wheel`; on Thor
+  the printed path equals `seats.qualified_names()` for all 438 printed
+  solids. The clock entry and Thor's "Related:" paragraph moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; the engines' bare-name
+  labels recorded in `../warts.md`.
 
 ## Deferred to the pilot
 

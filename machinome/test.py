@@ -27,6 +27,7 @@ from machinome.node.base import (cached_base_mesh, _compose_solid_matrix,
                                   _topmost_rigid_nodes)
 from machinome.node.flexible import FlexibleNode
 from machinome.node.operations import Rotation, Translation
+from machinome.node.qualified import path_name
 
 
 _BREP_NEEDED_BY = 'Comparing B-rep geometry'
@@ -2034,6 +2035,12 @@ class TestCase(BaseTestCase):
 
         setattr(self, attr_name, node)
 
+    def _named(self, node):
+        """`node` as a failure message names it: its path below the node
+        under test, whichever node the assertion was called with, so one
+        node reads the same in every message of a run."""
+        return path_name(node, getattr(self, 'node', None))
+
     ########################################
     # Assertion methods for mesh operations
     #
@@ -2043,8 +2050,8 @@ class TestCase(BaseTestCase):
         is_empty, volume = _intersection_stats(node1, node2)
         if not is_empty:
             raise AssertionError(
-                f"{node1.name} should not intersect {node2.name} "
-                f"(intersection volume {volume})"
+                f"{self._named(node1)} should not intersect "
+                f"{self._named(node2)} (intersection volume {volume})"
             )
 
     def assertIntersecting(self, node1, node2):
@@ -2052,14 +2059,16 @@ class TestCase(BaseTestCase):
         is_empty, _ = _intersection_stats(node1, node2)
         if is_empty:
             raise AssertionError(
-                f"{node1.name} should intersect {node2.name}")
+                f"{self._named(node1)} should intersect "
+                f"{self._named(node2)}")
 
     def assertInside(self, node1, node2):
         """Make sure node2 is completely inside node1"""
         inside = node1.mesh.contains(node2.mesh.vertices)
         if not inside.all():
             raise AssertionError(
-                f"All vertices of {node2.name} should be inside {node1.name}")
+                f"All vertices of {self._named(node2)} should be inside "
+                f"{self._named(node1)}")
 
     def assertClose(self, node1, node2, max_distance):
         """Require node1-to-node2 distance to be below max_distance."""
@@ -2068,8 +2077,8 @@ class TestCase(BaseTestCase):
         distances = closest_points[1]
         if not (distances <= max_distance).all():
             raise AssertionError(
-                f"All points of {node2.name} should be at most "
-                f"{max_distance} units away from {node1.name}")
+                f"All points of {self._named(node2)} should be at most "
+                f"{max_distance} units away from {self._named(node1)}")
 
     def assertFar(self, node1, node2, min_distance):
         """Require node1-to-node2 distance to be above min_distance."""
@@ -2078,8 +2087,8 @@ class TestCase(BaseTestCase):
         distances = closest_points[1]
         if not (distances >= min_distance).all():
             raise AssertionError(
-                f"All points of {node2.name} should be at least "
-                f"{min_distance} units away from {node1.name}")
+                f"All points of {self._named(node2)} should be at least "
+                f"{min_distance} units away from {self._named(node1)}")
 
     def assertIntersectVolumeAbove(self, node1, node2, min_volume):
         """Make sure the volume of the intersection between node1 and node2
@@ -2088,8 +2097,8 @@ class TestCase(BaseTestCase):
         _, volume = _intersection_stats(node1, node2)
         if volume < min_volume:
             raise AssertionError(
-                f"The intersection volume of {node1.name} and {node2.name} "
-                f"should be above {min_volume}")
+                f"The intersection volume of {self._named(node1)} and "
+                f"{self._named(node2)} should be above {min_volume}")
 
     def assertIntersectVolumeBelow(self, node1, node2, max_volume):
         """Make sure the volume of the intersection between node1 and node2
@@ -2098,8 +2107,8 @@ class TestCase(BaseTestCase):
         _, volume = _intersection_stats(node1, node2)
         if volume > max_volume:
             raise AssertionError(
-                f"The intersection volume of {node1.name} and {node2.name} "
-                f"should be below {max_volume}")
+                f"The intersection volume of {self._named(node1)} and "
+                f"{self._named(node2)} should be below {max_volume}")
 
     ########################################
     # Perturbation assertions: torque-fit / linear-stop contracts
@@ -2262,16 +2271,16 @@ class TestCase(BaseTestCase):
             if expect_intersect and not is_fouling:
                 if is_empty:
                     raise AssertionError(
-                        f"{node.name} should be blocked {label} "
-                        f"against {against.name} (no intersection)")
+                        f"{self._named(node)} should be blocked {label} "
+                        f"against {self._named(against)} (no intersection)")
                 raise AssertionError(
-                    f"{node.name} should be blocked {label} "
-                    f"against {against.name} (intersection volume {volume} "
-                    f"does not exceed epsilon {volume_epsilon})")
+                    f"{self._named(node)} should be blocked {label} "
+                    f"against {self._named(against)} (intersection volume "
+                    f"{volume} does not exceed epsilon {volume_epsilon})")
             if not expect_intersect and is_fouling:
                 message = (
-                    f"{node.name} should be free {label} "
-                    f"against {against.name} "
+                    f"{self._named(node)} should be free {label} "
+                    f"against {self._named(against)} "
                     f"(intersection volume {volume})")
                 if volume_epsilon > 0:
                     message += f", exceeds epsilon {volume_epsilon}"
@@ -2302,8 +2311,8 @@ class TestCase(BaseTestCase):
                 source = 'STL'
             if bodies != 1:
                 raise AssertionError(
-                    f"{solid.name} should be one connected body, but its "
-                    f"{source} "
+                    f"{self._named(solid)} should be one connected body, "
+                    f"but its {source} "
                     f"contains {bodies} connected bodies")
 
     def assertNoSolidInterference(self, node):
@@ -2353,8 +2362,8 @@ class TestCase(BaseTestCase):
             solid1 = solids[first][0]
             solid2 = solids[second][0]
             raise AssertionError(
-                f"{solid1.name} should not interfere with {solid2.name} "
-                f"(intersection volume {volume})")
+                f"{self._named(solid1)} should not interfere with "
+                f"{self._named(solid2)} (intersection volume {volume})")
 
     def assertAssemblySupported(self, node, gravity=(0, 0, -1), max_drop=1.0,
                                 ground=None, supports=None,
@@ -2484,7 +2493,7 @@ class TestCase(BaseTestCase):
         unsupported = [solid for index, solid in enumerate(selected)
                        if index not in grounded]
         if unsupported:
-            names = ', '.join(solid.name for solid in unsupported)
+            names = ', '.join(self._named(solid) for solid in unsupported)
             direction = ', '.join(f'{value:g}' for value in unit_gravity)
             raise AssertionError(
                 f"{names} should be supported against gravity, but no "
@@ -2513,11 +2522,11 @@ class TestCase(BaseTestCase):
             return _placed_mesh_solid(
                 record, _STATICS_NEEDED_BY, _STATICS_REASON)
 
-        bodies = [_statics_body(record[0].name, body_solid(record),
+        bodies = [_statics_body(self._named(record[0]), body_solid(record),
                                 index in anchors)
                   for index, record in enumerate(targets[:len(selected)])]
-        bodies.extend(_statics_body(record[0].name, body_solid(record),
-                                    True)
+        bodies.extend(_statics_body(self._named(record[0]),
+                                    body_solid(record), True)
                       for record in targets[len(selected):])
 
         contacts = []
@@ -2570,9 +2579,10 @@ class TestCase(BaseTestCase):
         solid2 = _enclosing_solid(node2)
         if solid1 is not None and solid2 is not None and solid1 is not solid2:
             raise AssertionError(
-                f"{node1.name} and {node2.name} cannot be joined: they "
-                f"belong to different solids ({solid1.name} and "
-                f"{solid2.name}). Features weld only inside one printed "
+                f"{self._named(node1)} and {self._named(node2)} cannot be "
+                f"joined: they belong to different solids "
+                f"({self._named(solid1)} and {self._named(solid2)}). "
+                f"Features weld only inside one printed "
                 f"part; parts placed by an assembly are separate by "
                 f"construction"
             )
@@ -2596,14 +2606,15 @@ class TestCase(BaseTestCase):
             bodies = max(bodies, 2)
         if bodies != 1:
             raise AssertionError(
-                f"{node1.name} and {node2.name} should be joined into one "
-                f"body, but their union has {bodies} connected components "
+                f"{self._named(node1)} and {self._named(node2)} should be "
+                f"joined into one body, but their union has {bodies} "
+                f"connected components "
                 f"(shared volume {weld_volume})"
             )
         if min_weld_volume > 0 and abs(weld_volume) < min_weld_volume:
             raise AssertionError(
-                f"{node1.name} and {node2.name} are joined by a weld of "
-                f"only {weld_volume} mm^3, below the required "
+                f"{self._named(node1)} and {self._named(node2)} are joined "
+                f"by a weld of only {weld_volume} mm^3, below the required "
                 f"{min_weld_volume} mm^3"
             )
 
@@ -2648,8 +2659,8 @@ class TestCase(BaseTestCase):
                     and abs(volume) <= volume_epsilon):
                 continue
             message = (
-                f"{leaf1.name} should not intersect {leaf2.name} "
-                f"(intersection volume {volume})")
+                f"{self._named(leaf1)} should not intersect "
+                f"{self._named(leaf2)} (intersection volume {volume})")
             if volume_epsilon > 0:
                 message += f", exceeds epsilon {volume_epsilon}"
             raise AssertionError(message)
