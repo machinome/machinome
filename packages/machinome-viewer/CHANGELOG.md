@@ -53,6 +53,14 @@ Released with Machinome 0.8.0 and numbered with it. It declares viewer API
   and pose agree pixel for pixel. Files are still fetched concurrently;
   nothing in the API or the document changes
   (`deterministic-asset-load-order`).
+- **A whole printer mounts.** A posed export the size of a complete 3D
+  printer, the Voron 2.4's 1,565 parts and 232,347 bindings, now mounts and
+  draws. Its expressions are validated in one pass instead of being rebuilt
+  for every part, and geometry files are fetched at most four at a time
+  across every viewer on the page, so the browser no longer runs out of
+  network resources before the model appears. Every refusal of a malformed
+  document stands, and nothing in the API or the document changes
+  (`mount-voron-export`, ADR-078).
 
 ### Compatibility
 

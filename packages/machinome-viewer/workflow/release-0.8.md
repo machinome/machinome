@@ -15,7 +15,9 @@ reports API 29 and reads document schemas 1–13. 0.8.0 is the source on
 fresh rigid-asset draw order became independent of fetch completion
 (`deterministic-asset-load-order`, 29 September, no API change); API 29
 (`on-demand-clocked`, 1 October) mounts a clocked machine with
-`renderMode: 'on-demand'`. The document format does not move: Machinome
+`renderMode: 'on-demand'`. A large posed export mounts: validation runs in one
+pass and geometry loads share a queue of four requests per page
+(`mount-voron-export`, 5 October, no API change). The document format does not move: Machinome
 0.8.0's exports declare versions 1 to 13, as 0.7's do, so a 0.7 viewer
 reads them, and this viewer reads every 0.7 export.
 
