@@ -122,3 +122,24 @@ framework's version or the old spelling (`python/pyproject.toml` depends on
 - Not in this cycle's scope: `README.md` and `AGENTS.md` say no published
   viewer release declares API 28 or 29; machinome-viewer 0.8.0 is on PyPI
   (checked 6 October 2026), which the workspace records as declaring API 29.
+
+## test-cli-in-the-worktree
+
+Status: done on the same branch, its own commit, 6 October 2026; a narrow
+adjustment (test hygiene) for `warts.md`, The player 11.
+
+`python/tests/test_cli.py`'s `run()` gave its child an environment of `PATH`
+alone, so from a worktree `python -m machinome_movie` resolved to the venv's
+editable install, the primary checkout's package. It now passes the
+checkout's `python/` on the child's `PYTHONPATH`, as `test_watch.py`'s
+`environment()` does, with the same comment.
+
+The red, by a mutation: `main()` of this worktree's
+`python/machinome_movie/__main__.py` was made to print `MUTATION: the
+worktree package ran` and exit 97 (`python -m machinome_movie list x` with
+the worktree's `PYTHONPATH` exits 97). Before the fix, with the mutation in
+place, `python -m pytest python/tests/test_cli.py -q` gave `5 passed in
+4.91s`: the children ran the primary's package. After the fix, with the
+mutation still in place, `5 failed in 0.79s`, each child exiting 97 with the
+mutation's message. With the mutation removed, `5 passed in 4.96s`, and the
+whole Python suite 298 passed in 28.0 s.
