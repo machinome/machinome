@@ -509,11 +509,16 @@ class ChildDeclaration:
         """Count-many identical instances of this declaration."""
         return RepeatDeclaration(self, count)
 
-    def realize(self, values, owner):
+    def realize(self, values, owner, index=None):
         """Construct this declaration's child against `values`, `owner`
         being the realized PARENT node itself (not its name): the frame
         a site-declared joint's arguments resolve against, and the
         object a site's callable is handed (design decision 5).
+
+        `index`, given only by `RepeatDeclaration.realize`, is the
+        copy's 0-based position in the repeat: it is in the copy's
+        instance dictionary before the copy's constructor runs (see
+        `_construct`). Every other child is realized without one.
 
         `owner`'s own declared parameters are already resolved, its
         `check()` has already run, and every child it declared BEFORE
@@ -540,7 +545,7 @@ class ChildDeclaration:
         args = [evaluate(arg, values) for arg in self.args]
         kwargs = {key: evaluate(arg, values)
                   for key, arg in self.kwargs.items()}
-        child = self.node_class(*args, **kwargs)
+        child = self._construct(args, kwargs, index)
         if called:
             from machinome.motion.mates import resolve_freedom_functions
 
@@ -549,6 +554,22 @@ class ChildDeclaration:
             self._record_wiring(child, owner)
         if self.site_joints:
             self._resolve_site_joints(child, owner)
+        return child
+
+    def _construct(self, args, kwargs, index):
+        """Construct this declaration's child. A repeat's copy is
+        allocated, given its `index`, and only then initialized, so
+        everything its construction runs -- `check()`, its class-declared
+        joint and frame arguments -- reads its position. This is the
+        protocol `type.__call__` follows, with one write between its two
+        steps. Any other child is a plain call of its class."""
+        node_class = self.node_class
+        if index is None:
+            return node_class(*args, **kwargs)
+        child = node_class.__new__(node_class, *args, **kwargs)
+        if isinstance(child, node_class):
+            child.__dict__['index'] = index
+            type(child).__init__(child, *args, **kwargs)
         return child
 
     def _resolve_site_joints(self, child, parent):
@@ -706,14 +727,10 @@ class RepeatDeclaration:
                 f"must be a non-negative integer, got {count!r}")
         copies = []
         for index in range(count):
-            child = self.declaration.realize(values, owner)
-            # AFTER construction: a legacy (non-declarative) child calls
-            # super().__init__() LAST, after building its own children,
-            # so a slot consumed during __init__ would land on the wrong
-            # node. No sighting needs `index` during construction (every
-            # broadcast law is declared on the PARENT and read at the
-            # end of ITS OWN construction, well after this); see
-            # design.md decision 3.
+            child = self.declaration.realize(values, owner, index=index)
+            # Seeded before construction (ChildDeclaration._construct) and
+            # stamped again here, so the copy ends with its position even
+            # if its own constructor assigned an `index`.
             child.__dict__['index'] = index
             copies.append(child)
         return copies

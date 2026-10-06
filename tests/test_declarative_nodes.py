@@ -28,6 +28,7 @@ from machinome.node.solid2 import Solid2Node
 from machinome.node.declarative import declared_children
 from machinome.node.base import _build_uniq_id
 from machinome.node.declarative import ChildDeclaration, declared_child_nodes
+from machinome.node.frames import Frame, resolved_frames
 from machinome.parameters import (Count, Flag, Length, ParameterError, Ratio,
                                    Scalar, declared_parameters)
 
@@ -502,6 +503,187 @@ class RepeatIndexTest(BaseNodeTest):
         for bead in column.beads:
             with self.subTest(bead=bead.name):
                 self.assertNotEqual(bead.name, 'index')
+
+
+##############################################
+# (change: resolve-repeated-joints-per-copy) The copy's index during its
+# own construction
+
+class Guide(Solid2Node):
+    """Prusa3-vanilla's guide pair as the finding wrote it: one class,
+    repeated twice, each copy turning about its own line, read off its
+    position."""
+
+    turn = Revolute(axis=lambda node: (0, 0, 1 if node.index == 0 else -1),
+                    at=lambda node: (10.0 * node.index, 0, 0),
+                    range=lambda node: (0, 90 + node.index),
+                    unit='deg')
+
+    def render(self):
+        return cube(1, center=True)
+
+
+class GuidePair(AssemblyNode):
+    guides = Guide().repeat(2)
+
+
+class Roller(Solid2Node):
+
+    spin = Orbit(axis=(0, 0, 1),
+                 carries=lambda node: (5.0 + node.index, 0, 0),
+                 unit='deg')
+
+    def render(self):
+        return cube(1, center=True)
+
+
+class Rollers(AssemblyNode):
+    rollers = Roller().repeat(2)
+
+
+class Seated(Solid2Node):
+
+    seat = Frame(at=lambda node: (0, 0, 3.0 * node.index))
+
+    def render(self):
+        return cube(1, center=True)
+
+
+class Seats(AssemblyNode):
+    seats = Seated().repeat(2)
+
+
+class Checked(Solid2Node):
+
+    size = Length(1.0, min=0)
+
+    def check(self):
+        self.seen = self.index
+
+    def render(self):
+        return cube(1, center=True)
+
+
+class CheckedPair(AssemblyNode):
+    items = Checked().repeat(2)
+
+
+class Stubborn(Solid2Node):
+    """A legacy class whose own constructor assigns an `index` before
+    constructing its base."""
+
+    def __init__(self, name=None):
+        self.index = -1
+        super().__init__(name=name)
+
+    def render(self):
+        return cube(1, center=True)
+
+
+class Stubborns(AssemblyNode):
+    items = Stubborn().repeat(2)
+
+
+class Guards(AssemblyNode):
+    guards = Guard(thickness=2.0).repeat(2)
+
+
+class RepeatIndexDuringConstructionTest(BaseNodeTest):
+
+    def test_each_copy_resolves_its_own_joint_arguments(self):
+        pair = GuidePair()
+
+        self.assertEqual(
+            [declared_joints(type(guide))['turn'].arguments(guide)
+             for guide in pair.guides],
+            [((0, 0, 1), (0.0, 0.0, 0.0), (0, 90)),
+             ((0, 0, -1), (10.0, 0.0, 0.0), (0, 91))])
+
+    def test_each_copy_is_placed_by_its_own_joint(self):
+        pair = GuidePair()
+
+        placed = []
+        for guide in pair.guides:
+            guide.turn = 30
+            placed.append([operation.serialized for operation
+                           in guide.__dict__['_joint_motion']['turn']])
+
+        self.assertEqual(placed, [
+            [['r', '30', [0, 0, 1]]],
+            [['t', ['-10.0', '-0.0', '-0.0']],
+             ['r', '30', [0, 0, -1]],
+             ['t', ['10.0', '0.0', '0.0']]]])
+
+    def test_the_copies_keep_one_identity(self):
+        pair = GuidePair()
+
+        self.assertEqual(len({guide.uniq_id for guide in pair.guides}), 1)
+
+    def test_an_orbits_carried_point_reads_the_copys_position(self):
+        rollers = Rollers()
+
+        self.assertEqual(
+            [declared_joints(type(roller))['spin'].arguments(roller)[3]
+             for roller in rollers.rollers],
+            [(5.0, 0.0, 0.0), (6.0, 0.0, 0.0)])
+
+    def test_a_frame_argument_reads_the_copys_position(self):
+        seats = Seats()
+
+        self.assertEqual(
+            [resolved_frames(seat)['seat'].at for seat in seats.seats],
+            [(0.0, 0.0, 0.0), (0.0, 0.0, 3.0)])
+
+    def test_a_check_reads_the_copys_position(self):
+        pair = CheckedPair()
+
+        self.assertEqual([item.seen for item in pair.items], [0, 1])
+
+    def test_a_callable_failing_for_another_reason_is_refused(self):
+        class Wrong(Solid2Node):
+            turn = Revolute(axis=lambda node: node.no_such_thing,
+                            unit='deg')
+
+            def render(self):
+                return cube(1, center=True)
+
+        class Wrongs(AssemblyNode):
+            items = Wrong().repeat(2)
+
+        with self.assertRaises(ParameterError) as raised:
+            Wrongs()
+
+        message = str(raised.exception)
+        for expected in ('Wrong', 'turn', 'axis', 'AttributeError',
+                         'no_such_thing'):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, message)
+
+    def test_a_single_child_still_has_no_index(self):
+        class Single(AssemblyNode):
+            guide = Guide()
+
+        with self.assertRaises(ParameterError) as raised:
+            Single()
+
+        message = str(raised.exception)
+        for expected in ('Guide.turn', 'axis', 'AttributeError', 'index'):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, message)
+
+    def test_a_copy_ends_with_its_position_over_its_own(self):
+        stubborns = Stubborns()
+
+        self.assertEqual([item.index for item in stubborns.items], [0, 1])
+
+    def test_a_legacy_repeat_realizes_with_names_and_positions(self):
+        guards = Guards()
+
+        self.assertEqual([guard.name for guard in guards.guards],
+                         ['guards-0', 'guards-1'])
+        self.assertEqual([guard.thickness for guard in guards.guards],
+                         [2.0, 2.0])
+        self.assertEqual([guard.index for guard in guards.guards], [0, 1])
 
 
 class InstanceCheckTest(BaseNodeTest):
@@ -992,12 +1174,12 @@ class SiteJointCallableTest(BaseNodeTest):
                 self.assertIn(expected, message)
 
     def test_a_copys_index_is_not_reachable_from_a_site_callable(self):
-        """Design decision 5: a `.repeat()` copy's `index` is stamped
-        by `RepeatDeclaration.realize` AFTER the copy's construction --
-        which is also after a site joint's arguments already resolved,
-        against the PARENT, inside `ChildDeclaration.realize`. A site
+        """Design decision 5: a site joint's arguments resolve against
+        the PARENT, inside `ChildDeclaration.realize`, and a site
         callable is handed the declaring parent and only the declaring
-        parent; it has no copy to read `index` off at all."""
+        parent. The copy carries its `index` throughout its own
+        construction, but no copy is in scope for this callable to read
+        `index` off at all."""
 
         def reads_index(parent):
             # The declaring parent has no 'index' of its own here, and

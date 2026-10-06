@@ -96,6 +96,13 @@ in the same cycle.
   made. The entry moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`; the clocks and reads
   outside any phase are recorded in `../warts.md`.
+- 6 October 2026: cycle 4, `resolve-repeated-joints-per-copy`, applied: a
+  `.repeat()` copy carries its `index` from the start of its own
+  construction, so its `check()` and the functions given as its
+  class-declared joint and frame arguments read it and each copy resolves
+  its own; resolution did not move, and ADR-096 is amended. Prusa3-vanilla's
+  documented run unchanged (17 passed, the same 2 failed); the entry moved
+  to `../archive/fix-warts-3-2026-10-06/resolved.md`.
 
 ## Deferred to the pilot
 

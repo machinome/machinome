@@ -259,3 +259,66 @@ rewritten there (`58ff90e`) and the other five were not, and the merge is the
 pilot's (`../../ongoing/fix-warts-3.md`, "Deferred to the pilot"). What
 remains is recorded under "Findings from the framework cycle
 `children-refuse-early-reads` (2026-10-06)" in `../../warts.md`.
+
+## `resolve-repeated-joints-per-copy`
+
+From "joint-frame-follows-declarer (2026-09-10)":
+
+- **A `.repeat()` copy's `index` does not exist yet when a joint's own
+  `axis`/`at`/`carries` resolves, so "a callable of the copy's index"
+  is not actually a working bridge for a JOINT argument.** Found
+  applying decision 4's Bridge A to Prusa3-vanilla's `XGuide`/`YGuide`,
+  hangprinter's `RollerBearing`, and OpenCycloid's `RadialBearing`/`Pin`
+  in this cycle's own pose overlay: `axis=lambda node: (0, 0, 1 if
+  node.index == 0 else -1)` on a `.repeat(2)` class raises
+  `AttributeError: '<Class>' object has no attribute 'index'` at
+  REALIZATION, every time, because `resolve_declared_joints` runs
+  inside the copy's own `__init__` (ADR-088) while
+  `RepeatDeclaration.realize()` assigns `child.__dict__['index'] =
+  index` on the line AFTER that construction returns
+  (`machinome/node/declarative.py:391`, whose own comment already says
+  "no sighting needs `index` during construction" — true for a LAW
+  resolved later, false for a joint argument resolved eagerly).
+  `MotionWorksPart`'s existing `at=lambda node: ... node.index ...`
+  works today only because `index` there is a DECLARED PARAMETER
+  (`Count(min=0, max=2)`, passed as a constructor kwarg), not a
+  `.repeat()`-assigned attribute — the working and the broken case look
+  identical at the call site and are easy to conflate, which the
+  overlay did once. Worked around, three times over, by deriving the
+  axis from the copy's ACTUAL placement in the PARENT's `render()`
+  instead of a class-body callable — the overlay's own
+  `derive_helper.axis_from_placement`, `_carry`'s own arithmetic reused
+  for one run. Candidate fix: resolve a REPEATED class's joint
+  arguments once per copy, after `index` is assigned, rather than
+  inside the copy's own `__init__` — or let `resolve_declared_joints`
+  defer a `NameError`/`AttributeError` from a callable and retry once
+  the realization path can say why, naming which attribute was missing
+  rather than failing opaquely. This closes the axis half of decision 4
+  as WRITTEN (Bridge A does not work as stated for the five axes); the
+  parent-supplies-the-sign bridge (Thor's own `ratio=`) is unaffected,
+  since a relation's `law=`/`ratio=` resolves later, after `index`
+  exists.
+
+**What shipped.** `resolve-repeated-joints-per-copy`
+(`openspec/changes/archive/2026-10-06-resolve-repeated-joints-per-copy/`)
+gives a copy its `index` before its construction rather than after.
+`RepeatDeclaration.realize` hands each copy's position to
+`ChildDeclaration.realize`, whose `_construct` allocates the copy, writes
+`index` into the copy's own instance dictionary and only then runs the
+copy's constructor; the stamp after construction stays, so a copy whose
+constructor assigned an `index` of its own still ends with its position.
+So the copy's `check()`, the functions given as its class-declared joint
+arguments (`axis`, `at`, `range`, `carries`) and the functions given as
+its frame arguments all read `node.index`, and each copy resolves and is
+placed by its own arguments while the copies keep one `uniq_id`.
+Resolution did not move: joint and frame arguments still resolve inside
+the copy's constructor, after `check()` and before any child is realized
+(ADR-088), so a refused copy has still realized nothing, and a function
+that fails for another reason is refused as before, naming the attribute
+it could not read. A function given where the child is declared is still
+handed the parent (ADR-098). ADR-096, whose decision said the stamp was
+made after construction, carries a dated amendment saying so. The finding's
+form now works as written; Prusa3-vanilla, hangprinter and OpenCycloid keep
+their site-declared or placement-derived workarounds, and moving back to
+the class form is each project's own choice. Prusa3-vanilla's documented
+run is unchanged (19 tests: 17 passed, the same 2 failing before and after).

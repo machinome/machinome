@@ -235,3 +235,20 @@ schema version and no viewer change.
   `AttributeError: 'list' object has no attribute '…'`, because a
   class-body list is a Python list and not a declaration object
   (measured, `evidence/probe_list_held_today.py`; not this cycle's).
+
+## Amendment (2026-10-06, change `resolve-repeated-joints-per-copy`)
+
+A copy's `index` is written into its instance dictionary before its
+constructor runs (`ChildDeclaration._construct`, called by
+`RepeatDeclaration.realize` with the copy's position), and again after
+construction returns, so a copy whose own constructor assigned an `index`
+still ends with its position. Everything the copy's construction runs
+therefore reads it: its `check()`, and a function given as a joint
+argument (`axis`, `at`, `range`, `carries`) or a frame argument its class
+declares, which resolve where they always did, inside the constructor
+after `check()` and before any child is realized. Each copy resolves its
+own arguments, which a binding places it by. The rest of the decision is
+unchanged: `index` is not a declared parameter, not in identity and not a
+child name, the copies share one `uniq_id` whatever arguments each
+resolves, and a repeated class that already answers to `index` is refused
+where the repeat is written.

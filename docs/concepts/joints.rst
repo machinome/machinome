@@ -553,10 +553,10 @@ Arguments
 Each of ``axis``, ``at``, ``range`` and ``carries`` may be a number, a
 declared-parameter token, a formula over them, or, for the whole
 argument, a callable of the realized declarer, called once at
-realization; none enters the build identity. A ``repeat()`` copy's
-``index`` does not exist yet when its joint arguments resolve, so derive
-a per-copy joint argument from the parent's placement, or drive the
-per-copy difference through a broadcast relation's ``law=``.
+realization; none enters the build identity. A ``repeat()`` copy
+carries its ``index`` while it is constructed, so a callable declared on
+the repeated class may read ``node.index``; one passed where the child is
+declared is handed that parent instead.
 
 Range
 -----

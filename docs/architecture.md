@@ -874,7 +874,7 @@ declaration WHOLE and keeps its slot (ADR-093's rule, one writer further
 out); a site joint of a new name is appended after every class-declared
 joint, in keyword order. A callable argument at a site is called with
 the REALIZED DECLARING PARENT, never the child and never a `.repeat()`
-copy's `index` (not yet assigned when a site's arguments resolve). The
+copy's `index` (it is handed the parent, not the copy). The
 declaration works by SPECIALIZING the child's class — a subclass built
 once per site, carrying the site's joints as ordinary class attributes,
 its `__qualname__`/`__name__`/`__module__`/source file copied from the
@@ -1147,8 +1147,9 @@ still runs one flat pass. `law=` is called once per COPY rather than
 once per instance — the owner of the driven coordinate under a broadcast
 is the copy, which is what lets a per-copy sign, phase or rank be one
 attribute read, the copy's `index` (a plain 0-based instance attribute
-`RepeatDeclaration.realize` stamps AFTER construction — never a declared
-parameter, never part of identity, never a child name); `ratio=`/`offset=`
+that `RepeatDeclaration.realize` writes before the copy's construction
+runs — never a declared parameter, never part of identity, never a child
+name); `ratio=`/`offset=`
 resolve once against the declaring instance and the resulting `Affine`
 is shared by every copy. A repeated end is a driven end only: named as a
 source it is refused at class definition, and once bound it is never

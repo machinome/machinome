@@ -449,7 +449,7 @@ suites green with no test edited. Two findings, neither blocking.
 
 # joint-frame-follows-declarer (2026-09-10)
 
-ADR-097 closed the own-placed-origin finding. Two things it raised remain.
+ADR-097 closed the own-placed-origin finding. One thing it raised remains.
 
 - **3DPrintedClocks disagrees with itself, and the rule settles it in
   clock 48's favour.** Clocks 19, 21, 22, 41, 49 and 51 (six, each with
@@ -483,41 +483,6 @@ ADR-097 closed the own-placed-origin finding. Two things it raised remain.
   **Remaining (2026-10-04):** the rule is settled by ADR-097; wall clock
   48's pose change is still the pilot's question, and no answer is
   recorded.
-
-- **A `.repeat()` copy's `index` does not exist yet when a joint's own
-  `axis`/`at`/`carries` resolves, so "a callable of the copy's index"
-  is not actually a working bridge for a JOINT argument.** Found
-  applying decision 4's Bridge A to Prusa3-vanilla's `XGuide`/`YGuide`,
-  hangprinter's `RollerBearing`, and OpenCycloid's `RadialBearing`/`Pin`
-  in this cycle's own pose overlay: `axis=lambda node: (0, 0, 1 if
-  node.index == 0 else -1)` on a `.repeat(2)` class raises
-  `AttributeError: '<Class>' object has no attribute 'index'` at
-  REALIZATION, every time, because `resolve_declared_joints` runs
-  inside the copy's own `__init__` (ADR-088) while
-  `RepeatDeclaration.realize()` assigns `child.__dict__['index'] =
-  index` on the line AFTER that construction returns
-  (`machinome/node/declarative.py:391`, whose own comment already says
-  "no sighting needs `index` during construction" — true for a LAW
-  resolved later, false for a joint argument resolved eagerly).
-  `MotionWorksPart`'s existing `at=lambda node: ... node.index ...`
-  works today only because `index` there is a DECLARED PARAMETER
-  (`Count(min=0, max=2)`, passed as a constructor kwarg), not a
-  `.repeat()`-assigned attribute — the working and the broken case look
-  identical at the call site and are easy to conflate, which the
-  overlay did once. Worked around, three times over, by deriving the
-  axis from the copy's ACTUAL placement in the PARENT's `render()`
-  instead of a class-body callable — the overlay's own
-  `derive_helper.axis_from_placement`, `_carry`'s own arithmetic reused
-  for one run. Candidate fix: resolve a REPEATED class's joint
-  arguments once per copy, after `index` is assigned, rather than
-  inside the copy's own `__init__` — or let `resolve_declared_joints`
-  defer a `NameError`/`AttributeError` from a callable and retry once
-  the realization path can say why, naming which attribute was missing
-  rather than failing opaquely. This closes the axis half of decision 4
-  as WRITTEN (Bridge A does not work as stated for the five axes); the
-  parent-supplies-the-sign bridge (Thor's own `ratio=`) is unaffected,
-  since a relation's `law=`/`ratio=` resolves later, after `index`
-  exists.
 
 # declaration-site-joint (2026-09-10, ADR-098)
 
@@ -774,9 +739,6 @@ delegation. Its items 1 to 9 are integrated on main. What remains of it:
 - **`tools/generate_parity_fixture.py` cannot run from a worktree** (item 9)
   and **`machinome snapshot --preview` sends a bare `--preview`** (item 14).
   Cycle `tooling-paths-and-flags`, never started.
-- **A `.repeat()` copy's joint arguments resolve before `index` exists**
-  (`joint-frame-follows-declarer`). Cycle
-  `resolve-repeated-joints-per-copy`, never started.
 - **Generated-artifact freshness** (3DPrintedClocks, the first entry).
   Investigation never started; whether later currency cycles cover part of
   it is unmeasured.

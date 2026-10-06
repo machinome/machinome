@@ -47,6 +47,14 @@ Unreleased
   a shin rotated that way never turned, and a dial's parts coloured that
   way stayed uncoloured. A read after linking, or outside any phase,
   answers as before (children-refuse-early-reads).
+* **A repeated copy reads its index while it is constructed.** A
+  ``repeat()`` copy's ``index`` is readable from the start of the copy's
+  own construction, so a joint's ``axis``, ``at``, ``range`` or
+  ``carries``, a frame argument and ``check()``, declared on the repeated
+  class, can read ``node.index`` and resolve per copy, where realization
+  used to refuse with ``... has no attribute 'index'``. A function given
+  where the child is declared is still handed the parent
+  (resolve-repeated-joints-per-copy).
 
 Machinome 0.8.0
 ---------------
