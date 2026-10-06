@@ -177,7 +177,9 @@ class OpenScadRenderer:
         command.extend(['--projection', 'o' if projection == 'ortho' else 'p'])
         command.extend(['--colorscheme', args.colorscheme or 'Cornfield'])
         if args.preview:
-            command.append('--preview')
+            # OpenSCAD's --preview takes a value; given bare, it takes the
+            # next token (the .scad path) as that value.
+            command.append('--preview=throwntogether')
         if args.view:
             command.extend(['--view', args.view])
         command.append(writer.scad_file(node))

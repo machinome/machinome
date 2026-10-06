@@ -103,6 +103,16 @@ in the same cycle.
   its own; resolution did not move, and ADR-096 is amended. Prusa3-vanilla's
   documented run unchanged (17 passed, the same 2 failed); the entry moved
   to `../archive/fix-warts-3-2026-10-06/resolved.md`.
+- 6 October 2026: cycle 5, `tooling-paths-and-flags`, applied: the parity
+  fixture generator finds the viewer checkout through Git's common
+  directory from the primary checkout and any worktree, and refuses
+  before building when there is none; `machinome snapshot --preview`
+  passes `--preview=throwntogether`, and 3DPrintedClocks' wall clock 11
+  with `--preview` writes its image; the web renderer hands the viewer
+  `--view=` and `--up=` as one token each, and Voron-2's camera writes
+  its image on the framework's own fixture. Three entries moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; `--render`'s meaning
+  and the empty failure message recorded in `../warts.md`.
 
 ## Deferred to the pilot
 

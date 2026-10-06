@@ -315,11 +315,24 @@ class SnapshotCommandBuildingTest(TestCase):
         self.assertIn('--viewall', cmd)
 
     def test_preview_flag(self):
-        """Test preview flag is added"""
+        """`--preview` selects OpenSCAD's ThrownTogether previewer, in the
+        one-token form OpenSCAD 2021.01 accepts (`--preview arg
+        [=throwntogether]`)"""
         args = self._make_args(preview=True)
         cmd = self.renderer.build_command(self.mock_node, args, self.output)
 
-        self.assertIn('--preview', cmd)
+        self.assertIn('--preview=throwntogether', cmd)
+        self.assertNotIn('--preview', cmd)
+
+    def test_preview_never_takes_the_scad_path_for_its_value(self):
+        """Given bare, OpenSCAD's `--preview` takes the next token as its
+        value; the `.scad` path is the last token, so what precedes it
+        must carry its own value."""
+        args = self._make_args(preview=True)
+        cmd = self.renderer.build_command(self.mock_node, args, self.output)
+
+        self.assertTrue(cmd[-1].endswith('.scad'))
+        self.assertEqual(cmd[-2], '--preview=throwntogether')
 
     def test_view_options(self):
         """Test view options are passed through"""

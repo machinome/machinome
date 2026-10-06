@@ -55,6 +55,18 @@ Unreleased
   used to refuse with ``... has no attribute 'index'``. A function given
   where the child is declared is still handed the parent
   (resolve-repeated-joints-per-copy).
+* **``machinome snapshot --preview`` draws.** The OpenSCAD renderer used
+  to hand OpenSCAD a bare ``--preview``, which OpenSCAD 2021.01 reads as
+  taking the model's ``.scad`` path for its value, so it printed its usage
+  and the snapshot failed with no message. It now passes
+  ``--preview=throwntogether``, the ThrownTogether preview the option has
+  always been documented to select (tooling-paths-and-flags).
+* **A camera vector beginning with a negative component photographs.** Under
+  ``--renderer web``, a ``--camera`` resolving to an eye or an up direction
+  whose first component is negative, such as ``0,0,0,65,0,35,1400``, was
+  refused by the viewer's command line (``argument --up: expected one
+  argument``); the framework now hands the viewer each camera vector in
+  one token with its option (tooling-paths-and-flags).
 
 Machinome 0.8.0
 ---------------

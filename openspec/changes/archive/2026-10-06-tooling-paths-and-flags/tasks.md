@@ -29,35 +29,35 @@ Rules for the whole cycle:
 
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
+- [x] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
   rev-parse HEAD`) and the interpreter check: `python -c 'import
   machinome; print(machinome.__file__)'` prints a path under the bench.
   Record `/usr/bin/openscad --version` and `git --version`. Copy the
   source of `<scratch>/f2_equals_probe.py` and `<scratch>/f3_equals_probe.py`
   into `evidence.md`, because the scratchpad is not durable.
-- [ ] 1.2 Finding 1: run `tools/generate_parity_fixture.py` with no
+- [x] 1.2 Finding 1: run `tools/generate_parity_fixture.py` with no
   argument from the bench. Expect design.md Context §1's
   `FileNotFoundError` naming `.../machinome/WTs/machinome-viewer/...`,
   with exit 1. It writes nothing, because that directory does not exist.
-- [ ] 1.3 Finding 2: run
+- [x] 1.3 Finding 2: run
   `machinome snapshot tests/web_snapshot_project.py --viewall --autocenter --imgsize 800x600 --preview -o <scratch>/f2-a1-before.png`.
   Expect exit 1 with `OpenSCAD rendering failed:` and nothing after it.
   The same command without `--preview` exits 0.
-- [ ] 1.4 Finding 2 in the originating project: record `git -C <Clocks>
+- [x] 1.4 Finding 2 in the originating project: record `git -C <Clocks>
   status --short` (expected: ` M screenshots/wall_clock_03.png`, `?? WTs/`),
   then run `<Clocks>`'s command to `<scratch>/f2-clock11-a1-before.png`.
   Expect exit 1 with `OpenSCAD rendering failed:`. Record the wall time
   and the status again.
-- [ ] 1.5 Finding 3: run
+- [x] 1.5 Finding 3: run
   `machinome snapshot tests/web_snapshot_project.py --renderer web --autocenter --viewall --imgsize 1400x1100 --camera 0,0,0,65,0,35,1400 -o <scratch>/f3-a1-before.png`.
   Expect exit 1 with `argument --up: expected one argument`.
-- [ ] 1.6 Run `tests/test_snapshot.py tests/test_browser_renderer.py
+- [x] 1.6 Run `tests/test_snapshot.py tests/test_browser_renderer.py
   tests/test_generate_parity_fixture.py` with `pytest -q -p
   no:cacheprovider`, and record the counts and wall time.
 
 ## 2. Tests
 
-- [ ] 2.1 RED, finding 1 (`tests/test_generate_parity_fixture.py`). Add a
+- [x] 2.1 RED, finding 1 (`tests/test_generate_parity_fixture.py`). Add a
   class `DefaultFixturePathTest` with the `setUp` and six tests in
   design.md's Proof plan:
   - from the worktree;
@@ -71,13 +71,13 @@ Rules for the whole cycle:
   environment>, clear=True)`. Red today: `AttributeError` (no
   `default_fixture`) for the first four, and `TypeError` (`main()` takes
   no argument) for the last two.
-- [ ] 2.2 RED, finding 2 (`tests/test_snapshot.py`,
+- [x] 2.2 RED, finding 2 (`tests/test_snapshot.py`,
   `SnapshotCommandBuildingTest`). Rewrite `test_preview_flag` to assert
   `'--preview=throwntogether' in cmd` and `'--preview' not in cmd`. Add
   `test_preview_never_takes_the_scad_path_for_its_value`: with
   `preview=True`, `cmd[-2] == '--preview=throwntogether'` and
   `cmd[-1].endswith('.scad')`. Red today because the bare token is there.
-- [ ] 2.3 RED, finding 3 (`tests/test_browser_renderer.py`,
+- [x] 2.3 RED, finding 3 (`tests/test_browser_renderer.py`,
   `CaptureDelegationTest`). Add
   `test_a_negative_leading_vector_travels_with_its_option`, with subtests
   for camera `0,0,0,65,0,35,1400` (up begins `-0.2424`) and camera
@@ -88,7 +88,7 @@ Rules for the whole cycle:
     with `parse_camera` from `machinome.core.camera`.
 
   Red today.
-- [ ] 2.4 RED, finding 3 at the process boundary. In the same file, add
+- [x] 2.4 RED, finding 3 at the process boundary. In the same file, add
   `test_the_viewer_parses_the_command_it_is_handed`, decorated
   `@needs_viewer`. It runs `BrowserRenderer().capture_command(<tmp>/missing,
   snapshot_args(camera='0,0,0,65,0,35,1400'), <tmp>/x.png)` with
@@ -99,45 +99,45 @@ Rules for the whole cycle:
   - `<tmp>/x.png` does not exist.
 
   Red today: exit 2 with `argument --up: expected one argument`.
-- [ ] 2.5 Revise the two camera tests that pin the old token shape:
+- [x] 2.5 Revise the two camera tests that pin the old token shape:
   - `test_a_requested_camera_is_resolved_here_and_handed_over` reads the
     `--view=` and `--up=` tokens and keeps its `--fov` assertions;
   - `test_no_camera_means_no_camera_flags` asserts that no token starts
     with `--view`, `--up` or `--fov`.
 
   The first fails today once revised. The second passes before and after.
-- [ ] 2.6 Run section 2 on the unmodified tree. Record each RED test's
+- [x] 2.6 Run section 2 on the unmodified tree. Record each RED test's
   failure line, and the revised no-camera test green.
 
 ## 3. The change
 
-- [ ] 3.1 `tools/generate_parity_fixture.py`, design.md Decision 2:
+- [x] 3.1 `tools/generate_parity_fixture.py`, design.md Decision 2:
   - `import subprocess`;
   - `VIEWER_FIXTURE`;
   - `default_fixture(root=None)`;
   - `main(argv=None)`, resolving the path before `build()`;
   - the module-level `FIXTURE` removed;
   - the comment at `:73-76` and the docstring's run section revised.
-- [ ] 3.2 `machinome/viewers/openscad.py` `build_command`: emit
+- [x] 3.2 `machinome/viewers/openscad.py` `build_command`: emit
   `--preview=throwntogether`, with the comment of design.md Decision 3.
-- [ ] 3.3 `machinome/viewers/browser.py` `capture_command`: emit
+- [x] 3.3 `machinome/viewers/browser.py` `capture_command`: emit
   `--view=<...>` and `--up=<...>`, with the comment of design.md
   Decision 4. `--fov` is unchanged.
-- [ ] 3.4 Run section 2: every test is green. Run 1.6's three files, and
+- [x] 3.4 Run section 2: every test is green. Run 1.6's three files, and
   the counts are 1.6's plus the new tests.
 
 ## 4. Real runs after the change
 
-- [ ] 4.1 Finding 2: rerun 1.3's command to `<scratch>/f2-a1-after.png`.
+- [x] 4.1 Finding 2: rerun 1.3's command to `<scratch>/f2-a1-after.png`.
   Expect exit 0. Read the PNG and say what it shows.
-- [ ] 4.2 Finding 2 in the originating project: rerun 1.4's command to
+- [x] 4.2 Finding 2 in the originating project: rerun 1.4's command to
   `<scratch>/f2-clock11-a1-after.png`. Expect exit 0. Read the PNG and
   say what it shows. Record the wall time, and `git -C <Clocks> status
   --short`, which is unchanged from 1.4.
-- [ ] 4.3 Finding 3: rerun 1.5's command to `<scratch>/f3-a1-after.png`.
+- [x] 4.3 Finding 3: rerun 1.5's command to `<scratch>/f3-a1-after.png`.
   Expect exit 0 and a 1400x1100 PNG with a transparent background. Read
   it and say what it shows.
-- [ ] 4.4 Finding 1, without writing into the viewer:
+- [x] 4.4 Finding 1, without writing into the viewer:
   - load the bench's tool with `spec_from_file_location` in a `python -c`,
     and print `default_fixture()`. Expect
     `/home/asa/devel/machinome/machinome-viewer/machinome_viewer/widget/src/parity-fixture.json`;
@@ -153,27 +153,27 @@ Rules for the whole cycle:
 
 ## 5. Changelog
 
-- [ ] 5.1 Add design.md Decision 6's two bullets to
+- [x] 5.1 Add design.md Decision 6's two bullets to
   `docs/project/changelog.rst`, after the existing bullets of the one
   `Unreleased` section.
-- [ ] 5.2 Grep `docs/` (excluding `adrs/` and `releases/`) and `CONTRIBUTING.rst`
+- [x] 5.2 Grep `docs/` (excluding `adrs/` and `releases/`) and `CONTRIBUTING.rst`
   for `--preview`, `--up` and `generate_parity_fixture`. Confirm no page
   says something this change makes wrong. Record the result.
 
 ## 6. Checks
 
-- [ ] 6.1 Run `black --check` and `flake8 --max-line-length=89` on
+- [x] 6.1 Run `black --check` and `flake8 --max-line-length=89` on
   `machinome/viewers/openscad.py`, `machinome/viewers/browser.py`,
   `tools/generate_parity_fixture.py`, `tests/test_snapshot.py`,
   `tests/test_browser_renderer.py` and
   `tests/test_generate_parity_fixture.py`.
-- [ ] 6.2 Run the full suite once, alone (`pytest -q -p no:cacheprovider`
+- [x] 6.2 Run the full suite once, alone (run after 8.2, on the final tree; evidence §6.2) (`pytest -q -p no:cacheprovider`
   at the bench root), and record the counts and wall time. A failure that
   is not this change's is recorded and stopped on, not worked around.
 
 ## 7. Warts
 
-- [ ] 7.1 Move these entries of `workflow/warts.md` verbatim to
+- [x] 7.1 Move these entries of `workflow/warts.md` verbatim to
   `workflow/archive/fix-warts-3-2026-10-06/resolved.md`, under a heading
   `` ## `tooling-paths-and-flags` ``. Each goes with a "From ..." line
   naming its section:
@@ -198,11 +198,11 @@ Rules for the whole cycle:
   Delete the moved text from `warts.md`. The Voron-2 section keeps its
   opening paragraph, its other subsections, the paragraph on the
   project's original archive, and its main-branch recheck.
-- [ ] 7.2 In `warts.md`'s "Standing triage", "Planned, never done",
+- [x] 7.2 In `warts.md`'s "Standing triage", "Planned, never done",
   delete the bullet "**`tools/generate_parity_fixture.py` cannot run from
   a worktree** (item 9) and **`machinome snapshot --preview` sends a bare
   `--preview`** (item 14)".
-- [ ] 7.3 File the two findings this cycle made, after the section
+- [x] 7.3 File the two findings this cycle made, after the section
   "## Findings from the framework cycle `children-refuse-early-reads`
   (2026-10-06)", as a new section "## Findings from the framework cycle
   `tooling-paths-and-flags` (2026-10-06)". It holds two bullets:
@@ -225,7 +225,7 @@ Rules for the whole cycle:
 
 ## 8. Sync and archive
 
-- [ ] 8.1 Sync the deltas:
+- [x] 8.1 Sync the deltas:
   - into `openspec/specs/cli/spec.md`, replacing "Snapshot command";
   - into `openspec/specs/web-snapshot/spec.md`, replacing "A requested
     camera is honoured or refused, never approximated";
@@ -234,8 +234,8 @@ Rules for the whole cycle:
 
   Diff each modified requirement against its baseline. Only the added
   paragraph or sentence and the added scenario differ.
-- [ ] 8.2 Archive the change to
+- [x] 8.2 Archive the change to
   `openspec/changes/archive/2026-10-06-tooling-paths-and-flags/`. Then
   `openspec validate --specs` passes.
-- [ ] 8.3 Run section 2's tests and 1.6's files once more, and record the
+- [x] 8.3 Run section 2's tests and 1.6's files once more, and record the
   result. Leave everything uncommitted.

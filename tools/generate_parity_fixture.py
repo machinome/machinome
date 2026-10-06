@@ -53,10 +53,15 @@ case, exactly as molejo's own fixtures store them: the claim under test
 is that they never follow a parameter, and the format should not be
 able to express its violation.
 
-Run from the framework worktree root:
+Run from any checkout of the framework -- the primary one or a worktree
+under WTs/:
 
-    PYTHONPATH="$PWD" python \\
-        machinome/viewers/widget/tools/generate_parity_fixture.py
+    PYTHONPATH="$PWD" python tools/generate_parity_fixture.py [OUTPUT]
+
+With no OUTPUT it writes machinome_viewer/widget/src/parity-fixture.json
+in the machinome-viewer checkout beside the framework's primary checkout,
+found through Git's common directory, and refuses before building
+anything when there is none.
 
 The generated JSON is committed, so the TypeScript suite runs with no
 Python and no CAD stack.
@@ -65,18 +70,18 @@ Python and no CAD stack.
 import json
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 SPIKE = os.path.join(ROOT, 'spike', 'expressions')
 # The fixture is committed in the machinome-viewer repository, beside the
-# evaluator it pins: machinome_viewer/widget/src/parity-fixture.json. This
-# tool writes wherever it is told, and the viewer repository commits the
-# result; the numbers are this framework's, the test is the viewer's.
-FIXTURE = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-    ROOT, '..', 'machinome-viewer', 'machinome_viewer', 'widget', 'src',
-    'parity-fixture.json')
+# evaluator it pins. This tool writes wherever it is told, and with no path
+# it writes that committed file, in the viewer checkout beside the
+# framework's primary checkout; the numbers are this framework's, the test
+# is the viewer's.
+VIEWER_FIXTURE = ('machinome_viewer', 'widget', 'src', 'parity-fixture.json')
 
 sys.path.insert(0, ROOT)
 sys.path.insert(0, SPIKE)
@@ -475,9 +480,38 @@ def build():
     }
 
 
-def main():
+def default_fixture(root=None):
+    """The viewer's committed fixture, in the `machinome-viewer` checkout
+    beside this framework's PRIMARY checkout -- found through Git's common
+    directory, so the primary checkout and every worktree of it name the
+    same file. Exits naming where it looked when there is none."""
+    root = root or ROOT
+    try:
+        answer = subprocess.run(
+            ['git', '-C', root, 'rev-parse', '--git-common-dir'],
+            capture_output=True, text=True)
+    except OSError:
+        answer = None
+    if answer is None or answer.returncode != 0:
+        sys.exit(f'generate_parity_fixture: {root} is not a Git checkout, '
+                 'so no machinome-viewer checkout can be found beside it; '
+                 'give the fixture path as the first argument')
+    common = os.path.normpath(os.path.join(root, answer.stdout.strip()))
+    viewer = os.path.join(os.path.dirname(os.path.dirname(common)),
+                          'machinome-viewer')
+    target = os.path.join(viewer, *VIEWER_FIXTURE)
+    if not os.path.isdir(os.path.dirname(target)):
+        sys.exit(f'generate_parity_fixture: no machinome-viewer checkout '
+                 f'beside the framework checkout (looked for '
+                 f'{os.path.dirname(target)}); give the fixture path as '
+                 'the first argument')
+    return target
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    path = os.path.abspath(argv[0]) if argv else default_fixture()
     fixture = build()
-    path = os.path.abspath(FIXTURE)
     with open(path, 'w') as handle:
         json.dump(fixture, handle, indent=2)
         handle.write('\n')

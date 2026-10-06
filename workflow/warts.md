@@ -73,12 +73,6 @@ Findings from lifting the project `kinematics.py` helpers into the framework
    constant. Candidate fix: an Angle-typed (and Length-typed) literal in
    `machinome.parameters`. Evidence: `expression-math` (bump, wrap, turn),
    `mechanisms` (design D3, ADR-076 open question).
-9. **`tools/generate_parity_fixture.py` cannot run from a worktree.** Its
-   default output path resolves to `ROOT/../machinome-viewer/...`, which
-   from `machinome/WTs/<name>/` is a directory that does not exist. Resolve
-   through the Git common directory, as the shop contract prescribes for
-   workspace paths, or require the output argument. Evidence:
-   `expression-math` task 5.4.
 10. **Non-reproducible flake in `tests/test_exact_geometry.py`.**
     `ExactArtifactTest::test_a_shape_without_file_identity_is_not_cached`
     failed once in a full run and passed alone and in two further full
@@ -127,11 +121,6 @@ Framework candidates from the project refactor pass:
     negative faceted volume since `voron-faceted-contact` (2026-09-13);
     strict pairwise assertions still fail on one, and the default
     `volume_epsilon` is still 0. Held for the pilot (see "Standing triage").
-
-14. **`machinome snapshot --preview` passes a bare `--preview` to OpenSCAD
-    2021.01**, which rejects it with a usage dump
-    (`OpenScadRenderer.build_command` emits it unconditionally). Seen in
-    3DPrintedClocks.
 
 - Shop: the session scratchpad is shared across parallel agents, and four of
   ten clobbered each other's `before.png` during the refactor pass (each
@@ -736,9 +725,6 @@ delegation. Its items 1 to 9 are integrated on main. What remains of it:
 - **`%` on a symbolic value disagrees across runtimes** (item 7 above; see
   also "The framework's two meanings of `%`" below). Cycle
   `expression-remainder`, never started.
-- **`tools/generate_parity_fixture.py` cannot run from a worktree** (item 9)
-  and **`machinome snapshot --preview` sends a bare `--preview`** (item 14).
-  Cycle `tooling-paths-and-flags`, never started.
 - **Generated-artifact freshness** (3DPrintedClocks, the first entry).
   Investigation never started; whether later currency cycles cover part of
   it is unmeasured.
@@ -1627,6 +1613,35 @@ not fixed, until the pilot triages them.
   AlbertPro's and the clocks' test walkers run after assembly. Left as
   it was; design.md, Open Question 2, of the same change. **Recorded.**
 
+## Findings from the framework cycle `tooling-paths-and-flags` (2026-10-06)
+
+- **`--render` is accepted and never forwarded, and its help calls it the
+  default.** `machinome snapshot --render` is parsed, made mutually
+  exclusive with `--preview` and refused under `--renderer web`, but
+  `OpenScadRenderer.build_command` never reads `args.render`, so it changes
+  nothing. Its help says "Full render (the default, slower but accurate)",
+  and `docs/reference/cli.rst` says it "does a full render (OpenSCAD's
+  default: slower, accurate)". OpenSCAD 2021.01's PNG default is its
+  OpenCSG preview: on a cube with a sphere subtracted, the default image is
+  byte-identical to the one `--preview=opencsg` writes. Its full render
+  needs `--render=<value>` (a bare `--render` takes the next token as its
+  value, as `--preview` did), is slower, and draws the CGAL result without
+  the model's colours: `color("red") cube(10); translate([15,0,0])
+  color("blue") sphere(5);` comes out all one yellow. Forwarding it as
+  `--render=cgal` and correcting the wording, or correcting the wording
+  alone (or removing the flag), are the two remedies. Held for the pilot:
+  forwarding changes what an existing flag draws. Evidence:
+  `openspec/changes/archive/2026-10-06-tooling-paths-and-flags/design.md`,
+  Context §2 and Open Question 1. **Recorded.**
+- **A failed OpenSCAD render reports only its standard error.**
+  `OpenScadRenderer.render` writes `OpenSCAD rendering failed:` followed
+  by the subprocess's standard error. OpenSCAD 2021.01 prints its usage
+  dump on standard output, so a refused command line, such as the bare
+  `--preview` this cycle fixed, reached the user as that line and nothing
+  after it. Candidate fix: print standard output when standard error is
+  empty. Evidence: the same change's design.md, Context §2 and Open
+  Question 2. **Recorded.**
+
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 
 The memo finding is fixed (`persistent-verdict-memo`, ADR-156). Not a
@@ -2003,29 +2018,6 @@ source repair, collision epsilon or change to a release.
 - **Triage.** CAD-dependency investigation; no framework intersection policy
   participates in the minimal reproduction. The responsible copying,
   tolerance/topology, cleanup or source characteristic remains unresolved.
-
-### A negative-leading camera vector is rejected at the viewer subprocess boundary
-
-- **Symptom/evidence.** `machinome snapshot --renderer web --autocenter
-  --viewall --imgsize 1400x1100 --camera 0,0,0,65,0,35,1400` fails with
-  `argument --up: expected one argument`. The tested framework's
-  `viewers/browser.py` emits `--up` and its comma tuple as separate tokens.
-  This camera produces `(-0.242403876506104, 0.34618861305875415,
-  0.9063077870366499)`; the negative-leading tuple is rejected by the viewer
-  argument parser. The same construction is used for `--view`.
-- **Workaround and limits.** Omitting the requested camera passes parsing,
-  but that separate capture then reports `Failed to fetch`; it is not a
-  successful replacement snapshot. OpenSCAD rendered the requested views.
-  Commands, errors and inspected images are recorded in the project's
-  `docs/evidence/resumed-snapshots.json`.
-- **Triage.** Framework subprocess argument construction, not a new camera
-  API. No fix implemented. The separate static-export browser stall belongs
-  in the viewer's `workflow/warts.md`.
-
-The same project also reproduced existing **item 14**, the bare OpenSCAD
-`--preview` consuming the following filename. No duplicate wart is opened:
-Voron's argument trace and successful captures without the optional flag
-are additional evidence for that existing finding.
 
 The project's original `CAD/Voron_2.4r2_Assembly_STEP.zip` remains unchanged,
 SHA256 `36c6c58e096aa89aa05a0ef22f3b49cbceedc950424332772461ab0c779cc1c6`.

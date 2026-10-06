@@ -434,6 +434,12 @@ extra: <the refusal>; or use --renderer web`, exit 1, and write nothing. When
 the OpenSCAD binary itself is unavailable the command SHALL fail naming it and
 naming `--renderer web` as the alternative, and SHALL write no image.
 
+Under the OpenSCAD renderer, `--preview` SHALL draw the image with OpenSCAD's
+ThrownTogether previewer, and a snapshot taken with `--preview` SHALL write its
+image as one taken without it does. The option SHALL reach the OpenSCAD CLI in
+the form that binary accepts for that previewer, and SHALL never leave the
+binary reading the model's `.scad` path as the option's own value.
+
 The OpenSCAD renderer alone SHALL compose the root's presentation for the
 image (it calls `assemble()` inside the build lock); the web renderer SHALL
 prepare the tree and build its STLs without composing one.
@@ -480,6 +486,14 @@ produced.
 - **WHEN** an agent runs `machinome snapshot --time 0.5 -o pose.png` on a
   machine with no X display but xvfb installed
 - **THEN** a PNG of the project model at `$t = 0.5` is written to `pose.png`
+
+#### Scenario: A ThrownTogether preview
+
+- **WHEN** an agent runs `machinome snapshot --preview -o quick.png` with the
+  OpenSCAD renderer
+- **THEN** OpenSCAD draws the model with its ThrownTogether previewer and the
+  PNG is written to `quick.png`, as it is for the same command without
+  `--preview`
 
 #### Scenario: Snapshotting a sub-assembly
 

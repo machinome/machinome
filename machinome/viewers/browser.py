@@ -190,9 +190,12 @@ class BrowserRenderer:
         ]
         if args.camera:
             camera = parse_camera(args.camera)
+            # One token per vector: argparse reads a separate token that
+            # begins with "-" as an option unless it is a single number,
+            # so "-0.24,0.34,0.9" would leave --up without its value.
             command += [
-                "--view", ",".join(str(v) for v in (*camera.eye, *camera.target)),
-                "--up", ",".join(str(v) for v in camera.up),
+                "--view=" + ",".join(str(v) for v in (*camera.eye, *camera.target)),
+                "--up=" + ",".join(str(v) for v in camera.up),
                 "--fov", str(camera.fov),
             ]
         return command

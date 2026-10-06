@@ -322,3 +322,68 @@ form now works as written; Prusa3-vanilla, hangprinter and OpenCycloid keep
 their site-declared or placement-derived workarounds, and moving back to
 the class form is each project's own choice. Prusa3-vanilla's documented
 run is unchanged (19 tests: 17 passed, the same 2 failing before and after).
+
+## `tooling-paths-and-flags`
+
+From "Expression math and mechanisms (2026-09-06)", "Framework":
+
+9. **`tools/generate_parity_fixture.py` cannot run from a worktree.** Its
+   default output path resolves to `ROOT/../machinome-viewer/...`, which
+   from `machinome/WTs/<name>/` is a directory that does not exist. Resolve
+   through the Git common directory, as the shop contract prescribes for
+   workspace paths, or require the output argument. Evidence:
+   `expression-math` task 5.4.
+
+From "Internal-Cycloidal-Actuator (2026-09-06, project refactor pass)":
+
+14. **`machinome snapshot --preview` passes a bare `--preview` to OpenSCAD
+    2021.01**, which rejects it with a usage dump
+    (`OpenScadRenderer.build_command` emits it unconditionally). Seen in
+    3DPrintedClocks.
+
+From "Voron-2 — native contact measurements and snapshot arguments (5
+October 2026)":
+
+### A negative-leading camera vector is rejected at the viewer subprocess boundary
+
+- **Symptom/evidence.** `machinome snapshot --renderer web --autocenter
+  --viewall --imgsize 1400x1100 --camera 0,0,0,65,0,35,1400` fails with
+  `argument --up: expected one argument`. The tested framework's
+  `viewers/browser.py` emits `--up` and its comma tuple as separate tokens.
+  This camera produces `(-0.242403876506104, 0.34618861305875415,
+  0.9063077870366499)`; the negative-leading tuple is rejected by the viewer
+  argument parser. The same construction is used for `--view`.
+- **Workaround and limits.** Omitting the requested camera passes parsing,
+  but that separate capture then reports `Failed to fetch`; it is not a
+  successful replacement snapshot. OpenSCAD rendered the requested views.
+  Commands, errors and inspected images are recorded in the project's
+  `docs/evidence/resumed-snapshots.json`.
+- **Triage.** Framework subprocess argument construction, not a new camera
+  API. No fix implemented. The separate static-export browser stall belongs
+  in the viewer's `workflow/warts.md`.
+
+The same project also reproduced existing **item 14**, the bare OpenSCAD
+`--preview` consuming the following filename. No duplicate wart is opened:
+Voron's argument trace and successful captures without the optional flag
+are additional evidence for that existing finding.
+
+**What shipped.** `tooling-paths-and-flags`
+(`openspec/changes/archive/2026-10-06-tooling-paths-and-flags/`) makes three
+commands the framework composes ones their tools accept. Given no output
+path, `tools/generate_parity_fixture.py` asks Git for the common directory
+of the checkout it sits in, takes the primary checkout as that directory's
+parent and writes `machinome_viewer/widget/src/parity-fixture.json` in the
+`machinome-viewer` checkout beside it, so the primary checkout and every
+worktree under `WTs/` name the same file; when Git cannot answer or no such
+viewer directory exists, it refuses before building anything, naming where
+it looked and the output argument. An argument is used as given, as before.
+The OpenSCAD renderer passes `--preview=throwntogether` for `machinome
+snapshot --preview`, one token OpenSCAD 2021.01 reads as its ThrownTogether
+previewer, so the bare option no longer takes the `.scad` path as its value;
+3DPrintedClocks' wall clock 11 with `--preview` writes its image. The web
+renderer hands the viewer's capture `--view=<eye,target>` and
+`--up=<x,y,z>` as one token each, so a camera whose resolved eye or up
+direction begins with a negative component reaches the viewer intact;
+Voron-2's camera, run on the framework's own snapshot fixture, writes its
+image. The separate static-export stall Voron-2 saw without a camera stays
+the viewer's.

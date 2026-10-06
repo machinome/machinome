@@ -8,6 +8,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,6 +16,7 @@ from subprocess import CompletedProcess
 from unittest import TestCase
 from unittest.mock import Mock, PropertyMock, patch
 
+from machinome.core.camera import parse_camera
 from machinome.viewers import browser as browser_module
 from machinome.viewers.browser import BrowserRenderer, BrowserSnapshotError
 from machinome.viewers.bundle import has_bundle
@@ -241,24 +243,61 @@ class CaptureDelegationTest(TestCase):
         ])
         self.assertTrue(run.call_args.kwargs.get('capture_output'))
 
+    def _joined_value(self, command, option):
+        """The value of the one `<option>=<value>` token of `command`."""
+        tokens = [token for token in command if token.startswith(option + '=')]
+        self.assertEqual(len(tokens), 1, command)
+        return [float(v) for v in tokens[0][len(option) + 1:].split(',')]
+
     def test_a_requested_camera_is_resolved_here_and_handed_over(self):
         with patch.object(browser_module, 'run', return_value=self.completed) as run:
             self.renderer.capture('/tmp/staged', snapshot_args(camera='10,20,30,0,0,0'),
                                   'shot.png')
         command = run.call_args.args[0]
-        self.assertIn('--view', command)
-        view = command[command.index('--view') + 1]
-        self.assertEqual([float(v) for v in view.split(',')], [10, 20, 30, 0, 0, 0])
-        self.assertIn('--up', command)
+        self.assertEqual(self._joined_value(command, '--view'), [10, 20, 30, 0, 0, 0])
+        self.assertEqual(self._joined_value(command, '--up'), [0, 0, 1])
         self.assertIn('--fov', command)
         self.assertEqual(float(command[command.index('--fov') + 1]), 22.5)
+
+    def test_a_negative_leading_vector_travels_with_its_option(self):
+        """argparse reads a separate token beginning with `-` as an option
+        unless it is one bare number, so a comma tuple such as
+        `-0.24,0.34,0.9` must reach the viewer joined to its option."""
+        for camera in ('0,0,0,65,0,35,1400', '-100,20,30,0,0,0'):
+            with self.subTest(camera=camera):
+                resolved = parse_camera(camera)
+                command = self.renderer.capture_command(
+                    '/tmp/staged', snapshot_args(camera=camera), 'shot.png')
+                self.assertNotIn('--view', command)
+                self.assertNotIn('--up', command)
+                self.assertEqual(self._joined_value(command, '--view'),
+                                 [*resolved.eye, *resolved.target])
+                self.assertEqual(self._joined_value(command, '--up'),
+                                 list(resolved.up))
+        self.assertLess(parse_camera('0,0,0,65,0,35,1400').up[0], 0)
+
+    @needs_viewer
+    def test_the_viewer_parses_the_command_it_is_handed(self):
+        """The installed viewer's own parser, as a process: the command
+        gets past argument parsing to the viewer's refusal of a staging
+        directory that does not exist, and no browser is started."""
+        with tempfile.TemporaryDirectory() as temporary:
+            output = os.path.join(temporary, 'x.png')
+            command = self.renderer.capture_command(
+                os.path.join(temporary, 'missing'),
+                snapshot_args(camera='0,0,0,65,0,35,1400'), output)
+            result = subprocess.run(command, capture_output=True, text=True,
+                                    timeout=60)
+            self.assertNotEqual(result.returncode, 2, result.stderr)
+            self.assertNotIn('expected one argument', result.stderr)
+            self.assertFalse(os.path.exists(output))
 
     def test_no_camera_means_no_camera_flags(self):
         with patch.object(browser_module, 'run', return_value=self.completed) as run:
             self.renderer.capture('/tmp/staged', snapshot_args(), 'shot.png')
         command = run.call_args.args[0]
-        for flag in ('--view', '--up', '--fov'):
-            self.assertNotIn(flag, command)
+        for token in command:
+            self.assertFalse(token.startswith(('--view', '--up', '--fov')), token)
 
     def test_the_viewers_failure_is_reported_verbatim(self):
         failed = CompletedProcess(args=[], returncode=1, stdout='',
