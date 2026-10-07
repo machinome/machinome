@@ -451,14 +451,22 @@ def _flexible_geometry(node, needed_by=_MESH_NEEDED_BY,
 
 
 def _body_count(mesh):
-    """Number of connected components in `mesh`.
+    """Number of connected components in `mesh`, counted as the mesh
+    holds them.
 
     `only_watertight=False` is deliberate: the question is whether the
     geometry hangs together, and a fragment that is itself watertight
     is exactly the case worth catching -- filtering to watertight
     components would silently drop the evidence.
+
+    `repair=False` is deliberate too. Left at its default, trimesh
+    fills the holes of every component it splits out, machining
+    geometry the project never authored; filling a hole inside a
+    component cannot change how many components there are, and the
+    repair is the one step of the split that needs `networkx`, which
+    machinome does not depend on.
     """
-    return len(mesh.split(only_watertight=False))
+    return len(mesh.split(only_watertight=False, repair=False))
 
 
 def _mesh_boolean(meshes, combine, needed_by, reason):
@@ -2307,8 +2315,7 @@ class TestCase(BaseTestCase):
                 bodies = engine.solid_count(solid.shape())
                 source = 'B-rep geometry'
             else:
-                bodies = len(cached_base_mesh(solid.stl_file).split(
-                    only_watertight=False))
+                bodies = _body_count(cached_base_mesh(solid.stl_file))
                 source = 'STL'
             if bodies != 1:
                 raise AssertionError(

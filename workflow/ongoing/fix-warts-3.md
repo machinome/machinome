@@ -257,6 +257,17 @@ in the same cycle.
   and `assertJoined` crash without it; taken up as cycle 17,
   `count-bodies-without-repair`.
 
+- 7 October 2026: cycle 17, `count-bodies-without-repair`, applied: both
+  connectivity assertions count a mesh's bodies through `_body_count`,
+  which splits with `repair=False`, so an open mesh is counted where
+  `networkx` is not installed and no dependency is added; the count cannot
+  move (trimesh returns the components it found before repairing them),
+  and over 465 catalogue STL files it did not. SO-ARM100's three `--mesh`
+  suites with `networkx` refused went from 3 passed 1 failed, 5 passed,
+  11 passed 1 failed to 4, 5 and 12 passed, their counts with it present
+  before and after; the project untouched. The YouCanBuildDog entry moved
+  to `../archive/fix-warts-3-2026-10-06/resolved.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

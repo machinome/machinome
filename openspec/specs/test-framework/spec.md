@@ -1284,7 +1284,11 @@ On the mesh path, components SHALL be counted by splitting the union without
 filtering to watertight components — a fragment that is itself closed still
 counts as a body. Watertightness SHALL NOT be treated as evidence of
 connectedness: a mesh of several disjoint closed shells is watertight, has
-positive volume, and exports a valid STL.
+positive volume, and exports a valid STL. Both assertions SHALL count the
+components of a mesh as the mesh holds them, without repairing it: no hole is
+filled before or while counting, so a mesh that is not watertight is counted
+with the components it has, and counting needs no package outside machinome's
+core dependencies.
 
 Connectivity is a property of geometry inside one solid, so `assertJoined`
 SHALL place both nodes in the frame of their nearest enclosing rigid node,
@@ -1358,6 +1362,17 @@ express a required weld volume.
   engine is `mesh`
 - **THEN** the verdict comes from the union of their meshes and neither
   shape is fused
+
+#### Scenario: An open mesh is counted without a repair
+
+- **WHEN** `assertNoDisconnectedSolids` runs on a solid whose STL is not
+  watertight, such as an `StlNode` declaring `require_watertight = False`,
+  in an environment where no package outside machinome's declared
+  dependencies can be imported (trimesh's optional graph library `networkx`
+  among them)
+- **THEN** a solid of one connected body passes and a solid of two fails
+  naming two bodies, the same verdicts as where that package is installed,
+  and no import error is raised
 
 ### Requirement: Animation-instant decorators
 

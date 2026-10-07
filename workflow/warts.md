@@ -188,15 +188,6 @@ things worth fixing. None is filed.
   would make the framework's own printed-solid unit reachable from a
   STEP document without a project-local splitter.
 
-- **`networkx` is an undeclared need of the mesh path.**
-  `assertNoDisconnectedSolids` now takes the exact path for an exact solid
-  (`_routes_exact`), which closed the first half of this finding. Its mesh
-  path (`split(only_watertight=False)`) can still reach trimesh's
-  `fill_holes`, which imports `networkx`, and `networkx` is not among the
-  package's declared dependencies: the workspace venv has it only because
-  it was installed by hand on 2026-09-07. Whether trimesh's split still
-  reaches `fill_holes` is unverified. Condensed 2026-10-04.
-
 - **An exact intersection returns empty for two solids that plainly
   overlap, and `assertAssemblySupported` silently loses a support edge
   for it.** Fitting the fasteners, the battery holder hangs under the

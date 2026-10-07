@@ -168,6 +168,15 @@ Unreleased
   ``OpenScadNode``'s ends in its module call. The snapshot now draws the
   file as the build wrote it and leaves it in place, and ``scad_code`` is
   the part's geometry, rendered when asked (release-metadata-and-vestiges).
+* **An open part is counted where networkx is not installed.**
+  ``assertNoDisconnectedSolids`` on a part whose STL is not watertight,
+  such as an ``StlNode`` declaring ``require_watertight = False``, and
+  ``assertJoined`` on meshes, failed with ``ModuleNotFoundError: No
+  module named 'networkx'`` where that package, which machinome does not
+  depend on, was not installed: counting a mesh's bodies asked trimesh
+  to fill each body's holes first, and only that repair needs it. Bodies
+  are now counted as the mesh holds them, with no repair, and every
+  count is the one it was (count-bodies-without-repair).
 
 Machinome 0.8.0
 ---------------

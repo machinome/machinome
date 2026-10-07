@@ -16,22 +16,25 @@ Like tests/test_assertions.py these use tiny stand-ins with a real
 .mesh, rather than driving a full STL build.
 """
 
+import importlib.util
 import inspect
 import os
 import tempfile
 from types import SimpleNamespace
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 from unittest.mock import Mock
 import trimesh
-from trimesh.creation import box
+from trimesh.creation import box, cylinder
 from trimesh.util import concatenate
 
 from machinome.test import TestCase as AssertingTestCase
+from machinome.test import _body_count
 from machinome.node.assembly import AssemblyNode
 from machinome.node.fusion import FusionNode
 from machinome.node.base import AbstractBaseNode, _topmost_rigid_nodes
 from machinome.node.internal import InternalNode
 from machinome.node.operations import Translation
+from tests.mesh_engine_absent import run_python
 from tests.stand_in import NodeDouble, StandIn
 
 
@@ -92,6 +95,42 @@ def welded_pair(overlap=0.5):
     second = box((2.0, 2.0, 2.0))
     second.apply_translation([2.0 - overlap, 0.0, 0.0])
     return first, second
+
+
+def open_box(missing=1):
+    """A box with its first `missing` triangles deleted: one connected
+    body that is not watertight (one triangle leaves a three-edge hole,
+    two triangles of a side a four-edge one)."""
+    whole = box((2.0, 2.0, 2.0))
+    return trimesh.Trimesh(whole.vertices, whole.faces[missing:],
+                           process=False)
+
+
+def open_tube():
+    """The side wall of a cylinder: one connected body, open at both
+    ends."""
+    whole = cylinder(radius=1.0, height=2.0, sections=16)
+    side = abs(whole.face_normals[:, 2]) < 0.5
+    return trimesh.Trimesh(whole.vertices, whole.faces[side], process=False)
+
+
+def open_pair(gap=5.0):
+    """Two open boxes with clear air between them: two connected
+    components, neither watertight."""
+    second = open_box()
+    second.apply_translation([gap, 0.0, 0.0])
+    return concatenate([open_box(), second])
+
+
+#: Every fixture of the body count, with the bodies it holds.
+BODY_COUNT_FIXTURES = (
+    ('connected watertight box', one_body, 1),
+    ('disconnected watertight pair', two_bodies, 2),
+    ('connected open box, one triangle missing', open_box, 1),
+    ('connected open box, two triangles missing', lambda: open_box(2), 1),
+    ('connected open tube', open_tube, 1),
+    ('disconnected open pair', open_pair, 2),
+)
 
 
 class DisjointShellsAreWatertightTest(TestCase):
@@ -173,6 +212,116 @@ class AssertNoDisconnectedSolidsTest(TestCase):
         asserter.assertNoDisconnectedSolids(assembly)
 
         animated.matrix.assert_not_called()
+
+
+#: Count an open box and an open pair through both connectivity
+#: questions, printing each outcome, in an interpreter where `networkx`
+#: cannot be imported.
+OPEN_MESHES_WITHOUT_NETWORKX = r'''
+import importlib.util
+import os
+import tempfile
+
+import trimesh
+from trimesh.creation import box
+from trimesh.util import concatenate
+
+from machinome.test import TestCase, _body_count
+from tests.stand_in import NodeDouble
+
+
+def open_box():
+    whole = box((2.0, 2.0, 2.0))
+    return trimesh.Trimesh(whole.vertices, whole.faces[1:], process=False)
+
+
+second = open_box()
+second.apply_translation([5.0, 0.0, 0.0])
+meshes = (('open-box', open_box()),
+          ('open-pair', concatenate([open_box(), second])))
+print('NETWORKX FOUND', importlib.util.find_spec('networkx') is not None)
+with tempfile.TemporaryDirectory() as directory:
+    for name, mesh in meshes:
+        path = os.path.join(directory, name + '.stl')
+        mesh.export(path)
+        node = NodeDouble(name=name, stl_file=path, rigid=True, children=(),
+                          _parent=None, operations=[])
+        try:
+            TestCase().assertNoDisconnectedSolids(node)
+            print(name, 'ASSERTION PASSED')
+        except Exception as error:
+            print(name, 'ASSERTION', type(error).__name__, error)
+        try:
+            print(name, 'COUNT', _body_count(trimesh.load(path, force='mesh')))
+        except Exception as error:
+            print(name, 'COUNT', type(error).__name__, error)
+'''
+
+
+def _networkx_is_installed():
+    return importlib.util.find_spec('networkx') is not None
+
+
+class CountWithoutRepairTest(TestCase):
+    """Both connectivity assertions count a mesh's bodies as the mesh holds
+    them. Asking trimesh to repair each body first sent every body that is
+    not watertight through `fill_holes`, which needs `networkx`, a package
+    machinome does not depend on; filling a hole inside a body cannot
+    change how many bodies there are."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+
+    def exported(self, name, mesh):
+        """`mesh` written to an STL and read back as the framework reads
+        it, with the node that names it."""
+        path = os.path.join(self.directory.name,
+                            name.replace(' ', '-') + '.stl')
+        mesh.export(path)
+        node = NodeDouble(name=name, stl_file=path, rigid=True, children=(),
+                          _parent=None, operations=[])
+        return trimesh.load(path, force='mesh'), node
+
+    def test_open_meshes_are_counted_where_networkx_is_absent(self):
+        run = run_python(OPEN_MESHES_WITHOUT_NETWORKX, absent=('networkx',))
+
+        self.assertEqual(run.returncode, 0, run.output)
+        self.assertNotIn('ModuleNotFoundError', run.output)
+        lines = run.stdout.splitlines()
+        self.assertIn('NETWORKX FOUND False', lines)
+        self.assertIn('open-box ASSERTION PASSED', lines)
+        self.assertIn('open-box COUNT 1', lines)
+        self.assertIn(
+            'open-pair ASSERTION AssertionError open-pair should be one '
+            'connected body, but its STL contains 2 connected bodies', lines)
+        self.assertIn('open-pair COUNT 2', lines)
+
+    def test_counts_are_the_bodies_the_mesh_holds(self):
+        for name, make, bodies in BODY_COUNT_FIXTURES:
+            with self.subTest(name):
+                mesh, node = self.exported(name, make())
+
+                self.assertEqual(_body_count(mesh), bodies)
+                if bodies == 1:
+                    asserter.assertNoDisconnectedSolids(node)
+                else:
+                    with self.assertRaises(AssertionError) as caught:
+                        asserter.assertNoDisconnectedSolids(node)
+                    self.assertIn(f'contains {bodies} connected bodies',
+                                  str(caught.exception))
+
+    @skipUnless(_networkx_is_installed(),
+                "the repairing split needs networkx, which machinome does "
+                "not install")
+    def test_counts_match_the_repairing_split(self):
+        for name, make, bodies in BODY_COUNT_FIXTURES:
+            with self.subTest(name):
+                mesh, _ = self.exported(name, make())
+
+                self.assertEqual(
+                    _body_count(mesh),
+                    len(mesh.split(only_watertight=False, repair=True)))
 
 
 class FusionHierarchyTest(TestCase):

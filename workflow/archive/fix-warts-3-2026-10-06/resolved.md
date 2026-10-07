@@ -1069,3 +1069,46 @@ closed. The test now lives in `tests/test_brep_geometry.py` and calls
 and the old reset, 18 of 50 runs fail with the original
 `unexpectedly identical` error; with the current reset, 0 of 50, under
 garbage-collection pressure and ten hash seeds alike.
+
+## `count-bodies-without-repair`
+
+From "YouCanBuildDog", whose other two entries stay in `warts.md`:
+
+- **`networkx` is an undeclared need of the mesh path.**
+  `assertNoDisconnectedSolids` now takes the exact path for an exact solid
+  (`_routes_exact`), which closed the first half of this finding. Its mesh
+  path (`split(only_watertight=False)`) can still reach trimesh's
+  `fill_holes`, which imports `networkx`, and `networkx` is not among the
+  package's declared dependencies: the workspace venv has it only because
+  it was installed by hand on 2026-09-07. Whether trimesh's split still
+  reaches `fill_holes` is unverified. Condensed 2026-10-04.
+
+**What shipped.** `count-bodies-without-repair`
+(`openspec/changes/archive/2026-10-07-count-bodies-without-repair/`). It
+did reach it: both connectivity assertions counted bodies with
+`split(only_watertight=False)`, whose default `repair=True` sends every
+component that is not watertight through `fill_holes`, and `fill_holes`
+needs `networkx`, which trimesh requires only for its `easy` extra and
+machinome did not declare. With `networkx` refused on import, the four of
+six STL fixtures that are not watertight raised `ModuleNotFoundError` in
+`assertNoDisconnectedSolids` and in `assertJoined`'s mesh count,
+`_body_count`. The repair's result was never read: trimesh 4.4.9 builds
+the list of components before it repairs any and returns that same list,
+so filling a hole cannot change the count, and over the 465 STL files of
+the four catalogue projects that combine `require_watertight = False` with
+`assertNoDisconnectedSolids` (SO-ARM100, roboto_origin,
+hexapod_spiderbot_model, mechanical-multiplier; 157 not watertight) the
+count at `repair=True` and at `repair=False` is the same for every file.
+`_body_count` now splits with `repair=False`, as `node/stl.py:_bodies`
+already did, and `assertNoDisconnectedSolids` counts through it; no
+dependency was added. `Robotic-Arms/SO-ARM100`'s three `machinome test
+--mesh` suites, run read-only against the bench with `networkx` refused in
+every process, went from 3 passed 1 failed, 5 passed, and 11 passed 1
+failed (both failures `ModuleNotFoundError`, in
+`test_each_selected_body_is_connected` and `test_solid_integrity`) to 4, 5
+and 12 passed, the counts they reach with `networkx` present, before and
+after. `tests/test_connectivity.py` pins it:
+`CountWithoutRepairTest.test_open_meshes_are_counted_where_networkx_is_absent`
+(red first, in a subprocess where `networkx` cannot be imported), a guard
+over the six fixtures' counts and verdicts, and a comparison with the
+repairing split that runs wherever `networkx` is installed.
