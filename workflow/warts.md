@@ -1589,6 +1589,22 @@ not fixed, until the pilot triages them.
   `openspec/changes/archive/2026-10-07-report-the-instant/design.md`, Open
   Question 2, and its `evidence.md`. **Untriaged.**
 
+## Findings from the framework cycle `a-witness-is-interior-in-its-neighbourhood` (2026-10-07)
+
+- **The empty-common witness stencil misses a shallow sphere dent.** A
+  sphere of radius 3.75 mm sunk 0.2, 0.05 or 0.01 mm into a face of a
+  10 mm block, with the Boolean patched to return an empty common, is not
+  refused by `intersect_shapes`, before that change or after it, in any of
+  five orientations tried: no point of the stencil is classified inside
+  both. Its 26 directions at three steps from the section edges miss the
+  thin wedge between a plane and a sphere that meets it at under 19°. That
+  is a blind spot of the guard's finite budget, which ADR-142 does not
+  claim is complete. The Curta's ±0.2 mm positioning-ball pairs, ADR-142's
+  originating false empties, are still refused: there the stencil finds a
+  point inside both. The change left the stencil as it was. Evidence:
+  `openspec/changes/archive/2026-10-07-a-witness-is-interior-in-its-neighbourhood/design.md`,
+  Open Question 2 (the scratch measurement `probe_sphere.py`). **Untriaged.**
+
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 
 The memo finding is fixed (`persistent-verdict-memo`, ADR-156). Not a
@@ -1639,20 +1655,6 @@ definition (export spec, ADR-128) that the import module is part of it, or
 anchor the identity on the project-relative module as the manifest's
 `[tool.machinome.models]` names it, so the spelling of `PYTHONPATH` cannot
 change a machine.
-
-## OpenAstroMount — a scenario test refused by the exact common guard (3 October 2026)
-
-Found validating the framework change `exact-engine` on a branch of the
-project. `OpenAstroMountScenarioTest.test_every_instruction_reaches_its_documented_end_state`
-fails on the project's `master` against the unmodified framework (feb23f2)
-and against the change alike, with `ExactCommonInconsistency`: the exact
-common of `housing` and `rolamento_uc206_valor_predeterminado_1` is empty
-while a point near (-2.02, 265.56, 442.98) classifies strictly inside both
-solids beyond their face tolerances. Same pair, same witness to the last
-digit before and after the change, so it is not the engine's doing. Either
-the housing and the bearing genuinely overlap at that pose, or the guard
-witnesses a false empty on a valid common. Not triaged; the project's other
-eight tests pass. Evidence: `openspec/changes/archive/2026-10-03-exact-engine/evidence.md`, §6.
 
 ## A first build's sweep removes fused children's STLs (3 October 2026, framework)
 
@@ -1898,5 +1900,21 @@ records in `docs/evidence/resumed-main-validation.json`. All 84 frozen
 production hashes and the upstream archive hash match. The multi-hour final
 gates and snapshot-argument reproductions were not rerun. No geometry,
 collision tolerance, framework implementation or triage decision changed.
+
+### A re-run owed under `a-witness-is-interior-in-its-neighbourhood` (7 October 2026)
+
+That framework change (ADR-142, amendment of 2026-10-07) counts a point as
+a witness against an empty common only when its six axis neighbours, at
+half its smaller distance to the two solids' faces, are classified inside
+both solids too; a candidate they contradict is skipped. The twelve ordered
+thread-seat refusals above should stand, since each pair's independent
+0.01 mm ball at 0.2 mm from both surfaces lies inside both operands, but the
+stencil's own witness points and their neighbours' readings were never
+measured, and the pairs were not re-run under the change while the project
+is paused. Owed when the pilot resumes the project: the thread-seat
+measurement (or the scoped recheck of `resumed-main-validation.json`)
+against a framework carrying the change, expecting all twelve still to
+raise `BrepCommonInconsistency`; a pair that no longer does is a finding
+against the change. **Owed.**
 The pilot explicitly authorized rebasing and locally merging these wart
 records into main without pushing; this is evidence filing, not a fix.

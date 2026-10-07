@@ -1112,3 +1112,52 @@ after. `tests/test_connectivity.py` pins it:
 (red first, in a subprocess where `networkx` cannot be imported), a guard
 over the six fixtures' counts and verdicts, and a comparison with the
 repairing split that runs wherever `networkx` is installed.
+
+## `a-witness-is-interior-in-its-neighbourhood`
+
+From "OpenAstroMount — a scenario test refused by the exact common guard (3 October 2026)":
+
+Found validating the framework change `exact-engine` on a branch of the
+project. `OpenAstroMountScenarioTest.test_every_instruction_reaches_its_documented_end_state`
+fails on the project's `master` against the unmodified framework (feb23f2)
+and against the change alike, with `ExactCommonInconsistency`: the exact
+common of `housing` and `rolamento_uc206_valor_predeterminado_1` is empty
+while a point near (-2.02, 265.56, 442.98) classifies strictly inside both
+solids beyond their face tolerances. Same pair, same witness to the last
+digit before and after the change, so it is not the engine's doing. Either
+the housing and the bearing genuinely overlap at that pose, or the guard
+witnesses a false empty on a valid common. Not triaged; the project's other
+eight tests pass. Evidence: `openspec/changes/archive/2026-10-03-exact-engine/evidence.md`, §6.
+
+**What shipped.** `a-witness-is-interior-in-its-neighbourhood`
+(`openspec/changes/archive/2026-10-07-a-witness-is-interior-in-its-neighbourhood/`,
+ADR-142 amended 2026-10-07). The guard witnessed a false empty on a valid
+common. The polar frame's F206 housing and the right ascension body's UC206
+insert, both valid vendor STEP solids, meet on two concentric spheres of
+radius 31.000 mm, a contact of zero volume at every right ascension angle,
+so OCCT's empty common is right; the witness lay 31.1357 mm from the
+spheres' centre, outside the insert, whose zero-tolerance classifier
+answered IN there alone (OUT at its neighbours 10⁻⁴ mm away; a 0.01 mm ball
+there has no common with the insert; 40,000 samples found no point inside
+both). The first amendment's face-tolerance test passed it, at 0.0999563 and
+0.135651 mm from the two solids' faces. In `machinome/engine/brep.py`,
+`_resolved_interior` now returns a candidate's margin, its smallest face
+distance, or `None` within a face's tolerance, and `_false_empty_witness`
+counts a candidate resolved in both solids only when its six axis
+neighbours at half the smaller margin are classified IN both as well; no
+face lies within the margin, so a neighbour read OUT proves a reading
+wrong, and such a candidate is skipped while the search goes on. No
+tolerance, mesh verdict, volume or second Boolean enters; the stencil is
+unchanged. `tests/test_witness_neighbourhood.py` pins it: the lone false IN
+between two touching boxes (red with `BrepCommonInconsistency`), the margin,
+an undecided neighbour refusing verification, and a 0.4 mm slab of shared
+interior still refused; the two guard test files pass unedited. The project
+(branch `exact-engine-validation`, `58e46cd`, read only with a scratch build
+directory) went from 8 passed, 1 failed in 575 s to 9 passed in 1274 s, the
+difference being the Target and Present overlap inventories the refusal had
+cut short; the pair alone is returned empty in 37.5 s where it was refused
+in 28.5 s. ADR-142's originating Curta positioning-ball pairs at ±0.2 mm are
+still refused at the same witnesses. Voron-2's thread-seat refusals, genuine
+false empties, were not re-run, the project being paused; the re-run is
+recorded as owed in `../../warts.md`, with the shallow sphere dent the
+stencil misses before and after the change.

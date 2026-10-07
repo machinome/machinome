@@ -268,6 +268,27 @@ in the same cycle.
   before and after; the project untouched. The YouCanBuildDog entry moved
   to `../archive/fix-warts-3-2026-10-06/resolved.md`.
 
+- 7 October 2026: investigation 2 (OpenAstroMount's refused scenario). A
+  false witness, a guard defect: the F206 housing and the UC206 insert
+  meet on two concentric R 31 mm spheres, a zero-volume contact at every
+  right ascension angle, so OCCT's empty common is right; the witness lies
+  outside the insert, whose classifier answers IN there alone (OUT at its
+  neighbours 10⁻⁴ mm away, no common with a 0.01 mm ball there), and the
+  face-tolerance test passed it. With the witness corroborated by its
+  neighbours, patched in from the scratchpad, the project ran 9 of 9;
+  taken up as cycle 18, `a-witness-is-interior-in-its-neighbourhood`.
+
+- 7 October 2026: cycle 18, `a-witness-is-interior-in-its-neighbourhood`,
+  applied: a point refuses an empty B-rep common only when its six axis
+  neighbours at half its smaller face distance are classified inside both
+  solids too, and a candidate they contradict is skipped; ADR-142 amended.
+  OpenAstroMount (`exact-engine-validation`, read only) went from 8 passed,
+  1 failed (575 s) to 9 passed (1274 s, the overlap inventories the
+  refusal had cut short now compared); the Curta's ±0.2 mm positioning-ball
+  pairs are still refused at the same witnesses. The entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; Voron-2's re-run, owed,
+  and the shallow sphere dent the stencil misses recorded in `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

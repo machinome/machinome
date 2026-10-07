@@ -2427,9 +2427,13 @@ ignored with a warning when every comparison in a call was on B-rep geometry.
 After an OCCT common reports no solids, the shared B-rep path makes one
 bounded, independent native section/classifier check. A zero-tolerance
 point classified inside both solids and separated from every boundary face
-by more than that face's native tolerance contradicts that empty Boolean and
+by more than that face's native tolerance, whose six axis neighbours at half
+its smaller face distance in the two solids are classified inside both too,
+contradicts that empty Boolean and
 raises an inconsistency instead of returning clearance or inferring a
-volume; a failed section or indeterminate classification likewise refuses
+volume. No face lies within that distance, so a neighbour classified
+outside proves a reading wrong, and that candidate is skipped while the
+search goes on; a failed section or indeterminate classification likewise refuses
 the clearance verdict. Native face tolerance qualifies only the witness,
 never an existing positive common. This is a one-way witness search, not a proof that
 all unwitnessed empty commons are true empties. Ordinary face/edge

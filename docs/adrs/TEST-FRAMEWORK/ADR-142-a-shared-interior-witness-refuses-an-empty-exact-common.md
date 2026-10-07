@@ -72,3 +72,36 @@ clearance, introduce an overlap epsilon, or certify every unwitnessed empty.
 The original Curta positioning-ball/frame ±0.2 mm witnesses remain far
 beyond native face tolerance and still refuse their false-empty commons.
 See [the archived correction evidence](../../../openspec/changes/archive/2026-09-23-require-resolved-exact-witness/evidence.md).
+
+## Amendment — 2026-10-07: A Witness Is Interior in Its Neighbourhood
+
+OpenAstroMount's scenario test was refused at its Target pose for the polar
+frame's F206 bearing housing and the right ascension body's UC206 insert,
+two valid vendor STEP solids that meet on two concentric spheres of radius
+31.000 mm: a contact of zero volume at every right ascension angle, for
+which OCCT's empty common is right. The witness lay 0.0999563 mm from the
+housing's nearest face and 0.135651 mm from the insert's, against face
+tolerances of 10⁻⁷ mm, so the first amendment's test accepted it; yet it lay
+31.135651 mm from the spheres' centre, outside the insert. The insert's
+zero-tolerance classifier answered IN at that one point and OUT at its
+neighbours 10⁻⁴ mm away, a ball of radius 0.01 mm there had no common with
+the insert, and 40,000 samples found no point inside both. The face
+tolerance test filters a classifier that rounds a point on a face; it does
+not filter one that is wrong away from every face.
+
+A candidate's smallest distance to the faces of a solid, its margin, bounds
+a ball that no face of that solid enters, so every point of the ball has the
+candidate's true state. A candidate resolved in both solids therefore
+counts as a witness only when its six neighbours along ±x, ±y and ±z, at
+half the smaller of its two margins, are also classified IN at zero
+tolerance by the same two solids' classifiers. A candidate whose neighbours
+are not all IN is skipped and the finite search continues, as an unresolved
+candidate already is; a neighbour classified UNKNOWN refuses verification.
+This narrows once more only which points can overturn an empty Boolean. It
+adds no tolerance, mesh verdict, volume or second Boolean, leaves the
+stencil and its budget unchanged, and certifies no unwitnessed empty.
+The Curta positioning-ball/frame ±0.2 mm pairs are still refused at the same
+witnesses, whose six neighbours are IN both solids, and so are the two
+hand-measured witnesses of 23 September. Voron-2's thread-seat refusals,
+whose independent 0.01 mm balls are inside both operands, were not re-run.
+See [the archived neighbourhood evidence](../../../openspec/changes/archive/2026-10-07-a-witness-is-interior-in-its-neighbourhood/evidence.md).

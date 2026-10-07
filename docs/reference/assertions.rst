@@ -46,6 +46,8 @@ returns one; wrap it with ``cadquery.Shape.cast(...)`` for CadQuery's
 methods. If OCCT reports an empty common but an independent native section
 and zero-tolerance solid classification find a point inside both shapes,
 resolved farther from every boundary face than that face's native tolerance,
+and the six points around it along the axes, at half its smaller distance to
+the two shapes' faces, are classified inside both as well,
 it raises ``BrepCommonInconsistency`` rather than claiming
 clearance or inventing a volume. If that independent check cannot complete,
 it raises ``BrepCommonVerificationError``. Both error types are imported

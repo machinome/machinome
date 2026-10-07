@@ -231,8 +231,10 @@ def intersect_shapes(first, second, first_name, second_name):
     This is the shape-level entry point for B-rep project diagnostics as well
     as managed assertions.  A finite native section/interior search catches
     *demonstrated* contradictory empties only when the witness is resolved
-    beyond native face tolerances; no witness is not a universal
-    certificate that every OCCT Boolean is correct.  No mesh fallback,
+    beyond native face tolerances and its six axis neighbours, at half its
+    smaller distance to the two solids' faces, are inside both too; no
+    witness is not a universal certificate that every OCCT Boolean is
+    correct.  No mesh fallback,
     fuzzy tolerance or replacement volume is used.
     """
     first, second = as_shape(first), as_shape(second)
@@ -262,18 +264,22 @@ def _distance(first, second):
 
 
 def _resolved_interior(solid, point):
-    """Require separation beyond each boundary face's native tolerance.
+    """The point's margin in `solid`: its smallest distance to the solid's
+    faces, or None when it lies within some face's native tolerance.
 
     A zero-tolerance classifier can report IN for a rounded point actually
     on a contact face.  The tolerance belongs to the B-rep's uncertainty,
     not to an overlap verdict: this only decides whether a candidate is
-    reliable enough to contradict an empty Boolean.
+    reliable enough to contradict an empty Boolean.  No face comes closer
+    to the point than its margin, so every point of the ball of that
+    radius has the point's true state.
     """
     faces = _faces(solid)
     if not faces:
         raise RuntimeError('classified solid has no boundary faces')
     vertex = BRepBuilderAPI_MakeVertex(
         gp_Pnt(point.X(), point.Y(), point.Z())).Vertex()
+    margin = math.inf
     for face in faces:
         tolerance = BRep_Tool.Tolerance_s(face)
         distance = _distance(face, vertex)
@@ -281,8 +287,9 @@ def _resolved_interior(solid, point):
                 math.isfinite(distance) and distance >= 0):
             raise RuntimeError('invalid native face tolerance or distance')
         if distance <= tolerance:
-            return False
-    return True
+            return None
+        margin = min(margin, distance)
+    return margin
 
 
 def _length(edge):
@@ -305,8 +312,12 @@ def _false_empty_witness(first, second):
     The section locates *candidate* boundary crossings, not material.  A
     positive witness needs one offset point classified TopAbs_IN in a solid
     on EACH side at zero tolerance and separated beyond each native face
-    tolerance.  A 3-D stencil avoids assuming a sphere
-    normal, and its finite budget is deliberately not a completeness claim.
+    tolerance, whose six axis neighbours at half its smaller margin in the
+    two solids are classified TopAbs_IN in both as well.  No face lies
+    within that margin, so a neighbour classified outside proves a reading
+    wrong; such a candidate is skipped and the search goes on.  A 3-D
+    stencil avoids assuming a sphere normal, and its finite budget is
+    deliberately not a completeness claim.
     """
     solids1, solids2 = _solids(first), _solids(second)
     if not solids1 or not solids2:
@@ -341,20 +352,40 @@ def _false_empty_witness(first, second):
     classifiers1 = [BRepClass3d_SolidClassifier(solid) for solid in solids1]
     classifiers2 = [BRepClass3d_SolidClassifier(solid) for solid in solids2]
 
+    def classified_in(classifier, point):
+        classifier.Perform(point, 0.0)
+        # OCCT's Rejected() is a successful outside-by-rejection result,
+        # not a failed classification. UNKNOWN is genuinely undecided.
+        if classifier.Rejected():
+            return False
+        state = classifier.State()
+        if state == TopAbs_UNKNOWN:
+            raise RuntimeError('OCCT solid classifier returned UNKNOWN')
+        return state == TopAbs_IN
+
     def inside(classifiers, solids, point):
-        found = []
-        for classifier, solid in zip(classifiers, solids):
-            classifier.Perform(point, 0.0)
-            # OCCT's Rejected() is a successful outside-by-rejection result,
-            # not a failed classification. UNKNOWN is genuinely undecided.
-            if classifier.Rejected():
-                continue
-            state = classifier.State()
-            if state == TopAbs_UNKNOWN:
-                raise RuntimeError('OCCT solid classifier returned UNKNOWN')
-            if state == TopAbs_IN:
-                found.append(solid)
-        return found
+        return [(classifier, solid)
+                for classifier, solid in zip(classifiers, solids)
+                if classified_in(classifier, point)]
+
+    def resolved(candidates, point):
+        margins = [(classifier, _resolved_interior(solid, point))
+                   for classifier, solid in candidates]
+        return [(classifier, margin) for classifier, margin in margins
+                if margin is not None]
+
+    def corroborated(coords, classifier1, classifier2, margin):
+        # Every point within `margin` has the candidate's true state in
+        # both solids, so its neighbours at half of it must read IN too.
+        for axis in range(3):
+            for sign in (1, -1):
+                probe = list(coords)
+                probe[axis] += sign * margin / 2
+                probe = gp_Pnt(*probe)
+                if not (classified_in(classifier1, probe) and
+                        classified_in(classifier2, probe)):
+                    return False
+        return True
 
     for edge in edges[:8]:
         if _length(edge) <= 0:
@@ -370,11 +401,16 @@ def _false_empty_witness(first, second):
                     if not candidates1:
                         continue
                     candidates2 = inside(classifiers2, solids2, point)
-                    if (candidates2 and
-                            any(_resolved_interior(solid, point)
-                                for solid in candidates1) and
-                            any(_resolved_interior(solid, point)
-                                for solid in candidates2)):
+                    if not candidates2:
+                        continue
+                    margins1 = resolved(candidates1, point)
+                    if not margins1:
+                        continue
+                    margins2 = resolved(candidates2, point)
+                    if any(corroborated(coords, classifier1, classifier2,
+                                        min(margin1, margin2))
+                           for classifier1, margin1 in margins1
+                           for classifier2, margin2 in margins2):
                         return coords
     return None
 

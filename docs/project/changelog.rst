@@ -177,6 +177,17 @@ Unreleased
   to fill each body's holes first, and only that repair needs it. Bodies
   are now counted as the mesh holds them, with no repair, and every
   count is the one it was (count-bodies-without-repair).
+* **An empty common is not refused on one reading its neighbourhood
+  contradicts.** When OCCT's common of two B-rep solids is empty, a point
+  classified inside both, clear of every face, now refuses it only if the
+  six points around it along the axes, at half its smaller distance to the
+  two solids' faces, are classified inside both as well; no face lies that
+  close, so their state is the point's. OpenAstroMount's bearing housing
+  and insert, which meet on two concentric spheres, used to be refused with
+  ``BrepCommonInconsistency`` at a point outside the insert that its
+  classifier alone called inside; their empty common is now returned as
+  clearance, and a common that is empty while the solids share interior is
+  still refused (a-witness-is-interior-in-its-neighbourhood).
 
 Machinome 0.8.0
 ---------------
