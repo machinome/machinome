@@ -141,7 +141,12 @@ test('the ruler of the counter, the keys and the clicks move the playhead, and t
     await page.keyboard.press(key);await settle(page);
     frames.push([(await state(page)).frame,Number((await readout(page)).frame.value)]);
   }
-  assert.deepEqual(frames,[[0,0],[1,1],[11,11],[0,0],[113,113]]);
+  assert.deepEqual(frames,[[0,0],[20,20],[30,30],[10,10],[113,113]]);
+  await seek(page,8);
+  for(const expected of [10,11.3,11.3]){
+    await page.keyboard.press('ArrowRight');await settle(page);
+    assert.equal((await state(page)).time,expected,'right goes forward two seconds, stopping at the last frame');
+  }
   await seek(page,5);
   for(const expected of [3,1,0]){
     await page.keyboard.press('ArrowLeft');await settle(page);

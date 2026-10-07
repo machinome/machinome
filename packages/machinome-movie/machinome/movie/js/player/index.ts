@@ -361,7 +361,7 @@ document.addEventListener('keydown',event=>{
   const fps=outline.output.fps;
   switch(event.key){
     case ' ':toggle();break;
-    case 'ArrowRight':step(event.shiftKey?fps:1);break;
+    case 'ArrowRight':step(event.shiftKey?fps:2*fps);break;
     case 'ArrowLeft':step(event.shiftKey?-fps:-2*fps);break;
     case 'Home':seek(0);break;
     case 'End':lastFrame();break;
