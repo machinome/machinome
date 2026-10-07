@@ -5,7 +5,7 @@
 **Extends:** [ADR-006: Mtime-Based STL Caching Strategy](./ADR-006-mtime-based-stl-caching-strategy.md)
 **Amends:** [ADR-002: Template-Method Pattern for Node Lifecycle](./ADR-002-template-method-pattern-for-node-lifecycle.md)
 **Affects:** [ADR-004: Multi-CAD Backend Adapter Pattern](./ADR-004-multi-cad-backend-adapter-pattern.md)
-**Amended by:** [ADR-071: Node-Scoped Content Currency](./ADR-071-node-scoped-content-currency.md) — the one-node-per-file driver is withdrawn; the decision stands
+**Amended by:** [ADR-071: Node-Scoped Content Currency](./ADR-071-node-scoped-content-currency.md) — the one-node-per-file driver is withdrawn; the decision stands; amended 2026-10-07 (change follow-a-sibling-packages-init) — a sibling package's __init__.py is followed
 
 ## Context and Problem Statement
 
@@ -163,3 +163,27 @@ byte-identical; `crank_throw` differs in bytes with identical volume,
 face count and extents, which reproduces at the base commit when its STL
 is regenerated from the same `.scad` — OpenSCAD's output is not
 byte-stable, independently of this change.
+
+## Amendment (2026-10-07, change `follow-a-sibling-packages-init`)
+
+The walk drops the `__init__.py` of a package only when that package
+contains the file whose import statement names it. A package that does
+not contain the importing file is code that file runs, and its
+`__init__.py` is followed like any named module, together with what it
+imports. The bold sentence above described a broader rule than its
+reason: the root assembly's `__init__.py`, and a sub-assembly's, lie
+above the modules that reach them through a relative import, and those
+are still never followed. A library package beside the importer is not
+that case. 3DPrintedClocks builds every clock through
+`from clocks import ...`, where `clocks/__init__.py` re-exports 18
+modules; dropping it left Wall Clock 22's leaves tracking 3 of the 30
+`clocks/` modules they run, and an edit to the pillar radius in
+`clocks/plates.py` served the old pillar from a build that reported
+itself current. With the narrower rule the pillar tracks all 30, the
+edit re-derives its STL and BREP together, and a warm rebuild rewrites
+nothing. The containment test reads only the importing file's path, so
+the per-file import cache is unchanged. The walk still follows only the
+module a dotted statement names, not the parent packages Python runs on
+the way, and a library module that reaches its own package's
+`__init__.py` is still not followed through it. Projects whose nodes
+import through a sibling package rebuild once.

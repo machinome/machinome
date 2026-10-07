@@ -6,9 +6,9 @@ TBD - created by archiving change fast-source-closure. Update Purpose after arch
 ### Requirement: The tracked source set is unchanged
 
 The system SHALL produce, for every node in a loaded tree, exactly the source
-closure it produces today: the same set of project-local files, the same
-`mtime_ns` derived from them, and therefore the same artifact paths and the
-same up-to-date decisions.
+closure that `build-pipeline`'s Mtime-equality caching defines: the same set
+of project-local files, the same `mtime_ns` derived from them, and therefore
+the same artifact paths and the same up-to-date decisions.
 
 Changing how the package of a file is looked up SHALL NOT change which files a
 node tracks, in either direction. A file that contributes today SHALL still
@@ -98,3 +98,4 @@ A census SHALL be immutable after observation and SHALL be discarded when a fres
 
 - **WHEN** project assembly imports a module after initial source lookup
 - **THEN** the source resolver incorporates that module and the sealed generation includes its file, exactly as a fresh scan would
+

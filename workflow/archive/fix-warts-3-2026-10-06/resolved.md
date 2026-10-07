@@ -1161,3 +1161,68 @@ still refused at the same witnesses. Voron-2's thread-seat refusals, genuine
 false empties, were not re-run, the project being paused; the re-run is
 recorded as owed in `../../warts.md`, with the shallow sphere dent the
 stencil misses before and after the change.
+
+## `follow-a-sibling-packages-init`
+
+From "3DPrintedClocks":
+
+- **Generated-artifact freshness is not dependable for source-bound CAD
+  leaves.** While changing Wall Clock 22's source-derived hanging-weight
+  datum, `machinome test wall_clock_22 --faceted` continued to compare an older
+  generated assembly pose. Removing only that model's ignored
+  `_build/wall_clock_22` cache was needed to force regeneration; the next
+  run also tried to reuse a deleted `clock-Pillars...stl` artifact and raised
+  `FileNotFoundError`. The artifact identity appears not to include every
+  source adapter dependency, and the test artifact index can retain paths
+  that the producer no longer restores. A project should never need cache
+  deletion for a source edit to reach a spatial assertion. Candidate
+  framework work: make dependency fingerprints complete and make the test
+  artifact index self-healing when an artifact is absent. Evidence:
+  `projects/3DPrintedClocks`, Wall Clock 22, 2026-09-10. Deferred for a
+  framework agent; no framework workaround is part of the clock model.
+
+**What shipped.** `follow-a-sibling-packages-init`
+(`openspec/changes/archive/2026-10-07-follow-a-sibling-packages-init/`,
+ADR-033 amended 2026-10-07). An investigation on 7 October 2026 ran the
+entry again on a byte-identical scratch copy of the project (`ec2a05d1`)
+and found one of its three halves still standing. The stale pose does not
+reproduce: an assembly's placement is computed on every run, so an edit to
+the weight datum moves the weight at once (an edit lowering the weight's
+top by 40 mm moved `wound_position` and the weight shell's world
+translation from -92.94 to -132.94 with no artifact rewritten).
+The retained path does not reproduce: the `FileNotFoundError` came from
+the OpenSCAD-era assembly `.scad` files, an artifact kind removed by
+`748d6d94`, and deleting a leaf's STL or the whole model build directory
+now rebuilds cleanly. What remained was that a leaf did not track all the
+code it runs. `machinome/node/sources.py` dropped every `__init__.py` the
+import walk reached, and Wall Clock 22 builds its movement through
+`from clocks import ...`, where `clocks/__init__.py` re-exports eighteen
+modules, so its leaves tracked 3 of the 30 `clocks/` modules they execute;
+an edit to the bottom-pillar radius in `clocks/plates.py` left the pillar's
+STL and BREP at 31.1 mm while the live render was 37.1 mm, nothing was
+rewritten and nothing warned, and deleting the STL by hand regenerated it
+while its BREP kept the old shape. `_project_file` now drops an
+`__init__.py` only when its package directory contains the importing file,
+the case ADR-033's reason covers (a root assembly or sub-assembly above the
+importer); a sibling package's `__init__.py` is followed with what it
+imports. `tests/test_source_set.py` pins it with a library facade in the
+fixture: `test_a_module_behind_a_sibling_package_init_is_tracked` and
+`test_editing_a_module_behind_a_sibling_package_init_invalidates_the_artifact`
+were red first (the leaf tracked only its own file, and reported its STL
+current after the library module was rewritten), and
+`test_the_importers_own_package_init_is_not_tracked` guards a `from .
+import` leaf against a rule following every `__init__.py` (a probe with
+that rule put the whole project in such a leaf's set). On the scratch copy
+with the change, the pillar tracks 43 files, 30 of them under `clocks/`,
+the ancestor `simulation/__init__.py` and `simulation/wall_clock_22/__init__.py`
+stay untracked, and the pillar edit re-derived every leaf (288 files) with
+both pillar artifacts at 37.096/37.1 mm; reverted, the documented
+`machinome test wall_clock_22 --mesh --volume-epsilon 0.001 --set facing=0`
+gave 25 tests, 19 passed, 6 failed (the clock's own NotManifold weight
+shell and multi-body bow ties), and a warm rerun rewrote nothing. The
+unchanged project, read only with a scratch build directory, gave 25/19/6
+before and after; its first run after the change re-derived the model once
+(288 files, 43.45 s) and the next rewrote nothing (22.35 s, against
+22.52 s before). Projects whose nodes import through a sibling package
+rebuild once; in the catalogue that is every 3DPrintedClocks model,
+Curta-Type-I-3x and openflexure-microscope.

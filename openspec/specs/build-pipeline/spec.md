@@ -486,9 +486,17 @@ its bound parameter values; within one binding it participates in this rule as
 any adapter-owned artifact does.
 
 A node's tracked files SHALL include its own source together with project-local
-modules it imports transitively. Modules outside the project tree SHALL NOT be
-tracked. Where the contributing set cannot be determined exactly, the system
-SHALL track more files rather than fewer.
+modules it imports transitively. A package's `__init__.py` SHALL be tracked,
+and followed to what it imports, when a tracked module names that package in
+an import and the package's directory does not contain that module: it is code
+the module runs, as a library package beside the importer is. The
+`__init__.py` of a package that contains the importing module SHALL NOT be
+followed: Python runs it to resolve any import inside the package, and it is
+conventionally the root assembly's own source, or a sub-assembly's, which
+imports every node beneath it, so following it would make every node depend on
+every other. Modules outside the project tree SHALL NOT be tracked. Where the
+contributing set cannot be determined exactly, the system SHALL track more
+files rather than fewer.
 
 #### Scenario: Source edit invalidates ancestors
 
@@ -502,6 +510,23 @@ SHALL track more files rather than fewer.
   tracked source retains the unchanged maximum mtime
 - **THEN** the node's source-set fingerprint differs and its artifact is
   regenerated with the helper's new values
+
+#### Scenario: A module behind a sibling package's `__init__` is tracked
+
+- **WHEN** a node's module imports a name from a project package whose
+  directory does not contain the module, and that package's `__init__.py`
+  re-exports the name from a module of the package
+- **THEN** the `__init__.py` and the module that defines the name are in the
+  node's tracked files, and after the node's artifacts are built an edit to
+  that module makes them not-up-to-date
+
+#### Scenario: A package containing the importer is not followed
+
+- **WHEN** a node's module reaches a sibling module through its own package
+  (`from . import dimensions`), and that package's `__init__.py` imports
+  every node of the project
+- **THEN** the sibling module is in the node's tracked files and the
+  package's `__init__.py`, and the other nodes it imports, are not
 
 #### Scenario: Restored mtime does not hide a same-size edit
 

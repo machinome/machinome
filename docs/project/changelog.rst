@@ -188,6 +188,16 @@ Unreleased
   classifier alone called inside; their empty common is now returned as
   clearance, and a common that is empty while the solids share interior is
   still refused (a-witness-is-interior-in-its-neighbourhood).
+* **An edit behind a library's ``__init__.py`` rebuilds what uses it.** A
+  node's tracked sources now include the ``__init__.py`` of a project
+  package it imports from outside, and what that file imports, so a
+  leaf built through ``from clocks import Weight``, where
+  ``clocks/__init__.py`` re-exports the library's modules, is re-derived
+  when one of those modules changes; it used to report itself current
+  and serve the old shape. The ``__init__.py`` of the importing module's
+  own package, usually an assembly, is still not followed. Projects
+  whose nodes import through another package of their own rebuild once
+  (follow-a-sibling-packages-init).
 
 Machinome 0.8.0
 ---------------

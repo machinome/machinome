@@ -3241,9 +3241,10 @@ The short list that changes must not silently break:
   can publish (ADR-084). The F04 project lock spans assembly, artifact work and
   publication, not callbacks, project tests or development recovery waits.
 - A node's source set is its own file plus the project-local modules it
-  imports, transitively — never the `__init__.py` of a package the walk
-  merely traverses, which would make every node depend on every file
-  (ADR-033). The set over-approximates on purpose: a spurious rebuild is
+  imports, transitively — never the `__init__.py` of a package containing
+  the importing module, which would make every node depend on every file,
+  though a sibling package's `__init__.py` is followed (ADR-033, amended).
+  The set over-approximates on purpose: a spurious rebuild is
   cheap, a stale model is not — which is why a leaf whose source is a
   foreign file adds the closure of the python module wrapping it when that
   module carries geometry-affecting code (ADR-055). Resolving the package a

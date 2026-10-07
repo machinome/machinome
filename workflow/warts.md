@@ -12,23 +12,6 @@ written against, unless they carry a **Remaining (2026-10-04)** note or were
 condensed to their remainder, which says so. A fix that exists only on an
 unmerged branch does not close an entry.
 
-# 3DPrintedClocks
-
-- **Generated-artifact freshness is not dependable for source-bound CAD
-  leaves.** While changing Wall Clock 22's source-derived hanging-weight
-  datum, `machinome test wall_clock_22 --faceted` continued to compare an older
-  generated assembly pose. Removing only that model's ignored
-  `_build/wall_clock_22` cache was needed to force regeneration; the next
-  run also tried to reuse a deleted `clock-Pillars...stl` artifact and raised
-  `FileNotFoundError`. The artifact identity appears not to include every
-  source adapter dependency, and the test artifact index can retain paths
-  that the producer no longer restores. A project should never need cache
-  deletion for a source edit to reach a spatial assertion. Candidate
-  framework work: make dependency fingerprints complete and make the test
-  artifact index self-healing when an artifact is absent. Evidence:
-  `projects/3DPrintedClocks`, Wall Clock 22, 2026-09-10. Deferred for a
-  framework agent; no framework workaround is part of the clock model.
-
 # kossel (2026-09-06)
 
 - **No clearance contract for a screw in a hole.** `assertClose` is
@@ -671,9 +654,6 @@ delegation. Its items 1 to 9 are integrated on main. What remains of it:
 - **`%` on a symbolic value disagrees across runtimes** (item 7 above; see
   also "The framework's two meanings of `%`" below). Cycle
   `expression-remainder`, never started.
-- **Generated-artifact freshness** (3DPrintedClocks, the first entry).
-  Investigation never started; whether later currency cycles cover part of
-  it is unmeasured.
 
 ## Held for the pilot (a product, architecture or policy choice)
 

@@ -33,6 +33,8 @@ from .source_set_project.block import Block
 from .source_set_project.cyl import Cyl
 from .source_set_project.jsblock import JsBlock
 from .source_set_project.lonely import Lonely
+from .source_set_project.peg import Peg
+from .source_set_project.wide import Wide
 from machinome.core.loader import import_module_from_path
 from machinome.node.sources import source_closure
 
@@ -40,6 +42,8 @@ from machinome.node.sources import source_closure
 PROJECT = os.path.dirname(os.path.realpath(dimensions.__file__))
 DIMENSIONS = os.path.realpath(dimensions.__file__)
 PACKAGE_INIT = os.path.join(PROJECT, '__init__.py')
+LIBRARY_INIT = os.path.join(PROJECT, 'library', '__init__.py')
+MEASURES = os.path.join(PROJECT, 'library', 'measures.py')
 
 
 def realpaths(node):
@@ -65,9 +69,12 @@ class SourceSetTest(BaseNodeTest):
         super().setUp()
         self.dimensions_times = (os.path.getatime(DIMENSIONS),
                                  os.path.getmtime(DIMENSIONS))
+        self.measures_times = (os.path.getatime(MEASURES),
+                               os.path.getmtime(MEASURES))
 
     def tearDown(self):
         os.utime(DIMENSIONS, self.dimensions_times)
+        os.utime(MEASURES, self.measures_times)
         super().tearDown()
 
     def test_own_source_is_tracked(self):
@@ -94,6 +101,30 @@ class SourceSetTest(BaseNodeTest):
         import, but following it would make every node in the project
         depend on every other one."""
         self.assertNotIn(PACKAGE_INIT, realpaths(Cyl()))
+
+    def test_a_module_behind_a_sibling_package_init_is_tracked(self):
+        """Wide imports WIDTH from the library package beside it, whose
+        __init__ re-exports it from measures.py. That __init__ does not
+        contain wide.py, so it is code Wide runs: it is tracked, and so is
+        the module it imports. 3DPrintedClocks builds every clock this way,
+        through `from clocks import ...`."""
+        files = realpaths(Wide())
+        self.assertIn(MEASURES, files)
+        self.assertIn(LIBRARY_INIT, files)
+        self.assertNotIn(PACKAGE_INIT, files)
+
+    def test_the_importers_own_package_init_is_not_tracked(self):
+        """Peg reaches dimensions.py by `from . import dimensions`, which
+        names the package containing peg.py, whose __init__ is the root
+        assembly importing every node. Cyl cannot witness this: its
+        `from .dimensions import ...` never names the package itself, so
+        it would stay clean even under a rule following every
+        __init__."""
+        files = realpaths(Peg())
+        self.assertIn(DIMENSIONS, files)
+        self.assertNotIn(PACKAGE_INIT, files)
+        self.assertNotIn(os.path.realpath(Cyl().src), files)
+        self.assertNotIn(os.path.realpath(Lonely().src), files)
 
     def test_unrelated_node_is_not_invalidated(self):
         """The one-file-one-node property, stated as a test: a node that
@@ -127,6 +158,23 @@ class SourceSetTest(BaseNodeTest):
         os.utime(DIMENSIONS, (future, future))
 
         rebuilt = Block()
+        self.assertFalse(rebuilt._up_to_date(rebuilt.stl_file))
+
+    def test_editing_a_module_behind_a_sibling_package_init_invalidates_the_artifact(
+        self,
+    ):
+        """The finding's consequence: an edit to a library module a leaf
+        reaches only through the library's __init__ must stop the leaf's
+        artifact reporting up to date, or the old shape is served."""
+        built = Wide()
+        built.assemble()
+        self.assertTrue(built._up_to_date(built.stl_file))
+
+        edit_source(self, MEASURES)
+        future = time.time() + 10
+        os.utime(MEASURES, (future, future))
+
+        rebuilt = Wide()
         self.assertFalse(rebuilt._up_to_date(rebuilt.stl_file))
 
     def test_a_restamped_module_leaves_the_artifact_current(self):

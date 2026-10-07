@@ -265,7 +265,8 @@ def _parse_project_imports(path, root):
             names.update(_import_from_targets(statement, package))
 
     return frozenset(
-        found for found in (_project_file(name, root) for name in names)
+        found for found in (_project_file(name, root, path)
+                            for name in names)
         if found is not None
     )
 
@@ -386,9 +387,10 @@ def _import_from_targets(statement, package):
     return [base] + [f'{base}.{alias.name}' for alias in statement.names]
 
 
-def _project_file(name, root):
-    """The project file a module name resolves to, or None if it is not
-    one the node should track."""
+def _project_file(name, root, importer):
+    """The project file a module name, imported by the file at real path
+    `importer`, resolves to, or None if it is not one the node should
+    track."""
     module = sys.modules.get(name)
     if module is None:
         return None
@@ -399,16 +401,25 @@ def _project_file(name, root):
 
     path = os.path.realpath(filename)
 
-    # A package __init__ is, in the conventional layout, the root
-    # assembly's own source: it imports every node in the project.
-    # Python executes it to resolve any relative import, so following
+    # The __init__ of a package containing the importer is, in the
+    # conventional layout, the root assembly's own source or a
+    # sub-assembly's: it imports every node beneath it. Python executes
+    # it to resolve any relative import inside the package, so following
     # it would put every node's source in every node's set and one edit
-    # would invalidate everything. The cost is that a constant reached
-    # through the package rather than through a named module is not
-    # tracked -- that import is a child depending on its parent, the
-    # one direction the tree's upward aggregation cannot express.
+    # would invalidate everything. The cost is that a constant the
+    # importer reaches through its own package rather than through a
+    # named module is not tracked -- that import is a child depending on
+    # its parent, the one direction the tree's upward aggregation cannot
+    # express. A package that does not contain the importer -- a library
+    # such as 3DPrintedClocks' `clocks`, reached as `from clocks import
+    # Weight` -- is code the importer runs, so its __init__ is followed
+    # like any named module (OpenSpec change
+    # follow-a-sibling-packages-init). The test reads only the
+    # importer's path, so the per-file import cache stays sound.
     if os.path.basename(path) == '__init__.py':
-        return None
+        package = os.path.dirname(path)
+        if os.path.commonpath((package, importer)) == package:
+            return None
 
     if not path.startswith(root + os.sep):
         return None

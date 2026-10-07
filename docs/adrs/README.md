@@ -41,7 +41,7 @@ that way.
 - [ADR-023](NODE/ADR-023-kinematic-operations-and-driver-tagged-idempotent-renders.md) — Kinematic operations, driver-tagged idempotent renders — **Accepted**, extended by 027/028
 - [ADR-026](NODE/ADR-026-node-identity-parameter-hashed-artifact-keys-vs-tree-names.md) — Parameter-hashed artifact keys vs tree names — **Accepted**, extended by 043/063/155
 - [ADR-028](NODE/ADR-028-cached-base-meshes-and-single-matrix-world-composition.md) — Cached base meshes, single-matrix world composition — **Accepted** (characterization), amended by 085
-- [ADR-033](NODE/ADR-033-import-closure-source-set-and-up-to-date-leaf-path.md) — Import-closure source set, up-to-date leaf path — **Accepted**, one-node-per-file driver withdrawn by 071
+- [ADR-033](NODE/ADR-033-import-closure-source-set-and-up-to-date-leaf-path.md) — Import-closure source set, up-to-date leaf path — **Accepted**, one-node-per-file driver withdrawn by 071, amended 2026-10-07
 - [ADR-039](NODE/ADR-039-solid-integrity-at-the-topmost-rigid-node.md) — Solid integrity at the topmost rigid node — **Accepted**, amended 2026-08-10
 - [ADR-044](NODE/ADR-044-derived-exact-geometry-capability.md) — Derived exact-geometry capability — **Accepted**, amended by 164
 - [ADR-045](NODE/ADR-045-exact-fusion-composition.md) — Exact fusion composition — **Accepted**

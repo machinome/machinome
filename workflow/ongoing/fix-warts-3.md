@@ -289,6 +289,34 @@ in the same cycle.
   `../archive/fix-warts-3-2026-10-06/resolved.md`; Voron-2's re-run, owed,
   and the shallow sphere dent the stencil misses recorded in `../warts.md`.
 
+- 7 October 2026: investigation 1 (artifact freshness), on a scratch copy
+  of 3DPrintedClocks (`ec2a05d1`). Two halves of the entry do not
+  reproduce: placements are computed every run, so the weight-datum edit
+  moved the weight at once, and the retained path that raised
+  `FileNotFoundError` belonged to the OpenSCAD-era assembly `.scad` files
+  removed by `748d6d94`. The third does: the import walk drops every
+  `__init__.py`, so Wall Clock 22's leaves, built through `from clocks
+  import ...`, tracked 3 of the 30 `clocks/` modules they run, and a
+  pillar-radius edit in `clocks/plates.py` left the pillar's STL and BREP
+  at 31.1 mm against a live 37.1 mm, reported current. Following only an
+  `__init__.py` whose package does not contain the importer, patched in
+  from the scratchpad, tracked all 30 and re-derived the edit; taken up as
+  cycle 19, `follow-a-sibling-packages-init`.
+
+- 7 October 2026: cycle 19, `follow-a-sibling-packages-init`, applied: the
+  import walk follows the `__init__.py` of a project package that does not
+  contain the importing file, with what it imports, and still drops one
+  whose package contains it (a root assembly or sub-assembly); ADR-033
+  amended. On the scratch copy the pillar tracks 43 files (30 in
+  `clocks/`) and the pillar edit re-derived its STL and BREP together at
+  37.1 mm; reverted, the documented test gave 25 tests, 19 passed, 6
+  failed, and a warm rerun rewrote nothing. The unchanged project, read
+  only with a scratch build directory, gave 25/19/6 before and after, the
+  first run after the change re-deriving the model once (288 files,
+  43.45 s) and the next rewriting nothing (22.35 s). The entry and its
+  "Planned, never done" line left `../warts.md`; the entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

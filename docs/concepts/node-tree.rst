@@ -99,9 +99,14 @@ What that means in practice:
 
 * Editing a module that defines no node correctly invalidates exactly the
   nodes that import it.
-* The walk never follows a package's ``__init__.py``. A value reached
-  through the package rather than the module that defines it is not
-  tracked, and its edit serves a stale model.
+* The walk follows a package's ``__init__.py`` when the importing module
+  lies outside that package, so a library imported as
+  ``from mylib import Gear`` is tracked through its ``__init__.py``. It
+  never follows the ``__init__.py`` of the importing module's own package
+  or one above it, which is usually an assembly that imports every node;
+  a value a module reaches through its own package (``from . import
+  WIDTH``, defined in that ``__init__.py``) is not tracked, and its edit
+  serves a stale model.
 * A current leaf is not rendered at all. Nothing may depend on a render
   side effect, and geometry that depends on something the import walk
   cannot see (a data file read at runtime, an environment variable) can
