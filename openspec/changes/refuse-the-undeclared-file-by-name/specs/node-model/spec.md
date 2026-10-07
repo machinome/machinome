@@ -1,0 +1,124 @@
+## MODIFIED Requirements
+
+### Requirement: A source-bound leaf names its missing file
+
+A leaf adapter whose part comes from a file outside Python — `StlNode`
+(`stl_source`), `StepNode` (`step_source`), `JScadNode` (`jscad_source`) and
+`OpenScadNode` (`scad_source`) — SHALL refuse to construct when the file it
+declares is not there, and the refusal SHALL name the declaring class, the
+attribute and the value declared on it, and the absolute path the framework
+resolved that value to.
+
+Every one of these adapters SHALL also refuse to construct when its source
+attribute names no file — left at the adapter's `None`, or declared as an
+empty string — and SHALL refuse it in ONE shape: `ValueError`, naming the
+class, the attribute and the module defining the class, saying that the
+attribute is not declared or names no file, and raised before the
+declaration is resolved, before anything is read from it and before any
+process is started for it. `require_source_file` in
+`machinome.node.sources` SHALL make this refusal, so a leaf written outside
+the core that resolves its declaration through it refuses an undeclared
+source in the same shape.
+
+The refusal SHALL happen when the node is CONSTRUCTED: the same moment at
+which a subclass declaring no source file at all is already refused, and the
+moment at which the declaration can first be judged. A class body that writes
+a child declaration constructs nothing, so declaring such a leaf inside
+another node's body SHALL NOT itself fail; the failure arrives when the
+parent is instantiated and realizes that child, before any geometry is read
+and before any artifact is written.
+
+A resolved path that exists but is not a regular file SHALL be refused in the
+same way and SHALL say that it is not a file, rather than being handed to the
+mesh or document reader.
+
+Every one of these adapters SHALL also refuse to construct, with
+`ValueError`, when the real path its source attribute resolves to is not
+under the real path of the project root of the module that declares the
+class, whatever expression computed the declared value and whether or not
+the file exists. The project root SHALL be found through the kernel-free
+manifest module from the declaring module's file, and a module that lies
+in no project SHALL NOT be judged. The refusal SHALL name the class, the
+attribute and its declared value, the resolved path and the project root,
+and SHALL happen at construction, before any source is read or any
+process is started for it.
+
+This governs a declaration that was already wrong when the model was loaded.
+It SHALL NOT change what happens to a source file that disappears after its
+node was constructed: that remains a build failure raised when the node's
+sources are read for freshness.
+
+#### Scenario: A declared file that is not there
+
+- **WHEN** a node whose adapter binds it to an external file is constructed,
+  and the file that adapter's source attribute names does not exist
+- **THEN** construction fails with an error naming the class, the source
+  attribute and its declared value, and the absolute path resolved from it,
+  and no artifact is written
+
+#### Scenario: The failure arrives when the parent realizes the child
+
+- **WHEN** an assembly's class body declares such a leaf as a child and the
+  leaf's file is absent
+- **THEN** importing the module holding that class body succeeds, and
+  instantiating the assembly fails with that same error
+
+#### Scenario: A declared source that is a directory
+
+- **WHEN** the path a source attribute resolves to exists but is a directory
+- **THEN** construction fails saying the path is not a file, naming the class
+  and the attribute, rather than the mesh or document reader failing on it
+  later
+
+#### Scenario: A source removed after the node was constructed
+
+- **WHEN** a node is constructed with its source file present and the file is
+  removed before the build reads its sources for freshness
+- **THEN** the build still fails on the missing source exactly as it does
+  today; the construction-time check does not apply retroactively
+
+#### Scenario: An OpenSCAD source outside the project
+
+- **WHEN** an `OpenScadNode` subclass declares a `scad_source` that
+  resolves, through `../`, to an existing file above its project root
+- **THEN** construction raises `ValueError` naming the class,
+  `scad_source`, the resolved path and the project root, and OpenSCAD is
+  not run
+
+#### Scenario: A JScad source outside the project
+
+- **WHEN** a `JScadNode` subclass declares a `jscad_source` that
+  resolves, through a symbolic link, to a file outside its project root
+- **THEN** construction raises `ValueError` saying the source lies
+  outside the project, and node is not run
+
+#### Scenario: A class outside any project is not judged
+
+- **WHEN** a source-bound leaf is declared in a module with no
+  `[tool.machinome]` manifest above it, and its source file exists
+- **THEN** construction succeeds as before
+
+#### Scenario: A source attribute that is not declared
+
+- **WHEN** a subclass of `StlNode`, `StepNode`, `JScadNode` or
+  `OpenScadNode` that declares no source attribute is constructed
+- **THEN** each raises `ValueError` naming that subclass, its adapter's
+  source attribute and the module defining the subclass, and saying the
+  attribute is not declared, and no file is read and no process is
+  started
+
+#### Scenario: An empty declaration names no file
+
+- **WHEN** a subclass of any of the four adapters declares its source
+  attribute as `''`
+- **THEN** construction raises the same `ValueError`, saying the attribute
+  names no file, rather than refusing the module's own directory as not a
+  file
+
+#### Scenario: A leaf written outside the core refuses it the same way
+
+- **WHEN** a leaf defined outside `machinome/` resolves its declared source
+  attribute through `require_source_file`, and a subclass of it declares
+  none
+- **THEN** construction raises the same `ValueError`, naming that subclass
+  and its attribute
