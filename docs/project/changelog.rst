@@ -91,6 +91,15 @@ Unreleased
   bare mapping of displacements, so a later Bound received a different
   kind of object than the first one. No level, stop or bank changes, and
   the Curta's crank tick costs the same (snapshot-the-follow-prefix).
+* **A clocked snapshot restores only into the machine it was taken
+  from.** ``sim.snapshot()`` under a clocked root carries the machine's
+  identity, the string ``sim.identity`` returns and an export publishes
+  as ``clocked.identity``, and ``sim.restore()`` refuses a snapshot whose
+  identity differs, naming both, before touching anything. It used to
+  compare the class name and the bank's ids only, so a snapshot restored
+  into a same-named machine whose joint range or commit law had changed,
+  or into a same-named class from another module. ``ClockedSnapshot``
+  takes the identity as its third argument (clocked-snapshot-identity).
 
 Machinome 0.8.0
 ---------------

@@ -1816,8 +1816,10 @@ surface an elapsed base lifts, the rest staying refused. `sim.identity`
 is the compiled machine's own identity, the string every producer
 publishes as `clocked.identity` because each compiles its machine by
 constructing a `Sim`; it is taken before `state=` is applied and never
-recomputed, so it names the machine and not the bank, and a `Sim` that
-is not clocked refuses it by name. The clock is
+recomputed, so it names the machine and not the bank, a clocked snapshot
+carries it, and `restore` refuses a snapshot whose identity differs
+before touching anything, and a `Sim` that is not clocked refuses it by
+name. The clock is
 delivered to the pose through `drive_tree`'s EXISTING `visit` hook, per
 visited assembly because `read_time` reads each node's own snapshot
 entry first, so the walk gains no parameter and a request still costs

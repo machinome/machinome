@@ -373,8 +373,10 @@ class BoundTest(BaseNodeTest):
         sim.move('crank', by=360.0)
         before = sim.state
         posed = sim.node.face.turn.value
-        impossible = ClockedSnapshot(sim.snapshot().model,
-                                     {'crank': 0.0, 'value': 3})
+        saved = sim.snapshot()
+        impossible = ClockedSnapshot(saved.model,
+                                     {'crank': 0.0, 'value': 3},
+                                     saved.identity)
         with self.assertRaises(JointRangeError):
             sim.restore(impossible)
         self.assertEqual(sim.state, before)

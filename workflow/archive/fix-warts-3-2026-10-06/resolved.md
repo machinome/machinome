@@ -515,3 +515,43 @@ crank ticks commit the same banks bit for bit before and after (SHA-256
 radial-ball module passes 4 of 4 in 263.49 s before and 260.63 s after,
 and `test_mechanistic.py`'s subtraction test passes in 210.38 s before and
 206.80 s after. No corpus changed.
+
+## `clocked-snapshot-identity`
+
+From "Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)", item 4:
+
+4. **The framework's clocked snapshot carries no identity, the viewer's does.**
+   `ClockedSnapshot` holds `model` (the bare class name with the sorted bank
+   ids) and `values`, and `Clocked.restore` compares `model` only, so the
+   framework restores a snapshot from a machine whose law or range changed
+   under the same ids, or from a same-named class in another module; the
+   export spec says the identity exists precisely to refuse that, and a
+   running `RunSnapshot` does carry and check `program.identity`. Found by
+   `sim-identity` (its `evidence.md`, finding 1).
+
+**What shipped.** `clocked-snapshot-identity`
+(`openspec/changes/archive/2026-10-07-clocked-snapshot-identity/`) gives
+`ClockedSnapshot` a third slot, `identity`, which `Clocked.snapshot()` and
+`sim.initial` fill with the machine's identity, the string `sim.identity`
+returns and an export publishes as `clocked.identity`. `Clocked.restore`
+compares that identity instead of `model`, and refuses a snapshot whose
+identity differs with a `ValueError` naming both models and both
+identities, before touching the bank, the tree or the record. In
+`tests/test_clocked_identity.py`, three tests were red first: a snapshot
+and `sim.initial` carry `sim.identity` (`AttributeError: 'ClockedSnapshot'
+object has no attribute 'identity'`), and a snapshot of the register
+counter is refused by a same-named counter whose units dial stops at 360
+instead of 324 degrees, and by one whose commit law advances by two
+(each `ValueError not raised`); a fourth, the snapshot restoring into a
+fresh simulation of the same machine, was green before and after. On the
+Curta (`projects/Calculators/Curta-Type-I-3x`, head `1f3dc22`, run from
+outside the project, nothing written there) a snapshot after 7 x 2 is
+restored into three simulations: before the change all three are
+accepted; after it, the same machine is accepted with result digits
+`[4, 1, 0, 0]`, and the machine whose `crank_lift` stops at 8 mm and the
+unchanged class under another module are refused. Its
+`EventDrivenOperationsTest`, which snapshots and restores the Curta in
+two tests, passes 11 tests and 57 subtests before (35.33 s) and after
+(35.70 s). No document, identity or corpus changed. That a declared
+`Driver` or `State` range is not part of the identity is filed in
+`../../warts.md`.

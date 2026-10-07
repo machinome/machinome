@@ -183,6 +183,14 @@ names both models and both identities. Where the models match, the reader
 sees one name with two identities, which says the machine changed under
 the name.
 
+Revised at the orchestrator's review of the implementation (7 October
+2026): the model string lists every bank id (41 on the Curta, so the
+message as written above ran to about 1,400 characters), and when the
+two models are equal it is printed once, followed by "and this
+simulation runs the same model with another identity"; both identities
+still follow. The tests assert the refusal and the identities, not the
+sentence.
+
 **Alternatives.**
 
 - *Keep the `model` check first, for a separate message.* It adds a branch

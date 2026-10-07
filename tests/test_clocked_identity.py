@@ -15,15 +15,45 @@ import json
 import os
 
 from machinome.core.export import export_node
+from machinome.motion.joints import Revolute
 from machinome.motion.ports import Time
 from machinome.node.assembly import AssemblyNode
-from machinome.simulation import Driver, Sim
+from machinome.simulation import Driver, Sim, State
 
 from .base import BaseNodeTest
-from .clocked_project.counter import Counter, Stateless
+from .clocked_project.counter import (Counter, DIGIT, Stateless, advance,
+                                      strokes)
 from .clocked_project.parts import Dial
 from .clocked_project.units import Scaled
 from .test_clocked_publication import built
+
+
+def skipping(sources, targets):
+    """The counter's commit law advancing the units by two."""
+    return lambda crank, units, tens: ((units + 2) % 10,
+                                       (tens + (units >= 8)) % 10)
+
+
+def restated(stop=324.0, law=advance):
+    """The register counter, built here so that every variant has this
+    module, one qualified name and one bank: only the units dial's stop
+    or the commit law differs."""
+
+    class Counter(AssemblyNode):
+        crank = Driver(default=0, unit='deg')
+        units = State(default=0, range=(0, 9), dtype=int)
+        tens = State(default=0, range=(0, 9), dtype=int)
+
+        units_dial = Dial(turn=Revolute(axis=(0, 0, 1), unit='deg',
+                                        range=(0, stop)))
+        tens_dial = Dial()
+
+        (crank & units & tens).commits((units, tens), at=strokes, law=law)
+
+        units.drives(units_dial.turn, ratio=DIGIT)
+        tens.drives(tens_dial.turn, ratio=DIGIT)
+
+    return Counter
 
 
 class RunningStateless(AssemblyNode):
@@ -88,3 +118,52 @@ class IdentityRefusalTest(BaseNodeTest):
         self.assertIn('sim.program.identity', message)
         # The member it points at is the running program's own identity.
         self.assertTrue(sim.program.identity)
+
+
+class SnapshotIdentityTest(BaseNodeTest):
+    """A clocked snapshot carries the identity of the machine it was
+    taken over, and restores into that machine only."""
+
+    def taken(self):
+        """Three strokes of the restated counter, and their snapshot."""
+        sim = Sim(restated()())
+        sim.move('crank', by=1080.0)
+        return sim, sim.snapshot()
+
+    def assertRefused(self, model):
+        source, saved = self.taken()
+        target = Sim(model())
+        # What makes this a test of the identity: the names agree, the
+        # machines do not.
+        self.assertEqual(target.snapshot().model, saved.model)
+        self.assertNotEqual(target.identity, source.identity)
+        before = target.state
+        posed = target.node.units_dial.turn.value
+        with self.assertRaises(ValueError) as caught:
+            target.restore(saved)
+        message = str(caught.exception)
+        self.assertIn(source.identity, message)
+        self.assertIn(target.identity, message)
+        self.assertIn('Counter(crank,tens,units)', message)
+        self.assertEqual(target.state, before)
+        self.assertEqual(target.node.units_dial.turn.value, posed)
+
+    def test_a_snapshot_carries_the_machines_identity(self):
+        sim = Sim(Counter())
+        sim.move('crank', by=360.0)
+        self.assertEqual(sim.snapshot().identity, sim.identity)
+        self.assertEqual(sim.initial.identity, sim.identity)
+
+    def test_a_snapshot_restores_into_the_same_machine(self):
+        _, saved = self.taken()
+        target = Sim(restated()())
+        target.restore(saved)
+        self.assertEqual(target.state, saved.values)
+        self.assertEqual(target.state['units'], 3)
+        self.assertEqual(target.node.units_dial.turn.value, 108.0)
+
+    def test_a_machine_whose_range_changed_refuses_the_snapshot(self):
+        self.assertRefused(restated(stop=360.0))
+
+    def test_a_machine_whose_commit_law_changed_refuses_the_snapshot(self):
+        self.assertRefused(restated(law=skipping))

@@ -1690,13 +1690,15 @@ _CLOCK = _ClockInput()
 
 class ClockedSnapshot:
     """A clocked simulation's whole state as a value object: the model it
-    was taken over, and the bank."""
+    was taken over, the bank, and the identity of the machine, which
+    `restore` compares."""
 
-    __slots__ = ('model', 'values')
+    __slots__ = ('model', 'values', 'identity')
 
-    def __init__(self, model, values):
+    def __init__(self, model, values, identity):
         self.model = model
         self.values = dict(values)
+        self.identity = identity
 
     def __repr__(self):
         return f'<clocked snapshot of {self.model}: {self.values}>'
@@ -1772,7 +1774,7 @@ class Clocked:
         # must not have to filter out interlocks, so the two rings are
         # two (ADR-108's own reason, taken for the request).
         self._stops = deque(maxlen=record) if record else None
-        self.initial = ClockedSnapshot(self.model, self.bank)
+        self.initial = ClockedSnapshot(self.model, self.bank, self.identity)
         self.pose()
 
     ##############################################
@@ -2067,19 +2069,29 @@ class Clocked:
     # Session setup
 
     def snapshot(self):
-        return ClockedSnapshot(self.model, self.bank)
+        return ClockedSnapshot(self.model, self.bank, self.identity)
 
     def restore(self, snapshot):
         if not isinstance(snapshot, ClockedSnapshot):
             raise TypeError(
                 f'restore() takes a snapshot taken by sim.snapshot(), not '
                 f'{snapshot!r}.')
-        if snapshot.model != self.model:
+        if snapshot.identity != self.identity:
+            # The model string lists every bank id; print it once when
+            # the two agree, so a machine whose range or law moved under
+            # the same ids is not described twice over.
+            where = (
+                f'{snapshot.model}, and this simulation runs the same '
+                f'model with another identity'
+                if snapshot.model == self.model
+                else f'{snapshot.model}, and this simulation runs '
+                f'{self.model}')
             raise ValueError(
-                f'that snapshot was taken over {snapshot.model} and this '
-                f'simulation runs {self.model}. A snapshot restores into '
-                f'the machine it was taken from: its drivers, its states '
-                f'and its relations are what its bank means.')
+                f'that snapshot was taken over {where}: the snapshot is of '
+                f'the machine {snapshot.identity}, this simulation of '
+                f'{self.identity}. A snapshot restores into the machine '
+                f'it was taken from: its drivers, its states and its '
+                f'relations are what its bank means.')
         self._posed(dict(snapshot.values))
 
     def reset(self):

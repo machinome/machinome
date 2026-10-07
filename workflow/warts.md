@@ -1631,6 +1631,28 @@ not fixed, until the pilot triages them.
   Open Question 2. Not reached by any corpus; a generator guard or a
   change to the ring's unit is a decision of its own. **Recorded.**
 
+## Findings from the framework cycle `clocked-snapshot-identity` (2026-10-07)
+
+- **A declared driver or state range is neither enforced on a clocked bank
+  nor part of the clocked identity.** The clocked identity lists compiled
+  joint bounds only: the export spec's `clocked.identity` and ADR-128 name
+  "every compiled constraint's coordinate, side and level", and a joint
+  range on the register counter's units dial, 324 against 360 degrees,
+  changes it. The `range=` declared on a `Driver` or a `State` does not.
+  On the bench, the register counter of `tests/clocked_project/counter.py`
+  rebuilt with its `units` state's range `(0, 9)` widened to `(0, 19)`
+  keeps identity `07f7121997107d68…`, and so does the counter whose
+  `crank` driver declares `range=(0, 7200)` where it declared none; a
+  snapshot of the original therefore still restores into both after
+  `clocked-snapshot-identity`. The clocked executor reads neither range:
+  a request is clipped only by compiled joint bounds, and
+  `Sim(Counter(), state={'units': 15})` is accepted, its bank holding
+  `units: 15`. Adding the declared ranges to the identity would change
+  every published `clocked.identity` and the definition in the export spec
+  and ADR-128. Evidence:
+  `openspec/changes/archive/2026-10-07-clocked-snapshot-identity/design.md`,
+  Open Question 1, and its `evidence.md`. **Untriaged.**
+
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 
 The memo finding is fixed (`persistent-verdict-memo`, ADR-156). Not a
@@ -1670,17 +1692,11 @@ from it.
 # Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)
 
 Findings 1 to 3 are fixed on main (`sim-through-a-symlink`, `sim-identity`,
-`export-records-its-revision`, ADR-158); finding 7 was not a defect. The
-findings met by the bench's cycles that remain (recorded, triage open):
+`export-records-its-revision`, ADR-158); finding 4 is fixed by
+`clocked-snapshot-identity` (`archive/fix-warts-3-2026-10-06/resolved.md`);
+finding 7 was not a defect. The findings met by the bench's cycles that
+remain (recorded, triage open):
 
-4. **The framework's clocked snapshot carries no identity, the viewer's does.**
-   `ClockedSnapshot` holds `model` (the bare class name with the sorted bank
-   ids) and `values`, and `Clocked.restore` compares `model` only, so the
-   framework restores a snapshot from a machine whose law or range changed
-   under the same ids, or from a same-named class in another module; the
-   export spec says the identity exists precisely to refuse that, and a
-   running `RunSnapshot` does carry and check `program.identity`. Found by
-   `sim-identity` (its `evidence.md`, finding 1).
 5. **The strict manual build is not a gate.** `sphinx -W` fails on `main` with
    five warnings in untouched lines (`docs/reference/api.rst` 23, 35, 76 and
    the `Sim.initial` and `Sim.state` docstrings). Found by `sim-identity`.

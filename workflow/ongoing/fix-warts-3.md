@@ -143,6 +143,16 @@ in the same cycle.
   before, 176.6 s after); the entry moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`.
 
+- 7 October 2026: cycle 9, `clocked-snapshot-identity`, applied: a
+  clocked snapshot carries the machine's identity and `restore` refuses
+  one whose identity differs, naming both, before touching anything; a
+  Curta snapshot restores into the same machine and is refused by the
+  Curta with one range changed and by the same class under another
+  module (all three accepted before); its operation tests unchanged (11
+  passed, 57 subtests, 35.3 s before, 35.7 s after). The entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; that a declared driver
+  or state range is outside the identity is recorded in `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

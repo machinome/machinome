@@ -3543,7 +3543,9 @@ ring of the same event entries, and a second bounded ring of the stops;
 without it the request's own result SHALL still be complete. `sim.state` SHALL return
 the whole bank by qualified id as a fresh mapping. `sim.snapshot()`,
 `sim.restore()`, `sim.initial` and `sim.reset()` SHALL act on that bank,
-`restore` refusing a snapshot taken over a different model before touching
+`restore` refusing a snapshot taken over a different machine — one whose
+identity, under the requirement "A clocked simulation publishes its
+machine's identity", differs from this simulation's — before touching
 anything.
 
 A clocked simulation has no CADENCE: `run`, `at`, `every`, `tick`, `rate`,
@@ -4858,8 +4860,17 @@ SHALL also name `sim.program.identity` as the member that carries that
 root's compiled program identity. No value SHALL be returned in place of
 the refusal.
 
-The clocked snapshot's shape, `restore`'s comparison and every published
-document SHALL be unchanged by this member.
+A clocked snapshot — every value `sim.snapshot()` returns, and
+`sim.initial` — SHALL carry this identity. `sim.restore(snapshot)` SHALL
+compare the snapshot's identity with the simulation's before touching the
+bank, the tree or the record, and SHALL refuse a snapshot whose identity
+differs with a `ValueError` naming both identities and both models. A
+snapshot taken over a machine whose joint range or commit law has since
+changed under the same class name and the same bank ids SHALL therefore be
+refused. A snapshot SHALL restore into any simulation of the machine it
+was taken over, the one it was taken from or a new one over a fresh
+instance of the same model. Every published document SHALL be unchanged by
+this member and by the snapshot's identity.
 
 #### Scenario: The identity is the one the export carries
 
@@ -4887,4 +4898,25 @@ document SHALL be unchanged by this member.
   `Sim` over a root declaring `Time.running()`
 - **THEN** each read raises `TypeError` naming `identity` and the model's
   class, and the running root's message names `sim.program.identity`
+
+#### Scenario: A snapshot carries the machine's identity
+
+- **WHEN** a snapshot is taken over a clocked model after a request
+- **THEN** its identity equals `sim.identity`, and so does the identity of
+  `sim.initial`
+
+#### Scenario: A snapshot restores into a new simulation of the same machine
+
+- **WHEN** a snapshot taken over a clocked model after a request is restored
+  into a `Sim` over a fresh instance of the same model
+- **THEN** the restore is accepted, and the bank and the pose are the ones
+  the snapshot was taken at
+
+#### Scenario: A machine changed under the same name refuses the snapshot
+
+- **WHEN** a snapshot is restored into a `Sim` over a model with the same
+  module, class name and bank ids whose one joint range differs, and into
+  another whose commit law differs
+- **THEN** each restore raises `ValueError` naming both identities, and the
+  bank and the pose stand as they did before it
 
