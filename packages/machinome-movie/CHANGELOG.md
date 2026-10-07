@@ -6,6 +6,9 @@ lands it.
 
 ## Unreleased
 
+- The live player's caption and readout reserve a fixed height, keeping the
+  movie and timeline stationary through narration gaps, wrapped captions and
+  transition notices. Longer text scrolls within its area.
 - `speech` on a movie document, and `build` without `--silent`, now make
   every check of the film's load that needs no take before they request
   one: the export's manifest and the revision it records, the parts,

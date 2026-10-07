@@ -59,8 +59,13 @@ body{display:flex;flex-direction:column;background:var(--vm-player-background);c
 .vm-wanted{background:var(--vm-player-accent);opacity:.35}
 
 /* The readout and the caption, under the frame. */
-#readout{display:flex;flex-wrap:wrap;gap:4px 18px;padding:8px 16px;font-variant-numeric:tabular-nums}
+#readout{display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px 18px;padding:8px 16px;
+  height:calc(2lh + 20px);flex-shrink:0;overflow:auto;font-variant-numeric:tabular-nums}
 #readout span:empty{display:none}
 #readout [data-field="join"]{color:var(--vm-player-muted)}
-#caption{margin:0 16px 10px;padding:6px 10px;border-left:3px solid var(--vm-player-line)}
+/* Reserve the same space through speech gaps and wrapping text. Neither
+   captions nor a transition's readout may resize the film during playback. */
+#caption{margin:0 16px 10px;padding:6px 10px;border-left:3px solid var(--vm-player-line);
+  height:calc(2lh + 12px);flex-shrink:0;overflow:auto;overflow-wrap:anywhere}
+#caption[hidden]{display:block;visibility:hidden}
 @media (max-width:600px){.vm-bar{flex-wrap:wrap}#status{margin-left:0}}

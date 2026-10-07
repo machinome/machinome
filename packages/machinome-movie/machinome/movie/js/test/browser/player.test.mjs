@@ -235,6 +235,31 @@ test('a refusal is shown, the film kept, and cleared when a change is accepted; 
   assert.equal(await page.evaluate(()=>document.getElementById('caption').hidden),true);
 });
 
+test('captions and transition readouts keep the movie frame and ruler stationary',async t=>{
+  const {session:s}=await session(t,'count',{prepare:async({build})=>{
+    await writeFile(join(build,'captions.json'),JSON.stringify([
+      {text:'One turn.',start:1,end:2.5},
+      {text:'A longer caption that wraps across several lines. '.repeat(12),start:5,end:6},
+    ]));
+  }});
+  const {page}=await player(t,s.origin);
+  for(const viewport of [{width:1000,height:520},{width:480,height:640}]){
+    await page.setViewportSize(viewport);
+    let baseline;
+    for(const time of [0,2,3,5.4,6,8,0]){
+      await seek(page,time);
+      // Allow the ResizeObserver's fit to settle before measuring the actual frame.
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const boxes=await page.evaluate(()=>['surface','ruler'].map(id=>document.getElementById(id))
+        .concat(document.querySelector('iframe')).map(el=>{
+          const {x,y,width,height}=el.getBoundingClientRect();return {x,y,width,height};
+        }));
+      baseline??=boxes;
+      assert.deepEqual(boxes,baseline,`layout stays fixed at ${time}s in ${viewport.width}px viewport`);
+    }
+  }
+});
+
 test('with the narration mixed, the movie surface\'s clock is the mix: seeking the player seeks it',async t=>{
   const {session:s,file}=await session(t,'count');
   const {page}=await player(t,s.origin);
