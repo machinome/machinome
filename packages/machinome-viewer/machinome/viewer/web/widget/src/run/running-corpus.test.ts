@@ -161,6 +161,14 @@ function replay(entry: CorpusMachine): void {
   for (let step = 1; step <= entry.steps; step += 1) {
     for (const action of script.get(step) ?? []) {
       applyAction(engine, action, handles, ordered, snapshots);
+      if (action.restore !== undefined) {
+        // A restore clears the run's crossing and stop rings: count this
+        // step's records from the cleared rings, or a record the step
+        // makes after the restore is sliced away with the old ones (the
+        // framework's generator and replay do the same).
+        crossingsSeen = 0;
+        stopsSeen = 0;
+      }
     }
     engine.advance(1);
 
@@ -930,6 +938,14 @@ export function bankDisagreements(entry: CorpusMachine,
   for (let step = 1; step <= entry.steps; step += 1) {
     for (const action of script.get(step) ?? []) {
       applyAction(engine, action, handles, ordered, snapshots);
+      if (action.restore !== undefined) {
+        // A restore clears the run's crossing and stop rings: count this
+        // step's records from the cleared rings, or a record the step
+        // makes after the restore is sliced away with the old ones (the
+        // framework's generator and replay do the same).
+        crossingsSeen = 0;
+        stopsSeen = 0;
+      }
     }
     engine.advance(1);
     const expected = entry.ticks[step - 1];
