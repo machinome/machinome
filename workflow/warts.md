@@ -1241,6 +1241,28 @@ below are what the review left open.
   **Note (2026-10-04):** 0.7.0 and 0.7.1 were released without these
   numbers; the timing is still unmeasured.
 
+  **Measured (2026-10-07):** the cold exact suites, on the fold commit
+  `a659cc7` (`--exact`) against the fix-warts-3 bench `e07df5ed`
+  (`--brep`), each project at its last 0.7-era commit for the first and
+  its current checkout for the second, one run at a time, a fresh
+  `SOLID_BUILD_DIR` for cold: wall clock 02, 334.0 s → 1194.3 s (3.6×,
+  22 tests, the same six project failures with the same volumes); the
+  combination safe lock, 33.6 s → 159.3 s (4.7×, 14 passed); the
+  Pascaline module, 164.6 s → 163.2 s (its parts are all STL meshes, so
+  no B-rep common runs). Warm, the verdict store serves every comparison
+  (34.1 s and 6.0 s); warm with `--no-verdict-store` the ratios are 3.7×
+  and 4.9×. The same commons are asked on both trees (643 and 730, all
+  but 6 and 5 empty) and the Boolean itself is 4–9 % slower; ADR-142's
+  witness search on the empty ones is 73.5 % of the clock's run and
+  78.9 % of the lock's. Bounding boxes are 0.2 % and 2.4 %, so the review's
+  "six bounding boxes per call" is not the cost: the witness's
+  `BRepAlgoAPI_Section` is 65 % of the lock's run and the stencil's
+  classifier probes about 44 % of the clock's. Thor's interference walk
+  (116 s on 7 September, 1,999.7 s on 7 October, all in empty commons) is
+  the same shape. Evidence: wall-clock counters around the engine
+  functions, since cProfile under Python 3.12 recorded 17 s of a 160 s
+  run. Still open: whether the witness should run on every empty common.
+
 # Piece identity split by OpenSCAD facet order (2026-09-23, CI)
 
 The facet-order defect is fixed (ADR-145). One item was left as is:

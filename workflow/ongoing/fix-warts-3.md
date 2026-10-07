@@ -334,6 +334,22 @@ in the same cycle.
   the refusal's bare names; the walk's seventeenfold cost) recorded in
   `../warts.md`.
 
+- 7 October 2026: item 18 (exact suite timings): the fold commit
+  `a659cc7` and the bench `e07df5ed` were each exported with `git
+  archive` and run, one at a time with a fresh build directory, on the
+  combination safe lock, the Pascaline module and wall clock 02, each
+  project at its last 0.7-era commit for the first and its checkout for
+  the second. Cold, the bench costs 4.7× (lock) and 3.6× (clock 02) what
+  the fold commit costs, and the mesh-only Pascaline is unchanged; the
+  same commons are asked on both trees, the Boolean is 4–9 % slower, and
+  ADR-142's witness search after every empty common is about three
+  quarters of each bench run (the section build on the lock, the
+  stencil's classifier probes on the clock), not the bounding boxes the
+  review named. The verdict store hides it warm. Numbers and method
+  recorded under the "exact-kernel corrections cost time" entry in
+  `../warts.md`; the question it leaves, whether the witness should run
+  on every empty common, is recorded below for the pilot.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.
@@ -384,6 +400,21 @@ Each names the entry, what was found, and the choice.)
   Thor's two reversed parts into an error), or leave it. The two Thor
   tests themselves are the project's: a contract written red in `919333b`
   and a pinion path the inventory never had.
+
+- **Item 18: whether ADR-142's witness should run on every empty
+  common.** Measured on 7 October (the "exact-kernel corrections cost
+  time" entry in `../warts.md`): the bench's cold exact suites cost 3.6×
+  to 4.7× the fold commit's on the two catalogue projects that compare
+  B-rep solids, and 73.5 % to 78.9 % of each run is the false-empty
+  witness search, run after every one of the 637 and 725 empty commons
+  (the section build dominates on the lock, the stencil's classifier
+  probes on the clock); Thor's interference walk, 116 s to 1,999.7 s, is
+  the same shape. The guard's correctness is not in question; its cost
+  is. Your choice: keep the witness on every empty common and accept the
+  cold cost (the verdict store serves warm runs in seconds); gate it on
+  the placed bounds overlapping, or on a cheaper distance test, so an
+  empty common far from contact is believed; or run it only where a test
+  asserts contact. Each is a change to ADR-142, so none was made here.
 
 - **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
   refusal of a `self.children` read inside `render()` (always empty
