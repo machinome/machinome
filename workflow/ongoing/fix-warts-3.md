@@ -245,6 +245,19 @@ Each names the entry, what was found, and the choice.)
   `pyproject.toml` and `CAD`), writing nothing into the project. Your
   decision: migrate the slice's branch onto 0.8 and the Curta's main, or
   retire it.
+- **Cycle 16: which viewer the `viewer` extra should install.**
+  `pyproject.toml` declares `viewer = ["machinome-viewer"]` and
+  `web-snapshot = ["machinome-viewer[snapshot]"]` with no floor, so an
+  upgrade of `machinome[viewer]` keeps an old viewer in place. The 0.8.0
+  records disagree about what is required: `docs/conf.py`, `context7.json`,
+  the install, publishing and upgrading pages and the status page name
+  the matching viewer 0.8.0 (API 29), while the 0.8 release note, the
+  changelog, the upgrading page and the viewer's own changelog say a 0.7
+  viewer reads 0.8's documents, and the framework uses nothing viewer
+  0.7.0 lacks. Your choice: (a) a floor at the matching viewer, `>=0.8.0`,
+  read from `docs/conf.py`'s `viewer_version` and pinned by a test; (b)
+  `>=0.7.0`, the oldest viewer the framework runs against; (c) no floor.
+  The cycle took its other two items and left the extras as they are.
 
 - **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
   refusal of a `self.children` read inside `render()` (always empty
