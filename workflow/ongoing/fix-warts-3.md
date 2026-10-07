@@ -350,6 +350,17 @@ in the same cycle.
   `../warts.md`; the question it leaves, whether the witness should run
   on every empty common, is recorded below for the pilot.
 
+- 7 October 2026: close. `scripts/load-projects` against the bench at
+  `965421f`: 62 repositories, 129 rows, 113 ok, 10 unexpected, 6 without
+  a model. Eight of the ten are cycle 3's refusals of the clocks whose
+  rewrite is deferred below (12, 25, 28, 32, 36, 37, 39, 40); the other
+  two, wall clock 41 (a CadQuery union on an empty stack in the project's
+  `clocks/plates.py`) and Dum-E (its `machinome_freecad` module is not
+  installed), fail the same way against main `d7b6f9b`, so they are the
+  projects'. The studio, viewer and workspace companion branches were
+  fast-forwarded into their mains (studio `0a09e05`, viewer `ff9ac52`,
+  workspace `5d7ba4c`); nothing pushed.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.
