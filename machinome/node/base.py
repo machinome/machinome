@@ -690,10 +690,6 @@ class AbstractBaseNode(metaclass=NodeMeta):
         self.stl_file = f'{basepath}.stl'
         self.brep_file = f'{basepath}.brep'
 
-        # A mesh with transformations applied, used for mesh generation
-        # for spatial calculations, specially tests
-        self.mesh_stl_file = f'{basepath}.mesh.stl'
-
         # Lock file for stl, for concurrency management (not implemented yet)
         self.lock_file = f'{basepath}.stl.lock'
 
@@ -864,11 +860,12 @@ class AbstractBaseNode(metaclass=NodeMeta):
         if self.optimize and self.rigid and self._up_to_date(self.stl_file):
             # Everything below would recompute an artifact that is
             # already on disk and already current. import_optimized()
-            # imports it instead; self.model stays unset and is
-            # rendered lazily if something actually asks for the
-            # presentation.
+            # imports it instead. self.model becomes the node's
+            # presentation of that current artifact: its import for
+            # most nodes, or, for a node that answers None, unset and
+            # rendered by _require_model() when something asks for it.
             if self.model is None:
-                self.model = self.artifact_import(self.local_stl)
+                self.model = self._current_artifact_presentation()
             assembled = self.import_optimized()
         else:
             rendered = self._require_rendered()
@@ -952,6 +949,14 @@ class AbstractBaseNode(metaclass=NodeMeta):
             if not self.optimize:
                 self.model = self._colorize(self.model)
         return self.model
+
+    def _current_artifact_presentation(self):
+        """This node's presentation when its STL is already current, for a
+        caller that asks for it after `assemble()` took the up-to-date
+        branch: the import of that STL, which is what the node is. None
+        leaves the model unset, to be rendered on demand by
+        `_require_model()`."""
+        return self.artifact_import(self.local_stl)
 
     def artifact_import(self, local_path):
         """The presentation description of the anchored import of one of

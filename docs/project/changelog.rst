@@ -159,6 +159,15 @@ Unreleased
   ``F failed``, and the run exits 1. A ``unittest.SkipTest`` raised from
   ``setUpClass`` skips the class's methods with its reason, where it used
   to end the run (report-the-instant).
+* **A SCAD-authored part's own ``.scad`` stays its geometry.**
+  ``machinome snapshot --renderer openscad`` of a ``Solid2Node`` or
+  ``OpenScadNode`` part whose STL a build had made current used to rewrite
+  the part's kept ``.scad`` as an ``import()`` of that STL, the file
+  OpenSCAD renders the STL from; and such a part's ``scad_code``, asked in
+  a process that had not rendered it, gave that import, where an
+  ``OpenScadNode``'s ends in its module call. The snapshot now draws the
+  file as the build wrote it and leaves it in place, and ``scad_code`` is
+  the part's geometry, rendered when asked (release-metadata-and-vestiges).
 
 Machinome 0.8.0
 ---------------

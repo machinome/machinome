@@ -230,6 +230,22 @@ in the same cycle.
   Inmoov-sim entry moved to `../archive/fix-warts-3-2026-10-06/resolved.md`;
   the studio craft skill's sentence stays in cycle 19.
 
+- 7 October 2026: cycle 16, `release-metadata-and-vestiges`, applied for
+  two of its three entries: a `Solid2Node` or `OpenScadNode` leaf whose
+  STL is current keeps its model unset in `assemble()` (a private hook
+  the OpenSCAD family's leaf base answers None), so `machinome snapshot
+  --renderer openscad` of such a root leaves its `.scad` as its build
+  wrote it (same bytes, inode and stamp; it used to rewrite it as an
+  import of the STL OpenSCAD renders from it) and a fresh instance's
+  `scad_code` is its geometry; the unread `mesh_stl_file` left
+  `AbstractBaseNode.__init__` and `parameters._RESERVED`. The
+  presentation and expression-type goldens stayed at 0 differences. No
+  project run; the fixture projects are the validation. The two
+  "import-the-artifact-by-path" entries moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; the viewer extras'
+  floor was deferred to the pilot (below) and its entry stays in
+  `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

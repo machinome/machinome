@@ -45,6 +45,13 @@ class ScadLeafNode(LeafNode):
         geometry."""
         return rendered
 
+    def _current_artifact_presentation(self):
+        """None: a family leaf's presentation is the geometry it authored,
+        which its own `.scad` holds and OpenSCAD renders its STL from, so it
+        is rendered on demand (`_require_model()`), never the import of
+        that STL."""
+        return None
+
     def materialize(self, rendered):
         """Write this leaf's own `.scad` from what it rendered: OpenSCAD
         renders its STL from it."""

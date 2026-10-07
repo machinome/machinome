@@ -138,8 +138,8 @@ def evaluate(operand, values):
 # caller of that attribute expects.
 _RESERVED = frozenset({
     'name', 'uniq_id', 'operations', 'checkpoint', 'src', 'basedir',
-    'build_dir', 'stl_file', 'brep_file', 'mesh_stl_file', 'lock_file',
-    'local_stl', 'basepath', 'files', 'model', 'root',
+    'build_dir', 'stl_file', 'brep_file', 'lock_file', 'local_stl',
+    'basepath', 'files', 'model', 'root',
 })
 
 

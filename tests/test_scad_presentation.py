@@ -411,6 +411,25 @@ class WrittenOnlyWhereReadTest(_BuildDirectory):
         from machinome.core.builder import Builder
         self.assertNotIn('scad_output', inspect.signature(Builder).parameters)
 
+    def test_a_current_leafs_scad_code_is_its_geometry(self):
+        """A process that has not rendered a family leaf, assembling it
+        with its STL current, still gives the text its build wrote: the
+        leaf's geometry, never an import of its own STL."""
+        from machinome.core.loader import load_node
+        for reference in (f'{FIXTURE}/machine.py:FineCylinder',
+                          'tests/scad_presentation_project/parts.py:Plate'):
+            with self.subTest(reference):
+                self.build(reference)
+                path, name = reference.split(':')
+                node = load_node(f'{ROOT / path}:{name}')
+                node.assemble()
+                self.assertTrue(node._up_to_date(node.stl_file))
+                with open(node.scad_file) as handle:
+                    built = handle.read()
+                own = os.path.basename(node.stl_file)
+                self.assertNotIn(f'import(file = "{own}"', node.scad_code)
+                self.assertEqual(node.scad_code, built)
+
 
 # 2.8 ---------------------------------------------------------------------
 
@@ -558,6 +577,28 @@ class SnapshotOnDemandTest(_BuildDirectory):
         self.snapshot('openscad', root='FineCylinder')
         self.assertEqual(len(self.drawn), 1)
         self.assertTrue(os.path.exists(FineCylinder().scad_file))
+
+    def test_a_current_scad_authored_root_keeps_its_scad_as_built(self):
+        from tests.scad_where_read_project.machine import FineCylinder
+        self.build(f'{FIXTURE}/machine.py:FineCylinder')
+        scad_file = FineCylinder().scad_file
+        with open(scad_file, 'rb') as handle:
+            built = handle.read()
+        self.assertEqual(
+            hashlib.sha256(built).hexdigest(),
+            golden_file_digest(
+                'parts-' + os.path.basename(scad_file).split('-', 1)[1]))
+        before = observed(self.build_dir)
+
+        self.snapshot('openscad', root='FineCylinder')
+
+        self.assertEqual(len(self.drawn), 1)
+        drawn, text, _ = self.drawn[0]
+        self.assertEqual(drawn, scad_file)
+        self.assertEqual(text.encode(), built)
+        self.assertEqual(observed(self.build_dir), before)
+        with open(scad_file, 'rb') as handle:
+            self.assertEqual(handle.read(), built)
 
     def test_a_build_removes_a_root_scad_a_killed_render_left(self):
         """An unchanged build still removes a transient artifact: the

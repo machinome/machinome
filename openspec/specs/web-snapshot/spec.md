@@ -285,7 +285,10 @@ not a build artifact: it is published as transient in its currency record and
 exists only for the renderer, which SHALL remove it and its currency record
 once OpenSCAD has read it, whether the render succeeded or failed. A root that
 declares that `.scad` in `kept_artifacts()` (a family leaf snapshotted alone)
-keeps it, as its own build artifact, published as any kept artifact is. A file
+keeps it, as its own build artifact, published as any kept artifact is, and
+holding the leaf's own SCAD text under the `openscad-node` capability: a
+snapshot of such a root whose STL is current SHALL leave the file its build
+wrote as it was, and SHALL NOT rewrite it as an import of the leaf's STL. A file
 an interrupted render left is removed, by its transient record, by the next
 successful build whether or not the document changed, under the
 `build-pipeline` capability.
@@ -322,4 +325,12 @@ its STLs, so no flexible leaf's per-binding snapshot STL is written for it.
   SCAD-authored leaf, in a build directory holding no `.scad`
 - **THEN** the image is written and no `.scad` exists under the build
   directory
+
+#### Scenario: A current SCAD-authored root keeps its SCAD as built
+
+- **WHEN** `machinome snapshot --renderer openscad` renders a `Solid2Node`
+  root whose `.stl` a build made current
+- **THEN** OpenSCAD is given the leaf's `.scad` holding the geometry its build
+  wrote, and after the snapshot that file has the same bytes, the same inode
+  and the same stamp as before it
 

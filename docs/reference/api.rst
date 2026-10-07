@@ -350,7 +350,9 @@ declares nothing is not checked.
       The node's presentation once assembled, or ``None`` before: the
       object :meth:`present` returned, or machinome's description of it. An
       OpenSCAD-family leaf sets it to its render result before writing its
-      ``.scad``.
+      ``.scad``; one whose ``.stl`` was already current keeps ``None`` once
+      assembled, until its presentation is asked for, and is then given its
+      render result.
 
 .. autoexception:: machinome.node.base.StlRenderStart
 

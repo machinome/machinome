@@ -152,61 +152,31 @@ starts with `self.optimize`), so the coloured `scad_code` that
 
 ## Goals / Non-Goals
 
-**Goals:** `pip install "machinome[viewer]"` and `[web-snapshot]` bring at
-least the viewer the manual describes, from the one statement of it;
-`AbstractBaseNode` carries no attribute nobody reads; a SCAD-authored leaf's
-own SCAD text is its geometry whether or not its STL is current, so nothing
-rewrites its kept `.scad` as an import of the STL it renders.
+**Goals:** `AbstractBaseNode` carries no attribute nobody reads; a
+SCAD-authored leaf's own SCAD text is its geometry whether or not its STL is
+current, so nothing rewrites its kept `.scad` as an import of the STL it
+renders.
 
-**Non-Goals:** a run-time viewer version check; a change to what the
-OpenSCAD renderer draws for a root outside the family; a change to any
-golden value; any project edit.
+**Non-Goals:** any change to the viewer extras, whose floor is deferred to
+the pilot (Open Questions, 1); a change to what the OpenSCAD renderer draws
+for a root outside the family; a change to any golden value; any project
+edit.
 
 ## Decisions
 
-### 1. The extras' floor is `docs/conf.py`'s `viewer_version`, pinned by test
+### 1. The viewer extras are left as they are
 
-    viewer = [
-        "machinome-viewer>=0.8.0",
-    ]
-    web-snapshot = [
-        "machinome-viewer[snapshot]>=0.8.0",
-    ]
-
-with the comment above `viewer` gaining one line: the floor is the matching
-viewer `docs/conf.py` states as `viewer_version`, and
-`tests/test_release_records.py` holds the two together.
-
-The release fact is stated once (`docs/conf.py`, the write-the-manual
-skill's rule), and `pyproject.toml` restates it under a test, as it
-already restates the framework's own version for `setup.cfg`,
-`machinome/__init__.py` and `machinome/vet/universe.toml`. A release that
-moves `viewer_version` and not the extras fails the test naming the extra.
-
-New test in `VersionFilesTest`:
-
-    def test_the_viewer_extras_require_the_matching_viewer(self):
-        extras = tomllib.loads((ROOT / 'pyproject.toml').read_text())[
-            'project']['optional-dependencies']
-        floor = conf_value('viewer_version')
-        for extra, requirement in (
-                ('viewer', f'machinome-viewer>={floor}'),
-                ('web-snapshot', f'machinome-viewer[snapshot]>={floor}')):
-            with self.subTest(extra=extra):
-                self.assertEqual(extras[extra], [requirement])
-
-Exact equality also refuses an upper bound or a second requirement. Both
-extras, not only `viewer`: they install the same distribution, and a floor
-on one alone would let `pip install "machinome[web-snapshot]"` keep an
-older viewer.
-
-*Alternative:* `>=0.7.0`, the oldest viewer the framework runs against. It
-excludes nothing PyPI has ever held, so it changes no installation, and it
-is a second viewer fact the records state nowhere (the status page would
-still say 0.8 documents need 0.8.0). *Alternative:* no floor, closing the
-entry as intended. Then the manual and `context7.json` describe a viewer an
-upgraded environment may not have. Both are the pilot's to choose instead
-(Open Questions, 1).
+The records of the released 0.8.0 disagree about which viewer the extra
+should install (Context, 1), and choosing between a floor at the matching
+viewer, a floor at the oldest viewer the framework runs against, and no
+floor is a release decision (Open Questions, 1, answered at review:
+deferred to the pilot). `pyproject.toml`, `docs/conf.py`, the
+`viewer-distribution` spec and `tests/test_release_records.py` are not
+touched; the `warts.md` entry stays open with a **Remaining (2026-10-07)**
+note, and the campaign note records the three choices under "Deferred to
+the pilot". Under the recommended choice the change would be the floor
+`>=<viewer_version>` on both extras, held to `docs/conf.py` by a
+release-records test; it is not made here.
 
 ### 2. `mesh_stl_file` goes from `__init__` and from `_RESERVED`
 
@@ -303,32 +273,29 @@ file is missing.
   the one exception: an OpenSCAD-family leaf whose STL was already current
   keeps `None` until its presentation is asked for, and is then given its
   render result. One sentence, replacing nothing else.
-- `docs/project/changelog.rst`, `Unreleased`, two bullets naming the change:
-  the extras require the matching viewer (`pip install -U
-  "machinome[viewer]"` now upgrades a 0.7 viewer); an OpenSCAD snapshot no
-  longer rewrites a current `Solid2Node`'s or `OpenScadNode`'s own `.scad`
-  as an import of its STL, and such a leaf's `scad_code` is its geometry. No
-  bullet for `mesh_stl_file`: the attribute was never in the manual and
-  nothing in the catalogue reads it; the loosening is recorded here and in
-  the resolved record.
-- No other page states the extras' requirement or the leaf's `.scad`
-  content (`grep` of `docs/` for `machinome-viewer>=`, `mesh_stl`, and the
-  `scad_file`/`scad_code` entries, which stay true).
+- `docs/project/changelog.rst`, `Unreleased`, one bullet naming the change:
+  an OpenSCAD snapshot no longer rewrites a current `Solid2Node`'s or
+  `OpenScadNode`'s own `.scad` as an import of its STL, and such a leaf's
+  `scad_code` is its geometry. No bullet for `mesh_stl_file`: the attribute
+  was never in the manual and nothing in the catalogue reads it; the
+  loosening is recorded here and in the resolved record.
+- No other page states the leaf's `.scad` content or names `mesh_stl_file`
+  (`grep` of `docs/` for `mesh_stl`, and the `scad_file`/`scad_code`
+  entries, which stay true).
 
 ### 5. Red first, and the fixture validation
 
 | Red test | File | Red at `ad08fe8` because |
 |---|---|---|
-| `test_the_viewer_extras_require_the_matching_viewer` | `tests/test_release_records.py` | `['machinome-viewer'] != ['machinome-viewer>=0.8.0']` |
 | `test_a_node_carries_no_mesh_stl_file` | `tests/test_declarative_nodes.py` | the instance has it |
 | `test_a_current_leafs_scad_code_is_its_geometry` (subtests `FineCylinder`, `Plate`) | `tests/test_scad_presentation.py` | the fresh instance's `scad_code` imports its own STL |
 | `test_a_current_scad_authored_root_keeps_its_scad_as_built` | `tests/test_scad_presentation.py`, `SnapshotOnDemandTest` | the snapshot rewrites the file (new inode, import text) |
 
-The third builds each reference into the test's build directory
+The second builds each reference into the test's build directory
 (`self.build(...)`, the `_BuildDirectory` helper), loads a fresh instance
 with `machinome.core.loader.load_node`, `assemble()`s it, and asserts its
 `scad_code` equals the bytes of its `.scad` on disk and contains no
-`import(file = "<its own STL name>"`. The fourth builds
+`import(file = "<its own STL name>"`. The third builds
 `FineCylinder` as the root, records `observed(build_dir)` and the file's
 bytes, runs `self.snapshot('openscad', root='FineCylinder')`, and asserts
 the text OpenSCAD was given equals those bytes, which equal the golden's
@@ -342,10 +309,6 @@ full, and the measurement of Context, 3, item 2 repeated with real OpenSCAD
 
 ## Risks / Trade-offs
 
-- [The floor forces an upgrade the framework does not technically need] →
-  that is the effect of naming the matching viewer, and the reason the
-  choice is recorded for the pilot (Open Questions, 1). A user who must
-  keep 0.7.x installs the framework without the extra.
 - [A user's code read `node.mesh_stl_file`] → none in the catalogue; it
   named a file nothing writes, so a reader would have found nothing there.
 - [Rendering a family leaf on demand costs more than importing its STL for
@@ -359,8 +322,7 @@ full, and the measurement of Context, 3, item 2 repeated with real OpenSCAD
 
 ## Migration Plan
 
-None. An environment upgrades the viewer on its next install of the extra.
-A kept `.scad` that an earlier OpenSCAD snapshot rewrote as a self-import is
+None. A kept `.scad` that an earlier OpenSCAD snapshot rewrote as a self-import is
 written again from the leaf's geometry the next time anything publishes it:
 the next OpenSCAD snapshot of that root, or the next build that re-renders
 the leaf.
@@ -387,9 +349,9 @@ the leaf.
    document, not about what the extra installs. Independently of the
    choice, the status page's "need the matching viewer" overstates what a
    document needs (API 27 reads schemas 11 to 13); whether to soften it is
-   the same decision and is left to it. This proposal is written for (a);
-   under (b) only the number and the test's source of it change, and under
-   (c) the first item is dropped and the entry closed with Context, 1 as its
+   the same decision and is left to it. Under (a) the change is the one
+   Decision 1 sketches; under (b) only the number and the test's source of
+   it change; under (c) the entry is closed with Context, 1 as its
    measurement.
 
    Answered by the orchestrator at review (7 October 2026): deferred to

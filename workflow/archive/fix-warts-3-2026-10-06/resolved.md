@@ -970,3 +970,74 @@ the same sentence in the studio's craft skill
 (`machinome-studio/shop-skills/machinome/SKILL.md`), is the studio
 repository's and is recorded in the campaign note's outside-the-framework
 step.
+
+## `release-metadata-and-vestiges`
+
+From "import-the-artifact-by-path (2026-09-15, found while fixing)", both
+entries. The section's introduction read: "Findings outside that cycle's
+ratified scope, measured in
+`openspec/changes/import-the-artifact-by-path/evidence.md` ("Noticed and
+left out of scope"); **status: filed here; triage open**. No framework
+code changed for either." With both entries closed the section was empty,
+and its heading and introduction left `warts.md` with them.
+
+- **A rigid leaf's own `.scad` stops describing its geometry after the
+  first build: it becomes a self-import of the STL it exists to
+  regenerate.** Build 1 writes it as the leaf's own geometry (e.g.
+  `cube(size = [10, 10, 10]);`); once the STL is current, `assemble()`'s
+  up-to-date branch sets `self.model = self.artifact_import(self.local_stl)`
+  (`base.py:862-863`) and then calls `generate_scad()`, so the file that is
+  supposed to be able to rebuild the STL from scratch merely imports it.
+  It resolves (same directory), so it is not this change's bug.
+  `FusionNode`'s own `.scad` is written the same self-importing way, but
+  harmlessly: its STL is produced natively (OCCT or manifold3d), never by
+  OpenSCAD from that `.scad`.
+
+**What shipped.** `release-metadata-and-vestiges`
+(`openspec/changes/archive/2026-10-07-release-metadata-and-vestiges/`).
+Measured at `184b069` before the change: since `scad-presentation`
+(4 October 2026) `assemble()` writes no `.scad`, so `machinome build` run
+twice left a `Solid2Node`'s own `.scad` as its geometry (`$fn = 24;` then
+`cylinder(h = 8, r = 3);`, same inode and stamp), and no build writes a
+fusion's `.scad` at all. The up-to-date branch still set the model to the
+import of the leaf's own STL, though, and that is what the leaf's
+`scad_code` and `generate_scad()` wrote: `machinome snapshot --renderer
+openscad` of a current `FineCylinder` (`tests/scad_where_read_project`)
+rewrote its kept `.scad` as `import(file =
+"machine-FineCylinder-2111f2f9079a.stl", ...)` under a new inode, and a
+fresh `OpenScadNode` assembled with its STL current gave `scad_code` ending
+in that import instead of its module call. The branch now asks the node
+for its presentation of a current artifact through one private hook,
+`_current_artifact_presentation()`, beside `_require_model()`: the base
+answers with the import of its STL, as before, and `ScadLeafNode`, the
+OpenSCAD family's leaf base, answers None, so the model is rendered on
+demand from the leaf's own geometry. After the change the same snapshot
+left the file's bytes, inode and stamp as the build wrote them, and both
+fresh `scad_code`s equal their built files.
+`tests/test_scad_presentation.py` pins both
+(`test_a_current_leafs_scad_code_is_its_geometry`,
+`test_a_current_scad_authored_root_keeps_its_scad_as_built`, red first);
+the presentation golden stays at 0 differences. Nodes outside the family
+keep the import as their up-to-date presentation.
+
+- **`self.mesh_scad_file` / `self.mesh_stl_file` are vestigial.** Nothing
+  in `machinome/` writes or reads them beyond the assignment at
+  `base.py:711-712`.
+
+**What shipped.** `release-metadata-and-vestiges`. `mesh_scad_file` had
+already gone with `openscad-out` (4 October 2026). `mesh_stl_file` was
+still assigned in `AbstractBaseNode.__init__` and listed in
+`parameters._RESERVED`; no reader in `machinome/`, `tests/`, `docs/` or the
+catalogue's 14,618 Python files, and no `.mesh.stl` named anywhere. Both
+went. Removing the reserved name is a loosening: a parameter, flag,
+marking, frame or mate may now be named `mesh_stl_file`, as it may be
+named anything else a node does not carry. `tests/test_declarative_nodes.py`
+pins the absence (`test_a_node_carries_no_mesh_stl_file`, red first) and
+that every name `_RESERVED` lists is an attribute a node carries
+(`test_every_reserved_name_is_an_attribute_a_node_carries`). No changelog
+bullet: the attribute was never in the manual.
+
+The third entry the cycle measured, "The `viewer` extra carries no version
+floor", stays in `warts.md`: which viewer the extra should install is the
+pilot's decision, recorded in the campaign note under "Deferred to the
+pilot".

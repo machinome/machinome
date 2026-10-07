@@ -29,6 +29,7 @@ from machinome.node.declarative import declared_children
 from machinome.node.base import _build_uniq_id
 from machinome.node.declarative import ChildDeclaration, declared_child_nodes
 from machinome.node.frames import Frame, resolved_frames
+from machinome import parameters
 from machinome.parameters import (Count, Flag, Length, ParameterError, Ratio,
                                    Scalar, declared_parameters)
 
@@ -154,6 +155,16 @@ class ParameterDeclarationTest(BaseNodeTest):
             with self.assertRaises(TypeError) as ctx:
                 type('Bad', (AssemblyNode,), {attribute: kind(1)})
             self.assertIn(attribute, str(ctx.exception))
+
+    def test_a_node_carries_no_mesh_stl_file(self):
+        # It named a `.mesh.stl` file nothing wrote or read.
+        self.assertFalse(hasattr(Piston(), 'mesh_stl_file'))
+
+    def test_every_reserved_name_is_an_attribute_a_node_carries(self):
+        piston = Piston()
+        for name in sorted(parameters._RESERVED):
+            with self.subTest(name=name):
+                self.assertTrue(hasattr(piston, name))
 
     def test_a_declaration_cannot_be_assigned_under_two_names(self):
         with self.assertRaises(TypeError) as ctx:

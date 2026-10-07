@@ -86,6 +86,13 @@ Findings from lifting the project `kinematics.py` helpers into the framework
   `viewer = ["machinome-viewer"]`. Added 2026-10-04 from item 12's own
   remainder.
 
+  **Remaining (2026-10-07):** all of it. `release-metadata-and-vestiges`
+  measured it (PyPI holds 0.7.0, 0.7.1 and 0.8.0; `web-snapshot` is
+  unranged too) and found the 0.8.0 records disagreeing about which viewer
+  the extra should install, so it changed nothing: the decision is
+  deferred to the pilot in `ongoing/fix-warts-3.md`, "Deferred to the
+  pilot", with its three choices.
+
 ## Deferred
 
 11. **The openflexure four-bar decomposition** (`leg_lean`, `lever_rise`)
@@ -708,28 +715,6 @@ delegation. Its items 1 to 9 are integrated on main. What remains of it:
   relation; a descendant's hand-written read of a deferred relation; a
   subclass's inner joint slot; indexing a repeat in a class body.
 - `solid import-stl` (AlbertPro): a new command.
-
-# import-the-artifact-by-path (2026-09-15, found while fixing)
-
-Findings outside that cycle's ratified scope, measured in
-`openspec/changes/import-the-artifact-by-path/evidence.md` ("Noticed and
-left out of scope"); **status: filed here; triage open**. No framework
-code changed for either.
-
-- **A rigid leaf's own `.scad` stops describing its geometry after the
-  first build: it becomes a self-import of the STL it exists to
-  regenerate.** Build 1 writes it as the leaf's own geometry (e.g.
-  `cube(size = [10, 10, 10]);`); once the STL is current, `assemble()`'s
-  up-to-date branch sets `self.model = self.artifact_import(self.local_stl)`
-  (`base.py:862-863`) and then calls `generate_scad()`, so the file that is
-  supposed to be able to rebuild the STL from scratch merely imports it.
-  It resolves (same directory), so it is not this change's bug.
-  `FusionNode`'s own `.scad` is written the same self-importing way, but
-  harmlessly: its STL is produced natively (OCCT or manifold3d), never by
-  OpenSCAD from that `.scad`.
-- **`self.mesh_scad_file` / `self.mesh_stl_file` are vestigial.** Nothing
-  in `machinome/` writes or reads them beyond the assignment at
-  `base.py:711-712`.
 
 # Calculators (2026-09-15, markings applied after the part is made)
 
