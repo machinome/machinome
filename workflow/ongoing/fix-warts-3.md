@@ -317,6 +317,13 @@ in the same cycle.
   "Planned, never done" line left `../warts.md`; the entry moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`.
 
+- 7 October 2026: investigation 5 (wall clock 02's six failures): all
+  six are the project's, the three engines agreeing on every pair to
+  nine digits; the entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md` with the diagnosis, and
+  the project's representation of an intended overlap is recorded below
+  for the pilot.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.
@@ -345,6 +352,17 @@ Each names the entry, what was found, and the choice.)
   read from `docs/conf.py`'s `viewer_version` and pinned by a test; (b)
   `>=0.7.0`, the oldest viewer the framework runs against; (c) no floor.
   The cycle took its other two items and left the extras as they are.
+- **Investigation 5: how 3DPrintedClocks represents an intended overlap.**
+  Wall clock 02's six failures are all the project's (the diagnosis is
+  in `../archive/fix-warts-3-2026-10-06/resolved.md`): an M3 screw
+  drawn at 3 mm in the author's 2.5 mm tap-drill hole (about twenty
+  clocks share the holder), a flat washer in a slot sized for a squashed
+  one, self-tapping nubs, a two-part preview group kept as one leaf, and
+  a nut bored to the screw's diameter under a test asserting overlap.
+  The framework offers no overlap allowance on purpose. Your choice for
+  the project: draw the hardware at its engaged dimensions, fuse the
+  fasteners back into the printed part, or keep the pairs red with named
+  positive diagnostics as clocks 46, 52 and 54 do.
 
 - **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
   refusal of a `self.children` read inside `render()` (always empty

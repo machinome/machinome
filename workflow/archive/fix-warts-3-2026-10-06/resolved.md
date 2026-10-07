@@ -1226,3 +1226,39 @@ before and after; its first run after the change re-derived the model once
 22.52 s before). Projects whose nodes import through a sibling package
 rebuild once; in the catalogue that is every 3DPrintedClocks model,
 Curta-Type-I-3x and openflexure-microscope.
+
+## Wall clock 02's six failures (diagnosed: the project's, not the framework's)
+
+From "3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across
+runs)":
+
+The memo finding is fixed (`persistent-verdict-memo`, ADR-156). Not a
+framework fix, recorded for the project: the six `wall_clock_02` failures
+measured there (collet against hinge_screw 14.58 mm³, holder body against
+the beat crinkle washer 1.58 mm³, `standoffs` two bodies, the weight screw
+not meeting its nut), undiagnosed.
+
+**What shipped:** nothing; investigation 5 of fix-warts-3 (7 October
+2026, bench `fc26c61`, project `ec2a05d` on `solid-node-simulation`,
+read only with a scratch build directory: `--brep` cold 1182.8 s and
+warm 31.1 s, 16 passed, 6 failed, the same volumes as on 29 September)
+diagnosed every failure as the project's. The B-rep engine, the mesh
+engine and an independent CadQuery common agree on each pair to nine
+digits. The three sweeps fail at every instant on the collet against
+its hinge screw, 14.578953 mm³ = π(1.5² − 1.25²) × 6.75 mm to fifteen
+digits: the M3 screw drawn at 3 mm in the author's 2.5 mm tap-drill
+hole, visible since `590189b` split the fused holder into fastener
+leaves and present in about twenty clocks. `standoffs` is the upstream
+preview group of two separately printed parts 275 mm apart (wall clock
+36 already splits it; clocks 01 and 02 predate the split). The body
+inventory adds the crinkle washer in its 0.16 mm slot (1.578 mm³, the
+author's room for a squashed washer, drawn flat) and the bob shell's
+three self-tapping nubs per lid screw (1.727 mm³). The weight screw and
+its nut touch on coincident 3 mm cylinders with zero shared volume
+since `4ac9b7e` bored the nut to the screw's diameter, while the test
+still asserts a positive overlap. Side findings for the project: the
+README's mesh check refuses the SlidingWeightShell STL as non-manifold
+and its paragraph on nudging the shell is stale; the beat screw shows a
+0.0025 mm³ mesh-only sliver. How the project represents an intended
+overlap (a tapped hole, a nub, a squashed washer) is the pilot's
+choice, recorded in the campaign note.

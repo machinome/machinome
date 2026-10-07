@@ -1585,14 +1585,6 @@ not fixed, until the pilot triages them.
   `openspec/changes/archive/2026-10-07-a-witness-is-interior-in-its-neighbourhood/design.md`,
   Open Question 2 (the scratch measurement `probe_sphere.py`). **Untriaged.**
 
-# 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
-
-The memo finding is fixed (`persistent-verdict-memo`, ADR-156). Not a
-framework fix, recorded for the project: the six `wall_clock_02` failures
-measured there (collet against hinge_screw 14.58 mm³, holder body against
-the beat crinkle washer 1.58 mm³, `standoffs` two bodies, the weight screw
-not meeting its nut), undiagnosed.
-
 # Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)
 
 Findings 1 to 3 are fixed on main (`sim-through-a-symlink`, `sim-identity`,
