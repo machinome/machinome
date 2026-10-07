@@ -1,6 +1,6 @@
 # ADR-156: A Decided Verdict Outlives the Run
 
-**Status:** Accepted; the mesh engine's binding amended 2026-10-04 by [ADR-176](ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
+**Status:** Accepted; the in-process shape key its consequences left weaker was replaced 2026-10-03 by [ADR-164](../NODE/ADR-164-the-loaded-shape-cache-keys-on-the-artifacts-observation.md); the mesh engine's binding amended 2026-10-04 by [ADR-176](ADR-176-the-mesh-engine-is-a-provider-behind-the-seam-installed-by-an-extra.md)
 **Date:** 2026-09-29
 **Amends:**
 - [ADR-070: Relative Placement as the Identity of an Intersection Question](./ADR-070-relative-placement-as-the-identity-of-an-intersection-question.md)
@@ -238,7 +238,10 @@ State keys have no collision, the pilot directed otherwise, and v8-engine's
 - `cached_shape`'s in-process key stays `(path, float mtime)`, weaker than
   every other artifact cache; the persistent tier guards itself against it
   through the recorded load observation, and the gap is recorded in
-  `workflow/warts.md` for its own triage.
+  `workflow/warts.md` for its own triage. (Closed on 3 October 2026 by
+  [ADR-164](../NODE/ADR-164-the-loaded-shape-cache-keys-on-the-artifacts-observation.md),
+  which keys the shape on the artifact's stat observation; the entry
+  left `warts.md` on 7 October 2026.)
 - A flexible leaf's geometry is still evaluated before its key is formed,
   as a rigid shape is still loaded; deferring evaluation to a miss is a
   possible follow-up.

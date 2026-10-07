@@ -843,3 +843,52 @@ failed)`. A provoked sweep over the minute hand's travel printed the
 centroid read at the last instant, `(47.837, -83.031, 45.609)`, before,
 and `FAIL! at instant 0.0 (4 of 4 instants failed)` with the first
 instant's centroid, `(65.434, -65.434, 70.495)`, after.
+
+## `key-the-shape-on-its-observation` (found already fixed)
+
+From "`cached_shape` keys a loaded BREP on `(path, float mtime)`
+(2026-09-29, found while designing persistent-verdict-memo)":
+
+**Status (as filed): recorded; triage open.**
+
+`machinome.exact.cached_shape` keeps one imported CadQuery shape per
+`(brep path, os.path.getmtime(...))`, a float mtime, and `shape_identity`
+hands that key to every exact-path cache: the bounding boxes, the face
+boxes, the placements and the in-process verdict memo. Every other artifact
+cache has since moved to the full `ArtifactObservation` (realpath, device,
+inode, size, mtime_ns, ctime_ns) -- `cached_base_mesh`, the Manifold and
+bounds caches, `currency._file_key` -- because `_atomic_export` stamps every
+artifact with its SOURCE's mtime: a rebuild not caused by a source edit
+(a changed producer recipe, a deleted artifact, a framework or kernel
+upgrade that exports differently) reproduces the old mtime while its bytes
+may differ. Under the float key such a rebuild inside one long-lived
+process keeps serving the old shape, and every exact cache keyed on it.
+
+`persistent-verdict-memo` (ADR-156) did not change this key; it was a
+non-goal. The persistent tier guards itself instead: `cached_shape` now
+records the observation it loaded from (observed before and after
+`importBrep`), and a persisted identity is the digest of THOSE bytes, or
+none when the file has changed since. The in-process gap is unchanged:
+within one process a same-mtime rebuild still reads as current. Candidate
+fix: key `cached_shape` on the load observation, as the mesh caches key on
+theirs. Evidence: design.md "Non-Goals" and §3 of the
+`persistent-verdict-memo` change; no project has reported a wrong verdict
+from it.
+
+**What shipped:** nothing in this campaign. `leaf-contract` (3 October
+2026, ADR-164) had already keyed `machinome.brep_cache.cached_shape` on
+`(path, (device, inode, size, mtime_ns, ctime_ns))` from one stat, with
+the scenario "A replacement under an unchanged source mtime is not served
+stale" in the `brep-geometry` spec and `tests/test_shape_cache_observation.py`
+pinning it; the entry was never closed. Reproduced at `904f2a6` on
+7 October 2026: a same-stamp replacement (renamed into place, rewritten
+in place, or rewritten in place at the same size) is served new. The
+case ADR-164 accepts, an in-place same-size rewrite within one ctime tick
+by a writer other than the core, remains as that ADR records it (208 of
+300 such rewrites served stale on ext4); adding the realpath through
+`observe_artifact` per request (ADR-164's rejected option 5) would cost
+about 100 µs against 3 µs per request, 2 to 5 % of wall clock 02's warm
+run, and would not close it. Wall clock 02 (`--brep`, scratch build
+directory): 16 passed, 6 failed, its own, cold 1152 s, warm 23.7 s. The
+`_verdict_key` docstring and ADR-156's consequence, which still said
+`(path, float mtime)`, were corrected with this closure.

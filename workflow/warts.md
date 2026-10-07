@@ -1652,34 +1652,6 @@ measured there (collet against hinge_screw 14.58 mm³, holder body against
 the beat crinkle washer 1.58 mm³, `standoffs` two bodies, the weight screw
 not meeting its nut), undiagnosed.
 
-# `cached_shape` keys a loaded BREP on `(path, float mtime)` (2026-09-29, found while designing persistent-verdict-memo)
-
-**Status (as filed): recorded; triage open.**
-
-`machinome.exact.cached_shape` keeps one imported CadQuery shape per
-`(brep path, os.path.getmtime(...))`, a float mtime, and `shape_identity`
-hands that key to every exact-path cache: the bounding boxes, the face
-boxes, the placements and the in-process verdict memo. Every other artifact
-cache has since moved to the full `ArtifactObservation` (realpath, device,
-inode, size, mtime_ns, ctime_ns) -- `cached_base_mesh`, the Manifold and
-bounds caches, `currency._file_key` -- because `_atomic_export` stamps every
-artifact with its SOURCE's mtime: a rebuild not caused by a source edit
-(a changed producer recipe, a deleted artifact, a framework or kernel
-upgrade that exports differently) reproduces the old mtime while its bytes
-may differ. Under the float key such a rebuild inside one long-lived
-process keeps serving the old shape, and every exact cache keyed on it.
-
-`persistent-verdict-memo` (ADR-156) did not change this key; it was a
-non-goal. The persistent tier guards itself instead: `cached_shape` now
-records the observation it loaded from (observed before and after
-`importBrep`), and a persisted identity is the digest of THOSE bytes, or
-none when the file has changed since. The in-process gap is unchanged:
-within one process a same-mtime rebuild still reads as current. Candidate
-fix: key `cached_shape` on the load observation, as the mesh caches key on
-theirs. Evidence: design.md "Non-Goals" and §3 of the
-`persistent-verdict-memo` change; no project has reported a wrong verdict
-from it.
-
 # Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)
 
 Findings 1 to 3 are fixed on main (`sim-through-a-symlink`, `sim-identity`,

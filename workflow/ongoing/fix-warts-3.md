@@ -207,6 +207,15 @@ in the same cycle.
   The section moved to `../archive/fix-warts-3-2026-10-06/resolved.md`;
   tear-down exceptions recorded in `../warts.md`.
 
+- 7 October 2026: cycle 14, `key-the-shape-on-its-observation`, found
+  already fixed: `leaf-contract` (3 October, ADR-164) keys `cached_shape`
+  on the artifact's stat observation, pinned by spec and test; reproduced
+  at `904f2a6` (a same-stamp replacement is served new; the in-place
+  same-size rewrite within one ctime tick that ADR-164 accepts remains),
+  wall clock 02's `--brep` run at its own 16 passed, 6 failed. No cycle:
+  the entry moved to `../archive/fix-warts-3-2026-10-06/resolved.md` and
+  the two records that still said `(path, float mtime)` were corrected.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

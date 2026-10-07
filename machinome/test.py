@@ -1673,8 +1673,9 @@ def _verdict_key(identity1, matrix1, identity2, matrix2, path):
 
     The key is ``(identity1, identity2, path, quantum, placement)``, in
     that order, so (A, B) and (B, A) stay two questions. An identity is a
-    rigid solid's in-process identity -- ``(brep path, float mtime)`` on the
-    B-rep path, ``(stl path, ArtifactObservation)`` on the mesh one -- or
+    rigid solid's in-process identity -- ``(brep path, (device, inode,
+    size, mtime_ns, ctime_ns))`` on the B-rep path (ADR-164),
+    ``(stl path, ArtifactObservation)`` on the mesh one -- or
     a flexible leaf's ``('flexible', state digest)``. The verdict store
     keeps the same fields with each identity made persistent (see
     ``_persisted_key``).
