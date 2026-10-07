@@ -158,6 +158,17 @@ in the same cycle.
 (Entries met during the campaign that turned out to need a decision.
 Each names the entry, what was found, and the choice.)
 
+- **Cycles 10 and 11: the Curta production slice does not load on 0.8.**
+  The slice at `projects/Calculators/Curta-Type-I-3x/WTs/production-layer-3x`
+  (branch `production-layer-3x`, `7c9121e`) imports from the root of
+  `machinome.node`, which 0.8 refuses, and its simulation predates the
+  Curta's 0.8 migration. The cycles validated against a scratch overlay
+  (the slice's `production/` package with that one import rewritten,
+  beside symlinks to the Curta `main` checkout's `simulation`,
+  `pyproject.toml` and `CAD`), writing nothing into the project. Your
+  decision: migrate the slice's branch onto 0.8 and the Curta's main, or
+  retire it.
+
 - **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
   refusal of a `self.children` read inside `render()` (always empty
   there, since `render()` is what decides the children) makes
