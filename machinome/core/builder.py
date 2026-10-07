@@ -34,6 +34,16 @@ from machinome.viewers import bundle as viewer_bundle
 
 logger = logging.getLogger('core.builder')
 
+#: What the builder was doing with the model when an initial failure
+#: stopped it, by the stage `Builder._start` names: the head of the one
+#: line `Builder._on_reload_exception` logs, which the failure's own
+#: message follows (OpenSpec change `refuse-the-undeclared-file-by-name`).
+_INITIAL_FAILURE = {
+    'load': 'The model {} could not be loaded',
+    'inspect initial sources': 'The sources of the model {} could not be read',
+    'assemble': 'The model {} could not be assembled',
+}
+
 
 def _warn_unreadable(version):
     """Say, once, that the installed viewer cannot read the document just
@@ -528,7 +538,7 @@ class Builder(FileSystemEventHandler):
             self.observer.start()
             return await self.report_error(error_message)
 
-        logger.error(f'{self.path}: failed to {stage} project: {exc}')
+        logger.error(f'{_INITIAL_FAILURE[stage].format(self.path)}: {exc}')
         write_error(error_message, self.build_dir)
         return BuildOutcome.FAILED
 

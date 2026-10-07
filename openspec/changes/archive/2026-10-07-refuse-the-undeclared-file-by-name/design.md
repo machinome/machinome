@@ -230,16 +230,24 @@ def _undeclared(klass, attribute, declared, declaring):
         head = (f'{klass.__name__} declares {attribute} = {declared!r}, '
                 f'which names no file.')
     return ValueError(
-        f'{head} Set {attribute}{where} to the path of the file its part '
+        f'{head} Set {attribute}{where} to the path of the file it is '
         f'is read from, relative to that module\'s directory or absolute.')
 ```
 
 Measured shapes the applier confirms (tasks.md 4.2):
 
 ```text
-BareStl does not declare stl_source. Set stl_source in <scratch>/probe_project/parts.py to the path of the file its part is read from, relative to that module's directory or absolute.
-EmptyScad declares scad_source = '', which names no file. Set scad_source in <scratch>/probe_project/parts.py to the path of the file its part is read from, relative to that module's directory or absolute.
+BareStl does not declare stl_source. Set stl_source in <scratch>/probe_project/parts.py to the path of the file it is read from, relative to that module's directory or absolute.
+EmptyScad declares scad_source = '', which names no file. Set scad_source in <scratch>/probe_project/parts.py to the path of the file it is read from, relative to that module's directory or absolute.
 ```
+
+(Revised at the orchestrator's review of the implementation, 7 October
+2026: the sentence read "the file its part is read from", which a
+marking's `Svg('')` also reaches, and a marking's file is its artwork;
+"the file it is read from" serves both. The `JScadNode` and
+`OpenScadNode` class docstrings, which still stated the old
+same-directory rule the removed error texts had, were corrected in the
+same review.)
 
 `ValueError`, as `StlNode` and `StepNode` raise today and as the
 not-a-file and outside-the-project refusals raise: a declaration to

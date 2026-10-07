@@ -700,3 +700,75 @@ its `production/` package in the scratchpad with that one import rewritten,
 over the Curta's `main` (`1f3dc22`), nothing written in the project: 6
 passed in 118.81 s before and 119.63 s after, with the same 417 findings
 and 21 binding paths.
+
+## `refuse-the-undeclared-file-by-name`
+
+From "name-the-missing-file (2026-09-15, found while fixing)", the whole
+section:
+
+Findings outside that cycle's ratified scope, from
+`openspec/changes/name-the-missing-file/proposal.md` ("Out of scope") and
+`design.md` (reviewer's note 1); **status: filed here; triage open**. No
+framework code changed for either.
+
+- **The four adapters refuse a missing DECLARATION inconsistently.**
+  `StlNode` and `StepNode` raise `ValueError` naming the class
+  (`stl.py:162`, `step.py:476`). `JScadNode` raises a bare `Exception`
+  that names only `"OpenJScadNode subclass"`, never the actual subclass
+  (`jscad.py:28-30`). `OpenScadNode` has no check at all: an
+  undeclared `scad_source` reaches `os.path.join(basedir, None)` and
+  raises `TypeError: join() argument must be str, bytes, or os.PathLike
+  object, not 'NoneType'` (`openscad.py:40`), naming neither the class nor
+  the attribute. This cycle adds a fourth failure family — a *declared but
+  absent* file — that IS consistent across all four (`FileNotFoundError`
+  or `ValueError`, always naming the class); the pre-existing
+  *undeclared* family above it is not touched.
+- **The builder's own wrapper text reads as broken English and names the
+  model, not the node.** `Builder._start()` wraps a load-time failure as
+  `f'{self.path}: failed to {stage} project: {exc}'` (`builder.py:356`,
+  stage `'load'` or `'inspect initial sources'`), e.g. `parts:MissingStl:
+  failed to load project: ...` — "failed to load project" reads oddly for
+  a single model reference, and `self.path` is the CLI's model argument,
+  not the node whose declaration was wrong; for a leaf nested inside an
+  assembly the wrapper still names only the root (`evidence.md`,
+  measurement 4/"After"). This cycle's own message, inside `exc`, does
+  name the node; the wrapper around it is untouched.
+
+**What shipped.** `refuse-the-undeclared-file-by-name`
+(`openspec/changes/archive/2026-10-07-refuse-the-undeclared-file-by-name/`)
+makes the refusal in `require_source_file` (`machinome/node/sources.py`):
+a declared value that names no file, `None` or empty, is refused first,
+before anything is resolved, with `ValueError` naming the class, the
+attribute and the module that defines the class (`BareStl does not declare
+stl_source. Set stl_source in <module> to the path of the file its part is
+read from, relative to that module's directory or absolute.`; for an empty
+value, `EmptyScad declares scad_source = '', which names no file. Set
+...`). Its `path` argument became optional: given the declared value
+alone, it resolves it beside the defining module, as the adapters did, and
+it returns the path it judged in both forms. `StlNode`, `StepNode`,
+`JScadNode` and `OpenScadNode` dropped their own guards and joins and take
+their source from one call, and the leaf-contract stand-in `MeshPart` does
+the same, so a leaf written outside the core in that form gets the refusal
+unchanged; the leaf contract stays at version 3. The builder's line on a
+failed launch reads `The model <reference> could not be loaded: <message>`,
+`The sources of the model <reference> could not be read: ...` or `The
+model <reference> could not be assembled: ...`, by stage; the inner
+message, which names the leaf's class, stands as it is, and `errors.json`
+and the reload path are unchanged. Red first: 14 failures, the eight
+adapter subtests (`StlNode` and `StepNode` lacked the module and the new
+words, `JScadNode` raised `Exception`, `OpenScadNode` `TypeError` or "is
+not a file"), `MeshPart`'s `TypeError`, the missing fourth argument, the
+three builder lines (`model.py: failed to load project: broken model`, and
+the inspect and assemble lines alike) and `machinome build assembly:Rig`
+in a scratch project (`assembly:Rig: failed to load project: BareStl is an
+StlNode and must declare ...`); every existing test of
+`tests/test_missing_source_file.py` and both
+`test_a_missing_declaration_fails_naming_the_class` stayed green unedited.
+On the probe project, all nine undeclared or empty leaves (the four
+adapters twice and `BareMesh`) were refused in four shapes before and in
+the one shape after; a marking's `Svg('')` is now refused as naming no
+file and `Svg(None)` still fails in `Svg.resolve`'s own join, outside this
+change; the six builds exit 1 before and after, with the new line. A scan
+of the 16 791 Python files under `projects/` finds no test or code that
+asserts on, matches or catches an old text (11 hits, all `"project: "` in
+unrelated fields and docstrings), so no project was run or edited.

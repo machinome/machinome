@@ -742,6 +742,17 @@ declares is not there, and the refusal SHALL name the declaring class, the
 attribute and the value declared on it, and the absolute path the framework
 resolved that value to.
 
+Every one of these adapters SHALL also refuse to construct when its source
+attribute names no file — left at the adapter's `None`, or declared as an
+empty string — and SHALL refuse it in ONE shape: `ValueError`, naming the
+class, the attribute and the module defining the class, saying that the
+attribute is not declared or names no file, and raised before the
+declaration is resolved, before anything is read from it and before any
+process is started for it. `require_source_file` in
+`machinome.node.sources` SHALL make this refusal, so a leaf written outside
+the core that resolves its declaration through it refuses an undeclared
+source in the same shape.
+
 The refusal SHALL happen when the node is CONSTRUCTED: the same moment at
 which a subclass declaring no source file at all is already refused, and the
 moment at which the declaration can first be judged. A class body that writes
@@ -819,6 +830,31 @@ sources are read for freshness.
 - **WHEN** a source-bound leaf is declared in a module with no
   `[tool.machinome]` manifest above it, and its source file exists
 - **THEN** construction succeeds as before
+
+#### Scenario: A source attribute that is not declared
+
+- **WHEN** a subclass of `StlNode`, `StepNode`, `JScadNode` or
+  `OpenScadNode` that declares no source attribute is constructed
+- **THEN** each raises `ValueError` naming that subclass, its adapter's
+  source attribute and the module defining the subclass, and saying the
+  attribute is not declared, and no file is read and no process is
+  started
+
+#### Scenario: An empty declaration names no file
+
+- **WHEN** a subclass of any of the four adapters declares its source
+  attribute as `''`
+- **THEN** construction raises the same `ValueError`, saying the attribute
+  names no file, rather than refusing the module's own directory as not a
+  file
+
+#### Scenario: A leaf written outside the core refuses it the same way
+
+- **WHEN** a leaf defined outside `machinome/` resolves its declared source
+  attribute through `require_source_file`, and a subclass of it declares
+  none
+- **THEN** construction raises the same `ValueError`, naming that subclass
+  and its attribute
 
 ### Requirement: No node type is recognised by its class name
 

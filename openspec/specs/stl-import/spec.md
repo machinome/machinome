@@ -13,8 +13,11 @@ exactly as a `JScadNode`'s `.js` does. In addition — and unlike the
 other external-file adapters — the wrapper Python module itself SHALL
 be part of the node's tracked file set, because it carries
 geometry-affecting code (`adjust`, `body`); editing the wrapper SHALL
-invalidate the node's artifacts. A subclass without `stl_source` SHALL
-fail at construction with an error naming the class.
+invalidate the node's artifacts. A subclass without `stl_source`, or
+declaring it as an empty string, SHALL fail at construction with
+`ValueError` naming the class, `stl_source` and the module defining the
+class, in the shape every source-bound leaf refuses an undeclared source
+under the `node-model` capability.
 
 A subclass whose `stl_source` names a file that does not exist SHALL also
 fail at construction, with an error naming the class, `stl_source` and the
@@ -57,8 +60,8 @@ is not judged. Construction SHALL NOT read the mesh before this check.
 
 - **WHEN** an `StlNode` subclass declaring no `stl_source` is
   instantiated
-- **THEN** an error is raised naming the class and the missing
-  attribute
+- **THEN** `ValueError` is raised naming the class, the missing
+  attribute and the module defining the class, and no mesh is read
 
 #### Scenario: A declared mesh that is not there fails at construction
 

@@ -31,8 +31,10 @@ that needs one writes its own scratch project, the same way
 
 import errno
 import importlib.util
+import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -473,3 +475,159 @@ class ScratchContainmentTest(TestCase):
 
         self.assertEqual(node.openscad_source,
                          os.path.join(elsewhere, 'shape.scad'))
+
+
+#: The four core adapters, by the name of the attribute each one reads.
+ADAPTERS = (
+    ('Stl', 'machinome.node.stl', 'StlNode', 'stl_source'),
+    ('Step', 'machinome.node.step', 'StepNode', 'step_source'),
+    ('Jscad', 'machinome.node.jscad', 'JScadNode', 'jscad_source'),
+    ('Scad', 'machinome.node.openscad', 'OpenScadNode', 'scad_source'),
+)
+
+
+class UndeclaredSourceTest(TestCase):
+    """A source-bound leaf that declares no source file, or declares it
+    empty, is refused in one shape whatever its adapter (OpenSpec change
+    `refuse-the-undeclared-file-by-name`): `ValueError` naming the class,
+    the attribute and the module the declaration belongs in, before
+    anything is resolved, read or run. Each test writes its own scratch
+    project, as `ForeignScratchSourceTest` does."""
+
+    def setUp(self):
+        self.project = tempfile.mkdtemp(prefix='machinome_undeclared_source_')
+        self.addCleanup(shutil.rmtree, self.project, ignore_errors=True)
+        with open(os.path.join(self.project, 'pyproject.toml'), 'w') as manifest:
+            manifest.write('[tool.machinome]\n')
+        self.leaf = os.path.realpath(os.path.join(self.project, 'leaf.py'))
+
+    def _load_leaf(self, source):
+        with open(self.leaf, 'w') as module_file:
+            module_file.write(source)
+
+        name = f'_undeclared_source_scratch_{uuid.uuid4().hex}'
+        spec = importlib.util.spec_from_file_location(name, self.leaf)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        self.addCleanup(sys.modules.pop, name, None)
+        spec.loader.exec_module(module)
+        return module
+
+    def _adapters(self, prefix, body):
+        """A scratch module declaring `<prefix><kind>` for every adapter,
+        with `body` (formatted with the attribute) as its class body."""
+        source = ''.join(
+            f'from {module} import {base}\n' for _, module, base, _ in ADAPTERS)
+        for kind, _, base, attribute in ADAPTERS:
+            source += (f'\n\nclass {prefix}{kind}({base}):\n'
+                       f'    {body.format(attribute=attribute)}\n')
+        return self._load_leaf(source)
+
+    def _refusal(self, construct):
+        with patch('machinome.node.openscad.coherent_read') as read:
+            with self.assertRaises(Exception) as raised:
+                construct()
+        read.assert_not_called()
+        return raised.exception
+
+    def test_an_undeclared_source_is_refused_naming_class_attribute_and_module(self):
+        module = self._adapters('Bare', 'pass')
+
+        for kind, _, _, attribute in ADAPTERS:
+            with self.subTest(attribute=attribute):
+                error = self._refusal(getattr(module, f'Bare{kind}'))
+
+                self.assertIs(type(error), ValueError, repr(error))
+                message = str(error)
+                for part in (f'Bare{kind}', attribute, self.leaf,
+                             'does not declare'):
+                    self.assertIn(part, message)
+                for stale in ('join()', 'OpenJScadNode', 'must declare'):
+                    self.assertNotIn(stale, message)
+
+    def test_an_empty_declaration_names_no_file(self):
+        module = self._adapters('Empty', "{attribute} = ''")
+
+        for kind, _, _, attribute in ADAPTERS:
+            with self.subTest(attribute=attribute):
+                error = self._refusal(getattr(module, f'Empty{kind}'))
+
+                self.assertIs(type(error), ValueError, repr(error))
+                message = str(error)
+                for part in (f'Empty{kind}', attribute, "= ''",
+                             'names no file', self.leaf):
+                    self.assertIn(part, message)
+                self.assertNotIn('is not a file', message)
+
+    def test_a_leaf_written_outside_the_core_refuses_it_the_same_way(self):
+        module = self._load_leaf(
+            'from tests.contract_package.faceted_stand_in import MeshPart\n\n\n'
+            'class BareMesh(MeshPart):\n'
+            '    pass\n')
+
+        with self.assertRaises(Exception) as raised:
+            module.BareMesh()
+
+        error = raised.exception
+        self.assertIs(type(error), ValueError, repr(error))
+        for part in ('BareMesh', 'mesh_source', self.leaf, 'does not declare'):
+            self.assertIn(part, str(error))
+
+    def test_a_declaration_given_alone_is_resolved_beside_its_module(self):
+        from machinome.node.sources import require_source_file
+
+        path = os.path.realpath(os.path.join(STL_PROJECT, 'bracket.stl'))
+
+        self.assertEqual(
+            require_source_file(stl_parts.Bracket, 'stl_source', 'bracket.stl'),
+            path)
+        self.assertEqual(
+            require_source_file(stl_parts.Bracket, 'stl_source', 'bracket.stl',
+                                path),
+            path)
+
+
+#: The repository root, which a CLI subprocess needs on its `PYTHONPATH`.
+REPOSITORY = os.path.dirname(TEST_DIR)
+
+
+class UndeclaredNestedBuildTest(TestCase):
+    """`machinome build` on a model whose leaf, two levels below the root,
+    declares no source: one line naming the model and what was being done
+    with it, then the refusal naming the leaf's class."""
+
+    def test_a_failure_at_launch_names_the_model_and_the_step(self):
+        project = tempfile.mkdtemp(prefix='machinome_undeclared_build_')
+        self.addCleanup(shutil.rmtree, project, ignore_errors=True)
+        files = {
+            'pyproject.toml': '[tool.machinome]\n',
+            'parts.py': ('from machinome.node.stl import StlNode\n\n\n'
+                         'class BareStl(StlNode):\n'
+                         '    pass\n'),
+            'assembly.py': ('from machinome.node.assembly import AssemblyNode\n'
+                            '\n'
+                            'from parts import BareStl\n\n\n'
+                            'class Arm(AssemblyNode):\n'
+                            '    bracket = BareStl()\n\n\n'
+                            'class Rig(AssemblyNode):\n'
+                            '    arm = Arm()\n'),
+        }
+        for name, text in files.items():
+            with open(os.path.join(project, name), 'w') as stream:
+                stream.write(text)
+
+        environment = dict(os.environ, PYTHONPATH=REPOSITORY,
+                           PYTHONDONTWRITEBYTECODE='1')
+        environment.pop('SOLID_BUILD_DIR', None)
+        environment.pop('SOLID_TEST_ENGINE', None)
+        result = subprocess.run(
+            [sys.executable, '-c', 'from machinome.cli import manage; manage()',
+             'build', 'assembly:Rig'],
+            cwd=project, env=environment, capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 1, result.stderr)
+        with open(os.path.join(project, '_build', 'errors.json')) as stream:
+            self.assertIn('Traceback', json.load(stream)['error'])
+        self.assertIn('The model assembly:Rig could not be loaded: BareStl '
+                      'does not declare stl_source', result.stderr)
+        self.assertNotIn('failed to load project', result.stderr)

@@ -133,19 +133,10 @@ class StlNode(ExternalSourceIdentity, LeafNode):
     namespace = None
 
     def __init__(self, *args, **kwargs):
-        if not self.stl_source:
-            raise ValueError(
-                f'{self.__class__.__name__} is an StlNode and must declare '
-                f'"stl_source", the path of an STL file in the same '
-                f'directory as the python module defining it')
-
         module = sys.modules[self.__class__.__module__]
         wrapper = os.path.realpath(module.__file__)
-        declared = self.stl_source
-        self.stl_source = os.path.realpath(
-            os.path.join(os.path.dirname(module.__file__), self.stl_source))
-        require_source_file(self.__class__, 'stl_source', declared,
-                            self.stl_source)
+        self.stl_source = require_source_file(self.__class__, 'stl_source',
+                                              self.stl_source)
 
         super().__init__(*args, **kwargs)
 

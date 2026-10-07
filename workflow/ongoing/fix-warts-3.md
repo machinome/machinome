@@ -179,6 +179,21 @@ in the same cycle.
   after) with the same 21 binding paths, and needs no edit. Three entries
   moved to `../archive/fix-warts-3-2026-10-06/resolved.md`.
 
+- 7 October 2026: cycle 12, `refuse-the-undeclared-file-by-name`, applied:
+  a source-bound leaf that declares no source file, or declares it empty,
+  is refused by `require_source_file` in one shape for every adapter,
+  `ValueError` naming the class, the attribute and the module to set it
+  in, where the four adapters raised four shapes (`JScadNode` a bare
+  `Exception`, `OpenScadNode` a `TypeError`); given the declared value
+  alone, `require_source_file` resolves it and returns the path, so the
+  four adapters and the leaf-contract stand-in take their source in one
+  call and the leaf contract stays at 3. A failed launch logs `The model
+  <reference> could not be loaded: ...` (or its sources could not be read,
+  or it could not be assembled). Validated on a scratch fixture project
+  (nine leaves, six builds); the catalogue holds no test or code reading an
+  old text, so no project was run. The section moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

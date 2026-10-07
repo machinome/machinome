@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import os
-import sys
 import tempfile
 import time
 from subprocess import CalledProcessError, Popen
@@ -16,8 +15,8 @@ from machinome.source_generation import current_phase
 class JScadNode(ExternalSourceIdentity, LeafNode):
     """
     A JScad node. You just need to declare the property "jscad_source" with
-    the path of your JScad source code. It must be placed in the same directory
-    of the python file containing this node.
+    the path of your JScad source code, relative to the directory of the
+    python file containing this node or absolute.
 
     You need to have jscad cli tool installed in $PATH, and node dependencies
     installed in the directory you are running machinome from.
@@ -26,16 +25,8 @@ class JScadNode(ExternalSourceIdentity, LeafNode):
     jscad_source = None
 
     def __init__(self, name=None):
-        if not self.jscad_source:
-            raise Exception('OpenJScadNode subclass must declare "jscad_source" '
-                            'property with path with a valid OpenJScad js file')
-        module = sys.modules[self.__class__.__module__]
-        basedir = os.path.dirname(module.__file__)
-        declared = self.jscad_source
-        source_path = os.path.join(basedir, self.jscad_source)
-        self.jscad_source = os.path.realpath(source_path)
-        require_source_file(self.__class__, 'jscad_source', declared,
-                            self.jscad_source)
+        self.jscad_source = require_source_file(self.__class__, 'jscad_source',
+                                                self.jscad_source)
 
         super().__init__(name=name)
 

@@ -126,41 +126,66 @@ def _require_inside_project(klass, attribute, declared, path, declaring):
         f'the project root, or correct the declaration.')
 
 
-def require_source_file(klass, attribute, declared, path):
-    """Refuse a leaf whose declared source file is not there.
+def _undeclared(klass, attribute, declared, declaring):
+    """The refusal of a source attribute that names no file."""
+    where = f' in {os.path.realpath(declaring)}' if declaring else ''
+    if declared is None:
+        head = f'{klass.__name__} does not declare {attribute}.'
+    else:
+        head = (f'{klass.__name__} declares {attribute} = {declared!r}, '
+                f'which names no file.')
+    return ValueError(
+        f'{head} Set {attribute}{where} to the path of the file it is '
+        f'read from, relative to that module\'s directory or absolute.')
+
+
+def require_source_file(klass, attribute, declared, path=None):
+    """Admit a leaf's declared source file, or refuse the leaf.
 
     Called by each source-bound adapter (`StlNode`, `StepNode`,
-    `JScadNode`, and a node package's own) immediately after it resolves its
-    declared attribute into an absolute `path`, before `super().__init__`
-    reads anything from it. `klass` is the constructing subclass;
+    `JScadNode`, and a node package's own) before `super().__init__`
+    reads anything from the file. `klass` is the constructing subclass;
     `attribute` and `declared` are the class attribute's name and the
-    value it was declared with -- both needed because `path` alone
+    value it was declared with -- both needed because a path alone
     cannot say which of a leaf's several possible source attributes to
     fix.
 
-    Raises `FileNotFoundError` when `path` does not exist -- the same
-    exception `AbstractBaseNode.mtime_ns` already raises for a source
-    that vanishes after construction, so both failures read as one
-    family. Raises `ValueError` when `path` exists but is not a regular
-    file, matching the other admission refusals these adapters already
-    raise for a missing declaration. Returns `None` when `path` is a
-    file, so a caller can call this and move on.
+    Given `declared` alone, it resolves it against the directory of the
+    module defining `klass` (an absolute declaration resolves to itself),
+    symbolic links followed, as the adapters do; given a `path` the caller
+    resolved itself, it judges that path. Either way it returns the
+    absolute path it judged, so an adapter takes its source in one call.
 
-    Before either, raises `ValueError` when the real path of `path` is
-    not under the real path of the project root of the module declaring
-    `klass`, found through the kernel-free `machinome.manifest`: a
-    source outside its project is refused whatever expression computed
-    it and whether or not it exists. `Svg.resolve` admits a marking's
-    artwork through this same call, so the artwork is contained too.
+    First, raises `ValueError` when `declared` names no file -- `None`,
+    because the subclass never declared the attribute, or empty -- naming
+    the class, the attribute and the module the declaration belongs in,
+    before anything is resolved (OpenSpec change
+    `refuse-the-undeclared-file-by-name`). Then raises `ValueError` when
+    the real path is not under the real path of the project root of the
+    module declaring `klass`, found through the kernel-free
+    `machinome.manifest`: a source outside its project is refused whatever
+    expression computed it and whether or not it exists. `Svg.resolve`
+    admits a marking's artwork through this same call, so the artwork is
+    contained too.
+
+    Then raises `FileNotFoundError` when the path does not exist -- the
+    same exception `AbstractBaseNode.mtime_ns` already raises for a source
+    that vanishes after construction, so both failures read as one
+    family -- and `ValueError` when it exists but is not a regular file.
     """
     module = sys.modules.get(klass.__module__)
     declaring = getattr(module, '__file__', None)
+    if not declared:
+        raise _undeclared(klass, attribute, declared, declaring)
+    if path is None:
+        path = os.path.realpath(
+            os.path.join(os.path.dirname(module.__file__), declared))
     if declaring:
         _require_inside_project(klass, attribute, declared, path,
                                 os.path.realpath(declaring))
 
     if os.path.isfile(path):
-        return None
+        return path
 
     wrapper = os.path.realpath(module.__file__)
     where = (f'{klass.__name__} declares {attribute} = {declared!r}, '

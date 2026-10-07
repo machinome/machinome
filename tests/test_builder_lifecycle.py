@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import asyncio
+import errno
 import json
 import os
 import shutil
 import tempfile
 from contextlib import contextmanager
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from trimesh.creation import box
 from trimesh.util import concatenate
@@ -520,6 +521,55 @@ class BuildCallbackTest(TestCase):
 
         self.assertEqual(outcome, BuildOutcome.FAILED)
         callback.assert_not_called()
+
+
+class InitialFailureLineTest(TestCase):
+    """A launch that fails before anything is built logs one line saying
+    what the builder was doing with which model, then the failure's own
+    message (OpenSpec change `refuse-the-undeclared-file-by-name`)."""
+
+    def setUp(self):
+        # `_start()` exports SOLID_BUILD_DIR for the render subprocess; without
+        # this the export outlives the test and every later test in the process
+        # builds into a directory that no longer exists.
+        environment = patch.dict(os.environ, {'SOLID_BUILD_DIR': '_build'})
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def assertLine(self, expected, **loading):
+        builder = Builder('model.py', build_dir=self.root, watch=False)
+        with patch('machinome.core.builder.load_node', **loading), \
+             self.assertLogs('core.builder', level='ERROR') as logged:
+            outcome = asyncio.run(builder._start())
+
+        self.assertEqual(outcome, BuildOutcome.FAILED)
+        self.assertEqual([record.getMessage() for record in logged.records],
+                         [expected])
+
+    def test_a_model_that_does_not_load(self):
+        self.assertLine('The model model.py could not be loaded: broken model',
+                        side_effect=RuntimeError('broken model'))
+
+    def test_a_model_whose_sources_cannot_be_read(self):
+        node = Mock(children=())
+        type(node).mtime_ns = PropertyMock(side_effect=FileNotFoundError(
+            errno.ENOENT, 'No such file or directory', '/nowhere/ghost.py'))
+
+        self.assertLine(
+            'The sources of the model model.py could not be read: [Errno 2] '
+            "No such file or directory: '/nowhere/ghost.py'",
+            return_value=node)
+
+    def test_a_model_that_cannot_be_assembled(self):
+        node = Mock(children=())
+        node._prepare.side_effect = RuntimeError(
+            'preparation failed deliberately')
+
+        self.assertLine(
+            'The model model.py could not be assembled: preparation failed '
+            'deliberately', return_value=node)
 
 
 class ViewerSnapshotContentTest(TestCase):

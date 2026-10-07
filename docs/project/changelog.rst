@@ -123,6 +123,25 @@ Unreleased
   every count: a one-member repetition's member is ``kids-0``, as the
   first of two is, where it used to be ``kids``, in every declaration
   path and in the draft manifest (production-reports-in-scope).
+* **A leaf that names no source file is refused in one shape.** A
+  subclass of ``StlNode``, ``StepNode``, ``JScadNode`` or ``OpenScadNode``
+  that does not declare its source attribute, or declares it empty, is
+  refused when constructed with a ``ValueError`` naming the class, the
+  attribute and the module to set it in: ``BareStl does not declare
+  stl_source. Set stl_source in .../parts.py to the path of the file its
+  part is read from, relative to that module's directory or absolute.``
+  ``JScadNode`` used to raise a bare ``Exception`` naming
+  ``OpenJScadNode``, a class that no longer exists, and ``OpenScadNode`` a
+  ``TypeError`` from ``os.path.join`` naming neither. A leaf written outside
+  machinome gets the same refusal by calling
+  ``require_source_file(type(self), attribute, declared)`` with the declared
+  value alone: it resolves the value beside the declaring module and
+  returns the path, and the four-argument call keeps its meaning. And a
+  build that fails before anything is built names the model and what was
+  being done with it, ``The model assembly:Rig could not be loaded: ...``
+  (or its sources could not be read, or it could not be assembled), where
+  it used to read ``assembly:Rig: failed to load project: ...``
+  (refuse-the-undeclared-file-by-name).
 
 Machinome 0.8.0
 ---------------

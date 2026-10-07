@@ -15,16 +15,16 @@ command and its result in `evidence.md` as you go, in the shape of
 
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
+- [x] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
   rev-parse HEAD`) and the interpreter check (`python -c 'import
   machinome; print(machinome.__file__)'` prints a path under the bench).
-- [ ] 1.2 Run `pytest -q -p no:cacheprovider tests/test_missing_source_file.py
+- [x] 1.2 Run `pytest -q -p no:cacheprovider tests/test_missing_source_file.py
   tests/test_builder_lifecycle.py tests/test_leaf_contract_mesh.py
   tests/test_builder_reload_resilience.py` and `pytest -q -p
   no:cacheprovider tests/test_stl_node.py tests/test_step_node.py -k
   missing_declaration`; record counts and wall time (Stage P: 71 passed, 7
   subtests passed, 9.84 s; 2 passed, 96 deselected, 3.00 s).
-- [ ] 1.3 Copy the sources of `<scratch>/probe_construct.py`,
+- [x] 1.3 Copy the sources of `<scratch>/probe_construct.py`,
   `<scratch>/probe_project/parts.py`, `assembly.py`, `markings_probe.py`
   and `pyproject.toml` into `evidence.md` (the scratchpad is not durable).
   Run `probe_construct.py`, `markings_probe.py`, and `machinome build` for
@@ -32,14 +32,14 @@ command and its result in `evidence.md` as you go, in the shape of
   `parts:BareJscad`, `parts:GhostContributor` and
   `parts:FailingPreparation`, one at a time; record each output and exit
   status. Expect design.md's Context.
-- [ ] 1.4 Record the catalogue scan of design.md, "Who reads the old
+- [x] 1.4 Record the catalogue scan of design.md, "Who reads the old
   texts", rerun as written: no test or code under `projects/` asserts on,
   matches or catches an old text. If a hit appears, stop and report it
   before section 3.
 
 ## 2. Red tests
 
-- [ ] 2.1 RED `tests/test_missing_source_file.py`, a new class
+- [x] 2.1 RED `tests/test_missing_source_file.py`, a new class
   `UndeclaredSourceTest` writing its own scratch project as
   `ForeignScratchSourceTest` does (a `pyproject.toml` with
   `[tool.machinome]`, a `leaf.py` imported under a unique module name), the
@@ -55,32 +55,32 @@ command and its result in `evidence.md` as you go, in the shape of
   not called. Red today: `StlNode` and `StepNode` lack the module path and
   `does not declare`; `JScadNode` raises `Exception`; `OpenScadNode` raises
   `TypeError`.
-- [ ] 2.2 RED same class, the scenario "An empty declaration names no
+- [x] 2.2 RED same class, the scenario "An empty declaration names no
   file": for each of the four, a subclass declaring the attribute as `''`
   raises exactly `ValueError` whose message contains the subclass name, the
   attribute, `= ''`, `names no file` and the module's real path, and does
   not contain `is not a file`. Red today: `StlNode`/`StepNode`/`JScadNode`
   as in 2.1; `OpenScadNode` refuses the module's directory as "not a file".
-- [ ] 2.3 RED same class, the scenario "A leaf written outside the core
+- [x] 2.3 RED same class, the scenario "A leaf written outside the core
   refuses it the same way": `class BareMesh(MeshPart)` (importing `MeshPart`
   from `tests.contract_package.faceted_stand_in`) declaring no
   `mesh_source` raises exactly `ValueError` naming `BareMesh`, `mesh_source`
   and the real path of the module defining `BareMesh`, with `does not
   declare`. Red today: `TypeError: join() argument must be str ...`.
-- [ ] 2.4 RED same class, the leaf-contract scenario "A declaration given
+- [x] 2.4 RED same class, the leaf-contract scenario "A declaration given
   alone is resolved beside its module":
   `require_source_file(stl_parts.Bracket, 'stl_source', 'bracket.stl')`
   returns `os.path.realpath(os.path.join(STL_PROJECT, 'bracket.stl'))`, and
   `require_source_file(stl_parts.Bracket, 'stl_source', 'bracket.stl',
   <that path>)` returns the same path. Red today: the first raises
   `TypeError` (missing argument), the second returns `None`.
-- [ ] 2.5 GUARD: every existing test of `tests/test_missing_source_file.py`
+- [x] 2.5 GUARD: every existing test of `tests/test_missing_source_file.py`
   (absent, directory, outside-the-project, symbolic link, computed and
   absolute sources, the removed-after-construction case, the artwork above
   the root) and `test_a_missing_declaration_fails_naming_the_class` in
   `tests/test_stl_node.py` and `tests/test_step_node.py` stay green before
   and after, unedited.
-- [ ] 2.6 RED `tests/test_builder_lifecycle.py`, a new class
+- [x] 2.6 RED `tests/test_builder_lifecycle.py`, a new class
   `InitialFailureLineTest` driving `Builder('model.py', build_dir=<a
   temporary directory>, watch=False)._start()` with `asyncio.run`, as the
   class's existing failure tests do, under
@@ -102,7 +102,7 @@ command and its result in `evidence.md` as you go, in the shape of
   failed to inspect initial sources project: ...`, `model.py: failed to
   assemble project: ...`. If a stage cannot be reached with these patches,
   record why and reach it the nearest way the class's existing tests do.
-- [ ] 2.7 RED `tests/test_missing_source_file.py`, a new class
+- [x] 2.7 RED `tests/test_missing_source_file.py`, a new class
   `UndeclaredNestedBuildTest`, the build-pipeline scenario "A failure at
   launch names the model and the step": the test writes a scratch project
   (`pyproject.toml` with `[tool.machinome]`; `parts.py` with
@@ -119,59 +119,59 @@ command and its result in `evidence.md` as you go, in the shape of
   traceback (confirm the path on the unmodified tree first). Red today:
   `assembly:Rig: failed to load project: BareStl is an StlNode and must
   declare ...`.
-- [ ] 2.8 Run 2.1-2.7 on the unmodified tree; record 2.5 green and the
+- [x] 2.8 Run 2.1-2.7 on the unmodified tree; record 2.5 green and the
   failure line of each RED case.
 
 ## 3. The change
 
-- [ ] 3.1 `machinome/node/sources.py`: `_undeclared(klass, attribute,
+- [x] 3.1 `machinome/node/sources.py`: `_undeclared(klass, attribute,
   declared, declaring)` beside `require_source_file`, and
   `require_source_file(klass, attribute, declared, path=None)` as
   design.md, Decisions 1 and 2: the undeclared refusal first, the
   resolution when `path` is `None` (`os.path.realpath(os.path.join(os.path.dirname(module.__file__), declared))`),
   containment and existence unchanged, the judged path returned. Rewrite its
   docstring for both forms, naming this change. Run 2.4: green.
-- [ ] 3.2 `machinome/node/stl.py`, `step.py`, `jscad.py`,
+- [x] 3.2 `machinome/node/stl.py`, `step.py`, `jscad.py`,
   `openscad/__init__.py`: each constructor's own guard and join replaced by
   one resolving call (design.md, Decision 1); `StlNode`/`StepNode` keep
   `wrapper` for `source_closure`; `OpenScadNode` keeps `scad_source` as
   declared and stores the result in `openscad_source`. Run 2.1, 2.2 and
   2.5: green.
-- [ ] 3.3 `tests/contract_package/faceted_stand_in.py`: `MeshPart` takes
+- [x] 3.3 `tests/contract_package/faceted_stand_in.py`: `MeshPart` takes
   `self.mesh_source = require_source_file(type(self), 'mesh_source',
   self.mesh_source)`; its docstring's sentence on resolution follows. Run
   2.3 and `tests/test_leaf_contract_mesh.py`: green.
-- [ ] 3.4 `machinome/core/builder.py`: `_INITIAL_FAILURE` beside
+- [x] 3.4 `machinome/core/builder.py`: `_INITIAL_FAILURE` beside
   `_on_reload_exception` and its line (design.md, Decision 4); the reload
   path untouched. Run 2.6 and 2.7: green.
-- [ ] 3.5 `grep -rn 'OpenJScadNode subclass\|the path of an STL file in the same\|the path of a STEP file in the same\|failed to {stage}\|os.path.join(basedir' machinome/`
+- [x] 3.5 `grep -rn 'OpenJScadNode subclass\|the path of an STL file in the same\|the path of a STEP file in the same\|failed to {stage}\|os.path.join(basedir' machinome/`
   finds nothing; `grep -rn "require_source_file(" machinome/ tests/contract_package/`
   lists the four adapters and `MeshPart` in the resolving form and
   `Svg.resolve` in the four-argument form. Record both.
-- [ ] 3.6 Run the focused sets of 1.2 again; record counts. Every existing
+- [x] 3.6 Run the focused sets of 1.2 again; record counts. Every existing
   test passes unedited.
 
 ## 4. Framework validation
 
-- [ ] 4.1 `black --check` and `flake8 --max-line-length=89` on every
+- [x] 4.1 `black --check` and `flake8 --max-line-length=89` on every
   touched Python file.
-- [ ] 4.2 Rerun 1.3's probes and the six builds, one at a time; record each
+- [x] 4.2 Rerun 1.3's probes and the six builds, one at a time; record each
   output beside 1.3's. Expect design.md's Decision 2 and 4 shapes: every
   `Bare*`, `Empty*` and `BareMesh` refused with `ValueError` in the one
   shape; `Svg('')` refused as naming no file and `Svg(None)` unchanged; the
   six builds exit 1 with `The model ... could not be loaded`, `The sources
   of the model parts:GhostContributor could not be read` and `The model
   parts:FailingPreparation could not be assembled`.
-- [ ] 4.3 Run the full suite (`pytest` at the bench root, alone); record
+- [x] 4.3 Run the full suite (`pytest` at the bench root, alone); record
   counts and wall time. Run once, after section 7, so the one run also
   covers the changelog and the synced specs.
 
 ## 5. Words
 
-- [ ] 5.1 `grep -rn "must declare\|failed to\|require_source_file\|does not declare" docs/ --include=*.rst --include=*.md`
+- [x] 5.1 `grep -rn "must declare\|failed to\|require_source_file\|does not declare" docs/ --include=*.rst --include=*.md`
   outside `docs/adrs/`; read each hit: none is made wrong (design.md,
   Decision 7). Change nothing unless one is.
-- [ ] 5.2 `docs/project/changelog.rst`: one bullet under the existing
+- [x] 5.2 `docs/project/changelog.rst`: one bullet under the existing
   `Unreleased` section naming `refuse-the-undeclared-file-by-name`: a
   source-bound leaf that declares no source file, or declares it empty, is
   refused in one shape for every adapter, `ValueError` naming the class,
@@ -184,7 +184,7 @@ command and its result in `evidence.md` as you go, in the shape of
 
 ## 6. Findings record
 
-- [ ] 6.1 Move, verbatim, the whole section "name-the-missing-file
+- [x] 6.1 Move, verbatim, the whole section "name-the-missing-file
   (2026-09-15, found while fixing)" of `workflow/warts.md` — its
   introduction and both entries, "The four adapters refuse a missing
   DECLARATION inconsistently." and "The builder's own wrapper text reads as
@@ -193,22 +193,22 @@ command and its result in `evidence.md` as you go, in the shape of
   `## \`refuse-the-undeclared-file-by-name\``, with a "What shipped"
   paragraph (what changed, the red-then-green counts, the probe and build
   results, the catalogue scan), and delete the section from `warts.md`.
-- [ ] 6.2 If the orchestrator answered design.md's Open Question 2 by
+- [x] 6.2 If the orchestrator answered design.md's Open Question 2 by
   asking for it, add one `warts.md` entry recording that the builder's line
   carries no exception type; otherwise nothing.
-- [ ] 6.3 Update `workflow/ongoing/fix-warts-3.md`'s "Progress" with one
+- [x] 6.3 Update `workflow/ongoing/fix-warts-3.md`'s "Progress" with one
   line for this cycle.
 
 ## 7. Sync and archive
 
-- [ ] 7.1 Sync the five MODIFIED requirements into
+- [x] 7.1 Sync the five MODIFIED requirements into
   `openspec/specs/node-model/spec.md`, `leaf-contract/spec.md`,
   `stl-import/spec.md`, `step-import/spec.md` and
   `build-pipeline/spec.md` (`openspec archive
   refuse-the-undeclared-file-by-name --yes`, or by hand and then
   `--skip-specs`); check every carried scenario is present once.
-- [ ] 7.2 `openspec validate --specs` passes after the archive, and the
+- [x] 7.2 `openspec validate --specs` passes after the archive, and the
   archived folder is
   `openspec/changes/archive/<date>-refuse-the-undeclared-file-by-name/`.
-- [ ] 7.3 Run the focused sets of 1.2 once more, then 4.3; record. Leave
+- [x] 7.3 Run the focused sets of 1.2 once more, then 4.3; record. Leave
   everything uncommitted and report.

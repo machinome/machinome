@@ -28,9 +28,6 @@ require_extra('openscad',
               'machinome.node.openscad (OpenScadNode and the OpenSCAD writer)',
               'solid2')
 
-import os
-import sys
-
 from solid2.core.parse_scad import get_scad_file_as_dict
 from solid2.core.utils import resolve_scad_filename
 
@@ -43,8 +40,8 @@ from machinome.source_generation import coherent_read
 class OpenScadNode(ExternalSourceIdentity, ScadLeafNode):
     """
     A pure OpenScad node. You just need to declare the property "scad_source" with
-    the path of your OpenScad source code. It must be placed in the same directory
-    of the python file containing this node.
+    the path of your OpenScad source code, relative to the directory of the
+    python file containing this node or absolute.
 
     The scad file must contain a module with the same name of the file, or you
     may specify the property "module_name" with the module name.
@@ -64,13 +61,8 @@ class OpenScadNode(ExternalSourceIdentity, ScadLeafNode):
            name keyword argument: the name of this node, defaul to name of the class
            **kwargs: will be passed as keyword arguments to the openscad module
         """
-        module = sys.modules[self.__class__.__module__]
-        basedir = os.path.dirname(module.__file__)
-        declared = self.scad_source
-        source_path = os.path.join(basedir, self.scad_source)
-        self.openscad_source = os.path.realpath(source_path)
-        require_source_file(self.__class__, 'scad_source', declared,
-                            self.openscad_source)
+        self.openscad_source = require_source_file(
+            self.__class__, 'scad_source', self.scad_source)
         # This happens during root construction, before the assembly census
         # exists.  Tie the retained text to the active loader generation so a
         # replacement between this read and assembly cannot bless old bytes.

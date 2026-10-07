@@ -776,36 +776,6 @@ original findings are in the snapshot. Still open (condensed 2026-10-04):
 - **The Pascaline still shows no answer.** Its `DigitDrum` carries no
   `Marking`; a project follow-up.
 
-# name-the-missing-file (2026-09-15, found while fixing)
-
-Findings outside that cycle's ratified scope, from
-`openspec/changes/name-the-missing-file/proposal.md` ("Out of scope") and
-`design.md` (reviewer's note 1); **status: filed here; triage open**. No
-framework code changed for either.
-
-- **The four adapters refuse a missing DECLARATION inconsistently.**
-  `StlNode` and `StepNode` raise `ValueError` naming the class
-  (`stl.py:162`, `step.py:476`). `JScadNode` raises a bare `Exception`
-  that names only `"OpenJScadNode subclass"`, never the actual subclass
-  (`jscad.py:28-30`). `OpenScadNode` has no check at all: an
-  undeclared `scad_source` reaches `os.path.join(basedir, None)` and
-  raises `TypeError: join() argument must be str, bytes, or os.PathLike
-  object, not 'NoneType'` (`openscad.py:40`), naming neither the class nor
-  the attribute. This cycle adds a fourth failure family — a *declared but
-  absent* file — that IS consistent across all four (`FileNotFoundError`
-  or `ValueError`, always naming the class); the pre-existing
-  *undeclared* family above it is not touched.
-- **The builder's own wrapper text reads as broken English and names the
-  model, not the node.** `Builder._start()` wraps a load-time failure as
-  `f'{self.path}: failed to {stage} project: {exc}'` (`builder.py:356`,
-  stage `'load'` or `'inspect initial sources'`), e.g. `parts:MissingStl:
-  failed to load project: ...` — "failed to load project" reads oddly for
-  a single model reference, and `self.path` is the CLI's model argument,
-  not the node whose declaration was wrong; for a leaf nested inside an
-  assembly the wrapper still names only the root (`evidence.md`,
-  measurement 4/"After"). This cycle's own message, inside `exc`, does
-  name the node; the wrapper around it is untouched.
-
 # honour-skip-and-xfail (2026-09-15, found while fixing)
 
 Findings outside that cycle's ratified scope, from

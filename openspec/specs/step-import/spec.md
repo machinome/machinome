@@ -14,8 +14,11 @@ its modification time drives artifact currency exactly as an `StlNode`'s
 also be part of the node's tracked file set, transitively with the
 project-local modules it imports, because it carries geometry-affecting
 code — the `part` selection and the `adjust` hook — so editing the wrapper
-SHALL invalidate the node's artifacts. A subclass without `step_source`
-SHALL fail at construction with an error naming the class.
+SHALL invalidate the node's artifacts. A subclass without `step_source`, or
+declaring it as an empty string, SHALL fail at construction with
+`ValueError` naming the class, `step_source` and the module defining the
+class, in the shape every source-bound leaf refuses an undeclared source
+under the `node-model` capability.
 
 A subclass whose `step_source` names a file that does not exist SHALL also
 fail at construction, with an error naming the class, `step_source` and the
@@ -58,7 +61,8 @@ module's file; a module that lies in no project is not judged.
 #### Scenario: A missing declaration fails at construction
 
 - **WHEN** a `StepNode` subclass declaring no `step_source` is instantiated
-- **THEN** an error is raised naming the class and the missing attribute
+- **THEN** `ValueError` is raised naming the class, the missing attribute
+  and the module defining the class, and no document is read
 
 #### Scenario: A declared document that is not there fails at construction
 

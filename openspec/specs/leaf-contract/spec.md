@@ -276,17 +276,27 @@ core SHALL derive every artifact's stamp and source record from them:
 and SHALL NOT be overridden.
 
 A leaf whose part comes from a file outside Python SHALL use, from
-`machinome.node.sources`: `require_source_file` to refuse a missing or
-out-of-project file at construction, under the `node-model` capability;
-`source_closure` to add a wrapper module's import closure to `files`; and the
-mixin `ExternalSourceIdentity`, which makes the wrapper module's
-project-relative path part of the node's artifact identity, as ADR-155
-specifies. A leaf that reads a foreign file while rendering SHALL tie the read
-to the active source generation with `consumed_source` or `coherent_read`
-from `machinome.source_generation`, and a node refusing a changed source
-raises that module's `SourceChanged`. These members are declared for leaves
-even though the project contract that `vet` enforces does not offer
-`machinome.source_generation` to a project.
+`machinome.node.sources`: `require_source_file` to refuse an undeclared,
+missing or out-of-project file at construction, under the `node-model`
+capability; `source_closure` to add a wrapper module's import closure to
+`files`; and the mixin `ExternalSourceIdentity`, which makes the wrapper
+module's project-relative path part of the node's artifact identity, as
+ADR-155 specifies. A leaf that reads a foreign file while rendering SHALL tie
+the read to the active source generation with `consumed_source` or
+`coherent_read` from `machinome.source_generation`, and a node refusing a
+changed source raises that module's `SourceChanged`. These members are
+declared for leaves even though the project contract that `vet` enforces
+does not offer `machinome.source_generation` to a project.
+
+`require_source_file(klass, attribute, declared, path=None)` SHALL refuse a
+`declared` value that names no file — `None` or an empty string — first,
+before anything else, in the shape the `node-model` capability states. Called
+with the declared value alone, it SHALL resolve that value against the
+directory of the module defining `klass`, an absolute value resolving to
+itself, judge the resolved path, and return it. Called with a `path` its
+caller resolved, it SHALL judge that path as it always has and return it. A
+leaf that resolves its declaration through the first form refuses an
+undeclared source without joining it itself.
 
 #### Scenario: A source recipe alone makes artifacts stale
 
@@ -313,6 +323,15 @@ even though the project contract that `vet` enforces does not offer
   `ExternalSourceIdentity`
 - **THEN** every artifact name they produce is the one they produced with the
   private mixin before
+
+#### Scenario: A declaration given alone is resolved beside its module
+
+- **WHEN** a leaf calls `require_source_file(type(self), 'mesh_source',
+  self.mesh_source)` with `mesh_source = 'part.stl'` declared in a module
+  whose directory holds `part.stl`
+- **THEN** the call returns the real absolute path of that file, the path
+  the four-argument call would have been given, and a subclass declaring no
+  `mesh_source` is refused with `ValueError` naming it and `mesh_source`
 
 ### Requirement: What a subclass must not override
 

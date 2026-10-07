@@ -970,6 +970,15 @@ during reload SHALL NOT kill the loop — the builder falls back to watching the
 project directory recursively, writes the traceback to `errors.json`, and exits
 cleanly on the next save so development continues.
 
+An initial-launch failure while the builder loads the model, reads the
+model's sources for the first time, or assembles it SHALL be logged as one
+line naming the model reference the builder was given and what it was
+doing with it — `The model <reference> could not be loaded`, `The sources
+of the model <reference> could not be read`, `The model <reference> could
+not be assembled` — followed by a colon and the failure's own message,
+which SHALL stand as raised; the traceback SHALL still go to
+`errors.json`.
+
 #### Scenario: Syntax error during development
 
 - **WHEN** a reload hits a SyntaxError in the edited file
@@ -994,6 +1003,16 @@ cleanly on the next save so development continues.
   viewer document
 - **THEN** the prior error remains visible and the build does not report
   recovery
+
+#### Scenario: A failure at launch names the model and the step
+
+- **WHEN** `machinome build assembly:Rig` runs in a project where `Rig`
+  holds `arm`, `arm` holds `bracket`, and `bracket`'s `StlNode` subclass
+  declares no `stl_source`
+- **THEN** the command exits non-zero, its standard error carries the line
+  `The model assembly:Rig could not be loaded: ` followed by the leaf's own
+  refusal naming its class and `stl_source`, and `errors.json` holds the
+  traceback
 
 ### Requirement: Build completion is observable
 

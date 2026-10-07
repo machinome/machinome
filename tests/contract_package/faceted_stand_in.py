@@ -5,12 +5,13 @@
 """A faceted leaf written outside the core, producing its own STL.
 
 `MeshPart` takes its geometry from a committed mesh file, as `StlNode`
-does, through the declared members alone: the file is resolved and
-refused with `require_source_file` before the base constructor runs,
-`get_source_file()` returns it, `ExternalSourceIdentity` puts the wrapper
-module in its identity, and `materialize()` publishes the STL through
-`publish_artifact`. It declares no `as_scad`: the core presents its
-artifact.
+does, through the declared members alone: one call of
+`require_source_file`, given the declared value, resolves the file beside
+the declaring module or refuses the leaf (no declaration, no file) before
+the base constructor runs, `get_source_file()` returns it,
+`ExternalSourceIdentity` puts the wrapper module in its identity, and
+`materialize()` publishes the STL through `publish_artifact`. It declares
+no `as_scad`: the core presents its artifact.
 
 When `LEAF_CONTRACT_WRITE_LOG` names a file, every call of the writer
 appends one line to it, so a test can count how often the artifact was
@@ -18,7 +19,6 @@ produced across processes.
 """
 
 import os
-import sys
 
 import trimesh
 
@@ -35,12 +35,8 @@ class MeshPart(ExternalSourceIdentity, LeafNode):
     mesh_source = None
 
     def __init__(self, *args, **kwargs):
-        module = sys.modules[type(self).__module__]
-        declared = self.mesh_source
-        self.mesh_source = os.path.realpath(
-            os.path.join(os.path.dirname(module.__file__), declared))
-        require_source_file(type(self), 'mesh_source', declared,
-                            self.mesh_source)
+        self.mesh_source = require_source_file(type(self), 'mesh_source',
+                                               self.mesh_source)
         super().__init__(*args, **kwargs)
 
     def get_source_file(self):

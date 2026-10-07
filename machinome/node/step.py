@@ -486,19 +486,10 @@ class StepNode(ExternalSourceIdentity, BrepLeafNode):
     _declared_color = None
 
     def __init__(self, *args, **kwargs):
-        if not self.step_source:
-            raise ValueError(
-                f'{self.__class__.__name__} is a StepNode and must declare '
-                f'"step_source", the path of a STEP file in the same '
-                f'directory as the python module defining it')
-
         module = sys.modules[self.__class__.__module__]
         wrapper = os.path.realpath(module.__file__)
-        declared = self.step_source
-        self.step_source = os.path.realpath(
-            os.path.join(os.path.dirname(module.__file__), self.step_source))
-        require_source_file(self.__class__, 'step_source', declared,
-                            self.step_source)
+        self.step_source = require_source_file(self.__class__, 'step_source',
+                                               self.step_source)
 
         super().__init__(*args, **kwargs)
 
