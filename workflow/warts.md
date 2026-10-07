@@ -73,13 +73,6 @@ Findings from lifting the project `kinematics.py` helpers into the framework
    constant. Candidate fix: an Angle-typed (and Length-typed) literal in
    `machinome.parameters`. Evidence: `expression-math` (bump, wrap, turn),
    `mechanisms` (design D3, ADR-076 open question).
-10. **Non-reproducible flake in `tests/test_exact_geometry.py`.**
-    `ExactArtifactTest::test_a_shape_without_file_identity_is_not_cached`
-    failed once in a full run and passed alone and in two further full
-    runs. It asserts `assertIsNot` on two `placed_shape` results, so an
-    object-identity or GC-recycling assumption is the likely cause. Seen
-    once during `mechanisms`.
-
 - **The `viewer` extra carries no version floor.** Item 12's fix left it
   unpinned "because the viewer is unreleased"; machinome-viewer has been on
   PyPI since 0.7.0, and `pyproject.toml` still declares

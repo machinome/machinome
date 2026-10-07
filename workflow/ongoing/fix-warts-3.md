@@ -246,6 +246,17 @@ in the same cycle.
   floor was deferred to the pilot (below) and its entry stays in
   `../warts.md`.
 
+- 7 October 2026: investigation 3 (`networkx` on the mesh path; the
+  exact-geometry flake). The flake was found already fixed (`8d6bfedd`,
+  8 September 2026, AR-01): stale `id(shape)` keys after a partial cache
+  reset, provoked 18 of 50 with the old reset and 0 of 50 with the
+  current one; item 10 moved to `../archive/fix-warts-3-2026-10-06/resolved.md`.
+  `networkx` is a real defect: `split(only_watertight=False)` with
+  trimesh's default repair sends a non-watertight mesh through
+  `fill_holes`, which imports `networkx`, so `assertNoDisconnectedSolids`
+  and `assertJoined` crash without it; taken up as cycle 17,
+  `count-bodies-without-repair`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

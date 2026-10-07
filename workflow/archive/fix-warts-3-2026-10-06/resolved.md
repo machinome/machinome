@@ -1041,3 +1041,31 @@ The third entry the cycle measured, "The `viewer` extra carries no version
 floor", stays in `warts.md`: which viewer the extra should install is the
 pilot's decision, recorded in the campaign note under "Deferred to the
 pilot".
+
+## The exact-geometry flake (found already fixed)
+
+From "Expression math and mechanisms (2026-09-06)", Framework item 10:
+
+10. **Non-reproducible flake in `tests/test_exact_geometry.py`.**
+    `ExactArtifactTest::test_a_shape_without_file_identity_is_not_cached`
+    failed once in a full run and passed alone and in two further full
+    runs. It asserts `assertIsNot` on two `placed_shape` results, so an
+    object-identity or GC-recycling assumption is the likely cause. Seen
+    once during `mechanisms`.
+
+**What shipped:** nothing in this campaign. The mechanism was found by
+investigation 3 of fix-warts-3 (7 October 2026, report in its
+scratchpad, reproduced on the bench at `87a5864`): `brep_cache._shape_keys`
+is keyed on `id(shape)`, safe only while `_shape_cache` keeps the shape
+alive; the class's `setUp` then cleared only `_shape_cache`, leaving
+stale ids behind, and when CPython reused such an address for the test's
+new shape it inherited an old file's identity, the second placement was
+a cache hit, and `assertIsNot` failed. Commit `8d6bfedd` (8 September
+2026, finding AR-01 of the performance due diligence) added
+`clear_exact_shape_caches` (now `tests/brep_test_support.py`) and the
+regression test `tests/test_brep_test_isolation.py`; the entry was never
+closed. The test now lives in `tests/test_brep_geometry.py` and calls
+`cached_placement`. Provoked on demand: with the old fixture pollution
+and the old reset, 18 of 50 runs fail with the original
+`unexpectedly identical` error; with the current reset, 0 of 50, under
+garbage-collection pressure and ten hash seeds alike.
