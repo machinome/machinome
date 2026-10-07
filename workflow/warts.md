@@ -286,18 +286,40 @@ the project rather than fixed there.
   filed: expose an explicit indeterminate pair verdict or a supported
   exact-to-faceted fallback for interference inventory contracts.
 
-# 3DPrintedClocks wall clock 01 and Thor (2026-09-09, motion layer refactors)
+# Findings from investigation 4 of fix-warts-3: Thor's seat inventory (7 October 2026)
 
-- Thor's exact suite has two failures that pre-exist this work on this
-  framework tree (`seats.assert_inventory`: 260 of 272 overlapping pairs
-  not in the seats inventory, in `test_assembly_integrity` and the
-  scenario test); byte-identical with the unrefactored model, and the
-  same 29/2 on the primary checkout at main cb474e3 with Thor's committed
-  code, so it predates the motion branch (an exact-boolean or seats change
-  since Thor's last green run, not investigated here).
+The two failures themselves are the project's (diagnosis in
+`archive/fix-warts-3-2026-10-06/resolved.md`: the inventory was written
+red in `919333b` and never green, and it names the yaw pinion by a path
+it never had). Diagnosing them produced three framework findings.
 
-  Still present on 2026-09-26 (the `place-parts-by-mate` validation: 32 of
-  34, "the two failures pre-existing seat-inventory ones"); not diagnosed.
+- **An inside-out operand makes ADR-142's witness meaningless.** Thor
+  keeps `Art4BodyBot` inside out on purpose (signed volume −113,674.9);
+  OCCT's classifier reads that solid as everything outside the part (IN
+  at (1e4, 1e4, 1e4) and 5 mm outside its box), so "a point strictly
+  inside both" proves nothing and 13 of Thor's 22 refused pairs are
+  refusals of nothing. Smallest fix: test each operand once (signed
+  volume ≤ 0, or classifier IN outside its bounding box) and raise
+  `BrepCommonVerificationError` naming the inside-out operand instead of
+  claiming a shared point; red test, a reversed box beside a normal box
+  with an empty common, refused as inconsistent today. **Held for the
+  pilot:** whether the B-rep engine refuses an inside-out operand
+  everywhere or only in the guard; Thor chose to keep two parts inside
+  out, and refusing them everywhere turns every comparison with them
+  into an error.
+- **The empty-common refusal names solids by their bare name.**
+  `machinome/test.py` (~1114) passes `first[0].name` into
+  `BrepCommonInconsistency`, so Thor's `screws-7` and `gear` are
+  ambiguous; `name-solids-by-path` moved the assertions' messages to
+  paths but not this refusal. A one-site change to `path_name`.
+  **Recorded.**
+- **The interference walk costs seventeen times what it did.** Thor's
+  full pair walk took 116 s on 7 September 2026 and 1,999.7 s on
+  7 October, for 1,387 candidate pairs, all of the time in pairs whose
+  common is empty (up to 202 s for one pair); the likely cause is the
+  ADR-142 witness search every empty common now runs. Not profiled;
+  belongs with the "exact-kernel corrections cost time" entry above.
+  **Recorded.**
 
 # Motion catalogue refactor (2026-09-09, every project onto `machinome.motion`)
 

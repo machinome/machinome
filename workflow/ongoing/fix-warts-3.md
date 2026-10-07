@@ -60,7 +60,7 @@ in the same cycle.
 | 16 | `release-metadata-and-vestiges` | `viewer` extra floor; vestigial `mesh_stl_file`; a leaf's `.scad` becoming a self-import (if still so) | fixture projects |
 | 17 | investigations | build restart loop; artifact freshness; OpenAstroMount's refused scenario; `networkx` on the mesh path; the exact-geometry flake; Thor's seat inventory; wall clock 02 | each its project |
 | 18 | exact suite timings | fold commit `a659cc7` against main, two or three projects | catalogue |
-| 19 | outside the framework | studio API skill's `cancel()` warning, and its Frame paragraph's per-component snap sentences (companion of cycle 1, lines ~814 and ~995); viewer's stray `openscad.py`; the viewer's committed parity fixture is behind the framework's (cycle 5 found 249 expressions now rewritten over a 145-entry bindings table against the committed 4; same keys and values); the viewer's `running-corpus.test.ts` keeps its crossing and stop counters through a restore while its `Run.restore` clears the rings, the same latent omission cycle 7 fixed in the framework's generator and replay; the studio API skill's statement of `machinome test`'s summary line and exit rule gains the `, E errors` count and the error exit (cycle 13); the studio craft skill `shop-skills/machinome/SKILL.md` takes the Inmoov-sim sentence on a site joint's value under a conditional rest placement (the joints page's half is cycle 15's); the workspace skill `skills/write-the-manual/SKILL.md` names a framework record `workflow/documentation.md` that does not exist | studio, viewer, workspace repositories |
+| 19 | outside the framework | studio API skill's `cancel()` warning, and its Frame paragraph's per-component snap sentences (companion of cycle 1, lines ~814 and ~995); viewer's stray `openscad.py`; the viewer's committed parity fixture is behind the framework's (cycle 5 found 249 expressions now rewritten over a 145-entry bindings table against the committed 4; same keys and values; regenerated from the bench on 7 October it fails five pins of the viewer's `parity-fixture.test.ts`, which assert the committed fixture's own shape: four bindings and `^` cases the framework's corpus no longer emits, so the refresh is a viewer cycle that moves those pins, not a companion edit, and the fixture was left as committed); the viewer's `running-corpus.test.ts` keeps its crossing and stop counters through a restore while its `Run.restore` clears the rings, the same latent omission cycle 7 fixed in the framework's generator and replay; the studio API skill's statement of `machinome test`'s summary line and exit rule gains the `, E errors` count and the error exit (cycle 13); the studio craft skill `shop-skills/machinome/SKILL.md` takes the Inmoov-sim sentence on a site joint's value under a conditional rest placement (the joints page's half is cycle 15's); the workspace skill `skills/write-the-manual/SKILL.md` names a framework record `workflow/documentation.md` that does not exist | studio, viewer, workspace repositories |
 
 ## Progress
 
@@ -324,6 +324,16 @@ in the same cycle.
   the project's representation of an intended overlap is recorded below
   for the pilot.
 
+- 7 October 2026: investigation 4 (Thor's seat inventory): the two
+  failures are the project's (a contract written red in `919333b`, a
+  pinion path the inventory never had; 272/260 unchanged since
+  7 September), failing earlier since ADR-142 at the first of 22 refused
+  empty commons; the entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`, and three framework
+  findings (an inside-out operand under the guard, held for the pilot;
+  the refusal's bare names; the walk's seventeenfold cost) recorded in
+  `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.
@@ -363,6 +373,17 @@ Each names the entry, what was found, and the choice.)
   the project: draw the hardware at its engaged dimensions, fuse the
   fasteners back into the printed part, or keep the pairs red with named
   positive diagnostics as clocks 46, 52 and 54 do.
+- **Investigation 4: an inside-out operand under the empty-common
+  guard.** Thor keeps `Art4BodyBot` inside out on purpose; OCCT's
+  classifier reads it as everything outside the part, so ADR-142's
+  witness proves nothing there and 13 of Thor's 22 refused pairs are
+  refusals of nothing (the entry is in `../warts.md`). The smallest fix
+  tests each operand once and refuses the inside-out one by name in the
+  guard. Your choice: refuse an inside-out operand in the guard only, or
+  everywhere in the B-rep engine (which turns every comparison with
+  Thor's two reversed parts into an error), or leave it. The two Thor
+  tests themselves are the project's: a contract written red in `919333b`
+  and a pinion path the inventory never had.
 
 - **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
   refusal of a `self.children` read inside `render()` (always empty

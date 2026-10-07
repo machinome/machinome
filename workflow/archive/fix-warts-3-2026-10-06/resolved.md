@@ -1262,3 +1262,44 @@ and its paragraph on nudging the shell is stale; the beat screw shows a
 0.0025 mm³ mesh-only sliver. How the project represents an intended
 overlap (a tapped hole, a nub, a squashed washer) is the pilot's
 choice, recorded in the campaign note.
+
+## Thor's two seat-inventory failures (diagnosed: the project's)
+
+From "3DPrintedClocks wall clock 01 and Thor (2026-09-09, motion layer
+refactors)":
+
+- Thor's exact suite has two failures that pre-exist this work on this
+  framework tree (`seats.assert_inventory`: 260 of 272 overlapping pairs
+  not in the seats inventory, in `test_assembly_integrity` and the
+  scenario test); byte-identical with the unrefactored model, and the
+  same 29/2 on the primary checkout at main cb474e3 with Thor's committed
+  code, so it predates the motion branch (an exact-boolean or seats change
+  since Thor's last green run, not investigated here).
+
+  Still present on 2026-09-26 (the `place-parts-by-mate` validation: 32 of
+  34, "the two failures pre-existing seat-inventory ones"); not diagnosed.
+
+**What shipped:** nothing; investigation 4 of fix-warts-3 (7 October
+2026, bench `fc26c61`, project read only with a scratch build directory)
+diagnosed the two failures as the project's. The inventory contract was
+written red on purpose in Thor's `919333b` ("272 pairs … 13 are
+recorded") and no commit records a green run, so the "last green run"
+the entry supposed never happened; the full walk with refusals recorded
+instead of raised still answers 272 overlapping pairs, 260 not in the
+inventory (132 screw/part, 83 nut/part, 28 part/part, 15 nut/screw, 2
+screw/screw, real volumes that the mesh engine confirms), and the one
+recorded seat reported missing is a path typo present since the first
+commit: the inventory names the yaw pinion
+`shoulder.art2.art3.art4.art4_motor_gear` while it has always been
+`shoulder.art2.art3.art4_motor_gear.gear`, overlapping by exactly the
+recorded 24.299 mm³, so 260 = 272 − 12. The fastener move
+(`hold-the-fasteners-by-their-bodies`) did not stale the inventory,
+which never listed a fastener pair. Since ADR-142 (23 September) both
+tests fail earlier, at the first of 22 refused empty commons,
+`art1_top`/`art1_body`, which genuinely overlap (about 4,086 mm³ in a
+25 mm ring where the skirt meets the body, found by sampling; OCCT's
+common empty at every fuzzy value, its cuts contradicting each other);
+13 of the 22 pair the inside-out `Art4BodyBot`, which is the framework
+finding recorded in `warts.md`. The three private names `seats.py`
+imports still exist on the bench. The sentence Thor's records could
+carry is in the investigation's report.
