@@ -27,7 +27,20 @@ from machinome._verdict_store import flush as flush_verdict_store
 
 class StopTestRun(Exception):
     """Internal control-flow signal raised to unwind out of the test run
-    when --failfast is set and a test fails."""
+    when --failfast is set and a test fails the run."""
+
+
+def _instant_text(instant):
+    """An instant as a failure report names it: written so that handing
+    it back to `@testing_instant` reproduces the very value the runner
+    gave `set_keyframe` -- an integer as written, any other number in the
+    shortest form that reads back as the same float."""
+    if isinstance(instant, int) and not isinstance(instant, bool):
+        return str(instant)
+    try:
+        return repr(float(instant))
+    except (TypeError, ValueError):
+        return str(instant)
 
 
 def _reset_placement_cache_for_run():
@@ -52,6 +65,7 @@ class Test:
         self.num_tests = 0
         self.num_passed = 0
         self.num_failed = 0
+        self.num_errors = 0
         self.num_skipped = 0
         self.num_expected_failures = 0
         self.num_unexpected_successes = 0
@@ -203,7 +217,8 @@ class Test:
             # --failfast, a model failure under --all, or an error.
             flush_verdict_store()
         self.report(time.time() - start_time)
-        if self.num_failed or self.num_unexpected_successes:
+        if (self.num_failed or self.num_errors
+                or self.num_unexpected_successes):
             sys.exit(1)
 
     def select_all(self, path):
@@ -312,9 +327,13 @@ class Test:
     def report(self, total_time):
         summary = (f"Ran {self.num_tests} tests in {total_time:.2f} seconds: "
                    f"{self.num_passed} passed, {self.num_failed} failed")
-        # A default run whose skip/expected/unexpected counts are all zero
-        # must print exactly today's line (ADR-090's discipline for this
-        # output); "skipped" never inflects, the other two do.
+        # A default run whose error/skip/expected/unexpected counts are all
+        # zero must print exactly today's line (ADR-090's discipline for
+        # this output); "skipped" never inflects, the others do. Errors sit
+        # beside the failures: they are the two counts that fail a run.
+        if self.num_errors:
+            noun = 'error' if self.num_errors == 1 else 'errors'
+            summary += f", {self.num_errors} {noun}"
         if self.num_skipped:
             summary += f", {self.num_skipped} skipped"
         if self.num_expected_failures:
@@ -356,27 +375,39 @@ class Test:
         # methods) and sometimes a companion test case; getattr finds a
         # class-level `@unittest.skip` either way, and the whole class
         # runs nothing -- not even its own set-up -- when it is marked.
+        try:
+            class_name = klass.__name__
+        except AttributeError:
+            class_name = klass.__class__.__name__
         if getattr(klass, '__unittest_skip__', False):
-            reason = getattr(klass, '__unittest_skip_why__', '')
-            try:
-                class_name = klass.__name__
-            except AttributeError:
-                class_name = klass.__class__.__name__
-            for method_name in dir(klass):
-                if method_name.startswith("test_"):
-                    method = getattr(klass, method_name)
-                    if callable(method):
-                        self.num_tests += 1
-                        sys.stdout.write(
-                            f"Running {class_name}.{method_name}")
-                        sys.stdout.flush()
-                        sys.stdout.write(
-                            colored(f" skipped: {reason}\n", 'yellow'))
-                        self.num_skipped += 1
+            self._skip_class(
+                klass, class_name, getattr(klass, '__unittest_skip_why__', ''))
             return
 
         if hasattr(klass, "setUpClass"):
-            klass.setUpClass()
+            try:
+                klass.setUpClass()
+            except unittest.SkipTest as e:
+                # A skip declared in class set-up skips the class, exactly
+                # as unittest's decoration on the class does.
+                self._skip_class(klass, class_name, str(e))
+                return
+            except bdb.BdbQuit:
+                raise
+            except Exception:
+                # Every method of the class is denied a verdict: each is
+                # an error, the traceback printed once, and none runs.
+                # tearDownClass would undo a set-up that never completed,
+                # so it is not called -- what unittest does.
+                text = traceback.format_exc()
+                for method_name in dir(klass):
+                    if method_name.startswith("test_"):
+                        if callable(getattr(klass, method_name)):
+                            self.num_tests += 1
+                            self._record_error(f'{class_name}.{method_name}',
+                                               'setUpClass', text)
+                            text = None
+                return
 
         for method_name in dir(klass):
             if method_name.startswith("test_"):
@@ -388,6 +419,35 @@ class Test:
         if hasattr(klass, "tearDownClass"):
             klass.tearDownClass()
 
+    def _skip_class(self, klass, class_name, reason):
+        """Report every test method of `klass` skipped with `reason`, none
+        of them run: the class was declared skipped, by unittest's
+        decoration or by its class set-up raising the skip exception."""
+        for method_name in dir(klass):
+            if method_name.startswith("test_"):
+                method = getattr(klass, method_name)
+                if callable(method):
+                    self.num_tests += 1
+                    sys.stdout.write(f"Running {class_name}.{method_name}")
+                    sys.stdout.flush()
+                    sys.stdout.write(
+                        colored(f" skipped: {reason}\n", 'yellow'))
+                    self.num_skipped += 1
+
+    def _record_error(self, label, phase, text):
+        """Report one test method as an ERROR: its `phase` of set-up
+        raised, so the method never ran and has no verdict -- neither
+        passed nor failed. The traceback `text` is printed when given.
+        An error fails the run, so --failfast stops on it."""
+        sys.stdout.write(f"Running {label}")
+        sys.stdout.flush()
+        sys.stdout.write(colored(f" ERROR! ({phase} raised)\n", 'red'))
+        if text is not None:
+            print(text)
+        self.num_errors += 1
+        if self.failfast:
+            raise StopTestRun()
+
     def run_test(self, klass, name, method, node):
         node._testMethodName = name
         self.save_children_checkpoints(node)
@@ -397,6 +457,7 @@ class Test:
         except AttributeError:
             class_name = klass.__class__.__name__
 
+        set_up = True
         try:
             if hasattr(self.test_case, "setUp"):
                 try:
@@ -405,12 +466,23 @@ class Test:
                     # The commonest skip idiom: self.skipTest(...) in
                     # setUp. No instant of this method ever ran, so it
                     # is reported and counted exactly like a method that
-                    # skipped itself; any OTHER exception from setUp
-                    # propagates uncaught, as it always has.
+                    # skipped itself.
                     sys.stdout.write(f"Running {class_name}.{name}")
                     sys.stdout.flush()
                     sys.stdout.write(colored(f" skipped: {e}\n", 'yellow'))
                     self.num_skipped += 1
+                    return
+                except bdb.BdbQuit:
+                    set_up = False
+                    raise
+                except Exception:
+                    # Any other exception is an error of this method: no
+                    # instant runs, and tearDown, which would undo a
+                    # set-up that never completed, is not called -- what
+                    # unittest does.
+                    set_up = False
+                    self._record_error(f'{class_name}.{name}', 'setUp',
+                                       traceback.format_exc())
                     return
             sys.stdout.write(f"Running {class_name}.{name}")
             sys.stdout.flush()
@@ -420,9 +492,14 @@ class Test:
             step_fail = 0
             step_skip = 0
             skip_reason = None
-            error = None
+            # The first failing instant, its 1-based position among the
+            # declared instants, and its traceback: the one a maker
+            # reproduces, so the one reported. Later failures are counted.
+            first_failure = None
+            stopped = False
+            declared = hasattr(method, 'testing_instants')
             instants = getattr(method, 'testing_instants', [0])
-            for instant in instants:
+            for position, instant in enumerate(instants, start=1):
                 real_failure = False
                 try:
                     node.set_keyframe(instant)
@@ -436,17 +513,10 @@ class Test:
                     step_skip += 1
                     skip_reason = skip_reason or str(e)
                     mark, color = 's', 'yellow'
-                except Exception as e:
-                    exc_type, exc_value, exc_traceback = sys.exc_info()
-                    error = (
-                        exc_type,
-                        exc_value,
-                        "".join(traceback.format_exception(
-                            exc_type,
-                            exc_value,
-                            exc_traceback
-                        ))
-                    )
+                except Exception:
+                    if first_failure is None:
+                        first_failure = (
+                            instant, position, traceback.format_exc())
                     step_fail += 1
                     real_failure = not expecting
                     mark, color = '.', 'red'
@@ -456,6 +526,7 @@ class Test:
                 # operation must not poison the following instants.
                 self.restore_children_checkpoints(node)
                 if self.failfast and real_failure:
+                    stopped = position < len(instants)
                     break
             n = len(instants)
             if step_skip == n:
@@ -470,8 +541,20 @@ class Test:
                     sys.stdout.write(colored(" expected failure\n", 'yellow'))
                     self.num_expected_failures += 1
                 else:
-                    sys.stdout.write(colored('FAIL!\n', 'red'))
-                    print(error[2])
+                    instant, position, text = first_failure
+                    # Named in words, never by colour alone, for a method
+                    # that declared its instants; one that declared none
+                    # reads `FAIL!` as it always has.
+                    note = ''
+                    if declared:
+                        note = f' at instant {_instant_text(instant)}'
+                        if n > 1 and stopped:
+                            note += (f' (--failfast stopped the sweep at '
+                                     f'instant {position} of {n})')
+                        elif n > 1:
+                            note += f' ({step_fail} of {n} instants failed)'
+                    sys.stdout.write(colored(f'FAIL!{note}\n', 'red'))
+                    print(text)
                     self.num_failed += 1
                     if self.failfast:
                         raise StopTestRun()
@@ -489,7 +572,7 @@ class Test:
                 sys.stdout.write(colored(" passed\n", "green"))
                 self.num_passed += 1
         finally:
-            if hasattr(self.test_case, "tearDown"):
+            if set_up and hasattr(self.test_case, "tearDown"):
                 self.test_case.tearDown()
             self.restore_children_checkpoints(node)
 

@@ -194,6 +194,19 @@ in the same cycle.
   old text, so no project was run. The section moved to
   `../archive/fix-warts-3-2026-10-06/resolved.md`.
 
+- 7 October 2026: cycle 13, `report-the-instant`, applied: `machinome
+  test` prints a failing method's first failing instant's traceback, and
+  a method declaring its instants names it on its line with how many
+  failed (`FAIL! at instant 0.0 (8 of 8 instants failed)`); an exception
+  from `setUp` or `setUpClass` is an ERROR of the methods it denies a
+  verdict, the run goes on, the summary line counts `, E errors` and the
+  run exits 1; a skip raised by `setUpClass` skips the class. Mantel clock
+  34's documented run stays at 20 tests, 15 passed, 5 failed with the same
+  messages, its five `FAIL!` lines now naming their instants; a provoked
+  sweep reports the first instant's centroid, where it reported the last.
+  The section moved to `../archive/fix-warts-3-2026-10-06/resolved.md`;
+  tear-down exceptions recorded in `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

@@ -142,6 +142,23 @@ Unreleased
   (or its sources could not be read, or it could not be assembled), where
   it used to read ``assembly:Rig: failed to load project: ...``
   (refuse-the-undeclared-file-by-name).
+* **A failing test names the instant it failed at, and a set-up that
+  raises is an error.** ``machinome test`` prints the traceback of a
+  method's first failing instant, where it used to print the last one's,
+  and a method that declares its instants names it on its line, with how
+  many failed: ``FAIL! at instant 0.0 (8 of 8 instants failed)``, or, under
+  ``--failfast``, ``(--failfast stopped the sweep at instant 1 of 3)``; the
+  instant is written so that ``@testing_instant`` given it runs that
+  instant. A method declaring no instant reads ``FAIL!`` as before. An
+  exception from a test case's ``setUp`` is reported on the method's line
+  as ``ERROR! (setUp raised)`` with its traceback, and one from its
+  ``setUpClass`` as ``ERROR! (setUpClass raised)`` on each of the class's
+  methods, where either used to end the run with a bare traceback and no
+  summary line: the method does not run, the matching tear-down is not
+  called, the run goes on, the summary line counts ``, E errors`` after
+  ``F failed``, and the run exits 1. A ``unittest.SkipTest`` raised from
+  ``setUpClass`` skips the class's methods with its reason, where it used
+  to end the run (report-the-instant).
 
 Machinome 0.8.0
 ---------------

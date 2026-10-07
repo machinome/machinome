@@ -190,6 +190,9 @@ Instants
 instant exactly ``end``), seconds under a declared loop. A method decorated
 this way runs once per instant, and a skip at one instant with passes at
 the rest is reported passed, saying how many instants it skipped. A
+method that fails is reported at its first failing instant, with that
+instant's traceback and how many instants failed, the instant written so
+that it can be given back to ``@testing_instant`` to run it alone. A
 machine driven by inputs rather than time is swept with a scenario or
 with ``set_state`` in a loop.
 
@@ -200,8 +203,9 @@ Skipping a test and marking a known gap
 
 A test that does not apply, the B-rep engine not installed, a part this
 project does not have, says so with ``self.skipTest(reason)`` anywhere in
-the method or in ``setUp``; ``unittest``'s own decorators work too, on a
-method or a whole class. A skipped test is reported by name with its
+the method or in ``setUp``, or by raising ``unittest.SkipTest`` from
+``setUpClass``, which skips the whole class; ``unittest``'s own decorators
+work too, on a method or a whole class. A skipped test is reported by name with its
 reason and counts as neither a pass nor a failure.
 
 A known, accepted gap, a regression not fixed yet or a kernel limit, is

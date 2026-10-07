@@ -2,6 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+import bdb
 import io
 import os
 import tempfile
@@ -203,15 +204,106 @@ class SetupSkipsCase(SkipTestMixin):
 
 
 class SetupRaisesCase:
-    """A companion whose setUp raises something other than SkipTest: the
-    run aborts exactly as it does today (reviewer's note 1) -- a
-    green-both-ways guard, not a RED case."""
+    """A companion whose setUp raises something other than SkipTest
+    (report-the-instant): each method is reported as an ERROR, the run
+    goes on to the next method, and tearDown -- which would undo a set-up
+    that never completed -- is not called."""
+
+    def __init__(self):
+        self.calls = []
+
+    def setUp(self):
+        self.calls.append('setup')
+        raise RuntimeError('setup blew up')
+
+    def tearDown(self):
+        self.calls.append('teardown')
+
+    def test_a(self):
+        self.calls.append('a')
+
+    def test_b(self):
+        self.calls.append('b')
+
+
+class SetupRaisesExpectedFailureCase:
+    """A method marked as expected to fail, on a case whose setUp raises:
+    the marking speaks of the method's body, which never ran, so the
+    method is an ERROR and not an expected failure."""
 
     def setUp(self):
         raise RuntimeError('setup blew up')
 
+    @unittest.expectedFailure
+    def test_a(self):
+        raise AssertionError('the known kernel gap')
+
+
+class SetupQuitsCase:
+    """A developer quitting the debugger inside setUp: the run ends, as a
+    quit inside a test method ends it."""
+
+    def setUp(self):
+        raise bdb.BdbQuit
+
     def test_a(self):
         pass
+
+
+def set_up_class_raising(exception):
+    """A companion case whose class set-up raises `exception`, recording
+    every call it receives so a test can tell which of its set-ups,
+    methods and tear-downs ran. A fresh class per call: class set-up and
+    tear-down are class methods, so the record lives on the class."""
+
+    class SetUpClassRaisesCase:
+        calls = []
+
+        @classmethod
+        def setUpClass(cls):
+            cls.calls.append('setupclass')
+            raise exception
+
+        @classmethod
+        def tearDownClass(cls):
+            cls.calls.append('teardownclass')
+
+        def setUp(self):
+            self.calls.append('setup')
+
+        def test_a(self):
+            self.calls.append('a')
+
+        def test_b(self):
+            self.calls.append('b')
+
+    return SetUpClassRaisesCase
+
+
+class FailsTwiceDifferentlyNode(FakeNode):
+    """A sweep failing at its first instant and again, differently, at its
+    last: the first failing instant is the one a maker reproduces."""
+
+    @with_instants(0, 0.5, 1)
+    def test_sweep(self):
+        self.calls.append(self.last_instant)
+        if self.last_instant == 0:
+            raise AssertionError('first, at 0')
+        if self.last_instant == 1:
+            raise ValueError('last, at 1')
+
+
+class FailsAtItsOneInstantNode(FakeNode):
+    @with_instants(0.5)
+    def test_once(self):
+        raise AssertionError('at the half')
+
+
+class FailsAtAFortyEighthNode(FakeNode):
+    @with_instants(0, 1 / 48)
+    def test_sweep(self):
+        if self.last_instant:
+            raise AssertionError('at a forty-eighth')
 
 
 class FakeChild:
@@ -494,16 +586,6 @@ class SkipAndExpectedFailureTest(TestCase):
         self.assertEqual(runner.num_failed, 0)
         self.assertIn('the exact kernel is not available here', text)
 
-    def test_a_non_skip_setup_error_still_propagates(self):
-        case = SetupRaisesCase()
-        node = FakeNode()
-        runner = Runner()
-        runner.test_case = case
-        runner.node = node
-
-        with self.assertRaises(RuntimeError):
-            runner.run_class_tests(case, node)
-
     def test_a_skip_between_instants_still_restores_the_children(self):
         # reviewer's note 3: a skip at instant 1 after an operation was
         # added at instant 0 must not leak into instant 2.
@@ -559,6 +641,179 @@ class SkipAndExpectedFailureTest(TestCase):
         self.assertEqual(getattr(runner, 'num_unexpected_successes', 0), 1)
 
 
+class FirstFailingInstantTest(TestCase):
+    """workflow/warts.md, "honour-skip-and-xfail (found while fixing)": the
+    runner printed the LAST failing instant's traceback and named no
+    instant, so a maker could not tell where a sweep first went wrong
+    (report-the-instant)."""
+
+    def test_the_first_failing_instants_traceback_is_printed(self):
+        node = FailsTwiceDifferentlyNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [0, 0.5, 1])
+        self.assertEqual(runner.num_failed, 1)
+        self.assertIn('first, at 0', text)
+        self.assertNotIn('last, at 1', text)
+        self.assertIn('FAIL! at instant 0 (2 of 3 instants failed)\n', text)
+
+    def test_failfast_names_the_instant_it_stopped_the_sweep_at(self):
+        node = FailsTwiceDifferentlyNode()
+        runner = Runner()
+        runner.test_case = None
+        runner.failfast = True
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertEqual(node.calls, [0])
+        self.assertIn(
+            'FAIL! at instant 0 '
+            '(--failfast stopped the sweep at instant 1 of 3)\n', text)
+
+    def test_the_instant_is_written_so_that_it_reproduces(self):
+        with self.subTest('one declared instant'):
+            node = FailsAtItsOneInstantNode()
+            runner = Runner()
+            runner.test_case = None
+
+            text = run_class_tests_capturing_output(runner, node, node)
+
+            self.assertIn('.FAIL! at instant 0.5\n', text)
+        with self.subTest('an instant that is not a round number'):
+            node = FailsAtAFortyEighthNode()
+            runner = Runner()
+            runner.test_case = None
+
+            text = run_class_tests_capturing_output(runner, node, node)
+
+            self.assertIn('FAIL! at instant 0.020833333333333332 '
+                          '(1 of 2 instants failed)\n', text)
+
+    def test_a_method_declaring_no_instant_still_reads_fail(self):
+        node = FirstTestFailsNode()
+        runner = Runner()
+        runner.test_case = None
+
+        text = run_class_tests_capturing_output(runner, node, node)
+
+        self.assertIn('Running FirstTestFailsNode.test_a_fails.FAIL!\n', text)
+
+
+class SetUpErrorTest(TestCase):
+    """workflow/warts.md, "honour-skip-and-xfail (found while fixing)": an
+    exception other than a skip from setUp, or any exception from
+    setUpClass, escaped the runner and ended the run with no verdict and
+    no summary line (report-the-instant). It is an ERROR of the methods
+    it denies a verdict, and the run goes on."""
+
+    def test_a_non_skip_setup_error_is_an_error_and_the_run_goes_on(self):
+        case = SetupRaisesCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        text = run_class_tests_capturing_output(runner, case, node)
+
+        self.assertEqual(case.calls, ['setup', 'setup'])
+        self.assertEqual(runner.num_tests, 2)
+        self.assertEqual(getattr(runner, 'num_errors', 0), 2)
+        self.assertEqual(runner.num_failed, 0)
+        self.assertEqual(runner.num_passed, 0)
+        self.assertIn(
+            'Running SetupRaisesCase.test_a ERROR! (setUp raised)\n', text)
+        self.assertIn(
+            'Running SetupRaisesCase.test_b ERROR! (setUp raised)\n', text)
+        self.assertIn('RuntimeError: setup blew up', text)
+
+    def test_a_class_set_up_error_is_an_error_of_each_method(self):
+        klass = set_up_class_raising(RuntimeError('class set-up blew up'))
+        case = klass()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        text = run_class_tests_capturing_output(runner, case, node)
+
+        self.assertEqual(klass.calls, ['setupclass'])
+        self.assertEqual(runner.num_tests, 2)
+        self.assertEqual(getattr(runner, 'num_errors', 0), 2)
+        self.assertEqual(runner.num_failed, 0)
+        self.assertIn('Running SetUpClassRaisesCase.test_a '
+                      'ERROR! (setUpClass raised)\n', text)
+        self.assertIn('Running SetUpClassRaisesCase.test_b '
+                      'ERROR! (setUpClass raised)\n', text)
+        self.assertEqual(text.count('class set-up blew up'), 1)
+
+    def test_a_skip_raised_by_class_set_up_skips_the_class(self):
+        klass = set_up_class_raising(
+            unittest.SkipTest('no B-rep engine here'))
+        case = klass()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        try:
+            text = run_class_tests_capturing_output(runner, case, node)
+        except unittest.SkipTest:
+            self.fail('a SkipTest raised from setUpClass escaped '
+                      'run_class_tests instead of skipping the class')
+
+        self.assertEqual(klass.calls, ['setupclass'])
+        self.assertEqual(runner.num_tests, 2)
+        self.assertEqual(runner.num_skipped, 2)
+        self.assertEqual(getattr(runner, 'num_errors', 0), 0)
+        self.assertIn('Running SetUpClassRaisesCase.test_a '
+                      'skipped: no B-rep engine here\n', text)
+        self.assertIn('Running SetUpClassRaisesCase.test_b '
+                      'skipped: no B-rep engine here\n', text)
+
+    def test_failfast_stops_on_a_set_up_error(self):
+        case = SetupRaisesCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+        runner.failfast = True
+
+        out = io.StringIO()
+        with redirect_stdout(out):
+            runner.run_tests()
+
+        self.assertEqual(case.calls, ['setup'])
+        self.assertEqual(getattr(runner, 'num_errors', 0), 1)
+        self.assertIn(': 0 passed, 0 failed, 1 error\n', out.getvalue())
+
+    def test_an_expected_failure_whose_set_up_raises_is_an_error(self):
+        case = SetupRaisesExpectedFailureCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        text = run_class_tests_capturing_output(runner, case, node)
+
+        self.assertEqual(getattr(runner, 'num_errors', 0), 1)
+        self.assertEqual(runner.num_expected_failures, 0)
+        self.assertIn('ERROR! (setUp raised)', text)
+
+    def test_a_debugger_quit_in_set_up_still_ends_the_run(self):
+        case = SetupQuitsCase()
+        node = FakeNode()
+        runner = Runner()
+        runner.test_case = case
+        runner.node = node
+
+        with redirect_stdout(io.StringIO()):
+            with self.assertRaises(bdb.BdbQuit):
+                runner.run_class_tests(case, node)
+
+
 class ReportSummaryLineTest(TestCase):
     """report()'s summary line: unchanged when nothing unusual happened
     -- the ADR-090 discipline for this output -- and, when something
@@ -598,6 +853,26 @@ class ReportSummaryLineTest(TestCase):
             '1 skipped, 2 expected failures, 1 unexpected success '
             '(mesh engine, volume epsilon 0 mm³)',
             out.getvalue())
+
+    def test_errors_are_counted_beside_the_failures(self):
+        for errors, expected in (
+                (1, 'Ran 5 tests in 1.00 seconds: 2 passed, 1 failed, '
+                    '1 error, 1 skipped\n'),
+                (2, 'Ran 6 tests in 1.00 seconds: 2 passed, 1 failed, '
+                    '2 errors, 1 skipped\n')):
+            with self.subTest(errors=errors):
+                runner = Runner()
+                runner.num_tests = 4 + errors
+                runner.num_passed = 2
+                runner.num_failed = 1
+                runner.num_errors = errors
+                runner.num_skipped = 1
+
+                out = io.StringIO()
+                with redirect_stdout(out):
+                    runner.report(1.0)
+
+                self.assertIn(expected, out.getvalue())
 
 
 class InstrumentedChild:
@@ -1114,6 +1389,144 @@ class UnusualResultExitCodeTest(MultiTestCaseFixture):
 
         self.assertEqual(code, 1, stderr)
         self.assertIn('1 unexpected success', stdout)
+
+
+GAUGE_SOURCE = '''from machinome.node.solid2 import Solid2Node
+from solid2 import cube
+
+
+class Gauge(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+# A leaf keeps no time of its own, so a call counter on the case says
+# which of the sweep's three instants is running.
+GAUGE_TEST_SOURCE = '''from machinome.test import TestCase, testing_steps
+from .gauge import Gauge
+
+
+class GaugeTest(TestCase):
+    node = Gauge
+    calls = 0
+
+    @testing_steps(3)
+    def test_fails_at_two_instants_differently(self):
+        call = GaugeTest.calls
+        GaugeTest.calls += 1
+        if call == 0:
+            raise AssertionError('first failure, at the first instant')
+        if call == 2:
+            raise ValueError('second failure, at the last instant')
+'''
+
+PUMP_SOURCE = '''from machinome.node.solid2 import Solid2Node
+from solid2 import cube
+
+
+class Pump(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+PUMP_TEST_SOURCE = '''from machinome.test import TestCase
+from .pump import Pump
+
+
+class APumpSetUpRaisesTest(TestCase):
+    node = Pump
+
+    def setUp(self):
+        raise RuntimeError('setUp blew up')
+
+    def test_a(self):
+        pass
+
+    def test_b(self):
+        pass
+
+
+class BPumpTest(TestCase):
+    node = Pump
+
+    def test_after(self):
+        pass
+'''
+
+CRANE_SOURCE = '''from machinome.node.solid2 import Solid2Node
+from solid2 import cube
+
+
+class Crane(Solid2Node):
+    def render(self):
+        return cube(1, center=True)
+'''
+
+CRANE_TEST_SOURCE = '''from machinome.test import TestCase
+from .crane import Crane
+
+
+class ACraneSetUpClassRaisesTest(TestCase):
+    node = Crane
+
+    @classmethod
+    def setUpClass(cls):
+        raise RuntimeError('setUpClass blew up')
+
+    def test_a(self):
+        pass
+
+
+class BCraneTest(TestCase):
+    node = Crane
+
+    def test_after(self):
+        pass
+'''
+
+
+class ReportTheInstantEndToEndTest(MultiTestCaseFixture):
+    """report-the-instant through `machinome test` itself: a sweep's first
+    failing instant is the one reported and named, and a set-up exception
+    is an error the run reports and goes past."""
+
+    def test_a_sweep_reports_its_first_failing_instant(self):
+        node_path = self.write('boat/gauge.py', GAUGE_SOURCE)
+        self.write('boat/test_gauge.py', GAUGE_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 1, stderr)
+        self.assertIn('first failure, at the first instant', stdout)
+        self.assertNotIn('second failure, at the last instant', stdout)
+        self.assertIn('FAIL! at instant 0.0 (2 of 3 instants failed)\n',
+                      stdout)
+        self.assertRegex(stdout, r': 0 passed, 1 failed( \(|\n)')
+
+    def test_a_set_up_error_is_reported_and_the_run_goes_on(self):
+        node_path = self.write('boat/pump.py', PUMP_SOURCE)
+        self.write('boat/test_pump.py', PUMP_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 1, stderr)
+        self.assertIn('Running APumpSetUpRaisesTest.test_a '
+                      'ERROR! (setUp raised)\n', stdout)
+        self.assertIn('Running BPumpTest.test_after. passed', stdout)
+        self.assertIn('Ran 3 tests in ', stdout)
+        self.assertRegex(stdout, r': 1 passed, 0 failed, 2 errors( \(|\n)')
+
+    def test_a_class_set_up_error_is_reported_and_the_run_goes_on(self):
+        node_path = self.write('boat/crane.py', CRANE_SOURCE)
+        self.write('boat/test_crane.py', CRANE_TEST_SOURCE)
+
+        code, stdout, stderr = self.run_solid_test(node_path)
+
+        self.assertEqual(code, 1, stderr)
+        self.assertIn('Running ACraneSetUpClassRaisesTest.test_a '
+                      'ERROR! (setUpClass raised)\n', stdout)
+        self.assertIn('Running BCraneTest.test_after. passed', stdout)
+        self.assertRegex(stdout, r': 1 passed, 0 failed, 1 error( \(|\n)')
 
 
 WINDMILL_SOURCE = '''from machinome.node.solid2 import Solid2Node

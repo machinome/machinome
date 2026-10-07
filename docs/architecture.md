@@ -2354,7 +2354,9 @@ fail: `self.skipTest`/`unittest`'s skip decorations report it SKIPPED
 never overwriting a real failure's traceback), and
 `@unittest.expectedFailure` reports it an EXPECTED FAILURE when it
 raises or an UNEXPECTED SUCCESS — which fails the run — when it does not
-(ADR-118).
+(ADR-118), and an exception from its `setUp` or its class's `setUpClass`
+reports it an ERROR — which fails the run, and the run goes on to the
+next test. A failure is reported at its first failing instant, named.
 
 Collision assertions (ADR-009/044) select the strongest shared representation
 the run allows: intersection-volume and connectivity questions use placed

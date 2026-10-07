@@ -776,38 +776,6 @@ original findings are in the snapshot. Still open (condensed 2026-10-04):
 - **The Pascaline still shows no answer.** Its `DigitDrum` carries no
   `Marking`; a project follow-up.
 
-# honour-skip-and-xfail (2026-09-15, found while fixing)
-
-Findings outside that cycle's ratified scope, from
-`openspec/changes/honour-skip-and-xfail/proposal.md` ("Out of scope") and
-`design.md` ("Reviewer's notes (ratification, 2026-09-15)", note 1);
-**status: filed here; triage open**. No framework code changed for any of
-these.
-
-- **The runner keeps the LAST failing instant's traceback, not the
-  first.** `run_test`'s `error` is rebound on every raising instant
-  (`manager/test.py`) and only the last is printed, so a method that
-  fails at instant 0 and again, differently, at instant 2 reports
-  instant 2's traceback. This change only stopped a SKIP from becoming
-  that traceback (`error` is now set in the `except Exception` arm
-  alone); which real failure is reported when several instants fail is
-  left exactly as it was.
-- **No failure report names the instant it happened at.** `FAIL!`'s
-  traceback shows where in the method's own source the assertion raised,
-  never which declared instant (`0`, `0.5`, `1`, ...) it raised at under
-  `@testing_steps`/`@testing_instant`. A maker reproducing a sweep
-  failure has to re-run the method by hand to find the instant.
-- **A non-skip exception from `setUp`, or any exception from
-  `setUpClass`, aborts the run without a verdict.** `run_test` now
-  catches `unittest.SkipTest` from `setUp` and reports the method
-  skipped; any OTHER exception `setUp` raises still escapes `run_test`
-  uncaught, as does anything `setUpClass` raises, and `handle` catches
-  only `StopTestRun` — so the run stops with a bare traceback, no
-  summary line, and no verdict for the tests that would have followed.
-  `unittest` itself reports these as ERRORS, distinct from failures, and
-  keeps running the rest of the suite; `machinome test` has no error
-  classification at all, for a set-up exception or any other.
-
 # read-the-driven-coordinate (2026-09-15, found while fixing)
 
 Findings outside that cycle's ratified scope, from
@@ -1657,6 +1625,24 @@ not fixed, until the pilot triages them.
   Mapping it changes the type a caller of `Production(model)` catches.
   Evidence: the same `design.md`, Open Question 3, and `evidence.md`.
   **Untriaged.**
+
+## Findings from the framework cycle `report-the-instant` (2026-10-07)
+
+- **An exception from `tearDown` or `tearDownClass` still aborts the run
+  without a verdict.** `report-the-instant` made an exception from `setUp`
+  or `setUpClass` an ERROR the run reports and goes past, but `run_test`'s
+  `finally` still calls `tearDown` unguarded, `run_class_tests` calls
+  `tearDownClass` unguarded, and `handle` catches only `StopTestRun`. On
+  the bench after the change, a scratch case whose `tearDown` raises
+  `RuntimeError('tearDown blew up')`, followed by a passing case, prints
+  `Running ATearDownRaisesTest.test_a.` and a bare traceback through
+  `handle`, `run_selection`, `run_class_tests` and `run_test`, then exits
+  1 with no summary line; the following case never runs. No project has
+  hit it. The same `_record_error` would cover it with the phase
+  `tearDown` or `tearDownClass`; what a method that passed and then failed
+  to tear down is counted as is the choice to make. Evidence:
+  `openspec/changes/archive/2026-10-07-report-the-instant/design.md`, Open
+  Question 2, and its `evidence.md`. **Untriaged.**
 
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 

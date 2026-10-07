@@ -132,10 +132,16 @@ unmodified. See :doc:`the assertion reference <assertions>` and
 :doc:`the scenario chapter </tutorial/07-scenario>`.
 
 Prints ``Ran N tests in X seconds: P passed, F failed``, continued by
-``, S skipped``, ``, X expected failures`` and ``, U unexpected successes``
-for each of those counts that is non-zero — a run with none of them prints
-exactly that line, byte for byte, with no continuation. Exits 1 when any
-test failed or any test succeeded unexpectedly, 0 otherwise.
+``, E errors``, ``, S skipped``, ``, X expected failures`` and
+``, U unexpected successes`` for each of those counts that is non-zero — a
+run with none of them prints exactly that line, byte for byte, with no
+continuation. Exits 1 when any test failed, errored or succeeded
+unexpectedly, 0 otherwise. A failing method that declares its instants
+names the first one it failed at, and how many failed, as in
+``FAIL! at instant 0.25 (3 of 48 instants failed)``, and prints that
+instant's traceback; one that declares none reads ``FAIL!``. A test whose
+``setUp`` or ``setUpClass`` raises is reported ``ERROR!`` with the
+traceback and does not run, and the run goes on.
 
 A test that calls ``self.skipTest(reason)`` — in the method itself or in
 its ``setUp`` — or that carries ``unittest``'s skip decoration on the
@@ -150,7 +156,7 @@ fail the run — the marking is now a false statement about the machine. See
 ``--failfast``
     Stop the test run on the first test that fails the run. A skip and an
     expected failure are not failures and never stop it; an unexpected
-    success does.
+    success and an error do.
 
 ``--brep`` / ``--mesh``
     The engine every geometric assertion decides on: the B-rep engine,

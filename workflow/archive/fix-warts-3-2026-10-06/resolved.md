@@ -772,3 +772,74 @@ change; the six builds exit 1 before and after, with the new line. A scan
 of the 16 791 Python files under `projects/` finds no test or code that
 asserts on, matches or catches an old text (11 hits, all `"project: "` in
 unrelated fields and docstrings), so no project was run or edited.
+
+## `report-the-instant`
+
+From "honour-skip-and-xfail (2026-09-15, found while fixing)", the whole
+section:
+
+Findings outside that cycle's ratified scope, from
+`openspec/changes/honour-skip-and-xfail/proposal.md` ("Out of scope") and
+`design.md` ("Reviewer's notes (ratification, 2026-09-15)", note 1);
+**status: filed here; triage open**. No framework code changed for any of
+these.
+
+- **The runner keeps the LAST failing instant's traceback, not the
+  first.** `run_test`'s `error` is rebound on every raising instant
+  (`manager/test.py`) and only the last is printed, so a method that
+  fails at instant 0 and again, differently, at instant 2 reports
+  instant 2's traceback. This change only stopped a SKIP from becoming
+  that traceback (`error` is now set in the `except Exception` arm
+  alone); which real failure is reported when several instants fail is
+  left exactly as it was.
+- **No failure report names the instant it happened at.** `FAIL!`'s
+  traceback shows where in the method's own source the assertion raised,
+  never which declared instant (`0`, `0.5`, `1`, ...) it raised at under
+  `@testing_steps`/`@testing_instant`. A maker reproducing a sweep
+  failure has to re-run the method by hand to find the instant.
+- **A non-skip exception from `setUp`, or any exception from
+  `setUpClass`, aborts the run without a verdict.** `run_test` now
+  catches `unittest.SkipTest` from `setUp` and reports the method
+  skipped; any OTHER exception `setUp` raises still escapes `run_test`
+  uncaught, as does anything `setUpClass` raises, and `handle` catches
+  only `StopTestRun` — so the run stops with a bare traceback, no
+  summary line, and no verdict for the tests that would have followed.
+  `unittest` itself reports these as ERRORS, distinct from failures, and
+  keeps running the rest of the suite; `machinome test` has no error
+  classification at all, for a set-up exception or any other.
+
+**What shipped.** `report-the-instant`
+(`openspec/changes/archive/2026-10-07-report-the-instant/`) changes
+`machinome test`'s runner alone (`machinome/manager/test.py`). A failing
+method prints the traceback of its first failing instant, the later ones
+counted and not printed; a method that declares its instants names that
+instant after `FAIL!`, written so that `@testing_instant` given it runs
+the same value (`FAIL! at instant 0.020833333333333332`), and a sweep adds
+`(K of N instants failed)`, or `(--failfast stopped the sweep at instant P
+of N)`; a method declaring no instant reads `FAIL!` as before. An
+exception other than a skip from `setUp` is an ERROR of that method
+(`ERROR! (setUp raised)`, the traceback, no instant run, no `tearDown`),
+and from `setUpClass` an ERROR of each of the class's methods (`ERROR!
+(setUpClass raised)`, the traceback once, no method run, no
+`tearDownClass`); the run goes on, the summary line gains `, E errors`
+after `F failed` when there are any, the run exits 1, and `--failfast`
+stops on an error. A `unittest.SkipTest` from `setUpClass` skips the
+class's methods with its reason, as the class decoration does. A debugger
+quit in set-up still ends the run, and an expected-failure marking does
+not turn a set-up error into an expected failure. Exceptions from a
+method's own body stay failures, and `tearDown`/`tearDownClass`
+exceptions still escape (filed in `warts.md` under this change's name).
+Red first: 14 tests of `tests/test_manager_test.py` (the last instant's
+message printed and no instant named; `RuntimeError` and `SkipTest`
+escaping `run_class_tests`, `run_tests` and `handle`; no error count in
+the summary), with two guards green both ways; the pin
+`test_a_non_skip_setup_error_still_propagates` replaced. On
+3DPrintedClocks' mantel clock 34 (`ec2a05d`, `--mesh --volume-epsilon
+0.001`), nothing written in the project: 20 tests, 15 passed, 5 failed
+before and after, the same `AssertionError` lines, and the five `FAIL!`
+lines now read `at instant 0.0 (8 of 8 instants failed)`, `(48 of 48 ...)`,
+`at instant 0`, `at instant 0` and `at instant 0.0 (32 of 32 instants
+failed)`. A provoked sweep over the minute hand's travel printed the
+centroid read at the last instant, `(47.837, -83.031, 45.609)`, before,
+and `FAIL! at instant 0.0 (4 of 4 instants failed)` with the first
+instant's centroid, `(65.434, -65.434, 70.495)`, after.
