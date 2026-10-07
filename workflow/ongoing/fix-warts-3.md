@@ -136,6 +136,13 @@ in the same cycle.
   `../archive/fix-warts-3-2026-10-06/resolved.md`, the entry-bounded
   rings recorded in `../warts.md`.
 
+- 7 October 2026: cycle 8, `snapshot-the-follow-prefix`, applied: the
+  Follow prefix cache stores a frozen copy of the propagation its walk
+  produced, so a hit reads the same shape as a miss; the Curta's crank
+  banks bit-identical and its tick time unchanged (40 ticks 177.5 s
+  before, 176.6 s after); the entry moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

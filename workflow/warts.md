@@ -1341,18 +1341,6 @@ below are what the review left open.
   bell-turn and lift sources sit inside every one of these boundaries.
   **Open as a shape, not a defect:** lift each limit when a project writes
   the machine that needs it, and record here which one.
-- **The Follow prefix cache stores mapping proxies where a propagation
-  used to flow.** `Run._constraint_level` in `machinome/simulation/run.py`
-  memoises a successful law-to-Follow prefix as
-  `(MappingProxyType(dict(deltas)), MappingProxyType(dict(landings)))`.
-  On a hit the rest of the method receives a plain read-only mapping, not
-  the `Propagation` object the first walk produced, so `motions`,
-  `untraced`, `follow_cuts` and `follow_closures` are absent. Today only
-  item access follows the prefix, so it is correct; the first later change
-  that reads a path attribute after the prefix will work on a miss and fail
-  on a hit, and the focused tests would not necessarily catch it.
-  **Deferred:** when that method is next touched, either snapshot the
-  propagation itself (frozen) or assert the shape at the hit.
 - **The exact-kernel corrections cost time that was measured only on the
   Curta.** ADR-143 deep-copies both operands of every native Common, Fuse
   and witness Section; ADR-142 adds a section plus up to 1,872

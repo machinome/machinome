@@ -9,6 +9,7 @@ from unittest.mock import patch
 from machinome.simulation import Sim
 from machinome.simulation.program import Edge
 from machinome.simulation.run import Run
+from machinome.simulation.trajectory import Propagation
 
 from .test_running_follow import TwoSurfaces
 
@@ -81,6 +82,44 @@ class FollowPrefixCacheTest(TestCase):
         self.assertEqual(len(calls), 2 * len(fractions) +
                          len(fractions) + 1)
         self.assertEqual(len(cache), len(fractions) + 1)
+
+    def test_a_reused_prefix_is_the_propagation_its_walk_produced(self):
+        sim = Sim(TwoSurfaces(), dt=1.0)
+        run, low, high, values, admissions = self._probe_inputs(sim)
+        walked = []
+        original = Run._deltas
+
+        def captured(run, admissions):
+            deltas = original(run, admissions)
+            walked.append(deltas)
+            return deltas
+
+        cache = {}
+        with patch.object(Run, '_deltas', captured):
+            self._level(run, low, values, admissions, 0.5, cache)
+        (reused, landings), = cache.values()
+        produced, = walked
+        self.assertIsInstance(reused, Propagation)
+        self.assertEqual(dict(reused), dict(produced))
+        self.assertTrue(produced.follow_cuts)
+        self.assertEqual(sorted(vars(reused)), sorted(vars(produced)))
+        for name, value in vars(produced).items():
+            with self.subTest(attribute=name):
+                self.assertEqual(getattr(reused, name), value)
+        key = next(iter(produced.follow_cuts))
+        with self.assertRaises(TypeError):
+            reused[key] = 1.0
+        with self.assertRaises(TypeError):
+            reused.follow_cuts[key] = ()
+        with self.assertRaises(TypeError):
+            reused.untraced = set()
+        with self.assertRaises(TypeError):
+            landings[key] = 1.0
+        expected = self._level(run, high, values, admissions, 0.5, None)
+        with patch.object(Run, '_deltas', captured):
+            actual = self._level(run, high, values, admissions, 0.5, cache)
+        self.assertEqual(len(walked), 1)
+        self.assertEqual(float(actual).hex(), float(expected).hex())
 
     def test_failed_prefix_is_not_published_and_bound_still_evaluates(self):
         sim = Sim(TwoSurfaces(), dt=1.0)

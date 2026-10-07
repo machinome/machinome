@@ -13,6 +13,7 @@ from bisect import bisect_right
 from copy import copy
 import math
 import struct
+from types import MappingProxyType
 
 from . import program as p
 
@@ -74,6 +75,29 @@ class Propagation(dict):
 
     def motion(self, key, values):
         return self.motions.get(key) or Motion.line(values[key], self[key])
+
+
+class FrozenPropagation(Propagation):
+    """A finished propagation that several readers share: its
+    displacements and the paths that determined them, none of them
+    changeable."""
+
+    def __init__(self, propagation):
+        dict.__init__(self, propagation)
+        state = self.__dict__
+        for name, value in vars(propagation).items():
+            state[name] = (MappingProxyType(dict(value))
+                           if isinstance(value, dict)
+                           else frozenset(value)
+                           if isinstance(value, (set, frozenset))
+                           else value)
+
+    def _refuse(self, *args, **kwargs):
+        raise TypeError(f'{type(self).__name__} is read-only')
+
+    __setitem__ = __delitem__ = __ior__ = _refuse
+    clear = pop = popitem = setdefault = update = _refuse
+    __setattr__ = __delattr__ = _refuse
 
 
 class Sources(dict):

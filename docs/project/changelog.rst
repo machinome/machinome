@@ -83,6 +83,14 @@ Unreleased
   omission. Both now count from the cleared record, as the time-drive
   generator already did. No committed corpus has such a step, and none
   changes (keep-the-corpus-cursor-honest).
+* **A reused Follow prefix carries its paths.** When the two Bounds of a
+  ``Follow`` target share one walk of their sub-program at a fraction of
+  the stretch, the walk is stored as a read-only copy of the propagation
+  it produced, with its source motions, Follow cuts and closures, and
+  the walk that stores it reads the same copy. It used to be stored as a
+  bare mapping of displacements, so a later Bound received a different
+  kind of object than the first one. No level, stop or bank changes, and
+  the Curta's crank tick costs the same (snapshot-the-follow-prefix).
 
 Machinome 0.8.0
 ---------------

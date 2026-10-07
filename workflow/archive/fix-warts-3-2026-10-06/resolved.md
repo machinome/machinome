@@ -479,3 +479,39 @@ scratchpad is byte-identical to the regeneration before the change, and
 the old counting; it still passes, since no committed scenario restores
 and records in one step. The rings' bound in entries rather than ticks is
 filed in `../../warts.md`.
+
+## `snapshot-the-follow-prefix`
+
+From "Review of the cycles landed after the 0.7.0 fold (2026-09-23)":
+
+- **The Follow prefix cache stores mapping proxies where a propagation
+  used to flow.** `Run._constraint_level` in `machinome/simulation/run.py`
+  memoises a successful law-to-Follow prefix as
+  `(MappingProxyType(dict(deltas)), MappingProxyType(dict(landings)))`.
+  On a hit the rest of the method receives a plain read-only mapping, not
+  the `Propagation` object the first walk produced, so `motions`,
+  `untraced`, `follow_cuts` and `follow_closures` are absent. Today only
+  item access follows the prefix, so it is correct; the first later change
+  that reads a path attribute after the prefix will work on a miss and fail
+  on a hit, and the focused tests would not necessarily catch it.
+  **Deferred:** when that method is next touched, either snapshot the
+  propagation itself (frozen) or assert the shape at the hit.
+
+**What shipped.** `snapshot-the-follow-prefix`
+(`openspec/changes/archive/2026-10-07-snapshot-the-follow-prefix/`) stores
+the prefix as a `FrozenPropagation`, a new subclass of `Propagation` in
+`machinome/simulation/trajectory.py` that carries the walk's displacements
+and every attribute of the walk, dictionaries as read-only mappings and
+sets as frozen sets, and refuses item and attribute changes with
+`TypeError`. The walk that publishes the prefix continues with the stored
+pair, so a hit and a miss hand the rest of `_constraint_level` one shape.
+A test on `TwoSurfaces`, `test_a_reused_prefix_is_the_propagation_its_walk_produced`
+in `tests/test_follow_prefix_cache.py`, was red first (`mappingproxy({...})
+is not an instance of <class 'machinome.simulation.trajectory.Propagation'>`)
+and is green. On the Curta (`projects/Calculators/Curta-Type-I-3x`, head
+`1f3dc22`, run from outside the project, nothing written there) forty
+crank ticks commit the same banks bit for bit before and after (SHA-256
+`167ea1cd…8b18b1fcf`), in 177.45 s before and 176.59 s after; its
+radial-ball module passes 4 of 4 in 263.49 s before and 260.63 s after,
+and `test_mechanistic.py`'s subtraction test passes in 210.38 s before and
+206.80 s after. No corpus changed.

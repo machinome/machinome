@@ -34,18 +34,18 @@ Rules for the whole cycle:
 
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
+- [x] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
   rev-parse HEAD`), the interpreter check (`python -c 'import machinome;
   print(machinome.__file__)'` prints a path under the bench) and the
   project head (`git -C <project> rev-parse --short HEAD`). Copy the
   sources of `<scratch>/repro.py` and `<scratch>/curta_measure.py` into
   `evidence.md`, because the scratchpad is not durable.
-- [ ] 1.2 Run `<scratch>/repro.py` from the bench. Expect proposal.md's
+- [x] 1.2 Run `<scratch>/repro.py` from the bench. Expect proposal.md's
   output: one walk, a miss `Propagation` with `follow_cuts`, a hit
   `mappingproxy` on which all six attributes raise `AttributeError`.
-- [ ] 1.3 Run `pytest -q -p no:cacheprovider <focused tests> <corpus tests>`
+- [x] 1.3 Run `pytest -q -p no:cacheprovider <focused tests> <corpus tests>`
   and record the counts and wall time.
-- [ ] 1.4 Curta baseline, one run at a time:
+- [x] 1.4 Curta baseline, one run at a time:
   `pytest -p no:cacheprovider -q --durations=0 <project>/simulation/test_radial_positioning_ball.py`
   (Stage P: 4 passed in 260.98 s);
   `pytest -p no:cacheprovider -q --durations=0 "<project>/simulation/test_mechanistic.py::MechanisticCurtaTest::test_subtraction_borrows_through_both_registers_and_addition_undoes_it"`
@@ -56,7 +56,7 @@ Rules for the whole cycle:
 
 ## 2. Red test
 
-- [ ] 2.1 RED. Add design.md Decision 3's
+- [x] 2.1 RED. Add design.md Decision 3's
   `test_a_reused_prefix_is_the_propagation_its_walk_produced` to
   `FollowPrefixCacheTest` in `tests/test_follow_prefix_cache.py`, after
   `test_exact_fraction_bits_and_distinct_edges_miss`, with
@@ -67,22 +67,22 @@ Rules for the whole cycle:
 
 ## 3. The change
 
-- [ ] 3.1 `machinome/simulation/trajectory.py`: add `from types import
+- [x] 3.1 `machinome/simulation/trajectory.py`: add `from types import
   MappingProxyType` and design.md Decision 1's `FrozenPropagation` after
   `Propagation`.
-- [ ] 3.2 `machinome/simulation/run.py`: import `FrozenPropagation` from
+- [x] 3.2 `machinome/simulation/run.py`: import `FrozenPropagation` from
   `.trajectory` with the module's relative imports; in `_constraint_level`
   store `(FrozenPropagation(deltas), MappingProxyType(dict(landings)))`
   and continue with `deltas, landings = saved`, with design.md Decision 2's
   comment. Confirm `python -c 'import machinome.simulation'` from the
   bench still imports cleanly.
-- [ ] 3.3 Run 2.1's test: green. Run `<focused tests> <corpus tests>`: the
+- [x] 3.3 Run 2.1's test: green. Run `<focused tests> <corpus tests>`: the
   counts are 1.3's plus one test, and `git -C <bench> status --short tests/`
   lists only `tests/test_follow_prefix_cache.py`.
 
 ## 4. The Curta after the change
 
-- [ ] 4.1 Rerun 1.4's three commands, one at a time. Record counts,
+- [x] 4.1 Rerun 1.4's three commands, one at a time. Record counts,
   per-test durations and wall times beside the baseline. The bank SHA-256
   must equal 1.4's. A wall time more than about 5% above the baseline is
   rerun once, both before and after, and the four numbers are recorded;
@@ -90,7 +90,7 @@ Rules for the whole cycle:
 
 ## 5. Changelog and manual
 
-- [ ] 5.1 Append this bullet to the one `Unreleased` section of
+- [x] 5.1 Append this bullet to the one `Unreleased` section of
   `docs/project/changelog.rst`, after its existing bullets:
 
   ```rst
@@ -103,14 +103,14 @@ Rules for the whole cycle:
     kind of object than the first one. No level, stop or bank changes, and
     the Curta's crank tick costs the same (snapshot-the-follow-prefix).
   ```
-- [ ] 5.2 Grep `docs/` (excluding `adrs/` and `releases/`) for
+- [x] 5.2 Grep `docs/` (excluding `adrs/` and `releases/`) for
   `prefix_cache`, `prefix replay`, `MappingProxyType` and `Propagation`.
   Confirm that no page says something this change makes wrong, and
   record the result.
 
 ## 6. Warts
 
-- [ ] 6.1 Move the bullet "**The Follow prefix cache stores mapping
+- [x] 6.1 Move the bullet "**The Follow prefix cache stores mapping
   proxies where a propagation used to flow.**" of `workflow/warts.md`
   ("# Review of the cycles landed after the 0.7.0 fold (2026-09-23)"),
   verbatim through "...or assert the shape at the hit.", to
@@ -127,21 +127,22 @@ Rules for the whole cycle:
 
 ## 7. Checks
 
-- [ ] 7.1 Run `black --check` and `flake8 --max-line-length=89` on
+- [x] 7.1 Run `black --check` and `flake8 --max-line-length=89` on
   `machinome/simulation/trajectory.py`, `machinome/simulation/run.py` and
   `tests/test_follow_prefix_cache.py`. A finding in a line this change did
   not touch is recorded, not fixed.
 
 ## 8. Sync and archive
 
-- [ ] 8.1 Sync the delta into `openspec/specs/simulation/spec.md`,
+- [x] 8.1 Sync the delta into `openspec/specs/simulation/spec.md`,
   replacing "Equivalent Follow Bound prefix probes may reuse a successful
   propagation". Diff the requirement against its baseline: only the added
   paragraph and the added scenario differ.
-- [ ] 8.2 Archive the change to
-  `openspec/changes/archive/2026-10-06-snapshot-the-follow-prefix/`. Then
+- [x] 8.2 Archive the change to
+  `openspec/changes/archive/2026-10-07-snapshot-the-follow-prefix/` (the
+  CLI dates the archive by the day it runs, 7 October 2026). Then
   `openspec validate --specs` passes.
-- [ ] 8.3 Run 2.1's test, `<focused tests>` and `<corpus tests>` once more,
+- [x] 8.3 Run 2.1's test, `<focused tests>` and `<corpus tests>` once more,
   then the full suite once, alone (`pytest -q -p no:cacheprovider` at the
   bench root), and record the counts and wall times. A failure that is not
   this change's is recorded and stopped on, not worked around. Leave

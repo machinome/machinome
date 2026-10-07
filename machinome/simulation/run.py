@@ -47,6 +47,7 @@ from .program import (CLOCK_NAME, Constraint, compile_program,
                       TooManyCrossings, UnsupportedLaw, _BISECTION_ROUNDS,
                       _CROSSING_TOLERANCE, _folded_tick_cache, _PathValue,
                       _SUBDIVISIONS)
+from .trajectory import FrozenPropagation
 
 
 # Two increments agree when they are within this of each other,
@@ -1091,9 +1092,12 @@ class Run:
                                                        landings=landings):
                     deltas[key] = increment
             if eligible:
-                saved = (MappingProxyType(dict(deltas)),
+                saved = (FrozenPropagation(deltas),
                          MappingProxyType(dict(landings)))
                 prefix_cache[cache_key] = saved
+                # The walk that publishes the prefix reads it as every later
+                # Bound will, so the lines after this branch see one shape.
+                deltas, landings = saved
         else:
             deltas, landings = saved
         arguments = {constraint.identifier: own}
