@@ -314,8 +314,9 @@ node bin/videomaker.mjs live ../projects/Leonardo/videos/hydraulic-sawmill/episo
   take's marks); it is a scrubber: press anywhere on it and the playhead
   goes to the time under the pointer and follows it while it is held,
   paused where it is released. A click on a shot's name goes to its start,
-  on a flag to its mark. Space plays and pauses; left and right move a
-  frame, with shift a second; home and end go to the first and the last
+  on a flag to its mark. Space plays and pauses; left goes back two seconds,
+  right advances a frame, and shift with either arrow moves a second;
+  home and end go to the first and the last
   frame. The readout gives the time, the frame, the shot and the chapter,
   the mark at the playhead, the join, and the caption's text when `speech`
   has written the captions. One frame is posed at a time and the latest

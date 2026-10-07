@@ -6,6 +6,8 @@ lands it.
 
 ## Unreleased
 
+- Left arrow in the live player jumps back two seconds, stopping at the
+  beginning of the film or take.
 - The live player's caption and readout reserve a fixed height, keeping the
   movie and timeline stationary through narration gaps, wrapped captions and
   transition notices. Longer text scrolls within its area.

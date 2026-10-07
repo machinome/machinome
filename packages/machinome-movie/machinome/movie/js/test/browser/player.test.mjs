@@ -141,7 +141,12 @@ test('the ruler of the counter, the keys and the clicks move the playhead, and t
     await page.keyboard.press(key);await settle(page);
     frames.push([(await state(page)).frame,Number((await readout(page)).frame.value)]);
   }
-  assert.deepEqual(frames,[[0,0],[1,1],[11,11],[10,10],[113,113]]);
+  assert.deepEqual(frames,[[0,0],[1,1],[11,11],[0,0],[113,113]]);
+  await seek(page,5);
+  for(const expected of [3,1,0]){
+    await page.keyboard.press('ArrowLeft');await settle(page);
+    assert.equal((await state(page)).time,expected,'left goes back two seconds, stopping at zero');
+  }
   await page.click('.vm-shot[data-shot="nine"] .vm-shot-name');await settle(page);
   assert.equal((await state(page)).time,3.2);
   const r=await readout(page);

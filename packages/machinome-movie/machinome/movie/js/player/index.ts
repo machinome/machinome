@@ -362,7 +362,7 @@ document.addEventListener('keydown',event=>{
   switch(event.key){
     case ' ':toggle();break;
     case 'ArrowRight':step(event.shiftKey?fps:1);break;
-    case 'ArrowLeft':step(event.shiftKey?-fps:-1);break;
+    case 'ArrowLeft':step(event.shiftKey?-fps:-2*fps);break;
     case 'Home':seek(0);break;
     case 'End':lastFrame();break;
     default:return;

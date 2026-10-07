@@ -455,7 +455,8 @@ flight and the latest time winning, frames the stage cannot reach dropped,
 as during play; releasing the pointer SHALL leave the playhead at the last
 time sought. A click on a shot's name SHALL seek to the shot's start, and
 on a mark's flag to the mark. Space SHALL play and pause; left and right
-SHALL move one frame; with shift, one second; home and end SHALL go to the
+SHALL move back two seconds and forward one frame respectively; with shift,
+one second in either direction; home and end SHALL go to the
 first and the last frame.
 
 #### Scenario: The counter's ruler
@@ -469,7 +470,9 @@ first and the last frame.
 
 - **WHEN** home, right, shift and right, left and end are pressed in turn
   on the movie surface of `count`
-- **THEN** the playhead stands at frames 0, 1, 11, 10 and 113.
+- **THEN** the playhead stands at frames 0, 1, 11, 0 and 113.
+- **WHEN** left is pressed repeatedly from 5 s
+- **THEN** the playhead stands at 3 s, 1 s and 0 s, never before the start.
 
 #### Scenario: The clicks
 
@@ -557,4 +560,3 @@ protocol, and may change before a release.
   settle
 - **THEN** `window.player` reports the movie surface, 6 s, frame 60, the
   generation shown and the stage page's report of the frame posed.
-
