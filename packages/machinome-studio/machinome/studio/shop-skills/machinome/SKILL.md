@@ -274,20 +274,23 @@ migrating onto this rule:
 - **A `.repeat()` copy's `index` does not exist yet when that copy's own
   joint arguments resolve** — true of a class-body joint (assigned after
   `__init__` returns) and equally true of a joint declared where a
-  `.repeat()` is placed (resolved in `realize`, on the line right after
-  `__init__` returns, before `index` is assigned): `at=lambda node: (...
-  node.index ...)` on either fails naming a missing attribute — the
-  same-looking read works inside a relation's `law=`, which runs later,
-  once the copy exists. Two ways out, and reach for the first: **when the
-  per-copy difference is only a sign or an attitude the copies already
-  stand at**, state ONE declaration-site joint with the PARENT-FRAME axis
-  and no anchor at all, on the whole `.repeat()` — each copy's own carry
-  through its own rest placement produces the opposite local axis for
-  free (a mirrored roller pair, a mirrored belt-guide pair), with no
-  index, no sign and no `law=` anywhere. Only when the difference is not
-  a placement at all (a phase, a ratio, a per-copy selection) does it
-  belong in a broadcast relation's `law=`, or in `render()` off the
-  parent's own placement loop.
+  `.repeat()` is placed. Since `resolve-repeated-joints-per-copy` a
+  `.repeat()` copy carries its `index` from the start of its own
+  construction, so `at=lambda node: (... node.index ...)` on a joint or
+  frame argument resolves per copy. Still reach for the simpler sentence
+  first: **when the per-copy difference is only a sign or an attitude the
+  copies already stand at**, state ONE declaration-site joint with the
+  PARENT-FRAME axis and no anchor at all, on the whole `.repeat()` — each
+  copy's own carry through its own rest placement produces the opposite
+  local axis for free (a mirrored roller pair, a mirrored belt-guide
+  pair), with no index, no sign and no `law=` anywhere. Only when the
+  difference is not a placement at all (a phase, a ratio, a per-copy
+  selection) does it belong in a broadcast relation's `law=`, or in
+  `render()` off the parent's own placement loop. A site joint's values
+  are read where the child finally rests, after every rest operation the
+  parent applies to it: when one of those operations is conditional, a
+  plain value is right for one branch only, so write the argument as a
+  callable of the realized parent.
 - **A joint an author binds by hand keeps both its VALUE and its MOTION
   across runs, as of ADR-099.** `if self.pin.value is None: self.pin =
   REST` as a one-time default now rebinds and re-places the body on

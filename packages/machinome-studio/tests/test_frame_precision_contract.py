@@ -16,8 +16,9 @@ class FramePrecisionContractTest(unittest.TestCase):
             with self.subTest(passage=passage[:30]):
                 for phrase in ('both', 'explicitly', 'omitted', 'snap'):
                     self.assertIn(phrase, passage)
-        self.assertIn('Final mate angle/axis snap', declaration)
-        self.assertIn('Joint axis snapping', declaration)
+        self.assertIn('the final mate angle/axis snap is unchanged', declaration)
+        self.assertIn("A\njoint's axis snaps by the same rule", declaration)
+        self.assertIn('each direction snaps as a whole', declaration)
         self.assertIn('explicitly writing default `z=(0,0,1)`', declaration)
         self.assertIn('with z omitted keeps the snapped path', declaration)
         self.assertIn('y=z×x', declaration)

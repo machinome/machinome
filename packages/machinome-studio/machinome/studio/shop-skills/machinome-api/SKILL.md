@@ -114,7 +114,9 @@ Leaves make one part each; internal nodes combine parts.
   kerf-free `.dxf` (arcs kept as arcs) beside the `.stl` and `.brep`;
   `dxf_file` is its path. No kerf compensation, SVG/DXF import, engraving
   or nesting.
-- `StlNode`: `stl_source` is an `.stl` beside the module. The
+- `StlNode`: `stl_source` is the path of an `.stl`, relative to the
+  module's directory or absolute; a subclass that leaves it undeclared is
+  refused naming the class, the attribute and the module. The
   artifact is materialized from it; nothing is repaired. A non-watertight
   body fails the build naming the defect unless `require_watertight =
   False` admits it knowingly (admission only, never geometry). A multi-body
@@ -601,13 +603,14 @@ none enters the node's build identity, so two instances differing only in
 a resolved joint argument share one artifact. An unresolvable argument (an
 undeclared token, a two-component or zero-length `axis`, a reversed
 `range`) fails at realization naming the class, the joint and the
-argument. **A `.repeat()` copy's `index` does not exist yet when that
-copy's own joint arguments resolve** (it is assigned after the copy's
-`__init__` returns): a callable reading `node.index` on a JOINT argument
-fails by naming a missing attribute, even though the identical-looking
-read works inside a relation's `law=`, which runs after the copy exists.
-Derive a per-copy joint argument from the parent's own placement instead,
-or drive the per-copy difference through a broadcast relation's `law=`.
+argument. **A `.repeat()` copy carries its `index` throughout its own
+construction** (change `resolve-repeated-joints-per-copy`, ADR-096 as
+amended): a callable reading `node.index` on a JOINT or frame argument,
+or in `check()`, resolves per copy, seeing what a plain instance sees plus
+`index`; a callable failing for another reason is still refused naming
+the attribute. A per-copy difference that is only a sign or an attitude
+the copies already stand at still reads best as one declaration-site
+joint on the whole `.repeat()`, with no index at all.
 
 **Composition (ADR-093): the joints of one class compose in DECLARATION
 order, innermost first**, whatever order their coordinates happen to be
@@ -811,9 +814,13 @@ Supplying both directions explicitly retains full floating-point precision:
 normalize z, project/normalize x across z, then y=z×x, without component
 snap. Even explicitly writing default `z=(0,0,1)` counts; `Frame(x=...)`
 with z omitted keeps the snapped path, as does omitted x or `x=None`.
-There, components within 1e-9 of 0, 1 or -1 become those integers. Principal
-inference and zero/parallel refusals are unchanged. Final mate angle/axis snap
-and Joint axis snapping remain unchanged; no precision flag is added.
+There each direction snaps as a whole: one whose every component is within
+1e-9 of 0, 1 or -1 is that principal axis in integers, and in any other
+direction only the components within 1e-9 of 0 become 0, so a direction a
+few millionths off an axis stays unit (`snap-keeps-the-triad-unit`). A
+joint's axis snaps by the same rule. Principal inference and zero/parallel
+refusals are unchanged; the final mate angle/axis snap is unchanged; no
+precision flag is added.
 Arguments follow the joint argument rule (numbers, tokens, formulas, or one
 callable of the realized node), resolve to numbers when the declarer is
 built, and are neither identity nor geometry. `declared_frames(cls)` and
@@ -991,10 +998,13 @@ reads a BUILT node's frames as numbers, `{name: ResolvedFrame}` in
 declaration order — `at` (three floats), unit `x`, `y`, `z` and `rotation()`
 (a 3×3 whose columns are `x`, `y`, `z`). Supplying both directions explicitly
 retains normalized/projected/cross-product precision without component snap,
-including explicit default z. With z omitted or x omitted/None, components
-within 1e-9 of 0, 1 or -1 become those integers. This is the same cached basis
-mates compose, not a display-only adjustment. Final mate and Joint snaps stay
-unchanged. Read these objects, never
+including explicit default z. With z omitted or x omitted/None, each
+direction snaps as a whole (exactly a principal axis when every component
+is within 1e-9 of 0, 1 or -1, otherwise only its near-zero components made
+0), so every resolved direction is unit to 1e-12. This is the
+same cached basis mates compose, not a display-only adjustment. A joint's
+axis snaps by the same rule; the final mate snap stays unchanged. Read
+these objects, never
 assign; no second resolution, so a callable argument is not called again.
 Refused by name on a class (`declared_frames(cls)` gives the declarations),
 on anything that is not a realized node, and on a read before the node's
@@ -1609,8 +1619,12 @@ before the first test, then runs `test_`-prefixed methods once per
 declared instant (default `[0]`), restoring operation checkpoints between
 instants and tests. `@testing_instant(t)` pins time; `@testing_steps(n,
 start=0, end=1)` sweeps it (`n >= 2`, the last instant exactly `end`).
-It prints `Ran N tests in X seconds: P passed, F failed`, exits 1 on any
-failure, and `--failfast` stops at the first. `--set` applies to the root
+It prints `Ran N tests in X seconds: P passed, F failed` (`, E errors`
+appended when a `setUp` or `setUpClass` raised: the method is reported
+`ERROR!` with its traceback and the run goes on), exits 1 on any failure
+or error, and `--failfast` stops at the first. A failing method that
+declares instants reports `FAIL! at instant T (K of N instants failed)`
+with the FIRST failing instant's traceback. `--set` applies to the root
 under test.
 
 ```python
@@ -1872,13 +1886,9 @@ currently held commands. A blocked command reports only the travel
 admitted before the stop and never resumes automatically; issue a new
 request to retry or reverse. Read the result, not just the requested target.
 
-Known Python limitation at framework commit `9238ef8`: `handle.cancel()`
-sets `status` to `cancelled` but does not release the input or suppress
-its subsequent travel. A 5 mm move over 0.2 s cancelled before the first
-0.02 s tick still moves 0.5 mm on that tick. Do not rely on it to stop or
-replace a move until the framework fixes this; `rate(input, 0)` releases
-an active rate, and restore/reset replace the run state. This is a
-measured defect, not the intended cancellation contract.
+`handle.cancel()` retires a command where it stands and frees its input at
+once, so a replacement request is accepted the same tick; `rate(input, 0)`
+releases an active rate, and restore/reset replace the run state.
 
 **One law, two readings.** Laws are compiled once at construction by
 applying them to symbolic sources, in the direction the rest pose solved
@@ -2185,7 +2195,9 @@ refuses — leaves the bank, the tree and the record exactly as they stood.
 **Session surface.** `sim.state` is a fresh mapping of the whole bank;
 `sim.snapshot()`, `sim.restore(saved)`, `sim.initial` and `sim.reset()`
 act on it, `restore` refusing a snapshot taken over a different machine
-before touching anything. `record=N` keeps two bounded rings,
+(the snapshot carries the machine's identity, and a changed range or
+commit law under the same ids is a different machine) before touching
+anything. `record=N` keeps two bounded rings,
 `sim.commits` and `sim.stops`; without it the request's own result is
 still complete. `sim.trigger(name)` makes the one request a declared
 instruction states and returns it. `run`, `at`, `every`, `tick`, `rate`,
