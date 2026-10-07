@@ -1890,23 +1890,6 @@ one child translated in `render()`.
   installed framework will write its `site-packages` path into every
   maker's bundle. Root-relative keys, with the framework identified by its
   version, is the remedy shape. **Untriaged.**
-- **The Markdown gate refuses text that is not a dependency.** `_markdown`
-  (`profile.py:143-181`) rejected `if a<b then c>d ok` and a code span
-  containing a tag as an "unsupported HTML dependency". Version 1 was meant
-  to refuse dependencies a bundle cannot carry, not inequalities or quoted
-  markup. **Untriaged.**
-- **An overlap anywhere in the root blocks an unambiguous child's reports.**
-  With an overlap under `right`, `production.left.bom` raises
-  `ProductionConflictError`: `_read` (`profile.py:361-374`) checks every
-  overlap finding of the shared root, not the ones inside the queried
-  scope. The design refuses ambiguous totals; the child's totals are not
-  ambiguous. **Untriaged.**
-- **Declaration paths change shape with the repetition count.** A
-  one-member repeated child binding is named `kids/arbitrary_name` and a
-  two-member one `kids-0/arbitrary_name` (`profile.py:1083-1085`), although
-  the binding is a tuple in both cases, as the spec requires. A consumer
-  test pinning a declaration path breaks when a count parameter moves from
-  one to two. **Untriaged.**
 - **`Finding.check_status` is always `"checked"`.** No code path produces
   another value, and the export manifest's `checks` block is a constant.
   The design's "an unrequested geometry-dependent check is not advertised

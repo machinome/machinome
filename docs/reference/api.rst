@@ -53,7 +53,9 @@ read-only parameter mapping. References select actual active occurrences;
 lists and repetitions expand in model order, a zero repetition contributes
 nothing, and an omitted named target is an explicit finding. A nonempty tuple
 of references selects named siblings. Repeated child bindings are tuples,
-including a one-member repetition. Concrete profile inheritance is refused.
+including a one-member repetition. Their members' declaration paths carry the
+member's index at every count, as ``kids-0/nut``. Concrete profile inheritance
+is refused.
 
 ``Item(target, process, *, mass=None)`` comes from
 ``machinome.production.item``. An instance field returns a read-only
@@ -88,8 +90,11 @@ module, with canonical traversal and symlink escape refused. Child steps
 precede parent steps, preserving declaration order and model subject paths.
 Version-one text accepts plain Markdown, external HTTP/HTTPS links and
 same-document fragments. Unsupported local links, images, reference
-dependencies and raw HTML dependencies are refused. A missing instruction
-file refuses requested steps or export without producing a partial bundle.
+dependencies and raw HTML dependencies are refused. An HTML tag is a dependency
+when its element embeds or loads content or an attribute names a resource;
+other text, such as ``a<b``, is not. Text in code spans and fenced code blocks
+is not read for dependencies. A missing instruction file refuses requested
+steps or export without producing a partial bundle.
 
 ``MeasuredMass(grams, *, evidence)`` and ``SolidMass()`` are defined in
 ``machinome.production.mass``. Measured grams apply per occurrence and require
@@ -113,8 +118,9 @@ Unassigned candidates appear separately with quantity one and no invented
 identity; invalid recipes retain their requested process but no usable
 process; absent targets have quantity zero. Delegation reserves its subtree.
 Sourcing a whole assembly replaces its internals with one purchased item.
-Overlapping owners remain inspectable in ``findings`` and refuse other reports
-with ``ProductionConflictError``.
+Overlapping owners remain inspectable in ``findings`` and refuse the other
+reports, with ``ProductionConflictError``, of every binding whose scope holds
+an occurrence they both claim; the root's scope holds every occurrence.
 
 ``MassSummary`` exposes ``known_grams``, ``complete``, ``unknown_occurrences``
 and a tuple of per-occurrence ``MassBasis`` records. A known subtotal is not

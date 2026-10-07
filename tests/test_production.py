@@ -89,6 +89,60 @@ def test_delegation_ownership_conflict_has_all_declarations():
         profile.bom
 
 
+class Twice(Production[Submodel]):
+    a = Item(Submodel.nuts, Sourced(NUT))
+    b = Item(Submodel.nuts, Sourced(NUT))
+
+
+def test_an_overlap_refuses_only_the_reports_of_its_scope(tmp_path):
+    class OverlapInRight(Production[Root]):
+        left = SubProduction(Root.left)
+        right = Twice(Root.right)
+
+    profile = OverlapInRight(Root())
+    left = profile.left
+    assert [(line.status, line.quantity) for line in left.bom] == [
+        ("assigned", 2)
+    ]
+    assert left.stock == ()
+    assert left.steps == ()
+    assert not left.mass.complete
+    assert left.findings == ()
+    assert left.export(tmp_path / "left").coverage_complete
+    overlaps = profile.findings
+    assert [(f.code, f.occurrences) for f in overlaps] == [
+        ("overlap", ("right/nuts-0",)),
+        ("overlap", ("right/nuts-1",)),
+        ("overlap", ("right/nuts-2",)),
+    ]
+    assert profile.right.findings == overlaps
+    for read in (
+        lambda: profile.right.bom,
+        lambda: profile.bom,
+        lambda: profile.mass,
+    ):
+        with pytest.raises(
+            ProductionConflictError, match="right/a, right/b claim"
+        ):
+            read()
+    with pytest.raises(ProductionConflictError):
+        profile.export(tmp_path / "root")
+    assert not (tmp_path / "root").exists()
+
+
+def test_a_parent_reaching_into_one_child_leaves_its_sibling_readable():
+    class Reach(Production[Root]):
+        left = SubProduction(Root.left)
+        right = SubProduction(Root.right)
+        extra = Item(Reference(Root, ("left", "nuts")), Sourced(NUT))
+
+    profile = Reach(Root())
+    assert [line.quantity for line in profile.right.bom] == [3]
+    for read in (lambda: profile.left.bom, lambda: profile.bom):
+        with pytest.raises(ProductionConflictError, match="extra, left claim"):
+            read()
+
+
 def test_invalid_declarations_and_no_profile_inheritance():
     with pytest.raises(DeclarationError):
 
@@ -150,6 +204,49 @@ def test_zero_repeat_is_not_absent_and_single_repeat_child_stays_tuple():
         children_here = SubProduction(Repeated.children_here)
 
     assert isinstance(P(Repeated()).children_here, tuple)
+
+
+@pytest.mark.parametrize("count", [1, 2])
+def test_tuple_binding_members_are_always_indexed(tmp_path, count):
+    expected = [f"kids-{index}/arbitrary_name" for index in range(count)]
+
+    class Holder(AssemblyNode):
+        n = Count(count)
+        kids = Submodel(count=1).repeat(n)
+
+    class Repeated(Production[Holder]):
+        kids = SubProduction(Holder.kids)
+
+    repeated = Repeated(Holder())
+    assert isinstance(repeated.kids, tuple)
+    assert [
+        kid.arbitrary_name.declaration_path for kid in repeated.kids
+    ] == expected
+    assert [line.declaration_paths for line in repeated.bom] == [
+        tuple(expected)
+    ]
+    bundle = repeated.export(tmp_path / "bundle")
+    manifest = json.loads((bundle.path / "production.json").read_text())
+    assert [b["declaration_path"] for b in manifest["bindings"]] == [""] + [
+        f"kids-{index}" for index in range(count)
+    ]
+
+    class Tupled(Production[Root]):
+        kids = SubProduction(
+            (Reference(Root, ("left",)), Reference(Root, ("right",)))[:count]
+        )
+
+    tupled = Tupled(Root())
+    assert isinstance(tupled.kids, tuple)
+    assert [
+        kid.arbitrary_name.declaration_path for kid in tupled.kids
+    ] == expected
+
+    class Single(Production[Root]):
+        kid = SubProduction(Root.left)
+
+    single = Single(Root())
+    assert single.kid.arbitrary_name.declaration_path == "kid/arbitrary_name"
 
 
 def test_shared_consumed_artifact_invalidates_held_child_and_root_export(
@@ -246,6 +343,97 @@ def test_markdown_refusal_is_contextual_and_leaves_no_target(tmp_path):
     ):
         with pytest.raises(ProductionExportError):
             _markdown(text, "declared/step", tmp_path / "instruction.md")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "if a<b then c>d ok",
+        "keep x<y and z>w",
+        "5 < 6 > 4",
+        'write `<img src="x.png">` to embed',
+        "``a ` <script src=x> ` b``",
+        '```html\n<img src="x.png">\n```\n',
+        '~~~\n<link href="x.css">\n~~~',
+        "press <kbd>Ctrl</kbd> and <br/> then <sub>2</sub>",
+        '<div class="note">\nplain\n</div>',
+        "`[x](local.png)`",
+        "```\n[ref]: local.pdf\n```\n[x](https://example.com) and [y](#here)",
+        "Plain *Markdown* with `code` and <https://example.com>.",
+        "unclosed fence swallows the rest\n```\n<img src=x>",
+        "> quoted `<img src=x.png>` code",
+        "- item `<script src=x>` code",
+    ],
+)
+def test_markdown_gate_accepts_what_is_not_a_dependency(tmp_path, text):
+    from machinome.production.profile import _markdown
+
+    assert (
+        _markdown(text, "declared/step", tmp_path / "instruction.md") is None
+    )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '<img src="x.png">',
+        '<a href="x.pdf">x</a>',
+        '<a href="https://example.com">x</a>',
+        '<link rel="stylesheet" href="x.css">',
+        "<script>fetch('x')</script>",
+        "<style>@import 'x.css';</style>",
+        "<IMG SRC=x.png>",
+        '<span style="background:url(x.png)">x</span>',
+        '<svg><use xlink:href="x.svg#a"/></svg>',
+        '<a title="x>y" href="z">z</a>',
+        # A tag that starts before a backtick wins over the code span.
+        '<img src="`x.png"> `',
+        # An escaped backtick opens no code span.
+        "\\` <img src=x.png> `",
+        # A code span never crosses a blank line.
+        "use ` here\n\n<img src=x.png>\n\nand ` there",
+        # Inside an HTML block, backticks and fences are raw HTML.
+        '<div>\n`<img src="x.png">`\n</div>',
+        "<div>\n```\n<img src=x.png>\n```\n</div>",
+        "<pre>\n\n`<img src=x.png>`\n</pre>",
+        "<!--\n\n```\n-->\n<img src=x.png>",
+        # An HTML block inside a block quote or a list item is raw HTML too.
+        "> <div>\n> `<img src=x.png>`",
+        "- <div>\n  `<img src=x.png>`",
+        "1. <div>\n   ```\n   <img src=x.png>\n   ```",
+        # A definition inside fenced code resolves no reference.
+        "[x][ref]\n\n```\n[ref]: https://example.com\n```",
+    ],
+)
+def test_markdown_gate_refuses_html_dependencies_outside_code(tmp_path, text):
+    from machinome.production.profile import _markdown
+    from machinome.production.errors import ProductionExportError
+
+    with pytest.raises(ProductionExportError):
+        _markdown(text, "declared/step", tmp_path / "instruction.md")
+
+
+def test_an_inequality_in_a_step_is_read(tmp_path):
+    text = "if a<b then c>d ok\n"
+    module = _profile_module(
+        tmp_path / "profile",
+        "production_inequality",
+        """
+from tests.test_production import Submodel, NUT
+from machinome.production.profile import Production
+from machinome.production.item import Item
+from machinome.production.process import Sourced
+from machinome.production.instruction import Step, Markdown
+class Profile(Production[Submodel]):
+    nuts = Item(Submodel.nuts, Sourced(NUT))
+    step = Step(nuts, instructions=Markdown('assembly.md'))
+""",
+        {"assembly.md": text},
+    )
+    profile = module.Profile(Submodel())
+    assert profile.steps[0].instruction_text == text
+    bundle = profile.export(tmp_path / "bundle")
+    assert text in (bundle.path / "instructions.md").read_text()
 
 
 def _profile_module(directory, name, source, files=None):

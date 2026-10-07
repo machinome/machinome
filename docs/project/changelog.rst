@@ -110,6 +110,19 @@ Unreleased
   with ``ProductionExportError`` from ``Production(model)`` and
   ``FileNotFoundError`` from ``ModelSnapshot(model)``; it used to be
   reported as an input that had changed (production-reads-once).
+* **A production reports what is in its scope.** An instruction's
+  Markdown is refused for an HTML tag only when the tag can carry a
+  dependency, an element that embeds or loads content or an attribute
+  that names a resource, and code spans and fenced code blocks are not
+  read for dependencies, so ``if a<b then c>d`` and a quoted
+  ``<img src>`` in code no longer refuse ``steps`` and ``export``. A
+  child binding's reports are refused only for an overlap that claims an
+  occurrence within its scope, so an overlap under one child no longer
+  refuses its sibling; the root still refuses on any overlap. And the
+  members of a repeated or tuple child binding are named by index at
+  every count: a one-member repetition's member is ``kids-0``, as the
+  first of two is, where it used to be ``kids``, in every declaration
+  path and in the draft manifest (production-reports-in-scope).
 
 Machinome 0.8.0
 ---------------

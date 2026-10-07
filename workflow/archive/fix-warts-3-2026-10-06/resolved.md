@@ -633,3 +633,70 @@ over the Curta's `main` (`1f3dc22`), nothing written in the project: 6
 passed in 117.56 s before and 117.04 s after. That a missing source on a
 child only `render()` creates, and a source changed between a verified load
 and binding, still read as changed inputs is filed in `../../warts.md`.
+
+## `production-reports-in-scope`
+
+From "Findings from the adversarial review of the framework cycle `production-layer` (4 October 2026)", the items on the Markdown gate, the overlap scope and the declaration paths:
+
+- **The Markdown gate refuses text that is not a dependency.** `_markdown`
+  (`profile.py:143-181`) rejected `if a<b then c>d ok` and a code span
+  containing a tag as an "unsupported HTML dependency". Version 1 was meant
+  to refuse dependencies a bundle cannot carry, not inequalities or quoted
+  markup. **Untriaged.**
+- **An overlap anywhere in the root blocks an unambiguous child's reports.**
+  With an overlap under `right`, `production.left.bom` raises
+  `ProductionConflictError`: `_read` (`profile.py:361-374`) checks every
+  overlap finding of the shared root, not the ones inside the queried
+  scope. The design refuses ambiguous totals; the child's totals are not
+  ambiguous. **Untriaged.**
+- **Declaration paths change shape with the repetition count.** A
+  one-member repeated child binding is named `kids/arbitrary_name` and a
+  two-member one `kids-0/arbitrary_name` (`profile.py:1083-1085`), although
+  the binding is a tuple in both cases, as the spec requires. A consumer
+  test pinning a declaration path breaks when a count parameter moves from
+  one to two. **Untriaged.**
+
+**What shipped.** `production-reports-in-scope`
+(`openspec/changes/archive/2026-10-07-production-reports-in-scope/`)
+changes `machinome/production/profile.py` only. The Markdown gate first
+reduces an instruction to what a CommonMark renderer reads, by a line scan:
+fenced code blocks are dropped, code spans become a space, an HTML block is
+kept whole; wherever the scan could differ from CommonMark it keeps more
+text. It then refuses an HTML tag only when its element embeds, loads or
+executes content (`img`, `script`, `link`, `iframe`, `object`, `style`,
+`svg`, …) or it carries an attribute that names a resource (`src`, `href`,
+`data`, `srcset`, `style`, `xlink:href`, …), so `if a<b then c>d ok`,
+`<kbd>Ctrl</kbd>` and markup quoted in code are accepted, while
+`<img src>`, `<a href>` (an HTTPS one included), `<link>` and `<script>`
+are refused as before; a reference whose only definition is inside fenced
+code is now refused as unresolved. A binding's reports are refused with
+`ProductionConflictError` only for an overlap that names an occurrence
+within its own scope, the test `findings` already used; the root's scope
+holds every occurrence, so it still refuses on any overlap. A repeated or
+tuple child binding names its members by index at every count, so a
+one-member repetition's member is `kids-0`, in every declaration path and
+in the draft manifest; a single reference is still named without one. In
+`tests/test_production.py`, 18 cases were red first: 13 accepted Markdown
+cases (`unsupported HTML dependency`, or `unsupported local or URL
+dependency` for a link or definition in code), the fenced-definition
+refusal (DID NOT RAISE), an inequality read through `steps` and `export`,
+`left.bom` beside an overlap under `right`, `right.bom` beside a parent
+Item reaching into `left`, and a one-member repetition's
+`['kids/arbitrary_name'] != ['kids-0/arbitrary_name']`; 23 guards were
+green before and after. The reproduction refused every gate case, every
+report of `left`, `right` and the root, and named a one-member member
+`kids` before the change; after it, the non-dependencies are accepted,
+`left` reads `[2]` and `right` (in the second fixture) `[3]` while the
+overlapping child and the root still refuse, and the manifest's `bindings`
+are `['', 'kids-0']` at one member. The originating Curta production slice
+(`projects/Calculators/Curta-Type-I-3x`, worktree `WTs/production-layer-3x`,
+`7c9121e`) has twelve Markdown files with no `<` or `>`, declares no
+overlap, and binds its two `springs` tuples of ten and five members,
+already indexed, so it validates that nothing regresses; its test pins no
+declaration path, and no project edit is needed. Its own README command
+cannot collect against the 0.8 framework (its test imports `AssemblyNode`
+and `StepNode` from the root of `machinome.node`), so it ran as a copy of
+its `production/` package in the scratchpad with that one import rewritten,
+over the Curta's `main` (`1f3dc22`), nothing written in the project: 6
+passed in 118.81 s before and 119.63 s after, with the same 417 findings
+and 21 binding paths.

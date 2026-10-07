@@ -56,7 +56,7 @@ Rules for the whole cycle:
 
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
+- [x] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
   rev-parse HEAD`), the interpreter check (`python -c 'import machinome;
   print(machinome.__file__)'` prints a path under the bench), the Curta's
   head (`git -C <project> rev-parse --short HEAD`) and the slice's head
@@ -65,7 +65,7 @@ Rules for the whole cycle:
   `<scratch>/probe_markdown.py`, `<scratch>/probe_holder.py` and
   `<scratch>/curta_bindings.py`, and the overlay recipe above, into
   `evidence.md`, because the scratchpad is not durable.
-- [ ] 1.2 Run `<scratch>/repro_reports.py`. Expect
+- [x] 1.2 Run `<scratch>/repro_reports.py`. Expect
   `<scratch>/repro_reports.before.out`: every direct gate case refused,
   the step refused with `unsupported HTML dependency`; in the first
   overlap fixture `left.findings` `()` and every report of `left`,
@@ -73,20 +73,20 @@ Rules for the whole cycle:
   `kids/arbitrary_name` for a one-member repeat and a one-member tuple,
   `kids-0/…`, `kids-1/…` for two, `kid/arbitrary_name` for a single
   reference.
-- [ ] 1.3 Run `<scratch>/probe_holder.py`. Expect
+- [x] 1.3 Run `<scratch>/probe_holder.py`. Expect
   `<scratch>/probe_holder.before.out`: manifest `bindings` `['', 'kids']`
   at `n=1`, `['', 'kids-0', 'kids-1']` at `n=2`.
-- [ ] 1.4 Run `<curta>`. Record counts and times (Stage P: `6 passed in
+- [x] 1.4 Run `<curta>`. Record counts and times (Stage P: `6 passed in
   134.08s`, wall 135.36 s, a new build directory). Run
   `<curta-bindings>` and record its output (Stage P:
   `<scratch>/curta_bindings.before.out`, 417 findings, all `unassigned`,
   21 binding paths, wall 29.03 s).
-- [ ] 1.5 Run `pytest -q -p no:cacheprovider <focused>` and record counts
+- [x] 1.5 Run `pytest -q -p no:cacheprovider <focused>` and record counts
   and time (Stage P: `57 passed, 4 warnings in 7.27s`, wall 8.32 s).
 
 ## 2. Tests
 
-- [ ] 2.1 In `tests/test_production.py`, after
+- [x] 2.1 In `tests/test_production.py`, after
   `test_markdown_refusal_is_contextual_and_leaves_no_target`, add
   `test_markdown_gate_accepts_what_is_not_a_dependency` and
   `test_markdown_gate_refuses_html_dependencies_outside_code`,
@@ -99,19 +99,19 @@ Rules for the whole cycle:
   `unsupported local or URL dependency 'local.png'` for the code-span
   link, `'local.pdf'` for the fenced definition), and the refused case
   `[x][ref]` whose only definition is fenced (DID NOT RAISE).
-- [ ] 2.2 Add `test_an_inequality_in_a_step_is_read`, as design.md
+- [x] 2.2 Add `test_an_inequality_in_a_step_is_read`, as design.md
   Decision 4, with `_profile_module`. RED today with `unsupported HTML
   dependency`.
-- [ ] 2.3 After `test_delegation_ownership_conflict_has_all_declarations`,
+- [x] 2.3 After `test_delegation_ownership_conflict_has_all_declarations`,
   add `test_an_overlap_refuses_only_the_reports_of_its_scope` and
   `test_a_parent_reaching_into_one_child_leaves_its_sibling_readable`, as
   Decision 4 (a module-level `Twice(Production[Submodel])` with Items `a`
   and `b` on `Submodel.nuts`). RED today at `left.bom` and at `right.bom`
   with `ProductionConflictError`.
-- [ ] 2.4 After `test_zero_repeat_is_not_absent_and_single_repeat_child_stays_tuple`,
+- [x] 2.4 After `test_zero_repeat_is_not_absent_and_single_repeat_child_stays_tuple`,
   add `test_tuple_binding_members_are_always_indexed`, as Decision 4.
   RED today at `n=1` (`['kids/arbitrary_name'] != ['kids-0/arbitrary_name']`).
-- [ ] 2.5 Run the new tests on the unmodified code
+- [x] 2.5 Run the new tests on the unmodified code
   (`pytest -q -p no:cacheprovider tests/test_production.py -k
   "not_a_dependency or outside_code or inequality_in_a_step or
   only_the_reports_of_its_scope or leaves_its_sibling_readable or
@@ -120,23 +120,23 @@ Rules for the whole cycle:
 
 ## 3. The change
 
-- [ ] 3.1 `machinome/production/profile.py`: above `_markdown`, the
+- [x] 3.1 `machinome/production/profile.py`: above `_markdown`, the
   private constants and `_rendered_text` and `_html_dependency`; in
   `_markdown`, read the rendered text first and replace the HTML check,
   as design.md Decision 1.
-- [ ] 3.2 `Production._in_scope`, `findings` through it, and `_read`
+- [x] 3.2 `Production._in_scope`, `findings` through it, and `_read`
   refusing only the overlaps in scope, as Decision 2.
-- [ ] 3.3 `_Shared.resolve.populate`: the tuple test above the loop and
+- [x] 3.3 `_Shared.resolve.populate`: the tuple test above the loop and
   the members named by it, as Decision 3.
-- [ ] 3.4 Run 2.5's selection: all green. Run `<focused>`: 1.5's count
+- [x] 3.4 Run 2.5's selection: all green. Run `<focused>`: 1.5's count
   plus the new cases, all passing.
-- [ ] 3.5 `git -C <bench> status --short` lists only
+- [x] 3.5 `git -C <bench> status --short` lists only
   `machinome/production/profile.py`, `tests/test_production.py` and the
   change directory.
 
 ## 4. The reproductions and the originating project after the change
 
-- [ ] 4.1 Run `<scratch>/repro_reports.py`: the inequalities, the code
+- [x] 4.1 Run `<scratch>/repro_reports.py`: the inequalities, the code
   span, the fenced code, `<kbd>` and the code-span link accepted, the
   dependency rows refused; the step read; in the first overlap fixture
   `left`'s reports read (`[2]`, `False`, `()`), `right`'s and the root's
@@ -146,25 +146,25 @@ Rules for the whole cycle:
   0` (it carries its own copy of the gate; it confirms the cases, not
   the bench). Run `<scratch>/probe_holder.py`: `['', 'kids-0']` at
   `n=1`. Record the outputs.
-- [ ] 4.2 Run `<curta>` again against the same build directory. Expect
+- [x] 4.2 Run `<curta>` again against the same build directory. Expect
   1.4's counts. Record the times beside 1.4's, and the unchanged
   `git status --short`. Run `<curta-bindings>`: the same 417 findings and
   the same 21 binding paths as 1.4.
 
 ## 5. Records
 
-- [ ] 5.1 `docs/reference/api.rst`, the production section: the three
+- [x] 5.1 `docs/reference/api.rst`, the production section: the three
   edits of design.md Decision 5, and nothing else.
-- [ ] 5.2 Append Decision 5's bullet to the one `Unreleased` section of
+- [x] 5.2 Append Decision 5's bullet to the one `Unreleased` section of
   `docs/project/changelog.rst`, after its existing bullets.
-- [ ] 5.3 Grep `docs/` (excluding `adrs/` and `releases/`) for
+- [x] 5.3 Grep `docs/` (excluding `adrs/` and `releases/`) for
   `ProductionConflictError`, `overlap`, `HTML`, `Markdown`,
   `declaration_path` and `repetition`, and confirm that no other page
   says something this change makes wrong. Record the result.
 
 ## 6. Warts
 
-- [ ] 6.1 Move the three items of the section "## Findings from the
+- [x] 6.1 Move the three items of the section "## Findings from the
   adversarial review of the framework cycle `production-layer` (4 October
   2026)" of `workflow/warts.md` verbatim, from "- **The Markdown gate
   refuses text that is not a dependency.**", "- **An overlap anywhere in
@@ -185,16 +185,16 @@ Rules for the whole cycle:
 
 ## 7. Sync and archive
 
-- [ ] 7.1 Sync the delta into `openspec/specs/production-assets/spec.md`,
+- [x] 7.1 Sync the delta into `openspec/specs/production-assets/spec.md`,
   replacing the three modified requirements. Diff against the baseline:
   each requirement differs only in its added or changed sentence and its
   added scenario or scenarios.
-- [ ] 7.2 Archive the change to
+- [x] 7.2 Archive the change to
   `openspec/changes/archive/<date>-production-reports-in-scope/`. Then
   `openspec validate --specs` passes.
-- [ ] 7.3 Run `black --check` and `flake8 --max-line-length=89` on
+- [x] 7.3 Run `black --check` and `flake8 --max-line-length=89` on
   `machinome/production/profile.py` and `tests/test_production.py`.
-- [ ] 7.4 Run `<focused>` once more, then the full suite once, alone
+- [x] 7.4 Run `<focused>` once more, then the full suite once, alone
   (`pytest -q -p no:cacheprovider` at the bench root), and record counts
   and wall time. A failure that is not this change's is recorded and
   stopped on, not worked around. Leave everything uncommitted.

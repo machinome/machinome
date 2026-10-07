@@ -140,8 +140,108 @@ def _local_file(klass, spelling, declaration, source_file=None):
     return path.absolute()
 
 
+_FENCE = re.compile(r"^ {0,3}(`{3,}(?!.*`)|~{3,})")
+# An HTML block may open inside a block quote or a list item, at any
+# indentation: reading more lines as HTML only refuses more.
+_CONTAINER = r"^(?:[ \t>]|[-+*][ \t]|\d{1,9}[.)][ \t])*"
+_HTML_BLOCKS = (
+    (
+        re.compile(
+            _CONTAINER + r"<(?:script|pre|style|textarea)(?:\s|>|$)", re.I
+        ),
+        re.compile(r"</(?:script|pre|style|textarea)>", re.I),
+    ),
+    (re.compile(_CONTAINER + r"<!--"), re.compile(r"-->")),
+    (re.compile(_CONTAINER + r"<\?"), re.compile(r"\?>")),
+    (re.compile(_CONTAINER + r"<!\[CDATA\["), re.compile(r"\]\]>")),
+    (re.compile(_CONTAINER + r"<![A-Za-z]"), re.compile(r">")),
+    (re.compile(_CONTAINER + r"</?[A-Za-z]"), None),
+)
+# A tag is matched before a code span that starts later, as in CommonMark.
+_SPAN_OR_TAG = re.compile(
+    r"(?<![`\\])(`+)(?!`)(.+?)(?<!`)\1(?!`)|<[^<>]*>", re.S
+)
+_TAG = re.compile(
+    r"<(/?)([A-Za-z][A-Za-z0-9-]*)((?:[^>\"']|\"[^\"]*\"|'[^']*')*)>"
+)
+_EMBEDDING = frozenset(
+    "applet audio base embed frame iframe img link meta object picture "
+    "script source style svg track video".split()
+)
+_DEPENDENCY_ATTRIBUTES = frozenset(
+    "action background data formaction href poster src srcdoc srcset "
+    "style".split()
+)
+
+
+def _rendered_text(text):
+    """The text CommonMark reads as Markdown or HTML, without its code.
+
+    Fenced code blocks are dropped and code spans become a space; an HTML
+    block is kept whole. Where this scan could differ from CommonMark it
+    keeps more text, so the gate only ever refuses more.
+    """
+    kept, paragraph, fence, block_end = [], [], None, None
+
+    def close_paragraph():
+        if paragraph:
+            kept.append(
+                _SPAN_OR_TAG.sub(
+                    lambda m: " " if m.group(1) else m.group(0),
+                    "\n".join(paragraph),
+                )
+            )
+            paragraph.clear()
+
+    for line in text.splitlines():
+        if fence is not None:
+            closing = rf"^ {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}\s*$"
+            if re.match(closing, line):
+                fence = None
+            continue
+        if block_end is not None:
+            kept.append(line)
+            if (block_end is False and not line.strip()) or (
+                block_end is not False and block_end.search(line)
+            ):
+                block_end = None
+            continue
+        opened = _FENCE.match(line)
+        if opened:
+            close_paragraph()
+            fence = opened.group(1)
+            continue
+        for start, end in _HTML_BLOCKS:
+            opening = start.match(line)
+            if opening:
+                close_paragraph()
+                kept.append(line)
+                block_end = False if end is None else end
+                if end is not None and end.search(line, opening.end()):
+                    block_end = None
+                break
+        else:
+            if line.strip():
+                paragraph.append(line)
+            else:
+                close_paragraph()
+    close_paragraph()
+    return "\n\n".join(kept)
+
+
+def _html_dependency(tag):
+    """Whether a tag embeds or loads content, or names a resource."""
+    name = tag.group(2).lower()
+    body = re.sub(r"\"[^\"]*\"|'[^']*'", " ", tag.group(3))
+    names = {n.lower() for n in re.findall(r"[A-Za-z_:][-\w.:]*", body)}
+    return name in _EMBEDDING or any(
+        n in _DEPENDENCY_ATTRIBUTES or n.endswith(":href") for n in names
+    )
+
+
 def _markdown(text, declaration, path):
     """Refuse dependencies that a version-one portable bundle cannot carry."""
+    text = _rendered_text(text)
     destinations = re.findall(r"!?\[[^\]]*\]\(\s*<?([^\s)>]+)", text)
     definitions = dict(
         re.findall(r"^\s*\[([^\]]+)\]:\s*<?([^\s>]+)", text, re.M)
@@ -156,7 +256,7 @@ def _markdown(text, declaration, path):
             )
     # Shortcut reference syntax and HTML dependencies must not escape the
     # explicitly referenced file inventory.
-    if re.search(r"</?[a-z][a-z0-9:-]*(?:\s[^>]*|/?)>", text, re.I):
+    if any(_html_dependency(tag) for tag in _TAG.finditer(text)):
         raise ProductionExportError(
             f"{declaration}: unsupported HTML dependency in {path}"
         )
@@ -366,17 +466,19 @@ class Production:
     def _read(self, name, build):
         self._resolve()
         try:
-            if name != "findings" and any(
-                f.code == "overlap" for f in self._shared.findings
-            ):
-                raise ProductionConflictError(
-                    "overlapping ownership: "
-                    + "; ".join(
-                        f.message
-                        for f in self._shared.findings
-                        if f.code == "overlap"
+            if name != "findings":
+                # Only an overlap on an occurrence this binding reads makes
+                # its reports ambiguous; the root's scope holds them all.
+                overlaps = [
+                    f
+                    for f in self._shared.findings
+                    if f.code == "overlap" and self._in_scope(f)
+                ]
+                if overlaps:
+                    raise ProductionConflictError(
+                        "overlapping ownership: "
+                        + "; ".join(f.message for f in overlaps)
                     )
-                )
             if name not in self._cache:
                 self._cache[name] = build()
             self._shared.snapshot.validate()
@@ -391,26 +493,22 @@ class Production:
             if _within(record[2].path, self._scope.path)
         ]
 
+    def _in_scope(self, finding):
+        if finding.occurrences:
+            return any(
+                _within(path, self._scope.path) for path in finding.occurrences
+            )
+        return any(
+            _within(path, self._declaration_scope or ".")
+            for path in finding.declarations
+        )
+
     @property
     def findings(self):
         return self._read(
             "findings",
             lambda: tuple(
-                f
-                for f in self._shared.findings
-                if (
-                    any(
-                        _within(path, self._scope.path)
-                        for path in f.occurrences
-                    )
-                    or (
-                        not f.occurrences
-                        and any(
-                            _within(path, self._declaration_scope or ".")
-                            for path in f.declarations
-                        )
-                    )
-                )
+                f for f in self._shared.findings if self._in_scope(f)
             ),
         )
 
@@ -1072,6 +1170,12 @@ class _Shared:
                 elif isinstance(declaration, Production):
                     target = self.child_targets[id(declaration)]
                     selected = self.selected(binding, target, path)
+                    # A repeat or tuple remains a tuple even with one member,
+                    # and its members are named by index at every count.
+                    is_many = isinstance(target, tuple) or len(selected) != 1
+                    is_many = is_many or self.snapshot.selection_is_many(
+                        target, scope=binding._scope
+                    )
                     children = []
                     for index, occurrence in enumerate(selected):
                         if not issubclass(
@@ -1086,7 +1190,7 @@ class _Shared:
                         child._shared = self
                         child._scope = occurrence
                         child._declaration_scope = (
-                            path if len(selected) == 1 else f"{path}-{index}"
+                            f"{path}-{index}" if is_many else path
                         )
                         child._cache = {}
                         child._children = {}
@@ -1095,11 +1199,6 @@ class _Shared:
                         ]
                         children.append(child)
                         populate(child)
-                    # A repeat or tuple remains a tuple even with one member.
-                    is_many = isinstance(target, tuple) or len(selected) != 1
-                    is_many = is_many or self.snapshot.selection_is_many(
-                        target, scope=binding._scope
-                    )
                     binding._children[name] = (
                         tuple(children) if is_many else children[0]
                     )

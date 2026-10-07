@@ -167,6 +167,18 @@ in the same cycle.
   child created in `render()` and a source changed before binding are
   recorded in `../warts.md`.
 
+- 7 October 2026: cycle 11, `production-reports-in-scope`, applied: the
+  Markdown gate reads no code and refuses an HTML tag only when it can
+  carry a dependency, so `if a<b then c>d ok`, `<kbd>` and markup quoted in
+  code are accepted while `<img src>`, `<a href>`, `<link>` and `<script>`
+  are still refused; a child binding's reports refuse only for an overlap
+  in its own scope, the root still on any; a repeated or tuple child
+  binding's members are named by index at every count (`kids-0` for one
+  member, `kids` before). The Curta production slice, through the same
+  scratch copy as cycle 10, passes its 6 tests (118.8 s before, 119.6 s
+  after) with the same 21 binding paths, and needs no edit. Three entries
+  moved to `../archive/fix-warts-3-2026-10-06/resolved.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.
