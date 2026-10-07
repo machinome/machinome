@@ -216,6 +216,20 @@ in the same cycle.
   the entry moved to `../archive/fix-warts-3-2026-10-06/resolved.md` and
   the two records that still said `(path, float mtime)` were corrected.
 
+- 7 October 2026: cycle 15, `strict-manual-build`, applied: `docs/conf.py`
+  sets `nitpicky = True`, so CI's docs job and Read the Docs, their
+  commands unchanged, refuse an unresolved cross-reference; with the
+  setting alone the CI command failed with the five warnings, and with
+  the two `api.rst` references and the `Sim.initial`, `Sim.state` and
+  `OpenScadNode.__init__` docstrings fixed where they are written it builds
+  with none, in an environment holding `docs/requirements.txt` alone. Four
+  closed entries left `docs/architecture.md`'s known gaps, one was
+  rewritten to what is still true and one dead page path corrected; the
+  joints page says how to write a site joint under a conditional rest
+  placement. No project run. Items 5 and 6 of the Curta section and the
+  Inmoov-sim entry moved to `../archive/fix-warts-3-2026-10-06/resolved.md`;
+  the studio craft skill's sentence stays in cycle 19.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

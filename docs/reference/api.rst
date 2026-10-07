@@ -198,7 +198,8 @@ Common node API
       move. It reads no driver, no time and no port — an assembly's
       ``render()`` that read none runs once per instance; one that does
       read keeps re-running per binding and warns once per class. What
-      moves belongs to :meth:`AssemblyNode.simulate`.
+      moves belongs to
+      :meth:`AssemblyNode.simulate() <machinome.node.assembly.AssemblyNode.simulate>`.
 
    .. method:: rotate(angle, axis)
 
@@ -210,7 +211,8 @@ Common node API
       simulates again. Both apply in the viewer and to the mesh used by
       tests. Returns the node itself, so calls can be chained. In
       ``simulate()``, ``angle`` may be an expression involving
-      :attr:`AssemblyNode.time` or any declared driver.
+      :attr:`AssemblyNode.time <machinome.node.assembly.AssemblyNode.time>`
+      or any declared driver.
 
    .. method:: translate(translation)
 

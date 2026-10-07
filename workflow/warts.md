@@ -499,30 +499,6 @@ ADR-097 closed the own-placed-origin finding. One thing it raised remains.
   catalogue reaches this guard with a site-jointed child of its own
   parent's class today.
 
-# Inmoov-sim (2026-09-10, stage B on ADR-098)
-
-- **A site joint's value is the line in the parent's frame where the
-  child FINALLY rests, after every rest operation the parent applies to
-  it — and when one of those is conditional, a plain value is silently
-  wrong for the other branch.** `Forearm` places its wrist `axle` with
-  `_in_wrist` and then, when `presented` is true, `present()`'s turn;
-  the site joint `Bolt(turn=Revolute(axis=..., at=...))` written as the
-  plain pre-presentation numbers reproduced the reference poses only
-  with `presented=False`, and with the project's own default missed by
-  622 mm³ of palm/axle interference at rest and 14.2 mm at full wrist
-  travel, with no refusal. Correct: a callable of the realized parent
-  (`_presented(vector)` rotating the value through `PRESENTATION` when
-  `forearm.presented`), which is the ADR-098 contract working as
-  designed — the parent's frame is where the child ends up — but nothing
-  in the docs says a plain site value should be treated as suspect
-  whenever the parent's own rest placement of that child is conditional.
-  Triage: one sentence in `docs/driving.rst`'s site paragraph and in the
-  shop craft skill; no framework change.
-
-  **Remaining (2026-10-04):** not done. `docs/driving.rst` no longer exists;
-  the site paragraph is now in `docs/concepts/joints.rst`, which says
-  nothing about a conditional placement.
-
 # 3DPrintedClocks (2026-09-11, stage B on ADR-099)
 
 - **A descendant's hand-written `simulate()` that needs a coordinate an
@@ -1656,16 +1632,10 @@ not meeting its nut), undiagnosed.
 
 Findings 1 to 3 are fixed on main (`sim-through-a-symlink`, `sim-identity`,
 `export-records-its-revision`, ADR-158); finding 4 is fixed by
-`clocked-snapshot-identity` (`archive/fix-warts-3-2026-10-06/resolved.md`);
-finding 7 was not a defect. The findings met by the bench's cycles that
-remain (recorded, triage open):
-
-5. **The strict manual build is not a gate.** `sphinx -W` fails on `main` with
-   five warnings in untouched lines (`docs/reference/api.rst` 23, 35, 76 and
-   the `Sim.initial` and `Sim.state` docstrings). Found by `sim-identity`.
-6. **A stale known gap in `docs/architecture.md`:** "A clocked model is
-   published but not yet VIEWED" predates viewer 0.7.0, which reads document
-   versions 1 to 13. Found by `sim-identity`.
+`clocked-snapshot-identity`, and findings 5 and 6 by `strict-manual-build`
+(both in `archive/fix-warts-3-2026-10-06/resolved.md`); finding 7 was not a
+defect. The findings met by the bench's cycles that remain (recorded,
+triage open):
 
 8. **An export written inside the project and not ignored makes every later
    export there dirty.** The Curta's `export/` is untracked, so its record

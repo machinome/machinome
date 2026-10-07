@@ -100,7 +100,11 @@ This is for the bought bearing, the fastener, the shared catalogue class
 that carries no joint of its own: where the parent's origin already is
 the line, no anchor is needed at all. The sentence a reader gets wrong:
 **a child the parent translates swings about the parent's origin, not its
-own**, unless ``at`` names the child's placement. One declaration serves
+own**, unless ``at`` names the child's placement. A site joint's values
+are read where the child finally rests, after every rest operation the
+parent applies to it, so when one of those operations is conditional a
+plain value is right for one branch only: write the argument as a
+callable of the realized parent (Arguments, below). One declaration serves
 every copy of a ``repeat()``, resolving the same arguments once against
 the parent, each copy's operations carried through its own rest
 placement. An ``Orbit``'s ``carries`` keeps its asymmetry: written at a

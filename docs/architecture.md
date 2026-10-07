@@ -3295,15 +3295,10 @@ The short list that changes must not silently break:
   boundary is exercised by rendered spike snapshots rather than by a
   test. Closing it needs OpenSCAD in the loop, which nothing yet
   requires.
-- **Create React App is deprecated** (ADR-013, now in machinome-viewer):
-  the development shell's toolchain carries migration debt (Vite or similar),
-  owed by the viewer repository.
-- **The manual's build installs the viewer from PyPI**
-  (`docs/requirements.txt`, on Read the Docs and in the CI docs job; the
-  build produces nothing else, since the example machines moved to
-  machinome.org), so it builds only once machinome-viewer is uploaded;
-  the CI browser-snapshot job still installs the viewer from Git until
-  then.
+- **The CI browser-snapshot job installs the viewer from Git**
+  (`.github/workflows/python-app.yml`), with Node to build its widget,
+  where the manual's build installs the published package
+  (`docs/requirements.txt`).
 - **Sequential STL rendering**: `build_stls` renders one STL at a
   time; cold builds could parallelize `openscad` jobs
   (`docs/performance-improvement.md` §4–5, unscheduled).
@@ -3311,7 +3306,7 @@ The short list that changes must not silently break:
   framework cannot tell a knife-edge gate — one whose disengaged state
   is a single value of the coordinate — from a band, because the
   distinction is numeric rather than syntactic. It is documented in
-  `docs/scenarios.rst` and tested for what the framework promises, not
+  `docs/concepts/running.rst` and tested for what the framework promises, not
   refused.
 - **A driven GROUP with a self-read is refused** (ADR-121): a member
   reading a sibling would need that sibling's path while the sibling's
@@ -3321,23 +3316,6 @@ The short list that changes must not silently break:
   actual source pieces now certify solvable motion where available; this does
   not promise arbitrary curved excursions are all found. No generic coupled
   solver, microstep schedule or new tolerance is introduced.
-- **`declared_ports` is re-walked from every call, not memoised by
-  class** (measured by `evaluate-only-what-moves` design.md section 8):
-  61 % of the originating machine's construction and 12.5 % of its tick
-  is `declared_ports(node_class)` re-walking a declarative class's tree
-  through `__getattr__` — a class's own enumeration never changes, but
-  nothing caches it. Memoising it alone took the Curta's construction
-  from 5.46 s to 1.98 s and its tick from 3.27 s to 2.82 s; with ADR-124
-  together, tick 0.294 s and construction 2.08 s. It is now the biggest
-  remaining item (`machinome/motion/ports.py`), and it needs its own
-  answer to when a class's enumeration may be trusted to stand — a
-  declarative class is built dynamically by `.repeat()`, so a memo keyed
-  by class either holds classes alive or needs a weak key. Unscheduled.
-- **The viewer's TypeScript run keeps its whole-graph walk** (recorded by
-  `evaluate-only-what-moves`, not proposed there): its interpreter has
-  the same shape ADR-124 amortises here, and would take the same win —
-  no document, no flag and no answer changes for it either. A finding
-  for machinome-viewer, not this repository.
 - **A block's construction check is necessary and not sufficient**
   (ADR-122): which selector branch VECTORS are reachable is arithmetic
   about the selecting input rather than structure, so a particular
@@ -3359,13 +3337,6 @@ The short list that changes must not silently break:
   turns leaves the stop with no moving input to stop and the tick is
   refused `StopInvariantError`. Pre-existing and identical with no block
   anywhere.
-- **A clocked model is published but not yet VIEWED** (ADR-128): a
-  clocked root publishes version 8 with its compiled machine, and the
-  corpus is the contract a second runtime must reproduce — but no
-  released viewer reports version 8, so a build and an export warn, a
-  web snapshot is refused before the browser starts, and such a model
-  still does not reach a browser. Executing a version 8 document is the
-  viewer's own cycle, in its own repository.
 - **The framework has TWO meanings of `%`** (ADR-128): a commit law is
   CALLED, so its `%` is Python's floored remainder, while a chain, a
   bound, a constraint level and a running law edge are EVALUATED as

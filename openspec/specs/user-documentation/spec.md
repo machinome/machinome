@@ -69,6 +69,13 @@ simulations, and scenario tests that run under both plain pytest and
 at least one published page. Every page that embeds a model SHALL use a
 committed export, so the documentation build runs no CAD stack.
 
+The joints page's passage on a joint declared where a parent declares a
+child SHALL say that the joint's values are read where the child finally
+rests, after every rest operation the parent applies to it, so that when
+one of those operations is conditional a plain value is right for one
+branch only and the argument to write is a callable of the realized
+parent.
+
 #### Scenario: Setting a driver from Python
 
 - **WHEN** a reader looks up how to move a machine from code
@@ -97,6 +104,14 @@ committed export, so the documentation build runs no CAD stack.
   a control on the part, then `State` with a committing relation and a
   request, and a concept page states what each execution model owns,
   publishes and refuses
+
+#### Scenario: A site joint under a conditional rest placement
+
+- **WHEN** a reader declares a joint where a parent declares a child, and
+  the parent's rest placement of that child depends on a condition
+- **THEN** the joints page's site passage tells them the values are read
+  where the child finally rests, that a plain value is right for one
+  branch only, and that a callable of the realized parent is what to write
 
 ### Requirement: Viewer and embedding claims are accurate
 
@@ -189,6 +204,12 @@ Sphinx, and neither SHALL run `machinome export`, install a system package,
 a Node tool or a package from a repository URL, or check out a submodule.
 Every export a page embeds SHALL be committed under `docs/_exports/`.
 
+Both builds SHALL treat warnings as errors, and the manual's Sphinx
+configuration SHALL make every build nitpicky, so that a cross-reference
+whose target the manual does not document, written in a page or in a
+docstring the manual renders, fails the build that Read the Docs and the
+CI docs job run.
+
 #### Scenario: Read the Docs builds the manual
 
 - **WHEN** Read the Docs builds any version of the manual
@@ -215,6 +236,16 @@ Every export a page embeds SHALL be committed under `docs/_exports/`.
   the manual with warnings as errors
 - **THEN** the build succeeds and every tutorial page shows its committed
   export with the viewer's widget
+
+#### Scenario: A reference names nothing the manual documents
+
+- **WHEN** a page or a rendered docstring cross-references a target the
+  manual does not document, such as a class named without its module
+  where the current module does not hold it, or a docstring line napoleon
+  reads as a type
+- **THEN** the CI docs job's command, `python -m sphinx -b html -W docs
+  <out>`, fails naming the reference, with no `-n` on its command line,
+  and the suite fails if the manual's configuration stops being nitpicky
 
 ### Requirement: The release is recorded where readers are sent
 
@@ -890,3 +921,4 @@ the package SHALL stay in the contributor briefing.
 - **THEN** it states the development install, how to run the tests and the
   lint, the browser-snapshot opt-in and the spec-first discipline, and
   points to the contributor briefing for the layout of the package
+

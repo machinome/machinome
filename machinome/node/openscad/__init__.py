@@ -58,7 +58,7 @@ class OpenScadNode(ExternalSourceIdentity, ScadLeafNode):
 
         Args:
            *args: will be passed as arguments to the OpenScad module
-           name keyword argument: the name of this node, defaul to name of the class
+           name: the name of this node, by default the name of the class
            **kwargs: will be passed as keyword arguments to the openscad module
         """
         self.openscad_source = require_source_file(

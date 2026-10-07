@@ -50,6 +50,15 @@ class MateContractDocumentationTest(unittest.TestCase):
         self.assertIn('declaring assembly', joints)
         self.assertNotIn('or reads other coordinates; a mate', joints)
 
+    def test_joints_tells_a_conditional_site_placement(self):
+        joints = (ROOT / 'docs/concepts/joints.rst').read_text()
+        site = joints.partition(
+            'Passed as a **keyword where a parent declares a child**')[2]
+        site = ' '.join(site.partition('\nFrames and mates\n')[0].split())
+        self.assertIn('finally rests', site)
+        self.assertIn('conditional', site)
+        self.assertIn('callable of the realized parent', site)
+
     def test_running_and_reference_admit_explicit_mate_selection(self):
         running = (ROOT / 'docs/concepts/running.rst').read_text()
         reference = (ROOT / 'docs/reference/api.rst').read_text()

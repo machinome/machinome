@@ -386,7 +386,7 @@ class Sim:
 
     @property
     def initial(self):
-        """The snapshot taken at construction: the rest pose."""
+        """The snapshot taken at construction, which is the rest pose."""
         if self._clocked is not None:
             return self._clocked.initial
         return self._running('initial').initial
@@ -412,7 +412,7 @@ class Sim:
 
     @property
     def state(self):
-        """The current snapshot by qualified id: a fresh dict, so a
+        """The current snapshot by qualified id, as a fresh dict, so a
         caller holding one holds a value and not a view of the running
         simulation.
 

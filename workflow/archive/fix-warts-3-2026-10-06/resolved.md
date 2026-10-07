@@ -892,3 +892,81 @@ run, and would not close it. Wall clock 02 (`--brep`, scratch build
 directory): 16 passed, 6 failed, its own, cold 1152 s, warm 23.7 s. The
 `_verdict_key` docstring and ADR-156's consequence, which still said
 `(path, float mtime)`, were corrected with this closure.
+
+## `strict-manual-build`
+
+From "Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)", items 5 and 6:
+
+5. **The strict manual build is not a gate.** `sphinx -W` fails on `main` with
+   five warnings in untouched lines (`docs/reference/api.rst` 23, 35, 76 and
+   the `Sim.initial` and `Sim.state` docstrings). Found by `sim-identity`.
+6. **A stale known gap in `docs/architecture.md`:** "A clocked model is
+   published but not yet VIEWED" predates viewer 0.7.0, which reads document
+   versions 1 to 13. Found by `sim-identity`.
+
+From "Inmoov-sim (2026-09-10, stage B on ADR-098)":
+
+- **A site joint's value is the line in the parent's frame where the
+  child FINALLY rests, after every rest operation the parent applies to
+  it — and when one of those is conditional, a plain value is silently
+  wrong for the other branch.** `Forearm` places its wrist `axle` with
+  `_in_wrist` and then, when `presented` is true, `present()`'s turn;
+  the site joint `Bolt(turn=Revolute(axis=..., at=...))` written as the
+  plain pre-presentation numbers reproduced the reference poses only
+  with `presented=False`, and with the project's own default missed by
+  622 mm³ of palm/axle interference at rest and 14.2 mm at full wrist
+  travel, with no refusal. Correct: a callable of the realized parent
+  (`_presented(vector)` rotating the value through `PRESENTATION` when
+  `forearm.presented`), which is the ADR-098 contract working as
+  designed — the parent's frame is where the child ends up — but nothing
+  in the docs says a plain site value should be treated as suspect
+  whenever the parent's own rest placement of that child is conditional.
+  Triage: one sentence in `docs/driving.rst`'s site paragraph and in the
+  shop craft skill; no framework change.
+
+  **Remaining (2026-10-04):** not done. `docs/driving.rst` no longer exists;
+  the site paragraph is now in `docs/concepts/joints.rst`, which says
+  nothing about a conditional placement.
+
+**What shipped.** `strict-manual-build`
+(`openspec/changes/archive/2026-10-07-strict-manual-build/`). CI's docs job
+(`python -m sphinx -b html -W docs docs/_build`) and Read the Docs
+(`fail_on_warning: true`) were green because neither built nitpicky: Sphinx
+reports an unresolved cross-reference only under `-n`, and the five
+warnings appeared only in the stricter build the manual's procedure names.
+`docs/conf.py` now sets `nitpicky = True`, so both builds, unchanged, refuse
+a reference to nothing; `tests/test_docs_exports.py`'s `StrictBuildTest`
+pins the setting (red first: `docs/conf.py does not set nitpicky`) and
+Read the Docs' `fail_on_warning`. With the setting alone, the CI command
+failed in an environment holding `docs/requirements.txt` alone with the
+five warnings: two `api.rst` references naming `AssemblyNode` without its
+module (`api.rst:193` and `:205` at the bench commit), the
+`OpenScadNode.__init__` docstring's `name keyword argument:` line, which
+napoleon read as a parameter `argument` of type `name keyword` (attributed
+to `api.rst:236`), and the `Sim.initial` and `Sim.state` docstrings, whose
+first lines napoleon read as `Type: description` and rendered as a bogus
+"Type:" field. Each was fixed where it is written: the two references name
+`machinome.node.assembly.AssemblyNode` with their rendered text kept and
+now link, the three docstrings render as written (`initial` and `state`
+with no "Type:" field, the parameter called `name`). The CI command then
+built with no warning, and so did `-n -W --keep-going -E`. In
+`docs/architecture.md`'s "Known gaps and tensions", four entries closed by
+named work were deleted: the clocked model "not yet VIEWED" (viewer
+ADR-062 and ADR-063, accepted, execute a clocked machine, and the released
+viewer reads document versions 1 to 13), Create React App (viewer ADR-052
+supersedes ADR-013), `declared_ports` not memoised (commit `6ff98062`,
+22 September 2026, caches each completed class's ports on the class) and
+the viewer's whole-graph walk (viewer ADR-060); the manual-build entry was
+rewritten to the one fact still true, that the CI browser-snapshot job
+installs the viewer from Git; and the self-read gate entry's dead
+`docs/scenarios.rst` became `docs/concepts/running.rst`. The joints page's
+site-declaration paragraph (`docs/concepts/joints.rst`) gained the one
+sentence: a site joint's values are read where the child finally rests,
+after every rest operation the parent applies to it, so when one is
+conditional a plain value is right for one branch only and the argument is
+written as a callable of the realized parent; `tests/test_mate_contract_docs.py`
+pins it (red first: `'finally rests' not found`). The entry's other half,
+the same sentence in the studio's craft skill
+(`machinome-studio/shop-skills/machinome/SKILL.md`), is the studio
+repository's and is recorded in the campaign note's outside-the-framework
+step.

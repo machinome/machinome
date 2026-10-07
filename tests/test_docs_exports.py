@@ -23,6 +23,7 @@ committed, and neither build configuration exports, installs from a
 repository, names a system package, a Node tool or a submodule.
 """
 
+import ast
 import os
 import re
 import unittest
@@ -210,6 +211,24 @@ class ActionsDocsJobBuildsNothingTest(unittest.TestCase):
         self.assertTrue(
             any(re.search(r'sphinx\b.*\s-W\b', run) for run in runs),
             'the docs job does not build the manual with -W')
+
+
+class StrictBuildTest(unittest.TestCase):
+    """Both warnings-as-errors builds refuse a cross-reference to
+    nothing."""
+
+    def test_the_configuration_is_nitpicky(self):
+        tree = ast.parse((DOCS / 'conf.py').read_text())
+        values = {target.id: node.value
+                  for node in tree.body if isinstance(node, ast.Assign)
+                  for target in node.targets
+                  if isinstance(target, ast.Name)}
+        self.assertIn('nitpicky', values,
+                      'docs/conf.py does not set nitpicky')
+        self.assertIs(ast.literal_eval(values['nitpicky']), True)
+
+    def test_read_the_docs_fails_on_warnings(self):
+        self.assertIs(readthedocs()['sphinx']['fail_on_warning'], True)
 
 
 class DocsRequirementsTest(unittest.TestCase):

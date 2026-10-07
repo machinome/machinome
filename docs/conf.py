@@ -50,6 +50,10 @@ rst_prolog = f'''
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',
               'machinome.sphinx']
 
+# Every cross-reference must resolve, so a warnings-as-errors build (CI,
+# Read the Docs) refuses a link to nothing.
+nitpicky = True
+
 # The runtime dependencies are mocked so autodoc can import machinome from
 # the source tree with Sphinx, the theme and the viewer installed and
 # nothing else: the documentation build runs no CAD stack.
