@@ -111,6 +111,22 @@ def test_bad_constructor_inputs_fail_immediately():
         Production[int]
 
 
+def test_missing_model_source_is_refused_at_binding(tmp_path):
+    from machinome.model import ModelInputChangedError
+    from machinome.production.errors import ProductionExportError
+
+    missing = tmp_path / "never-existed.txt"
+    model = Root()
+    model.left.nuts[0].files.add(str(missing))
+    with pytest.raises(ProductionExportError) as refused:
+        RootProduction(model)
+    message = str(refused.value)
+    assert "RootProduction cannot bind" in message
+    assert "Nut 'nuts-0'" in message
+    assert str(missing) in message
+    assert not isinstance(refused.value, ModelInputChangedError)
+
+
 def test_captured_profile_does_not_change_after_class_edit():
     class Captured(Production[Submodel]):
         first = Item(Submodel.nuts, Sourced(NUT))

@@ -327,6 +327,82 @@ def test_rigid_rest_placements_reused_by_normal_lifecycle():
     assert model.a.operations == before
 
 
+class MeshBox(LeafNode):
+    """A box that publishes its own STL: no renderer, no kernel."""
+
+    def render(self):
+        import trimesh
+
+        return trimesh.creation.box(extents=(2, 3, 4))
+
+    def materialize(self, rendered):
+        self.publish_artifact(
+            self.stl_file, lambda path: rendered.export(path, file_type="stl")
+        )
+
+
+class OffsetPair(FusionNode):
+    a = MeshBox()
+    b = MeshBox()
+
+    def render(self):
+        self.b.translate([1, 0, 0])
+
+
+class HeldPair(AssemblyNode):
+    pair = OffsetPair()
+
+
+@pytest.mark.parametrize("kind", [OffsetPair, HeldPair])
+def test_binding_after_a_build_keeps_rest_placements(
+    kind, tmp_path, monkeypatch
+):
+    import os
+    from pathlib import Path
+    from machinome.core.pieces import _digest_bytes
+
+    monkeypatch.setenv("SOLID_BUILD_DIR", str(tmp_path))
+    model = kind()
+    fusion = model if kind is OffsetPair else model.pair
+    model.trigger_stl()
+    built = _digest_bytes(Path(fusion.stl_file).read_bytes())
+    operations = list(fusion.b.operations)
+    assert len(operations) == 1
+    snapshot = ModelSnapshot(model)
+    occurrence = next(
+        o for o in snapshot.occurrences if o.model_type is OffsetPair
+    )
+    assert fusion.b.operations == operations
+    assert list(fusion.render()) == [fusion.a, fusion.b]
+    assert fusion.b.operations == operations
+    os.remove(fusion.stl_file)
+    assert snapshot.geometry(occurrence).content_id == built
+
+
+def test_missing_source_is_refused_at_construction(tmp_path):
+    missing = tmp_path / "never-existed.txt"
+    model = Machine()
+    model.compound.files.add(str(missing))
+    with pytest.raises(
+        FileNotFoundError, match="Compound 'compound'"
+    ) as refused:
+        ModelSnapshot(model)
+    assert refused.value.filename == str(missing)
+
+
+def test_source_deleted_after_binding_is_still_a_change(tmp_path):
+    from machinome.model import ModelInputChangedError
+
+    present = tmp_path / "present.txt"
+    present.write_text("observed")
+    model = Machine()
+    model.compound.files.add(str(present))
+    snapshot = ModelSnapshot(model)
+    present.unlink()
+    with pytest.raises(ModelInputChangedError):
+        snapshot.occurrences
+
+
 def test_artifact_read_race_poisoning_is_contextual(tmp_path, monkeypatch):
     from machinome._artifact import ArtifactSnapshot
     from machinome.model import ModelInputChangedError

@@ -1653,6 +1653,41 @@ not fixed, until the pilot triages them.
   `openspec/changes/archive/2026-10-07-clocked-snapshot-identity/design.md`,
   Open Question 1, and its `evidence.md`. **Untriaged.**
 
+## Findings from the framework cycle `production-reads-once` (2026-10-07)
+
+- **A missing source on a child that only `render()` creates still reads
+  as a changed input.** `production-reads-once` refuses a missing source
+  when `ModelSnapshot(model)` or `Production(model)` is constructed, but
+  only for the nodes that exist then. A child that an assembly's `render()`
+  constructs is first met by the lazy structural walk, where
+  `observe_input` turns the failed first observation into
+  `ModelInputChangedError`. On the bench after the change, an assembly
+  whose `render()` returns a fresh leaf naming
+  `/nonexistent/render-made.txt` gives, from `ModelSnapshot.occurrences`,
+  `ModelInputChangedError: input observation failed:
+  /nonexistent/render-made.txt: [Errno 2] No such file or directory`, and
+  from a production's `bom`, `ProductionInputChangedError` with the same
+  message. Refusing it as missing needs a choice of how the walk's
+  `ValueError` wrapping and production's reads carry it, and changing
+  `observe_input` would also change what a consumer gets for a missing
+  evidence path. Evidence:
+  `openspec/changes/archive/2026-10-07-production-reads-once/design.md`,
+  Open Question 2, and its `evidence.md`. **Untriaged.**
+- **A source changed between a verified load and binding escapes
+  `Production(model)` as `ModelInputChangedError`.** `ModelSnapshot(model)`
+  refuses a model whose verified source generation changed after the load
+  (`tests/test_model_consumption.py::VerifiedModelGenerationTest::test_changed_executed_source_cannot_be_bound_as_verified`),
+  and `Production.__init__` maps only `OSError`, so the facade's error
+  reaches the production's caller unmapped, where a production read of
+  the same change raises `ProductionInputChangedError`. On the bench after
+  the change, a production over the scratch project of that test, bound
+  after `dimensions.py` was rewritten, raises
+  `machinome.model.ModelInputChangedError: input validation failed:
+  Project source changed at production model read: …/dimensions.py`.
+  Mapping it changes the type a caller of `Production(model)` catches.
+  Evidence: the same `design.md`, Open Question 3, and `evidence.md`.
+  **Untriaged.**
+
 # 3DPrintedClocks wall clock 02 (2026-09-29, verdict memo across runs)
 
 The memo finding is fixed (`persistent-verdict-memo`, ADR-156). Not a
@@ -1846,38 +1881,6 @@ what the review found beyond the record. Probes ran on the `v0.8-production`
 bench against a faceted `FusionNode` of two self-materializing boxes with
 one child translated in `render()`.
 
-- **Defect: binding a production after a build doubles the placements of
-  children positioned in a rigid internal node's `render()`.** The
-  `model-consumption` spec's scenario "Read an advanced machine" promises
-  that structural reading leaves established operation values unchanged.
-  It holds when the facade reads first and fails when the lifecycle ran
-  first: `ModelSnapshot.occurrences` (`machinome/model.py:354-365`) calls
-  `render()` on every non-assembly internal node unless its own
-  `_production_rest` cache exists, and a node already rendered by
-  `_prepare()` or `assemble()` has no such cache, so the author's `render()`
-  runs a second time and re-applies every `translate`/`rotate` to the same
-  declared children. The doubled structure is then cached and returned by
-  every later `render()` (`machinome/node/internal.py:39-42`); nothing
-  raises. Measured: child operations 1 in the facade-only, lifecycle-only
-  and facade-then-lifecycle orders, 2 in the lifecycle-then-facade order,
-  also with the fusion inside a prepared assembly; a regeneration after the
-  doubling fused a different solid (content id `f966a273…` became
-  `c49003bd…`). The cycle's test
-  `test_rigid_rest_placements_reused_by_normal_lifecycle` covers the
-  facade-first order only, and the Curta slice prints leaves, so neither
-  could meet it. Exposed by any process that builds, snapshots or serves a
-  model and then binds a `Production` to the same instance. Remedy shape:
-  the walk reuses the node's `_prepared_rendered` when the lifecycle
-  already rendered it and renders once otherwise, pinned by a red test in
-  the lifecycle-first order that compares operations and the regenerated
-  content id. **Untriaged.**
-- **A missing input file at binding escapes `Production(model)` as the
-  facade's own error.** A node whose `files` names a path that does not
-  exist makes the constructor raise
-  `machinome.model.ModelInputChangedError("input observation failed: …")`:
-  `Production.__init__` (`machinome/production/profile.py:281-288`) wraps
-  only `OSError`, so the production error taxonomy is bypassed, and the
-  message says a file changed when it never existed. **Untriaged.**
 - **The draft bundle is not portable.** Every key of the manifest's
   `input_hashes` and `files`, every `source_paths` entry and every
   `instruction_path` is an absolute local path; the snapshot observes the

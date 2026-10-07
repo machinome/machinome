@@ -283,8 +283,13 @@ class Production:
                 self._shared = _Shared(ModelSnapshot(supplied))
                 self._shared.capture_profile(type(self))
             except OSError as error:
+                reason = (
+                    f"{error.strerror}: {error.filename}"
+                    if error.filename
+                    else str(error)
+                )
                 raise ProductionExportError(
-                    f"cannot observe profile inputs: {error}"
+                    f"{type(self).__name__} cannot bind: {reason}"
                 ) from error
             self._shared.root = self
         else:

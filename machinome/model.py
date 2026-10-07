@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from collections.abc import Mapping
+import errno
 import hashlib
 import inspect
 from contextlib import contextmanager, nullcontext
@@ -148,6 +149,13 @@ class ModelSnapshot:
             return
         seen.add(id(node))
         for path in self._sources(node):
+            if path not in self._inputs and not path.exists():
+                raise FileNotFoundError(
+                    errno.ENOENT,
+                    f"{type(node).__name__} '{node.name}' names an input "
+                    f"file that does not exist",
+                    str(path),
+                )
             self.observe_input(path)
         for value in vars(node).values():
             members = value if isinstance(value, (list, tuple)) else (value,)
@@ -352,14 +360,19 @@ class ModelSnapshot:
                         children = _rest_children(node, structure_only=True)
                     else:
                         if "_production_rest" not in node.__dict__:
-                            from machinome.node import phase
+                            # Preparation already ran this instance's render
+                            # and positioned its children; running it again
+                            # would apply every placement a second time.
+                            children = node.__dict__.get("_prepared_rendered")
+                            if children is None:
+                                from machinome.node import phase
 
-                            token = phase._structure_only.set(True)
-                            try:
-                                children = node.render()
-                                node.validate(children)
-                            finally:
-                                phase._structure_only.reset(token)
+                                token = phase._structure_only.set(True)
+                                try:
+                                    children = node.render()
+                                finally:
+                                    phase._structure_only.reset(token)
+                            node.validate(children)
                             node.__dict__["_production_rest"] = tuple(children)
                         children = node.__dict__["_production_rest"]
                         node._link_children(children)

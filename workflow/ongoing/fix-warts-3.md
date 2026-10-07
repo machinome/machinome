@@ -153,6 +153,20 @@ in the same cycle.
   `../archive/fix-warts-3-2026-10-06/resolved.md`; that a declared driver
   or state range is outside the identity is recorded in `../warts.md`.
 
+- 7 October 2026: cycle 10, `production-reads-once`, applied: binding a
+  production or a `ModelSnapshot` after a build reads a fusion from the
+  build's own render, so the children its `render()` positions keep one
+  placement and a regenerated fused STL is the built one (two placements
+  and another solid before); a node source that does not exist at binding
+  is refused as missing, naming the node and the path, with
+  `ProductionExportError` from `Production(model)` and `FileNotFoundError`
+  from `ModelSnapshot(model)`. The Curta production slice, run through a
+  scratch copy whose one root import is rewritten for 0.8, passes its 6
+  tests (117.6 s before, 117.0 s after). Two entries moved to
+  `../archive/fix-warts-3-2026-10-06/resolved.md`; a missing source on a
+  child created in `render()` and a source changed before binding are
+  recorded in `../warts.md`.
+
 ## Deferred to the pilot
 
 (Entries met during the campaign that turned out to need a decision.

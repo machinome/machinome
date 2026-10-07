@@ -52,7 +52,7 @@ Rules for the whole cycle:
 
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
+- [x] 1.1 Create `evidence.md` with the bench commit (`git -C <bench>
   rev-parse HEAD`), the interpreter check (`python -c 'import machinome;
   print(machinome.__file__)'` prints a path under the bench), the Curta's
   head (`git -C <project> rev-parse --short HEAD`) and the slice's head
@@ -60,29 +60,29 @@ Rules for the whole cycle:
   Copy the sources of `<scratch>/repro_doubling.py` and
   `<scratch>/repro_missing.py`, and the overlay recipe above, into
   `evidence.md`, because the scratchpad is not durable.
-- [ ] 1.2 Run `<scratch>/repro_doubling.py` (filter out its ` INFO -`
+- [x] 1.2 Run `<scratch>/repro_doubling.py` (filter out its ` INFO -`
   lines). Expect `<scratch>/repro_doubling.before.out`: one operation and
   content `f435a10c` in the facade-only, lifecycle-only and
   facade-then-lifecycle orders; two operations and a regenerated content
   `fd3b003d` in the lifecycle-then-facade order, for `Pair` and `Holder`.
   Run `<scratch>/repro_assemble.py`: `b.operations 1 -> 2` for both.
-- [ ] 1.3 Run `<scratch>/repro_missing.py`. Expect
+- [x] 1.3 Run `<scratch>/repro_missing.py`. Expect
   `<scratch>/repro_missing.before.out`: `ModelInputChangedError: input
   observation failed` from `Production(model)` and `ModelSnapshot(model)`,
   for the root's files and the child's.
-- [ ] 1.4 Run the slice's own README command from its worktree, with the
+- [x] 1.4 Run the slice's own README command from its worktree, with the
   scratch build directory:
   `env -C <project>/WTs/production-layer-3x PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="<bench>:<project>/WTs/production-layer-3x" SOLID_BUILD_DIR=<scratch>/curta-build /home/asa/devel/machinome/.venv/bin/python -m pytest -q -p no:cacheprovider --basetemp=<scratch>/curta-basetemp production/test_production.py`.
   Record its collection error (`ImportError: module 'machinome.node' has
   no attribute 'AssemblyNode'`), the reason the overlay is used.
-- [ ] 1.5 Run `<curta>`. Record counts and times (Stage P: `6 passed in
+- [x] 1.5 Run `<curta>`. Record counts and times (Stage P: `6 passed in
   119.02s`, wall 120.10 s, warm build directory).
-- [ ] 1.6 Run `pytest -q -p no:cacheprovider <focused>` and record counts
+- [x] 1.6 Run `pytest -q -p no:cacheprovider <focused>` and record counts
   and time (Stage P: `52 passed, 4 warnings in 7.55s`).
 
 ## 2. Tests
 
-- [ ] 2.1 In `tests/test_model_consumption.py`, after
+- [x] 2.1 In `tests/test_model_consumption.py`, after
   `test_rigid_rest_placements_reused_by_normal_lifecycle`, add `MeshBox`,
   `OffsetPair`, `HeldPair` and
   `test_binding_after_a_build_keeps_rest_placements`, parametrized over
@@ -90,16 +90,16 @@ Rules for the whole cycle:
   today for both parameters at the first operations comparison
   ("Left contains one more item: <machinome.node.operations.Translation
   …>").
-- [ ] 2.2 In the same module, add
+- [x] 2.2 In the same module, add
   `test_missing_source_is_refused_at_construction` (RED today with
   `ModelInputChangedError: input observation failed`) and
   `test_source_deleted_after_binding_is_still_a_change` (guard, green
   today), as Decision 4.
-- [ ] 2.3 In `tests/test_production.py`, after
+- [x] 2.3 In `tests/test_production.py`, after
   `test_bad_constructor_inputs_fail_immediately`, add
   `test_missing_model_source_is_refused_at_binding`, as Decision 4. RED
   today with `ModelInputChangedError`.
-- [ ] 2.4 Run the five new test cases on the unmodified code:
+- [x] 2.4 Run the five new test cases on the unmodified code:
   `pytest -q -p no:cacheprovider tests/test_model_consumption.py -k
   "binding_after_a_build or missing_source or deleted_after_binding"
   tests/test_production.py -k missing_model_source` (or the equivalent
@@ -108,42 +108,42 @@ Rules for the whole cycle:
 
 ## 3. The change
 
-- [ ] 3.1 `machinome/model.py`, `ModelSnapshot.occurrences`, the
+- [x] 3.1 `machinome/model.py`, `ModelSnapshot.occurrences`, the
   non-assembly branch of `walk`: reuse `_prepared_rendered` when it is set,
   render under the structure-only flag only when it is not, validate both,
   as design.md Decision 1.
-- [ ] 3.2 `machinome/model.py`: `import errno`, and in
+- [x] 3.2 `machinome/model.py`: `import errno`, and in
   `ModelSnapshot._capture_existing` the check before `observe_input`, as
   Decision 2.
-- [ ] 3.3 `machinome/production/profile.py`, `Production.__init__`: the
+- [x] 3.3 `machinome/production/profile.py`, `Production.__init__`: the
   reworded `except OSError` branch, as Decision 3.
-- [ ] 3.4 Run the five new test cases: all green. Run `<focused>`: 1.6's
+- [x] 3.4 Run the five new test cases: all green. Run `<focused>`: 1.6's
   count plus five, all passing.
-- [ ] 3.5 `git -C <bench> status --short` lists only
+- [x] 3.5 `git -C <bench> status --short` lists only
   `machinome/model.py`, `machinome/production/profile.py`,
   `tests/test_model_consumption.py`, `tests/test_production.py` and the
   change directory.
 
 ## 4. The reproductions and the originating project after the change
 
-- [ ] 4.1 Run `<scratch>/repro_doubling.py`: one operation and content
+- [x] 4.1 Run `<scratch>/repro_doubling.py`: one operation and content
   `f435a10c` in all four orders, the regenerated content included, for
   `Pair` and `Holder`. Run `<scratch>/repro_assemble.py`:
   `b.operations 1 -> 1` for both. Record the output.
-- [ ] 4.2 Run `<scratch>/repro_missing.py`: `ProductionExportError:
+- [x] 4.2 Run `<scratch>/repro_missing.py`: `ProductionExportError:
   RootProduction cannot bind: Root 'Root' names an input file that does
   not exist: <path>` and `FileNotFoundError` naming `Root 'Root'` for the
   root's files; the same naming `Nut 'nut'` for the child's. Record the
   output.
-- [ ] 4.3 Run `<curta>` again against the same build directory. Expect
+- [x] 4.3 Run `<curta>` again against the same build directory. Expect
   1.5's counts. Record the times beside 1.5's, and the unchanged
   `git status --short`.
 
 ## 5. Records
 
-- [ ] 5.1 Append design.md Decision 5's bullet to the one `Unreleased`
+- [x] 5.1 Append design.md Decision 5's bullet to the one `Unreleased`
   section of `docs/project/changelog.rst`, after its existing bullets.
-- [ ] 5.2 Grep `docs/` (excluding `adrs/` and `releases/`) for
+- [x] 5.2 Grep `docs/` (excluding `adrs/` and `releases/`) for
   `ModelSnapshot`, `ModelInputChangedError`, `ProductionExportError`,
   `missing` and `render()` near "once". Confirm that no page says
   something this change makes wrong, and record the result
@@ -152,7 +152,7 @@ Rules for the whole cycle:
 
 ## 6. Warts
 
-- [ ] 6.1 Move the two items of the section "## Findings from the
+- [x] 6.1 Move the two items of the section "## Findings from the
   adversarial review of the framework cycle `production-layer` (4 October
   2026)" of `workflow/warts.md` verbatim, from "- **Defect: binding a
   production after a build doubles the placements of" to its
@@ -170,7 +170,7 @@ Rules for the whole cycle:
   slice's counts and times, through the overlay, and why the overlay.
   Delete the two items from `warts.md`; the section's introduction and
   other items stay.
-- [ ] 6.2 File design.md Open Questions 2 and 3 in `warts.md` as a new
+- [x] 6.2 File design.md Open Questions 2 and 3 in `warts.md` as a new
   section "## Findings from the framework cycle `production-reads-once`
   (2026-10-07)", after the section "## Findings from the framework cycle
   `clocked-snapshot-identity` (2026-10-07)". Two bullets, each with its
@@ -190,17 +190,17 @@ Rules for the whole cycle:
 
 ## 7. Sync and archive
 
-- [ ] 7.1 Sync the deltas into `openspec/specs/model-consumption/spec.md`
+- [x] 7.1 Sync the deltas into `openspec/specs/model-consumption/spec.md`
   and `openspec/specs/production-assets/spec.md`, replacing the three
   modified requirements. Diff each against its baseline: each differs only
   in its added sentence and its added scenario.
-- [ ] 7.2 Archive the change to
+- [x] 7.2 Archive the change to
   `openspec/changes/archive/<date>-production-reads-once/`. Then
   `openspec validate --specs` passes.
-- [ ] 7.3 Run `black --check` and `flake8 --max-line-length=89` on
+- [x] 7.3 Run `black --check` and `flake8 --max-line-length=89` on
   `machinome/model.py`, `machinome/production/profile.py`,
   `tests/test_model_consumption.py` and `tests/test_production.py`.
-- [ ] 7.4 Run `<focused>` once more, then the full suite once, alone
+- [x] 7.4 Run `<focused>` once more, then the full suite once, alone
   (`pytest -q -p no:cacheprovider` at the bench root), and record counts
   and wall time. A failure that is not this change's is recorded and
   stopped on, not worked around. Leave everything uncommitted.

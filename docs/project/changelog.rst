@@ -100,6 +100,16 @@ Unreleased
   into a same-named machine whose joint range or commit law had changed,
   or into a same-named class from another module. ``ClockedSnapshot``
   takes the identity as its third argument (clocked-snapshot-identity).
+* **A production bound after a build reads the machine as built.** Binding
+  a ``Production`` or a ``ModelSnapshot`` to a model that was already
+  built, snapshotted or served no longer runs a fusion's ``render()`` a
+  second time: the children it positions keep their one placement, a later
+  ``render()`` returns them as they were, and a fused STL made again is the
+  one the build made. A file a node names that does not exist is refused
+  when the model is bound, as missing and naming the node and the path,
+  with ``ProductionExportError`` from ``Production(model)`` and
+  ``FileNotFoundError`` from ``ModelSnapshot(model)``; it used to be
+  reported as an input that had changed (production-reads-once).
 
 Machinome 0.8.0
 ---------------

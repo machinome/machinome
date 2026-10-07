@@ -555,3 +555,81 @@ two tests, passes 11 tests and 57 subtests before (35.33 s) and after
 (35.70 s). No document, identity or corpus changed. That a declared
 `Driver` or `State` range is not part of the identity is filed in
 `../../warts.md`.
+
+## `production-reads-once`
+
+From "Findings from the adversarial review of the framework cycle `production-layer` (4 October 2026)", items 1 and 2:
+
+- **Defect: binding a production after a build doubles the placements of
+  children positioned in a rigid internal node's `render()`.** The
+  `model-consumption` spec's scenario "Read an advanced machine" promises
+  that structural reading leaves established operation values unchanged.
+  It holds when the facade reads first and fails when the lifecycle ran
+  first: `ModelSnapshot.occurrences` (`machinome/model.py:354-365`) calls
+  `render()` on every non-assembly internal node unless its own
+  `_production_rest` cache exists, and a node already rendered by
+  `_prepare()` or `assemble()` has no such cache, so the author's `render()`
+  runs a second time and re-applies every `translate`/`rotate` to the same
+  declared children. The doubled structure is then cached and returned by
+  every later `render()` (`machinome/node/internal.py:39-42`); nothing
+  raises. Measured: child operations 1 in the facade-only, lifecycle-only
+  and facade-then-lifecycle orders, 2 in the lifecycle-then-facade order,
+  also with the fusion inside a prepared assembly; a regeneration after the
+  doubling fused a different solid (content id `f966a273…` became
+  `c49003bd…`). The cycle's test
+  `test_rigid_rest_placements_reused_by_normal_lifecycle` covers the
+  facade-first order only, and the Curta slice prints leaves, so neither
+  could meet it. Exposed by any process that builds, snapshots or serves a
+  model and then binds a `Production` to the same instance. Remedy shape:
+  the walk reuses the node's `_prepared_rendered` when the lifecycle
+  already rendered it and renders once otherwise, pinned by a red test in
+  the lifecycle-first order that compares operations and the regenerated
+  content id. **Untriaged.**
+- **A missing input file at binding escapes `Production(model)` as the
+  facade's own error.** A node whose `files` names a path that does not
+  exist makes the constructor raise
+  `machinome.model.ModelInputChangedError("input observation failed: …")`:
+  `Production.__init__` (`machinome/production/profile.py:281-288`) wraps
+  only `OSError`, so the production error taxonomy is bypassed, and the
+  message says a file changed when it never existed. **Untriaged.**
+
+**What shipped.** `production-reads-once`
+(`openspec/changes/archive/2026-10-07-production-reads-once/`) changes two
+functions of `machinome/model.py` and one branch of
+`machinome/production/profile.py`. The structural walk of
+`ModelSnapshot.occurrences` reads a rigid internal node that preparation
+already rendered (by `trigger_stl()` or `assemble()`) from preparation's
+own render, `_prepared_rendered`, and renders, once, only a node that
+preparation never rendered; the author's `render()` therefore runs at most
+once per instance in either order. `ModelSnapshot(model)` refuses a source
+a node names that does not exist when it is constructed with
+`FileNotFoundError`, whose message names the node (`Nut 'nut' names an
+input file that does not exist`) and whose `filename` is the path, and
+`Production(model)` refuses it with `ProductionExportError`
+(`RootProduction cannot bind: Nut 'nut' names an input file that does not
+exist: <path>`); a source observed and later changed or deleted is still
+`ModelInputChangedError`. Four tests were red first: in
+`tests/test_model_consumption.py`,
+`test_binding_after_a_build_keeps_rest_placements` for a faceted
+`FusionNode` of two self-materializing boxes, one translated in
+`render()`, alone and inside an assembly (each "Left contains one more
+item: <machinome.node.operations.Translation …>"), and
+`test_missing_source_is_refused_at_construction` (`ModelInputChangedError:
+input observation failed`); in `tests/test_production.py`,
+`test_missing_model_source_is_refused_at_binding` (the same error); the
+guard `test_source_deleted_after_binding_is_still_a_change` was green
+before and after. The reproduction gave two operations on the translated
+child and a regenerated fused STL `fd3b003d…` in place of the built
+`f435a10c…` in the lifecycle-then-facade order before the change, and one
+operation with `f435a10c…` in all four orders after it; `assemble()` then
+the facade went from 1 -> 2 operations to 1 -> 1. The originating Curta
+production slice (`projects/Calculators/Curta-Type-I-3x`, worktree
+`WTs/production-layer-3x`, `7c9121e`) prints leaves and binds files that
+exist, so it validates that nothing regresses. Its own README command
+cannot collect against the 0.8 framework (its test imports `AssemblyNode`
+and `StepNode` from the root of `machinome.node`), so it ran as a copy of
+its `production/` package in the scratchpad with that one import rewritten,
+over the Curta's `main` (`1f3dc22`), nothing written in the project: 6
+passed in 117.56 s before and 117.04 s after. That a missing source on a
+child only `render()` creates, and a source changed between a verified load
+and binding, still read as changed inputs is filed in `../../warts.md`.
