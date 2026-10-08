@@ -426,6 +426,9 @@ Each names the entry, what was found, and the choice.)
   the placed bounds overlapping, or on a cheaper distance test, so an
   empty common far from contact is believed; or run it only where a test
   asserts contact. Each is a change to ADR-142, so none was made here.
+  On 8 October the pilot, assessing this, proposed a fourth: a boundary
+  distance tier in front of the Boolean itself, filed with its evidence
+  and what to measure as the last entry of `../warts.md`.
 
 - **Cycle 3, `children-refuse-early-reads`: eight clock models.** The
   refusal of a `self.children` read inside `render()` (always empty

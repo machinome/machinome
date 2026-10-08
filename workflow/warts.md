@@ -1934,3 +1934,78 @@ raise `BrepCommonInconsistency`; a pair that no longer does is a finding
 against the change. **Owed.**
 The pilot explicitly authorized rebasing and locally merging these wart
 records into main without pushing; this is evidence filing, not a fix.
+
+# The overlap question is asked of a Boolean that is only needed at zero distance (8 October 2026, pilot, assessing the fix-warts-3 handoff)
+
+Assessed while putting the campaign's deferred "Item 18" decision (whether
+ADR-142's false-empty witness runs on every empty common) to the pilot,
+who asked whether the common's volume is needed at all, since what a
+contract wants is a yes or no on interference.
+
+- **What the catalogue asks.** Counted on 8 October over every project
+  repository's Python, worktrees excluded: `assertNotIntersecting` in 193
+  files (583 lines), `assertNoSolidInterference` in 145 (349),
+  `assertIntersecting` in 51 (74), `assertIntersectVolumeBelow` in 60
+  (150), `assertIntersectVolumeAbove` in 39 (73); `assertJoined`'s
+  `min_weld_volume` nowhere. About four assertions in five want the
+  true/false; the volume is read by the two volume assertions only, and
+  the B-rep engine refuses a volume epsilon on purpose. The 150 "volume
+  below" lines were not read; how many are genuine press-fit or weld
+  questions and how many tolerate a small overlap by hand is open.
+- **Where the cost is.** Not the volume, which the common yields for
+  free, and not the Boolean, which is 4–9 % slower than at the fold
+  commit: the witness search after every empty common, 73.5 % and 78.9 %
+  of the clock's and the lock's cold runs (the "exact-kernel corrections
+  cost time" entry above). Every pair of the 643 and 730 commons pays a
+  Boolean and then a witness, and all but 6 and 5 of them are empty.
+- **What the true/false question is.** It splits in two. If the shortest
+  distance between the two boundaries is positive, the pair is clear
+  provided neither solid encloses the other; the engine already has both
+  instruments, `_distance` on `BRepExtrema_DistShapeShape` and the
+  containment guard `mutually_outside` (ADR-092, step 3), neither a
+  Boolean and neither sharing the Boolean's false-empty failure. That is
+  most pairs of any machine. If the distance is zero, the parts touch or
+  overlap, and telling those apart is finding a point strictly inside
+  both: the witness question itself, for which the Boolean is the
+  cheapest answer OCCT has. The difficulty is contact versus overlap, not
+  the volume.
+- **The inconsistency underneath.** Under the B-rep engine a touching pair
+  is judged by whatever the Boolean returns: ADR-029's flush fixtures
+  come back non-empty with exactly 0.0 mm³ and foul at the strict
+  default, while OpenAstroMount's two concentric 31 mm spheres (the
+  2026-10-07 amendment of ADR-142) came back empty and passed. Whether
+  contact fouls is today decided by the kernel's mood, case by case.
+
+**Proposal (the pilot's, 8 October 2026): a distance tier in front of the
+Boolean.** For a B-rep pair that the face-box tier did not settle, measure
+the boundary distance first. A positive distance, with `mutually_outside`
+true, is the verdict: empty, volume 0, no Boolean and no witness. Only a
+pair at zero distance runs the common, and the witness after an empty
+common as ADR-142 says; the volume stays on the record for the two
+assertions that read it. This is the campaign note's "cheaper distance
+test" choice placed before the Boolean, not only before the witness; it
+amends ADR-142's "after an exact common reports no solids" to "after an
+exact common at zero distance reports no solids" and leaves ADR-142's
+guard, budget and refusals unchanged where it still runs.
+
+What it forces: a statement of whether contact fouls under the B-rep
+engine. With distance measured, every touching pair becomes visible at
+zero distance, and the Boolean's answer for it (non-empty zero-volume, or
+empty) stops being the thing that decides. The pilot decides that
+semantics; the proposal does not.
+
+What to measure before cutting it, read-only on wall clock 02 and the
+combination safe lock against `main`: how many of the empty commons are
+at positive boundary distance; what `BRepExtrema_DistShapeShape` costs on
+those pairs, since extrema on many-faced STEP solids is not free; and the
+cold suite times with the tier in place against the 7 October numbers.
+A pair at zero distance whose common is empty and that a project's test
+expects clear is the contact-semantics case, and gets counted, not
+decided.
+
+**Filed 8 October 2026 with the proposal, at the pilot's request. Not a
+ratified change:** cutting it is a standalone framework cycle amending
+ADR-142 under `skills/framework-change/SKILL.md`, after the measurement,
+and it replaces the "Item 18" choice in
+`ongoing/fix-warts-3.md` rather than adding to it. The "stencil misses a
+shallow sphere dent" finding above waits on the same decision.
