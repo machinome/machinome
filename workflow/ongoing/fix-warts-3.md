@@ -389,6 +389,12 @@ Each names the entry, what was found, and the choice.)
   read from `docs/conf.py`'s `viewer_version` and pinned by a test; (b)
   `>=0.7.0`, the oldest viewer the framework runs against; (c) no floor.
   The cycle took its other two items and left the extras as they are.
+  **Decided and done, 8 October 2026:** (a). The pilot ruled the two
+  packages numbered together; the standalone cycle
+  `viewer-extra-floors-at-the-matching-viewer` (commits `1bb72dec` and
+  `dbd52c24`, archived as `2026-10-08-...`, integrated into `main`) floors
+  both extras at `>=0.8.0`, holds them to `viewer_version` by a test, and
+  says so on the upgrading page and in the changelog.
 - **Investigation 5: how 3DPrintedClocks represents an intended overlap.**
   Wall clock 02's six failures are all the project's (the diagnosis is
   in `../archive/fix-warts-3-2026-10-06/resolved.md`): an M3 screw
