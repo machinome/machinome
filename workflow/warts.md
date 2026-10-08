@@ -302,11 +302,14 @@ it never had). Diagnosing them produced three framework findings.
   volume ≤ 0, or classifier IN outside its bounding box) and raise
   `BrepCommonVerificationError` naming the inside-out operand instead of
   claiming a shared point; red test, a reversed box beside a normal box
-  with an empty common, refused as inconsistent today. **Held for the
-  pilot:** whether the B-rep engine refuses an inside-out operand
-  everywhere or only in the guard; Thor chose to keep two parts inside
-  out, and refusing them everywhere turns every comparison with them
-  into an error.
+  with an empty common, refused as inconsistent today. Held for the
+  pilot as "guard only or everywhere" until 8 October 2026, when the
+  pilot folded it into the distance-tier entry at the end of this file:
+  the classifier is the instrument that lies, the containment guard
+  consults it as the witness does, and an inside-out operand is refused
+  by name wherever the classifier is consulted, never in the Boolean.
+  **Folded into "The overlap question is asked of a Boolean that is only
+  needed at zero distance".**
 - **The empty-common refusal names solids by their bare name.**
   `machinome/test.py` (~1114) passes `first[0].name` into
   `BrepCommonInconsistency`, so Thor's `screws-7` and `gear` are
@@ -1987,6 +1990,21 @@ test" choice placed before the Boolean, not only before the witness; it
 amends ADR-142's "after an exact common reports no solids" to "after an
 exact common at zero distance reports no solids" and leaves ADR-142's
 guard, budget and refusals unchanged where it still runs.
+
+What it rests on: OCCT's point classifier, which the containment guard
+and the witness both consult, and which reads an inside-out solid as
+everything outside it ("An inside-out operand makes ADR-142's witness
+meaningless", above: Thor's two reversed parts, kept reversed because
+that is the orientation whose Booleans are right). Only the Boolean and
+the boundary distance are orientation-independent. An inside-out operand
+therefore defeats the tier's containment probe exactly as it defeats the
+witness, so the tier's precondition is that finding's smallest fix,
+widened from the guard to every classifier verdict: test each operand
+once, by signed volume or a classifier probe outside its own box, and
+refuse it by name wherever the classifier would be consulted, leaving the
+Boolean alone. The campaign's "guard only or everywhere" choice was that
+finding asked at the wrong level; it is not a separate decision and
+belongs to this cycle (pilot, 8 October 2026).
 
 What it forces: a statement of whether contact fouls under the B-rep
 engine. With distance measured, every touching pair becomes visible at

@@ -406,11 +406,15 @@ Each names the entry, what was found, and the choice.)
   witness proves nothing there and 13 of Thor's 22 refused pairs are
   refusals of nothing (the entry is in `../warts.md`). The smallest fix
   tests each operand once and refuses the inside-out one by name in the
-  guard. Your choice: refuse an inside-out operand in the guard only, or
-  everywhere in the B-rep engine (which turns every comparison with
-  Thor's two reversed parts into an error), or leave it. The two Thor
-  tests themselves are the project's: a contract written red in `919333b`
-  and a pinion path the inventory never had.
+  guard. Held as a choice between refusing in the guard only and
+  everywhere in the B-rep engine until 8 October 2026, when the pilot
+  ruled it the same finding as Item 18's distance tier one level down:
+  the classifier lies, the containment guard consults it as the witness
+  does, and the operand check is that cycle's precondition, refused by
+  name wherever the classifier is consulted and never in the Boolean.
+  Struck as a separate decision; see the last entry of `../warts.md`.
+  The two Thor tests themselves are the project's: a contract written
+  red in `919333b` and a pinion path the inventory never had.
 
 - **Item 18: whether ADR-142's witness should run on every empty
   common.** Measured on 7 October (the "exact-kernel corrections cost
