@@ -372,7 +372,10 @@ Install a matching viewer
 --------------------------
 
 The independent AGPL-3.0-or-later viewer is installed through the
-``viewer`` extra. It is required by ordinary ``machinome develop``.
+``viewer`` extra. The ``viewer`` and ``web-snapshot`` extras require the
+matching viewer |viewer_version| or newer, so upgrading the framework
+through the extra upgrades the pair. It is required by ordinary
+``machinome develop``.
 ``--no-web`` retains the watch-and-build loop. OpenSCAD remains a
 modelling backend and snapshot renderer; ``develop --openscad`` is no
 longer an interactive-viewer option.

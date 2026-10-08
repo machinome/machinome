@@ -6,6 +6,14 @@ Changelog
 Unreleased
 ----------
 
+* **The viewer extra installs the matching viewer.** The ``viewer`` and
+  ``web-snapshot`` extras require ``machinome-viewer`` |viewer_version| or
+  newer, where they used to state no version and an upgrade of
+  ``machinome[viewer]`` kept an older viewer in place. The two packages are
+  numbered together; the floor follows the manual's declared matching
+  viewer, and a test holds them to each other. A 0.7 viewer still reads a
+  0.8 export; the floor is what the extra installs, not what a document
+  needs (viewer-extra-floors-at-the-matching-viewer).
 * **A direction a few millionths off an axis stays unit.** A joint's axis,
   and a frame's directions when ``z`` or ``x`` is omitted, snap to a
   principal axis only as a whole: a direction whose every component lies

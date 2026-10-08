@@ -62,6 +62,20 @@ class VersionFilesTest(TestCase):
     def test_the_matching_viewer_is_numbered_with_the_framework(self):
         self.assertEqual(conf_value('viewer_version'), self.version)
 
+    def test_the_viewer_extras_floor_at_the_matching_viewer(self):
+        """The two packages are numbered together, so the extras that
+        install the viewer require the one the manual declares, or newer
+        (change `viewer-extra-floors-at-the-matching-viewer`)."""
+        extras = tomllib.loads((ROOT / 'pyproject.toml').read_text())[
+            'project']['optional-dependencies']
+        floor = f">={conf_value('viewer_version')}"
+        for extra in ('viewer', 'web-snapshot'):
+            with self.subTest(extra=extra):
+                (requirement,) = extras[extra]
+                name, _, specifier = requirement.partition('>')
+                self.assertTrue(name.startswith('machinome-viewer'), requirement)
+                self.assertEqual('>' + specifier, floor, requirement)
+
     def test_no_release_fact_is_trapped_in_inline_markup(self):
         """A substitution inside ``**...**`` is not resolved: the 0.7.0
         status page told its readers "Machinome |release| was released
