@@ -6,6 +6,15 @@ Changelog
 Unreleased
 ----------
 
+* **An inside-out part is refused by name, not as a shared point.** A
+  solid published with its faces pointing inward reads every point as
+  inside to the kernel's classifier, so an empty B-rep common with such an
+  operand used to be refused as an inconsistency at the first candidate
+  inside the other part; it is now refused as a verification error naming
+  the inside-out operand and its negative signed volume, the containment
+  guard declines such a pair to the Boolean without consulting a
+  classifier, and the Boolean, fusion and volume of the part are unchanged
+  (an-inside-out-operand-is-refused-by-name).
 * **The engine measures a distance on every core.** Its distance helper
   used to set the kernel's multithread flag on an extrema the constructor
   had already performed, so every distance ran on one core; it now loads

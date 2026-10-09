@@ -105,3 +105,20 @@ witnesses, whose six neighbours are IN both solids, and so are the two
 hand-measured witnesses of 23 September. Voron-2's thread-seat refusals,
 whose independent 0.01 mm balls are inside both operands, were not re-run.
 See [the archived neighbourhood evidence](../../../openspec/changes/archive/2026-10-07-a-witness-is-interior-in-its-neighbourhood/evidence.md).
+
+## Amendment — 2026-10-09: No Classifier Verdict on an Inside-Out Operand
+
+OCCT's solid classifier decides inside from the face orientations, so a
+solid published with its faces pointing inward, whose signed volume is
+negative, reads every point as inside it. Thor keeps two such parts as
+published, because that is the orientation whose Booleans are right, and
+13 of its 22 refused pairs were this guard finding "a point inside both"
+at the first candidate inside the other part, with neighbours agreeing.
+After an empty common, the engine now tests each operand's solids by signed
+volume before any classifier is built; an inside-out operand is refused as
+`BrepCommonVerificationError` naming that operand and its signed volume,
+with no shared point claimed. The containment guard of ADR-092 declines for
+such an operand without loading a classifier, so the Boolean decides the
+pair as before. The common, the fusion and the volume of an inside-out
+operand are computed exactly as before; nothing repairs or reorients it.
+See [the archived change](../../../openspec/changes/archive/2026-10-09-an-inside-out-operand-is-refused-by-name/proposal.md).

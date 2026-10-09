@@ -177,6 +177,12 @@ SHALL be modified by the search.
   shapes.
 - When the search ends without such a point, it SHALL return the empty
   Common, without claiming that the emptiness is certified.
+- When a solid of either operand is inside out, its signed volume negative,
+  the engine SHALL NOT consult a classifier on either operand and SHALL
+  raise `BrepCommonVerificationError` naming that operand as inside out,
+  with its signed volume, and SHALL NOT claim a shared point. The common
+  itself, and a non-empty common's volume, are computed and returned as
+  for any operand.
 
 Both error types SHALL be those the engine package `machinome.engine`
 defines, so a caller catches them without importing the engine.
@@ -206,6 +212,14 @@ defines, so a caller catches them without importing the engine.
   tolerance while reporting outside at that point's neighbours
 - **THEN** `intersect_shapes` returns the empty Common
 
+#### Scenario: An inside-out operand is refused by name
+
+- **WHEN** the Common of a normal solid and an inside-out solid touching it
+  is empty
+- **THEN** `intersect_shapes` raises `BrepCommonVerificationError` naming the
+  inside-out operand and its negative signed volume, and names no shared
+  point
+
 ### Requirement: Placement uses the exact matrix values
 
 `placed_shape(shape, matrix)` SHALL place the shape by the upper three rows of
@@ -233,7 +247,10 @@ carries; a shape with no faces gives a `(0, 2, 3)` array.
 every solid of each placed shape classifies strictly outside every solid of
 the other, at the kernel's confusion tolerance, in both directions. It SHALL
 answer `False`, declining, for a shape with no solid, a solid with no vertex,
-a classification refused or failed, and any state other than outside.
+a classification refused or failed, and any state other than outside. For
+an operand holding an inside-out solid, one of negative signed volume, it
+SHALL decline without loading a classifier, since that classifier would read
+every point as inside.
 
 A distance the engine measures between two shapes SHALL be the kernel's
 minimal distance, asked of an extrema that is told to run on every core the
@@ -256,6 +273,13 @@ rather than being set on a finished one.
 - **WHEN** the engine measures the distance between two shapes
 - **THEN** the kernel's extrema is told to run multithreaded before it
   performs, and the value is the minimal distance between the shapes
+
+#### Scenario: An inside-out operand declines the containment guard
+
+- **WHEN** `mutually_outside` is asked about a normal solid and an inside-out
+  solid far from it
+- **THEN** it answers `False` in either argument order and constructs no
+  classifier
 
 ### Requirement: The engine reads and writes B-rep artifacts byte for byte
 

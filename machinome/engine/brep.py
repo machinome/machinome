@@ -242,6 +242,14 @@ def intersect_shapes(first, second, first_name, second_name):
     common = _boolean('intersection', first, second, first_name, second_name)
     if _solids(common):
         return common
+    for name, shape in ((first_name, first), (second_name, second)):
+        volume = _inside_out(shape)
+        if volume is not None:
+            raise BrepCommonVerificationError(
+                f'B-rep common of {first_name} and {second_name} was empty '
+                f'and cannot be verified: {name} is inside out (signed '
+                f'volume {volume:.1f} mm3), so its classifier reads every point '
+                f'as inside. No overlap volume was inferred.')
     try:
         witness = _false_empty_witness(first, second)
     except Exception as error:
@@ -254,6 +262,25 @@ def intersect_shapes(first, second, first_name, second_name):
             f'despite a point strictly inside both native solids: '
             f'{witness}. No overlap volume was inferred.')
     return common
+
+
+def _inside_out(shape):
+    """The signed volume of the first inside-out solid of `shape`, or None
+    when every solid is right side out.
+
+    OCCT's solid classifier decides inside from the face orientations, so
+    a solid published with its faces pointing inward, whose signed volume
+    is negative, reads every point as inside it. No classifier verdict is
+    taken on such a solid: the empty-common guard refuses it by name and
+    the containment guard declines (change
+    `an-inside-out-operand-is-refused-by-name`).
+    """
+    for solid in _solids(as_shape(shape)):
+        properties = GProp_GProps()
+        BRepGProp.VolumeProperties_s(solid, properties)
+        if properties.Mass() < 0:
+            return properties.Mass()
+    return None
 
 
 def _distance(first, second):
@@ -523,11 +550,14 @@ def mutually_outside(first, second):
     inside the other has boundaries that do not meet either, so only the
     CONTAINED shape's own representative points reveal it. Declines (never
     a wrong answer) on a shape with no solids on either side -- there is
-    then nothing to load a classifier from -- or a solid with no vertex.
+    then nothing to load a classifier from -- a solid with no vertex, or
+    an inside-out solid, whose classifier would read every point as inside.
     """
     solids1 = _solids(first)
     solids2 = _solids(second)
     if not solids1 or not solids2:
+        return False
+    if _inside_out(first) is not None or _inside_out(second) is not None:
         return False
     points1 = _representative_points(solids1)
     points2 = _representative_points(solids2)

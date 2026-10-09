@@ -89,3 +89,42 @@ class ExactCommonGuardTest(TestCase):
             with self.assertRaisesRegex(BrepCommonVerificationError,
                                         'first.*second.*UNKNOWN'):
                 intersect_shapes(box(), box(.5), 'first', 'second')
+
+
+class InsideOutOperandTest(TestCase):
+    """A classifier reads an inside-out solid as everything outside it, so
+    no classifier verdict is taken on one: the guard refuses it by name and
+    the containment tier declines without consulting (change
+    `an-inside-out-operand-is-refused-by-name`)."""
+
+    def test_the_guard_refuses_an_inside_out_operand_by_name(self):
+        from machinome.engine import brep as engine
+        normal = box().wrapped
+        reversed_box = box(1).wrapped.Reversed()
+        self.assertLess(engine.solid_volume(reversed_box), 0)
+        with patch('machinome.engine.brep._boolean', return_value=empty_common()):
+            with self.assertRaises(BrepCommonVerificationError) as caught:
+                intersect_shapes(normal, reversed_box, 'first', 'second')
+        message = str(caught.exception)
+        self.assertIn('second is inside out', message)
+        self.assertIn('-1.0', message)
+        self.assertNotIn('strictly inside both', message)
+        with patch('machinome.engine.brep._boolean', return_value=empty_common()):
+            with self.assertRaisesRegex(BrepCommonVerificationError,
+                                        'first is inside out'):
+                intersect_shapes(reversed_box, normal, 'first', 'second')
+
+    def test_the_containment_guard_declines_without_a_classifier(self):
+        from machinome.engine import brep as engine
+        normal = box().wrapped
+        reversed_box = box(5).wrapped.Reversed()
+        built = []
+
+        def recorder(*args):
+            built.append(args)
+            raise AssertionError('a classifier was built')
+
+        with patch.object(engine, 'BRepClass3d_SolidClassifier', recorder):
+            self.assertFalse(engine.mutually_outside(normal, reversed_box))
+            self.assertFalse(engine.mutually_outside(reversed_box, normal))
+        self.assertEqual(built, [])
