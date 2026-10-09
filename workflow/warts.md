@@ -2021,6 +2021,60 @@ A pair at zero distance whose common is empty and that a project's test
 expects clear is the contact-semantics case, and gets counted, not
 decided.
 
+**Measured (9 October 2026),** read-only on framework `main` `6cc56a24`,
+the combination safe lock at `8f185f6` and wall clock 02 at `ec2a05d` (a
+detached worktree of the project, since the project's checkout was
+being committed to during the runs), cold with a scratch build directory,
+one run at a time, the engine's module functions wrapped from a script
+that runs `machinome test --brep` in-process; the script, the per-common
+records and the summaries are in
+`ongoing/distance-tier-measurement-2026-10-09/`. The host carried another
+agent's CAD runs at about two cores throughout, so the absolute times run
+above the 7 October ones; the ratios within one run are the evidence.
+
+- *The premise holds.* After the face-box tier (48 of 778 pairs on the
+  lock, 495 of 1,138 on the clock), the engine computed 730 and 643
+  commons, 725 and 637 of them empty. Of the empties, 702 (97 %) and 522
+  (82 %) are at positive boundary distance, nearly all between 0.1 and
+  10 mm; 23 and 115 are at exactly zero and a further 78 and 9 under a
+  micrometre. No empty common had disjoint whole-solid bounds, so a
+  bounds gate after the face-box tier settles nothing. The far empties
+  carry 137 s (lock) and 609 s (clock) of Boolean plus witness; the
+  touching ones 18 s and 617 s.
+- *The engine's distance helper runs single-threaded by accident:*
+  `_distance` sets `SetMultiThread(True)` on a `BRepExtrema_DistShapeShape`
+  whose two-shape constructor has already performed. Loaded, flagged and
+  then performed, the same exact distance on the lock's 730 pairs drops
+  from 186 s to 33 s (the tree algorithm changes nothing: 186 s), with no
+  disagreement against the single-threaded value on any pair and no pair
+  at zero distance reported apart. A defect of its own, one site.
+- *Exact extrema is a viable certificate on the lock and a loss on the
+  clock.* Threaded, the lock pays 33 s of distance to skip 137 s; the
+  worst pair, the dial against the cam, 0.53 s against 6.2 s. The clock
+  pays 1,590 s to skip 609 s: its wheels and plates have 500 to 700
+  faces each, and extrema on two of them costs about 10 s against 5 s
+  for the Boolean and the witness (plates against the great wheel, 54
+  askings, 613 s of distance to skip 295 s; wheel against wheel, 117
+  askings, 805 s to skip 173 s). The cost scales with the face pairs
+  whose boxes overlap, which on a gear train is most of them. A distance
+  tier built on exact extrema is therefore not the general answer; it
+  would need a certificate cheaper than extrema on many-faced solids, or
+  a per-pair choice of instrument, neither of which this measurement
+  supplies.
+- *A touching pair can exhaust the witness.* On the clock the witness
+  spends 583 s of its 948 s on the 115 zero-distance empties: the weight
+  shell against its screw, 298 s at one asking; the arbor against the
+  hour holder, 119 s over 51 askings. Since cycle 18 a candidate that
+  reads inside both solids but whose six neighbours contradict it is
+  skipped and the search goes on, so a touching pair whose every
+  candidate is contradicted walks the whole stencil, 1,872 points at up
+  to fourteen classifications each. No distance tier touches this; it
+  is ADR-142's own budget, and on the clock it is the larger half.
+- *The population the contact decision is about:* 101 of 725 empties on
+  the lock and 124 of 637 on the clock sit at or within a micrometre of
+  zero distance with an empty common, and the six non-empty commons of
+  the clock all sit at zero distance.
+
 **Filed 8 October 2026 with the proposal, at the pilot's request. Not a
 ratified change:** cutting it is a standalone framework cycle amending
 ADR-142 under `skills/framework-change/SKILL.md`, after the measurement,

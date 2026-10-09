@@ -1,0 +1,30 @@
+{
+ "wall_s": 3108.1276510010357,
+ "tier": {
+  "faces_disjoint_calls": 1138,
+  "faces_disjoint_true": 495,
+  "faces_disjoint_s": 36.009694840468,
+  "mutually_outside_calls": 495,
+  "mutually_outside_true": 495,
+  "mutually_outside_s": 32.456931727880146
+ },
+ "commons": 643,
+ "empty": 637,
+ "nonempty": 6,
+ "refused": 0,
+ "empty_positive_distance": 522,
+ "empty_zero_distance": 115,
+ "empty_tiny_distance_le_1e-6": 9,
+ "empty_bounds_disjoint": 5,
+ "distance_s_all": 1724.9284342184546,
+ "distance_s_on_empty_positive": 1589.9340030497406,
+ "boolean_s_all": 279.20443165738834,
+ "boolean_s_on_empty_positive": 244.0437050393666,
+ "witness_s_all": 947.9983273465768,
+ "witness_s_on_empty_positive": 365.05504995491356,
+ "witness_s_on_empty_zero": 582.9432773916633,
+ "bounds_s_all": 33.09435680357274,
+ "total_s_all": 1228.0489511544583,
+ "distance_min_on_empty": 0.0,
+ "distance_max_on_nonempty": 5.329070518200751e-15
+}
