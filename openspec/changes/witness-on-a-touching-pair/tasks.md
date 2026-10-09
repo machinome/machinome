@@ -106,6 +106,25 @@ command, its result and the load average in `<change>/evidence.md` as you go.
   acceptance of the Revision; 5.2 once more as well, since the instrument's
   search changed.
 
+## 3c. The second revision (design.md, "Second revision after apply evidence")
+
+- [ ] 3c.1 `_boundary(solid)` also records, per face, its surface type and
+  the plane (a point and unit normal) or cylinder (axis point, unit axis
+  direction, radius) it lies in, from `BRepAdaptor_Surface`; other types
+  carry no surface bound.
+- [ ] 3c.2 `_nearest_side`: each face's bound is the larger of its box
+  distance and its surface distance (plane: |(p − o)·n|; cylinder:
+  | ‖(p − a) − ((p − a)·d) d‖ − r |), computed in the same vectorised pass;
+  the visit order and the stop rule are unchanged. RED first: a test in
+  `tests/test_witness_touching_pair.py` with a 240-gon prism rotated 45°
+  about an axis in its end-face plane, so that its two end faces' boxes are
+  slabs holding a point 0.01 mm outside the middle of a side face; count
+  the faces measured by extrema and assert the two end faces are not among
+  them (red under the box-only search, which measures both at every
+  reading; the measured count there is recorded in evidence).
+- [ ] 3c.3 Rerun 5.1, 5.2 and 5.3, the lock and then the clock, and apply
+  the restated acceptance of the second Revision.
+
 ## 4. Green
 
 - [ ] 4.1 Run `tests/test_witness_touching_pair.py`, the three guard files,

@@ -324,6 +324,51 @@ suite than the change saves; reading the side only where the other
 classifier is slow is timing-based, which Decision 3 rejected; keeping
 Decision 1 alone leaves the shell at about 147 s.
 
+## Second revision after apply evidence (9 October 2026, the reviewer's ruling)
+
+The box-pruned search was implemented, went red first and green, kept
+every refusal (Voron-2's twelve at the same points, the synthetic ones),
+settled the captured shell and screw in 1.3–1.6 s, and failed the first
+Revision's acceptance. On the lock the suite's witness time fell below
+9 October in every class of empty (zero distance 16.9 s → 13.3 s, under a
+micrometre 23.7 s → 19.4 s, positive 89.6 s → 87.7 s), but four groups
+each under a second grew 1.6–1.7×, since a reading carries about 0.3 ms of
+fixed cost (the vertex, the numpy pass, the loop, the normals) against
+0.09 ms for a healthy classification there. On the clock's captured cannon
+pinion and hour holder the change is 3.55× in process: the holder is
+placed on a 45° axis, its two gear faces are planes with 211 edges each
+whose axis-aligned boxes are 29 × 29 × 41 mm slabs holding every stencil
+point, so both are measured at every reading at 2.5–3.7 ms each, 7.1 ms a
+reading against 0.9 ms for the holder's classifier. (Evidence: this
+change's `evidence.md`, 3b.)
+
+The ruling: two exact lower bounds join the boxes. For a planar face, the
+point's distance to the face's plane; for a cylindrical face, the
+magnitude of the difference between the point's distance to the cylinder's
+axis and its radius; each is a lower bound on the point's distance to the
+face, each is a few floating-point operations, and each is exact for the
+surface the face lies in (`BRepAdaptor_Surface` gives the type, the plane
+and the cylinder). The bound used for a face is the larger of its box
+distance and its surface distance; faces are visited in ascending bound
+exactly as before, and the stop rule is the same. A face of any other
+surface type keeps its box alone. Nothing else changes: the reading, what
+it may exclude, the composed orientation, the edge rule.
+
+The acceptance is restated to what the suites measure. On the lock and the
+clock, cold, each class of empty common (zero distance, under a
+micrometre, positive distance) costs no more witness time than on
+9 October, the three pathological groups stay settled, and no pair group
+grows by more than 5 s over its 9 October time; a sub-second group growing
+by a fraction of a second is recorded, not a stop. The clock run is made
+this time, since the acceptance is measured on it. A class or group
+outside those bounds is a stop point, reported with its numbers.
+
+Not taken: an oriented box per face (OCCT's `Bnd_OBB`) would also thin the
+tilted gear faces but is heavier to compute and no better than the plane
+for a planar face; reducing the fixed cost by batching the stencil's points
+through one numpy pass per solid is possible but is an optimisation of the
+same instrument and is left for the measurement to call for.
+
 ## Risks / Trade-offs
 
 - [The extrema misplaces a nearest boundary point at a genuine witness, and a
