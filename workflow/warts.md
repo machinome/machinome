@@ -1943,7 +1943,14 @@ is paused. Owed when the pilot resumes the project: the thread-seat
 measurement (or the scoped recheck of `resumed-main-validation.json`)
 against a framework carrying the change, expecting all twelve still to
 raise `BrepCommonInconsistency`; a pair that no longer does is a finding
-against the change. **Owed.**
+against the change. **Done (9 October 2026):** the six nut and screw
+pairs of `simulation/test_thread_seat_contacts.py`, placed as that test
+places them and compared through `intersect_shapes` in both orders, from
+a read-only script against the project at `a88fac4` with a scratch build
+directory (`openspec/changes/archive/2026-10-09-witness-on-a-touching-pair/measurements/voron_thread_seats.py`,
+evidence sections 1.4, 5.2 and 3c), raise `BrepCommonInconsistency` in
+all twelve orders at the same points under framework `main` before and
+after `witness-on-a-touching-pair`; the full project suite was not run.
 The pilot explicitly authorized rebasing and locally merging these wart
 records into main without pushing; this is evidence filing, not a fix.
 
@@ -2151,3 +2158,20 @@ ADR-142 under `skills/framework-change/SKILL.md`, after the measurement,
 and it replaces the "Item 18" choice in
 `ongoing/fix-warts-3.md` rather than adding to it. The "stencil misses a
 shallow sphere dent" finding above waits on the same decision.
+
+# A fresh worktree's first full suite trips on a fixture another test writes (9 October 2026, found by the `witness-on-a-touching-pair` full-suite run)
+
+- **`test_missing_source_file.py` expects `tests/stl_project/bracket.stl`
+  to exist, and it is gitignored.** `tests/.gitignore` excludes
+  `tests/stl_project/*.stl`; those meshes are written by another test
+  module during the run, so in a fresh worktree
+  `test_a_declaration_given_alone_is_resolved_beside_its_module` fails
+  with the file missing when it runs before the module that writes it,
+  and passes when rerun alone or on a checkout that already carries the
+  files. Seen once, in the bench's first full suite (2 failed, 4766
+  passed, the other failure the identity test's, fixed since); the
+  primary checkout, which carries the files, does not show it. Smallest
+  fix: the module that needs the file writes it in its own `setUpModule`,
+  or the fixture generation moves to a place every module reaches first.
+  **Recorded, untriaged.**
+
