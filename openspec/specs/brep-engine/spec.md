@@ -235,6 +235,11 @@ the other, at the kernel's confusion tolerance, in both directions. It SHALL
 answer `False`, declining, for a shape with no solid, a solid with no vertex,
 a classification refused or failed, and any state other than outside.
 
+A distance the engine measures between two shapes SHALL be the kernel's
+minimal distance, asked of an extrema that is told to run on every core the
+host offers before it performs, so that the flag governs the computation
+rather than being set on a finished one.
+
 #### Scenario: A triangulation does not change a face box
 
 - **WHEN** a curved shape's face bounds are read before and after a
@@ -245,6 +250,12 @@ a classification refused or failed, and any state other than outside.
 
 - **WHEN** a small solid lies wholly inside a larger one
 - **THEN** `mutually_outside` answers `False` in either argument order
+
+#### Scenario: The distance is asked threaded
+
+- **WHEN** the engine measures the distance between two shapes
+- **THEN** the kernel's extrema is told to run multithreaded before it
+  performs, and the value is the minimal distance between the shapes
 
 ### Requirement: The engine reads and writes B-rep artifacts byte for byte
 

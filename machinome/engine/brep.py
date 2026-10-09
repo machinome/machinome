@@ -44,6 +44,7 @@ from OCP.BRepBuilderAPI import (BRepBuilderAPI_Copy, BRepBuilderAPI_MakeVertex,
                                 BRepBuilderAPI_Transform)
 from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+from OCP.Extrema import Extrema_ExtFlag_MIN
 from OCP.BRepGProp import BRepGProp
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.BRepTools import BRepTools
@@ -257,9 +258,18 @@ def intersect_shapes(first, second, first_name, second_name):
 
 def _distance(first, second):
     """The minimal distance between two shapes, measured as CadQuery's
-    `Shape.distance` measures it."""
-    calculation = BRepExtrema_DistShapeShape(first, second)
+    `Shape.distance` measures it.
+
+    Built empty and performed after its flags are set: the two-shape
+    constructor performs at once, and a flag set on it afterwards governs
+    nothing (change `distance-asks-the-kernel-threaded`).
+    """
+    calculation = BRepExtrema_DistShapeShape()
+    calculation.LoadS1(first)
+    calculation.LoadS2(second)
+    calculation.SetFlag(Extrema_ExtFlag_MIN)
     calculation.SetMultiThread(True)
+    calculation.Perform()
     return calculation.Value()
 
 

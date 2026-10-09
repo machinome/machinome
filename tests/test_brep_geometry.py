@@ -933,3 +933,42 @@ class FaceBoxTierAssertionTest(TestCase):
         message = str(failure.exception)
         self.assertIn('compound', message)
         self.assertIn('big', message)
+
+
+class EngineDistanceTest(TestCase):
+    """The engine's distance is asked of the kernel threaded: the flag is set
+    before the extrema performs, not on a finished computation (change
+    `distance-asks-the-kernel-threaded`)."""
+
+    def test_the_multithread_flag_precedes_the_computation(self):
+        from machinome.engine import brep as engine
+        calls = []
+
+        class Recorder:
+            def __init__(self, *shapes):
+                calls.append(('construct', len(shapes)))
+
+            def __getattr__(self, name):
+                def record(*args):
+                    calls.append((name, args))
+                    return 0.5 if name == 'Value' else True
+                return record
+
+        with patch.object(engine, 'BRepExtrema_DistShapeShape', Recorder):
+            value = engine._distance(cq.Solid.makeBox(1, 1, 1).wrapped,
+                                     cq.Solid.makeBox(1, 1, 1).wrapped)
+        self.assertEqual(value, 0.5)
+        names = [name for name, _ in calls]
+        self.assertIn('Perform', names)
+        self.assertIn(('SetMultiThread', (True,)), calls)
+        self.assertLess(names.index('SetMultiThread'), names.index('Perform'))
+        self.assertEqual(calls[0], ('construct', 0))
+
+    def test_the_distance_is_the_minimal_distance_between_the_shapes(self):
+        from machinome.engine import brep as engine
+        first = cq.Solid.makeBox(1, 1, 1)
+        second = cq.Solid.makeCylinder(0.5, 1, cq.Vector(3, 0.5, 0))
+        self.assertAlmostEqual(engine._distance(first.wrapped, second.wrapped),
+                               first.distance(second), places=9)
+        self.assertAlmostEqual(engine._distance(first.wrapped, second.wrapped),
+                               1.5, places=9)

@@ -6,6 +6,12 @@ Changelog
 Unreleased
 ----------
 
+* **The engine measures a distance on every core.** Its distance helper
+  used to set the kernel's multithread flag on an extrema the constructor
+  had already performed, so every distance ran on one core; it now loads
+  the shapes, sets the flag and then performs, with the same value. On the
+  combination safe lock's 730 placed pairs the same measurement takes 33 s
+  where it took 186 s (distance-asks-the-kernel-threaded).
 * **The viewer extra installs the matching viewer.** The ``viewer`` and
   ``web-snapshot`` extras require ``machinome-viewer`` |viewer_version| or
   newer, where they used to state no version and an upgrade of
