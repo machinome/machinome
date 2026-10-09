@@ -2048,6 +2048,9 @@ above the 7 October ones; the ratios within one run are the evidence.
   from 186 s to 33 s (the tree algorithm changes nothing: 186 s), with no
   disagreement against the single-threaded value on any pair and no pair
   at zero distance reported apart. A defect of its own, one site.
+  **Fixed (9 October 2026)** by `distance-asks-the-kernel-threaded`,
+  integrated into `main`: the helper loads, flags and then performs, with
+  a seam test pinning the order.
 - *Exact extrema is a viable certificate on the lock and a loss on the
   clock.* Threaded, the lock pays 33 s of distance to skip 137 s; the
   worst pair, the dial against the cam, 0.53 s against 6.2 s. The clock
