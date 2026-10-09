@@ -87,6 +87,25 @@ command, its result and the load average in `<change>/evidence.md` as you go.
   `machinome.engine.brep._nearest_side` to return `None`, and nothing else.
   Confirm the first still asserts the lie was told once.
 
+## 3b. The revision (design.md, "Revision after apply evidence")
+
+- [ ] 3b.1 `_boundary(solid)` also holds one box per face, taken as
+  `face_bounds` takes them, in the face map's order.
+- [ ] 3b.2 `_nearest_side`: the point's distance to every face's box,
+  vectorised; faces visited in ascending box distance, each by one extrema
+  from the point to that face alone; stop when the next box distance is not
+  below the best face distance; the nearest face's support gives the side
+  as Decision 2 states. Remove the whole-shell extrema. RED first: a test
+  in `tests/test_witness_touching_pair.py` that counts the faces an extrema
+  is run against for a point near one face of a many-faced solid (a
+  240-gon prism) and asserts it is far fewer than the face count; red
+  against the whole-shell search because that count is the whole compound
+  (one extrema, every face). The existing side tests of task 2.1 stay green
+  unchanged.
+- [ ] 3b.3 Rerun 5.1 and 5.3 under the revised search and apply the
+  acceptance of the Revision; 5.2 once more as well, since the instrument's
+  search changed.
+
 ## 4. Green
 
 - [ ] 4.1 Run `tests/test_witness_touching_pair.py`, the three guard files,

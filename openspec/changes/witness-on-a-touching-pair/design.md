@@ -80,11 +80,13 @@ For a point the cheaper operand puts inside, before any classifier of the
 other operand is consulted, the engine reads the point's side of every
 solid of both operands:
 
-- One `BRepExtrema_DistShapeShape` from the point (a vertex) to a compound
-  of the solid's shells, built once per solid and search, gives the
-  distance `d` and every nearest boundary point `q` with its support. The
-  shells, not the solid: against a solid the extrema classifies the point
-  and is as slow as the classifier (M3).
+- The nearest boundary point `q`, its distance `d` and its support (a
+  face's interior, an edge, a vertex) found face by face through the
+  faces' boxes, as the Revision below rules (the proposal's one extrema
+  against the compound of the solid's shells measured nine times a
+  healthy classification on the clock's 218-face parts). Never against the
+  solid: an extrema against a solid classifies the point and is as slow
+  as the classifier (M3).
 - `q` inside a face `F`: if `d` is within `F`'s native tolerance, the side is
   *on the boundary*. Otherwise the outward normal `n` of `F` at `q`
   (`BRepGProp_Face.Normal`, which follows the face's orientation in the
@@ -275,6 +277,52 @@ Validation outside the repository, read-only, one run at a time:
   `shell`/`nut` named.
 - **OpenAstroMount**, optionally: the archived `astro_pair.py` at the Target
   pose: the empty common returned, as since 7 October.
+
+## Revision after apply evidence (9 October 2026, the reviewer's ruling)
+
+The first apply implemented Decisions 1 and 2 as written, with the side
+read by one extrema from the point to the compound of the solid's shells,
+and stopped at a stop point on task 5.3: on wall clock 02 the three
+pathological groups settled (`shell`/`screw` 297.8 s → 1.26 s,
+`beat_screw`/`collet` 43.7 s → 1.80 s, `nut`/`shell` 41.2 s → 0.62 s) and
+Voron-2's twelve refusals stayed at the same points, but
+`arbor`/`hour_holder` grew 119.0 s → 469.1 s (3.94×) and
+`cannon_pinion`/`hour_holder` 57.2 s → 244.2 s (4.27×), and the clock's
+zero-distance empties went from 582.9 s to 810.3 s. Diagnosed on the
+captured pinion and holder: the holder's classifier settles a point in
+0.9 ms, and one extrema over its 218 faces costs 8.4 ms. Decision 2's cost
+assumption, that a side reading costs about what a healthy classification
+costs, came from synthetic pairs and does not hold on gear-train parts.
+(Evidence: this change's `evidence.md`, 5.3.)
+
+The ruling: the instrument stays, its search changes. The nearest boundary
+point is found through the faces' boxes, the same outward-only enclosures
+`face_bounds` takes (`BRepBndLib.Add_s(face, box, False)`, the surface's
+own extent plus its tolerance, never a triangulation), computed once per
+`_boundary`. For a point, the distance from the point to every face's box
+is a vectorised lower bound on its distance to that face; faces are visited
+in ascending box distance, each by one extrema from the point to that face
+alone, and the visit stops as soon as the next box distance is not below
+the best face distance found. The nearest face and its support (inside the
+face, on an edge, at a vertex) then give the side exactly as Decision 2
+states: a face's outward normal, a two-faced edge's normals through the
+edge-face map, undecided otherwise. The reading is the same reading, since
+a box never excludes the face holding the true nearest point; what changes
+is that a healthy solid costs the numpy pass over its boxes plus one or two
+single-face extrema, in the order of a classification, instead of a search
+over all its faces. The whole-shell extrema is not kept as a fallback:
+there is one instrument.
+
+Acceptance, on top of the Proof plan: tasks 5.1 and 5.3 are rerun under the
+revised search; the pathological groups stay settled, no real pair group of
+the lock or the clock exceeds 1.3× its 9 October witness time, and the
+clock's zero-distance empties cost less than on 9 October. A group that
+still grows is a stop point again, reported with its numbers.
+
+Not taken, and why: accepting the regression spends more of the clock's
+suite than the change saves; reading the side only where the other
+classifier is slow is timing-based, which Decision 3 rejected; keeping
+Decision 1 alone leaves the shell at about 147 s.
 
 ## Risks / Trade-offs
 
