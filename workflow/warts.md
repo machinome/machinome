@@ -2079,6 +2079,22 @@ above the 7 October ones; the ratios within one run are the evidence.
   candidate is contradicted walks the whole stencil, 1,872 points at up
   to fourteen classifications each. No distance tier touches this; it
   is ADR-142's own budget, and on the clock it is the larger half.
+  **Measured on the pair itself (9 October 2026,** the placed shell and
+  screw captured as BREP from the clock worktree at `ec2a05d`; script
+  `ongoing/distance-tier-measurement-2026-10-09/stencil*.py`): the
+  witness costs 324 s and never reaches a candidate; all of it is 2,547
+  zero-tolerance classifications in the stencil's `inside()` loops,
+  1,872 of them on the shell. The shell is a valid 32-face solid
+  (13 cylinders, 19 planes, tolerance 1e-4) whose classifier answers in
+  0.6 ms at its centre and 190–300 ms at every stencil point, uniformly
+  across the three step sizes, so the cost is OCCT's ray classifier
+  retrying near the contact, not the stencil's fine steps; the screw's
+  classifier answers in under 0.1 ms. The point's margin
+  (`_resolved_interior`, 32 face distances) costs 10.5 ms, eighteen times
+  less than classifying it. Asking the cheaper solid first would cut the
+  shell's classifications to 730 (1.5×); any larger saving changes the
+  stencil, which ADR-142 chose and the Curta and Voron-2 witnesses
+  validate, so it is the pilot's decision and was not made.**
 - *The population the contact decision is about:* 101 of 725 empties on
   the lock and 124 of 637 on the clock sit at or within a micrometre of
   zero distance with an empty common, and the six non-empty commons of
