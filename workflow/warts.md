@@ -309,7 +309,11 @@ it never had). Diagnosing them produced three framework findings.
   consults it as the witness does, and an inside-out operand is refused
   by name wherever the classifier is consulted, never in the Boolean.
   **Folded into "The overlap question is asked of a Boolean that is only
-  needed at zero distance".**
+  needed at zero distance"; fixed (9 October 2026) by
+  `an-inside-out-operand-is-refused-by-name`, integrated into `main`:**
+  the guard refuses an inside-out operand naming it and its signed volume,
+  the containment guard declines it without a classifier, the Boolean is
+  untouched; validated read-only on Thor's published `Art4BodyBot.step`.
 - **The empty-common refusal names solids by their bare name.**
   `machinome/test.py` (~1114) passes `first[0].name` into
   `BrepCommonInconsistency`, so Thor's `screws-7` and `gear` are
@@ -2004,7 +2008,9 @@ once, by signed volume or a classifier probe outside its own box, and
 refuse it by name wherever the classifier would be consulted, leaving the
 Boolean alone. The campaign's "guard only or everywhere" choice was that
 finding asked at the wrong level; it is not a separate decision and
-belongs to this cycle (pilot, 8 October 2026).
+belongs to this cycle (pilot, 8 October 2026). **Done (9 October 2026)**
+as its own cycle, `an-inside-out-operand-is-refused-by-name`, since the
+precondition stands whether or not the tier is cut.
 
 What it forces: a statement of whether contact fouls under the B-rep
 engine. With distance measured, every touching pair becomes visible at
