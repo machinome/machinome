@@ -36,28 +36,30 @@ require_extra('brep', 'the B-rep engine (machinome.engine.brep)', 'OCP')
 import numpy as np
 from OCP.Bnd import Bnd_Box
 from OCP.BRep import BRep_Builder, BRep_Tool
-from OCP.BRepAdaptor import BRepAdaptor_Curve
+from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
 from OCP.BRepAlgoAPI import (BRepAlgoAPI_Common, BRepAlgoAPI_Fuse,
                              BRepAlgoAPI_Section)
 from OCP.BRepBndLib import BRepBndLib
 from OCP.BRepBuilderAPI import (BRepBuilderAPI_Copy, BRepBuilderAPI_MakeVertex,
                                 BRepBuilderAPI_Transform)
 from OCP.BRepClass3d import BRepClass3d_SolidClassifier
-from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+from OCP.BRepExtrema import BRepExtrema_DistShapeShape, BRepExtrema_SupportType
 from OCP.Extrema import Extrema_ExtFlag_MIN
-from OCP.BRepGProp import BRepGProp
+from OCP.BRepGProp import BRepGProp, BRepGProp_Face
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.BRepTools import BRepTools
 from OCP.GCPnts import GCPnts_AbscissaPoint
+from OCP.GeomAbs import GeomAbs_Cylinder, GeomAbs_Plane
 from OCP.GProp import GProp_GProps
-from OCP.gp import gp_Pnt, gp_Trsf
+from OCP.gp import gp_Pnt, gp_Trsf, gp_Vec
 from OCP.Precision import Precision
 from OCP.StlAPI import StlAPI_Writer
 from OCP.TopAbs import (TopAbs_EDGE, TopAbs_FACE, TopAbs_IN, TopAbs_OUT,
                         TopAbs_SOLID, TopAbs_UNKNOWN, TopAbs_VERTEX)
 from OCP.TopExp import TopExp
 from OCP.TopoDS import TopoDS, TopoDS_Builder, TopoDS_Compound, TopoDS_Shape
-from OCP.TopTools import TopTools_IndexedMapOfShape, TopTools_ListOfShape
+from OCP.TopTools import (TopTools_IndexedDataMapOfShapeListOfShape,
+                          TopTools_IndexedMapOfShape, TopTools_ListOfShape)
 
 from machinome.engine import (BrepCommonInconsistency,
                               BrepCommonVerificationError)
@@ -235,7 +237,10 @@ def intersect_shapes(first, second, first_name, second_name):
     beyond native face tolerances and its six axis neighbours, at half its
     smaller distance to the two solids' faces, are inside both too; no
     witness is not a universal certificate that every OCCT Boolean is
-    correct.  No mesh fallback,
+    correct.  The search asks the operand with fewer faces first, and skips
+    a point whose nearest boundary point shows it outside, or on the
+    boundary of, every solid of either operand, without asking the other
+    operand's classifiers there.  No mesh fallback,
     fuzzy tolerance or replacement volume is used.
     """
     first, second = as_shape(first), as_shape(second)
@@ -329,6 +334,206 @@ def _resolved_interior(solid, point):
     return margin
 
 
+def _boundary(solid):
+    """What `_nearest_side` reads of `solid`: one box per face, its faces,
+    the faces meeting at each of its edges, and the plane or cylinder each
+    planar or cylindrical face lies in.
+
+    Each face is the face as explored from the solid itself, so its
+    orientation is composed through the solid's and its shell's, and its
+    normal points out of the solid whatever orientation the shell is
+    stored with.  The boxes are `face_bounds`'s, in the face map's order:
+    ``BRepBndLib.Add_s(face, box, False)``, the surface's own extent plus
+    its tolerance, never a triangulation, so each encloses its face and a
+    point's distance to it is a lower bound on the point's distance to the
+    face.  A void box is taken as unbounded, so its face is never passed
+    over.  An ``(F, 2, 3)`` array.
+
+    A face lies in its surface, so a point's distance to the plane, or to
+    the cylinder, a face lies in is a lower bound on its distance to the
+    face as well, short by at most the largest tolerance of the face's
+    edges and vertices, which may stand that far off the surface; that
+    tolerance is kept with the surface and taken off the bound.  Planes are
+    ``(indices, origins, unit normals, tolerances)``, cylinders
+    ``(indices, axis points, unit axis directions, radii, tolerances)``; a
+    face of another surface type, or whose surface does not read finite,
+    has its box alone.
+    """
+    faces = TopTools_IndexedMapOfShape()
+    TopExp.MapShapes_s(solid, TopAbs_FACE, faces)
+    boxes = np.empty((faces.Extent(), 2, 3), dtype=np.float64)
+    planes, cylinders = [], []
+    for index in range(faces.Extent()):
+        face = TopoDS.Face_s(faces.FindKey(index + 1))
+        box = Bnd_Box()
+        BRepBndLib.Add_s(face, box, False)
+        if box.IsVoid():
+            boxes[index, 0, :], boxes[index, 1, :] = -math.inf, math.inf
+        else:
+            xmin, ymin, zmin, xmax, ymax, zmax = box.Get()
+            boxes[index, 0, :] = (xmin, ymin, zmin)
+            boxes[index, 1, :] = (xmax, ymax, zmax)
+        surface = BRepAdaptor_Surface(face)
+        kind = surface.GetType()
+        if kind == GeomAbs_Plane:
+            axis = surface.Plane().Axis()
+            known = [index, axis.Location().XYZ(), axis.Direction().XYZ()]
+            into = planes
+        elif kind == GeomAbs_Cylinder:
+            cylinder = surface.Cylinder()
+            axis = cylinder.Axis()
+            known = [index, axis.Location().XYZ(), axis.Direction().XYZ(),
+                     cylinder.Radius()]
+            into = cylinders
+        else:
+            continue
+        known[1:3] = [(xyz.X(), xyz.Y(), xyz.Z()) for xyz in known[1:3]]
+        known.append(max(BRep_Tool.Tolerance_s(face),
+                         BRep_Tool.MaxTolerance_s(face, TopAbs_EDGE),
+                         BRep_Tool.MaxTolerance_s(face, TopAbs_VERTEX)))
+        if all(math.isfinite(value) for value in np.hstack(known[1:])):
+            into.append(known)
+    edge_faces = TopTools_IndexedDataMapOfShapeListOfShape()
+    TopExp.MapShapesAndUniqueAncestors_s(solid, TopAbs_EDGE, TopAbs_FACE,
+                                         edge_faces)
+
+    def columns(rows):
+        if not rows:
+            return None
+        indices, *rest = zip(*rows)
+        return (np.array(indices, dtype=np.intp),
+                *(np.array(column, dtype=np.float64) for column in rest))
+
+    return boxes, faces, edge_faces, columns(planes), columns(cylinders)
+
+
+def _nearest_side(boundary, point):
+    """The side of a solid `point` lies on, read from the solid's nearest
+    boundary point: 'out', 'in', 'on' (within the native tolerance of a
+    face there), or None when the reading is undecided.
+
+    `boundary` is the solid's `_boundary`. Each face's bound is the larger
+    of the point's distance to its box and, for a face lying in a plane or
+    a cylinder, the point's distance to that surface less the face's
+    tolerance there; each is a lower bound on the point's distance to the
+    face. The faces are visited in ascending bound, each by one extrema
+    from the point to that face alone (never to the solid, which would
+    classify the point at a classifier's cost), and the visit stops at the
+    first bound not below the nearest face found: no face left can come
+    closer. The nearest face's extrema gives the distance `d` and each
+    nearest boundary point `q`. The open ball of radius `d` about the
+    point meets no face, so the point's side is the side `q`'s
+    neighbourhood shows: at `q` inside a face, the face's outward normal;
+    at `q` inside an edge two faces meet, or a seam's face meets twice,
+    the sum of their outward normals there, which points out of a convex
+    edge and into a concave one. Undecided: `q` at a vertex or on any
+    other edge, an edge degenerated or not same-parameter, a failed or
+    empty extrema on any face visited, a distance or tolerance not
+    finite, a vanishing normal, nearest points that disagree, or a sign
+    not clear of the tangent directions. The
+    witness search takes 'out' and 'on' as no candidate and asks the
+    classifier otherwise (change `witness-on-a-touching-pair`).
+    """
+    boxes, faces, edge_faces, planes, cylinders = boundary
+    at = np.array((point.X(), point.Y(), point.Z()))
+    gaps = np.maximum(np.maximum(boxes[:, 0, :] - at, at - boxes[:, 1, :]),
+                      0.0)
+    reaches = np.sqrt(np.einsum('ij,ij->i', gaps, gaps))
+    if planes is not None:
+        indices, origins, normals, tolerances = planes
+        off = np.abs(np.einsum('ij,ij->i', at - origins, normals))
+        reaches[indices] = np.maximum(reaches[indices], off - tolerances)
+    if cylinders is not None:
+        indices, points, directions, radii, tolerances = cylinders
+        offsets = at - points
+        along = np.einsum('ij,ij->i', offsets, directions)
+        radial = offsets - along[:, None] * directions
+        off = np.abs(np.sqrt(np.einsum('ij,ij->i', radial, radial)) - radii)
+        reaches[indices] = np.maximum(reaches[indices], off - tolerances)
+    vertex = BRepBuilderAPI_MakeVertex(point).Vertex()
+    distance, nearest = math.inf, None
+    for index in np.argsort(reaches, kind='stable'):
+        if not reaches[index] < distance:
+            break
+        extrema = BRepExtrema_DistShapeShape()
+        extrema.LoadS1(vertex)
+        extrema.LoadS2(faces.FindKey(int(index) + 1))
+        extrema.SetFlag(Extrema_ExtFlag_MIN)
+        extrema.Perform()
+        if not extrema.IsDone() or extrema.NbSolution() < 1:
+            return None
+        value = extrema.Value()
+        if not (math.isfinite(value) and value >= 0):
+            return None
+        if value < distance:
+            distance, nearest = value, extrema
+    if nearest is None:
+        return None
+    sides = {_side_at(nearest, solution, distance, point, faces, edge_faces)
+             for solution in range(1, nearest.NbSolution() + 1)}
+    return sides.pop() if len(sides) == 1 else None
+
+
+def _side_at(extrema, solution, distance, point, faces, edge_faces):
+    """`_nearest_side`'s reading at one nearest boundary point."""
+    support = extrema.SupportOnShape2(solution)
+    kind = extrema.SupportTypeShape2(solution)
+    if kind == BRepExtrema_SupportType.BRepExtrema_IsInFace:
+        index = faces.FindIndex(support)
+        if not index:
+            return None
+        sheets = [(TopoDS.Face_s(faces.FindKey(index)),
+                   *extrema.ParOnFaceS2(solution))]
+        # Off the normal by more than about 25 degrees is not clear.
+        clear = .9
+    elif kind == BRepExtrema_SupportType.BRepExtrema_IsOnEdge:
+        edge = TopoDS.Edge_s(support)
+        index = edge_faces.FindIndex(edge)
+        if (not index or BRep_Tool.Degenerated_s(edge) or
+                not BRep_Tool.SameParameter_s(edge)):
+            return None
+        adjacent = [TopoDS.Face_s(face)
+                    for face in edge_faces.FindFromIndex(index)]
+        if len(adjacent) == 1 and BRep_Tool.IsClosed_s(edge, adjacent[0]):
+            adjacent *= 2  # a seam: its face on both sides
+        if len(adjacent) != 2:
+            return None
+        (parameter,) = extrema.ParOnEdgeS2(solution)
+        sheets = []
+        for face in adjacent:
+            pcurve = BRep_Tool.CurveOnSurface_s(edge, face, 0.0, 0.0)
+            if pcurve is None:
+                return None
+            uv = pcurve.Value(parameter)
+            sheets.append((face, uv.X(), uv.Y()))
+        clear = .1
+    else:
+        return None
+    for face, _u, _v in sheets:
+        tolerance = BRep_Tool.Tolerance_s(face)
+        if not (math.isfinite(tolerance) and tolerance >= 0):
+            return None
+        if distance <= tolerance:
+            return 'on'
+    outward = gp_Vec(0, 0, 0)
+    for face, u, v in sheets:
+        normal = gp_Vec()
+        BRepGProp_Face(face).Normal(u, v, gp_Pnt(), normal)
+        magnitude = normal.Magnitude()
+        if not (math.isfinite(magnitude) and magnitude > 1e-12):
+            return None
+        outward.Add(normal.Divided(magnitude))
+    size = outward.Magnitude()
+    away = gp_Vec(extrema.PointOnShape2(solution), point)
+    length = away.Magnitude()
+    if not (size > 1e-9 and math.isfinite(length) and length > 0):
+        return None
+    cosine = away.Dot(outward) / (length * size)
+    if not abs(cosine) >= clear:
+        return None
+    return 'out' if cosine > 0 else 'in'
+
+
 def _length(edge):
     return GCPnts_AbscissaPoint.Length_s(BRepAdaptor_Curve(edge))
 
@@ -355,6 +560,16 @@ def _false_empty_witness(first, second):
     wrong; such a candidate is skipped and the search goes on.  A 3-D
     stencil avoids assuming a sphere normal, and its finite budget is
     deliberately not a completeness claim.
+
+    At each point the classifiers of the operand with fewer faces are asked
+    first, the first operand's on a tie.  For a point inside it, the
+    point's side of each solid of both operands is read from that solid's
+    nearest boundary point (`_nearest_side`) before the other operand's
+    classifiers are asked: a solid the point reads outside, or on the
+    boundary of, holds no candidate there, and a point no solid of an
+    operand can hold is skipped.  On a touching pair that spares the
+    slower classifier every point; a side reading never makes a point
+    count (change `witness-on-a-touching-pair`).
     """
     solids1, solids2 = _solids(first), _solids(second)
     if not solids1 or not solids2:
@@ -400,10 +615,47 @@ def _false_empty_witness(first, second):
             raise RuntimeError('OCCT solid classifier returned UNKNOWN')
         return state == TopAbs_IN
 
-    def inside(classifiers, solids, point):
-        return [(classifier, solid)
-                for classifier, solid in zip(classifiers, solids)
-                if classified_in(classifier, point)]
+    # The operand with fewer faces is asked first, the first on a tie: a
+    # point outside it costs one cheap classification.
+    operands = (list(zip(classifiers1, solids1)),
+                list(zip(classifiers2, solids2)))
+    faces1 = sum(len(_faces(solid)) for solid in solids1)
+    faces2 = sum(len(_faces(solid)) for solid in solids2)
+    cheap, dear = (1, 0) if faces2 < faces1 else (0, 1)
+    boundaries = {}
+
+    def may_hold(operand, index, point):
+        # False when the point's nearest boundary point in that solid shows
+        # it outside or on the boundary: no candidate there.
+        if (operand, index) not in boundaries:
+            boundaries[operand, index] = _boundary(operands[operand][index][1])
+        return _nearest_side(boundaries[operand, index], point) not in (
+            'out', 'on')
+
+    def holders(point):
+        # Each operand's (classifier, solid) pairs that can hold a witness
+        # at the point, the first operand's first, or None: the cheaper
+        # operand's classifiers, then the side readings, then the other
+        # operand's classifiers over the solids left.
+        held = {cheap: [index for index, (classifier, _solid)
+                        in enumerate(operands[cheap])
+                        if classified_in(classifier, point)]}
+        if not held[cheap]:
+            return None
+        left = [index for index in range(len(operands[dear]))
+                if may_hold(dear, index, point)]
+        if not left:
+            return None
+        held[cheap] = [index for index in held[cheap]
+                       if may_hold(cheap, index, point)]
+        if not held[cheap]:
+            return None
+        held[dear] = [index for index in left
+                      if classified_in(operands[dear][index][0], point)]
+        if not held[dear]:
+            return None
+        return tuple([operands[operand][index] for index in held[operand]]
+                     for operand in (0, 1))
 
     def resolved(candidates, point):
         margins = [(classifier, _resolved_interior(solid, point))
@@ -434,12 +686,10 @@ def _false_empty_witness(first, second):
                     coords = tuple(at[i] + step * direction[i]
                                    for i in range(3))
                     point = gp_Pnt(*coords)
-                    candidates1 = inside(classifiers1, solids1, point)
-                    if not candidates1:
+                    held = holders(point)
+                    if held is None:
                         continue
-                    candidates2 = inside(classifiers2, solids2, point)
-                    if not candidates2:
-                        continue
+                    candidates1, candidates2 = held
                     margins1 = resolved(candidates1, point)
                     if not margins1:
                         continue

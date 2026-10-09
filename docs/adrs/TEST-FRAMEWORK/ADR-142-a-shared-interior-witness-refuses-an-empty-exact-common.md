@@ -122,3 +122,113 @@ such an operand without loading a classifier, so the Boolean decides the
 pair as before. The common, the fusion and the volume of an inside-out
 operand are computed exactly as before; nothing repairs or reorients it.
 See [the archived change](../../../openspec/changes/archive/2026-10-09-an-inside-out-operand-is-refused-by-name/proposal.md).
+
+## Amendment — 2026-10-09: A Point's Side Is Read From Its Nearest Boundary Before a Slower Classifier
+
+Wall clock 02's weight shell and the screw it carries touch, and their
+empty common is right. The search ran to the end of its stencil, 1,872
+points, asking the shell's classifier first at each and the screw's for
+the points inside the shell: 2,547 classifications and 324 s, with no
+candidate. The shell is a valid 32-face solid whose classifier answers in
+0.6 ms at its centre and in 190–300 ms at every stencil point near the
+screw; the screw's, 5 faces, answers in under 0.1 ms. On a touching pair
+no stencil point is inside both, so the search's cost is whatever the
+slower classifier costs to say so.
+
+The search now asks first the classifiers of the operand whose solids
+have fewer faces, the first operand on a tie. For a point inside it, and
+before any classifier of the other operand is asked, the point's side of
+each solid of both operands is read from that solid's nearest boundary
+point. That point is found face by face. Each face has a lower bound on
+its distance from the point: the larger of the point's distance to the
+face's box (`face_bounds`'s box, the surface's own extent plus its
+tolerance) and, for a face lying in a plane or a cylinder, the point's
+distance to that surface less the face's largest native tolerance, since
+the face's edges and vertices may stand that far off it. The faces are
+visited in ascending bound, each by one extrema from the point to that
+face alone, never to the solid, against which the extrema classifies the
+point at a classifier's cost; the visit stops at the first bound not below
+the nearest distance found, since no face left can come closer. The
+nearest face's extrema gives the distance `d`, the nearest point `q` and
+its support, and the support gives the side: with `q` inside a face, the
+face's outward normal, taken from the face as the solid holds it so the
+solid's and the shell's orientations compose; with `q` inside an edge that
+two faces meet, or a seam's face meets twice, the sum of the two outward
+normals; within a face's native tolerance there the point is on the
+boundary. A vertex, any other edge, a sign near a tangent direction or a
+failed measurement leaves the side undecided. A solid the point reads
+outside, or on the boundary of, holds no candidate there, and a point no
+solid of an operand can hold is skipped without the other operand's
+classifiers. Everything else is classified, measured and corroborated as
+before.
+
+The reading is sound for the reason the 2026-10-07 amendment gives: the
+open ball of radius `d` about the point `p` meets no face, so all of it
+has `p`'s state. With `q` inside a face the ball is tangent to the face at
+`q`, and `p` lies on the side of the face its offset `p − q` points to,
+along the normal. With `q` inside an edge, `p − q` lies in the
+cone both faces leave free: spanned by the two outward normals at a convex
+edge, which is outside, and by their opposites at a concave edge, which is
+inside; at a tangent edge or a seam the normals agree. In each case the
+sign of `(p − q)·(n1 + n2)` is the side. A point within a face's tolerance
+is one the margin test already rejects, so reading it on the boundary
+excludes nothing that could count. A bound never passes over the face that
+holds the true nearest point, so the face-by-face search reads what one
+extrema against the whole boundary would read.
+
+A side reading never makes a point count: a witness is still a point
+classified inside a solid of each operand at zero tolerance, resolved
+beyond every face tolerance, whose six neighbours are classified inside
+both. The order changes which classifier is asked at a point outside one
+operand, and so where an UNKNOWN can refuse; the side reading spares only
+classifications whose answer could not make a witness. Its one new way to
+miss a false empty is an extrema that misplaces the nearest boundary
+point at a genuine witness, the instrument the margin already trusts.
+
+On the captured shell and screw the search asks the screw's classifier at
+each of the 1,872 points and the shell's at none, in 0.5 s in either
+order. Measured cold on both projects' suites against the 9 October
+records, each class of empty common costs less witness time. On wall clock
+02: at zero distance 582.9 s to 421.9 s, under a micrometre 47.2 s to
+2.4 s, at positive distance 317.8 s to 301.8 s, all commons 948.0 s to
+726.1 s. On the combination safe lock: 16.9 s to 13.7 s, 23.7 s to
+20.3 s, 89.6 s to 89.1 s, with no pair group grown by half a second. The
+clock's three pathological groups settle: the weight shell and its screw
+297.8 s to 0.48 s, the collet and the beat screw 43.7 s to 1.38 s, the
+shell and its nut 41.2 s to 0.22 s. Overlapping boxes, a 0.4 mm slab, a
+pin 0.2 mm over its hole and a key 0.1 mm into its slot are refused at the
+same point with the side readings as with every side undecided, and
+Voron-2's twelve thread-seat refusals, six pairs in both orders, are made
+at the points they were made at before. The stencil, its budget and its
+order, the section, the errors and their messages are unchanged; the
+shallow-dent blind spot is untouched.
+
+The instrument has a known cost. Where the contact is a flat gear side,
+a plane bounded by about two hundred edges, that face is genuinely the
+nearest at most stencil points, so no lower bound can pass over it, and
+one extrema to it costs 4.1–4.4 ms against 0.9 ms for a healthy
+classifier of the same part. On the clock the arbor and the hour holder
+grow from 119.0 s to 266.8 s and the cannon pinion and the hour holder
+from 57.2 s to 134.5 s, about 2.3× each in process; a project whose
+touching pairs are mostly such contacts, with healthy classifiers, would
+see its witness time grow by up to that factor. Classifying the point's
+projection in the plane's parameter space, the one cheaper route
+measured, costs about what the healthy classifier costs and still needs
+the extrema where the projection falls off the face; a cheaper reading of
+a planar face is left to a finding that needs it. Nor is a slow
+classifier on the operand with fewer faces helped: on OpenAstroMount's
+bearing seat the insert (84 faces) classifies a point in 18–26 ms against
+the housing's (110 faces) 4–6 ms, and is now asked at every stencil point,
+so with the housing given first the witness grows from 34.6 s to 54.1 s;
+the empty common is returned as before. Two searches were measured on the
+way and not kept: one extrema against all of a solid's shells, at 8.4 ms
+a reading on a 218-face gear part, which grew the clock's zero-distance
+empties to 810.3 s; and the faces' boxes alone, which hold every stencil
+point near a gear placed off the axes, since a tilted disc's box is a
+slab.
+
+The Curta positioning-ball/frame ±0.2 mm pairs were not re-run; by the
+ball argument their witnesses read inside or undecided in both solids, so
+their classifiers are asked as before, and their re-run under this
+amendment is owed.
+See [the archived change](../../../openspec/changes/archive/2026-10-09-witness-on-a-touching-pair/).

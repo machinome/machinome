@@ -6,6 +6,21 @@ Changelog
 Unreleased
 ----------
 
+* **A touching pair no longer exhausts the empty-common witness.** After an
+  empty B-rep common the witness search asks first the classifier of the
+  part with fewer faces, and for a point inside it reads the point's side of
+  each part from its nearest boundary point, found face by face, before
+  asking the other part's classifier, which a point read outside or on the
+  boundary is never put to. Wall clock 02's weight shell against the screw
+  it carries, a genuine contact whose shell classifier answers in 200 ms
+  and more near the screw, took 324 s and 2,547 classifications; it now
+  takes half a second, 1,872 classifications of the screw and none of the
+  shell. Over the clock's whole suite the witness takes 726 s where it took
+  948 s, and over the combination safe lock's 123 s where it took 130 s. A
+  side reading never makes a point a witness, and every refusal is made
+  where it was. A contact on a flat side bounded by many edges, as a gear's
+  face against the part riding on it, costs more than before: up to about
+  2.3 times on the clock's hour holder (witness-on-a-touching-pair).
 * **An inside-out part is refused by name, not as a shared point.** A
   solid published with its faces pointing inward reads every point as
   inside to the kernel's classifier, so an empty B-rep common with such an

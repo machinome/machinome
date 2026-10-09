@@ -1635,6 +1635,11 @@ not fixed, until the pilot triages them.
   point inside both. The change left the stencil as it was. Evidence:
   `openspec/changes/archive/2026-10-07-a-witness-is-interior-in-its-neighbourhood/design.md`,
   Open Question 2 (the scratch measurement `probe_sphere.py`). **Untriaged.**
+  *Deeper than recorded (9 October 2026):* the same full 3.75 mm ball sunk
+  0.5 and 1.0 mm into a block, a native common of 10.7 mm³ at 1.0 mm,
+  is not refused either, before or after `witness-on-a-touching-pair`,
+  which left the stencil as it was (that change's design.md, Context, M4,
+  and `measurements/m4_spheres_and_cost.py`).
 
 # Three findings from filming the clocked Curta (1 October 2026, found by Videomaker's curta-video campaign)
 
@@ -2095,6 +2100,46 @@ above the 7 October ones; the ratios within one run are the evidence.
   shell's classifications to 730 (1.5×); any larger saving changes the
   stencil, which ADR-142 chose and the Curta and Voron-2 witnesses
   validate, so it is the pilot's decision and was not made.**
+  **Fixed (9 October 2026)** by `witness-on-a-touching-pair` (ADR-142's
+  second amendment of that date), leaving the stencil as it was: the
+  operand with fewer faces is classified first, and a point inside it is
+  put to the other operand's classifiers only when its nearest boundary
+  point, found face by face in ascending lower bound (the face's box, and
+  the plane or cylinder it lies in), does not show it outside, or on the
+  boundary of, the other's solids. On the captured shell and screw the
+  witness asks the screw's classifier at the 1,872 stencil points and the
+  shell's at none, 0.5 s in either order (289 s and 98 s on the
+  unmodified bench the same afternoon). Cold, against the records above,
+  every class of empty costs less witness time: on the clock zero
+  distance 582.9 s → 421.9 s, under a micrometre 47.2 s → 2.4 s,
+  positive 317.8 s → 301.8 s, all commons 948.0 s → 726.1 s; on the lock
+  16.9 s → 13.7 s, 23.7 s → 20.3 s, 89.6 s → 89.1 s, no group grown by
+  half a second. The three slow groups settle: `shell`/`screw` 297.8 s →
+  0.48 s, `beat_screw`/`collet` 43.7 s → 1.38 s, `nut`/`shell` 41.2 s →
+  0.22 s. Voron-2's twelve thread-seat refusals and the synthetic
+  shared-material ones are made at the same points.
+  *Known cost:* `arbor`/`hour_holder` 119.0 s → 266.8 s and
+  `cannon_pinion`/`hour_holder` 57.2 s → 134.5 s, about 2.3× each in
+  process. Each contact is a gear's flat side, a plane bounded by about
+  two hundred edges and the nearest face at most stencil points, so no
+  bound can pass over it, and one extrema to it costs 4.1–4.4 ms against
+  0.9 ms for the hour holder's healthy classifier; accepted by the
+  reviewer as the instrument's cost and recorded in the ADR. Likewise
+  OpenAstroMount's bearing seat, whose slower classifier is the insert's,
+  the operand with fewer faces, which is now asked at every point: 34.6 s
+  → 54.1 s with the housing given first, unchanged with the insert first,
+  the empty common returned as before.
+  *Three searches were measured on the way.* One extrema against all of a
+  solid's shells settled the three slow groups but cost 8.4 ms a reading
+  on the 218-face hour holder, nine of its classifications, and grew the
+  clock's zero-distance empties to 810.3 s, so the faces' boxes were put
+  in front of it; the boxes alone thinned the lock's groups but not the
+  hour holder's, which sits on a 45° axis where its two gear sides' boxes
+  are slabs holding every stencil point, so each face's plane or cylinder
+  was added as a second lower bound, the search kept.
+  The Curta Type I's ±0.2 mm positioning-ball/frame refusals were not run
+  in that cycle and are owed a re-run under it when the pilot allows the
+  project to be run.
 - *The population the contact decision is about:* 101 of 725 empties on
   the lock and 124 of 637 on the clock sit at or within a micrometre of
   zero distance with an empty common, and the six non-empty commons of

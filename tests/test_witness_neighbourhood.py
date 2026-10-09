@@ -71,7 +71,8 @@ class LoneInsideReadingTest(TestCase):
         with patch('machinome.engine.brep._boolean',
                    return_value=empty_common()), \
              patch('machinome.engine.brep.BRepClass3d_SolidClassifier',
-                   LoneFalseIn):
+                   LoneFalseIn), \
+             patch('machinome.engine.brep._nearest_side', return_value=None):
             result = engine.intersect_shapes(first, second, 'first', 'second')
         self.assertEqual(len(lied_at), 1)
         self.assertEqual(len(cq.Shape.cast(result).Solids()), 0)

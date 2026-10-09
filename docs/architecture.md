@@ -2434,7 +2434,14 @@ raises an inconsistency instead of returning clearance or inferring a
 volume. No face lies within that distance, so a neighbour classified
 outside proves a reading wrong, and that candidate is skipped while the
 search goes on; a failed section or indeterminate classification likewise refuses
-the clearance verdict. Native face tolerance qualifies only the witness,
+the clearance verdict. At each point the operand with fewer faces is
+classified first; for a point inside it, each solid's nearest boundary point
+is found face by face in ascending lower bound (face box, and the plane or
+cylinder a face lies in), one extrema per face visited, and its face normal
+or two-faced edge's normals give the side, so a point outside, or on the
+boundary of, every solid of either operand is skipped without being put to
+the other operand's classifiers; a side reading never makes a point count.
+Native face tolerance qualifies only the witness,
 never an existing positive common. This is a one-way witness search, not a proof that
 all unwitnessed empty commons are true empties. Ordinary face/edge
 contacts and nonempty native commons retain their existing semantics

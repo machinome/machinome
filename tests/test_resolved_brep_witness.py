@@ -38,7 +38,8 @@ class ResolvedExactWitnessTest(TestCase):
 
         with patch('machinome.engine.brep._boolean', return_value=empty), \
              patch('machinome.engine.brep.BRepClass3d_SolidClassifier',
-                   RoundedContactClassifier):
+                   RoundedContactClassifier), \
+             patch('machinome.engine.brep._nearest_side', return_value=None):
             self.assertEqual(len(cq.Shape.cast(engine.intersect_shapes(
                 first, second, 'first', 'second')).Solids()), 0)
 
