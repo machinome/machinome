@@ -8,6 +8,8 @@ from pathlib import Path
 import tomllib
 from unittest import TestCase
 
+from packaging.requirements import Requirement
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,12 +25,14 @@ class MachinomeIdentityTest(TestCase):
         self.assertEqual(project['scripts'], {'machinome': 'machinome.cli:manage'})
         self.assertEqual(project['urls']['Homepage'],
                          'https://github.com/machinome/machinome')
-        self.assertEqual(project['optional-dependencies']['viewer'],
-                         ['machinome-viewer'])
-        self.assertEqual(project['optional-dependencies']['mechanics'],
-                         ['machinome-mechanics'])
-        self.assertEqual(project['optional-dependencies']['studio'],
-                         ['machinome-studio'])
+        # Each extra selects one product by name; a floor such as the
+        # viewer's is held by tests/test_release_records.py, not here.
+        for extra, name in (('viewer', 'machinome-viewer'),
+                            ('mechanics', 'machinome-mechanics'),
+                            ('studio', 'machinome-studio')):
+            with self.subTest(extra=extra):
+                (requirement,) = project['optional-dependencies'][extra]
+                self.assertEqual(Requirement(requirement).name, name)
 
     def test_only_the_machinome_import_package_is_shipped(self):
         self.assertTrue((ROOT / 'machinome' / '__init__.py').is_file())

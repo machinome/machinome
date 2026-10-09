@@ -119,6 +119,15 @@ documents the release exports.
 - **THEN** the `viewer` and `web-snapshot` extras each floor at exactly that
   version, and a test fails naming the extra whose floor differs
 
+#### Scenario: The extras keep the Machinome name under a version floor
+
+- **WHEN** the `viewer`, `mechanics` or `studio` extra states its one
+  requirement with an extras bracket or a version floor
+- **THEN** that requirement's name is still `machinome-viewer`,
+  `machinome-mechanics` or `machinome-studio` respectively, and the identity
+  check reads the name, so a floor neither breaks it nor hides a renamed
+  product
+
 #### Scenario: A user installs the mechanics extra
 
 - **WHEN** `pip install "machinome[mechanics]"` resolves from published
