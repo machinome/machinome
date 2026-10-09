@@ -125,6 +125,12 @@ command, its result and the load average in `<change>/evidence.md` as you go.
 - [ ] 3c.3 Rerun 5.1, 5.2 and 5.3, the lock and then the clock, and apply
   the restated acceptance of the second Revision.
 
+## 3d. After the acceptance ruling (design.md, "Acceptance ruling after the third apply")
+
+- [ ] 3d.1 No further change to the search. The records of section 6
+  carry the final numbers of both projects, the two gear-side groups with
+  theirs, and the ruling's reason.
+
 ## 4. Green
 
 - [ ] 4.1 Run `tests/test_witness_touching_pair.py`, the three guard files,

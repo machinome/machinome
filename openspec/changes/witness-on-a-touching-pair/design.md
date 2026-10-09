@@ -369,6 +369,45 @@ for a planar face; reducing the fixed cost by batching the stencil's points
 through one numpy pass per solid is possible but is an optimisation of the
 same instrument and is left for the measurement to call for.
 
+## Acceptance ruling after the third apply (9 October 2026, the reviewer)
+
+Under the box, plane and cylinder bounds (evidence.md, 3c), with the
+bound lowered by the face's largest native tolerance so it stays a lower
+bound on what the extrema measures: on the lock every class of empty common
+costs less witness time than on 9 October (zero distance 16.9 s → 13.7 s,
+under a micrometre 23.7 s → 20.3 s, positive 89.6 s → 89.1 s) and no group
+grows by half a second; on the clock likewise (582.9 s → 421.9 s,
+47.2 s → 2.4 s, 317.8 s → 301.8 s; all commons 948.0 s → 726.1 s), the
+three pathological groups settle (`shell`/`screw` 297.8 s → 0.48 s,
+`beat_screw`/`collet` 43.7 s → 1.38 s, `nut`/`shell` 41.2 s → 0.22 s),
+Voron-2's twelve refusals and every synthetic refusal stand at the same
+points, and the captured pair runs in 0.5 s. Two groups exceed the
+restated 5 s bound: `arbor`/`hour_holder` 119.0 s → 266.8 s and
+`cannon_pinion`/`hour_holder` 57.2 s → 134.5 s, each about 2.3× in
+process with the host's load excluded. Diagnosed: the contact is a flat
+gear side, a plane bounded by about two hundred edges that is genuinely
+the nearest face at most stencil points, so no bound can skip it, and one
+extrema to it costs 4.1–4.4 ms against 0.9 ms for the holder's healthy
+classifier. The one cheaper route measured, classifying the point's
+projection in the face's parameter space, costs 0.85 ms where it lands
+inside the face and still needs the extrema elsewhere: at best the
+classifier's cost, not below it.
+
+The ruling: accepted as it stands. The finding was a witness whose cost on
+one pair was unbounded in practice, five minutes at one asking; it is now
+bounded by the edge count of the nearest face, in milliseconds, with every
+suite measured faster in every class. The two gear-side groups are a known
+cost of the instrument, recorded in the ADR amendment, the changelog and
+`workflow/warts.md` with their numbers, not a defect of the search: a
+reading at a point nearest a many-edged planar face costs more than a
+healthy classification under any bound this design admits. The per-group
+clause of the second revision's acceptance is withdrawn in favour of the
+class-level one, which both projects meet with margin. A project whose
+touching pairs are mostly such flat many-edged contacts with healthy
+classifiers would see its witness time grow by up to about 2.3×; that is
+recorded as the instrument's known cost, and a cheaper reading of a planar
+face is left to a later finding that needs it.
+
 ## Risks / Trade-offs
 
 - [The extrema misplaces a nearest boundary point at a genuine witness, and a
