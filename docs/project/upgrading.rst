@@ -1,3 +1,46 @@
+Upgrading from Machinome 0.8.0 to 0.8.1
+=======================================
+
+Machinome 0.8.1 corrects 0.8.0 and adds nothing to its vocabulary, but a
+few corrections refuse what 0.8.0 let pass or rename what it named. A
+project meets each of them at the line concerned, and none changes a
+published document.
+
+#. **Address an assembly's children by their declarations.** Inside an
+   assembly's ``render()`` or ``simulate()``, a read of an internal node's
+   ``children`` before the framework has linked them raises
+   ``StructureError``, naming the assembly, the phase and the attributes to
+   address instead. 0.8.0 answered an empty list, so a loop over it did
+   nothing. Write ``for part in (self.near, self.far):`` over the declared
+   attributes, as the refusal lists them; a read after linking, or outside
+   any phase, answers as before.
+#. **Expect** ``kids-0`` **for a one-member binding.** A production names
+   the members of a repeated or tuple child binding by index at every count,
+   so the one member of a one-member binding is ``kids-0``, where 0.8.0
+   named it ``kids``. A drafted manifest or a test that reads the former
+   path reads the new one.
+#. **Pass the identity to** ``ClockedSnapshot``. A clocked snapshot carries
+   the identity of the machine it was taken from, as ``sim.identity`` gives
+   it, and ``ClockedSnapshot(model, values, identity)`` takes it as its
+   third argument. ``sim.restore()`` refuses, with a ``ValueError`` naming
+   both identities, a snapshot taken under another identity, which 0.8.0
+   restored when the class name and the bank's ids matched. Take snapshots
+   with ``sim.snapshot()`` and restore them into the machine they came from.
+#. **Catch** ``ValueError`` **for an undeclared source.** A subclass of
+   ``StlNode``, ``StepNode``, ``JScadNode`` or ``OpenScadNode`` that does
+   not declare its source attribute, or declares it empty, is refused when
+   constructed with a ``ValueError`` naming the class, the attribute and
+   the module to set it in. ``JScadNode`` raised a bare ``Exception`` and
+   ``OpenScadNode`` a ``TypeError``. A leaf written outside machinome gets
+   the same refusal from
+   ``machinome.node.sources.require_source_file(type(self), attribute,
+   declared)``.
+#. **Upgrade the viewer with the framework.** ``machinome[viewer]`` and
+   ``machinome[web-snapshot]`` require ``machinome-viewer`` 0.8.1 or newer;
+   ``pip install --upgrade "machinome[viewer]"`` moves both.
+
+:doc:`changelog` lists every correction of 0.8.1.
+
 Upgrading from Machinome 0.7 to 0.8
 ===================================
 

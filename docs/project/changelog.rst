@@ -3,15 +3,43 @@
 Changelog
 =========
 
-Unreleased
-----------
+Machinome 0.8.1
+---------------
+
+Released on 10/Oct/2026
+
+**Corrections from real machines.** Twenty-three corrections and
+speed-ups found by building and testing clocks, locks, printers, arms and
+calculators on 0.8.0. The exact checks a test asks of two touching parts,
+and the distances between placed parts, take a fraction of the time they
+took; a build of a fresh checkout finishes, and an edit behind a library's
+``__init__.py`` rebuilds what uses it; a refusal or a failing test names
+the part, the mate, the instant or the attribute it concerns. Nothing is
+added to the vocabulary, and the published document does not move:
+exports declare document versions 1 to 13, and the matching viewer 0.8.1
+is 0.8.0 renumbered, API 29.
+
+**What a project may have to follow**, each with what to change on
+:doc:`the upgrading page <upgrading>`:
+
+- a read of an internal node's ``children`` inside ``render()`` or
+  ``simulate()`` before the framework links them is refused, where it
+  answered an empty list;
+- a production names the member of a one-member repeated or tuple child
+  binding ``kids-0``, where it named it ``kids``;
+- ``ClockedSnapshot`` takes the machine's identity as its third argument,
+  and ``sim.restore()`` refuses a snapshot taken under another identity;
+- a leaf that declares no source file is refused with a ``ValueError``
+  when constructed;
+- the ``viewer`` and ``web-snapshot`` extras install ``machinome-viewer``
+  0.8.1 or newer.
 
 * **A touching pair no longer exhausts the empty-common witness.** After an
   empty B-rep common the witness search asks first the classifier of the
   part with fewer faces, and for a point inside it reads the point's side of
   each part from its nearest boundary point, found face by face, before
   asking the other part's classifier, which a point read outside or on the
-  boundary is never put to. Wall clock 02's weight shell against the screw
+  boundary is never put to. A wall clock's weight shell against the screw
   it carries, a genuine contact whose shell classifier answers in 200 ms
   and more near the screw, took 324 s and 2,547 classifications; it now
   takes half a second, 1,872 classifications of the screw and none of the
@@ -21,6 +49,12 @@ Unreleased
   where it was. A contact on a flat side bounded by many edges, as a gear's
   face against the part riding on it, costs more than before: up to about
   2.3 times on the clock's hour holder (witness-on-a-touching-pair).
+* **The engine measures a distance on every core.** Its distance helper
+  used to set the kernel's multithread flag on an extrema the constructor
+  had already performed, so every distance ran on one core; it now loads
+  the shapes, sets the flag and then performs, with the same value. On the
+  combination safe lock's 730 placed pairs the same measurement takes 33 s
+  where it took 186 s (distance-asks-the-kernel-threaded).
 * **An inside-out part is refused by name, not as a shared point.** A
   solid published with its faces pointing inward reads every point as
   inside to the kernel's classifier, so an empty B-rep common with such an
@@ -30,31 +64,17 @@ Unreleased
   guard declines such a pair to the Boolean without consulting a
   classifier, and the Boolean, fusion and volume of the part are unchanged
   (an-inside-out-operand-is-refused-by-name).
-* **The engine measures a distance on every core.** Its distance helper
-  used to set the kernel's multithread flag on an extrema the constructor
-  had already performed, so every distance ran on one core; it now loads
-  the shapes, sets the flag and then performs, with the same value. On the
-  combination safe lock's 730 placed pairs the same measurement takes 33 s
-  where it took 186 s (distance-asks-the-kernel-threaded).
-* **The viewer extra installs the matching viewer.** The ``viewer`` and
-  ``web-snapshot`` extras require ``machinome-viewer`` |viewer_version| or
-  newer, where they used to state no version and an upgrade of
-  ``machinome[viewer]`` kept an older viewer in place. The two packages are
-  numbered together; the floor follows the manual's declared matching
-  viewer, and a test holds them to each other. A 0.7 viewer still reads a
-  0.8 export; the floor is what the extra installs, not what a document
-  needs (viewer-extra-floors-at-the-matching-viewer).
-* **A direction a few millionths off an axis stays unit.** A joint's axis,
-  and a frame's directions when ``z`` or ``x`` is omitted, snap to a
-  principal axis only as a whole: a direction whose every component lies
-  within ``1e-9`` of ``0``, ``1`` or ``-1`` is that axis in integers, as
-  before, and any other keeps its components, only those within ``1e-9`` of
-  ``0`` becoming ``0``. A direction such as the ``z`` a URDF's
-  ``rpy="1.57079 0 0"`` states, ``(0, -0.99999999998, 6.33e-6)``, used to
-  have its second component made ``-1`` and read ``1 + 2e-11`` long; it now
-  reads unit to ``1e-12``, and a mate stating no axis turns its child about
-  exactly the ``z`` ``resolved_frames`` reads for the moving frame
-  (snap-keeps-the-triad-unit).
+* **An empty common is not refused on one reading its neighbourhood
+  contradicts.** When OCCT's common of two B-rep solids is empty, a point
+  classified inside both, clear of every face, now refuses it only if the
+  six points around it along the axes, at half its smaller distance to the
+  two solids' faces, are classified inside both as well; no face lies that
+  close, so their state is the point's. A telescope mount's bearing housing
+  and insert, which meet on two concentric spheres, used to be refused with
+  ``BrepCommonInconsistency`` at a point outside the insert that its
+  classifier alone called inside; their empty common is now returned as
+  clearance, and a common that is empty while the solids share interior is
+  still refused (a-witness-is-interior-in-its-neighbourhood).
 * **A build of a fresh checkout finishes.** ``machinome build`` and
   ``machinome develop`` no longer start over without end when a file a
   part reads, such as an ``StlNode``'s mesh, is newer than the module
@@ -62,6 +82,35 @@ Unreleased
   after its module. Each source is compared with what the build first
   saw of it, so a build stands down only for a file that changed after
   the build read it (build-settles-on-a-grown-source-set).
+* **An edit behind a library's ``__init__.py`` rebuilds what uses it.** A
+  node's tracked sources now include the ``__init__.py`` of a project
+  package it imports from outside, and what that file imports, so a
+  leaf built through ``from clocks import Weight``, where
+  ``clocks/__init__.py`` re-exports the library's modules, is re-derived
+  when one of those modules changes; it used to report itself current
+  and serve the old shape. The ``__init__.py`` of the importing module's
+  own package, usually an assembly, is still not followed. Projects
+  whose nodes import through another package of their own rebuild once
+  (follow-a-sibling-packages-init).
+* **A production bound after a build reads the machine as built.** Binding
+  a ``Production`` or a ``ModelSnapshot`` to a model that was already
+  built, snapshotted or served no longer runs a fusion's ``render()`` a
+  second time: the children it positions keep their one placement, a later
+  ``render()`` returns them as they were, and a fused STL made again is the
+  one the build made. A file a node names that does not exist is refused
+  when the model is bound, as missing and naming the node and the path,
+  with ``ProductionExportError`` from ``Production(model)`` and
+  ``FileNotFoundError`` from ``ModelSnapshot(model)``; it used to be
+  reported as an input that had changed (production-reads-once).
+* **A SCAD-authored part's own ``.scad`` stays its geometry.**
+  ``machinome snapshot --renderer openscad`` of a ``Solid2Node`` or
+  ``OpenScadNode`` part whose STL a build had made current used to rewrite
+  the part's kept ``.scad`` as an ``import()`` of that STL, the file
+  OpenSCAD renders the STL from; and such a part's ``scad_code``, asked in
+  a process that had not rendered it, gave that import, where an
+  ``OpenScadNode``'s ends in its module call. The snapshot now draws the
+  file as the build wrote it and leaves it in place, and ``scad_code`` is
+  the part's geometry, rendered when asked (release-metadata-and-vestiges).
 * **A refusal names what it refused.** A ``Prismatic`` or an ``Orbit``
   written with ``axis=None`` is refused naming its own kind and saying its
   axis is required everywhere, where it used to be called a ``Revolute``
@@ -85,82 +134,6 @@ Unreleased
   a shin rotated that way never turned, and a dial's parts coloured that
   way stayed uncoloured. A read after linking, or outside any phase,
   answers as before (children-refuse-early-reads).
-* **A repeated copy reads its index while it is constructed.** A
-  ``repeat()`` copy's ``index`` is readable from the start of the copy's
-  own construction, so a joint's ``axis``, ``at``, ``range`` or
-  ``carries``, a frame argument and ``check()``, declared on the repeated
-  class, can read ``node.index`` and resolve per copy, where realization
-  used to refuse with ``... has no attribute 'index'``. A function given
-  where the child is declared is still handed the parent
-  (resolve-repeated-joints-per-copy).
-* **``machinome snapshot --preview`` draws.** The OpenSCAD renderer used
-  to hand OpenSCAD a bare ``--preview``, which OpenSCAD 2021.01 reads as
-  taking the model's ``.scad`` path for its value, so it printed its usage
-  and the snapshot failed with no message. It now passes
-  ``--preview=throwntogether``, the ThrownTogether preview the option has
-  always been documented to select (tooling-paths-and-flags).
-* **A camera vector beginning with a negative component photographs.** Under
-  ``--renderer web``, a ``--camera`` resolving to an eye or an up direction
-  whose first component is negative, such as ``0,0,0,65,0,35,1400``, was
-  refused by the viewer's command line (``argument --up: expected one
-  argument``); the framework now hands the viewer each camera vector in
-  one token with its option (tooling-paths-and-flags).
-* **A failing assertion names a part by its path.** Every assertion of
-  ``machinome.test`` names a part by its path below the node under test,
-  the path the viewer's tree shows and a qualified driver id is built
-  from, so two instances of one class read apart: ``centre.wheel should
-  not interfere with third.wheel``, where it used to read ``wheel should
-  not interfere with wheel``. A direct child of the node under test reads
-  as before (name-solids-by-path).
-* **The running corpus keeps a stop made after a restore.**
-  ``tools/generate_running_corpus.py``, and the suite's replay of
-  ``tests/running-corpus.json``, counted a step's crossings and stops from
-  where the run's record stood before a scripted restore, although the
-  restore clears that record. A crossing or stop that the same step then
-  made was left out of the step's entry, and the replay agreed with the
-  omission. Both now count from the cleared record, as the time-drive
-  generator already did. No committed corpus has such a step, and none
-  changes (keep-the-corpus-cursor-honest).
-* **A reused Follow prefix carries its paths.** When the two Bounds of a
-  ``Follow`` target share one walk of their sub-program at a fraction of
-  the stretch, the walk is stored as a read-only copy of the propagation
-  it produced, with its source motions, Follow cuts and closures, and
-  the walk that stores it reads the same copy. It used to be stored as a
-  bare mapping of displacements, so a later Bound received a different
-  kind of object than the first one. No level, stop or bank changes, and
-  the Curta's crank tick costs the same (snapshot-the-follow-prefix).
-* **A clocked snapshot restores only into the machine it was taken
-  from.** ``sim.snapshot()`` under a clocked root carries the machine's
-  identity, the string ``sim.identity`` returns and an export publishes
-  as ``clocked.identity``, and ``sim.restore()`` refuses a snapshot whose
-  identity differs, naming both, before touching anything. It used to
-  compare the class name and the bank's ids only, so a snapshot restored
-  into a same-named machine whose joint range or commit law had changed,
-  or into a same-named class from another module. ``ClockedSnapshot``
-  takes the identity as its third argument (clocked-snapshot-identity).
-* **A production bound after a build reads the machine as built.** Binding
-  a ``Production`` or a ``ModelSnapshot`` to a model that was already
-  built, snapshotted or served no longer runs a fusion's ``render()`` a
-  second time: the children it positions keep their one placement, a later
-  ``render()`` returns them as they were, and a fused STL made again is the
-  one the build made. A file a node names that does not exist is refused
-  when the model is bound, as missing and naming the node and the path,
-  with ``ProductionExportError`` from ``Production(model)`` and
-  ``FileNotFoundError`` from ``ModelSnapshot(model)``; it used to be
-  reported as an input that had changed (production-reads-once).
-* **A production reports what is in its scope.** An instruction's
-  Markdown is refused for an HTML tag only when the tag can carry a
-  dependency, an element that embeds or loads content or an attribute
-  that names a resource, and code spans and fenced code blocks are not
-  read for dependencies, so ``if a<b then c>d`` and a quoted
-  ``<img src>`` in code no longer refuse ``steps`` and ``export``. A
-  child binding's reports are refused only for an overlap that claims an
-  occurrence within its scope, so an overlap under one child no longer
-  refuses its sibling; the root still refuses on any overlap. And the
-  members of a repeated or tuple child binding are named by index at
-  every count: a one-member repetition's member is ``kids-0``, as the
-  first of two is, where it used to be ``kids``, in every declaration
-  path and in the draft manifest (production-reports-in-scope).
 * **A leaf that names no source file is refused in one shape.** A
   subclass of ``StlNode``, ``StepNode``, ``JScadNode`` or ``OpenScadNode``
   that does not declare its source attribute, or declares it empty, is
@@ -180,6 +153,13 @@ Unreleased
   (or its sources could not be read, or it could not be assembled), where
   it used to read ``assembly:Rig: failed to load project: ...``
   (refuse-the-undeclared-file-by-name).
+* **A failing assertion names a part by its path.** Every assertion of
+  ``machinome.test`` names a part by its path below the node under test,
+  the path the viewer's tree shows and a qualified driver id is built
+  from, so two instances of one class read apart: ``centre.wheel should
+  not interfere with third.wheel``, where it used to read ``wheel should
+  not interfere with wheel``. A direct child of the node under test reads
+  as before (name-solids-by-path).
 * **A failing test names the instant it failed at, and a set-up that
   raises is an error.** ``machinome test`` prints the traceback of a
   method's first failing instant, where it used to print the last one's,
@@ -197,15 +177,55 @@ Unreleased
   ``F failed``, and the run exits 1. A ``unittest.SkipTest`` raised from
   ``setUpClass`` skips the class's methods with its reason, where it used
   to end the run (report-the-instant).
-* **A SCAD-authored part's own ``.scad`` stays its geometry.**
-  ``machinome snapshot --renderer openscad`` of a ``Solid2Node`` or
-  ``OpenScadNode`` part whose STL a build had made current used to rewrite
-  the part's kept ``.scad`` as an ``import()`` of that STL, the file
-  OpenSCAD renders the STL from; and such a part's ``scad_code``, asked in
-  a process that had not rendered it, gave that import, where an
-  ``OpenScadNode``'s ends in its module call. The snapshot now draws the
-  file as the build wrote it and leaves it in place, and ``scad_code`` is
-  the part's geometry, rendered when asked (release-metadata-and-vestiges).
+* **A direction a few millionths off an axis stays unit.** A joint's axis,
+  and a frame's directions when ``z`` or ``x`` is omitted, snap to a
+  principal axis only as a whole: a direction whose every component lies
+  within ``1e-9`` of ``0``, ``1`` or ``-1`` is that axis in integers, as
+  before, and any other keeps its components, only those within ``1e-9`` of
+  ``0`` becoming ``0``. A direction such as the ``z`` a URDF's
+  ``rpy="1.57079 0 0"`` states, ``(0, -0.99999999998, 6.33e-6)``, used to
+  have its second component made ``-1`` and read ``1 + 2e-11`` long; it now
+  reads unit to ``1e-12``, and a mate stating no axis turns its child about
+  exactly the ``z`` ``resolved_frames`` reads for the moving frame
+  (snap-keeps-the-triad-unit).
+* **A repeated copy reads its index while it is constructed.** A
+  ``repeat()`` copy's ``index`` is readable from the start of the copy's
+  own construction, so a joint's ``axis``, ``at``, ``range`` or
+  ``carries``, a frame argument and ``check()``, declared on the repeated
+  class, can read ``node.index`` and resolve per copy, where realization
+  used to refuse with ``... has no attribute 'index'``. A function given
+  where the child is declared is still handed the parent
+  (resolve-repeated-joints-per-copy).
+* **A clocked snapshot restores only into the machine it was taken
+  from.** ``sim.snapshot()`` under a clocked root carries the machine's
+  identity, the string ``sim.identity`` returns and an export publishes
+  as ``clocked.identity``, and ``sim.restore()`` refuses a snapshot whose
+  identity differs, naming both, before touching anything. It used to
+  compare the class name and the bank's ids only, so a snapshot restored
+  into a same-named machine whose joint range or commit law had changed,
+  or into a same-named class from another module. ``ClockedSnapshot``
+  takes the identity as its third argument (clocked-snapshot-identity).
+* **A reused Follow prefix carries its paths.** When the two Bounds of a
+  ``Follow`` target share one walk of their sub-program at a fraction of
+  the stretch, the walk is stored as a read-only copy of the propagation
+  it produced, with its source motions, Follow cuts and closures, and
+  the walk that stores it reads the same copy. It used to be stored as a
+  bare mapping of displacements, so a later Bound received a different
+  kind of object than the first one. No level, stop or bank changes, and
+  a mechanical calculator's crank tick costs the same (snapshot-the-follow-prefix).
+* **A production reports what is in its scope.** An instruction's
+  Markdown is refused for an HTML tag only when the tag can carry a
+  dependency, an element that embeds or loads content or an attribute
+  that names a resource, and code spans and fenced code blocks are not
+  read for dependencies, so ``if a<b then c>d`` and a quoted
+  ``<img src>`` in code no longer refuse ``steps`` and ``export``. A
+  child binding's reports are refused only for an overlap that claims an
+  occurrence within its scope, so an overlap under one child no longer
+  refuses its sibling; the root still refuses on any overlap. And the
+  members of a repeated or tuple child binding are named by index at
+  every count: a one-member repetition's member is ``kids-0``, as the
+  first of two is, where it used to be ``kids``, in every declaration
+  path and in the draft manifest (production-reports-in-scope).
 * **An open part is counted where networkx is not installed.**
   ``assertNoDisconnectedSolids`` on a part whose STL is not watertight,
   such as an ``StlNode`` declaring ``require_watertight = False``, and
@@ -215,27 +235,35 @@ Unreleased
   to fill each body's holes first, and only that repair needs it. Bodies
   are now counted as the mesh holds them, with no repair, and every
   count is the one it was (count-bodies-without-repair).
-* **An empty common is not refused on one reading its neighbourhood
-  contradicts.** When OCCT's common of two B-rep solids is empty, a point
-  classified inside both, clear of every face, now refuses it only if the
-  six points around it along the axes, at half its smaller distance to the
-  two solids' faces, are classified inside both as well; no face lies that
-  close, so their state is the point's. OpenAstroMount's bearing housing
-  and insert, which meet on two concentric spheres, used to be refused with
-  ``BrepCommonInconsistency`` at a point outside the insert that its
-  classifier alone called inside; their empty common is now returned as
-  clearance, and a common that is empty while the solids share interior is
-  still refused (a-witness-is-interior-in-its-neighbourhood).
-* **An edit behind a library's ``__init__.py`` rebuilds what uses it.** A
-  node's tracked sources now include the ``__init__.py`` of a project
-  package it imports from outside, and what that file imports, so a
-  leaf built through ``from clocks import Weight``, where
-  ``clocks/__init__.py`` re-exports the library's modules, is re-derived
-  when one of those modules changes; it used to report itself current
-  and serve the old shape. The ``__init__.py`` of the importing module's
-  own package, usually an assembly, is still not followed. Projects
-  whose nodes import through another package of their own rebuild once
-  (follow-a-sibling-packages-init).
+* **The running corpus keeps a stop made after a restore.**
+  ``tools/generate_running_corpus.py``, and the suite's replay of
+  ``tests/running-corpus.json``, counted a step's crossings and stops from
+  where the run's record stood before a scripted restore, although the
+  restore clears that record. A crossing or stop that the same step then
+  made was left out of the step's entry, and the replay agreed with the
+  omission. Both now count from the cleared record, as the time-drive
+  generator already did. No committed corpus has such a step, and none
+  changes (keep-the-corpus-cursor-honest).
+* **``machinome snapshot --preview`` draws.** The OpenSCAD renderer used
+  to hand OpenSCAD a bare ``--preview``, which OpenSCAD 2021.01 reads as
+  taking the model's ``.scad`` path for its value, so it printed its usage
+  and the snapshot failed with no message. It now passes
+  ``--preview=throwntogether``, the ThrownTogether preview the option has
+  always been documented to select (tooling-paths-and-flags).
+* **A camera vector beginning with a negative component photographs.** Under
+  ``--renderer web``, a ``--camera`` resolving to an eye or an up direction
+  whose first component is negative, such as ``0,0,0,65,0,35,1400``, was
+  refused by the viewer's command line (``argument --up: expected one
+  argument``); the framework now hands the viewer each camera vector in
+  one token with its option (tooling-paths-and-flags).
+* **The viewer extra installs the matching viewer.** The ``viewer`` and
+  ``web-snapshot`` extras require ``machinome-viewer`` |viewer_version| or
+  newer, where they used to state no version and an upgrade of
+  ``machinome[viewer]`` kept an older viewer in place. The two packages are
+  numbered together; the floor follows the manual's declared matching
+  viewer, and a test holds them to each other. A 0.7 viewer still reads a
+  0.8 export; the floor is what the extra installs, not what a document
+  needs (viewer-extra-floors-at-the-matching-viewer).
 
 Machinome 0.8.0
 ---------------

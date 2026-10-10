@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "machinome"
-version = "0.8.0"
+version = "0.8.1"
 description = "Source code for machines — a Python framework for mechanical design and simulation"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 requires-python = ">=3.11"
@@ -78,12 +78,12 @@ docs = [
 # manual declares (docs/conf.py, viewer_version), and
 # tests/test_release_records.py holds the two together.
 viewer = [
-    "machinome-viewer>=0.8.0",
+    "machinome-viewer>=0.8.1",
 ]
 # The web snapshot renderer needs the viewer and its browser; Chromium itself
 # is a second step: `playwright install chromium`.
 web-snapshot = [
-    "machinome-viewer[snapshot]>=0.8.0",
+    "machinome-viewer[snapshot]>=0.8.1",
 ]
 mechanics = [
     "machinome-mechanics",

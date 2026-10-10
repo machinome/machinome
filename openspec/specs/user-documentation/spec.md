@@ -639,26 +639,24 @@ identifier but `AGPL-3.0-or-later` and the exact words of `docs/conf.py`'s
 `framework_licence`. The browser viewer SHALL be stated as the separate
 AGPL-3.0-or-later package.
 
-The changelog's first release section SHALL be `Machinome 0.8.0`, dated
-`Released on 05/Oct/2026`, with no `Unreleased` section; it SHALL open
-with what a maker gets, state the licence first, and list every breaking
+The changelog SHALL keep a `Machinome 0.8.0` section, dated
+`Released on 05/Oct/2026`, below any later release's; it SHALL open with
+what a maker gets, state the licence first, and list every breaking
 change of 0.8 in one line each with a link to the upgrading page.
-`HISTORY.rst`'s top entry SHALL be `Machinome 0.8.0 (2026-10-05)`.
-`docs/releases/release-0.8.rst` SHALL be the release note, dated, reached
-from the changelog. The status page SHALL describe 0.8.0 as released and
-describe no work as unreleased. `context7.json` SHALL state 0.8.0, its
-date and the matching viewer's version and API as `docs/conf.py` states
-them. The upgrading page SHALL open with a part for upgrading from 0.7 to
+`HISTORY.rst` SHALL keep the entry `Machinome 0.8.0 (2026-10-05)`.
+`docs/releases/release-0.8.rst` SHALL be the release note of the 0.8
+line, its title naming 0.8 and dated 5 October 2026, reached from the
+changelog. The upgrading page SHALL keep a part for upgrading from 0.7 to
 0.8 that lists every breaking change of 0.8 and, for each, what to
 change, above the 0.6 to 0.7 material, which stays intact; no section of
 it SHALL be marked unreleased or speak of "the next release".
 
 #### Scenario: A reader checks which version the manual describes
 
-- **WHEN** a reader compares the installed package's version with the
-  manual's status page, changelog and history
-- **THEN** all state 0.8.0, released on 5 October 2026, and the
-  changelog's first release section is the 0.8.0 section
+- **WHEN** a reader reads the changelog and the history after a later
+  release
+- **THEN** the 0.8.0 section and history entry still state 0.8.0,
+  released on 5 October 2026, below the later release's
 
 #### Scenario: A version file is left behind
 
@@ -685,7 +683,7 @@ it SHALL be marked unreleased or speak of "the next release".
 #### Scenario: A 0.7 user upgrades
 
 - **WHEN** a 0.7 user opens the upgrading page
-- **THEN** its first part lists every breaking change of 0.8, the
+- **THEN** its 0.7 to 0.8 part lists every breaking change of 0.8, the
   install's extras, the import paths, the engines' names, the OpenSCAD
   family, a node's shape, the leaf contract, the symbolic value and the
   removed modules among them, each with what to change
@@ -921,4 +919,41 @@ the package SHALL stay in the contributor briefing.
 - **THEN** it states the development install, how to run the tests and the
   lint, the browser-snapshot opt-in and the spec-first discipline, and
   points to the contributor briefing for the layout of the package
+
+### Requirement: The 0.8.1 release is recorded
+
+The release facts of Machinome 0.8.1 SHALL agree wherever they are
+stated, by the same rules as 0.8.0's: the five version files hold the
+version `pyproject.toml` states, and `docs/conf.py`'s release block states
+the release date, 10 October 2026, the matching viewer 0.8.1, viewer API
+29 and document versions 1 to 13. The `viewer` and `web-snapshot` extras
+SHALL require `machinome-viewer` 0.8.1 or newer. The changelog's first
+release section SHALL be `Machinome 0.8.1`, dated `Released on
+10/Oct/2026`, with no `Unreleased` section, opening with what a maker gets
+and sending a reader to the upgrading page for the changes a project may
+have to follow. `HISTORY.rst`'s top entry SHALL be
+`Machinome 0.8.1 (2026-10-10)`. `docs/releases/release-0.8.rst` SHALL end
+with a section naming 0.8.1 and dated 10 October 2026. `context7.json`
+SHALL state 0.8.1, its date and the matching viewer 0.8.1, API 29. The
+upgrading page SHALL open with a part for upgrading from 0.8.0 to 0.8.1,
+above the 0.7 to 0.8 part, which stays intact.
+
+#### Scenario: A reader checks which version the manual describes
+
+- **WHEN** a reader compares the installed package's version with the
+  manual's status page, changelog and history
+- **THEN** all state 0.8.1, released on 10 October 2026, and the
+  changelog's first release section is the 0.8.1 section
+
+#### Scenario: A 0.8.0 user upgrades
+
+- **WHEN** a 0.8.0 user opens the upgrading page
+- **THEN** its first part names each change since 0.8.0 a project may
+  have to follow, with what to change
+
+#### Scenario: A maker installs the viewer extra
+
+- **WHEN** a maker installs `machinome[viewer]` 0.8.1
+- **THEN** the requirement names `machinome-viewer>=0.8.1`, the viewer
+  the manual declares as matching
 

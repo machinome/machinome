@@ -2173,5 +2173,7 @@ shallow sphere dent" finding above waits on the same decision.
   primary checkout, which carries the files, does not show it. Smallest
   fix: the module that needs the file writes it in its own `setUpModule`,
   or the fixture generation moves to a place every module reaches first.
-  **Recorded, untriaged.**
+  **Fixed (10 October 2026)** by `release-0-8-1`, reproduced first on a
+  fresh clone of `31c8507` (1 failed, 4751 passed): the test writes and
+  removes its own `declared_alone.stl` beside the module.
 

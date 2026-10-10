@@ -43,6 +43,15 @@ upload, with both repositories tagged. Every record still says 0.8.0.
   0.8.1; `tests/test_production_documentation.py` reads the section that
   records production profiles, still 0.8.0's; the release-records test
   already derives everything else from `pyproject.toml`.
+- **A clean checkout's suite is green.** `tests/test_missing_source_file.py`
+  resolved a declaration against `tests/stl_project/bracket.stl`, a
+  gitignored mesh that `tests/test_stl_node.py` writes and a clean checkout
+  runs later, so the suite failed on a fresh clone, as CI runs it
+  (`workflow/warts.md`, 9 October 2026; reproduced on a fresh clone of
+  `31c8507` with a fresh environment, 1 failed, 4751 passed). The test
+  writes and removes its own file beside the module, as its module already
+  does for its other fixtures. As at 0.7.1, whose release committed the
+  vet fixtures `.gitignore` hid, a red CI is not a released state.
 - **No source, document or behaviour change.** Every capability described
   is already on `main`.
 
@@ -70,7 +79,9 @@ None.
 (release block), `docs/project/changelog.rst` (the 0.8.1 section),
 `docs/project/upgrading.rst` (a new first part), `docs/releases/release-0.8.rst`
 (a dated last section), `HISTORY.rst`, `context7.json`; tests
-`test_machinome_identity.py`, `test_production_documentation.py`.
+`test_machinome_identity.py`, `test_missing_source_file.py`;
+`workflow/warts.md` (the fixture entry marked fixed);
+`workflow/ongoing/release-0.8.1.md` (new: the pilot's steps).
 
 Outside the framework and not this change's: the viewer's own 0.8.1
 release in its repository (change `release-0-8-1` there), which must be

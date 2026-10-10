@@ -78,6 +78,9 @@ ABOVE_ROOT = os.path.join(os.path.dirname(TEST_DIR), 'pyproject.toml')
 #: links, which point into a temporary directory outside the project and
 #: exist only while this module runs.
 STL_LINK = os.path.join(STL_PROJECT, 'linked_outside.stl')
+#: A source beside `stl_parts`, this module's own: `bracket.stl` there is
+#: written by `test_stl_node.py`, which a clean checkout runs later.
+STL_BESIDE = os.path.join(STL_PROJECT, 'declared_alone.stl')
 STEP_LINK = os.path.join(STEP_PROJECT, 'linked_outside.step')
 OUTSIDE = None
 
@@ -86,6 +89,7 @@ def setUpModule():
     global OUTSIDE
     os.makedirs(STL_DIRECTORY_SOURCE, exist_ok=True)
     os.makedirs(STEP_DIRECTORY_SOURCE, exist_ok=True)
+    open(STL_BESIDE, 'w').close()
     OUTSIDE = os.path.realpath(tempfile.mkdtemp(prefix='machinome_outside_'))
     for link, name in ((STL_LINK, 'part.stl'), (STEP_LINK, 'part.step')):
         target = os.path.join(OUTSIDE, name)
@@ -98,6 +102,8 @@ def setUpModule():
 def tearDownModule():
     shutil.rmtree(STL_DIRECTORY_SOURCE, ignore_errors=True)
     shutil.rmtree(STEP_DIRECTORY_SOURCE, ignore_errors=True)
+    if os.path.lexists(STL_BESIDE):
+        os.remove(STL_BESIDE)
     for link in (STL_LINK, STEP_LINK):
         if os.path.lexists(link):
             os.remove(link)
@@ -576,14 +582,15 @@ class UndeclaredSourceTest(TestCase):
     def test_a_declaration_given_alone_is_resolved_beside_its_module(self):
         from machinome.node.sources import require_source_file
 
-        path = os.path.realpath(os.path.join(STL_PROJECT, 'bracket.stl'))
+        path = os.path.realpath(STL_BESIDE)
 
         self.assertEqual(
-            require_source_file(stl_parts.Bracket, 'stl_source', 'bracket.stl'),
+            require_source_file(stl_parts.Bracket, 'stl_source',
+                                'declared_alone.stl'),
             path)
         self.assertEqual(
-            require_source_file(stl_parts.Bracket, 'stl_source', 'bracket.stl',
-                                path),
+            require_source_file(stl_parts.Bracket, 'stl_source',
+                                'declared_alone.stl', path),
             path)
 
 

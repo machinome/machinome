@@ -2,6 +2,64 @@
 History
 =======
 
+Machinome 0.8.1 (2026-10-10)
+----------------------------
+
+**Corrections from real machines.** The fix-warts-3 campaign
+(``workflow/ongoing/fix-warts-3.md``) and four cycles from testing a wall
+clock and a combination lock, all landed after the 0.8.0 tag and released
+as a patch: nothing is added to the vocabulary, the published document
+(versions 1 to 13) and the viewer API (29) do not move, and the matching
+viewer 0.8.1 is 0.8.0 renumbered. No ADR is new; ADR-033, ADR-096 and
+ADR-142 are amended. Each item names the archived OpenSpec change that
+carries its evidence.
+
+* **The exact checks are FAST where parts touch.** A wall clock's weight
+  shell against its screw took 324 s to confirm an empty common; the
+  witness now reads a point's side from each part's nearest boundary
+  before a slow classifier, and takes half a second. Distances run on
+  every core (a lock's 730 pairs, 186 s to 33 s). An inside-out operand
+  is refused by name, and a lone inside reading its neighbourhood
+  contradicts no longer refuses an empty common (ADR-142 amended).
+  Changes ``witness-on-a-touching-pair``,
+  ``distance-asks-the-kernel-threaded``,
+  ``an-inside-out-operand-is-refused-by-name``,
+  ``a-witness-is-interior-in-its-neighbourhood``.
+* **A build SETTLES and FOLLOWS its sources.** A fresh checkout's build
+  no longer restarts without end on a mesh newer than its module; an edit
+  behind a library's ``__init__.py`` rebuilds what imports through it
+  (ADR-033 amended); a production reads a built model once; a snapshot
+  leaves a SCAD-authored part's own ``.scad`` as the build wrote it.
+  Changes ``build-settles-on-a-grown-source-set``,
+  ``follow-a-sibling-packages-init``, ``production-reads-once``,
+  ``release-metadata-and-vestiges``.
+* **A refusal NAMES what it refused.** The joint's own kind, the mate that
+  states a range, a self-driven coordinate at class definition, a read of
+  ``children`` before linking, an undeclared leaf source by class and
+  attribute; a failing assertion names parts by path, and a failing test
+  its first failing instant, with a set-up that raises reported as an
+  error. Changes ``name-what-is-refused``, ``children-refuse-early-reads``,
+  ``refuse-the-undeclared-file-by-name``, ``name-solids-by-path``,
+  ``report-the-instant``.
+* **Corrections.** A near-axis direction snaps only as a whole and stays
+  unit; a repeated copy reads its index while constructed (ADR-096
+  amended); a clocked snapshot restores only into its own machine; a
+  reused ``Follow`` prefix carries its paths; a production's reports are
+  judged in their scope; bodies are counted without a repair that needed
+  networkx; the running corpus keeps a stop made after a restore;
+  ``snapshot --preview`` and negative camera vectors work again. Changes
+  ``snap-keeps-the-triad-unit``, ``resolve-repeated-joints-per-copy``,
+  ``clocked-snapshot-identity``, ``snapshot-the-follow-prefix``,
+  ``production-reports-in-scope``, ``count-bodies-without-repair``,
+  ``keep-the-corpus-cursor-honest``, ``tooling-paths-and-flags``.
+* **The viewer extra installs the MATCHING viewer.** ``viewer`` and
+  ``web-snapshot`` require ``machinome-viewer>=0.8.1``. Changes
+  ``viewer-extra-floors-at-the-matching-viewer``,
+  ``the-identity-test-reads-the-viewer-extras-name``.
+* **The manual and README.** The README describes the package; the
+  manual's strict build is a gate. Changes ``readme-for-readers``,
+  ``strict-manual-build``.
+
 Machinome 0.8.0 (2026-10-05)
 ----------------------------
 

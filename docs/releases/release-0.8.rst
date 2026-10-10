@@ -92,7 +92,7 @@ package, licensed AGPL-3.0-or-later and installed through
 Upgrading
 ---------
 
-0.8 removes and renames without aliases. :doc:`/project/upgrading` opens with
+0.8 removes and renames without aliases. :doc:`/project/upgrading` lists
 every breaking change of 0.8 and what to change for each: the extras to
 install, the import lines, the engine flags and the test variable, a node's
 shape, the leaf contract, the OpenSCAD family's addresses and the modules
@@ -101,3 +101,26 @@ and a part whose module was rewritten rebuilds once, to the same bytes.
 Exports keep document versions 1 to 13, so a 0.7 viewer reads them.
 
 See :doc:`/project/changelog` for the complete list of what 0.8 brings.
+
+0.8.1: corrections from real machines
+-------------------------------------
+
+Released on 10 October 2026.
+
+Machinome 0.8.1 is 0.8.0 corrected by the machines built on it in its
+first week. Testing a wall clock and a combination lock found the exact
+checks slow where two parts touch and where every pair is measured: a
+touching pair's empty common is now confirmed from the parts' nearest
+boundaries before a slow classifier is asked, and distances run on every
+core, so the clock's slowest pair takes half a second where it took over
+five minutes. A build of a fresh checkout finishes, an edit behind a
+library's ``__init__.py`` rebuilds what uses it, and a production reads a
+built model once. Refusals and failing tests name what they concern: the
+part by its path, the mate that states a range, the first failing instant,
+the attribute a leaf must declare.
+
+Nothing is added to the vocabulary and the published document does not
+move: exports keep document versions 1 to 13, and the matching viewer
+0.8.1 is 0.8.0 renumbered. A few corrections refuse what 0.8.0 let pass;
+:doc:`/project/upgrading` opens with them and what to change, and
+:doc:`/project/changelog` lists every correction.
