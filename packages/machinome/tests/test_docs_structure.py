@@ -142,11 +142,15 @@ class KernelExtrasTest(unittest.TestCase):
             with self.subTest(extra=extra):
                 self.assertIn(f'machinome[{extra}]', page)
 
-    def test_the_installation_page_names_the_engine_distributions(self):
+    def test_the_installation_page_names_the_extension_distributions(self):
         # `cut-the-engines`: the `brep` and `mesh` extras install the
-        # engines' own distributions.
+        # engines' own distributions; `cut-the-brep-nodes`: the `cadquery`,
+        # `build123d`, `step` and `molejo` extras the node packages'.
         page = (DOCS / 'start' / 'install.rst').read_text()
-        for distribution in ('machinome-engine-brep', 'machinome-engine-mesh'):
+        for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
+                             'machinome-node-cadquery',
+                             'machinome-node-build123d',
+                             'machinome-node-step', 'machinome-node-molejo'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
 

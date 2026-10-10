@@ -25,7 +25,8 @@ keywords = ["machinome"]
 dependencies = [
     "watchdog",
     "trimesh==4.4.*",
-    # No CAD kernel is required: cadquery, build123d, ocp-gordon, molejo, the
+    # No CAD kernel is required: the node types over cadquery, build123d and
+    # molejo (the extras `cadquery`, `build123d`, `step` and `molejo`), the
     # B-rep engine (the extra `brep`), the mesh engine (the extra `mesh`) and
     # SolidPython are the extras below, each named by the last component of
     # the address of the module that needs it (OpenSpec changes
@@ -102,40 +103,29 @@ brep = [
 mesh = [
     "machinome-engine-mesh~=0.8.1",
 ]
-# The kernel extras, each named by the last component of the address of the
-# module that needs it, each installing the `brep` extra too, so the OCCT
-# range, stated once in machinome-engine-brep, resolves one OCCT binding for
-# several extras.
+# The node types over OCCT, each named by the last component of its address
+# and each the distribution machinome-node-<name>, which states its kernel
+# and requires the B-rep engine, so the OCCT range, stated once in
+# machinome-engine-brep, resolves one OCCT binding for several extras.
 #
-# cadquery and build123d both bind the single OCP module through the
-# cadquery-ocp distribution, so their ranges must intersect. This pair is the
-# newest that resolves to one OCP (7.8): cadquery 2.8 moved to cadquery-ocp
-# >=7.9 while build123d 0.11 moved to cadquery-ocp-novtk, a second
-# distribution installing the same OCP package. One range per kernel:
-# `cadquery` and `step` name CadQuery alike.
+# `machinome.node.cadquery` (CadQueryNode).
 cadquery = [
-    "cadquery==2.7.*",
-    "machinome[brep]",
+    "machinome-node-cadquery~=0.8.1",
 ]
+# `machinome.node.build123d` (Build123dNode, Build123dSheetNode and the
+# reducer of Svg artwork).
 build123d = [
-    "build123d==0.10.*",
-    # build123d 0.10 leaves this transitive dependency unbounded; 0.3
-    # imports OCP 8 collections absent from our shared OCP 7.8 runtime.
-    "ocp-gordon>=0.2.2,<0.3",
-    "machinome[brep]",
+    "machinome-node-build123d~=0.8.1",
 ]
-# `machinome.node.step` reads with CadQuery and the OCCT binding itself.
+# `machinome.node.step` (StepNode, StepAssembly, `machinome import-step`),
+# which reads with CadQuery and the OCCT binding itself and requires the
+# CadQuery node type.
 step = [
-    "cadquery==2.7.*",
-    "machinome[brep]",
+    "machinome-node-step~=0.8.1",
 ]
-# The flexible leaf evaluates molejo shapes and reaches for molejo's OCCT
-# evaluator, so `brep`. Pinned to the minor: a molejo minor carries the
-# shape-spec version it implements, and the documents this framework writes
-# name that version.
+# `machinome.node.molejo` (MolejoNode), with molejo and its OCCT evaluator.
 molejo = [
-    "molejo[brep]==0.2.*",
-    "machinome[brep]",
+    "machinome-node-molejo~=0.8.1",
 ]
 # The OpenSCAD node family (`machinome.node.openscad`: OpenScadNode, the
 # OpenSCAD writer and the OpenSCAD snapshot renderer) writes SCAD through

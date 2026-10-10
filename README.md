@@ -11,6 +11,10 @@ it builds.
 | [`machinome`](packages/machinome/) | The framework: a whole machine described in Python source, its parts, dimensions, joints, relations, inputs and tests. Manual: <https://machinome.readthedocs.io>. |
 | [`machinome-engine-brep`](packages/machinome-engine-brep/) | The B-rep engine, `machinome.engine.brep`, on OCCT; installed by `machinome[brep]`. |
 | [`machinome-engine-mesh`](packages/machinome-engine-mesh/) | The mesh engine, `machinome.engine.mesh`, on manifold3d; installed by `machinome[mesh]`. |
+| [`machinome-node-cadquery`](packages/machinome-node-cadquery/) | The CadQuery node type, `machinome.node.cadquery`; installed by `machinome[cadquery]`. |
+| [`machinome-node-build123d`](packages/machinome-node-build123d/) | The build123d node types and the reducer of SVG artwork, `machinome.node.build123d`; installed by `machinome[build123d]`. |
+| [`machinome-node-step`](packages/machinome-node-step/) | The STEP node types, `machinome.node.step`; installed by `machinome[step]`. |
+| [`machinome-node-molejo`](packages/machinome-node-molejo/) | The molejo node type, `machinome.node.molejo`; installed by `machinome[molejo]`. |
 
 ## Licence
 

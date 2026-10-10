@@ -25,12 +25,14 @@ The refusals. Until `root-cleanup` this module resolved twenty-one names
 a second time, lazily, from the modules that define them. Each of them is
 now refused with `ImportError`, at `from machinome.node import <name>` and
 at an attribute read alike, with a message naming the module that defines
-it and the line to write. The node types' class names are read from the
-table, so a row added for a new node type is refused naming its module
-with no edit here; the core's own names are `_DEFINED_IN` below, a closed
-record of the former exports that no new name ever joins. The lookup is
-of the requested name in a mapping, and decides nothing but the words of
-the error. Ports and the declared time base answer from
+it and the line to write. A node type of the table whose distribution is
+not installed is refused at its own import by the root's last finder, with
+the table's refusal naming its extra. The node types' class names are read
+from the table, so a row added for a new node type is refused naming its
+module with no edit here; the core's own names are `_DEFINED_IN` below, a
+closed record of the former exports that no new name ever joins. The
+lookup is of the requested name in a mapping, and decides nothing but the
+words of the error. Ports and the declared time base answer from
 `machinome.motion.ports` (OpenSpec change `motion-package`), and `_MOVED`
 refuses them naming it; the dissolved `machinome.node.adapters` package
 refuses every spelling beneath it. Build parameters are imported from
@@ -51,7 +53,9 @@ __author__ = """Luis Fagundes"""
 __email__ = 'lhfagundes@gmail.com'
 __version__ = '0.4.0'
 
+import sys as _sys
 from importlib import import_module as _import_module
+from importlib.machinery import ModuleSpec as _ModuleSpec
 from importlib.util import find_spec as _find_spec
 
 from machinome import _namespace_portions
@@ -61,6 +65,33 @@ from machinome.extras import ExtraUnavailable as _ExtraUnavailable
 # package's `__init__.py`; it is found as a portion of this package's path,
 # and a second copy of the core never is (see `_namespace_portions`).
 __path__ = _namespace_portions(__path__, __name__)
+
+
+class _AbsentNodeType:
+    """The last finder on `sys.meta_path`: a node type of the table whose
+    module no finder before it found -- its distribution is not installed --
+    is a module whose import raises the table's refusal,
+    `supported.absent(key)`, naming the extra that installs it."""
+
+    def find_spec(self, fullname, path=None, target=None):
+        package, _, key = fullname.rpartition('.')
+        if package != __name__:
+            return None
+        from .supported import NODE_TYPES
+        if key not in NODE_TYPES:
+            return None
+        return _ModuleSpec(fullname, self)
+
+    def create_module(self, spec):
+        return None
+
+    def exec_module(self, module):
+        from .supported import absent
+        raise absent(module.__name__.rpartition('.')[2])
+
+
+if not any(isinstance(finder, _AbsentNodeType) for finder in _sys.meta_path):
+    _sys.meta_path.append(_AbsentNodeType())
 
 # The core's own names this package resolved until `root-cleanup`, each
 # with the submodule that defines it. A closed record: no name joins it,

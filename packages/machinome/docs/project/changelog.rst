@@ -11,6 +11,14 @@ Unreleased
   installs ``machinome-engine-mesh``; ``from machinome.engine import
   brep`` and every install line are unchanged.
 
+* **The B-rep node types are packages of their own.**
+  ``machinome[cadquery]``, ``machinome[build123d]``, ``machinome[step]``
+  and ``machinome[molejo]`` install the distributions
+  ``machinome-node-cadquery``, ``-build123d``, ``-step`` and ``-molejo``;
+  ``from machinome.node.step import StepNode`` and every install line are
+  unchanged, and without the extra the import names the line that installs
+  it.
+
 Machinome 0.8.1
 ---------------
 

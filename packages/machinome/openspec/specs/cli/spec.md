@@ -867,8 +867,9 @@ lines that declare the generated model, for the pilot to add, together with
 the next steps for building it.
 
 The command needs the STEP reader, `machinome.node.step`, which the `step`
-extra installs. When that module refuses because its kernel cannot be found,
-the CLI SHALL answer `import-step` before the command parses its arguments or
+extra installs, in the distribution `machinome-node-step`. When that module
+refuses because its kernel cannot be found, or because no installed
+distribution ships it, the CLI SHALL answer `import-step` before the command parses its arguments or
 runs: it SHALL print one line on standard error naming `import-step`, the
 `step` extra and the install line `pip install "machinome[step]"`, write
 nothing, and exit 1, rather than fail with an import traceback or report an
@@ -930,6 +931,14 @@ judged.
 - **THEN** standard error names `import-step` and `pip install
   "machinome[step]"`, nothing is created or written, no traceback is printed,
   and the command exits 1
+
+#### Scenario: The STEP package is missing
+
+- **WHEN** `machinome import-step vendor/actuator.step --into sim` is run in
+  an installation without `machinome-node-step`
+- **THEN** standard error names `import-step`, `machinome.node.step` and
+  `pip install "machinome[step]"`, nothing is created or written, no
+  traceback is printed, and the command exits 1
 
 #### Scenario: Help for the command is answered the same way
 
@@ -1114,4 +1123,3 @@ spell their own node type's module.
 - **THEN** `parts.py` holds `from machinome.node.step import StepNode`,
   `assembly.py` holds `from machinome.node.assembly import AssemblyNode`,
   neither holds `from machinome.node import`, and both modules import
-

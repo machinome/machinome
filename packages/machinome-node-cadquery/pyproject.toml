@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-node-cadquery"
+version = "0.8.1"
+description = "The CadQuery node type of Machinome"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core this node type is a portion of, released with it: the set
+    # carries one version, and the pins between its packages are ~= both
+    # ways.
+    "machinome~=0.8.1",
+    # cadquery and build123d both bind the single OCP module through the
+    # cadquery-ocp distribution, so their ranges must intersect. This pair is
+    # the newest that resolves to one OCP (7.8): cadquery 2.8 moved to
+    # cadquery-ocp >=7.9 while build123d 0.11 moved to cadquery-ocp-novtk, a
+    # second distribution installing the same OCP package. One range per
+    # kernel: machinome-node-step names CadQuery alike.
+    "cadquery==2.7.*",
+    # The B-rep engine, which turns a render result into B-rep geometry and
+    # states the OCCT range, once.
+    "machinome-engine-brep~=0.8.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[tool.setuptools.packages.find]
+# The portion, machinome/node/cadquery.py, with no __init__.py at either
+# level, so the core's package path admits it.
+include = ["machinome.node"]
+namespaces = true

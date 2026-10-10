@@ -61,6 +61,16 @@ NODE_TYPES = {
 DEFAULT_RENDERER = 'openscad'
 
 
+def absent(key):
+    """The refusal of node type `key` when no installed distribution ships
+    its module: it names the node type, its classes, its module and the
+    extra that installs it. `load` raises it, and so does the node root's
+    last finder at the module's own import."""
+    classes = ', '.join(NODE_TYPES[key].classes)
+    return ExtraUnavailable(key, f'the {key} node type ({classes})',
+                            f'machinome.node.{key}')
+
+
 def load(key):
     """The module of node type `key`, imported.
 
@@ -78,9 +88,7 @@ def load(key):
     except ModuleNotFoundError as error:
         if error.name != address:
             raise
-        classes = ', '.join(NODE_TYPES[key].classes)
-        raise ExtraUnavailable(key, f'the {key} node type ({classes})',
-                               address) from None
+        raise absent(key) from None
 
 
 def renderer(name):

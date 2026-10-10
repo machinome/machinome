@@ -1,6 +1,6 @@
 # ADR-183: An Extension Package Is a Namespace Portion in Its Own Distribution
 
-**Status:** Accepted
+**Status:** Accepted; a node package refused by its extra's name at its import, amended 2026-10-10 by [ADR-184](../NODE/ADR-184-an-absent-node-package-is-refused-by-its-extra-at-its-import.md)
 **Date:** 2026-10-10
 **Change:** [`cut-the-engines`](../../../openspec/changes/archive/2026-10-10-cut-the-engines/)
 **Amends:**

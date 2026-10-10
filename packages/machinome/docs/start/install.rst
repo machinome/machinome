@@ -47,19 +47,22 @@ same name: the extra is the last component of the module's address.
      - Installs, for
    * - ``machinome[cadquery]``
      - ``machinome.node.cadquery``
-     - CadQuery, for ``CadQueryNode``
+     - the package ``machinome-node-cadquery``, with CadQuery, for
+       ``CadQueryNode``
    * - ``machinome[build123d]``
      - ``machinome.node.build123d``
-     - build123d, for ``Build123dNode``, ``Build123dSheetNode`` and the
-       SVG artwork of :doc:`markings </howto/markings>`
+     - the package ``machinome-node-build123d``, with build123d, for
+       ``Build123dNode``, ``Build123dSheetNode`` and the SVG artwork of
+       :doc:`markings </howto/markings>`
    * - ``machinome[step]``
      - ``machinome.node.step``
-     - CadQuery's STEP reader, for ``StepNode``, ``StepAssembly`` and
-       ``machinome import-step``
+     - the package ``machinome-node-step``, with CadQuery's STEP reader,
+       for ``StepNode``, ``StepAssembly`` and ``machinome import-step``
    * - ``machinome[molejo]``
      - ``machinome.node.molejo``
-     - `molejo <https://molejo.readthedocs.io>`_ with its B-rep evaluator,
-       for ``MolejoNode``
+     - the package ``machinome-node-molejo``, with `molejo
+       <https://molejo.readthedocs.io>`_ with its B-rep evaluator, for
+       ``MolejoNode``
    * - ``machinome[brep]``
      - ``machinome.engine.brep``
      - the B-rep engine, the package ``machinome-engine-brep``, with the
@@ -99,8 +102,8 @@ by the mesh engine, so a project that tests them installs
 Without its extra, importing a module refuses with the line that installs
 it, for example::
 
-    ModuleNotFoundError: machinome.node.cadquery (CadQueryNode) needs
-    cadquery, which is not installed; install it with
+    ModuleNotFoundError: the cadquery node type (CadQueryNode) needs
+    machinome.node.cadquery, which is not installed; install it with
     'pip install "machinome[cadquery]"'
 
 The same refusal answers ``from machinome.node.cadquery import
@@ -120,10 +123,12 @@ whose every compared part has B-rep geometry needs it only for
 Packages and licences
 ---------------------
 
-The framework is the package ``machinome``, with its engines in the
-packages ``machinome-engine-brep`` and ``machinome-engine-mesh`` that its
-``brep`` and ``mesh`` extras install, all licensed |framework_licence|, at
-the recipient's choice. The browser viewer is a
+The framework is the package ``machinome``, with its engines and its node
+types over the B-rep engine in packages of their own that its extras
+install (``machinome-engine-brep``, ``machinome-engine-mesh``,
+``machinome-node-cadquery``, ``machinome-node-build123d``,
+``machinome-node-step`` and ``machinome-node-molejo``), all licensed
+|framework_licence|, at the recipient's choice. The browser viewer is a
 separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``

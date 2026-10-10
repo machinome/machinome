@@ -9,6 +9,10 @@ members = ["packages/*"]
 machinome = { workspace = true }
 machinome-engine-brep = { workspace = true }
 machinome-engine-mesh = { workspace = true }
+machinome-node-build123d = { workspace = true }
+machinome-node-cadquery = { workspace = true }
+machinome-node-molejo = { workspace = true }
+machinome-node-step = { workspace = true }
 
 [tool.uv]
 # Every member installs editable in compat mode, a .pth line per package

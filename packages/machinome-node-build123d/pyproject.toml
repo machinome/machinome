@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-node-build123d"
+version = "0.8.1"
+description = "The build123d node types of Machinome, and the reducer of its SVG artwork"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core this node type is a portion of, released with it: the set
+    # carries one version, and the pins between its packages are ~= both
+    # ways.
+    "machinome~=0.8.1",
+    # The newest build123d whose OCP is the one cadquery 2.7 binds
+    # (machinome-node-cadquery's manifest says why the pair).
+    "build123d==0.10.*",
+    # build123d 0.10 leaves this transitive dependency unbounded; 0.3
+    # imports OCP 8 collections absent from our shared OCP 7.8 runtime.
+    "ocp-gordon>=0.2.2,<0.3",
+    # The B-rep engine, which turns a render result into B-rep geometry and
+    # states the OCCT range, once.
+    "machinome-engine-brep~=0.8.1",
+    # Arrays, imported by the artwork reducer; the core pins the range.
+    "numpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[tool.setuptools.packages.find]
+# The portion, machinome/node/build123d.py, with no __init__.py at either
+# level, so the core's package path admits it.
+include = ["machinome.node"]
+namespaces = true

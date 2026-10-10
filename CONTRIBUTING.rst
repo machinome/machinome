@@ -111,6 +111,8 @@ dependencies::
     $ source .venv/bin/activate
     $ pip install --config-settings editable_mode=compat \
         -e packages/machinome-engine-brep -e packages/machinome-engine-mesh \
+        -e packages/machinome-node-cadquery -e packages/machinome-node-build123d \
+        -e packages/machinome-node-step -e packages/machinome-node-molejo \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is

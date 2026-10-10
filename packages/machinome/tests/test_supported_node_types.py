@@ -24,6 +24,7 @@ from unittest import TestCase
 from tests.brep_engine_absent import run_python
 
 ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY = Path(__file__).resolve().parents[3]
 SUPPORTED = ROOT / 'machinome' / 'node' / 'supported.py'
 
 #: The node types and the class names each contributes, as the node root's
@@ -117,8 +118,8 @@ class TheTableTest(TestCase):
             elif isinstance(node, ast.AnnAssign):
                 defined.add(node.target.id)
         self.assertEqual(defined, {'NodeType', 'NODE_TYPES',
-                                   'DEFAULT_RENDERER', 'load', 'renderer',
-                                   'needed_by'})
+                                   'DEFAULT_RENDERER', 'absent', 'load',
+                                   'renderer', 'needed_by'})
 
     def test_importing_it_imports_no_node_type(self):
         run = run_python(
@@ -177,3 +178,63 @@ class LoadRefusesTest(TestCase):
     def test_a_present_node_type_is_its_module(self):
         module = supported().load('stl')
         self.assertIs(module, importlib.import_module('machinome.node.stl'))
+
+
+#: Drop one node package's directory from the path, as an install without
+#: its distribution, then pass one door and report what it raised.
+ABSENT_DOOR = '''
+import json, os, sys
+absent = os.path.realpath({directory!r})
+sys.path[:] = [entry for entry in sys.path
+               if os.path.realpath(entry or os.curdir) != absent]
+import machinome.node
+result = None
+try:
+{door}
+except ImportError as raised:
+    print(json.dumps([type(raised).__name__, raised.name,
+                      getattr(raised, 'extra', None), str(raised)]))
+else:
+    print(json.dumps(['passed', result]))
+'''
+
+
+class AbsentPackageTest(TestCase):
+    """(`cut-the-brep-nodes`, ADR-184) A node type whose distribution is
+    not installed is refused by its extra at every door, as an absent
+    kernel is. The absence is stood in for by the package's directory
+    dropped from `sys.path` before `machinome` is imported, which the
+    editable install allows; an uninstalled wheel is the design's probe 2.
+    """
+
+    DIRECTORY = REPOSITORY / 'packages' / 'machinome-node-step'
+
+    REFUSAL = ['ExtraUnavailable', 'machinome.node.step', 'step',
+               'the step node type (StepNode) needs machinome.node.step, '
+               'which is not installed; install it with '
+               '\'pip install "machinome[step]"\'']
+
+    DOORS = {
+        'import': 'import machinome.node.step',
+        'from-module': 'from machinome.node.step import StepNode',
+        'from-root': 'from machinome.node import step',
+        'hasattr': "result = hasattr(machinome.node, 'step')",
+    }
+
+    def passed(self, door):
+        code = ABSENT_DOOR.format(directory=str(self.DIRECTORY),
+                                  door='    ' + door)
+        run = run_python(code, blocked=False, absent=())
+        self.assertEqual(run.returncode, 0, run.output)
+        return json.loads(run.stdout.strip().splitlines()[-1])
+
+    def test_every_door_refuses_the_absent_package_by_its_extra(self):
+        for name, door in self.DOORS.items():
+            with self.subTest(door=name):
+                self.assertEqual(self.passed(door), self.REFUSAL)
+
+    def test_the_other_node_packages_still_import(self):
+        self.assertEqual(
+            self.passed('import machinome.node.cadquery\n'
+                        '    result = machinome.node.cadquery.__name__'),
+            ['passed', 'machinome.node.cadquery'])

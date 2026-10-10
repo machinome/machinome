@@ -3,16 +3,18 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The CAD kernels are extras, and a kernel module refuses an absent one
-(OpenSpec changes `lean-install`, `mesh-engine`, `brep-mesh` and
-`cut-the-engines`, capability `kernel-extras`).
+(OpenSpec changes `lean-install`, `mesh-engine`, `brep-mesh`,
+`cut-the-engines` and `cut-the-brep-nodes`, capability `kernel-extras`).
 
 Two halves. The metadata is read from the manifests, the framework's
-`pyproject.toml` and its engines' under `packages/`, and from the
-repository's `uv.lock` and CI workflow: no kernel is a required dependency,
-each is installed by the extra named by the last component of the address
-of the module that needs it, the `brep` and `mesh` extras install the
-engines' distributions, which state the kernels, and the development
-install and CI install them all from the lock. The refusal
+`pyproject.toml` and its extension packages' under `packages/`, the engines'
+and the node packages', and from the repository's `uv.lock` and CI
+workflow: no kernel is a required dependency, each is installed by the
+extra named by the last component of the address of the module that needs
+it, the `brep` and `mesh` extras install the engines' distributions and the
+`cadquery`, `build123d`, `step` and `molejo` extras the node packages',
+which state the kernels, and the development install and CI install them
+all from the lock. The refusal
 is observed in subprocesses: the workspace and CI install every kernel, so
 an install without one is stood in for by the `sys.meta_path` finder of
 `tests/brep_engine_absent.py`, refusing the kernel the way an interpreter
@@ -55,11 +57,12 @@ EXTRAS = {
     # state the kernels.
     'brep': {f'machinome-engine-brep~={VERSION}'},
     'mesh': {f'machinome-engine-mesh~={VERSION}'},
-    'cadquery': {'cadquery==2.7.*', 'machinome[brep]'},
-    'build123d': {'build123d==0.10.*', 'ocp-gordon>=0.2.2,<0.3',
-                  'machinome[brep]'},
-    'step': {'cadquery==2.7.*', 'machinome[brep]'},
-    'molejo': {'molejo[brep]==0.2.*', 'machinome[brep]'},
+    # `cut-the-brep-nodes`: the node types over the B-rep engine are
+    # distributions of their own, which state the kernels.
+    'cadquery': {f'machinome-node-cadquery~={VERSION}'},
+    'build123d': {f'machinome-node-build123d~={VERSION}'},
+    'step': {f'machinome-node-step~={VERSION}'},
+    'molejo': {f'machinome-node-molejo~={VERSION}'},
     'openscad': {'solidpython2==2.1.*'},
     'solid2': {'machinome[openscad]'},
     # `root-cleanup` (design.md Decision 7): the node types whose module
@@ -71,14 +74,32 @@ EXTRAS = {
             'openscad,solid2,jscad,stl]'},
 }
 
-#: Each engine distribution and the requirements its manifest lists: the
-#: framework, pinned ~= to the set's version, and its kernel.
-ENGINE_REQUIREMENTS = {
+#: Each extension distribution and the requirements its manifest lists:
+#: the framework, pinned ~= to the set's version, and its kernel; a node
+#: package also the B-rep engine, pinned alike.
+PACKAGE_REQUIREMENTS = {
     'machinome-engine-brep': {f'machinome~={VERSION}',
                               'cadquery-ocp>=7.8.1,<7.9', 'numpy'},
     'machinome-engine-mesh': {f'machinome~={VERSION}', 'manifold3d',
                               'numpy'},
+    'machinome-node-cadquery': {f'machinome~={VERSION}', 'cadquery==2.7.*',
+                                f'machinome-engine-brep~={VERSION}'},
+    'machinome-node-build123d': {f'machinome~={VERSION}',
+                                 'build123d==0.10.*',
+                                 'ocp-gordon>=0.2.2,<0.3',
+                                 f'machinome-engine-brep~={VERSION}',
+                                 'numpy'},
+    'machinome-node-step': {f'machinome~={VERSION}',
+                            f'machinome-node-cadquery~={VERSION}',
+                            'cadquery==2.7.*',
+                            f'machinome-engine-brep~={VERSION}', 'numpy'},
+    'machinome-node-molejo': {f'machinome~={VERSION}', 'molejo[brep]==0.2.*',
+                              f'machinome-engine-brep~={VERSION}', 'trimesh'},
 }
+
+#: The node packages among them.
+NODE_PACKAGES = tuple(name for name in PACKAGE_REQUIREMENTS
+                      if name.startswith('machinome-node-'))
 
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
 
@@ -114,9 +135,16 @@ def refusal(extra, needed_by, missing):
             f'it with \'pip install "machinome[{extra}]"\'')
 
 
-def engine_manifest(name):
+def package_manifest(name):
     path = REPOSITORY / 'packages' / name / 'pyproject.toml'
     return tomllib.loads(path.read_text())['project']
+
+
+def sibling_manifests():
+    """Every extension package's manifest under `packages/`, by name."""
+    return {path.parent.name: tomllib.loads(path.read_text())['project']
+            for path in sorted(REPOSITORY.glob(
+                'packages/machinome-*/pyproject.toml'))}
 
 
 def names(requirements):
@@ -166,12 +194,13 @@ class KernelMetadataTest(TestCase):
             with self.subTest(extra=extra):
                 self.assertEqual(set(extras[extra]), expected)
 
-    def test_every_kernel_extra_includes_the_brep_extra(self):
-        extras = project()['optional-dependencies']
-
-        for extra in ('cadquery', 'build123d', 'step', 'molejo'):
-            with self.subTest(extra=extra):
-                self.assertIn('machinome[brep]', extras[extra])
+    def test_every_node_package_requires_the_brep_engine(self):
+        for name in NODE_PACKAGES:
+            with self.subTest(package=name):
+                path = REPOSITORY / 'packages' / name / 'pyproject.toml'
+                self.assertTrue(path.is_file(), f'{path} is missing')
+                self.assertIn(f'machinome-engine-brep~={VERSION}',
+                              package_manifest(name)['dependencies'])
 
     def test_the_former_engine_extras_are_gone(self):
         extras = project()['optional-dependencies']
@@ -188,6 +217,18 @@ class KernelMetadataTest(TestCase):
                 self.assertFalse(any(
                     'mesh' in Requirement(line).extras
                     for line in extras[extra]))
+        manifests = sibling_manifests()
+        for name in NODE_PACKAGES:
+            if name not in manifests:
+                continue
+            with self.subTest(package=name):
+                requirements = [Requirement(line)
+                                for line in manifests[name]['dependencies']]
+                self.assertFalse(any(
+                    requirement.name == 'machinome-engine-mesh'
+                    or (requirement.name == 'machinome'
+                        and 'mesh' in requirement.extras)
+                    for requirement in requirements))
 
     def test_all_names_every_kernel_extra(self):
         (line,) = project()['optional-dependencies']['all']
@@ -217,19 +258,23 @@ class KernelMetadataTest(TestCase):
                       project()['optional-dependencies']['dev'])
 
     def test_cadquery_carries_one_range_wherever_it_is_named(self):
+        # `cut-the-brep-nodes`: the core and every extension manifest, since
+        # the CadQuery and STEP node packages each name CadQuery.
         extras = project()['optional-dependencies']
+        lists = [project()['dependencies'], *extras.values(),
+                 *(manifest['dependencies']
+                   for manifest in sibling_manifests().values())]
         specifiers = {str(Requirement(line).specifier)
-                      for lines in (project()['dependencies'],
-                                    *extras.values())
+                      for lines in lists
                       for line in lines
                       if Requirement(line).name == 'cadquery'}
 
         self.assertEqual(specifiers, {'==2.7.*'})
 
-    def test_each_engine_requires_the_core_and_its_kernel(self):
-        for name, expected in ENGINE_REQUIREMENTS.items():
-            with self.subTest(engine=name):
-                self.assertEqual(set(engine_manifest(name)['dependencies']),
+    def test_each_extension_package_requires_the_core_and_its_kernel(self):
+        for name, expected in PACKAGE_REQUIREMENTS.items():
+            with self.subTest(package=name):
+                self.assertEqual(set(package_manifest(name)['dependencies']),
                                  expected)
 
     def test_the_occt_range_is_stated_once(self):
@@ -239,11 +284,11 @@ class KernelMetadataTest(TestCase):
                                        *core['optional-dependencies'].items())
                   for line in lines
                   if Requirement(line).name == 'cadquery-ocp']
-        for name in ENGINE_REQUIREMENTS:
+        for name in PACKAGE_REQUIREMENTS:
             path = REPOSITORY / 'packages' / name / 'pyproject.toml'
             if path.is_file():
                 places += [name
-                           for line in engine_manifest(name)['dependencies']
+                           for line in package_manifest(name)['dependencies']
                            if Requirement(line).name == 'cadquery-ocp']
 
         self.assertEqual(places, ['machinome-engine-brep'])
@@ -253,7 +298,7 @@ class KernelMetadataTest(TestCase):
         locked = {package['name'] for package in lock['package']}
 
         self.assertEqual(
-            {*KERNEL_DISTRIBUTIONS, *ENGINE_REQUIREMENTS} - locked, set())
+            {*KERNEL_DISTRIBUTIONS, *PACKAGE_REQUIREMENTS} - locked, set())
 
     def test_ci_syncs_the_locked_workspace(self):
         jobs = yaml.safe_load(WORKFLOW.read_text())['jobs']

@@ -11,16 +11,17 @@ modules of the engine package, `machinome.engine.brep` and
 `machinome.engine.mesh`, and the seams its `__init__` (OpenSpec change
 `brep-mesh`); each provider is shipped by its own distribution under
 `packages/`, outside the core, and imports only its kernel (OpenSpec change
-`cut-the-engines`).
+`cut-the-engines`), as is each node module over the B-rep engine,
+`machinome.node.cadquery`, `.build123d`, `.step` and `.molejo` (OpenSpec
+change `cut-the-brep-nodes`).
 
 Read from the source, not from a running interpreter: the core imports
-`OCP` and `cadquery` nowhere outside the B-rep engine's provider except
-the STEP module (its reader and `adjust`, which move with their package),
-it names the provider in exactly one module -- the seam -- and the test
-framework binds none of the B-rep layer's names as its own. Every
-CAD kernel is imported only by the module its extra is named for, which
-checks its kernel before importing it, and a kernel module is named only
-at the seams that reach it.
+`OCP` and `cadquery` nowhere but the template a project copies, it names
+the provider in exactly one module -- the seam -- and the test framework
+binds none of the B-rep layer's names as its own. Every CAD kernel is
+imported only by the module its extra is named for, which checks its
+kernel before importing it, and a kernel module is named only at the seams
+that reach it.
 """
 
 import ast
@@ -90,7 +91,6 @@ class CoreHoldsNoKernelTest(TestCase):
                 importing[path] = sorted(kernel)
 
         self.assertEqual(importing, {
-            'machinome/node/step.py': ['OCP', 'cadquery'],
             # A project's file `machinome new` copies (`openscad-out`).
             'machinome/manager/templates/project/root/cadquery.py':
                 ['cadquery']})
@@ -118,10 +118,10 @@ KERNEL_MODULES = {'machinome.node.cadquery', 'machinome.node.build123d',
 #: Each kernel module, as a path, with the extra its address names (the
 #: last component).
 EXTRA_OF = {
-    'machinome/node/cadquery.py': 'cadquery',
-    'machinome/node/build123d.py': 'build123d',
-    'machinome/node/step.py': 'step',
-    'machinome/node/molejo.py': 'molejo',
+    'machinome-node-cadquery/machinome/node/cadquery.py': 'cadquery',
+    'machinome-node-build123d/machinome/node/build123d.py': 'build123d',
+    'machinome-node-step/machinome/node/step.py': 'step',
+    'machinome-node-molejo/machinome/node/molejo.py': 'molejo',
     'machinome-engine-brep/machinome/engine/brep.py': 'brep',
     'machinome-engine-mesh/machinome/engine/mesh.py': 'mesh',
 }
@@ -131,7 +131,7 @@ EXTRA_OF = {
 #: modules").
 SEAMS = {
     'machinome/node/markings.py': {'machinome.node.build123d'},
-    'machinome/node/step.py': {'machinome.node.cadquery'},
+    'machinome-node-step/machinome/node/step.py': {'machinome.node.cadquery'},
     # A project's file `machinome new` copies, which imports its node type
     # from its module (`root-cleanup`).
     'machinome/manager/templates/project/root/cadquery.py':
@@ -208,9 +208,6 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                 importing[path] = sorted(roots & KERNELS)
 
         self.assertEqual(importing, {
-            'machinome/node/build123d.py': ['build123d'],
-            'machinome/node/molejo.py': ['molejo'],
-            'machinome/node/step.py': ['OCP', 'cadquery'],
             # The template `machinome new` scaffolds a CadQuery part from
             # (`openscad-out`): a project's file, which the core copies and
             # never imports.
@@ -218,7 +215,7 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                 ['cadquery'],
         })
 
-    def test_the_engine_packages_import_only_their_kernels(self):
+    def test_the_extension_packages_import_only_their_kernels(self):
         importing = {}
         for path, tree in portion_modules():
             roots = {module.split('.')[0]
@@ -229,11 +226,15 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         self.assertEqual(importing, {
             'machinome-engine-brep/machinome/engine/brep.py': ['OCP'],
             'machinome-engine-mesh/machinome/engine/mesh.py': ['manifold3d'],
+            'machinome-node-build123d/machinome/node/build123d.py':
+                ['build123d'],
+            'machinome-node-molejo/machinome/node/molejo.py': ['molejo'],
+            'machinome-node-step/machinome/node/step.py': ['OCP', 'cadquery'],
         })
 
     def test_kernel_modules_are_named_only_at_the_seams(self):
         naming = {}
-        for path, tree in every_module():
+        for path, tree in (*every_module(), *portion_modules()):
             named = kernel_modules_named(path, tree)
             if named:
                 naming[path] = named
@@ -241,7 +242,8 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         for path, named in naming.items():
             with self.subTest(path=path):
                 self.assertLessEqual(named, SEAMS.get(path, set()))
-        for path in ('machinome/node/markings.py', 'machinome/node/step.py'):
+        for path in ('machinome/node/markings.py',
+                     'machinome-node-step/machinome/node/step.py'):
             with self.subTest(seam=path):
                 self.assertEqual(naming.get(path), SEAMS[path])
         for path in TABLE_READERS:

@@ -886,8 +886,9 @@ class.
 
 ### Requirement: Each leaf type is one module under the node package
 
-Each leaf type the core ships SHALL be defined at one address directly under
-`machinome.node`, named for its technology, and imported from there: a module,
+Each leaf type the framework supports SHALL be defined at one address directly
+under `machinome.node`, named for its technology, and imported from there: a
+module,
 or, for the OpenSCAD node family, the package `machinome.node.openscad`, whose
 `__init__` defines the node type and whose other modules are its machinery
 under the `openscad-node` capability. Which node types exist, with the class
@@ -908,6 +909,16 @@ once, in the table of supported node types `machinome.node.supported`:
 Each of those classes SHALL be imported from its node type's module and from
 nowhere else: the node root resolves none of them, and refuses each naming its
 module, under the requirement "The node package's root exports nothing".
+
+The modules `machinome.node.cadquery`, `machinome.node.build123d`,
+`machinome.node.step` and `machinome.node.molejo` SHALL each be shipped by its
+own distribution, `machinome-node-<key>`, as a namespace portion of
+`machinome.node` with no `__init__.py` under `machinome/` or `machinome/node/`,
+and the framework's distribution SHALL ship none of them; their address, their
+classes and their behaviour SHALL be those they had in the framework's
+distribution. In the repository each lives at
+`packages/machinome-node-<key>/machinome/node/<key>.py`. The other node types'
+modules stay in the framework's distribution until their own packages are cut.
 
 The package `machinome.node.adapters` SHALL hold no leaf. Importing it, or any
 module or name beneath it, SHALL raise `ImportError` at the import line, whose
@@ -948,6 +959,24 @@ import to write. It SHALL NOT re-export, alias or forward any name.
   `machinome.node.build123d`, are tested against each other with
   `isinstance`
 - **THEN** neither is an instance of the other
+
+#### Scenario: A node type over the B-rep engine resolves from its own distribution
+
+- **WHEN** the repository's workspace is synced and `machinome.node.step` is
+  imported
+- **THEN** its file is `packages/machinome-node-step/machinome/node/step.py`,
+  `StepNode` is the class the module defines, the module's
+  `workplane_shape` is `machinome.node.cadquery`'s, from
+  `packages/machinome-node-cadquery/`, and the framework's `machinome/node/`
+  holds none of `cadquery.py`, `build123d.py`, `step.py` and `molejo.py`
+
+#### Scenario: A node type resolves from its installed wheel
+
+- **WHEN** the framework's wheel is installed with its `step` extra, which
+  installs `machinome-node-step` and `machinome-node-cadquery`
+- **THEN** `from machinome.node.step import StepNode` returns the class, whose
+  module's file is listed in `machinome-node-step`'s installed files, which
+  list no `__init__.py`
 
 ### Requirement: The node package's root exports nothing
 
@@ -1030,4 +1059,3 @@ unmodified. Any other name SHALL raise `AttributeError`.
   class names, and one of them is imported from `machinome.node`
 - **THEN** the refusal names `machinome.node.<key>` of the new row, and no
   module of the core but the table spells the class name
-

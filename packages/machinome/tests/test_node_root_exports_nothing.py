@@ -14,7 +14,9 @@ class names of every row of the table of supported node types are refused
 naming `machinome.node.<key>` of their row.
 
 G2, as text: no file under `machinome/` or `tests/`, and no page under
-`docs/` (decision records and built output excepted) or `README.rst`, spells
+`docs/` (decision records and built output excepted) or `README.rst`, of the
+framework or of an extension package beside it under `packages/` (OpenSpec
+change `cut-the-brep-nodes`), spells
 one of the twenty-one names in an import statement from the root (one line,
 a parenthesised list or a backslash continuation), the star import from the
 root, or a dotted address on the root. A statement composed at run time is
@@ -32,6 +34,7 @@ from unittest.mock import patch
 import machinome.node
 
 ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY = Path(__file__).resolve().parents[3]
 
 #: The twenty-one names `machinome/node/__init__.py` resolved until this
 #: change, each with the module that defines it. Written out here rather
@@ -331,6 +334,13 @@ class NothingSpellsTheRootTest(TestCase):
 
     def test_no_file_of_the_three_zones_spells_a_former_root_name(self):
         result = scan()
+        # `cut-the-brep-nodes`: the node modules cut from the core, and
+        # every extension package, are read where they now live.
+        for package in sorted((REPOSITORY / 'packages').glob('machinome-*')):
+            for zone, found in scan(package).items():
+                result[zone].update(
+                    {f'{package.name}/{relative}': hits
+                     for relative, hits in found.items()})
         self.assertEqual({zone: sorted(found)
                           for zone, found in result.items()},
                          {'machinome': [], 'tests': [], 'docs': []},

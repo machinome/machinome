@@ -290,6 +290,29 @@ decision is architectural.
    four packages over the B-rep engine, `step` depending on `cadquery`;
    extras, pins, table, test, `check-dist` grown. Specs: `kernel-extras`,
    `step-import`, `step-assembly`, `markings` where they name an install.
+   **Done** (10 October 2026): branch `v0.9-base-cut-the-brep-nodes`,
+   planning commit bdadf767 on 84757c38, ratified by the orchestrator's
+   review (ADR-184). The four node types are portions in
+   `packages/machinome-node-cadquery/`, `-build123d/`, `-step/` and
+   `-molejo/`, each stating its kernel and requiring the B-rep engine,
+   `machinome-node-step` requiring `machinome-node-cadquery`, the first pin
+   between two extension packages; the core's `cadquery`, `build123d`,
+   `step` and `molejo` extras install them. A node type whose package is
+   absent is refused by its extra at every door by the node root's last
+   finder (ADR-184), and the manual's autodoc path names the siblings. The
+   suite green on the bench's uv venv (4791 passed, 20 skipped, 6914
+   subtests), the manual built with warnings as errors, and
+   `scripts/check-dist` green: seven members built, fourteen archives `twine
+   check --strict` passed, the node packages installed through their extras
+   from the built archives and smoked by a part on each kernel (volumes
+   1000, 24, 120 and 477.89 against the closed form 477.8895), nothing
+   uploaded; a clean copy's framework sdist holds 1015 entries and its wheel
+   122, each sibling's 18 and 8. `uv lock` resolves 183 packages. The
+   universe sweep: 63 repositories, 130 rows, 121 ok, 0 expected, 3
+   unexpected, 0 timeout, 6 no-model, every row as at `cut-the-engines`; the
+   unexpected rows are wall_clock_41's own CadQuery error, Dum-E without
+   machinome-freecad and fender-bender without `fb_library`. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-10-cut-the-brep-nodes/evidence.md`.
 4. `cut-the-mesh-nodes`. `openscad` (the package directory, with the
    snapshot renderer moved in from the core's viewers and the supported
    table's row repointed), `solid2`, `jscad` and `stl`; the last core

@@ -1,6 +1,6 @@
 # ADR-181: The Node Package's Root Exports Nothing
 
-**Status:** Accepted
+**Status:** Accepted; the three doors keeping their refusal when the node package is absent, amended 2026-10-10 by [ADR-184](ADR-184-an-absent-node-package-is-refused-by-its-extra-at-its-import.md)
 **Date:** 2026-10-05
 **Change:** [`root-cleanup`](../../../openspec/changes/archive/2026-10-05-root-cleanup/)
 **Amends:**

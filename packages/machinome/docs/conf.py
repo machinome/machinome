@@ -7,11 +7,15 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import glob
 import os
 import sys
 
-# Make machinome importable for autodoc without installing it
-sys.path.insert(0, os.path.abspath('..'))
+# Make machinome importable for autodoc without installing it, with the
+# extension packages beside it under packages/, whose modules the core's
+# package path admits as portions (machinome._namespace_portions).
+sys.path[:0] = [os.path.abspath('..'),
+                *sorted(glob.glob(os.path.abspath('../../machinome-*')))]
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

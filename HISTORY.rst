@@ -27,6 +27,18 @@ Unreleased
   lock with uv, and ``requirements.txt``, ``requirements_dev.txt`` and
   ``tox.ini`` are retired. Change ``cut-the-engines`` (ADR-183).
 
+* **The CadQuery, build123d, STEP and molejo node types are PACKAGES of
+  their own.** ``machinome-node-cadquery``, ``machinome-node-build123d``,
+  ``machinome-node-step`` and ``machinome-node-molejo`` each ship
+  ``machinome.node.<name>`` as a namespace portion in its own directory
+  under ``packages/``, state its kernel and require the B-rep engine;
+  ``machinome-node-step`` requires ``machinome-node-cadquery``. The
+  framework's ``cadquery``, ``build123d``, ``step`` and ``molejo`` extras
+  install them; every address, extra and install line is unchanged. A node
+  type whose package is not installed is refused at its import naming the
+  extra that installs it, as an absent kernel was. Change
+  ``cut-the-brep-nodes`` (ADR-184).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

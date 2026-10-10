@@ -1768,6 +1768,39 @@ class ArtworkSeamTest(TestCase):
             '\'pip install "machinome[build123d]"\'')
         self.assertEqual(report['markings'], {})
 
+    def test_a_stale_marking_without_the_reducer_package_is_refused(self):
+        # `cut-the-brep-nodes` (ADR-184): the reducer is shipped by
+        # machinome-node-build123d; an install without it, stood in for by
+        # its directory dropped from `sys.path`, is refused as an install
+        # without its kernel is, naming the extra.
+        from pathlib import Path
+        from .brep_engine_absent import run_python
+        import json
+
+        directory = (Path(__file__).resolve().parents[3] / 'packages'
+                     / 'machinome-node-build123d')
+        prelude = (
+            'import os, sys\n'
+            f'absent = os.path.realpath({str(directory)!r})\n'
+            'sys.path[:] = [entry for entry in sys.path\n'
+            '               if os.path.realpath(entry or os.curdir) != absent]\n')
+        run = run_python(prelude + BUILD_PLATE, blocked=False, absent=(),
+                         build_dir=self.build_dir)
+        lines = run.stdout.strip().splitlines()
+        self.assertTrue(lines, run.output)
+        report = json.loads(lines[-1])
+
+        self.assertIn('error', report, report)
+        kind, mro, message = report['error']
+        self.assertEqual(kind, 'ExtraUnavailable')
+        self.assertIn('ModuleNotFoundError', mro)
+        self.assertEqual(
+            message,
+            'marking badge of Plate (artwork badge.svg) needs '
+            'machinome.node.build123d, which is not installed; install it '
+            'with \'pip install "machinome[build123d]"\'')
+        self.assertEqual(report['markings'], {})
+
     def test_a_current_marking_needs_no_reducer(self):
         built = self.build(blocked=False)
         self.assertNotIn('error', built)

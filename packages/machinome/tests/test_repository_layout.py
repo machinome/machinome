@@ -14,7 +14,11 @@ setuptools carries into the archives as regular files (change
 `monorepo-layout`, ADR-182). The framework's extension packages are
 siblings under `packages/`, each holding its manifest, a README, the links
 to the licence and its namespace portion, numbered with the framework and
-installed editable by the workspace (change `cut-the-engines`, ADR-183).
+installed editable by the workspace (change `cut-the-engines`, ADR-183):
+the two engines and the node packages `machinome-node-cadquery`,
+`machinome-node-build123d`, `machinome-node-step` and
+`machinome-node-molejo`, each a portion of `machinome.node` (change
+`cut-the-brep-nodes`).
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -50,9 +54,16 @@ FRAMEWORK_ENTRIES = (
 
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
 
-#: The framework's extension packages, by directory, and the engine module
-#: each ships under `machinome/engine/`.
-ENGINES = {'machinome-engine-brep': 'brep', 'machinome-engine-mesh': 'mesh'}
+#: The framework's extension packages, by directory: the module each
+#: ships, by its address, and the core's extra that installs it.
+EXTENSIONS = {
+    'machinome-engine-brep': ('machinome.engine.brep', 'brep'),
+    'machinome-engine-mesh': ('machinome.engine.mesh', 'mesh'),
+    'machinome-node-cadquery': ('machinome.node.cadquery', 'cadquery'),
+    'machinome-node-build123d': ('machinome.node.build123d', 'build123d'),
+    'machinome-node-step': ('machinome.node.step', 'step'),
+    'machinome-node-molejo': ('machinome.node.molejo', 'molejo'),
+}
 
 #: A link into the repository on GitHub, and the path it names.
 GITHUB_PATH = re.compile(
@@ -279,8 +290,8 @@ class TheExtensionPackagesTest(unittest.TestCase):
     """Each extension package carries only what distinguishes it: its
     manifest, a README, the links to the root's licence and its portion."""
 
-    def test_each_engine_directory_holds_only_what_distinguishes_it(self):
-        for name, engine in ENGINES.items():
+    def test_each_extension_directory_holds_only_what_distinguishes_it(self):
+        for name, (address, _extra) in EXTENSIONS.items():
             with self.subTest(package=name):
                 directory = REPOSITORY / 'packages' / name
                 self.assertTrue(directory.is_dir(), f'{directory} is missing')
@@ -289,11 +300,12 @@ class TheExtensionPackagesTest(unittest.TestCase):
                      '--exclude-standard', '--', f'packages/{name}'],
                     cwd=REPOSITORY, capture_output=True, text=True,
                     check=True).stdout.split()
+                module = address.replace('.', '/') + '.py'
                 self.assertEqual(
                     sorted(path.removeprefix(f'packages/{name}/')
                            for path in listed),
                     sorted(['pyproject.toml', 'README.md', 'LICENSE',
-                            'LICENSES', f'machinome/engine/{engine}.py']))
+                            'LICENSES', module]))
                 for entry in ('LICENSE', 'LICENSES'):
                     self.assertTrue((directory / entry).is_symlink(),
                                     f'{directory / entry} is not a link')
@@ -303,9 +315,9 @@ class TheExtensionPackagesTest(unittest.TestCase):
                     list((directory / 'machinome').rglob('__init__.py')), [],
                     f'{name} ships an __init__.py')
 
-    def test_each_engine_manifest_is_a_portion_of_the_set(self):
+    def test_each_extension_manifest_is_a_portion_of_the_set(self):
         core = read_toml(PACKAGE / 'pyproject.toml')['project']
-        for name in ENGINES:
+        for name, (address, _extra) in EXTENSIONS.items():
             with self.subTest(package=name):
                 manifest = read_toml(
                     REPOSITORY / 'packages' / name / 'pyproject.toml')
@@ -316,36 +328,57 @@ class TheExtensionPackagesTest(unittest.TestCase):
                                  core['license-files'])
                 self.assertEqual(
                     manifest['tool']['setuptools']['packages']['find'],
-                    {'include': ['machinome.engine'], 'namespaces': True})
+                    {'include': [address.rpartition('.')[0]],
+                     'namespaces': True})
 
-    def test_each_engine_readme_names_its_install_and_the_licence(self):
+    def test_each_extension_readme_names_its_install_and_the_licence(self):
         licence = conf_value('framework_licence')
-        for name, engine in ENGINES.items():
+        for name, (_address, extra) in EXTENSIONS.items():
             with self.subTest(package=name):
                 readme = ' '.join(
                     (REPOSITORY / 'packages' / name / 'README.md')
                     .read_text().split())
-                self.assertIn(f'pip install "machinome[{engine}]"', readme)
+                self.assertIn(f'pip install "machinome[{extra}]"', readme)
                 self.assertIn(licence, readme,
                               f'{name}/README.md does not state {licence!r}')
 
-    def test_each_provider_resolves_from_its_package(self):
+    def test_each_portion_resolves_from_its_package(self):
         from machinome import engine as seams
-        seam = {'brep': seams.brep_engine, 'mesh': seams.mesh_engine}
-        for name, engine in ENGINES.items():
+        seam = {'machinome.engine.brep': seams.brep_engine,
+                'machinome.engine.mesh': seams.mesh_engine}
+        for name, (address, _extra) in EXTENSIONS.items():
             with self.subTest(package=name):
-                module = importlib.import_module(f'machinome.engine.{engine}')
+                module = importlib.import_module(address)
                 self.assertEqual(
                     Path(module.__file__).resolve(),
-                    REPOSITORY / 'packages' / name / 'machinome' / 'engine'
-                    / f'{engine}.py')
-                self.assertIs(seam[engine](), module)
+                    REPOSITORY / 'packages' / name
+                    / (address.replace('.', '/') + '.py'))
+                if address in seam:
+                    self.assertIs(seam[address](), module)
 
     def test_the_core_engine_package_holds_only_the_seams(self):
         entries = {path.name
                    for path in (PACKAGE / 'machinome' / 'engine').iterdir()
                    if path.name != '__pycache__'}
         self.assertEqual(entries, {'__init__.py'})
+
+    def test_the_core_node_package_holds_no_extension_module(self):
+        node = PACKAGE / 'machinome' / 'node'
+        for address, _extra in EXTENSIONS.values():
+            package, _, last = address.rpartition('.')
+            if package != 'machinome.node':
+                continue
+            with self.subTest(module=address):
+                self.assertFalse((node / f'{last}.py').exists(),
+                                 f'{node / last}.py is in the core')
+
+    def test_every_sibling_is_in_the_table(self):
+        siblings = [directory.name for directory in package_directories()
+                    if directory.name != 'machinome']
+        for name in siblings:
+            with self.subTest(package=name):
+                self.assertIn(name, EXTENSIONS,
+                              f'packages/{name} is not in EXTENSIONS')
 
     def test_the_guide_installs_every_member_without_uv(self):
         guide = (REPOSITORY / 'CONTRIBUTING.rst').read_text()

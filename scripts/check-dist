@@ -90,6 +90,58 @@ def engine_smoke(name, engine, seam, contract, operation):
             + string.Template(ENGINE_LINE).substitute(values))
 
 
+#: The smoke of a node package: its module imported at its address, its file
+#: owned by its own distribution inside the venv, its version and pins the
+#: core's, then one part of its node type rendered on its kernel, in a new
+#: project directory under the temporary directory, and its volume read
+#: through the B-rep engine; its licence.
+NODE = string.Template('''
+import importlib
+import importlib.metadata as metadata
+import os
+import sys
+import tempfile
+from pathlib import Path
+module = importlib.import_module('machinome.node.$node')
+distribution = metadata.distribution('$name')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+assert 'machinome/node/$node.py' in files, files
+assert not [path for path in files if path.endswith('__init__.py')], files
+owned = Path(distribution.locate_file('machinome/node/$node.py')).resolve()
+assert owned == Path(module.__file__).resolve(), (owned, module.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+for pin in (f'machinome~={version}', f'machinome-engine-brep~={version}'):
+    assert pin in distribution.requires, (pin, distribution.requires)
+project = tempfile.mkdtemp(prefix='$name-', dir=os.getcwd())
+with open(os.path.join(project, 'pyproject.toml'), 'w') as stream:
+    stream.write('[tool.machinome]\\n')
+with open(os.path.join(project, 'parts.py'), 'w') as stream:
+    stream.write($parts)
+sys.path.insert(0, project)
+os.chdir(project)
+from machinome.engine import brep_engine
+engine = brep_engine()
+$operation
+''')
+
+#: The one line a node package's smoke prints last.
+NODE_LINE = '''
+print('$name', distribution.version, 'module', module.__file__,
+      'volume', result)
+'''
+
+
+def node_smoke(name, node, parts, operation):
+    """The code of a node package's smoke: `parts` is the source of the
+    project's `parts.py`, one class `Part`; `operation` sets `result`."""
+    values = dict(name=name, node=node, parts=repr(parts.lstrip()),
+                  operation=operation.strip())
+    return (NODE.substitute(values) + LICENCES.substitute(values)
+            + string.Template(NODE_LINE).substitute(values))
+
+
 #: The smoke of each member, run with the throwaway venv's `python -I -c`
 #: from the temporary directory: the extras its wheel is installed with, and
 #: the code that proves it. `VENV` is defined before the code runs. A member
@@ -145,6 +197,106 @@ assert abs(result - 1000) < 1e-6, result
 result = provider.volume(provider.centred_box([2.0, 3.0, 4.0]))
 assert result == 24.0, result
 assert provider.identity()[0] == 'manifold3d', provider.identity()
+'''),
+        'commands': [],
+    },
+    'machinome-node-cadquery': {
+        'through': 'cadquery',
+        'extras': [],
+        'code': node_smoke(
+            'machinome-node-cadquery', 'cadquery',
+            '''
+import cadquery as cq
+from machinome.node.cadquery import CadQueryNode
+
+
+class Part(CadQueryNode):
+    def render(self):
+        return cq.Workplane().box(10, 10, 10)
+''',
+            '''
+import parts
+node = parts.Part()
+node.assemble()
+result = engine.solid_volume(node.shape())
+assert abs(result - 1000) < 1e-6, result
+'''),
+        'commands': [],
+    },
+    'machinome-node-build123d': {
+        'through': 'build123d',
+        'extras': [],
+        'code': node_smoke(
+            'machinome-node-build123d', 'build123d',
+            '''
+import build123d as b3d
+from machinome.node.build123d import Build123dNode
+
+
+class Part(Build123dNode):
+    def render(self):
+        return b3d.Box(2, 3, 4)
+''',
+            '''
+import parts
+node = parts.Part()
+node.assemble()
+result = engine.solid_volume(node.shape())
+assert abs(result - 24) < 1e-6, result
+'''),
+        'commands': [],
+    },
+    'machinome-node-step': {
+        'through': 'step',
+        'extras': [],
+        'code': node_smoke(
+            'machinome-node-step', 'step',
+            '''
+from machinome.node.step import StepNode
+
+
+class Part(StepNode):
+    step_source = 'box.step'
+''',
+            '''
+import cadquery as cq
+cq.exporters.export(cq.Workplane().box(4, 5, 6), 'box.step')
+import parts
+node = parts.Part()
+node.assemble()
+result = engine.solid_volume(node.shape())
+assert abs(result - 120) < 1e-6, result
+'''),
+        'commands': [],
+    },
+    'machinome-node-molejo': {
+        'through': 'molejo',
+        'extras': [],
+        'code': node_smoke(
+            'machinome-node-molejo', 'molejo',
+            '''
+from molejo import Circle, Helix, P, Shape
+from machinome.motion.ports import TranslationalPort
+from machinome.node.molejo import MolejoNode
+
+
+class Part(MolejoNode):
+    height = TranslationalPort(unit='mm')
+
+    def render(self):
+        return Shape(profile=Circle(radius=1.0),
+                     path=[Helix(radius=8.0, turns=3, height=P.height)],
+                     path_samples=120, profile_samples=12)
+''',
+            '''
+import math
+import parts
+node = parts.Part()
+solid, _ = node.snapshot_shape(node.render(), {'height': 20.0})
+assert engine.solid_count(solid) == 1, engine.solid_count(solid)
+result = engine.solid_volume(solid)
+expected = math.pi * 3 * math.sqrt((16 * math.pi) ** 2 + (20 / 3) ** 2)
+assert abs(result - expected) < 1e-3 * expected, (result, expected)
 '''),
         'commands': [],
     },

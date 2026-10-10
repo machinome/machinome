@@ -377,7 +377,7 @@ through the package too, `from machinome.node import step`, whose `_load`
 re-raises it without its broken-install splice, since an absent extra is not
 a broken install; the table's `load(key)`, which reads it as an absent node
 type; and the CLI command that needs the module. The root's refusal of a
-class name imports no node type, so it is not a door. A kernel that is found and fails to import reports its own error.
+class name imports no node type, so it is not a door. A node type of the table whose distribution is not installed is refused at those same doors by the node root's last finder, with the table's refusal naming its extra (ADR-184). A kernel that is found and fails to import reports its own error.
 `machinome` and `machinome.node` extend their `__path__` with
 `pkgutil.extend_path`, admitting only portions that ship no `__init__.py` of
 their own: a node package cut later resolves at the same address, and a
@@ -3455,9 +3455,10 @@ pure model closures without rejecting their pure declaration records.
 |---|---|---|---|
 | Repository layout | the repository root (its `pyproject.toml`, `uv.lock`, `.bumpversion.cfg`, `scripts/check-dist` and CI workflow `.github/workflows/python-app.yml`) and `packages/machinome/` | `framework-identity` | 182, 183 |
 | Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
-| Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180 |
+| Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them; the four node types over the B-rep engine in their own distributions, row below), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180, 184 |
 | B-rep engine, on OCCT, the distribution `machinome-engine-brep` | the repository's `packages/machinome-engine-brep/` (`machinome/engine/brep.py`) | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180, 183 |
 | Mesh engine, on manifold3d, the distribution `machinome-engine-mesh` | the repository's `packages/machinome-engine-mesh/` (`machinome/engine/mesh.py`) | `mesh-engine` | 176, 180, 183 |
+| Node types over the B-rep engine, the distributions `machinome-node-cadquery`, `-build123d`, `-step` and `-molejo` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `step-import`, `step-assembly`, `flexible-parts`, `markings` | 057, 078, 079, 115, 162, 167, 169, 183, 184 |
 | OpenSCAD node family (leaves the core at the cut) | `machinome/node/openscad/` (`__init__.py`: `OpenScadNode`; `leaf.py`: `ScadLeafNode`; `writer.py`; `binary.py`), `machinome/node/solid2.py` (`Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency` | 046, 102, 172, 173, 177, 178 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
