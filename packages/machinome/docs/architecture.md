@@ -362,11 +362,12 @@ composes each line from the class's own `__module__` and `__name__`. The CAD ker
 (ADR-167): each is installed by the extra named by the last component of
 the address of the module that needs it — `machinome[cadquery]`,
 `[build123d]`, `[step]`, `[molejo]`, `[brep]` and `[mesh]` for the engines'
-modules `machinome.engine.brep` and `machinome.engine.mesh`, and
-`[openscad]` and `[solid2]` (SolidPython, for the OpenSCAD node family and
-`Solid2Node`, the second including the first), `[jscad]` and `[stl]`, which
-install nothing (their modules need nothing the core does not require; they
-exist so every node type has the extra of its name), and `[all]` — every OCCT kernel
+modules `machinome.engine.brep` and `machinome.engine.mesh`,
+`[openscad]`, `[solid2]`, `[jscad]` and `[stl]` for the node types that
+need no B-rep engine (the distributions `machinome-node-openscad`, with
+SolidPython, `machinome-node-solid2`, which requires it, and
+`machinome-node-jscad` and `machinome-node-stl`, which install no kernel),
+and `[all]` — every OCCT kernel
 extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
 before it imports a kernel; the check asks `find_spec` and imports nothing,
@@ -438,10 +439,14 @@ SolidPython value as an expression, with the expression graph when it is
 imported. SolidPython is the family's kernel, the `openscad` extra; the
 package and the `solid2` module refuse its absence at import, naming
 `machinome[openscad]` or `machinome[solid2]`. The OpenSCAD snapshot renderer
-stays at `machinome/viewers/openscad.py` until the viewer cycle and imports the
-package's writer and binary directly. Nothing outside the family, that module
-and the table of supported node types names the technology: a token scan of
-`machinome/` in the suite (`tests/test_core_names_no_scad.py`) is the gate.
+is the package's module `machinome.node.openscad.renderer`, which the table
+of supported node types names in its provisional renderer column, and
+imports the package's writer and binary directly. The package is the
+distribution `machinome-node-openscad`, and `Solid2Node` the distribution
+`machinome-node-solid2`. Nothing outside those two distributions and the
+table names the technology: a token scan of the framework's `machinome/` and
+every extension package's in the suite (`tests/test_core_names_no_scad.py`)
+is the gate.
 
 One leaf kind has no modelling backend at all. `StlNode` is a part that
 arrives as an STL mesh: it declares `stl_source` beside its wrapper
@@ -3455,11 +3460,12 @@ pure model closures without rejecting their pure declaration records.
 |---|---|---|---|
 | Repository layout | the repository root (its `pyproject.toml`, `uv.lock`, `.bumpversion.cfg`, `scripts/check-dist` and CI workflow `.github/workflows/python-app.yml`) and `packages/machinome/` | `framework-identity` | 182, 183 |
 | Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
-| Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them; the four node types over the B-rep engine in their own distributions, row below), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180, 184 |
+| Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them; every node type in its own distribution, rows below), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180, 184 |
 | B-rep engine, on OCCT, the distribution `machinome-engine-brep` | the repository's `packages/machinome-engine-brep/` (`machinome/engine/brep.py`) | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180, 183 |
 | Mesh engine, on manifold3d, the distribution `machinome-engine-mesh` | the repository's `packages/machinome-engine-mesh/` (`machinome/engine/mesh.py`) | `mesh-engine` | 176, 180, 183 |
 | Node types over the B-rep engine, the distributions `machinome-node-cadquery`, `-build123d`, `-step` and `-molejo` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `step-import`, `step-assembly`, `flexible-parts`, `markings` | 057, 078, 079, 115, 162, 167, 169, 183, 184 |
-| OpenSCAD node family (leaves the core at the cut) | `machinome/node/openscad/` (`__init__.py`: `OpenScadNode`; `leaf.py`: `ScadLeafNode`; `writer.py`; `binary.py`), `machinome/node/solid2.py` (`Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency` | 046, 102, 172, 173, 177, 178 |
+| OpenSCAD node family, the distributions `machinome-node-openscad` and `machinome-node-solid2` | the repository's `packages/machinome-node-openscad/` (`machinome/node/openscad/`: `__init__.py` `OpenScadNode`, `leaf.py` `ScadLeafNode`, `writer.py`, `binary.py`, `renderer.py` the OpenSCAD snapshot renderer) and `packages/machinome-node-solid2/` (`machinome/node/solid2.py`: `Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency`, `kernel-extras` | 046, 102, 172, 173, 177, 178, 179, 183 |
+| JSCAD and STL node types, the distributions `machinome-node-jscad` and `machinome-node-stl` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `stl-import` | 169, 181, 183 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |
@@ -3468,6 +3474,6 @@ pure model closures without rejecting their pure declaration records.
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |
-| Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py`, `viewers/openscad.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
+| Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

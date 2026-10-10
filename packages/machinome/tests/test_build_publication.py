@@ -355,7 +355,7 @@ class SweepByDeclarationTest(TestCase):
     def test_the_renderer_marks_only_a_root_it_does_not_keep_transient(self):
         from machinome import currency
         from machinome.node.openscad.writer import scad_file
-        from machinome.viewers.openscad import OpenScadRenderer
+        from machinome.node.openscad.renderer import OpenScadRenderer
         from tests.scad_where_read_project.machine import (FineCylinder,
                                                            Machine)
         root = Machine()

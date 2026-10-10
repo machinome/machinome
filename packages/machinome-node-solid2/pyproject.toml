@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-node-solid2"
+version = "0.8.1"
+description = "The Solid2Node type of Machinome, a leaf of the OpenSCAD node family rendered with SolidPython"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core this node type is a portion of, released with it: the set
+    # carries one version, and the pins between its packages are ~= both
+    # ways.
+    "machinome~=0.8.1",
+    # The OpenSCAD node family, whose leaf base and binary contract the
+    # module imports.
+    "machinome-node-openscad~=0.8.1",
+    # SolidPython, imported here directly, so named here directly, in the
+    # one range machinome-node-openscad states.
+    "solidpython2==2.1.*",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[tool.setuptools.packages.find]
+# The portion, machinome/node/solid2.py, with no __init__.py at either
+# level, so the core's package path admits it.
+include = ["machinome.node"]
+namespaces = true

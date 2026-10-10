@@ -45,7 +45,7 @@ from machinome.simulation.enumeration import bind_declared_defaults
 from machinome.node.declarative import ChildDeclaration, identity_values
 from machinome.test import TestCase as AssertingTestCase
 from machinome.test import resolve_comparison_policy, set_comparison_policy
-from machinome.viewers.openscad import OpenScadRenderer
+from machinome.node.openscad.renderer import OpenScadRenderer
 
 from .base import BaseNodeTest
 from .import_probe import probe

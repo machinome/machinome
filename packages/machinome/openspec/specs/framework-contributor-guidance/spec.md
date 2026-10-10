@@ -62,7 +62,9 @@ briefing SHALL say once that the paths it names are relative to
 - **THEN** the pip command it gives installs `packages/machinome-engine-brep`,
   `packages/machinome-engine-mesh`, `packages/machinome-node-cadquery`,
   `packages/machinome-node-build123d`, `packages/machinome-node-step`,
-  `packages/machinome-node-molejo` and `packages/machinome` with its `dev`
+  `packages/machinome-node-molejo`, `packages/machinome-node-openscad`,
+  `packages/machinome-node-solid2`, `packages/machinome-node-jscad`,
+  `packages/machinome-node-stl` and `packages/machinome` with its `dev`
   extra, editable with `editable_mode=compat`, and names no tox environment
   or requirements file
 
@@ -76,3 +78,4 @@ briefing SHALL say once that the paths it names are relative to
 
 - **WHEN** a contributor reads the contributor briefing's layout section
 - **THEN** it says that its paths are relative to `packages/machinome/`
+

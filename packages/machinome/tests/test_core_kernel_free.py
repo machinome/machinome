@@ -13,15 +13,20 @@ modules of the engine package, `machinome.engine.brep` and
 `packages/`, outside the core, and imports only its kernel (OpenSpec change
 `cut-the-engines`), as is each node module over the B-rep engine,
 `machinome.node.cadquery`, `.build123d`, `.step` and `.molejo` (OpenSpec
-change `cut-the-brep-nodes`).
+change `cut-the-brep-nodes`), and each node type that needs no B-rep engine,
+the OpenSCAD node family `machinome.node.openscad` with its snapshot
+renderer, `.solid2`, `.jscad` and `.stl` (OpenSpec change
+`cut-the-mesh-nodes`).
 
 Read from the source, not from a running interpreter: the core imports
 `OCP` and `cadquery` nowhere but the template a project copies, it names
 the provider in exactly one module -- the seam -- and the test framework
-binds none of the B-rep layer's names as its own. Every CAD kernel is
-imported only by the module its extra is named for, which checks its
-kernel before importing it, and a kernel module is named only at the seams
-that reach it.
+binds none of the B-rep layer's names as its own. Every CAD kernel, and
+SolidPython among them, is imported only by the module its extra is named
+for, which checks its kernel before importing it, and a kernel module is
+named only at the seams that reach it. A census of the core's import
+statements finds no node type and no engine provider but in the two
+templates a project copies.
 """
 
 import ast
@@ -107,13 +112,25 @@ class CoreHoldsNoKernelTest(TestCase):
                 self.assertFalse(hasattr(machinome.test, name))
 
 
-#: Every CAD kernel's top-level module.
+#: Every CAD kernel's top-level module, SolidPython's (`solid2`) included.
 KERNELS = {'cadquery', 'build123d', 'OCP', 'molejo', 'ocp_gordon',
-           'manifold3d'}
+           'manifold3d', 'solid2'}
 
-#: The four node modules a kernel extra installs a kernel for.
+#: The node modules a kernel extra installs a kernel for: the four over the
+#: B-rep engine and the OpenSCAD family's two over SolidPython.
 KERNEL_MODULES = {'machinome.node.cadquery', 'machinome.node.build123d',
-                  'machinome.node.step', 'machinome.node.molejo'}
+                  'machinome.node.step', 'machinome.node.molejo',
+                  'machinome.node.openscad', 'machinome.node.solid2'}
+
+#: Every node module and engine provider, each shipped by its own
+#: distribution, which the core imports nowhere (`cut-the-mesh-nodes`).
+EXTENSION_MODULES = (
+    'machinome.node.cadquery', 'machinome.node.build123d',
+    'machinome.node.step', 'machinome.node.molejo',
+    'machinome.node.openscad', 'machinome.node.solid2',
+    'machinome.node.jscad', 'machinome.node.stl',
+    'machinome.engine.brep', 'machinome.engine.mesh',
+)
 
 #: Each kernel module, as a path, with the extra its address names (the
 #: last component).
@@ -122,6 +139,8 @@ EXTRA_OF = {
     'machinome-node-build123d/machinome/node/build123d.py': 'build123d',
     'machinome-node-step/machinome/node/step.py': 'step',
     'machinome-node-molejo/machinome/node/molejo.py': 'molejo',
+    'machinome-node-openscad/machinome/node/openscad/__init__.py': 'openscad',
+    'machinome-node-solid2/machinome/node/solid2.py': 'solid2',
     'machinome-engine-brep/machinome/engine/brep.py': 'brep',
     'machinome-engine-mesh/machinome/engine/mesh.py': 'mesh',
 }
@@ -132,17 +151,29 @@ EXTRA_OF = {
 SEAMS = {
     'machinome/node/markings.py': {'machinome.node.build123d'},
     'machinome-node-step/machinome/node/step.py': {'machinome.node.cadquery'},
-    # A project's file `machinome new` copies, which imports its node type
-    # from its module (`root-cleanup`).
+    # machinome-node-solid2 requires machinome-node-openscad, whose leaf
+    # base and binary contract the module imports (`cut-the-mesh-nodes`).
+    'machinome-node-solid2/machinome/node/solid2.py':
+        {'machinome.node.openscad'},
+    # The table's provisional renderer column names the OpenSCAD snapshot
+    # renderer, a module of the family's package (`cut-the-mesh-nodes`).
+    'machinome/node/supported.py': {'machinome.node.openscad'},
+    # The project files `machinome new` copies, each of which imports its
+    # node type from its module (`root-cleanup`).
     'machinome/manager/templates/project/root/cadquery.py':
         {'machinome.node.cadquery'},
+    'machinome/manager/templates/project/root/solid2.py':
+        {'machinome.node.solid2'},
 }
 
 #: The modules that reach a kernel module through the table of supported
 #: node types (`machinome.node.supported`, `openscad-out`), naming none:
-#: the node root reads it for its refusals (`root-cleanup`).
+#: the node root reads it for its refusals (`root-cleanup`), and the
+#: snapshot and new commands for the renderer and the starter
+#: (`cut-the-mesh-nodes`).
 TABLE_READERS = ('machinome/cli.py', 'machinome/manager/import_step.py',
-                 'machinome/node/__init__.py')
+                 'machinome/node/__init__.py', 'machinome/manager/snapshot.py',
+                 'machinome/manager/new.py')
 
 
 def every_module():
@@ -172,14 +203,34 @@ def absolute_imports(path, tree):
                 yield node.lineno, f'{module}.{alias.name}'
 
 
+def kernel_module_of(name):
+    """The kernel module `name` is, or is beneath, or None."""
+    for module in KERNEL_MODULES:
+        if name == module or name.startswith(f'{module}.'):
+            return module
+    return None
+
+
+def own_package(path):
+    """The address of the node module or package an extension package's
+    module belongs to (`machinome-node-openscad/machinome/node/openscad/leaf.py`
+    belongs to `machinome.node.openscad`), or None for a core module."""
+    if not path.startswith('machinome-node-'):
+        return None
+    parts = path.split('/')[1:4]
+    return '.'.join(parts).removesuffix('.py')
+
+
 def kernel_modules_named(path, tree):
-    """The kernel modules a module imports or spells as a whole string."""
-    named = {module for _, module in absolute_imports(path, tree)
-             if module in KERNEL_MODULES}
-    named.update(node.value for node in ast.walk(tree)
-                 if isinstance(node, ast.Constant)
-                 and node.value in KERNEL_MODULES)
-    return named
+    """The kernel modules a module imports or spells as a string, a name
+    beneath a kernel module counting as that module; a module of a node
+    package naming its own package is not counted."""
+    names = [module for _, module in absolute_imports(path, tree)]
+    names += [node.value for node in ast.walk(tree)
+              if isinstance(node, ast.Constant)
+              and isinstance(node.value, str)]
+    named = {kernel_module_of(name) for name in names} - {None}
+    return named - {own_package(path)}
 
 
 def require_extra_call(tree):
@@ -208,11 +259,35 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                 importing[path] = sorted(roots & KERNELS)
 
         self.assertEqual(importing, {
-            # The template `machinome new` scaffolds a CadQuery part from
-            # (`openscad-out`): a project's file, which the core copies and
-            # never imports.
+            # The templates `machinome new` scaffolds a CadQuery and a
+            # SolidPython part from (`openscad-out`): a project's files,
+            # which the core copies and never imports.
             'machinome/manager/templates/project/root/cadquery.py':
                 ['cadquery'],
+            'machinome/manager/templates/project/root/solid2.py':
+                ['solid2'],
+        })
+
+    def test_the_core_imports_no_node_type_and_no_engine_provider(self):
+        # `cut-the-mesh-nodes`: every node type and engine provider is a
+        # distribution of its own; the core reaches them through the table
+        # and the seams, by name, never by an import statement.
+        importing = {}
+        for path, tree in every_module():
+            found = sorted({module for _, module in absolute_imports(path, tree)
+                            if any(module == name
+                                   or module.startswith(f'{name}.')
+                                   for name in EXTENSION_MODULES)})
+            if found:
+                importing[path] = found
+
+        self.assertEqual(importing, {
+            'machinome/manager/templates/project/root/cadquery.py':
+                ['machinome.node.cadquery',
+                 'machinome.node.cadquery.CadQueryNode'],
+            'machinome/manager/templates/project/root/solid2.py':
+                ['machinome.node.solid2',
+                 'machinome.node.solid2.Solid2Node'],
         })
 
     def test_the_extension_packages_import_only_their_kernels(self):
@@ -230,6 +305,11 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                 ['build123d'],
             'machinome-node-molejo/machinome/node/molejo.py': ['molejo'],
             'machinome-node-step/machinome/node/step.py': ['OCP', 'cadquery'],
+            'machinome-node-openscad/machinome/node/openscad/__init__.py':
+                ['solid2'],
+            'machinome-node-openscad/machinome/node/openscad/writer.py':
+                ['solid2'],
+            'machinome-node-solid2/machinome/node/solid2.py': ['solid2'],
         })
 
     def test_kernel_modules_are_named_only_at_the_seams(self):
@@ -243,7 +323,9 @@ class KernelsOnlyInTheirModulesTest(TestCase):
             with self.subTest(path=path):
                 self.assertLessEqual(named, SEAMS.get(path, set()))
         for path in ('machinome/node/markings.py',
-                     'machinome-node-step/machinome/node/step.py'):
+                     'machinome-node-step/machinome/node/step.py',
+                     'machinome-node-solid2/machinome/node/solid2.py',
+                     'machinome/node/supported.py'):
             with self.subTest(seam=path):
                 self.assertEqual(naming.get(path), SEAMS[path])
         for path in TABLE_READERS:

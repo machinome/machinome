@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch, MagicMock
 
 from machinome.manager.snapshot import Snapshot, COLORSCHEMES, VIEW_OPTIONS
 from machinome.node.openscad.writer import scad_file
-from machinome.viewers.openscad import OpenScadRenderer
+from machinome.node.openscad.renderer import OpenScadRenderer
 from tests.test_build_lock import lock_is_held
 
 
@@ -621,7 +621,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
             colorscheme='Cornfield', preview=False, view=None)
 
     def test_unopenable_import_raises_named_error(self):
-        from machinome.viewers.openscad import OpenScadImportError
+        from machinome.node.openscad.renderer import OpenScadImportError
 
         def runner(command, **kwargs):
             return Mock(
@@ -640,7 +640,7 @@ class OpenScadRendererDiagnosticsTest(TestCase):
         """The renderer inspects BOTH captured streams -- a future
         OpenSCAD build that writes this warning to stderr must not go
         unnoticed."""
-        from machinome.viewers.openscad import OpenScadImportError
+        from machinome.node.openscad.renderer import OpenScadImportError
 
         def runner(command, **kwargs):
             return Mock(
@@ -1046,7 +1046,7 @@ class SnapshotHeadlessRenderTest(TestCase):
 
         with patch.dict(os.environ, _env_without_display(), clear=True):
             with patch(
-                'machinome.viewers.openscad.OpenScadRenderer.find_xvfb_run',
+                'machinome.node.openscad.renderer.OpenScadRenderer.find_xvfb_run',
                 return_value=None,
             ):
                 with self.assertRaises(SystemExit) as cm:
@@ -1266,7 +1266,8 @@ class SnapshotDriveTest(TestCase):
              patch('machinome.manager.snapshot.load_node',
                    return_value=node), \
              patch('machinome.manager.snapshot.project_build_lock'), \
-             patch('machinome.viewers.openscad.OpenScadRenderer.render') as drawn, \
+             patch('machinome.node.openscad.renderer.OpenScadRenderer'
+                   '.render') as drawn, \
              patch.object(node, 'assemble'), \
              patch.object(sys, 'stderr', errors):
             selected.return_value.reference = 'model.py'

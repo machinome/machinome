@@ -7,8 +7,9 @@
 `openscad-out`, capability `openscad-node`).
 
 The package holds the node type `OpenScadNode` (its `__init__`), the family's
-leaf base (`leaf`), the SCAD writer (`writer`) and the OpenSCAD binary
-contract (`binary`). The former seam `machinome.scad_engine` and engine
+leaf base (`leaf`), the SCAD writer (`writer`), the OpenSCAD binary
+contract (`binary`) and the OpenSCAD snapshot renderer (`renderer`, OpenSpec
+change `cut-the-mesh-nodes`). The former seam `machinome.scad_engine` and engine
 package `machinome.openscad` are gone, with nothing aliasing them. SolidPython
 is the family's kernel, refused at three doors; a SolidPython value is adopted
 by the expression graph only through the hook `machinome.node.solid2`
@@ -21,6 +22,7 @@ interpreter without its wheel does.
 
 import ast
 import importlib
+import importlib.util
 import json
 from pathlib import Path
 from unittest import TestCase
@@ -107,9 +109,9 @@ class ThePackageTest(TestCase):
                 with self.assertRaises(ModuleNotFoundError):
                     importlib.import_module(module)
 
-    def test_the_viewer_imports_neither_former_address(self):
-        tree = ast.parse(
-            (ROOT / 'machinome/viewers/openscad.py').read_text())
+    def test_the_renderer_imports_neither_former_address(self):
+        tree = ast.parse(Path(importlib.util.find_spec(
+            'machinome.node.openscad.renderer').origin).read_text())
         imported = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -142,8 +144,8 @@ class TheThreeDoorsTest(TestCase):
     def test_the_package_refuses_naming_the_openscad_extra(self):
         self.assert_refused('import machinome.node.openscad', R1, 'openscad')
 
-    def test_the_viewer_refuses_with_the_package(self):
-        self.assert_refused('import machinome.viewers.openscad', R1,
+    def test_the_renderer_refuses_with_the_package(self):
+        self.assert_refused('import machinome.node.openscad.renderer', R1,
                             'openscad')
 
     def test_solid2_refuses_naming_the_solid2_extra(self):
@@ -309,8 +311,8 @@ class NumbersNeverConsultAnAdopterTest(TestCase):
 class BinaryTest(TestCase):
 
     def test_the_binary_module_imports_no_solidpython(self):
-        tree = ast.parse(
-            (ROOT / 'machinome/node/openscad/binary.py').read_text())
+        tree = ast.parse(Path(importlib.util.find_spec(
+            'machinome.node.openscad.binary').origin).read_text())
         imported = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -461,7 +463,7 @@ class CountingWriterTest(TestCase):
         from types import SimpleNamespace
         from unittest.mock import MagicMock
         from machinome.node.base import StlRenderStart
-        from machinome.viewers.openscad import OpenScadRenderer
+        from machinome.node.openscad.renderer import OpenScadRenderer
         node, fine = self.machine()
         with patch('machinome.node.openscad.leaf.Popen',
                    return_value=MagicMock(pid=os.getpid())):

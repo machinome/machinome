@@ -19,6 +19,13 @@ Unreleased
   unchanged, and without the extra the import names the line that installs
   it.
 
+* **Every node type is a package of its own.** ``machinome[openscad]``,
+  ``machinome[solid2]``, ``machinome[jscad]`` and ``machinome[stl]``
+  install the distributions ``machinome-node-openscad``, ``-solid2``,
+  ``-jscad`` and ``-stl``. A project of ``StlNode`` or ``JScadNode`` parts,
+  whose modules came with the framework before, now names the extra:
+  ``pip install "machinome[stl]"``; without it, the import names that line.
+
 Machinome 0.8.1
 ---------------
 

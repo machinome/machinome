@@ -931,7 +931,12 @@ stated. "The move" below is task group 3.
   reaches the family's package since the renderer moved into it, and the two
   tests are renamed `test_no_core_module_reaches_the_family_package` and
   `test_no_core_module_reaches_the_familys_package`. Red at the base: each
-  finds `machinome/viewers/openscad.py`.
+  finds `machinome/viewers/openscad.py`. Corrected at apply on 10 October
+  2026: the sets are `{'machinome/node/supported.py'}`, the table naming the
+  renderer's module by string, and the tests are named
+  `test_only_the_table_reaches_the_family_package` and
+  `test_only_the_table_reaches_the_familys_package`; the design's 'empty'
+  misread the proposer's own log.
 - **The renderer's address in the suite.** Every spelling of
   `machinome.viewers.openscad` becomes `machinome.node.openscad.renderer`:
   the imports of `test_snapshot.py` (three) and its two `patch` strings,

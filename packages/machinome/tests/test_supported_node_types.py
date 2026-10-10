@@ -17,7 +17,11 @@ not stored: they are `machinome.node.<key>` and `machinome[<key>]`.
 import ast
 import importlib
 import json
+import os
 import re
+import shutil
+import tempfile
+import textwrap
 from pathlib import Path
 from unittest import TestCase
 
@@ -87,7 +91,7 @@ class TheTableTest(TestCase):
         self.assertEqual(table.DEFAULT_RENDERER, 'open' 's' 'cad')
         renderer = table.renderer('open' 's' 'cad')
         self.assertEqual(type(renderer).__module__,
-                         'machinome.viewers.open' 's' 'cad')
+                         'machinome.node.open' 's' 'cad.renderer')
         self.assertTrue(callable(renderer.present))
         self.assertTrue(callable(renderer.render))
 
@@ -199,42 +203,126 @@ else:
 '''
 
 
-class AbsentPackageTest(TestCase):
-    """(`cut-the-brep-nodes`, ADR-184) A node type whose distribution is
-    not installed is refused by its extra at every door, as an absent
-    kernel is. The absence is stood in for by the package's directory
-    dropped from `sys.path` before `machinome` is imported, which the
-    editable install allows; an uninstalled wheel is the design's probe 2.
-    """
+def package_directory(key):
+    """The directory of node type `key`'s distribution."""
+    return REPOSITORY / 'packages' / f'machinome-node-{key}'
 
-    DIRECTORY = REPOSITORY / 'packages' / 'machinome-node-step'
 
-    REFUSAL = ['ExtraUnavailable', 'machinome.node.step', 'step',
-               'the step node type (StepNode) needs machinome.node.step, '
-               'which is not installed; install it with '
-               '\'pip install "machinome[step]"\'']
+def refused(key):
+    """What a door reports when node type `key`'s package is absent: the
+    refusal built from the key, as `machinome.node.supported.absent`."""
+    classes = ', '.join(NODE_TYPES[key])
+    return ['ExtraUnavailable', f'machinome.node.{key}', key,
+            f'the {key} node type ({classes}) needs machinome.node.{key}, '
+            'which is not installed; install it with '
+            f'\'pip install "machinome[{key}]"\'']
 
-    DOORS = {
-        'import': 'import machinome.node.step',
-        'from-module': 'from machinome.node.step import StepNode',
-        'from-root': 'from machinome.node import step',
-        'hasattr': "result = hasattr(machinome.node, 'step')",
+
+def doors(key):
+    """The four doors of node type `key`: its module, its first class from
+    its module, the module from the node root, and the root's attribute."""
+    return {
+        'import': f'import machinome.node.{key}',
+        'from-module': f'from machinome.node.{key} import {NODE_TYPES[key][0]}',
+        'from-root': f'from machinome.node import {key}',
+        'hasattr': f"result = hasattr(machinome.node, '{key}')",
     }
 
-    def passed(self, door):
-        code = ABSENT_DOOR.format(directory=str(self.DIRECTORY),
-                                  door='    ' + door)
+
+#: Each node package dropped, by its node type's key, and the doors that
+#: refuse it naming that key: its own four, and, for the OpenSCAD node
+#: package, the renderer's module, the renderer through the table and the
+#: node type built over the package (`cut-the-mesh-nodes`).
+ABSENCES = {
+    'step': doors('step'),
+    'open' 's' 'cad': {
+        **doors('open' 's' 'cad'),
+        'renderer-module': 'import machinome.node.open' 's' 'cad.renderer',
+        'renderer': 'from machinome.node import supported\n'
+                    "supported.renderer('open' 's' 'cad')",
+        'solid2': 'from machinome.node.solid2 import Solid2Node',
+    },
+    'solid2': doors('solid2'),
+    'jscad': doors('jscad'),
+    'stl': doors('stl'),
+}
+
+#: A project of one SolidPython part, which `machinome snapshot` renders
+#: through the OpenSCAD renderer.
+PROJECT = {
+    'pyproject.toml': '[tool.machinome]\nmodel = "demo:Demo"\n',
+    'demo.py': textwrap.dedent('''\
+        from solid2 import cube
+        from machinome.node.solid2 import Solid2Node
+
+
+        class Demo(Solid2Node):
+            def render(self):
+                return cube([2, 3, 4])
+        '''),
+}
+
+#: `machinome snapshot` with one node package's directory dropped from the
+#: path, as an install without its distribution; the arguments follow.
+ABSENT_SNAPSHOT = '''
+import os, sys
+absent = os.path.realpath({directory!r})
+sys.path[:] = [entry for entry in sys.path
+               if os.path.realpath(entry or os.curdir) != absent]
+sys.argv = ['machinome', 'snapshot', *{arguments!r}]
+from machinome.cli import manage
+manage()
+'''
+
+
+class AbsentPackageTest(TestCase):
+    """(`cut-the-brep-nodes`, ADR-184; `cut-the-mesh-nodes`) A node type
+    whose distribution is not installed is refused by its extra at every
+    door, as an absent kernel is, and so is everything reached through it:
+    the OpenSCAD snapshot renderer, the snapshot command and `Solid2Node`
+    with the OpenSCAD node package absent. The absence is stood in for by
+    the package's directory dropped from `sys.path` before `machinome` is
+    imported, which the editable install allows; an uninstalled wheel is the
+    design's probe 2.
+    """
+
+    def passed(self, key, door):
+        code = ABSENT_DOOR.format(directory=str(package_directory(key)),
+                                  door=textwrap.indent(door, '    '))
         run = run_python(code, blocked=False, absent=())
         self.assertEqual(run.returncode, 0, run.output)
         return json.loads(run.stdout.strip().splitlines()[-1])
 
     def test_every_door_refuses_the_absent_package_by_its_extra(self):
-        for name, door in self.DOORS.items():
-            with self.subTest(door=name):
-                self.assertEqual(self.passed(door), self.REFUSAL)
+        for key, named in ABSENCES.items():
+            for name, door in named.items():
+                with self.subTest(package=key, door=name):
+                    self.assertEqual(self.passed(key, door), refused(key))
 
     def test_the_other_node_packages_still_import(self):
+        for key, other in (('step', 'cadquery'), ('open' 's' 'cad', 'stl')):
+            with self.subTest(package=key, other=other):
+                self.assertEqual(
+                    self.passed(key, f'import machinome.node.{other}\n'
+                                     'result = machinome.node.'
+                                     f'{other}.__name__'),
+                    ['passed', f'machinome.node.{other}'])
+
+    def test_the_snapshot_refuses_an_absent_openscad_package(self):
+        project = tempfile.mkdtemp(prefix='absent-snapshot-')
+        self.addCleanup(shutil.rmtree, project, ignore_errors=True)
+        for name, text in PROJECT.items():
+            Path(project, name).write_text(text)
+        image = os.path.join(project, 'x.png')
+        run = run_python(
+            ABSENT_SNAPSHOT.format(
+                directory=str(package_directory('open' 's' 'cad')),
+                arguments=['-o', image]),
+            blocked=False, absent=(), cwd=project)
+        self.assertEqual(run.returncode, 1, run.output)
         self.assertEqual(
-            self.passed('import machinome.node.cadquery\n'
-                        '    result = machinome.node.cadquery.__name__'),
-            ['passed', 'machinome.node.cadquery'])
+            run.stderr.strip().splitlines()[-1],
+            'Error: machinome snapshot --renderer open' 's' 'cad needs the '
+            'open' 's' 'cad extra: ' + refused('open' 's' 'cad')[3]
+            + '; or use --renderer web', run.output)
+        self.assertFalse(os.path.exists(image))

@@ -5,18 +5,20 @@
 """The core names no OpenSCAD technology (OpenSpec change `openscad-out`,
 design.md Decision 1): the acceptance gate, permanent.
 
-Every Python module of the distribution under `machinome/`, the project
-templates included, is read by token -- identifiers and attribute names,
-strings and docstrings (f-string text included), and comments -- and by its
-own path. Every case-insensitive occurrence of the three letters the family
-is named by is an offence, except JSCAD's own name: an occurrence immediately
-preceded by a `j` that begins a word (at the start of the text, after a
-character that is not a letter, or an upper-case `J` after a lower-case
-letter). The occurrences may stand only in the four allowed zones: the
-family's package `machinome/node/openscad/`, the module
-`machinome/node/solid2.py`, the OpenSCAD viewer's module
-`machinome/viewers/openscad.py` (until the viewer cycle moves it) and the
-table of supported node types `machinome/node/supported.py`.
+Every Python module of the framework under `machinome/`, the project
+templates included, and of every extension package under `packages/`, is
+read by token -- identifiers and attribute names, strings and docstrings
+(f-string text included), and comments -- and by its own path, an extension
+package's prefixed by its directory's name. Every case-insensitive
+occurrence of the three letters the family is named by is an offence, except
+JSCAD's own name: an occurrence immediately preceded by a `j` that begins a
+word (at the start of the text, after a character that is not a letter, or
+an upper-case `J` after a lower-case letter). The occurrences may stand only
+in the allowed zones: the family's two distributions,
+`machinome-node-openscad` (the package `machinome.node.openscad` with its
+snapshot renderer) and `machinome-node-solid2`, and the core's table of
+supported node types `machinome/node/supported.py` (OpenSpec change
+`cut-the-mesh-nodes`).
 """
 
 import ast
@@ -28,12 +30,16 @@ from unittest import TestCase
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'machinome'
+REPOSITORY = Path(__file__).resolve().parents[3]
 
-#: The four places the word may stand.
-ALLOWED_PACKAGE = 'machinome/node/openscad/'
+#: The extension packages the word may stand in: the family's two
+#: distributions.
+ALLOWED_PACKAGES = frozenset((
+    'machinome-node-open' 's' 'cad',
+    'machinome-node-solid2',
+))
+#: The core's one module the word may stand in.
 ALLOWED_MODULES = frozenset((
-    'machinome/node/solid2.py',
-    'machinome/viewers/openscad.py',
     'machinome/node/supported.py',
 ))
 
@@ -61,16 +67,17 @@ def offences(text):
 
 
 def allowed(relative):
-    return (relative.startswith(ALLOWED_PACKAGE)
+    return (relative.split('/', 1)[0] in ALLOWED_PACKAGES
             or relative in ALLOWED_MODULES)
 
 
-def scan(root=ROOT):
+def scan(root=ROOT, prefix=''):
     """`{relative path: (count, [(line, token), ...])}` for every module of
-    `machinome/` outside the allowed zones that holds the word."""
+    `root`'s `machinome/` outside the allowed zones that holds the word, each
+    path relative to `root` and prefixed by `prefix`."""
     found = {}
     for path in sorted((root / 'machinome').rglob('*.py')):
-        relative = path.relative_to(root).as_posix()
+        relative = prefix + path.relative_to(root).as_posix()
         if allowed(relative):
             continue
         source = path.read_text()
@@ -120,10 +127,17 @@ class TheRuleTest(TestCase):
         self.assertEqual(len(offences('machinome/node/open' 's' 'cad.py')), 1)
 
     def test_the_allowed_zones(self):
-        self.assertTrue(allowed('machinome/node/open' 's' 'cad/writer.py'))
-        self.assertTrue(allowed('machinome/node/solid2.py'))
-        self.assertTrue(allowed('machinome/viewers/open' 's' 'cad.py'))
+        family = 'machinome-node-open' 's' 'cad/machinome/node/open' 's' 'cad'
+        self.assertTrue(allowed(f'{family}/writer.py'))
+        self.assertTrue(allowed(f'{family}/renderer.py'))
+        self.assertTrue(allowed(
+            'machinome-node-solid2/machinome/node/solid2.py'))
         self.assertTrue(allowed('machinome/node/supported.py'))
+        # The core's former zones, before `cut-the-mesh-nodes`.
+        self.assertFalse(allowed('machinome/node/open' 's' 'cad/writer.py'))
+        self.assertFalse(allowed('machinome/node/solid2.py'))
+        self.assertFalse(allowed('machinome/viewers/open' 's' 'cad.py'))
+        self.assertFalse(allowed('machinome-node-stl/machinome/node/stl.py'))
         self.assertFalse(allowed('machinome/node/base.py'))
         self.assertFalse(allowed('machinome/open' 's' 'cad/engine.py'))
 
@@ -132,4 +146,6 @@ class TheCoreNamesNoScadTest(TestCase):
 
     def test_no_module_outside_the_allowed_zones_holds_the_word(self):
         found = scan()
+        for package in sorted((REPOSITORY / 'packages').glob('machinome-*')):
+            found.update(scan(package, prefix=f'{package.name}/'))
         self.assertEqual(found, {}, '\n' + report(found))

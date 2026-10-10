@@ -11,8 +11,12 @@ machinome-engine-brep = { workspace = true }
 machinome-engine-mesh = { workspace = true }
 machinome-node-build123d = { workspace = true }
 machinome-node-cadquery = { workspace = true }
+machinome-node-jscad = { workspace = true }
 machinome-node-molejo = { workspace = true }
+machinome-node-openscad = { workspace = true }
+machinome-node-solid2 = { workspace = true }
 machinome-node-step = { workspace = true }
+machinome-node-stl = { workspace = true }
 
 [tool.uv]
 # Every member installs editable in compat mode, a .pth line per package

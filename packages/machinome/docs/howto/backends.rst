@@ -49,13 +49,12 @@ already know and by what the part needs; a project may mix them freely.
      - ``machinome.node.jscad``
      - ``jscad_source`` exporting ``main``
      - no
-     - the ``jscad`` command and ``machinome[jscad]``, which installs
-       nothing
+     - the ``jscad`` command and ``machinome[jscad]``
    * - ``StlNode``
      - ``machinome.node.stl``
      - ``stl_source``
      - no
-     - ``machinome[stl]``, which installs nothing (:doc:`imported-parts`)
+     - ``machinome[stl]`` (:doc:`imported-parts`)
    * - ``MolejoNode``
      - ``machinome.node.molejo``
      - ``render()`` returning a molejo ``Shape``

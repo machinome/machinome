@@ -62,10 +62,12 @@ SOLID2_IMPORTERS = {
     'machinome/manager/templates/project/root/solid2.py',
 }
 
-#: The modules outside the family that reach its package: the OpenSCAD
-#: viewer, until the viewer cycle.
+#: The modules outside the family that reach its package: none imports it
+#: since the OpenSCAD snapshot renderer moved into it
+#: (`cut-the-mesh-nodes`); the table of supported node types names the
+#: renderer's module by string in its provisional renderer row.
 ENGINE_REACHES = {
-    'machinome/viewers/openscad.py',
+    'machinome/node/supported.py',
 }
 
 #: What a build log would say if it presented or skipped SCAD.
@@ -142,7 +144,7 @@ class ImportersTest(TestCase):
                      if any(True for _ in solid2_imports(tree))}
         self.assertEqual(importing, SOLID2_IMPORTERS)
 
-    def test_only_the_viewer_reaches_the_familys_package(self):
+    def test_only_the_table_reaches_the_familys_package(self):
         reaching = {path for path, tree in core_modules()
                     if names_the_engine_package(tree)}
         self.assertEqual(reaching, ENGINE_REACHES)

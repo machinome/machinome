@@ -4,7 +4,8 @@
 
 """The CAD kernels are extras, and a kernel module refuses an absent one
 (OpenSpec changes `lean-install`, `mesh-engine`, `brep-mesh`,
-`cut-the-engines` and `cut-the-brep-nodes`, capability `kernel-extras`).
+`cut-the-engines`, `cut-the-brep-nodes` and `cut-the-mesh-nodes`, capability
+`kernel-extras`).
 
 Two halves. The metadata is read from the manifests, the framework's
 `pyproject.toml` and its extension packages' under `packages/`, the engines'
@@ -12,8 +13,9 @@ and the node packages', and from the repository's `uv.lock` and CI
 workflow: no kernel is a required dependency, each is installed by the
 extra named by the last component of the address of the module that needs
 it, the `brep` and `mesh` extras install the engines' distributions and the
-`cadquery`, `build123d`, `step` and `molejo` extras the node packages',
-which state the kernels, and the development install and CI install them
+`cadquery`, `build123d`, `step`, `molejo`, `openscad`, `solid2`, `jscad` and
+`stl` extras the node packages', which state the kernels (SolidPython in one
+range wherever it is named), and the development install and CI install them
 all from the lock. The refusal
 is observed in subprocesses: the workspace and CI install every kernel, so
 an install without one is stood in for by the `sys.meta_path` finder of
@@ -63,20 +65,20 @@ EXTRAS = {
     'build123d': {f'machinome-node-build123d~={VERSION}'},
     'step': {f'machinome-node-step~={VERSION}'},
     'molejo': {f'machinome-node-molejo~={VERSION}'},
-    'openscad': {'solidpython2==2.1.*'},
-    'solid2': {'machinome[openscad]'},
-    # `root-cleanup` (design.md Decision 7): the node types whose module
-    # needs nothing the core does not require; each extra names the node
-    # type and installs nothing.
-    'jscad': set(),
-    'stl': set(),
+    # `cut-the-mesh-nodes`: the node types that need no B-rep engine are
+    # distributions of their own, which state SolidPython or trimesh; a bare
+    # install carries no node type.
+    'openscad': {f'machinome-node-openscad~={VERSION}'},
+    'solid2': {f'machinome-node-solid2~={VERSION}'},
+    'jscad': {f'machinome-node-jscad~={VERSION}'},
+    'stl': {f'machinome-node-stl~={VERSION}'},
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
             'openscad,solid2,jscad,stl]'},
 }
 
 #: Each extension distribution and the requirements its manifest lists:
 #: the framework, pinned ~= to the set's version, and its kernel; a node
-#: package also the B-rep engine, pinned alike.
+#: package over the B-rep engine also the engine, pinned alike.
 PACKAGE_REQUIREMENTS = {
     'machinome-engine-brep': {f'machinome~={VERSION}',
                               'cadquery-ocp>=7.8.1,<7.9', 'numpy'},
@@ -95,11 +97,22 @@ PACKAGE_REQUIREMENTS = {
                             f'machinome-engine-brep~={VERSION}', 'numpy'},
     'machinome-node-molejo': {f'machinome~={VERSION}', 'molejo[brep]==0.2.*',
                               f'machinome-engine-brep~={VERSION}', 'trimesh'},
+    'machinome-node-openscad': {f'machinome~={VERSION}',
+                                'solidpython2==2.1.*'},
+    'machinome-node-solid2': {f'machinome~={VERSION}',
+                              f'machinome-node-openscad~={VERSION}',
+                              'solidpython2==2.1.*'},
+    'machinome-node-jscad': {f'machinome~={VERSION}'},
+    'machinome-node-stl': {f'machinome~={VERSION}', 'trimesh'},
 }
 
 #: The node packages among them.
 NODE_PACKAGES = tuple(name for name in PACKAGE_REQUIREMENTS
                       if name.startswith('machinome-node-'))
+
+#: The node packages over the B-rep engine, which require it.
+BREP_NODE_PACKAGES = ('machinome-node-cadquery', 'machinome-node-build123d',
+                      'machinome-node-step', 'machinome-node-molejo')
 
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
 
@@ -195,7 +208,7 @@ class KernelMetadataTest(TestCase):
                 self.assertEqual(set(extras[extra]), expected)
 
     def test_every_node_package_requires_the_brep_engine(self):
-        for name in NODE_PACKAGES:
+        for name in BREP_NODE_PACKAGES:
             with self.subTest(package=name):
                 path = REPOSITORY / 'packages' / name / 'pyproject.toml'
                 self.assertTrue(path.is_file(), f'{path} is missing')
@@ -212,7 +225,8 @@ class KernelMetadataTest(TestCase):
     def test_no_node_extra_includes_the_mesh_engine(self):
         extras = project()['optional-dependencies']
 
-        for extra in ('cadquery', 'build123d', 'step', 'molejo'):
+        for extra in ('cadquery', 'build123d', 'step', 'molejo', 'openscad',
+                      'solid2', 'jscad', 'stl'):
             with self.subTest(extra=extra):
                 self.assertFalse(any(
                     'mesh' in Requirement(line).extras
@@ -247,11 +261,15 @@ class KernelMetadataTest(TestCase):
             with self.subTest(key=key):
                 self.assertIn(key, extras)
 
-    def test_the_solid2_extra_installs_the_openscad_extra(self):
+    def test_the_solid2_package_requires_the_openscad_package(self):
+        # `cut-the-mesh-nodes`: the solid2 module imports the OpenSCAD
+        # node family, so its distribution requires the family's; the core's
+        # `solid2` extra names its own distribution alone.
+        self.assertIn(f'machinome-node-openscad~={VERSION}',
+                      package_manifest('machinome-node-solid2')['dependencies'])
         (line,) = project()['optional-dependencies']['solid2']
 
-        self.assertEqual(Requirement(line).name, 'machinome')
-        self.assertEqual(Requirement(line).extras, {'openscad'})
+        self.assertEqual(Requirement(line).name, 'machinome-node-solid2')
 
     def test_the_development_extra_includes_all(self):
         self.assertIn('machinome[all]',
@@ -270,6 +288,25 @@ class KernelMetadataTest(TestCase):
                       if Requirement(line).name == 'cadquery'}
 
         self.assertEqual(specifiers, {'==2.7.*'})
+
+    def test_solidpython_carries_one_range_wherever_it_is_named(self):
+        # `cut-the-mesh-nodes`: the OpenSCAD and SolidPython node packages
+        # each name SolidPython, which their modules import; the core names
+        # it nowhere.
+        core = project()
+        lists = {'machinome': core['dependencies'],
+                 **{f'machinome[{extra}]': lines for extra, lines
+                    in core['optional-dependencies'].items()},
+                 **{name: manifest['dependencies']
+                    for name, manifest in sibling_manifests().items()}}
+        named = {place: str(Requirement(line).specifier)
+                 for place, lines in lists.items()
+                 for line in lines
+                 if Requirement(line).name == 'solidpython2'}
+
+        self.assertEqual(sorted(named), ['machinome-node-openscad',
+                                         'machinome-node-solid2'])
+        self.assertEqual(set(named.values()), {'==2.1.*'})
 
     def test_each_extension_package_requires_the_core_and_its_kernel(self):
         for name, expected in PACKAGE_REQUIREMENTS.items():

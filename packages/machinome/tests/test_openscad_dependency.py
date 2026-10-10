@@ -20,8 +20,8 @@ from machinome.node.fusion import FusionNode
 from machinome.node.jscad import JScadNode
 from machinome.node.solid2 import Solid2Node
 from machinome.node.openscad.binary import OpenScadUnavailable, openscad_binary
-from machinome.viewers import openscad as openscad_viewer
-from machinome.viewers.openscad import OpenScadRenderer
+from machinome.node.openscad import renderer as openscad_viewer
+from machinome.node.openscad.renderer import OpenScadRenderer
 
 
 class ExactBox(CadQueryNode):
@@ -205,7 +205,7 @@ class OpenScadDependencyTest(TestCase):
             'machinome.viewers.browser.BrowserRenderer.render')
         with patch.object(snapshot, '_load_and_prepare_node',
                           return_value=Mock(scad_file='part.scad')), \
-             patch('machinome.viewers.openscad.OpenScadRenderer.draw',
+             patch('machinome.node.openscad.renderer.OpenScadRenderer.draw',
                    side_effect=OpenScadUnavailable(
                        'the OpenSCAD snapshot renderer',
                        'rendering launches OpenSCAD', 'use --renderer web')), \

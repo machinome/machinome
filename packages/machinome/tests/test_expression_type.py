@@ -41,10 +41,13 @@ SOLID2_IMPORTERS = {
     'machinome/manager/templates/project/root/solid2.py',
 }
 
-#: The modules outside the family that reach its package directly: the
-#: OpenSCAD viewer, for its writer and binary, until the viewer cycle.
+#: The modules outside the family that reach its package: none imports it
+#: since the OpenSCAD snapshot renderer moved into it
+#: (`cut-the-mesh-nodes`); the table of supported node types names the
+#: renderer's module, `machinome.node.openscad.renderer`, by string in its
+#: provisional renderer row.
 BINARY_REACHES = {
-    'machinome/viewers/openscad.py',
+    'machinome/node/supported.py',
 }
 
 
@@ -113,7 +116,7 @@ class NoExpressionImportTest(TestCase):
 
         self.assertEqual(importing, SOLID2_IMPORTERS)
 
-    def test_only_the_viewer_reaches_the_family_package(self):
+    def test_only_the_table_reaches_the_family_package(self):
         reaching = {path for path, tree in core_modules()
                     if names_the_engine_package(tree)}
 

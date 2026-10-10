@@ -13,8 +13,12 @@ members = [
     "machinome-engine-mesh",
     "machinome-node-build123d",
     "machinome-node-cadquery",
+    "machinome-node-jscad",
     "machinome-node-molejo",
+    "machinome-node-openscad",
+    "machinome-node-solid2",
     "machinome-node-step",
+    "machinome-node-stl",
 ]
 excludes = [
     "machinome-studio",
@@ -1825,9 +1829,12 @@ all = [
     { name = "machinome-engine-mesh" },
     { name = "machinome-node-build123d" },
     { name = "machinome-node-cadquery" },
+    { name = "machinome-node-jscad" },
     { name = "machinome-node-molejo" },
+    { name = "machinome-node-openscad" },
+    { name = "machinome-node-solid2" },
     { name = "machinome-node-step" },
-    { name = "solidpython2" },
+    { name = "machinome-node-stl" },
 ]
 brep = [
     { name = "machinome-engine-brep" },
@@ -1850,13 +1857,16 @@ dev = [
     { name = "machinome-engine-mesh" },
     { name = "machinome-node-build123d" },
     { name = "machinome-node-cadquery" },
+    { name = "machinome-node-jscad" },
     { name = "machinome-node-molejo" },
+    { name = "machinome-node-openscad" },
+    { name = "machinome-node-solid2" },
     { name = "machinome-node-step" },
+    { name = "machinome-node-stl" },
     { name = "pillow" },
     { name = "pytest" },
     { name = "pytest-watch" },
     { name = "pyyaml" },
-    { name = "solidpython2" },
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "twine" },
@@ -1865,6 +1875,9 @@ docs = [
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "sphinx-rtd-theme" },
+]
+jscad = [
+    { name = "machinome-node-jscad" },
 ]
 mechanics = [
     { name = "machinome-mechanics" },
@@ -1876,13 +1889,16 @@ molejo = [
     { name = "machinome-node-molejo" },
 ]
 openscad = [
-    { name = "solidpython2" },
+    { name = "machinome-node-openscad" },
 ]
 solid2 = [
-    { name = "solidpython2" },
+    { name = "machinome-node-solid2" },
 ]
 step = [
     { name = "machinome-node-step" },
+]
+stl = [
+    { name = "machinome-node-stl" },
 ]
 
 [package.metadata]
@@ -1899,14 +1915,17 @@ requires-dist = [
     { name = "ipython", marker = "extra == 'dev'" },
     { name = "machinome", extras = ["all"], marker = "extra == 'dev'", editable = "packages/machinome" },
     { name = "machinome", extras = ["cadquery", "build123d", "step", "molejo", "brep", "mesh", "openscad", "solid2", "jscad", "stl"], marker = "extra == 'all'", editable = "packages/machinome" },
-    { name = "machinome", extras = ["openscad"], marker = "extra == 'solid2'", editable = "packages/machinome" },
     { name = "machinome-engine-brep", marker = "extra == 'brep'", editable = "packages/machinome-engine-brep" },
     { name = "machinome-engine-mesh", marker = "extra == 'mesh'", editable = "packages/machinome-engine-mesh" },
     { name = "machinome-mechanics", marker = "extra == 'mechanics'" },
     { name = "machinome-node-build123d", marker = "extra == 'build123d'", editable = "packages/machinome-node-build123d" },
     { name = "machinome-node-cadquery", marker = "extra == 'cadquery'", editable = "packages/machinome-node-cadquery" },
+    { name = "machinome-node-jscad", marker = "extra == 'jscad'", editable = "packages/machinome-node-jscad" },
     { name = "machinome-node-molejo", marker = "extra == 'molejo'", editable = "packages/machinome-node-molejo" },
+    { name = "machinome-node-openscad", marker = "extra == 'openscad'", editable = "packages/machinome-node-openscad" },
+    { name = "machinome-node-solid2", marker = "extra == 'solid2'", editable = "packages/machinome-node-solid2" },
     { name = "machinome-node-step", marker = "extra == 'step'", editable = "packages/machinome-node-step" },
+    { name = "machinome-node-stl", marker = "extra == 'stl'", editable = "packages/machinome-node-stl" },
     { name = "machinome-studio", marker = "extra == 'studio'" },
     { name = "machinome-viewer", marker = "extra == 'viewer'", specifier = ">=0.8.1" },
     { name = "machinome-viewer", extras = ["snapshot"], marker = "extra == 'web-snapshot'", specifier = ">=0.8.1" },
@@ -1918,7 +1937,6 @@ requires-dist = [
     { name = "rtree" },
     { name = "scipy" },
     { name = "shapely", specifier = "==2.1.*" },
-    { name = "solidpython2", marker = "extra == 'openscad'", specifier = "==2.1.*" },
     { name = "sphinx", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "sphinx", marker = "extra == 'docs'" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'" },
@@ -2015,6 +2033,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "machinome-node-jscad"
+version = "0.8.1"
+source = { editable = "packages/machinome-node-jscad" }
+dependencies = [
+    { name = "machinome" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "machinome", editable = "packages/machinome" }]
+
+[[package]]
 name = "machinome-node-molejo"
 version = "0.8.1"
 source = { editable = "packages/machinome-node-molejo" }
@@ -2031,6 +2060,38 @@ requires-dist = [
     { name = "machinome-engine-brep", editable = "packages/machinome-engine-brep" },
     { name = "molejo", extras = ["brep"], specifier = "==0.2.*" },
     { name = "trimesh" },
+]
+
+[[package]]
+name = "machinome-node-openscad"
+version = "0.8.1"
+source = { editable = "packages/machinome-node-openscad" }
+dependencies = [
+    { name = "machinome" },
+    { name = "solidpython2" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "solidpython2", specifier = "==2.1.*" },
+]
+
+[[package]]
+name = "machinome-node-solid2"
+version = "0.8.1"
+source = { editable = "packages/machinome-node-solid2" }
+dependencies = [
+    { name = "machinome" },
+    { name = "machinome-node-openscad" },
+    { name = "solidpython2" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "machinome-node-openscad", editable = "packages/machinome-node-openscad" },
+    { name = "solidpython2", specifier = "==2.1.*" },
 ]
 
 [[package]]
@@ -2052,6 +2113,21 @@ requires-dist = [
     { name = "machinome-engine-brep", editable = "packages/machinome-engine-brep" },
     { name = "machinome-node-cadquery", editable = "packages/machinome-node-cadquery" },
     { name = "numpy" },
+]
+
+[[package]]
+name = "machinome-node-stl"
+version = "0.8.1"
+source = { editable = "packages/machinome-node-stl" }
+dependencies = [
+    { name = "machinome" },
+    { name = "trimesh" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "trimesh" },
 ]
 
 [[package]]

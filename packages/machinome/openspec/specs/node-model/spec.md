@@ -910,15 +910,17 @@ Each of those classes SHALL be imported from its node type's module and from
 nowhere else: the node root resolves none of them, and refuses each naming its
 module, under the requirement "The node package's root exports nothing".
 
-The modules `machinome.node.cadquery`, `machinome.node.build123d`,
-`machinome.node.step` and `machinome.node.molejo` SHALL each be shipped by its
-own distribution, `machinome-node-<key>`, as a namespace portion of
-`machinome.node` with no `__init__.py` under `machinome/` or `machinome/node/`,
-and the framework's distribution SHALL ship none of them; their address, their
-classes and their behaviour SHALL be those they had in the framework's
-distribution. In the repository each lives at
-`packages/machinome-node-<key>/machinome/node/<key>.py`. The other node types'
-modules stay in the framework's distribution until their own packages are cut.
+Every node type's module SHALL be shipped by its own distribution,
+`machinome-node-<key>`, as a namespace portion of `machinome.node` with no
+`__init__.py` under `machinome/` or `machinome/node/`: a module at
+`machinome/node/<key>.py`, or, for the OpenSCAD node family, the package
+directory `machinome/node/openscad/` with its own `__init__.py`. The
+framework's distribution SHALL ship none of them, so its `machinome/node/`
+holds only the node base and its machinery, the root's refusals and the table
+of supported node types; their address, their classes and their behaviour
+SHALL be those they had in the framework's distribution. In the repository
+each lives at `packages/machinome-node-<key>/machinome/node/<key>.py`, the
+OpenSCAD package at `packages/machinome-node-openscad/machinome/node/openscad/`.
 
 The package `machinome.node.adapters` SHALL hold no leaf. Importing it, or any
 module or name beneath it, SHALL raise `ImportError` at the import line, whose
@@ -977,6 +979,23 @@ import to write. It SHALL NOT re-export, alias or forward any name.
 - **THEN** `from machinome.node.step import StepNode` returns the class, whose
   module's file is listed in `machinome-node-step`'s installed files, which
   list no `__init__.py`
+
+#### Scenario: A node type over no B-rep engine resolves from its own distribution
+
+- **WHEN** the repository's workspace is synced and `machinome.node.openscad`,
+  `machinome.node.solid2`, `machinome.node.jscad` and `machinome.node.stl` are
+  imported
+- **THEN** their files are
+  `packages/machinome-node-openscad/machinome/node/openscad/__init__.py` and
+  `packages/machinome-node-<key>/machinome/node/<key>.py` for the other three,
+  `Solid2Node` subclasses the OpenSCAD package's `ScadLeafNode`, and each class
+  of the table is the class its module defines
+
+#### Scenario: The framework's node package holds no node type
+
+- **WHEN** the framework's `machinome/node/` is listed
+- **THEN** it holds no module and no directory named for a key of the table of
+  supported node types, and the layout test fails naming any that appears
 
 ### Requirement: The node package's root exports nothing
 
@@ -1059,3 +1078,4 @@ unmodified. Any other name SHALL raise `AttributeError`.
   class names, and one of them is imported from `machinome.node`
 - **THEN** the refusal names `machinome.node.<key>` of the new row, and no
   module of the core but the table spells the class name
+

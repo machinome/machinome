@@ -15,6 +15,10 @@ it builds.
 | [`machinome-node-build123d`](packages/machinome-node-build123d/) | The build123d node types and the reducer of SVG artwork, `machinome.node.build123d`; installed by `machinome[build123d]`. |
 | [`machinome-node-step`](packages/machinome-node-step/) | The STEP node types, `machinome.node.step`; installed by `machinome[step]`. |
 | [`machinome-node-molejo`](packages/machinome-node-molejo/) | The molejo node type, `machinome.node.molejo`; installed by `machinome[molejo]`. |
+| [`machinome-node-openscad`](packages/machinome-node-openscad/) | The OpenSCAD node family, `machinome.node.openscad`, with its SCAD writer and the OpenSCAD snapshot renderer; installed by `machinome[openscad]`. |
+| [`machinome-node-solid2`](packages/machinome-node-solid2/) | The SolidPython node type, `machinome.node.solid2`; installed by `machinome[solid2]`. |
+| [`machinome-node-jscad`](packages/machinome-node-jscad/) | The JSCAD node type, `machinome.node.jscad`; installed by `machinome[jscad]`. |
+| [`machinome-node-stl`](packages/machinome-node-stl/) | The STL node type, `machinome.node.stl`; installed by `machinome[stl]`. |
 
 ## Licence
 

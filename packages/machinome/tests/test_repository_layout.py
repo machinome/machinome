@@ -18,7 +18,11 @@ installed editable by the workspace (change `cut-the-engines`, ADR-183):
 the two engines and the node packages `machinome-node-cadquery`,
 `machinome-node-build123d`, `machinome-node-step` and
 `machinome-node-molejo`, each a portion of `machinome.node` (change
-`cut-the-brep-nodes`).
+`cut-the-brep-nodes`), and `machinome-node-openscad`,
+`machinome-node-solid2`, `machinome-node-jscad` and `machinome-node-stl`
+(change `cut-the-mesh-nodes`), the first of them a package directory with
+its own `__init__.py`. The core's `machinome/node/` then holds no node type
+and its `machinome/viewers/` no node type's renderer.
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -63,6 +67,18 @@ EXTENSIONS = {
     'machinome-node-build123d': ('machinome.node.build123d', 'build123d'),
     'machinome-node-step': ('machinome.node.step', 'step'),
     'machinome-node-molejo': ('machinome.node.molejo', 'molejo'),
+    'machinome-node-openscad': ('machinome.node.openscad', 'openscad'),
+    'machinome-node-solid2': ('machinome.node.solid2', 'solid2'),
+    'machinome-node-jscad': ('machinome.node.jscad', 'jscad'),
+    'machinome-node-stl': ('machinome.node.stl', 'stl'),
+}
+
+#: The extension packages whose portion is a package directory at its
+#: address, with its own `__init__.py` below the levels the core defines,
+#: and the modules it holds (`cut-the-mesh-nodes`).
+PACKAGE_PORTIONS = {
+    'machinome-node-openscad': ('__init__', 'binary', 'leaf', 'renderer',
+                                'writer'),
 }
 
 #: A link into the repository on GitHub, and the path it names.
@@ -99,6 +115,15 @@ def relative(target):
 def package_directories():
     return sorted(path for path in (REPOSITORY / 'packages').iterdir()
                   if path.is_dir())
+
+
+def portion_files(name, address):
+    """The files an extension package ships under `machinome/`: its module
+    at its address, or its package directory's modules."""
+    base = address.replace('.', '/')
+    if name in PACKAGE_PORTIONS:
+        return [f'{base}/{module}.py' for module in PACKAGE_PORTIONS[name]]
+    return [f'{base}.py']
 
 
 class ThePlaceTest(unittest.TestCase):
@@ -300,20 +325,24 @@ class TheExtensionPackagesTest(unittest.TestCase):
                      '--exclude-standard', '--', f'packages/{name}'],
                     cwd=REPOSITORY, capture_output=True, text=True,
                     check=True).stdout.split()
-                module = address.replace('.', '/') + '.py'
                 self.assertEqual(
                     sorted(path.removeprefix(f'packages/{name}/')
                            for path in listed),
                     sorted(['pyproject.toml', 'README.md', 'LICENSE',
-                            'LICENSES', module]))
+                            'LICENSES', *portion_files(name, address)]))
                 for entry in ('LICENSE', 'LICENSES'):
                     self.assertTrue((directory / entry).is_symlink(),
                                     f'{directory / entry} is not a link')
                     self.assertEqual(os.readlink(directory / entry),
                                      f'../../{entry}')
+                # The only `__init__.py` under `machinome/` is a package
+                # portion's own, at its address: none at the levels the
+                # core defines.
+                own = ([directory / address.replace('.', '/') / '__init__.py']
+                       if name in PACKAGE_PORTIONS else [])
                 self.assertEqual(
-                    list((directory / 'machinome').rglob('__init__.py')), [],
-                    f'{name} ships an __init__.py')
+                    sorted((directory / 'machinome').rglob('__init__.py')),
+                    own, f'{name} ships an __init__.py of the core\'s')
 
     def test_each_extension_manifest_is_a_portion_of_the_set(self):
         core = read_toml(PACKAGE / 'pyproject.toml')['project']
@@ -326,10 +355,11 @@ class TheExtensionPackagesTest(unittest.TestCase):
                 self.assertEqual(project['license'], core['license'])
                 self.assertEqual(project['license-files'],
                                  core['license-files'])
+                include = (address if name in PACKAGE_PORTIONS
+                           else address.rpartition('.')[0])
                 self.assertEqual(
                     manifest['tool']['setuptools']['packages']['find'],
-                    {'include': [address.rpartition('.')[0]],
-                     'namespaces': True})
+                    {'include': [include], 'namespaces': True})
 
     def test_each_extension_readme_names_its_install_and_the_licence(self):
         licence = conf_value('framework_licence')
@@ -352,7 +382,7 @@ class TheExtensionPackagesTest(unittest.TestCase):
                 self.assertEqual(
                     Path(module.__file__).resolve(),
                     REPOSITORY / 'packages' / name
-                    / (address.replace('.', '/') + '.py'))
+                    / portion_files(name, address)[0])
                 if address in seam:
                     self.assertIs(seam[address](), module)
 
@@ -371,6 +401,24 @@ class TheExtensionPackagesTest(unittest.TestCase):
             with self.subTest(module=address):
                 self.assertFalse((node / f'{last}.py').exists(),
                                  f'{node / last}.py is in the core')
+                self.assertFalse((node / last).exists(),
+                                 f'{node / last}/ is in the core')
+
+    def test_the_core_node_package_holds_no_node_type(self):
+        from machinome.node.supported import NODE_TYPES
+        node = PACKAGE / 'machinome' / 'node'
+        for key in NODE_TYPES:
+            with self.subTest(node_type=key):
+                self.assertFalse((node / f'{key}.py').exists(),
+                                 f'{node / key}.py is in the core')
+                self.assertFalse((node / key).exists(),
+                                 f'{node / key}/ is in the core')
+
+    def test_the_core_viewers_hold_no_node_type_s_renderer(self):
+        entries = {path.name
+                   for path in (PACKAGE / 'machinome' / 'viewers').iterdir()
+                   if path.name != '__pycache__'}
+        self.assertEqual(entries, {'__init__.py', 'browser.py', 'bundle.py'})
 
     def test_every_sibling_is_in_the_table(self):
         siblings = [directory.name for directory in package_directories()

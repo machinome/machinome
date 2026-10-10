@@ -28,8 +28,9 @@ Optional:
 * The **jscad** command from npm, to write parts in JavaScript with
   ``JScadNode``.
 
-The package itself brings trimesh. The CAD kernels, SolidPython and the
-mesh engine are extras, so a project installs only the ones its parts use.
+The package itself brings trimesh. Its node types, the CAD kernels,
+SolidPython and the engines are extras, so a project installs only the ones
+its parts use.
 
 CAD kernels are extras
 ----------------------
@@ -75,30 +76,29 @@ same name: the extra is the last component of the module's address.
        fusion of such parts
    * - ``machinome[openscad]``
      - ``machinome.node.openscad``
-     - SolidPython, for ``OpenScadNode``, the OpenSCAD writer and the
-       OpenSCAD snapshot renderer of ``machinome snapshot``
+     - the package ``machinome-node-openscad``, with SolidPython, for
+       ``OpenScadNode``, the OpenSCAD writer and the OpenSCAD snapshot
+       renderer of ``machinome snapshot``
    * - ``machinome[solid2]``
      - ``machinome.node.solid2``
-     - SolidPython, for ``Solid2Node``; it installs ``machinome[openscad]``
-       too
+     - the package ``machinome-node-solid2``, with SolidPython, for
+       ``Solid2Node``; it installs ``machinome-node-openscad`` too
    * - ``machinome[jscad]``
      - ``machinome.node.jscad``
-     - nothing: ``JScadNode`` runs the ``jscad`` command from npm, which no
-       Python package installs
+     - the package ``machinome-node-jscad``, for ``JScadNode``, which runs
+       the ``jscad`` command from npm, which no Python package installs
    * - ``machinome[stl]``
      - ``machinome.node.stl``
-     - nothing: ``StlNode`` reads with trimesh, which comes with the
-       package
+     - the package ``machinome-node-stl``, for ``StlNode``, which reads
+       with trimesh, which comes with the package
    * - ``machinome[all]``
      - every module above
      - every extra above
 
-``machinome[jscad]`` and ``machinome[stl]`` install nothing today; they
-exist so that every node type has the extra of its name, and a project that
-names them keeps its install line when the node types become packages of
-their own. ``JScadNode`` and ``StlNode`` parts are compared on their meshes,
-by the mesh engine, so a project that tests them installs
-``machinome[mesh]``.
+``machinome[jscad]`` and ``machinome[stl]`` install their node types'
+packages and no kernel; a bare install carries no node type. ``JScadNode``
+and ``StlNode`` parts are compared on their meshes, by the mesh engine, so
+a project that tests them installs ``machinome[mesh]``.
 Without its extra, importing a module refuses with the line that installs
 it, for example::
 
@@ -124,10 +124,12 @@ Packages and licences
 ---------------------
 
 The framework is the package ``machinome``, with its engines and its node
-types over the B-rep engine in packages of their own that its extras
-install (``machinome-engine-brep``, ``machinome-engine-mesh``,
+types in packages of their own that its extras install
+(``machinome-engine-brep``, ``machinome-engine-mesh``,
 ``machinome-node-cadquery``, ``machinome-node-build123d``,
-``machinome-node-step`` and ``machinome-node-molejo``), all licensed
+``machinome-node-step``, ``machinome-node-molejo``,
+``machinome-node-openscad``, ``machinome-node-solid2``,
+``machinome-node-jscad`` and ``machinome-node-stl``), all licensed
 |framework_licence|, at the recipient's choice. The browser viewer is a
 separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
@@ -149,13 +151,13 @@ with the viewer and CadQuery, which the tutorial models with:
     $ source machines/bin/activate
     $ python -m pip install "machinome[viewer,cadquery]"
 
-Name the extras your parts need instead, ``all`` for every kernel, or
-``mesh`` for a project whose parts are all OpenSCAD, JSCAD or STL:
+Name the extras your parts need instead, ``all`` for every kernel, or,
+for a project of STL parts, ``stl`` with ``mesh``:
 
 .. code-block:: bash
 
     $ python -m pip install "machinome[viewer,all]"
-    $ python -m pip install "machinome[mesh]"
+    $ python -m pip install "machinome[stl,mesh]"
 
 If you will author OpenSCAD or SolidPython parts, install OpenSCAD too. On
 Debian-based systems:

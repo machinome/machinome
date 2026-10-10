@@ -25,12 +25,13 @@ keywords = ["machinome"]
 dependencies = [
     "watchdog",
     "trimesh==4.4.*",
-    # No CAD kernel is required: the node types over cadquery, build123d and
-    # molejo (the extras `cadquery`, `build123d`, `step` and `molejo`), the
-    # B-rep engine (the extra `brep`), the mesh engine (the extra `mesh`) and
-    # SolidPython are the extras below, each named by the last component of
-    # the address of the module that needs it (OpenSpec changes
-    # `lean-install`, `mesh-engine`, `openscad-out` and `brep-mesh`).
+    # No CAD kernel and no node type is required: the node types (the
+    # extras `cadquery`, `build123d`, `step`, `molejo`, `openscad`,
+    # `solid2`, `jscad` and `stl`), the B-rep engine (the extra `brep`) and
+    # the mesh engine (the extra `mesh`) are the extras below, each named by
+    # the last component of the address of the module that needs it
+    # (OpenSpec changes `lean-install`, `mesh-engine`, `openscad-out` and
+    # `brep-mesh`).
     "httpx==0.27.*",
     "fastapi==0.111.*",
     "termcolor==2.4.*",
@@ -127,23 +128,32 @@ step = [
 molejo = [
     "machinome-node-molejo~=0.8.1",
 ]
+# The node types that need no B-rep engine, each named by the last
+# component of its address and each the distribution
+# machinome-node-<name>.
+#
 # The OpenSCAD node family (`machinome.node.openscad`: OpenScadNode, the
-# OpenSCAD writer and the OpenSCAD snapshot renderer) writes SCAD through
-# SolidPython; the OpenSCAD executable itself is no extra's to install.
+# OpenSCAD writer and the OpenSCAD snapshot renderer), which writes SCAD
+# through SolidPython; the OpenSCAD executable itself is no extra's to
+# install.
 openscad = [
-    "solidpython2==2.1.*",
+    "machinome-node-openscad~=0.8.1",
 ]
-# `machinome.node.solid2` (Solid2Node) renders with SolidPython over the
-# OpenSCAD node family.
+# `machinome.node.solid2` (Solid2Node), which renders with SolidPython over
+# the OpenSCAD node family and requires it.
 solid2 = [
-    "machinome[openscad]",
+    "machinome-node-solid2~=0.8.1",
 ]
-# `machinome.node.jscad` (JScadNode) runs the `jscad` command, a Node program
-# no pip extra installs; the extra names the node type and installs nothing.
-jscad = []
-# `machinome.node.stl` (StlNode) reads meshes with trimesh, which the core
-# requires; the extra names the node type and installs nothing.
-stl = []
+# `machinome.node.jscad` (JScadNode), which runs the `jscad` command, a Node
+# program no pip extra installs.
+jscad = [
+    "machinome-node-jscad~=0.8.1",
+]
+# `machinome.node.stl` (StlNode), which reads meshes with trimesh, which the
+# core requires.
+stl = [
+    "machinome-node-stl~=0.8.1",
+]
 all = [
     "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2,jscad,stl]",
 ]

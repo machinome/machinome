@@ -319,6 +319,45 @@ decision is architectural.
    import of a node package gone, pinned by the kernel-free scan. Specs:
    `kernel-extras`, `openscad-node`, `openscad-dependency`, `stl-import`,
    `cli` where the snapshot renderer is named.
+   **Done** (10 October 2026): branch `v0.9-base-cut-the-mesh-nodes`,
+   planning commit bc2eff29 on 10e07f8c, ratified by the orchestrator's
+   review (ADR-179 and ADR-183 amended, no new ADR). The four node types are
+   in `packages/machinome-node-openscad/` (the package directory
+   `machinome/node/openscad/`, its own `__init__.py` below the levels the
+   core defines, with the OpenSCAD snapshot renderer moved in as
+   `machinome.node.openscad.renderer`), `-solid2/`, `-jscad/` and `-stl/`;
+   `machinome-node-solid2` requires `machinome-node-openscad`, and the
+   OpenSCAD and SolidPython packages state SolidPython in one range. The
+   core's `openscad`, `solid2`, `jscad` and `stl` extras install them, the
+   table's renderer row names the renderer's new module, and the core
+   imports no node type and no engine provider, pinned by the kernel-free
+   census; a bare install carries no node type. An absent OpenSCAD node
+   package is refused by its extra at every door, the renderer's and the
+   snapshot command's included, with no edit to ADR-184's finder. The specs
+   modified are `kernel-extras`, `openscad-node`, `cli`, `node-model`,
+   `framework-identity` and `framework-contributor-guidance`;
+   `openscad-dependency` and `stl-import` name nothing the cut moves. The
+   suite green on the bench's uv venv (4796 passed, 20 skipped, 7029
+   subtests), the manual built with warnings as errors, the snapshot of
+   `machinome new`'s starter through OpenSCAD a 1920 x 1080 image of the
+   50 mm cube with its 10 mm bore through the top in Cornfield colours, and
+   `scripts/check-dist` green: eleven members built, 22 archives `twine
+   check --strict` passed, the four new packages installed through their
+   extras from the built archives and smoked (the OpenSCAD and SolidPython
+   parts volume 24.0 through OpenSCAD, or their SCAD written where OpenSCAD
+   is not on the PATH, the STL part 24.0, the JSCAD part constructed, since
+   no environment has the `jscad` command), nothing uploaded; a clean copy's
+   framework sdist holds 1006 entries and its wheel 114, the OpenSCAD
+   package's 23 and 12, each other sibling's 18 and 8. `uv lock` resolves
+   187 packages. The universe sweep: 63 repositories, 130 rows, 121 ok, 0
+   expected, 3 unexpected, 0 timeout, 6 no-model, every row as at
+   `cut-the-brep-nodes`; the unexpected rows are wall_clock_41's own
+   CadQuery error, Dum-E without machinome-freecad and fender-bender without
+   `fb_library`. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-10-cut-the-mesh-nodes/evidence.md`.
+
+All four cycles of the cut are done on 10 October 2026; the close below is
+the orchestrator's.
 
 **Close** (the orchestrator): the suite and `check-dist` at the line's
 head; the line merged into the local `main`; then, in the workspace

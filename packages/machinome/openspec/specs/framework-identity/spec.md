@@ -155,18 +155,23 @@ unless they name the repository root.
 
 The framework's extension packages, today the engines `machinome-engine-brep`
 and `machinome-engine-mesh` and the node packages `machinome-node-cadquery`,
-`machinome-node-build123d`, `machinome-node-step` and `machinome-node-molejo`,
-SHALL each be such a sibling, holding only its
+`machinome-node-build123d`, `machinome-node-step`, `machinome-node-molejo`,
+`machinome-node-openscad`, `machinome-node-solid2`, `machinome-node-jscad` and
+`machinome-node-stl`, SHALL each be such a sibling, holding only its
 manifest `pyproject.toml`, a `README.md` that names its install line and the
 licence, the relative symbolic links `LICENSE` and `LICENSES` to the root's,
 and its namespace portion at its address under `machinome/`, with no
-`__init__.py` at the levels the framework's import package defines; its
-specs, tests, decision records and manual pages SHALL be the framework's.
+`__init__.py` at the levels the framework's import package defines; a portion
+that is a package directory, `machinome/node/openscad/`, holds its own
+`__init__.py` at its address, below those levels, and its manifest's package
+search names that package. Its specs, tests, decision records and manual pages
+SHALL be the framework's.
 Every distribution of the set SHALL carry one version, the framework's, and
 every requirement between two of them SHALL be the compatible-release pin
 `~=<version>`, in both directions, between the framework and an extension
 package and between two extension packages alike (`machinome-node-step`
-requires `machinome-node-cadquery`). The version SHALL be bumped from one
+requires `machinome-node-cadquery`, and `machinome-node-solid2` requires
+`machinome-node-openscad`). The version SHALL be bumped from one
 configuration at the repository root, `.bumpversion.cfg`, naming every
 manifest's version, every pin between the distributions and the files that
 restate the framework's version.
@@ -197,7 +202,9 @@ the workspace outside the repository, check them with `twine check
 repository, an extension package through the framework's extra that
 installs it, import and smoke each there, an engine through the framework's
 seam that resolves it and a node package through its address, rendering one
-part on its kernel, and upload nothing; the CI SHALL run it
+part on its kernel where its external program is available and building it as
+far as the program allows where it is not, and upload nothing; the CI SHALL
+run it
 in a `dist` job after its `test` and `docs` jobs.
 
 #### Scenario: A contributor clones the repository
@@ -207,8 +214,9 @@ in a `dist` job after its `test` and `docs` jobs.
   `docs/` and `openspec/` are under `packages/machinome/`, the engines'
   distributions under `packages/machinome-engine-brep/` and
   `packages/machinome-engine-mesh/`, the node packages' under
-  `packages/machinome-node-cadquery/`, `-build123d/`, `-step/` and
-  `-molejo/`, and the root holds the repository's
+  `packages/machinome-node-cadquery/`, `-build123d/`, `-step/`, `-molejo/`,
+  `-openscad/`, `-solid2/`, `-jscad/` and `-stl/`, and the root holds the
+  repository's
   record, the workspace manifest and its lock, and none of the framework's
   sources
 
@@ -227,8 +235,10 @@ in a `dist` job after its `test` and `docs` jobs.
 - **THEN** they are `pyproject.toml`, `README.md`, the links `LICENSE` and
   `LICENSES` to the root's, and the module at its address, such as
   `machinome/engine/brep.py` of `packages/machinome-engine-brep/` or
-  `machinome/node/step.py` of `packages/machinome-node-step/`, and the layout
-  test fails naming any other entry or an `__init__.py`
+  `machinome/node/step.py` of `packages/machinome-node-step/`, or the package
+  directory `machinome/node/openscad/` with its five modules for
+  `packages/machinome-node-openscad/`, and the layout test fails naming any
+  other entry or an `__init__.py` other than that package's own
 
 #### Scenario: Every sibling is an extension package of the table
 
@@ -289,3 +299,17 @@ in a `dist` job after its `test` and `docs` jobs.
   workspace stops naming `packages/*`, or a directory under `packages/` is
   not one of its sources
 - **THEN** the layout test fails naming the table or the directory
+
+#### Scenario: The node packages over no B-rep engine are smoked through the framework
+
+- **WHEN** `scripts/check-dist` installs the built wheels
+- **THEN** it installs `machinome-node-openscad`, `machinome-node-solid2`,
+  `machinome-node-jscad` and `machinome-node-stl` through the framework's
+  `openscad`, `solid2`, `jscad` and `stl` extras from the built archives,
+  imports each module at its address, finds the files it ships owned by its
+  own distribution and its version equal to the framework's, renders an
+  `OpenScadNode` and a `Solid2Node` part through OpenSCAD where the binary is
+  on the PATH and writes their SCAD where it is not, renders an `StlNode`
+  part, constructs a `JScadNode` part, and resolves the OpenSCAD renderer
+  through the table of supported node types to that distribution's file
+

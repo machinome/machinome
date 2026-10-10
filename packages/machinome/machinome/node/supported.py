@@ -52,7 +52,7 @@ NODE_TYPES = {
     'molejo': NodeType(('MolejoNode',)),
     'solid2': NodeType(('Solid2Node',)),
     'openscad': NodeType(('OpenScadNode',), renderers=(
-        ('openscad', 'machinome.viewers.openscad.OpenScadRenderer'),)),
+        ('openscad', 'machinome.node.openscad.renderer.OpenScadRenderer'),)),
     'jscad': NodeType(('JScadNode',)),
     'stl': NodeType(('StlNode',)),
 }

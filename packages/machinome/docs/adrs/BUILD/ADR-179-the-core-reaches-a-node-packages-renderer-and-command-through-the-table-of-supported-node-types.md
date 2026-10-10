@@ -1,6 +1,6 @@
 # ADR-179: The Core Reaches a Node Package's Renderer and Command Through the Table of Supported Node Types
 
-**Status:** Accepted (provisional: its renderer column is removed by the viewer cycle); the `classes` column's readers amended 2026-10-05 by [NODE/ADR-181](../NODE/ADR-181-the-node-packages-root-exports-nothing.md)
+**Status:** Accepted (provisional: its renderer column is removed by the viewer cycle); the `classes` column's readers amended 2026-10-05 by [NODE/ADR-181](../NODE/ADR-181-the-node-packages-root-exports-nothing.md); the renderer's module moved 2026-10-10 (amendment below)
 **Date:** 2026-10-04
 **Change:** [`openscad-out`](../../../openspec/changes/archive/2026-10-04-openscad-out/)
 **Amends:**
@@ -93,3 +93,19 @@ for a project to import; its readers are the root's refusal, which refuses
 each of them naming `machinome.node.<key>`, and `load`'s message for a node
 type that is not installed. The table's other readers are unchanged, and
 `machinome import-step` reads it to load the `step` node type.
+
+## Amendment (2026-10-10)
+
+The OpenSCAD snapshot renderer's module is `machinome.node.openscad.renderer`,
+shipped by the distribution `machinome-node-openscad` with the OpenSCAD node
+package whose writer and binary contract it draws with (OpenSpec change
+[`cut-the-mesh-nodes`](../../../openspec/changes/archive/2026-10-10-cut-the-mesh-nodes/));
+its classes, its output and its logger's name are unchanged. The `openscad`
+row's renderer names it. `renderer(name)` still loads the node type first, so
+an absent OpenSCAD node package is refused by the `openscad` extra before the
+renderer's module is asked for, and `machinome snapshot` answers that refusal
+as before. The core imports no node package: the table names the renderer's
+module by string alone. The renderer column stays provisional; the viewer
+cycle replaces it with the seam `machinome.viewer`, now moving the renderer
+from the OpenSCAD node package rather than from the core's
+`machinome/viewers/`.

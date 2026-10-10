@@ -113,6 +113,8 @@ dependencies::
         -e packages/machinome-engine-brep -e packages/machinome-engine-mesh \
         -e packages/machinome-node-cadquery -e packages/machinome-node-build123d \
         -e packages/machinome-node-step -e packages/machinome-node-molejo \
+        -e packages/machinome-node-openscad -e packages/machinome-node-solid2 \
+        -e packages/machinome-node-jscad -e packages/machinome-node-stl \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is

@@ -329,7 +329,8 @@ class CaptureDelegationTest(TestCase):
             patch.object(snapshot, "_load_and_prepare_node", return_value=node),
             patch("machinome.viewers.browser.BrowserRenderer.render",
                   side_effect=BrowserSnapshotError("browser missing")),
-            patch("machinome.viewers.openscad.OpenScadRenderer.render") as openscad,
+            patch("machinome.node.openscad.renderer.OpenScadRenderer"
+                  ".render") as openscad,
         ):
             with self.assertRaises(SystemExit):
                 snapshot.handle(args)

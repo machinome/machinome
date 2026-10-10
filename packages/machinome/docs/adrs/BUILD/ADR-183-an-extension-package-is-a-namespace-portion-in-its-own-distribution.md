@@ -86,6 +86,11 @@ one operation on its kernel, its version the core's, its licence texts.
 - Neutral: CI installs the set with uv from the lock, which a stale lock
   fails; the requirements files and tox, which could not install the set,
   are retired.
+- Neutral (2026-10-10, `cut-the-mesh-nodes`): a portion may be a package
+  directory at its address, its own `__init__.py` below the levels the core
+  defines, and its manifest's `include` names that package; with the four
+  node packages over no B-rep engine every node type of the table is a
+  package, and the core imports none.
 - Bad: an environment whose `PYTHONPATH` names the core's directory alone,
   with no install of the engines, has no engine: the fallback recipe of the
   first cycle no longer runs the whole suite.

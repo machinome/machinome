@@ -39,6 +39,21 @@ Unreleased
   extra that installs it, as an absent kernel was. Change
   ``cut-the-brep-nodes`` (ADR-184).
 
+* **The OpenSCAD, SolidPython, JSCAD and STL node types are PACKAGES of
+  their own.** ``machinome-node-openscad`` ships the package
+  ``machinome.node.openscad`` and the OpenSCAD snapshot renderer, moved from
+  ``machinome.viewers.openscad`` to ``machinome.node.openscad.renderer``;
+  ``machinome-node-solid2``, ``machinome-node-jscad`` and
+  ``machinome-node-stl`` ship ``machinome.node.<name>``, each a namespace
+  portion in its own directory under ``packages/``;
+  ``machinome-node-solid2`` requires ``machinome-node-openscad``. The
+  framework's ``openscad``, ``solid2``, ``jscad`` and ``stl`` extras install
+  them, and the framework imports no node type and no engine. A bare
+  install carries no node type: a project of ``StlNode`` or ``JScadNode``
+  parts names ``machinome[stl]`` or ``machinome[jscad]``, as the refusal at
+  its import says. Every other address, every extra and every message is
+  unchanged. Change ``cut-the-mesh-nodes`` (ADR-179 and ADR-183 amended).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

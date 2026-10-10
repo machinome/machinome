@@ -393,9 +393,11 @@ lists, today `openscad`; default the table's `DEFAULT_RENDERER`, `openscad`),
 and `--drive NAME=VALUE` (repeatable). The snapshot command SHALL name no
 renderer technology itself: it SHALL reach every renderer other than `web`
 through the table of supported node types (`machinome.node.supported`), whose
-`openscad` entry names the OpenSCAD renderer at `machinome.viewers.openscad` in
-a provisional column, until the viewers become providers behind
-`machinome.viewer`.
+`openscad` entry names the OpenSCAD renderer at
+`machinome.node.openscad.renderer`, a module of the OpenSCAD node package
+shipped by `machinome-node-openscad`, in a provisional column, until the
+viewers become providers behind `machinome.viewer`. The framework's
+distribution SHALL ship no renderer of a node type.
 
 `--drive` SHALL bind a DECLARED DRIVER by its qualified id, to a value parsed
 as a number and checked by the declaration exactly as `set_state` checks it,
@@ -556,6 +558,23 @@ produced.
 - **WHEN** an agent runs `machinome snapshot --renderer web` in an installation
   without `machinome-viewer`
 - **THEN** the command fails naming the extra, and writes no image
+
+#### Scenario: The OpenSCAD node package is missing
+
+- **WHEN** an agent runs `machinome snapshot` without choosing a renderer in an
+  installation where no installed distribution ships `machinome.node.openscad`
+- **THEN** the command fails before loading the node with the line `Error:
+  machinome snapshot --renderer openscad needs the openscad extra: the
+  openscad node type (OpenScadNode) needs machinome.node.openscad, which is
+  not installed; install it with 'pip install "machinome[openscad]"'; or use
+  --renderer web`, exits 1, and writes no image and no `.scad`
+
+#### Scenario: The table's renderer is the OpenSCAD node package's
+
+- **WHEN** the table of supported node types is asked for its `openscad`
+  renderer in an installation with `machinome-node-openscad`
+- **THEN** it returns an `OpenScadRenderer` whose module is
+  `machinome.node.openscad.renderer`, the file of that distribution
 
 ### Requirement: Snapshot time under a declared time base
 
@@ -1123,3 +1142,4 @@ spell their own node type's module.
 - **THEN** `parts.py` holds `from machinome.node.step import StepNode`,
   `assembly.py` holds `from machinome.node.assembly import AssemblyNode`,
   neither holds `from machinome.node import`, and both modules import
+

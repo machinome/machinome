@@ -1,6 +1,6 @@
 # ADR-177: The OpenSCAD Family Is a Node Package, and the Core Names No Technology
 
-**Status:** Accepted
+**Status:** Accepted; the snapshot renderer's module moved by [ADR-179](../BUILD/ADR-179-the-core-reaches-a-node-packages-renderer-and-command-through-the-table-of-supported-node-types.md)'s amendment of 2026-10-10
 **Date:** 2026-10-04
 **Change:** [`openscad-out`](../../../openspec/changes/archive/2026-10-04-openscad-out/)
 **Supersedes:**

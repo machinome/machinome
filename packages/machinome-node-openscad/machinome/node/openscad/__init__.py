@@ -10,7 +10,10 @@ every leaf authored in SCAD is built from.
   OpenSCAD;
 - `machinome.node.openscad.writer`: the SCAD text of a presentation the core
   described (`machinome.node.presentation`), and its publication;
-- `machinome.node.openscad.binary`: the OpenSCAD executable's contract.
+- `machinome.node.openscad.binary`: the OpenSCAD executable's contract;
+- `machinome.node.openscad.renderer`: the OpenSCAD snapshot renderer of
+  `machinome snapshot`, which the table of supported node types names
+  (`machinome.node.supported`, a provisional column).
 
 `Solid2Node`, a leaf of the family rendered with SolidPython, is its own node
 type at `machinome.node.solid2`. SolidPython is the family's kernel, installed

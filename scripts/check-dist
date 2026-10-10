@@ -142,6 +142,78 @@ def node_smoke(name, node, parts, operation):
             + string.Template(NODE_LINE).substitute(values))
 
 
+#: The smoke of a node package over no B-rep engine: its module imported at
+#: its address, the files it ships under `machinome/` owned by its own
+#: distribution inside the venv, its version and pins the core's, then one
+#: part of its node type in a new project directory under the temporary
+#: directory, rendered to its STL where the part's external program is on
+#: the PATH, whose volume trimesh reads, and otherwise built as far as the
+#: program allows; its licence.
+MESH_NODE = string.Template('''
+import importlib
+import importlib.metadata as metadata
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
+import trimesh
+from machinome.node.base import StlRenderStart
+module = importlib.import_module('machinome.node.$node')
+distribution = metadata.distribution('$name')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+shipped = sorted(path for path in files
+                 if path.startswith('machinome/') and path.endswith('.py'))
+assert shipped == $shipped, shipped
+owned = Path(distribution.locate_file(shipped[0])).resolve()
+assert owned == Path(module.__file__).resolve(), (owned, module.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+for pin in $pins:
+    assert pin.format(version=version) in distribution.requires, (
+        pin, distribution.requires)
+project = tempfile.mkdtemp(prefix='$name-', dir=os.getcwd())
+with open(os.path.join(project, 'pyproject.toml'), 'w') as stream:
+    stream.write('[tool.machinome]\\n')
+with open(os.path.join(project, 'parts.py'), 'w') as stream:
+    stream.write($parts)
+sys.path.insert(0, project)
+os.chdir(project)
+
+
+def stl_volume(node):
+    """Render `node`'s STL, waiting on its renderer, and read its volume."""
+    while True:
+        try:
+            node.trigger_stl()
+            break
+        except StlRenderStart as job:
+            job.wait()
+    return trimesh.load(node.stl_file).volume
+
+
+$operation
+''')
+
+#: The one line such a smoke prints last.
+MESH_NODE_LINE = '''
+print('$name', distribution.version, 'module', module.__file__, result)
+'''
+
+
+def mesh_node_smoke(name, node, shipped, pins, parts, operation):
+    """The code of a node package's smoke over no B-rep engine: `shipped`
+    the files it ships under `machinome/`, `pins` its requirements on the
+    set (`{version}` standing for the version), `parts` the source of the
+    project's `parts.py`, one class `Part`; `operation` sets `result`."""
+    values = dict(name=name, node=node, shipped=repr(sorted(shipped)),
+                  pins=repr(pins), parts=repr(parts.lstrip()),
+                  operation=operation.strip())
+    return (MESH_NODE.substitute(values) + LICENCES.substitute(values)
+            + string.Template(MESH_NODE_LINE).substitute(values))
+
+
 #: The smoke of each member, run with the throwaway venv's `python -I -c`
 #: from the temporary directory: the extras its wheel is installed with, and
 #: the code that proves it. `VENV` is defined before the code runs. A member
@@ -297,6 +369,130 @@ assert engine.solid_count(solid) == 1, engine.solid_count(solid)
 result = engine.solid_volume(solid)
 expected = math.pi * 3 * math.sqrt((16 * math.pi) ** 2 + (20 / 3) ** 2)
 assert abs(result - expected) < 1e-3 * expected, (result, expected)
+'''),
+        'commands': [],
+    },
+    'machinome-node-openscad': {
+        'through': 'openscad',
+        'extras': [],
+        'code': mesh_node_smoke(
+            'machinome-node-openscad', 'openscad',
+            [f'machinome/node/openscad/{module}.py' for module in
+             ('__init__', 'binary', 'leaf', 'renderer', 'writer')],
+            ['machinome~={version}'],
+            '''
+from machinome.node.openscad import OpenScadNode
+
+
+class Part(OpenScadNode):
+    scad_source = 'part.scad'
+''',
+            '''
+with open('part.scad', 'w') as stream:
+    stream.write('module part() { cube([2, 3, 4]); }\\n')
+import parts
+node = parts.Part()
+node.assemble()
+if shutil.which('openscad'):
+    volume = stl_volume(node)
+    assert abs(volume - 24) < 1e-6, volume
+    result = f'volume {volume} through OpenSCAD'
+else:
+    node.generate_scad()
+    last = Path(node.scad_file).read_text().strip().splitlines()[-1]
+    assert last == 'part();', last
+    result = f'SCAD {last!r} written, no openscad on the PATH'
+from machinome.node import supported
+renderer = supported.renderer('openscad')
+assert type(renderer).__module__ == 'machinome.node.openscad.renderer'
+drawn = Path(sys.modules[type(renderer).__module__].__file__).resolve()
+assert drawn == Path(distribution.locate_file(
+    'machinome/node/openscad/renderer.py')).resolve(), drawn
+result += f', renderer {drawn}'
+'''),
+        'commands': [],
+    },
+    'machinome-node-solid2': {
+        'through': 'solid2',
+        'extras': [],
+        'code': mesh_node_smoke(
+            'machinome-node-solid2', 'solid2',
+            ['machinome/node/solid2.py'],
+            ['machinome~={version}', 'machinome-node-openscad~={version}'],
+            '''
+from solid2 import cube
+from machinome.node.solid2 import Solid2Node
+
+
+class Part(Solid2Node):
+    def render(self):
+        return cube([2, 3, 4])
+''',
+            '''
+import parts
+node = parts.Part()
+node.assemble()
+if shutil.which('openscad'):
+    volume = stl_volume(node)
+    assert abs(volume - 24) < 1e-6, volume
+    result = f'volume {volume} through OpenSCAD'
+else:
+    node.generate_scad()
+    last = Path(node.scad_file).read_text().strip().splitlines()[-1]
+    assert last == 'cube(size = [2, 3, 4]);', last
+    result = f'SCAD {last!r} written, no openscad on the PATH'
+'''),
+        'commands': [],
+    },
+    'machinome-node-jscad': {
+        'through': 'jscad',
+        'extras': [],
+        'code': mesh_node_smoke(
+            'machinome-node-jscad', 'jscad',
+            ['machinome/node/jscad.py'],
+            ['machinome~={version}'],
+            '''
+from machinome.node.jscad import JScadNode
+
+
+class Part(JScadNode):
+    jscad_source = 'part.js'
+''',
+            '''
+with open('part.js', 'w') as stream:
+    stream.write('module.exports = { main: () => null }\\n')
+import parts
+node = parts.Part()
+source = Path(node.get_source_file()).resolve()
+assert source == Path(project, 'part.js').resolve(), source
+assert node.stl_file.endswith('.stl'), node.stl_file
+result = (f'part over {source.name}; its STL is rendered by the jscad '
+          'command, which no package of the set installs')
+'''),
+        'commands': [],
+    },
+    'machinome-node-stl': {
+        'through': 'stl',
+        'extras': [],
+        'code': mesh_node_smoke(
+            'machinome-node-stl', 'stl',
+            ['machinome/node/stl.py'],
+            ['machinome~={version}'],
+            '''
+from machinome.node.stl import StlNode
+
+
+class Part(StlNode):
+    stl_source = 'box.stl'
+''',
+            '''
+trimesh.creation.box([2, 3, 4]).export('box.stl')
+import parts
+node = parts.Part()
+node.assemble()
+volume = stl_volume(node)
+assert abs(volume - 24) < 1e-6, volume
+result = f'volume {volume}'
 '''),
         'commands': [],
     },
