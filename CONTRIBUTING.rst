@@ -66,8 +66,9 @@ If you are proposing a feature:
 Development environment
 -----------------------
 
-Requirements: Python 3.11 or newer, as ``pyproject.toml`` requires. Node.js
-is not needed: the browser viewer and its widget live in the separate
+Requirements: Python 3.11 or newer, as the framework's
+``packages/machinome/pyproject.toml`` requires. Node.js is not needed: the
+browser viewer and its widget live in the separate
 `machinome-viewer <https://github.com/machinome/machinome-viewer>`_
 repository, and the tests that need a viewer skip unless that package is
 installed. `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
@@ -88,32 +89,41 @@ which is useful on a platform with no compiled wheel, such as WebAssembly.
 A path that needs it and cannot import it says so by name, naming the
 extra.
 
-Clone the repository (the tutorial's machine under ``docs/tutorial/`` is
-built and tested by the suite; the real machines the manual points to are
-on machinome.org, not in this repository)::
+Clone the repository (the tutorial's machine under
+``packages/machinome/docs/tutorial/`` is built and tested by the suite; the
+real machines the manual points to are on machinome.org, not in this
+repository)::
 
     $ git clone https://github.com/machinome/machinome.git
     $ cd machinome
 
-Create a virtualenv and install the package in editable mode with the dev
-dependencies, which bring every kernel the suite runs::
+From the clone's root, sync the workspace with uv, which installs the
+framework editable with its dev dependencies, every kernel the suite runs,
+into ``.venv``::
+
+    $ uv sync
+
+or, without uv, create a virtualenv and install the package in editable
+mode with the dev dependencies::
 
     $ python -m venv .venv
     $ source .venv/bin/activate
-    $ pip install -e ".[dev]"
+    $ pip install -e "packages/machinome[dev]"
 
-The ``machinome`` CLI entrypoint (``machinome/cli.py``) is now on the PATH of
-the virtualenv.
+The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
+now on the PATH of the virtualenv.
 
 For the layout of the package, and for how to choose between direct pytest
 coverage and the meta-project harness when proving a change, read the
-`contributor briefing <docs/contributor-briefing.md>`_.
+`contributor briefing <packages/machinome/docs/contributor-briefing.md>`_.
 
 Running tests
 -------------
 
-The test suite is pytest, run from the repository root::
+The test suite is pytest, run from the framework's directory,
+``packages/machinome``::
 
+    $ cd packages/machinome
     $ make test          # equivalent to: pytest
     $ pytest tests/test_builder_lifecycle.py   # a single file
     $ make lint          # flake8 + black --check
@@ -139,7 +149,8 @@ Notes:
   both deliberately green and deliberately red fixtures, to prove the
   loading, rendering, and ``machinome test`` subprocess paths. Use it when a
   change touches behavior that direct unit tests cannot establish; the
-  `contributor briefing <docs/contributor-briefing.md>`_ says when and why.
+  `contributor briefing <packages/machinome/docs/contributor-briefing.md>`_
+  says when and why.
 * The browser viewer's own tests live in the ``machinome-viewer``
   repository. ``tools/generate_parity_fixture.py`` produces, from this
   framework's render results, the parity fixture that repository commits
@@ -176,15 +187,16 @@ reviewed, implemented, and archived through the OpenSpec workflow
 4. **Archive**: when the change lands, its spec deltas are merged into
    ``openspec/specs/`` and the change moves to ``openspec/changes/archive/``.
 
-The proposal and completed record belong in this repository's
-``openspec/`` directory.
+The proposal and completed record belong in the framework's
+``packages/machinome/openspec/`` directory, where the ``openspec`` command
+runs.
 
 Architecture Decision Records
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Why* the system is the way it is lives in ``docs/adrs/`` (see
-`docs/adrs/README.md <docs/adrs/README.md>`_ for the index and the full
-discipline):
+`docs/adrs/README.md <packages/machinome/docs/adrs/README.md>`_ for the
+index and the full discipline):
 
 * One decision per ADR, numbered sequentially, filed under the subsystem it
   affects (NODE, BUILD, IPC, MATH, TEST-FRAMEWORK, VIEWER-WEB, EXPORT).
@@ -193,16 +205,17 @@ discipline):
   makes current decisions legible.
 * When an OpenSpec change carries an architectural shift, its ADR is written
   alongside the change and the architecture synthesis
-  (`docs/architecture.md <docs/architecture.md>`_) is updated as part of
-  landing it.
+  (`docs/architecture.md <packages/machinome/docs/architecture.md>`_) is
+  updated as part of landing it.
 
 Read order for orientation: **architecture synthesis first**
 (``docs/architecture.md``), **then the specs** for exact observable behavior
 (``openspec/specs/``), **then an ADR** when you need to know why
 (``docs/adrs/``). The contributor briefing
-(`docs/contributor-briefing.md <docs/contributor-briefing.md>`_) adds
-verification guidance: how to choose between direct pytest coverage and the
-meta-project harness, and the red-first evidence principle.
+(`docs/contributor-briefing.md
+<packages/machinome/docs/contributor-briefing.md>`_) adds verification
+guidance: how to choose between direct pytest coverage and the meta-project
+harness, and the red-first evidence principle.
 
 Pull requests
 -------------
@@ -212,8 +225,8 @@ Pull requests
 2. Make the change under the discipline above, with the test that proves
    the failure before the change turns it green.
 3. Update the documentation the change touches: the manual under
-   ``docs/``, and the changelog's ``Unreleased`` section for anything a
-   project can use, in the same change.
+   ``packages/machinome/docs/``, and the changelog's ``Unreleased`` section
+   for anything a project can use, in the same change.
 4. Check that the lint and the tests pass (``make lint``, ``make test``);
    `GitHub Actions <https://github.com/machinome/machinome/actions>`_ runs
    the suite on every supported Python version.
@@ -226,6 +239,7 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in HISTORY.rst).
 Then run::
 
+$ cd packages/machinome
 $ bump2version patch # possible: major / minor / patch
 $ git push
 $ git push --tags

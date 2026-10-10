@@ -2,6 +2,19 @@
 History
 =======
 
+Unreleased
+----------
+
+* **The framework is a PACKAGE of its repository.**
+  The framework's tree moved, unchanged, under ``packages/machinome/``,
+  the directory named as its distribution; the repository root holds the
+  licence, stated once and reached from the package by symbolic links,
+  the contributor guide, this history, the AI-use statement, the CI, a
+  uv workspace with its lock, ``scripts/check-dist`` and the record of
+  the campaigns that span packages. The distribution, its import
+  package, its command, its extras and the contents of its archives are
+  unchanged. Change ``monorepo-layout`` (ADR-182).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

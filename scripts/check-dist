@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+# Machinome - Source code for machines
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+
+"""Build, check and smoke every distribution of the repository; upload nothing.
+
+For each member of the uv workspace declared in the root `pyproject.toml`,
+this script builds the sdist and the wheel (the wheel from the sdist) in a
+temporary directory outside the repository, checks both archives with
+`twine check --strict`, and checks that the sdist carries every file the
+member's directory reaches by a symbolic link as a regular file with the
+bytes of the link's target. It then installs every member's wheel into a
+throwaway virtual environment outside the repository and smokes each member
+there, from a table keyed by distribution name.
+
+It uploads nothing. Installing the wheels' dependencies needs a package
+index. It needs `build` and `twine` importable by the interpreter that runs
+it, and writes nothing inside the repository but the build's own scratch
+(`build/`, `*.egg-info`), which each member's `.gitignore` ignores.
+"""
+
+import glob
+import subprocess
+import sys
+import tarfile
+import tempfile
+import tomllib
+import zipfile
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+#: The smoke of each member, run with the throwaway venv's `python -I -c`
+#: from the temporary directory: the extras its wheel is installed with, and
+#: the code that proves it. `VENV` is defined before the code runs. A member
+#: without a row fails the script.
+SMOKES = {
+    'machinome': {
+        'extras': ['openscad', 'stl'],
+        'code': '''
+import importlib.metadata as metadata
+from pathlib import Path
+import machinome
+assert Path(machinome.__file__).resolve().is_relative_to(Path(VENV).resolve()), \\
+    machinome.__file__
+print('machinome', machinome.__version__, 'from', machinome.__file__)
+import machinome.node.openscad
+import machinome.node.stl
+distribution = metadata.distribution('machinome')
+expression = distribution.metadata['License-Expression']
+assert expression == 'GPL-2.0-or-later OR CERN-OHL-S-2.0+', expression
+print('License-Expression:', expression)
+licences = sorted(str(path).split('.dist-info/', 1)[1]
+                  for path in distribution.files
+                  if '.dist-info/' in str(path) and 'licenses/' in str(path))
+for path in licences:
+    print('  ', path)
+for path in ('licenses/LICENSE', 'licenses/LICENSES/GPL-2.0-or-later.txt',
+             'licenses/LICENSES/CERN-OHL-S-2.0.txt'):
+    assert path in licences, path
+''',
+        'commands': [['machinome', '--help']],
+    },
+}
+
+
+class Failure(Exception):
+    """A check that failed, with what failed."""
+
+
+def run(command, cwd, quiet=False):
+    # A smoke's code is shown by its first line.
+    printed = ' '.join(str(part).strip().split('\n')[0]
+                       + (' ...' if '\n' in str(part).strip() else '')
+                       for part in command)
+    print(f'$ {printed}', flush=True)
+    result = subprocess.run([str(part) for part in command], cwd=cwd,
+                            stdout=subprocess.PIPE if quiet else None,
+                            stderr=subprocess.STDOUT if quiet else None,
+                            text=True)
+    if result.returncode != 0:
+        if quiet:
+            print(result.stdout)
+        raise Failure(f'exit {result.returncode}: {printed}')
+    return result
+
+
+def members():
+    """(directory, distribution name) of every workspace member, sorted."""
+    workspace = tomllib.loads((ROOT / 'pyproject.toml').read_text())
+    patterns = workspace['tool']['uv']['workspace']['members']
+    found = set()
+    for pattern in patterns:
+        for match in glob.glob(str(ROOT / pattern)):
+            directory = Path(match)
+            if (directory / 'pyproject.toml').is_file():
+                found.add(directory)
+    listed = []
+    for directory in sorted(found):
+        project = tomllib.loads((directory / 'pyproject.toml').read_text())
+        listed.append((directory, project['project']['name']))
+    if not listed:
+        raise Failure(f'no workspace member under {ROOT}')
+    return listed
+
+
+def linked_files(directory):
+    """(path in the archive, bytes) of every file the member reaches by a
+    symbolic link, each file below a linked directory included."""
+    files = []
+    for entry in sorted(directory.iterdir()):
+        if not entry.is_symlink():
+            continue
+        target = entry.resolve()
+        if target.is_dir():
+            for path in sorted(target.rglob('*')):
+                if path.is_file():
+                    name = f'{entry.name}/{path.relative_to(target).as_posix()}'
+                    files.append((name, path.read_bytes()))
+        else:
+            files.append((entry.name, target.read_bytes()))
+    return files
+
+
+def check_sdist(sdist, directory):
+    """The sdist holds each linked file as a regular file of the same bytes."""
+    with tarfile.open(sdist) as archive:
+        names = archive.getnames()
+        top = names[0].split('/', 1)[0]
+        for name, expected in linked_files(directory):
+            member = f'{top}/{name}'
+            try:
+                info = archive.getmember(member)
+            except KeyError:
+                raise Failure(f'{sdist.name} lacks {member}') from None
+            if not info.isfile():
+                raise Failure(f'{sdist.name} holds {member} as a link, '
+                              'not a regular file')
+            found = archive.extractfile(info).read()
+            if found != expected:
+                raise Failure(f'{sdist.name}: {member} differs from the '
+                              f'root\'s ({len(found)} bytes, expected '
+                              f'{len(expected)})')
+            print(f'   {member}: regular file, {len(found)} bytes, equal '
+                  'to the root\'s')
+        print(f'   {sdist.name}: {len(names)} entries')
+
+
+def build(directory, name, scratch):
+    """Build, check and return the wheel of one member."""
+    out = scratch / 'dist' / name
+    run([sys.executable, '-m', 'build', directory, '--outdir', out], ROOT,
+        quiet=True)
+    sdists = sorted(out.glob('*.tar.gz'))
+    wheels = sorted(out.glob('*.whl'))
+    if len(sdists) != 1 or len(wheels) != 1:
+        raise Failure(f'{name}: built {sorted(p.name for p in out.iterdir())}')
+    run([sys.executable, '-m', 'twine', 'check', '--strict',
+         sdists[0], wheels[0]], ROOT)
+    check_sdist(sdists[0], directory)
+    with zipfile.ZipFile(wheels[0]) as wheel:
+        print(f'   {wheels[0].name}: {len(wheel.namelist())} entries')
+    return wheels[0]
+
+
+def main():
+    with tempfile.TemporaryDirectory(prefix='machinome-check-dist-') as tmp:
+        scratch = Path(tmp).resolve()
+        if scratch.is_relative_to(ROOT):
+            raise Failure(f'the temporary directory {scratch} lies inside '
+                          f'the repository {ROOT}')
+        listed = members()
+        for directory, name in listed:
+            if name not in SMOKES:
+                raise Failure(f'{name} has no smoke in scripts/check-dist')
+        print('Members:', ', '.join(name for _, name in listed))
+        wheels = {name: build(directory, name, scratch)
+                  for directory, name in listed}
+
+        venv = scratch / 'venv'
+        run([sys.executable, '-m', 'venv', venv], scratch)
+        python = venv / 'bin' / 'python'
+        links = []
+        for name in wheels:
+            links += ['--find-links', scratch / 'dist' / name]
+        requirements = []
+        for name, wheel in wheels.items():
+            extras = SMOKES[name]['extras']
+            requirements.append(
+                f'{wheel}[{",".join(extras)}]' if extras else str(wheel))
+        run([python, '-m', 'pip', 'install', '--quiet', *links,
+             *requirements], scratch)
+
+        for name in wheels:
+            smoke = SMOKES[name]
+            prefix = f'VENV = {str(venv)!r}\n'
+            run([python, '-I', '-c', prefix + smoke['code']], scratch)
+            for command in smoke['commands']:
+                run([venv / 'bin' / command[0], *command[1:]], scratch,
+                    quiet=True)
+                print(f'   {" ".join(command)}: exit 0')
+    print('Every distribution built, checked, installed and smoked; '
+          'nothing uploaded.')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Failure as failure:
+        print(f'check-dist failed: {failure}', file=sys.stderr)
+        print('Nothing uploaded.', file=sys.stderr)
+        sys.exit(1)

@@ -160,7 +160,8 @@ release and its version bump.
   engine seams; `step` imports `cadquery`; `solid2` imports `openscad`;
   `brep.py` and `mesh.py` import only the core. No core module but the
   renderer above imports a node module or an engine provider.
-- The suite (593 files, 4600 passed and 4 skipped at 0.8.1) imports
+- The suite (593 files, 4768 passed, 4 skipped, 6734 subtests, 14 minutes
+  on the line head on 10 October 2026) imports
   `machinome.node.solid2` in 94 files and `machinome.node.openscad` in
   43; `tests/base.py` writes SCAD through the openscad package. It never
   ran on a bare core and runs against the whole set installed.
@@ -237,6 +238,21 @@ decision is architectural.
    repository `machinome/machinome`; `framework-contributor-guidance` and
    `user-documentation` follow where they name a path. No version bump,
    no API change, no deprecation.
+   **Done** (10 October 2026): branch `v0.9-base-monorepo-layout`, planning
+   commit 257293d2 on 19c9f83b, ratified by the orchestrator's review (ADR-182).
+   As applied it corrects the design's index of the repository root in the
+   tests, `parents[3]` rather than `parents[2]`, recorded in design.md as a
+   dated correction. The gate is green, the suite green on the bench's uv
+   venv (4774 passed, 20 skipped, 6799 subtests, the 16 skips beyond the
+   base's 4 being the viewer's tests the lock excludes), the manual built
+   with warnings as errors from its requirements alone, and
+   `scripts/check-dist` green: the sdist and the wheel built, `twine check
+   --strict` passed, the five linked files in the sdist as regular files
+   with the root's bytes, the wheel installed with `[openscad,stl]` into a
+   throwaway venv, version 0.8.1, the licence expression and the three
+   licence files, `machinome --help` exit 0, nothing uploaded. `uv lock`
+   resolves 185 packages and `uv sync --python 3.12` installs 175. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-10-monorepo-layout/evidence.md`.
 2. `cut-the-engines`. `machinome-engine-brep` and `machinome-engine-mesh`
    founded as the first portions; the core's `brep` and `mesh` extras
    repointed at them with `~=` pins; the root's sources mapping them to

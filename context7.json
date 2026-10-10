@@ -4,13 +4,14 @@
   "description": "Source code for machines: a Python framework binding parts, dimensions, motion, controls and tests into a whole.",
   "folders": [],
   "excludeFolders": [
-    "docs/_exports",
-    "docs/_build",
-    "docs/_static",
-    "docs/releases",
-    "openspec",
-    "tests",
-    "docs/tutorial/counter"
+    "packages/machinome/docs/_exports",
+    "packages/machinome/docs/_build",
+    "packages/machinome/docs/_static",
+    "packages/machinome/docs/releases",
+    "packages/machinome/openspec",
+    "packages/machinome/tests",
+    "packages/machinome/docs/tutorial/counter",
+    "workflow"
   ],
   "excludeFiles": [],
   "rules": [

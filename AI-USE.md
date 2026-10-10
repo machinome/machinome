@@ -55,9 +55,10 @@ maintainer's name because he makes them from his own account and answers
 for them.
 
 Nothing else in this repository is individually marked as machine-written.
-The manual under `docs/`, the architecture synthesis and the ADRs, the
-OpenSpec records and the notes under `workflow/` written since the line are
-agent-written like the code, and reviewed the same way.
+The framework's manual, architecture synthesis, ADRs, OpenSpec records and
+working notes under `packages/machinome/`, and the notes under `workflow/`,
+written since the line are agent-written like the code, and reviewed the
+same way.
 
 ## How the agents work
 
