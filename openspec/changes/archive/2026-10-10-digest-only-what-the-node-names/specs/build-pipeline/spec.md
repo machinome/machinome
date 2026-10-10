@@ -74,8 +74,13 @@ a retained statement:
   name SHALL also name every top-level definition of exactly that name in
   every tracked source;
 - any other attribute name, any string literal, and any name bound by an import
-  the system cannot follow SHALL name every top-level definition of exactly
-  that name in every tracked source;
+  the system cannot place at all -- not loaded, an unresolved relative import,
+  or the importer's own package `__init__` -- SHALL name every top-level
+  definition of exactly that name in every tracked source;
+- a name bound by an import the system HAS loaded and can place, but whose
+  file lies outside every tracked source's reach (outside the project root,
+  inside the framework, or without a `__file__`), is known rather than
+  ambiguous and SHALL name nothing beyond that import's own binding;
 - an import statement retained as part of a source retained whole, or
   always retained (a star import, or an import inside a statement that is not
   a definition), SHALL name the definitions every name it binds resolves to;
@@ -453,6 +458,15 @@ files rather than fewer.
   spells, or a definition another module holds and `spec` imports by a name no
   text spells, is edited
 - **THEN** the node's artifacts are re-derived
+
+#### Scenario: A loaded, external import names nothing beyond itself
+
+- **WHEN** one tracked source imports a name from a module the interpreter has
+  loaded and can place, but whose file lies outside every tracked source's
+  reach, and a project source elsewhere defines a top-level name of the same
+  spelling that no text ever names
+- **THEN** editing that unrelated definition does not re-derive a node whose
+  only path to the imported name runs through the external import
 
 #### Scenario: The first edit after upgrading is judged by the earlier rule
 

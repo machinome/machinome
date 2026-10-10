@@ -704,11 +704,24 @@ class AbstractBaseNode(metaclass=NodeMeta):
         # nodes union in their children's sets while assembling.
         self.files = source_closure(self.src)
 
+        # The files this node's OWN source reaches, taken here before any
+        # subclass or child adds more. digest-only-what-the-node-names'
+        # whole-file set (design.md D6) is everything in `self.files`
+        # outside this snapshot -- an StlNode's or StepNode's wrapper
+        # module closure, added after this constructor returns, or a file
+        # a subclass appends to `files` directly.
+        self._own_source_files = frozenset(self.files)
+
         # What this node can see of its own file, for the content-verified
         # digest: its own class, so siblings defined in the same file do
         # not invalidate it when they change. Internal nodes union in
         # their children's scopes beside their files.
         self.scope = source_scope(self.src, self.__class__)
+
+        # Files a child's own whole-file set tracks that stay whole in
+        # every ancestor's digest too, unioned in by internal.py beside
+        # the scope (design.md D6).
+        self.whole_files = set()
 
         # Holds the result of render()
         self.model = None
@@ -1045,12 +1058,48 @@ class AbstractBaseNode(metaclass=NodeMeta):
             return max(census[path].mtime_ns for path in files)
         return max(os.stat(path).st_mtime_ns for path in files)
 
+    def _own_whole_files(self):
+        """Files this node alone (ignoring any child) always digests
+        whole (design.md D6, digest-only-what-the-node-names): every
+        tracked file when it has no Python source of its own, since it
+        then has no seed to start the fixpoint from; otherwise every file
+        outside the closure its own source reached at construction --
+        an StlNode's or StepNode's wrapper-module closure, or a file a
+        subclass added to `files` after `super().__init__()` returned."""
+        if not self.scope:
+            return frozenset(self.files)
+        return frozenset(self.files) - self._own_source_files
+
+    def _effective_whole_files(self):
+        """This node's own whole-file set, unioned with every child's
+        (design.md D6); `whole_files` is what internal.py unions in
+        beside the scope."""
+        return self._own_whole_files() | self.whole_files
+
     def _tracked_digest(self, files):
         """What one tracked source set says, as one digest, with this
         node's `source_recipe` folded in when it declares one."""
         recipe = self._declared_recipe()
         return _with_recipe(currency.source_digest(
+            files, self._project_root, self.scope,
+            whole=self._effective_whole_files()), recipe)
+
+    def _tracked_previous_digest(self, files):
+        """What one tracked source set says under ADR-071's rule, the one
+        a version 2 or 3 record -- or the legacy digest-only form -- was
+        taken under (design.md D9)."""
+        recipe = self._declared_recipe()
+        return _with_recipe(currency.previous_source_digest(
             files, self._project_root, self.scope), recipe)
+
+    def _previous_rule_carries(self, files):
+        """Whether ADR-071's rule left out, of one tracked source set,
+        only spans the current rule also leaves out (design.md D9) --
+        the extra condition that makes a previous-rule record's match
+        safe to carry forward as this rule's own."""
+        return currency.previous_rule_carries(
+            files, self._project_root, self.scope,
+            self._effective_whole_files())
 
     def _tracked_fingerprint(self, files):
         """The observable metadata state of one tracked source set, with
@@ -1097,10 +1146,15 @@ class AbstractBaseNode(metaclass=NodeMeta):
         artifact when it is written and consulted when either the artifact
         timestamp or source-set fingerprint differs (see `_up_to_date`).
 
-        Scoped to this node: a file in the set that defines other node
-        classes contributes only the text this node can depend on, so an
-        edit to a sibling class sharing the file does not change the
-        answer here (see `currency.source_digest`).
+        Scoped to this node across its whole tracked set, not only its own
+        file (ADR-182): a top-level definition in any tracked Python file
+        that nothing this node's retained text ever names contributes
+        nothing here, so an edit to a sibling class, a helper function, a
+        constant or an import this node never reaches does not change the
+        answer (see `currency.source_digest`). A file this node tracks
+        beyond its own source's closure -- an StlNode's or StepNode's
+        wrapper module, a file a subclass added to `files` -- is always
+        retained whole (`_own_whole_files`).
 
         None when any tracked source cannot be read -- an answer, not an
         error: nothing can be vouched for, so nothing is current.
@@ -1399,9 +1453,21 @@ class AbstractBaseNode(metaclass=NodeMeta):
         sources on disk, then re-deriving it would reproduce it, which is
         a strictly stronger claim than the equality that just failed.
 
-        Anything less says no: no record, an unreadable source, or any
-        disagreement at all. The artifact is then rebuilt exactly as it
-        always was.
+        The record says which rule its digest was taken under (design.md
+        D8, D9): a current-rule (version 4) record is compared with the
+        current digest, exactly as before this change; a previous-rule
+        record (version 2, 3, or the legacy digest-only form) is compared
+        with ADR-071's digest of the sources now present, and only verifies
+        when, beside that match, ADR-071's rule left out nothing the
+        current rule retains (`_previous_rule_carries`) -- otherwise the
+        previous match says nothing about what THIS rule would keep, and
+        the artifact is rebuilt. Either way a match re-records the
+        artifact's CURRENT digest, so a settled build directory migrates
+        to version 4 without ever re-deriving geometry for it.
+
+        Anything less says no: no record, an unrecognised version, an
+        unreadable source, or any disagreement at all. The artifact is
+        then rebuilt exactly as it always was.
 
         The restamp is a deliberate side effect inside a predicate, and it
         is the same `os.utime` a build performs: it moves the artifact
@@ -1416,8 +1482,20 @@ class AbstractBaseNode(metaclass=NodeMeta):
         recorded = currency.recorded_digest(path)
         if recorded is None:
             return False
-        digest = self._tracked_digest(sources)
-        if digest is None or digest != recorded:
+        rule = currency.recorded_rule(path)
+        if rule == 'current':
+            digest = self._tracked_digest(sources)
+            if digest is None or digest != recorded:
+                return False
+        elif rule == 'previous':
+            previous = self._tracked_previous_digest(sources)
+            if (previous is None or previous != recorded
+                    or not self._previous_rule_carries(sources)):
+                return False
+            digest = self._tracked_digest(sources)
+            if digest is None:
+                return False
+        else:
             return False
         currency.restamp(path, self._tracked_mtime_ns(sources))
         if fingerprint is None:

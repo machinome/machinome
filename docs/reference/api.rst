@@ -327,7 +327,9 @@ declares nothing is not checked.
       The node's tracked source set: its defining module and that
       module's project-local import closure. A subclass may add files to
       it after the base constructor has run; every artifact's currency is
-      computed over it.
+      computed over it. A Python file a subclass adds this way is read
+      whole, as a file outside the node's own source has no seed to
+      scope it by.
 
    .. attribute:: basepath
 

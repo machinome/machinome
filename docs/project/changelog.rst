@@ -3,6 +3,20 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* **A node is rebuilt only for edits to what it names in its sources.**
+  Editing a definition no node names, in any tracked Python module,
+  restamps the node instead of rebuilding it. A cord-tuning edit that
+  re-derived 54 rigid parts in 52.4 s now re-derives none in 17.4 s, the
+  parts restamped, against a 15.2 s build with nothing to do. A build
+  directory kept from before this change is verified once under its own
+  earlier rule and re-recorded, but the first edit after upgrading is
+  still judged by that earlier rule and rebuilds what it would have (54
+  parts, 61.1 s here); only the edits after it are spared
+  (digest-only-what-the-node-names).
+
 Machinome 0.8.1
 ---------------
 

@@ -20,17 +20,17 @@ is committed: the applier stops before committing (section 7).
 
 ## 1. Baseline on the unmodified tree
 
-- [ ] 1.1 Create `evidence.md` with the bench commit (`git rev-parse HEAD`
+- [x] 1.1 Create `evidence.md` with the bench commit (`git rev-parse HEAD`
   is `4f9ebe09`), `git status --short` (only `<change>`), and the
   interpreter check (`python -c 'import machinome; print(machinome.__file__)'`
   prints a path under the bench).
-- [ ] 1.2 Run `pytest -q -p no:cacheprovider
+- [x] 1.2 Run `pytest -q -p no:cacheprovider
   tests/test_content_verified_currency.py tests/test_node_scoped_currency.py
   tests/test_source_set.py tests/test_source_census.py
   tests/test_generation_dedup.py tests/test_leaf_contract_recipe.py
   tests/test_brep_currency.py tests/test_flexible_verdict_identity.py`;
   record the counts and wall time. This is the focused set of 4.2.
-- [ ] 1.3 Run `python tests/leaf_contract_golden.py --check` and record its
+- [x] 1.3 Run `python tests/leaf_contract_golden.py --check` and record its
   whole output (every `EXPECTED` and `DIFFERS` line and the summary): the
   baseline 4.3 compares with. The `EXPECTED: ... digest` lines are
   root-cleanup's; their `now=` values are the digests this change must not
@@ -38,7 +38,7 @@ is committed: the applier stops before committing (section 7).
 
 ## 2. Red tests
 
-- [ ] 2.1 Write `tests/test_reach_scoped_currency.py` on
+- [x] 2.1 Write `tests/test_reach_scoped_currency.py` on
   `tests.test_content_verified_currency.ScratchProjectTest`, with the
   fixture of design.md "Proof plan" and the five red tests R1 to R5 there:
   R1 (an edit to a definition one node never names spares it: `X`, `Y`, a
@@ -53,7 +53,7 @@ is committed: the applier stops before committing (section 7).
   entry encoding `whole_file_digest` in `tests/test_node_scoped_currency.py`
   uses. Planted records are version 2 JSON with the node's current
   `source_fingerprint`.
-- [ ] 2.2 In `tests/test_node_scoped_currency.py` replace
+- [x] 2.2 In `tests/test_node_scoped_currency.py` replace
   `test_editing_shared_code_re_derives_every_node_in_the_file` by R2's two
   tests: `test_editing_code_one_node_names_re_derives_that_node_alone`
   (`PIN_RADIUS = 1.0` to `1.5`, then `return SIZE * 1.5` to `2.0`, each
@@ -62,14 +62,14 @@ is committed: the applier stops before committing (section 7).
   trace` to `from . import trace as trace` re-derives `['Block', 'Pin']`).
   Update the module docstring's sentence on module-level code. No other
   test in that file changes.
-- [ ] 2.3 Write the guards G1 to G11 and G13 to G16 of design.md in the new
+- [x] 2.3 Write the guards G1 to G11 and G13 to G16 of design.md in the new
   file (G14 in it too, loading `tests/stl_project` and `tests/step_project`
   as their own tests do), and extend
   `test_the_settled_path_reads_no_source_content` in
   `tests/test_content_verified_currency.py` to patch
   `currency._reach_analysis` and `currency._retained` beside `_analysis`
   (G12; `create=True` on the unchanged tree, where they do not exist yet).
-- [ ] 2.4 Run the new file and the two edited tests on the unmodified tree.
+- [x] 2.4 Run the new file and the two edited tests on the unmodified tree.
   RED, each for its reason: R1 because `spec.py` is digested whole
   (`renders()` gives `['A', 'B']` where one leaf, or for the unused import
   none, is expected); R2's first test because module-level
@@ -85,7 +85,7 @@ is committed: the applier stops before committing (section 7).
 
 ## 3. The change
 
-- [ ] 3.1 `machinome/currency.py`: `_reach_analysis(path, census=None)`,
+- [x] 3.1 `machinome/currency.py`: `_reach_analysis(path, census=None)`,
   cached on `_file_key` in `_reach_analyses` and read through the census
   when one is active, giving per top-level statement its line span (first
   decorator to `end_lineno`), whether it is a definition (design.md D1)
@@ -107,7 +107,7 @@ is committed: the applier stops before committing (section 7).
   `except` targets, imports of untracked modules), for D3's shadowing rule;
   `None` (retain whole) when the file does not parse or no loaded module
   came from it.
-- [ ] 3.2 Same file: the fixpoint of D1 and D3 over a node's tracked Python
+- [x] 3.2 Same file: the fixpoint of D1 and D3 over a node's tracked Python
   files, from its seeds, its always-retained statements and its whole files
   (D5, D6), resolving bare names in their module (every binding of the
   name, import bindings followed transitively through re-exports, star
@@ -124,7 +124,7 @@ is committed: the applier stops before committing (section 7).
   whole. This is `_retained(files, root, scope, whole, census)`, returning
   the left-out statement indices per file, cached on (file keys, seeds,
   whole-file set).
-- [ ] 3.3 Same file: `source_digest(files, root, scope, census, ...)`
+- [x] 3.3 Same file: `source_digest(files, root, scope, census, ...)`
   returns the current-rule digest: each Python file's entry is
   `_file_digest` when it leaves nothing out and otherwise the sha256 of its
   lines outside the left-out spans, built as `_scoped_digest` builds it
@@ -138,7 +138,7 @@ is committed: the applier stops before committing (section 7).
   whether every span the previous rule leaves out is left out by the
   current rule (D9). A rename of any of these is recorded in evidence and
   in G12.
-- [ ] 3.4 Same file: `record` writes version 4 whenever a fingerprint is
+- [x] 3.4 Same file: `record` writes version 4 whenever a fingerprint is
   given (fields as version 3); the legacy digest-only form stays for a
   caller that gives none. `_recorded_source` returns the rule beside
   digest, fingerprint and recipe: versions 2 and 3 and the legacy form are
@@ -146,7 +146,7 @@ is committed: the applier stops before committing (section 7).
   nothing; `recipe` is read from versions 3 and 4. Docstrings of the module,
   `source_digest`, `record` and `_recorded_source` state the rule and the
   versions.
-- [ ] 3.5 `machinome/node/base.py`: the node keeps, beside `scope`, the
+- [x] 3.5 `machinome/node/base.py`: the node keeps, beside `scope`, the
   files its own source reaches (a copy of `source_closure(self.src)` taken
   where `self.files` is first set, before any subclass adds files) and
   derives its whole-file set when a digest is asked: every tracked Python
@@ -162,19 +162,19 @@ is committed: the applier stops before committing (section 7).
   `StepNode` (`tests/step_project/parts.py`): design.md D6 reads it from
   the code as the asset, so their scope is empty and every file is
   retained whole; if either is the wrapper module, stop and report.
-- [ ] 3.6 `machinome/node/internal.py`: both union sites (`present`,
+- [x] 3.6 `machinome/node/internal.py`: both union sites (`present`,
   `materialize`) also union the children's whole-file sets.
-- [ ] 3.7 No change to `stl.py`, `step.py`, the fingerprint, `_up_to_date`'s
+- [x] 3.7 No change to `stl.py`, `step.py`, the fingerprint, `_up_to_date`'s
   metadata path, the sweep, publication or `node.files`. If any proves
   necessary, stop and report it with the evidence.
 
 ## 4. Green
 
-- [ ] 4.1 Run `tests/test_reach_scoped_currency.py` and
+- [x] 4.1 Run `tests/test_reach_scoped_currency.py` and
   `tests/test_node_scoped_currency.py`; all green. Record.
-- [ ] 4.2 Run the focused set of 1.2; same counts plus the new tests, all
+- [x] 4.2 Run the focused set of 1.2; same counts plus the new tests, all
   green. Record counts and wall time.
-- [ ] 4.3 `tests/leaf_contract_golden.py`, following its own docstring's
+- [x] 4.3 `tests/leaf_contract_golden.py`, following its own docstring's
   convention: add beside `ROOT_CLEANUP_EXPECTED` a table for this change
   (`DIGEST_ONLY_WHAT_THE_NODE_NAMES_EXPECTED`, commented with the change's
   name and design.md D8) through which `_expected` counts a
@@ -185,12 +185,12 @@ is committed: the applier stops before committing (section 7).
   output. A digest that moves is a stop: report it with the fixture and
   the statements its closure left out. The golden JSON is not
   regenerated.
-- [ ] 4.4 `flake8 --max-line-length=89` on the changed files; record
+- [x] 4.4 `flake8 --max-line-length=89` on the changed files; record
   anything a file already carried.
 
 ## 5. Records
 
-- [ ] 5.1 Write `docs/adrs/NODE/ADR-182-<slug>.md`, Accepted, amending
+- [x] 5.1 Write `docs/adrs/NODE/ADR-182-<slug>.md`, Accepted, amending
   ADR-071 and depending on ADR-033, ADR-058, ADR-060 and ADR-081: context
   (wall clock 02's 54 rigid parts invalidated by a cord clearance; the
   numbers of design.md Context), drivers (ADR-071's, unchanged), the
@@ -204,12 +204,12 @@ is committed: the applier stops before committing (section 7).
   ADR-071 gains an "Amended by" entry for ADR-182, and its index line in
   `docs/adrs/README.md` reads "amended by 081/182"; ADR-182 gets its own
   index line in the NODE section.
-- [ ] 5.2 `docs/architecture.md`: the paragraph at ~86-98 (the digest is
+- [x] 5.2 `docs/architecture.md`: the paragraph at ~86-98 (the digest is
   of what the node names across its closure, ADR-071/182), the paragraph
   at ~2142-2149 (a record of the earlier rule verifies once under it and
   is re-recorded), and the bullet at ~3224-3233 (the scope, the
   always-retained statements, the whole-file cases, the stated exposure).
-- [ ] 5.3 Read `/home/asa/devel/machinome/skills/write-the-manual/SKILL.md`
+- [x] 5.3 Read `/home/asa/devel/machinome/skills/write-the-manual/SKILL.md`
   first. Then `docs/concepts/node-tree.rst`, the "Freshness" bullet at
   ~115: the digest covers what the node names in its sources, so editing a
   definition a node never names, in any tracked module, only restamps it;
@@ -218,7 +218,7 @@ is committed: the applier stops before committing (section 7).
   `docs/reference/api.rst`, the `files` attribute: one clause that a
   Python file a subclass adds is read whole. No project is named on either
   page.
-- [ ] 5.4 `docs/project/changelog.rst`: add an `Unreleased` section above
+- [x] 5.4 `docs/project/changelog.rst`: add an `Unreleased` section above
   `Machinome 0.8.1` (the house form of 2acba68f) with one bullet: a node
   is rebuilt only for edits to what it names in its sources; editing a
   definition no node names, in any tracked module, restamps instead of
@@ -230,7 +230,7 @@ is committed: the applier stops before committing (section 7).
   0.8.1's rule and rebuilds what 0.8.1 would (8.1(a')'s numbers), and only
   the edits after it are spared (digest-only-what-the-node-names). By
   kind, never by project.
-- [ ] 5.5 `workflow/warts.md`, the entry "3DPrintedClocks wall clock 02
+- [x] 5.5 `workflow/warts.md`, the entry "3DPrintedClocks wall clock 02
   (2026-10-10, string edits invalidate unrelated rigid geometry)": a
   triage note under its header that the pilot took up route one on 10
   October 2026, this change plus the project's cord geometry moved off the
@@ -241,15 +241,15 @@ is committed: the applier stops before committing (section 7).
 
 ## 6. Sync, archive, validate
 
-- [ ] 6.1 Sync the delta into `openspec/specs/build-pipeline/spec.md`.
-- [ ] 6.2 Archive the change; `openspec validate --all` passes.
-- [ ] 6.3 The focused set of 1.2 once more, then the full suite once,
+- [x] 6.1 Sync the delta into `openspec/specs/build-pipeline/spec.md`.
+- [x] 6.2 Archive the change; `openspec validate --all` passes.
+- [x] 6.3 The focused set of 1.2 once more, then the full suite once,
   alone (`pytest -q -p no:cacheprovider` at the bench root); record counts
   and wall time.
 
 ## 7. Stop and report
 
-- [ ] 7.1 Leave everything uncommitted, `git status --short` recorded, and
+- [x] 7.1 Leave everything uncommitted, `git status --short` recorded, and
   report: the red output of 2.4, the green counts of 4.1, 4.2 and 6.3,
   4.3's golden result, any decision taken that design.md does not
   state, and anything left undone. Then wait for the orchestrator's
@@ -257,7 +257,7 @@ is committed: the applier stops before committing (section 7).
 
 ## 8. Caller evidence (run by the orchestrator, folded by the applier)
 
-- [ ] 8.1 The orchestrator, in `projects/3DPrintedClocks/WTs/string-cache`
+- [x] 8.1 The orchestrator, in `projects/3DPrintedClocks/WTs/string-cache`
   with `measurements/restructure.py` applied and its records written by
   framework `main` (51.7 s, 54 regenerated, on 10 October), keeps a copy
   of that 0.8.1 build directory and runs one at a time with the bench on
@@ -284,7 +284,7 @@ is committed: the applier stops before committing (section 7).
   reproduces the same volumes); a single clock test cannot run under
   plain pytest. The exact-engine run is the orchestrator's own.
   The orchestrator also checks 6.3's full-suite result.
-- [ ] 8.2 On receipt, fold the numbers into `evidence.md` (in the archived
+- [x] 8.2 On receipt, fold the numbers into `evidence.md` (in the archived
   change; both (a) and (a') recorded), ADR-182's evidence, the changelog
   bullet of 5.4 ((b) against `before-2`, and (a')'s first-edit rebuild)
   and a "fixed" note on the warts entry of 5.5 (the edit's wall time and

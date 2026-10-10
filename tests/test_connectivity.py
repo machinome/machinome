@@ -364,12 +364,14 @@ class FusionHierarchyTest(TestCase):
         fusion.root = None
         fusion.files = set()
         fusion.scope = {}
+        fusion.whole_files = set()
         fusion._link_child = Mock()
         child = SimpleNamespace(
             rigid=True,
             files=set(),
             scope={},
             assemble=Mock(return_value=object()),
+            _effective_whole_files=Mock(return_value=set()),
         )
 
         InternalNode.present(fusion, [child])

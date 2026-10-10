@@ -2182,6 +2182,41 @@ shallow sphere dent" finding above waits on the same decision.
 **Filed at the pilot's request. Open, untriaged; evidence and assessment,
 not a ratified cache design or authorization to implement it.**
 
+**Triage (10 October 2026).** The pilot took up route one: a framework
+cycle generalising ADR-071 (`digest-only-what-the-node-names`, ADR-182)
+plus the project's own change, moving the cord's geometry off the shared
+`Movement` object. The viewer's mesh refetch on a restamped artifact and
+the per-process cost of movement construction (the floor itself) are
+left open, as already recorded above under "Other work on the same
+reload path" and "Assessment". The pilot's first cord edit after the
+change lands still rebuilds all 54 rigid parts once, judged under
+0.8.1's own rule on the build directory 0.8.1 wrote; only the edits
+after it are spared.
+
+**Fixed (10 October 2026).** Measured on `projects/3DPrintedClocks/WTs/
+string-cache`, project change at `b980d59`, bench on `PYTHONPATH`,
+`measure/build_once.sh`, same load throughout, after this change's own
+fix round (I1-I5 below): a cord-tuning edit that re-derived all 54 rigid
+parts in 52.4 s under the unmodified framework now re-derives none in
+17.4 s, the parts restamped, against a 15.2 s build with nothing to do.
+The first edit after switching to the bench is still judged by the
+previous rule and rebuilds all 54 (61.1 s); a timestamp-only touch on
+the records framework `main` wrote re-recorded 54 as version 4, 24
+regenerated and 30 restamped -- the migration carries every `parts.py`
+node (30 of 54) and refuses the 24 `clock.py` nodes, which retain the
+siblings `Hands` and `Standoffs` through string constants in the
+project's own `clocks` library (`clocks/hands.py:1111`,
+`clocks/assembly.py:23`), the catch-all working as designed, not a gap
+this change closes (see ADR-182's Consequences and this cycle's
+`evidence.md`, I9). `PLATE_THICK` edits and the mesh test suite are
+unaffected (54 regenerated; 15 passed, 7 failed, the same seven
+pendulum-hardware tests as the clean control). The fixpoint itself, on
+this project's 42-file closure, cost 70-90 ms per node before this
+cycle's own conformance and cost fix round (I1-I5), 1162 ms once and
+2 ms per node after. Left open, unchanged by this fix:
+the viewer's mesh refetch on a restamped artifact, and the floor itself
+(movement construction in a fresh builder process).
+
 - **Finding.** Editing only `STRING_ROUTE.radius_clearance` or
   `STRING_ROUTE.front_clearance` in the project's
   `simulation/wall_clock_02/spec.py` invalidates the source digests of all
@@ -2284,4 +2319,56 @@ not a ratified cache design or authorization to implement it.**
   and repeated saves cannot publish stale results. Measure host reload
   phases before claiming a speedup. Neither a new public API nor an
   implementation approach is ratified by filing this entry.
+
+# Scratch-project currency test harness (2026-10-10, fewer renders in a combined run than in isolation)
+
+**Open, untriaged. Evidence only; not a defect in the rule under test.**
+
+- **Finding.** While verifying `digest-only-what-the-node-names` red on
+  the unmodified tree, running the whole new file
+  `tests/test_reach_scoped_currency.py` together in one process showed
+  two tests (`SiblingNamedFromAnotherFileTest.test_a_sibling_named_from_another_file_is_followed`
+  and `test_a_previous_rule_record_is_not_carried_past_a_sibling_it_left_out`)
+  with an EMPTIER `renders()` result than the same tests run in
+  isolation, or in a small group with only their own test class. The
+  symptom is always "fewer renders than expected," never more: in the
+  combined run both tests' `self.renders()` returned `[]` where
+  isolation gives `['B']` and `['A']` respectively (the correct, red,
+  reasons recorded in this change's `evidence.md`, section 2).
+- **Commands.** The failing combination:
+  `env -C <bench> PYTHONPATH=<bench> PYTHONDONTWRITEBYTECODE=1 python -m
+  pytest -q -p no:cacheprovider tests/test_reach_scoped_currency.py
+  tests/test_node_scoped_currency.py::NodeScopedCurrencyTest::test_editing_code_one_node_names_re_derives_that_node_alone
+  tests/test_node_scoped_currency.py::NodeScopedCurrencyTest::test_editing_code_every_node_names_re_derives_every_node`,
+  reproduced twice (two separate invocations, same host). The isolating
+  commands that gave the correct, expected result:
+  `pytest tests/test_reach_scoped_currency.py::SiblingNamedFromAnotherFileTest::test_a_sibling_named_from_another_file_is_followed`
+  alone, and the same two tests together with
+  `tests/test_reach_scoped_currency.py::PreviousRuleMigrationTest` (no
+  `GuardsTest`, no other test classes of the file).
+- **Ruled out.** Not the rule's own correctness: the SAME assertions,
+  run in isolation, report the exact reason design.md's Proof plan
+  predicts. Not a `tests/utils.py::edit_source`-style stale-mtime issue:
+  each test's fixture uses its own fresh `tempfile.mkdtemp` directory and
+  a unique dotted package name (`ScratchProjectTest`'s `PROJECT_NAMES`
+  counter), so no two tests' files can share a path, an inode, or a
+  `sys.modules` entry. Not exercised further: whether it is `GuardsTest`
+  specifically (one of its tests, `test_g14`, calls
+  `tests.test_stl_node`'s and `tests.test_step_node`'s `setUpModule()`,
+  which write real fixture files under the committed `tests/stl_project/`
+  and `tests/step_project/` directories as a side effect -- a GLOBAL
+  filesystem write outside any test's own temp directory, and a
+  plausible, unconfirmed suspect) or simply many scratch projects
+  churning rapidly in one process (`tempfile.mkdtemp`/`shutil.rmtree`
+  inode or mtime-resolution coincidence) was not isolated further.
+- **Why it matters anyway.** The direction of the anomaly (fewer renders,
+  never more) means it never hid a real failure in this change's own
+  verification -- a red test stayed red, or went quieter, never falsely
+  green -- but a test harness that can silently drop a render in SOME
+  combined runs is a correctness risk for any FUTURE change whose red/
+  green evidence is gathered the same way. Isolation is the authoritative
+  result until this is understood.
+- **Not a ratified design or triage of the cause**: filing this entry
+  records the observation for whoever investigates the scratch-project
+  harness next.
 

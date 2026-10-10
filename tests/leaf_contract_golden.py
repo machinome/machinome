@@ -16,11 +16,13 @@ same run, and whether the stamp equals the node's `mtime_ns`; for every
 node its `uniq_id`. A `.dxf` is the one artifact whose bytes are not
 reproducible -- ezdxf writes the clock, fresh GUIDs and a hash-ordered
 OBJECTS section into every file -- so its digest is `entities_sha256`,
-over the ENTITIES section that holds the cut geometry (`_dxf_entities`). Run on the unmodified tree it wrote
+over the ENTITIES section that holds the cut geometry (`_dxf_entities`).
+Run on the unmodified tree it wrote
 `tests/data/leaf_contract_golden.json`; run with `--check` it compares
 everything against that file, reading the fields a later change was
-expected to move through its table (`ROOT_CLEANUP_EXPECTED`) and counting
-each such value as expected rather than different.
+expected to move through its own table (`ROOT_CLEANUP_EXPECTED`,
+`DIGEST_ONLY_WHAT_THE_NODE_NAMES_EXPECTED`) and counting each such value
+as expected rather than different.
 
     python tests/leaf_contract_golden.py [--out PATH] [--check]
 
@@ -61,6 +63,18 @@ _NOT_ARTIFACTS = (currency.SIDECAR_SUFFIX, '.lock', '.tmp')
 #: (`sha256`, `entities_sha256`), record version, `uniq_id` or match flag.
 #: A value read through this table must be a digest before and after.
 ROOT_CLEANUP_EXPECTED = ('digest',)
+
+#: `digest-only-what-the-node-names` (ADR-182, design.md D8) expects
+#: `record_version` to move from 2 or 3 to 4: every record this script
+#: writes now carries a fingerprint, and `record()` writes version 4
+#: whenever one is given. Two fixtures also move `digest` itself, which
+#: this table does NOT cover (see `evidence.md`): `solid2_node` and
+#: `molejo_snapshot` each share their package's one file with an
+#: `OpenScadNode`/`JScadNode` leaf or other unused imports and constants
+#: nothing their own class names, correctly left out under the new rule
+#: where ADR-071 always kept them. Their `digest` lines report as
+#: unexpected `DIFFERS`, recorded and explained rather than silenced.
+DIGEST_ONLY_WHAT_THE_NODE_NAMES_EXPECTED = ('record_version',)
 
 
 def _sha256(path):
@@ -216,10 +230,16 @@ def _flatten(value, prefix=''):
 
 
 def _expected(key, before, after):
-    """Whether a difference at flattened `key` is one `root-cleanup`
-    expects: a source record's digest, a digest on both sides."""
-    return (key.rpartition('.')[2] in ROOT_CLEANUP_EXPECTED
-            and isinstance(before, str) and isinstance(after, str))
+    """Whether a difference at flattened `key` is one of these changes'
+    tables expects: `root-cleanup`'s source-record digest, a digest on
+    both sides; or `digest-only-what-the-node-names`'s `record_version`
+    moving from 2 or 3 (the previous rule) to 4 (the current one, D8)."""
+    field = key.rpartition('.')[2]
+    if field in ROOT_CLEANUP_EXPECTED:
+        return isinstance(before, str) and isinstance(after, str)
+    if field in DIGEST_ONLY_WHAT_THE_NODE_NAMES_EXPECTED:
+        return before in (2, 3) and after == 4
+    return False
 
 
 def main():
@@ -245,7 +265,8 @@ def main():
         for difference in differences:
             print('DIFFERS: %s golden=%r now=%r' % difference)
         print('golden comparison: %d fixtures, %d values, %d differences, '
-              '%d expected (root-cleanup: source digests)'
+              '%d expected (root-cleanup: source digests; '
+              'digest-only-what-the-node-names: record_version 2/3 to 4)'
               % (len(measured), len(now), len(differences), len(expected)))
         return 1 if differences else 0
     with open(arguments.out, 'w') as handle:

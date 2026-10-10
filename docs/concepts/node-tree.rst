@@ -112,10 +112,13 @@ What that means in practice:
   cannot see (a data file read at runtime, an environment variable) can
   look current when it is not. ``StlNode``, ``StepNode`` and markings
   track their own files.
-* The digest is scoped to the node. Two node classes in one file share
-  one stamp, but each node's digest covers the file minus the other
-  classes' bodies, so editing one class rebuilds that node and the
-  fusions above it and only restamps the other.
+* The digest covers what the node names in its sources: editing a
+  definition a node never names, in any tracked module, only restamps
+  it. Two node classes in one file share one stamp, but each node's
+  digest keeps only the text it names there, so editing one class
+  rebuilds that node and the fusions above it and only restamps the
+  other. Geometry reached through a name the code never spells is
+  outside what the digest sees.
 
 Printed solids
 --------------

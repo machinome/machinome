@@ -648,3 +648,124 @@ own.
 - Whether the floor itself (13.5 s, most of it movement construction in a
   fresh builder process) should be the next finding: the wart records it
   and this cycle does not change it.
+
+## Revision after apply evidence (10 October 2026, the orchestrator's ruling)
+
+The apply implemented D1-D9 as written and passed its own proof plan, the
+focused set, and the full suite. The caller measurement
+(`projects/3DPrintedClocks/WTs/string-cache`, project change at `b980d59`,
+bench on `PYTHONPATH`, `measure/build_once.sh`) confirmed the acceptance --
+same-load pair, main 55.6 s with all 54 rigid parts re-derived against the
+bench 21.4 s with none, 54 restamped -- and the migration: a timestamp-only
+touch re-recorded 54 version-2 records as version 4 with 53 regenerated and
+1 restamped, and a fresh copy's first line-144 edit after switching to the
+bench regenerated all 54 under the previous rule before later edits were
+spared, exactly as D9 states. Review of the implementation against that
+evidence found five defects in the mechanism itself, all within D1-D9's own
+terms -- none asks for a different rule.
+
+**I1 (an always-retained statement's own nested import did not bind).** The
+rule says an import nested inside a statement that is not a definition --
+a top-level `if` or `try` -- names what its bound names resolve to simply
+by being always retained, with no need for anything else to spell them
+(D3). The apply's mention-collection walked a statement's `Name`,
+`Attribute`, `Constant` and `Call` nodes, which never includes an
+`Import`/`ImportFrom` alias (aliases are plain strings, not `ast.Name`
+nodes), so a top-level `try: from .defs import K` whose `except` arm did
+not also spell `K` (`except ImportError: pass`, rather than `except
+ImportError: K = None`) bound nothing a retained statement could be said
+to name. Fixed: every statement additionally collects the names any
+`Import`/`ImportFrom` nested anywhere inside it binds
+(`_nested_import_names`); when a statement is retained because it is
+always retained or its file is whole -- never because one specific name
+of it was named, which still contributes only that name (D3, F8) -- those
+names are resolved exactly as the statement's own top-level import names
+already were. Guards: a dedicated fixture pins the never-spelled case
+directly on `_retained`; the existing `if TYPE_CHECKING:` guard's
+expectation widens from "the one node that also spells the alias bare" to
+"every node of the file", since the `if` is always retained file-wide, not
+per node -- a correction this fix makes, not a regression.
+
+**I2 (two conformance gaps in resolution).** `_resolve_chain` stopped at
+the first `('module', ...)` binding of an attribute chain's root; D3 says
+a root bound to two tracked modules (`if X: from . import a as m / else:
+from . import b as m`) resolves into both, since which one wins is a
+runtime fact the static walk does not evaluate. Fixed: every matching
+module binding is unioned. Separately, an `ImportFrom` whose relative
+import could not be resolved (no package, or `resolve_name` raising)
+registered no binding at all for the names it tried to bind, so
+`_resolve_bare` never reached the catch-all D3 promises for an
+unfollowable import; fixed by registering `('name', None, <name>)` there
+too, exactly as every other unfollowable binding already does.
+
+**I3 (the catch-all was too wide: a loaded, known, external module is not
+an ambiguous one).** Diagnosed on the bench against the project: a project
+leaf (`parts:Frame`) retained nothing ADR-071 had dropped, but a sibling
+(`parts:Arbor`) retained the sibling node class `Frame` it never names,
+because `simulation/shared/attachments.py` does `from
+machinome.node.frames import Frame`; the framework module lies outside
+the project, `_reach_import_target` answered `None` (its only answer for
+"not trackable"), and `None` fed the catch-all, which then matched every
+tracked definition named `Frame` -- including the clock's own part. The
+distinction D3 needs and did not have: an import the interpreter has
+*loaded* and can place, but whose file is definitely outside the project
+(or inside the framework, or has no `__file__`), is known, not ambiguous,
+and resolves to nothing beyond its own binding's text; the catch-all is
+for a name the interpreter genuinely cannot place at all -- not loaded, an
+unresolved relative import, or the importer's own package `__init__`
+(ADR-033's tracked-nowhere gap). `_reach_import_target` now returns a
+third answer, `_EXTERNAL`, distinguished from `None` by exactly that test,
+and every binding and resolution site (`_resolve_bare`, `_resolve_chain`,
+the star-source walk) treats it as "names nothing" rather than "ambiguous,
+match everything of this name". Guards: a project node class shadowing a
+framework class by name, reached only through the framework import in a
+sibling file, is no longer retained by a node that never names the
+project's own class; the previous-rule migration still carries on a
+fixture with such a framework import in the closure, unaffected by the
+narrower catch-all (the previous rule never looked at that file at all).
+Rerun on the bench after the fix: `parts:Arbor` no longer carries `Frame`.
+
+**I4 (a transient record was written under the previous rule).** `record
+(..., transient=True)` still wrote version 3; `_recorded_source` reads
+version 3 as the *previous* rule (D8), so a transient artifact verified
+later in the same process was compared against the wrong digest and
+rebuilt for no reason. Fixed: a transient record is version 4 with
+`"transient": true`, carrying every version-3 field as D8 already
+provides for; `recorded_transient` is unchanged, since it only reads the
+mark. Guard: a transient record's `recorded_rule` is `'current'`.
+
+**I5 (cost: the fixpoint was recomputed once per artifact, not once per
+shared closure).** `_retained`'s eviction keyed only on the path set, so
+two nodes sharing a closure -- the ordinary case, since siblings in one
+project commonly share most of their import closure -- evicted each
+other's cached entry on every call, turning what should be an
+amortised-once cost into one full fixpoint per artifact. Fixed in two
+parts: eviction now drops only an entry whose file keys differ from the
+current call's, never one that merely belongs to a different node's scope
+over the same, unchanged files; and the fixpoint is split into a shared
+phase (`_compute_baseline`, keyed on the tracked files and the caller's
+whole-file set alone: the always-retained statements, the whole files,
+and everything they reach by resolution or a dynamic/getattr guard) and a
+per-node phase (`_compute_retained`, continuing the same, monotone
+fixpoint from a copy of the baseline with that node's own seeds added).
+`_baseline_cache` is evicted the same careful way. Measured on a synthetic
+project of comparable shape (a 152-file shared closure, 20 sibling node
+classes, cross-file assertions forcing real baseline propagation, since
+the clock project itself is never run from here): before the fix
+(`_baseline_cache` cleared before every node, simulating the eviction
+bug), each sibling's `source_digest` after the first cost a mean 11.7-11.9
+ms; after the fix, 6.2-6.4 ms -- about 1.9x, widening with closure size.
+The orchestrator's own numbers on the real project are in `evidence.md`.
+
+**I6-I9 are evidence and wording, not code**: the changelog bullet and
+ADR-182 are corrected to name no scratch labels and no presumed future
+version; `workflow/warts.md` gains the combined-run test-harness anomaly
+as its own untriaged finding; the carry diagnosis (which siblings carry,
+which do not and why, down to the exact mention) is recorded in
+`evidence.md`.
+
+Acceptance, on top of the Proof plan: every guard and red test above is
+new or updated and green; the full focused set and the full suite are
+green once more, alone; `openspec validate --all` passes; nothing of D1-D9
+changes in substance -- I1-I5 are conformance and cost fixes to the rule
+already decided, not a different rule.

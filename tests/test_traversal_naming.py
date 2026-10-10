@@ -37,6 +37,7 @@ class ProbeLeaf(AbstractBaseNode):
         self.color = None
         self.files = set()
         self.scope = {}
+        self.whole_files = set()
 
     @property
     def mtime(self):
@@ -62,6 +63,7 @@ class ProbeAssembly(AssemblyNode):
         self.color = None
         self.files = set()
         self.scope = {}
+        self.whole_files = set()
         self.root = '.'
         self.render_calls = 0
         self.name_index_calls = 0

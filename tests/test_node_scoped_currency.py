@@ -157,19 +157,31 @@ class NodeScopedCurrencyTest(SharedFileTest):
         self.assertEqual(set(self.stamps().values()), {rebuilt.mtime_ns},
                          'an artifact was left carrying the old stamp')
 
-    def test_editing_shared_code_re_derives_every_node_in_the_file(self):
-        """Module-level code is what every class in the file can see, so
-        an edit to it is an edit to all of them."""
+    def test_editing_code_one_node_names_re_derives_that_node_alone(self):
+        """Module-level code is what the node that names it can depend
+        on; a node that never names it is spared
+        (digest-only-what-the-node-names)."""
         self.build()
         self.renders()
 
         self.write('parts.py', PARTS.replace('PIN_RADIUS = 1.0',
                                              'PIN_RADIUS = 1.5'))
         self.build()
-        self.assertEqual(self.renders(), ['Block', 'Pin'])
+        self.assertEqual(self.renders(), ['Pin'])
 
         self.write('parts.py', PARTS.replace('return SIZE * 1.5',
                                              'return SIZE * 2.0'))
+        self.build()
+        self.assertEqual(self.renders(), ['Pin'])
+
+    def test_editing_code_every_node_names_re_derives_every_node(self):
+        """Code every node in the file names -- here, the `trace` import
+        both `Block` and `Pin` read bare -- is an edit to all of them."""
+        self.build()
+        self.renders()
+
+        self.write('parts.py', PARTS.replace(
+            'from . import trace', 'from . import trace as trace'))
         self.build()
         self.assertEqual(self.renders(), ['Block', 'Pin'])
 
