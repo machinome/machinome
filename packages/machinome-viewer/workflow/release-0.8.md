@@ -45,3 +45,19 @@ of the released version, and the Context7 refresh.
 
 Validation evidence for this state is in the archived `release-0-8-0`
 change's `evidence.md`.
+
+10 October 2026: released as **0.8.1** with Machinome 0.8.1 (change
+`release-0-8-1`). The 0.8.0 distributions were uploaded to PyPI on
+6 October from the files built at `v0.8.0` (`29f1ed9`): the index's sha256
+digests equal those of `dist/machinome_viewer-0.8.0*`. Since that tag
+`main` changed no shipped code (a stray root `openscad.py`, never in the
+wheel, was removed, and one widget test counts a step's records from a
+cleared ring after a restore). 0.8.1 renumbers that source because the
+framework's `viewer` and `web-snapshot` extras now require the viewer its
+manual declares: the package, the widget and the banner say 0.8.1, API 29
+and document versions 1–13 do not move, and the changelog says so.
+Distributions are built from the primary checkout with `scripts/check-dist`
+after integration, and `main` is tagged `v0.8.1`. Remaining for the pilot:
+the push of `main` and the tag, the PyPI upload of this package BEFORE the
+framework's (`machinome[viewer]` 0.8.1 does not resolve without it), the
+Read the Docs build and the Context7 refresh.

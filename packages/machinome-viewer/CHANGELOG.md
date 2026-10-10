@@ -3,6 +3,15 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## 0.8.1 — 10 October 2026
+
+Released with Machinome 0.8.1 and numbered with it. The viewer is the
+published 0.8.0 renumbered: nothing in the widget, the server or the
+capture changes, it still declares viewer API 29 and reads document
+versions 1 through 13, and `pip install "machinome[viewer]"` installs the
+pair. Machinome 0.8.1 corrects the framework without moving the document,
+so a 0.8.0 viewer reads a 0.8.1 export too.
+
 ## 0.8.0 — 5 October 2026
 
 Released with Machinome 0.8.0 and numbered with it. It declares viewer API

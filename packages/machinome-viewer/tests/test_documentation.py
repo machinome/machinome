@@ -30,7 +30,7 @@ def test_docs_contains_no_development_records():
 
 
 def test_the_manual_states_the_release():
-    """0.8.0 released with Machinome 0.8.0: nothing reader-facing says otherwise."""
+    """0.8.1 released with Machinome 0.8.1: nothing reader-facing says otherwise."""
     pages = sorted((ROOT / 'docs').rglob('*.rst'))
     assert pages
     for page in pages + [ROOT / 'README.md']:
@@ -47,9 +47,10 @@ def test_the_manual_states_the_release():
         release_sections = release_sections[1:]
     assert not any(one.startswith('Unreleased') for one in release_sections)
     current = ' '.join(release_sections[0].split())
-    assert current.startswith('0.8.0 — 5 October 2026'), current[:40]
+    assert current.startswith('0.8.1 — 10 October 2026'), current[:40]
     assert 'unreleased' not in current.lower()
-    assert 'Machinome 0.8.0' in current
+    assert 'Machinome 0.8.1' in current
+    assert 'published 0.8.0 renumbered' in current
     widget = json.loads((ROOT / 'machinome_viewer/widget/package.json').read_text())
     versions = widget['machinomeDocumentVersions']
     assert f"viewer API {widget['machinomeViewerApi']}" in current
@@ -57,8 +58,8 @@ def test_the_manual_states_the_release():
     assert f'document versions {versions[0]} through {versions[-1]}' in current
     assert 'released-viewer-api' not in (ROOT / 'docs/conf.py').read_text()
     project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']
-    assert project['version'] == '0.8.0'
-    assert (ROOT / 'README.md').read_text().count('0.8.0') >= 1
+    assert project['version'] == '0.8.1'
+    assert (ROOT / 'README.md').read_text().count('0.8.1') >= 1
 
 
 def test_package_points_readers_to_manual():
@@ -153,7 +154,7 @@ def test_film_annotations_are_documented_as_part_of_the_0_8_0_release():
     assert widget['machinomeViewerApi'] >= 28
     assert widget['machinomeDocumentVersions'] == list(range(1, 14))
     compatibility = ' '.join((ROOT / 'docs/compatibility.rst').read_text().split())
-    assert 'The 0.8.0 release declares:' in compatibility
+    assert 'The 0.8.1 release declares:' in compatibility
     assert '**Viewer API** |viewer-api|' in compatibility
     assert 'API 28 and API 29, the 0.8.0 release' in compatibility
     assert 'in no published release' not in compatibility

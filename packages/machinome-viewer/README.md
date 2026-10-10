@@ -12,7 +12,7 @@ exports, custom embeds and headless snapshots.
 [Embedding](https://machinome-viewer.readthedocs.io/en/latest/embedding.html) ·
 [API and CLI reference](https://machinome-viewer.readthedocs.io/en/latest/reference/index.html)
 
-Version **0.8.0** releases with Machinome 0.8.0 and is numbered with it. It
+Version **0.8.1** releases with Machinome 0.8.1 and is numbered with it. It
 declares viewer API **29** and reads document versions **1–13**; over 0.7 it
 tells a host where any part stands on screen, highlights parts, takes an up
 direction and field of view per view, and captures a clocked machine on

@@ -23,7 +23,7 @@ Print one JSON object to standard output and exit 0:
      "index": "/installation/machinome_viewer/widget/index.html",
      "apiVersion": 29,
      "documentVersions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
-     "version": "0.8.0"
+     "version": "0.8.1"
    }
 
 Paths above are illustrative; actual paths are absolute installation paths.
