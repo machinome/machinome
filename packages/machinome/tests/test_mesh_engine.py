@@ -13,6 +13,7 @@ binding and never a CAD front end.
 
 import ast
 import importlib.metadata
+import importlib.util
 import json
 import os
 import subprocess
@@ -21,7 +22,10 @@ from pathlib import Path
 from unittest import TestCase
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE_SOURCE = ROOT / 'machinome' / 'engine' / 'mesh.py'
+# Wherever the provider is installed, found without importing it: its own
+# distribution's directory since `cut-the-engines`.
+ENGINE_SOURCE = Path(
+    importlib.util.find_spec('machinome.engine.mesh').origin)
 
 PROBE = r'''
 import json, sys

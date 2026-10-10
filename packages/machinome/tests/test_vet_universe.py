@@ -21,6 +21,9 @@ from unittest import TestCase
 import machinome
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# The repository holding the framework's directory, whose root holds the
+# version table, `.bumpversion.cfg` (change `cut-the-engines`).
+REPOSITORY = os.path.dirname(os.path.dirname(REPO))
 DECLARATION = os.path.join(REPO, 'machinome', 'vet', 'universe.toml')
 
 
@@ -193,8 +196,9 @@ class PackagingTest(TestCase):
 
     def test_bumpversion_rewrites_the_declared_version(self):
         config = configparser.ConfigParser(interpolation=None)
-        config.read(os.path.join(REPO, 'setup.cfg'))
-        section = 'bumpversion:file:machinome/vet/universe.toml'
+        config.read(os.path.join(REPOSITORY, '.bumpversion.cfg'))
+        section = ('bumpversion:file:'
+                   'packages/machinome/machinome/vet/universe.toml')
 
         self.assertIn(section, config.sections())
         self.assertEqual(config[section]['search'],

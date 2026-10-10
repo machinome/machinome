@@ -9,6 +9,8 @@ it builds.
 | Package | What it is |
 |---|---|
 | [`machinome`](packages/machinome/) | The framework: a whole machine described in Python source, its parts, dimensions, joints, relations, inputs and tests. Manual: <https://machinome.readthedocs.io>. |
+| [`machinome-engine-brep`](packages/machinome-engine-brep/) | The B-rep engine, `machinome.engine.brep`, on OCCT; installed by `machinome[brep]`. |
+| [`machinome-engine-mesh`](packages/machinome-engine-mesh/) | The mesh engine, `machinome.engine.mesh`, on manifold3d; installed by `machinome[mesh]`. |
 
 ## Licence
 

@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-engine-brep"
+version = "0.8.1"
+description = "The B-rep engine of Machinome, on the OCCT kernel"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core this engine is a portion of, released with it: the set
+    # carries one version, and the pins between its packages are ~= both
+    # ways. The contract number at the seam (machinome.engine.BREP_CONTRACT
+    # against this module's CONTRACT) is the real guard.
+    "machinome~=0.8.1",
+    # The OCCT binding, in the range the pinned cadquery 2.7 requires. Every
+    # node type over OCCT installs this engine through the core's brep
+    # extra, so the range is stated here once and several extras resolve
+    # one OCCT binding.
+    "cadquery-ocp>=7.8.1,<7.9",
+    # Arrays; the core pins the range.
+    "numpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[tool.setuptools.packages.find]
+# The portion, machinome/engine/brep.py, with no __init__.py at either
+# level, so the core's package path admits it.
+include = ["machinome.engine"]
+namespaces = true

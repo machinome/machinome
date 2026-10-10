@@ -595,11 +595,12 @@ process, answer `None` or refuse naming `pip install "machinome[brep]"` when
 it is absent, raise its own error when it is broken, and refuse a provider
 whose declared `CONTRACT` differs (ADR-162). The mesh engine's seam,
 `mesh_engine()` / `require_mesh_engine()` and `MESH_CONTRACT`, sits beside it
-in the same module, and the package's path admits portions, so a provider
-cut from the core later installs its module there. No seam is named like
-its provider: resolving `machinome.engine.brep` binds that module as the
-package's attribute `brep`, which would replace a seam function of that
-name. To the core a B-rep shape is an
+in the same module, and the package's path admits portions, so each
+provider, shipped by its own distribution (`machinome-engine-brep`,
+`machinome-engine-mesh`, ADR-183), installs its module there. No seam is
+named like its provider: resolving `machinome.engine.brep` binds that
+module as the package's attribute `brep`, which would replace a seam
+function of that name. To the core a B-rep shape is an
 opaque handle. What it keeps is what an abstract B-rep node needs: the B-rep
 leaf and fusion nodes; `machinome.brep_cache`, the memos over handles and
 artifact files, filled by engine operations, a loaded shape keyed on its
@@ -3452,11 +3453,11 @@ pure model closures without rejecting their pure declaration records.
 
 | Subsystem | Code | Spec capability | ADRs |
 |---|---|---|---|
-| Repository layout | the repository root (its `pyproject.toml`, `uv.lock`, `scripts/check-dist` and CI workflow `.github/workflows/python-app.yml`) and `packages/machinome/` | `framework-identity` | 182 |
+| Repository layout | the repository root (its `pyproject.toml`, `uv.lock`, `.bumpversion.cfg`, `scripts/check-dist` and CI workflow `.github/workflows/python-app.yml`) and `packages/machinome/` | `framework-identity` | 182, 183 |
 | Production consumption | `machinome/production/`, `machinome/components.py`, `machinome/model.py` | `production-assets`, `model-consumption`, `vet` | 174, 175 |
 | Node model | `machinome/node/` (`frames.py`, `presentation.py`, the presentation description, and `supported.py`, the table of supported node types, among them), `machinome/engine/__init__.py` (the two engine seams), `machinome/brep_cache.py`, `machinome/brep_artifacts.py` | `node-model`, `leaf-contract`, `brep-geometry`, `brep-engine-dependency`, `flexible-parts`, `step-assembly`, `mates` | 001–004, 006, 026, 044–045, 047, 053–055, 057, 077, 078, 079, 082, 115, 120, 147, 148, 150, 151, 152, 161, 162, 163, 164, 165, 172, 178, 179, 180 |
-| B-rep engine, on OCCT (leaves the core at the cut) | `machinome/engine/brep.py` | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180 |
-| Mesh engine, on manifold3d (leaves the core in layer 2) | `machinome/engine/mesh.py` | `mesh-engine` | 176, 180 |
+| B-rep engine, on OCCT, the distribution `machinome-engine-brep` | the repository's `packages/machinome-engine-brep/` (`machinome/engine/brep.py`) | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180, 183 |
+| Mesh engine, on manifold3d, the distribution `machinome-engine-mesh` | the repository's `packages/machinome-engine-mesh/` (`machinome/engine/mesh.py`) | `mesh-engine` | 176, 180, 183 |
 | OpenSCAD node family (leaves the core at the cut) | `machinome/node/openscad/` (`__init__.py`: `OpenScadNode`; `leaf.py`: `ScadLeafNode`; `writer.py`; `binary.py`), `machinome/node/solid2.py` (`Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency` | 046, 102, 172, 173, 177, 178 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |

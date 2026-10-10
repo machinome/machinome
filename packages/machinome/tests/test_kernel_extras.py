@@ -3,13 +3,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The CAD kernels are extras, and a kernel module refuses an absent one
-(OpenSpec changes `lean-install`, `mesh-engine` and `brep-mesh`, capability
-`kernel-extras`).
+(OpenSpec changes `lean-install`, `mesh-engine`, `brep-mesh` and
+`cut-the-engines`, capability `kernel-extras`).
 
-Two halves. The metadata is read from `pyproject.toml`, `requirements.txt`
-and `tox.ini`: no kernel is a required dependency, each is installed by the
-extra named by the last component of the address of the module that needs
-it, and the development install, CI and tox install them all. The refusal
+Two halves. The metadata is read from the manifests, the framework's
+`pyproject.toml` and its engines' under `packages/`, and from the
+repository's `uv.lock` and CI workflow: no kernel is a required dependency,
+each is installed by the extra named by the last component of the address
+of the module that needs it, the `brep` and `mesh` extras install the
+engines' distributions, which state the kernels, and the development
+install and CI install them all from the lock. The refusal
 is observed in subprocesses: the workspace and CI install every kernel, so
 an install without one is stood in for by the `sys.meta_path` finder of
 `tests/brep_engine_absent.py`, refusing the kernel the way an interpreter
@@ -17,18 +20,29 @@ without its wheel does, or finding it and failing from inside, the way a
 broken one does.
 """
 
-import configparser
 import json
 import os
 import tomllib
+from pathlib import Path
 from unittest import TestCase
 
+import yaml
 from packaging.requirements import Requirement
 
 from .brep_engine_absent import run_python
 from .import_probe import probe
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPOSITORY = Path(__file__).resolve().parents[3]
+
+
+def project():
+    with open(os.path.join(ROOT, 'pyproject.toml'), 'rb') as stream:
+        return tomllib.load(stream)['project']
+
+
+#: The framework's version, which every package of the set carries.
+VERSION = project()['version']
 
 #: The kernels no bare install carries, by distribution name.
 KERNEL_DISTRIBUTIONS = ('cadquery', 'build123d', 'ocp-gordon', 'molejo',
@@ -37,8 +51,10 @@ KERNEL_DISTRIBUTIONS = ('cadquery', 'build123d', 'ocp-gordon', 'molejo',
 #: Each extra and the requirements it lists, design.md Decision 3, written
 #: out here rather than read from the file under test.
 EXTRAS = {
-    'brep': {'cadquery-ocp>=7.8.1,<7.9'},
-    'mesh': {'manifold3d'},
+    # `cut-the-engines`: the engines are distributions of their own, which
+    # state the kernels.
+    'brep': {f'machinome-engine-brep~={VERSION}'},
+    'mesh': {f'machinome-engine-mesh~={VERSION}'},
     'cadquery': {'cadquery==2.7.*', 'machinome[brep]'},
     'build123d': {'build123d==0.10.*', 'ocp-gordon>=0.2.2,<0.3',
                   'machinome[brep]'},
@@ -54,6 +70,17 @@ EXTRAS = {
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
             'openscad,solid2,jscad,stl]'},
 }
+
+#: Each engine distribution and the requirements its manifest lists: the
+#: framework, pinned ~= to the set's version, and its kernel.
+ENGINE_REQUIREMENTS = {
+    'machinome-engine-brep': {f'machinome~={VERSION}',
+                              'cadquery-ocp>=7.8.1,<7.9', 'numpy'},
+    'machinome-engine-mesh': {f'machinome~={VERSION}', 'manifold3d',
+                              'numpy'},
+}
+
+WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
 
 #: Every kernel module, the extra its address names, the node types (or the
 #: engine) its refusal names, and the kernels it checks, in order.
@@ -87,9 +114,9 @@ def refusal(extra, needed_by, missing):
             f'it with \'pip install "machinome[{extra}]"\'')
 
 
-def project():
-    with open(os.path.join(ROOT, 'pyproject.toml'), 'rb') as stream:
-        return tomllib.load(stream)['project']
+def engine_manifest(name):
+    path = REPOSITORY / 'packages' / name / 'pyproject.toml'
+    return tomllib.loads(path.read_text())['project']
 
 
 def names(requirements):
@@ -199,24 +226,45 @@ class KernelMetadataTest(TestCase):
 
         self.assertEqual(specifiers, {'==2.7.*'})
 
-    def test_ci_installs_every_concrete_requirement_of_all(self):
-        with open(os.path.join(ROOT, 'requirements.txt')) as stream:
-            listed = {line.strip() for line in stream
-                      if line.strip() and not line.startswith('#')}
-        concrete = {line for extra in ('brep', 'mesh', 'cadquery',
-                                       'build123d', 'step', 'molejo',
-                                       'openscad', 'solid2')
-                    for line in EXTRAS[extra]
-                    if not line.startswith('machinome[')}
+    def test_each_engine_requires_the_core_and_its_kernel(self):
+        for name, expected in ENGINE_REQUIREMENTS.items():
+            with self.subTest(engine=name):
+                self.assertEqual(set(engine_manifest(name)['dependencies']),
+                                 expected)
 
-        self.assertEqual(concrete - listed, set())
-        self.assertIn('solidpython2==2.1.*', listed)
+    def test_the_occt_range_is_stated_once(self):
+        core = project()
+        places = [f'machinome[{extra}]'
+                  for extra, lines in (('', core['dependencies']),
+                                       *core['optional-dependencies'].items())
+                  for line in lines
+                  if Requirement(line).name == 'cadquery-ocp']
+        for name in ENGINE_REQUIREMENTS:
+            path = REPOSITORY / 'packages' / name / 'pyproject.toml'
+            if path.is_file():
+                places += [name
+                           for line in engine_manifest(name)['dependencies']
+                           if Requirement(line).name == 'cadquery-ocp']
 
-    def test_tox_installs_every_extra(self):
-        config = configparser.ConfigParser()
-        config.read(os.path.join(ROOT, 'tox.ini'))
+        self.assertEqual(places, ['machinome-engine-brep'])
 
-        self.assertEqual(config['testenv'].get('extras', '').strip(), 'all')
+    def test_the_lock_installs_every_kernel(self):
+        lock = tomllib.loads((REPOSITORY / 'uv.lock').read_text())
+        locked = {package['name'] for package in lock['package']}
+
+        self.assertEqual(
+            {*KERNEL_DISTRIBUTIONS, *ENGINE_REQUIREMENTS} - locked, set())
+
+    def test_ci_syncs_the_locked_workspace(self):
+        jobs = yaml.safe_load(WORKFLOW.read_text())['jobs']
+
+        for name in ('lint', 'test', 'browser-snapshot'):
+            with self.subTest(job=name):
+                syncs = [step for step in jobs[name]['steps']
+                         if 'uv sync --locked' in step.get('run', '')]
+                self.assertEqual(len(syncs), 1,
+                                 f'{name} does not run uv sync --locked')
+                self.assertEqual(syncs[0].get('working-directory'), '.')
 
 
 class KernelRefusalTest(TestCase):

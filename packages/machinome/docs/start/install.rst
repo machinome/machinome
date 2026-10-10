@@ -62,13 +62,14 @@ same name: the extra is the last component of the module's address.
        for ``MolejoNode``
    * - ``machinome[brep]``
      - ``machinome.engine.brep``
-     - the OCCT kernel of the B-rep engine, which every extra above
-       installs too
+     - the B-rep engine, the package ``machinome-engine-brep``, with the
+       OCCT kernel; every extra above installs it too
    * - ``machinome[mesh]``
      - ``machinome.engine.mesh``
-     - manifold3d, for the mesh engine, for every comparison on meshes: a
-       part without B-rep geometry, ``machinome test --mesh``,
-       ``assertAssemblySupported``, a fusion of such parts
+     - the mesh engine, the package ``machinome-engine-mesh``, with
+       manifold3d, for every comparison on meshes: a part without B-rep
+       geometry, ``machinome test --mesh``, ``assertAssemblySupported``, a
+       fusion of such parts
    * - ``machinome[openscad]``
      - ``machinome.node.openscad``
      - SolidPython, for ``OpenScadNode``, the OpenSCAD writer and the
@@ -116,11 +117,13 @@ mesh engine refuses at its start, before it builds anything. A project
 whose every compared part has B-rep geometry needs it only for
 ``assertAssemblySupported`` and for runs on the mesh engine.
 
-Two packages, two licences
---------------------------
+Packages and licences
+---------------------
 
-The framework is one package, ``machinome``, licensed
-|framework_licence|, at the recipient's choice. The browser viewer is a
+The framework is the package ``machinome``, with its engines in the
+packages ``machinome-engine-brep`` and ``machinome-engine-mesh`` that its
+``brep`` and ``mesh`` extras install, all licensed |framework_licence|, at
+the recipient's choice. The browser viewer is a
 separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``

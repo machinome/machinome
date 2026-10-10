@@ -17,10 +17,12 @@ there, from a table keyed by distribution name.
 It uploads nothing. Installing the wheels' dependencies needs a package
 index. It needs `build` and `twine` importable by the interpreter that runs
 it, and writes nothing inside the repository but the build's own scratch
-(`build/`, `*.egg-info`), which each member's `.gitignore` ignores.
+(`build/`, `*.egg-info`), which each member's `.gitignore`, or the root's,
+ignores.
 """
 
 import glob
+import string
 import subprocess
 import sys
 import tarfile
@@ -32,10 +34,67 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+#: The licence checks of an extension package's smoke, formatted with its
+#: distribution name: the core's row states the same lines in its own code.
+LICENCES = string.Template('''
+distribution = metadata.distribution('$name')
+expression = distribution.metadata['License-Expression']
+assert expression == 'GPL-2.0-or-later OR CERN-OHL-S-2.0+', expression
+print('License-Expression:', expression)
+licences = sorted(str(path).split('.dist-info/', 1)[1]
+                  for path in distribution.files
+                  if '.dist-info/' in str(path) and 'licenses/' in str(path))
+for path in licences:
+    print('  ', path)
+for path in ('licenses/LICENSE', 'licenses/LICENSES/GPL-2.0-or-later.txt',
+             'licenses/LICENSES/CERN-OHL-S-2.0.txt'):
+    assert path in licences, path
+''')
+
+#: The smoke of an engine package: its provider resolved by the core's seam,
+#: its file owned by its own distribution inside the venv, its version and
+#: pin the core's, one operation on its kernel, its licence.
+ENGINE = string.Template('''
+import importlib.metadata as metadata
+from pathlib import Path
+import machinome.engine as seams
+provider = seams.$seam()
+assert provider is not None, '$name: the seam resolves no provider'
+assert provider.__name__ == 'machinome.engine.$engine', provider.__name__
+assert provider.CONTRACT == seams.$contract, provider.CONTRACT
+distribution = metadata.distribution('$name')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+assert 'machinome/engine/$engine.py' in files, files
+assert not [path for path in files if path.endswith('__init__.py')], files
+owned = Path(distribution.locate_file('machinome/engine/$engine.py')).resolve()
+assert owned == Path(provider.__file__).resolve(), (owned, provider.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+assert f'machinome~={version}' in distribution.requires, distribution.requires
+$operation
+''')
+
+#: The one line an engine's smoke prints last.
+ENGINE_LINE = '''
+print('$name', distribution.version, 'provider', provider.__file__,
+      'contract', provider.CONTRACT, 'result', result)
+'''
+
+
+def engine_smoke(name, engine, seam, contract, operation):
+    """The code of an engine package's smoke."""
+    values = dict(name=name, engine=engine, seam=seam, contract=contract,
+                  operation=operation.strip())
+    return (ENGINE.substitute(values) + LICENCES.substitute(values)
+            + string.Template(ENGINE_LINE).substitute(values))
+
+
 #: The smoke of each member, run with the throwaway venv's `python -I -c`
 #: from the temporary directory: the extras its wheel is installed with, and
 #: the code that proves it. `VENV` is defined before the code runs. A member
-#: without a row fails the script.
+#: without a row fails the script. A row with `through` is installed by that
+#: extra of the core, from the built archives, never by its own wheel's path.
 SMOKES = {
     'machinome': {
         'extras': ['openscad', 'stl'],
@@ -62,6 +121,32 @@ for path in ('licenses/LICENSE', 'licenses/LICENSES/GPL-2.0-or-later.txt',
     assert path in licences, path
 ''',
         'commands': [['machinome', '--help']],
+    },
+    'machinome-engine-brep': {
+        'through': 'brep',
+        'extras': [],
+        'code': engine_smoke(
+            'machinome-engine-brep', 'brep', 'brep_engine', 'BREP_CONTRACT',
+            '''
+from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
+from OCP.gp import gp_Pnt
+result = provider.solid_volume(
+    BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 10, 10, 10).Shape())
+assert abs(result - 1000) < 1e-6, result
+'''),
+        'commands': [],
+    },
+    'machinome-engine-mesh': {
+        'through': 'mesh',
+        'extras': [],
+        'code': engine_smoke(
+            'machinome-engine-mesh', 'mesh', 'mesh_engine', 'MESH_CONTRACT',
+            '''
+result = provider.volume(provider.centred_box([2.0, 3.0, 4.0]))
+assert result == 24.0, result
+assert provider.identity()[0] == 'manifold3d', provider.identity()
+'''),
+        'commands': [],
     },
 }
 
@@ -188,8 +273,12 @@ def main():
         requirements = []
         for name, wheel in wheels.items():
             extras = SMOKES[name]['extras']
-            requirements.append(
-                f'{wheel}[{",".join(extras)}]' if extras else str(wheel))
+            through = SMOKES[name].get('through')
+            if through:
+                requirements.append(f'machinome[{through}]')
+            else:
+                requirements.append(
+                    f'{wheel}[{",".join(extras)}]' if extras else str(wheel))
         run([python, '-m', 'pip', 'install', '--quiet', *links,
              *requirements], scratch)
 

@@ -142,6 +142,14 @@ class KernelExtrasTest(unittest.TestCase):
             with self.subTest(extra=extra):
                 self.assertIn(f'machinome[{extra}]', page)
 
+    def test_the_installation_page_names_the_engine_distributions(self):
+        # `cut-the-engines`: the `brep` and `mesh` extras install the
+        # engines' own distributions.
+        page = (DOCS / 'start' / 'install.rst').read_text()
+        for distribution in ('machinome-engine-brep', 'machinome-engine-mesh'):
+            with self.subTest(distribution=distribution):
+                self.assertIn(distribution, page)
+
     def test_no_reader_page_carries_the_kernels_or_the_old_addresses(self):
         pages = list(documents()) + [('README.rst',
                                       (REPO / 'README.rst').read_text())]

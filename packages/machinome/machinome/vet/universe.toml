@@ -10,8 +10,8 @@
 [universe]
 name = "machinome"
 version = "0.8.1"
-# The version equals machinome.__version__; a test pins it, and
-# setup.cfg's bumpversion rewrites it with the others on a release.
+# The version equals machinome.__version__; a test pins it, and the
+# root's `.bumpversion.cfg` rewrites it with the others on a release.
 
 [contract]                  # allowed whole, minus `deny`
 members = ["machinome", "machinome_mechanics", "molejo"]

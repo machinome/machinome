@@ -15,6 +15,18 @@ Unreleased
   package, its command, its extras and the contents of its archives are
   unchanged. Change ``monorepo-layout`` (ADR-182).
 
+* **The B-rep and mesh engines are PACKAGES of their own.**
+  ``machinome-engine-brep`` ships ``machinome.engine.brep`` and
+  ``machinome-engine-mesh`` ships ``machinome.engine.mesh``, each a
+  namespace portion in its own directory under ``packages/``, numbered
+  with the framework and pinned to it with ``~=`` both ways; the
+  framework's ``brep`` and ``mesh`` extras install them, and the OCCT
+  range is stated in the B-rep engine's manifest. Every address, extra
+  and install line is unchanged. The version is bumped from the
+  repository's ``.bumpversion.cfg``; CI installs the workspace from its
+  lock with uv, and ``requirements.txt``, ``requirements_dev.txt`` and
+  ``tox.ini`` are retired. Change ``cut-the-engines`` (ADR-183).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

@@ -26,7 +26,7 @@ dependencies = [
     "watchdog",
     "trimesh==4.4.*",
     # No CAD kernel is required: cadquery, build123d, ocp-gordon, molejo, the
-    # OCCT binding (the extra `brep`), manifold3d (the extra `mesh`) and
+    # B-rep engine (the extra `brep`), the mesh engine (the extra `mesh`) and
     # SolidPython are the extras below, each named by the last component of
     # the address of the module that needs it (OpenSpec changes
     # `lean-install`, `mesh-engine`, `openscad-out` and `brep-mesh`).
@@ -51,7 +51,6 @@ dev = [
     "machinome[all]",
     "bump2version",
     "flake8>=7",
-    "tox>=4",
     "coverage>=7",
     "Sphinx>=7",
     "twine>=5",
@@ -89,24 +88,24 @@ mechanics = [
     "machinome-mechanics",
 ]
 # The B-rep engine (`machinome.engine.brep`, resolved by its seam in
-# `machinome.engine`) needs only the OCCT kernel, in the range the pinned
-# cadquery 2.7 requires; the cut that moves the engine into
-# machinome-engine-brep repoints this extra at that package.
+# `machinome.engine`) is the distribution machinome-engine-brep, which
+# states the OCCT range.
 brep = [
-    "cadquery-ocp>=7.8.1,<7.9",
+    "machinome-engine-brep~=0.8.1",
 ]
 # The mesh engine (`machinome.engine.mesh`, resolved by its seam in
-# `machinome.engine`) needs manifold3d, for every comparison on meshes:
-# a part without B-rep geometry, `machinome test --mesh`,
-# `assertAssemblySupported` and a fusion of such parts. Unranged, as it was
-# when required. No node extra includes it: a B-rep project needs it only
+# `machinome.engine`) is the distribution machinome-engine-mesh, over
+# manifold3d, for every comparison on meshes: a part without B-rep
+# geometry, `machinome test --mesh`, `assertAssemblySupported` and a fusion
+# of such parts. No node extra includes it: a B-rep project needs it only
 # for a mesh question, which it may never ask.
 mesh = [
-    "manifold3d",
+    "machinome-engine-mesh~=0.8.1",
 ]
 # The kernel extras, each named by the last component of the address of the
 # module that needs it, each installing the `brep` extra too, so the OCCT
-# range is stated once and several extras resolve one OCCT binding.
+# range, stated once in machinome-engine-brep, resolves one OCCT binding for
+# several extras.
 #
 # cadquery and build123d both bind the single OCP module through the
 # cadquery-ocp distribution, so their ranges must intersect. This pair is the

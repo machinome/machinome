@@ -9,6 +9,8 @@ resolution-markers = [
 [manifest]
 members = [
     "machinome",
+    "machinome-engine-brep",
+    "machinome-engine-mesh",
 ]
 excludes = [
     "machinome-studio",
@@ -16,7 +18,10 @@ excludes = [
 ]
 
 [manifest.dependency-groups]
-dev = [{ name = "machinome", extras = ["dev"], editable = "packages/machinome" }]
+dev = [
+    { name = "machinome", extras = ["dev"], editable = "packages/machinome" },
+    { name = "machinome", extras = ["mechanics"], editable = "packages/machinome" },
+]
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -378,15 +383,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/29/2a/688aca6eeebfe8941235be53f4da780c6edee05dbbea5d7abaa3aab6fad2/bump2version-1.0.1.tar.gz", hash = "sha256:762cb2bfad61f4ec8e2bdf452c7c267416f8c70dd9ecb1653fd0bbb01fa936e6", size = 36236, upload-time = "2020-10-07T18:38:40.119Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1d/e3/fa60c47d7c344533142eb3af0b73234ef8ea3fb2da742ab976b947e717df/bump2version-1.0.1-py2.py3-none-any.whl", hash = "sha256:37f927ea17cde7ae2d7baf832f8e80ce3777624554a653006c9144f8017fe410", size = 22030, upload-time = "2020-10-07T18:38:38.148Z" },
-]
-
-[[package]]
-name = "cachetools"
-version = "7.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/31/44/71476a5812da1ddf2c9a3efd31ae76d01480a1cf03ed13ac28aa8f2402e4/cachetools-7.2.1.tar.gz", hash = "sha256:b1a7537025c06abf96fcc1443e496af9a3fb95e774e70e1f0af226f73f7f2dcc", size = 41357, upload-time = "2026-10-05T18:40:06.361Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/c9/2a61d784caf0d869a3326728c57c7203f50cc53f3cca2ee76bf924769eb4/cachetools-7.2.1-py3-none-any.whl", hash = "sha256:63aa53dfe7473c10cccdd5a01dedf76ef2c4b73a58840d9396e7d0752cbdac3b", size = 17006, upload-time = "2026-10-05T18:40:04.827Z" },
 ]
 
 [[package]]
@@ -1036,15 +1032,6 @@ wheels = [
 ]
 
 [[package]]
-name = "distlib"
-version = "0.4.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c9/02/bd72be9134d25ed783ecbbc38a539ffaefbf90c78418c7fb7229600dbac7/distlib-0.4.3.tar.gz", hash = "sha256:f152097224a0ae24be5a0f6bae1b9359af82133bce63f98a95f86cae1aede9ed", size = 615141, upload-time = "2026-06-12T08:04:52.847Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/08/9c41fb51ab5b43eb21674aff13df270e8ba6c4b29c8624e328dc7a9482af/distlib-0.4.3-py2.py3-none-any.whl", hash = "sha256:4b0ce306c966eb73bc3a7b6abad017c556dadd92c44701562cd528ac7fde4d5b", size = 470628, upload-time = "2026-06-12T08:04:50.506Z" },
-]
-
-[[package]]
 name = "dnspython"
 version = "2.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1161,15 +1148,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/33/eb/3b534c6f8e157f9ddbf2a153512307c886cad0b258739c200dd8ff8c4452/fastapi_cli-0.0.32.tar.gz", hash = "sha256:38024d2345275e1b37ce8848727a580d84901b570e96b3256d9d36a9a5039424", size = 26636, upload-time = "2026-07-16T12:16:58.678Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/53/56ae5ae17bb0a5d89d1d31e5320eb1865553ebbfbde91cdc4c221245f2a8/fastapi_cli-0.0.32-py3-none-any.whl", hash = "sha256:8dcc286fa32f01bbd3f65dd09cfd5a2540ed5f2230b77db7fd30978d6165f3c4", size = 14670, upload-time = "2026-07-16T12:16:57.297Z" },
-]
-
-[[package]]
-name = "filelock"
-version = "4.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4c/58/6fd434bec86eff7c38a3168454cb132b762b2bea9b3ac094101a2f7bc32a/filelock-4.1.0.tar.gz", hash = "sha256:ad7f724afef953e731b1cc39bcd3a09166d72ed7fcdf29e6e88b1c3235c6715d", size = 561277, upload-time = "2026-10-09T19:57:20.34Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/86/032133892a5de43b5a98200b01aadcad68cc255e274a762f08b8a76d2912/filelock-4.1.0-py3-none-any.whl", hash = "sha256:2ce9818e3e2d8f284c1a964414447ef148d42a5fd5e2a477a7118e574b293ec1", size = 133003, upload-time = "2026-10-09T19:57:18.716Z" },
 ]
 
 [[package]]
@@ -1841,23 +1819,23 @@ dependencies = [
 all = [
     { name = "build123d" },
     { name = "cadquery" },
-    { name = "cadquery-ocp" },
-    { name = "manifold3d" },
+    { name = "machinome-engine-brep" },
+    { name = "machinome-engine-mesh" },
     { name = "molejo", extra = ["brep"] },
     { name = "ocp-gordon" },
     { name = "solidpython2" },
 ]
 brep = [
-    { name = "cadquery-ocp" },
+    { name = "machinome-engine-brep" },
 ]
 build123d = [
     { name = "build123d" },
-    { name = "cadquery-ocp" },
+    { name = "machinome-engine-brep" },
     { name = "ocp-gordon" },
 ]
 cadquery = [
     { name = "cadquery" },
-    { name = "cadquery-ocp" },
+    { name = "machinome-engine-brep" },
 ]
 dev = [
     { name = "black" },
@@ -1865,12 +1843,12 @@ dev = [
     { name = "build123d" },
     { name = "bump2version" },
     { name = "cadquery" },
-    { name = "cadquery-ocp" },
     { name = "coverage" },
     { name = "flake8" },
     { name = "ipdb" },
     { name = "ipython" },
-    { name = "manifold3d" },
+    { name = "machinome-engine-brep" },
+    { name = "machinome-engine-mesh" },
     { name = "molejo", extra = ["brep"] },
     { name = "ocp-gordon" },
     { name = "pillow" },
@@ -1880,7 +1858,6 @@ dev = [
     { name = "solidpython2" },
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "tox" },
     { name = "twine" },
 ]
 docs = [
@@ -1892,10 +1869,10 @@ mechanics = [
     { name = "machinome-mechanics" },
 ]
 mesh = [
-    { name = "manifold3d" },
+    { name = "machinome-engine-mesh" },
 ]
 molejo = [
-    { name = "cadquery-ocp" },
+    { name = "machinome-engine-brep" },
     { name = "molejo", extra = ["brep"] },
 ]
 openscad = [
@@ -1906,7 +1883,7 @@ solid2 = [
 ]
 step = [
     { name = "cadquery" },
-    { name = "cadquery-ocp" },
+    { name = "machinome-engine-brep" },
 ]
 
 [package.metadata]
@@ -1918,7 +1895,6 @@ requires-dist = [
     { name = "bump2version", marker = "extra == 'dev'" },
     { name = "cadquery", marker = "extra == 'cadquery'", specifier = "==2.7.*" },
     { name = "cadquery", marker = "extra == 'step'", specifier = "==2.7.*" },
-    { name = "cadquery-ocp", marker = "extra == 'brep'", specifier = ">=7.8.1,<7.9" },
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7" },
     { name = "fastapi", specifier = "==0.111.*" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7" },
@@ -1932,11 +1908,12 @@ requires-dist = [
     { name = "machinome", extras = ["brep"], marker = "extra == 'step'", editable = "packages/machinome" },
     { name = "machinome", extras = ["cadquery", "build123d", "step", "molejo", "brep", "mesh", "openscad", "solid2", "jscad", "stl"], marker = "extra == 'all'", editable = "packages/machinome" },
     { name = "machinome", extras = ["openscad"], marker = "extra == 'solid2'", editable = "packages/machinome" },
+    { name = "machinome-engine-brep", marker = "extra == 'brep'", editable = "packages/machinome-engine-brep" },
+    { name = "machinome-engine-mesh", marker = "extra == 'mesh'", editable = "packages/machinome-engine-mesh" },
     { name = "machinome-mechanics", marker = "extra == 'mechanics'" },
     { name = "machinome-studio", marker = "extra == 'studio'" },
     { name = "machinome-viewer", marker = "extra == 'viewer'", specifier = ">=0.8.1" },
     { name = "machinome-viewer", extras = ["snapshot"], marker = "extra == 'web-snapshot'", specifier = ">=0.8.1" },
-    { name = "manifold3d", marker = "extra == 'mesh'" },
     { name = "molejo", extras = ["brep"], marker = "extra == 'molejo'", specifier = "==0.2.*" },
     { name = "numpy", specifier = "==2.2.*" },
     { name = "ocp-gordon", marker = "extra == 'build123d'", specifier = ">=0.2.2,<0.3" },
@@ -1952,13 +1929,46 @@ requires-dist = [
     { name = "sphinx", marker = "extra == 'docs'" },
     { name = "sphinx-rtd-theme", marker = "extra == 'docs'" },
     { name = "termcolor", specifier = "==2.4.*" },
-    { name = "tox", marker = "extra == 'dev'", specifier = ">=4" },
     { name = "trimesh", specifier = "==4.4.*" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5" },
     { name = "uvicorn", specifier = "==0.30.*" },
     { name = "watchdog" },
 ]
 provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "solid2", "jscad", "stl", "all", "studio"]
+
+[[package]]
+name = "machinome-engine-brep"
+version = "0.8.1"
+source = { editable = "packages/machinome-engine-brep" }
+dependencies = [
+    { name = "cadquery-ocp" },
+    { name = "machinome" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cadquery-ocp", specifier = ">=7.8.1,<7.9" },
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "numpy" },
+]
+
+[[package]]
+name = "machinome-engine-mesh"
+version = "0.8.1"
+source = { editable = "packages/machinome-engine-mesh" }
+dependencies = [
+    { name = "machinome" },
+    { name = "manifold3d" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "manifold3d" },
+    { name = "numpy" },
+]
 
 [[package]]
 name = "machinome-mechanics"
@@ -3234,18 +3244,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pyproject-api"
-version = "1.11.5"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3c/e1/148e4bbb469b26b6648dac4ee292aed80c1205c06ecd2e32987c7ed3e6f5/pyproject_api-1.11.5.tar.gz", hash = "sha256:79294e79953a30fd3eac04bdf8b57241d33e2c8b7230b94c1b76e4d765fe09ad", size = 25745, upload-time = "2026-10-10T10:03:06.963Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/36/23ad3400367c009dab172650745895b913dc91edc11306ab2602af7b3f20/pyproject_api-1.11.5-py3-none-any.whl", hash = "sha256:aa546f4e4b76a4ad8412c35dc34cfb5d823172c4a43b44ccd95e75a934990d4a", size = 13566, upload-time = "2026-10-10T10:03:05.564Z" },
-]
-
-[[package]]
 name = "pyproject-hooks"
 version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3292,18 +3290,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
-]
-
-[[package]]
-name = "python-discovery"
-version = "1.6.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "filelock" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/73/54993df8fc57e906dc9b7e01d1d9b0b2d3eb0ce3190639e33dccb12853f7/python_discovery-1.6.2.tar.gz", hash = "sha256:cd1738ca1d37c86ef9d0b654dd46fcee1e41c97c6add12575e8501ced39afdb4", size = 86921, upload-time = "2026-10-10T01:24:27.912Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/3b/50ed32583bfffa737df67d33b9c15d7b25df232c55ab606d059f610ef6ca/python_discovery-1.6.2-py3-none-any.whl", hash = "sha256:f0c697f95a3aaec4174a6e5e58f5885e25768684bafc76f1afde384709ebdcf2", size = 38912, upload-time = "2026-10-10T01:24:26.721Z" },
 ]
 
 [[package]]
@@ -4036,37 +4022,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tomli-w"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184, upload-time = "2025-01-15T12:07:24.262Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675, upload-time = "2025-01-15T12:07:22.074Z" },
-]
-
-[[package]]
-name = "tox"
-version = "4.65.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cachetools" },
-    { name = "colorama" },
-    { name = "filelock" },
-    { name = "packaging" },
-    { name = "platformdirs" },
-    { name = "pluggy" },
-    { name = "pyproject-api" },
-    { name = "python-discovery" },
-    { name = "tomli-w" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
-    { name = "virtualenv" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/2d/5b75b6e0fd3edc17bdfbf8adc343b3db17c7e3825ac601375dffbeead191/tox-4.65.1.tar.gz", hash = "sha256:bdbb7bd715a638f6a3f9eb6ffabd91c870db12de7ee2ba4d2c7c9af632f016ca", size = 343364, upload-time = "2026-10-10T06:13:31.63Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/ca/22ba1357356c07d5ef364066846f68ba3bb840b327d7fff81032337ebcea/tox-4.65.1-py3-none-any.whl", hash = "sha256:cff962337c04c975024dbd9186a2b3f3d64b0b39b43ba4be7662ef9b37a6a945", size = 237616, upload-time = "2026-10-10T06:13:29.891Z" },
-]
-
-[[package]]
 name = "traitlets"
 version = "5.16.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4320,22 +4275,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/83/f421a077712c1e87603bfec62744c3cd3a2f4b47378025db3d740df9af0d/uvloop-0.23.0-cp315-cp315t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:12634f15e6625f78b3f2922f91404c4d7173487eba11746764153f556e9852dc", size = 4661763, upload-time = "2026-10-01T03:16:38.719Z" },
     { url = "https://files.pythonhosted.org/packages/f5/62/25dcaa6b7e7b48f82ce633854ce96597ab768f9650931f4f86c572de392c/uvloop-0.23.0-cp315-cp315t-musllinux_1_2_aarch64.whl", hash = "sha256:378188efbb1524f2219d05246a3e1e5907217848d2882144dff59585f1b81d55", size = 4421324, upload-time = "2026-10-01T03:16:40.488Z" },
     { url = "https://files.pythonhosted.org/packages/05/46/04628239b43dcef703af314202a3307d6060918e2d76aa86c5b1188f5551/uvloop-0.23.0-cp315-cp315t-musllinux_1_2_x86_64.whl", hash = "sha256:4b8e207c67d207a8608fec57e116511030af3495dc0109b8c333cf9cb412b16f", size = 4462501, upload-time = "2026-10-01T03:16:42.359Z" },
-]
-
-[[package]]
-name = "virtualenv"
-version = "21.14.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "distlib" },
-    { name = "filelock" },
-    { name = "packaging" },
-    { name = "platformdirs" },
-    { name = "python-discovery" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/92/f3/589727d02bc832750cfa00ced4315d127535a22a6d7cfcb369b2fe219a2e/virtualenv-21.14.6.tar.gz", hash = "sha256:c6b74616e64bffa9532cfa9dfd54ffbab0dc9b999df2bb8ec0d75e559b983661", size = 5467961, upload-time = "2026-10-08T14:49:57.376Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/1f/e5182163bcee149dda4eec823d88b0f51f2c0c531b12da896f666f0b80c1/virtualenv-21.14.6-py3-none-any.whl", hash = "sha256:eb1a20c5878569b69667f6a1af03458a8512b3afa7be771a2dafe92fdca05bb9", size = 5487469, upload-time = "2026-10-08T14:49:54.988Z" },
 ]
 
 [[package]]

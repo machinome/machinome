@@ -3,6 +3,14 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* **The engines are packages of their own.** ``machinome[brep]`` installs
+  the distribution ``machinome-engine-brep`` and ``machinome[mesh]``
+  installs ``machinome-engine-mesh``; ``from machinome.engine import
+  brep`` and every install line are unchanged.
+
 Machinome 0.8.1
 ---------------
 

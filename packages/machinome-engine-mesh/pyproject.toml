@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-engine-mesh"
+version = "0.8.1"
+description = "The mesh engine of Machinome, on manifold3d"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core this engine is a portion of, released with it: the set
+    # carries one version, and the pins between its packages are ~= both
+    # ways. The contract number at the seam (machinome.engine.MESH_CONTRACT
+    # against this module's CONTRACT) is the real guard.
+    "machinome~=0.8.1",
+    # Unranged, as it was when the core required it.
+    "manifold3d",
+    # Arrays; the core pins the range.
+    "numpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[tool.setuptools.packages.find]
+# The portion, machinome/engine/mesh.py, with no __init__.py at either
+# level, so the core's package path admits it.
+include = ["machinome.engine"]
+namespaces = true

@@ -444,7 +444,8 @@ one OCCT binding for several extras". The comment in `dependencies` naming
 "the B-rep engine (the extra `brep`), the mesh engine (the extra `mesh`)".
 `cadquery`, `build123d`, `step` and `molejo` keep `machinome[brep]`; `all`
 and `dev` are unchanged and now reach the two distributions through `brep`
-and `mesh`.
+and `mesh`. Corrected at review on 10 October 2026: `dev` drops `tox>=4`,
+since this change retires tox (Decision 6).
 
 The seams in `machinome/engine/__init__.py` do not change (probes 1, 2 and
 4). The one edit to a module is the docstring of
@@ -467,6 +468,10 @@ machinome-engine-mesh = { workspace = true }
 
 and nothing else in it changes. `uv lock` regenerates `uv.lock` (probe 1:
 187 packages); `uv sync --python 3.12` installs 177 with three `.pth` lines.
+Corrected at review on 10 October 2026: the default group also names
+`machinome[mechanics]` (Decision 12), and with `tox` out of `dev`
+(Decision 3) the lock resolves 179 packages and the sync leaves 170
+installed (evidence.md, the review's corrections).
 
 The root `.gitignore` (probe 2) becomes:
 
@@ -492,9 +497,6 @@ The core's `setup.cfg` loses its `[bumpversion]` tables and keeps `[flake8]`
 only. A root `.bumpversion.cfg`, exactly:
 
 ```ini
-# One version for every package of the repository (the 0.9 plan's decision
-# 2): each manifest's version, the files that restate the framework's, and
-# every ~= pin between the packages. Run bump2version from this directory.
 [bumpversion]
 current_version = 0.8.1
 commit = True
@@ -538,7 +540,10 @@ replace = "machinome~={new_version}"
 ```
 
 Probe 7 ran it (with `commit` and `tag` off) and moved exactly these
-statements. The alternative, keeping the table in the core's `setup.cfg`
+statements. Corrected at review on 10 October 2026: a real run also rewrites
+the file through bump2version's configuration writer, which drops comments,
+so the file carries none, and its explanation is a sentence of
+`CONTRIBUTING.rst`'s Deploying section (Decision 10; evidence.md, task 5.2). The alternative, keeping the table in the core's `setup.cfg`
 with `../` paths, works for bump2version too but puts the set's version in
 one member's file; the root holds what spans the packages (ADR-182). The
 comment in `machinome/vet/universe.toml` naming "setup.cfg's bumpversion"
@@ -905,7 +910,13 @@ by the suite.
   ```
 
   (probe 8); the line `$ make test-all      # tox across supported Python
-  versions` is removed. Nothing else changes.
+  versions` is removed. Nothing else changes. Corrected at review on 10
+  October 2026: the Deploying section changes too, in place: its line
+  `$ cd packages/machinome` is removed, the version table being at the root,
+  and its sentence "Make sure all your changes are committed (including an
+  entry in HISTORY.rst)." gains "; ``.bumpversion.cfg`` at the repository
+  root names every package's version and every pin between them, so one run
+  moves the set."
 - **`context7.json`**: unchanged (it excludes no new folder; the engines'
   READMEs are documentation). Its rules name `machinome[brep]` where they
   do, which stays true.
@@ -991,7 +1002,13 @@ All ten tables of `scripts/load-projects.d/` apply, as at `root-cleanup`; no
 new table, since no name moves. Read against `root-cleanup`'s counts: 62
 repositories, 129 rows, 121 ok, 0 expected, 2 unexpected (wall_clock_41's
 own CadQuery error, Dum-E without machinome-freecad), 0 timeout, 6
-no-model. A row that differs is a finding.
+no-model. A row that differs is a finding. Corrected at review on 10
+October 2026: the bench venv carries the mechanics package for the sweep
+(the root's default group names `machinome[mechanics]` beside
+`machinome[dev]`), since the catalogue's projects import it and
+`root-cleanup` read them from the workspace venv, which has it;
+fender-bender's own dependency, `fb_library`, is outside the set, so that
+row is unexpected on the bench venv (evidence.md, task 9.5).
 
 ## Risks / Trade-offs
 

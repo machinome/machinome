@@ -7,7 +7,9 @@
 acceptance gate, permanent.
 
 Every Python module of the distribution under `machinome/`, the project
-templates included, is read by token -- identifiers and attribute names
+templates included, and of every extension package's `machinome/` under
+the repository's `packages/machinome-*` (OpenSpec change
+`cut-the-engines`), is read by token -- identifiers and attribute names
 (NAME), strings and docstrings (STRING; an f-string read whole, as one
 string, on every Python), and comments (COMMENT) -- and by its own path.
 Each module is parsed, so one that does not parse fails the gate rather
@@ -43,6 +45,7 @@ from pathlib import Path
 from unittest import TestCase
 
 ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY = Path(__file__).resolve().parents[3]
 
 #: Where `occt` and `manifold` may stand.
 ZONES = frozenset((
@@ -311,5 +314,7 @@ class TheRuleTest(TestCase):
 class TheCoreNamesNoSplitWordsTest(TestCase):
 
     def test_no_module_names_the_split_but_by_its_two_words(self):
-        found = scan()
+        found = scan(ROOT)
+        for package in sorted((REPOSITORY / 'packages').glob('machinome-*')):
+            found.update(scan(package))
         self.assertEqual(found, {}, '\n' + report(found))

@@ -15,9 +15,10 @@ def _namespace_portions(path, name):
     the correction: a directory holding its own `__init__.py` is another
     copy of the core -- in a development workspace the editable primary
     checkout sits on `sys.path` behind every bench -- and admitting it would
-    resolve a module the bench lacks to the other checkout's file. Nothing
-    uses the extension yet; no such distribution exists (OpenSpec change
-    `lean-install`).
+    resolve a module the bench lacks to the other checkout's file. The
+    engines' distributions, `machinome-engine-brep` and
+    `machinome-engine-mesh`, are the first such portions (OpenSpec change
+    `cut-the-engines`).
     """
     import os
     import pkgutil

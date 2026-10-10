@@ -1,8 +1,11 @@
-# The repository's leavings. Each package keeps its own .gitignore
-# beside its sources; these are the root's.
+# The repository's leavings. The framework keeps its own .gitignore beside
+# its sources; these are the root's, and the build's scratch of the
+# packages that keep none.
 /WTs/
 /.venv/
 /.env
 /dist/
+/packages/*/build/
+/packages/*/*.egg-info/
 __pycache__/
 *.py[cod]

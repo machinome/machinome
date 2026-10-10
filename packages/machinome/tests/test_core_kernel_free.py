@@ -9,7 +9,9 @@ kernel modules (OpenSpec change `lean-install`, capability
 `mesh-engine`, capability `mesh-engine-dependency`). The providers are
 modules of the engine package, `machinome.engine.brep` and
 `machinome.engine.mesh`, and the seams its `__init__` (OpenSpec change
-`brep-mesh`).
+`brep-mesh`); each provider is shipped by its own distribution under
+`packages/`, outside the core, and imports only its kernel (OpenSpec change
+`cut-the-engines`).
 
 Read from the source, not from a running interpreter: the core imports
 `OCP` and `cadquery` nowhere outside the B-rep engine's provider except
@@ -30,15 +32,22 @@ import machinome.test
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'machinome'
-PROVIDERS = (PACKAGE / 'engine' / 'brep.py', PACKAGE / 'engine' / 'mesh.py')
+REPOSITORY = Path(__file__).resolve().parents[3]
 PROVIDER_NAME = re.compile(r'^machinome\.engine\.brep(\.\w+)*$')
 
 
 def core_modules():
     for path in sorted(PACKAGE.rglob('*.py')):
-        if path in PROVIDERS:
-            continue
         yield path.relative_to(ROOT).as_posix(), ast.parse(path.read_text())
+
+
+def portion_modules():
+    """Every module of the framework's extension packages, keyed by its path
+    under `packages/`: `machinome-engine-brep/machinome/engine/brep.py`."""
+    packages = REPOSITORY / 'packages'
+    for path in sorted(packages.glob('machinome-*/machinome/**/*.py')):
+        yield path.relative_to(packages).as_posix(), \
+            ast.parse(path.read_text())
 
 
 def imported_roots(tree):
@@ -113,8 +122,8 @@ EXTRA_OF = {
     'machinome/node/build123d.py': 'build123d',
     'machinome/node/step.py': 'step',
     'machinome/node/molejo.py': 'molejo',
-    'machinome/engine/brep.py': 'brep',
-    'machinome/engine/mesh.py': 'mesh',
+    'machinome-engine-brep/machinome/engine/brep.py': 'brep',
+    'machinome-engine-mesh/machinome/engine/mesh.py': 'mesh',
 }
 
 #: The core modules that name a kernel module, and the ones each names
@@ -201,14 +210,25 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         self.assertEqual(importing, {
             'machinome/node/build123d.py': ['build123d'],
             'machinome/node/molejo.py': ['molejo'],
-            'machinome/engine/mesh.py': ['manifold3d'],
             'machinome/node/step.py': ['OCP', 'cadquery'],
-            'machinome/engine/brep.py': ['OCP'],
             # The template `machinome new` scaffolds a CadQuery part from
             # (`openscad-out`): a project's file, which the core copies and
             # never imports.
             'machinome/manager/templates/project/root/cadquery.py':
                 ['cadquery'],
+        })
+
+    def test_the_engine_packages_import_only_their_kernels(self):
+        importing = {}
+        for path, tree in portion_modules():
+            roots = {module.split('.')[0]
+                     for _, module in absolute_imports(path, tree)}
+            if roots & KERNELS:
+                importing[path] = sorted(roots & KERNELS)
+
+        self.assertEqual(importing, {
+            'machinome-engine-brep/machinome/engine/brep.py': ['OCP'],
+            'machinome-engine-mesh/machinome/engine/mesh.py': ['manifold3d'],
         })
 
     def test_kernel_modules_are_named_only_at_the_seams(self):
@@ -229,7 +249,7 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                 self.assertIsNone(naming.get(path))
 
     def test_each_kernel_module_checks_its_kernel_first(self):
-        modules = dict(every_module())
+        modules = dict(every_module()) | dict(portion_modules())
 
         for path, extra in EXTRA_OF.items():
             with self.subTest(path=path):
@@ -247,7 +267,6 @@ class KernelsOnlyInTheirModulesTest(TestCase):
                      if number < line], [])
 
 
-MESH_PROVIDER = PACKAGE / 'engine' / 'mesh.py'
 MESH_PROVIDER_NAME = re.compile(r'^machinome\.engine\.mesh(\.\w+)*$')
 
 
@@ -289,14 +308,14 @@ class CoreHoldsNoMeshEngineTest(TestCase):
     trimesh, and names the provider in its seam alone."""
 
     def test_no_module_reaches_trimesh_boolean(self):
-        reaching = {path: lines for path, tree in every_module()
+        reaching = {path: lines
+                    for path, tree in (*every_module(), *portion_modules())
                     if (lines := boolean_reaches(tree))}
 
         self.assertEqual(reaching, {})
 
     def test_the_seam_is_the_only_core_module_naming_the_provider(self):
         naming = [path for path, tree in every_module()
-                  if ROOT / path != MESH_PROVIDER
-                  and names_the_mesh_provider(tree)]
+                  if names_the_mesh_provider(tree)]
 
         self.assertEqual(naming, ['machinome/engine/__init__.py'])

@@ -97,18 +97,21 @@ repository)::
     $ git clone https://github.com/machinome/machinome.git
     $ cd machinome
 
-From the clone's root, sync the workspace with uv, which installs the
-framework editable with its dev dependencies, every kernel the suite runs,
-into ``.venv``::
+From the clone's root, sync the workspace with uv, which installs every
+package under ``packages/`` editable, the framework with its dev
+dependencies, every kernel the suite runs, into ``.venv``::
 
     $ uv sync
 
-or, without uv, create a virtualenv and install the package in editable
-mode with the dev dependencies::
+or, without uv, create a virtualenv and install every package under
+``packages/`` editable in compat mode, the framework with its dev
+dependencies::
 
     $ python -m venv .venv
     $ source .venv/bin/activate
-    $ pip install -e "packages/machinome[dev]"
+    $ pip install --config-settings editable_mode=compat \
+        -e packages/machinome-engine-brep -e packages/machinome-engine-mesh \
+        -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
 now on the PATH of the virtualenv.
@@ -127,7 +130,6 @@ The test suite is pytest, run from the framework's directory,
     $ make test          # equivalent to: pytest
     $ pytest tests/test_builder_lifecycle.py   # a single file
     $ make lint          # flake8 + black --check
-    $ make test-all      # tox across supported Python versions
 
 Notes:
 
@@ -236,10 +238,9 @@ Deploying
 ---------
 
 A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in HISTORY.rst).
+Make sure all your changes are committed (including an entry in HISTORY.rst); ``.bumpversion.cfg`` at the repository root names every package's version and every pin between them, so one run moves the set.
 Then run::
 
-$ cd packages/machinome
 $ bump2version patch # possible: major / minor / patch
 $ git push
 $ git push --tags

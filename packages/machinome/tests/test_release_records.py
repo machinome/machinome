@@ -7,7 +7,9 @@
 it, and every record whose top entry must be the released version, is
 held to that one statement, so a release moves the files together or
 fails here naming the one left behind (changes `release-0-7-1` and
-`release-0-8-0`).
+`release-0-8-0`). Every package of the repository carries the framework's
+version, every pin between two of them is `~=` that version, and the
+root's `.bumpversion.cfg` moves them all (change `cut-the-engines`).
 """
 
 from datetime import datetime
@@ -16,6 +18,8 @@ import re
 import tomllib
 from pathlib import Path
 from unittest import TestCase
+
+from packaging.requirements import Requirement
 
 ROOT = Path(__file__).resolve().parents[1]
 # The repository holding the framework's directory, whose root holds
@@ -35,6 +39,12 @@ def conf_value(name):
     return re.search(rf"^{name} = '([^']*)'", conf, flags=re.M)[1]
 
 
+def members():
+    """Every package of the repository: its directory and its `[project]`."""
+    for manifest in sorted((REPOSITORY / 'packages').glob('*/pyproject.toml')):
+        yield manifest.parent, tomllib.loads(manifest.read_text())['project']
+
+
 def sections(text):
     """The titles of a reStructuredText page's dashed sections, in order."""
     return re.findall(r'^(\S.*)\n-{3,}$', text, flags=re.M)
@@ -52,9 +62,9 @@ class VersionFilesTest(TestCase):
             'machinome/__init__.py': (
                 f'__version__ = "{self.version}"',
                 (ROOT / 'machinome/__init__.py').read_text()),
-            'setup.cfg': (
+            '.bumpversion.cfg': (
                 f'current_version = {self.version}',
-                (ROOT / 'setup.cfg').read_text()),
+                (REPOSITORY / '.bumpversion.cfg').read_text()),
             'docs/conf.py': (
                 f"release = '{self.version}'",
                 (ROOT / 'docs/conf.py').read_text()),
@@ -64,6 +74,38 @@ class VersionFilesTest(TestCase):
                 self.assertIn(statement, text)
         with self.subTest(file='machinome/vet/universe.toml'):
             self.assertEqual(universe['universe']['version'], self.version)
+
+    def test_every_member_is_numbered_with_the_core(self):
+        for directory, project in members():
+            with self.subTest(member=directory.name):
+                self.assertEqual(project['version'], self.version)
+
+    def test_every_pin_between_members_is_compatible(self):
+        projects = dict((project['name'], project) for _, project in members())
+        for name, project in projects.items():
+            lines = [*project.get('dependencies', []),
+                     *(line for extra in project.get(
+                         'optional-dependencies', {}).values()
+                       for line in extra)]
+            for line in lines:
+                requirement = Requirement(line)
+                if requirement.name == name \
+                        or requirement.name not in projects:
+                    continue
+                with self.subTest(member=name, requirement=line):
+                    self.assertEqual(str(requirement.specifier),
+                                     f'~={self.version}', line)
+
+    def test_the_version_is_bumped_from_the_root(self):
+        tables = re.findall(r'^\[bumpversion:file(?:\([^)]*\))?:([^\]]+)\]$',
+                            (REPOSITORY / '.bumpversion.cfg').read_text(),
+                            flags=re.M)
+        for directory, _ in members():
+            manifest = directory.relative_to(REPOSITORY) / 'pyproject.toml'
+            with self.subTest(member=directory.name):
+                self.assertIn(manifest.as_posix(), tables)
+        self.assertNotIn('[bumpversion', (ROOT / 'setup.cfg').read_text(),
+                         "the framework's setup.cfg holds a version table")
 
     def test_the_matching_viewer_is_numbered_with_the_framework(self):
         self.assertEqual(conf_value('viewer_version'), self.version)

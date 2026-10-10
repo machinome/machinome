@@ -11,16 +11,21 @@ the CI, a uv workspace with its lock, `scripts/check-dist`, `context7.json`
 and the record of the campaigns that span packages. The package directory
 reaches the five shared files through relative symbolic links, which
 setuptools carries into the archives as regular files (change
-`monorepo-layout`, ADR-182).
+`monorepo-layout`, ADR-182). The framework's extension packages are
+siblings under `packages/`, each holding its manifest, a README, the links
+to the licence and its namespace portion, numbered with the framework and
+installed editable by the workspace (change `cut-the-engines`, ADR-183).
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
 archives built from the tree.
 """
 
+import importlib
 import json
 import os
 import re
+import subprocess
 import tomllib
 import unittest
 from pathlib import Path
@@ -44,6 +49,10 @@ FRAMEWORK_ENTRIES = (
 )
 
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
+
+#: The framework's extension packages, by directory, and the engine module
+#: each ships under `machinome/engine/`.
+ENGINES = {'machinome-engine-brep': 'brep', 'machinome-engine-mesh': 'mesh'}
 
 #: A link into the repository on GitHub, and the path it names.
 GITHUB_PATH = re.compile(
@@ -146,23 +155,28 @@ class TheWorkspaceTest(unittest.TestCase):
                 self.assertTrue((directory / 'pyproject.toml').is_file(),
                                 f'{directory} holds no pyproject.toml')
 
-    def test_the_framework_is_a_workspace_source(self):
-        self.assertEqual(self.root['tool']['uv']['sources']['machinome'],
-                         {'workspace': True})
+    def test_every_member_is_a_workspace_source(self):
+        members = [directory.name for directory in package_directories()]
+        self.assertEqual(self.root['tool']['uv']['sources'],
+                         {name: {'workspace': True} for name in members})
+        lock = REPOSITORY / 'uv.lock'
+        self.assertTrue(lock.is_file(), f'{lock} is missing')
+        text = lock.read_text()
+        for name in members:
+            with self.subTest(member=name):
+                self.assertIn(f'source = {{ editable = "packages/{name}" }}',
+                              text)
 
     def test_every_member_installs_editable_in_compat_mode(self):
         self.assertEqual(self.root['tool']['uv']['config-settings'],
                          {'editable_mode': 'compat'})
 
-    def test_the_default_group_is_the_framework_dev_extra(self):
+    def test_the_default_group_is_the_framework_dev_and_mechanics_extras(self):
+        # `cut-the-engines`: the bench venv is the universe sweep's
+        # environment, so it carries the mechanics package the catalogue's
+        # projects import.
         self.assertEqual(self.root['dependency-groups']['dev'],
-                         ['machinome[dev]'])
-
-    def test_the_lock_records_the_member_editable(self):
-        lock = REPOSITORY / 'uv.lock'
-        self.assertTrue(lock.is_file(), f'{lock} is missing')
-        self.assertIn('source = { editable = "packages/machinome" }',
-                      lock.read_text())
+                         ['machinome[dev]', 'machinome[mechanics]'])
 
 
 class TheIndexTest(unittest.TestCase):
@@ -259,6 +273,98 @@ class TheRootIsTheRepositorysTest(unittest.TestCase):
         licence = conf_value('framework_licence')
         self.assertIn(licence, ' '.join(readme.split()),
                       f'README.md does not state {licence!r}')
+
+
+class TheExtensionPackagesTest(unittest.TestCase):
+    """Each extension package carries only what distinguishes it: its
+    manifest, a README, the links to the root's licence and its portion."""
+
+    def test_each_engine_directory_holds_only_what_distinguishes_it(self):
+        for name, engine in ENGINES.items():
+            with self.subTest(package=name):
+                directory = REPOSITORY / 'packages' / name
+                self.assertTrue(directory.is_dir(), f'{directory} is missing')
+                listed = subprocess.run(
+                    ['git', 'ls-files', '--cached', '--others',
+                     '--exclude-standard', '--', f'packages/{name}'],
+                    cwd=REPOSITORY, capture_output=True, text=True,
+                    check=True).stdout.split()
+                self.assertEqual(
+                    sorted(path.removeprefix(f'packages/{name}/')
+                           for path in listed),
+                    sorted(['pyproject.toml', 'README.md', 'LICENSE',
+                            'LICENSES', f'machinome/engine/{engine}.py']))
+                for entry in ('LICENSE', 'LICENSES'):
+                    self.assertTrue((directory / entry).is_symlink(),
+                                    f'{directory / entry} is not a link')
+                    self.assertEqual(os.readlink(directory / entry),
+                                     f'../../{entry}')
+                self.assertEqual(
+                    list((directory / 'machinome').rglob('__init__.py')), [],
+                    f'{name} ships an __init__.py')
+
+    def test_each_engine_manifest_is_a_portion_of_the_set(self):
+        core = read_toml(PACKAGE / 'pyproject.toml')['project']
+        for name in ENGINES:
+            with self.subTest(package=name):
+                manifest = read_toml(
+                    REPOSITORY / 'packages' / name / 'pyproject.toml')
+                project = manifest['project']
+                self.assertEqual(project['name'], name)
+                self.assertEqual(project['license'], core['license'])
+                self.assertEqual(project['license-files'],
+                                 core['license-files'])
+                self.assertEqual(
+                    manifest['tool']['setuptools']['packages']['find'],
+                    {'include': ['machinome.engine'], 'namespaces': True})
+
+    def test_each_engine_readme_names_its_install_and_the_licence(self):
+        licence = conf_value('framework_licence')
+        for name, engine in ENGINES.items():
+            with self.subTest(package=name):
+                readme = ' '.join(
+                    (REPOSITORY / 'packages' / name / 'README.md')
+                    .read_text().split())
+                self.assertIn(f'pip install "machinome[{engine}]"', readme)
+                self.assertIn(licence, readme,
+                              f'{name}/README.md does not state {licence!r}')
+
+    def test_each_provider_resolves_from_its_package(self):
+        from machinome import engine as seams
+        seam = {'brep': seams.brep_engine, 'mesh': seams.mesh_engine}
+        for name, engine in ENGINES.items():
+            with self.subTest(package=name):
+                module = importlib.import_module(f'machinome.engine.{engine}')
+                self.assertEqual(
+                    Path(module.__file__).resolve(),
+                    REPOSITORY / 'packages' / name / 'machinome' / 'engine'
+                    / f'{engine}.py')
+                self.assertIs(seam[engine](), module)
+
+    def test_the_core_engine_package_holds_only_the_seams(self):
+        entries = {path.name
+                   for path in (PACKAGE / 'machinome' / 'engine').iterdir()
+                   if path.name != '__pycache__'}
+        self.assertEqual(entries, {'__init__.py'})
+
+    def test_the_guide_installs_every_member_without_uv(self):
+        guide = (REPOSITORY / 'CONTRIBUTING.rst').read_text()
+        with self.subTest(names='editable_mode=compat'):
+            self.assertTrue('editable_mode=compat' in guide,
+                            'CONTRIBUTING.rst does not install in compat '
+                            'mode')
+        for directory in package_directories():
+            spelling = ('-e "packages/machinome[dev]"'
+                        if directory.name == 'machinome'
+                        else f'-e packages/{directory.name}')
+            with self.subTest(package=directory.name):
+                self.assertTrue(spelling in guide,
+                                f'CONTRIBUTING.rst does not name {spelling}')
+        for retired in (r'\btox\b', r'requirements\.txt'):
+            with self.subTest(retired=retired):
+                found = re.search(retired, guide)
+                self.assertIsNone(
+                    found, f'CONTRIBUTING.rst names {found and found[0]!r}')
 
 
 class TheLinksTest(unittest.TestCase):

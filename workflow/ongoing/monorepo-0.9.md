@@ -263,6 +263,29 @@ decision is architectural.
    `brep-engine-dependency`, `mesh-engine-dependency`. ADR: an extension
    package is a namespace portion in its own distribution, resolved by
    the core's path extension and refused by its extra's name.
+   **Done** (10 October 2026): branch `v0.9-base-cut-the-engines`, planning
+   commit edf88424 on 6fb505ed, ratified by the orchestrator's review
+   (ADR-183). The two engines are portions in `packages/machinome-engine-brep/`
+   and `packages/machinome-engine-mesh/`, installed by the core's `brep` and
+   `mesh` extras; the version is bumped from the root's `.bumpversion.cfg`;
+   CI syncs the locked workspace with uv, and the requirements files, tox and
+   the `dev` extra's tox are retired. The bench venv is the sweep's
+   environment from this cycle, its default group carrying the mechanics
+   package the catalogue imports. The suite green on the bench's uv venv
+   (4786 passed, 20 skipped, 6831 subtests), the manual built with warnings
+   as errors, and `scripts/check-dist` green: three members built, six
+   archives `twine check --strict` passed, the engines installed through
+   `machinome[brep]` and `machinome[mesh]` from the built archives and
+   smoked through the seams (contracts 2 and 1, a 10 mm box's volume 1000
+   and a 2 x 3 x 4 box's 24), nothing uploaded; a clean copy's framework
+   sdist holds 1019 entries and its wheel 126, each engine's 18 and 8. `uv
+   lock` resolves 179 packages. The universe sweep: 63 repositories, 130
+   rows, 121 ok, 0 expected, 3 unexpected, 0 timeout, 6 no-model; the
+   unexpected rows are wall_clock_41's own CadQuery error and Dum-E without
+   machinome-freecad, as at `root-cleanup`, and fender-bender without
+   `fb_library`, a dependency of that project alone which the bench venv does
+   not carry. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-10-cut-the-engines/evidence.md`.
 3. `cut-the-brep-nodes`. `cadquery`, `build123d`, `step` and `molejo` as
    four packages over the B-rep engine, `step` depending on `cadquery`;
    extras, pins, table, test, `check-dist` grown. Specs: `kernel-extras`,
