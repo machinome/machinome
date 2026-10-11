@@ -1,5 +1,6 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Native source replacement and exact-artifact currency regression tests."""
 from copy import deepcopy
 import hashlib
@@ -9,14 +10,18 @@ import shutil
 import importlib.util
 import sys
 
+from tests.freecad_support import skip_without_runtime
+
+skip_without_runtime()
+
 import cadquery as cq
 import numpy as np
 import pytest
 
 from machinome.source_generation import SourceChanged, SourceGeneration
-from machinome_freecad import FreeCADAssemblyNode
-from machinome_freecad import runtime
-from test_public import FIXTURE, Machine
+from machinome.node.freecad import FreeCADAssemblyNode
+from machinome.node.freecad import runtime
+from tests.test_freecad_public import FIXTURE, Machine
 
 def copied(tmp_path):
     source = tmp_path/'Assembly.FCStd'
@@ -115,7 +120,7 @@ def solid(node):
         return node
 
 def test_native_recipe_refreshes_existing_exact_artifacts(monkeypatch):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     class Currency(FreeCADAssemblyNode):
         freecad_source = FIXTURE
     first = Currency()
@@ -145,7 +150,7 @@ def test_native_recipe_refreshes_existing_exact_artifacts(monkeypatch):
     assert cq.Shape.cast(updated.shape()).Volume() == pytest.approx(384)
 
 def test_acceptance_recipe_alone_invalidates_existing_artifact_currency(monkeypatch):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     class Recipe(FreeCADAssemblyNode):
         freecad_source = FIXTURE
     first = Recipe()
@@ -169,7 +174,7 @@ def test_acceptance_recipe_alone_invalidates_existing_artifact_currency(monkeypa
     assert cq.Shape.cast(fresh.shape()).Volume() == pytest.approx(192)
 
 def test_old_rendered_node_refuses_materialization_after_source_change(tmp_path,monkeypatch):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     source = copied(tmp_path)
     # Isolate generation behavior from project-source containment; the public
     # class remains ordinary and owns a genuine native resolved snapshot.
@@ -191,7 +196,7 @@ def test_complete_closure_joins_core_generation(tmp_path):
         assert {str(Path(p).resolve()) for p in snapshot['files']} <= {o.path for o in generation.observations}
 
 def test_invalid_ranges_are_refused_after_native_resolution(monkeypatch):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     load = adapter.load_snapshot
     def bad(source):
         snapshot = load(source)
@@ -204,7 +209,7 @@ def test_invalid_ranges_are_refused_after_native_resolution(monkeypatch):
 @pytest.mark.parametrize('prior',[False,True])
 @pytest.mark.parametrize('mutation',['replace','delete'])
 def test_publication_source_race_publishes_no_artifact(tmp_path,monkeypatch,prior,mutation):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     from machinome import currency
     source = copied(tmp_path)
     load = adapter.load_snapshot
@@ -248,7 +253,7 @@ def test_publication_source_race_publishes_no_artifact(tmp_path,monkeypatch,prio
         assert (Path(path).read_bytes() if Path(path).is_file() else None) == payload
 
 def test_relinked_spelling_after_first_render_is_refused(tmp_path,monkeypatch):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     source = copied(tmp_path)
     parts = tmp_path/'Parts.FCStd'
     target1, target2 = tmp_path/'One.FCStd',tmp_path/'Two.FCStd'
@@ -275,7 +280,7 @@ def test_native_snapshot_reuse_never_shares_mutable_state(tmp_path):
     assert second['joints'][0]['range'][1] == 180
 
 def test_source_change_after_snapshot_return_is_not_recertified(tmp_path,monkeypatch):
-    import machinome_freecad.adapter as adapter
+    import machinome.node.freecad.adapter as adapter
     source = copied(tmp_path)
     load = adapter.load_snapshot
     def changed(unused):
@@ -296,7 +301,7 @@ def test_sibling_linked_document_and_source_preserving_relocation(tmp_path):
         shutil.copyfile(FIXTURE.with_name('Parts.FCStd'),root/'Parts.FCStd')
         (root/'pyproject.toml').write_text('[tool.machinome]\nmodel="model:Relocated"\n')
         source = root/'model.py'
-        source.write_text('from machinome_freecad import FreeCADAssemblyNode\n'
+        source.write_text('from machinome.node.freecad import FreeCADAssemblyNode\n'
                           'class Relocated(FreeCADAssemblyNode):\n'
                           '    freecad_source="assembly-dir/Assembly.FCStd"\n')
         name = f'freecad_relocated_{index}'

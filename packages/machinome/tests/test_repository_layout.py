@@ -21,8 +21,10 @@ the two engines and the node packages `machinome-node-cadquery`,
 `cut-the-brep-nodes`), and `machinome-node-openscad`,
 `machinome-node-solid2`, `machinome-node-jscad` and `machinome-node-stl`
 (change `cut-the-mesh-nodes`), the first of them a package directory with
-its own `__init__.py`. The core's `machinome/node/` then holds no node type
-and its `machinome/viewers/` no node type's renderer.
+its own `__init__.py`, and `machinome-node-freecad`, a package directory
+too, which joined the repository from a repository of its own (change
+`join-freecad`). The core's `machinome/node/` then holds no node type and its
+`machinome/viewers/` no node type's renderer.
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -71,14 +73,16 @@ EXTENSIONS = {
     'machinome-node-solid2': ('machinome.node.solid2', 'solid2'),
     'machinome-node-jscad': ('machinome.node.jscad', 'jscad'),
     'machinome-node-stl': ('machinome.node.stl', 'stl'),
+    'machinome-node-freecad': ('machinome.node.freecad', 'freecad'),
 }
 
 #: The extension packages whose portion is a package directory at its
 #: address, with its own `__init__.py` below the levels the core defines,
-#: and the modules it holds (`cut-the-mesh-nodes`).
+#: and the modules it holds (`cut-the-mesh-nodes`, `join-freecad`).
 PACKAGE_PORTIONS = {
     'machinome-node-openscad': ('__init__', 'binary', 'leaf', 'renderer',
                                 'writer'),
+    'machinome-node-freecad': ('__init__', 'adapter', 'runtime', 'worker'),
 }
 
 #: A link into the repository on GitHub, and the path it names.

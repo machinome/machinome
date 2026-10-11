@@ -1,28 +1,50 @@
 [build-system]
-requires = ["setuptools>=65.5,<77"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "machinome-freecad"
-version = "0.1.0"
-description = "Native FreeCAD rigid assemblies for machinome"
-readme = "README.md"
+name = "machinome-node-freecad"
+version = "0.8.1"
+description = "The FreeCAD node type of Machinome: a native FreeCAD assembly, read by FreeCAD"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
-license = {text = "LGPL-2.1-or-later"}
-authors = [{name = "Luis Henrique Cassis Fagundes"}]
-# Validation branch lean-core-validation, never merged: it runs against the
-# unreleased v0.8 lean-core line (framework change leaf-contract), so the
-# 0.7.1 release pin is relaxed here.
-dependencies = ["machinome"]
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core this node type is a portion of, released with it: the set
+    # carries one version, and the pins between its packages are ~= both
+    # ways.
+    "machinome~=0.8.1",
+    # Each occurrence is a B-rep leaf, whose solid FreeCAD hands over as
+    # BREP and the package reads through the OCCT binding, whose range the
+    # B-rep engine states once.
+    "machinome-engine-brep~=0.8.1",
+    # Arrays and the rotation of a native placement; the core pins numpy's
+    # range and requires scipy. FreeCAD itself, the program that reads the
+    # document, is no package's to install: it is found through
+    # MACHINOME_FREECAD_ROOT.
+    "numpy",
+    "scipy",
+]
 
-[project.optional-dependencies]
-test = ["pytest>=8", "build>=1.2"]
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
 
 [tool.setuptools.packages.find]
-include = ["machinome_freecad*"]
-
-[tool.setuptools]
-include-package-data = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
+# The node package machinome/node/freecad/, which has its own __init__.py,
+# with none at machinome/ or machinome/node/, so the core's package path
+# admits it.
+include = ["machinome.node.freecad"]
+namespaces = true

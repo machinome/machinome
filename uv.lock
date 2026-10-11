@@ -13,6 +13,7 @@ members = [
     "machinome-engine-mesh",
     "machinome-node-build123d",
     "machinome-node-cadquery",
+    "machinome-node-freecad",
     "machinome-node-jscad",
     "machinome-node-molejo",
     "machinome-node-openscad",
@@ -1829,6 +1830,7 @@ all = [
     { name = "machinome-engine-mesh" },
     { name = "machinome-node-build123d" },
     { name = "machinome-node-cadquery" },
+    { name = "machinome-node-freecad" },
     { name = "machinome-node-jscad" },
     { name = "machinome-node-molejo" },
     { name = "machinome-node-openscad" },
@@ -1857,6 +1859,7 @@ dev = [
     { name = "machinome-engine-mesh" },
     { name = "machinome-node-build123d" },
     { name = "machinome-node-cadquery" },
+    { name = "machinome-node-freecad" },
     { name = "machinome-node-jscad" },
     { name = "machinome-node-molejo" },
     { name = "machinome-node-openscad" },
@@ -1875,6 +1878,9 @@ docs = [
     { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "sphinx", version = "9.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "sphinx-rtd-theme" },
+]
+freecad = [
+    { name = "machinome-node-freecad" },
 ]
 jscad = [
     { name = "machinome-node-jscad" },
@@ -1914,12 +1920,13 @@ requires-dist = [
     { name = "ipdb", marker = "extra == 'dev'" },
     { name = "ipython", marker = "extra == 'dev'" },
     { name = "machinome", extras = ["all"], marker = "extra == 'dev'", editable = "packages/machinome" },
-    { name = "machinome", extras = ["cadquery", "build123d", "step", "molejo", "brep", "mesh", "openscad", "solid2", "jscad", "stl"], marker = "extra == 'all'", editable = "packages/machinome" },
+    { name = "machinome", extras = ["cadquery", "build123d", "step", "molejo", "brep", "mesh", "openscad", "solid2", "jscad", "stl", "freecad"], marker = "extra == 'all'", editable = "packages/machinome" },
     { name = "machinome-engine-brep", marker = "extra == 'brep'", editable = "packages/machinome-engine-brep" },
     { name = "machinome-engine-mesh", marker = "extra == 'mesh'", editable = "packages/machinome-engine-mesh" },
     { name = "machinome-mechanics", marker = "extra == 'mechanics'" },
     { name = "machinome-node-build123d", marker = "extra == 'build123d'", editable = "packages/machinome-node-build123d" },
     { name = "machinome-node-cadquery", marker = "extra == 'cadquery'", editable = "packages/machinome-node-cadquery" },
+    { name = "machinome-node-freecad", marker = "extra == 'freecad'", editable = "packages/machinome-node-freecad" },
     { name = "machinome-node-jscad", marker = "extra == 'jscad'", editable = "packages/machinome-node-jscad" },
     { name = "machinome-node-molejo", marker = "extra == 'molejo'", editable = "packages/machinome-node-molejo" },
     { name = "machinome-node-openscad", marker = "extra == 'openscad'", editable = "packages/machinome-node-openscad" },
@@ -1946,7 +1953,7 @@ requires-dist = [
     { name = "uvicorn", specifier = "==0.30.*" },
     { name = "watchdog" },
 ]
-provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "solid2", "jscad", "stl", "all", "studio"]
+provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "solid2", "jscad", "stl", "freecad", "all", "studio"]
 
 [[package]]
 name = "machinome-engine-brep"
@@ -2030,6 +2037,26 @@ requires-dist = [
     { name = "cadquery", specifier = "==2.7.*" },
     { name = "machinome", editable = "packages/machinome" },
     { name = "machinome-engine-brep", editable = "packages/machinome-engine-brep" },
+]
+
+[[package]]
+name = "machinome-node-freecad"
+version = "0.8.1"
+source = { editable = "packages/machinome-node-freecad" }
+dependencies = [
+    { name = "machinome" },
+    { name = "machinome-engine-brep" },
+    { name = "numpy" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "machinome-engine-brep", editable = "packages/machinome-engine-brep" },
+    { name = "numpy" },
+    { name = "scipy" },
 ]
 
 [[package]]

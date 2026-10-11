@@ -1,13 +1,18 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Refusal diagnostics; injected failures do not establish native parity."""
 from copy import deepcopy
 
+from tests.freecad_support import skip_without_runtime
+
+skip_without_runtime()
+
 import pytest
 
-from machinome_freecad import FreeCADAssemblyNode
-from machinome_freecad import adapter, runtime
-from test_public import FIXTURE
+from machinome.node.freecad import FreeCADAssemblyNode
+from machinome.node.freecad import adapter, runtime
+from tests.test_freecad_public import FIXTURE
 
 @pytest.fixture(scope='module')
 def native_snapshot():
@@ -51,7 +56,7 @@ def test_worker_solver_refusal_names_native_candidates(monkeypatch):
     # algorithm in production or inventing a native inconsistent fixture.
     import sys
     from types import SimpleNamespace
-    from machinome_freecad import worker
+    from machinome.node.freecad import worker
     monkeypatch.setattr(sys,'path',sys.path[:])
     placement = object()
     occurrences = [SimpleNamespace(Name=name) for name in ('Ground','Moving')]

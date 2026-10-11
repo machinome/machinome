@@ -168,10 +168,16 @@ class TheRootResolvesNothingTest(TestCase):
 
         listed = {name: f'machinome.node.{key}'
                   for key, row in NODE_TYPES.items() for name in row.classes}
-        self.assertEqual(listed, {name: module
+        former = {name: module for name, module in listed.items()
+                  if name in FORMER}
+        self.assertEqual(former, {name: module
                                   for name, module in FORMER.items()
                                   if name in listed})
-        self.assertEqual(len(listed), 9)
+        self.assertEqual(len(former), 9)
+        # `join-freecad`: the FreeCAD node type's classes were never the
+        # root's names.
+        self.assertEqual(sorted(set(listed) - set(FORMER)),
+                         ['FreeCADAssemblyNode', 'FreeCADJoint'])
 
 
 #: One statement from the root, across lines when parenthesised or

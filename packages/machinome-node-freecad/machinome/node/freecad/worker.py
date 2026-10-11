@@ -1,7 +1,8 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 # Residual conventions derived from OndselSolver: Copyright (c) 2023 Ondsel, Inc.
-# Original Python adaptation added 2026-10-01; see NOTICE.md and LICENSE.
+# Original Python adaptation added 2026-10-01; see the framework's CREDITS.md.
 """Executed only by FreeCAD's Python; uses native APIs, never FCStd XML.
 
 Trusted documents only: restoring Python proxies executes source code.

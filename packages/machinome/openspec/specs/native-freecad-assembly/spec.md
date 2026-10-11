@@ -2,16 +2,16 @@
 
 ## Purpose
 
-Import supported native FreeCAD assemblies into machinome through a separate
-optional LGPL adapter, preserving authored joints and enabled limits without
-project-level mechanical redeclaration. Dum-E provides the empirical acceptance
-case, including explicit refusal of inconsistent native constraints.
-
+Import supported native FreeCAD assemblies into machinome through the
+FreeCAD node package `machinome.node.freecad`, the distribution
+`machinome-node-freecad`, preserving authored joints and enabled limits
+without project-level mechanical redeclaration. Dum-E provides the empirical
+acceptance case, including explicit refusal of inconsistent native
+constraints.
 ## Requirements
-
 ### Requirement: Native assembly declaration and selected coordinate reference
 
-The system SHALL export `FreeCADAssemblyNode` and `FreeCADJoint` from `machinome_freecad`. A subclass SHALL declare `freecad_source` naming its FCStd source, resolved relative to the Python module declaring that attribute. A class-body `alias = FreeCADJoint("Joint001")` SHALL select the existing imported revolute coordinate by native internal Name and SHALL be accepted as the target of an ordinary `Driver.drives(alias)` relation. The reference SHALL accept no replacement axis, frame, zero, type or range. Native existence and coordinate compatibility SHALL be checked after native resolution and before relation binding and simulation graph compilation.
+The system SHALL export `FreeCADAssemblyNode` and `FreeCADJoint` from `machinome.node.freecad`. A subclass SHALL declare `freecad_source` naming its FCStd source, resolved relative to the Python module declaring that attribute. A class-body `alias = FreeCADJoint("Joint001")` SHALL select the existing imported revolute coordinate by native internal Name and SHALL be accepted as the target of an ordinary `Driver.drives(alias)` relation. The reference SHALL accept no replacement axis, frame, zero, type or range. Native existence and coordinate compatibility SHALL be checked after native resolution and before relation binding and simulation graph compilation.
 
 Importing the public module or declaring the Python class SHALL NOT open CAD or require a FreeCAD runtime. Realizing a native assembly SHALL resolve its source before instance relations or simulation enumeration consume it. Every model instance SHALL own fresh nodes, joint arguments and bound slots; native mechanics SHALL NOT be mutable class-shared state.
 
@@ -22,7 +22,7 @@ Positive Dum-E scenarios in this capability SHALL use the explicitly project-rep
 - **WHEN** the following class is instantiated from a valid supported source and its simulation is run
 
 ```python
-from machinome_freecad import FreeCADAssemblyNode, FreeCADJoint
+from machinome.node.freecad import FreeCADAssemblyNode, FreeCADJoint
 from machinome.motion.ports import Time
 from machinome.simulation import Driver, Sim
 
@@ -236,15 +236,17 @@ The completed record SHALL include source/runtime identities, native inventory a
 - **WHEN** unchanged STEP models and existing declared-joint/mate running models are built, simulated and exported after this change
 - **THEN** their existing behavior and document format remain valid and models without native FreeCAD declarations do not require FreeCAD
 
-### Requirement: Optional LGPL package and documented public contract
+### Requirement: The FreeCAD node package and its documented public contract
 
-The implementation SHALL belong to the independent LGPL-2.1-or-later machinome-freecad distribution importing as machinome_freecad. It SHALL depend on machinome as an independently licensed package and SHALL require no FreeCAD-specific edits, monkeypatches or copied native implementation in the Apache core. Any unavoidable core integration failure SHALL be reported as evidence before a separate framework change is proposed. Incorporated third-party material SHALL retain its original copyright/licence and change notices. The package SHALL NOT redistribute the provisioned FreeCAD binary.
+The implementation SHALL be the distribution `machinome-node-freecad` of the machinome repository, in its directory `packages/machinome-node-freecad/`, importing as the package `machinome.node.freecad`, installed by the framework's extra `machinome[freecad]`, numbered with the framework and distributed under the licence of the whole set. It SHALL depend on the framework and SHALL require no FreeCAD-specific edits, monkeypatches or copied native implementation in the framework's core, which reaches it only through the table of supported node types. Any unavoidable core integration failure SHALL be reported as evidence before a separate framework change is proposed. Incorporated third-party material SHALL retain its original copyright/licence and change notices, recorded in the framework's `CREDITS.md`. The package SHALL NOT redistribute the provisioned FreeCAD binary, and no extra SHALL install FreeCAD.
 
-The package SHALL document its public imports, source-path resolution, native selector Names, supported graph, optional runtime setup, supported machinome compatibility, command/status observation and source-refresh behavior. The independent empirical author SHALL be able to construct and validate the simulation through that documented public API without calling adapter-private importer methods. Required native runtime absence SHALL fail clearly at point of use while plain imports and existing machinome-only models remain usable.
+The package SHALL document its public imports, source-path resolution, native selector Names, supported graph, optional runtime setup, supported machinome compatibility, command/status observation and source-refresh behavior in the framework's manual. The independent empirical author SHALL be able to construct and validate the simulation through that documented public API without calling adapter-private importer methods. Required native runtime absence SHALL fail clearly at point of use while plain imports and existing machinome-only models remain usable.
+
+The package's tests SHALL run in the framework's suite where `MACHINOME_FREECAD_ROOT` is set, and each of its test modules SHALL be reported skipped, with a reason naming that variable, where it is not.
 
 #### Scenario: Core remains independent
 
-- **WHEN** machinome is installed and used without machinome-freecad or a FreeCAD runtime
+- **WHEN** machinome is installed and used without machinome-node-freecad or a FreeCAD runtime
 - **THEN** its existing imports, supported builds and simulation behavior remain valid
 
 #### Scenario: The documented example requires no private importer calls
@@ -255,4 +257,10 @@ The package SHALL document its public imports, source-path resolution, native se
 #### Scenario: Packaged provenance is retained
 
 - **WHEN** wheel and source distributions are built and inspected
-- **THEN** package licence and third-party notices are included, the worker is present, FreeCAD binaries are absent, and the recorded compatibility dependency is declared
+- **THEN** the package's licence texts are included, the worker is present, FreeCAD binaries and FCStd documents are absent, `machinome~=<version>` and `machinome-engine-brep~=<version>` are declared with the framework's version, and the framework's `CREDITS.md` records what the package calls and what its worker adapted
+
+#### Scenario: The suite without a runtime skips the native tests
+
+- **WHEN** the framework's suite runs where `MACHINOME_FREECAD_ROOT` is not set
+- **THEN** each of the four FreeCAD test modules is reported skipped with a reason naming `MACHINOME_FREECAD_ROOT`, and none of their tests fails or errors
+

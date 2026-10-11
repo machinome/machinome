@@ -4,8 +4,8 @@
 
 """The CAD kernels are extras, and a kernel module refuses an absent one
 (OpenSpec changes `lean-install`, `mesh-engine`, `brep-mesh`,
-`cut-the-engines`, `cut-the-brep-nodes` and `cut-the-mesh-nodes`, capability
-`kernel-extras`).
+`cut-the-engines`, `cut-the-brep-nodes`, `cut-the-mesh-nodes` and
+`join-freecad`, capability `kernel-extras`).
 
 Two halves. The metadata is read from the manifests, the framework's
 `pyproject.toml` and its extension packages' under `packages/`, the engines'
@@ -13,10 +13,10 @@ and the node packages', and from the repository's `uv.lock` and CI
 workflow: no kernel is a required dependency, each is installed by the
 extra named by the last component of the address of the module that needs
 it, the `brep` and `mesh` extras install the engines' distributions and the
-`cadquery`, `build123d`, `step`, `molejo`, `openscad`, `solid2`, `jscad` and
-`stl` extras the node packages', which state the kernels (SolidPython in one
-range wherever it is named), and the development install and CI install them
-all from the lock. The refusal
+`cadquery`, `build123d`, `step`, `molejo`, `openscad`, `solid2`, `jscad`,
+`stl` and `freecad` extras the node packages', which state the kernels
+(SolidPython in one range wherever it is named), and the development install
+and CI install them all from the lock. The refusal
 is observed in subprocesses: the workspace and CI install every kernel, so
 an install without one is stood in for by the `sys.meta_path` finder of
 `tests/brep_engine_absent.py`, refusing the kernel the way an interpreter
@@ -72,8 +72,11 @@ EXTRAS = {
     'solid2': {f'machinome-node-solid2~={VERSION}'},
     'jscad': {f'machinome-node-jscad~={VERSION}'},
     'stl': {f'machinome-node-stl~={VERSION}'},
+    # `join-freecad`: the FreeCAD node package, over the B-rep engine; FreeCAD
+    # itself is a program no extra installs.
+    'freecad': {f'machinome-node-freecad~={VERSION}'},
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
-            'openscad,solid2,jscad,stl]'},
+            'openscad,solid2,jscad,stl,freecad]'},
 }
 
 #: Each extension distribution and the requirements its manifest lists:
@@ -104,6 +107,9 @@ PACKAGE_REQUIREMENTS = {
                               'solidpython2==2.1.*'},
     'machinome-node-jscad': {f'machinome~={VERSION}'},
     'machinome-node-stl': {f'machinome~={VERSION}', 'trimesh'},
+    'machinome-node-freecad': {f'machinome~={VERSION}',
+                               f'machinome-engine-brep~={VERSION}', 'numpy',
+                               'scipy'},
 }
 
 #: The node packages among them.
@@ -112,7 +118,8 @@ NODE_PACKAGES = tuple(name for name in PACKAGE_REQUIREMENTS
 
 #: The node packages over the B-rep engine, which require it.
 BREP_NODE_PACKAGES = ('machinome-node-cadquery', 'machinome-node-build123d',
-                      'machinome-node-step', 'machinome-node-molejo')
+                      'machinome-node-step', 'machinome-node-molejo',
+                      'machinome-node-freecad')
 
 WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
 
@@ -139,6 +146,9 @@ MODULES = {
         'writer)', ('solid2',)),
     'machinome.node.solid2': (
         'solid2', 'machinome.node.solid2 (Solid2Node)', ('solid2',)),
+    'machinome.node.freecad': (
+        'freecad', 'machinome.node.freecad (FreeCADAssemblyNode, '
+        'FreeCADJoint)', ('OCP',)),
 }
 
 
@@ -226,7 +236,7 @@ class KernelMetadataTest(TestCase):
         extras = project()['optional-dependencies']
 
         for extra in ('cadquery', 'build123d', 'step', 'molejo', 'openscad',
-                      'solid2', 'jscad', 'stl'):
+                      'solid2', 'jscad', 'stl', 'freecad'):
             with self.subTest(extra=extra):
                 self.assertFalse(any(
                     'mesh' in Requirement(line).extras
@@ -249,7 +259,8 @@ class KernelMetadataTest(TestCase):
 
         self.assertEqual(Requirement(line).extras,
                          {'cadquery', 'build123d', 'step', 'molejo', 'brep',
-                          'mesh', 'openscad', 'solid2', 'jscad', 'stl'})
+                          'mesh', 'openscad', 'solid2', 'jscad', 'stl',
+                          'freecad'})
 
     def test_every_node_type_has_the_extra_of_its_name(self):
         # `root-cleanup`: the install line a refusal or a manifest names

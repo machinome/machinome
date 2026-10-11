@@ -26,6 +26,13 @@ Unreleased
   whose modules came with the framework before, now names the extra:
   ``pip install "machinome[stl]"``; without it, the import names that line.
 
+* **A native FreeCAD assembly is a node type.** ``FreeCADAssemblyNode``
+  reads a whole FreeCAD assembly, its fixed and revolute joints and their
+  enabled limits, through FreeCAD itself, and ``FreeCADJoint`` hands one of
+  its revolutes to a driver; ``pip install "machinome[freecad]"`` installs
+  the distribution ``machinome-node-freecad``, and FreeCAD 1.1.4 is found
+  through ``MACHINOME_FREECAD_ROOT`` (:doc:`/howto/freecad-assemblies`).
+
 Machinome 0.8.1
 ---------------
 

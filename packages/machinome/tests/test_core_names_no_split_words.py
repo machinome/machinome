@@ -30,8 +30,9 @@ than being skipped. The rule, per word:
   exact set`, `exact-negative`, `exact-bytes`) is the ordinary adjective.
 - W4, `occt` and `manifold`: every case-insensitive occurrence offends
   outside `ZONES`: the two provider modules, which may name their
-  libraries, and the four node-type modules whose own kernels are built on
-  OCCT.
+  libraries, the four node-type modules whose own kernels are built on
+  OCCT, and the FreeCAD package's worker, whose result reports the OCCT
+  version of FreeCAD's own build (OpenSpec change `join-freecad`).
 
 The words are spelled in pieces below so this file's own reading of them is
 plain; the gate does not scan `tests/`.
@@ -55,6 +56,7 @@ ZONES = frozenset((
     'machinome/node/build123d.py',
     'machinome/node/step.py',
     'machinome/node/molejo.py',
+    'machinome/node/freecad/worker.py',
 ))
 
 #: Identifiers in which `exact` is the ordinary adjective, by module.

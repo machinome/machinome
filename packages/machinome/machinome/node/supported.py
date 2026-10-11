@@ -55,6 +55,7 @@ NODE_TYPES = {
         ('openscad', 'machinome.node.openscad.renderer.OpenScadRenderer'),)),
     'jscad': NodeType(('JScadNode',)),
     'stl': NodeType(('StlNode',)),
+    'freecad': NodeType(('FreeCADAssemblyNode', 'FreeCADJoint')),
 }
 
 #: The renderer `machinome snapshot` uses when none is named.

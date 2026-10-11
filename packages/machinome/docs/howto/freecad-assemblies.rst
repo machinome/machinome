@@ -1,168 +1,195 @@
-# Native FreeCAD assemblies
+Simulate a native FreeCAD assembly
+==================================
 
-`FreeCADAssemblyNode` loads the complete supported native machine at instance
-construction. `FreeCADJoint` selects an existing revolute by its internal
-FreeCAD `Name`; an editable display `Label` is not a selector.
+A ``FreeCADAssemblyNode`` is one native FreeCAD assembly: one grounded
+tree of rigid occurrences joined by fixed and revolute connections, read
+by FreeCAD itself in a separate process when the node is constructed.
+The project declares no joint, axis, frame, zero or limit; the source
+owns them, and the node compiles them into ordinary nodes, joints and
+B-rep leaves. A ``FreeCADJoint`` names one of its revolutes so a driver
+can move it. FreeCAD's other workbenches, loops, dynamics and inverse
+kinematics are outside it.
 
-```python
-from machinome_freecad import FreeCADAssemblyNode, FreeCADJoint
-from machinome.motion.ports import Time
-from machinome.simulation import Driver, Sim
+Set up FreeCAD
+--------------
 
-class DumE(FreeCADAssemblyNode):
-    freecad_source = "cad/MA_Dum_E_v2_Assembly.FCStd"
-    time = Time.running()
-    turntable = FreeCADJoint("Joint001")
-    turn = Driver(default=0, unit="deg")
-    turn.drives(turntable)
+Install the node package:
 
-node = DumE()
-sim = Sim(node, dt=0.02)
-command = sim.move("turn", to=150, duration=1.0)
-sim.run(1.0)
-print(command.status, node.turntable.value)
-```
+.. code-block:: bash
 
-This follows the independently validated corrected-source project declaration.
-The untouched upstream Dum-E assembly is
-refused because its Fixed `Joint002` has inconsistent connector orientation;
-the source in this example must be the project's explicitly corrected native
-copy, not the untouched upstream file. Place it in a normal machinome project with
-a `pyproject.toml` containing `[tool.machinome]` and its `model` entry.
-Install the package and configure the [recorded native runtime](runtime.md).
-Public module imports and class declaration need no FreeCAD runtime. Creating
-an instance does: source selection is validated before relations resolve and
-before `Sim` enumerates or compiles the graph.
+    pip install "machinome[freecad]"
 
-`freecad_source` accepts a string or path-like object. Relative paths resolve
-from the Python module that declared the attribute, even under inheritance
-and after changing cwd. The root source must belong to that module's machinome
-project, following the existing framework source-file rule. Native external
-links are resolved by FreeCAD; retain their relative layout when relocating
-the project. Linked products may be in a sibling directory, not only next to
-the assembly file.
+That installs no FreeCAD. The runtime the package is measured with is
+the official FreeCAD 1.1.4 AppImage for Linux x86-64 (SHA-256
+``f6dc6ba676e5ac96a565ebc8d657232f94c6158e85b4352141bd1a46f6b43434``,
+git build ``4fd3bf320d9566a27e60069fc8387448aaa3a094``), extracted, with
+``MACHINOME_FREECAD_ROOT`` set to the extraction's root, the directory
+that holds ``AppRun``, ``usr/lib``, ``usr/Mod`` and ``usr/Mod/Assembly``.
+Other systems, versions and layouts are untested. Nothing downloads
+FreeCAD, guesses an executable from the working directory or falls back
+to FreeCAD's interface. Importing the package and declaring a class need
+no runtime; constructing an instance does, and without one it is refused
+naming ``MACHINOME_FREECAD_ROOT``.
 
-The instance alias returns the original `BoundPort`, so `node.turntable.value`
-reads the physical coordinate in degrees. It contributes no proxy coordinate
-or second simulation-bank entry. Two aliases of one native Name read the same
-slot; ordinary duplicate-writer rules reject two drivers commanding it.
-Two model instances own separate slots and imported node trees.
+Open trusted documents only. Restoring a FreeCAD document runs the Python
+it carries, and the separate process keeps FreeCAD's Python and OCCT
+apart from the project's; it is not a sandbox.
 
-The example commands native coordinate zero as its initial state. It does not
-make the saved assembly pose a new zero. Uncommanded revolutes retain their
-saved native coordinates; repeated rendering and fresh simulation enumeration
-preserve those defaults while leaving commanded or run-owned values alone.
-The `Angle` property of a generic FreeCAD joint is not read as a revolute's
-coordinate. The adapter resolves connector frames and offsets through native
-helpers and reads the native angular coordinate, converting radians to degrees.
+Declare the assembly
+--------------------
 
-Only enabled native limit sides constrain the imported joint. Disabled stored
-zero values are unbounded, including one-sided ranges. Driver `range=` is
-presentation metadata, not a replacement mechanical bound. An invalid initial
-request is refused by ordinary joint validation before a running program is
-compiled. An outward move reaches an enabled physical stop and sets
-`command.status` to `"blocked"`; an admitted target becomes `"completed"`.
-Use `sim.state` for the qualified physical coordinate and driver values, and
-`sim.stops` for ordinary running stop observations.
+Put the class in an ordinary project, whose ``pyproject.toml`` names it
+under ``[tool.machinome]`` as its ``model``:
 
-## Selectors and refusals
+.. code-block:: python
 
-Find the native internal Name in FreeCAD's property editor. A missing selector
-or selection of a fixed connection raises an error with the source path,
-selector, its type when present and the available moving Names. An unused alias
-is validated too. `FreeCADJoint("Joint001", axis=..., range=...)` is invalid:
-the source owns those mechanical facts. A reference declared on another,
-unrelated model cannot be used as a local relation target.
+    from machinome.node.freecad import FreeCADAssemblyNode, FreeCADJoint
+    from machinome.motion.ports import Time
+    from machinome.simulation import Driver, Sim
 
-The supported graph contains exactly one native `Assembly::AssemblyObject`,
-one grounded occurrence, rigid occurrences and unsuppressed Fixed/Revolute
-connections forming one connected acyclic tree. Every occurrence and fixed
-connection is preserved; fixed solids are separate rather than fused. Joint
-endpoint order does not determine the carrying tree: connectivity rooted at the
-ground does. Unknown connection objects, unsupported joint types, suppression,
-loops, disconnected objects, multiple groundings, unresolved native references,
-non-solid shapes and non-rigid scale are explicit refusals.
+    class DumE(FreeCADAssemblyNode):
+        freecad_source = "cad/MA_Dum_E_v2_Assembly.FCStd"
+        time = Time.running()
+        turntable = FreeCADJoint("Joint001")
+        turn = Driver(default=0, unit="deg")
+        turn.drives(turntable)
 
-Native recomputation and `assembly.solve()` must succeed. After recomputing
-authored references and offsets, and again after solving, every joint's native
-marker residuals must be finite and within 0.01 mm and 0.001 degree. Both
-joint types require coincident connector origins. Fixed connections require
-native direction-cosines `(Iy·Jx, Iz·Jx, Iz·Jy)` to be zero: this admits identity
-and the three proper π-rotation branches, not an arbitrary relative connector
-orientation. Revolutes require `(Iz·Jx, Iz·Jy)` to be zero, accepting parallel
-or antiparallel Z axes with free twist. Angular distance to the applicable
-branch/axis and the raw direction-cosines are checked; the latter's dimensionless
-tolerance is `sin(0.001°)`. These are the pinned native solver conventions,
-not replacement project-authored mechanics.
+    node = DumE()
+    sim = Sim(node, dt=0.02)
+    command = sim.move("turn", to=150, duration=1.0)
+    sim.run(1.0)
+    print(command.status, node.turntable.value)
 
-Solving must retain
-the saved placements within 0.01 mm and 0.001 degree. Source drift beyond those
-tolerances is refused instead of quietly replacing the saved assembly. This
-first version has no generalized diagnostic CLI or second inventory API.
+``freecad_source`` is a string or a path-like object. A relative path
+resolves from the Python module that declared the attribute, whatever
+the working directory and through inheritance. The document must belong
+to that module's project, as every source a node declares does. The
+source is checked when an instance is constructed, before relations
+resolve and before ``Sim`` enumerates or compiles the graph.
 
-Solver status 0 alone is insufficient. Inconsistent sources are refused with
-source, assembly, joint and endpoint Names, measured residuals and tolerances.
-The adapter does not repair a constraint, change a source or invent a fixed
-transform. Untouched Dum-E is negative evidence. The separate project author
-established native moving-pose parity for all nine occurrences in eight cases
-against the project-owned correction, with maximum errors below 0.01 mm and
-0.001 degree, and the unchanged-wrapper 180°/120° command experiment passed.
-These corrected-source results do not retroactively certify upstream. See
-[the review](../workflow/archive/native-freecad-assembly/native-freecad-adversarial-review.md).
+FreeCAD resolves the document's external links itself; keep their
+relative layout when moving the project. A linked document may sit in a
+sibling directory, not only beside the assembly.
 
-## Refresh and geometry
+Drive a joint
+-------------
 
-After changing native mechanics or a consumed linked file, construct a fresh
-model and a fresh `Sim`. Do not reinterpret an active simulation in place.
-Every fresh construction performs native discovery, brackets a second native
-load with the complete observed closure, recomputes, checks the solver, and
-rejects interrupted generations. Content digests and strong metadata detect
-semantic edits and same-size replacements with restored mtime. Immutable
-snapshots are reused only after that native handshake, without sharing mutable
-nodes or coordinates. The acceptance recipe is versioned; older provisional
-snapshots cannot satisfy residual admission or be a fallback after refusal.
-That recipe also participates in exact artifact currency. There is currently a cost of two native processes per
-fresh model; this is a correctness-first compatibility boundary, not live sync.
+``FreeCADJoint`` selects an existing revolute by its internal FreeCAD
+``Name``, which FreeCAD's property editor shows; the editable ``Label``
+is not a selector. It takes nothing else:
+``FreeCADJoint("Joint001", axis=..., range=...)`` is refused, since the
+source owns those facts.
 
-Exact geometry is transferred as own-frame BREP into the framework OCCT kernel.
-The worker owns native geometry and joint interpretation; ordinary exact leaf
-materialization writes BREP/STL artifacts, and ordinary operations express the
-carrying poses. Source geometry and native/importer recipe participate in
-artifact currency. An older model whose consumed source identity changes is
-refused when its geometry or currency is consumed; rebuild it.
+The alias on an instance is the joint's own coordinate, so
+``node.turntable.value`` reads the physical angle in degrees. It adds no
+coordinate of its own: two aliases of one Name read the same value, and
+the ordinary rule against two writers refuses two drivers commanding it.
+Two instances of one class own separate coordinates and node trees.
 
-For a source change during exact materialization, the adapter restores that
-leaf's prior BREP/STL and currency sidecars (or removes outputs just created by
-that failed attempt). Output files may exist transiently while that attempt
-runs; this is not a transaction across other processes or an entire build.
+A driver commands the native coordinate, whose zero is the native zero,
+not the pose saved in the document. Revolutes no driver commands keep
+their saved native coordinates, through repeated rendering and every
+fresh ``Sim``.
 
-The ordinary framework build/export/snapshot surfaces remain the consumers.
-No viewer engine, custom motion format or additional export field is required.
-For numerical comparison, all required surfaces are public: `render()` gives
-the carrying children, each node has `name` and `operations`, each operation
-has `matrix()`, and exact leaves have `shape()`.
+Only the limit sides enabled in the document bound the joint; a disabled
+side is unbounded, even beside an enabled one. A driver's ``range=`` is
+presentation, not a mechanical bound. An initial request outside the
+bounds is refused before a running program is compiled. A move that
+reaches an enabled stop ends with ``command.status`` ``"blocked"``; one
+whose target is admitted ends ``"completed"``. ``sim.state`` holds the
+physical coordinates and the drivers' values, and ``sim.stops`` the
+stops observed while running.
 
-```python
-import numpy as np
+What is refused
+---------------
 
-def occurrence_poses(node, parent=None, path=()):
-    parent = np.eye(4) if parent is None else parent
-    rendered = node.render()
-    local = np.eye(4)
-    for operation in node.operations:
-        local = operation.matrix() @ local
-    world = parent @ local
-    yield path + (node.name,), world
-    if isinstance(rendered, (list, tuple)):
-        for child in rendered:
-            yield from occurrence_poses(child, world, path + (node.name,))
+A missing selector, or one naming a fixed connection, is refused naming
+the source, the selector, its type when it has one, and the moving Names
+available. An alias no driver uses is checked too. A reference declared
+on another, unrelated model cannot be a target here.
 
-# Bind operating defaults through Sim first, then inspect poses.
-sim = Sim(node, dt=0.02)
-poses = dict(occurrence_poses(node))
-```
+The document must hold exactly one native ``Assembly::AssemblyObject``
+with one grounded occurrence, rigid occurrences, and unsuppressed fixed
+and revolute connections forming one connected tree without loops. Every
+occurrence and every fixed connection is kept: fixed solids stay
+separate rather than fused. Which end of a joint is the carrier comes
+from the tree rooted at the ground, not from the joint's endpoint order.
+Unknown connection objects, other joint types, suppression, loops,
+disconnected objects, several groundings, unresolved references,
+non-solid shapes and non-rigid scale are refused by name.
 
-Names preserve the native occurrence Names through reparenting. A `solid`
-child is an exact leaf in its carrier's own frame; nested carrier transforms
-compose parent-first. Compare these matrices with an independent native solver
-reference. Do not recover physical zero or limits from rendered shape alone.
+FreeCAD must recompute the document and solve the assembly. After the
+recompute and again after the solve, every joint's connector markers must
+agree within 0.01 mm and 0.001 degree: both joint types need coincident
+connector origins; a fixed connection needs the direction cosines
+``(Iy·Jx, Iz·Jx, Iz·Jy)`` at zero, which admits identity and the three
+half-turn branches and no other relative orientation; a revolute needs
+``(Iz·Jx, Iz·Jy)`` at zero, parallel or antiparallel Z axes with free
+twist. The tolerance on the raw direction cosines is ``sin(0.001°)``.
+These are the conventions of FreeCAD's own solver, not mechanics the
+project declares.
+
+The solve must also keep the saved placements within 0.01 mm and 0.001
+degree: a source that drifts further is refused rather than quietly
+replacing the saved assembly. A solver status of 0 alone is not enough.
+A refusal names the source, the assembly, the joint and its endpoints,
+the measured residuals and the tolerances. Nothing repairs a source,
+changes a constraint or invents a fixed transform: correct the document
+in FreeCAD.
+
+After an edit
+-------------
+
+After changing the document or a document it links, construct a fresh
+model and a fresh ``Sim``; a running simulation is never reinterpreted in
+place. Each fresh construction asks FreeCAD to read the document, then
+reads it again with everything the first read observed, recomputes,
+checks the solve, and refuses a source that changed between the two.
+Content digests detect an edit even when the size and modification time
+are restored. A snapshot of the result is reused only after that
+exchange, and never shares nodes or coordinates between models. Each
+fresh model costs two FreeCAD processes: correctness first, not live
+synchronisation.
+
+Each occurrence's solid comes from FreeCAD as BREP in its own frame and
+is read through the B-rep engine. The occurrence is an ordinary B-rep
+leaf, whose artifacts the build writes as for any other part, and the
+carrying poses are ordinary operations, so the build, the exports, the
+snapshot and the viewer read the assembly like any other. The source's
+geometry and the recipe that read it take part in the artifacts'
+currency: a model whose document changed is refused when its geometry is
+used; rebuild it. A source that changes while a leaf is written leaves
+that leaf's previous artifacts restored, or none.
+
+Compare poses
+-------------
+
+Every surface a numerical comparison needs is public: ``render()`` gives
+a node's children, each node has ``name`` and ``operations``, each
+operation has ``matrix()``, and a B-rep leaf has ``shape()``:
+
+.. code-block:: python
+
+    import numpy as np
+
+    def occurrence_poses(node, parent=None, path=()):
+        parent = np.eye(4) if parent is None else parent
+        rendered = node.render()
+        local = np.eye(4)
+        for operation in node.operations:
+            local = operation.matrix() @ local
+        world = parent @ local
+        yield path + (node.name,), world
+        if isinstance(rendered, (list, tuple)):
+            for child in rendered:
+                yield from occurrence_poses(child, world, path + (node.name,))
+
+    # Bind operating defaults through Sim first, then inspect poses.
+    sim = Sim(node, dt=0.02)
+    poses = dict(occurrence_poses(node))
+
+The names are the native occurrence Names, kept through reparenting. A
+``solid`` child is a B-rep leaf in its carrier's own frame, and nested
+carriers compose parent first. Compare these matrices with a reference
+FreeCAD computes independently; do not recover a physical zero or a
+limit from the rendered shape alone.

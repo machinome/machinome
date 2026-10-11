@@ -93,6 +93,21 @@ class NavigationTest(unittest.TestCase):
         self.assertFalse((REPOSITORY / '.gitmodules').exists(),
                          'the manual pins a submodule')
 
+    def test_the_freecad_guide_is_a_how_to(self):
+        # `join-freecad`: the FreeCAD node package's guide is a how-to, its
+        # example imports from the package's address, and it names the
+        # runtime it was measured with and the variable that finds it.
+        index = (DOCS / 'index.rst').read_text()
+        how_to = re.search(r':caption:\s*How-to guides\n\n((?:   \S+\n)+)',
+                           index)
+        self.assertIsNotNone(how_to, 'index.rst has no How-to toctree')
+        self.assertIn('howto/freecad-assemblies', how_to.group(1).split())
+        page = (DOCS / 'howto' / 'freecad-assemblies.rst').read_text()
+        for spelled in ('from machinome.node.freecad import',
+                        'MACHINOME_FREECAD_ROOT', '1.1.4'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, page)
+
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',
                         'releases/development-0.7.rst'):
@@ -117,7 +132,7 @@ class KernelExtrasTest(unittest.TestCase):
     flag, extra or variable."""
 
     EXTRAS = ('brep', 'mesh', 'cadquery', 'build123d', 'step', 'molejo',
-              'jscad', 'stl', 'all')
+              'jscad', 'stl', 'freecad', 'all')
 
     #: The engines' former names (`brep-mesh`), spelled in pieces so this
     #: file's own reading of them is plain.
@@ -127,8 +142,10 @@ class KernelExtrasTest(unittest.TestCase):
               'Exact' 'LeafNode', 'machinome[' 'occt]',
               'machinome[' 'manifold]', 'SOLID_TEST_' 'KERNEL')
 
+    #: The FreeCAD node package's module before it joined the repository
+    #: (`join-freecad`).
     STALE = ('Everything else comes with the package',
-             'machinome.node.adapters') + FORMER
+             'machinome.node.adapters', 'machinome' '_freecad') + FORMER
 
     #: The changelog records the dissolution and the released names, and
     #: the upgrading page maps every former name to its new one, the
@@ -147,7 +164,8 @@ class KernelExtrasTest(unittest.TestCase):
         # engines' own distributions; `cut-the-brep-nodes`: the `cadquery`,
         # `build123d`, `step` and `molejo` extras the node packages';
         # `cut-the-mesh-nodes`: the `openscad`, `solid2`, `jscad` and `stl`
-        # extras theirs.
+        # extras theirs; `join-freecad`: the `freecad` extra the FreeCAD node
+        # package.
         page = (DOCS / 'start' / 'install.rst').read_text()
         for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
                              'machinome-node-cadquery',
@@ -155,7 +173,8 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-step', 'machinome-node-molejo',
                              'machinome-node-openscad',
                              'machinome-node-solid2',
-                             'machinome-node-jscad', 'machinome-node-stl'):
+                             'machinome-node-jscad', 'machinome-node-stl',
+                             'machinome-node-freecad'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
 

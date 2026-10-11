@@ -27,6 +27,8 @@ Optional:
 
 * The **jscad** command from npm, to write parts in JavaScript with
   ``JScadNode``.
+* **FreeCAD** 1.1.4, extracted, to read native FreeCAD assemblies with
+  ``FreeCADAssemblyNode`` (:doc:`/howto/freecad-assemblies`).
 
 The package itself brings trimesh. Its node types, the CAD kernels,
 SolidPython and the engines are extras, so a project installs only the ones
@@ -91,6 +93,12 @@ same name: the extra is the last component of the module's address.
      - ``machinome.node.stl``
      - the package ``machinome-node-stl``, for ``StlNode``, which reads
        with trimesh, which comes with the package
+   * - ``machinome[freecad]``
+     - ``machinome.node.freecad``
+     - the package ``machinome-node-freecad``, for ``FreeCADAssemblyNode``
+       and ``FreeCADJoint``, which read a native assembly through FreeCAD,
+       a program no Python package installs, found through
+       ``MACHINOME_FREECAD_ROOT`` (:doc:`/howto/freecad-assemblies`)
    * - ``machinome[all]``
      - every module above
      - every extra above
@@ -129,8 +137,9 @@ types in packages of their own that its extras install
 ``machinome-node-cadquery``, ``machinome-node-build123d``,
 ``machinome-node-step``, ``machinome-node-molejo``,
 ``machinome-node-openscad``, ``machinome-node-solid2``,
-``machinome-node-jscad`` and ``machinome-node-stl``), all licensed
-|framework_licence|, at the recipient's choice. The browser viewer is a
+``machinome-node-jscad``, ``machinome-node-stl`` and
+``machinome-node-freecad``), all licensed |framework_licence|, at the
+recipient's choice. The browser viewer is a
 separate package, `machinome-viewer
 <https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
 and the framework reaches it only as a separate process. The ``viewer``

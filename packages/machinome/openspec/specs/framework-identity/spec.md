@@ -156,16 +156,19 @@ unless they name the repository root.
 The framework's extension packages, today the engines `machinome-engine-brep`
 and `machinome-engine-mesh` and the node packages `machinome-node-cadquery`,
 `machinome-node-build123d`, `machinome-node-step`, `machinome-node-molejo`,
-`machinome-node-openscad`, `machinome-node-solid2`, `machinome-node-jscad` and
-`machinome-node-stl`, SHALL each be such a sibling, holding only its
+`machinome-node-openscad`, `machinome-node-solid2`, `machinome-node-jscad`,
+`machinome-node-stl` and `machinome-node-freecad`, SHALL each be such a
+sibling, holding only its
 manifest `pyproject.toml`, a `README.md` that names its install line and the
 licence, the relative symbolic links `LICENSE` and `LICENSES` to the root's,
 and its namespace portion at its address under `machinome/`, with no
 `__init__.py` at the levels the framework's import package defines; a portion
-that is a package directory, `machinome/node/openscad/`, holds its own
-`__init__.py` at its address, below those levels, and its manifest's package
-search names that package. Its specs, tests, decision records and manual pages
-SHALL be the framework's.
+that is a package directory, `machinome/node/openscad/` or
+`machinome/node/freecad/`, holds its own `__init__.py` at its address, below
+those levels, and its manifest's package search names that package. Its specs,
+tests, decision records and manual pages SHALL be the framework's, those of a
+package that joined the repository from a repository of its own
+(`machinome-node-freecad`) included.
 Every distribution of the set SHALL carry one version, the framework's, and
 every requirement between two of them SHALL be the compatible-release pin
 `~=<version>`, in both directions, between the framework and an extension
@@ -215,7 +218,8 @@ in a `dist` job after its `test` and `docs` jobs.
   distributions under `packages/machinome-engine-brep/` and
   `packages/machinome-engine-mesh/`, the node packages' under
   `packages/machinome-node-cadquery/`, `-build123d/`, `-step/`, `-molejo/`,
-  `-openscad/`, `-solid2/`, `-jscad/` and `-stl/`, and the root holds the
+  `-openscad/`, `-solid2/`, `-jscad/`, `-stl/` and `-freecad/`, and the root
+  holds the
   repository's
   record, the workspace manifest and its lock, and none of the framework's
   sources
@@ -237,8 +241,10 @@ in a `dist` job after its `test` and `docs` jobs.
   `machinome/engine/brep.py` of `packages/machinome-engine-brep/` or
   `machinome/node/step.py` of `packages/machinome-node-step/`, or the package
   directory `machinome/node/openscad/` with its five modules for
-  `packages/machinome-node-openscad/`, and the layout test fails naming any
-  other entry or an `__init__.py` other than that package's own
+  `packages/machinome-node-openscad/`, or `machinome/node/freecad/` with its
+  four modules for `packages/machinome-node-freecad/`, and the layout test
+  fails naming any other entry or an `__init__.py` other than that package's
+  own
 
 #### Scenario: Every sibling is an extension package of the table
 
@@ -312,4 +318,16 @@ in a `dist` job after its `test` and `docs` jobs.
   on the PATH and writes their SCAD where it is not, renders an `StlNode`
   part, constructs a `JScadNode` part, and resolves the OpenSCAD renderer
   through the table of supported node types to that distribution's file
+
+#### Scenario: The FreeCAD node package is smoked through the framework
+
+- **WHEN** `scripts/check-dist` installs the built wheels
+- **THEN** it installs `machinome-node-freecad` through the framework's
+  `freecad` extra from the built archives, imports `machinome.node.freecad`
+  at its address, finds the four files it ships owned by its own distribution
+  and its version equal to the framework's, declares a
+  `FreeCADAssemblyNode` subclass over a synthetic fixture, and constructs and
+  runs it to its enabled limit where `MACHINOME_FREECAD_ROOT` is set, and
+  finds its construction refused naming `MACHINOME_FREECAD_ROOT` where it is
+  not
 

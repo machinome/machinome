@@ -60,11 +60,18 @@ already know and by what the part needs; a project may mix them freely.
      - ``render()`` returning a molejo ``Shape``
      - yes
      - ``machinome[molejo]`` (:doc:`flexible-parts`)
+   * - ``FreeCADAssemblyNode``
+     - ``machinome.node.freecad``
+     - ``freecad_source`` naming a native assembly, and a ``FreeCADJoint``
+       per driven revolute
+     - yes
+     - FreeCAD and ``machinome[freecad]`` (:doc:`freecad-assemblies`)
 
 Each class is imported from the module beside it, the module of its node
-type: eight node types, and ``machinome.node.build123d`` defines two
-classes. The root of ``machinome.node`` exports nothing, and the extra is
-the module's last name (:doc:`/start/install`).
+type: nine node types; ``machinome.node.build123d`` defines two classes,
+and ``machinome.node.freecad`` reads a whole assembly rather than one
+part. The root of ``machinome.node`` exports nothing, and the extra is the
+module's last name (:doc:`/start/install`).
 
 **B-rep** parts keep their boundary representation: a ``.brep`` beside
 the STL, a B-rep fusion with other B-rep parts, and geometric tests

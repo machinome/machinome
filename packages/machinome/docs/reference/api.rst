@@ -492,6 +492,23 @@ kernel, installed by ``machinome[openscad]`` and ``machinome[solid2]``.
    A B-rep part selected from a STEP document. See :doc:`/howto/imported-parts`
    for source paths, product selection and `adjust()`.
 
+.. autoclass:: machinome.node.freecad.FreeCADAssemblyNode
+
+   A whole native FreeCAD assembly, read by FreeCAD when the node is
+   constructed. See :doc:`/howto/freecad-assemblies`.
+
+   .. attribute:: freecad_source
+
+      Path of the ``.FCStd`` document holding one native assembly,
+      relative to the directory of the python file declaring the
+      attribute. A path that resolves outside the project is refused when
+      the node is constructed.
+
+.. autoclass:: machinome.node.freecad.FreeCADJoint
+
+   One revolute of the assembly, selected by its native internal Name, as
+   the target of a driver.
+
 .. autoclass:: machinome.node.flexible.FlexibleNode
    :members: tech, shape_parameters, shape_spec, snapshot_mesh, snapshot_stl,
              snapshot_shape, brep

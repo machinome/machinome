@@ -47,6 +47,10 @@ address of the module that needs it:
   the `jscad` command, is a Node program no pip extra installs);
 - `stl`, for `machinome.node.stl`: the distribution `machinome-node-stl`, which
   requires trimesh, a required dependency of the core;
+- `freecad`, for the package `machinome.node.freecad`: the distribution
+  `machinome-node-freecad`, which requires the B-rep engine, `numpy` and
+  `scipy` (its runtime, FreeCAD, is a program no pip extra installs, found
+  through `MACHINOME_FREECAD_ROOT`);
 - `all`, every extra above.
 
 Every extra above but `all` SHALL require its distribution with the
@@ -59,7 +63,8 @@ the B-rep engine its kernel and `machinome-engine-brep~=<version>`, and
 `machinome-node-step` also `machinome-node-cadquery~=<version>`, whose module
 it imports; `machinome-node-openscad` SolidPython; `machinome-node-solid2`
 `machinome-node-openscad~=<version>`, whose modules it imports, and
-SolidPython. A distribution of the set SHALL declare every third-party package
+SolidPython; `machinome-node-freecad` `machinome-engine-brep~=<version>`, whose
+OCCT binding its package imports, with `numpy` and `scipy`. A distribution of the set SHALL declare every third-party package
 its module imports directly, unranged when the framework pins the range.
 
 Every node type of the table of supported node types SHALL have the extra of
@@ -100,10 +105,10 @@ distribution of the set, the distribution it installs.
 
 - **WHEN** the package metadata's extras are read
 - **THEN** `brep`, `mesh`, `cadquery`, `build123d`, `step`, `molejo`,
-  `openscad`, `solid2`, `jscad`, `stl` and `all` are declared, `brep`
-  requires `machinome-engine-brep~=<version>`, `mesh`
+  `openscad`, `solid2`, `jscad`, `stl`, `freecad` and `all` are declared,
+  `brep` requires `machinome-engine-brep~=<version>`, `mesh`
   `machinome-engine-mesh~=<version>`, and each of `cadquery`, `build123d`,
-  `step`, `molejo`, `openscad`, `solid2`, `jscad` and `stl`
+  `step`, `molejo`, `openscad`, `solid2`, `jscad`, `stl` and `freecad`
   `machinome-node-<key>~=<version>`, with the framework's version and nothing
   else, `all` includes every one of them, every key of the table of supported
   node types is an extra, and the development extra includes `all`
@@ -155,7 +160,7 @@ distribution of the set, the distribution it installs.
 - **THEN** the `lint`, `test` and `browser-snapshot` jobs each run
   `uv sync --locked` at the repository root, and the lock holds every
   concrete requirement of the `all` extra, `manifold3d`, `cadquery-ocp`,
-  `solidpython2`, both engine distributions and the eight node distributions
+  `solidpython2`, both engine distributions and the nine node distributions
   among them
 
 #### Scenario: The installation page names the extension distributions
@@ -164,19 +169,29 @@ distribution of the set, the distribution it installs.
 - **THEN** it names `machinome[brep]`, `machinome[mesh]`,
   `machinome[cadquery]`, `machinome[build123d]`, `machinome[step]`,
   `machinome[molejo]`, `machinome[openscad]`, `machinome[solid2]`,
-  `machinome[jscad]` and `machinome[stl]` and the distributions
-  `machinome-engine-brep`, `machinome-engine-mesh`, `machinome-node-cadquery`,
-  `machinome-node-build123d`, `machinome-node-step`, `machinome-node-molejo`,
-  `machinome-node-openscad`, `machinome-node-solid2`, `machinome-node-jscad`
-  and `machinome-node-stl` they install
+  `machinome[jscad]`, `machinome[stl]` and `machinome[freecad]` and the
+  distributions `machinome-engine-brep`, `machinome-engine-mesh`,
+  `machinome-node-cadquery`, `machinome-node-build123d`,
+  `machinome-node-step`, `machinome-node-molejo`, `machinome-node-openscad`,
+  `machinome-node-solid2`, `machinome-node-jscad`, `machinome-node-stl` and
+  `machinome-node-freecad` they install
+
+#### Scenario: The FreeCAD node distribution requires the framework and the B-rep engine
+
+- **WHEN** the manifest of `machinome-node-freecad` is read
+- **THEN** it requires `machinome~=<version>` and
+  `machinome-engine-brep~=<version>` with the framework's version, `numpy`
+  and `scipy`, unranged, and names neither `cadquery-ocp`, a FreeCAD
+  distribution, `machinome-engine-mesh` nor `machinome[mesh]`
 
 ### Requirement: A kernel module refuses an absent kernel at import
 
 Each module that needs a kernel the core does not require — the node
 modules `machinome.node.cadquery`, `machinome.node.build123d`,
 `machinome.node.step`, `machinome.node.molejo` and `machinome.node.solid2`, the
-package `machinome.node.openscad`, the B-rep engine `machinome.engine.brep` and
-the mesh engine `machinome.engine.mesh` — SHALL
+packages `machinome.node.openscad` and `machinome.node.freecad`, the B-rep
+engine `machinome.engine.brep` and the mesh engine `machinome.engine.mesh` —
+SHALL
 check, when it is imported and before it imports any kernel or another kernel
 module, that each kernel it needs can be found. The check SHALL NOT import the
 kernel.
@@ -207,14 +222,15 @@ own extra, and no core module gains a row for it.
 
 - **WHEN** `machinome.node.build123d`, `machinome.node.step`,
   `machinome.node.molejo`, `machinome.engine.brep`, `machinome.engine.mesh`,
-  `machinome.node.openscad` and `machinome.node.solid2` are each imported
-  with their kernel absent
+  `machinome.node.openscad`, `machinome.node.solid2` and
+  `machinome.node.freecad` are each imported with their kernel absent
 - **THEN** each refusal names what the module provides and
   `pip install "machinome[build123d]"`, `pip install "machinome[step]"`,
   `pip install "machinome[molejo]"`, `pip install "machinome[brep]"`,
   `pip install "machinome[mesh]"`,
-  `pip install "machinome[openscad]"` and `pip install "machinome[solid2]"`
-  respectively
+  `pip install "machinome[openscad]"`, `pip install "machinome[solid2]"` and
+  `pip install "machinome[freecad]"` respectively, the FreeCAD package's
+  naming `FreeCADAssemblyNode`, `FreeCADJoint` and `OCP`
 
 #### Scenario: Checking does not import the kernel
 
@@ -251,8 +267,11 @@ package SHALL each live in its own distribution, and SHALL import no kernel
 but its own: `OCP` for the B-rep engine, `manifold3d` for the mesh engine,
 `build123d` for the build123d module, `cadquery` and `OCP` for the STEP
 module, `molejo` for the molejo module, `solid2` for the OpenSCAD package's
-`__init__` and writer and for the solid2 module, and none for the CadQuery,
-JSCAD and STL modules and the OpenSCAD package's other modules. A core module
+`__init__` and writer and for the solid2 module, `OCP` for the FreeCAD
+package's adapter, and none for the CadQuery, JSCAD and STL modules, the
+OpenSCAD package's other modules and the FreeCAD package's other modules,
+whose worker imports FreeCAD's own modules and runs only in FreeCAD's
+interpreter. A core module
 that needs a kernel module's capability SHALL reach it through a seam: a
 try-import of the one known module that answers by that module's extra when it
 is absent.
@@ -291,17 +310,20 @@ but its own package. The engines' providers are named by their seams under the
   `molejo` alone, `machinome/node/openscad/__init__.py`,
   `machinome/node/openscad/writer.py` and `machinome/node/solid2.py` `solid2`
   alone, the CadQuery, JSCAD and STL modules and the OpenSCAD package's other
-  modules none, and each module that imports a kernel calls its extra's
+  modules none, `machinome/node/freecad/adapter.py` of
+  `machinome-node-freecad` `OCP` alone and the FreeCAD package's other modules
+  none, and each module that imports a kernel calls its extra's
   `require_extra` before any kernel import or kernel module import, the
-  OpenSCAD package in its `__init__`
+  OpenSCAD and FreeCAD packages in their `__init__`
 
 #### Scenario: Scanning the core finds the kernel modules named only at the seams
 
 - **WHEN** every module under the core's `machinome/` and every module of the
   extension distributions is scanned for imports or string spellings of
   `machinome.node.cadquery`, `machinome.node.build123d`,
-  `machinome.node.step`, `machinome.node.molejo`, `machinome.node.solid2` and
-  `machinome.node.openscad`, a name beneath one counting as it
+  `machinome.node.step`, `machinome.node.molejo`, `machinome.node.solid2`,
+  `machinome.node.openscad` and `machinome.node.freecad`, a name beneath one
+  counting as it
 - **THEN** they are found only in `machinome/node/supported.py`
   (`machinome.node.openscad`), `machinome/node/markings.py`, the step
   distribution's `machinome/node/step.py` (`machinome.node.cadquery` alone),
@@ -319,9 +341,9 @@ but its own package. The engines' providers are named by their seams under the
 #### Scenario: The core imports no node type and no engine provider
 
 - **WHEN** every import statement of every module under the core's
-  `machinome/` is read for the modules of the eight node types, the OpenSCAD
-  node package, `machinome.engine.brep`, `machinome.engine.mesh`, and any
-  name beneath one of them
+  `machinome/` is read for the modules of the node types, the OpenSCAD and
+  FreeCAD node packages, `machinome.engine.brep`, `machinome.engine.mesh`,
+  and any name beneath one of them
 - **THEN** they are found only in the two templates, each importing its own
   node type's class from its module
 
@@ -472,4 +494,14 @@ type's module nor the table to make this so.
 - **THEN** it raises the OpenSCAD package's refusal, naming
   `machinome.node.openscad` and `pip install "machinome[openscad]"`, while
   `machinome.node.stl` still imports
+
+#### Scenario: The FreeCAD node package is refused by its extra
+
+- **WHEN** `machinome-node-freecad` is absent and `machinome.node.freecad` is
+  imported, `FreeCADAssemblyNode` is imported from it, it is imported from
+  `machinome.node`, or `hasattr` is asked of `machinome.node` for it
+- **THEN** each raises the refusal `the freecad node type
+  (FreeCADAssemblyNode, FreeCADJoint) needs machinome.node.freecad, which is
+  not installed; install it with 'pip install "machinome[freecad]"'`, whose
+  `name` is `machinome.node.freecad` and whose extra is `freecad`
 

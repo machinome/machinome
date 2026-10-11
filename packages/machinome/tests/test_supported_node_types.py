@@ -11,7 +11,9 @@ root resolves, the renderer a node type contributes (a provisional column,
 which the viewer cycle removes) and the commands that need its module. The
 node root, the CLI and the snapshot command read it, and no other module of
 the core spells a node type's module. A node type's address and extra are
-not stored: they are `machinome.node.<key>` and `machinome[<key>]`.
+not stored: they are `machinome.node.<key>` and `machinome[<key>]`. The
+FreeCAD node type, which joined the repository from a repository of its own,
+is its last row (OpenSpec change `join-freecad`).
 """
 
 import ast
@@ -20,6 +22,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import textwrap
 from pathlib import Path
@@ -42,6 +46,7 @@ NODE_TYPES = {
     'openscad': ('OpenScadNode',),
     'jscad': ('JScadNode',),
     'stl': ('StlNode',),
+    'freecad': ('FreeCADAssemblyNode', 'FreeCADJoint'),
 }
 
 #: The modules that used to spell a node type's module, and must not.
@@ -58,7 +63,7 @@ def supported():
 
 class TheTableTest(TestCase):
 
-    def test_it_names_the_eight_node_types_and_their_classes(self):
+    def test_it_names_the_nine_node_types_and_their_classes(self):
         table = supported().NODE_TYPES
         self.assertEqual(list(table), list(NODE_TYPES))
         for key, classes in NODE_TYPES.items():
@@ -75,8 +80,11 @@ class TheTableTest(TestCase):
             module = importlib.import_module(f'machinome.node.{key}')
             for name in classes:
                 with self.subTest(name=name):
-                    self.assertEqual(getattr(module, name).__module__,
-                                     f'machinome.node.{key}')
+                    # The FreeCAD package defines its classes in its module
+                    # `adapter` (`join-freecad`).
+                    self.assertIn(getattr(module, name).__module__,
+                                  (f'machinome.node.{key}',
+                                   f'machinome.node.{key}.adapter'))
                     with self.assertRaises(ImportError) as raised:
                         getattr(machinome.node, name)
                     self.assertIn(
@@ -245,6 +253,7 @@ ABSENCES = {
     'solid2': doors('solid2'),
     'jscad': doors('jscad'),
     'stl': doors('stl'),
+    'freecad': doors('freecad'),
 }
 
 #: A project of one SolidPython part, which `machinome snapshot` renders
@@ -326,3 +335,26 @@ class AbsentPackageTest(TestCase):
             'open' 's' 'cad extra: ' + refused('open' 's' 'cad')[3]
             + '; or use --renderer web', run.output)
         self.assertFalse(os.path.exists(image))
+
+
+class TheFreeCADTestsSkipWithoutARuntimeTest(TestCase):
+    """(`join-freecad`, capability `native-freecad-assembly`) Where
+    `MACHINOME_FREECAD_ROOT` is not set, a FreeCAD node package test module
+    is reported skipped, naming the variable, and none of its tests fails."""
+
+    def test_the_public_module_skips_naming_the_variable(self):
+        environment = {name: value for name, value in os.environ.items()
+                       if name != 'MACHINOME_FREECAD_ROOT'}
+        run = subprocess.run(
+            [sys.executable, '-m', 'pytest', '-q', '-rs',
+             '-p', 'no:cacheprovider', 'tests/test_freecad_public.py'],
+            cwd=ROOT, env=environment, capture_output=True, text=True,
+            timeout=300)
+        output = run.stdout + run.stderr
+        # A module skipped whole collects no test, which pytest reports with
+        # its exit status 5, never 1.
+        self.assertIn(run.returncode, (0, 5), output)
+        self.assertIn('1 skipped', output)
+        self.assertIn('MACHINOME_FREECAD_ROOT', output)
+        self.assertNotIn('failed', output)
+        self.assertNotIn('error', output)

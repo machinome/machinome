@@ -1,5 +1,6 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Independent native solver fixture oracle. No adapter imports."""
 import json
 import math

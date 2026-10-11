@@ -155,3 +155,49 @@ extraction, and Dum-E loads on the bench with the root set.
 ## Progress
 
 (entries appended by each cycle's applier at its close)
+
+1. `join-freecad`. **Done** (11 October 2026): branch
+   `v0.9-joins-join-freecad`, planning commit dea7d7f4 on cf631645, ratified
+   by the orchestrator's review; the join, the merge commit dba7dae5 of
+   machinome-freecad's `lean-core-validation` rewritten by `git filter-repo`
+   to its final paths (51 files; `git log --follow` on the adapter reaches
+   fc69a67a of 1 October 2026). ADR-185, a node type may read a whole
+   assembly through an external program, accepted; ADR-183 amended. The
+   package is `packages/machinome-node-freecad/` (the package directory
+   `machinome/node/freecad/` with `__init__.py`, `adapter.py`, `runtime.py`
+   and `worker.py`), numbered 0.8.1, requiring `machinome~=0.8.1`,
+   `machinome-engine-brep~=0.8.1`, numpy and scipy, under the set's licence;
+   the table of supported node types gains the row `freecad`, the core the
+   extra `freecad` and `all` with it, and an absent package is refused by
+   `machinome[freecad]` at every door with no edit to ADR-184's finder. Its
+   occurrences are `BrepLeafNode` leaves at leaf contract 3 through the B-rep
+   engine's seam. Its four test modules, three helpers and 27 FCStd fixtures,
+   regenerated with the set's licence in their metadata, join the suite and
+   skip without `MACHINOME_FREECAD_ROOT`; its spec `native-freecad-assembly`,
+   its archived change and its workflow record join the framework's, its
+   guide the manual as `howto/freecad-assemblies`, its provenance
+   `CREDITS.md`. The specs modified are `native-freecad-assembly` (one
+   requirement renamed), `kernel-extras`, `node-model`, `framework-identity`
+   and `framework-contributor-guidance`; `user-documentation` gains one
+   requirement. `uv lock` resolves 188 packages. The suite green on the
+   bench's uv venv without the runtime (4798 passed, 24 skipped, the base's
+   20 and the four FreeCAD modules, 7136 subtests); the four FreeCAD modules
+   with FreeCAD 1.1.4 and Dum-E's untouched source, 82 passed; the manual
+   built with warnings as errors; `scripts/check-dist` green: twelve members
+   built, 24 archives `twine check --strict` passed, the FreeCAD package
+   installed through its extra and its construction refused naming
+   `MACHINOME_FREECAD_ROOT` without the runtime, blocked at its enabled
+   limit, 120 degrees, through FreeCAD with it; a clean copy's framework
+   sdist holds 1045 entries (39 more: the guide, the tests, the fixtures)
+   and its wheel 114, the FreeCAD package's 22 and 11; nothing uploaded.
+   Dum-E moved onto `machinome.node.freecad` in its own repository (its
+   commit 26ae7aa): its 7 tests passed with the runtime set, its posed
+   snapshot byte-identical to that of 1 October 2026 (SHA-256
+   `40f8d568...b804`) and looked at, `machinome vet` exit 0, pure. The
+   universe sweep after the move: 63 repositories, 130 rows, 122 ok, 0
+   expected, 2 unexpected, 0 timeout, 6 no-model; Dum-E's row ok, the two
+   unexpected the base's (fender-bender without `fb_library`, wall_clock_41's
+   own error). Two findings recorded in `packages/machinome/workflow/warts.md`:
+   vet does not read `freecad_source`, and the leaf-contract reach gate does
+   not read the adapter. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-11-join-freecad/evidence.md`.

@@ -91,6 +91,43 @@ This project depends on the following open source software packages. We are grat
 - **Repository:** https://github.com/elalish/manifold
 - **Description:** Robust geometry library for 3D mesh operations
 
+### Called and consulted by the FreeCAD node package
+
+The package `machinome-node-freecad` (`machinome.node.freecad`) runs an
+independently installed FreeCAD and bundles none of it. Its worker and its
+fixture generator are original programs that call FreeCAD's API; no FreeCAD
+or OndselSolver function or binary is copied into the repository, and its
+test fixtures are original synthetic boxes, with no Dum-E or other upstream
+CAD among them.
+
+#### FreeCAD
+- **License:** LGPL 2.1 or later
+- **Copyright:** FreeCAD contributors; the Assembly workbench's Python
+  sources Copyright (c) 2023 Ondsel <development@ondsel.com>
+- **Repository:** https://github.com/FreeCAD/FreeCAD
+- **Version:** 1.1.4, git `4fd3bf320d9566a27e60069fc8387448aaa3a094`, the
+  official Linux x86-64 AppImage
+- **Description:** The CAD program whose Python the package's worker runs to
+  read a native assembly; called, not bundled or relicensed. The native API
+  and connector semantics were checked against the installed
+  `usr/Mod/Assembly/JointObject.py`, `UtilsAssembly.py`,
+  `CommandCreateAssembly.py` and the public `AssemblyObject` interface,
+  whose notices remain with the installed files; review also read
+  `AssemblyObject.cpp` and `AssemblyObjectPyImp.cpp`.
+
+#### OndselSolver
+- **License:** LGPL 2.1 or later
+- **Copyright:** Copyright (c) 2023 Ondsel, Inc.
+- **Repository:** https://github.com/FreeCAD/OndselSolver
+- **Version:** commit `30e9b64e8bf881d438d4b88834f9ba3674865418`
+- **Description:** FreeCAD's assembly solver. Its `FixedJoint.cpp`,
+  `RevoluteJoint.cpp`, `AtPointJoint.cpp` and
+  `DirectionCosineConstraintIJ.cpp` at that commit were read; the worker's
+  `constraint_residual`, added on 1 October 2026, adapts their mathematical
+  zero-target constraints, not their C++ solver algorithm, and copies no
+  implementation from them. Ondsel's copyright is retained for those
+  constraint conventions in the worker's header.
+
 ### Historical bundled frontend dependencies
 
 Through version 0.5, the web viewer application
@@ -175,6 +212,8 @@ distributions contain no JavaScript.
 | uvicorn | BSD 3-Clause | ✓ Compatible |
 | numpy | BSD 3-Clause | ✓ Compatible |
 | manifold3d | Apache 2.0 | ✓ Compatible |
+| FreeCAD (called, not bundled) | LGPL 2.1+ | ✓ Compatible |
+| OndselSolver (conventions consulted) | LGPL 2.1+ | ✓ Compatible |
 | three.js (bundled) | MIT | ✓ Compatible |
 | jokenizer (bundled) | MIT | ✓ Compatible |
 | react / react-dom (bundled) | MIT | ✓ Compatible |
@@ -198,4 +237,4 @@ Full license texts for all dependencies can be obtained from their respective re
 
 ---
 
-*This credits file was last updated: 2026-07-16*
+*This credits file was last updated: 2026-10-11*

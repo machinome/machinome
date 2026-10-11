@@ -27,11 +27,11 @@ dependencies = [
     "trimesh==4.4.*",
     # No CAD kernel and no node type is required: the node types (the
     # extras `cadquery`, `build123d`, `step`, `molejo`, `openscad`,
-    # `solid2`, `jscad` and `stl`), the B-rep engine (the extra `brep`) and
-    # the mesh engine (the extra `mesh`) are the extras below, each named by
-    # the last component of the address of the module that needs it
-    # (OpenSpec changes `lean-install`, `mesh-engine`, `openscad-out` and
-    # `brep-mesh`).
+    # `solid2`, `jscad`, `stl` and `freecad`), the B-rep engine (the extra
+    # `brep`) and the mesh engine (the extra `mesh`) are the extras below,
+    # each named by the last component of the address of the module that
+    # needs it (OpenSpec changes `lean-install`, `mesh-engine`,
+    # `openscad-out` and `brep-mesh`).
     "httpx==0.27.*",
     "fastapi==0.111.*",
     "termcolor==2.4.*",
@@ -154,8 +154,15 @@ jscad = [
 stl = [
     "machinome-node-stl~=0.8.1",
 ]
+# `machinome.node.freecad` (FreeCADAssemblyNode, FreeCADJoint), which reads
+# a native FreeCAD assembly through FreeCAD, a program no pip extra
+# installs, found through MACHINOME_FREECAD_ROOT; its occurrences are B-rep
+# leaves, so the distribution requires the B-rep engine.
+freecad = [
+    "machinome-node-freecad~=0.8.1",
+]
 all = [
-    "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2,jscad,stl]",
+    "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2,jscad,stl,freecad]",
 ]
 # Machinome Studio is still experimental and unpublished. Declaring its final
 # extra name now does not make the dependency available from a package index.

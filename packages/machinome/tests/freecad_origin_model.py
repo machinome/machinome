@@ -1,6 +1,7 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
-from machinome_freecad import FreeCADAssemblyNode
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+from machinome.node.freecad import FreeCADAssemblyNode
 
 class DeclaringModule(FreeCADAssemblyNode):
-    freecad_source = 'fixtures/Assembly.FCStd'
+    freecad_source = 'fixtures/freecad/Assembly.FCStd'

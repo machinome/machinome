@@ -891,7 +891,9 @@ under `machinome.node`, named for its technology, and imported from there: a
 module,
 or, for the OpenSCAD node family, the package `machinome.node.openscad`, whose
 `__init__` defines the node type and whose other modules are its machinery
-under the `openscad-node` capability. Which node types exist, with the class
+under the `openscad-node` capability, and, for the FreeCAD node type, the
+package `machinome.node.freecad`, whose node is a whole native assembly rather
+than a leaf, under the `native-freecad-assembly` capability. Which node types exist, with the class
 names each node type's module defines for a project to import, SHALL be stated
 once, in the table of supported node types `machinome.node.supported`:
 
@@ -905,6 +907,7 @@ once, in the table of supported node types `machinome.node.supported`:
 | `machinome.node.openscad` (a package) | `OpenScadNode` |
 | `machinome.node.jscad` | `JScadNode` |
 | `machinome.node.stl` | `StlNode` |
+| `machinome.node.freecad` (a package) | `FreeCADAssemblyNode`, `FreeCADJoint` |
 
 Each of those classes SHALL be imported from its node type's module and from
 nowhere else: the node root resolves none of them, and refuses each naming its
@@ -913,14 +916,18 @@ module, under the requirement "The node package's root exports nothing".
 Every node type's module SHALL be shipped by its own distribution,
 `machinome-node-<key>`, as a namespace portion of `machinome.node` with no
 `__init__.py` under `machinome/` or `machinome/node/`: a module at
-`machinome/node/<key>.py`, or, for the OpenSCAD node family, the package
-directory `machinome/node/openscad/` with its own `__init__.py`. The
-framework's distribution SHALL ship none of them, so its `machinome/node/`
-holds only the node base and its machinery, the root's refusals and the table
-of supported node types; their address, their classes and their behaviour
-SHALL be those they had in the framework's distribution. In the repository
-each lives at `packages/machinome-node-<key>/machinome/node/<key>.py`, the
-OpenSCAD package at `packages/machinome-node-openscad/machinome/node/openscad/`.
+`machinome/node/<key>.py`, or, for the OpenSCAD node family and the FreeCAD
+node type, the package directory `machinome/node/openscad/` or
+`machinome/node/freecad/` with its own `__init__.py`. The framework's
+distribution SHALL ship none of them, so its `machinome/node/` holds only the
+node base and its machinery, the root's refusals and the table of supported
+node types; their address, their classes and their behaviour SHALL be those
+they had in the framework's distribution, and the FreeCAD node type's, which
+joined the repository from a repository of its own, those it had there under
+the module `machinome_freecad`, whose name it does not keep. In the repository each lives at
+`packages/machinome-node-<key>/machinome/node/<key>.py`, the OpenSCAD package
+at `packages/machinome-node-openscad/machinome/node/openscad/` and the FreeCAD
+package at `packages/machinome-node-freecad/machinome/node/freecad/`.
 
 The package `machinome.node.adapters` SHALL hold no leaf. Importing it, or any
 module or name beneath it, SHALL raise `ImportError` at the import line, whose
@@ -996,6 +1003,16 @@ import to write. It SHALL NOT re-export, alias or forward any name.
 - **WHEN** the framework's `machinome/node/` is listed
 - **THEN** it holds no module and no directory named for a key of the table of
   supported node types, and the layout test fails naming any that appears
+
+#### Scenario: The FreeCAD node type resolves from its own distribution
+
+- **WHEN** the repository's workspace is synced and
+  `from machinome.node.freecad import FreeCADAssemblyNode, FreeCADJoint` runs
+- **THEN** the package's file is
+  `packages/machinome-node-freecad/machinome/node/freecad/__init__.py`, the
+  two classes are those its module `adapter` defines, importing them from
+  `machinome.node` raises `ImportError` naming `machinome.node.freecad`, and
+  the framework's `machinome/node/` holds no `freecad`
 
 ### Requirement: The node package's root exports nothing
 

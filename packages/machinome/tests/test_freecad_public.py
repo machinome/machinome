@@ -1,8 +1,15 @@
-"""Original synthetic adapter tests, LGPL-2.1-or-later."""
+# Machinome - A framework for mechanical CAD projects
+# Copyright (C) 2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+"""The FreeCAD node package's public contract, on synthetic native fixtures."""
 from pathlib import Path
 import json
 import os
 import subprocess
+
+from tests.freecad_support import skip_without_runtime
+
+skip_without_runtime()
 
 import cadquery
 import numpy as np
@@ -11,9 +18,9 @@ import pytest
 
 from machinome.motion.ports import Time
 from machinome.simulation import Driver, Sim
-from machinome_freecad import FreeCADAssemblyNode, FreeCADJoint
+from machinome.node.freecad import FreeCADAssemblyNode, FreeCADJoint
 
-FIXTURE = Path(__file__).parent / 'fixtures' / 'Assembly.FCStd'
+FIXTURE = Path(__file__).parent / 'fixtures' / 'freecad' / 'Assembly.FCStd'
 
 class Machine(FreeCADAssemblyNode):
     freecad_source = FIXTURE
@@ -73,7 +80,7 @@ def test_native_solver_pose_parity(filename,targets,tmp_path):
     output = tmp_path/'reference.json'
     env = dict(os.environ, PYTHONPATH=str(root/'usr/lib'))
     completed = subprocess.run([str(root/'AppRun'),'python',
-        str(Path(__file__).with_name('native_reference.py')),
+        str(Path(__file__).with_name('freecad_native_reference.py')),
         str(Pose.freecad_source), json.dumps(targets),str(output)],
         env=env,text=True,capture_output=True)
     assert completed.returncode == 0, completed.stderr
@@ -150,9 +157,9 @@ def test_initial_request_outside_imported_bounds():
         Sim(Machine(),dt=.1,state={'turn':181})
 
 def test_source_declaration_origin_and_inheritance(monkeypatch,tmp_path):
-    from origin_model import DeclaringModule
+    from tests.freecad_origin_model import DeclaringModule
     class Relative(FreeCADAssemblyNode):
-        freecad_source = 'fixtures/Assembly.FCStd'
+        freecad_source = 'fixtures/freecad/Assembly.FCStd'
     class Inherited(DeclaringModule):
         pass
     monkeypatch.chdir(tmp_path)
@@ -172,7 +179,7 @@ def test_exact_geometry_transfer_and_fixed_leaf_occurrences():
             leaves.append(current)
     walk(node)
     assert len(leaves) == 3
-    assert all(leaf.exact for leaf in leaves)
+    assert all(leaf.brep for leaf in leaves)
     assert len({id(leaf) for leaf in leaves}) == 3
     assert len({leaf.uniq_id for leaf in leaves}) == 1
     for leaf in leaves:

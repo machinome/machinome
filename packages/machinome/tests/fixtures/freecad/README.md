@@ -1,10 +1,10 @@
 # Original synthetic native fixtures
 
 Copyright (C) 2026 Luis Henrique Cassis Fagundes.
-SPDX-License-Identifier: LGPL-2.1-or-later.
+SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+.
 
 These FCStd documents are original boxes and assembly definitions produced by
-`../generate_fixtures.py` in the recorded FreeCAD 1.1.4 runtime. They contain no
+`../../freecad_generate_fixtures.py` in the recorded FreeCAD 1.1.4 runtime. They contain no
 Dum-E CAD or other upstream geometry. Parts.FCStd supplies a 4 × 6 × 8 mm box;
 the assembly has three distinct occurrences, one revolute and one fixed edge.
 
@@ -30,3 +30,16 @@ residual from the now-consistent resolved joint residuals.
 `StaleConnectors.FCStd` has stale cached non-detached Placement1, with valid
 references/offsets; authoritative native recomputation admits it without
 occurrence drift. Its driven poses are also compared with native simulation.
+
+## Regenerate
+
+From `packages/machinome`, with `MACHINOME_FREECAD_ROOT` set to the
+extracted FreeCAD 1.1.4 runtime, which the generator reads:
+
+```
+PYTHONPATH="$MACHINOME_FREECAD_ROOT/usr/lib" \
+  "$MACHINOME_FREECAD_ROOT/AppRun" python tests/freecad_generate_fixtures.py
+```
+
+FreeCAD leaves a `.FCBak` backup beside each document it rewrites; delete
+them.

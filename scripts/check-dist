@@ -203,10 +203,10 @@ print('$name', distribution.version, 'module', module.__file__, result)
 
 
 def mesh_node_smoke(name, node, shipped, pins, parts, operation):
-    """The code of a node package's smoke over no B-rep engine: `shipped`
-    the files it ships under `machinome/`, `pins` its requirements on the
-    set (`{version}` standing for the version), `parts` the source of the
-    project's `parts.py`, one class `Part`; `operation` sets `result`."""
+    """The code of a node package's smoke whose files `shipped` lists:
+    `shipped` the files it ships under `machinome/`, `pins` its requirements
+    on the set (`{version}` standing for the version), `parts` the source of
+    the project's `parts.py`, one class `Part`; `operation` sets `result`."""
     values = dict(name=name, node=node, shipped=repr(sorted(shipped)),
                   pins=repr(pins), parts=repr(parts.lstrip()),
                   operation=operation.strip())
@@ -493,6 +493,56 @@ node.assemble()
 volume = stl_volume(node)
 assert abs(volume - 24) < 1e-6, volume
 result = f'volume {volume}'
+'''),
+        'commands': [],
+    },
+    'machinome-node-freecad': {
+        'through': 'freecad',
+        'extras': [],
+        'code': mesh_node_smoke(
+            'machinome-node-freecad', 'freecad',
+            ['machinome/node/freecad/__init__.py',
+             'machinome/node/freecad/adapter.py',
+             'machinome/node/freecad/runtime.py',
+             'machinome/node/freecad/worker.py'],
+            ['machinome~={version}', 'machinome-engine-brep~={version}'],
+            '''
+from machinome.motion.ports import Time
+from machinome.node.freecad import FreeCADAssemblyNode, FreeCADJoint
+from machinome.simulation import Driver
+
+
+class Part(FreeCADAssemblyNode):
+    freecad_source = 'cad/Assembly.FCStd'
+    time = Time.running()
+    turntable = FreeCADJoint('Joint001')
+    turn = Driver(default=0, unit='deg')
+    turn.drives(turntable)
+''',
+            f'''
+fixtures = Path({str(ROOT / 'packages/machinome/tests/fixtures/freecad')!r})
+os.makedirs('cad')
+shutil.copyfile(fixtures / 'Maximum120.FCStd', 'cad/Assembly.FCStd')
+shutil.copyfile(fixtures / 'Parts.FCStd', 'cad/Parts.FCStd')
+import parts
+from machinome.node.freecad.runtime import NativeAssemblyError
+if os.environ.get('MACHINOME_FREECAD_ROOT'):
+    from machinome.simulation import Sim
+    node = parts.Part()
+    sim = Sim(node, dt=0.02)
+    command = sim.move('turn', to=150, duration=1)
+    sim.run(1)
+    assert command.status == 'blocked', command.status
+    assert abs(node.turntable.value - 120) < 1e-9, node.turntable.value
+    result = 'blocked at its enabled limit, 120 degrees, through FreeCAD'
+else:
+    try:
+        parts.Part()
+    except NativeAssemblyError as error:
+        assert 'MACHINOME_FREECAD_ROOT' in str(error), error
+    else:
+        raise AssertionError('constructed without a FreeCAD runtime')
+    result = 'refused without MACHINOME_FREECAD_ROOT, as documented'
 '''),
         'commands': [],
     },

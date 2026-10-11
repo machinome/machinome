@@ -64,8 +64,8 @@ briefing SHALL say once that the paths it names are relative to
   `packages/machinome-node-build123d`, `packages/machinome-node-step`,
   `packages/machinome-node-molejo`, `packages/machinome-node-openscad`,
   `packages/machinome-node-solid2`, `packages/machinome-node-jscad`,
-  `packages/machinome-node-stl` and `packages/machinome` with its `dev`
-  extra, editable with `editable_mode=compat`, and names no tox environment
+  `packages/machinome-node-stl`, `packages/machinome-node-freecad` and
+  `packages/machinome` with its `dev` extra, editable with `editable_mode=compat`, and names no tox environment
   or requirements file
 
 #### Scenario: A link of the guide stops resolving

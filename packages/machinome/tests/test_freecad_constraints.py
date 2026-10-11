@@ -1,5 +1,6 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Native constraint admission; Dum-E remains external negative evidence."""
 import os
 from pathlib import Path
@@ -8,12 +9,16 @@ import json
 from copy import deepcopy
 import math
 
+from tests.freecad_support import skip_without_runtime
+
+skip_without_runtime()
+
 import numpy as np
 import pytest
 
-from machinome_freecad import FreeCADAssemblyNode, runtime
-from machinome_freecad import worker
-from test_public import FIXTURE, world_poses
+from machinome.node.freecad import FreeCADAssemblyNode, runtime
+from machinome.node.freecad import worker
+from tests.test_freecad_public import FIXTURE, world_poses
 
 @pytest.mark.parametrize('filename,joint,kind,endpoints', [
     ('FixedQuarterTurn','JointFixed','Fixed',['Moving','FixedChild']),

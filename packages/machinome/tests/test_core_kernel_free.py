@@ -16,7 +16,8 @@ modules of the engine package, `machinome.engine.brep` and
 change `cut-the-brep-nodes`), and each node type that needs no B-rep engine,
 the OpenSCAD node family `machinome.node.openscad` with its snapshot
 renderer, `.solid2`, `.jscad` and `.stl` (OpenSpec change
-`cut-the-mesh-nodes`).
+`cut-the-mesh-nodes`), and the FreeCAD node package `machinome.node.freecad`,
+whose adapter imports the OCCT binding (OpenSpec change `join-freecad`).
 
 Read from the source, not from a running interpreter: the core imports
 `OCP` and `cadquery` nowhere but the template a project copies, it names
@@ -117,10 +118,12 @@ KERNELS = {'cadquery', 'build123d', 'OCP', 'molejo', 'ocp_gordon',
            'manifold3d', 'solid2'}
 
 #: The node modules a kernel extra installs a kernel for: the four over the
-#: B-rep engine and the OpenSCAD family's two over SolidPython.
+#: B-rep engine, the OpenSCAD family's two over SolidPython and the FreeCAD
+#: package, whose adapter reads the OCCT binding (`join-freecad`).
 KERNEL_MODULES = {'machinome.node.cadquery', 'machinome.node.build123d',
                   'machinome.node.step', 'machinome.node.molejo',
-                  'machinome.node.openscad', 'machinome.node.solid2'}
+                  'machinome.node.openscad', 'machinome.node.solid2',
+                  'machinome.node.freecad'}
 
 #: Every node module and engine provider, each shipped by its own
 #: distribution, which the core imports nowhere (`cut-the-mesh-nodes`).
@@ -129,6 +132,7 @@ EXTENSION_MODULES = (
     'machinome.node.step', 'machinome.node.molejo',
     'machinome.node.openscad', 'machinome.node.solid2',
     'machinome.node.jscad', 'machinome.node.stl',
+    'machinome.node.freecad',
     'machinome.engine.brep', 'machinome.engine.mesh',
 )
 
@@ -141,6 +145,7 @@ EXTRA_OF = {
     'machinome-node-molejo/machinome/node/molejo.py': 'molejo',
     'machinome-node-openscad/machinome/node/openscad/__init__.py': 'openscad',
     'machinome-node-solid2/machinome/node/solid2.py': 'solid2',
+    'machinome-node-freecad/machinome/node/freecad/__init__.py': 'freecad',
     'machinome-engine-brep/machinome/engine/brep.py': 'brep',
     'machinome-engine-mesh/machinome/engine/mesh.py': 'mesh',
 }
@@ -310,6 +315,8 @@ class KernelsOnlyInTheirModulesTest(TestCase):
             'machinome-node-openscad/machinome/node/openscad/writer.py':
                 ['solid2'],
             'machinome-node-solid2/machinome/node/solid2.py': ['solid2'],
+            'machinome-node-freecad/machinome/node/freecad/adapter.py':
+                ['OCP'],
         })
 
     def test_kernel_modules_are_named_only_at_the_seams(self):

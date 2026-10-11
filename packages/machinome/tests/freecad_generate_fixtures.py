@@ -1,5 +1,6 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Original native fixtures; execute with provisioned FreeCAD Python."""
 import math
 import os
@@ -12,12 +13,12 @@ import FreeCAD as App
 import Part
 import JointObject
 
-out = Path(__file__).parent / 'fixtures'
+out = Path(__file__).parent / 'fixtures' / 'freecad'
 out.mkdir(exist_ok=True)
 parts = App.newDocument('Parts')
 parts.CreatedBy = 'Luis Henrique Cassis Fagundes'
-parts.License = 'LGPL-2.1-or-later'
-parts.LicenseURL = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html'
+parts.License = 'GPL-2.0-or-later OR CERN-OHL-S-2.0+'
+parts.LicenseURL = 'https://github.com/machinome/machinome/blob/main/LICENSE'
 part = parts.addObject('Part::Feature', 'Product')
 part.Shape = Part.makeBox(4, 6, 8)
 parts.recompute()
@@ -31,8 +32,8 @@ parts.saveAs(str(out/'Parts.FCStd'))
 
 doc = App.newDocument('NativeFixture')
 doc.CreatedBy = 'Luis Henrique Cassis Fagundes'
-doc.License = 'LGPL-2.1-or-later'
-doc.LicenseURL = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html'
+doc.License = 'GPL-2.0-or-later OR CERN-OHL-S-2.0+'
+doc.LicenseURL = 'https://github.com/machinome/machinome/blob/main/LICENSE'
 doc.saveAs(str(out/'Assembly.FCStd'))
 assembly = doc.addObject('Assembly::AssemblyObject', 'Assembly')
 group = assembly.newObject('Assembly::JointGroup', 'Joints')
@@ -133,8 +134,8 @@ doc.saveAs(str(out/'Loop.FCStd'))
 doc.removeObject('Loop')
 other_parts = App.newDocument('OtherParts')
 other_parts.CreatedBy = 'Luis Henrique Cassis Fagundes'
-other_parts.License = 'LGPL-2.1-or-later'
-other_parts.LicenseURL = 'https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html'
+other_parts.License = 'GPL-2.0-or-later OR CERN-OHL-S-2.0+'
+other_parts.LicenseURL = 'https://github.com/machinome/machinome/blob/main/LICENSE'
 other_product = other_parts.addObject('Part::Feature','Product')
 other_product.Shape = Part.makeBox(4,6,16)
 other_parts.recompute()

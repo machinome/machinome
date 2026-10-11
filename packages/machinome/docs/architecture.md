@@ -367,6 +367,9 @@ modules `machinome.engine.brep` and `machinome.engine.mesh`,
 need no B-rep engine (the distributions `machinome-node-openscad`, with
 SolidPython, `machinome-node-solid2`, which requires it, and
 `machinome-node-jscad` and `machinome-node-stl`, which install no kernel),
+`[freecad]` for the FreeCAD node package (the distribution
+`machinome-node-freecad`, over the B-rep engine; FreeCAD itself is a
+program no extra installs, found through `MACHINOME_FREECAD_ROOT`),
 and `[all]` — every OCCT kernel
 extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
@@ -3466,6 +3469,7 @@ pure model closures without rejecting their pure declaration records.
 | Node types over the B-rep engine, the distributions `machinome-node-cadquery`, `-build123d`, `-step` and `-molejo` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `step-import`, `step-assembly`, `flexible-parts`, `markings` | 057, 078, 079, 115, 162, 167, 169, 183, 184 |
 | OpenSCAD node family, the distributions `machinome-node-openscad` and `machinome-node-solid2` | the repository's `packages/machinome-node-openscad/` (`machinome/node/openscad/`: `__init__.py` `OpenScadNode`, `leaf.py` `ScadLeafNode`, `writer.py`, `binary.py`, `renderer.py` the OpenSCAD snapshot renderer) and `packages/machinome-node-solid2/` (`machinome/node/solid2.py`: `Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency`, `kernel-extras` | 046, 102, 172, 173, 177, 178, 179, 183 |
 | JSCAD and STL node types, the distributions `machinome-node-jscad` and `machinome-node-stl` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `stl-import` | 169, 181, 183 |
+| FreeCAD node type, the distribution `machinome-node-freecad` | the repository's `packages/machinome-node-freecad/` (`machinome/node/freecad/`: `__init__.py`, `adapter.py` `FreeCADAssemblyNode` and `FreeCADJoint`, `runtime.py` the runtime and its worker process, `worker.py` the script FreeCAD's Python runs) | `native-freecad-assembly`, `kernel-extras`, `node-model` | 004, 183, 184, 185 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
 | Kinematics | `node/operations.py`, `node/assembly.py`, `motion/ports.py`, `math.py`, `expression_graph.py` | `kinematics`, `motion-expression-sharing` | 008, 022, 023, 028, 087, 088, 101, 104, 127, 170 |
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |

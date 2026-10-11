@@ -1,6 +1,6 @@
 # ADR-183: An Extension Package Is a Namespace Portion in Its Own Distribution
 
-**Status:** Accepted; a node package refused by its extra's name at its import, amended 2026-10-10 by [ADR-184](../NODE/ADR-184-an-absent-node-package-is-refused-by-its-extra-at-its-import.md)
+**Status:** Accepted; a node package refused by its extra's name at its import, amended 2026-10-10 by [ADR-184](../NODE/ADR-184-an-absent-node-package-is-refused-by-its-extra-at-its-import.md); a product of a repository of its own joining as an extension package, amended 2026-10-11 by [ADR-185](../NODE/ADR-185-a-node-type-may-read-a-whole-assembly-through-an-external-program.md)
 **Date:** 2026-10-10
 **Change:** [`cut-the-engines`](../../../openspec/changes/archive/2026-10-10-cut-the-engines/)
 **Amends:**
@@ -91,6 +91,9 @@ one operation on its kernel, its version the core's, its licence texts.
   defines, and its manifest's `include` names that package; with the four
   node packages over no B-rep engine every node type of the table is a
   package, and the core imports none.
+- Neutral (2026-10-11, `join-freecad`): a product of a repository of its own
+  joins as an extension package of the same shape, its history imported to
+  its final paths and its record folded into the framework's.
 - Bad: an environment whose `PYTHONPATH` names the core's directory alone,
   with no install of the engines, has no engine: the fallback recipe of the
   first cycle no longer runs the whole suite.

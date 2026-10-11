@@ -72,6 +72,7 @@ its source; the :doc:`examples` page says what to look for there.
    howto/several-models
    howto/fast-tests
    howto/simulate-existing
+   howto/freecad-assemblies
 
 .. toctree::
    :maxdepth: 1

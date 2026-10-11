@@ -54,6 +54,17 @@ Unreleased
   its import says. Every other address, every extra and every message is
   unchanged. Change ``cut-the-mesh-nodes`` (ADR-179 and ADR-183 amended).
 
+* **The FreeCAD node type joins the repository.** The native FreeCAD
+  assembly adapter, developed in a repository of its own and never
+  published, is the extension package ``machinome-node-freecad``, its
+  history kept: ``FreeCADAssemblyNode`` and ``FreeCADJoint`` are imported
+  from ``machinome.node.freecad`` (formerly ``machinome_freecad``) and
+  installed by ``pip install "machinome[freecad]"``, which installs no
+  FreeCAD; the runtime, FreeCAD 1.1.4, is found through
+  ``MACHINOME_FREECAD_ROOT``. Without the package, its import names that
+  line. Its tests join the framework's suite and skip where no runtime is
+  set. Change ``join-freecad`` (ADR-185).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

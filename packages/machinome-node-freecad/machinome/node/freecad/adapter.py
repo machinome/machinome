@@ -1,5 +1,6 @@
+# Machinome - A framework for mechanical CAD projects
 # Copyright (C) 2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Compile native immutable mechanics into ordinary machinome nodes."""
 import inspect
 from pathlib import Path
@@ -14,7 +15,7 @@ import tempfile
 import numpy as np
 from scipy.spatial.transform import Rotation as SpatialRotation
 
-from machinome.node import AssemblyNode
+from machinome.node.assembly import AssemblyNode
 from machinome.motion.couplings import CoordinateRef, OwnRef, ResolvedEnd
 from machinome.motion.joints import Revolute
 from machinome.motion.ports import RotationalPort, run_owned
@@ -138,9 +139,9 @@ class _Carrier(_NativeCurrency, AssemblyNode):
                 joint.__set__(self, saved)
 
 def _leaf_class(wrapper_source, product_key):
-    from machinome.node.exact_leaf import ExactLeafNode
-    class _Solid(_NativeCurrency, ExactLeafNode):
-        leaf_contract = 1
+    from machinome.node.brep_leaf import BrepLeafNode
+    class _Solid(_NativeCurrency, BrepLeafNode):
+        leaf_contract = 3
         def get_source_file(self):
             return wrapper_source
         def materialize(self, rendered):
@@ -174,10 +175,12 @@ def _leaf_class(wrapper_source, product_key):
             from OCP.BRepCheck import BRepCheck_Analyzer
             from OCP.BRepTools import BRepTools
             from OCP.TopoDS import TopoDS_Shape
-            from machinome.occt.engine import solid_count
+            from machinome.engine import require_brep_engine
             shape = TopoDS_Shape()
             BRepTools.Read_s(shape, io.BytesIO(self._brep.encode()), BRep_Builder())
-            if not solid_count(shape) or not BRepCheck_Analyzer(shape).IsValid():
+            engine = require_brep_engine(f'FreeCAD occurrence {self.name}',
+                                         'its native solid is read')
+            if not engine.solid_count(shape) or not BRepCheck_Analyzer(shape).IsValid():
                 raise NativeAssemblyError('Native BREP transfer contains no valid solid')
             return shape
     _Solid.__qualname__ = '_NativeSolid_' + product_key

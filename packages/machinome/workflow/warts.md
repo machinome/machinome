@@ -2177,3 +2177,34 @@ shallow sphere dent" finding above waits on the same decision.
   fresh clone of `31c8507` (1 failed, 4751 passed): the test writes and
   removes its own `declared_alone.stl` beside the module.
 
+
+# Findings from the framework cycle `join-freecad` (11 October 2026)
+
+- **`machinome vet` admits the FreeCAD node package whole and does not read
+  `freecad_source`.** The vet universe's contract member `machinome` is
+  allowed whole, so since the join a project importing
+  `machinome.node.freecad` passes the import check, where it failed on
+  `outside-universe machinome_freecad` before (Dum-E's DUME-006). The
+  universe's `[sources]` names `freecad_source` neither among the checked
+  attributes nor among the refused ones, where `jscad_source`, the other
+  source an external program reads, is refused; so an escaping or absolute
+  FCStd path is not reported, and the FreeCAD runtime, which runs the Python
+  a document carries, is not modelled. Measured on a scratch copy of Dum-E
+  moved onto the package: `machinome vet` exit 0, `simulation.dume:DumE
+  pure`. Not fixed by `join-freecad`, which moves the package and nothing
+  else; whether `freecad_source` is checked like `stl_source` or refused like
+  `jscad_source` is the pilot's.
+- **The leaf-contract reach gate does not read the FreeCAD adapter.**
+  `tests/test_leaf_contract_reach.py` reads the four B-rep node modules and
+  the stand-ins; `machinome/node/freecad/adapter.py`, whose occurrence leaf is
+  a `BrepLeafNode` outside the core, is not in its list. The gate's own
+  functions on the adapter (11 October 2026): two reaches, `machinome.currency`
+  imported in the leaf's `materialize` for the sidecar paths it backs up, and
+  `self._link_children` called on the assembly; and ten imports from modules
+  the leaf contract does not declare (`machinome.node.assembly`,
+  `machinome.motion.couplings` three names, `machinome.motion.joints`,
+  `machinome.motion.ports` two, `machinome.node.operations` two,
+  `machinome.currency`). The adapter builds nodes, joints and couplings,
+  which no declared contract covers; a contract for a node package that
+  compiles an assembly, or the gate's reason for each import, is a later
+  cycle's.

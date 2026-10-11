@@ -11,6 +11,7 @@ machinome-engine-brep = { workspace = true }
 machinome-engine-mesh = { workspace = true }
 machinome-node-build123d = { workspace = true }
 machinome-node-cadquery = { workspace = true }
+machinome-node-freecad = { workspace = true }
 machinome-node-jscad = { workspace = true }
 machinome-node-molejo = { workspace = true }
 machinome-node-openscad = { workspace = true }
