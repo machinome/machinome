@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=65.5,<77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-freecad"
+version = "0.1.0"
+description = "Native FreeCAD rigid assemblies for machinome"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "LGPL-2.1-or-later"}
+authors = [{name = "Luis Henrique Cassis Fagundes"}]
+# Validation branch lean-core-validation, never merged: it runs against the
+# unreleased v0.8 lean-core line (framework change leaf-contract), so the
+# 0.7.1 release pin is relaxed here.
+dependencies = ["machinome"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "build>=1.2"]
+
+[tool.setuptools.packages.find]
+include = ["machinome_freecad*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
