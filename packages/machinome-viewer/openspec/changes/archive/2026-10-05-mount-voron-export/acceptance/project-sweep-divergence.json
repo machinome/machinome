@@ -1,0 +1,227 @@
+{
+  "manifest_sha256": "e9fee11746ff36a1f585f24a3db154b472a207bfc83db00e183ebdc96f2cb0c7",
+  "project_expression_source_sha256": "96c8fc39abc97e1ed8ca40e3173a6d6e6f30e1774337f56e0003a7c0bcd827ea",
+  "comparison": "published truncated remainder versus unchanged Python floored modulo",
+  "poses": [
+    {
+      "pose": "rest",
+      "drivers": {
+        "e": 0,
+        "x": 124.9995815179079,
+        "y": 129.09978634872425,
+        "z": 27.009293023491242
+      },
+      "belts": [
+        {
+          "path": "drives/front_left_belt/strap",
+          "vertex_difference": 0.0,
+          "different_parameters": {}
+        },
+        {
+          "path": "gantry/belt_a/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a11": {
+              "published": 3.1409853009339623,
+              "project_floor": -3.142200006245624
+            },
+            "a17": {
+              "published": 3.1396136602880285,
+              "project_floor": -3.143571646891558
+            }
+          }
+        },
+        {
+          "path": "gantry/belt_b/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a17": {
+              "published": 3.1396136602879476,
+              "project_floor": -3.143571646891638
+            },
+            "a3": {
+              "published": 3.1409852543413637,
+              "project_floor": -3.1422000528382226
+            }
+          }
+        }
+      ]
+    },
+    {
+      "pose": "Home",
+      "drivers": {
+        "x": 250,
+        "y": 250,
+        "z": 10,
+        "e": 0
+      },
+      "belts": [
+        {
+          "path": "drives/front_left_belt/strap",
+          "vertex_difference": 0.0,
+          "different_parameters": {}
+        },
+        {
+          "path": "gantry/belt_a/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a11": {
+              "published": 3.141446530041381,
+              "project_floor": -3.141738777138205
+            },
+            "a17": {
+              "published": 3.1396136602880285,
+              "project_floor": -3.143571646891558
+            }
+          }
+        },
+        {
+          "path": "gantry/belt_b/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a17": {
+              "published": 3.1396136602879476,
+              "project_floor": -3.143571646891638
+            },
+            "a3": {
+              "published": 3.1414464945941876,
+              "project_floor": -3.1417388125853987
+            }
+          }
+        }
+      ]
+    },
+    {
+      "pose": "Center",
+      "drivers": {
+        "x": 125,
+        "y": 125,
+        "z": 20,
+        "e": 0
+      },
+      "belts": [
+        {
+          "path": "drives/front_left_belt/strap",
+          "vertex_difference": 0.0,
+          "different_parameters": {}
+        },
+        {
+          "path": "gantry/belt_a/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a11": {
+              "published": 3.140957188832733,
+              "project_floor": -3.142228118346853
+            },
+            "a17": {
+              "published": 3.1396136602880285,
+              "project_floor": -3.143571646891558
+            }
+          }
+        },
+        {
+          "path": "gantry/belt_b/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a17": {
+              "published": 3.1396136602879476,
+              "project_floor": -3.143571646891638
+            },
+            "a3": {
+              "published": 3.140957141560782,
+              "project_floor": -3.1422281656188047
+            }
+          }
+        }
+      ]
+    },
+    {
+      "pose": "Present",
+      "drivers": {
+        "x": 125,
+        "y": 30,
+        "z": 180,
+        "e": 20
+      },
+      "belts": [
+        {
+          "path": "drives/front_left_belt/strap",
+          "vertex_difference": 0.0,
+          "different_parameters": {}
+        },
+        {
+          "path": "gantry/belt_a/strap",
+          "vertex_difference": 16.059978485107422,
+          "different_parameters": {
+            "a11": {
+              "published": 3.1392603038342606,
+              "project_floor": -3.143925003345325
+            },
+            "a17": {
+              "published": 3.1396136602880285,
+              "project_floor": -3.143571646891558
+            }
+          }
+        },
+        {
+          "path": "gantry/belt_b/strap",
+          "vertex_difference": 16.059978485107422,
+          "different_parameters": {
+            "a17": {
+              "published": 3.1396136602879507,
+              "project_floor": -3.143571646891636
+            },
+            "a3": {
+              "published": 3.1392602155423903,
+              "project_floor": -3.1439250916371964
+            }
+          }
+        }
+      ]
+    },
+    {
+      "pose": "restored",
+      "drivers": {
+        "e": 0,
+        "x": 124.9995815179079,
+        "y": 129.09978634872425,
+        "z": 27.009293023491242
+      },
+      "belts": [
+        {
+          "path": "drives/front_left_belt/strap",
+          "vertex_difference": 0.0,
+          "different_parameters": {}
+        },
+        {
+          "path": "gantry/belt_a/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a11": {
+              "published": 3.1409853009339623,
+              "project_floor": -3.142200006245624
+            },
+            "a17": {
+              "published": 3.1396136602880285,
+              "project_floor": -3.143571646891558
+            }
+          }
+        },
+        {
+          "path": "gantry/belt_b/strap",
+          "vertex_difference": 16.05999755859375,
+          "different_parameters": {
+            "a17": {
+              "published": 3.1396136602879476,
+              "project_floor": -3.143571646891638
+            },
+            "a3": {
+              "published": 3.1409852543413637,
+              "project_floor": -3.1422000528382226
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

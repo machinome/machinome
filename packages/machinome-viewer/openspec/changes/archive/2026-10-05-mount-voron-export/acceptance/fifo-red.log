@@ -1,0 +1,51 @@
+
+> @machinome/viewer@0.8.0 test
+> vitest run src/geometry-admission.test.ts -t abandoned
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/machinome_viewer/widget
+
+ ❯ src/geometry-admission.test.ts (11 tests | 1 failed | 10 skipped) 8ms
+   ↓ bounds active distinct geometry groups across two roots and markings while every required job completes
+   ↓ cancels queued jobs without requests and retains active capacity until real settlement
+   × removes cancelled queued URL eligibility so a later request cannot inherit abandoned FIFO priority 7ms
+     → expected [ 'new X', 'Y' ] to deeply equal [ 'Y', 'new X' ]
+   ↓ releases failures, preserves their original error and closes duplicate groups after actual settlement
+   ↓ disposes active late geometry and never attaches it to a disposed tree
+   ↓ disposes a returned result exactly once when cancelled after 0 microtasks
+   ↓ disposes a returned result exactly once when cancelled after 1 microtasks
+   ↓ disposes a returned result exactly once when cancelled after 2 microtasks
+   ↓ disposes a returned result exactly once when cancelled after 3 microtasks
+   ↓ disposes a returned result exactly once when cancelled after 4 microtasks
+   ↓ retains last-good geometry when a multi-part artifact or reconcile preparation fails
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/geometry-admission.test.ts > removes cancelled queued URL eligibility so a later request cannot inherit abandoned FIFO priority
+AssertionError: expected [ 'new X', 'Y' ] to deeply equal [ 'Y', 'new X' ]
+
+- Expected
++ Received
+
+  [
+-   "Y",
+    "new X",
++   "Y",
+  ]
+
+ ❯ src/geometry-admission.test.ts:68:18
+     66|   settle.splice(0).forEach(resolve => resolve());
+     67|   await Promise.all([...activeJobs, first, second, abandonedResult]);
+     68|   expect(starts).toEqual(['Y', 'new X']);
+       |                  ^
+     69| });
+     70| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 skipped (11)
+   Start at  17:46:38
+   Duration  567ms (transform 134ms, setup 0ms, collect 202ms, tests 8ms, environment 0ms, prepare 93ms)
+

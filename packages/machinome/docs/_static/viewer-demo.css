@@ -1,0 +1,14 @@
+.wy-table-responsive table td,
+.wy-table-responsive table th { white-space: normal; }
+.rst-content dl.js > dt { overflow-wrap: anywhere; }
+.viewer-demo { margin: 1.5rem 0; border: 1px solid #d9e2e8; border-radius: 6px; overflow: hidden; background: #f5f8fa; }
+.viewer-demo button { padding: .9rem 1.2rem; margin: 1rem; background: #2980b9; color: white; border: 0; border-radius: 4px; font: inherit; cursor: pointer; }
+.viewer-demo button:focus-visible { outline: 3px solid #162f43; outline-offset: 3px; }
+.viewer-demo p { margin: 1rem; }
+.viewer-demo iframe { display: block; width: 100%; height: 540px; border: 0; }
+@media (max-width: 600px) {
+  .rst-content dl.js dl.field-list { display: block; }
+  .rst-content dl.js dl.field-list > dt { display: block; margin-bottom: .5rem; padding-left: 0; }
+  .rst-content dl.js dl.field-list > dd,
+  .rst-content dl.js > dd { margin-left: 0; overflow-wrap: anywhere; }
+}

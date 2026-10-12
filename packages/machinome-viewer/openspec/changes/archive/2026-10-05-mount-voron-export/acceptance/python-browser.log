@@ -1,0 +1,48 @@
+........................................................................ [ 90%]
+........                                                                 [100%]
+=============================== warnings summary ===============================
+tests/test_widget_e2e.py::WidgetE2ETest::test_full_cycle_returns_to_start
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_time_parameter_poses_the_animation
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:73: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for pixel in image.getdata() if predicate(*pixel))
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1240: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    green = lambda image: sum(1 for r, g, b in image.getdata() if g > 150 and g > r + 60 and g > b + 60)
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1317: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(difference.getdata()) / (a.width * a.height)
+
+tests/test_widget_e2e.py: 12 warnings
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1691: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for width, low in zip(spread.getdata(), darkest.getdata())))
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1702: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for value in mask.getdata() if value)
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1705: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    indices = [index for index, value in enumerate(mask.getdata()) if value]
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1747: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    in zip(changed.getdata(), decal.getdata())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+80 passed, 33 warnings in 86.33s (0:01:26)

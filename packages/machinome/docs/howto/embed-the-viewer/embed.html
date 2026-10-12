@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Machinome Viewer — interactive spinner</title>
+  <style>
+    body { margin: 0; font: 14px system-ui, sans-serif; color: #263b4c; background: #f5f8fa; }
+    #model { width: 100%; height: 420px; }
+    .timeline { display: flex; align-items: center; gap: .6rem; padding: .8rem; }
+    .timeline input { flex: 1; min-width: 30px; }
+    #status { padding: 0 .8rem; }
+    #model .machinome-inspector { --machinome-inspector-sidebar-width: 180px; }
+    @media (max-width: 400px) {
+      #model .machinome-inspector { --machinome-inspector-sidebar-width: 130px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="model"></div>
+  <label class="timeline">Timeline
+    <input id="time" type="range" min="0" max="1" step="0.01" value="0" disabled>
+    <output id="position">0.00</output>
+  </label>
+  <p id="status" role="status">Loading spinner…</p>
+  <script src="machinome-viewer.js"></script>
+  <script src="embed.js"></script>
+</body>
+</html>

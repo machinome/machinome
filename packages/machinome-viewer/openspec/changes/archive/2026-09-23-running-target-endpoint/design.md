@@ -1,0 +1,36 @@
+## Context
+
+The viewer converts an absolute `move(to)` into `native = target - bank[input]` and retains only that travel. Its command ramp also reconstructs `bank + native`. On the Curta-derived public one-input/one-law fixture, the final stretch has feed/slide deltas `8.85` and both preliminary committed values `3.9075000000000006`; the inclusive static high bound is `3.9075`, so the existing solver correctly reports an outward stop from the *wrong endpoint*. Relabeling the command after the stop, or clamping the final bank, would leave propagation and bound evaluation inconsistent. The producer is planning the corresponding exact-target fix; the two runtimes must agree on the same terminal semantics.
+
+## Goals / Non-Goals
+
+**Goals:** Preserve a `to` request's converted native endpoint through an unobstructed final admission, including descendants and static/dynamic Bound evaluation; preserve it in active-command snapshot/restore; prove paired status, stop and bank parity on the tiny fixture and the originating Curta export.
+
+**Non-Goals:** No epsilon, altered inclusive-bound rule, changed search resolution/tolerances, new physics, document version, host operation or correction to relative `by`/rate requests. A stop before the final endpoint is not granted the requested target.
+
+## Decisions
+
+1. **Retain the target separately from travel.** `Command` carries an optional converted native `to` endpoint as well as its existing delta. The existing timed ramp remains constructed from `start + native`, preserving every intermediate `admits()` bit; the distinct target is used only by the full terminal endpoint path. Its active snapshot record includes that endpoint and restore reconstitutes it; old records with no target keep the existing reconstruction path. A present target in a restored record must be a finite native number of the expected type, or restore refuses atomically rather than treating it as a delta. The command's requested/admitted travel reporting remains delta-based. This avoids inferring a lost target from rounded `start + delta`.
+
+2. **Represent only the full terminal endpoint exactly.** On the final tick of an absolute command, a full unblocked admission can carry a tick-local endpoint override for that input; intermediate fractions still use the existing ramp/delta path. Use `Object.is` when deciding whether the ordinary arithmetic already equals the target, retaining signed-zero distinction. The endpoint override is available to propagation so eligible closed-numeric descendants' *final* expressions and absolute landings are evaluated from the same exact input endpoint before any Bound is judged. The ordinary fast path remains for other commands and equal endpoints. A located partial stop re-integrates its original truncated path with no target override.
+
+3. **Evaluate and commit one consistent endpoint where the relation is closed numeric.** Static and dynamic Bounds inspect the exact terminal descendant state that the unblocked final admission would commit. Seed a tick-local source Motion whose interior is the old line and whose `at(1)` is the target, plus an absolute landing. In the guarded terminal pass, propagate it through direct wiring, formula and continuous laws in existing edge order: if the held output is bit-identical to the authored expression's start value, use its evaluated exact endpoint; otherwise retain the held offset/history and add the expression's endpoint-minus-start increment. Jump, self-read, Play and Follow descendants use their existing integrated paths and absolute-landing rules, not a static pose at the target. Stage descendant landings before bound detection. Do not alter the search's intermediate sample fractions or bisection; only its full endpoint value can differ where subtraction/addition rounded away from the requested target. Before an expression gets any additional terminal evaluation, inspect its whole graph and binding aliases for closed numeric operators and finite scalar inputs; a declared stateful, shadowed, custom, or uncertain call retains the old evaluation count/order and descendant arithmetic while the input itself still lands at its exact target. This is a conservative existing-capability fallback, not a refusal of formerly accepted expressions. Standard curved functions such as `sqrt` remain eligible under the viewer's normal trusted-standard-Math-at-module-import platform precondition. The guard is not a security proof against a host replacing built-ins with a stateful Proxy before loading the viewer; that hostile environment lies outside this guarantee. The no-correction path remains unchanged. If implementation cannot preserve a relation shape's existing history, return to planning with a red fixture rather than silently approximating it.
+
+4. **No capability gate change.** This repairs existing v5–v13 running semantics and keeps viewer API 26 and document versions 1–13. A new fixture is not a new document field. The paired producer fix is a separate framework OpenSpec cycle; no source crosses repository boundaries.
+
+## Risks / Trade-offs
+
+- **Endpoint-only correction hides a real interior stop** → Retain all current interior samples and partial-segment replay; include a genuine overshoot and a nonlinear interior-contact control, plus a multi-tick request.
+- **Input snaps but descendants or dynamic Bounds still see the rounded delta** → Require full ordered bound-sample, status and bank parity, not just input readout equality.
+- **Snapshot loses or corrupts the original `to`** → Persist the optional native target on active commands, refuse malformed/nonfinite present target data before replacing the live bank, and compare uninterrupted versus restore/replay results, including signed zero and older records with no target.
+- **Existing documents or `by` requests change unintentionally** → Keep the override absent for them and run the unchanged running corpus, browser host and full widget tests.
+- **A stateful expression is evaluated again solely for endpoint correction** → Guard the extra read with closed-numeric graph/binding provenance; pin direct and aliased `random` call counts and legacy descendant values, without refusing the absolute input request.
+- **A host replaces a standard Math function before module import** → The normal viewer platform assumes trusted standard Math at import. Runtime checks exclude known live-delegating wrappers and obvious replacements where possible, but do not present native-string inspection as proof against a Proxy masquerading as a built-in.
+
+## Migration Plan
+
+No export migration. New absolute commands on old documents receive the correction. Only active snapshot records lacking the optional exact target retain their previous `by`-equivalent reconstruction; newly snapshotted active `to` requests preserve the endpoint. Reverting this viewer-only cycle restores the previous runtime but also the false-stop defect.
+
+## Open Questions
+
+The producer and viewer have different internal propagation representations. The viewer's terminal endpoint hook must be paired against the producer's exact-terminal Motion/landing corpus before implementation is accepted; this plan does not authorize an independent arithmetic shortcut that changes the path or physical-stop semantics.
