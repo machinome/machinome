@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 330" role="img" aria-labelledby="title desc">
+  <title id="title">Slider-crank coordinate convention</title>
+  <desc id="desc">The crank centre is at the origin. Across points right and along points up. The pin is to the left of the cylinder axis, and a connecting rod joins it to the piston above.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#64748b"/></marker></defs>
+  <rect width="480" height="330" rx="12" fill="#f8fafc"/>
+  <g stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)">
+    <path d="M245 273 H425"/><path d="M245 290 V27"/>
+  </g>
+  <g fill="#334155" font-family="sans-serif" font-size="14">
+    <text x="369" y="298">+across</text><text x="263" y="32">+along</text>
+    <text x="263" y="263">crank centre</text><text x="262" y="308">0</text>
+  </g>
+  <path d="M245 273 L160 210" stroke="#2980b9" stroke-width="10" stroke-linecap="round"/>
+  <path d="M160 210 L245 70" stroke="#475569" stroke-width="8" stroke-linecap="round"/>
+  <rect x="217" y="50" width="56" height="40" rx="3" fill="#dbeafe" stroke="#2980b9" stroke-width="2"/>
+  <g fill="#fff" stroke="#2980b9" stroke-width="3"><circle cx="245" cy="273" r="6"/><circle cx="160" cy="210" r="6"/><circle cx="245" cy="70" r="6"/></g>
+  <path d="M245 233 A40 40 0 0 0 213 249" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <g fill="#334155" font-family="sans-serif" font-size="14">
+    <text x="70" y="207">crank pin</text><text x="66" y="250">crank radius</text>
+    <text x="62" y="125">connecting rod</text><text x="289" y="70">piston / small end</text>
+    <text x="179" y="234">angle</text><text x="276" y="166">cylinder axis</text>
+  </g>
+</svg>

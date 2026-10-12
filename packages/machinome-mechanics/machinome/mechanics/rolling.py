@@ -1,0 +1,42 @@
+# Copyright (C) 2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: Apache-2.0
+"""Rotation and tangent travel at a constant pitch/contact radius.
+
+Angles are unwrapped degrees, positive by the right-hand rule about the wheel
+axis. Positive travel follows its surface tangent in that rotational sense.
+Projects supply the sign that maps this tangent onto their rack, belt or rope
+axis, and add their own rest position. No slip or changing winding radius is
+modelled. A rack-and-pinion steering negates this travel for its rack; a
+belt drive uses it at each pulley's pitch circle. The inverse gives a
+printer its belt-driven pulley and idler rotation; phases and mounting
+signs remain outside the conversion.
+"""
+
+from math import pi
+
+
+def rolling_travel(angle, radius):
+    """Return signed tangent displacement for ``angle`` degrees at ``radius``.
+
+    The result is ``angle * radius * pi / 180``, in the radius's length unit,
+    zero at zero angle, without wrapping. Use the pitch/contact radius, not a
+    toothed wheel's outside radius. The physical radius is positive; zero and
+    negative values retain ordinary arithmetic behavior. Numeric and symbolic
+    arguments share this formula; dimensional class-body tokens are unsupported.
+    """
+    return angle * radius * (pi / 180)
+
+
+def rolling_angle(travel, radius):
+    """Return unwrapped degrees for signed tangent ``travel`` at ``radius``.
+
+    Travel and pitch/contact radius use the same length unit. Zero travel gives
+    zero angle at nonzero radius, with the surface-tangent sign defined above.
+    Add phase and mounting signs in the caller, as the printer belt laws do.
+    A physical radius is positive; negative values retain arithmetic sign.
+    Zero radius is undefined: plain Python numeric division raises, while a
+    deferred expression retains its runtime's division behavior. Numeric and
+    symbolic arguments share this formula; declared quantity tokens are not
+    a supported face.
+    """
+    return travel / radius * (180 / pi)

@@ -1,0 +1,87 @@
+# Machinome Mechanics - Mechanical formula helpers for Machinome projects
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: Apache-2.0
+
+"""Mechanical formula helpers for machinome projects.
+
+This independent Apache-2.0 package depends on machinome. Its optional
+mechanics extra installs these helpers, but framework code never imports
+them. Import helpers from `machinome_mechanics`.
+
+A *mechanism law* here is textbook geometry, not a design decision: how
+far a meshed gear has turned, how far a lead screw has advanced, where a
+slider-crank's piston is, how high a delta's carriage stands, where two
+circles cross. Projects that wrote these out by hand each chose a
+frame and a sign convention, rediscovered it against a rendered mesh,
+and, where the formula was numeric only, broke the moment a symbolic
+driver reached it.
+
+**Two faces, from `machinome.math`.** Every function here is a
+composition of `machinome.math` functions and ordinary arithmetic, and
+has exactly one definition. So it computes a number when the node is
+posed at a keyframe, and builds the equivalent deferred OpenSCAD
+expression when its driving argument is animation time or a driver
+symbol -- the same function either way, just deferred. Nothing here
+emits an OpenSCAD builtin `machinome.math` does not already emit, so
+the cross-runtime parity corpus covers this package without extension.
+
+**No third, declared face.** The laws carry degree literals: the mesh
+adds `180`, the screw divides by `360`. In the dimension algebra a plain
+number is dimensionless and `Angle` is its own axis, so `line + 180`
+over a declared `Angle` raises, and it should -- there is no way to
+spell "180 degrees" as a dimensioned constant today. A declared token
+reaching a law therefore raises the algebra's own `DimensionError` at
+class definition, which is loud and early. A class body that wants a
+static mesh phase computes it over `.value` operands, the algebra's
+stated escape hatch::
+
+    class Train(AssemblyNode):
+        wheel = Count(60)
+        pinion = Count(8)
+        phase = Angle(0.0)
+        pinion_phase = meshed_angle(phase.value, wheel.value, pinion.value)
+
+**Conventions.** Every angle is in degrees, positive by the right-hand
+rule about the stated axis, matching `machinome.math` and the node
+transform API. Each family module states its frame, its zero and its
+sign once, at the top, and says what kind of machine each choice
+serves; read that module before calling into it. The names are unique
+across families -- `crank_rod_angle`, not `rod_angle`; `delta_rod`, not
+`rod_tilt` -- so the flat import says which family it came from.
+
+The re-exports are eager: the formulas use `machinome.math` and lightweight
+standard-library constants, so there is nothing heavy to defer.
+"""
+
+from machinome_mechanics.belts import (belt_path_metrics, belt_pulley_angle,
+                                       belt_tangent_points, pulley_pitch_radius)
+from machinome_mechanics.cranks import (crank_pin, crank_rod_angle,
+                                         piston_height)
+from machinome_mechanics.cams import harmonic_cam_lift
+from machinome_mechanics.indexing import indexed_advance
+from machinome_mechanics.deltas import delta_carriage, delta_rod
+from machinome_mechanics.gears import (cycloidal_ratio, driving_angle,
+                                      internal_mesh_angle, meshed_angle)
+from machinome_mechanics.linkages import (circle_intersection, four_bar_pose, link_rise,
+                                           triangle_angle, two_link_angles)
+from machinome_mechanics.screws import screw_angle, screw_travel
+from machinome_mechanics.rolling import rolling_angle, rolling_travel
+
+__all__ = [
+    'meshed_angle', 'driving_angle',
+    'screw_travel', 'screw_angle',
+    'crank_pin', 'crank_rod_angle', 'piston_height',
+    'delta_carriage', 'delta_rod',
+    'circle_intersection', 'triangle_angle', 'link_rise',
+    'rolling_travel', 'rolling_angle',
+    'pulley_pitch_radius',
+    'belt_tangent_points',
+    'belt_path_metrics',
+    'belt_pulley_angle',
+    'two_link_angles',
+    'four_bar_pose',
+    'cycloidal_ratio',
+    'harmonic_cam_lift',
+    'internal_mesh_angle',
+    'indexed_advance',
+]
