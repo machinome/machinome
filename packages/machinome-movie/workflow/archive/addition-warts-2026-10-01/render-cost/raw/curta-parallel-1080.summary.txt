@@ -1,0 +1,6 @@
+== curta-parallel-1080.json: mode parallel, shot add-23, 24 frames (648..671), undefined×undefined, wall 199.4 s, load1 6.01 → 26.03
+sessions-1 round 0: load1 6.0 at its start; slices 32.5 s; 1355 ms of wall per frame (0.738 frames/s); screenshot median 1269 ms in each session
+sessions-2 round 0: load1 15.4 at its start; slices 22.5, 22.2 s; 939 ms of wall per frame (1.065 frames/s); screenshot median 1782 ms in each session
+sessions-1 round 1: load1 32.5 at its start; slices 32.6 s; 1356 ms of wall per frame (0.737 frames/s); screenshot median 1240 ms in each session
+sessions-2 round 1: load1 23.0 at its start; slices 23.0, 23.6 s; 983 ms of wall per frame (1.017 frames/s); screenshot median 1810 ms in each session
+

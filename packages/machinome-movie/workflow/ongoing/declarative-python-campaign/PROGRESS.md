@@ -1,0 +1,15 @@
+# Declarative Python campaign — progress
+
+| when (2026) | what | evidence |
+|---|---|---|
+| 30 Sep | Direction recorded; AGENTS.md rewritten with the test layers and memo policy | videomaker main afbdfe7 |
+| 30 Sep | Branch `declarative-python` opened; contract page, fixtures layout, architecture overview, ADR index and this plan written | this commit |
+| 30 Sep | Validation video spec written in the Leonardo project | `projects/Leonardo/videos/cut-and-advance/spec.md` |
+| 30 Sep | Leonardo: spec committed (a84c9bc), directory made importable and the take's declarations moved onto its class (dc80b38), `movie.py` transcribed and declared in `pyproject.toml` under `[tool.machinome.movies]` (915f359) | Leonardo repository |
+| 30 Sep | Worktrees `WTs/movie-document` (branch `movie-document`) and `WTs/declarative-movie` (branch `declarative-movie`) opened from 6e86728; cycles A and B running in parallel on opus agents | this repository |
+| 30 Sep | Placement rehearsal: the film's 11 shots as a throwaway 0.4 YAML episode under Leonardo `videos/cut_and_advance/_build/yaml-rehearsal/` (ignored), previewed at width 960 against the real export and the API 28 bundle: 110 samples, pixel replay true, 5 highlight, 5 transition, 29 entrance and 1 picture checks passed; stills inspected; the driving-pawl label moved left (Leonardo commit after 915f359) | `_build/yaml-rehearsal/_build/preview/report.json` |
+| 30 Sep | Cycle B `declarative-movie` ratified (planning 489e658, implementation ce9aef1; 80 pytest passed; the film's `movie.py` evaluates byte-identically twice, 5 chapters, 11 shots) and merged into `declarative-python` (73a6f72); editable install repointed at the campaign worktree | `openspec/changes/archive/2026-09-30-declarative-movie/evidence.md` |
+| 30 Sep | Cycle A `movie-document` ratified (planning 30b138d, implementation edde2fe; 209 node tests) and merged into `declarative-python` (f7d267d) with the follow-up that makes each side's fixtures pass the other's suite; 98 pytest and 209 node tests green on the merged tree | `openspec/changes/archive/2026-09-30-movie-document/evidence.md` |
+| 30 Sep | Cycle C: five chapter takes generated (Jessica, eleven_v3, 5.68/12.64/11.76/11.76/10.32 s); one refusal (emphasis hold past a snapped shot end) fixed in `movie.py`; `check` and `preview` pass on the 59 s film (118 samples, replay true, 5 highlight, 5 transition, 29 entrance, 1 reveal, 5 fade, 1 emphasis, 1 picture checks); render started | Leonardo `videos/cut_and_advance/_build/preview/report.json` |
+| 30 Sep | Seven findings recorded in `workflow/warts.md` under "Cut and Advance" | `workflow/warts.md` |
+| 30 Sep | Cycle C rendered: `rehearsal.mp4` 1769 frames, 1920×1080, 30 fps, H.264 + AAC 48 kHz stereo, 58.97 s, SRT beside, review pack generated; manifest records movie format machinome-movie/0.1 and five chapters; releaseReady false (null public URLs, as expected). Narration timing checked and captions read; the takes were not listened to. Pilot inspection pending | Leonardo `videos/cut_and_advance/_build/rehearsal.mp4`, `rehearsal-manifest.json` |

@@ -1,0 +1,163 @@
+{
+ "bundle": "/home/asa/devel/machinome/machinome-viewer/machinome_viewer/widget/dist/machinome-viewer.js",
+ "curta": "/home/asa/devel/machinome/projects/Calculators/Curta-Type-I-3x/export/clocked_curta",
+ "posed": "/home/asa/devel/machinome/projects/Leonardo/export/hydraulic_sawmill",
+ "exportIdentity": "18f8b447b410de79b8f161e0a95a02e2bdbca28207cc9b08a8679dddf84d63c7",
+ "view": {
+  "camera": [
+   240,
+   -240,
+   300
+  ],
+  "target": [
+   0,
+   0,
+   10
+  ],
+  "up": [
+   0,
+   0,
+   1
+  ],
+  "fov": 40
+ },
+ "slide": [
+  "input_selectors",
+  "selectors",
+  "digit_selector_axle_1",
+  "selector_knob_1_419057"
+ ],
+ "sections": "cost,posed",
+ "cycles": 30,
+ "load": {
+  "cost1080": [
+   18.82,
+   15.22,
+   12.48
+  ],
+  "cost540": [
+   20.74,
+   17.87,
+   14.56
+  ],
+  "posed-on-demand-1080": [
+   16.6,
+   17.43,
+   15.42
+  ],
+  "posed-on-demand-540": [
+   16.72,
+   17.4,
+   15.45
+  ],
+  "posed-continuous-1080": [
+   16.76,
+   17.39,
+   15.47
+  ],
+  "posed-continuous-540": [
+   16.12,
+   16.92,
+   15.58
+  ],
+  "end": [
+   17.51,
+   17.17,
+   15.84
+  ]
+ },
+ "chromium": "151.0.7922.34",
+ "mount": {
+  "refusal": "on-demand rendering requires a posed document without instructions",
+  "ms": 707.3000000119209,
+  "api": 28,
+  "renderMode": "continuous"
+ },
+ "memory": {
+  "browserOnly": {
+   "processes": 5,
+   "kb": 335636
+  },
+  "pageNoMount": {
+   "processes": 6,
+   "kb": 475504
+  },
+  "mounted": {
+   "processes": 6,
+   "kb": 920576
+  }
+ },
+ "cost": {
+  "curta1080": {
+   "n": 30,
+   "frameMs": 16.6,
+   "restore": 24.8,
+   "setView": 3.8,
+   "evaluate": 33.05,
+   "screenshot": 12259.36,
+   "total": 12290.85,
+   "totalMin": 10940,
+   "totalMax": 17028
+  },
+  "curta540": {
+   "n": 30,
+   "frameMs": 16.9,
+   "restore": 22.45,
+   "setView": 3.25,
+   "evaluate": 29.61,
+   "screenshot": 8980.54,
+   "total": 9009.8,
+   "totalMin": 8021,
+   "totalMax": 10215
+  },
+  "posed-on-demand-1080": {
+   "mountMs": 349,
+   "n": 30,
+   "frameMs": 16.7,
+   "setTime": 10.1,
+   "setView": 0.7,
+   "evaluate": 13.31,
+   "screenshot": 428.12,
+   "total": 446.38,
+   "totalMin": 421,
+   "totalMax": 626
+  },
+  "posed-on-demand-540": {
+   "mountMs": 323,
+   "n": 30,
+   "frameMs": 16.7,
+   "setTime": 9.25,
+   "setView": 0.7,
+   "evaluate": 12.14,
+   "screenshot": 286.25,
+   "total": 300.14,
+   "totalMin": 279,
+   "totalMax": 1041
+  },
+  "posed-continuous-1080": {
+   "mountMs": 332,
+   "n": 30,
+   "frameMs": 16.5,
+   "setTime": 13.8,
+   "setView": 0.7,
+   "evaluate": 17.77,
+   "screenshot": 4733.57,
+   "total": 4762.56,
+   "totalMin": 2084,
+   "totalMax": 6093
+  },
+  "posed-continuous-540": {
+   "mountMs": 367,
+   "n": 30,
+   "frameMs": 16.6,
+   "setTime": 12.55,
+   "setView": 0.7,
+   "evaluate": 16.08,
+   "screenshot": 3973.87,
+   "total": 3988.57,
+   "totalMin": 1294,
+   "totalMax": 4592
+  }
+ },
+ "pageErrors": []
+}

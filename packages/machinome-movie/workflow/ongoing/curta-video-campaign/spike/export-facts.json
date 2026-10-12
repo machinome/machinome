@@ -1,0 +1,387 @@
+{
+ "format": "machinome-export",
+ "version": 8,
+ "top_level_keys": [
+  "format",
+  "version",
+  "animation",
+  "drivers",
+  "states",
+  "instructions",
+  "bindings",
+  "clocked",
+  "root",
+  "pieces"
+ ],
+ "has_states": true,
+ "states": [
+  "clearing_check",
+  "result_0.value",
+  "result_1.value",
+  "result_10.value",
+  "result_2.value",
+  "result_3.value",
+  "result_4.value",
+  "result_5.value",
+  "result_6.value",
+  "result_7.value",
+  "result_8.value",
+  "result_9.value",
+  "turns_0.value",
+  "turns_1.value",
+  "turns_2.value",
+  "turns_3.value",
+  "turns_4.value",
+  "turns_5.value"
+ ],
+ "has_instructions": true,
+ "instructions": {
+  "Turn crank": {
+   "by": {
+    "crank_rotation": 360
+   },
+   "duration": 6
+  }
+ },
+ "has_clocked": true,
+ "clocked_keys": [
+  "bounds",
+  "clock",
+  "commits",
+  "identity",
+  "limits",
+  "own"
+ ],
+ "identity": "18f8b447b410de79b8f161e0a95a02e2bdbca28207cc9b08a8679dddf84d63c7",
+ "animation": {
+  "fps": 30,
+  "frames": 360
+ },
+ "drivers": {
+  "carriage_elevation": {
+   "default": 0,
+   "range": [
+    0,
+    6
+   ],
+   "unit": "mm",
+   "dtype": null,
+   "scale": null
+  },
+  "carriage_rotation": {
+   "default": 0,
+   "range": [
+    0,
+    100
+   ],
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "clearing_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "crank_elevation": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "mm",
+   "dtype": null,
+   "scale": null
+  },
+  "crank_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_1": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_2": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_3": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_4": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_5": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_6": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_7": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "digit_8": {
+   "default": 0,
+   "range": [
+    0,
+    9
+   ],
+   "unit": "digit",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_10_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_1_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_2_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_3_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_4_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_5_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_6_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_7_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_8_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  },
+  "marker_9_rotation": {
+   "default": 0,
+   "range": null,
+   "unit": "deg",
+   "dtype": null,
+   "scale": null
+  }
+ },
+ "source_revision_txt": false,
+ "tree_nodes": 627,
+ "mesh_references": 390,
+ "distinct_meshes": 149,
+ "files": 157,
+ "stl_files": 156,
+ "bytes_on_disk": 28833432,
+ "manifest_bytes": 1863678,
+ "input_selector_paths": [
+  "input_selectors/selectors/digit_selector_axle_1",
+  "input_selectors/selectors/digit_selector_axle_1/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_1/selector_shaft_top_1_419054",
+  "input_selectors/selectors/digit_selector_axle_1/selector_shaft_top_1_419054/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_1/selector_shaft_top_1_419054/number_roll",
+  "input_selectors/selectors/digit_selector_axle_1/selector_knob_1_419057",
+  "input_selectors/selectors/digit_selector_axle_1/selector_knob_1_419057/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_1/selector_knob_1_419057/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_1/selector_knob_1_419057/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_1/selector_knob_1_419057/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_4",
+  "input_selectors/selectors/digit_selector_axle_4/selector_shaft_top_1_419083",
+  "input_selectors/selectors/digit_selector_axle_4/selector_shaft_top_1_419083/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_4/selector_shaft_top_1_419083/number_roll",
+  "input_selectors/selectors/digit_selector_axle_4/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_4/selector_knob_1_419084",
+  "input_selectors/selectors/digit_selector_axle_4/selector_knob_1_419084/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_4/selector_knob_1_419084/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_4/selector_knob_1_419084/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_4/selector_knob_1_419084/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_7",
+  "input_selectors/selectors/digit_selector_axle_7/selector_knob_1_419102",
+  "input_selectors/selectors/digit_selector_axle_7/selector_knob_1_419102/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_7/selector_knob_1_419102/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_7/selector_knob_1_419102/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_7/selector_knob_1_419102/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_7/selector_shaft_top_1_419103",
+  "input_selectors/selectors/digit_selector_axle_7/selector_shaft_top_1_419103/number_roll",
+  "input_selectors/selectors/digit_selector_axle_7/selector_shaft_top_1_419103/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_7/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_6",
+  "input_selectors/selectors/digit_selector_axle_6/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_6/selector_knob_1_419141",
+  "input_selectors/selectors/digit_selector_axle_6/selector_knob_1_419141/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_6/selector_knob_1_419141/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_6/selector_knob_1_419141/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_6/selector_knob_1_419141/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_6/selector_shaft_top_1_419142",
+  "input_selectors/selectors/digit_selector_axle_6/selector_shaft_top_1_419142/number_roll",
+  "input_selectors/selectors/digit_selector_axle_6/selector_shaft_top_1_419142/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_2",
+  "input_selectors/selectors/digit_selector_axle_2/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_2/selector_knob_1_419152",
+  "input_selectors/selectors/digit_selector_axle_2/selector_knob_1_419152/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_2/selector_knob_1_419152/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_2/selector_knob_1_419152/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_2/selector_knob_1_419152/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_2/selector_shaft_top_1_419153",
+  "input_selectors/selectors/digit_selector_axle_2/selector_shaft_top_1_419153/number_roll",
+  "input_selectors/selectors/digit_selector_axle_2/selector_shaft_top_1_419153/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_8",
+  "input_selectors/selectors/digit_selector_axle_8/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_8/selector_knob_1_419155",
+  "input_selectors/selectors/digit_selector_axle_8/selector_knob_1_419155/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_8/selector_knob_1_419155/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_8/selector_knob_1_419155/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_8/selector_knob_1_419155/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_8/selector_shaft_top_1_419156",
+  "input_selectors/selectors/digit_selector_axle_8/selector_shaft_top_1_419156/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_8/selector_shaft_top_1_419156/number_roll",
+  "input_selectors/selectors/digit_selector_axle_5",
+  "input_selectors/selectors/digit_selector_axle_5/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_5/selector_knob_1_419177",
+  "input_selectors/selectors/digit_selector_axle_5/selector_knob_1_419177/selector_knob_spring",
+  "input_selectors/selectors/digit_selector_axle_5/selector_knob_1_419177/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_5/selector_knob_1_419177/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_5/selector_knob_1_419177/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_5/selector_shaft_top_1_419178",
+  "input_selectors/selectors/digit_selector_axle_5/selector_shaft_top_1_419178/number_roll",
+  "input_selectors/selectors/digit_selector_axle_5/selector_shaft_top_1_419178/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_3",
+  "input_selectors/selectors/digit_selector_axle_3/selector_shaft_bottom",
+  "input_selectors/selectors/digit_selector_axle_3/selector_shaft_top_1_419224",
+  "input_selectors/selectors/digit_selector_axle_3/selector_shaft_top_1_419224/number_roll",
+  "input_selectors/selectors/digit_selector_axle_3/selector_shaft_top_1_419224/selector_shaft_top",
+  "input_selectors/selectors/digit_selector_axle_3/selector_knob_1_419225",
+  "input_selectors/selectors/digit_selector_axle_3/selector_knob_1_419225/selector_knob",
+  "input_selectors/selectors/digit_selector_axle_3/selector_knob_1_419225/p_5mm_ball",
+  "input_selectors/selectors/digit_selector_axle_3/selector_knob_1_419225/digit_selector_screw",
+  "input_selectors/selectors/digit_selector_axle_3/selector_knob_1_419225/selector_knob_spring"
+ ],
+ "result_register_paths": [
+  "carriage/registers/result_register",
+  "carriage/registers/result_register/p_10204_3",
+  "carriage/registers/result_register/p_10204_3/number_roll_carry_pin_full",
+  "carriage/registers/result_register/p_10204_3/results_dial_type_2",
+  "carriage/registers/result_register/results_dial_type_2_1",
+  "carriage/registers/result_register/p_10205_1",
+  "carriage/registers/result_register/p_10205_1/results_dial_type_2",
+  "carriage/registers/result_register/p_10205_1/number_roll_carry_pin_half",
+  "carriage/registers/result_register/p_10204_6",
+  "carriage/registers/result_register/p_10204_6/results_dial_type_2",
+  "carriage/registers/result_register/p_10204_6/number_roll_carry_pin_full",
+  "carriage/registers/result_register/p_10204_1",
+  "carriage/registers/result_register/p_10204_1/results_dial_type_2",
+  "carriage/registers/result_register/p_10204_1/number_roll_carry_pin_full",
+  "carriage/registers/result_register/p_10205_2",
+  "carriage/registers/result_register/p_10205_2/results_dial_type_2",
+  "carriage/registers/result_register/p_10205_2/number_roll_carry_pin_half",
+  "carriage/registers/result_register/p_10204_2",
+  "carriage/registers/result_register/p_10204_2/results_dial_type_2",
+  "carriage/registers/result_register/p_10204_2/number_roll_carry_pin_full",
+  "carriage/registers/result_register/p_10204_4",
+  "carriage/registers/result_register/p_10204_4/number_roll_carry_pin_full",
+  "carriage/registers/result_register/p_10204_4/results_dial_type_2",
+  "carriage/registers/result_register/p_10203_1",
+  "carriage/registers/result_register/p_10203_1/number_roll_carry_pin_half",
+  "carriage/registers/result_register/p_10203_1/results_dial_type_1",
+  "carriage/registers/result_register/p_10204_5",
+  "carriage/registers/result_register/p_10204_5/number_roll_carry_pin_full",
+  "carriage/registers/result_register/p_10204_5/results_dial_type_2",
+  "carriage/registers/result_register/p_10203_2",
+  "carriage/registers/result_register/p_10203_2/results_dial_type_1",
+  "carriage/registers/result_register/p_10203_2/number_roll_carry_pin_half"
+ ],
+ "crank_paths": [
+  "main_drive/crank/crank_handle_1",
+  "main_drive/crank/crank_handle_1/main_crank",
+  "main_drive/crank/crank_handle_1/crank_handle_pin_screw",
+  "main_drive/crank/crank_handle_1/crank_handle",
+  "main_drive/crank/crank_handle_pin"
+ ]
+}

@@ -1,0 +1,12 @@
+node_modules/
+node_modules
+_build/
+.env
+.env.*
+!.env.example
+*.log
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.test-memo/
+/WTs/

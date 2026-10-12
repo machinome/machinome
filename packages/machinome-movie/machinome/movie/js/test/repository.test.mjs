@@ -1,0 +1,246 @@
+// Layer 9: repository pins of the react-stage change. Pure: they read files.
+import {test} from 'vitest';
+import assert from 'node:assert/strict';
+import {readFile,readdir,access,realpath,lstat} from 'node:fs/promises';
+import {join,dirname,relative} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {SCHEMA_FILE,MOVIE_SCHEMA} from '../src/schema.mjs';
+import {slowTestInputs,REPOSITORY} from './support/memo.mjs';
+import config,{SLOW,VIEWER} from '../vitest.config.mjs';
+
+const root=join(dirname(fileURLToPath(import.meta.url)),'..');
+const exists=path=>access(join(root,path)).then(()=>true,()=>false);
+async function files(dir,keep=()=>true,out=[]){
+  for(const entry of await readdir(join(root,dir),{withFileTypes:true})){
+    const path=join(dir,entry.name);
+    if(entry.isDirectory())await files(path,keep,out);else if(keep(path))out.push(path);
+  }
+  return out.sort();
+}
+
+test('the manual has the stage authoring contract and the movie document',async()=>{
+  assert.ok(await exists('docs/movie-document.md'),'docs/movie-document.md');
+  assert.ok(await exists('docs/stage.md'),'docs/stage.md, the authoring contract of the stage');
+});
+
+test('schema/machinome-movie-0.2.json is the one schema both runtimes read',async()=>{
+  assert.equal(SCHEMA_FILE,join(root,'schema','machinome-movie-0.2.json'),'src/schema.mjs reads it');
+  assert.deepEqual((await readdir(join(root,'schema'))).filter(n=>n.startsWith('machinome-movie')),['machinome-movie-0.2.json']);
+  const bytes=await readFile(SCHEMA_FILE);
+  assert.deepEqual(MOVIE_SCHEMA,JSON.parse(bytes));
+  const python=join(root,'python','machinome_movie','machinome-movie-0.2.json');
+  assert.equal(await realpath(python),await realpath(SCHEMA_FILE),'the Python package resolves to the same file');
+  assert.ok((await readFile(python)).equals(bytes));
+  const others=(await readdir(join(root,'python','machinome_movie'))).filter(n=>/^machinome-movie-.*\.json$/.test(n));
+  assert.deepEqual(others,['machinome-movie-0.2.json']);
+});
+
+test('the earlier film page is gone: src/film.js does not exist',async()=>{
+  assert.equal(await exists('src/film.js'),false);
+  const page=await readFile(join(root,'src','film.html'),'utf8');
+  assert.match(page,/<div id="stage-root"><\/div><div id="transition"><\/div><div id="chrome"><\/div>/);
+  assert.doesNotMatch(page,/film\.js/);
+});
+
+test('no page source carries a brand or a series label',async()=>{
+  const sources=['src/film.html',...await files('stage',path=>!/\.test\.[cm]?[jt]sx?$/.test(path))];
+  assert.ok(sources.some(s=>s.endsWith('runtime.tsx'))&&sources.some(s=>s.endsWith('stage.css')));
+  for(const path of sources){
+    const text=await readFile(join(root,path),'utf8');
+    assert.doesNotMatch(text,/\bMACHINOME\b/,`${path} carries the brand`);
+    assert.doesNotMatch(text,/LEONARDO|HOW IT WORKS/i,`${path} carries a series`);
+    assert.doesNotMatch(text,/\b[A-Z]{2,}(?: [A-Z]{2,})* · [A-Z]{2,}/,`${path} carries a series label`);
+  }
+});
+
+test('the slow project is the browser and pipeline directories, the viewer project the viewer directory, and every test there is memoized',async()=>{
+  assert.deepEqual(SLOW,['test/browser/**/*.test.mjs','test/pipeline/**/*.test.mjs']);
+  const projects=Object.fromEntries(config.test.projects.map(p=>[p.test.name,p.test]));
+  assert.deepEqual(projects.slow.include,SLOW);assert.deepEqual(projects.pure.exclude,[...SLOW,...VIEWER]);
+  // Layer 6 is its own project, after the slow one, on the same global setup (ADR-008).
+  assert.deepEqual(VIEWER,['test/viewer/**/*.test.mjs']);assert.deepEqual(projects.viewer.include,VIEWER);
+  assert.ok(projects.viewer.sequence.groupOrder>projects.slow.sequence.groupOrder);
+  assert.deepEqual(projects.viewer.globalSetup,projects.slow.globalSetup);assert.equal(projects.viewer.fileParallelism,false);
+  const viewer=(await files('test/viewer')).filter(p=>p.endsWith('.test.mjs'));
+  assert.ok(viewer.length>=1);
+  for(const path of viewer){
+    const text=await readFile(join(root,path),'utf8');
+    assert.match(text,/import \{viewerTest as test(,[^}]*)?\} from '\.\.\/support\/viewer-bundle\.mjs';/,`${path} registers viewerTests`);
+    assert.doesNotMatch(text,/import \{[^}]*\b(test|it)\b[^}]*\} from 'vitest'/,`${path} registers no plain vitest test`);
+  }
+  const slow=[...await files('test/browser'),...await files('test/pipeline')].filter(p=>p.endsWith('.test.mjs'));
+  assert.ok(slow.length>=9);
+  for(const path of (await files('test',p=>/^test\/[^/]+\.test\.mjs$/.test(p))))
+    assert.doesNotMatch(await readFile(join(root,path),'utf8'),/^import .* from '(\.\/support\/stage\.mjs|playwright)';$/m,`${path} opens no page: it is not slow`);
+  for(const path of slow){
+    const text=await readFile(join(root,path),'utf8');
+    assert.match(text,/import \{slowTest as test(,[^}]*)?\} from '\.\.\/support\/memo\.mjs';/,`${path} registers slowTests`);
+    assert.doesNotMatch(text,/import \{[^}]*\b(test|it)\b[^}]*\} from 'vitest'/,`${path} registers no plain vitest test`);
+  }
+});
+
+test('a slow test\'s verdict key reads the stage runtime and the fixture project, not what Python or a build leaves there',async()=>{
+  const inputs=(await slowTestInputs(join(root,'test','browser','stage.test.mjs'))).map(p=>relative(REPOSITORY,p));
+  for(const served of ['stage/runtime.tsx','stage/shipped.tsx','stage/stage.css','src/film.html'])assert.ok(inputs.includes(served),served);
+  assert.ok(!inputs.includes('stage/stage.test.tsx'),'a stage component test is not served');
+  const project=inputs.filter(p=>p.startsWith('python/tests/fixtures/project/'));
+  for(const needed of ['models/seesaw.py','export/seesaw/manifest.json','videos/tour/stage.tsx','videos/tour/stage.css','media/plate.png'])
+    assert.ok(project.includes(`python/tests/fixtures/project/${needed}`),needed);
+  assert.ok(project.some(p=>/^python\/tests\/fixtures\/project\/export\/seesaw\/.+\.stl$/.test(p)),'the export\'s mesh');
+  assert.deepEqual(project.filter(p=>/(^|\/)(__pycache__|_build)(\/|$)/.test(p)),[]);
+  for(const path of project)assert.ok((await lstat(join(REPOSITORY,path))).isFile()||(await lstat(join(REPOSITORY,path))).isSymbolicLink());
+});
+
+test('the manual, the contract and the records say how a clocked take is filmed (pose-a-take)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md');
+  assert.ok(readme.includes('and clocked machines through a take'),'README: what is filmable');
+  assert.ok(readme.includes('running machines are refused'),'README: running machines');
+  assert.ok(readme.includes('A movie on a clocked take needs Viewer API 29'),'README: the viewer it needs');
+  assert.ok(readme.includes('`Take: 3 steps, marks one 2 s, nine 6 s, ten 8 s, 8 s long; the replay of its steps gives the recorded bank at every mark`'),'README: check\'s take line');
+  const stage=await read('docs/stage.md');
+  assert.ok(stage.includes('a view on a clocked take by restoring the machine\'s bank the frame gives it on the viewer\'s machine, with the take\'s identity, before its camera is set'),'stage.md: the view row');
+  assert.ok(stage.includes('`Viewer canvas exceeds its view`'),'stage.md: the canvas larger than its view');
+  assert.ok((await read('docs/movie-document.md')).includes('A document needs Viewer API 29 when it films a clocked take'),'movie-document.md: the API');
+  assert.ok((await read('CHANGELOG.md')).includes('(`pose-a-take`, ADR-012)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md)'),'the ADR index');
+  assert.doesNotMatch(await read('AGENTS.md'),/Only posed models with a normalized loop are filmable/);
+});
+
+test('the manual and the records say what provenance records of a dirty tree, and the Stage line\'s two hashes (honest-provenance)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const line='`Stage: bundled <path>/stage.js (sha256 <prefix>) and stage.css (sha256 <prefix>) from stage.tsx; types checked`';
+  const readme=await read('README.md');
+  assert.ok(readme.includes(line),'README: check\'s Stage line');
+  assert.ok(readme.includes('`Project tree: clean at <head>`'),'README: the tree line');
+  for(const field of ['`projectDirty`','`workflowDirty`','`releaseIssues`'])assert.ok(readme.includes(field),`README: ${field}`);
+  assert.ok((await read('docs/stage.md')).includes('Stage: bundled <root>/_build/stage/stage.js (sha256 <12 hex digits>) and stage.css (sha256 <12 hex digits>) from stage.tsx; types checked'),'stage.md: the Stage line');
+  assert.ok((await read('CHANGELOG.md')).includes('(`honest-provenance`, ADR-015)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md)'),'the ADR index');
+  assert.ok((await readFile(join(root,'.gitignore'),'utf8')).split('\n').includes('/WTs/'),'.gitignore: the worktrees, as AGENTS.md says');
+});
+
+test('the manual and the records say a continuation that crosses a mark is reported, in the words check prints (check-the-continuation)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  // The README quotes the line check prints for the fixture count: the
+  // report its pinned resolution records on nine.
+  const pinned=JSON.parse(await readFile(join(root,'fixtures','resolved','count.json'),'utf8'));
+  const report=pinned.chapters[0].shots.find(s=>s.id==='nine').model.crossing.report;
+  const readme=await read('README.md');
+  assert.ok(readme.includes(`\`${report}\``),'README: check\'s continuation line');
+  assert.ok(readme.includes('It is a report, not a refusal'),'README: not a refusal');
+  assert.ok((await read('docs/movie-document.md')).includes('a shot whose continuation through its outgoing join (rule 8) crosses a mark gains `crossing` on its `model`'),'movie-document.md: the resolved field');
+  assert.ok((await read('docs/declaring-a-movie.md')).includes('`check` reports each shot whose continuation crosses a mark, without refusing it'),'declaring-a-movie.md: the join');
+  assert.ok((await read('CHANGELOG.md')).includes('(`check-the-continuation`, ADR-014)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-014](TIMELINE/ADR-014-a-continuation-that-crosses-a-mark-is-reported-from-the-frames-the-join-poses.md)'),'the ADR index');
+});
+
+test('the manual and the records say the stage bundle is the same bytes from any checkout (stable-stage-bundle)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const stage=await read('docs/stage.md');
+  assert.ok(stage.includes('**The same bytes from any checkout.**'),'stage.md: the bullet');
+  for(const name of ['`videomaker/stage/<file>`','`videomaker/node_modules/<file>`','`project/<path in the repository>`'])
+    assert.ok(stage.includes(name),`stage.md: ${name}`);
+  assert.ok((await read('README.md')).includes('the same template bundled from another checkout of the tool does not'),'README: the cache key');
+  assert.ok((await read('CHANGELOG.md')).includes('(`stable-stage-bundle`, ADR-013)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-013](PIPELINE/ADR-013-the-stage-bundle-names-its-files-by-the-tool-and-the-project.md)'),'the ADR index');
+});
+
+test('the manual reads the revision from the export\'s source and names no sidecar (read-the-exports-source)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const pages=['README.md','docs/FORMAT.md','docs/declaring-a-movie.md','docs/movie-document.md','docs/stage.md',
+    'docs/architecture-overview.md','fixtures/README.md'];
+  for(const page of pages)assert.ok(!(await read(page)).includes('source-revision.txt'),`${page} names no sidecar`);
+  const readme=await read('README.md');
+  assert.ok(readme.includes('`Export: made from <revision>, clean`'),'README: the Export line');
+  for(const field of ['`source.revision`','`exportRevision`','`exportDirty`'])assert.ok(readme.includes(field),`README: ${field}`);
+  assert.ok((await read('docs/declaring-a-movie.md')).includes('`source.revision`'),'declaring-a-movie.md: where the revision comes from');
+  assert.ok((await read('docs/FORMAT.md')).includes('`source.revision`'),'FORMAT.md: the production model block');
+  assert.ok((await read('CHANGELOG.md')).includes('(`read-the-exports-source`, ADR-019)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md)'),'the ADR index');
+  for(const name of ['seesaw','counter'])assert.ok(!await exists(`python/tests/fixtures/project/export/${name}/source-revision.txt`),`export/${name} has no sidecar`);
+});
+
+test('the manual and the records say where a highlight landed and what check measured of the text (proofs-report-the-look)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md'),stage=await read('docs/stage.md');
+  assert.ok(readme.includes('`preview/highlights/<shot>-<cue>-<parts>-{lit,unlit,difference}.png`'),'README: the highlight images');
+  assert.ok(readme.includes('`Shot source: source balance.code in left at 13.1 px (1.02 vw)`'),'README: check\'s text line');
+  assert.ok(readme.includes('`Text not measured: …`'),'README: the text check did not measure');
+  assert.ok(stage.includes('Shot question: title opening.title in headline on 1 line, its subtitle on 1 line'),'stage.md: check\'s text line');
+  assert.ok(stage.includes('`fontSize`')&&stage.includes('`subtitleLines`'),'stage.md: what the shipped elements report');
+  assert.ok((await read('docs/FORMAT.md')).includes('`preview/highlights/<shot>-highlight-<i>-<parts>-{unlit,lit,difference}.png`'),'FORMAT.md: the highlight images');
+  assert.ok((await read('CHANGELOG.md')).includes('(`proofs-report-the-look`, ADR-017)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('[ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md)'),'the ADR index');
+});
+
+test('the manual and the records say a view on a take is posed through the take transport (take-transport)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const stage=await read('docs/stage.md');
+  assert.ok(stage.includes('`videomaker/transport/<file>`'),'stage.md: the bundle names the transport by the tool');
+  assert.ok(stage.includes('through the take transport'),'stage.md: the view row');
+  const contract=await read('docs/movie-document.md');
+  assert.ok(contract.includes('`transport(key)`'),'movie-document.md: window.film.transport');
+  assert.ok(contract.includes('`attachMachine(viewer, take.identity)`'),'movie-document.md: the pose of a view on a take');
+  assert.ok((await read('docs/architecture-overview.md')).includes('`transport/`'),'the architecture overview');
+  assert.ok((await read('AGENTS.md')).includes('`transport/**/*.test.ts`'),'AGENTS.md: layer 4');
+  assert.ok((await read('CHANGELOG.md')).includes('(`take-transport`, ADR-020)'),'the changelog bullet');
+  assert.ok((await read('docs/adrs/README.md')).includes('| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser\'s pose of a take, written to lift | Accepted |'),'the ADR index');
+  assert.ok(await exists('docs/adrs/STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md'),'ADR-020');
+});
+
+test('every option the command line declares is documented in the README',async()=>{
+  const script=await readFile(join(root,'bin','videomaker.mjs'),'utf8');
+  const declared=/parseArgs\(\{allowPositionals:true,options:\{([\s\S]*?)\}\}\)/.exec(script);
+  assert.ok(declared,'bin/videomaker.mjs declares its options in one parseArgs call');
+  const names=[...declared[1].matchAll(/(\w+):\{type:/g)].map(m=>m[1]).filter(name=>name!=='help');
+  assert.ok(['viewer','width','fps','silent'].every(name=>names.includes(name)),names.join(', '));
+  const readme=(await readFile(join(root,'README.md'),'utf8')).split(/\s+/).join(' ');
+  for(const name of names)assert.ok(readme.includes(`--${name}`),`README: --${name}`);
+});
+
+test('the manual and the records say how a film is served live (live-server)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md');
+  assert.ok(readme.includes('node bin/videomaker.mjs live '),'README: the command in use');
+  assert.ok(readme.includes('`Live: http://127.0.0.1:<port>/`'),'README: the address line');
+  for(const route of ['`/film.json`','`/frame?t=<seconds>`','`/take.json`','`/film.html`','`/narration.wav`','`/captions.json`','`/events`',
+    '`The player is not built`','`No take document`'])
+    assert.ok(readme.includes(route),`README: ${route}`);
+  const script=await readFile(join(root,'bin','videomaker.mjs'),'utf8');
+  assert.ok(script.includes('videomaker live EPISODE.yaml|MOVIE.json [--viewer BUNDLE.js] [--width 960] [--port 0] [--poll MS] [--open]'),'the usage line');
+  const overview=await read('docs/architecture-overview.md');
+  for(const module of ['src/check.mjs','src/film-assets.mjs','src/live.mjs'])assert.ok(overview.includes(module),`overview: ${module}`);
+  const adr='PIPELINE/ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md';
+  assert.ok(await exists(`docs/adrs/${adr}`),adr);
+  assert.ok((await read('docs/adrs/README.md')).includes(`[ADR-021](${adr})`),'the ADR index');
+  assert.ok((await read('CHANGELOG.md')).includes('(`live-server`, ADR-021)'),'the changelog bullet');
+  assert.doesNotMatch(await read('AGENTS.md'),/There is no live preview/,'AGENTS.md: the status line');
+});
+
+test('the manual and the records say how the player shows a film and a take, and what it does not draw (player-page)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  const readme=await read('README.md');
+  for(const words of ['`#movie`','`#take/take`','`#take/loop`','Space plays and pauses','shown as a cut at its midpoint',
+    'shown without its fade','drawn live','`window.player`','provisional','python -m machinome_movie watch'])
+    assert.ok(readme.includes(words),`README: ${words}`);
+  assert.doesNotMatch(readme,/The player page is not built yet/,'README: the player is built');
+  const adr='PIPELINE/ADR-022-the-player-is-two-transports-over-the-renders-stage-and-a-video-is-its-recording.md';
+  assert.ok(await exists(`docs/adrs/${adr}`),adr);
+  assert.ok((await read('docs/adrs/README.md')).includes(`| [ADR-022](${adr}) | PIPELINE | The player is two transports over the render's stage, and a video is its recording | Accepted |`),'the ADR index');
+  assert.ok((await read('CHANGELOG.md')).includes('(`player-page`, ADR-022)'),'the changelog bullet');
+  const overview=await read('docs/architecture-overview.md');
+  for(const module of ['`player/`','src/player-build.mjs','`markInstants`'])assert.ok(overview.includes(module),`overview: ${module}`);
+  assert.doesNotMatch(overview,/player page that drives it is not built/,'overview: what is changing');
+  const agents=await read('AGENTS.md');
+  assert.ok(agents.includes('`player/**/*.test.ts`'),'AGENTS.md: layer 4');
+  assert.doesNotMatch(agents,/the player page that drives them is not built/,'AGENTS.md: the status line');
+  assert.ok((await read('docs/declaring-a-movie.md')).includes('`watch` evaluates the movie as `evaluate` does'),'declaring-a-movie.md: watch');
+});
+
+test('the manual and the records name the published viewer that declares API 28 and 29 (status-claims)',async()=>{
+  const read=async path=>(await readFile(join(root,path),'utf8')).split(/\s+/).join(' ');
+  for(const path of ['README.md','AGENTS.md','docs/FORMAT.md'])
+    assert.doesNotMatch(await read(path),/no published release|not yet declared by a published release|not yet a published release|source checkout provides/,`${path}: the viewer's release`);
+  assert.ok((await read('README.md')).includes('machinome-viewer 0.8.0 declares it'),'README: the release that declares API 29');
+});

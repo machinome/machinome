@@ -1,0 +1,79 @@
+{
+  "schema": "videomaker-campaign-evidence/1",
+  "campaign": "film-production",
+  "date": "2026-09-29",
+  "status": "completed-local-validation",
+  "project": "/mnt/data/machinome-projects/Leonardo",
+  "pathBases": {
+    "videos/": "relative to project",
+    "openspec/": "relative to Videomaker repository root",
+    "workflow/": "relative to Videomaker repository root"
+  },
+  "viewerBundleSha256": "5280a86be7cbe532dabac8cfc99d4b78822275686c8f6fe1356c796148bcc413",
+  "incrementalRendering": {
+    "videomakerCommit": "24234d6",
+    "viewerCommit": "94cfcc0",
+    "changeEvidence": "openspec/changes/archive/2026-09-29-shot-level-incremental-rendering/evidence.md",
+    "rootReview": "openspec/changes/archive/2026-09-29-shot-level-incremental-rendering/root-review.md",
+    "rawReports": [
+      "videos/demo-incremental-rendering-fixed/_build/evidence/fixed-viewer-revalidation.json",
+      "videos/demo-incremental-source-grid-fixed/_build/evidence/fixed-viewer-revalidation.json"
+    ],
+    "rawReportSha256": {
+      "80Frames": "51a4b10280b81c89b925471096fb25fc05a77106188ca57daf075863004bdba0",
+      "70Frames": "cf457427f2e241bf911db4b1324092116cf7257791369743dbe3bc46dde0e53e"
+    },
+    "editedColdMp4Sha256": {
+      "80Frames": "152e2604b25459ede7627bea7357fe9d072f2dcebb4d0812af14269d9aee7d69",
+      "70Frames": "67d3c2f82975402eb7780d31949e3623074ecfedc8d61a618ccb8bf16f586d35"
+    }
+  },
+  "sourceOnly": {
+    "videomakerCommit": "2cc54e5",
+    "changeEvidence": "openspec/changes/archive/2026-09-29-source-only-shots/evidence.md",
+    "projectRecord": "videos/demo-source-only/source-only-evidence.md",
+    "rawReport": "videos/demo-source-only/_build/evidence/source-only-2026-09-29T18-49-57-465Z-38eb6fbe-072f-443f-bf3e-27a4fe8411f0/report.json",
+    "rawReportSha256": "d7ec36ca2c25bc8b9e79b35c5cd1d3eba6d92ccf77d068c8f9068bb04372cf8a",
+    "editedColdMp4Sha256": "7e2585c3a4d5dcda9014f7bb1fdfee8fe787c64b244319c885fe795cf7dddd7d"
+  },
+  "visualReviewPacks": {
+    "videomakerCommit": "7acd2c4",
+    "changeEvidence": "openspec/changes/archive/2026-09-29-automatic-visual-review-packs/evidence.md",
+    "rawReport": "videos/demo-source-only/_build/evidence/review-pack-2026-09-29T19-55-57-828Z-0542d869-2bad-40fc-ac3c-1a73d684d106/report.json",
+    "rawReportSha256": "a4210851ee87a6c82d9bf3002327aef12db8ef8c02588de202388bc182f81fc9",
+    "coldWarmMp4Sha256": "7e2585c3a4d5dcda9014f7bb1fdfee8fe787c64b244319c885fe795cf7dddd7d",
+    "frameCount": 70,
+    "selectedFullResolutionPngsVerifiedByRoot": 96,
+    "sheetsVerifiedByRoot": 9,
+    "thumbnailCellsVerifiedByRoot": 153,
+    "fullScopedBeforeAliasFix": "188/188",
+    "finalFocusedPackTests": "31/31",
+    "reviewScope": "sampled AI visual inspection of silent encoded film; no human or audio approval"
+  },
+  "parallelInvestigation": {
+    "record": "workflow/archive/film-production-2026-09-29/film-production-parallel-investigation.md",
+    "rawReport": "videos/demo-incremental-rendering/_build/parallel-benchmark-jiH0ao/report.json",
+    "rawReportSha256": "996dad27107f81c21026e0fcdd0af5c95146e32e146778c54014ae83ae0578f8",
+    "pairedTrials": 0,
+    "productChange": false
+  },
+  "compositingInvestigation": {
+    "record": "workflow/archive/film-production-2026-09-29/film-production-compositing-investigation.md",
+    "rawReport": "videos/demo-graphic-overlays/_build/compositing-profile-2026-09-29T18-04-36-441Z/report.json",
+    "rawReportSha256": "433faaf77be4fe2e98d5bd7344c8ffce4c4329c6e538c5c5b96da7330217cb25",
+    "plainSeconds": 120.060,
+    "instrumentedSeconds": 121.996,
+    "exactPngPairs": 450,
+    "productChange": false
+  },
+  "historicalCleanup": {
+    "videomakerCommit": "f84b139",
+    "archives": [
+      "openspec/changes/archive/2026-09-29-first-narrated-rehearsal/",
+      "openspec/changes/archive/2026-09-29-narrated-source-scenes/"
+    ],
+    "currentBaselineStrictValidation": "12/12"
+  },
+  "workspaceGuidanceCommit": "ba0a39c",
+  "delivery": "local branches only; no main merge, push or publication"
+}
