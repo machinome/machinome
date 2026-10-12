@@ -163,6 +163,12 @@ stl = [
 freecad = [
     "machinome-node-freecad~=0.8.1",
 ]
+# The machinome skills and the command `machinome skills` that installs
+# them into assistants' skill directories (`machinome.skills`), the
+# repository's distribution machinome-skills, numbered with the set.
+skills = [
+    "machinome-skills~=0.8.1",
+]
 all = [
     "machinome[cadquery,build123d,step,molejo,brep,mesh,openscad,solid2,jscad,stl,freecad]",
 ]

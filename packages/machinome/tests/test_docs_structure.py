@@ -152,6 +152,21 @@ class NavigationTest(unittest.TestCase):
             'mount', 'viewer-handle', 'layouts', 'running', 'clocked', 'cli',
             'compatibility', 'troubleshooting'])
 
+    def test_the_skills_guide_is_a_how_to(self):
+        # `join-skills`: the skills package's guide is a how-to that installs
+        # the skills with the command and names its verbs and options.
+        index = (DOCS / 'index.rst').read_text()
+        how_to = re.search(r':caption:\s*How-to guides\n\n((?:   \S+\n)+)',
+                           index)
+        self.assertIsNotNone(how_to, 'index.rst has no How-to toctree')
+        self.assertIn('howto/assistant-skills', how_to.group(1).split())
+        page = (DOCS / 'howto' / 'assistant-skills.rst').read_text()
+        for spelled in ('pip install "machinome[skills]"',
+                        'machinome skills install', 'machinome skills update',
+                        'machinome skills list', '--tools', '--personal'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, page)
+
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',
                         'releases/development-0.7.rst'):
@@ -210,7 +225,8 @@ class KernelExtrasTest(unittest.TestCase):
         # `cut-the-mesh-nodes`: the `openscad`, `solid2`, `jscad` and `stl`
         # extras theirs; `join-freecad`: the `freecad` extra the FreeCAD node
         # package; `join-mechanics`: the `mechanics` extra the mechanics
-        # helpers; `join-viewer`: the `viewer` extra the browser viewer.
+        # helpers; `join-viewer`: the `viewer` extra the browser viewer;
+        # `join-skills`: the `skills` extra the skills package.
         page = (DOCS / 'start' / 'install.rst').read_text()
         for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
                              'machinome-node-cadquery',
@@ -220,7 +236,7 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-solid2',
                              'machinome-node-jscad', 'machinome-node-stl',
                              'machinome-node-freecad', 'machinome-mechanics',
-                             'machinome-viewer'):
+                             'machinome-viewer', 'machinome-skills'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
 
@@ -238,6 +254,35 @@ class KernelExtrasTest(unittest.TestCase):
 def conf_value(name):
     conf = (DOCS / 'conf.py').read_text()
     return re.search(rf"^{name} = '([^']*)'", conf, flags=re.M)[1]
+
+
+class CommandReferenceTest(unittest.TestCase):
+    """The command reference documents the commands packages add
+    (`join-skills`)."""
+
+    def setUp(self):
+        self.page = (DOCS / 'reference' / 'cli.rst').read_text()
+
+    def section(self, title):
+        found = re.search(
+            rf'^{re.escape(title)}\n=+\n(.*?)(?=^[^\n]+\n=+\n|\Z)',
+            self.page, re.M | re.S)
+        self.assertIsNotNone(found, f'cli.rst has no section {title!r}')
+        return found.group(1)
+
+    def test_the_skills_command_has_its_section(self):
+        self.assertIn('.. _skills-command:\n\nmachinome skills\n', self.page)
+        section = self.section('machinome skills')
+        for spelled in ('install', 'update', 'list', '--tools', '--personal',
+                        '--force'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, section)
+
+    def test_the_skills_package_is_no_longer_to_add_its_command(self):
+        section = ' '.join(self.section('Commands from other packages').split())
+        self.assertIn('The skills package adds ``machinome skills``', section)
+        self.assertNotIn('the skills package (``machinome skills``)', section)
+        self.assertNotIn('no package adds one yet', section)
 
 
 class ReleaseFactsTest(unittest.TestCase):

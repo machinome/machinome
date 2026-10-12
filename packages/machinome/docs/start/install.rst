@@ -139,10 +139,11 @@ types in packages of their own that its extras install
 ``machinome-node-openscad``, ``machinome-node-solid2``,
 ``machinome-node-jscad``, ``machinome-node-stl`` and
 ``machinome-node-freecad``), with the mechanics helpers in
-``machinome-mechanics`` and with the browser viewer in ``machinome-viewer``,
-all licensed |framework_licence|, at the recipient's choice. The framework
-reaches the viewer only as a separate process. The ``viewer`` extra
-installs it. Without it the framework builds, tests, exports with
+``machinome-mechanics``, with the browser viewer in ``machinome-viewer`` and
+the machinome skills in ``machinome-skills``, all licensed
+|framework_licence|, at the recipient's choice. The framework reaches the
+viewer only as a separate process. The ``viewer`` extra installs it.
+Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes
 OpenSCAD snapshots with the ``openscad`` extra; with it, ``machinome
 develop`` opens the interactive viewer (:doc:`/howto/browser-viewer`), and
@@ -190,13 +191,15 @@ and the ``documentVersions`` it reads. This manual matches viewer
 |document_versions|. Without the viewer the command names the extra to
 install and exits 1.
 
-Two more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
+Three more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
 </reference/mechanics/index>`, ``machinome.mechanics``, gear, screw, crank,
 cam, delta, linkage, rolling and belt formulas (the distribution
-``machinome-mechanics``, version |mechanics_version|), and ``web-snapshot``
-installs the viewer with its headless browser driver for transparent
-photographs; Chromium itself is a second step, ``playwright install
-chromium``. Neither is needed to start.
+``machinome-mechanics``, version |mechanics_version|); ``skills`` installs
+the :doc:`machinome skills </howto/assistant-skills>` for assistants and the
+command ``machinome skills`` (the distribution ``machinome-skills``); and
+``web-snapshot`` installs the viewer with its headless browser driver for
+transparent photographs; Chromium itself is a second step, ``playwright
+install chromium``. None is needed to start.
 
 Upgrading
 ---------

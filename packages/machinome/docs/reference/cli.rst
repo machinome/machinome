@@ -543,9 +543,69 @@ with its own help, and ``machinome <name> -h`` gives its options. A name
 of the framework's own commands always runs the framework's command. When
 two installed packages add the same name, neither runs, and ``machinome
 <name>`` names both; a command whose package lacks an extra, or cannot be
-loaded, is listed as unavailable with the reason. The videomaker
-(``machinome movie``), the skills package (``machinome skills``) and the
-studio (``machinome studio``) are to add theirs; no package adds one yet.
+loaded, is listed as unavailable with the reason. The skills package adds
+``machinome skills``, below; the videomaker (``machinome movie``) and the
+studio (``machinome studio``) are to add theirs.
+
+.. _skills-command:
+
+machinome skills
+================
+
+::
+
+    machinome skills install [path] [--tools all|none|ID,ID...] [--personal] [--force]
+    machinome skills update [path] [--personal] [--force]
+    machinome skills list [path] [--personal]
+
+Added by the package ``machinome-skills``, which ``pip install
+"machinome[skills]"`` installs. It copies the machinome skills, ``machinome``
+and ``machinome-simulate``, into the directories assistants read their
+skills from; :doc:`/howto/assistant-skills` is the guide.
+
+``install`` copies each skill's directory whole into the skills directory of
+each tool chosen, under ``path`` (the current directory by default) or,
+with ``--personal``, under your home, ``path`` then ignored. Tools that read
+one directory share one copy.
+
+``--tools``
+    ``all``, ``none``, or tool ids separated by commas, case-insensitive:
+    the ids OpenSpec uses, and ``agents`` for ``.agents/skills/``.
+    ``machinome skills list`` prints them. Without it, at a terminal (and
+    ``CI`` not set), a numbered list of the tools is shown with the ones
+    already holding a copy marked, else the ones found in the project, else
+    ``agents``, and Enter takes the marked ones; with no terminal the
+    skills are installed for ``agents``, said on one line.
+
+``--personal``
+    Each tool's directory under your home. A tool that documents none is
+    refused, naming the install into a project.
+
+``--force``
+    Replace a skill of the same name the command did not write.
+
+Each copied ``SKILL.md`` carries a marker in its front matter, a
+``metadata`` mapping of ``installed-by: machinome-skills`` and the
+package's ``version``. A target whose ``SKILL.md`` carries no marker is
+refused unless ``--force``: nothing is written, each refused target is
+named, and the line to run follows. A copy that carries it is rewritten,
+its old and new versions printed. Every file written is printed.
+
+``update`` looks in every tool's directory under ``path`` (or your home)
+and rewrites each copy older than the installed package, reporting every
+copy found: current, rewritten from its version, newer and left as it is,
+or not written by the command and left as it is. ``--force`` rewrites every
+copy that carries the marker, never one without it.
+
+``list`` prints every tool with its directory in a project and in your
+home, then each copy under ``path`` (or your home) with the tools that read
+it and its version against the installed package's.
+
+No verb deletes a file or a directory, and a file the package does not ship
+is left as it is. The exit status is 0 when the verb did what was asked, 1
+when a target was refused, a path is not a directory or the prompt's input
+ended, and 2 for a value of ``--tools`` that is not valid, whose error
+names the valid ones.
 
 .. _several-models:
 

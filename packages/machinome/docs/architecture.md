@@ -371,7 +371,8 @@ SolidPython, `machinome-node-solid2`, which requires it, and
 `machinome-node-freecad`, over the B-rep engine; FreeCAD itself is a
 program no extra installs, found through `MACHINOME_FREECAD_ROOT`),
 `[mechanics]` for the mechanics helpers (the distribution
-`machinome-mechanics`, at its own version), and `[all]` — every OCCT kernel
+`machinome-mechanics`, at its own version), `[skills]` for the machinome
+skills (the distribution `machinome-skills`), and `[all]` — every OCCT kernel
 extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
 before it imports a kernel; the check asks `find_spec` and imports nothing,
@@ -2293,6 +2294,8 @@ reads no entry point, and the guard, the help and an unknown name's error
 read the union. A framework name is never taken; a name two packages
 declare runs neither; an absent extra is answered by it, an unmet contract
 refused, other failures propagate, and the help lists each as unavailable.
+`machinome skills`, from the repository's distribution `machinome-skills`,
+is one (ADR-190); the movie's and the studio's follow at their joins.
 `models` lists a project's models from the manifest and their build
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk
@@ -3225,6 +3228,29 @@ ships no `machinome.mechanisms` package. A project's `law=` callable may
 compose `machinome.mechanics` formulas exactly as it may compose its own
 arithmetic; motion evaluation remains independent of their implementation.
 
+### Skills package (the distribution `machinome-skills` · spec `skills-distribution`)
+
+The repository's `packages/machinome-skills/`, imported as
+`machinome.skills`, numbered with the set and installed by
+`machinome[skills]`, ships two skills in the Agent Skills format,
+`machinome` and `machinome-simulate`, as package data under
+`machinome/skills/agent-skills/`, read through `importlib.resources`, and
+contributes the command `machinome skills` through `machinome.commands`
+(ADR-189, ADR-190). The tools it installs for are data, `tools.toml`: every
+id of OpenSpec's installer that has a skills directory, and `agents` for
+`.agents/skills/`, each with its detection paths, its project directory
+and its personal directory, the client's documented directory where it
+differs from OpenSpec's. `install` copies each skill directory whole into
+the chosen tools' directories, its `SKILL.md` marked in its frontmatter's
+`metadata` (`installed-by: machinome-skills` and the version); a target
+without the marker is refused unless `--force`, nothing is ever deleted,
+and a file the package does not ship is left alone. `update` rewrites the
+copies older than the installed package, `list` prints the registry and
+the copies. The marker is written and read as text, by the standard
+library alone. The package keeps its tests and its working record in its
+directory; its specification is the framework's. The framework never
+imports it.
+
 ## Load-bearing invariants
 
 The short list that changes must not silently break:
@@ -3503,6 +3529,7 @@ pure model closures without rejecting their pure declaration records.
 | Motion | `machinome/motion/` (`mates.py` among them) | `ports`, `joints`, `couplings`, `mates` | 056, 072, 087, 088, 089, 096, 097, 098, 100, 105, 121, 122, 125, 126, 127, 147, 148, 150, 151, 152 |
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics helpers, the distribution `machinome-mechanics` | the repository's `packages/machinome-mechanics/` (`machinome/mechanics/`: `__init__.py` and the nine family modules; its own `tests/`, `openspec/` and `workflow/`) | `mechanics-distribution` | 022, 076, 132, 187 |
+| Skills package, the distribution `machinome-skills` | the repository's `packages/machinome-skills/` (`machinome/skills/`: `cli.py`, `installer.py`, `tools.toml`, `agent-skills/`; its own `tests/` and `workflow/`) | `skills-distribution` | 187, 189, 190 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149, 168, 179, 189 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |

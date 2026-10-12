@@ -83,16 +83,20 @@ different defaults.
 
 ### Requirement: Extras select independent Machinome products
 
-The distribution SHALL expose `viewer`, `mechanics`, and `studio` extras that
-select `machinome-viewer`, `machinome-mechanics`, and `machinome-studio`
-respectively. The default framework installation SHALL depend on none of them.
+The distribution SHALL expose `viewer`, `mechanics`, `skills` and `studio`
+extras that select `machinome-viewer`, `machinome-mechanics`,
+`machinome-skills` and `machinome-studio` respectively. The default framework
+installation SHALL depend on none of them.
 `machinome-mechanics` is a distribution of the repository, at
 `packages/machinome-mechanics/`, whose package `machinome.mechanics` the
 framework never imports; the `mechanics` extra SHALL require it at a floor
 that its version in the repository satisfies. `machinome-viewer` is a
 distribution of the repository, at `packages/machinome-viewer/`, numbered with
 the framework, which the framework finds through its entry point and runs as
-a separate process.
+a separate process. `machinome-skills` is a distribution of the repository,
+at `packages/machinome-skills/`, whose package `machinome.skills` the
+framework never imports; the `skills` extra SHALL require it with the
+compatible-release pin `~=<version>`, the version being the framework's own.
 Current release material SHALL state that the experimental studio remains
 unpublished and that the `studio` extra cannot resolve from a package index
 until that publication occurs.
@@ -130,12 +134,12 @@ read the documents the release exports.
 
 #### Scenario: The extras keep the Machinome name under a version floor
 
-- **WHEN** the `viewer`, `mechanics` or `studio` extra states its one
-  requirement with an extras bracket or a version floor
+- **WHEN** the `viewer`, `mechanics`, `skills` or `studio` extra states its
+  one requirement with an extras bracket or a version floor
 - **THEN** that requirement's name is still `machinome-viewer`,
-  `machinome-mechanics` or `machinome-studio` respectively, and the identity
-  check reads the name, so a floor neither breaks it nor hides a renamed
-  product
+  `machinome-mechanics`, `machinome-skills` or `machinome-studio`
+  respectively, and the identity check reads the name, so a floor neither
+  breaks it nor hides a renamed product
 
 #### Scenario: A user installs the mechanics extra
 
@@ -144,6 +148,14 @@ read the documents the release exports.
 - **THEN** the `machinome-mechanics` distribution of the repository is
   installed, its helpers imported from `machinome.mechanics`, without the
   framework importing or re-exporting them
+
+#### Scenario: A user installs the skills extra
+
+- **WHEN** `pip install "machinome[skills]"` resolves the framework's
+  distributions
+- **THEN** the `machinome-skills` distribution of the repository, numbered
+  with the framework, is installed, and `machinome skills` is a command of
+  `machinome`, without the framework importing `machinome.skills`
 
 #### Scenario: A reader asks for the studio extra before publication
 
@@ -182,7 +194,8 @@ package that joined the repository from a repository of its own
 
 A product that joined the repository from a repository of its own and is not
 an extension package, today the mechanics helpers `machinome-mechanics` and
-the browser viewer `machinome-viewer`, SHALL keep its record in its
+the browser viewer `machinome-viewer` and the skills package
+`machinome-skills`, SHALL keep its record in its
 directory: `packages/machinome-mechanics/` SHALL hold its manifest
 `pyproject.toml`, a `README.md` that names its install line and the licence,
 its `CHANGELOG.md`, its `MANIFEST.in` and `.gitignore`, the relative symbolic
@@ -192,8 +205,14 @@ links `LICENSE` and `LICENSES` to the root's, its package directory
 `workflow/`; `packages/machinome-viewer/` SHALL hold the same entries, its
 package directory `machinome/viewer/web/` with its own `__init__.py`, none at
 `machinome/` nor at `machinome/viewer/`, and the widget inside it, its
-`scripts/`, and in its `workflow/` its own decision log `workflow/adrs/`.
-Their manual pages SHALL be the framework's manual's.
+`scripts/`, and in its `workflow/` its own decision log `workflow/adrs/`;
+`packages/machinome-skills/` SHALL hold its manifest `pyproject.toml`, a
+`README.md` that names its install line and the licence, its `MANIFEST.in`
+and `.gitignore`, the links `LICENSE` and `LICENSES`, its package directory
+`machinome/skills/` with its own `__init__.py` and none at `machinome/`, its
+`tests/` and its `workflow/`, its specification being the framework's
+`skills-distribution` and its history the set's. Their manual pages SHALL be
+the framework's manual's.
 
 Every distribution of the set but `machinome-mechanics` SHALL carry one
 version, the framework's, `machinome-viewer` included, whose Python package's
@@ -242,7 +261,8 @@ built before the layout.
 the workspace outside the repository, check them with `twine check
 --strict`, install the wheels into a throwaway environment outside the
 repository, an extension package through the framework's extra that
-installs it and `machinome-mechanics` and `machinome-viewer` from their own
+installs it and `machinome-mechanics`, `machinome-viewer` and
+`machinome-skills` from their own
 wheels, import and smoke each there, an engine through the framework's
 seam that resolves it and a node package through its address, rendering one
 part on its kernel where its external program is available and building it as
@@ -262,9 +282,10 @@ on the PATH before it builds; the CI SHALL run it in a `dist` job after its
   `-openscad/`, `-solid2/`, `-jscad/`, `-stl/` and `-freecad/`, the
   mechanics helpers' with their tests and records under
   `packages/machinome-mechanics/`, the browser viewer's with its widget,
-  tests and records under `packages/machinome-viewer/`, and the root holds
-  the repository's record, the uv and npm workspace manifests and their
-  locks, and none of the framework's sources
+  tests and records under `packages/machinome-viewer/`, the skills package's
+  with its tests and working record under `packages/machinome-skills/`, and
+  the root holds the repository's record, the uv and npm workspace manifests
+  and their locks, and none of the framework's sources
 
 #### Scenario: The licence is reached from the package directory
 
@@ -343,7 +364,8 @@ on the PATH before it builds; the CI SHALL run it in a `dist` job after its
   `packages/machinome-engine-brep/`, `machinome.node.step` from
   `packages/machinome-node-step/`, `machinome.mechanics` from
   `packages/machinome-mechanics/`, `machinome.viewer.web` from
-  `packages/machinome-viewer/`, and the suite runs from
+  `packages/machinome-viewer/`, `machinome.skills` from
+  `packages/machinome-skills/`, and the suite runs from
   `packages/machinome/`
 
 #### Scenario: The root manifest declares a distribution
@@ -442,4 +464,29 @@ on the PATH before it builds; the CI SHALL run it in a `dist` job after its
   a banner stating the version, the API, the set's licence expression and the
   repository, and its licence texts; `machinome-viewer describe` and
   `machinome viewer` exit zero
+
+#### Scenario: The skills package keeps its tests and working record
+
+- **WHEN** the entries of `packages/machinome-skills/` are listed, ignored
+  build leavings excepted
+- **THEN** they are `pyproject.toml`, `README.md`, `MANIFEST.in`,
+  `.gitignore`, the links `LICENSE` and `LICENSES` to the root's,
+  `machinome/` holding the package directory `skills/` with its own
+  `__init__.py`, `tests/` and `workflow/`, its manifest states
+  `GPL-2.0-or-later OR CERN-OHL-S-2.0+` and the root's licence files, its
+  version is the framework's, its requirement on the framework and the
+  framework's `skills` extra are `~=` that version, `.bumpversion.cfg` names
+  its manifest, and the layout test fails naming any other entry
+
+#### Scenario: The skills package is smoked from its wheel
+
+- **WHEN** `scripts/check-dist` installs the built wheels
+- **THEN** it installs `machinome-skills` from its own wheel by path, imports
+  `machinome.skills`, finds its modules, its registry and the two skills
+  owned by its own distribution inside the throwaway environment, its version
+  the framework's, its requirement `machinome~=<version>`, the framework's
+  `skills` extra naming it and its entry `skills` in `machinome.commands`,
+  runs `machinome skills install --tools agents,claude` into a new directory
+  and reads the eight files back, each `SKILL.md` with the marker, and finds
+  its licence texts
 

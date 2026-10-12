@@ -28,11 +28,14 @@ too, which joined the repository from a repository of its own (change
 repository of its own and is not an extension package keeps its record in its
 directory, at its own version: the mechanics helpers `machinome-mechanics`,
 the package `machinome.mechanics`, with their changelog, tests, specs and
-working record (change `join-mechanics`, ADR-187), and the browser viewer
+working record (change `join-mechanics`, ADR-187), the browser viewer
 `machinome-viewer`, the package `machinome.viewer.web`, numbered with the set,
 with its changelog, tests, specs and decision log, whose widget is the one
 member of the npm workspace the root declares beside the uv workspace (change
-`join-viewer`, ADR-188).
+`join-viewer`, ADR-188), and the skills package `machinome-skills`, the
+package `machinome.skills`, numbered with the set, with its tests and working
+record, its specification the framework's `skills-distribution` (change
+`join-skills`, ADR-190).
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -87,7 +90,8 @@ EXTENSIONS = {
 #: The products of the repository that keep their record in their own
 #: directory, by directory: the address of the package directory they
 #: ship, the core's extra that installs it, and the entries the directory
-#: holds beside the package (`join-mechanics`).
+#: holds beside the package (`join-mechanics`). A product's specs are in
+#: its directory or in the framework's (`join-skills`).
 PRODUCTS = {
     'machinome-mechanics': ('machinome.mechanics', 'mechanics',
                             ('.gitignore', 'CHANGELOG.md', 'LICENSE',
@@ -99,6 +103,10 @@ PRODUCTS = {
                           'LICENSES', 'MANIFEST.in', 'README.md',
                           'machinome', 'openspec', 'pyproject.toml',
                           'scripts', 'tests', 'workflow')),
+    'machinome-skills': ('machinome.skills', 'skills',
+                         ('.gitignore', 'LICENSE', 'LICENSES', 'MANIFEST.in',
+                          'README.md', 'machinome', 'pyproject.toml', 'tests',
+                          'workflow')),
 }
 
 #: The npm workspace's members: the repository's JavaScript projects, each
@@ -240,12 +248,16 @@ class TheWorkspaceTest(unittest.TestCase):
         self.assertEqual(self.root['tool']['uv']['config-settings'],
                          {'editable_mode': 'compat'})
 
-    def test_the_default_group_is_the_framework_dev_and_mechanics_extras(self):
+    def test_the_default_group_is_the_framework_dev_and_the_products_extras(
+            self):
         # `cut-the-engines`: the bench venv is the universe sweep's
         # environment, so it carries the mechanics package the catalogue's
-        # projects import.
+        # projects import; `join-skills`: and the skills package, whose
+        # tests run from its directory and whose command the suite's
+        # conformance walk reads.
         self.assertEqual(self.root['dependency-groups']['dev'],
-                         ['machinome[dev]', 'machinome[mechanics]'])
+                         ['machinome[dev]', 'machinome[mechanics]',
+                          'machinome[skills]'])
 
 
 class TheIndexTest(unittest.TestCase):
@@ -626,14 +638,18 @@ class TheProductsTest(unittest.TestCase):
                     / address.replace('.', '/') / '__init__.py')
 
     def test_each_product_keeps_its_tests_and_specs(self):
-        for name in PRODUCTS:
+        # Every product's tests are in its directory; a product whose
+        # entries name `openspec` keeps its specs there, the others' are
+        # the framework's (`join-skills`).
+        for name, (_address, _extra, entries) in PRODUCTS.items():
             with self.subTest(package=name):
                 directory = REPOSITORY / 'packages' / name
-                self.assertTrue(
-                    list((directory / 'tests').glob('test_*.py')),
-                    f'{name}/tests holds no test module')
-                self.assertTrue((directory / 'openspec' / 'specs').is_dir(),
-                                f'{name} holds no openspec/specs/')
+                self.assertTrue(any((directory / 'tests').glob('test_*.py')),
+                                f'{name}/tests holds no test_*.py')
+                if 'openspec' in entries:
+                    self.assertTrue(
+                        (directory / 'openspec' / 'specs').is_dir(),
+                        f'{name} holds no openspec/specs/')
 
 
 class TheNodeWorkspaceTest(unittest.TestCase):

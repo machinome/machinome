@@ -56,12 +56,15 @@ for them.
 
 Nothing else in this repository is individually marked as machine-written.
 The framework's manual, architecture synthesis, ADRs, OpenSpec records and
-working notes under `packages/machinome/`, and the mechanics helpers under
+working notes under `packages/machinome/`, the mechanics helpers under
 `packages/machinome-mechanics/`, founded in a repository of their own after
-the line and joined here with their history, and the browser viewer under
+the line and joined here with their history, the browser viewer under
 `packages/machinome-viewer/`, split from this repository on 5 September 2026
-and joined back with its history, and the notes under `workflow/`, written
-since the line are agent-written like the code, and reviewed the same way.
+and joined back with its history, and the machinome skills under
+`packages/machinome-skills/`, founded in a repository of their own after the
+line and joined here with their history, and the notes under `workflow/`,
+written since the line are agent-written like the code, and reviewed the
+same way.
 
 ## How the agents work
 

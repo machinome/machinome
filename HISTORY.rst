@@ -95,8 +95,8 @@ Unreleased
   framework command's name is never taken, a name two packages declare
   runs neither, and a command that lacks an extra or cannot be loaded is
   listed as unavailable with the reason. Dispatching a framework command
-  reads no entry point. No package declares one yet. Change
-  ``commands-contributed-by-packages`` (ADR-189, ADR-024 and ADR-168
+  reads no entry point. The packages that declare one are recorded below.
+  Change ``commands-contributed-by-packages`` (ADR-189, ADR-024 and ADR-168
   amended).
 
 * **The browser viewer joins the repository.** machinome-viewer,
@@ -113,6 +113,22 @@ Unreleased
   it through the ``machinome.viewer`` entry point and runs it as a
   separate process, and ``machinome vet`` refuses a model that reaches it.
   Change ``join-viewer`` (ADR-188).
+
+* **The machinome skills join the repository, with a command that
+  installs them.** machinome-skills, the skills ``machinome`` and
+  ``machinome-simulate`` for assistants that read Agent Skills, kept in a
+  repository of its own since 20 September 2026, is the package
+  ``machinome-skills`` at ``packages/machinome-skills/``, its history kept,
+  numbered with the set and installed by ``pip install
+  "machinome[skills]"``. Its command, ``machinome skills``, the second a
+  package adds to ``machinome``, installs the skills where each assistant
+  reads them: ``install`` for the tools named by ``--tools`` (OpenSpec's
+  tool ids, and ``agents`` for ``.agents/skills/``) or chosen at a prompt
+  that pre-selects the tools found in the project, ``--personal`` for the
+  user's own directories, ``update`` and ``list``. A copy carries a marker;
+  a skill the command did not write is refused unless ``--force``, and the
+  command deletes nothing. The skills are unchanged but for their licence
+  field, the set's. Change ``join-skills`` (ADR-190).
 
 Machinome 0.8.1 (2026-10-10)
 ----------------------------

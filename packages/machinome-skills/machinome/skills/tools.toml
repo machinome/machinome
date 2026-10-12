@@ -1,0 +1,277 @@
+# The tools `machinome skills` installs the skills for (change
+# `join-skills`, capability `skills-distribution`): every tool of OpenSpec
+# 1.6.0's installer that has a skills directory, by OpenSpec's id and in its
+# order, so an id names the same tool in both installers, and first
+# `agents`, the .agents/skills/ convention of Agent Skills.
+#
+# Each tool: `name`, its display name; `detect`, the paths whose presence in
+# a project marks the tool detected (OpenSpec's dot-directory, or its
+# detection paths, and the client's current directory where it differs);
+# `project`, the skills directory under a project; `personal`, the skills
+# directory under the user's home, absent where the tool documents none;
+# `source`, where the row's directories come from. A personal directory
+# marked "inferred" is OpenSpec's dot-directory under the home, not
+# verified; a finding changes this data, not the code.
+
+[[tool]]
+id = "agents"
+name = "Agent Skills, the .agents convention"
+detect = [".agents"]
+project = ".agents/skills/"
+personal = "~/.agents/skills/"
+source = "The Agent Skills convention, read by Codex, pi, OpenCode, Kilo Code, Gemini CLI and GitHub Copilot (12 October 2026)."
+
+[[tool]]
+id = "amazon-q"
+name = "Amazon Q Developer"
+detect = [".amazonq"]
+project = ".amazonq/skills/"
+personal = "~/.amazonq/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "antigravity"
+name = "Antigravity"
+detect = [".agent"]
+project = ".agent/skills/"
+personal = "~/.agent/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "auggie"
+name = "Auggie (Augment CLI)"
+detect = [".augment"]
+project = ".augment/skills/"
+personal = "~/.augment/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "bob"
+name = "Bob Shell"
+detect = [".bob"]
+project = ".bob/skills/"
+personal = "~/.bob/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "claude"
+name = "Claude Code"
+detect = [".claude"]
+project = ".claude/skills/"
+personal = "~/.claude/skills/"
+source = "OpenSpec; Claude Code's documentation, read 12 October 2026."
+
+[[tool]]
+id = "cline"
+name = "Cline"
+detect = [".cline"]
+project = ".cline/skills/"
+personal = "~/.cline/skills/"
+source = "OpenSpec; Cline's documentation, search summary, 12 October 2026."
+
+[[tool]]
+id = "codex"
+name = "Codex"
+detect = [".codex"]
+project = ".agents/skills/"
+personal = "~/.agents/skills/"
+source = "Codex's documentation, read 12 October 2026; OpenSpec writes .codex/skills/, which Codex does not read."
+
+[[tool]]
+id = "forgecode"
+name = "ForgeCode"
+detect = [".forge"]
+project = ".forge/skills/"
+personal = "~/.forge/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "codebuddy"
+name = "CodeBuddy Code (CLI)"
+detect = [".codebuddy"]
+project = ".codebuddy/skills/"
+personal = "~/.codebuddy/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "continue"
+name = "Continue"
+detect = [".continue"]
+project = ".continue/skills/"
+personal = "~/.continue/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "costrict"
+name = "CoStrict"
+detect = [".cospec"]
+project = ".cospec/skills/"
+personal = "~/.cospec/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "crush"
+name = "Crush"
+detect = [".crush"]
+project = ".crush/skills/"
+personal = "~/.crush/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "cursor"
+name = "Cursor"
+detect = [".cursor"]
+project = ".cursor/skills/"
+personal = "~/.cursor/skills/"
+source = "OpenSpec; Cursor's documentation, search summary, 12 October 2026."
+
+[[tool]]
+id = "factory"
+name = "Factory Droid"
+detect = [".factory"]
+project = ".factory/skills/"
+personal = "~/.factory/skills/"
+source = "OpenSpec; personal the orchestrator's reading, 12 October 2026."
+
+[[tool]]
+id = "gemini"
+name = "Gemini CLI"
+detect = [".gemini"]
+project = ".gemini/skills/"
+personal = "~/.gemini/skills/"
+source = "OpenSpec; Gemini CLI's documentation, search summary, 12 October 2026."
+
+[[tool]]
+id = "github-copilot"
+name = "GitHub Copilot"
+detect = [
+    ".github/copilot-instructions.md",
+    ".github/instructions",
+    ".github/workflows/copilot-setup-steps.yml",
+    ".github/prompts",
+    ".github/agents",
+    ".github/skills",
+    ".github/.mcp.json",
+]
+project = ".github/skills/"
+personal = "~/.copilot/skills/"
+source = "OpenSpec; GitHub's documentation, search summary, 12 October 2026."
+
+[[tool]]
+id = "iflow"
+name = "iFlow"
+detect = [".iflow"]
+project = ".iflow/skills/"
+personal = "~/.iflow/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "junie"
+name = "Junie"
+detect = [".junie"]
+project = ".junie/skills/"
+personal = "~/.junie/skills/"
+source = "OpenSpec; personal the orchestrator's reading, 12 October 2026."
+
+[[tool]]
+id = "kilocode"
+name = "Kilo Code"
+detect = [".kilocode", ".kilo"]
+project = ".kilo/skills/"
+personal = "~/.kilo/skills/"
+source = "Kilo Code's documentation, read 12 October 2026; OpenSpec writes .kilocode/skills/, which it does not name."
+
+[[tool]]
+id = "kimi"
+name = "Kimi CLI"
+detect = [".kimi"]
+project = ".kimi/skills/"
+personal = "~/.kimi/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "kiro"
+name = "Kiro"
+detect = [".kiro"]
+project = ".kiro/skills/"
+personal = "~/.kiro/skills/"
+source = "OpenSpec; personal the orchestrator's reading, 12 October 2026."
+
+[[tool]]
+id = "lingma"
+name = "Lingma"
+detect = [".lingma"]
+project = ".lingma/skills/"
+personal = "~/.lingma/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "vibe"
+name = "Mistral Vibe"
+detect = [".vibe"]
+project = ".vibe/skills/"
+personal = "~/.vibe/skills/"
+source = "OpenSpec; personal the orchestrator's reading, 12 October 2026."
+
+[[tool]]
+id = "oh-my-pi"
+name = "Oh My Pi"
+detect = [".omp"]
+project = ".omp/skills/"
+personal = "~/.omp/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "opencode"
+name = "OpenCode"
+detect = [".opencode"]
+project = ".opencode/skills/"
+personal = "~/.config/opencode/skills/"
+source = "OpenSpec; OpenCode's documentation, read 12 October 2026."
+
+[[tool]]
+id = "pi"
+name = "Pi"
+detect = [".pi"]
+project = ".agents/skills/"
+personal = "~/.agents/skills/"
+source = "pi's documentation, read 12 October 2026; OpenSpec writes .pi/skills/."
+
+[[tool]]
+id = "qoder"
+name = "Qoder"
+detect = [".qoder"]
+project = ".qoder/skills/"
+personal = "~/.qoder/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "qwen"
+name = "Qwen Code"
+detect = [".qwen"]
+project = ".qwen/skills/"
+personal = "~/.qwen/skills/"
+source = "OpenSpec; personal inferred."
+
+[[tool]]
+id = "roocode"
+name = "RooCode"
+detect = [".roo"]
+project = ".roo/skills/"
+personal = "~/.roo/skills/"
+source = "OpenSpec; personal the orchestrator's reading, 12 October 2026 (a reported shutdown of the service not verified)."
+
+[[tool]]
+id = "trae"
+name = "Trae"
+detect = [".trae"]
+project = ".trae/skills/"
+source = "OpenSpec; no personal directory documented (the orchestrator's reading, 12 October 2026)."
+
+[[tool]]
+id = "windsurf"
+name = "Windsurf"
+detect = [".windsurf", ".devin"]
+project = ".devin/skills/"
+personal = "~/.config/devin/skills/"
+source = "Devin Desktop's documentation, search summary, 12 October 2026 (.windsurf/skills/ and ~/.codeium/windsurf/skills/ legacy, still read); OpenSpec writes .windsurf/skills/."

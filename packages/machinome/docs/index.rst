@@ -77,6 +77,7 @@ its source; the :doc:`examples` page says what to look for there.
    howto/browser-viewer
    howto/share-an-export
    howto/embed-the-viewer
+   howto/assistant-skills
 
 .. toctree::
    :maxdepth: 1

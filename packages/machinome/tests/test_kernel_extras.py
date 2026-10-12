@@ -75,6 +75,9 @@ EXTRAS = {
     # `join-freecad`: the FreeCAD node package, over the B-rep engine; FreeCAD
     # itself is a program no extra installs.
     'freecad': {f'machinome-node-freecad~={VERSION}'},
+    # `join-skills`: the skills package, a product numbered with the set, not
+    # a kernel.
+    'skills': {f'machinome-skills~={VERSION}'},
     'all': {'machinome[cadquery,build123d,step,molejo,brep,mesh,'
             'openscad,solid2,jscad,stl,freecad]'},
 }

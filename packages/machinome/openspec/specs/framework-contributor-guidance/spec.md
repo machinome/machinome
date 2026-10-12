@@ -46,8 +46,9 @@ of every package directory under `packages/`, the framework's with its `dev`
 extra), SHALL state that the suite, the lint and the OpenSpec command run
 from the framework's directory `packages/machinome/`, SHALL state that the
 mechanics helpers' tests run from their own directory
-`packages/machinome-mechanics/` and the browser viewer's from
-`packages/machinome-viewer/`, SHALL state that Node.js 22 or newer and npm
+`packages/machinome-mechanics/`, the browser viewer's from
+`packages/machinome-viewer/` and the skills package's from
+`packages/machinome-skills/`, SHALL state that Node.js 22 or newer and npm
 build and test the viewer's widget, installed by one `npm ci` at the root and
 tested and built from there, and that the viewer's browser tests need
 Chromium for the installed Playwright, and every link it makes into the
@@ -70,7 +71,8 @@ once that the paths it names are relative to `packages/machinome/`.
   `packages/machinome-node-molejo`, `packages/machinome-node-openscad`,
   `packages/machinome-node-solid2`, `packages/machinome-node-jscad`,
   `packages/machinome-node-stl`, `packages/machinome-node-freecad`,
-  `packages/machinome-viewer`, `packages/machinome-mechanics` and
+  `packages/machinome-viewer`, `packages/machinome-mechanics`,
+  `packages/machinome-skills` and
   `packages/machinome` with its `dev` extra, editable with
   `editable_mode=compat`, and names no tox environment or requirements file
 
@@ -109,4 +111,11 @@ once that the paths it names are relative to `packages/machinome/`.
   builds the widget before the framework's suite, and installs Chromium
   before it runs the viewer's tests from their directory, and the layout
   test fails naming the step that is missing or out of order
+
+#### Scenario: A contributor runs the skills package's tests
+
+- **WHEN** a contributor looks in `CONTRIBUTING.rst` for how to run the
+  skills package's tests
+- **THEN** it says to run pytest from `packages/machinome-skills/`, and the
+  core's suite run from `packages/machinome/` does not collect them
 

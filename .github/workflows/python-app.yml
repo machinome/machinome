@@ -110,6 +110,12 @@ jobs:
           playwright install --with-deps chromium
           python -m pytest
 
+      # The skills package keeps its tests in its own directory (change
+      # `join-skills`); the workspace synced above installs it.
+      - name: Run the skills package's tests
+        working-directory: packages/machinome-skills
+        run: python -m pytest
+
   browser-snapshot:
     runs-on: ubuntu-latest
     needs: lint

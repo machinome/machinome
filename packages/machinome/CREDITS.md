@@ -159,6 +159,15 @@ their provenance.
 - **Description:** The analytic flexible parts' evaluator, which shapes a
   flexible part from its specification in the browser
 
+### Adapted from Machinome Studio, in the skills package
+
+The package `machinome-skills` (`machinome.skills`) ships the skills
+`machinome` and `machinome-simulate`, whose mechanical workflow guidance is
+adapted from the `machinome` and `simulate-project` skills of Machinome
+Studio (<https://github.com/machinome/machinome-studio>), with revisions for
+independent, cross-harness use and documentation-based API lookup.
+Copyright 2026 Luis Henrique Cassis Fagundes, the author of both.
+
 ### Historical bundled frontend dependencies
 
 Through version 0.5, the web viewer application

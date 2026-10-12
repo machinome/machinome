@@ -22,6 +22,7 @@ it builds.
 | [`machinome-node-freecad`](packages/machinome-node-freecad/) | The FreeCAD node type, `machinome.node.freecad`, a native FreeCAD assembly read by FreeCAD; installed by `machinome[freecad]`. |
 | [`machinome-mechanics`](packages/machinome-mechanics/) | The mechanics helpers, `machinome.mechanics`: gear, screw, crank, cam, delta, linkage, rolling and belt formulas for numeric poses and symbolic motion; installed by `machinome[mechanics]`. |
 | [`machinome-viewer`](packages/machinome-viewer/) | The browser viewer, `machinome.viewer.web`: the embeddable widget, the development server and the headless capture; installed by `machinome[viewer]`. |
+| [`machinome-skills`](packages/machinome-skills/) | The machinome skills for assistants that read Agent Skills, `machinome` and `machinome-simulate`, and the command `machinome skills` that installs them; installed by `machinome[skills]`. |
 
 ## Licence
 

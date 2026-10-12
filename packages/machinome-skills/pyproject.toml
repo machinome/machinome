@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-skills"
+version = "0.8.1"
+description = "The machinome skills for assistants that read Agent Skills, and the command machinome skills that installs them"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core whose command reads the group machinome.commands and whose
+    # path extension admits this portion, numbered with it.
+    "machinome~=0.8.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+# `machinome skills`, the second command a package contributes (ADR-189).
+[project.entry-points."machinome.commands"]
+skills = "machinome.skills.cli:Skills"
+
+[tool.setuptools.packages.find]
+# The package directory machinome/skills/, which has its own __init__.py,
+# with none at machinome/, so the core's package path admits it.
+include = ["machinome.skills"]
+namespaces = true
+
+[tool.setuptools.package-data]
+# The registry and the skills, shipped as data: agent-skills/ is not an
+# identifier, so setuptools reads none of it as a package.
+"machinome.skills" = [
+    "tools.toml",
+    "agent-skills/*/SKILL.md",
+    "agent-skills/*/references/*.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"

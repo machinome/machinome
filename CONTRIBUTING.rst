@@ -117,6 +117,7 @@ dependencies::
         -e packages/machinome-node-freecad \
         -e packages/machinome-viewer \
         -e packages/machinome-mechanics \
+        -e packages/machinome-skills \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
@@ -145,7 +146,8 @@ The mechanics helpers keep their tests in their own directory: run
 ``python -m pytest`` from ``packages/machinome-mechanics``. The browser
 viewer keeps its tests in its own directory: run ``python -m pytest`` from
 ``packages/machinome-viewer``, and its widget's with ``npm test
---workspaces`` from the root.
+--workspaces`` from the root. The skills package keeps its tests in its own
+directory too: run ``python -m pytest`` from ``packages/machinome-skills``.
 
 Notes:
 
