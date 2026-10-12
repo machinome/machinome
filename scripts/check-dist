@@ -657,6 +657,7 @@ print('machinome-viewer', distribution.version, 'module', viewer.__file__,
       'to', report['documentVersions'][-1])
 ''',
         'commands': [['machinome-viewer', 'describe'], ['machinome', 'viewer']],
+    },
     'machinome-skills': {
         # Installed from its wheel by path: the smoke reads the extra's
         # requirement from the core's metadata.
