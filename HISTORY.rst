@@ -174,6 +174,26 @@ Unreleased
   tool and its skills take the engines' and the node package's 0.8
   spellings. Change ``join-studio`` (ADR-193).
 
+* **Viewers are PROVIDERS behind one seam, chosen by name.** The core
+  declares the contract of viewers in ``machinome.viewer``: a contract
+  version, the operations a viewer may offer (``present``, ``capture``,
+  ``serve``, ``embed``), and the refusals of an absent viewer by its extra,
+  an unknown name, a viewer of another contract and an operation a viewer
+  lacks; nothing is substituted. The web viewer is the provider
+  ``machinome.viewer.web`` of ``machinome-viewer``, which serves and
+  captures in the framework's own process: a rebuild reaches the open page
+  as a message on its socket, without a reconnect. The OpenSCAD viewer is
+  ``machinome.viewer.openscad``, the distribution
+  ``machinome-viewer-openscad``, installed by ``viewer-openscad`` and by the
+  ``openscad`` and ``solid2`` extras. ``machinome snapshot``, ``develop``
+  and ``export`` take ``--viewer <name>``, else the project's ``viewer``
+  under ``[tool.machinome]``, else their default; ``--renderer`` is refused
+  naming ``--viewer``. The entry point ``machinome.viewer``, the core's
+  ``machinome.viewers``, the table's renderer column and every run of
+  ``python -m machinome.viewer.web`` by the framework are gone, and
+  ``machinome vet`` refuses a model that reaches the seam. Change
+  ``viewer-seam`` (ADR-194).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

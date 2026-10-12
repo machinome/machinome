@@ -1,6 +1,6 @@
 # ADR-068: Optional Viewer Package Behind a Process Boundary
 
-**Status:** Accepted, development-viewer selection amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); repository and licence superseded 2026-10-12 by [ADR-188](../BUILD/ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md)
+**Status:** Accepted, development-viewer selection amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); repository and licence superseded 2026-10-12 by [ADR-188](../BUILD/ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md); the lookup through the entry point and the process boundary superseded 2026-10-12 by [ADR-194](../BUILD/ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md)
 **Date:** 2026-09-05
 **Change:** `optional-viewer-package`
 **Amends:**

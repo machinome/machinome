@@ -36,39 +36,50 @@ machinome develop
 
 ::
 
-    machinome develop [reference] [--set NAME=VALUE ...] [--web] [--web-dev]
-                         [--no-web] [--debug-builder]
+    machinome develop [reference] [--set NAME=VALUE ...] [--viewer NAME]
+                         [--web] [--web-dev] [--no-web] [--debug-builder]
                          [--callback URL]
 
 Runs everything needed to develop a project: monitors the filesystem,
-rebuilds the parts that changed, and opens a viewer that reloads
-automatically. The viewer comes from the package ``machinome-viewer``
-(``pip install "machinome[viewer]"``; see :doc:`the viewer </concepts/publishing>`),
-and the command fails before starting development processes when it is absent.
+rebuilds the parts that changed, and serves the project to a viewer that
+reloads automatically. The viewer that serves is the browser viewer, from
+the package ``machinome-viewer`` (``pip install "machinome[viewer]"``; see
+:doc:`the viewer </concepts/publishing>`); it serves in this command's own
+process, and each rebuild reaches the open page as a message on its
+socket. The command fails before starting development processes when the
+viewer is absent, when its port is taken, or when the chosen viewer does
+not serve.
+
+``--viewer NAME``
+    The viewer that serves the project. Default: the project's
+    ``viewer`` under ``[tool.machinome]``, else ``web``. The OpenSCAD viewer
+    takes stills and does not serve, so ``--viewer openscad`` is refused,
+    naming ``web``.
 
 ``--web``
     Explicitly view the project in the browser at http://localhost:8000,
     the same behavior as the default. Without ``machinome-viewer``, the
-    command fails naming the extra to install.
+    command fails naming the extra to install. Combined with ``--viewer``
+    naming another viewer, it is an argument error.
 
 ``--web-dev``
-    A compatibility request passed to the viewer. Viewer |viewer_version|
-    serves a static development page and rebuilds its bundle on demand;
-    it does not start a separate frontend dev server, so this request has
-    no effect. See :doc:`/project/contributing` for source development.
+    Accepted, and changes nothing but a warning: viewer |viewer_version|
+    serves a static development page and rebuilds its bundle on demand,
+    with no separate frontend process. See :doc:`/project/contributing` for
+    source development.
 
 ``--no-web``
     Run the watch-and-rebuild loop with no viewer at all, leaving
     ``MACHINOME_PORT`` free. Use this when another program renders the
     published build directory itself and only needs the rebuilds; pair it
     with ``--callback URL`` to be told when a new build is ready. It cannot
-    be combined with ``--web`` or ``--web-dev``.
+    be combined with ``--web``, ``--web-dev`` or ``--viewer``.
 
 ``--debug-builder``
-    Run the builder in the foreground so breakpoints work. Automatic
-    reload is disabled in this mode. To step into the browser viewer's
-    server instead, run it yourself: ``machinome-viewer serve --build-dir
-    _build``.
+    Run the builder in the foreground so breakpoints work, beside the
+    viewer's server. Automatic reload is disabled in this mode. To step into
+    the browser viewer's server instead, run it yourself:
+    ``machinome-viewer serve --build-dir _build``.
 
 ``--callback URL``
     POST the exact URL (with no request body) after the initial complete
@@ -202,28 +213,31 @@ machinome snapshot
 
     machinome snapshot [reference] [--drive NAME=VALUE ...] [options]
 
-Renders the node to a PNG image without opening a viewer. The default
-OpenSCAD renderer is the fast inspection path; the optional web renderer
-hands the model to the installed ``machinome-viewer``, which photographs it
-in headless Chromium and preserves a real alpha channel for compositing.
+Renders the node to a PNG image without opening a viewer window, through a
+viewer chosen by name. The default OpenSCAD viewer is the fast inspection
+path; the web viewer, the installed ``machinome-viewer``, photographs the
+model in headless Chromium, in this command's own process, and preserves a
+real alpha channel for compositing (:ref:`choose-the-viewer`).
 
 .. code-block:: bash
 
     $ machinome snapshot -o front.png --viewall --autocenter
     $ machinome snapshot myproject.myproject:SimpleClock --time 0.25 --imgsize 800x600 --projection ortho
-    $ machinome snapshot --renderer web -o transparent.png
+    $ machinome snapshot --viewer web -o transparent.png
     $ machinome snapshot --drive lift=20 -o lifted.png
 
-``--renderer``
-    ``openscad`` (default) or ``web``. The default stays ``openscad``
-    whether or not the browser viewer is installed. The OpenSCAD renderer
-    needs ``pip install "machinome[openscad]"`` and the OpenSCAD executable;
-    without the extra the command exits 1 before loading the model, naming
-    the extra and ``--renderer web``. Install the web renderer with
-    ``pip install "machinome[web-snapshot]"`` (the viewer package with its
-    browser driver) and download the browser separately with
-    ``playwright install chromium``. Neither renderer ever falls back to the
-    other when its dependency is unavailable.
+``--viewer NAME``
+    ``openscad`` or ``web``. Default: the project's ``viewer`` under
+    ``[tool.machinome]``, else ``openscad``, whether or not the browser
+    viewer is installed. The OpenSCAD viewer needs the OpenSCAD executable
+    and ``pip install "machinome[openscad]"``, or ``machinome[viewer-openscad]``
+    for a model of other parts; without it the command exits 1 before
+    loading the model, naming the extra and ``--viewer web``. Install the
+    web viewer with ``pip install "machinome[web-snapshot]"`` (the viewer
+    package with its browser driver) and download the browser separately
+    with ``playwright install chromium``. Neither viewer ever falls back to
+    the other when its dependency is unavailable. The former option
+    ``--renderer`` is refused, exit status 2, naming ``--viewer``.
 
 ``-o``, ``--output``
     Output file path. Default: derived from the resolved node.
@@ -279,31 +293,31 @@ in headless Chromium and preserves a real alpha channel for compositing.
     Image dimensions as WxH. Default: ``1920x1080``.
 
 ``--projection``
-    ``perspective`` (default) or ``ortho``. OpenSCAD renderer only.
+    ``perspective`` (default) or ``ortho``. OpenSCAD viewer only.
 
 ``--colorscheme``
     One of OpenSCAD's color schemes (``Cornfield``, ``Metallic``,
     ``Sunset``, ``Starnight``, ``BeforeDawn``, ``Nature``,
     ``DeepOcean``, ``Solarized``, ``Tomorrow``, ``Tomorrow Night``,
-    ``Monotone``). Default: ``Cornfield``. OpenSCAD renderer only.
+    ``Monotone``). Default: ``Cornfield``. OpenSCAD viewer only.
 
 ``--render`` / ``--preview``
     Mutually exclusive. ``--render`` does a full render (OpenSCAD's
     default: slower, accurate); ``--preview`` uses the ThrownTogether
     preview mode (faster, may show artifacts).
-    OpenSCAD renderer only.
+    OpenSCAD viewer only.
 
 ``--view``
     Comma-separated view helpers: ``axes``, ``crosshairs``, ``edges``,
     ``scales``, ``wireframe``.
-    OpenSCAD renderer only.
+    OpenSCAD viewer only.
 
-With ``--renderer web``, explicitly supplying ``--projection``,
+With ``--viewer web``, explicitly supplying ``--projection``,
 ``--colorscheme``, ``--view``, ``--render``, or ``--preview`` is an error;
 the command names every unsupported option rather than silently ignoring it.
-``--camera`` accepts both OpenSCAD camera forms under either renderer.
+``--camera`` accepts both OpenSCAD camera forms under either viewer.
 
-``--renderer web`` also refuses, before it starts the browser, a document
+``--viewer web`` also refuses, before it starts the browser, a document
 whose schema version the installed viewer does not render — naming the
 version, the versions the viewer renders and the viewer's package
 version, writing no image and leaving no staging directory. A running
@@ -345,12 +359,19 @@ and how to use it.
     govern the ``$t`` timeline only — drivers have no frame grid, and
     a simulation's ``dt`` is unrelated.
 
+``--viewer NAME``
+    The viewer whose files the export embeds. Default: the project's
+    ``viewer`` under ``[tool.machinome]``, else ``web``, the one viewer
+    that embeds; ``--viewer openscad`` is refused, naming ``web``, and
+    writes nothing.
+
 ``--no-widget``
     Export only ``manifest.json`` and ``models/``, without the viewer
     page and JS bundle. Useful when the viewer is supplied elsewhere —
     for example by the Sphinx extension at documentation build time — and
     the only way to export in an installation without ``machinome-viewer``,
-    since the widget files are copied from that package.
+    since the widget files are the web viewer's. It asks no viewer to
+    embed.
 
 machinome models
 ================

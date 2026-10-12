@@ -92,8 +92,9 @@ The default framework installation SHALL depend on none of them.
 framework never imports; the `mechanics` extra SHALL require it at a floor
 that its version in the repository satisfies. `machinome-viewer` is a
 distribution of the repository, at `packages/machinome-viewer/`, numbered with
-the framework, which the framework finds through its entry point and runs as
-a separate process. `machinome-skills` is a distribution of the repository, at
+the framework, whose package `machinome.viewer.web` is the web provider of the
+framework's seam of viewers, `machinome.viewer`, which imports it at that
+address and runs it in the framework's own process. `machinome-skills` is a distribution of the repository, at
 `packages/machinome-skills/`, whose package `machinome.skills` the framework
 never imports; the `skills` extra SHALL require it with the compatible-release
 pin `~=<version>`, the version being the framework's own. `machinome-movie` is
@@ -190,6 +191,13 @@ read the documents the release exports.
   other page says the extra cannot resolve, and the extra pins `~=` the
   framework's version, a test failing naming the extra if it does not
 
+#### Scenario: The framework reaches the viewer through its seam
+
+- **WHEN** `pip install "machinome[viewer]"` has installed the viewer and a
+  command of the framework serves, photographs or embeds through it
+- **THEN** the viewer is imported at `machinome.viewer.web` through the seam,
+  no entry point is read and no viewer program is run
+
 ### Requirement: The framework is the package directory `packages/machinome` of a monorepo
 
 The repository `machinome/machinome` SHALL be a monorepo whose
@@ -206,14 +214,16 @@ The framework's extension packages, today the engines `machinome-engine-brep`
 and `machinome-engine-mesh` and the node packages `machinome-node-cadquery`,
 `machinome-node-build123d`, `machinome-node-step`, `machinome-node-molejo`,
 `machinome-node-openscad`, `machinome-node-solid2`, `machinome-node-jscad`,
-`machinome-node-stl` and `machinome-node-freecad`, SHALL each be such a
-sibling, holding only its
+`machinome-node-stl` and `machinome-node-freecad`, and the OpenSCAD viewer
+`machinome-viewer-openscad`, a provider of the framework's seam of viewers,
+SHALL each be such a sibling, holding only its
 manifest `pyproject.toml`, a `README.md` that names its install line and the
 licence, the relative symbolic links `LICENSE` and `LICENSES` to the root's,
 and its namespace portion at its address under `machinome/`, with no
 `__init__.py` at the levels the framework's import package defines; a portion
-that is a package directory, `machinome/node/openscad/` or
-`machinome/node/freecad/`, holds its own `__init__.py` at its address, below
+that is a package directory, `machinome/node/openscad/`,
+`machinome/node/freecad/` or `machinome/viewer/openscad/`, holds its own
+`__init__.py` at its address, below
 those levels, and its manifest's package search names that package. Its specs,
 tests, decision records and manual pages SHALL be the framework's, those of a
 package that joined the repository from a repository of its own
@@ -249,7 +259,8 @@ state it too, and every requirement between two of them SHALL be
 the compatible-release pin `~=<version>`, in both directions, between the
 framework and an extension package and between two extension packages alike
 (`machinome-node-step` requires `machinome-node-cadquery`, and
-`machinome-node-solid2` requires `machinome-node-openscad`).
+`machinome-node-solid2` and `machinome-viewer-openscad` require
+`machinome-node-openscad`).
 `machinome-mechanics` SHALL carry its own version, the version of its
 changelog's newest release section and of the manual's `mechanics_version`,
 and a requirement between it and the framework SHALL be a floor (`>=`) that
@@ -293,7 +304,8 @@ repository, an extension package through the framework's extra that
 installs it and `machinome-mechanics`, `machinome-viewer` and
 `machinome-skills` from their own
 wheels, import and smoke each there, an engine through the framework's
-seam that resolves it and a node package through its address, rendering one
+seam that resolves it, a node package through its address and a viewer
+through the framework's seam of viewers, rendering one
 part on its kernel where its external program is available and building it as
 far as the program allows where it is not, and upload nothing; the viewer's
 source distribution builds its bundle with npm, which the script SHALL require
@@ -414,8 +426,20 @@ on the PATH before it builds; the CI SHALL run it through `make check` in a
   own distribution and its version equal to the framework's, renders an
   `OpenScadNode` and a `Solid2Node` part through OpenSCAD where the binary is
   on the PATH and writes their SCAD where it is not, renders an `StlNode`
-  part, constructs a `JScadNode` part, and resolves the OpenSCAD renderer
-  through the table of supported node types to that distribution's file
+  part, and constructs a `JScadNode` part, and finds no viewer module in the
+  OpenSCAD node package's distribution
+
+#### Scenario: The OpenSCAD viewer is smoked through the framework
+
+- **WHEN** `scripts/check-dist` installs the built wheels
+- **THEN** it installs `machinome-viewer-openscad` through the framework's
+  `viewer-openscad` extra from the built archives, finds its one module
+  `machinome/viewer/openscad/__init__.py` owned by its own distribution and
+  its version and pins the framework's, resolves it through
+  `machinome.viewer.viewer('openscad')` to that file with the seam's contract
+  version and the operations `present` and `capture`, and draws a still of an
+  `OpenScadNode` part through OpenSCAD where the binary is on the PATH and
+  presents and withdraws its SCAD where it is not
 
 #### Scenario: The FreeCAD node package is smoked through the framework
 
@@ -485,11 +509,14 @@ on the PATH before it builds; the CI SHALL run it through `make check` in a
 
 - **WHEN** `scripts/check-dist` installs the built wheels
 - **THEN** it installs `machinome-viewer` from its own wheel by path, imports
-  its package, finds its eight modules and its built bundle owned by its own
+  its package, finds its ten modules and its built bundle owned by its own
   distribution inside the throwaway environment and no widget source, its
   version and its pin the framework's, the framework's `viewer` and
-  `web-snapshot` extras pinning it, the `machinome.viewer` entry point's
-  report naming the installed bundle, the widget's API and document versions,
+  `web-snapshot` extras pinning it, no entry point in the group
+  `machinome.viewer`, the provider the seam resolves for `web` being its
+  `__init__.py` with the seam's contract version and the operations
+  `present`, `capture`, `serve` and `embed`, its report naming the installed
+  bundle, the widget's API and document versions,
   a banner stating the version, the API, the set's licence expression and the
   repository, and its licence texts; `machinome-viewer describe` and
   `machinome viewer` exit zero

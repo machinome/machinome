@@ -68,14 +68,14 @@ Photograph
 
     $ machinome snapshot -o counter.png --viewall --autocenter
     $ machinome snapshot --drive crank=3580 -o carry.png --viewall --autocenter
-    $ machinome snapshot --renderer web --drive crank=3580 -o carry.png
+    $ machinome snapshot --viewer web --drive crank=3580 -o carry.png
 
 ``machinome snapshot`` renders one pose to a PNG without opening a
-viewer. The default renderer is OpenSCAD's, fast and without a browser;
-``--drive`` binds declared drivers by qualified id, so the second image
-shows the counter mid-carry. The ``web`` renderer hands the model to the
-installed viewer in a headless browser, keeps a real alpha channel, and
-is the one that draws markings, so the digits appear on it.
+viewer window. The default viewer is OpenSCAD's, fast and without a
+browser; ``--drive`` binds declared drivers by qualified id, so the second
+image shows the counter mid-carry. The ``web`` viewer photographs the model
+in a headless browser, keeps a real alpha channel, and is the one that
+draws markings, so the digits appear on it.
 
 Where to go from here
 ---------------------

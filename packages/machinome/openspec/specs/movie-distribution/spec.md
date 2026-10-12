@@ -8,7 +8,6 @@ side, at the set's version and under its licence, and make them with
 movie setup` installs into the package, from an episode, a movie document or
 a project and a movie name, drawn by the viewer installed beside the
 framework.
-
 ## Requirements
 ### Requirement: The movie package ships its Python and its Node side
 
@@ -140,8 +139,10 @@ film's manifest.
 
 `machinome movie check`, `preview`, `render`, `build` and `live` SHALL give
 the Node side the bundle of the browser viewer installed beside the framework,
-the path the `machinome.viewer` entry point reports, as `machinome develop`
-finds it; the command SHALL take no option naming a bundle. When no viewer is
+the path the web viewer names when the seam `machinome.viewer` is asked for
+it, as `machinome develop` finds it; the command SHALL take no option naming
+a bundle and SHALL NOT read the project's declared viewer, since only the web
+viewer draws a film. When no viewer is
 installed, or the installed one reports no bundle, those verbs SHALL write one
 line with the viewer's remedy and exit 1. `speech` and `review` SHALL run
 without a viewer.

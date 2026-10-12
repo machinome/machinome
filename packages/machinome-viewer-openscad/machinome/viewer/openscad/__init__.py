@@ -2,29 +2,52 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""OpenSCAD-backed PNG rendering: the OpenSCAD viewer.
+"""The OpenSCAD viewer: a provider of the seam of viewers, `machinome.viewer`.
 
-The renderer the table of supported node types names for the `openscad`
-node type (`machinome.node.supported`, a provisional column): `machinome
-snapshot` resolves it there and calls `present` inside the build lock, then
-`render`. It reaches the OpenSCAD node package directly, its writer for the
-SCAD it draws and its binary contract for the executable, so importing it
-without SolidPython is the package's refusal, naming `machinome[openscad]`.
-The viewer cycle moves it behind a seam `machinome.viewer`.
+It takes a still of a machine at one assembled instant, for `machinome
+snapshot --viewer openscad`, the snapshot's default: `present` assembles the
+posed root and writes its SCAD through the OpenSCAD node family's writer
+inside the build lock, `capture` runs the `openscad` executable on it after,
+and `withdraw` removes the file. It offers no session and embeds nothing. It
+reaches the OpenSCAD node package directly, its writer for the SCAD it draws
+and its binary contract for the executable, so importing it without
+SolidPython or without the node package is the package's refusal, naming
+`machinome[openscad]`, which the seam passes through (OpenSpec change
+`viewer-seam`).
 """
 
 import logging
 import os
 import re
 import shutil
-import sys
-from subprocess import CalledProcessError
+from subprocess import CalledProcessError, run
 
 from machinome import currency
-from machinome.node.openscad import binary, writer
+from machinome.node import supported
+from machinome.viewer import ViewerError
 
+# The node package first, through the table's `load`, so its absence is the
+# node type's refusal by the `openscad` extra however the import system
+# reports it, as the table's renderer column did before this viewer had an
+# address of its own (`viewer-seam`).
+supported.load('openscad')
 
-logger = logging.getLogger('viewers.openscad')
+from machinome.node.openscad import binary, writer  # noqa: E402
+
+#: The viewer contract version this provider implements.
+CONTRACT = 1
+
+#: The name the seam knows this viewer by.
+NAME = 'openscad'
+
+#: A still, and nothing else: no session, no embedding.
+OPERATIONS = frozenset({'present', 'capture'})
+
+#: Every snapshot option beyond the common ones: OpenSCAD's own.
+CAPTURE_OPTIONS = frozenset({'autocenter', 'viewall', 'projection',
+                             'colorscheme', 'view', 'render', 'preview'})
+
+logger = logging.getLogger('viewer.openscad')
 
 # OpenSCAD prefixes its own diagnostic lines this way; everything else on
 # either captured stream is progress output ("Compiling design...", cache
@@ -59,15 +82,15 @@ class OpenScadImportError(RuntimeError):
             f"imported by {scad_file}")
 
 
-class OpenScadRenderer:
-    """Renders a node's SCAD to an image with OpenSCAD.
+class OpenScadViewer:
+    """Draws a node's SCAD to an image with OpenSCAD.
 
     The SCAD it draws is obtained on demand, from no build: `present`
     assembles the root and has the OpenSCAD writer publish its `.scad` in
-    the build directory for the pose the snapshot renders, as a transient
-    artifact, and `render` removes it once OpenSCAD has read it, whether the
-    render succeeded or failed -- the file exists only for this renderer,
-    and a build removes one a killed render left. A root that keeps its
+    the build directory for the pose the snapshot draws, as a transient
+    artifact, and `draw` removes it once OpenSCAD has read it, whether the
+    drawing succeeded or failed -- the file exists only for this viewer,
+    and a build removes one a killed drawing left. A root that keeps its
     `.scad` (`kept_artifacts()`, a family leaf) keeps it.
     """
 
@@ -91,43 +114,41 @@ class OpenScadRenderer:
             except FileNotFoundError:
                 pass
 
-    def render(self, node, args, output, runner):
-        """Draw the root's `.scad` to `output`, reporting a failure as the
-        snapshot command does: an import OpenSCAD could not open removes
-        the partial image; a process failure, a missing executable and the
-        binary contract's refusal each write their line; every failure
-        exits 1."""
+    def capture(self, node, request, output, runner):
+        """Draw the root's `.scad` to `output`, raising `ViewerError` with
+        the sentence the snapshot command writes: an import OpenSCAD could
+        not open removes the partial image; a process failure, a missing
+        executable and the binary contract's refusal each say what
+        failed."""
         try:
-            self.draw(node, args, output, runner)
+            self.draw(node, request, output, runner)
         except OpenScadImportError as error:
-            # OpenSCAD itself already wrote whatever it could render --
-            # the picture with the missing part -- straight to output;
-            # the spec is that a failed snapshot leaves no image behind.
+            # OpenSCAD itself already wrote whatever it could draw -- the
+            # picture with the missing part -- straight to output; the spec
+            # is that a failed snapshot leaves no image behind.
             if os.path.exists(output):
                 os.remove(output)
-            sys.stderr.write(f"Error: {error}\n")
-            sys.exit(1)
-        except CalledProcessError as e:
-            sys.stderr.write(f"OpenSCAD rendering failed:\n{e.stderr}\n")
-            sys.exit(1)
-        except FileNotFoundError:
-            sys.stderr.write("Error: OpenSCAD not found in PATH. "
-                             "Please install OpenSCAD and ensure it is accessible.\n")
-            sys.exit(1)
+            raise ViewerError(str(error)) from error
+        except CalledProcessError as error:
+            raise ViewerError(
+                f'OpenSCAD rendering failed:\n{error.stderr}') from error
+        except FileNotFoundError as error:
+            raise ViewerError(
+                'OpenSCAD not found in PATH. Please install OpenSCAD and '
+                'ensure it is accessible.') from error
         except binary.OpenScadUnavailable as error:
-            sys.stderr.write(f'Error: {error}\n')
-            raise SystemExit(1)
+            raise ViewerError(str(error)) from error
 
-    def draw(self, node, args, output, runner):
+    def draw(self, node, request, output, runner):
         """Run OpenSCAD on the root's `.scad`, then withdraw it; raise what
         went wrong (`OpenScadImportError` for an import it could not
         open)."""
         try:
             openscad = binary.require_openscad(
-                'the OpenSCAD snapshot renderer',
+                'the OpenSCAD viewer',
                 'rendering the requested image launches OpenSCAD',
-                'use --renderer web')
-            base_command = self.build_command(node, args, output)
+                'use --viewer web')
+            base_command = self.build_command(node, request, output)
             base_command[0] = openscad
             command = self.wrap_command(base_command)
             logger.info('Rendering %s to %s', writer.scad_file(node), output)
@@ -163,25 +184,25 @@ class OpenScadRenderer:
         if missing is not None:
             raise OpenScadImportError(missing, writer.scad_file(node))
 
-    def build_command(self, node, args, output):
+    def build_command(self, node, request, output):
         command = ['openscad', '-o', output]
-        if args.camera:
-            command.extend(['--camera', args.camera])
-        if args.autocenter:
+        if request.camera:
+            command.extend(['--camera', request.camera])
+        if request.autocenter:
             command.append('--autocenter')
-        if args.viewall:
+        if request.viewall:
             command.append('--viewall')
-        command.extend(['--imgsize', args.imgsize.lower().replace('x', ',')])
+        command.extend(['--imgsize', request.imgsize.lower().replace('x', ',')])
 
-        projection = args.projection or 'perspective'
+        projection = request.projection or 'perspective'
         command.extend(['--projection', 'o' if projection == 'ortho' else 'p'])
-        command.extend(['--colorscheme', args.colorscheme or 'Cornfield'])
-        if args.preview:
+        command.extend(['--colorscheme', request.colorscheme or 'Cornfield'])
+        if request.preview:
             # OpenSCAD's --preview takes a value; given bare, it takes the
             # next token (the .scad path) as that value.
             command.append('--preview=throwntogether')
-        if args.view:
-            command.extend(['--view', args.view])
+        if request.view:
+            command.extend(['--view', request.view])
         command.append(writer.scad_file(node))
         return command
 
@@ -190,13 +211,55 @@ class OpenScadRenderer:
             return command
         xvfb_run = self.find_xvfb_run()
         if not xvfb_run:
-            sys.stderr.write(
-                "Error: no DISPLAY and 'xvfb-run' not found on PATH. "
+            raise ViewerError(
+                "no DISPLAY and 'xvfb-run' not found on PATH. "
                 "Install xvfb (e.g. `apt-get install -y xvfb`) or run this "
-                "command under `xvfb-run -a`.\n"
-            )
-            raise SystemExit(1)
+                "command under `xvfb-run -a`.")
         return [xvfb_run, '-a'] + command
 
     def find_xvfb_run(self):
         return shutil.which('xvfb-run')
+
+
+_VIEWER = OpenScadViewer()
+
+
+def identity():
+    """`('machinome-viewer-openscad', <version>)`, the installed
+    distribution."""
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        installed = version('machinome-viewer-openscad')
+    except PackageNotFoundError:
+        installed = None
+    return ('machinome-viewer-openscad', installed)
+
+
+def document_versions():
+    """None: this viewer reads no node-tree document."""
+    return None
+
+
+def readable(version):
+    """False: this viewer reads no node-tree document."""
+    return False
+
+
+def present(node, build_dir):
+    """Assemble the posed root and write its `.scad`; called inside the
+    project build lock. Returns the root, which `capture` draws and
+    `withdraw` cleans after."""
+    _VIEWER.present(node)
+    return node
+
+
+def withdraw(node):
+    """Remove the root's on-demand `.scad`, unless the root keeps it."""
+    _VIEWER.withdraw(node)
+
+
+def capture(node, request, output):
+    """Draw the presented root to the PNG `output` with OpenSCAD, or raise
+    `ViewerError` writing none. The subprocess runner is this module's
+    `run`, read when it is called."""
+    _VIEWER.capture(node, request, output, run)

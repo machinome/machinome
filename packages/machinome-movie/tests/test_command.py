@@ -54,20 +54,26 @@ with open(os.path.join(package, 'package.json'), 'w') as stream:
 '''
 
 #: Runs the command module with its JavaScript directory and, when given,
-#: the viewer's report replaced, then exits as `machinome movie` would.
+#: the web viewer the seam `machinome.viewer` resolves replaced by its
+#: report, or by its absence, then exits as `machinome movie` would.
 BOOTSTRAP = '''
 import json, sys
 from pathlib import Path
 from machinome.movie import cli
-from machinome.viewers import bundle
+import machinome.viewer as viewers
 cli.JS = Path(sys.argv[1])
 viewer = json.loads(sys.argv[2])
 if viewer is not None:
-    def describe():
-        if 'absent' in viewer:
-            raise bundle.ViewerUnavailable(viewer['absent'])
-        return viewer
-    bundle.describe = describe
+    if 'absent' in viewer:
+        def resolve(name):
+            raise viewers.absent(name)
+        viewers.viewer = resolve
+    else:
+        web = viewers.viewer('web')
+        web.describe = lambda: viewer
+        web.files = lambda: {'index.html': Path(viewer['path']).with_name(
+                                 'index.html'),
+                             'machinome-viewer.js': Path(viewer['path'])}
 from machinome.movie.__main__ import main
 main(sys.argv[3:])
 '''
@@ -276,8 +282,8 @@ def test_setup_installs_into_the_package_and_remove_deletes(tmp_path, fake):
 
 def test_a_film_verb_needs_the_viewer(tmp_path, fake):
     js = javascript(tmp_path / 'js')
-    remedy = ('The browser viewer is not installed. Install it with: '
-              'pip install "machinome[viewer]"')
+    remedy = ('the web viewer needs machinome.viewer.web, which is not '
+              'installed; install it with \'pip install "machinome[viewer]"\'')
     done = run(tmp_path, js, 'check', 'film.yaml', node=fake / 'node',
                viewer={'absent': remedy})
     assert done.returncode == 1

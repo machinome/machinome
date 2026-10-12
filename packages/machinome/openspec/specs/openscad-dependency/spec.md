@@ -19,7 +19,7 @@ The paths that require it are exactly:
   SCAD for OpenSCAD to render, under the `openscad-node` capability;
 - evaluating a legacy `Solid2Node` symbolic value through `as_number()` when
   it needs OpenSCAD evaluation, not a natively evaluable graph value;
-- rendering an image with `machinome snapshot --renderer openscad`.
+- rendering an image with `machinome snapshot --viewer openscad`.
 
 A leaf outside the family is never handed to OpenSCAD: a leaf whose STL is
 not current after its own materialization is refused under the `node-model`
@@ -109,8 +109,8 @@ still require the binary when their own geometry must be produced.
 
 When a path listed above requires the OpenSCAD binary and it cannot be found,
 the system SHALL fail with an error that names what needed it, why that path
-needs it, and what the user can do — installing OpenSCAD, or, for the snapshot
-renderer, selecting the web renderer instead. The error SHALL NOT be a bare
+needs it, and what the user can do: installing OpenSCAD, or, for a still, choosing
+the web viewer instead. The error SHALL NOT be a bare
 subprocess launch failure.
 
 When the path is the rendering of a node's STL, what needed it SHALL be named
@@ -119,7 +119,7 @@ rendered from SCAD by OpenSCAD. The error SHALL NOT name a backend or any
 class other than the node's own, so a leaf written outside the core is
 reported in the same words as the core's own leaves.
 
-The system SHALL NOT substitute a different renderer, a different geometry
+The system SHALL NOT substitute a different viewer, a different geometry
 path, or a cached artifact for the operation that could not run. This is the
 same no-silent-substitution rule the web-snapshot capability already applies
 in the opposite direction.
@@ -146,10 +146,10 @@ never reaches a requiring path is never asked for the binary.
 
 #### Scenario: The OpenSCAD renderer cannot run
 
-- **WHEN** `machinome snapshot --renderer openscad` runs and no `openscad` is on
+- **WHEN** `machinome snapshot --viewer openscad` runs and no `openscad` is on
   the PATH
-- **THEN** it fails naming the missing binary and `--renderer web` as the
-  alternative, and renders no image through the web renderer on its own
+- **THEN** it fails naming the missing binary and `--viewer web` as the
+  alternative, and renders no image through the web viewer on its own
 
 #### Scenario: A symbolic value cannot be evaluated
 

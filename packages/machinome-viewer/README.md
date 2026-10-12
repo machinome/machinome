@@ -2,8 +2,8 @@
 
 The browser viewer of [Machinome](https://github.com/machinome/machinome):
 the package `machinome.viewer.web`, an embeddable three.js widget with its export
-page, the development server `machinome develop` runs and the headless
-capture behind `machinome snapshot --renderer web`. It opens a published
+page, the development server `machinome develop` serves through and the
+headless capture behind `machinome snapshot --viewer web`. It opens a published
 model in a WebGL-capable browser, with camera, assembly navigation and the
 controls of a posed, running or clocked machine.
 

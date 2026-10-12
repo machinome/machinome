@@ -12,7 +12,8 @@ geometry and mechanical relationships; it does not need Python or a CAD
 backend to display and operate an export. The viewer is the package
 ``machinome-viewer``, installed by ``machinome[viewer]`` and numbered with the
 framework; it declares viewer API |viewer_api| and reads document versions
-|document_versions|.
+|document_versions|. The framework reaches the package through its viewer
+seam, in its own process, as the viewer named ``web``.
 
 The browser entry point is ``MachinomeViewer`` from ``machinome-viewer.js``.
 Handles below are returned objects, not constructors you instantiate.

@@ -8,7 +8,6 @@ and the maintainer run alike: the set's version declared in one place and
 moved without a commit or a tag, the archives a release uploads being the
 archives built from its commit, checked, installed and smoked, and no target
 uploading what another built.
-
 ## Requirements
 ### Requirement: The repository's steps are the targets of one Makefile at its root
 
@@ -98,17 +97,19 @@ uses, refusing with one line when `uv` or `npm` is not on the PATH.
 member's bundle. `make lint` SHALL run black's check and flake8 with a line
 length of 89 over the framework's sources and tests and every other package's
 `machinome/` from the framework's directory, both always, and fail when
-either does. `make docs` SHALL build the manual with warnings as errors from an
-environment of its own at the root's `.docs-venv/`, made when absent, into
-which it installs `packages/machinome/docs/requirements.txt` alone, reading
-every page, into `packages/machinome/docs/_build/html`.
+either does. `make docs` SHALL build the browser viewer's bundle, then build
+the manual with warnings as errors from an environment of its own at the
+root's `.docs-venv/`, made when absent, into which it installs
+`packages/machinome/docs/requirements.txt` alone, reading every page, into
+`packages/machinome/docs/_build/html`; the manual takes the repository's
+viewer, which the framework finds through its seam.
 
 #### Scenario: The manual is built as Read the Docs builds it
 
-- **WHEN** `make docs` runs on a clone
-- **THEN** the environment it builds in holds what
-  `packages/machinome/docs/requirements.txt` names and nothing of the
-  workspace, the build fails on any warning, and the pages are written to
+- **WHEN** `make docs` runs on a clone after `make sync`
+- **THEN** the viewer's bundle is built, the environment the manual builds in
+  holds what `packages/machinome/docs/requirements.txt` names and nothing of
+  the workspace, the build fails on any warning, and the pages are written to
   `packages/machinome/docs/_build/html`
 
 #### Scenario: The lint reports both tools

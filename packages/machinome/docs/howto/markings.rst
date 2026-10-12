@@ -123,8 +123,8 @@ placement, because the artifact is already in the part's frame.
 
 The browser viewer draws markings from API 14 onward, so the counter's
 digits appear in every export on these pages. The OpenSCAD path, the
-default ``machinome snapshot`` renderer included, does not draw them; use
-``--renderer web`` for a photograph with digits.
+default ``machinome snapshot`` viewer included, does not draw them; use
+``--viewer web`` for a photograph with digits.
 
 Manufacturing process, painted, vinyl or co-printed, and the outputs it
 implies are not modelled. A marking says what a part carries and where,

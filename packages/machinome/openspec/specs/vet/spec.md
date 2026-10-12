@@ -239,13 +239,14 @@ denied modules: `machinome.cli`, `machinome.manager`,
 `machinome.core.builder`, `machinome.core.processes`,
 `machinome.core.loader`, `machinome.core.export`,
 `machinome.core.pieces`, `machinome.source_generation`,
-`machinome.viewers`, `machinome.sphinx`, `machinome.currency`,
+`machinome.sphinx`, `machinome.currency`,
 `machinome._artifact`, `machinome.brep_cache`, `machinome.brep_artifacts`,
 the B-rep engine's file operations `machinome.engine.brep.read_brep`,
 `machinome.engine.brep.write_brep` and `machinome.engine.brep.write_stl`,
-and the browser viewer's package `machinome.viewer.web`, which serves,
-captures and builds its bundle in processes of its own (change
-`join-viewer`). The finding SHALL name the denied name reached. Every other
+and the seam of viewers `machinome.viewer` with every provider beneath it,
+the web viewer `machinome.viewer.web` and the OpenSCAD viewer
+`machinome.viewer.openscad`, which serve, capture, build a bundle and launch
+programs (change `viewer-seam`). The finding SHALL name the denied name reached. Every other
 name beneath the contract members, including `machinome.node`,
 `machinome.simulation`, `machinome.motion`, `machinome.math`,
 `machinome.parameters`, `machinome.test`, `machinome.engine`,
@@ -330,8 +331,16 @@ of the set installs, is not a member of the universe: an import of it is
   WebViewer` and another runs `from machinome_viewer.server import
   WebViewer`
 - **THEN** vet reports the first as kind `framework-internal`, name
-  `machinome.viewer.web`, and the second as `outside-universe`, named
+  `machinome.viewer`, and the second as `outside-universe`, named
   `machinome_viewer.server`
+
+#### Scenario: The seam of viewers is an internal
+
+- **WHEN** a vetted module runs `from machinome.viewer import viewer` or
+  `import machinome.viewer.openscad`, or reaches `machinome.viewers`
+- **THEN** vet reports the first two as kind `framework-internal`, name
+  `machinome.viewer`, and the removed `machinome.viewers` as no finding of
+  its own: it fails when the project runs
 
 ### Requirement: A file write is a finding
 

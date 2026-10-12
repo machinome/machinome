@@ -1,5 +1,5 @@
 sphinx
 sphinx_rtd_theme
-# The committed exports under docs/_exports/ carry no widget; the published
-# viewer completes them at build time.
-machinome-viewer
+# The committed exports under docs/_exports/ carry no widget: the
+# repository's own viewer completes them, its bundle built with npm first
+# (`make docs`; change `viewer-seam`).

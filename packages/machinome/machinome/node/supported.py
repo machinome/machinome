@@ -5,21 +5,18 @@
 """The table of the node types the core supports.
 
 One row per node type, keyed by the node type's name: the class names its
-module defines for a project to import, the renderers it contributes
-to `machinome snapshot`, and the CLI commands that cannot run without its
-module. A node type's address and its extra are not stored, because they are
-its name: the module `machinome.node.<key>`, installed by `machinome[<key>]`.
+module defines for a project to import, and the CLI commands that cannot run
+without its module. A node type's address and its extra are not stored,
+because they are its name: the module `machinome.node.<key>`, installed by
+`machinome[<key>]`.
 
 This is the one place the core names a node type by its technology. The node
 root's refusals (it exports nothing, and refuses each class name naming its
-node type's module), `load`'s message, the CLI and the snapshot, `new` and
+node type's module), `load`'s message, the CLI and the `new` and
 `import-step` commands read it; nothing else spells a node type's module.
 Importing it imports no node type: `load` imports one when a reader asks.
-
-The renderer column is provisional (OpenSpec change `openscad-out`, ADR-179):
-viewers become providers behind a seam `machinome.viewer` in the phase's last
-cycle, which removes the column. No contract version is checked on a
-renderer, and nothing is discovered: a renderer is a row here.
+The table names no viewer: viewers are providers of the seam
+`machinome.viewer` (OpenSpec change `viewer-seam`).
 """
 
 from dataclasses import dataclass
@@ -34,14 +31,10 @@ class NodeType:
 
     `classes` are the names its module defines for a project to import,
     which the node root refuses naming that module and `load` names in its
-    refusal;
-    `renderers` the `(renderer name, 'module.Class')` pairs it contributes
-    to `machinome snapshot` (provisional); `commands` the CLI commands that
-    need its module.
+    refusal; `commands` the CLI commands that need its module.
     """
 
     classes: tuple
-    renderers: tuple = ()
     commands: tuple = ()
 
 
@@ -51,15 +44,11 @@ NODE_TYPES = {
     'step': NodeType(('StepNode',), commands=('import-step',)),
     'molejo': NodeType(('MolejoNode',)),
     'solid2': NodeType(('Solid2Node',)),
-    'openscad': NodeType(('OpenScadNode',), renderers=(
-        ('openscad', 'machinome.node.openscad.renderer.OpenScadRenderer'),)),
+    'openscad': NodeType(('OpenScadNode',)),
     'jscad': NodeType(('JScadNode',)),
     'stl': NodeType(('StlNode',)),
     'freecad': NodeType(('FreeCADAssemblyNode', 'FreeCADJoint')),
 }
-
-#: The renderer `machinome snapshot` uses when none is named.
-DEFAULT_RENDERER = 'openscad'
 
 
 def absent(key):
@@ -90,22 +79,6 @@ def load(key):
         if error.name != address:
             raise
         raise absent(key) from None
-
-
-def renderer(name):
-    """An instance of the renderer a node type contributes as `name`.
-
-    Its node type is loaded first, under `load`'s refusals, so an absent
-    node type is refused before its renderer's module is imported. A name
-    no row contributes raises `KeyError`.
-    """
-    for key, node_type in NODE_TYPES.items():
-        for contributed, location in node_type.renderers:
-            if contributed == name:
-                load(key)
-                module, _, attribute = location.rpartition('.')
-                return getattr(import_module(module), attribute)()
-    raise KeyError(name)
 
 
 def needed_by(command):

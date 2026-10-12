@@ -875,7 +875,7 @@ model is an assembly — do not report it as coverage before then.
 
    Render at least an isometric view and one view along the axis that
    the new component's alignments live on, and inspect them before
-   declaring done. Keep the default renderer; `--renderer web` is for a
+   declaring done. Keep the default viewer; `--viewer web` is for a
    host that needs a transparent background (and needs the separately
    installed viewer package), not for your inspection. A driven machine
    snapshots at its driver defaults unless `--drive input=value` supplies

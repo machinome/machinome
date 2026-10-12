@@ -269,25 +269,27 @@ but its own: `OCP` for the B-rep engine, `manifold3d` for the mesh engine,
 module, `molejo` for the molejo module, `solid2` for the OpenSCAD package's
 `__init__` and writer and for the solid2 module, `OCP` for the FreeCAD
 package's adapter, and none for the CadQuery, JSCAD and STL modules, the
-OpenSCAD package's other modules and the FreeCAD package's other modules,
-whose worker imports FreeCAD's own modules and runs only in FreeCAD's
-interpreter. A core module
+OpenSCAD package's other modules, the OpenSCAD viewer's module and the FreeCAD
+package's other modules, whose worker imports FreeCAD's own modules and runs
+only in FreeCAD's interpreter. A core module
 that needs a kernel module's capability SHALL reach it through a seam: a
 try-import of the one known module that answers by that module's extra when it
 is absent.
 
 The core modules that name a kernel module are exactly: the table of
 supported node types, `machinome.node.supported`, from which the node root's
-refusals, the CLI's command table, the `import-step` command, the
-snapshot command and `machinome new` reach a node type's module or its name,
-and whose renderer row names the OpenSCAD node package's renderer; the project
+refusals, the CLI's command table, the `import-step` command and
+`machinome new` reach a node type's module or its name, and which names no
+viewer; the project
 templates, each of which is a project's file and names its own node type's
 module in the import line it gives the project; and the markings' artwork
 seam, naming `machinome.node.build123d`. Among the extension packages,
 `machinome.node.step` names `machinome.node.cadquery`, for its render
 conversion, `machinome.node.solid2` names `machinome.node.openscad`, whose leaf
-base and binary contract it is built over, and no other names a kernel module
-but its own package. The engines' providers are named by their seams under the
+base and binary contract it is built over, the OpenSCAD viewer
+`machinome.viewer.openscad` names `machinome.node.openscad`, whose writer
+and binary contract it draws with, and no other names a kernel module but its
+own package. The engines' providers are named by their seams under the
 `brep-engine-dependency` and `mesh-engine-dependency` capabilities.
 
 #### Scenario: Scanning the core finds kernels only in their modules
@@ -328,7 +330,9 @@ but its own package. The engines' providers are named by their seams under the
   (`machinome.node.openscad`), `machinome/node/markings.py`, the step
   distribution's `machinome/node/step.py` (`machinome.node.cadquery` alone),
   the solid2 distribution's `machinome/node/solid2.py`
-  (`machinome.node.openscad` alone), the OpenSCAD package's own modules naming
+  (`machinome.node.openscad` alone), the OpenSCAD viewer's
+  `machinome/viewer/openscad/__init__.py` (`machinome.node.openscad`
+  alone), the OpenSCAD package's own modules naming
   their package, and the templates
   `machinome/manager/templates/project/root/cadquery.py`
   (`machinome.node.cadquery`) and
@@ -428,7 +432,7 @@ line `pip install "machinome[<key>]"`. The refusal SHALL be raised at the
 module's import, so a project's import line, `from machinome.node import
 <key>`, an attribute read of `machinome.node`, `hasattr`, the CLI and every
 seam that imports the module by name meet it alike. Importing a module beneath
-an absent node package, such as `machinome.node.openscad.renderer`, and
+an absent node package, such as `machinome.node.openscad.writer`, and
 importing a node type built over one, such as `machinome.node.solid2` without
 `machinome-node-openscad`, SHALL raise the absent package's refusal.
 
@@ -479,8 +483,8 @@ type's module nor the table to make this so.
 #### Scenario: A module beneath an absent node package names the package's extra
 
 - **WHEN** `machinome-node-openscad` is absent and
-  `machinome.node.openscad.renderer` is imported, or
-  `machinome.node.supported.renderer('openscad')` is called
+  `machinome.node.openscad.writer` is imported, or the OpenSCAD viewer
+  `machinome.viewer.openscad` is resolved through the seam
 - **THEN** each raises the refusal `the openscad node type (OpenScadNode)
   needs machinome.node.openscad, which is not installed; install it with
   'pip install "machinome[openscad]"'`, whose `name` is
@@ -504,4 +508,39 @@ type's module nor the table to make this so.
   (FreeCADAssemblyNode, FreeCADJoint) needs machinome.node.freecad, which is
   not installed; install it with 'pip install "machinome[freecad]"'`, whose
   `name` is `machinome.node.freecad` and whose extra is `freecad`
+
+### Requirement: The OpenSCAD viewer is installed by its extra and by the OpenSCAD extras
+
+The framework SHALL declare the extra `viewer-openscad`, requiring the
+distribution `machinome-viewer-openscad` with the compatible-release pin
+`~=<version>`, the version being the framework's own. That distribution SHALL
+ship the package `machinome.viewer.openscad` alone and SHALL require the
+framework and `machinome-node-openscad`, each with the same pin, and no
+third-party package of its own. The `openscad` and `solid2` extras SHALL each
+also require `machinome-viewer-openscad` with that pin, beside their node
+distributions, so an installation that can build an OpenSCAD part can also
+draw a still through the OpenSCAD viewer; `all` installs it through `openscad`.
+No other extra SHALL install it.
+
+#### Scenario: The extras that install the OpenSCAD viewer
+
+- **WHEN** the core's manifest is read
+- **THEN** `viewer-openscad` lists `machinome-viewer-openscad~=<version>`
+  alone, `openscad` lists `machinome-node-openscad~=<version>` and
+  `machinome-viewer-openscad~=<version>`, and `solid2` lists
+  `machinome-node-solid2~=<version>` and `machinome-viewer-openscad~=<version>`
+
+#### Scenario: The OpenSCAD extra keeps its still
+
+- **WHEN** `pip install "machinome[openscad]"` resolves the framework's
+  distributions and a user runs `machinome snapshot` on a project of
+  `OpenScadNode` parts
+- **THEN** the OpenSCAD viewer is installed and draws the image
+
+#### Scenario: A model of other parts asks for the OpenSCAD viewer
+
+- **WHEN** an installation holds `machinome[cadquery]` alone and a user runs
+  `machinome snapshot`
+- **THEN** the command fails naming the `viewer-openscad` extra and `--viewer
+  web`, and writes no image
 

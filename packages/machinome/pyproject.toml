@@ -76,10 +76,10 @@ docs = [
     "sphinx_rtd_theme",
 ]
 # The browser viewer, `machinome.viewer.web`, the repository's distribution
-# machinome-viewer, released with the framework and reached only as a
-# separate process; the framework is complete for non-interactive use without
-# it. The web snapshot renderer needs the viewer and its browser; Chromium
-# itself is a second step: `playwright install chromium`.
+# machinome-viewer, released with the framework and reached through the
+# framework's seam of viewers, in its own process; the framework is complete
+# for non-interactive use without it. A web still needs the viewer and its
+# browser; Chromium itself is a second step: `playwright install chromium`.
 viewer = [
     "machinome-viewer~=0.8.1",
 ]
@@ -141,16 +141,25 @@ molejo = [
 # machinome-node-<name>.
 #
 # The OpenSCAD node family (`machinome.node.openscad`: OpenScadNode, the
-# OpenSCAD writer and the OpenSCAD snapshot renderer), which writes SCAD
-# through SolidPython; the OpenSCAD executable itself is no extra's to
-# install.
+# OpenSCAD writer and the contract of the openscad executable), which writes
+# SCAD through SolidPython, and the OpenSCAD viewer that draws it
+# (`machinome.viewer.openscad`); the OpenSCAD executable itself is no
+# extra's to install.
 openscad = [
     "machinome-node-openscad~=0.8.1",
+    "machinome-viewer-openscad~=0.8.1",
+]
+# The OpenSCAD viewer alone (`machinome.viewer.openscad`, the distribution
+# machinome-viewer-openscad), which requires the OpenSCAD node family for
+# its writer: `machinome snapshot --viewer openscad` on a model of any parts.
+viewer-openscad = [
+    "machinome-viewer-openscad~=0.8.1",
 ]
 # `machinome.node.solid2` (Solid2Node), which renders with SolidPython over
-# the OpenSCAD node family and requires it.
+# the OpenSCAD node family and requires it, and the OpenSCAD viewer.
 solid2 = [
     "machinome-node-solid2~=0.8.1",
+    "machinome-viewer-openscad~=0.8.1",
 ]
 # `machinome.node.jscad` (JScadNode), which runs the `jscad` command, a Node
 # program no pip extra installs.

@@ -5,14 +5,18 @@
 """The development server: a published build in front of the viewer.
 
 ``machinome develop`` publishes a project's build directory -- ``viewer.json``,
-the model files it names and ``errors.json`` when a build fails -- and
-launches this server on it as a separate process. The server knows the
-build only as a directory: it never imports project source, never waits for
-an artifact, and stays up whether or not a build has been published, so the
-browser can keep polling the error surface and reconnecting the reload
-socket while the maker fixes their code.
+the model files it names and ``errors.json`` when a build fails -- and asks
+the web viewer, through the framework's seam of viewers, to serve it: the
+server runs in a thread of the command's process (``session.py``), and each
+published build reaches every open page as ``reload`` on its reload socket.
+``machinome-viewer serve`` runs the same server in the foreground. The
+server knows the build only as a directory: it never imports project source,
+never waits for an artifact, and stays up whether or not a build has been
+published, so the browser can keep polling the error surface and
+reconnecting the reload socket while the maker fixes their code.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -78,6 +82,10 @@ class WebViewer:
         self.port = port if port is not None else backend_port()
         self.frontend = frontend if frontend is not None else frontend_port()
         self.app = FastAPI()
+        #: The reload sockets of the open pages, and the loop they are
+        #: served on, which `broadcast` writes them on.
+        self.sockets = set()
+        self.loop = None
 
         self._setup_build_error()
         self._setup_build_snapshot()
@@ -103,12 +111,25 @@ class WebViewer:
         @self.app.websocket('/ws/reload')
         async def websocket_endpoint(websocket: WebSocket):
             await websocket.accept()
-            await websocket.send_text('reload')
+            self.loop = asyncio.get_running_loop()
+            self.sockets.add(websocket)
             try:
+                await websocket.send_text('reload')
                 while True:
                     await websocket.receive_text()
             except WebSocketDisconnect:
                 return
+            finally:
+                self.sockets.discard(websocket)
+
+    async def broadcast(self, message):
+        """Send `message` on every open reload socket; a socket that cannot
+        be written is dropped."""
+        for websocket in list(self.sockets):
+            try:
+                await websocket.send_text(message)
+            except Exception:
+                self.sockets.discard(websocket)
 
     def _setup_build_error(self):
         @self.app.get('/_build_error')

@@ -117,12 +117,14 @@ class ProfileRunningBoundTest(unittest.TestCase):
         self.assertNotIn('profiles', body['program'])
 
     def test_older_viewer_reports_v13_unreadable(self):
-        from machinome.viewers import bundle
+        import machinome.viewer as viewers
 
-        with patch.object(bundle, 'describe',
-                          return_value={'documentVersions': list(range(1, 13)),
-                                        'version': '0.7.0'}):
-            warning = bundle.unreadable_document(13)
+        web = viewers.viewer('web')
+        with patch.object(web, 'document_versions',
+                          return_value=list(range(1, 13))), \
+             patch.object(web, 'identity',
+                          return_value=('machinome-viewer', '0.7.0')):
+            warning = viewers.unreadable(13, 'web')
         self.assertIsNotNone(warning)
         self.assertIn('version 13', warning)
 

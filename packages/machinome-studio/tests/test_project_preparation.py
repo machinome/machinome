@@ -419,11 +419,12 @@ class ProjectPreparationTest(unittest.TestCase):
             self.prepare("unphotographed")
 
         self.assertFalse((project / "screenshot.png").exists())
-        # The renderer's own words, so a missing headless browser is nameable
+        # The viewer's own words, so a missing headless browser is nameable
         # from the log rather than showing up only as a hub card with no
         # picture.
         self.assertTrue(
-            any("Install the browser renderer" in line for line in logged.output),
+            any("Install the browser viewer's capture" in line
+                for line in logged.output),
             logged.output,
         )
 
@@ -449,7 +450,7 @@ class ProjectPreparationTest(unittest.TestCase):
         self.assertEqual(_git_state(project)[1], "?? screenshot.png\n")
         self.assertEqual(
             self.call_log.read_text().splitlines(),
-            ["viewer:", "models:--json", "build:", "snapshot:--renderer"],
+            ["viewer:", "models:--json", "build:", "snapshot:--viewer"],
         )
 
     def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
@@ -722,9 +723,9 @@ elif command == "build":
         (build / "part.stl").write_text("solid part")
         (build / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
 elif command == "snapshot":
-    # A real renderer refuses when its headless browser is missing.
+    # A real viewer refuses when its headless browser is missing.
     if cwd.name == "unphotographed":
-        print("Error: Install the browser renderer", file=sys.stderr)
+        print("Error: Install the browser viewer's capture", file=sys.stderr)
         raise SystemExit(1)
     output = Path(sys.argv[sys.argv.index("-o") + 1])
     output.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8/+8dAwMDEwMDAwMDAwAjPwLvkz8BYAAAAABJRU5ErkJggg=="))

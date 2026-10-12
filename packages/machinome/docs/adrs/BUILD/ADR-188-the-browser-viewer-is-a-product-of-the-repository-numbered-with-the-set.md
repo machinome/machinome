@@ -1,6 +1,6 @@
 # ADR-188: The Browser Viewer Is a Product of the Repository, Numbered with the Set
 
-**Status:** Accepted; the npm workspace's second member, with a lock of its own, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the studio's frontend beside the widget, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md)
+**Status:** Accepted; the npm workspace's second member, with a lock of its own, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the studio's frontend beside the widget, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md); "The seam is unchanged" and its sentence on `machinome vet` superseded 2026-10-12 by [ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md) (note below)
 **Date:** 2026-10-12
 **Change:** [`join-viewer`](../../../openspec/changes/archive/2026-10-12-join-viewer/)
 **Supersedes:**
@@ -140,3 +140,15 @@ describe` and `machinome viewer`.
   workspace's third member, built from the root beside the widget, and the
   studio, a product numbered with the set, photographs projects through the
   viewer's capture it requires (ADR-193).
+
+## Note (2026-10-12)
+
+[ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md)
+supersedes "The seam is unchanged" (OpenSpec change `viewer-seam`): the
+package `machinome.viewer.web` is the web provider of the framework's seam of
+viewers, `machinome.viewer`, which imports it at its address; the entry
+point `machinome.viewer` is removed, and the framework serves and captures
+through the provider in its own process and runs no program of the viewer's.
+`machinome-viewer describe|serve|capture` and `python -m machinome.viewer.web`
+keep working. `machinome vet` denies the seam whole, `machinome.viewer`, in
+place of `machinome.viewer.web`. The rest of this record stands.

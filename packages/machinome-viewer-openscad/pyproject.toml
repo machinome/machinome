@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-viewer-openscad"
+version = "0.8.1"
+description = "The OpenSCAD viewer of Machinome: a still of a machine drawn by the openscad executable"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+keywords = ["machinome"]
+dependencies = [
+    # The core whose seam this viewer is a provider of, released with it:
+    # the set carries one version, and the pins between its packages are ~=
+    # both ways.
+    "machinome~=0.8.1",
+    # The OpenSCAD node family's writer, which writes the SCAD this viewer
+    # draws, and the contract of the openscad executable. The executable
+    # itself is no package's to install.
+    "machinome-node-openscad~=0.8.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[tool.setuptools.packages.find]
+# The package directory machinome/viewer/openscad/, which has its own
+# __init__.py, with none at machinome/ or machinome/viewer/, so the core's
+# seam admits it as a portion.
+include = ["machinome.viewer.openscad"]
+namespaces = true

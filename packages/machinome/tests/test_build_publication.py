@@ -234,8 +234,8 @@ class RunningSnapshotWarningTest(TestCase):
 
         builder = Builder('model.py', build_dir=self.build_dir, watch=False)
         builder.node = self.node
-        with patch.object(builder_module.viewer_bundle,
-                          'unreadable_document', return_value=message):
+        with patch.object(builder_module.viewers,
+                          'unreadable', return_value=message):
             if message is None:
                 builder._write_viewer_snapshot()
                 records = []
@@ -352,19 +352,20 @@ class SweepByDeclarationTest(TestCase):
                 self.assertTrue(os.path.exists(currency.sidecar(path)))
         self.assertTrue(os.path.exists(fine.scad_file))
 
-    def test_the_renderer_marks_only_a_root_it_does_not_keep_transient(self):
+    def test_the_viewer_marks_only_a_root_it_does_not_keep_transient(self):
         from machinome import currency
         from machinome.node.openscad.writer import scad_file
-        from machinome.node.openscad.renderer import OpenScadRenderer
+        from machinome.viewer import viewer
         from tests.scad_where_read_project.machine import (FineCylinder,
                                                            Machine)
+        openscad = viewer('openscad')
         root = Machine()
-        OpenScadRenderer().present(root)
+        openscad.present(root, self.build_dir)
         self.assertTrue(os.path.exists(scad_file(root)))
         self.assertIs(currency.recorded_transient(scad_file(root)), True)
 
         own = FineCylinder()
-        OpenScadRenderer().present(own)
+        openscad.present(own, self.build_dir)
         self.assertTrue(os.path.exists(own.scad_file))
         self.assertIs(currency.recorded_transient(own.scad_file), False)
 

@@ -5,9 +5,10 @@
 """Conditional availability contract for the OpenSCAD executable.
 
 The family's leaves render their STL with it, `Solid2Node.as_number`
-evaluates a SolidPython value with it, and the OpenSCAD snapshot renderer
-draws with it. Each confirms it here first, when its path is attempted, and
-is refused with `OpenScadUnavailable` naming what needed it.
+evaluates a SolidPython value with it, and the OpenSCAD viewer
+(`machinome.viewer.openscad`) draws with it. Each confirms it here first,
+when its path is attempted, and is refused with `OpenScadUnavailable` naming
+what needed it.
 """
 
 import shutil

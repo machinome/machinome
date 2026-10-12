@@ -17,7 +17,7 @@ That is not theoretical. A maker was told a correct version 7 document
 "declares document version 7, which this viewer does not render", by a
 bundle built the evening before the cycle that reads version 7 landed.
 
-So the four exits that hand the bundle out -- the entry point, the
+So the four exits that hand the bundle out -- the report, the
 development server's routes, the capture and packaging -- make it current
 first. Like `bundle`, this module imports only the standard library, so
 asking costs no browser bundle and no web framework.
@@ -67,7 +67,7 @@ class BundleStale(RuntimeError):
     A sibling of `BundleMissing`: a named artifact, a reason, a remedy, and
     no substitution. A stale bundle is a broken installation, and answering
     from it is how a correct document came to be blamed for a stale
-    renderer.
+    bundle.
     """
 
 

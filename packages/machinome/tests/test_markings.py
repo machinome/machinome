@@ -24,11 +24,9 @@ import hashlib
 import math
 import os
 import shutil
-import subprocess
 import tempfile
 import warnings
 from contextlib import ExitStack
-from types import SimpleNamespace
 
 import numpy as np
 
@@ -45,7 +43,7 @@ from machinome.simulation.enumeration import bind_declared_defaults
 from machinome.node.declarative import ChildDeclaration, identity_values
 from machinome.test import TestCase as AssertingTestCase
 from machinome.test import resolve_comparison_policy, set_comparison_policy
-from machinome.node.openscad.renderer import OpenScadRenderer
+from machinome.viewer import CaptureRequest, viewer
 
 from .base import BaseNodeTest
 from .import_probe import probe
@@ -1673,21 +1671,25 @@ class OpenScadPathTest(BaseNodeTest):
             normalized.append(code)
         self.assertEqual(*normalized)
 
-    def test_the_openscad_renderer_photographs_the_marked_model(self):
+    def test_the_openscad_viewer_photographs_the_marked_model(self):
         node = Bench()
         bind_declared_defaults(node)
         node.assemble()
         node.build_stls()
 
         output = os.path.join(self.build_dir, 'bench.png')
-        # The root's SCAD, written on demand as `machinome snapshot` does.
-        OpenScadRenderer().present(node)
-        OpenScadRenderer().render(
-            node,
-            SimpleNamespace(imgsize='120,90', time=0, camera=None, path=None,
-                            autocenter=True, viewall=True, projection=None,
-                            colorscheme=None, preview=False, view=None),
-            output, subprocess.run)
+        # The root's SCAD, written on demand as `machinome snapshot` does,
+        # through the seam.
+        openscad = viewer('open' 's' 'cad')
+        presented = openscad.present(node, self.build_dir)
+        try:
+            openscad.capture(
+                presented,
+                CaptureRequest(imgsize='120x90', autocenter=True,
+                               viewall=True),
+                output)
+        finally:
+            openscad.withdraw(presented)
 
         self.assertTrue(os.path.exists(output))
         self.assertGreater(os.path.getsize(output), 0)

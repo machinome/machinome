@@ -25,6 +25,18 @@ it carries release together and share one version.
   widget.
 - `npm ci` of the widget's build runs at the workspace root, so a second
   member's dependencies survive it.
+- The package is the web provider of Machinome's seam of viewers,
+  `machinome.viewer`: it declares the contract version it implements and its
+  operations, `present`, `capture`, `serve` and `embed`, and Machinome finds
+  it at `machinome.viewer.web` and runs it in its own process. The
+  `machinome.viewer` entry point is removed; a host reads `machinome viewer`
+  or `machinome-viewer describe`, whose report is unchanged. Staging a still
+  moved into the package (`stage.py`), and `serve` runs the development
+  server in a thread the package owns, whose open pages each rebuild reaches
+  as `reload` on their socket, without a reconnect; a taken port is refused
+  when serving starts. `machinome-viewer describe|serve|capture` and
+  `python -m machinome.viewer.web` print what they printed; the capture's
+  remedies say viewer.
 
 ## 0.8.1 — 10 October 2026
 

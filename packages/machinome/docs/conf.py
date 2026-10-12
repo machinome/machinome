@@ -11,16 +11,14 @@ import glob
 import os
 import sys
 
-# Make machinome importable for autodoc without installing it, with the
-# extension packages beside it under packages/, whose modules the core's
-# package path admits as portions (machinome._namespace_portions). The
-# browser viewer's directory is left out: the manual takes the viewer it
-# completes exports with from what docs/requirements.txt installs, and a
-# source copy without a built bundle would shadow it (change `join-viewer`).
+# Make machinome importable for autodoc without installing it, with every
+# package beside it under packages/, whose modules the core's package paths
+# admit as portions (machinome._namespace_portions). The browser viewer's
+# directory is among them: the manual takes the repository's viewer, which
+# the framework finds through its seam of viewers, its bundle built with npm
+# before Sphinx runs (change `viewer-seam`).
 sys.path[:0] = [os.path.abspath('..'),
-                *(path for path in sorted(glob.glob(
-                    os.path.abspath('../../machinome-*')))
-                  if os.path.basename(path) != 'machinome-viewer')]
+                *sorted(glob.glob(os.path.abspath('../../machinome-*')))]
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -130,7 +128,7 @@ def copy_the_embedding_example(app, exception):
     import shutil
     from pathlib import Path
 
-    from machinome.viewers import bundle
+    from machinome import viewer as viewers
 
     if exception is not None or app.builder.format != 'html':
         return
@@ -140,7 +138,9 @@ def copy_the_embedding_example(app, exception):
                     dirs_exist_ok=True)
     shutil.copytree(source / '_exports' / 'spinner', target / 'spinner',
                     dirs_exist_ok=True)
-    shutil.copy2(bundle.bundle_path(), target / 'machinome-viewer.js')
+    web = viewers.require('web', 'embed', 'the manual')
+    shutil.copy2(web.files()['machinome-viewer.js'],
+                 target / 'machinome-viewer.js')
 
 
 def setup(app):

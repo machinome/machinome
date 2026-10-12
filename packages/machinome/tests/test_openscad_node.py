@@ -7,9 +7,10 @@
 `openscad-out`, capability `openscad-node`).
 
 The package holds the node type `OpenScadNode` (its `__init__`), the family's
-leaf base (`leaf`), the SCAD writer (`writer`), the OpenSCAD binary
-contract (`binary`) and the OpenSCAD snapshot renderer (`renderer`, OpenSpec
-change `cut-the-mesh-nodes`). The former seam `machinome.scad_engine` and engine
+leaf base (`leaf`), the SCAD writer (`writer`) and the OpenSCAD binary
+contract (`binary`); the OpenSCAD viewer that draws with them is
+`machinome.viewer.openscad` of its own distribution (OpenSpec change
+`viewer-seam`). The former seam `machinome.scad_engine` and engine
 package `machinome.openscad` are gone, with nothing aliasing them. SolidPython
 is the family's kernel, refused at three doors; a SolidPython value is adopted
 by the expression graph only through the hook `machinome.node.solid2`
@@ -101,6 +102,21 @@ class ThePackageTest(TestCase):
         self.assertTrue(issubclass(OpenScadNode, ScadLeafNode))
         self.assertTrue(issubclass(Solid2Node, ScadLeafNode))
 
+    def test_the_package_holds_no_viewer(self):
+        import machinome.viewer as viewers
+        repository = ROOT.parents[1]
+        package = (repository / 'packages' / 'machinome-node-openscad'
+                   / 'machinome' / 'node' / 'openscad')
+        self.assertFalse((package / 'renderer.py').exists())
+        self.assertIsNone(
+            importlib.util.find_spec('machinome.node.openscad.renderer'))
+        self.assertEqual(
+            Path(viewers.viewer('openscad').__file__),
+            repository / 'packages' / 'machinome-viewer-openscad'
+            / 'machinome' / 'viewer' / 'openscad' / '__init__.py')
+        self.assertFalse((ROOT / 'machinome' / 'viewers').exists())
+        self.assertFalse((ROOT / 'machinome' / 'node' / 'openscad').exists())
+
     def test_the_former_addresses_are_gone(self):
         for module in ('machinome.scad_engine', 'machinome.open' 'scad',
                        'machinome.open' 'scad.binary',
@@ -109,9 +125,9 @@ class ThePackageTest(TestCase):
                 with self.assertRaises(ModuleNotFoundError):
                     importlib.import_module(module)
 
-    def test_the_renderer_imports_neither_former_address(self):
+    def test_the_viewer_imports_neither_former_address(self):
         tree = ast.parse(Path(importlib.util.find_spec(
-            'machinome.node.openscad.renderer').origin).read_text())
+            'machinome.viewer.openscad').origin).read_text())
         imported = set()
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -144,9 +160,11 @@ class TheThreeDoorsTest(TestCase):
     def test_the_package_refuses_naming_the_openscad_extra(self):
         self.assert_refused('import machinome.node.openscad', R1, 'openscad')
 
-    def test_the_renderer_refuses_with_the_package(self):
-        self.assert_refused('import machinome.node.openscad.renderer', R1,
+    def test_the_viewer_refuses_with_the_package(self):
+        self.assert_refused('import machinome.viewer.openscad', R1,
                             'openscad')
+        self.assert_refused('import machinome.viewer as viewers\n'
+                            "    viewers.viewer('openscad')", R1, 'openscad')
 
     def test_solid2_refuses_naming_the_solid2_extra(self):
         self.assert_refused('import machinome.node.solid2', R2, 'solid2')
@@ -342,12 +360,12 @@ class BinaryTest(TestCase):
         from machinome.node.openscad.binary import OpenScadUnavailable
         error = OpenScadUnavailable('node housing (FacetedBox)',
                                     'its STL is rendered from SCAD by '
-                                    'OpenSCAD', 'use --renderer web')
+                                    'OpenSCAD', 'use --viewer web')
         self.assertEqual(
             str(error),
             'node housing (FacetedBox) requires the OpenSCAD binary because '
             'its STL is rendered from SCAD by OpenSCAD; install OpenSCAD and '
-            "ensure 'openscad' is on PATH, or use --renderer web")
+            "ensure 'openscad' is on PATH, or use --viewer web")
 
 
 class ScadTextTest(TestCase):
@@ -413,7 +431,7 @@ class ScadTextTest(TestCase):
 class CountingWriterTest(TestCase):
     """What the family is asked for: SCAD text once per stale family leaf a
     build materializes and never for `assemble()`; the binary for a stale
-    `Solid2Node`'s STL and for the snapshot renderer."""
+    `Solid2Node`'s STL and for the OpenSCAD viewer."""
 
     def setUp(self):
         import os
@@ -458,12 +476,13 @@ class CountingWriterTest(TestCase):
         node.assemble()
         self.assertEqual(len(self.texts), 1)
 
-    def test_the_binary_for_a_stale_solid2nodes_stl_and_the_renderer(self):
+    def test_the_binary_for_a_stale_solid2nodes_stl_and_the_viewer(self):
         import os
         from types import SimpleNamespace
         from unittest.mock import MagicMock
         from machinome.node.base import StlRenderStart
-        from machinome.node.openscad.renderer import OpenScadRenderer
+        from machinome.viewer import CaptureRequest
+        from machinome.viewer.openscad import OpenScadViewer
         node, fine = self.machine()
         with patch('machinome.node.openscad.leaf.Popen',
                    return_value=MagicMock(pid=os.getpid())):
@@ -473,11 +492,9 @@ class CountingWriterTest(TestCase):
         self.assertEqual(self.binaries,
                          ['node FineCylinder (FineCylinder)'])
 
-        args = SimpleNamespace(camera=None, autocenter=False, viewall=False,
-                               imgsize='64x48', projection=None,
-                               colorscheme=None, preview=False, view=None)
+        args = CaptureRequest(imgsize='64x48')
         runner = MagicMock(return_value=SimpleNamespace(stdout='',
                                                         stderr=''))
-        OpenScadRenderer().render(node, args, 'out.png', runner)
+        OpenScadViewer().capture(node, args, 'out.png', runner)
         runner.assert_called_once()
-        self.assertEqual(self.binaries[-1], 'the OpenSCAD snapshot renderer')
+        self.assertEqual(self.binaries[-1], 'the OpenSCAD viewer')

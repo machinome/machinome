@@ -1486,12 +1486,14 @@ class SelfReadDocumentTest(BaseNodeTest):
         self.assertEqual(json.dumps(published, indent=2) + '\n', expected)
 
     def test_the_viewer_warning_names_the_version_written(self):
-        from machinome.viewers import bundle
+        import machinome.viewer as viewers
 
-        with patch.object(bundle, 'describe',
-                          return_value={'documentVersions': [1, 2, 3, 4, 5],
-                                        'version': '0.1.0'}):
-            message = bundle.unreadable_document(6)
+        web = viewers.viewer('web')
+        with patch.object(web, 'document_versions',
+                          return_value=[1, 2, 3, 4, 5]), \
+             patch.object(web, 'identity',
+                          return_value=('machinome-viewer', '0.1.0')):
+            message = viewers.unreadable(6, 'web')
         self.assertIn('version 6', message)
         self.assertIn('1, 2, 3, 4, 5', message)
         self.assertIn('machinome-viewer 0.1.0', message)

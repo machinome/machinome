@@ -104,10 +104,12 @@ The viewer
 ----------
 
 The viewer is the package ``machinome-viewer`` of this repository,
-installed through the ``viewer`` extra and reached only as a separate
-process: ``machinome develop`` starts its server on the build directory,
-``machinome export`` copies its page and bundle, ``machinome snapshot
---renderer web`` hands it the model for a headless capture. ``machinome
+installed through the ``viewer`` extra and reached through the framework's
+seam of viewers as the viewer named ``web``, in the framework's own
+process: ``machinome develop`` has it serve the build directory and tells
+each open page when a build is published, ``machinome export`` copies its
+page and bundle, ``machinome snapshot --viewer web`` has it stage and
+photograph the model in a headless browser. ``machinome
 viewer`` prints the installed package's ``version``, ``apiVersion`` and
 ``documentVersions``, three separate contracts; a report without
 ``documentVersions`` means 1 to 4. This manual matches viewer
@@ -117,7 +119,7 @@ When the installed viewer cannot read the version a model publishes,
 ``build``, ``develop`` and ``export`` still publish it and warn once,
 naming the version written, the versions the viewer renders and its
 package version; the build, the STL files, the tests and ``--no-web`` are
-unaffected. ``machinome snapshot --renderer web`` refuses before it
+unaffected. ``machinome snapshot --viewer web`` refuses before it
 starts the browser, because a capture is a one-shot. The viewer's own
 pages state what its panels do for posed, running and clocked documents.
 
@@ -184,14 +186,15 @@ installed viewer at build time.
 Snapshots
 ---------
 
-``machinome snapshot`` renders one pose to a PNG: the OpenSCAD renderer by
-default, fast and without a browser, or the viewer's headless browser
-with ``--renderer web`` and a real alpha channel. ``--time`` selects a
-timeline fraction, ``--drive`` binds drivers by qualified id, and
-``--set`` changes build parameters instead. Under a running root the
-image is the untimed rest pose at those driver values; a state carrying
-history is not posed from the command line. Neither renderer falls back
-to the other. The OpenSCAD renderer writes the root's ``.scad`` for the
-pose it renders, has OpenSCAD draw it, and removes it; the web renderer
-reads no SCAD. A machine's SCAD text, for any node, is ``scad_code(node)``
+``machinome snapshot`` renders one pose to a PNG through a viewer chosen
+by name (:ref:`choose-the-viewer`): the OpenSCAD viewer by default, fast
+and without a browser, or the browser viewer's headless browser with
+``--viewer web`` and a real alpha channel; a project may name its viewer
+with ``viewer`` under ``[tool.machinome]``. ``--time`` selects a timeline
+fraction, ``--drive`` binds drivers by qualified id, and ``--set`` changes
+build parameters instead. Under a running root the image is the untimed
+rest pose at those driver values; a state carrying history is not posed
+from the command line. Neither viewer falls back to the other. The
+OpenSCAD viewer writes the root's ``.scad`` for the pose it draws, has
+OpenSCAD draw it, and removes it; the web viewer reads no SCAD. A machine's SCAD text, for any node, is ``scad_code(node)``
 from ``machinome.node.openscad.writer``, with the ``openscad`` extra.

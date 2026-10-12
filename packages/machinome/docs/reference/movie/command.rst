@@ -50,9 +50,10 @@ In a source checkout of the repository they are installed by ``npm ci`` at
 the repository's root, which the refusal names instead.
 
 ``check``, ``preview``, ``render``, ``build`` and ``live`` draw with the
-browser viewer installed beside the framework, found through its entry point
-as ``machinome develop`` finds it; the command takes no option naming a
-bundle. When no viewer is installed, or it carries no bundle, those verbs
+browser viewer installed beside the framework, asked through the
+framework's seam of viewers as ``machinome develop`` asks it; the command
+takes no option naming a bundle and reads no project's ``viewer``, since
+only the browser viewer draws a film. When no viewer is installed, or it carries no bundle, those verbs
 refuse with the viewer's remedy. ``speech`` and ``review`` draw nothing and
 need no viewer.
 

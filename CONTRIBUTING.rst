@@ -128,7 +128,7 @@ dependencies::
         -e packages/machinome-node-openscad -e packages/machinome-node-solid2 \
         -e packages/machinome-node-jscad -e packages/machinome-node-stl \
         -e packages/machinome-node-freecad \
-        -e packages/machinome-viewer \
+        -e packages/machinome-viewer -e packages/machinome-viewer-openscad \
         -e packages/machinome-mechanics \
         -e packages/machinome-skills \
         -e packages/machinome-movie \

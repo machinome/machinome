@@ -53,8 +53,13 @@ class MachinomeIdentityTest(TestCase):
         self.assertEqual(former, {'machinome/cli.py'})
 
     def test_new_documents_and_viewer_lookup_use_machinome(self):
+        from importlib.metadata import entry_points
         from machinome.core.serializer import DOCUMENT_FORMAT
-        from machinome.viewers.bundle import ENTRY_POINT_GROUP
+        import machinome.viewer as viewers
 
         self.assertEqual(DOCUMENT_FORMAT, 'machinome-export')
-        self.assertEqual(ENTRY_POINT_GROUP, 'machinome.viewer')
+        # The viewer is found at its address through the seam
+        # (`viewer-seam`); no group of entry points names it.
+        self.assertEqual(viewers.viewer('web').__name__,
+                         'machinome.viewer.web')
+        self.assertEqual(list(entry_points(group='machinome.viewer')), [])

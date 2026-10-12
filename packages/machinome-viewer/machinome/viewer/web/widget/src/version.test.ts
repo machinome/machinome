@@ -177,7 +177,7 @@ describe('DOCUMENT_VERSIONS', () => {
   it('is exactly what the loader refuses by', () => {
     // The number the viewer REPORTS and the versions it REFUSES by
     // cannot be allowed to drift apart: a framework decides whether to
-    // warn on a build and whether to refuse `machinome snapshot --renderer
+    // warn on a build and whether to refuse `machinome snapshot --viewer
     // web` from this list, and the loader turns a document away by that
     // one.
     expect([...DOCUMENT_VERSIONS]).toEqual([...RENDERED_VERSIONS]);

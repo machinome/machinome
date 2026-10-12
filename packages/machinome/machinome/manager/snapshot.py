@@ -2,24 +2,23 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+import argparse
+import os
 import sys
 import logging
-from subprocess import run
+from machinome import viewer as viewers
 from machinome.core.loader import ProjectManifestError, load_node, select_model
+from machinome.manifest import reference_origin
 from machinome.extras import ExtraUnavailable
 from machinome.motion.ports import declared_time
-from machinome.core.builder import project_build_lock
-from machinome.node import supported
+from machinome.core.builder import get_build_dir, project_build_lock
 
 
 logger = logging.getLogger('manager.snapshot')
 
-
-def renderer_names():
-    """The renderers the table of supported node types contributes, by
-    name, in table order."""
-    return [name for node_type in supported.NODE_TYPES.values()
-            for name, _ in node_type.renderers]
+#: The option a still was taken with before the seam of viewers; it is
+#: parsed only to be refused, naming `--viewer` (`viewer-seam`).
+RENAMED = '--renderer'
 
 
 class SnapshotOptionError(ValueError):
@@ -27,7 +26,7 @@ class SnapshotOptionError(ValueError):
     still image cannot be posed by."""
 
 
-# The color schemes the default renderer offers
+# The color schemes of --colorscheme, which the default viewer honours
 COLORSCHEMES = [
     'Cornfield', 'Metallic', 'Sunset', 'Starnight', 'BeforeDawn',
     'Nature', 'DeepOcean', 'Solarized', 'Tomorrow', 'Tomorrow Night', 'Monotone'
@@ -36,26 +35,47 @@ COLORSCHEMES = [
 # View helper options
 VIEW_OPTIONS = ['axes', 'crosshairs', 'edges', 'scales', 'wireframe']
 
+#: The options beyond the common output, image size, time and camera, by the
+#: name a viewer declares it honours (`CAPTURE_OPTIONS`) and its spelling.
+VIEWER_OPTIONS = (
+    ('autocenter', '--autocenter'), ('viewall', '--viewall'),
+    ('projection', '--projection'), ('colorscheme', '--colorscheme'),
+    ('view', '--view'), ('render', '--render'), ('preview', '--preview'),
+)
+
+
+def supplied(args, option):
+    """Whether the caller gave `option`: a value, or a flag set."""
+    value = getattr(args, option, None)
+    return value is not None and value is not False
+
 
 class Snapshot:
-    """Renders a node to a PNG image, through the default renderer or
-    through the browser viewer with --renderer web for a transparent
-    background. Enables AI agents to visually inspect their work without
-    human intervention."""
+    """Renders a node to a PNG image through a viewer, chosen by `--viewer`,
+    else the project's viewer, else the seam's default for a still; the web
+    viewer keeps a transparent background. Enables AI agents to visually
+    inspect their work without human intervention."""
 
     needs_node = True
 
-    #: The table renderer resolved for this invocation, or None for the web
-    #: renderer: it presents the posed root inside the build lock and draws
-    #: it after (`machinome.node.supported.renderer`).
+    #: The viewer resolved for this invocation, through the seam: it
+    #: presents the posed root inside the build lock, captures it after,
+    #: and withdraws what it presented.
     presenter = None
 
+    #: What the viewer's `present` returned, which `capture` and `withdraw`
+    #: are handed.
+    presented = None
+
     def add_arguments(self, parser):
+        names = ' or '.join(sorted(viewers.EXTRAS))
         parser.add_argument(
-            '--renderer', choices=['web', *renderer_names()],
-            default=supported.DEFAULT_RENDERER,
-            help=f'Image renderer (default: {supported.DEFAULT_RENDERER})',
+            '--viewer', metavar='NAME', default=None,
+            help=f'The viewer that takes the image: {names} (default: the '
+                 f"project's viewer, else {viewers.DEFAULTS['capture']})",
         )
+        parser.add_argument(RENAMED, dest='renderer', default=None,
+                            help=argparse.SUPPRESS)
         # Output options
         parser.add_argument(
             '-o', '--output',
@@ -148,6 +168,11 @@ class Snapshot:
 
     def handle(self, args):
         """Main entry point for the snapshot command."""
+        renamed = getattr(args, 'renderer', None)
+        if renamed is not None:
+            sys.stderr.write(f'Error: machinome snapshot {RENAMED} is --viewer '
+                             f'since Machinome 0.9: write --viewer {renamed}\n')
+            raise SystemExit(2)
         try:
             selection = select_model(args.path)
         except ProjectManifestError as error:
@@ -159,25 +184,38 @@ class Snapshot:
         self.drives = list(getattr(args, 'drive', None) or [])
         self.output = args.output
         self.time = args.time
-        renderer = getattr(args, 'renderer', supported.DEFAULT_RENDERER)
-        self.renderer = renderer
 
-        if renderer == 'web':
-            unsupported = [
-                option for option, supplied in (
-                    ('--projection', args.projection is not None),
-                    ('--colorscheme', args.colorscheme is not None),
-                    ('--view', args.view is not None),
-                    ('--render', args.render),
-                    ('--preview', args.preview),
-                ) if supplied
-            ]
-            if unsupported:
-                sys.stderr.write(
-                    'Error: the web renderer does not support: '
-                    f'{", ".join(unsupported)}\n'
-                )
-                raise SystemExit(1)
+        # The viewer, chosen by the flag, the project or the default, and
+        # required to capture before anything is loaded or written; an
+        # absent one is refused by the extra that installs it, and none is
+        # substituted (`viewer-seam`).
+        explicit = getattr(args, 'viewer', None)
+        try:
+            name = viewers.chosen('capture', explicit,
+                                  reference_origin(args.path))
+            self.presenter = viewers.resolve(
+                'capture', 'machinome snapshot', explicit,
+                reference_origin(args.path))
+        except ExtraUnavailable as error:
+            others = ' or '.join(f'--viewer {other}'
+                                 for other in sorted(viewers.EXTRAS)
+                                 if other != name)
+            sys.stderr.write(
+                f'Error: machinome snapshot --viewer {name} needs the '
+                f'{error.extra} extra: {error}; or use {others}\n')
+            raise SystemExit(1)
+        except (LookupError, RuntimeError, ProjectManifestError) as error:
+            sys.stderr.write(f'Error: {error}\n')
+            raise SystemExit(1)
+
+        honoured = self.presenter.CAPTURE_OPTIONS
+        unsupported = [spelling for option, spelling in VIEWER_OPTIONS
+                       if supplied(args, option) and option not in honoured]
+        if unsupported:
+            sys.stderr.write(
+                f'Error: the {name} viewer does not support: '
+                f'{", ".join(unsupported)}\n')
+            raise SystemExit(1)
 
         # Validate time parameter
         if not 0.0 <= self.time <= 1.0:
@@ -199,20 +237,8 @@ class Snapshot:
                            f"Expected WxH (e.g., 1920x1080)\n")
             sys.exit(1)
 
-        # A table renderer is its node type's: refuse an absent one, by the
-        # extra that installs it, before anything is loaded or written.
-        self.presenter = None
-        if renderer != 'web':
-            try:
-                self.presenter = supported.renderer(renderer)
-            except ExtraUnavailable as error:
-                sys.stderr.write(
-                    f'Error: machinome snapshot --renderer {renderer} needs '
-                    f'the {error.extra} extra: {error}; or use --renderer '
-                    f'web\n')
-                raise SystemExit(1)
-
-        # Load and prepare the node
+        # Load, pose and present the node, in one locked step
+        self.presented = None
         try:
             node = self._load_and_prepare_node()
             if self.output is None:
@@ -220,24 +246,32 @@ class Snapshot:
         except SnapshotOptionError as error:
             sys.stderr.write(f'Error: {error}\n')
             sys.exit(1)
+        except viewers.ViewerError as error:
+            sys.stderr.write(f'Error: {error}\n')
+            raise SystemExit(1)
         except Exception as e:
             sys.stderr.write(f"Error loading node: {e}\n")
             sys.exit(1)
 
-        if renderer == 'web':
-            from machinome.viewers.browser import (
-                BrowserRenderer, BrowserSnapshotError,
-            )
-            try:
-                BrowserRenderer().render(node, args, self.output)
-            except (BrowserSnapshotError, ValueError) as error:
-                sys.stderr.write(f'Error: {error}\n')
-                raise SystemExit(1)
-            print(f"Snapshot saved to {self.output}")
-            return
-
-        # The table renderer draws, and reports its own failures.
-        self.presenter.render(node, args, self.output, run)
+        # The lock is released: the viewer captures, then withdraws what it
+        # presented, whether the capture succeeded or failed.
+        request = viewers.CaptureRequest(
+            imgsize=args.imgsize, time=self.time,
+            camera=getattr(args, 'camera', None),
+            autocenter=bool(getattr(args, 'autocenter', False)),
+            viewall=bool(getattr(args, 'viewall', False)),
+            projection=getattr(args, 'projection', None),
+            colorscheme=getattr(args, 'colorscheme', None),
+            view=getattr(args, 'view', None),
+            render=bool(getattr(args, 'render', False)),
+            preview=bool(getattr(args, 'preview', False)))
+        try:
+            self.presenter.capture(self.presented, request, self.output)
+        except viewers.ViewerError as error:
+            sys.stderr.write(f'Error: {error}\n')
+            raise SystemExit(1)
+        finally:
+            self.presenter.withdraw(self.presented)
         print(f"Snapshot saved to {self.output}")
 
     def _validate_imgsize(self, imgsize):
@@ -252,16 +286,16 @@ class Snapshot:
             return False
 
     def _load_and_prepare_node(self):
-        """Load the node, pose its named drivers, and, for a table
-        renderer, have it present the root for that pose, in the same
-        locked step. The web renderer composes no presentation: it builds
-        and stages the published document itself."""
-        with project_build_lock():
+        """Load the node, pose its named drivers, and have the chosen viewer
+        present the root for that pose, in the same locked step: what it
+        prepares is the viewer's own, and this command composes nothing."""
+        self.build_dir = os.path.abspath(get_build_dir(self.path))
+        with project_build_lock(self.build_dir):
             node = load_node(self.path,
                              overrides=getattr(self, 'overrides', None))
             self._drive(node)
             # set_keyframe is a no-op for non-animated nodes. --time is a
-            # position on the 0..1 timeline under either renderer; a root
+            # position on the 0..1 timeline under either viewer; a root
             # declaring a time base is keyframed at the seconds that
             # position means, so the image shows what the slider shows.
             base = declared_time(type(node))
@@ -279,7 +313,7 @@ class Snapshot:
             node.set_keyframe(self.time * loop if loop is not None
                               else self.time)
             if self.presenter is not None:
-                self.presenter.present(node)
+                self.presented = self.presenter.present(node, self.build_dir)
 
         return node
 

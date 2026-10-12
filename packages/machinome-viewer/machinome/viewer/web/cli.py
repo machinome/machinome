@@ -4,11 +4,12 @@
 
 """The ``machinome-viewer`` command: describe, serve, capture.
 
-These three commands are how machinome uses the viewer. ``describe`` is
-the same answer the ``machinome.viewer`` entry point gives, for a caller
-that would rather not import anything; ``serve`` is the process
-``machinome develop`` launches beside its builder; ``capture`` is the process
-``machinome snapshot --renderer web`` launches on its staged document.
+These three commands describe, serve and capture from the command line.
+The framework reaches the package through its seam of viewers, in its own
+process, and runs none of them: ``describe`` prints the report ``machinome
+viewer`` prints, ``serve`` serves a build directory in the foreground as
+``machinome develop`` serves it in a thread, and ``capture`` photographs a
+staged directory as ``machinome snapshot --viewer web`` does.
 """
 
 import argparse
@@ -22,12 +23,12 @@ logger = logging.getLogger('viewer.cli')
 
 # The development page is a static file this package carries; there is
 # no second frontend process to start or proxy any more (design D13,
-# D14). A released machinome's `machinome develop --web-dev` still passes
-# `--start-frontend` (`packages/machinome/machinome/manager/develop.py`), so these
-# three flags go on being ACCEPTED, changing nothing, so that command
-# keeps working rather than turning into an argparse error on a flag the
-# maker never typed. This is a compatibility promise, not an oversight:
-# a later change must not remove them as unused.
+# D14). A machinome released before the seam of viewers (0.8) runs this
+# command for `machinome develop --web-dev` and passes `--start-frontend`,
+# so these three flags go on being ACCEPTED, changing nothing, so that
+# command keeps working rather than turning into an argparse error on a
+# flag the maker never typed. This is a compatibility promise, not an
+# oversight: a later change must not remove them as unused.
 FRONTEND_FLAG_NOTICE = (
     '%s no longer does anything: the development page is served '
     'directly, with no separate frontend process.'

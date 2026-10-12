@@ -55,12 +55,12 @@ framework keeps working and is described truthfully.
 
 ### Requirement: One answer about the bundle across framework channels
 
-Every framework channel that needs the viewer — the viewer report, static
-export, documentation embedding, the development viewer and the web snapshot
-renderer — SHALL resolve it from the same lookup of the installed viewer
-package and SHALL name the same remedy when it is absent: installing the
-`viewer` extra. Documentation embedding SHALL continue to resolve the bundle
-without loading the CAD runtime.
+Every framework channel that needs the web viewer (the viewer report, static
+export, documentation embedding, the development viewer, the web snapshot and
+the films) SHALL resolve it through the one seam, `machinome.viewer`, at its
+address `machinome.viewer.web`, and SHALL name the same remedy when it is
+absent: installing the `viewer` extra. Documentation embedding SHALL continue
+to resolve the bundle without loading the CAD runtime.
 
 #### Scenario: Export and documentation embedding disagree about nothing
 
@@ -72,8 +72,8 @@ without loading the CAD runtime.
 
 - **WHEN** a documentation build completes an export that was made without
   viewer files
-- **THEN** it copies the bundle from the installed viewer package without
-  importing the framework's CAD runtime
+- **THEN** it copies the bundle the web viewer names without importing the
+  framework's CAD runtime
 
 ### Requirement: The viewer is an optional extra
 
@@ -99,56 +99,24 @@ viewer extra unless the caller explicitly selects the `--no-web` watch loop.
 - **THEN** `machinome viewer` reports the installed bundle and `machinome develop`
   opens the browser viewer by default
 
-### Requirement: The framework finds the installed viewer through its entry point
-
-The framework SHALL locate the viewer by loading the `machinome.viewer`
-entry point group and calling its `bundle` entry, which returns the bundle
-path, the export page, the declared API version and the package version. The
-framework SHALL import no other code of the viewer package. When the group
-has no entry, the viewer is not installed.
-
-#### Scenario: The lookup runs no viewer code beyond the entry point
-
-- **WHEN** the framework resolves the installed viewer
-- **THEN** the viewer's rendering, serving and capturing modules are not
-  imported into the framework's process
-
-#### Scenario: A viewer that is installed but has no built bundle
-
-- **WHEN** the entry point raises because its installation carries no bundle
-- **THEN** the framework reports the viewer package's own remedy rather than
-  its missing-extra remedy
-
-### Requirement: The framework uses the viewer only as a process
-
-Beyond the lookup, the framework SHALL use the viewer only by running the
-viewer package's command line as a separate process, through the interpreter
-running the framework: `serve --build-dir` for the development viewer and
-`capture` for the web snapshot. The framework SHALL NOT import the viewer's
-server or capture code.
-
-#### Scenario: The interpreter's own viewer is the one used
-
-- **WHEN** a different `machinome-viewer` executable appears earlier on the
-  PATH than the one installed beside the running interpreter
-- **THEN** the framework still runs the viewer installed beside its interpreter
-
 ### Requirement: The framework resolves the Machinome viewer
 
 The `viewer` extra SHALL install `machinome-viewer`, the repository's
-distribution whose Python package is `machinome.viewer.web`, and the
-framework SHALL locate it through the `machinome.viewer` entry point group.
-Beyond that lookup, the framework SHALL use it only through
-`python -m machinome.viewer.web describe|serve|capture` in the running
-interpreter, a separate process. Absence and compatibility errors SHALL name
-`pip install "machinome[viewer]"` as the remedy. The framework SHALL import no
-viewer rendering, serving, or capture code.
+distribution whose Python package is `machinome.viewer.web`, the web provider
+of the seam `machinome.viewer`, and the framework SHALL find it by importing
+that address and nothing else: it SHALL read no entry point to find a viewer,
+and the distribution SHALL declare none in the group `machinome.viewer`. The
+framework SHALL serve, capture and embed through the provider's operations in
+its own process and SHALL run no program of the viewer's. Absence and
+compatibility errors SHALL name `pip install "machinome[viewer]"` as the
+remedy. The viewer's console script `machinome-viewer describe|serve|capture`
+and `python -m machinome.viewer.web` SHALL keep printing what they print.
 
 #### Scenario: A host asks an installation for its viewer
 
 - **WHEN** `machinome viewer` runs with `machinome-viewer` installed
-- **THEN** it reports the installed bundle through the `machinome.viewer`
-  entry point
+- **THEN** it reports the installed bundle through the web viewer's provider,
+  the same object `machinome-viewer describe` prints
 
 #### Scenario: Interactive development lacks the viewer
 
@@ -157,9 +125,15 @@ viewer rendering, serving, or capture code.
 
 #### Scenario: The framework runs the viewer at its address
 
-- **WHEN** `machinome develop` starts the viewer's server or `machinome
-  snapshot --renderer web` its capture
-- **THEN** the process runs `python -m machinome.viewer.web` with the
-  interpreter running the framework, and no module named `machinome_viewer`
-  is imported
+- **WHEN** `machinome develop` serves or `machinome snapshot --viewer web`
+  captures
+- **THEN** the work is done by `machinome.viewer.web` in the command's own
+  process, no `python -m machinome.viewer.web` process is run, and no module
+  named `machinome_viewer` is imported
+
+#### Scenario: No entry point is read
+
+- **WHEN** the installed distributions' entry points are listed
+- **THEN** none is in the group `machinome.viewer`, and every channel still
+  finds the web viewer
 

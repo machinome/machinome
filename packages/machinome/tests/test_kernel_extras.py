@@ -68,8 +68,13 @@ EXTRAS = {
     # `cut-the-mesh-nodes`: the node types that need no B-rep engine are
     # distributions of their own, which state SolidPython or trimesh; a bare
     # install carries no node type.
-    'openscad': {f'machinome-node-openscad~={VERSION}'},
-    'solid2': {f'machinome-node-solid2~={VERSION}'},
+    # `viewer-seam`: the OpenSCAD extras install the OpenSCAD viewer beside
+    # their node packages, and it has an extra of its own.
+    'openscad': {f'machinome-node-openscad~={VERSION}',
+                 f'machinome-viewer-openscad~={VERSION}'},
+    'viewer-openscad': {f'machinome-viewer-openscad~={VERSION}'},
+    'solid2': {f'machinome-node-solid2~={VERSION}',
+               f'machinome-viewer-openscad~={VERSION}'},
     'jscad': {f'machinome-node-jscad~={VERSION}'},
     'stl': {f'machinome-node-stl~={VERSION}'},
     # `join-freecad`: the FreeCAD node package, over the B-rep engine; FreeCAD
@@ -119,6 +124,10 @@ PACKAGE_REQUIREMENTS = {
     'machinome-node-freecad': {f'machinome~={VERSION}',
                                f'machinome-engine-brep~={VERSION}', 'numpy',
                                'scipy'},
+    # `viewer-seam`: the OpenSCAD viewer draws with the OpenSCAD node
+    # family's writer and binary contract.
+    'machinome-viewer-openscad': {f'machinome~={VERSION}',
+                                  f'machinome-node-openscad~={VERSION}'},
 }
 
 #: The node packages among them.
@@ -284,12 +293,23 @@ class KernelMetadataTest(TestCase):
     def test_the_solid2_package_requires_the_openscad_package(self):
         # `cut-the-mesh-nodes`: the solid2 module imports the OpenSCAD
         # node family, so its distribution requires the family's; the core's
-        # `solid2` extra names its own distribution alone.
+        # `solid2` extra names its own distribution and, since `viewer-seam`,
+        # the OpenSCAD viewer.
         self.assertIn(f'machinome-node-openscad~={VERSION}',
                       package_manifest('machinome-node-solid2')['dependencies'])
-        (line,) = project()['optional-dependencies']['solid2']
+        lines = project()['optional-dependencies']['solid2']
 
-        self.assertEqual(Requirement(line).name, 'machinome-node-solid2')
+        self.assertEqual({Requirement(line).name for line in lines},
+                         {'machinome-node-solid2',
+                          'machinome-viewer-openscad'})
+
+    def test_the_openscad_viewer_is_installed_by_three_extras_alone(self):
+        extras = project()['optional-dependencies']
+        installing = sorted(
+            extra for extra, lines in extras.items()
+            if any(Requirement(line).name == 'machinome-viewer-openscad'
+                   for line in lines))
+        self.assertEqual(installing, ['openscad', 'solid2', 'viewer-openscad'])
 
     def test_the_development_extra_includes_all(self):
         self.assertIn('machinome[all]',

@@ -31,10 +31,13 @@ from machinome.core.serializer import (ClockedDocumentError, document_body,
                                         symbolic_document)
 from machinome.simulation import Sim
 from machinome.simulation import clocked as clocked_module
-from machinome.viewers import bundle as viewer_bundle
+from machinome.viewer import ViewerError, viewer
+from machinome.viewer.web import stage as stage_module
 
 from .base import BaseNodeTest
 from .clocked_project.counter import Counter, Stateless
+
+web = viewer('web')
 
 
 def built(node):
@@ -57,8 +60,13 @@ def built(node):
 def unreadable():
     """An installation whose viewer renders versions 1 to 4: what every
     installation is until the viewer's own cycle learns version 8."""
-    return patch.object(viewer_bundle, 'document_versions',
-                        return_value=[1, 2, 3, 4])
+    return patch.object(web, 'document_versions', return_value=[1, 2, 3, 4])
+
+
+def identified():
+    """The installed web viewer's identity, as a release would state it."""
+    return patch.object(web, 'identity',
+                        return_value=('machinome-viewer', '0.1.0'))
 
 
 class ProducerPublicationTest(BaseNodeTest):
@@ -68,9 +76,7 @@ class ProducerPublicationTest(BaseNodeTest):
     def test_export_writes_the_document_with_the_warning(self):
         node = built(Counter())
         out_dir = os.path.join(self.build_dir, 'clocked_export')
-        with unreadable(), \
-                patch.object(viewer_bundle, 'describe',
-                             return_value={'version': '0.1.0'}), \
+        with unreadable(), identified(), \
                 self.assertLogs('core.export', level=logging.WARNING) as logs:
             export_node(node, out_dir, widget=False)
         with open(os.path.join(out_dir, 'manifest.json')) as handle:
@@ -92,9 +98,7 @@ class ProducerPublicationTest(BaseNodeTest):
         builder.node = node
         builder.build_dir = os.path.join(self.build_dir, 'clocked_build')
         os.makedirs(builder.build_dir, exist_ok=True)
-        with unreadable(), \
-                patch.object(viewer_bundle, 'describe',
-                             return_value={'version': '0.1.0'}), \
+        with unreadable(), identified(), \
                 self.assertLogs('core.builder',
                                 level=logging.WARNING) as logs:
             with PieceInventory() as inventory:
@@ -113,25 +117,18 @@ class BrowserRefusalTest(BaseNodeTest):
     `symbolic_document` at all -- and a version the installed viewer
     cannot read is refused BEFORE the browser starts."""
 
-    def test_the_web_renderer_refuses_naming_version_eight(self):
-        from machinome.viewers import browser as browser_module
-        from machinome.viewers.browser import (BrowserRenderer,
-                                                BrowserSnapshotError)
-
+    def test_the_web_viewer_refuses_naming_version_eight(self):
         node = built(Counter())
-        renderer = BrowserRenderer()
         beside = os.path.dirname(self.build_dir)
         before = set(os.listdir(beside))
-        with patch.object(browser_module.viewer_bundle, 'has_bundle',
-                          return_value=True), \
-                patch.object(browser_module.viewer_bundle,
-                             'document_versions',
+        with patch('machinome.viewer.web.bundle.has_bundle',
+                   return_value=True), \
+                patch.object(web, 'document_versions',
                              return_value=[1, 2, 3, 4, 5]), \
-                patch.object(browser_module.viewer_bundle, 'describe',
-                             return_value={'version': '0.1.0'}), \
-                patch.object(browser_module, 'run') as started:
-            with self.assertRaises(BrowserSnapshotError) as caught:
-                renderer._stage(node, self.build_dir)
+                identified(), \
+                patch('machinome.viewer.web.capture.Capture') as started:
+            with self.assertRaises(ViewerError) as caught:
+                stage_module._stage(node, self.build_dir)
         message = str(caught.exception)
         self.assertIn('8', message)
         self.assertIn('1, 2, 3, 4, 5', message)
@@ -142,17 +139,12 @@ class BrowserRefusalTest(BaseNodeTest):
         self.assertEqual(set(os.listdir(beside)) - before, set())
 
     def test_a_viewer_reporting_eight_photographs_it(self):
-        from machinome.viewers import browser as browser_module
-        from machinome.viewers.browser import BrowserRenderer
-
         node = built(Counter())
-        renderer = BrowserRenderer()
-        with patch.object(browser_module.viewer_bundle, 'has_bundle',
-                          return_value=True), \
-                patch.object(browser_module.viewer_bundle,
-                             'document_versions',
+        with patch('machinome.viewer.web.bundle.has_bundle',
+                   return_value=True), \
+                patch.object(web, 'document_versions',
                              return_value=[1, 2, 3, 4, 5, 8]):
-            staging = renderer._stage(node, self.build_dir)
+            staging = stage_module._stage(node, self.build_dir)
         self.addCleanup(shutil.rmtree, staging, ignore_errors=True)
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
@@ -189,8 +181,6 @@ class ReaimedGateTest(BaseNodeTest):
         from machinome.core import export as export_module
         from machinome.core.builder import Builder
         from machinome.core.pieces import PieceInventory
-        from machinome.viewers import browser as browser_module
-        from machinome.viewers.browser import BrowserRenderer
 
         blind = (None, None)
         node = built(Counter())
@@ -215,12 +205,11 @@ class ReaimedGateTest(BaseNodeTest):
         self.assertFalse(os.path.exists(os.path.join(builder.build_dir,
                                                      'viewer.json')))
 
-        renderer = BrowserRenderer()
-        with patch.object(browser_module, 'compiled_clocked',
-                          return_value=blind), \
-                patch.object(browser_module.viewer_bundle, 'has_bundle',
-                             return_value=True):
-            self.refused(lambda: renderer._stage(node, self.build_dir))
+        with patch('machinome.core.serializer.compiled_clocked',
+                   return_value=blind), \
+                patch('machinome.viewer.web.bundle.has_bundle',
+                      return_value=True):
+            self.refused(lambda: stage_module._stage(node, self.build_dir))
 
         from tools import generate_clocked_corpus
 

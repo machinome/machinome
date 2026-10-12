@@ -4,8 +4,9 @@
 
 """Locate the built viewer without importing anything else.
 
-This module is the whole interface machinome has to the viewer's files: the
-``machinome.viewer`` entry point resolves to :func:`describe`, and the
+This module is where the viewer's files are found: the package's provider
+operations ``describe``, ``files``, ``identity`` and ``document_versions``,
+which the framework asks through its seam of viewers, read them here, and the
 ``machinome-viewer describe`` command prints the same answer. It imports
 only the standard library so that answering costs no browser bundle, no web
 framework and no CAD stack.
@@ -106,7 +107,7 @@ class BundleMissing(FileNotFoundError):
 
 
 def describe():
-    """The installed viewer, as the ``machinome.viewer`` entry point reports it.
+    """The installed viewer, as ``machinome viewer`` reports it.
 
     Returns a JSON-serializable mapping with the absolute ``path`` of the
     bundle, the absolute ``index`` of the standalone export page, the integer
@@ -121,7 +122,7 @@ def describe():
     bundle at ``path`` actually carries rather than the ones a later
     edit put in ``package.json``. Raises :class:`BundleStale` when it is
     older and cannot be rebuilt: answering from a stale bundle is how a
-    correct document came to be refused by an old renderer.
+    correct document came to be refused by an old bundle.
     """
     if not has_bundle():
         raise BundleMissing()

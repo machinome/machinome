@@ -3,14 +3,16 @@
 ## Purpose
 
 The development server puts a published build in front of the viewer. It is
-the process `machinome develop` launches beside its builder, and it knows the
-build only as a directory: it serves the published document and model files,
+what `machinome develop` serves through, in a thread of its own process that
+the package's session owns (change `viewer-seam`), and what `machinome-viewer
+serve` runs in the foreground; it knows the build only as a directory: it serves the published document and model files,
 the installed viewer bundle, the reload channel and the build-error surface,
 and never imports project source. Migrated from machinome's `web-viewer`
 baseline when the viewer became this package; the launch contract is new.
 
-Code: `machinome/viewer/web/server.py`, `machinome/viewer/web/widget/develop.html`,
-`machinome/viewer/web/cli.py` (`serve`).
+Code: `machinome/viewer/web/server.py`, `machinome/viewer/web/session.py`,
+`machinome/viewer/web/widget/develop.html`, `machinome/viewer/web/cli.py`
+(`serve`).
 ## Requirements
 ### Requirement: The server is launched on a build directory
 
@@ -26,18 +28,20 @@ separate frontend process to start or proxy. The command SHALL nevertheless
 go on **accepting** `--dev`, `--start-frontend` and `--frontend-port`,
 changing nothing and logging one notice naming the flag and saying the page
 is served directly, and SHALL go on reading `MACHINOME_FRONTEND_PORT`
-harmlessly. This is a compatibility promise, not an oversight: a released
-machinome passes `--start-frontend` under its own viewer-development flag,
+harmlessly. This is a compatibility promise, not an oversight: a machinome
+released before the seam of viewers (0.8) passes `--start-frontend` under its
+own viewer-development flag,
 and a viewer that refused it would turn a working framework command into an
 error on a flag the maker never typed. A later change SHALL NOT remove
 these flags as unused.
 
 #### Scenario: A framework launches the server beside its builder
 
-- **WHEN** `machinome develop` starts `machinome-viewer serve --build-dir _build`
-  as a separate process
+- **WHEN** `machinome develop` asks the package to serve `_build`, or a host
+  runs `machinome-viewer serve --build-dir _build`
 - **THEN** the server listens on the configured port and serves that build
-  directory, having imported nothing of the project
+  directory, having imported nothing of the project; a port another listener
+  holds is refused when serving starts, naming the port
 
 #### Scenario: A released framework asks for the old npm dev server
 
@@ -62,7 +66,9 @@ these flags as unused.
 ### Requirement: Reload channel
 
 The system SHALL expose `/ws/reload`, immediately send `"reload"` on connect,
-and the development page SHALL retry disconnected clients every 2 seconds and
+and send `"reload"` again on every open connection each time the serving
+session is told a build was published, without closing it; and the
+development page SHALL retry disconnected clients every 2 seconds and
 show an offline banner while the development process is unavailable. On
 reconnect, it SHALL check `/_build_error` before refreshing the published
 snapshot. The banner SHALL be shown only once an attempt that had succeeded
@@ -75,8 +81,8 @@ carried by the same bundle the viewer is.
 
 #### Scenario: Rebuild refreshes the browser
 
-- **WHEN** a source edit completes a rebuild cycle and the launching process
-  restarts the server
+- **WHEN** a source edit completes a rebuild cycle and the session that
+  serves the build is told so
 - **THEN** the browser re-reads the published snapshot without a page refresh
 
 #### Scenario: The development process goes away

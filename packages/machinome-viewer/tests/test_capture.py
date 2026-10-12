@@ -2,6 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+import importlib
 import json
 import os
 import tempfile
@@ -10,9 +11,11 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from machinome.viewer.web import capture as capture_module
 from machinome.viewer.web.bundle import BundleStale
 from machinome.viewer.web.capture import Capture, CaptureError, mount_options
+
+# The module, not the package's operation of the same name (`viewer-seam`).
+capture_module = importlib.import_module('machinome.viewer.web.capture')
 
 from .support import (
     HAS_PIL, HAS_PLAYWRIGHT, SPINNER, needs_bundle, needs_pil,

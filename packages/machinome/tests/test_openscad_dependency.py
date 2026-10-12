@@ -20,8 +20,9 @@ from machinome.node.fusion import FusionNode
 from machinome.node.jscad import JScadNode
 from machinome.node.solid2 import Solid2Node
 from machinome.node.openscad.binary import OpenScadUnavailable, openscad_binary
-from machinome.node.openscad import renderer as openscad_viewer
-from machinome.node.openscad.renderer import OpenScadRenderer
+from machinome.viewer import CaptureRequest
+from machinome.viewer import openscad as openscad_viewer
+from machinome.viewer.openscad import OpenScadViewer
 
 
 class ExactBox(CadQueryNode):
@@ -172,50 +173,61 @@ class OpenScadDependencyTest(TestCase):
                 node.as_number(OpenSCADConstant('$t'))
 
     def test_gui_viewer_is_not_an_openscad_dependency_path(self):
-        self.assertFalse(hasattr(openscad_viewer, 'OpenScadViewer'))
+        """The OpenSCAD viewer takes a still and serves nothing: no
+        interactive OpenSCAD viewer is a path that needs the binary."""
+        self.assertEqual(openscad_viewer.OPERATIONS,
+                         frozenset({'present', 'capture'}))
+        self.assertFalse(hasattr(openscad_viewer, 'serve'))
 
-    def test_renderer_missing_binary_names_web_alternative(self):
-        renderer = OpenScadRenderer()
-        args = argparse.Namespace(
-            camera=None, autocenter=False, viewall=False, imgsize='100x100',
-            projection=None, colorscheme=None, preview=False, view=None,
-        )
+    def test_viewer_missing_binary_names_web_alternative(self):
+        renderer = OpenScadViewer()
+        args = CaptureRequest(imgsize='100x100')
         runner = Mock(side_effect=AssertionError('must fail before launch'))
 
         with patch.dict(os.environ, {'DISPLAY': ':1'}), \
              patch('machinome.node.openscad.binary.shutil.which', return_value=None):
             with self.assertRaisesRegex(
                     RuntimeError,
-                    'OpenSCAD snapshot renderer.*--renderer web'):
+                    'the OpenSCAD viewer requires the OpenSCAD binary.*'
+                    '--viewer web'):
                 renderer.draw(Mock(basepath='part',
                                    kept_artifacts=Mock(return_value=())),
                               args, 'part.png', runner)
         self.assertFalse(os.path.exists('part.png'))
 
-    def test_snapshot_does_not_substitute_the_web_renderer(self):
+    def test_snapshot_does_not_substitute_the_web_viewer(self):
         snapshot = Snapshot()
         args = argparse.Namespace(
             path='part.py',
             output=os.path.join(self.directory.name, 'part.png'),
             time=0.0, camera=None, autocenter=False, viewall=False,
             imgsize='100x100', projection=None, colorscheme=None, render=False,
-            preview=False, view=None, renderer='openscad',
+            preview=False, view=None, viewer='openscad',
         )
-        browser_render = patch(
-            'machinome.viewers.browser.BrowserRenderer.render')
+        node = Mock(scad_file='part.scad', basepath='part',
+                    kept_artifacts=Mock(return_value=()))
+
+        def prepared():
+            snapshot.presented = node
+            return node
+
         with patch.object(snapshot, '_load_and_prepare_node',
-                          return_value=Mock(scad_file='part.scad')), \
-             patch('machinome.node.openscad.renderer.OpenScadRenderer.draw',
+                          side_effect=prepared), \
+             patch('machinome.viewer.openscad.OpenScadViewer.draw',
                    side_effect=OpenScadUnavailable(
-                       'the OpenSCAD snapshot renderer',
-                       'rendering launches OpenSCAD', 'use --renderer web')), \
-             browser_render as web, \
+                       'the OpenSCAD viewer',
+                       'rendering launches OpenSCAD', 'use --viewer web')), \
+             patch('machinome.viewer.web.capture') as web, \
              patch('sys.stderr', new_callable=io.StringIO) as stderr:
             with self.assertRaises(SystemExit):
                 snapshot.handle(args)
 
         web.assert_not_called()
-        self.assertIn('--renderer web', stderr.getvalue())
+        self.assertEqual(
+            stderr.getvalue(),
+            'Error: the OpenSCAD viewer requires the OpenSCAD binary because '
+            "rendering launches OpenSCAD; install OpenSCAD and ensure "
+            "'openscad' is on PATH, or use --viewer web\n")
         self.assertFalse(os.path.exists(args.output))
 
 

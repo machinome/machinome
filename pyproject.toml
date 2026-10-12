@@ -21,6 +21,7 @@ machinome-node-solid2 = { workspace = true }
 machinome-node-step = { workspace = true }
 machinome-node-stl = { workspace = true }
 machinome-viewer = { workspace = true }
+machinome-viewer-openscad = { workspace = true }
 machinome-skills = { workspace = true }
 machinome-studio = { workspace = true }
 

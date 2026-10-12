@@ -7,11 +7,12 @@ change `openscad-out`, design.md Decision 6; capabilities `cli` and
 `kernel-extras`).
 
 One table names the node types the core supports: the class names the node
-root resolves, the renderer a node type contributes (a provisional column,
-which the viewer cycle removes) and the commands that need its module. The
-node root, the CLI and the snapshot command read it, and no other module of
-the core spells a node type's module. A node type's address and extra are
-not stored: they are `machinome.node.<key>` and `machinome[<key>]`. The
+root resolves and the commands that need its module. Its provisional renderer
+column went with the change `viewer-seam`: viewers are providers behind the
+seam `machinome.viewer`, and the table names none. The node root and the CLI
+read it, and no other module of the core spells a node type's module. A node
+type's address and extra are not stored: they are `machinome.node.<key>` and
+`machinome[<key>]`. The
 FreeCAD node type, which joined the repository from a repository of its own,
 is its last row (OpenSpec change `join-freecad`).
 """
@@ -91,17 +92,15 @@ class TheTableTest(TestCase):
                         f'`from machinome.node.{key} import {name}`',
                         str(raised.exception))
 
-    def test_one_renderer_is_contributed_and_it_is_the_default(self):
+    def test_the_table_names_no_viewer(self):
+        import dataclasses
         table = supported()
-        names = [name for node_type in table.NODE_TYPES.values()
-                 for name, _ in node_type.renderers]
-        self.assertEqual(names, ['open' 's' 'cad'])
-        self.assertEqual(table.DEFAULT_RENDERER, 'open' 's' 'cad')
-        renderer = table.renderer('open' 's' 'cad')
-        self.assertEqual(type(renderer).__module__,
-                         'machinome.node.open' 's' 'cad.renderer')
-        self.assertTrue(callable(renderer.present))
-        self.assertTrue(callable(renderer.render))
+        self.assertEqual([field.name for field in
+                          dataclasses.fields(table.NodeType)],
+                         ['classes', 'commands'])
+        self.assertFalse(hasattr(table, 'DEFAULT_RENDERER'))
+        self.assertFalse(hasattr(table, 'renderer'))
+        self.assertNotIn('renderer', SUPPORTED.read_text().lower())
 
     def test_the_command_column_agrees_with_the_cli(self):
         from machinome import cli
@@ -129,9 +128,8 @@ class TheTableTest(TestCase):
                                if isinstance(target, ast.Name))
             elif isinstance(node, ast.AnnAssign):
                 defined.add(node.target.id)
-        self.assertEqual(defined, {'NodeType', 'NODE_TYPES',
-                                   'DEFAULT_RENDERER', 'absent', 'load',
-                                   'renderer', 'needed_by'})
+        self.assertEqual(defined, {'NodeType', 'NODE_TYPES', 'absent',
+                                   'load', 'needed_by'})
 
     def test_importing_it_imports_no_node_type(self):
         run = run_python(
@@ -169,7 +167,7 @@ class LoadRefusesTest(TestCase):
         return json.loads(run.stdout.strip().splitlines()[-1])
 
     def test_a_node_type_that_cannot_be_found_is_refused_by_its_extra(self):
-        for call in ("load('open' 's' 'cad')", "renderer('open' 's' 'cad')"):
+        for call in ("load('open' 's' 'cad')",):
             with self.subTest(call=call):
                 self.assertEqual(
                     self.loaded(call, ('machinome.node.open' 's' 'cad',)),
@@ -239,15 +237,15 @@ def doors(key):
 
 #: Each node package dropped, by its node type's key, and the doors that
 #: refuse it naming that key: its own four, and, for the OpenSCAD node
-#: package, the renderer's module, the renderer through the table and the
-#: node type built over the package (`cut-the-mesh-nodes`).
+#: package, the OpenSCAD viewer that draws with it, resolved through the
+#: seam of viewers (`viewer-seam`), and the node type built over the package
+#: (`cut-the-mesh-nodes`).
 ABSENCES = {
     'step': doors('step'),
     'open' 's' 'cad': {
         **doors('open' 's' 'cad'),
-        'renderer-module': 'import machinome.node.open' 's' 'cad.renderer',
-        'renderer': 'from machinome.node import supported\n'
-                    "supported.renderer('open' 's' 'cad')",
+        'viewer': 'import machinome.viewer as viewers\n'
+                  "viewers.viewer('open' 's' 'cad')",
         'solid2': 'from machinome.node.solid2 import Solid2Node',
     },
     'solid2': doors('solid2'),
@@ -257,7 +255,7 @@ ABSENCES = {
 }
 
 #: A project of one SolidPython part, which `machinome snapshot` renders
-#: through the OpenSCAD renderer.
+#: through the OpenSCAD viewer.
 PROJECT = {
     'pyproject.toml': '[tool.machinome]\nmodel = "demo:Demo"\n',
     'demo.py': textwrap.dedent('''\
@@ -288,7 +286,7 @@ class AbsentPackageTest(TestCase):
     """(`cut-the-brep-nodes`, ADR-184; `cut-the-mesh-nodes`) A node type
     whose distribution is not installed is refused by its extra at every
     door, as an absent kernel is, and so is everything reached through it:
-    the OpenSCAD snapshot renderer, the snapshot command and `Solid2Node`
+    the OpenSCAD viewer, the snapshot command and `Solid2Node`
     with the OpenSCAD node package absent. The absence is stood in for by
     the package's directory dropped from `sys.path` before `machinome` is
     imported, which the editable install allows; an uninstalled wheel is the
@@ -331,9 +329,9 @@ class AbsentPackageTest(TestCase):
         self.assertEqual(run.returncode, 1, run.output)
         self.assertEqual(
             run.stderr.strip().splitlines()[-1],
-            'Error: machinome snapshot --renderer open' 's' 'cad needs the '
+            'Error: machinome snapshot --viewer open' 's' 'cad needs the '
             'open' 's' 'cad extra: ' + refused('open' 's' 'cad')[3]
-            + '; or use --renderer web', run.output)
+            + '; or use --viewer web', run.output)
         self.assertFalse(os.path.exists(image))
 
 

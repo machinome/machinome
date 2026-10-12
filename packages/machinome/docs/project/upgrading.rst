@@ -1,3 +1,36 @@
+.. _upgrading-0-8-to-0-9:
+
+Upgrading from Machinome 0.8 to 0.9
+===================================
+
+.. _upgrade-viewer-flag:
+
+The viewer flag
+---------------
+
+A still, a development session and an export each use a viewer, chosen by
+name: the OpenSCAD viewer or the browser viewer, ``web``.
+
+#. **Write** ``--viewer`` **where you wrote** ``--renderer``. ``machinome
+   snapshot --renderer web`` is refused, naming the new spelling, and
+   ``machinome snapshot --viewer web`` takes the same image.
+   ``machinome develop`` and ``machinome export`` take ``--viewer`` too.
+#. **Name a project's viewer once.** A project whose stills are all taken
+   in the browser declares ``viewer = "web"`` under ``[tool.machinome]``
+   and drops the flag; the flag still wins where it is given. Without
+   either, a still is OpenSCAD's and serving and embedding are the
+   browser's, as before.
+#. **Install the OpenSCAD viewer with your node types.**
+   ``machinome[openscad]`` and ``machinome[solid2]`` install it; a project
+   of other parts that takes its stills through OpenSCAD installs
+   ``pip install "machinome[viewer-openscad]"``. Without it, ``machinome
+   snapshot`` names that extra and ``--viewer web``.
+#. **Read** ``machinome viewer`` **for the installed browser viewer.** The
+   entry point ``machinome.viewer`` is gone: the framework imports the
+   viewer at its address and runs it in its own process. A host that read
+   the entry point reads ``machinome viewer``'s report, which is unchanged,
+   or runs ``machinome-viewer describe``.
+
 Upgrading from Machinome 0.8.0 to 0.8.1
 =======================================
 

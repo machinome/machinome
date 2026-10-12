@@ -13,7 +13,7 @@ the OpenSCAD viewer reaches the family's package. `assemble()` composes that
 description and writes no file, and needs neither SolidPython nor the
 family. A `.scad` is written only where a path reads it: a family leaf's, for
 OpenSCAD to render its STL, and the root's, on demand and transient, for the
-OpenSCAD snapshot renderer, which removes it once drawn. A build sweeps every
+OpenSCAD viewer, which removes it once drawn. A build sweeps every
 other, and a transient one whatever its document did.
 
 The tests of an absent SolidPython or family run in subprocesses under
@@ -35,7 +35,7 @@ from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
 from machinome import currency
-from machinome.viewers.bundle import has_bundle
+from machinome.viewer.web.bundle import has_bundle
 from tests.brep_engine_absent import run_machinome, run_python
 from tests.test_expression_type import (core_modules, names_the_engine_package,
                                         solid2_imports)
@@ -62,13 +62,10 @@ SOLID2_IMPORTERS = {
     'machinome/manager/templates/project/root/solid2.py',
 }
 
-#: The modules outside the family that reach its package: none imports it
-#: since the OpenSCAD snapshot renderer moved into it
-#: (`cut-the-mesh-nodes`); the table of supported node types names the
-#: renderer's module by string in its provisional renderer row.
-ENGINE_REACHES = {
-    'machinome/node/supported.py',
-}
+#: The modules outside the family that reach its package: none. The OpenSCAD
+#: viewer is a distribution of its own (`viewer-seam`), and the table of
+#: supported node types names no module of the family.
+ENGINE_REACHES = set()
 
 #: What a build log would say if it presented or skipped SCAD.
 SCAD_LOGGED = re.compile(r'\.scad\b|SCAD presentation|OpenSCAD engine')
@@ -198,9 +195,11 @@ print('SCAD', len(glob.glob(os.path.join(os.environ['SOLID_BUILD_DIR'], '**',
                                          '*.scad'), recursive=True)))
 '''
 
-#: The OpenSCAD snapshot renderer, its runner and the loader patched.
+#: The OpenSCAD viewer's runner and the loader patched; the runner is the
+#: module's own, read when the viewer draws, so a viewer that cannot be
+#: imported leaves it untouched.
 SNAPSHOT = '''
-import argparse, glob, os
+import argparse, glob, os, subprocess
 from unittest.mock import patch
 import machinome.manager.snapshot as module
 parser = argparse.ArgumentParser()
@@ -208,7 +207,7 @@ parser.add_argument('path')
 module.Snapshot().add_arguments(parser)
 image = os.path.join(os.environ['SOLID_BUILD_DIR'], 'shot.png')
 args = parser.parse_args([{reference!r}, '-o', image, '--imgsize', '64x48'])
-with patch.object(module, 'run') as runner, \\
+with patch.object(subprocess, 'run') as runner, \\
         patch.object(module, 'load_node') as loaded:
     try:
         module.Snapshot().handle(args)
@@ -295,7 +294,7 @@ class WithoutTheEngineTest(_BuildDirectory):
                       'materialization published nothing at', run.output)
         self.assertEqual(scad_files(self.build_dir), [])
 
-    def test_the_openscad_snapshot_renderer_is_refused_before_loading(self):
+    def test_the_openscad_viewer_is_refused_before_loading(self):
         for missing, remedy in ABSENCES.items():
             with self.subTest(missing=missing):
                 build_dir = tempfile.mkdtemp(prefix='scad-absent-shot-')
@@ -308,11 +307,11 @@ class WithoutTheEngineTest(_BuildDirectory):
                 self.assertIn('RUN 0 LOADED 0', lines)
                 self.assertIn('IMAGE False', lines)
                 self.assertIn('SCAD 0', lines)
-                self.assertIn('machinome snapshot --renderer openscad needs '
+                self.assertIn('machinome snapshot --viewer openscad needs '
                               'the openscad extra', run.stderr)
                 self.assertIn(missing, run.stderr)
                 self.assertIn(remedy, run.stderr)
-                self.assertIn('--renderer web', run.stderr)
+                self.assertIn('--viewer web', run.stderr)
 
 
 # 2.6 ---------------------------------------------------------------------
@@ -475,7 +474,7 @@ class SweepTest(_BuildDirectory):
 # 2.9 ---------------------------------------------------------------------
 
 class SnapshotOnDemandTest(_BuildDirectory):
-    """The OpenSCAD renderer writes the root's `.scad` for its pose, has
+    """The OpenSCAD viewer writes the root's `.scad` for its pose, has
     OpenSCAD read it, and removes it (the coordinator's correction of
     Decision 3); a build removes one a killed render left."""
 
@@ -502,11 +501,11 @@ class SnapshotOnDemandTest(_BuildDirectory):
         image = os.path.join(self.build_dir, f'shot-{renderer}-{time}.png')
         args = parser.parse_args([
             str(ROOT / FIXTURE / 'machine.py') + f':{root}', '-o', image,
-            '--renderer', renderer, '--time', str(time),
+            '--viewer', renderer, '--time', str(time),
             '--imgsize', '64x48'])
-        with patch('machinome.manager.snapshot.run', self.runner), \
-                patch('machinome.viewers.browser.BrowserRenderer.capture',
-                      lambda _, staging, args, output: open(
+        with patch('machinome.viewer.openscad.run', self.runner), \
+                patch('machinome.viewer.web.capture',
+                      lambda staging, request, output: open(
                           output, 'wb').close()):
             Snapshot().handle(args)
         self.assertTrue(os.path.exists(image))
@@ -605,7 +604,7 @@ class SnapshotOnDemandTest(_BuildDirectory):
     def test_a_build_removes_a_root_scad_a_killed_render_left(self):
         """An unchanged build still removes a transient artifact: the
         document is the one already published, and the root's `.scad`,
-        which the renderer published transient, goes (`openscad-out`)."""
+        which the viewer published transient, goes (`openscad-out`)."""
         from machinome.node.openscad.writer import generate_scad, scad_file
         self.build()
         node, parts = self.machine()
@@ -624,7 +623,7 @@ class SnapshotOnDemandTest(_BuildDirectory):
 
     @skipUnless(has_bundle(),
                 'machinome-viewer not installed (pip install "machinome[viewer]")')
-    def test_the_web_renderer_writes_no_scad(self):
+    def test_the_web_viewer_writes_no_scad(self):
         self.snapshot('web')
         node, parts = self.machine()
         self.assertEqual(
@@ -652,22 +651,20 @@ class DevelopTest(_BuildDirectory):
     leaf's `.scad` and no other."""
 
     def test_develop_without_the_viewer_is_refused_and_starts_nothing(self):
+        import machinome.viewer as viewers
         from machinome.manager.develop import Develop
-        from machinome.viewers.bundle import INSTALL_REMEDY
         args = SimpleNamespace(path=MIXED, web=False, web_dev=False,
                                no_web=False, debug_builder=False,
-                               callback=None, set=None)
-        with patch('machinome.manager.develop.has_bundle',
-                   return_value=False), \
-                patch('machinome.manager.develop.Popen') as popen, \
+                               callback=None, set=None, viewer=None)
+        with patch.object(viewers, 'viewer',
+                          side_effect=viewers.absent('web')), \
                 patch('machinome.manager.develop.Process') as process, \
                 patch('sys.stderr.write') as written:
             with self.assertRaises(SystemExit) as raised:
                 Develop().handle(args)
         self.assertEqual(raised.exception.code, 1)
-        self.assertIn(INSTALL_REMEDY, ''.join(
+        self.assertIn('pip install "machinome[viewer]"', ''.join(
             call.args[0] for call in written.call_args_list))
-        popen.assert_not_called()
         process.assert_not_called()
 
     def test_the_develop_builder_writes_only_the_solid2node_scad(self):

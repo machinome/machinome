@@ -62,10 +62,12 @@ handle when a host needs to operate retained machine state.
 Capture a still
 ===============
 
-For a Machinome project, use the framework's ``machinome snapshot --renderer web``
-command. The framework prepares the build and launches this package's capture
-process. Consult its :doc:`CLI reference </reference/cli>` for model and
-output arguments.
+For a Machinome project, use the framework's ``machinome snapshot --viewer web``
+command. The framework asks this package, through its seam of viewers, to
+stage the posed model and photograph it, in the command's own process.
+Consult its :doc:`CLI reference </reference/cli>` for model and output
+arguments, and :ref:`choose-the-viewer` below for the viewers it chooses
+from.
 
 For an already staged directory containing ``viewer.json`` and its models:
 
@@ -89,3 +91,48 @@ pose rather than trying to seek it with ``--time``.
 The capture command adds its page and bundle to the staging directory.
 Use a disposable staged copy, not a directory whose contents must remain
 unchanged. See :doc:`/reference/viewer/cli` for every option and failure behavior.
+
+.. _choose-the-viewer:
+
+Choose the viewer of a still
+============================
+
+``machinome snapshot`` takes its image through one of two viewers, named
+with ``--viewer``:
+
+``openscad``
+    The default. OpenSCAD draws the model's SCAD: fast, no browser, an
+    opaque background, no markings. It honours every option of the
+    command, ``--projection``, ``--colorscheme``, ``--view``, ``--render``
+    and ``--preview`` among them. It needs the OpenSCAD executable and
+    ``pip install "machinome[openscad]"``, or
+    ``pip install "machinome[viewer-openscad]"`` for a model of other parts.
+
+``web``
+    The browser viewer photographs the model in headless Chromium, with a
+    transparent background and the markings drawn. It frames the whole
+    model by default, so ``--autocenter`` and ``--viewall`` change nothing,
+    and it refuses ``--projection``, ``--colorscheme``, ``--view``,
+    ``--render`` and ``--preview`` by name. It needs
+    ``pip install "machinome[web-snapshot]"`` and ``playwright install
+    chromium``.
+
+.. code-block:: console
+
+   machinome snapshot --viewer openscad -o inspect.png --viewall --autocenter
+   machinome snapshot --viewer web -o card.png
+
+A project that takes its stills in the browser names its viewer once, in
+its manifest, and drops the flag; a flag given still wins:
+
+.. code-block:: toml
+
+   [tool.machinome]
+   model = "counter.c09_clocked:Counter"
+   viewer = "web"
+
+The project's viewer is also the one ``machinome develop`` serves through
+and ``machinome export`` embeds; the OpenSCAD viewer does neither, so a
+project that names it runs those two commands with ``--viewer web``. A
+viewer that is not installed is refused naming the extra that installs it,
+and the other viewer is never used in its place.

@@ -14,10 +14,12 @@ modules of the engine package, `machinome.engine.brep` and
 `cut-the-engines`), as is each node module over the B-rep engine,
 `machinome.node.cadquery`, `.build123d`, `.step` and `.molejo` (OpenSpec
 change `cut-the-brep-nodes`), and each node type that needs no B-rep engine,
-the OpenSCAD node family `machinome.node.openscad` with its snapshot
-renderer, `.solid2`, `.jscad` and `.stl` (OpenSpec change
-`cut-the-mesh-nodes`), and the FreeCAD node package `machinome.node.freecad`,
-whose adapter imports the OCCT binding (OpenSpec change `join-freecad`).
+the OpenSCAD node family `machinome.node.openscad`, `.solid2`, `.jscad` and
+`.stl` (OpenSpec change `cut-the-mesh-nodes`), and the FreeCAD node package
+`machinome.node.freecad`, whose adapter imports the OCCT binding (OpenSpec
+change `join-freecad`). The OpenSCAD viewer, which draws with the family's
+writer and binary, is a distribution of its own,
+`machinome.viewer.openscad` (OpenSpec change `viewer-seam`).
 
 Read from the source, not from a running interpreter: the core imports
 `OCP` and `cadquery` nowhere but the template a project copies, it names
@@ -160,9 +162,10 @@ SEAMS = {
     # base and binary contract the module imports (`cut-the-mesh-nodes`).
     'machinome-node-solid2/machinome/node/solid2.py':
         {'machinome.node.openscad'},
-    # The table's provisional renderer column names the OpenSCAD snapshot
-    # renderer, a module of the family's package (`cut-the-mesh-nodes`).
-    'machinome/node/supported.py': {'machinome.node.openscad'},
+    # The OpenSCAD viewer draws with the family's writer and binary
+    # contract (`viewer-seam`); the table names no viewer.
+    'machinome-viewer-openscad/machinome/viewer/openscad/__init__.py':
+        {'machinome.node.openscad'},
     # The project files `machinome new` copies, each of which imports its
     # node type from its module (`root-cleanup`).
     'machinome/manager/templates/project/root/cadquery.py':
@@ -173,12 +176,18 @@ SEAMS = {
 
 #: The modules that reach a kernel module through the table of supported
 #: node types (`machinome.node.supported`, `openscad-out`), naming none:
-#: the node root reads it for its refusals (`root-cleanup`), and the
-#: snapshot and new commands for the renderer and the starter
-#: (`cut-the-mesh-nodes`).
+#: the node root reads it for its refusals (`root-cleanup`), and the new
+#: command for the starter (`cut-the-mesh-nodes`). The snapshot command
+#: reads it no more: it reaches its viewer through the seam of viewers
+#: (`viewer-seam`).
 TABLE_READERS = ('machinome/cli.py', 'machinome/manager/import_step.py',
-                 'machinome/node/__init__.py', 'machinome/manager/snapshot.py',
-                 'machinome/manager/new.py')
+                 'machinome/node/__init__.py', 'machinome/manager/new.py')
+
+#: The core's modules that name no kernel module although they name a node
+#: type or a viewer by its technology: the table and the seam of viewers,
+#: and the snapshot command, which names none (`viewer-seam`).
+NAMING_NONE = ('machinome/node/supported.py', 'machinome/viewer/__init__.py',
+               'machinome/manager/snapshot.py')
 
 
 def every_module():
@@ -332,11 +341,13 @@ class KernelsOnlyInTheirModulesTest(TestCase):
         for path in ('machinome/node/markings.py',
                      'machinome-node-step/machinome/node/step.py',
                      'machinome-node-solid2/machinome/node/solid2.py',
-                     'machinome/node/supported.py'):
+                     'machinome-viewer-openscad/machinome/viewer/openscad/'
+                     '__init__.py'):
             with self.subTest(seam=path):
                 self.assertEqual(naming.get(path), SEAMS[path])
-        for path in TABLE_READERS:
+        for path in (*TABLE_READERS, *NAMING_NONE):
             with self.subTest(reader=path):
+                self.assertTrue((ROOT / path).is_file())
                 self.assertIsNone(naming.get(path))
 
     def test_each_kernel_module_checks_its_kernel_first(self):

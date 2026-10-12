@@ -3,12 +3,17 @@
 ## Purpose
 
 Transparent PNG rendering of a staged document through the viewer in a
-headless browser: the process `machinome snapshot --renderer web` launches once it
-has described the photographed node in a staging directory. Migrated from the
+headless browser: what `machinome snapshot --viewer web` has the package
+do, in the command's own process, once the package has staged the
+photographed node in a directory of its own (`stage.py`, change
+`viewer-seam`), and what `machinome-viewer capture` does with a directory it
+is handed. Migrated from the
 capture half of machinome's `web-snapshot` baseline when the viewer became
 this package; the staging contract is new.
 
-Code: `machinome/viewer/web/capture.py`, `machinome/viewer/web/cli.py` (`capture`).
+Code: `machinome/viewer/web/capture.py`, `machinome/viewer/web/stage.py`,
+`machinome/viewer/web/__init__.py` (`present`, `capture`, `withdraw`),
+`machinome/viewer/web/cli.py` (`capture`).
 ## Requirements
 ### Requirement: A staged document is photographed with a transparent background
 

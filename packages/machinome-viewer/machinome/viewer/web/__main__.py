@@ -4,8 +4,9 @@
 
 """``python -m machinome.viewer.web``: the console script, through an interpreter.
 
-machinome runs the viewer this way so that the viewer installed beside the
-interpreter running ``solid`` is the one used, whatever else is on the PATH.
+Running it this way uses the viewer installed beside that interpreter,
+whatever else is on the PATH. The framework itself runs no program of the
+viewer's: it reaches the package through its seam of viewers.
 """
 
 import sys

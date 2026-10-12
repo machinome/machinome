@@ -18,7 +18,7 @@ PNG = base64.b64decode(
 
 
 class WebScreenshotTest(unittest.TestCase):
-    def test_uses_web_renderer_and_publishes_its_bytes_unchanged(self) -> None:
+    def test_uses_web_viewer_and_publishes_its_bytes_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"
             project.mkdir()
@@ -33,8 +33,8 @@ class WebScreenshotTest(unittest.TestCase):
                 result = refresh_project_screenshot(project, ("machinome",))
 
             self.assertTrue(result.updated)
-            self.assertEqual(observed[:4], ["machinome", "snapshot", "--renderer", "web"])
-            # The web renderer rejects the OpenSCAD-only presentation options.
+            self.assertEqual(observed[:4], ["machinome", "snapshot", "--viewer", "web"])
+            # The web viewer rejects the OpenSCAD-only presentation options.
             self.assertNotIn("--projection", observed)
             self.assertEqual(screenshot_path(project).read_bytes(), PNG)
 
@@ -87,6 +87,6 @@ class ModelScreenshotTest(unittest.TestCase):
 
             _result, observed = self.render(project, None)
 
-            self.assertEqual(observed[:3], ["machinome", "snapshot", "--renderer"])
+            self.assertEqual(observed[:3], ["machinome", "snapshot", "--viewer"])
             self.assertEqual((project / "screenshot.png").read_bytes(), PNG)
             self.assertFalse((project / "screenshots").exists())

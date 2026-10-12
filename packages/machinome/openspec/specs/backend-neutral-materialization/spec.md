@@ -121,8 +121,8 @@ SCAD text SHALL be written only where a path reads it. A build SHALL write the
 `OpenScadNode`, or another subclass of the family's leaf base), from which
 OpenSCAD renders that leaf's STL, and SHALL write no other `.scad`: none for an
 assembly, a fusion, a flexible leaf or any other leaf, whatever is installed.
-`machinome snapshot --renderer openscad` SHALL write the root's `.scad` on
-demand, under the `web-snapshot` capability, because the OpenSCAD renderer
+`machinome snapshot --viewer openscad` SHALL write the root's `.scad` on
+demand, under the `web-snapshot` capability, because the OpenSCAD viewer
 draws it. With the OpenSCAD node package installed, a caller MAY ask any node
 for its SCAD text (`machinome.node.openscad.writer.scad_code(node)`, and
 `scad_code` on a family leaf) or have it written
@@ -137,7 +137,7 @@ capability.
 The system SHALL preserve OpenSCAD and Solid2 modelling support, through the
 `openscad` and `solid2` extras. A project leaf overriding a method named
 `as_scad` is no longer a SCAD-only adapter: the core never calls it. The
-OpenSCAD snapshot renderer SHALL remain selectable with its existing default
+OpenSCAD viewer SHALL remain selectable with its existing default
 and missing-tool behavior, and SHALL be refused naming the `openscad` extra
 when the package cannot be imported. Flexible SCAD
 output SHALL retain its numeric-snapshot and symbolic-time limitations; it
@@ -193,7 +193,7 @@ different geometry engine.
 
 - **WHEN** a person wants the SCAD of a built machine
 - **THEN** `machinome.node.openscad.writer.scad_code(node)` gives any node's
-  SCAD text, and `machinome snapshot --renderer openscad` renders the root's
+  SCAD text, and `machinome snapshot --viewer openscad` renders the root's
   SCAD with OpenSCAD and then removes the file it wrote for it
 
 #### Scenario: A normal build without the engine
@@ -218,7 +218,7 @@ different geometry engine.
 
 #### Scenario: The OpenSCAD snapshot boundary remains
 
-- **WHEN** `machinome snapshot --renderer openscad` renders a numerically bound
+- **WHEN** `machinome snapshot --viewer openscad` renders a numerically bound
   machine pose
 - **THEN** it writes the root's SCAD presentation for that pose on demand and
   renders it with OpenSCAD, with the existing snapshot behavior

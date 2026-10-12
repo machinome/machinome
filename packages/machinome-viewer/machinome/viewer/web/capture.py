@@ -4,12 +4,14 @@
 
 """Photograph a staged document through the viewer in a headless browser.
 
-``machinome snapshot --renderer web`` describes the node it is photographing in
-a staging directory -- a ``viewer.json`` beside the model files it names --
-and hands that directory to ``machinome-viewer capture``. This module adds
-the viewer bundle and a mount page to it, serves it over a loopback HTTP
-server, opens it in headless Chromium and screenshots the canvas with the
-background left transparent.
+``machinome snapshot --viewer web`` has the web viewer stage the node it is
+photographing in a directory -- a ``viewer.json`` beside the model files it
+names (``stage.py``) -- and capture it, in the command's process;
+``machinome-viewer capture`` does the same with a directory it is handed.
+This module
+adds the viewer bundle and a mount page to it, serves it over a loopback
+HTTP server, opens it in headless Chromium and screenshots the canvas with
+the background left transparent.
 
 Everything about the node lives in the staged document. The options that
 come in from the command line describe the photograph only: its size, the
@@ -38,7 +40,7 @@ from machinome.viewer.web.bundle import (
 from machinome.viewer.web.currency import ensure_current
 
 PLAYWRIGHT_REMEDY = (
-    "Install the browser renderer with "
+    "Install the browser viewer's capture with "
     "`pip install 'machinome-viewer[snapshot]'` and then download Chromium "
     "with `playwright install chromium`."
 )
@@ -198,7 +200,7 @@ class Capture:
 
         The bundle is made current first (ADR-059). A capture photographs
         whatever it copies, with nobody at a browser to notice that an old
-        renderer refused a correct document -- so a stale bundle that
+        bundle refused a correct document -- so a stale bundle that
         cannot be rebuilt fails here, writing no image, exactly as an
         absent one does.
         """
@@ -314,6 +316,6 @@ MachinomeViewer.mount('#host', '{DOCUMENT}', {payload}).then((viewer) => {{
     def assert_not_root(self):
         if hasattr(os, "geteuid") and os.geteuid() == 0:
             raise CaptureError(
-                "The web renderer cannot run as root because Chromium cannot "
+                "The web viewer cannot run as root because Chromium cannot "
                 "use its sandbox. Run the command as an unprivileged user."
             )

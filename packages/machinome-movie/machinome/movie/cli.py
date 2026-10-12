@@ -293,12 +293,15 @@ def find_node():
 
 
 def installed_viewer(verb):
-    """The bundle of the viewer installed beside the framework, as `machinome
-    develop` finds it through the `machinome.viewer` entry point."""
-    from machinome.viewers import bundle
+    """The bundle of the web viewer installed beside the framework, asked
+    through the seam of viewers as `machinome develop` asks it; only the web
+    viewer draws a film, so no project's viewer is read."""
+    from machinome import viewer as viewers
     try:
-        return str(bundle.describe()['path'])
-    except bundle.ViewerUnavailable as absent:
+        web = viewers.require('web', 'embed', f'machinome movie {verb}')
+        web.describe()
+        return str(web.files()['machinome-viewer.js'])
+    except (ImportError, LookupError, RuntimeError, OSError) as absent:
         raise Refusal(f'machinome movie {verb} needs the browser viewer: '
                       f'{absent}') from None
 

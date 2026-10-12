@@ -54,6 +54,13 @@ WIDGET = (REPOSITORY / 'packages' / 'machinome-viewer' / 'machinome' / 'viewer'
 SITE_FOUNDRY = 'https://machinome.org/foundry/'
 
 
+#: The films' pages (`join-movie`).
+FILM_PAGES = ('howto/film-a-movie.rst', 'howto/declare-a-movie.rst',
+              'howto/draw-a-movie-stage.rst', 'reference/movie/index.rst',
+              'reference/movie/command.rst', 'reference/movie/document.rst',
+              'reference/movie/episode.rst')
+
+
 def documents():
     for rst in sorted(DOCS.rglob('*.rst')):
         relative = rst.relative_to(DOCS).as_posix()
@@ -200,7 +207,11 @@ class NavigationTest(unittest.TestCase):
     def test_no_page_shows_the_videomaker_s_former_command_lines(self):
         # `join-movie`: a film is made with `machinome movie`, which finds
         # the installed viewer; the changelog's line names the former import.
-        former = ('bin/videomaker.mjs', 'machinome' '_movie', '--viewer')
+        # The videomaker's former `--viewer <bundle>` is looked for on the
+        # films' pages and on lines of a film's command alone: since
+        # `viewer-seam` the snapshot, develop and export commands take a
+        # `--viewer` of their own.
+        former = ('bin/videomaker.mjs', 'machinome' '_movie')
         for relative, text in documents():
             for spelled in former:
                 if relative == 'project/changelog.rst' \
@@ -208,6 +219,12 @@ class NavigationTest(unittest.TestCase):
                     continue
                 with self.subTest(document=relative, spelled=spelled):
                     self.assertNotIn(spelled, text)
+            films = relative in FILM_PAGES
+            for line in text.splitlines():
+                if films or 'machinome movie' in line \
+                        or 'videomaker' in line:
+                    with self.subTest(document=relative, line=line[:60]):
+                        self.assertNotIn('--viewer', line)
         changelog = (DOCS / 'project' / 'changelog.rst').read_text()
         self.assertEqual(
             [line for line in changelog.splitlines()
@@ -324,7 +341,8 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-jscad', 'machinome-node-stl',
                              'machinome-node-freecad', 'machinome-mechanics',
                              'machinome-viewer', 'machinome-skills',
-                             'machinome-movie', 'machinome-studio'):
+                             'machinome-movie', 'machinome-studio',
+                             'machinome-viewer-openscad'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
         for line in ('pip install "machinome[movie]"', 'machinome movie setup',

@@ -92,7 +92,7 @@ def refresh_project_screenshot(
                         *machinome_command,
                         "snapshot",
                         *([model] if model else ()),
-                        "--renderer",
+                        "--viewer",
                         "web",
                         "-o",
                         str(output),

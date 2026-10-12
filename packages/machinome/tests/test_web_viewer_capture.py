@@ -2,24 +2,25 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The web snapshot renderer: this side stages, the viewer photographs."""
+"""The web viewer's still (OpenSpec change `viewer-seam`, capability
+`web-snapshot`): the provider `machinome.viewer.web` stages the posed node in
+a directory of its own and photographs it in the command's process; the
+snapshot command asks it to present inside the build lock, to capture after
+the lock is released, and to withdraw afterwards."""
 
 import argparse
 import json
 import os
 import shutil
-import subprocess
-import sys
 import tempfile
 import unittest
-from subprocess import CompletedProcess
 from unittest import TestCase
 from unittest.mock import Mock, PropertyMock, patch
 
 from machinome.core.camera import parse_camera
-from machinome.viewers import browser as browser_module
-from machinome.viewers.browser import BrowserRenderer, BrowserSnapshotError
-from machinome.viewers.bundle import has_bundle
+from machinome.viewer import CaptureRequest, ViewerError, viewer
+from machinome.viewer.web import stage as stage_module
+from machinome.viewer.web.bundle import has_bundle
 from machinome.core.builder import prepare_build_dir
 from machinome.core.pieces import PieceInventory, fact_sidecar
 from machinome import currency
@@ -27,7 +28,7 @@ from machinome.manager.snapshot import Snapshot
 from tests.test_build_lock import lock_is_held
 from tests.test_export import Cube
 
-VIEWER = [sys.executable, '-m', 'machinome.viewer.web']
+web = viewer('web')
 
 needs_viewer = unittest.skipUnless(
     has_bundle(), 'machinome-viewer not installed (pip install "machinome[viewer]")'
@@ -35,9 +36,24 @@ needs_viewer = unittest.skipUnless(
 
 
 def snapshot_args(**overrides):
-    values = dict(path='model.py', time=0.0, camera=None, imgsize='100x100')
+    values = dict(path='model.py', output='shot.png', time=0.0, camera=None,
+                  autocenter=False, viewall=False, imgsize='100x100',
+                  projection=None, colorscheme=None, render=False,
+                  preview=False, view=None, viewer='web')
     values.update(overrides)
     return argparse.Namespace(**values)
+
+
+def web_snapshot(node, build_dir, args):
+    """`machinome snapshot --viewer web` on `node`, built in `build_dir`."""
+    snapshot = Snapshot()
+    with patch('machinome.manager.snapshot.select_model') as selected, \
+         patch('machinome.manager.snapshot.load_node', return_value=node), \
+         patch('machinome.manager.snapshot.get_build_dir',
+               return_value=build_dir):
+        selected.return_value.reference = 'model.py'
+        snapshot.handle(args)
+    return snapshot
 
 
 @needs_viewer
@@ -49,11 +65,10 @@ class BrowserStagingTest(TestCase):
         os.makedirs(self.build_dir)
         self.node = Cube(self.build_dir)
         self.model = self.node.stl_file
-        self.renderer = BrowserRenderer()
 
     def test_stage_copies_every_artifact_from_its_pinned_identity(self):
-        staging = self.renderer.stage(self.node, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        staging = stage_module.stage(self.node, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         staged_model = os.path.join(staging, "parts", "cube.stl")
         with open(self.model, 'rb') as source, open(staged_model, 'rb') as copy:
             self.assertEqual(source.read(), copy.read())
@@ -64,15 +79,15 @@ class BrowserStagingTest(TestCase):
             self.assertIn(b"solid cube", staged.read())
 
     def test_stage_holds_the_document_and_nothing_of_the_viewer(self):
-        staging = self.renderer.stage(self.node, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        staging = stage_module.stage(self.node, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         self.assertEqual(sorted(os.listdir(staging)), ['parts', 'viewer.json'])
 
     def test_stage_does_not_create_a_fact_record_in_the_build(self):
         record = fact_sidecar(self.model)
         self.assertFalse(os.path.exists(record))
-        staging = self.renderer.stage(self.node, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        staging = stage_module.stage(self.node, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         self.assertFalse(os.path.exists(record))
 
     def test_stage_does_not_restamp_metadata_only_stale_currency(self):
@@ -98,8 +113,8 @@ class BrowserStagingTest(TestCase):
               patch.object(self.node, '_up_to_date',
                            side_effect=AssertionError(
                                'read-only staging called mutating currency'))):
-            staging = self.renderer.stage(self.node, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+            staging = stage_module.stage(self.node, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
 
         self.assertEqual(
             {path: state(path) for path in (self.model, fact, source_record)},
@@ -107,24 +122,31 @@ class BrowserStagingTest(TestCase):
 
     def test_capture_begins_after_the_build_lock_is_released(self):
         node = self.node
+        observed = {}
         with (
             patch.object(node, "build_stls") as build,
-            patch.object(self.renderer, "build_dir", return_value=self.build_dir),
-            patch.object(self.renderer, "capture") as capture,
+            patch.object(node, "set_keyframe"),
+            patch("machinome.viewer.web.capture") as capture,
         ):
-            build.side_effect = lambda: self.assertTrue(lock_is_held(self.build_dir))
-            capture.side_effect = lambda *args: self.assertFalse(lock_is_held(self.build_dir))
-            self.renderer.render(node, snapshot_args(), "shot.png")
+            build.side_effect = lambda: observed.update(
+                building=lock_is_held(self.build_dir))
+            capture.side_effect = lambda *args: observed.update(
+                capturing=lock_is_held(self.build_dir))
+            web_snapshot(node, self.build_dir, snapshot_args())
+        self.assertEqual(observed, {'building': True, 'capturing': False})
 
     def test_stage_is_removed_when_capture_fails(self):
         node = self.node
         with (
             patch.object(node, "build_stls"),
-            patch.object(self.renderer, "build_dir", return_value=self.build_dir),
-            patch.object(self.renderer, "capture", side_effect=RuntimeError("boom")),
+            patch.object(node, "set_keyframe"),
+            patch("machinome.viewer.web.capture",
+                  side_effect=ViewerError("boom")),
+            patch("sys.stderr"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "boom"):
-                self.renderer.render(node, snapshot_args(), "shot.png")
+            with self.assertRaises(SystemExit) as raised:
+                web_snapshot(node, self.build_dir, snapshot_args())
+        self.assertEqual(raised.exception.code, 1)
         leftovers = [name for name in os.listdir(self.temporary.name)
                      if name.startswith("_build.web-snapshot.")]
         self.assertEqual(leftovers, [])
@@ -135,8 +157,8 @@ class BrowserStagingTest(TestCase):
         calls `bind_document`, so it can never carry a `bindings` key or
         declare version 4 -- asserted here, not built, since nothing
         about this path changed."""
-        staging = self.renderer.stage(self.node, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        staging = stage_module.stage(self.node, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
 
@@ -144,8 +166,8 @@ class BrowserStagingTest(TestCase):
         self.assertIn(document['version'], (2, 3))
 
     def test_stage_survives_overlapping_build_preparation(self):
-        staging = self.renderer.stage(self.node, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        staging = stage_module.stage(self.node, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         staged_document = os.path.join(staging, 'viewer.json')
         staged_model = os.path.join(staging, 'parts', 'cube.stl')
 
@@ -179,19 +201,18 @@ class PublishedBuildIsNotDisturbedTest(TestCase):
         self.errors = os.path.join(self.build_dir, "errors.json")
         with open(self.errors, "w") as output:
             json.dump({"error": "a real failure", "tstamp": 1.0}, output)
-        self.renderer = BrowserRenderer()
 
     def render(self):
         node = Cube(self.build_dir)
         with (
             patch.object(node, "build_stls"),
-            patch.object(self.renderer, "build_dir", return_value=self.build_dir),
-            patch.object(self.renderer, "capture") as capture,
+            patch.object(node, "set_keyframe"),
+            patch("machinome.viewer.web.capture") as capture,
         ):
             capture.side_effect = lambda staging, *rest: self.assertTrue(
                 os.path.isfile(os.path.join(staging, "viewer.json")))
-            self.renderer.render(node, snapshot_args(),
-                                 os.path.join(self.temporary.name, "shot.png"))
+            web_snapshot(node, self.build_dir, snapshot_args(
+                output=os.path.join(self.temporary.name, "shot.png")))
 
     def test_artifacts_of_another_published_tree_survive(self):
         self.render()
@@ -210,7 +231,7 @@ class PublishedBuildIsNotDisturbedTest(TestCase):
 
     def test_the_staged_document_describes_the_photographed_node(self):
         staged = {}
-        original = self.renderer.stage
+        original = stage_module.stage
 
         def capture_stage(node, build_dir):
             staging = original(node, build_dir)
@@ -218,122 +239,95 @@ class PublishedBuildIsNotDisturbedTest(TestCase):
                 staged.update(json.load(source))
             return staging
 
-        with patch.object(self.renderer, "stage", side_effect=capture_stage):
+        with patch.object(stage_module, "stage", side_effect=capture_stage):
             self.render()
         self.assertEqual(staged["root"]["name"], "Cube")
         self.assertEqual(staged["root"]["model"], "parts/cube.stl")
 
 
-class CaptureDelegationTest(TestCase):
-    """The photograph is the viewer's; this side only says what to shoot."""
+class CaptureInProcessTest(TestCase):
+    """The photograph is the web viewer's, taken in the command's process
+    (`viewer-seam`, ADR-194): the provider resolves the camera notation,
+    mounts the staged directory and photographs it, and runs no program of
+    the viewer's."""
 
-    def setUp(self):
-        self.renderer = BrowserRenderer()
-        self.completed = CompletedProcess(args=[], returncode=0, stdout='', stderr='')
+    def captured(self, request, output='shot.png'):
+        with patch('machinome.viewer.web.capture.Capture') as capture:
+            web.capture('/tmp/staged', request, output)
+        capture.assert_called_once_with('/tmp/staged')
+        rendered = capture.return_value.render
+        rendered.assert_called_once()
+        return rendered.call_args.args
 
-    def test_the_viewer_capture_runs_on_the_staging_directory(self):
-        with patch.object(browser_module, 'run', return_value=self.completed) as run:
-            self.renderer.capture('/tmp/staged', snapshot_args(time=0.25, imgsize='320x240'),
-                                  'out/shot.png')
-        run.assert_called_once()
-        command = run.call_args.args[0]
-        self.assertEqual(command, VIEWER + [
-            'capture', '/tmp/staged', '-o', 'out/shot.png',
-            '--imgsize', '320x240', '--time', '0.25',
-        ])
-        self.assertTrue(run.call_args.kwargs.get('capture_output'))
+    def test_the_staging_directory_is_photographed_at_its_size_and_time(self):
+        output, imgsize, options = self.captured(
+            CaptureRequest(time=0.25, imgsize='320x240'), 'out/shot.png')
+        self.assertEqual(output, 'out/shot.png')
+        self.assertEqual(imgsize, (320, 240))
+        self.assertEqual(options['time'], 0.25)
+        for key in ('view', 'up', 'fov'):
+            self.assertNotIn(key, options)
 
-    def _joined_value(self, command, option):
-        """The value of the one `<option>=<value>` token of `command`."""
-        tokens = [token for token in command if token.startswith(option + '=')]
-        self.assertEqual(len(tokens), 1, command)
-        return [float(v) for v in tokens[0][len(option) + 1:].split(',')]
+    def test_a_requested_camera_is_resolved_and_handed_over(self):
+        _, _, options = self.captured(CaptureRequest(camera='10,20,30,0,0,0'))
+        self.assertEqual(options['view'], {'camera': [10, 20, 30],
+                                           'target': [0, 0, 0]})
+        self.assertEqual(options['up'], [0, 0, 1])
+        self.assertEqual(options['fov'], 22.5)
 
-    def test_a_requested_camera_is_resolved_here_and_handed_over(self):
-        with patch.object(browser_module, 'run', return_value=self.completed) as run:
-            self.renderer.capture('/tmp/staged', snapshot_args(camera='10,20,30,0,0,0'),
-                                  'shot.png')
-        command = run.call_args.args[0]
-        self.assertEqual(self._joined_value(command, '--view'), [10, 20, 30, 0, 0, 0])
-        self.assertEqual(self._joined_value(command, '--up'), [0, 0, 1])
-        self.assertIn('--fov', command)
-        self.assertEqual(float(command[command.index('--fov') + 1]), 22.5)
-
-    def test_a_negative_leading_vector_travels_with_its_option(self):
-        """argparse reads a separate token beginning with `-` as an option
-        unless it is one bare number, so a comma tuple such as
-        `-0.24,0.34,0.9` must reach the viewer joined to its option."""
+    def test_a_negative_leading_vector_is_honoured(self):
+        """A camera whose resolved up direction begins with a negative
+        component reaches the page as the numbers it is."""
         for camera in ('0,0,0,65,0,35,1400', '-100,20,30,0,0,0'):
             with self.subTest(camera=camera):
                 resolved = parse_camera(camera)
-                command = self.renderer.capture_command(
-                    '/tmp/staged', snapshot_args(camera=camera), 'shot.png')
-                self.assertNotIn('--view', command)
-                self.assertNotIn('--up', command)
-                self.assertEqual(self._joined_value(command, '--view'),
-                                 [*resolved.eye, *resolved.target])
-                self.assertEqual(self._joined_value(command, '--up'),
-                                 list(resolved.up))
+                _, _, options = self.captured(CaptureRequest(camera=camera))
+                self.assertEqual(options['view'],
+                                 {'camera': list(resolved.eye),
+                                  'target': list(resolved.target)})
+                self.assertEqual(options['up'], list(resolved.up))
         self.assertLess(parse_camera('0,0,0,65,0,35,1400').up[0], 0)
 
-    @needs_viewer
-    def test_the_viewer_parses_the_command_it_is_handed(self):
-        """The installed viewer's own parser, as a process: the command
-        gets past argument parsing to the viewer's refusal of a staging
-        directory that does not exist, and no browser is started."""
-        with tempfile.TemporaryDirectory() as temporary:
-            output = os.path.join(temporary, 'x.png')
-            command = self.renderer.capture_command(
-                os.path.join(temporary, 'missing'),
-                snapshot_args(camera='0,0,0,65,0,35,1400'), output)
-            result = subprocess.run(command, capture_output=True, text=True,
-                                    timeout=60)
-            self.assertNotEqual(result.returncode, 2, result.stderr)
-            self.assertNotIn('expected one argument', result.stderr)
-            self.assertFalse(os.path.exists(output))
+    def test_the_viewers_failure_is_its_message(self):
+        from machinome.viewer.web.capture import CaptureError, PLAYWRIGHT_REMEDY
+        with patch('machinome.viewer.web.capture.Capture') as capture:
+            capture.return_value.render.side_effect = CaptureError(
+                PLAYWRIGHT_REMEDY)
+            with self.assertRaises(ViewerError) as raised:
+                web.capture('/tmp/staged', CaptureRequest(), 'shot.png')
+        self.assertEqual(str(raised.exception), PLAYWRIGHT_REMEDY)
+        self.assertIn("machinome-viewer[snapshot]", PLAYWRIGHT_REMEDY)
+        self.assertIn('playwright install chromium', PLAYWRIGHT_REMEDY)
 
-    def test_no_camera_means_no_camera_flags(self):
-        with patch.object(browser_module, 'run', return_value=self.completed) as run:
-            self.renderer.capture('/tmp/staged', snapshot_args(), 'shot.png')
-        command = run.call_args.args[0]
-        for token in command:
-            self.assertFalse(token.startswith(('--view', '--up', '--fov')), token)
-
-    def test_the_viewers_failure_is_reported_verbatim(self):
-        failed = CompletedProcess(args=[], returncode=1, stdout='',
-                                  stderr="Error: Install the browser renderer with "
-                                         "`pip install 'machinome-viewer[snapshot]'`\n")
-        with patch.object(browser_module, 'run', return_value=failed):
-            with self.assertRaises(BrowserSnapshotError) as raised:
-                self.renderer.capture('/tmp/staged', snapshot_args(), 'shot.png')
-        self.assertIn("machinome-viewer[snapshot]", str(raised.exception))
-
-    def test_a_missing_viewer_is_refused_before_staging(self):
-        with patch.object(browser_module.viewer_bundle, 'has_bundle', return_value=False), \
-             patch.object(browser_module.viewer_bundle, 'missing_bundle_remedy',
-                          return_value='pip install "machinome[viewer]"'):
-            with self.assertRaises(BrowserSnapshotError) as raised:
-                self.renderer.stage(Mock(), "/unused")
-        self.assertIn('machinome[viewer]', str(raised.exception))
+    def test_a_missing_bundle_is_refused_before_staging(self):
+        with patch('machinome.viewer.web.bundle.has_bundle',
+                   return_value=False), \
+             patch('machinome.viewer.web.bundle.missing_bundle_remedy',
+                   return_value='Viewer bundle not found'):
+            with self.assertRaises(ViewerError) as raised:
+                stage_module.stage(Mock(), "/unused")
+        self.assertEqual(str(raised.exception), 'Viewer bundle not found')
 
     def test_browser_failure_never_falls_back_to_openscad(self):
-        args = argparse.Namespace(
-            path="model.py", output="shot.png", time=0.0, camera=None,
-            autocenter=False, viewall=False, imgsize="100x100", projection=None,
-            colorscheme=None, render=False, preview=False, view=None, renderer="web",
-        )
         snapshot = Snapshot()
         node = Mock()
         node.__class__.__name__ = "Part"
+
+        def prepared():
+            snapshot.presented = '/tmp/staged'
+            return node
+
         with (
-            patch.object(snapshot, "_load_and_prepare_node", return_value=node),
-            patch("machinome.viewers.browser.BrowserRenderer.render",
-                  side_effect=BrowserSnapshotError("browser missing")),
-            patch("machinome.node.openscad.renderer.OpenScadRenderer"
-                  ".render") as openscad,
+            patch.object(snapshot, "_load_and_prepare_node",
+                         side_effect=prepared),
+            patch("machinome.viewer.web.capture",
+                  side_effect=ViewerError("browser missing")),
+            patch("machinome.viewer.web.withdraw"),
+            patch("machinome.viewer.openscad.capture") as openscad,
+            patch("sys.stderr"),
         ):
             with self.assertRaises(SystemExit):
-                snapshot.handle(args)
+                snapshot.handle(snapshot_args())
         openscad.assert_not_called()
 
 
@@ -350,12 +344,9 @@ class BrowserSnapshotEndToEndTest(TestCase):
         from PIL import Image
         with tempfile.TemporaryDirectory() as temporary:
             output = os.path.join(temporary, "web.png")
-            Snapshot().handle(argparse.Namespace(
-                path="tests/web_snapshot_project.py", time=0.0, camera=None,
-                autocenter=False, viewall=False, imgsize="320x240", projection=None,
-                colorscheme=None, render=False, preview=False, view=None,
-                renderer="web", output=output,
-            ))
+            Snapshot().handle(snapshot_args(
+                path="tests/web_snapshot_project.py", imgsize="320x240",
+                output=output))
             alpha = Image.open(output).convert("RGBA").getchannel("A")
             self.assertEqual(alpha.getpixel((0, 0)), 0)
             self.assertIn(255, alpha.getdata())
@@ -369,14 +360,13 @@ class UnreadableDocumentRefusalTest(TestCase):
     def setUp(self):
         from tests.base import BUILD_DIR
         from machinome.simulation.enumeration import bind_declared_defaults
-        from tests.running_project.machine import Columns, Train, TrainBody
+        from tests.running_project.machine import Train, TrainBody
 
         if os.path.exists(BUILD_DIR):
             shutil.rmtree(BUILD_DIR)
         os.makedirs(BUILD_DIR)
         self.addCleanup(shutil.rmtree, BUILD_DIR, ignore_errors=True)
         self.build_dir = BUILD_DIR
-        self.renderer = BrowserRenderer()
         self.running = Train()
         bind_declared_defaults(self.running)
         self.running.assemble()
@@ -391,34 +381,34 @@ class UnreadableDocumentRefusalTest(TestCase):
         return {name for name in os.listdir(parent)
                 if 'web-snapshot' in name}
 
+    def reading(self, versions):
+        """The web viewer reading `versions`, its bundle present."""
+        return (patch('machinome.viewer.web.bundle.has_bundle',
+                      return_value=True),
+                patch.object(web, 'document_versions', return_value=versions),
+                patch.object(web, 'identity',
+                             return_value=('machinome-viewer', '0.1.0')))
+
     def test_a_running_model_is_refused_naming_the_three_facts(self):
         before = self.siblings()
-        with patch.object(browser_module.viewer_bundle, 'has_bundle',
-                          return_value=True), \
-             patch.object(browser_module.viewer_bundle, 'document_versions',
-                          return_value=[1, 2, 3, 4]), \
-             patch.object(browser_module.viewer_bundle, 'describe',
-                          return_value={'version': '0.1.0'}), \
-             patch.object(browser_module, 'run') as started:
-            with self.assertRaises(BrowserSnapshotError) as raised:
-                self.renderer.render(self.running, snapshot_args(),
-                                     os.path.join(self.build_dir, 'shot.png'))
+        bundle, versions, identity = self.reading([1, 2, 3, 4])
+        with bundle, versions, identity, \
+             patch('machinome.viewer.web.capture.Capture') as started:
+            with self.assertRaises(ViewerError) as raised:
+                web.present(self.running, self.build_dir)
         message = str(raised.exception)
         self.assertIn('document version 11', message)
-        self.assertIn('1, 2, 3, 4', message)
+        self.assertIn('the installed web viewer renders 1, 2, 3, 4', message)
         self.assertIn('0.1.0', message)
+        self.assertIn('--viewer open' 's' 'cad', message)
         started.assert_not_called()
-        self.assertFalse(os.path.exists(
-            os.path.join(self.build_dir, 'shot.png')))
         self.assertEqual(self.siblings(), before)
 
     def test_a_viewer_that_can_read_it_stages_as_before(self):
-        with patch.object(browser_module.viewer_bundle, 'has_bundle',
-                          return_value=True), \
-             patch.object(browser_module.viewer_bundle, 'document_versions',
-                          return_value=list(range(1, 12))):
-            staging = self.renderer.stage(self.running, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        bundle, versions, identity = self.reading(list(range(1, 12)))
+        with bundle, versions, identity:
+            staging = stage_module.stage(self.running, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
         self.assertEqual(document['version'], 11)
@@ -438,12 +428,10 @@ class UnreadableDocumentRefusalTest(TestCase):
         bind_declared_defaults(controlled)
         controlled.assemble()
         controlled.build_stls()
-        with patch.object(browser_module.viewer_bundle, 'has_bundle',
-                          return_value=True), \
-             patch.object(browser_module.viewer_bundle, 'document_versions',
-                          return_value=list(range(1, 12))):
-            staging = self.renderer.stage(controlled, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        bundle, versions, identity = self.reading(list(range(1, 12)))
+        with bundle, versions, identity:
+            staging = stage_module.stage(controlled, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
 
@@ -453,12 +441,10 @@ class UnreadableDocumentRefusalTest(TestCase):
         self.assertIn('program', document)
 
     def test_an_untimed_model_is_unaffected(self):
-        with patch.object(browser_module.viewer_bundle, 'has_bundle',
-                          return_value=True), \
-             patch.object(browser_module.viewer_bundle, 'document_versions',
-                          return_value=[1, 2, 3, 4]):
-            staging = self.renderer.stage(self.untimed, self.build_dir)
-        self.addCleanup(self.renderer.remove_stage, staging)
+        bundle, versions, identity = self.reading([1, 2, 3, 4])
+        with bundle, versions, identity:
+            staging = stage_module.stage(self.untimed, self.build_dir)
+        self.addCleanup(web.withdraw, staging)
         with open(os.path.join(staging, 'viewer.json')) as handle:
             document = json.load(handle)
         self.assertLess(document['version'], 5)

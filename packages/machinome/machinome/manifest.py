@@ -24,8 +24,8 @@ import tomllib
 from dataclasses import dataclass
 
 __all__ = [
-    'Declaration', 'MODEL_NAME', 'ProjectManifestError', 'project_root',
-    'read_declaration',
+    'Declaration', 'MODEL_NAME', 'ProjectManifestError', 'declared_viewer',
+    'project_root', 'read_declaration', 'reference_origin',
 ]
 
 
@@ -55,6 +55,9 @@ class Declaration:
     default: str | None
     #: Whether the manifest declares its models by name.
     named: bool
+    #: The viewer the project names under `[tool.machinome] viewer`, or
+    #: None (OpenSpec change `viewer-seam`).
+    viewer: str | None = None
 
 
 def _find_manifest(origin=None):
@@ -87,6 +90,38 @@ def project_root(origin=None):
     return _find_manifest(origin)[0]
 
 
+def _viewer(manifest, declaration):
+    """The viewer a manifest names, or None; a value that is not a string
+    is refused naming the key. Which names a viewer is the seam's
+    (`machinome.viewer`) to answer."""
+    named = declaration.get('viewer')
+    if named is not None and not isinstance(named, str):
+        raise ProjectManifestError(
+            f"{manifest} sets [tool.machinome] viewer = {named!r}; a viewer "
+            f"is named by a string, such as \"web\"")
+    return named
+
+
+def reference_origin(reference):
+    """Where a command looks for the project a reference belongs to: the
+    file the reference names, when it names one that exists, else None,
+    the working directory."""
+    if not reference:
+        return None
+    path = reference.split(':', 1)[0]
+    return os.path.abspath(path) if os.path.exists(path) else None
+
+
+def declared_viewer(origin=None):
+    """The viewer the nearest project above `origin` names, or None when
+    it names none or no project is found there."""
+    try:
+        _root, manifest, declaration = _find_manifest(origin)
+    except ProjectManifestError:
+        return None
+    return _viewer(manifest, declaration)
+
+
 def read_declaration(origin=None):
     """The nearest Machinome project above `origin`, as a `Declaration`.
 
@@ -94,13 +129,15 @@ def read_declaration(origin=None):
     imports project code.
     """
     root, manifest, declaration = _find_manifest(origin)
+    viewer = _viewer(manifest, declaration)
     table = declaration.get('models')
     model = declaration.get('model')
     if table is None:
         if not isinstance(model, str) or not model:
             raise ProjectManifestError(
                 f"{manifest} has [tool.machinome] but no model reference")
-        return Declaration(root, manifest, ((None, model),), None, False)
+        return Declaration(root, manifest, ((None, model),), None, False,
+                           viewer)
 
     if not isinstance(table, dict) or not table:
         raise ProjectManifestError(
@@ -125,4 +162,4 @@ def read_declaration(origin=None):
         raise ProjectManifestError(
             f"{manifest} sets model = {model!r}, which must name one of "
             f"the declared models: {', '.join(name for name, _ in models)}")
-    return Declaration(root, manifest, tuple(models), model, True)
+    return Declaration(root, manifest, tuple(models), model, True, viewer)

@@ -19,8 +19,9 @@ onto the widget's index.html; ``:t:`` (0..1) poses the animation and
 snapshot of one pose.
 
 Exports made with ``--no-widget`` are completed at build time from the
-installed machinome-viewer package's widget files, so committed exports only need to
-carry manifest.json and models/.
+files the web viewer embeds, asked through the framework's seam of viewers
+(``machinome.viewer``), so committed exports only need to carry
+manifest.json and models/.
 """
 
 import html
@@ -36,7 +37,7 @@ from sphinx.util.docutils import SphinxDirective
 from sphinx.util.osutil import relative_uri
 
 from machinome import __version__
-from machinome.viewers import bundle as viewer_bundle
+from machinome import viewer as viewers
 
 logger = logging.getLogger(__name__)
 
@@ -158,10 +159,11 @@ class Machinome(SphinxDirective):
         if not isinstance(version, int):
             return
         try:
-            rendered = viewer_bundle.document_versions()
-        except viewer_bundle.ViewerUnavailable:
+            rendered = viewers.require(
+                'web', 'embed', 'machinome.sphinx').document_versions()
+        except (ImportError, LookupError, RuntimeError, OSError):
             # No viewer to embed and nothing to say about what it reads;
-            # `copy_exports` reports the missing bundle where it matters.
+            # `copy_exports` reports the missing viewer where it matters.
             return
         if version in rendered:
             return
@@ -210,17 +212,17 @@ def _complete_widget(target):
     ]
     if not missing:
         return
-    if not viewer_bundle.has_bundle():
-        # A warning, which a documentation build run with -W turns into a
-        # failure naming the remedy: install the viewer extra.
-        logger.warning(
-            f'machinome: {viewer_bundle.missing_bundle_remedy()}'
-        )
+    # The web viewer, the one that embeds, asked through the seam: absent,
+    # without its bundle or with a stale one, it is one warning, which a
+    # documentation build run with -W turns into a failure naming the
+    # remedy.
+    try:
+        web = viewers.require('web', 'embed', 'machinome.sphinx')
+        web.describe()
+    except (ImportError, LookupError, RuntimeError, OSError) as error:
+        logger.warning(f'machinome: {error}')
         return
-    sources = {
-        'index.html': viewer_bundle.index_path(),
-        'machinome-viewer.js': viewer_bundle.bundle_path(),
-    }
+    sources = web.files()
     for name in missing:
         shutil.copy2(sources[name], os.path.join(target, name))
 

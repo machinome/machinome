@@ -170,6 +170,23 @@ class VersionFilesTest(TestCase):
                 self.assertEqual(conf_value('mechanics_version'),
                                  project['version'])
 
+    def test_the_openscad_viewer_is_bumped_with_its_two_pins(self):
+        """The OpenSCAD viewer, a distribution of the set since
+        `viewer-seam`, has the node packages' two tables, after the
+        viewer's: its version and its pins on the core and on the OpenSCAD
+        node family."""
+        sections = re.findall(r'^\[(bumpversion:[^\]]+)\]$',
+                              (REPOSITORY / '.bumpversion.cfg').read_text(),
+                              flags=re.M)
+        manifest = 'packages/machinome-viewer-openscad/pyproject.toml'
+        ours = [section for section in sections if section.endswith(manifest)]
+        self.assertEqual(ours, [f'bumpversion:file(version):{manifest}',
+                                f'bumpversion:file(pins):{manifest}'])
+        self.assertGreater(
+            sections.index(ours[0]),
+            sections.index('bumpversion:file(viewer):'
+                           'packages/machinome/docs/conf.py'))
+
     def test_the_matching_viewer_is_numbered_with_the_framework(self):
         self.assertEqual(conf_value('viewer_version'), self.version)
 

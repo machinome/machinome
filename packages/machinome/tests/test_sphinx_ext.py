@@ -249,9 +249,23 @@ class DirectiveErrorTest(SphinxExtBaseTest):
         self.assertIn('t', warnings)
 
 
+def web_viewer():
+    """The web viewer, as the extension asks the seam for it."""
+    import machinome.viewer as viewers
+    return viewers.viewer('web')
+
+
 class WidgetlessExportTest(SphinxExtBaseTest):
     """Exports made with --no-widget: the extension completes them
-    from the installed package's widget files at build time."""
+    from the files the web viewer embeds, asked through the seam, at build
+    time."""
+
+    def embedding(self, bundle, index):
+        web = web_viewer()
+        return (patch.object(web, 'describe', return_value={}),
+                patch.object(web, 'files', return_value={
+                    'index.html': Path(index),
+                    'machinome-viewer.js': Path(bundle)}))
 
     def fake_widget(self):
         widget_dir = os.path.join(self.root, 'widget')
@@ -272,12 +286,8 @@ class WidgetlessExportTest(SphinxExtBaseTest):
         ))
         bundle, index = self.fake_widget()
 
-        with patch('machinome.sphinx.viewer_bundle.has_bundle',
-                   return_value=True), \
-             patch('machinome.sphinx.viewer_bundle.bundle_path',
-                   return_value=bundle), \
-             patch('machinome.sphinx.viewer_bundle.index_path',
-                   return_value=index):
+        described, files = self.embedding(bundle, index)
+        with described, files:
             warnings = self.build()
 
         self.assertEqual(warnings, '')
@@ -296,10 +306,8 @@ class WidgetlessExportTest(SphinxExtBaseTest):
         ))
         bundle, index = self.fake_widget()
 
-        with patch('machinome.sphinx.viewer_bundle.bundle_path',
-                   return_value=bundle), \
-             patch('machinome.sphinx.viewer_bundle.index_path',
-                   return_value=index):
+        described, files = self.embedding(bundle, index)
+        with described, files:
             self.build()
 
         copied = os.path.join(self.outdir, '_machinome',
@@ -314,10 +322,27 @@ class WidgetlessExportTest(SphinxExtBaseTest):
             '.. machinome:: spinner_export\n'
         ))
 
-        with patch('machinome.sphinx.viewer_bundle.has_bundle',
-                   return_value=False), \
-             patch('machinome.sphinx.viewer_bundle.missing_bundle_remedy',
-                   return_value='pip install "machinome[viewer]"'):
+        import machinome.viewer as viewers
+        with patch.object(viewers, 'viewer',
+                          side_effect=viewers.absent('web')):
             warnings = self.build()
 
-        self.assertIn('machinome[viewer]', warnings)
+        self.assertIn('machinome: the web viewer needs machinome.viewer.web, '
+                      'which is not installed; install it with \'pip install '
+                      '"machinome[viewer]"\'', warnings)
+
+    def test_a_viewer_without_its_bundle_warns_with_its_remedy(self):
+        self.make_export('spinner_export', widget=False)
+        self.write_doc('index.rst', (
+            'Test\n====\n\n'
+            '.. machinome:: spinner_export\n'
+        ))
+
+        with patch.object(web_viewer(), 'describe',
+                          side_effect=FileNotFoundError(
+                              'Viewer bundle not found at /x.js. A source '
+                              'checkout builds it')):
+            warnings = self.build()
+
+        self.assertIn('machinome: Viewer bundle not found at /x.js. A '
+                      'source checkout builds it', warnings)

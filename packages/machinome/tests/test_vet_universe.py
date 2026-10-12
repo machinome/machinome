@@ -48,13 +48,12 @@ class TheDeclarationTest(TestCase):
             'machinome.core.loader', 'machinome.core.export',
             'machinome.core.pieces',
             'machinome.model.ModelSnapshot', 'machinome.production.profile',
-            'machinome.source_generation', 'machinome.viewers',
+            'machinome.source_generation', 'machinome.viewer',
             'machinome.sphinx', 'machinome.currency', 'machinome._artifact',
             'machinome.brep_cache', 'machinome.brep_artifacts',
             'machinome.engine.brep.read_brep',
             'machinome.engine.brep.write_brep',
             'machinome.engine.brep.write_stl',
-            'machinome.viewer.web',
             'machinome.movie',
             'machinome.studio',
         ))
@@ -96,13 +95,14 @@ class TheDeclarationTest(TestCase):
 
     def test_the_browser_viewer_is_internal_and_its_former_name_outside(
             self):
-        """(OpenSpec change `join-viewer`) The browser viewer is
-        `machinome.viewer.web`, beneath the contract's `machinome` but
-        denied: it serves, captures and builds in processes of its own. Its
-        former module name is installed by no package of the set."""
+        """(OpenSpec changes `join-viewer` and `viewer-seam`) The browser
+        viewer is `machinome.viewer.web`, beneath the contract's
+        `machinome` but denied with the seam of viewers it is a provider
+        of: it serves, captures and builds its bundle. Its former module
+        name is installed by no package of the set."""
         from machinome.vet import vet
 
-        def project(statement):
+        def project(statement, bound='WebViewer'):
             scratch = os.path.realpath(
                 tempfile.mkdtemp(prefix='machinome-vet-'))
             self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
@@ -115,7 +115,7 @@ class TheDeclarationTest(TestCase):
                     'from machinome.node.assembly import AssemblyNode\n'
                     f'{statement}\n\n\n'
                     'class Machine(AssemblyNode):\n'
-                    '    viewer = WebViewer\n'),
+                    f'    viewer = {bound}\n'),
             }
             for relative, text in files.items():
                 with open(os.path.join(scratch, relative), 'w') as stream:
@@ -126,10 +126,22 @@ class TheDeclarationTest(TestCase):
 
         self.assertEqual(
             project('from machinome.viewer.web.server import WebViewer'),
-            {('sim/model.py', 'framework-internal', 'machinome.viewer.web')})
+            {('sim/model.py', 'framework-internal', 'machinome.viewer')})
         self.assertEqual(
             project('from machinome_viewer.server import WebViewer'),
             {('sim/model.py', 'outside-universe', 'machinome_viewer.server')})
+        # The seam and the OpenSCAD viewer are internals with it; the
+        # removed `machinome.viewers` is no finding of its own: it fails
+        # when the project runs.
+        self.assertEqual(
+            project('from machinome.viewer import viewer', 'viewer'),
+            {('sim/model.py', 'framework-internal', 'machinome.viewer')})
+        self.assertEqual(
+            project('import machinome.viewer.open' 's' 'cad',
+                    'machinome.viewer.open' 's' 'cad'),
+            {('sim/model.py', 'framework-internal', 'machinome.viewer')})
+        self.assertEqual(
+            project('import machinome.viewers', 'machinome.viewers'), set())
 
     def test_the_movie_is_internal_and_its_former_name_outside(self):
         """(OpenSpec change `join-movie`) The films are

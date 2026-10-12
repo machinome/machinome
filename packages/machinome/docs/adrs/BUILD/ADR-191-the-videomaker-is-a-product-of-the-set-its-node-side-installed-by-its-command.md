@@ -1,6 +1,6 @@
 # ADR-191: The Videomaker Is a Product of the Set, Its Node Side Inside Its Portion and Installed by Its Command
 
-**Status:** Accepted
+**Status:** Accepted; the installed viewer taken through the seam of viewers, amended 2026-10-12 by [ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md) (note below)
 **Date:** 2026-10-12
 **Change:** [`join-movie`](../../../openspec/changes/archive/2026-10-12-join-movie/)
 **Amends:**
@@ -147,3 +147,12 @@ and `stage` projects.
   `scripts/check-dist` at the repository root
 - `openspec/specs/movie-distribution/spec.md`, `openspec/specs/cli/spec.md`
   ("Movie command")
+
+## Note (2026-10-12)
+
+[ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md)
+removes the entry point `machinome.viewer` (OpenSpec change `viewer-seam`):
+`machinome movie` takes the installed viewer's bundle through the seam of
+viewers, asking the web viewer for the files it embeds, as `machinome
+develop` asks it, and reads no project's viewer, since only the web viewer
+draws a film. The refusal when no viewer is installed keeps its shape.

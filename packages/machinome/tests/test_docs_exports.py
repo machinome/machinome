@@ -8,8 +8,11 @@ Every ``.. machinome::`` directive names a directory that `machinome export`
 produced, and the Sphinx extension fails the build if it is not there. Those
 directories are committed under ``docs/_exports/``: the tutorial's models,
 exported with ``--no-widget`` so the extension completes them from the
-installed ``machinome-viewer`` package. Nothing is exported while the manual
-builds, and the build installs ``docs/requirements.txt`` and nothing else.
+repository's own web viewer, which the framework finds through its seam
+``machinome.viewer``. Nothing is exported while the manual builds; the build
+installs ``docs/requirements.txt`` and nothing else of Python, and builds the
+viewer's bundle with npm from the root's lock first (change `viewer-seam`,
+design.md Decision 13).
 
 It used to be otherwise. Three example machines were exported from Foundry
 submodules by a step written twice, once in ``.readthedocs.yaml`` and once
@@ -20,9 +23,10 @@ into the service's 900-second limit inside the third export (24 September
 
 These tests hold the rule so it cannot creep back: every embedded export is
 committed, and neither build configuration exports, installs from a
-repository, names a system package, a Node tool or a submodule. The CI docs
-job builds through the root Makefile's `docs` target, whose recipe is held
-to the same rule (change `release-tooling`).
+repository, names a system package or a submodule, nor runs Node for
+anything but the viewer's widget. The CI docs job builds through the root
+Makefile's `docs` target, whose recipe is held to the same rule (change
+`release-tooling`).
 """
 
 import ast
@@ -43,6 +47,12 @@ WORKFLOW = REPOSITORY / '.github' / 'workflows' / 'python-app.yml'
 MAKEFILE = REPOSITORY / 'Makefile'
 READTHEDOCS = PACKAGE / '.readthedocs.yaml'
 REQUIREMENTS = 'docs/requirements.txt'
+
+# The viewer's widget, the one npm workspace member the manual needs, and
+# the two Node steps that build it from the root's lock.
+WIDGET = 'packages/machinome-viewer/machinome/viewer/web/widget'
+NODE_STEPS = ['npm ci --no-audit --no-fund',
+              f'npm run build --workspace {WIDGET}']
 
 # Read the Docs reads every path of its configuration from the repository
 # root, not from the file's directory.
@@ -171,19 +181,21 @@ class EmbeddedExportsAreCommittedTest(unittest.TestCase):
 
 
 class ReadTheDocsBuildsNothingTest(unittest.TestCase):
-    """.readthedocs.yaml installs docs/requirements.txt and runs Sphinx."""
+    """.readthedocs.yaml installs docs/requirements.txt, builds the viewer's
+    widget with Node 22 and runs Sphinx."""
 
     def setUp(self):
         self.config = readthedocs()
 
-    def test_no_build_jobs(self):
+    def test_one_build_job_builds_the_widget(self):
         build = self.config['build']
-        self.assertNotIn('jobs', build, build.get('jobs'))
+        self.assertEqual(build.get('jobs'), {'pre_build': NODE_STEPS})
         self.assertNotIn('apt_packages', build, build.get('apt_packages'))
         self.assertNotIn('commands', build, build.get('commands'))
 
-    def test_python_is_the_only_tool(self):
-        self.assertEqual(list(self.config['build']['tools']), ['python'])
+    def test_python_and_node_are_the_tools(self):
+        self.assertEqual(self.config['build']['tools'],
+                         {'python': '3.12', 'nodejs': '22'})
 
     def test_no_submodules(self):
         self.assertNotIn('submodules', self.config)
@@ -223,8 +235,6 @@ class ActionsDocsJobBuildsNothingTest(unittest.TestCase):
                     'submodules', step.get('with') or {},
                     'the docs job checks out submodules')
                 uses = step.get('uses', '')
-                self.assertFalse(uses.startswith('actions/setup-node'),
-                                 'the docs job installs Node')
                 self.assertNotIn('apt', uses, 'the docs job installs an '
                                  'apt package')
         with self.subTest(step='the Makefile\'s docs target'):
@@ -241,7 +251,19 @@ class ActionsDocsJobBuildsNothingTest(unittest.TestCase):
 
     def test_the_job_runs_the_makefile_s_docs_target(self):
         runs = [step['run'].strip() for step in self.steps if 'run' in step]
-        self.assertEqual(runs, ['make docs'])
+        self.assertEqual(runs, ['make widget', 'make docs'])
+
+    def test_the_job_installs_node_22(self):
+        nodes = [step for step in self.steps
+                 if step.get('uses', '').startswith('actions/setup-node')]
+        self.assertEqual(len(nodes), 1, self.steps)
+        self.assertEqual(str(nodes[0]['with']['node-version']), '22')
+
+    def test_the_docs_target_builds_the_bundle_first(self):
+        target = re.search(r'^docs:([^#\n]*)', MAKEFILE.read_text(),
+                           flags=re.M)
+        self.assertIsNotNone(target)
+        self.assertEqual(target[1].split(), ['bundle'])
 
     def test_installs_the_requirements_alone(self):
         installs = re.findall(
@@ -279,12 +301,30 @@ class DocsRequirementsTest(unittest.TestCase):
             with self.subTest(requirement=line):
                 self.assertRegex(line, REQUIREMENT)
 
-    def test_names_the_viewer(self):
-        """The committed exports carry no widget; the published viewer
-        completes them at build time."""
+    def test_names_sphinx_and_its_theme_alone(self):
+        """The committed exports carry no widget; the repository's viewer
+        completes them at build time, so no published viewer is named."""
         names = [re.split(r'[\[=<>!~ ]', line, 1)[0]
                  for line in requirements()]
-        self.assertIn('machinome-viewer', names)
+        self.assertEqual(names, ['sphinx', 'sphinx_rtd_theme'])
+
+    def test_the_configuration_takes_the_repository_s_viewer(self):
+        """docs/conf.py puts every package directory on the path, the
+        viewer's among them, before the framework's seam is imported."""
+        import sys
+        source = (DOCS / 'conf.py').read_text()
+        head = source[:source.index('# -- Project information')]
+        before = list(sys.path)
+        cwd = os.getcwd()
+        try:
+            os.chdir(DOCS)
+            exec(compile(head, str(DOCS / 'conf.py'), 'exec'), {})
+            added = sys.path[:len(sys.path) - len(before)]
+        finally:
+            os.chdir(cwd)
+            sys.path[:] = before
+        self.assertIn(str(REPOSITORY / 'packages' / 'machinome-viewer'),
+                      added)
 
 
 class EmbeddedExportVersionWarningTest(unittest.TestCase):
@@ -301,9 +341,9 @@ class EmbeddedExportVersionWarningTest(unittest.TestCase):
 
         directive = sphinx_module.Machinome.__new__(sphinx_module.Machinome)
         logger = Mock()
+        web = sphinx_module.viewers.viewer('web')
         with patch.object(sphinx_module, 'logger', logger), \
-             patch.object(sphinx_module.viewer_bundle, 'document_versions',
-                          return_value=versions):
+             patch.object(web, 'document_versions', return_value=versions):
             directive.warn_unreadable('docs/export', manifest)
         return logger
 
@@ -334,7 +374,7 @@ class EmbeddedExportVersionWarningTest(unittest.TestCase):
                     if isinstance(node, ast.Import) for alias in node.names}
         heavy = {name for name in modules
                  if name.startswith('machinome.')
-                 and not name.startswith('machinome.viewers')}
+                 and name != 'machinome.viewer'}
         self.assertEqual(heavy, set(), heavy)
 
 

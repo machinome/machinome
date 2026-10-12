@@ -4,13 +4,22 @@ build:
   os: ubuntu-24.04
   tools:
     python: "3.12"
+    nodejs: "22"
+  # The manual takes the repository's own browser viewer, which the framework
+  # finds through its seam of viewers (change `viewer-seam`): its bundle is
+  # built from the root's npm lock before Sphinx runs. Read the Docs runs
+  # these at the repository root.
+  jobs:
+    pre_build:
+      - npm ci --no-audit --no-fund
+      - npm run build --workspace packages/machinome-viewer/machinome/viewer/web/widget
 
-# The manual builds from docs/requirements.txt alone: Sphinx, its theme and
-# the published machinome-viewer, whose widget completes the committed
-# tutorial exports under docs/_exports/. Nothing is exported here and no
-# other package is installed; the real machines are shown on machinome.org.
-# Kept in step with the docs job in .github/workflows/python-app.yml, and
-# pinned by tests/test_docs_exports.py.
+# The manual builds from docs/requirements.txt alone, Sphinx and its theme,
+# with the repository's viewer completing the committed tutorial exports
+# under docs/_exports/. Nothing is exported here and no other package is
+# installed; the real machines are shown on machinome.org. Kept in step with
+# the docs job in .github/workflows/python-app.yml, and pinned by
+# tests/test_docs_exports.py.
 #
 # This file sits beside the manual, in the framework's directory: the Read
 # the Docs project's configuration path is

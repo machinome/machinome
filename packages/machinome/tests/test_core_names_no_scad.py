@@ -15,10 +15,12 @@ JSCAD's own name: an occurrence immediately preceded by a `j` that begins a
 word (at the start of the text, after a character that is not a letter, or
 an upper-case `J` after a lower-case letter). The occurrences may stand only
 in the allowed zones: the family's two distributions,
-`machinome-node-openscad` (the package `machinome.node.openscad` with its
-snapshot renderer) and `machinome-node-solid2`, and the core's table of
+`machinome-node-openscad` (the package `machinome.node.openscad`) and
+`machinome-node-solid2`, the OpenSCAD viewer's distribution
+`machinome-viewer-openscad`, and two modules of the core: the table of
 supported node types `machinome/node/supported.py` (OpenSpec change
-`cut-the-mesh-nodes`).
+`cut-the-mesh-nodes`) and the seam of viewers `machinome/viewer/__init__.py`,
+which names the viewers the core knows (OpenSpec change `viewer-seam`).
 """
 
 import ast
@@ -33,14 +35,17 @@ PACKAGE = ROOT / 'machinome'
 REPOSITORY = Path(__file__).resolve().parents[3]
 
 #: The extension packages the word may stand in: the family's two
-#: distributions.
+#: distributions and the OpenSCAD viewer's.
 ALLOWED_PACKAGES = frozenset((
     'machinome-node-open' 's' 'cad',
     'machinome-node-solid2',
+    'machinome-viewer-open' 's' 'cad',
 ))
-#: The core's one module the word may stand in.
+#: The core's modules the word may stand in: the table of node types and
+#: the seam of viewers.
 ALLOWED_MODULES = frozenset((
     'machinome/node/supported.py',
+    'machinome/viewer/__init__.py',
 ))
 
 #: The three letters, spelled so this file's own reading of them is plain.
@@ -129,20 +134,35 @@ class TheRuleTest(TestCase):
     def test_the_allowed_zones(self):
         family = 'machinome-node-open' 's' 'cad/machinome/node/open' 's' 'cad'
         self.assertTrue(allowed(f'{family}/writer.py'))
-        self.assertTrue(allowed(f'{family}/renderer.py'))
         self.assertTrue(allowed(
             'machinome-node-solid2/machinome/node/solid2.py'))
+        self.assertTrue(allowed(
+            'machinome-viewer-open' 's' 'cad/machinome/viewer/open' 's' 'cad'
+            '/__init__.py'))
         self.assertTrue(allowed('machinome/node/supported.py'))
+        self.assertTrue(allowed('machinome/viewer/__init__.py'))
+        # The snapshot command is not a zone: it names no viewer
+        # (`viewer-seam`).
+        self.assertFalse(allowed('machinome/manager/snapshot.py'))
         # The core's former zones, before `cut-the-mesh-nodes`.
         self.assertFalse(allowed('machinome/node/open' 's' 'cad/writer.py'))
         self.assertFalse(allowed('machinome/node/solid2.py'))
         self.assertFalse(allowed('machinome/viewers/open' 's' 'cad.py'))
+        self.assertFalse(allowed('machinome/viewer/open' 's' 'cad.py'))
         self.assertFalse(allowed('machinome-node-stl/machinome/node/stl.py'))
         self.assertFalse(allowed('machinome/node/base.py'))
         self.assertFalse(allowed('machinome/open' 's' 'cad/engine.py'))
 
 
 class TheCoreNamesNoScadTest(TestCase):
+
+    def test_the_zones_exist(self):
+        for package in ALLOWED_PACKAGES:
+            with self.subTest(package=package):
+                self.assertTrue((REPOSITORY / 'packages' / package).is_dir())
+        for module in ALLOWED_MODULES:
+            with self.subTest(module=module):
+                self.assertTrue((ROOT / module).is_file())
 
     def test_no_module_outside_the_allowed_zones_holds_the_word(self):
         found = scan()

@@ -444,13 +444,17 @@ wrote (`scad_text`, `scad_code(node)`, `generate_scad(node)`), and its
 SolidPython value as an expression, with the expression graph when it is
 imported. SolidPython is the family's kernel, the `openscad` extra; the
 package and the `solid2` module refuse its absence at import, naming
-`machinome[openscad]` or `machinome[solid2]`. The OpenSCAD snapshot renderer
-is the package's module `machinome.node.openscad.renderer`, which the table
-of supported node types names in its provisional renderer column, and
-imports the package's writer and binary directly. The package is the
+`machinome[openscad]` or `machinome[solid2]`. The package holds no viewer:
+the OpenSCAD viewer, which draws a still with the package's writer and
+binary, is `machinome.viewer.openscad` of the distribution
+`machinome-viewer-openscad`, a provider of the seam of viewers (ADR-194);
+until that change it was the package's module `renderer`, named by a
+provisional renderer column of the table of supported node types (ADR-179),
+which the change removed. The package is the
 distribution `machinome-node-openscad`, and `Solid2Node` the distribution
-`machinome-node-solid2`. Nothing outside those two distributions and the
-table names the technology: a token scan of the framework's `machinome/` and
+`machinome-node-solid2`. Nothing outside those two distributions, the
+OpenSCAD viewer's, the table and the seam of viewers names the technology:
+a token scan of the framework's `machinome/` and
 every extension package's in the suite (`tests/test_core_names_no_scad.py`)
 is the gate.
 
@@ -2011,8 +2015,8 @@ DESUGARED to Python's floored remainder, because the executor CALLS the
 project's callable rather than evaluating the graph, while a chain, a
 bound and a constraint level keep the document's truncated `%`, which is
 what the framework evaluates them by. `serializer.document_body` — the
-one function `machinome build`, `machinome develop`, `machinome export` and `solid
-snapshot --renderer web` all reach — still refuses by name, but now
+one function `machinome build`, `machinome develop`, `machinome export` and `machinome
+snapshot --viewer web` all reach — still refuses by name, but now
 refuses a clocked tree published WITHOUT its compiled machine, which is
 a PRODUCER error and is what stops a producer added later from reaching
 a lower version by an unchecked route. A build and an export warn and
@@ -2330,28 +2334,33 @@ position on (ADR-110). Only the invoked
 command's module is imported, the node package imports no backend (its root
 exports nothing, ADR-181) and the simulation package resolves its exports on
 first access, so a command pays for the backends it uses and not for the rest
-(ADR-059) — `machinome viewer` answers from the viewer's entry
-point alone. Top-level `-h` is the exception: it renders every command's
+(ADR-059) — `machinome viewer` answers from the web viewer's report,
+asked through the seam of viewers, loading no server, capture or browser
+driver (ADR-194). Top-level `-h` is the exception: it renders every command's
 docstring, so it loads them all, the contributed ones included. The test framework defers the B-rep stack
 through the B-rep engine seam (ADR-161): its B-rep path resolves the engine
 at the first B-rep comparison and calls each engine operation, and each memo
 of `machinome.brep_cache`, as an attribute of its defining module at the
 moment of the call, so a name patched where it is defined is honoured and
 `machinome.test` binds none of them. A mesh-only project runs its whole
-suite without importing cadquery, OCP or the engine. Snapshot has an explicit renderer choice
-(ADR-021/041/046/068): OpenSCAD remains the external-tool default with xvfb
-fallback, whether or not the browser viewer is installed, while the
-optional `web` renderer stages the node and has the installed viewer package
-photograph it in sandboxed headless Chromium to produce a true-alpha PNG.
-Unsupported renderer-specific options are rejected rather than ignored or
-substituted. The OpenSCAD renderer obtains the SCAD it draws on demand: it
+suite without importing cadquery, OCP or the engine. Snapshot has an explicit viewer choice
+(ADR-021/041/046/194): `--viewer <name>`, else the project's `viewer` under
+`[tool.machinome]`, else the OpenSCAD viewer, the external-tool default with
+xvfb fallback, whether or not the browser viewer is installed; the `web`
+viewer stages the node and photographs it in sandboxed headless Chromium, in
+the command's process, to produce a true-alpha PNG. The command reaches
+either through the seam `machinome.viewer` and names neither: the viewer
+presents the posed root inside the build lock, captures it after, and
+withdraws what it presented. The options a viewer does not honour are
+rejected rather than ignored or substituted, and `--renderer` is refused
+naming `--viewer`. The OpenSCAD viewer obtains the SCAD it draws on demand: it
 requires the OpenSCAD engine before the node is loaded, writes the root's
 `.scad` for the snapshot's pose inside the build lock, and removes it once
-OpenSCAD has read it, succeeded or failed; the web renderer reads no SCAD
-(ADR-173). If the default OpenSCAD renderer or the engine is unavailable, the command
-names `--renderer web` but does not select it silently; if the viewer is
-not installed, `--renderer web` names the `viewer` extra. Under
-`--renderer openscad`, every warning, error or deprecation line OpenSCAD
+OpenSCAD has read it, succeeded or failed; the web viewer reads no SCAD
+(ADR-173). If the default OpenSCAD viewer or the engine is unavailable, the command
+names `--viewer web` but does not select it silently; if the viewer is
+not installed, `--viewer web` names the `viewer` extra. Under
+`--viewer openscad`, every warning, error or deprecation line OpenSCAD
 reports on either stream reaches the operator's log rather than only the
 debug stream, and a line reporting it could not open an imported file
 fails the command — naming the missing file and the `.scad` that imported
@@ -2663,35 +2672,51 @@ ancestor. That frame is meaningful only within one part, so the assertion
 refuses a pair drawn from two different solids instead of comparing them at
 their own origins. Collision remains world-framed and time-dependent.
 
-### Viewers (VIEWER-WEB · specs `viewer-distribution`, `cli`)
+### Viewers (VIEWER-WEB · specs `viewer-seam`, `viewer-distribution`, `cli`)
+
+Viewers are providers behind one seam, chosen by name (ADR-194). The core's
+`machinome/viewer/__init__.py` declares the contract: the integer
+`CONTRACT`, the operations a viewer may offer (`present`, `capture`,
+`serve`, `embed`) as Protocols, the viewers it knows with the extra that
+installs each, each operation's default viewer, and the refusals — an
+absent viewer by its extra, an unknown name, a provider of another contract,
+an operation a viewer lacks — of which none substitutes a viewer. A viewer
+is resolved by importing `machinome.viewer.<name>`, a portion of the seam's
+path shipped by its own distribution (`machinome._namespace_portions`), and
+nothing else: no entry point is read. A command chooses by `--viewer`, else
+the project's `[tool.machinome] viewer`, else the operation's default; no
+availability is consulted. The seam imports the standard library and
+`machinome.extras` alone, and each provider imports its machinery only when
+an operation is called.
 
 The browser viewer is the repository's distribution `machinome-viewer` at
-`packages/machinome-viewer/`, the package `machinome.viewer.web`, numbered
-with the framework and installed through the `viewer` extra (ADR-068,
-ADR-103, ADR-188); the framework is complete for non-interactive use
-without it. The OpenSCAD CLI remains the default fixed-pose snapshot
-renderer, not an interactive viewer.
-The framework touches the viewer in exactly two ways. `machinome/viewers/
-bundle.py` loads the viewer's `machinome.viewer` entry point — a
-standard-library-only function returning the bundle path, the export page,
-the declared API version and the document schema versions the viewer
-renders — and nothing else of it; `machinome viewer`,
-`machinome export`, the Sphinx directive and the web snapshot all resolve the
-bundle there and name one remedy when it is absent. A report carrying no
-`documentVersions` is read as `[1, 2, 3, 4]`, the versions every viewer
-released before the field existed renders, so an older viewer beside a
-newer framework keeps working and is described truthfully (ADR-110). Everything else runs the
-viewer as a separate process through `sys.executable -m
-machinome.viewer.web`.
+`packages/machinome-viewer/`, the package `machinome.viewer.web`, the web
+provider, offering the four operations, numbered with the framework and
+installed through the `viewer` extra (ADR-103, ADR-188, ADR-194); the
+framework is complete for non-interactive use without it. The OpenSCAD
+viewer is the distribution `machinome-viewer-openscad` at
+`packages/machinome-viewer-openscad/`, the package
+`machinome.viewer.openscad`, offering `present` and `capture` over the
+OpenSCAD node family's writer and binary, installed by `viewer-openscad`
+and by the `openscad` and `solid2` extras; it is the default fixed-pose
+snapshot viewer, not an interactive one. `machinome viewer`, `machinome
+export`, the Sphinx directive, the manual's configuration, the films and the
+builder's readability warning ask the web viewer through the seam for its
+report, its files and the document versions it reads, and name one remedy
+when it is absent. Before ADR-194 the framework found the viewer through an
+entry point and ran it as a separate process (ADR-068); the one licence
+removed the reason for that boundary.
 
-`machinome develop` opens only the browser viewer and fails before starting
-development processes with the `viewer`-extra remedy when its package is
-absent; `--web` remains an explicit spelling of the default, and `--no-web`
-runs the builder watch loop without viewer discovery. The browser viewer is
-the viewer's `serve --build-dir` process on the project's atomically published
-build directory, restarted after each completed build as the in-process server
-was, so the reload channel's
-"greet a reconnecting browser with `reload`" contract is unchanged. The
+`machinome develop` asks the chosen viewer to serve, by default the web
+viewer, and fails before starting development processes with the
+`viewer`-extra remedy when its package is absent, or naming the viewer when
+it does not serve; `--web` remains an explicit spelling of the default, and
+`--no-web` runs the builder watch loop without resolving a viewer. The web
+viewer serves the project's atomically published build directory in a thread
+of the command's process, on a port it binds before the builder starts, and
+after each completed build the session sends `reload` on every open page's
+socket, which stays open; the reload channel's "greet a connecting browser
+with `reload`" contract is unchanged. The
 server, the development page, the bundle routes and the reload and
 build-error surfaces are specified in the viewer's `development-server`
 capability; how the widget renders — tree traversal, world-matrix
@@ -2700,14 +2725,15 @@ in its `viewer-package` capability. Those decisions (ADR-012/013/014/027/
 035/036/037/042) are kept in the viewer's own decision log,
 `packages/machinome-viewer/workflow/adrs/`, under their original numbers.
 
-The browser snapshot renderer keeps the half that knows what a node is: it
+The web viewer's `present` (`machinome/viewer/web/stage.py`) holds the half
+that knows what a node is, from what the core offers it: it
 renders any stale artifact of the photographed node, serializes that node's
 tree into a temporary sibling and copies each artifact from the same pinned,
-strongly observed snapshot used for its piece facts, all while holding the
-project build lock. It validates the observation after each copy, then releases
-the lock and runs the viewer's
-`capture` on that pinned staging directory with the image size, the animation
-instant and the camera it resolved from OpenSCAD's syntax. It never
+strongly observed snapshot used for its piece facts, all while the snapshot
+command holds the project build lock. It validates the observation after each
+copy; the command then releases the lock and asks the viewer's `capture` to
+photograph that pinned staging directory, in its own process, with the image
+size, the animation instant and the camera resolved from OpenSCAD's syntax. It never
 republishes or sweeps the build itself: the published document belongs to the
 producer serving it, so a snapshot of one part leaves the rest of the project
 intact. The viewer adds the bundle and a mount page, serves the directory on
@@ -2993,7 +3019,7 @@ existing viewer language, not forwarding `let` to JSON. Numeric operation
 placement refuses unresolved inputs; normal poses still rerun project laws
 with numbers, and legacy Solid2 numeric evaluation remains available.
 Flexible time detection follows graph inputs and diagnostics are bounded
-before rendering. `machinome snapshot --renderer web` keyframes and bakes constants
+before rendering. `machinome snapshot --viewer web` keyframes and bakes constants
 before serializing, so its staged document shares nothing, carries no
 table, and stays at version 2 or 3 — or at 5, under a running root, whose
 version follows the declaration rather than the content. The independent
@@ -3102,12 +3128,12 @@ declares no `State` never declares 8; running roots use 11 and posed/looping
 roots retain their existing selection.
 
 The framework asks the installed viewer what it can read, through the
-existing `machinome.viewer` entry point: `bundle.document_versions()`
-returns the report's `documentVersions`, or `[1, 2, 3, 4]` when the field
-is absent. `machinome build`, `machinome develop` and `machinome export` publish a
+seam of viewers: the web viewer's `document_versions()` returns what its
+widget declares (ADR-194; before it, the entry point's report's
+`documentVersions`, or `[1, 2, 3, 4]` when the field was absent). `machinome build`, `machinome develop` and `machinome export` publish a
 running document and WARN once when the installed viewer cannot read its version; the Sphinx directive warns about a
 committed export it embeds, off the manifest it already opened and with
-no CAD runtime loaded; `machinome snapshot --renderer web` REFUSES before the
+no CAD runtime loaded; `machinome snapshot --viewer web` REFUSES before the
 browser starts, because a capture is a one-shot. A CONFORMANCE CORPUS
 (ADR-111) pins the two runtimes to each other: a generator writes
 `tests/running-corpus.json` from the framework's own run over a set of
@@ -3278,8 +3304,8 @@ interface. The command `machinome movie`, contributed through
 `machinome.commands` (ADR-189), joins the two: `list`, `evaluate` and `watch`
 run in Python; the film verbs run the Node side with the user's Node, 22 or
 newer, found through `MACHINOME_NODE` or the `PATH`, give it the installed
-viewer's bundle through the `machinome.viewer` entry point, as `machinome
-develop` finds it, and evaluate a project's movie first when given a project
+viewer's bundle through the seam of viewers, as `machinome develop`
+finds it, and evaluate a project's movie first when given a project
 and a movie name; `setup` installs the Node side's dependencies into the
 installed package's own directory from the package's own lock; in the
 repository's checkout the Node side is the root npm workspace's second
@@ -3587,7 +3613,8 @@ pure model closures without rejecting their pure declaration records.
 | B-rep engine, on OCCT, the distribution `machinome-engine-brep` | the repository's `packages/machinome-engine-brep/` (`machinome/engine/brep.py`) | `brep-engine` | 160 (`docs/adrs/OCCT/`), 180, 183 |
 | Mesh engine, on manifold3d, the distribution `machinome-engine-mesh` | the repository's `packages/machinome-engine-mesh/` (`machinome/engine/mesh.py`) | `mesh-engine` | 176, 180, 183 |
 | Node types over the B-rep engine, the distributions `machinome-node-cadquery`, `-build123d`, `-step` and `-molejo` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `step-import`, `step-assembly`, `flexible-parts`, `markings` | 057, 078, 079, 115, 162, 167, 169, 183, 184 |
-| OpenSCAD node family, the distributions `machinome-node-openscad` and `machinome-node-solid2` | the repository's `packages/machinome-node-openscad/` (`machinome/node/openscad/`: `__init__.py` `OpenScadNode`, `leaf.py` `ScadLeafNode`, `writer.py`, `binary.py`, `renderer.py` the OpenSCAD snapshot renderer) and `packages/machinome-node-solid2/` (`machinome/node/solid2.py`: `Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency`, `kernel-extras` | 046, 102, 172, 173, 177, 178, 179, 183 |
+| OpenSCAD node family, the distributions `machinome-node-openscad` and `machinome-node-solid2` | the repository's `packages/machinome-node-openscad/` (`machinome/node/openscad/`: `__init__.py` `OpenScadNode`, `leaf.py` `ScadLeafNode`, `writer.py`, `binary.py`) and `packages/machinome-node-solid2/` (`machinome/node/solid2.py`: `Solid2Node`, `adopt`) | `openscad-node`, `openscad-dependency`, `kernel-extras` | 046, 102, 172, 173, 177, 178, 179, 183 |
+| OpenSCAD viewer, the distribution `machinome-viewer-openscad` | the repository's `packages/machinome-viewer-openscad/` (`machinome/viewer/openscad/__init__.py`: `OpenScadViewer` and the provider's operations) | `viewer-seam`, `web-snapshot`, `openscad-node`, `kernel-extras` | 046, 173, 183, 194 |
 | JSCAD and STL node types, the distributions `machinome-node-jscad` and `machinome-node-stl` | the repository's `packages/machinome-node-<x>/` (`machinome/node/<x>.py`) | `node-model`, `kernel-extras`, `stl-import` | 169, 181, 183 |
 | FreeCAD node type, the distribution `machinome-node-freecad` | the repository's `packages/machinome-node-freecad/` (`machinome/node/freecad/`: `__init__.py`, `adapter.py` `FreeCADAssemblyNode` and `FreeCADJoint`, `runtime.py` the runtime and its worker process, `worker.py` the script FreeCAD's Python runs) | `native-freecad-assembly`, `kernel-extras`, `node-model` | 004, 183, 184, 185 |
 | Build parameters | `machinome/parameters.py`, `node/declarative.py` | `declarative-nodes` | 061–065, 082 |
@@ -3601,6 +3628,6 @@ pure model closures without rejecting their pure declaration records.
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149, 168, 179, 189 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |
-| Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103, 188 (the viewer itself: `packages/machinome-viewer/`) |
+| Viewers: the seam, the web provider's staging and session | `machinome/viewer/__init__.py`; the repository's `packages/machinome-viewer/` (`machinome/viewer/web/`: `__init__.py` the provider's operations, `stage.py`, `session.py`) | `viewer-seam`, `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103, 188, 194 |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

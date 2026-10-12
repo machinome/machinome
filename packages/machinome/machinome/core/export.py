@@ -33,7 +33,7 @@ from .serializer import (
 )
 from .builder import get_build_dir, project_build_lock
 from .pieces import PieceInventory
-from machinome.viewers import bundle as viewer_bundle
+from machinome import viewer as viewers
 
 
 logger = logging.getLogger('core.export')
@@ -45,13 +45,37 @@ MANIFEST_FORMAT = DOCUMENT_FORMAT
 MANIFEST_VERSION = DOCUMENT_VERSION
 
 class WidgetBundleMissing(Exception):
-    """No viewer is installed to copy the widget files from."""
+    """The viewer whose files an export embeds is not installed, or carries
+    no usable bundle; the message is its refusal and the way around it."""
 
-    def __init__(self):
+    def __init__(self, refusal):
+        refusal = str(refusal).rstrip()
+        if not refusal.endswith('.'):
+            refusal += '.'
         super().__init__(
-            f'{viewer_bundle.missing_bundle_remedy()} Or pass --no-widget '
-            'to export only the manifest and models.'
+            f'{refusal} Or pass --no-widget to export only the manifest and '
+            'models.'
         )
+
+
+def embedder(name=None):
+    """The viewer whose files an export embeds, `name` or the default of
+    embedding, asked through the seam and its report answered: an absent
+    viewer or one without a usable bundle is `WidgetBundleMissing`; an
+    unknown name, a viewer that does not embed or one of another contract
+    is the seam's own refusal."""
+    try:
+        provider = viewers.require(name or viewers.DEFAULTS['embed'],
+                                   'embed', 'machinome export')
+    except ImportError as error:
+        raise WidgetBundleMissing(error) from None
+    try:
+        provider.describe()
+    except (OSError, RuntimeError) as error:
+        # No bundle built, or a stale one the viewer cannot rebuild: the
+        # viewer's own words.
+        raise WidgetBundleMissing(error) from None
+    return provider
 
 
 class ExportModelPathError(Exception):
@@ -87,7 +111,8 @@ def _copy_artifact(source, target):
         raise
 
 
-def export_node(node, output_dir, fps=30, frames=360, widget=True):
+def export_node(node, output_dir, fps=30, frames=360, widget=True,
+                viewer=None):
     """Builds all STLs for `node`, then writes into `output_dir`:
 
     - manifest.json: the serialized node tree plus animation parameters
@@ -95,7 +120,9 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
       relative to the build dir (so same-named scripts in different
       directories never collide, and identical instances deduplicate)
     - unless widget=False: index.html plus the machinome-viewer.js bundle,
-      making the directory a self-contained, embeddable viewer
+      making the directory a self-contained, embeddable viewer, the files
+      the viewer named `viewer` (by default the web viewer) embeds, asked
+      through the seam `machinome.viewer` before anything is written
 
     The manifest always carries symbolic $t operations, and symbolic
     named-driver operations beside them. Preserving both is this
@@ -125,6 +152,7 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
     mark it dirty.
 
     Returns the manifest dict."""
+    provider = embedder(viewer) if widget else None
     node.clear_keyframe()
     source = _source_record(project_root(node.src))
 
@@ -187,7 +215,8 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                     # document without it is byte-identical to one
                     # published before the record existed.
                     manifest['source'] = source
-                _warn_unreadable(manifest['version'])
+                _warn_unreadable(manifest['version'],
+                                 viewer or viewers.DEFAULTS['embed'])
 
                 os.makedirs(output_dir, exist_ok=True)
                 for stl_file, model_path in models.items():
@@ -210,7 +239,7 @@ def export_node(node, output_dir, fps=30, frames=360, widget=True):
                 raise
 
     if widget:
-        _copy_widget(output_dir)
+        _copy_widget(provider, output_dir)
 
     return manifest
 
@@ -252,7 +281,7 @@ def _source_record(root):
     return {'revision': head.stdout.strip(), 'dirty': bool(status.stdout)}
 
 
-def _warn_unreadable(version):
+def _warn_unreadable(version, viewer):
     """Say, once, that the installed viewer cannot read what was just
     written -- and write it anyway.
 
@@ -261,7 +290,7 @@ def _warn_unreadable(version):
     make, and a browser that cannot render changes nothing about the
     models beside it.
     """
-    message = viewer_bundle.unreadable_document(version)
+    message = viewers.unreadable(version, viewer)
     if message is not None:
         logger.warning(
             f'{message}. The export is written anyway: an export is an '
@@ -271,11 +300,9 @@ def _warn_unreadable(version):
             f'machine is the viewer package\'s own next release.')
 
 
-def _copy_widget(output_dir):
-    if not viewer_bundle.has_bundle():
-        raise WidgetBundleMissing()
-    for source in (viewer_bundle.bundle_path(), viewer_bundle.index_path()):
-        target = os.path.join(output_dir, os.path.basename(source))
+def _copy_widget(provider, output_dir):
+    for name, source in provider.files().items():
+        target = os.path.join(output_dir, name)
         shutil.copy2(source, target)
         logger.info(f'{source} -> {target}')
 

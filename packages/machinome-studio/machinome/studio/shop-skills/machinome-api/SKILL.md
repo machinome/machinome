@@ -2426,10 +2426,10 @@ the smooth stroke a posed model's instruction ramp gives: declare
 the crank turns over two seconds with every carry firing where the
 machine located it. A slider or nudge stays an instantaneous request. Against an OLDER installed viewer `machinome build`,
 `machinome develop` and `machinome export` publish the document and WARN that it
-cannot read it, and `machinome snapshot --renderer web` is REFUSED before the
+cannot read it, and `machinome snapshot --viewer web` is REFUSED before the
 browser starts, writing no image, leaving no staging directory and never
 falling back to OpenSCAD. `render()`, `assemble()`, `build_stls()`,
-`machinome test` and `machinome snapshot --renderer openscad` are untouched, so a
+`machinome test` and `machinome snapshot --viewer openscad` are untouched, so a
 clocked model is built, tested and photographed as any other — the
 OpenSCAD path rendering the tree as posed, which is the INITIAL BANK, with
 `--drive` posing declared DRIVERS and a state named there refused by name.
@@ -2488,11 +2488,12 @@ machinome test    [ref] [--set ...] [--failfast] [--brep | --mesh]
 machinome snapshot [ref] [--set ...] -o out.png [--time 0..1] [--autocenter]
       [--drive NAME=VALUE ...]
       [--viewall] [--camera tx,ty,tz,rx,ry,rz,dist | ex,ey,ez,cx,cy,cz]
-      [--imgsize 1920x1080] [--renderer openscad|web]
+      [--imgsize 1920x1080] [--viewer openscad|web]
       [--projection ortho|perspective] [--colorscheme Cornfield|...]
       [--render | --preview] [--view axes,crosshairs,edges,scales,wireframe]
-machinome export  [ref] [--set ...] [-o export] [--fps 30] [--frames 360] [--no-widget]
-machinome develop [ref] [--set ...] [--web | --openscad | --web-dev | --no-web]
+machinome export  [ref] [--set ...] [-o export] [--fps 30] [--frames 360]
+      [--viewer web] [--no-widget]
+machinome develop [ref] [--set ...] [--viewer web] [--web | --openscad | --web-dev | --no-web]
       [--callback URL] [--debug-builder]
 machinome viewer
 machinome import-step FILE [--into PACKAGE_DIR] [--model NAME]
@@ -2518,9 +2519,11 @@ fraction times the declared loop in seconds. A running root accepts only
 `--time 0` (the default); a nonzero time is refused naming `--drive`.
 Its still is the untimed rest pose at those input values, not an elapsed
 run or a saved state; verify accumulated motion on the stepped node.
-Leave the renderer at the default `openscad`:
+Leave the viewer at the default `openscad` (a project may name another
+with `viewer = "web"` under `[tool.machinome]`; `--renderer` is refused,
+naming `--viewer`):
 it is fast, needs no browser, self-wraps with `xvfb-run` when headless,
-and stays the default whatever is installed. The `web` renderer exists
+and stays the default whatever is installed. The `web` viewer exists
 so a host can get a transparent background through headless Chromium; it
 needs the separately installed `machinome-viewer` package with its
 browser (`pip install "machinome[web-snapshot]"` plus `playwright install

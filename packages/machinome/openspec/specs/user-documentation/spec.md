@@ -196,27 +196,33 @@ manual.
 
 ### Requirement: The documentation build produces nothing
 
-Building the manual SHALL require only what `docs/requirements.txt` lists:
-Sphinx, its theme and the published `machinome-viewer` package, which
-completes the committed exports with its widget. The Read the Docs
-configuration and the CI docs job, through the root Makefile's `docs`
-target, SHALL both install that file and run Sphinx, and neither SHALL run `machinome export`, install a system package,
-a Node tool or a package from a repository URL, or check out a submodule.
-Every export a page embeds SHALL be committed under `docs/_exports/`. The
-guide to embedding the viewer SHALL show its working host page from the
-built manual: the build SHALL copy the page, the committed export it loads and
-the installed viewer's bundle beside the guide, and SHALL take the viewer only
-from what `docs/requirements.txt` installs, never from the viewer's source
-directory of the repository, whose bundle is not built there.
+Building the manual SHALL require only what `docs/requirements.txt` lists,
+Sphinx and its theme, and the repository's own browser viewer with its bundle
+built: the manual's configuration SHALL put the viewer's directory of the
+repository on its path with the framework's and the other packages', and the
+widget's bundle SHALL be built with npm from the root's lock before Sphinx
+runs, because the framework finds the viewer through its seam at
+`machinome.viewer.web` and a published viewer is hidden behind the framework's
+source directory. The Read the Docs configuration and the CI docs job, through
+the root Makefile's `docs` target, SHALL both install that file, build the
+bundle and run Sphinx; Node SHALL be the one tool either installs beyond
+Python, and neither SHALL run `machinome export`, install a system package or
+a package from a repository URL, or check out a submodule. Every export a page
+embeds SHALL be committed under `docs/_exports/`. The guide to embedding the
+viewer SHALL show its working host page from the built manual: the build SHALL
+copy the page, the committed export it loads and the bundle the web viewer
+names beside the guide.
 
 The Read the Docs configuration SHALL sit beside the manual, at
 `packages/machinome/.readthedocs.yaml`, and SHALL name the requirements
 file and the Sphinx configuration by their paths from the repository
 root, `packages/machinome/docs/requirements.txt` and
 `packages/machinome/docs/conf.py`, since Read the Docs reads every path in
-it from there. The CI docs job, in the repository's workflow at
-`.github/workflows/python-app.yml`, SHALL run `make docs` at the repository
-root, whose recipe installs `packages/machinome/docs/requirements.txt` alone
+it from there; its one build job SHALL install the npm workspace from the
+root's lock and build the viewer's widget. The CI docs job, in the
+repository's workflow at `.github/workflows/python-app.yml`, SHALL install
+Node and run `make docs` at the repository root, whose recipe builds the
+viewer's bundle, installs `packages/machinome/docs/requirements.txt` alone
 into an environment of its own, `.docs-venv/` at the root, and builds `docs`
 from the package directory into `docs/_build/html`.
 
@@ -229,9 +235,9 @@ CI docs job run.
 #### Scenario: Read the Docs builds the manual
 
 - **WHEN** Read the Docs builds any version of the manual
-- **THEN** its configuration names no build job, no apt package and no Node
-  tool, installs `packages/machinome/docs/requirements.txt` alone, and the
-  build takes the time Sphinx alone takes
+- **THEN** its configuration names Node 22, one job that installs the npm
+  workspace and builds the viewer's widget, no apt package, and installs
+  `packages/machinome/docs/requirements.txt` alone
 
 #### Scenario: A page embeds an export nobody committed
 
@@ -242,14 +248,15 @@ CI docs job run.
 #### Scenario: A build configuration grows a build step
 
 - **WHEN** the Read the Docs configuration, the CI docs job or the
-  Makefile's `docs` target gains an export command, a repository install, an apt package, a Node tool or a
-  submodule checkout
+  Makefile's `docs` target gains an export command, a repository install, an
+  apt package, a Node step other than building the viewer's widget from the
+  root's lock, or a submodule checkout
 - **THEN** the suite fails naming the file and the step
 
 #### Scenario: The manual builds from the requirements alone
 
-- **WHEN** a fresh environment installs `docs/requirements.txt` and builds
-  the manual with warnings as errors
+- **WHEN** a fresh environment installs `docs/requirements.txt`, the viewer's
+  bundle is built, and the manual is built with warnings as errors
 - **THEN** the build succeeds and every tutorial page shows its committed
   export with the viewer's widget
 
@@ -274,12 +281,17 @@ CI docs job run.
 
 #### Scenario: The embedding guide's host page runs from the built manual
 
-- **WHEN** the manual is built from `docs/requirements.txt` and the guide to
-  embedding the viewer is opened in a browser
-- **THEN** its example loads the committed spinner export with the installed
-  viewer's bundle, both copied beside the page by the build, and the
-  framework's lookup answers the installed viewer even though the
-  repository's viewer source lies beside the framework's directory
+- **WHEN** the manual is built and the guide to embedding the viewer is
+  opened in a browser
+- **THEN** its example loads the committed spinner export with the bundle the
+  web viewer names, both copied beside the page by the build
+
+#### Scenario: The manual without a built bundle
+
+- **WHEN** the manual is built with warnings as errors and the viewer's
+  bundle has not been built
+- **THEN** the build fails with the warning naming the missing bundle and how
+  to build it
 
 ### Requirement: The release is recorded where readers are sent
 
@@ -411,13 +423,16 @@ Every documentation page that installs, opens, embeds or photographs through
 the browser viewer SHALL state that the viewer is the package
 `machinome-viewer` of the Machinome repository, released and licensed with
 the framework, installed with `pip install "machinome[viewer]"` and reached
-only as a separate process. It SHALL state that interactive
+through the framework's seam of viewers as the viewer named `web`, in the
+framework's own process. It SHALL state that interactive
 `machinome develop` requires that package, while a plain framework installation
 can build, test, export without the widget, run `machinome develop --no-web`, and
-snapshot through OpenSCAD with the `openscad` extra. Web-viewer operations SHALL name the extra as their
+take a still through the OpenSCAD viewer with the `openscad` or
+`viewer-openscad` extra. Web-viewer operations SHALL name the extra as their
 remedy. No page SHALL describe the viewer as licensed differently from the
-framework. Building the viewer's widget from source with Node and npm SHALL be
-the contributor guide's, not a reader page's.
+framework, as found through an entry point, or as run as a separate process.
+Building the viewer's widget from source with Node and npm SHALL be the
+contributor guide's, not a reader page's.
 
 The v0.7 release material SHALL explain that OpenSCAD was machinome's first
 reliable viewer, that the browser viewer progressively became the faithful
@@ -446,9 +461,9 @@ OpenSCAD snapshot-renderer capabilities.
 
 - **WHEN** a reader authors OpenSCAD or SolidPython geometry after the viewer
   removal
-- **THEN** the documentation says those node types and the fixed-pose OpenSCAD
-  snapshot renderer remain supported, without calling OpenSCAD an interactive
-  machinome viewer
+- **THEN** the documentation says those node types and the OpenSCAD viewer of
+  `machinome snapshot`, which takes a still and does not serve, remain
+  supported, without calling OpenSCAD an interactive machinome viewer
 
 #### Scenario: A contributor looks for the viewer source
 
@@ -1230,4 +1245,37 @@ manual SHALL build with warnings as errors from its own requirements file.
   the qualified Codex version or the build volume changes in its source and
   the manual's release facts do not
 - **THEN** the studio's documentation test fails naming the fact
+
+### Requirement: The viewers are documented as chosen by name
+
+The manual SHALL document the two viewers and how a command chooses one: the
+reference of `machinome snapshot`, `machinome develop` and `machinome export`
+SHALL name `--viewer` and its default, and say that `--renderer` is refused
+naming it; a how-to SHALL show a still through each viewer, the options each
+honours, and the project's `viewer` key under `[tool.machinome]`; the
+installation page SHALL list the `viewer-openscad` extra and say that the
+`openscad` and `solid2` extras install the OpenSCAD viewer; the upgrading page
+SHALL hold a section for Machinome 0.8 to 0.9 that says `--renderer` is
+`--viewer`, names the project key, the `viewer-openscad` extra, and the
+removed entry point with `machinome viewer` as what a host reads instead. No
+current page SHALL spell `--renderer` but to say it is refused, and the
+released records SHALL keep what they said.
+
+#### Scenario: A reader takes a transparent still
+
+- **WHEN** a reader follows the tutorial's "Photograph" section
+- **THEN** its commands spell `--viewer web` and run as written
+
+#### Scenario: A reader upgrading from 0.8
+
+- **WHEN** a reader opens the upgrading page
+- **THEN** its 0.9 section names `--viewer` in place of `--renderer`, the
+  project's `viewer` key and the `viewer-openscad` extra
+
+#### Scenario: A current page spells the former flag
+
+- **WHEN** a current page of the manual, outside the release records and the
+  changelog's released sections, spells `--renderer` other than to say it is
+  refused
+- **THEN** the suite fails naming the page
 

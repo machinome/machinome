@@ -211,7 +211,7 @@ subclass of the family's leaf base — because OpenSCAD renders that leaf's
 (the `openscad-node` capability). It SHALL write no `.scad` for an assembly, a
 fusion, a flexible leaf or any other leaf, whatever is installed, and SHALL log
 nothing about SCAD. The root's `.scad` is written in the build directory
-only by `machinome snapshot --renderer openscad`, under the `web-snapshot`
+only by `machinome snapshot --viewer openscad`, under the `web-snapshot`
 capability, which removes it once rendered; it is not a build artifact. Geometry/document-only consumers under
 `backend-neutral-materialization` SHALL NOT require or generate assembly SCAD,
 but SHALL still produce SCAD source when a selected backend needs it. Other
@@ -1390,7 +1390,7 @@ successful publication, exactly as a renamed node's artifact is.
 
 #### Scenario: A build removes any SCAD no current node writes
 
-- **WHEN** an interrupted `machinome snapshot --renderer openscad` has left
+- **WHEN** an interrupted `machinome snapshot --viewer openscad` has left
   the root's `.scad`, published as transient, in the build directory, and the
   project is built publishing the document already published
 - **THEN** that build removes the root's `.scad` and its currency record and
@@ -1648,7 +1648,7 @@ node at any depth of the tree, whether or not the artifact was already
 current when the tree was assembled, whatever package the importing node
 is declared in relative to the node whose artifact it names, and whichever
 path wrote the `.scad`: a family leaf's materialization, the OpenSCAD
-snapshot renderer's root, or a caller's
+snapshot viewer's root, or a caller's
 `machinome.node.openscad.writer.generate_scad(node)`. The writer SHALL take the
 imports from the node's own presentation (`presentation()`), whose artifact
 imports the core re-anchors onto the node's own build directory. An assembly
@@ -1691,7 +1691,7 @@ directory; the two files SHALL NOT be required to hold the same text.
 
 #### Scenario: The snapshot renderer's root SCAD resolves
 
-- **WHEN** `machinome snapshot --renderer openscad` writes the root's `.scad`
+- **WHEN** `machinome snapshot --viewer openscad` writes the root's `.scad`
   of a model whose root is declared in another package than its parts
 - **THEN** every `import(file = …)` in it names a file that exists relative
   to that `.scad`'s own directory

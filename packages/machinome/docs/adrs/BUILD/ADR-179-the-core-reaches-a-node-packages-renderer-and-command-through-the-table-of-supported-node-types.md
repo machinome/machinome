@@ -1,6 +1,6 @@
 # ADR-179: The Core Reaches a Node Package's Renderer and Command Through the Table of Supported Node Types
 
-**Status:** Accepted (provisional: its renderer column is removed by the viewer cycle); the `classes` column's readers amended 2026-10-05 by [NODE/ADR-181](../NODE/ADR-181-the-node-packages-root-exports-nothing.md); the renderer's module moved 2026-10-10 (amendment below)
+**Status:** Accepted; the `classes` column's readers amended 2026-10-05 by [NODE/ADR-181](../NODE/ADR-181-the-node-packages-root-exports-nothing.md); the renderer's module moved 2026-10-10 (amendment below); the renderer column removed 2026-10-12 by [ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md) (amendment below)
 **Date:** 2026-10-04
 **Change:** [`openscad-out`](../../../openspec/changes/archive/2026-10-04-openscad-out/)
 **Amends:**
@@ -109,3 +109,15 @@ module by string alone. The renderer column stays provisional; the viewer
 cycle replaces it with the seam `machinome.viewer`, now moving the renderer
 from the OpenSCAD node package rather than from the core's
 `machinome/viewers/`.
+
+## Amendment (2026-10-12)
+
+[ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md)
+removes the renderer column, `DEFAULT_RENDERER` and `renderer()` (OpenSpec
+change `viewer-seam`). Viewers are providers of the seam `machinome.viewer`,
+chosen by name: the OpenSCAD snapshot renderer is the OpenSCAD viewer,
+`machinome.viewer.openscad` of the distribution `machinome-viewer-openscad`,
+and `machinome snapshot` reaches it through the seam and reads the table no
+more. The table states the classes each node type's module defines and the
+commands that need it; its readers are the node root, the CLI and the
+`import-step` and `new` commands.

@@ -26,7 +26,12 @@ deny = [
   "machinome.core.pieces",
   # Independent consumers may copy/export artifacts; pure model code cannot.
   "machinome.model.ModelSnapshot", "machinome.production.profile",
-  "machinome.source_generation", "machinome.viewers", "machinome.sphinx",
+  "machinome.source_generation",
+  # The seam of viewers and every provider beneath it, the web viewer and
+  # the OpenSCAD viewer, which serve, capture, build a bundle and launch
+  # programs (change `viewer-seam`); a model chooses no viewer.
+  "machinome.viewer",
+  "machinome.sphinx",
   "machinome.currency", "machinome._artifact",
   # The B-rep layer's internals: the memos load a BREP from a caller-chosen
   # path, and artifact publication writes through `currency.publish`.
@@ -35,9 +40,6 @@ deny = [
   # path; its other operations are contract.
   "machinome.engine.brep.read_brep", "machinome.engine.brep.write_brep",
   "machinome.engine.brep.write_stl",
-  # The browser viewer's package, which serves, captures and builds its
-  # bundle in processes of its own (change `join-viewer`).
-  "machinome.viewer.web",
   # The films' package, whose command runs Node and npm in processes of
   # their own; a project's movie declarations are not vetted (change
   # `join-movie`).

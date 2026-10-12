@@ -41,14 +41,11 @@ SOLID2_IMPORTERS = {
     'machinome/manager/templates/project/root/solid2.py',
 }
 
-#: The modules outside the family that reach its package: none imports it
-#: since the OpenSCAD snapshot renderer moved into it
-#: (`cut-the-mesh-nodes`); the table of supported node types names the
-#: renderer's module, `machinome.node.openscad.renderer`, by string in its
-#: provisional renderer row.
-BINARY_REACHES = {
-    'machinome/node/supported.py',
-}
+#: The modules outside the family that reach its package: none. The OpenSCAD
+#: viewer, which draws with its writer and binary, is a distribution of its
+#: own (`viewer-seam`), and the table of supported node types names no
+#: module of the family since that change removed its renderer column.
+BINARY_REACHES = set()
 
 
 def core_modules():

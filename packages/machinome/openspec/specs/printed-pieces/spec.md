@@ -15,8 +15,10 @@ The published inventory belongs to the shared tree document (ADR-034), so the
 producer carries it.
 
 Code: `machinome/core/pieces.py`, `machinome/core/serializer.py`,
-`machinome/core/builder.py`, `machinome/core/export.py`,
-`machinome/viewers/browser.py`.
+`machinome/core/builder.py`, `machinome/core/export.py`, and the web
+viewer's staging of a still,
+`packages/machinome-viewer/machinome/viewer/web/stage.py` (OpenSpec change
+`viewer-seam`).
 ## Requirements
 ### Requirement: Printed piece identity is content-derived
 

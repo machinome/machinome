@@ -79,12 +79,18 @@ same name: the extra is the last component of the module's address.
    * - ``machinome[openscad]``
      - ``machinome.node.openscad``
      - the package ``machinome-node-openscad``, with SolidPython, for
-       ``OpenScadNode``, the OpenSCAD writer and the OpenSCAD snapshot
-       renderer of ``machinome snapshot``
+       ``OpenScadNode`` and the OpenSCAD writer, and the OpenSCAD viewer of
+       ``machinome snapshot``, the package ``machinome-viewer-openscad``
+   * - ``machinome[viewer-openscad]``
+     - ``machinome.viewer.openscad``
+     - the OpenSCAD viewer alone, the package ``machinome-viewer-openscad``,
+       which brings ``machinome-node-openscad``: a still of a model of any
+       parts with ``machinome snapshot --viewer openscad``
    * - ``machinome[solid2]``
      - ``machinome.node.solid2``
      - the package ``machinome-node-solid2``, with SolidPython, for
-       ``Solid2Node``; it installs ``machinome-node-openscad`` too
+       ``Solid2Node``; it installs ``machinome-node-openscad`` and the
+       OpenSCAD viewer too
    * - ``machinome[jscad]``
      - ``machinome.node.jscad``
      - the package ``machinome-node-jscad``, for ``JScadNode``, which runs
@@ -138,15 +144,17 @@ types in packages of their own that its extras install
 ``machinome-node-step``, ``machinome-node-molejo``,
 ``machinome-node-openscad``, ``machinome-node-solid2``,
 ``machinome-node-jscad``, ``machinome-node-stl`` and
-``machinome-node-freecad``), with the mechanics helpers in
+``machinome-node-freecad``), with the OpenSCAD viewer in
+``machinome-viewer-openscad``, the mechanics helpers in
 ``machinome-mechanics``, with the browser viewer in ``machinome-viewer``, the
 machinome skills in ``machinome-skills``, the films in ``machinome-movie``
 and the studio in ``machinome-studio``, all licensed |framework_licence|, at
 the recipient's choice. The framework reaches the
-viewer only as a separate process. The ``viewer`` extra installs it.
+browser viewer through its seam of viewers as the viewer named ``web``, in
+its own process. The ``viewer`` extra installs it.
 Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes
-OpenSCAD snapshots with the ``openscad`` extra; with it, ``machinome
+OpenSCAD snapshots with the ``openscad`` or ``viewer-openscad`` extra; with it, ``machinome
 develop`` opens the interactive viewer (:doc:`/howto/browser-viewer`), and
 every export carries the viewer page. A host that only serves or captures
 published documents installs ``machinome-viewer`` alone, which brings the

@@ -2,6 +2,7 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+import argparse
 import io
 import json
 import os
@@ -573,9 +574,9 @@ class ExportAnimationTest(ExportBaseTest):
 
 
 class ExportWidgetTest(ExportBaseTest):
-    """The export embeds the standalone viewer: the prebuilt JS bundle
-    (viewers/widget/dist/machinome-viewer.js, produced by npm/CI) and the
-    static index.html next to the manifest."""
+    """The export embeds the standalone viewer: the files the web viewer
+    embeds, asked through the seam (its built `machinome-viewer.js` and its
+    static `index.html`), next to the manifest."""
 
     BUNDLE_CONTENT = '/* fake machinome-viewer bundle */'
 
@@ -590,13 +591,15 @@ class ExportWidgetTest(ExportBaseTest):
             fh.write('<script src="machinome-viewer.js"></script>'
                      '<a href="manifest.json"></a>')
         # The test is about what an export copies, not about whether the
-        # separate viewer package is installed where the test runs.
+        # viewer's bundle is built where the test runs.
+        import machinome.viewer as viewers
+        self.viewers = viewers
+        web = viewers.viewer('web')
         for target, value in (
-                ('has_bundle', True),
-                ('bundle_path', Path(self.fake_bundle)),
-                ('index_path', Path(self.fake_index))):
-            faked = patch(f'machinome.core.export.viewer_bundle.{target}',
-                          return_value=value)
+                ('describe', {}),
+                ('files', {'index.html': Path(self.fake_index),
+                           'machinome-viewer.js': Path(self.fake_bundle)})):
+            faked = patch.object(web, target, return_value=value)
             faked.start()
             self.addCleanup(faked.stop)
 
@@ -622,14 +625,47 @@ class ExportWidgetTest(ExportBaseTest):
             os.path.exists(os.path.join(self.out_dir, 'machinome-viewer.js')))
 
     def test_missing_viewer_raises_with_install_instructions(self):
-        with patch('machinome.core.export.viewer_bundle.has_bundle',
-                   return_value=False), \
-             patch('machinome.core.export.viewer_bundle.missing_bundle_remedy',
-                   return_value='pip install "machinome[viewer]"'), \
+        with patch.object(self.viewers, 'viewer',
+                          side_effect=self.viewers.absent('web')), \
              self.assertRaises(WidgetBundleMissing) as ctx:
             self.export(flat_project.SimpleCylinder(), widget=True)
 
-        self.assertIn('machinome[viewer]', str(ctx.exception))
+        self.assertEqual(
+            str(ctx.exception),
+            'the web viewer needs machinome.viewer.web, which is not '
+            'installed; install it with \'pip install "machinome[viewer]"\'. '
+            'Or pass --no-widget to export only the manifest and models.')
+        self.assertFalse(os.path.exists(self.out_dir))
+
+    def test_a_viewer_without_its_bundle_is_refused_with_its_remedy(self):
+        web = self.viewers.viewer('web')
+        with patch.object(web, 'describe', side_effect=FileNotFoundError(
+                'Viewer bundle not found at /x.js.')), \
+             self.assertRaises(WidgetBundleMissing) as ctx:
+            self.export(flat_project.SimpleCylinder(), widget=True)
+        self.assertEqual(
+            str(ctx.exception),
+            'Viewer bundle not found at /x.js. Or pass --no-widget to '
+            'export only the manifest and models.')
+
+    def test_a_viewer_that_does_not_embed_is_refused_by_name(self):
+        with self.assertRaises(self.viewers.ViewerLacks) as ctx:
+            self.export(flat_project.SimpleCylinder(), widget=True,
+                        viewer='openscad')
+        self.assertEqual(
+            str(ctx.exception),
+            'machinome export needs a viewer that can embed, and the '
+            'openscad viewer cannot; the viewers that can: web')
+        self.assertFalse(os.path.exists(self.out_dir))
+
+    def test_no_widget_refuses_no_viewer(self):
+        """`--no-widget` embeds nothing, so neither an absent viewer nor
+        one that does not embed refuses it."""
+        with patch.object(self.viewers, 'viewer',
+                          side_effect=self.viewers.absent('web')):
+            self.export(flat_project.SimpleCylinder(), widget=False)
+        self.export(flat_project.SimpleCylinder(), widget=False,
+                    viewer='openscad')
 
 
 class ExportCliTest(TestCase):
@@ -647,6 +683,35 @@ class ExportCliTest(TestCase):
         self.assertEqual(args.fps, 30)
         self.assertEqual(args.frames, 360)
         self.assertTrue(args.widget)
+        self.assertIsNone(args.viewer)
+
+    def test_the_viewer_flag(self):
+        with patch.object(sys, 'argv', ['machinome', 'export', 'somefile.py',
+                                        '--viewer', 'web']):
+            with patch('machinome.manager.export.Export.handle') as handle:
+                manage()
+        self.assertEqual(handle.call_args[0][0].viewer, 'web')
+
+    def test_a_viewer_that_does_not_embed_is_one_line(self):
+        from machinome.manager.export import Export
+        output = tempfile.mkdtemp(prefix='export-viewer-refused-')
+        shutil.rmtree(output)
+        args = argparse.Namespace(
+            path=os.path.join(os.path.dirname(__file__), 'flat_project',
+                              'simple_cylinder.py'),
+            output=output, fps=30, frames=360, widget=True,
+            viewer='openscad', set=None)
+        with patch('sys.stderr', new_callable=io.StringIO) as stderr, \
+             patch('machinome.manager.export.load_node') as loaded:
+            with self.assertRaises(SystemExit) as raised:
+                Export().handle(args)
+        self.assertEqual(raised.exception.code, 1)
+        self.assertEqual(
+            stderr.getvalue(),
+            'Error: machinome export needs a viewer that can embed, and the '
+            'openscad viewer cannot; the viewers that can: web\n')
+        loaded.assert_not_called()
+        self.assertFalse(os.path.exists(output))
 
     def test_no_widget_flag(self):
         with patch.object(sys, 'argv',
@@ -680,7 +745,7 @@ class RunningPublicationWarningTest(BaseNodeTest):
         from machinome.core import export as export_module
 
         output = os.path.join(self.temporary.name, node.name)
-        with patch.object(export_module.viewer_bundle, 'unreadable_document',
+        with patch.object(export_module.viewers, 'unreadable',
                           return_value=message) as asked:
             with self.assertLogs('core.export', level='WARNING') as logged:
                 # One record at least: the assertion below counts the
@@ -699,13 +764,13 @@ class RunningPublicationWarningTest(BaseNodeTest):
         self.assertIn('1, 2, 3, 4', warnings[0])
         self.assertIn('0.1.0', warnings[0])
         self.assertEqual(manifest['version'], 11)
-        asked.assert_called_once_with(11)
+        asked.assert_called_once_with(11, 'web')
 
     def test_a_viewer_that_can_read_it_is_not_warned_about(self):
         from machinome.core import export as export_module
 
         output = os.path.join(self.temporary.name, 'quiet')
-        with patch.object(export_module.viewer_bundle, 'unreadable_document',
+        with patch.object(export_module.viewers, 'unreadable',
                           return_value=None):
             manifest = export_node(self.running, output, widget=False)
         self.assertEqual(manifest['version'], 11)

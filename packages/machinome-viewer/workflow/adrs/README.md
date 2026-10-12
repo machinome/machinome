@@ -31,6 +31,13 @@ framework's `packages/machinome/docs/adrs/`. A number cited in the viewer's
 code, specs and records names this log's ADR; the framework's are cited as
 'framework ADR-nnn'.
 
+(12 October 2026, change `viewer-seam`) Framework ADR-194 makes this package
+the web provider of the framework's seam of viewers, `machinome.viewer`: the
+framework finds it at its address, without the `machinome.viewer` entry point,
+and serves and captures through it in its own process. The records below
+stand; where one names the entry point or a separate process, framework
+ADR-194 is the current account.
+
 ## Discipline
 
 - **One decision per ADR**, numbered sequentially, filed under the subsystem

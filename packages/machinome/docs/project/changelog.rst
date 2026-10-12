@@ -92,6 +92,20 @@ Unreleased
   starts it: a script that ran ``machinome-studio`` or ``python -m floor``
   runs ``machinome studio`` or ``python -m machinome.studio``.
 
+* **Choose the viewer by name.** ``machinome snapshot``, ``machinome
+  develop`` and ``machinome export`` take ``--viewer <name>``, ``openscad``
+  or ``web``; a project names its viewer with ``viewer = "web"`` under
+  ``[tool.machinome]``; without either, a still is OpenSCAD's and serving
+  and embedding are the browser's. ``--renderer`` is refused, naming
+  ``--viewer``. The OpenSCAD viewer is the distribution
+  ``machinome-viewer-openscad``, which ``machinome[viewer-openscad]``
+  installs and the ``openscad`` and ``solid2`` extras install with their
+  node types. The browser viewer serves and captures in the command's own
+  process, so a rebuild reaches the open page without a reconnect; the
+  entry point ``machinome.viewer`` is gone, and a host reads ``machinome
+  viewer`` instead (:ref:`choose-the-viewer`,
+  :ref:`upgrading-0-8-to-0-9`).
+
 Machinome 0.8.1
 ---------------
 

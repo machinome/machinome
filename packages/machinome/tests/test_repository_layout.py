@@ -24,8 +24,11 @@ the two engines and the node packages `machinome-node-cadquery`,
 (change `cut-the-mesh-nodes`), the first of them a package directory with
 its own `__init__.py`, and `machinome-node-freecad`, a package directory
 too, which joined the repository from a repository of its own (change
-`join-freecad`). The core's `machinome/node/` then holds no node type and its
-`machinome/viewers/` no node type's renderer. A product that joined from a
+`join-freecad`), and the OpenSCAD viewer `machinome-viewer-openscad`, a
+package directory at `machinome.viewer.openscad`, a portion of the core's
+seam of viewers (change `viewer-seam`). The core's `machinome/node/` then
+holds no node type, and its `machinome/viewer/` the seam alone and no
+viewer. A product that joined from a
 repository of its own and is not an extension package keeps its record in its
 directory, at its own version: the mechanics helpers `machinome-mechanics`,
 the package `machinome.mechanics`, with their changelog, tests, specs and
@@ -111,6 +114,8 @@ EXTENSIONS = {
     'machinome-node-jscad': ('machinome.node.jscad', 'jscad'),
     'machinome-node-stl': ('machinome.node.stl', 'stl'),
     'machinome-node-freecad': ('machinome.node.freecad', 'freecad'),
+    'machinome-viewer-openscad': ('machinome.viewer.openscad',
+                                  'viewer-openscad'),
 }
 
 #: The products of the repository that keep their record in their own
@@ -164,11 +169,12 @@ MOVIE_JS = 'packages/machinome-movie/machinome/movie/js'
 
 #: The extension packages whose portion is a package directory at its
 #: address, with its own `__init__.py` below the levels the core defines,
-#: and the modules it holds (`cut-the-mesh-nodes`, `join-freecad`).
+#: and the modules it holds (`cut-the-mesh-nodes`, `join-freecad`,
+#: `viewer-seam`).
 PACKAGE_PORTIONS = {
-    'machinome-node-openscad': ('__init__', 'binary', 'leaf', 'renderer',
-                                'writer'),
+    'machinome-node-openscad': ('__init__', 'binary', 'leaf', 'writer'),
     'machinome-node-freecad': ('__init__', 'adapter', 'runtime', 'worker'),
+    'machinome-viewer-openscad': ('__init__',),
 }
 
 #: A link into the repository on GitHub, and the path it names.
@@ -395,7 +401,9 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         'lint': ['make lint'],
         'test': ['make widget', 'make test'],
         'browser-snapshot': ['make widget'],
-        'docs': ['make docs'],
+        # The manual takes the repository's viewer, whose bundle npm builds
+        # from the root's lock (`viewer-seam`).
+        'docs': ['make widget', 'make docs'],
         'dist': ['make check'],
         'build': ['make dist'],
     }
@@ -792,8 +800,11 @@ class TheExtensionPackagesTest(unittest.TestCase):
 
     def test_each_portion_resolves_from_its_package(self):
         from machinome import engine as seams
+        from machinome import viewer as viewers
         seam = {'machinome.engine.brep': seams.brep_engine,
-                'machinome.engine.mesh': seams.mesh_engine}
+                'machinome.engine.mesh': seams.mesh_engine,
+                'machinome.viewer.openscad':
+                    lambda: viewers.viewer('openscad')}
         for name, (address, _extra) in EXTENSIONS.items():
             with self.subTest(package=name):
                 module = importlib.import_module(address)
@@ -832,11 +843,13 @@ class TheExtensionPackagesTest(unittest.TestCase):
                 self.assertFalse((node / key).exists(),
                                  f'{node / key}/ is in the core')
 
-    def test_the_core_viewers_hold_no_node_type_s_renderer(self):
+    def test_the_core_holds_the_seam_of_viewers_and_no_viewer(self):
+        self.assertFalse((PACKAGE / 'machinome' / 'viewers').exists(),
+                         'the core holds machinome/viewers/')
         entries = {path.name
-                   for path in (PACKAGE / 'machinome' / 'viewers').iterdir()
+                   for path in (PACKAGE / 'machinome' / 'viewer').iterdir()
                    if path.name != '__pycache__'}
-        self.assertEqual(entries, {'__init__.py', 'browser.py', 'bundle.py'})
+        self.assertEqual(entries, {'__init__.py'})
 
     def test_every_sibling_is_in_the_table(self):
         siblings = [directory.name for directory in package_directories()

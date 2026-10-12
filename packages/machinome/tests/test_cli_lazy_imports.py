@@ -35,7 +35,8 @@ from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
 from machinome.cli import COMMANDS, manage
-from machinome.viewers.bundle import describe, has_bundle
+from machinome.viewer import viewer
+from machinome.viewer.web.bundle import has_bundle
 
 from .contributed_commands import installed
 from .import_probe import probe
@@ -211,8 +212,11 @@ def run_help(*argv):
 
 
 def option_strings(parser):
-    """Every option spelling a parser accepts, `-h` included."""
+    """Every option spelling a parser lists, `-h` included: an option kept
+    only to be refused, hidden from the help (the snapshot's former
+    `--renderer`, `viewer-seam`), is not listed."""
     return {string for action in parser._actions
+            if action.help != argparse.SUPPRESS
             for string in action.option_strings}
 
 
@@ -254,12 +258,29 @@ class CommandImportIsolationTest(TestCase):
         # in THIS process, where every command module is loaded already.
         self.assertLessEqual({'apiVersion', 'index', 'path', 'version'},
                              set(report))
-        self.assertEqual(report, json.loads(json.dumps(describe())))
+        self.assertEqual(report,
+                         json.loads(json.dumps(viewer('web').describe())))
         self.assertIsInstance(report['apiVersion'], int)
-        # The lookup is an entry point that imports only the standard
-        # library; the viewer's own server and capture never load here.
-        self.assertFalse(result.imported('machinome.viewer.web.server'))
-        self.assertFalse(result.imported('machinome.viewer.web.capture'))
+        # The report is asked of the web viewer through the seam
+        # (`viewer-seam`); the viewer's server, capture and staging, its
+        # web framework and its browser driver never load here.
+        self.assertTrue(result.imported('machinome.viewer.web'))
+        for name in ('machinome.viewer.web.server',
+                     'machinome.viewer.web.capture',
+                     'machinome.viewer.web.stage',
+                     'machinome.viewer.web.session',
+                     'fastapi', 'uvicorn', 'playwright'):
+            with self.subTest(module=name):
+                self.assertFalse(result.imported(name))
+
+    def test_a_command_s_help_imports_no_viewer(self):
+        for argv in (['-h'], ['snapshot', '-h'], ['develop', '-h']):
+            with self.subTest(argv=argv):
+                result = probe(DISPATCH, argv=argv)
+                self.assertEqual(result.status, 0, result.stderr)
+                self.assertFalse(result.imported('machinome.viewer.web'))
+                self.assertFalse(
+                    result.imported('machinome.viewer.open' 's' 'cad'))
 
     def test_dispatching_new_loads_only_the_new_command(self):
         """`new` is the non-node command, and takes the other branch of the

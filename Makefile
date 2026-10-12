@@ -41,7 +41,8 @@ PACKAGES := \
 	machinome-node-stl \
 	machinome-skills \
 	machinome-studio \
-	machinome-viewer
+	machinome-viewer \
+	machinome-viewer-openscad
 
 # The packages with tests of their own, in the order `make test` runs them;
 # the core's suite tests the extension packages.
@@ -141,7 +142,7 @@ lint: ## Check the style of every package's sources with black and flake8, as CI
 	$(PYTHON) -m flake8 --max-line-length=89 machinome tests ../machinome-*/machinome || status=1; \
 	exit $$status
 
-docs: ## Build the manual with warnings as errors, from docs/requirements.txt alone, into packages/machinome/docs/_build/html
+docs: bundle ## Build the viewer's bundle, then the manual with warnings as errors, from docs/requirements.txt alone, into packages/machinome/docs/_build/html
 	test -x $(DOCS_VENV)/bin/python || $(UV) venv --python 3.12 $(DOCS_VENV)
 	$(UV) pip install --python $(DOCS_VENV)/bin/python -r packages/machinome/docs/requirements.txt
 	cd packages/machinome && $(CURDIR)/$(DOCS_VENV)/bin/python -m sphinx -b html -W -E docs docs/_build/html

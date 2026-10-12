@@ -166,12 +166,24 @@ jobs:
           enable-cache: true
           cache-dependency-glob: packages/machinome/docs/requirements.txt
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
       # The manual builds from docs/requirements.txt alone, in an
-      # environment of its own: Sphinx, its theme and the published
-      # machinome-viewer, whose widget completes the committed tutorial
-      # exports. Nothing is exported here; the real machines are shown on
-      # machinome.org. Kept in step with .readthedocs.yaml, and pinned by
+      # environment of its own: Sphinx and its theme, with the repository's
+      # own browser viewer, which the framework finds through its seam of
+      # viewers, completing the committed tutorial exports; `make docs`
+      # builds the viewer's bundle first, from the npm workspace `make
+      # widget` installs from the root's lock (change `viewer-seam`). Nothing
+      # is exported here; the real machines are shown on machinome.org. Kept
+      # in step with .readthedocs.yaml, and pinned by
       # tests/test_docs_exports.py.
+      - name: Install the npm workspace and build its bundles
+        run: make widget
+
       - name: Build the manual (fail on warnings)
         run: make docs
 

@@ -29,7 +29,8 @@ from machinome._artifact import ArtifactChanged, VERDICT_STORE_DIRECTORY
 from machinome import currency
 from machinome.node.base import StlRenderStart
 from machinome.source_generation import (SourceChanged, current_phase)
-from machinome.viewers import bundle as viewer_bundle
+from machinome import viewer as viewers
+from machinome.manifest import reference_origin
 
 
 logger = logging.getLogger('core.builder')
@@ -45,15 +46,22 @@ _INITIAL_FAILURE = {
 }
 
 
-def _warn_unreadable(version):
+def _warn_unreadable(version, viewer=None, origin=None):
     """Say, once, that the installed viewer cannot read the document just
     published -- and publish it anyway.
 
     `machinome develop` serves it and the browser refuses it BY NAME, which is
     the designed behaviour: the build, the STLs and the tests are still
-    useful, and `--no-web` is unaffected.
+    useful, and `--no-web` is unaffected. The viewer asked is the one
+    `develop` serves through (`viewer`), else the one the project above
+    `origin` would serve through (`machinome.viewer.chosen`).
     """
-    message = viewer_bundle.unreadable_document(version)
+    if viewer is None:
+        try:
+            viewer = viewers.chosen('serve', origin=origin)
+        except ProjectManifestError:
+            viewer = viewers.DEFAULTS['serve']
+    message = viewers.unreadable(version, viewer)
     if message is not None:
         logger.warning(
             f'{message}. The document is published anyway: the build, its '
@@ -260,9 +268,12 @@ class Builder(FileSystemEventHandler):
     """Monitor model sources. On any relevant change, exit for a rebuild."""
     def __init__(self, path, is_reload=False, build_dir=None,
                  watch=True, callback=None,
-                 lifecycle=False, overrides=None):
+                 lifecycle=False, overrides=None, viewer=None):
         super().__init__()
         self.path = path
+        # The viewer `machinome develop` serves through, whose readability
+        # of the published document is warned about; None asks the seam.
+        self.viewer = viewer
         # The root's `--set` words, carried into every load this builder
         # performs so a develop session's reloads keep the parameters it
         # was started with.
@@ -688,7 +699,8 @@ class Builder(FileSystemEventHandler):
                                  clocked=clocked)
         snapshot['root'] = root
         snapshot['pieces'] = inventory.pieces()
-        _warn_unreadable(snapshot['version'])
+        _warn_unreadable(snapshot['version'], getattr(self, 'viewer', None),
+                         reference_origin(getattr(self, 'path', None)))
         document = json.dumps(snapshot).encode()
         phase = current_phase()
         if phase is not None:

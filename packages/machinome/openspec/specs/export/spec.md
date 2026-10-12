@@ -9,8 +9,9 @@ widget); the manifest is a versioned public contract shared by the exporter,
 the widget, and the Sphinx extension.
 
 Code: `machinome/core/export.py`, `machinome/manager/export.py`; the
-widget files come from the installed machinome-viewer package through
-`machinome/viewers/bundle.py`.
+widget files come from the viewer that embeds, by default the web viewer of
+machinome-viewer, asked through the seam of viewers,
+`machinome/viewer/__init__.py` (OpenSpec change `viewer-seam`).
 ## Requirements
 ### Requirement: Export artifact contents
 

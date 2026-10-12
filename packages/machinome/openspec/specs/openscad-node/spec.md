@@ -10,8 +10,11 @@ technology's name out of the rest of the core. Encodes ADR-177 (OpenSpec
 change `openscad-out`), which took over `openscad-engine` and
 `scad-engine-dependency`.
 
-Code: `machinome/node/openscad/`, `machinome/node/solid2.py`,
-`machinome/viewers/openscad.py` (until the viewer cycle),
+Code: the node package `machinome/node/openscad/` of
+`packages/machinome-node-openscad/`, `machinome/node/solid2.py` of
+`packages/machinome-node-solid2/`, the OpenSCAD viewer that draws with the
+family, `machinome/viewer/openscad/__init__.py` of
+`packages/machinome-viewer-openscad/` (OpenSpec change `viewer-seam`), and
 `tests/test_core_names_no_scad.py`.
 ## Requirements
 ### Requirement: The OpenSCAD node family is the package machinome.node.openscad
@@ -33,21 +36,25 @@ address, `machinome.node.openscad`, whose `__init__` SHALL define the node type
 - `machinome.node.openscad.binary`: `openscad_binary()`,
   `require_openscad(needed_by, reason, alternative=None)` and
   `OpenScadUnavailable`, with the behaviour and messages the
-  `openscad-dependency` capability states;
-- `machinome.node.openscad.renderer`: the OpenSCAD snapshot renderer,
-  `OpenScadRenderer` and `OpenScadImportError`, which the table of supported
-  node types names in its provisional renderer column, and which SHALL import
-  the package's writer and binary directly, log to the logger
-  `viewers.openscad`, and SHALL NOT import a module of the core that names
-  SCAD.
+  `openscad-dependency` capability states.
+
+The package SHALL hold no viewer. The OpenSCAD viewer, which draws a still of
+a node through the package's writer and binary contract, SHALL be the module
+`machinome.viewer.openscad` of its own distribution,
+`machinome-viewer-openscad`, a provider of the framework's seam of viewers
+under the `viewer-seam` capability: it SHALL define `OpenScadViewer` and
+`OpenScadImportError`, import the package's writer and binary directly, log
+to the logger `viewer.openscad`, and SHALL NOT import a module of the core that
+names SCAD.
 
 The package SHALL be shipped by its own distribution, `machinome-node-openscad`,
 as a package directory with its own `__init__.py` inside the namespace
 portions `machinome` and `machinome.node`, with no `__init__.py` under
 `machinome/` or `machinome/node/`; `machinome.node.solid2` SHALL be shipped by
 `machinome-node-solid2`. The framework's distribution SHALL ship none of the
-family and no OpenSCAD renderer: its `machinome.viewers` holds no module of the
-family, and `machinome.viewers.openscad` SHALL NOT exist. In the repository the
+family and no OpenSCAD viewer, and `machinome.viewers`,
+`machinome.viewers.openscad` and `machinome.node.openscad.renderer` SHALL NOT
+exist. In the repository the
 package lives at `packages/machinome-node-openscad/machinome/node/openscad/`
 and the module at `packages/machinome-node-solid2/machinome/node/solid2.py`.
 
@@ -75,7 +82,7 @@ with Python's own `ModuleNotFoundError`.
 
 #### Scenario: The OpenSCAD viewer reaches the package directly
 
-- **WHEN** `machinome.node.openscad.renderer` is imported with SolidPython
+- **WHEN** `machinome.viewer.openscad` is imported with SolidPython
   installed, and again where `solid2` cannot be found
 - **THEN** the first import loads `machinome.node.openscad.writer` and
   `machinome.node.openscad.binary` and no other module naming SCAD outside the
@@ -93,13 +100,13 @@ with Python's own `ModuleNotFoundError`.
 #### Scenario: The family resolves from its own distributions
 
 - **WHEN** the repository's workspace is synced and `machinome.node.openscad`,
-  `machinome.node.openscad.renderer` and `machinome.node.solid2` are imported
-- **THEN** their files are under `packages/machinome-node-openscad/` and
-  `packages/machinome-node-solid2/`, the table of supported node types'
-  `renderer('openscad')` is an `OpenScadRenderer` of
-  `machinome.node.openscad.renderer`, and the framework's `machinome/node/`
-  holds neither `openscad/` nor `solid2.py` and its `machinome/viewers/` holds
-  no `openscad.py`
+  `machinome.viewer.openscad` and `machinome.node.solid2` are imported
+- **THEN** their files are under `packages/machinome-node-openscad/`,
+  `packages/machinome-viewer-openscad/` and `packages/machinome-node-solid2/`,
+  the seam's `viewer('openscad')` is that viewer's module, the OpenSCAD node
+  package holds no `renderer.py`, and the framework holds neither
+  `machinome/node/openscad/` nor `machinome/node/solid2.py` nor a
+  `machinome/viewers/` directory
 
 ### Requirement: Solid2Node is machinome.node.solid2 over the package
 
@@ -275,7 +282,8 @@ The three doors SHALL be the module's own import, whether written
 package as `from machinome.node import solid2`, which SHALL carry the module's
 refusal unmodified; the table of supported node types, which SHALL read it as
 an absent node type; and a command that needs the family, `machinome snapshot`
-with the OpenSCAD renderer, which SHALL refuse at its start under the `cli`
+with the OpenSCAD viewer, whose resolution through the seam of viewers carries
+the package's refusal, which SHALL refuse at its start under the `cli`
 capability. The node root resolves neither class name, so it is not a door. No
 other module of the framework or of its extension packages SHALL import
 SolidPython, except the project template that scaffolds a `Solid2Node`.
@@ -317,9 +325,11 @@ included, and of every extension package's `machinome/**/*.py` under the
 repository's `packages/machinome-*`, reading the file's path and every
 identifier, attribute name, string, docstring and comment token, SHALL find no
 case-insensitive `scad` outside the family's two distributions,
-`machinome-node-openscad` and `machinome-node-solid2`, and the module
-`machinome/node/supported.py` of the framework, which holds the table of
-supported node types. An
+`machinome-node-openscad` and `machinome-node-solid2`, the OpenSCAD viewer's
+distribution `machinome-viewer-openscad`, and two modules of the framework:
+`machinome/node/supported.py`, which holds the table of supported node types,
+and `machinome/viewer/__init__.py`, the seam of viewers, which names the
+viewers the core knows. An
 occurrence that is JSCAD's own name, a `jscad` whose `j` begins a word (at the
 start of the text, after a character that is not a letter, or an upper-case `J`
 after a lower-case letter), SHALL pass; `scad` inside any other word SHALL fail.
@@ -327,8 +337,8 @@ The scan SHALL be a test of the framework's suite.
 
 The core SHALL describe a node's presentation in its own types
 (`machinome.node.presentation`) and SHALL compose no SCAD text; it SHALL obtain
-none, except through a family leaf's own members or the OpenSCAD snapshot
-renderer, which it reaches through the table of supported node types.
+none, except through a family leaf's own members or the OpenSCAD viewer,
+which it reaches through the seam of viewers by name.
 
 #### Scenario: The scan finds nothing
 
@@ -354,7 +364,8 @@ renderer, which it reaches through the table of supported node types.
 
 - **WHEN** the scan's zones are asked of `machinome/node/openscad/writer.py`,
   `machinome/node/solid2.py` and `machinome/viewers/openscad.py` of the
-  framework, and of `machinome/node/stl.py` of `machinome-node-stl`
+  framework, and of `machinome/node/stl.py` of `machinome-node-stl`, and the
+  framework's `machinome/manager/snapshot.py`
 - **THEN** none of them is an allowed zone, and the word in any of them fails
   the scan naming the path
 

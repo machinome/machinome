@@ -80,11 +80,13 @@ contributed ones included.
 
 ### Requirement: The viewer command loads no geometry stack
 
-The system SHALL answer `machinome viewer` from the installed viewer package's
-entry point alone. The invocation SHALL NOT import `cadquery`, `trimesh`,
-`solid2`, or any node module, because none of them contributes to the bundle
-path or its API version; and it SHALL NOT import the viewer package's server,
-capture or rendering code, because the entry point answers without them.
+The system SHALL answer `machinome viewer` from the web viewer's report, asked
+through the seam `machinome.viewer`, which imports the provider
+`machinome.viewer.web` and the modules its report reads and nothing else. The
+invocation SHALL NOT import `cadquery`, `trimesh`, `solid2`, or any node
+module, because none of them contributes to the bundle path or its API
+version; and it SHALL NOT import the viewer's server, its capture, its staging,
+a web framework or a browser driver, because the report answers without them.
 
 #### Scenario: Reporting the bundle imports no CAD library
 
@@ -96,14 +98,21 @@ capture or rendering code, because the entry point answers without them.
 #### Scenario: Reporting the bundle runs no viewer code
 
 - **WHEN** `machinome viewer` runs against an installation with `machinome-viewer`
-- **THEN** the viewer's server and capture modules are absent from the
-  process's imported modules
+- **THEN** the viewer's server, capture and staging modules, `fastapi`,
+  `uvicorn` and `playwright` are absent from the process's imported modules
 
 #### Scenario: The missing-bundle path is unchanged
 
 - **WHEN** `machinome viewer` runs in an installation without `machinome-viewer`
 - **THEN** it prints nothing on standard output, names the extra on standard
   error, and exits 1
+
+#### Scenario: A command's help imports no viewer
+
+- **WHEN** `machinome -h`, `machinome snapshot -h` or `machinome develop -h`
+  runs
+- **THEN** neither `machinome.viewer.web` nor `machinome.viewer.openscad` is
+  among the process's imported modules
 
 ### Requirement: The test framework is imported by the paths that run tests
 

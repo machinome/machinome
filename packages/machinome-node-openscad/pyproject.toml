@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "machinome-node-openscad"
 version = "0.8.1"
-description = "The OpenSCAD node family of Machinome, its SCAD writer and its snapshot renderer"
+description = "The OpenSCAD node family of Machinome and its SCAD writer"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11"
 license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"

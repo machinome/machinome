@@ -12,7 +12,8 @@ from machinome.motion.ports import Time
 from machinome.node.assembly import AssemblyNode
 from machinome.simulation import Driver, Play, Sim
 from machinome.simulation import UnsupportedLaw
-from machinome.viewers.browser import BrowserRenderer, BrowserSnapshotError
+from machinome.viewer import ViewerError, viewer
+from machinome.viewer.web.stage import refuse_unreadable
 
 
 class Wheel(AssemblyNode):
@@ -54,11 +55,13 @@ class PlayTest(TestCase):
         self.assertEqual(document_version({}, program={'edges': edges}), 11)
 
     def test_an_old_viewer_refuses_version_nine(self):
-        report = {'documentVersions': list(range(1, 9)), 'version': '0.1.0'}
-        with patch('machinome.viewers.bundle.describe', return_value=report):
-            with self.assertRaisesRegex(BrowserSnapshotError,
-                                        'version 9.*1.*8'):
-                BrowserRenderer().refuse_unreadable(9)
+        web = viewer('web')
+        with patch.object(web, 'document_versions',
+                          return_value=list(range(1, 9))), \
+             patch.object(web, 'identity',
+                          return_value=('machinome-viewer', '0.1.0')):
+            with self.assertRaisesRegex(ViewerError, 'version 9.*1.*8'):
+                refuse_unreadable(9)
 
     def test_invalid_offsets(self):
         for low, high in ((0, 0), (2, 1), (float('nan'), 1),

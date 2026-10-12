@@ -231,3 +231,54 @@ archives in `dist/v0.8.1`, `twine check --strict` 32 PASSED, no entry under a
 `node_modules/` and `dist/v0.8.1/`. Nothing uploaded, tagged or pushed.
 Evidence:
 `packages/machinome/openspec/changes/archive/2026-10-12-release-tooling/evidence.md`.
+
+3. `viewer-seam`. **Done** (12 October 2026). The pilot's eighth decision
+of 12 October 2026, on the outline of 4 October 2026. Branch
+`v0.9-joins-viewer-seam`, planning commit 1f0c1cb0 on 01981a3f (after
+`release-tooling` and `join-studio`), ratified by the orchestrator's review
+with every recommendation of its Open Questions accepted, Decision 13 (the
+manual's build takes the repository's viewer) as a reversible working
+assumption flagged to the pilot. ADR-194, viewers are providers behind one
+seam, chosen by name, accepted; it supersedes ADR-068's lookup and process
+boundary and ADR-188's "The seam is unchanged", and amends ADR-179 (the
+renderer column removed), ADR-183 and ADR-191. The core's
+`machinome/viewer/__init__.py` declares `CONTRACT = 1`, the operations
+`present`, `capture`, `serve` and `embed` as Protocols, the viewers it knows
+with their extras and each operation's default; a viewer is resolved at
+`machinome.viewer.<name>` and refused absent by its extra, unknown, of
+another contract or lacking an operation, never substituted. The web viewer
+`machinome.viewer.web` serves in a thread of the command's process and
+captures there, its staging moved from the core's `machinome/viewers/`,
+which is gone with the entry point `machinome.viewer` and every run of
+`python -m machinome.viewer.web` by the framework; the OpenSCAD viewer is
+`machinome.viewer.openscad`, the new distribution
+`machinome-viewer-openscad` (eighteen members), installed by
+`viewer-openscad`, `openscad` and `solid2`. `machinome snapshot`, `develop`
+and `export` take `--viewer`, else the project's `[tool.machinome]
+viewer`, else their default; `--renderer` is refused naming `--viewer`;
+`machinome vet` denies `machinome.viewer`. Found on the way and kept: the
+web package keeps its operation `capture` from being replaced by its
+submodule of the same name, the OpenSCAD viewer loads its node package
+through the table first, the session binds its port before its thread
+starts (a taken port is one line and exit 1), and CI's docs job runs `make
+widget` before `make docs`. The specs: `viewer-seam` created; `web-snapshot`,
+`cli`, `viewer-distribution` (two requirements removed),
+`kernel-extras`, `framework-identity`, `openscad-node`,
+`openscad-dependency`, `build-pipeline`,
+`backend-neutral-materialization`, `cli-startup-cost`,
+`movie-distribution`, `vet`, `user-documentation` and `release-tooling`
+modified; 51 specs valid. The lock 201 packages. Counts: the core 4985
+passed, 9 skipped (the base's 4916 and 69 more); the viewer 259 passed, 2
+skipped; the movie 322; the studio 485 passed, 24 skipped; `make docs` with
+the bundle built by npm; `make check`, 36 archives on the tree and 36 on
+the clean copy. The originating check: the manual's "Photograph" stills
+through each viewer byte-identical to the base's (0 differing pixels of
+2073600, four images), the web still in the command's process, a project's
+`viewer = "web"` taking the web image; `machinome develop` on a copy of
+`Vibecoded-demos/gear-shift` reloading the open page on its socket where the
+base closed it. The projects' move: `--renderer` to `--viewer` in the live
+instructions of 19 of 63 repositories (28 files, one commit each), recorded
+evidence untouched; the universe sweep after it identical to the movie
+cycle's row for row (130 rows, 122 ok, 2 unexpected as before). Nothing
+pushed. Evidence:
+`packages/machinome/openspec/changes/archive/2026-10-12-viewer-seam/evidence.md`.

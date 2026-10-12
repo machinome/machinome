@@ -32,11 +32,11 @@ error, **no JSON on standard output**, and exit 1. Build logs do not pollute
 the JSON stream. In a source checkout the lookup may rebuild a stale bundle;
 it never installs npm dependencies for you.
 
-This is also the mapping returned by the standard-library-only callable
-registered as ``bundle`` in the Python entry-point group ``machinome.viewer``.
-The lookup is the only Python integration seam; rendering, serving and capture
-remain separate processes. Applications can use this command instead of
-importing anything from the viewer.
+This is also the report ``machinome viewer`` prints. The framework reaches
+the package through its viewer seam, in its own process, as the viewer named
+``web``: it describes, serves and captures through the package's provider
+operations and runs none of these commands. Applications can use this command
+instead of importing anything from the viewer.
 
 serve
 =====
@@ -97,8 +97,10 @@ These are useful to a host replacing the supplied development page:
    * - ``GET /_build_error``
      - Producer-written ``errors.json`` content or an empty object.
    * - ``WS /ws/reload``
-     - Development connection; a connection receives ``reload``. The framework
-       development workflow owns republishing and restarting its serving process.
+     - Development connection; a connection receives ``reload`` when it opens,
+       and again, on the same connection, each time ``machinome develop``
+       publishes a build, the framework serving through this package in its
+       own process.
 
 ``mountDevelopment()`` uses these routes. A static-export host should use
 ``mount()``/``mountInspector()`` and needs none of them.

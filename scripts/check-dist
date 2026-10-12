@@ -245,6 +245,70 @@ def mesh_node_smoke(name, node, shipped, pins, parts, operation):
             + string.Template(MESH_NODE_LINE).substitute(values))
 
 
+#: The smoke of the OpenSCAD viewer (change `viewer-seam`): resolved by the
+#: core's seam of viewers to its one module, owned by its own distribution
+#: inside the venv, its version and its pins the core's and the OpenSCAD node
+#: family's, its contract version the seam's and its operations a still's;
+#: then `machinome snapshot` of a one-part `OpenScadNode` project in a new
+#: directory under the temporary directory, drawing a PNG through OpenSCAD
+#: where the executable and a display or `xvfb-run` are there, and otherwise
+#: the viewer presenting the part's SCAD and withdrawing it.
+OPENSCAD_VIEWER = '''
+import importlib.metadata as metadata
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+import machinome.viewer as viewers
+provider = viewers.viewer('openscad')
+distribution = metadata.distribution('machinome-viewer-openscad')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+shipped = sorted(path for path in files
+                 if path.startswith('machinome/') and path.endswith('.py'))
+assert shipped == ['machinome/viewer/openscad/__init__.py'], shipped
+owned = Path(distribution.locate_file(shipped[0])).resolve()
+assert owned == Path(provider.__file__).resolve(), (owned, provider.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+for pin in (f'machinome~={version}', f'machinome-node-openscad~={version}'):
+    assert pin in distribution.requires, (pin, distribution.requires)
+assert provider.CONTRACT == viewers.CONTRACT, provider.CONTRACT
+assert provider.OPERATIONS == {'present', 'capture'}, provider.OPERATIONS
+project = tempfile.mkdtemp(prefix='machinome-viewer-openscad-',
+                           dir=os.getcwd())
+with open(os.path.join(project, 'pyproject.toml'), 'w') as stream:
+    stream.write('[tool.machinome]\\nmodel = "parts:Part"\\n')
+with open(os.path.join(project, 'parts.py'), 'w') as stream:
+    stream.write('from machinome.node.openscad import OpenScadNode\\n\\n\\n'
+                 'class Part(OpenScadNode):\\n'
+                 "    scad_source = 'part.scad'\\n")
+with open(os.path.join(project, 'part.scad'), 'w') as stream:
+    stream.write('module part() { cube([2, 3, 4]); }\\n')
+if shutil.which('openscad') and (os.environ.get('DISPLAY')
+                                 or shutil.which('xvfb-run')):
+    image = os.path.join(project, 'part.png')
+    machinome = os.path.join(VENV, 'bin', 'machinome')
+    subprocess.run([machinome, 'snapshot', '-o', image, '--imgsize',
+                    '160x120'], cwd=project, check=True)
+    with open(image, 'rb') as stream:
+        assert stream.read(8) == bytes.fromhex('89504e470d0a1a0a'), image
+    result = f'a still {os.path.getsize(image)} bytes through OpenSCAD'
+else:
+    sys.path.insert(0, project)
+    os.chdir(project)
+    import parts
+    node = parts.Part()
+    presented = provider.present(node, os.path.join(project, '_build'))
+    scad = Path(node.scad_file)
+    assert scad.read_text().strip().splitlines()[-1] == 'part();', scad
+    provider.withdraw(presented)
+    result = 'SCAD presented and withdrawn, no openscad or display'
+'''
+
+
 #: The smoke of each member, run with the throwaway venv's `python -I -c`
 #: from the temporary directory: the extras its wheel is installed with, and
 #: the code that proves it. `VENV` is defined before the code runs. A member
@@ -409,7 +473,7 @@ assert abs(result - expected) < 1e-3 * expected, (result, expected)
         'code': mesh_node_smoke(
             'machinome-node-openscad', 'openscad',
             [f'machinome/node/openscad/{module}.py' for module in
-             ('__init__', 'binary', 'leaf', 'renderer', 'writer')],
+             ('__init__', 'binary', 'leaf', 'writer')],
             ['machinome~={version}'],
             '''
 from machinome.node.openscad import OpenScadNode
@@ -433,13 +497,6 @@ else:
     last = Path(node.scad_file).read_text().strip().splitlines()[-1]
     assert last == 'part();', last
     result = f'SCAD {last!r} written, no openscad on the PATH'
-from machinome.node import supported
-renderer = supported.renderer('openscad')
-assert type(renderer).__module__ == 'machinome.node.openscad.renderer'
-drawn = Path(sys.modules[type(renderer).__module__].__file__).resolve()
-assert drawn == Path(distribution.locate_file(
-    'machinome/node/openscad/renderer.py')).resolve(), drawn
-result += f', renderer {drawn}'
 '''),
         'commands': [],
     },
@@ -624,8 +681,8 @@ print('machinome-mechanics', distribution.version, 'module',
         'code': f'''
 import importlib.metadata as metadata
 from pathlib import Path
-import machinome.viewer.web as viewer
-from machinome.viewers.bundle import describe, viewer_command
+import machinome.viewer as viewers
+viewer = viewers.viewer('web')
 distribution = metadata.distribution('machinome-viewer')
 version = metadata.version('machinome')
 assert distribution.version == version, (distribution.version, version)
@@ -634,7 +691,7 @@ shipped = sorted(path for path in files
                  if path.startswith('machinome/') and path.endswith('.py'))
 assert shipped == [f'machinome/viewer/web/{{module}}.py' for module in (
     '__init__', '__main__', 'bundle', 'capture', 'cli', 'currency',
-    'packaging', 'server')], shipped
+    'packaging', 'server', 'session', 'stage')], shipped
 assert not [path for path in files
             if '/widget/src/' in path or 'node_modules' in path], files
 owned = Path(distribution.locate_file(shipped[0])).resolve()
@@ -646,11 +703,15 @@ for extra in ('viewer', 'web-snapshot'):
     assert any(line.startswith('machinome-viewer')
                and f'~={{version}}' in line
                and extra in line.partition(';')[2] for line in core), (extra, core)
-(entry,) = [entry for entry in metadata.entry_points(group='machinome.viewer')
-            if entry.name == 'bundle']
-assert entry.value == 'machinome.viewer.web.bundle:describe', entry.value
-assert viewer_command()[1:] == ['-m', 'machinome.viewer.web'], viewer_command()
-report = describe()
+# The framework finds the viewer at its address, through its seam of
+# viewers; the distribution declares no entry point for it (`viewer-seam`).
+assert not [entry for entry in distribution.entry_points
+            if entry.group == 'machinome.viewer'], distribution.entry_points
+assert viewer.__name__ == 'machinome.viewer.web', viewer.__name__
+assert viewer.CONTRACT == viewers.CONTRACT, viewer.CONTRACT
+assert viewer.OPERATIONS == {{'present', 'capture', 'serve', 'embed'}}, \\
+    viewer.OPERATIONS
+report = viewer.describe()
 for key in ('path', 'index'):
     found = Path(report[key]).resolve()
     assert found.is_file() and found.is_relative_to(Path(VENV).resolve()), report
@@ -666,10 +727,22 @@ for line in (f'machinome-viewer {{version}} - viewer API {VIEWER_API}',
         + LICENCES.substitute(name='machinome-viewer')
         + '''
 print('machinome-viewer', distribution.version, 'module', viewer.__file__,
+      'contract', viewer.CONTRACT, 'operations', sorted(viewer.OPERATIONS),
       'API', report['apiVersion'], 'documents', report['documentVersions'][0],
       'to', report['documentVersions'][-1])
 ''',
         'commands': [['machinome-viewer', 'describe'], ['machinome', 'viewer']],
+    },
+    'machinome-viewer-openscad': {
+        'through': 'viewer-openscad',
+        'extras': [],
+        'code': OPENSCAD_VIEWER + LICENCES.substitute(
+            name='machinome-viewer-openscad') + '''
+print('machinome-viewer-openscad', distribution.version, 'module',
+      provider.__file__, 'contract', provider.CONTRACT, 'operations',
+      sorted(provider.OPERATIONS), result)
+''',
+        'commands': [],
     },
     'machinome-movie': {
         # Installed from its wheel by path; the smoke reads the extra's

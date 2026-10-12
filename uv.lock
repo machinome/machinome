@@ -25,6 +25,7 @@ members = [
     "machinome-skills",
     "machinome-studio",
     "machinome-viewer",
+    "machinome-viewer-openscad",
 ]
 
 [manifest.dependency-groups]
@@ -1945,6 +1946,7 @@ all = [
     { name = "machinome-node-solid2" },
     { name = "machinome-node-step" },
     { name = "machinome-node-stl" },
+    { name = "machinome-viewer-openscad" },
 ]
 brep = [
     { name = "machinome-engine-brep" },
@@ -1975,6 +1977,7 @@ dev = [
     { name = "machinome-node-step" },
     { name = "machinome-node-stl" },
     { name = "machinome-viewer", extra = ["snapshot"] },
+    { name = "machinome-viewer-openscad" },
     { name = "pillow" },
     { name = "pytest" },
     { name = "pytest-watch" },
@@ -2008,12 +2011,14 @@ movie = [
 ]
 openscad = [
     { name = "machinome-node-openscad" },
+    { name = "machinome-viewer-openscad" },
 ]
 skills = [
     { name = "machinome-skills" },
 ]
 solid2 = [
     { name = "machinome-node-solid2" },
+    { name = "machinome-viewer-openscad" },
 ]
 step = [
     { name = "machinome-node-step" },
@@ -2026,6 +2031,9 @@ studio = [
 ]
 viewer = [
     { name = "machinome-viewer" },
+]
+viewer-openscad = [
+    { name = "machinome-viewer-openscad" },
 ]
 web-snapshot = [
     { name = "machinome-viewer", extra = ["snapshot"] },
@@ -2063,6 +2071,9 @@ requires-dist = [
     { name = "machinome-studio", marker = "extra == 'studio'", editable = "packages/machinome-studio" },
     { name = "machinome-viewer", marker = "extra == 'viewer'", editable = "packages/machinome-viewer" },
     { name = "machinome-viewer", extras = ["snapshot"], marker = "extra == 'web-snapshot'", editable = "packages/machinome-viewer" },
+    { name = "machinome-viewer-openscad", marker = "extra == 'openscad'", editable = "packages/machinome-viewer-openscad" },
+    { name = "machinome-viewer-openscad", marker = "extra == 'solid2'", editable = "packages/machinome-viewer-openscad" },
+    { name = "machinome-viewer-openscad", marker = "extra == 'viewer-openscad'", editable = "packages/machinome-viewer-openscad" },
     { name = "numpy", specifier = "==2.2.*" },
     { name = "pillow", marker = "extra == 'dev'", specifier = ">=10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
@@ -2080,7 +2091,7 @@ requires-dist = [
     { name = "uvicorn", specifier = "==0.30.*" },
     { name = "watchdog" },
 ]
-provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "movie", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "solid2", "jscad", "stl", "freecad", "skills", "all", "studio"]
+provides-extras = ["dev", "docs", "viewer", "web-snapshot", "mechanics", "movie", "brep", "mesh", "cadquery", "build123d", "step", "molejo", "openscad", "viewer-openscad", "solid2", "jscad", "stl", "freecad", "skills", "all", "studio"]
 
 [[package]]
 name = "machinome-engine-brep"
@@ -2359,6 +2370,21 @@ requires-dist = [
     { name = "websockets", specifier = ">=10.4" },
 ]
 provides-extras = ["snapshot"]
+
+[[package]]
+name = "machinome-viewer-openscad"
+version = "0.8.1"
+source = { editable = "packages/machinome-viewer-openscad" }
+dependencies = [
+    { name = "machinome" },
+    { name = "machinome-node-openscad" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "machinome", editable = "packages/machinome" },
+    { name = "machinome-node-openscad", editable = "packages/machinome-node-openscad" },
+]
 
 [[package]]
 name = "manifold3d"
