@@ -533,6 +533,21 @@ sets out to hide them — a name assembled at run time passes — and it
 does not prove that a path computed at run time stays inside the
 project; that is left to the environment the project runs in.
 
+.. _contributed-commands:
+
+Commands from other packages
+============================
+
+A package installed beside the framework may add a command of its own to
+``machinome``. ``machinome -h`` lists it after the framework's commands,
+with its own help, and ``machinome <name> -h`` gives its options. A name
+of the framework's own commands always runs the framework's command. When
+two installed packages add the same name, neither runs, and ``machinome
+<name>`` names both; a command whose package lacks an extra, or cannot be
+loaded, is listed as unavailable with the reason. The videomaker
+(``machinome movie``), the skills package (``machinome skills``) and the
+studio (``machinome studio``) are to add theirs; no package adds one yet.
+
 .. _several-models:
 
 Several models in one project

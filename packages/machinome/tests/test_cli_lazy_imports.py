@@ -25,6 +25,7 @@ parser rather than about `COLUMNS`.
 """
 
 import argparse
+import importlib.metadata
 import io
 import json
 import sys
@@ -36,6 +37,7 @@ from unittest.mock import patch
 from machinome.cli import COMMANDS, manage
 from machinome.viewers.bundle import describe, has_bundle
 
+from .contributed_commands import installed
 from .import_probe import probe
 
 
@@ -64,6 +66,72 @@ MIGRATION_HINT = ('The CLI grammar changed in 0.4: commands come first. '
                   'Try: machinome {command} {path} [options]\n')
 
 DISPATCH = 'from machinome.cli import manage; manage()\n'
+
+#: The entry-point group a package contributes a command through, spelled
+#: here rather than read from `machinome.cli`.
+CONTRIBUTED_GROUP = 'machinome.commands'
+
+_ENTRY_POINTS = importlib.metadata.entry_points
+
+
+def no_contributed_commands(**params):
+    """`importlib.metadata.entry_points` with nothing in the group of
+    contributed commands: the help oracle below is the framework's, so the
+    tests comparing against it read the group empty whatever the
+    environment installs (OpenSpec change `commands-contributed-by-packages`).
+    """
+    if params.get('group') == CONTRIBUTED_GROUP:
+        return importlib.metadata.EntryPoints(())
+    return _ENTRY_POINTS(**params)
+
+
+#: The probed interpreter's equivalent of `no_contributed_commands`.
+NO_CONTRIBUTED_COMMANDS = """
+import importlib.metadata
+
+_entry_points = importlib.metadata.entry_points
+
+
+def _no_contributed_commands(**params):
+    if params.get('group') == 'machinome.commands':
+        return importlib.metadata.EntryPoints(())
+    return _entry_points(**params)
+
+
+importlib.metadata.entry_points = _no_contributed_commands
+"""
+
+
+def contract_failures(entry, group=()):
+    """What a contributed command's entry fails of the command contract,
+    written independently of `machinome.cli`: an empty list when it meets
+    it all. `group` is every entry of the group, for the one name per
+    distribution."""
+    failures = []
+    if entry.name in COMMAND_ORDER:
+        failures.append(f'{entry.name} is a framework command')
+    if entry.dist.name == 'machinome':
+        failures.append('the framework declares an entry')
+    others = sorted({other.dist.name for other in group
+                     if other.name == entry.name} - {entry.dist.name})
+    if others:
+        failures.append(f'{entry.name} is also contributed by '
+                        f'{", ".join(others)}')
+    try:
+        command = getattr(import_module(entry.module), entry.attr)()
+    except Exception as failure:
+        failures.append(f'cannot be loaded: {type(failure).__name__}: '
+                        f'{failure}')
+        return failures
+    if not (command.__doc__ or '').strip():
+        failures.append('no docstring')
+    if not callable(getattr(command, 'add_arguments', None)):
+        failures.append('no add_arguments()')
+    if not callable(getattr(command, 'handle', None)):
+        failures.append('no handle()')
+    if not isinstance(getattr(command, 'needs_node', None), bool):
+        failures.append('needs_node is not declared as True or False')
+    return failures
 
 
 def reference_parser():
@@ -159,6 +227,9 @@ class CommandImportIsolationTest(TestCase):
             sorted(result.imported_under('machinome.manager')
                    & COMMAND_MODULES),
             [])
+        # The group of contributed commands is read inside the function
+        # that reads it, never at the CLI's import.
+        self.assertFalse(result.imported('importlib.metadata'))
 
     def test_dispatching_viewer_loads_only_the_viewer_command(self):
         result = probe(DISPATCH, argv=['viewer'])
@@ -222,7 +293,19 @@ class NamesAloneTest(TestCase):
 
 
 class HelpFidelityTest(TestCase):
-    """Help output is unchanged: byte for byte against the eager parser."""
+    """Help output is unchanged: byte for byte against the eager parser.
+
+    The oracle is the framework's own commands, so every test here reads
+    the group of contributed commands empty: a package installed beside the
+    framework adds its command to the help, which these tests do not
+    describe (tests/test_cli_contributed.py does).
+    """
+
+    def setUp(self):
+        patcher = patch('importlib.metadata.entry_points',
+                        no_contributed_commands)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_top_level_help_is_byte_identical(self):
         parser, _ = reference_parser()
@@ -308,6 +391,42 @@ class RegistryConformanceTest(TestCase):
                 self.assertIsInstance(getattr(command, 'needs_node', True),
                                       bool)
 
+    def test_the_group_is_named_machinome_commands(self):
+        from machinome import cli
+
+        self.assertEqual(cli.COMMAND_GROUP, CONTRIBUTED_GROUP)
+
+    def test_every_contributed_entry_resolves_and_honours_the_contract(self):
+        """Every command a package installed in this environment contributes
+        meets the contract, as the table's are walked above.
+
+        With no contributor installed this walks no entry. It is the walk
+        that holds the videomaker, the skills package and the studio once
+        the workspace installs them."""
+        group = importlib.metadata.entry_points(group=CONTRIBUTED_GROUP)
+        for entry in group:
+            with self.subTest(command=entry.name, dist=entry.dist.name):
+                self.assertEqual(contract_failures(entry, group), [])
+
+    def test_the_contract_walk_reads_a_fake_distribution(self):
+        """The walk above, proved on fakes: it finds the faults it is
+        there to find."""
+        with installed('fake-movie', 'fake-bare', 'fake-gone', 'fake-shadow'):
+            group = importlib.metadata.entry_points(group=CONTRIBUTED_GROUP)
+            failures = {entry.dist.name: contract_failures(entry, group)
+                        for entry in group}
+
+        self.assertEqual(failures, {
+            'fake-movie': [],
+            'fake-bare': [
+                'no docstring', 'no add_arguments()', 'no handle()',
+                'needs_node is not declared as True or False'],
+            'fake-gone': [
+                "cannot be loaded: ModuleNotFoundError: No module named "
+                "'machinome_fake_gone'"],
+            'fake-shadow': ['build is a framework command'],
+        })
+
     def test_every_needed_module_imports(self):
         # The third column names the one node type a command needs beyond
         # its own implementation (OpenSpec changes `lean-install` and
@@ -357,7 +476,8 @@ class CommandNeedsTest(TestCase):
     extra")."""
 
     def test_help_lists_import_step_without_its_extra(self):
-        result = probe(CADQUERY_ABSENT + DISPATCH, argv=['-h'])
+        result = probe(CADQUERY_ABSENT + NO_CONTRIBUTED_COMMANDS + DISPATCH,
+                       argv=['-h'])
 
         self.assertEqual(result.status, 0, result.stderr)
         self.assertIn('import-step', result.stdout)

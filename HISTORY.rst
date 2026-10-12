@@ -86,6 +86,19 @@ Unreleased
   and its tests in its directory, and its manual is part of this one.
   Change ``join-mechanics`` (ADR-187).
 
+* **Packages may add COMMANDS to ``machinome``.** An installed package
+  declares a command in the entry-point group ``machinome.commands`` as
+  ``name = "package.module:Class"``, its class a command like the
+  framework's own: its docstring the help, ``add_arguments`` its options,
+  ``handle`` its run, ``needs_node`` declared. ``machinome -h`` lists it
+  after the framework's commands and ``machinome <name>`` runs it. A
+  framework command's name is never taken, a name two packages declare
+  runs neither, and a command that lacks an extra or cannot be loaded is
+  listed as unavailable with the reason. Dispatching a framework command
+  reads no entry point. No package declares one yet. Change
+  ``commands-contributed-by-packages`` (ADR-189, ADR-024 and ADR-168
+  amended).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

@@ -2284,6 +2284,15 @@ the command parses; when it refuses for an absent kernel the CLI writes
 `Error: machinome import-step needs the step extra: <refusal>` and exits 1.
 The help path imports no such module, so every command is listed with or
 without its extra.
+An installed package may add a command through the entry-point group
+`machinome.commands`, `name = "package.module:Class"`, a class meeting the
+table's contract with `needs_node` declared (ADR-189). The command is the
+first argument that is not an option; the group is read only when that
+argument is not a framework command, so a framework command's dispatch
+reads no entry point, and the guard, the help and an unknown name's error
+read the union. A framework name is never taken; a name two packages
+declare runs neither; an absent extra is answered by it, an unmet contract
+refused, other failures propagate, and the help lists each as unavailable.
 `models` lists a project's models from the manifest and their build
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk
@@ -2316,7 +2325,7 @@ exports nothing, ADR-181) and the simulation package resolves its exports on
 first access, so a command pays for the backends it uses and not for the rest
 (ADR-059) — `machinome viewer` answers from the viewer's entry
 point alone. Top-level `-h` is the exception: it renders every command's
-docstring, so it loads them all. The test framework defers the B-rep stack
+docstring, so it loads them all, the contributed ones included. The test framework defers the B-rep stack
 through the B-rep engine seam (ADR-161): its B-rep path resolves the engine
 at the first B-rep comparison and calls each engine operation, and each memo
 of `machinome.brep_cache`, as an attribute of its defining module at the
@@ -3494,7 +3503,7 @@ pure model closures without rejecting their pure declaration records.
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics helpers, the distribution `machinome-mechanics` | the repository's `packages/machinome-mechanics/` (`machinome/mechanics/`: `__init__.py` and the nine family modules; its own `tests/`, `openspec/` and `workflow/`) | `mechanics-distribution` | 022, 076, 132, 187 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
-| CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149 |
+| CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149, 168, 179, 189 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |
 | Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
