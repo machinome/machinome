@@ -1,0 +1,32 @@
+# machinome-viewer - the browser viewer for machinome models
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
+
+"""One version, declared in three places that must agree."""
+
+import json
+import re
+from pathlib import Path
+from unittest import TestCase
+
+import machinome.viewer.web as machinome_viewer
+from machinome.viewer.web.bundle import PACKAGE_JSON
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+class VersionAgreementTest(TestCase):
+
+    def test_python_and_widget_declare_the_same_version(self):
+        with open(PACKAGE_JSON) as stream:
+            widget = json.load(stream)['version']
+        self.assertEqual(widget, machinome_viewer.__version__)
+
+    def test_pyproject_declares_the_package_version(self):
+        pyproject = (ROOT / 'pyproject.toml').read_text()
+        declared = re.search(r'^version = "([^"]+)"', pyproject, re.MULTILINE).group(1)
+        self.assertEqual(declared, machinome_viewer.__version__)
+
+    def test_the_changelog_opens_with_the_current_version(self):
+        changelog = (ROOT / 'CHANGELOG.md').read_text()
+        self.assertIn(f'## {machinome_viewer.__version__}', changelog)

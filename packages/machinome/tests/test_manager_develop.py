@@ -22,7 +22,7 @@ from unittest.mock import patch, MagicMock, call
 from machinome.core.builder import BuildOutcome
 from machinome.manager.develop import Develop, run_builder
 
-VIEWER = [sys.executable, '-m', 'machinome_viewer']
+VIEWER = [sys.executable, '-m', 'machinome.viewer.web']
 BUILD_DIR = '/work/project/_build'
 
 

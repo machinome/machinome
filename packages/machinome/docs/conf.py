@@ -13,9 +13,14 @@ import sys
 
 # Make machinome importable for autodoc without installing it, with the
 # extension packages beside it under packages/, whose modules the core's
-# package path admits as portions (machinome._namespace_portions).
+# package path admits as portions (machinome._namespace_portions). The
+# browser viewer's directory is left out: the manual takes the viewer it
+# completes exports with from what docs/requirements.txt installs, and a
+# source copy without a built bundle would shadow it (change `join-viewer`).
 sys.path[:0] = [os.path.abspath('..'),
-                *sorted(glob.glob(os.path.abspath('../../machinome-*')))]
+                *(path for path in sorted(glob.glob(
+                    os.path.abspath('../../machinome-*')))
+                  if os.path.basename(path) != 'machinome-viewer')]
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -33,7 +38,9 @@ html_title = 'Machinome — Source code for machines'
 # release edits this block and the status page and nothing else.
 
 release_date = '10 October 2026'
-viewer_version = '0.8.1'        # the matching machinome-viewer package
+# The viewer, numbered with the set (packages/machinome-viewer/pyproject.toml);
+# its API and document versions are its widget's, which tests hold them to.
+viewer_version = '0.8.1'
 viewer_api = '29'               # a clocked machine captured on demand
 document_versions = '1 to 13'    # supported by the paired viewer
 # The mechanics helpers' own version, packages/machinome-mechanics/pyproject.toml,
@@ -86,3 +93,31 @@ exclude_patterns = ['_build', 'tutorial/counter/**', 'Thumbs.db',
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+# The browser viewer's guides: the click-to-load demo and its frame, and the
+# viewer's reference entries on narrow screens.
+html_js_files = ['viewer-demo.js']
+html_css_files = ['viewer-demo.css']
+
+
+def copy_the_embedding_example(app, exception):
+    """The embedding guide's working host page, beside the built guide, with
+    the committed spinner export it loads and the installed viewer's bundle
+    (change `join-viewer`)."""
+    import shutil
+    from pathlib import Path
+
+    from machinome.viewers import bundle
+
+    if exception is not None or app.builder.format != 'html':
+        return
+    source = Path(app.srcdir)
+    target = Path(app.outdir) / 'howto' / 'embed-the-viewer'
+    shutil.copytree(source / 'howto' / 'embed-the-viewer', target,
+                    dirs_exist_ok=True)
+    shutil.copytree(source / '_exports' / 'spinner', target / 'spinner',
+                    dirs_exist_ok=True)
+    shutil.copy2(bundle.bundle_path(), target / 'machinome-viewer.js')
+
+
+def setup(app):
+    app.connect('build-finished', copy_the_embedding_example)

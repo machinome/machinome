@@ -103,9 +103,8 @@ than rendering part of a machine it does not understand.
 The viewer
 ----------
 
-The viewer is the separate ``machinome-viewer`` package,
-AGPL-3.0-or-later, installed through the ``viewer`` extra, and reached
-only as a separate
+The viewer is the package ``machinome-viewer`` of this repository,
+installed through the ``viewer`` extra and reached only as a separate
 process: ``machinome develop`` starts its server on the build directory,
 ``machinome export`` copies its page and bundle, ``machinome snapshot
 --renderer web`` hands it the model for a headless capture. ``machinome
@@ -120,14 +119,11 @@ naming the version written, the versions the viewer renders and its
 package version; the build, the STL files, the tests and ``--no-web`` are
 unaffected. ``machinome snapshot --renderer web`` refuses before it
 starts the browser, because a capture is a one-shot. The viewer's own
-manual states what its panels do for posed, running and clocked
-documents.
+pages state what its panels do for posed, running and clocked documents.
 
-See `using the viewer
-<https://machinome-viewer.readthedocs.io/en/latest/using-the-viewer.html>`_
-for operation and its `API reference
-<https://machinome-viewer.readthedocs.io/en/latest/reference/index.html>`_
-for host integration. The framework does not duplicate those contracts.
+See :doc:`using the viewer </howto/browser-viewer>` for operation and its
+:doc:`API reference </reference/viewer/index>` for host integration. This
+page does not duplicate those contracts.
 
 .. warning::
 
@@ -178,7 +174,7 @@ paused timeline pose, ``?layout=inspector&sidebar=open`` the assembly
 inspector, ``?layout=viewer`` the plain viewer. Timeline time does not
 seek a running machine's history or a clocked machine's clock; those are
 the JavaScript handles' job, documented with a complete host page in the
-`viewer manual <https://machinome-viewer.readthedocs.io/en/latest/embedding.html>`_.
+guide to :doc:`embedding the viewer </howto/embed-the-viewer>`.
 Values there are in native driver units, and declared ranges never clamp.
 
 The framework's :doc:`Sphinx directive </reference/sphinx>` embeds an

@@ -9,8 +9,10 @@ held to that one statement, so a release moves the files together or
 fails here naming the one left behind (changes `release-0-7-1` and
 `release-0-8-0`). Every package of the repository carries the framework's
 version, but the mechanics helpers, which carry their own (change
-`join-mechanics`), every pin between two of them is `~=` that version, and the
-root's `.bumpversion.cfg` moves them all (change `cut-the-engines`).
+`join-mechanics`); the viewer's Python package, its widget and the root's npm
+lock carry it too (change `join-viewer`). Every pin between two of them is
+`~=` that version, and the root's `.bumpversion.cfg` moves them all (change
+`cut-the-engines`).
 """
 
 from datetime import datetime
@@ -153,19 +155,49 @@ class VersionFilesTest(TestCase):
     def test_the_matching_viewer_is_numbered_with_the_framework(self):
         self.assertEqual(conf_value('viewer_version'), self.version)
 
-    def test_the_viewer_extras_floor_at_the_matching_viewer(self):
-        """The two packages are numbered together, so the extras that
-        install the viewer require the one the manual declares, or newer
-        (change `viewer-extra-floors-at-the-matching-viewer`)."""
+    def test_the_viewer_extras_pin_the_set_s_viewer(self):
+        """The viewer is a distribution of the repository numbered with the
+        set, so the extras that install it pin the one the manual declares,
+        `~=` as every pin between the set's distributions (change
+        `join-viewer`)."""
         extras = tomllib.loads((ROOT / 'pyproject.toml').read_text())[
             'project']['optional-dependencies']
-        floor = f">={conf_value('viewer_version')}"
-        for extra in ('viewer', 'web-snapshot'):
+        expected = {'viewer': ('machinome-viewer', set()),
+                    'web-snapshot': ('machinome-viewer', {'snapshot'})}
+        for extra, (name, bracket) in expected.items():
             with self.subTest(extra=extra):
-                (requirement,) = extras[extra]
-                name, _, specifier = requirement.partition('>')
-                self.assertTrue(name.startswith('machinome-viewer'), requirement)
-                self.assertEqual('>' + specifier, floor, requirement)
+                (line,) = extras[extra]
+                requirement = Requirement(line)
+                self.assertEqual(requirement.name, name, line)
+                self.assertEqual(requirement.extras, bracket, line)
+                self.assertEqual(str(requirement.specifier),
+                                 f"~={conf_value('viewer_version')}", line)
+
+    def test_the_viewer_s_version_files_agree(self):
+        """The viewer's Python package, its widget and the root's npm lock
+        state the set's version; `.bumpversion.cfg` moves the first two, and
+        npm the lock (change `join-viewer`)."""
+        viewer = REPOSITORY / 'packages/machinome-viewer'
+        package = viewer / 'machinome/viewer/web'
+        widget = 'packages/machinome-viewer/machinome/viewer/web/widget'
+        with self.subTest(file='__init__.py'):
+            self.assertIn(f'__version__ = "{self.version}"',
+                          (package / '__init__.py').read_text())
+        with self.subTest(file='package.json'):
+            self.assertEqual(json.loads(
+                (package / 'widget/package.json').read_text())['version'],
+                self.version)
+        with self.subTest(file='package-lock.json'):
+            lock = REPOSITORY / 'package-lock.json'
+            self.assertTrue(lock.is_file(), f'{lock} is missing')
+            self.assertEqual(json.loads(lock.read_text())['packages'][widget][
+                'version'], self.version)
+        tables = re.findall(r'^\[bumpversion:file(?:\([^)]*\))?:([^\]]+)\]$',
+                            (REPOSITORY / '.bumpversion.cfg').read_text(),
+                            flags=re.M)
+        for path in (package / '__init__.py', package / 'widget/package.json'):
+            with self.subTest(table=path.name):
+                self.assertIn(path.relative_to(REPOSITORY).as_posix(), tables)
 
     def test_no_release_fact_is_trapped_in_inline_markup(self):
         """A substitution inside ``**...**`` is not resolved: the 0.7.0

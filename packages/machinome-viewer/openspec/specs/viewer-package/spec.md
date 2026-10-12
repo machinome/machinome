@@ -1,0 +1,5283 @@
+# Viewer Package Specification
+
+## Purpose
+
+The reusable, React-free browser viewer: the mount interface, handle,
+document loading, animation, camera, drivers, instructions, flexible
+geometry and declared API version shared by static exports, the development
+app, the snapshot capture and every other host. Migrated from machinome's
+baseline when the viewer became this package; behaviour unchanged.
+
+Code: `machinome/viewer/web/widget/src/`.
+## Requirements
+### Requirement: A host mounts the viewer and receives a handle
+
+The viewer SHALL mount into a caller-supplied container against a published tree
+document and resolve to a handle. The handle SHALL expose `dispose()` (stop
+rendering, release resources and empty the container), `view()` (camera position
+and orbit target), `reload()` (rebuild the document while preserving the view),
+`artifactChanged(path)` and `manifestChanged()` (update only what changed),
+assembly inspection and navigation operations, and the declared API version.
+Loading the viewer core SHALL NOT modify the document; only an explicit mount
+may do so.
+
+#### Scenario: A host unmounts a viewer
+
+- **WHEN** a host calls `dispose()`
+- **THEN** rendering stops, the container is empty, and no later frame or
+  resize callback runs
+
+#### Scenario: A host remounts and keeps the maker's viewpoint
+
+- **WHEN** a host captures `view()`, disposes, and supplies that view to a new
+  mount
+- **THEN** the new viewer uses the captured camera and orbit target rather
+  than fitting again
+
+#### Scenario: A host refreshes a changed model in place
+
+- **WHEN** a source document changes and the host calls `reload()`
+- **THEN** the new tree renders while camera position and orbit target remain
+  unchanged
+
+#### Scenario: Loading the core mounts nothing
+
+- **WHEN** a host loads the core without calling `mount()`
+- **THEN** no element is created, document fetched, or container modified
+
+### Requirement: A host updates only what changed
+
+The handle SHALL expose two targeted updates beside `reload()`.
+`artifactChanged(path)` SHALL refetch the model file at that document-relative
+path and replace the geometry of every node referencing it without adding or
+removing nodes. `manifestChanged()` SHALL refetch the document and reconcile the
+rendered tree in place, adding and removing nodes and applying changed operations
+and colour. Both updates preserve the camera, orbit target, animation clock, and
+every node the document still names.
+
+#### Scenario: One artifact changes
+
+- **WHEN** a host calls `artifactChanged()` with one model path
+- **THEN** only that model is requested and replaced
+
+#### Scenario: The model gains and loses parts
+
+- **WHEN** a document adds one node and removes another, and the host calls
+  `manifestChanged()`
+- **THEN** the added node is rendered, the removed node and its resources are
+  gone, and common nodes keep their meshes
+
+#### Scenario: A placement edit costs no fetch
+
+- **WHEN** a document changes only operations or colour
+- **THEN** `manifestChanged()` updates the render without requesting a model
+
+### Requirement: Geometry is refetched only when its identity changes
+
+The viewer SHALL treat geometry as current only while both its model path and
+`mtime` match the values it loaded, and SHALL refetch when either differs. A
+node whose geometry `artifactChanged()` has just fetched SHALL count as current
+for the `manifestChanged()` that immediately follows, even though the document
+it fetches names a new `mtime` for that node, because the two calls loaded the
+same bytes moments apart.
+
+#### Scenario: A parameter change moves the model path
+
+- **WHEN** a node's model path changes with an unchanged `mtime`
+- **THEN** its geometry is refetched
+
+#### Scenario: A source edit moves the mtime
+
+- **WHEN** a node's `mtime` changes with an unchanged model path
+- **THEN** its geometry is refetched
+
+#### Scenario: A manifest update follows the artifact update it describes
+
+- **WHEN** `manifestChanged()` names a new `mtime` for a node whose geometry
+  `artifactChanged()` already replaced
+- **THEN** `manifestChanged()` does not refetch that node's geometry
+
+#### Scenario: A marking's artwork is edited
+
+- **WHEN** a document update names a new `mtime` for one of a node's markings
+  while the node's own model path and `mtime` are unchanged
+- **THEN** that marking's geometry is refetched and the node's own geometry is
+  not
+
+#### Scenario: A part is rebuilt and its markings are not
+
+- **WHEN** a document update names a new model path for a node while every one
+  of its markings keeps the model path and `mtime` it was loaded with
+- **THEN** the node's geometry is refetched and no marking's geometry is
+
+#### Scenario: A marking is removed from a part
+
+- **WHEN** a document update no longer lists a marking a node was carrying
+- **THEN** that marking is no longer drawn, the node's remaining markings and
+  its own geometry are undisturbed, and no geometry is refetched for them
+
+#### Scenario: A marking artifact is updated on its own
+
+- **WHEN** a host reports that a marking's artifact changed, naming that
+  artifact's path
+- **THEN** that marking's geometry is refetched and redrawn, no other geometry
+  is refetched, and the document update that follows — naming the new `mtime`
+  for bytes already on screen — does not refetch it again
+
+### Requirement: A failed update leaves the model standing
+
+A targeted update that cannot fetch what it needs SHALL report the failure while
+leaving the rendered model and camera in place; the handle remains usable for a
+later update. The viewer SHALL fetch replacements before it removes any node.
+
+#### Scenario: An artifact fetch fails
+
+- **WHEN** `artifactChanged()` cannot fetch its model file
+- **THEN** the previous model remains displayed and a later update can succeed
+
+#### Scenario: A document fetch fails
+
+- **WHEN** `manifestChanged()` cannot fetch or parse the document
+- **THEN** the rendered tree is unchanged
+
+### Requirement: One loader reads either published document
+
+The viewer SHALL render either portable `manifest.json` or normal-build
+`viewer.json`, reading their shared fields. It SHALL render document
+versions 1, 2, 3, 4, 5, 6, 7 and 8, and SHALL refuse any other version
+naming it and the versions it renders. A document whose `drivers`
+table is empty SHALL render exactly as a version 1 document. A document
+whose `drivers` table is non-empty SHALL load and render at the pose its
+expressions evaluate to under the table's declared defaults, with driver
+and instruction entries exposed through the handle's driving API. A
+document whose expressions reference a qualified id absent from both its
+`drivers` table and its `bindings` table is malformed and SHALL fail
+loudly naming the id; under version 5 and above the identifiers an
+expression may name also include the program's clock name, its bank coordinates, the
+values it publishes as computed, and, inside a jump plan's own
+expressions, that plan's branch placeholders; under version 8 they are
+the document's declared drivers, its declared states, the clocked
+machine's clock name where it declares one, its published reserved name
+for a bound's own coordinate, and, inside a constraint's jump plan, that
+plan's branch placeholders. A version 4 document carries
+an ordered `bindings` table, which the viewer SHALL resolve under the
+binding requirements above; a document that carries no such table SHALL be
+read exactly as it was before the viewer knew of bindings. A version 5
+document additionally carries a `program` object, which the viewer SHALL
+load and validate under the program requirements above, and whose bank
+SHALL pose the tree. A version 6 document is a version 5 one whose
+compiled program carries at least one law edge that reads the coordinate
+it drives; it carries NO further key, its shape is otherwise identical,
+and the viewer SHALL load, validate and execute it exactly as it does a
+version 5 one. A version 6 document whose program carries no such edge
+SHALL NOT be refused for that: the version is a property of the content
+the producer published, and this viewer judges the content. A version 7
+document is a version 6 one whose compiled program carries a cycle of
+edges every one of whose in-cycle dependencies some selection switches;
+it too carries NO further key and its shape is otherwise identical, and
+the viewer SHALL load, validate and execute it under the requirement
+"The worker orders a block per piece". A version 7 document whose program
+carries no such cycle SHALL NOT be refused for that either, and SHALL
+load, pose and run exactly as the same document declared at version 5 or
+6 would. A version 8 document is a CLOCKED
+machine rather than a running one: it carries a `states` table beside
+`drivers`, a `clocked` object, and NO `program` and NO `controls` key. The
+viewer SHALL load and validate that object under the clocked requirements
+below, SHALL pose the tree from the bank its two tables declare, and SHALL
+present the document's `$t` animation over that bank. A version 8
+document carrying no `clocked` object, or carrying a `program` object
+beside it, SHALL be refused naming what it carries. A version 8 document
+whose clocked machine names a CLOCK declares that its bank holds elapsed
+SECONDS under that name, starting at zero, which a request may advance and
+which the document's own expressions read where the model reads the clock;
+`$t` is that document's 0..1 animation variable as it is any other's and is
+never seconds. A machine that names no clock has none, and its bank stands
+until a request on one of its drivers moves it. A version 5 document MAY also carry a `controls`
+table, which the viewer SHALL read and validate under the control
+requirements above; the table is additive and does not move the document's
+version, a document carrying none SHALL be read exactly as it was before
+the viewer knew of controls, and a document below version 5 carrying one
+SHALL be refused naming it. The
+host supplies the document URL
+and an optional mesh base; the base defaults to the document's directory, which
+for a document URL naming no directory is the directory the document is served
+from and never the server root. A fetch or parse failure SHALL name the
+document and the reason.
+
+#### Scenario: A build snapshot rooted elsewhere
+
+- **WHEN** a host mounts a `viewer.json` with a mesh base unrelated to its
+  document URL
+- **THEN** models load from that base with the same tree, colours, and
+  animation as the equivalent export
+
+#### Scenario: A self-contained export
+
+- **WHEN** a host mounts an export without supplying a mesh base
+- **THEN** its model paths resolve beside the manifest and it renders
+
+#### Scenario: An export served under a subpath
+
+- **WHEN** a host mounts a document URL that names no directory, as the shipped
+  export page does with `manifest.json`, and the page is served under a
+  subpath rather than at the server root
+- **THEN** model paths resolve beside that document under the same subpath, and
+  no request is made to the server root
+
+#### Scenario: An unreachable document
+
+- **WHEN** the source document cannot be fetched
+- **THEN** mounting fails with an error naming the document and failure
+
+#### Scenario: A driver document renders at its defaults
+
+- **WHEN** a host mounts a document whose `drivers` table declares
+  `x_axis.motor` with default 8000
+- **THEN** the model renders at the pose its expressions evaluate to
+  with `x_axis.motor = 8000`, and no error is raised
+
+#### Scenario: A malformed driver document is refused
+
+- **WHEN** a mounted document's expressions reference a qualified id
+  neither its `drivers` table nor its `bindings` table declares
+- **THEN** mounting fails naming that id rather than rendering a wrong
+  pose
+
+#### Scenario: A document carrying a bindings table is rendered
+
+- **WHEN** a host mounts a document declaring version 4 and carrying a
+  non-empty `bindings` table
+- **THEN** it renders at the pose its expressions evaluate to through that
+  table
+
+#### Scenario: A document carrying a program is rendered
+
+- **WHEN** a host mounts a document declaring version 5 and carrying a
+  `program` object
+- **THEN** it renders at the pose the program's published rest values
+  evaluate to, and its run is available on the handle
+
+#### Scenario: A document carrying a controls table is rendered
+
+- **WHEN** a host mounts a document declaring version 5 and carrying both a
+  `program` object and a `controls` table
+- **THEN** it renders exactly as the same document without that table does,
+  its run is available on the handle, and the parts the table names are
+  touchable
+
+#### Scenario: A version beyond the ones it reads is refused
+
+- **WHEN** a host mounts a document declaring version 9
+- **THEN** mounting fails naming that version and the versions the viewer
+  renders
+
+#### Scenario: A document whose program reads a driven coordinate is rendered
+
+- **WHEN** a host mounts a document declaring version 6, whose program
+  carries a law edge naming one of its driven ends among the values it
+  reads
+- **THEN** it renders at the pose the program's published rest values
+  evaluate to, its run is available on the handle, and nothing about the
+  document's shape differs from a version 5 one
+
+#### Scenario: A version 6 document with no such law is rendered too
+
+- **WHEN** a host mounts a document declaring version 6 whose program
+  carries no law edge reading a coordinate it drives
+- **THEN** it loads, poses and runs exactly as the same document declared
+  at version 5 would
+
+#### Scenario: A document whose program carries a block is rendered
+
+- **WHEN** a host mounts a document declaring version 7, whose program's
+  edges carry a cycle over what they read and determine
+- **THEN** it renders at the pose the program's published rest values
+  evaluate to, its run is available on the handle, and nothing about the
+  document's shape differs from a version 6 one
+
+#### Scenario: A version 7 document with no such cycle is rendered too
+
+- **WHEN** a host mounts a document declaring version 7 whose program's
+  edges carry no cycle at all
+- **THEN** it loads, poses and runs exactly as the same document declared
+  at version 5 or 6 would
+
+#### Scenario: Older documents are untouched
+
+- **WHEN** a host mounts a document declaring version 1, 2, 3 or 4
+- **THEN** it loads, poses, animates and drives exactly as it did before
+  the viewer could read a program
+
+#### Scenario: A clocked document is rendered at its initial bank
+
+- **WHEN** a host mounts a document declaring version 8, carrying a
+  `states` table and a `clocked` object
+- **THEN** it renders at the pose its drivers' and states' declared
+  defaults evaluate to, its machine is available on the handle, and its
+  `run()` is null
+
+#### Scenario: A version 8 document carrying no clocked machine is refused
+
+- **WHEN** a host mounts a document declaring version 8 with no `clocked`
+  key
+- **THEN** mounting fails saying a version 8 document is a compiled
+  clocked machine and there is nothing to operate without it
+
+#### Scenario: A document carrying both a program and a clocked machine is refused
+
+- **WHEN** a host mounts a document carrying both a `program` object and a
+  `clocked` object
+- **THEN** mounting fails naming both, rather than executing one of two
+  machines
+
+### Requirement: The host chooses how animation is presented
+
+For a model with `$t` operations, the viewer SHALL present animation as an
+always-visible inline play/pause and `0..1` timeline with `frames` inclusive
+scrub positions, the same bar behind an initially collapsed accessible toggle,
+no controls, or externally driven time with no controls. When `frames > 1`,
+both zero and one SHALL be reachable timeline values and adjacent positions
+SHALL be separated by `1 / (frames - 1)`; a single frame SHALL expose only
+zero. The host SHALL set initial time and
+autoplay. Scrubbing pauses playback. Static models SHALL present no animation
+controls. The full-screen control is not an animation control; where it
+appears is stated by "A maker watches the model full screen".
+
+For a document whose `animation` object carries no `loop`, playback SHALL
+cycle every `frames / fps` seconds, exactly as before, and the bar SHALL
+carry no speed control and no time readout.
+
+For a document whose `animation` object carries `loop` — the seconds of
+machine time one turn of `$t` covers — playback SHALL cycle every
+`loop / speed` wall-clock seconds, where `speed` is a positive multiplier
+defaulting to 1 (real time). The bar SHALL carry a speed control offering
+a fixed ladder of multipliers from slow motion to thousands of times real
+time, and a readout of the machine time at the slider position: `h:mm:ss`
+when the loop is an hour or longer, `m:ss.s` when it is a minute or longer,
+and seconds with two decimals otherwise. The host MAY set the initial speed
+through the `speed` mount option, and the handle SHALL expose `speed()` and
+`setSpeed(value)`; a non-positive or non-finite speed SHALL be refused
+naming the value, and a host-set speed outside the ladder SHALL still be
+offered by the control. Speed SHALL survive a document republish and a
+targeted update, as the animation clock does. For a document without
+`loop`, `speed()` SHALL report 1 and `setSpeed` SHALL be accepted and have
+no effect on playback.
+
+#### Scenario: A shop floor hides the timeline until asked
+
+- **WHEN** an animated model uses toggled presentation
+- **THEN** the bar starts hidden behind a collapsed persistent toggle and the
+  toggle reports its expanded state when activated
+
+#### Scenario: A published export shows the bar
+
+- **WHEN** an animated model uses inline presentation
+- **THEN** play/pause and timeline are visible immediately
+
+#### Scenario: A host drives time itself
+
+- **WHEN** a host uses externally driven presentation and sets time
+- **THEN** the viewer renders that pose with no animation controls
+
+#### Scenario: A static model
+
+- **WHEN** a model has no `$t` operation in any presentation mode
+- **THEN** it creates no play/pause, timeline, or toggle
+
+#### Scenario: A document without a loop plays as before
+
+- **WHEN** a document declares `animation: {fps: 30, frames: 360}` and no
+  `loop`
+- **THEN** one turn takes twelve wall-clock seconds and the bar shows
+  play/pause and the timeline only
+
+#### Scenario: A twelve-hour loop plays at real time
+
+- **WHEN** a document declares `animation.loop == 43200` and the host sets
+  no speed
+- **THEN** one turn of `$t` takes 43200 wall-clock seconds, the readout
+  reads `0:00:00` at the start and `6:00:00` at the slider's midpoint, and
+  the speed control shows ×1
+
+#### Scenario: The complete loop is reachable
+
+- **WHEN** that twelve-hour document has 360 frames and the maker scrubs the
+  timeline to its final position
+- **THEN** the slider value is exactly one and the readout says `12:00:00`
+
+#### Scenario: The maker speeds the clock up
+
+- **WHEN** the maker selects ×720 on the speed control of that document
+- **THEN** one turn takes sixty wall-clock seconds and `speed()` reports 720
+
+#### Scenario: The host sets the speed
+
+- **WHEN** a host mounts that document with `speed: 60` and later calls
+  `setSpeed(3600)`
+- **THEN** playback starts at one turn per twelve minutes, and after the
+  call one turn takes twelve seconds
+
+#### Scenario: A short loop reads in seconds
+
+- **WHEN** a document declares `animation.loop == 1.5`
+- **THEN** the readout shows the machine time in seconds with two decimals
+
+#### Scenario: A bad speed is refused
+
+- **WHEN** a host calls `setSpeed(0)` or `setSpeed(-5)`
+- **THEN** the call fails naming the value and the current speed is kept
+
+### Requirement: The camera fits the model unless the host restores a view
+
+The viewer SHALL orient Z-up and, after meshes load, fit the model bounds with
+orbit controls targeting its centre. A supplied view SHALL set position and
+target instead, while near and far clipping continue to derive from bounds. A
+host MAY additionally supply an up direction and a field of view; absent
+either, the viewer SHALL keep its own Z-up orientation and default field of
+view, so a host that supplies neither sees no change.
+
+#### Scenario: A first look at a model
+
+- **WHEN** a model mounts without a view
+- **THEN** the whole model is framed and orbiting targets its centre
+
+#### Scenario: A rebuild during a work session
+
+- **WHEN** a model mounts with a supplied view
+- **THEN** the camera is restored and the model is neither clipped nor beyond
+  the far plane
+
+#### Scenario: A host reproduces another renderer's framing
+
+- **WHEN** a host mounts with a view, an up direction, and a field of view
+- **THEN** the model is seen from that viewpoint, rolled to that up direction,
+  and framed at that field of view
+
+#### Scenario: An existing host is unaffected
+
+- **WHEN** a host mounts without an up direction or field of view
+- **THEN** the viewer frames the model exactly as it did before those options
+  existed
+
+### Requirement: Colour is inherited and falls back to a normal material
+
+The viewer SHALL use a node colour or its nearest ancestor colour, and SHALL
+use the framework's normal-based material when no colour is available.
+
+#### Scenario: A part inherits its assembly's colour
+
+- **WHEN** a node has no colour and an ancestor does
+- **THEN** the part renders in the ancestor's colour
+
+#### Scenario: A colourless assembly
+
+- **WHEN** no node declares a colour
+- **THEN** every model renders with the normal-based material
+
+#### Scenario: A marking keeps its own colour on a colourless part
+
+- **WHEN** a node that inherits no colour carries a marking that declares one
+- **THEN** the part renders with the normal-based material and the marking
+  renders in its own declared colour, and no colour of the part's is applied
+  to it
+
+### Requirement: The host names the canvas for its own styles and assistive tools
+
+The viewer SHALL apply a host-supplied CSS class, role, and accessible label to
+the canvas. Absent a host choice, it SHALL add no such attributes.
+
+#### Scenario: A shop floor labels the model view
+
+- **WHEN** a host supplies a canvas class, role, and label
+- **THEN** the canvas carries them for host styling and assistive tools
+
+### Requirement: The viewer declares its API version
+
+The package SHALL declare one API version, expose it on every mount handle and
+the browser global, and make it readable without executing the bundle. It SHALL
+be raised whenever the mount interface or handle changes incompatibly, and when
+a capability a host may require is added. The declared version SHALL be 19,
+reflecting the PLAYING of a clocked machine's declared instruction — one
+request solved before the first frame and its transition drawn over the
+declared duration, where a build at the previous version lists the same
+instruction and refuses it — on top of
+the advance of a clocked machine's CLOCK,
+of the execution of a clocked machine's requests, of the
+ordering of a block of the compiled program once per piece of a step, and of the execution of a law that reads the coordinate it drives, the
+drawing of the markings a document's parts carry, part controls, the inspector
+layout, the mountable assembly navigator, the published assembly-navigation
+state and its change subscription.
+
+The package SHALL also declare, in the same one place, the document schema
+versions this build reads, and SHALL report them beside the API version
+wherever the API version is reported. A consumer asking which documents a
+viewer reads SHALL be answered with that list rather than having to infer
+it from the API version, and a consumer that receives no such list SHALL be
+entitled to assume the versions every released viewer reads. Reading a
+document's controls table or a node's markings list SHALL NOT change that list:
+both are additive within the document versions that carry them, and the API
+version is the only capability gate either moves.
+
+#### Scenario: A host checks compatibility before mounting
+
+- **WHEN** a host reads the installed viewer API version
+- **THEN** it obtains the package's single declared version without running a
+  browser bundle
+
+#### Scenario: A mounted viewer reports its version
+
+- **WHEN** a host inspects a mount handle or the browser global
+- **THEN** both report the same declared API version
+
+#### Scenario: A host requires targeted updates
+
+- **WHEN** a host needs `artifactChanged()` and `manifestChanged()`
+- **THEN** the declared API version tells it whether they are available
+
+#### Scenario: A host requires camera orientation control
+
+- **WHEN** a host needs to supply an up direction and field of view
+- **THEN** the declared API version tells it whether they are available
+
+#### Scenario: A host requires flexible geometry
+
+- **WHEN** a host needs `version: 3` documents rendered
+- **THEN** the declared API version tells it whether the capability is
+  available
+
+#### Scenario: A host requires documents carrying a bindings table
+
+- **WHEN** a host needs `version: 4` documents rendered
+- **THEN** the declared API version tells it whether the capability is
+  available
+
+#### Scenario: A host requires the published navigation state
+
+- **WHEN** a host needs to read the focused root and the hidden paths, and
+  to be told when they change
+- **THEN** the declared API version tells it whether the capability is
+  available, before it mounts a bundle it cannot build a navigator on
+
+#### Scenario: A host requires the mountable navigator
+
+- **WHEN** a host means to present the package's own assembly navigator
+  rather than build one
+- **THEN** the declared API version tells it whether the bundle carries
+  one, before it mounts a bundle that publishes the navigation state but
+  no navigator
+
+#### Scenario: A host requires the inspector layout
+
+- **WHEN** a host means to mount the package's composed inspector —
+  sidebar, navigator and viewer in one element — rather than lay those
+  parts out itself
+- **THEN** the declared API version tells it whether the bundle carries
+  one, before it mounts a bundle that carries a navigator and no layout to
+  put it in
+
+#### Scenario: A host requires part controls
+
+- **WHEN** a host means to present a machine a maker drives by touching it,
+  rather than only from a panel
+- **THEN** the declared API version tells it whether this bundle reads a
+  document's controls table and binds a pick to it, before it mounts a
+  bundle that would show the same document with no affordance at all
+
+#### Scenario: A producer asks which documents this viewer reads
+
+- **WHEN** a producer asks the installed viewer what it reads, before
+  publishing a document
+- **THEN** it receives the list of document schema versions this build
+  renders, including the running version, from the same declaration the
+  bundle refuses by
+
+#### Scenario: A host requires a self-read program executed
+
+- **WHEN** a host means to present a machine one of whose laws reads the
+  coordinate it drives — a rack that turns a dial only while the dial is
+  not already standing in its own gap — which the producer publishes as a
+  version 6 document
+- **THEN** the declared API version tells it whether this bundle executes
+  one, before it mounts a bundle that would refuse the document by name
+  and render nothing at all
+
+#### Scenario: A host requires the markings drawn
+
+- **WHEN** a host means to present a machine whose answer is printed on its
+  parts — a calculator's digits, a dial's graduations — rather than a blank
+  drum
+- **THEN** the declared API version tells it whether this bundle draws a
+  document's markings, before it mounts a bundle that would show the same
+  document with nothing readable on it
+
+#### Scenario: A host requires a clocked machine executed
+
+- **WHEN** a host means to present a machine with MEMORY and no cadence —
+  a calculator whose registers are written at the end of a stroke — which
+  the producer publishes as a version 8 document
+- **THEN** the declared API version tells it whether this bundle executes
+  one, before it mounts a bundle that would refuse the document by name
+  and render nothing at all
+
+#### Scenario: A host requires a clock that runs
+
+- **WHEN** a host means to present a machine whose motion is a function of
+  ELAPSED SECONDS — a pendulum and the counter beside it — and to let a
+  maker watch it run
+- **THEN** the declared API version tells it whether this bundle advances a
+  clocked machine's clock, before it mounts a bundle that renders the same
+  document truthfully at one instant and refuses every request that would
+  move it off that instant
+
+#### Scenario: A host requires a clocked instruction played
+
+- **WHEN** a host means to offer a maker the buttons a clocked document
+  declares — "Turn crank" on a calculator that holds its registers — and to
+  have the stroke WATCHED rather than jumped
+- **THEN** the declared API version tells it whether this bundle plays one,
+  before it mounts a bundle that lists the same instruction and refuses it
+
+### Requirement: A host reads and drives the document's drivers
+
+The mounted viewer SHALL hold one driver state per mount, keyed by the
+document's qualified driver ids and initialized from the `drivers`
+table's declared defaults, in native driver units. The handle SHALL
+expose `drivers()` (the table's entries verbatim: id, default, range,
+unit, dtype, scale), `driver(id)` (the current native value),
+`setDriver(id, value)` (bind and re-evaluate; an unknown id SHALL fail
+loudly listing the known ids; declared `range` SHALL NOT clamp), and
+`onDriverChange(fn)` (called once per changed driver per animation
+frame while values change and synchronously on `setDriver`; returns an
+unsubscribe function). A driver change SHALL re-evaluate only
+operations whose expressions reference that driver's id; operations
+referencing `$t` SHALL keep animating with the existing time
+transport, including expressions referencing both.
+
+#### Scenario: A slider-shaped call moves one carriage
+
+- **WHEN** a host calls `setDriver('x_axis.motor', 8000)` on a mounted
+  two-axis document
+- **THEN** operations referencing `x_axis.motor` re-evaluate to the
+  new pose that frame, operations referencing only `y_axis.motor` or
+  only `$t` are not re-evaluated because of it, and
+  `driver('x_axis.motor')` reports 8000
+
+#### Scenario: Out-of-range values bind unclamped
+
+- **WHEN** a host sets a driver past its declared range (a crash
+  scenario drives past travel)
+- **THEN** the value binds verbatim and the pose follows it
+
+#### Scenario: An unknown id fails loudly
+
+- **WHEN** a host calls `setDriver('z_axis.motor', 0)` on a document
+  declaring only `x_axis.motor` and `y_axis.motor`
+- **THEN** the call fails naming the unknown id and listing the
+  declared ids, and no state changes
+
+#### Scenario: A driver whose name shadows a word is not confused
+
+- **WHEN** a document declares a driver named `total` and an operation
+  expression calls a function whose name contains that word
+- **THEN** only operations in which `total` is a free variable of the
+  parsed expression re-evaluate when it changes — detection is by
+  parsed free variables, never substring matching
+
+### Requirement: A host triggers declared instructions
+
+The handle SHALL expose `instructions()` (the document's instruction
+entries verbatim: qualified name, design-unit targets keyed by
+qualified driver id, duration) and `trigger(name)`. Triggering SHALL
+convert each target to native units through the driver table's scale
+and dtype exactly as the Python simulation does (nearest native unit
+for integer dtypes) and ramp each target driver linearly from its
+current value over the instruction's duration, advanced by the
+viewer's animation loop on wall-clock elapsed time: intermediate
+values are sampling, endpoints are contract — integer-dtype values
+SHALL be whole at every frame and the final value SHALL be exactly the
+converted target. Triggering an instruction whose target driver
+already has an active ramp SHALL replace that ramp from the current
+value. `trigger` SHALL return a handle with `done` (a promise
+resolving when every target lands or the run is cancelled) and
+`cancel()` (stop ramps at their current values). An unknown
+instruction name SHALL fail loudly listing the known qualified names.
+Disposing the viewer SHALL cancel active ramps.
+
+That ramp is what an instruction means for a document the viewer POSES from
+its driver table. For a document carrying a CLOCKED machine the handle's own
+`trigger` SHALL be REFUSED by name, saying that a clocked machine's
+instructions are played on the machine and pointing at it: such a document is
+posed from the machine's BANK, so a ramp over the driver table would move
+nothing a maker could see.
+
+#### Scenario: A button-shaped call homes one axis
+
+- **WHEN** a host calls `trigger('x_axis.Home')` (target 0.0 mm over
+  2.0 s, driver scale 0.0125 mm/µstep, dtype int)
+- **THEN** `x_axis.motor` ramps from its current value to exactly 0
+  native µsteps as the duration elapses, `y_axis.motor` holds, every
+  intermediate value is a whole number, and `done` resolves at landing
+
+#### Scenario: Re-triggering replaces the active ramp
+
+- **WHEN** an instruction is triggered while a prior trigger on the
+  same driver is mid-ramp
+- **THEN** the new ramp starts from the driver's current value and the
+  prior run's `done` resolves without landing on its old target
+
+#### Scenario: An unknown instruction fails loudly
+
+- **WHEN** a host triggers a name the document does not declare
+- **THEN** the call fails listing the declared qualified instruction
+  names and no driver changes
+
+#### Scenario: A posed trigger on a clocked document is refused
+
+- **WHEN** a host calls the viewer handle's own `trigger` on a document
+  carrying a clocked machine
+- **THEN** the call is refused naming the machine's own trigger as the way
+  to play that instruction, and no ramp is started
+
+### Requirement: Client evaluation matches producer numerics
+
+The viewer's expression evaluation — OpenSCAD degree trig, `^` as
+exponentiation, `$t`, qualified identifiers resolved through the
+value map at every segment of the identifier, and binding names resolved
+through the document's table —
+SHALL match the producer's numeric resolution of the
+same expressions to within floating-point rounding, and that agreement
+SHALL be enforced by tests against the shipped evaluator module using
+producer-computed expected values covering at least: linear and scaled
+driver terms, degree-trig chains, `^` terms, sums whose leading term is
+negative, expressions mixing `$t` with drivers, expressions that are or
+contain a binding name, and design-to-native
+instruction target conversion for integer dtypes.
+
+`sign` SHALL resolve as the producer's own definition does — which side of
+zero its argument is on — including at negative zero, where a runtime's
+own sign function does not.
+
+The producer-generated corpus SHALL carry the bindings table its cases
+reference, and the tests SHALL resolve a case's expression through that
+table exactly as the viewer resolves a document's, so the corpus pins the
+table's semantics as well as the functions': an entry naming an earlier
+entry, an entry over a driver id as well as over `$t`, and an entry
+reached from more than one case. A case pinned by an earlier corpus SHALL
+keep its key and its expected value.
+
+Agreement SHALL include operator precedence and not only arithmetic. A
+unary minus SHALL bind to the term beside it rather than to the rest of
+the expression, so a sum whose leading term is negative resolves to that
+negative term plus the rest and never to the negation of the whole; and
+`^` SHALL bind tighter than a unary minus, as the producer's own
+language does.
+
+Agreement SHALL also include the form of the numbers themselves. The
+client SHALL read every numeric literal the producer can write, in
+particular a literal in exponent notation — which the producer emits
+for any magnitude its language prints that way — and SHALL resolve it to
+the value those digits name, at any magnitude and without loss from a
+floating-point round-trip. A name that merely begins with or contains
+the exponent marker SHALL remain a name.
+
+Agreement SHALL hold however evaluation is organized. Sharing a
+subexpression between the places that read it, reusing a value already
+resolved for the same inputs, and reading a subexpression through a name
+the producer published it under, SHALL NOT move a number: a shared
+reading, a bound reading and a reading that walked every occurrence
+separately SHALL agree exactly, and a
+value that is not a number — an unresolved name, or a term that produced no
+number — SHALL reach the caller as it does today rather than as a stale or
+substituted one.
+
+An expression form the viewer's evaluation cannot support SHALL be refused
+when the document is loaded — with the refusals for an unreadable document
+version, an unknown flexible technology, an unresolvable bindings table
+and an undeclared driver id — naming
+the form and quoting the expression, and quoting it in part rather than
+whole, since a published expression may be megabytes long. The refusal
+SHALL cover every expression the document carries, an operation's, a
+flexible node's parameters, a binding's and a program's alike, so that no
+such expression is first met while a frame is being rendered or a step
+integrated.
+
+#### Scenario: The parity corpus pins the shipped evaluator
+
+- **WHEN** the widget test suite runs the producer-generated parity
+  fixture against the shipped evaluator
+- **THEN** every expression's client value matches the producer value
+  within float rounding, and removing the `^` rewrite makes the suite
+  fail
+
+#### Scenario: The corpus pins the bindings table
+
+- **WHEN** the suite runs a corpus whose cases name entries of its
+  bindings table, including a case whose whole expression is one name
+- **THEN** each value matches the producer value within float rounding,
+  and running the same cases without the table installed fails
+
+#### Scenario: A sum whose leading term is negative crosses the boundary
+
+- **WHEN** the corpus carries an expression whose head is a negative
+  literal, evaluated at more than one driver setting
+- **THEN** the client value matches the producer value at every one of
+  them, and a reader that bound the unary minus to the whole sum instead
+  would agree at no more than one
+
+#### Scenario: A driver scaled by an exponent-printed factor
+
+- **WHEN** the corpus carries a driver term whose scale is small enough
+  that the producer prints it in exponent notation, together with a bare
+  tiny literal and a bare large one
+- **THEN** the client resolves each to the producer's value, and a reader
+  that could not read an exponent literal would fail to parse them at all
+
+#### Scenario: An identifier is not a literal
+
+- **WHEN** an expression names a driver whose id begins with the exponent
+  marker, or calls a function whose name contains it
+- **THEN** the evaluator reads it as that name and resolves it through
+  the driver map or the math context, unchanged
+
+#### Scenario: A shared reading is the same reading
+
+- **WHEN** every expression of the parity corpus is evaluated through the
+  sharing evaluation, one input set at a time
+- **THEN** each value matches the producer value within float rounding,
+  including the degree-trig chains, the `^` terms and the leading negative
+  sums
+
+#### Scenario: An unresolved name is still not a number
+
+- **WHEN** an expression names a driver the document does not declare, or
+  reaches through one whose value is not a map, and it is evaluated twice
+  for the same inputs
+- **THEN** both readings produce exactly what the viewer produces today for
+  that expression — the same non-number, or the same failure — and neither
+  substitutes another node's value
+
+#### Scenario: An unsupported form is refused at load
+
+- **WHEN** a document is loaded whose operation expression, whose flexible
+  node's parameter expression, or whose bindings entry carries a form the
+  viewer's evaluation does not support, such as an inline function
+- **THEN** loading fails naming the form and quoting part of the
+  expression, no tree is built for it, a model already standing is left
+  standing, and no frame is ever rendered from it
+
+#### Scenario: An identifier of any depth resolves to its value
+
+- **WHEN** an expression names an identifier of three or more segments and
+  the viewer holds a value under exactly that identifier
+- **THEN** it resolves to that value, as a one- or two-segment identifier
+  already does
+
+#### Scenario: The sign of negative zero is the producer's
+
+- **WHEN** an expression applies `sign` to a value that is negative zero
+- **THEN** it resolves to what the producer resolves it to
+
+### Requirement: A maker drives the focused layer's drivers and instructions on screen
+
+For a document that declares drivers and carries no program, the mounted
+viewer SHALL present
+an on-screen control for each driver and each instruction declared at
+the focused assembly layer: a button per instruction and a bounded
+slider with a passive numeric readout per driver. Clicking or
+keyboard-activating that readout SHALL replace it temporarily with a text
+editor that carries no native numeric spinner arrows. Control labels SHALL be
+the declared identifiers relative to the focused layer. Sliders, passive
+readouts, and active editors SHALL present values in design units with the
+declared unit, and SHALL move live while a ramp plays except while the maker is
+actively editing that readout. Enter or focus loss SHALL commit a non-empty
+finite numeric entry; Escape or an invalid entry SHALL leave the driver
+unchanged and restore the passive readout. A committed finite numeric entry
+SHALL produce the same driver state as dragging the slider to that design-unit
+value, including an entry outside the slider's declared range. A driver's
+passive readout SHALL show a fixed number of decimal places and SHALL retain
+the viewer's prior fixed-width, right-aligned, tabular-number appearance. It
+SHALL hold the position of its digits, its sign, and everything laid out beside
+it steady as the value changes: reading a value while dragging SHALL not
+require following a moving target.
+Interacting with a control SHALL produce the
+same observable state as the corresponding host driving call, so a
+value or trigger set on screen and one set through the handle are
+indistinguishable to expressions, listeners, and readbacks. The
+declared `range` SHALL bound only the slider's travel, never the
+underlying value: a value bound past the range through the host API or numeric
+entry SHALL survive intact, with the slider pinned at its end and the
+numeric readout showing the true value. Every control SHALL carry an
+accessible name for assistive tools. A document declaring no drivers
+SHALL present none of this chrome.
+
+A document that carries a program SHALL present none of this chrome
+either: its inputs are entry points for movement requests rather than
+positions to set, and it is driven by the running controls specified
+below.
+
+#### Scenario: A maker homes an axis with a button
+
+- **WHEN** the focused layer declares the instruction `Home` and the
+  maker presses the button labelled `Home`
+- **THEN** the same ramp plays as a host `trigger` of that qualified
+  instruction, the affected driver's slider travels with it to the
+  target, and the button indicates the run until it lands
+
+#### Scenario: A maker jogs a motor with a slider
+
+- **WHEN** the maker drags the slider labelled `motor` on a focused
+  axis whose driver declares `unit: ustep` and a millimetre scale
+- **THEN** the model pose follows the drag, the readout shows the
+  design-unit value with its unit, and `driver()` on the handle
+  reports the corresponding native value
+
+#### Scenario: A maker enters an exact calibration value
+
+- **WHEN** the maker activates a bounded driver's passive numeric readout,
+  enters a finite design-unit number and commits the edit
+- **THEN** the model uses that exact value through the same conversion as its
+  slider, the slider follows or pins at its nearest endpoint, the unit remains
+  visible, and the passive readout returns without persistent field chrome or
+  spinner arrows
+
+#### Scenario: A readout holds still through a drag
+
+- **WHEN** the maker drags a driver's slider through values of
+  differing digit counts and across zero into negative travel
+- **THEN** every passive value is written with the same number of decimal
+  places, and neither the change of digit count nor the appearance of
+  the minus sign moves the readout's digits or the unit beside them
+
+#### Scenario: A re-pressed button replaces the run
+
+- **WHEN** the maker presses an instruction's button while its ramp is
+  still playing
+- **THEN** the new run replaces the old one, exactly as a host
+  re-trigger does
+
+#### Scenario: An out-of-range value is shown honestly
+
+- **WHEN** a host or maker binds a driver past its declared range and the
+  maker looks at that driver's control
+- **THEN** the slider sits pinned at its nearest end, the passive readout
+  shows the actual out-of-range value, and the bound value is
+  unchanged by the chrome
+
+#### Scenario: A driverless document is unchanged
+
+- **WHEN** a document with an empty drivers table is mounted
+- **THEN** no driver control, readout, or focus affordance appears and
+  the widget presents exactly its pre-existing chrome
+
+#### Scenario: A running document gets the other chrome
+
+- **WHEN** a document carrying a program is mounted with the chrome
+  presented
+- **THEN** no position slider appears for any of its inputs, and the
+  running controls appear in its place
+
+### Requirement: Controls follow the focused layer
+
+The viewer SHALL scope driver controls strictly to the focused
+assembly layer. With focus at the document root, only drivers and
+instructions declared with bare (root-level) identifiers SHALL be
+presented. Focusing an instance SHALL replace the controls with those
+the instance itself declares, labelled relative to it; controls of its
+descendants and of other branches SHALL NOT be presented. When a
+document update removes the focused node and focus resets, the
+controls SHALL re-scope with it. A focused layer declaring nothing
+SHALL present no sliders or buttons while the focus affordance remains
+available.
+
+#### Scenario: Focusing an axis reveals its controls
+
+- **WHEN** the maker focuses `x_axis` on a machine whose axes each
+  declare a `motor` driver and a `Home` instruction
+- **THEN** exactly one slider labelled `motor` and one button labelled
+  `Home` appear, driving `x_axis.motor` and `x_axis.Home`, and
+  `y_axis`'s controls are not shown
+
+#### Scenario: A root that declares nothing shows no controls
+
+- **WHEN** the maker views the root of a machine that declares all
+  drivers and instructions on its children
+- **THEN** no slider or button is presented at the root and the focus
+  affordance still offers the declaring children
+
+#### Scenario: A republish that removes the focused node re-scopes
+
+- **WHEN** a document update removes the focused instance and the
+  viewer resets focus to the root
+- **THEN** the presented controls become the root layer's
+
+### Requirement: The host chooses how driver controls are presented
+
+The host SHALL be able to choose at mount time whether the on-screen
+chrome (controls and focus affordance) is presented, for a posed document,
+for a running one and for a CLOCKED one alike — one switch over all three
+kinds. By default it is
+presented for documents that declare drivers. A host that suppresses
+it SHALL retain the full driving API unchanged, for a running
+document the full run API unchanged, and for a clocked one the full machine
+API — its requests, its session verbs and its clock — unchanged.
+
+The host SHALL be able to choose, **independently of that**, whether the
+parts a document's controls table names are touchable. By default they are,
+for a document that declares them. A host that suppresses the panel and
+keeps the parts touchable SHALL get exactly that, and so SHALL a host that
+does the opposite: the two choices gate different pixels and neither gates
+an interface. A host that suppresses the part affordance SHALL retain the
+listing of the document's controls on the handle, and the full run API,
+unchanged.
+
+#### Scenario: A shop floor builds its own instrument panel
+
+- **WHEN** a host mounts with the driver chrome suppressed
+- **THEN** no on-screen driver control or focus affordance appears
+  while `drivers()`, `setDriver`, `trigger`, and `onDriverChange`
+  behave exactly as when the chrome is shown
+
+#### Scenario: A published export shows the controls
+
+- **WHEN** a maker opens a self-contained export of a driver-declaring
+  document with default options
+- **THEN** the driver chrome is presented
+
+#### Scenario: A host drives a running machine from its own panel
+
+- **WHEN** a host mounts a document carrying a program with the chrome
+  suppressed
+- **THEN** no running control or transport appears, while the run
+  behaves exactly as it does when they are shown
+
+#### Scenario: A published export of a running model runs
+
+- **WHEN** a maker opens a self-contained export of a document carrying a
+  program, from a static directory and with default options
+- **THEN** the running controls and the transport are presented, and the
+  machine runs offline
+
+#### Scenario: A host keeps the dial pressable and builds its own panel
+
+- **WHEN** a host mounts a document carrying controls with the panel
+  suppressed and the part affordance left as it is
+- **THEN** no panel or transport appears, the parts the table names are
+  still touchable, and a press reports its outcome beside the pointer
+
+#### Scenario: A host suppresses the part affordance
+
+- **WHEN** a host mounts a document carrying controls with the part
+  affordance suppressed
+- **THEN** no part shows a cursor, a highlight or a name, pressing a part
+  moves the camera, and the handle still lists the document's controls
+  and drives the run unchanged
+
+### Requirement: A maker drives a running machine by requesting movement
+
+For a document carrying a program, the mounted viewer SHALL present, for
+each declared input and each declared instruction of the focused assembly
+layer, controls that SUBMIT MOVEMENT REQUESTS to the run. It SHALL NOT
+present a control that writes a position into a coordinate: under a run a
+coordinate carries history, and a control that sets one would undo the
+movement the run recorded.
+
+Per declared input of the focused layer:
+
+- a **readout** of that input's actual committed position, in design units
+  with its declared unit, which follows the run and is never editable and
+  never a source of a request;
+- a **nudge** in each direction, issuing a request to move that input by a
+  stated amount over a stated duration;
+- a **hold-to-jog** in each direction, issuing a request for a continuous
+  rate on press and cancelling that request on release, on lost pointer
+  capture, on lost window focus, and when the page stops being displayed;
+- an **amount** and a **rate** a maker may change, which configure the
+  requests those controls will make and SHALL NOT move anything by
+  themselves.
+
+Per declared instruction of the focused layer, a **button** that submits
+that named instruction to the run, whichever form it is declared in — a
+movement to a value or a movement by a travel — and indicates that it is
+running until its commands retire.
+
+Control labels SHALL be the declared identifiers relative to the focused
+layer, and the controls SHALL follow the focused layer exactly as the
+posed chrome's do. Every control SHALL carry an accessible name.
+Interacting with a control SHALL produce the same observable run state as
+the corresponding host call, so a request made on screen and one made
+through the handle are indistinguishable to the run, to listeners and to
+readbacks. A request issued while the run is paused SHALL start it. A
+document carrying a program SHALL NOT present a position slider or an
+animation timeline.
+
+#### Scenario: Repeated entry accumulates
+
+- **WHEN** a maker presses an instruction's button ten times on a machine
+  whose law carries a jump, letting each run complete
+- **THEN** the driven coordinate stands where ten movements left it, not
+  where one would have, and the readout of the input reads ten units
+
+#### Scenario: A readout does not drive
+
+- **WHEN** a maker looks at an input's readout while the run moves it
+- **THEN** the readout follows the committed position, and there is no
+  way to type or drag a position into it
+
+#### Scenario: A jog ends when the interaction does
+
+- **WHEN** a maker presses a jog control and then releases it, drags the
+  pointer away until capture is lost, moves focus out of the window, or
+  leaves the page
+- **THEN** the rate request is cancelled in every one of those cases and
+  the machine stops where it stands
+
+#### Scenario: An amount configures the next request
+
+- **WHEN** a maker changes a nudge amount or a jog rate
+- **THEN** nothing moves, and the next nudge or jog asks for the new
+  amount or rate
+
+#### Scenario: A relative instruction is a button like any other
+
+- **WHEN** a document declares an instruction as a travel rather than a
+  target
+- **THEN** it has a button, pressing it submits that travel to the run,
+  and the button indicates the run until it retires
+
+#### Scenario: A posed document is untouched
+
+- **WHEN** a document that carries no program is mounted
+- **THEN** it presents exactly the sliders, readouts, instruction buttons
+  and animation bar it presented before the viewer could run a machine
+
+### Requirement: A maker runs, steps and resets the machine
+
+For a document carrying a program, the mounted viewer SHALL present a
+transport: run and pause; a step that advances exactly one step of the
+run; a speed over the same ladder of real-time multiples the viewer
+already offers; a readout of the elapsed simulation time; and a reset to
+the run's initial state.
+
+The elapsed readout SHALL show simulation seconds, which never wrap, in a
+form whose width does not change as the digits change, and SHALL widen
+rather than narrow as the run grows. Speed SHALL change how fast the
+machine is watched and never how finely it is simulated. Step SHALL
+advance the run whether it is paused or running, so a maker can walk a
+jump or a stop one step at a time. Reset SHALL return the bank, the step
+count and the elapsed time to the state the document was mounted at, and
+the readouts SHALL follow it.
+
+#### Scenario: A maker walks a carry one step at a time
+
+- **WHEN** a maker pauses the run and presses step repeatedly through the
+  window in which a law's jump surface is crossed
+- **THEN** each press advances exactly one step, and the geometry follows
+  each committed step
+
+#### Scenario: Watching faster is not simulating coarser
+
+- **WHEN** a maker selects a large speed multiple and lets the same
+  request run
+- **THEN** the machine reaches the same state it reaches at real time,
+  sooner
+
+#### Scenario: Reset returns the machine
+
+- **WHEN** a maker resets after driving the machine
+- **THEN** every coordinate stands where it stood when the document was
+  mounted, the step count and the elapsed time are back at zero, and no
+  command is active
+
+#### Scenario: There is no scrubber
+
+- **WHEN** a maker looks for a way to drag the run to an instant
+- **THEN** there is none: a running document presents no timeline, and
+  the transport offers only run, pause, step, speed and reset
+
+### Requirement: A request reports its outcome where it was made
+
+Every request a maker issues SHALL report its outcome at the control that
+issued it: completed; blocked, with the travel the machine actually
+admitted in the units the request was stated in; refused, with the run's
+own reason; or cancelled. A blocked request SHALL NOT leave any remainder
+to be executed later.
+
+A step the run refuses SHALL be reported across the panel rather than at
+one control, carrying the run's own message — which names the relation as
+its author wrote it and the class that stated it — and the run SHALL
+pause on it rather than repeating the refused step. The report SHALL
+clear when the run next commits a step.
+
+A request on an input another command already owns SHALL be reported in
+place rather than silently dropped, so a manual control never appears to
+have taken over an input it did not.
+
+#### Scenario: A blocked nudge says how far it got
+
+- **WHEN** a maker nudges an input whose coordinate meets a declared stop
+  part way
+- **THEN** the control reports the request blocked and the travel
+  admitted, and pressing nudge again asks for a fresh movement rather
+  than resuming the blocked one
+
+#### Scenario: A refused step names what disagreed
+
+- **WHEN** a step is refused because two relations disagree on one
+  coordinate
+- **THEN** the panel shows the run's message naming both relations and the
+  coordinate, the machine stands where it stood, and the run is paused
+
+#### Scenario: A second request on a busy input is answered
+
+- **WHEN** a maker jogs an input while an instruction already owns it
+- **THEN** the jog reports that the input is owned, and the instruction's
+  movement is untouched
+
+### Requirement: The viewer evaluates flexible geometry per frame
+
+The package SHALL bundle the molejo JavaScript evaluator and render a
+document's `flexible` nodes: each node's `params` expressions are
+evaluated in the same scope as operation expressions (`$t` and the
+nested driver map), and the resulting values are handed to the molejo
+evaluator, which writes vertex data into buffers the viewer allocates
+once per node and reuses — vertex count and ordering are declared by
+the spec and never change at frame rate, so no reallocation occurs.
+
+Re-evaluation SHALL be bounded the way operation re-evaluation already
+is: a flexible node's geometry is recomputed only on frames where a
+free variable of one of its `params` expressions changed, and driving
+a driver named by no `params` expression SHALL NOT re-evaluate it.
+
+The loader SHALL accept documents declaring `version: 2` or
+`version: 3`, and SHALL refuse — naming the node and the technology —
+a `flexible` node whose `tech` the package cannot evaluate, rather
+than rendering a wrong or missing shape.
+
+The binding seam SHALL be pinned by the producer-generated parity
+fixture: at least one case evaluates a real flexible document's
+parameter expression client-side, feeds it to the bundled molejo
+evaluator, and matches the producer's Python-side evaluation of the
+same spec and binding within the fixture's tolerance. (Vertex-level
+agreement between the two molejo evaluators is molejo's own parity
+contract; what this package pins is the expression-to-parameter
+binding in front of it.)
+
+#### Scenario: A spring animates in the browser
+
+- **WHEN** a document containing a molejo spring whose `height`
+  expression references a declared driver is mounted and that driver
+  is driven
+- **THEN** the spring's geometry re-evaluates into its existing
+  buffers on the frames where the driver changed, with vertex count
+  unchanged
+
+#### Scenario: An unrelated driver does not touch the spring
+
+- **WHEN** a driver named by no `params` expression of the spring
+  changes
+- **THEN** the spring's geometry is not re-evaluated that frame
+
+#### Scenario: An unknown technology is refused loudly
+
+- **WHEN** a document carries a `flexible` node whose `tech` the
+  package cannot evaluate
+- **THEN** loading fails naming the node and the technology, and no
+  wrong shape is rendered
+
+#### Scenario: The binding parity case pins the seam
+
+- **WHEN** the widget test suite runs the parity fixture's flexible
+  binding case against the shipped evaluator and bundled molejo
+- **THEN** the client-side parameter value and resulting evaluation
+  agree with the producer-computed expectation within the declared
+  tolerance
+
+### Requirement: A flexible spec the evaluator cannot read is refused by name
+
+The package SHALL refuse a `flexible` node whose spec the bundled
+evaluator cannot read, naming the node and carrying the evaluator's own
+reason, rather than rendering a wrong or missing shape. The refusal SHALL
+happen when the node is constructed — the same point at which an
+unevaluable `tech` is already refused — so that an unreadable document
+fails at load with a message that identifies it, and never as an
+exception escaping the render loop on some later frame.
+
+The package SHALL NOT interpret the spec to decide this. It asks the
+bundled evaluator whether the spec is readable and reports what the
+evaluator says, so the document stays opaque to the viewer and the set of
+readable specs remains the evaluator's to define.
+
+#### Scenario: A spec the bundled evaluator cannot read is refused at load
+
+- **WHEN** a document carries a `flexible` node whose `tech` the package
+  evaluates, but whose spec the bundled evaluator rejects — for instance
+  one written for an older evaluator, declaring a spec version that
+  evaluator no longer reads
+- **THEN** construction fails naming the node and including the
+  evaluator's reason, no geometry is created for it, and no exception is
+  raised from a later frame
+
+#### Scenario: A readable spec is unaffected
+
+- **WHEN** a document carries a `flexible` node whose spec the bundled
+  evaluator reads
+- **THEN** the node is constructed and evaluated exactly as before, with
+  no additional per-frame work
+
+### Requirement: A repeated subexpression is evaluated once per pass
+
+A published expression may paste the same subexpression many times over —
+the producer builds an expression by string concatenation, so a reused value
+arrives as its full text again — and one such expression may appear under
+many operations of one document. Evaluating the document's expressions for
+one set of inputs SHALL cost the number of DISTINCT subexpressions they
+contain rather than the length of their text: a subexpression that occurs
+more than once in an expression, or in more than one expression, SHALL be
+resolved once for that set of inputs, whichever operation, flexible
+parameter or caller asks for it.
+
+The widget SHALL expose, to its own tests, the number of subexpression
+resolutions performed and the number of distinct subexpressions prepared, so
+the bound is asserted as work performed and never as elapsed time. This is
+not a host capability: it SHALL NOT appear on the mount handle, and the
+viewer API version SHALL NOT rise for it.
+
+Preparing an expression SHALL NOT retain its parsed form: what the viewer
+keeps for a document is its distinct subexpressions, and what it keeps after
+its last viewer is disposed of is nothing.
+
+Re-evaluation SHALL stay bounded as it already is — an operation is
+re-evaluated only when `$t` or one of its own free variables changed, and a
+free variable is still read from the parsed expression, with a dotted driver
+id one name and a called function's name never a variable.
+
+#### Scenario: A pasted subexpression costs one resolution
+
+- **WHEN** an expression is built by pasting a subexpression into itself
+  repeatedly, so that its text holds thousands of nodes over a few dozen
+  distinct ones, and it is evaluated for one set of inputs
+- **THEN** its value is the value a reader that walked every pasted node
+  would return, and the resolutions performed are of the order of the
+  distinct subexpressions, not of the pasted text
+
+#### Scenario: One expression under many operations
+
+- **WHEN** several operations of one document carry the same expression and
+  the document is evaluated for one set of inputs
+- **THEN** the operations after the first perform no further resolutions,
+  and every operation's matrix is the one its expressions name
+
+#### Scenario: New inputs are evaluated afresh
+
+- **WHEN** the animation time advances and the same operations are
+  evaluated again
+- **THEN** their distinct subexpressions are resolved again for the new
+  time, and the values follow the new time
+
+#### Scenario: A driver nobody names still costs nothing
+
+- **WHEN** a driver is set on a document whose operations do not name it
+- **THEN** no operation of that document is re-evaluated because of it
+
+#### Scenario: The parse is not kept
+
+- **WHEN** a document's expressions have been prepared and evaluated
+- **THEN** the viewer's retained expression state is of the order of the
+  document's distinct subexpressions, and disposing of the last viewer on
+  the page leaves none of it
+
+### Requirement: Expression cache pressure does not change a machine
+
+A supported document SHALL load, pose and execute with the same results
+regardless of expression-cache reclamation or prior supported documents
+loaded on the page. A document whose live expression working set exceeds
+the cache's reclamation threshold SHALL NOT fail or evaluate differently
+solely because it crosses that threshold. Existing malformed-document
+refusals and document-local binding meanings SHALL remain unchanged.
+
+This promise SHALL include a large posed portable export whose operations
+and flexible parameters read a shared ordered binding table. The complete
+valid export SHALL mount with its published rigid and flexible geometry,
+driver defaults and declared instruction targets; loading SHALL not stall
+indefinitely before geometry is requested solely because its valid binding
+table exceeds expression-cache headroom. Invalid content in such a document
+SHALL still be refused before rendering it, preserving any last good model.
+
+When a supported machine's prepared expression graph fits within the
+viewer's finite cache capacity, consecutive ticks SHALL reuse that graph
+without reclaiming and reparsing it between those ticks. This reuse SHALL
+NOT change the machine's admitted travel, coordinate bank, event records,
+snapshot/replay behavior, numerical semantics or refusal behavior.
+
+Expression retention across repeated publications SHALL be bounded by
+current live work and cache headroom, not accumulated publication history.
+Disposing of the last viewer SHALL release retained expression state.
+
+#### Scenario: A large operating machine opens
+
+- **WHEN** a supported operating machine's expression working set crosses
+  the cache reclamation threshold while its document is loaded
+- **THEN** mounting completes and its initial pose and subsequent request
+  results match the same machine without cache pressure
+
+#### Scenario: A complete binding-rich posed printer opens
+
+- **WHEN** the complete supported Voron-2 portable export is opened with
+  its ordered bindings, rigid model assets and flexible parts intact
+- **THEN** the viewer mounts the full assembly, renders its default pose
+  and permits its declared Home, Center and Present targets with the same
+  placements and flexible shapes the published expressions describe
+
+#### Scenario: Large invalid content is refused before replacement
+
+- **WHEN** a large posed document carries an invalid binding or unsupported
+  expression, including one reached through an operation or flexible parameter
+- **THEN** loading refuses that content by the existing named error, no
+  tree is rendered from it, and a last good model remains standing
+
+#### Scenario: Consecutive ticks reuse a fitting graph
+
+- **WHEN** a supported running document has a prepared graph within the
+  finite cache capacity and advances several consecutive ticks
+- **THEN** those ticks reuse the prepared graph without a cache generation
+  change between ticks and produce the same complete bank and event records
+  as evaluation under forced reclamation
+
+#### Scenario: Reclamation happens between operations
+
+- **WHEN** the expression cache is reclaimed after a machine has loaded
+  and before it is posed or stepped again
+- **THEN** it produces the same values, stops and request outcomes as it
+  would without that reclamation, never values from another expression
+
+#### Scenario: Documents keep their own binding meanings under pressure
+
+- **WHEN** two mounted documents use the same binding names for different
+  expressions and loading or operating either creates cache pressure
+- **THEN** each continues to pose and operate according to its own bindings
+
+#### Scenario: Reload history is not retained indefinitely
+
+- **WHEN** a host repeatedly replaces a document with supported documents
+  of a bounded working-set size, including a failed replacement
+- **THEN** obsolete expression state is reclaimed, the last good model
+  continues to operate correctly, and retained expression state does not
+  grow with the number of past replacements
+
+#### Scenario: The final viewer is disposed
+
+- **WHEN** the last viewer is disposed after operation under cache pressure
+- **THEN** no expression state remains retained by the viewer
+
+### Requirement: A named binding is resolved where it is used
+
+A published document may carry an ordered `bindings` table: named
+expressions, published once and referenced by bare name from an
+operation's expression, from a flexible leaf's `params`, and from later
+entries of the table. The viewer SHALL resolve such a name, wherever it
+occurs, to the value of that entry's expression under the same inputs —
+the same animation time and the same driver values — as the expression
+that named it.
+
+A name SHALL be resolved as a binding BEFORE it is treated as a driver
+id, and after `$t`. A binding name SHALL therefore never be reported as
+an undeclared driver id.
+
+An entry SHALL be evaluated only when something reads it, and SHALL cost
+one resolution per evaluation pass however many operations, parameters or
+other entries reach it — the bound the viewer already holds for a
+repeated subexpression. Reading a document's expressions through its table
+SHALL NOT move a number: an expression that names an entry SHALL resolve
+to what the same expression resolves to with that entry's text written out
+in its place.
+
+The table SHALL belong to the document that carries it. Two documents
+mounted on one page MAY use the same name for different expressions, and
+neither SHALL ever resolve a name to the other's value.
+
+A document that carries no table SHALL render exactly as it does when the
+viewer knows nothing of bindings.
+
+#### Scenario: A bound document poses as the flat one it was published from
+
+- **WHEN** two documents describing one machine are mounted — one whose
+  operations reference a bindings table, one with every reference written
+  out in full — at the same animation time and driver values
+- **THEN** every operation's matrix is the same in both
+
+#### Scenario: A binding read by many operations costs one resolution
+
+- **WHEN** several operations of one document name the same entry and the
+  document is evaluated for one set of inputs
+- **THEN** the operations after the first perform no further subexpression
+  resolutions, and every operation's matrix is the one its expressions name
+
+#### Scenario: An entry nobody reads costs nothing
+
+- **WHEN** a driver is moved on a document whose table holds entries no
+  operation naming that driver reaches
+- **THEN** those entries are not evaluated
+
+#### Scenario: Two documents on one page keep their own names
+
+- **WHEN** two documents are mounted on one page, each declaring an entry
+  under the same name but with a different expression, and both are
+  evaluated at the same animation time and driver values
+- **THEN** each renders at the pose its own entry names, and neither reads
+  the other's value
+
+#### Scenario: A binding name is not an undeclared driver
+
+- **WHEN** a document declaring an empty `drivers` table carries bindings
+  and its operations name them
+- **THEN** it loads and renders, because every name its expressions carry
+  is `$t`, an entry of its table, or a function of the expression language
+
+### Requirement: Dependence flows through a binding
+
+Where the viewer bounds work by the inputs an expression reads — deciding
+whether an operation is re-evaluated, whether a flexible leaf's geometry
+is recomputed, and whether a document has a timeline to play — an
+expression that names a binding SHALL be treated as reading every input
+that binding transitively reads, through as many entries as the chain
+runs.
+
+An operation whose whole expression is a binding name resolving through
+the table to `$t` SHALL therefore be a time-dependent operation: it SHALL
+be re-evaluated when the animation time changes and it SHALL make its
+document animated, exactly as it was when its expression was written out
+in full. An operation reaching a declared driver id through a binding
+SHALL be re-evaluated when that driver moves, and SHALL NOT be
+re-evaluated when a driver nothing it reaches names moves.
+
+What an expression reads SHALL follow the table it is read through. When a
+document is republished with a table whose entries read different inputs,
+the viewer SHALL answer with the new table's inputs even where the
+expressions naming those entries are unchanged — so a machine that becomes
+time-driven on a republish gains its timeline, one that stops being
+time-driven loses it, and each is bounded by what it now reads.
+
+#### Scenario: A document animated only through its table has a timeline
+
+- **WHEN** a document is mounted in which no operation's expression
+  mentions `$t`, and every operation that moves does so by naming an entry
+  that resolves through the table to `$t`
+- **THEN** the viewer presents the animation controls, and advancing the
+  time moves those operations
+
+#### Scenario: A driver reached through a binding moves the operation
+
+- **WHEN** an entry's expression names a declared driver id, an operation
+  names that entry, and the driver is set
+- **THEN** that operation is re-evaluated and the model moves to the pose
+  the new value names
+
+#### Scenario: A driver reached by nothing still costs nothing
+
+- **WHEN** a driver is set on a document whose operations, and the entries
+  they reach, do not name it
+- **THEN** no operation of that document is re-evaluated because of it
+
+#### Scenario: A republished table changes what an unchanged expression reads
+
+- **WHEN** a mounted document is republished with its operations unchanged
+  — an operation whose whole expression is one entry name — and that
+  entry's expression changed from one over `$t` to one over a declared
+  driver id
+- **THEN** the operation moves when that driver is set and no longer moves
+  when the animation time advances, and the document is no longer animated
+
+#### Scenario: A chain of entries carries dependence to its end
+
+- **WHEN** an operation names an entry that names a second entry that
+  names `$t`
+- **THEN** the operation is re-evaluated when the animation time changes
+
+### Requirement: A bindings table the viewer cannot resolve is refused by name
+
+A bindings table decides where a machine's parts stand, so a table the
+viewer cannot resolve SHALL be refused when the document is loaded —
+beside the refusals for an unreadable document version, a flexible
+technology or spec it cannot evaluate, an unsupported expression form and
+an undeclared driver id — rather than rendering part of a machine from it.
+The refusal SHALL name the entry or the name at fault, no tree SHALL be
+built from the document, and a model already standing SHALL be left
+standing.
+
+The viewer SHALL refuse: a `bindings` value that is not an array of
+entries carrying a name and an expression; two entries sharing a name; an
+entry whose expression names itself or an entry later in the array; an
+entry whose name is also a declared driver id; and a name reached from any
+operation, any flexible parameter or any entry that is neither `$t`, nor
+an entry of the table, nor a declared driver id — the refusal the viewer
+already makes for an undeclared driver id, made after the table's names
+are known and naming the name as absent from both tables. An entry whose
+expression the viewer cannot read SHALL be refused as such an expression
+already is.
+
+The viewer SHALL read a `bindings` table whenever the document carries
+one, and SHALL NOT refuse a document for declaring a version whose content
+it does not use.
+
+#### Scenario: A dangling reference is refused
+
+- **WHEN** a document is loaded whose operation names an entry its table
+  does not carry
+- **THEN** loading fails naming that name, no tree is built, and a model
+  already standing is left standing
+
+#### Scenario: A table that names forward is refused
+
+- **WHEN** a document is loaded whose entry names an entry appearing later
+  in the array, or names itself
+- **THEN** loading fails naming that entry
+
+#### Scenario: Two entries under one name are refused
+
+- **WHEN** a document is loaded whose table carries two entries with the
+  same name
+- **THEN** loading fails naming that name
+
+#### Scenario: An entry named like a declared driver is refused
+
+- **WHEN** a document is loaded whose entry's name is also a key of its
+  `drivers` table
+- **THEN** loading fails naming that name rather than resolving one of the
+  two and leaving the other unreachable
+
+#### Scenario: A malformed table is refused
+
+- **WHEN** a document is loaded whose `bindings` value is not an array, or
+  whose entry carries no name or no expression
+- **THEN** loading fails naming the offending entry
+
+#### Scenario: An undeclared driver is still refused
+
+- **WHEN** a document carrying a table is loaded, and one of its
+  expressions names an id that is neither an entry of the table nor a key
+  of its `drivers` table
+- **THEN** loading fails naming that id, as it does for a document with no
+  table at all
+
+### Requirement: The viewer executes a document's published program
+
+A document may carry a compiled mechanical program: the bank of
+coordinates in the order the program propagates them, with the value the
+rest pose gave each one; the values the program computes and never stores;
+the edges in propagation order with their expressions, their affinity and
+their jump plans; the declared bounds; the inputs that reach each value;
+the constants the algorithm is defined by; and the free name elapsed
+simulation seconds bind to. The viewer SHALL execute that program: on
+every step it admits the movement the active commands ask for, propagates
+it over the edges, and commits one bank — the machine running, rather than
+a pose evaluated.
+
+The run SHALL be executed off the rendering thread. Rendering SHALL NOT
+advance it: a dropped display frame SHALL drop display and never a step,
+and the mechanism SHALL never be advanced by more steps than elapsed time
+has earned. A page that is not being displayed SHALL accumulate no
+unseen steps and SHALL resume from where it stands. A host environment
+that cannot run the engine off the rendering thread SHALL run the same
+engine on it and SHALL say so on the handle, rather than failing to open
+the machine.
+
+The step size SHALL be the viewer's own choice — the document publishes
+none — SHALL default to a value fine enough to resolve the mechanisms the
+producer publishes, and SHALL be settable once when the viewer is mounted.
+It SHALL NOT change afterwards, because a run state is only valid at the
+step size it was taken at. A non-finite or non-positive step size SHALL
+be refused naming the value.
+
+Playback speed SHALL keep its existing meaning — a multiple of real time —
+and SHALL change how many steps are taken per second of wall time, never
+the step size, so that watching a machine faster does not simulate it more
+coarsely.
+
+A run SHALL NOT begin advancing merely because a document was mounted: it
+SHALL be created at the program's published rest values, stopped, and
+SHALL begin when a host or a control asks it to — so a page that is only
+being looked at, a still capture or a thumbnail, shows the rest state
+without knowing that a run exists. A host MAY ask at mount time for a run
+that begins at once.
+
+The handle SHALL expose the run for a document that carries a program and
+SHALL report its absence for one that does not. A host SHALL be able to
+read the identity of the program, the step size, the step count, the
+elapsed simulation seconds, the committed bank and each coordinate's kind,
+unit and domain; to start, pause and advance an exact number of steps; to
+request a movement of a declared input by a travel or to a value over a
+duration, a continuous rate, a declared instruction, and the cancellation
+of any of them; to take, restore and reset a run state; and to be told of
+every committed step and every command outcome.
+
+#### Scenario: A machine runs where a pose could not
+
+- **WHEN** a host mounts a document carrying a program, asks for a
+  declared instruction that advances an input by one unit, and lets the
+  run advance until the command retires, ten times over
+- **THEN** the coordinate the program's law drives stands where ten
+  separate movements left it, not where one would have
+
+#### Scenario: Display and mechanics are separate
+
+- **WHEN** rendering falls behind while a command is running
+- **THEN** no step is skipped, the committed bank a later frame draws is
+  the one the run reached, and the elapsed simulation time reports the
+  steps actually taken
+
+#### Scenario: A page nobody is watching holds still
+
+- **WHEN** the page carrying a running document stops being displayed and
+  is displayed again later
+- **THEN** the machine stands where it stood, no steps were taken while it
+  was hidden, and the elapsed simulation time did not advance
+
+#### Scenario: The step size is fixed for the life of a mount
+
+- **WHEN** a host mounts with a chosen step size
+- **THEN** the run uses it, the handle reports it, and there is no
+  operation that changes it on a live run
+
+#### Scenario: Watching faster is not simulating coarser
+
+- **WHEN** the same document is run at real time and at a large multiple
+  of it, each for the same number of steps
+- **THEN** both reach the same bank, step for step
+
+#### Scenario: A document only being looked at shows its rest state
+
+- **WHEN** a document carrying a program is mounted by a host that asks
+  for nothing
+- **THEN** no step is taken, the elapsed simulation time stays at zero,
+  and the model stands at the published rest values until something asks
+  the run to begin
+
+#### Scenario: A document with no program has no run
+
+- **WHEN** a host asks a mounted document with no published program for
+  its run
+- **THEN** it is told there is none, and every other handle operation
+  behaves exactly as it does today
+
+### Requirement: The step reproduces the producer's own integration
+
+For each step the viewer SHALL take the movement each active command
+admits for that step — a pure function of the number of steps since the
+command started, so a replayed run admits exactly the same travel — and
+propagate it over the edges in the published order, producing one
+increment per determined value and committing them together. Where the
+published edges carry a cycle, the entries propagated over are the edges
+with each such cycle contracted to ONE entry, ordered under the
+requirement "The worker orders a block per piece"; a program with no
+cycle retains its published propagation order while preserving determined
+source timing as specified below.
+
+The path SHALL follow each source at the same fraction of the request:
+commanded motion for inputs, constant motion for held values, and determined
+motion for driven values. Driven paths SHALL retain dwell, kink, crossing and
+landing timing in ordinary chains and selected blocks, not interpolate their
+net increments. Restriction SHALL preserve that timing. Physical results SHALL
+agree between a bulk request and its portions within the published agreement
+window, with exact statuses and discrete readings away from threshold
+neighborhoods. Additional stations that do not influence an earlier carry SHALL
+NOT alter it. Queries SHALL be pure and caches SHALL NOT outlive a propagation.
+
+- A **continuous law** SHALL contribute the difference of its expression
+  evaluated at the end of the step's path and at its start.
+- A **law that jumps** SHALL contribute the continuous part only: its
+  path SHALL be cut at every crossing of every jump surface it meets,
+  taking the jump nodes in the published order so that an inner node has
+  already cut the path before an outer one is asked; on each piece every
+  jump node SHALL hold one branch, read by evaluating its published level
+  quantity at that piece's midpoint; and the contribution SHALL be the sum
+  of the branch-substituted law's change over the pieces. A jump SHALL
+  therefore never move a part. A level quantity the producer published as
+  affine in its sources SHALL be solved only where those source paths make
+  the level affine in request fraction; one the viewer finds
+  PIECEWISE AFFINE under the requirement "A piecewise-affine quantity is
+  cut at its own kinks" SHALL have the piece SUB-DIVIDED at that
+  quantity's own kinks and every surface of each sub-piece solved the
+  same way; any other SHALL be sampled, bracketed and bisected under the
+  published subdivision, rounding and tolerance limits.
+- A **law that READS THE COORDINATE IT DRIVES** SHALL instead be
+  integrated piece by piece, under the requirement "The worker executes a
+  law that reads the coordinate it drives" below. Such a law SHALL
+  additionally report, for a driven end at least one of whose cuts placed
+  it, the ABSOLUTE value that end holds at the end of the step, and the
+  step SHALL commit that value rather than the coordinate's starting
+  value plus its increment.
+- A **BLOCK** — a cycle of edges contracted to one entry — SHALL
+  contribute, for each value it determines, the sum of that value's
+  increments over the pieces its selectors cut the step into, each piece
+  ordered and run under the requirement "The worker orders a block per
+  piece"; and SHALL additionally report, for a value at least one of
+  those pieces placed, the ABSOLUTE value it has advanced that value to
+  by the END of the step, which the step SHALL commit in place of the
+  starting value plus the increment.
+- A **wiring** SHALL contribute its source's increment times its published
+  factor; a **derived coordinate** SHALL contribute its published linear
+  combination, forward or solved backward into its one term, with the
+  constant replaced by zero for an increment; and a **check** SHALL
+  determine nothing and instead predict what its coordinate should have
+  received.
+- A value no edge determines SHALL hold.
+- Two increments that disagree on one value beyond the published agreement
+  window, and a check whose prediction disagrees with what its coordinate
+  received, SHALL be a conflict.
+
+A step that would take a banked coordinate outside a declared bound, and
+further outside than it stood at the start of the stretch, SHALL treat
+that bound as a physical stop: the fraction of the stretch at which the
+coordinate reaches it SHALL be located, the earliest one taken first and
+everything within the crossing tolerance of it treated as one event; the
+stretch SHALL be re-integrated up to that fraction only; the coordinate
+SHALL be committed exactly at its bound; every input whose own movement
+pushes it SHALL be stopped for the remainder of the step; and what remains
+of the step SHALL be examined again. An input that reaches a stopped
+coordinate only through a law that is disengaged at that moment SHALL NOT
+be stopped. A bound that reads the bounded coordinate alone SHALL be
+evaluated once per step from the committed bank, so every segment of one
+step is measured against the same number.
+
+An absolute value reported by a law that reads the coordinate it drives,
+or by a block, SHALL be applied to the segment's committed state BEFORE
+any bound is examined, so that the bounds are judged against the value the step will
+actually commit; and where a declared bound stops the same coordinate in
+the same segment, the BOUND SHALL win, the coordinate being committed
+exactly at it. Such a report SHALL NOT be a stop: it stops no input,
+retires no command, and appears in the crossing record rather than the
+stop record.
+
+A bound that READS OTHER COORDINATES SHALL instead be evaluated ALONG
+the path of each stretch: the bounded coordinate inside the expression
+SHALL take the value it holds in the STEP's committed bank, and every
+coordinate the bound reads SHALL take the value it has along the
+stretch's determined path, shared with the propagation that will commit the
+segment. Where a path is unavailable, the bound SHALL use fresh prefix replay
+with each admission scaled by the fraction, never a replacement endpoint chord. The CONSTRAINT LEVEL of
+such a bound is the coordinate's value minus the evaluated upper bound,
+or the evaluated lower bound minus the coordinate's value; outside is
+positive.
+
+Such a bound SHALL be examined on a stretch only when the bounded
+coordinate or one of its reads has a nonzero increment over that
+stretch, so a stretch in which nothing it depends on moves SHALL
+evaluate nothing and SHALL stop nothing, and a coordinate left standing
+outside SHALL be free until something carries it further. On a stretch
+in which NO read moves, the bound SHALL be the number its expression
+gives at the step's committed own value and the reads' start-of-stretch
+values, evaluated once, and the coordinate SHALL be stopped or freed
+exactly as a bound over its own value alone is — the same detection, the
+same localization, and the same commit exactly at the bound.
+
+When a read moves, the level SHALL be sampled at the published number of
+sub-intervals along those same paths, and the
+stretch SHALL stop at the FIRST sample at which the level is positive
+AND greater than the level at the stretch's start; a level already
+positive at the start with a higher first sample SHALL stop the stretch
+at its beginning. The crossing SHALL be bracketed against the previous
+sample and bisected to the published crossing tolerance within the
+published number of rounds, and the fraction taken SHALL be the INSIDE
+end of the final bracket — the last fraction at which the bound is
+satisfied. The coordinate SHALL NOT be moved onto such a bound: the
+segment committed at that fraction satisfies it by the same arithmetic
+that located it. The viewer SHALL assert that it does, at the state the
+segment commits, and SHALL refuse the whole step as a broken invariant
+otherwise.
+
+The GROUP such a stop stops SHALL be every candidate of that bound with
+a nonzero admission whose admission ALONE, over the sub-program, raises
+the constraint level from the inside to the outside end of the located
+contact bracket. Both sightings SHALL replay from the original stretch origin,
+with the own-coordinate argument frozen at tick start. A later free endpoint
+SHALL NOT erase the push at the first contact. An input
+moving the bounded coordinate against the bound SHALL therefore be
+stopped; an input moving a read so as to make a STANDING position
+invalid SHALL be stopped where the bound becomes active, and the
+standing coordinate SHALL NOT move; and an input moving a read so as to
+RELIEVE the bound SHALL run its whole step. The stop SHALL record the
+bound EVALUATED at the committed state, which for such a bound is not
+the value the coordinate holds.
+
+A step SHALL be atomic across its segments: the bank, the commands'
+admitted travel and the records SHALL be applied only once every segment
+has succeeded. A conflict, a partition exceeding the published crossing
+limit, a law that cannot be integrated over the step's path, a cut that
+places a self-read coordinate nowhere, a stop that
+stops no moving input, or a bound the committed state does not satisfy
+SHALL commit nothing — the bank, the step count and the pose stand —
+SHALL retire the commands that moved an input in that step reporting that
+the step did not happen, and SHALL report what disagreed, naming the
+relation as its author wrote it and the class that stated it.
+
+A command SHALL retire reporting completed, blocked, refused or cancelled,
+with the travel it actually admitted in the units the request was stated
+in. A command whose input was stopped SHALL retire **blocked** with the
+travel it made, and nothing SHALL remember the travel it did not make.
+One input SHALL have one owner at a time.
+
+The viewer SHALL keep a bounded record of the most recent steps, of the
+jump surfaces crossed inside them and of the stops located inside them,
+each entry naming what a reader of the model can find: the relation, the
+coordinate, the primitive and the surface level for a crossing; the
+coordinate, the side, the evaluated bound, the fraction of the step and
+the inputs blocked for a stop.
+
+#### Scenario: A kink costs nothing and a jump moves nothing
+
+- **WHEN** a step moves a source across a kink of a continuous law and, in
+  another law, across a jump surface
+- **THEN** the continuous law's coordinate moves by the difference of the
+  two evaluations, and the jumping law's coordinate moves by its
+  continuous part alone, with the jump's own step subtracted
+
+#### Scenario: Several surfaces in one step are all counted
+
+- **WHEN** one step carries a source across three surfaces of one affine
+  level quantity
+- **THEN** the path is cut three times and the law's contribution is the
+  sum over the four pieces
+
+#### Scenario: A step commits the value a cut left a coordinate at
+
+- **WHEN** a step cuts a self-read law's path and the cut places its
+  driven coordinate, and no declared bound stops that coordinate in the
+  same segment
+- **THEN** the committed bank holds the value the walk left it at rather
+  than its starting value plus the step's increment, no stop is recorded
+  for it, and the crossing is in the crossing record
+
+#### Scenario: A bound on the same coordinate wins over the value a cut left
+
+- **WHEN** one segment both cuts a self-read law's path, placing its
+  driven coordinate, and takes that same coordinate past a declared bound
+- **THEN** the coordinate is committed exactly at its bound, the stop is
+  recorded naming it, and the value the cut placed it at is not what the
+  step commits
+
+#### Scenario: A stop blocks the group that pushes it
+
+- **WHEN** a coordinate reaches a declared bound part-way through a step
+  while an unrelated input is running
+- **THEN** the coordinate is committed at its bound, the command on every
+  input whose movement pushes it retires blocked with the travel admitted
+  before the stop, and the unrelated input completes its whole step
+
+#### Scenario: A disengaged coupling is not stopped
+
+- **WHEN** a stopped coordinate is reachable from an input only through a
+  law whose slope is zero at that instant
+- **THEN** that input is not stopped and its command continues
+
+#### Scenario: Two increments that disagree commit nothing
+
+- **WHEN** two routes give one coordinate increments differing by more
+  than the published agreement window
+- **THEN** the step commits nothing, the bank and step count stand, the
+  commands that moved are retired as refused, and the report names both
+  relations and the coordinate
+
+#### Scenario: A run state restores only into the machine it came from
+
+- **WHEN** a host restores a run state whose program identity or step size
+  differs from the running one
+- **THEN** the restore is refused naming both, before any live state
+  changes
+
+#### Scenario: A bounded coordinate is blocked while what its bound reads is in the wrong place
+
+- **WHEN** a step asks an input to move a coordinate whose bound reads
+  other coordinates, and those coordinates stand where the bound
+  evaluates to the coordinate's current value
+- **THEN** the step commits with the coordinate exactly where it stood,
+  the command retires blocked with nothing admitted, and the stop names
+  the coordinate, the side, the evaluated bound, the fraction zero and
+  that input
+
+#### Scenario: One step both frees the bound and asks for the movement it frees
+
+- **WHEN** one step moves the coordinates a bound reads into the place
+  that frees it AND asks an input to move the bounded coordinate
+- **THEN** the step that frees it completes in full, the bounded
+  coordinate does not move inside that step, and the same request made
+  on the next step completes
+
+#### Scenario: A dependency never overruns a standing coordinate
+
+- **WHEN** a coordinate stands inside its bound and an input moves a
+  coordinate that bound READS, so as to make that standing position
+  invalid
+- **THEN** the input moving the read is stopped at the fraction at which
+  the bound becomes active, its command retires blocked with the travel
+  it made, the standing coordinate does not move at all, and the stop
+  names the STANDING coordinate with the bound evaluated at the
+  committed state
+
+#### Scenario: A bound satisfied again by the end of the step is still a stop
+
+- **WHEN** a step would carry a bound outside part-way through and back
+  inside by its end
+- **THEN** the step is stopped where the violation begins rather than
+  committed whole
+
+#### Scenario: A quiet bound costs nothing
+
+- **WHEN** a step moves nothing a bound that reads other coordinates
+  depends on
+- **THEN** that bound is not evaluated, nothing is stopped by it, and a
+  coordinate standing outside it stays where it is
+
+#### Scenario: A block's values are committed together with the rest
+
+- **WHEN** a step propagates over a program whose edges carry a cycle
+- **THEN** the values that cycle determines are committed in the same
+  bank as every other value of that step, a conflict between two routes
+  is judged by the same agreement window, and a step that fails commits
+  none of them
+
+#### Scenario: A later free revolution does not erase first contact
+
+- **WHEN** a requested crank movement meets a periodic moving-read stop before
+  returning to equal or lower constraint level at its final endpoint
+- **THEN** it stops at the first located contact and reports blocked with only
+  admitted travel, leaving independent, relieving and disengaged inputs free
+- **AND** retry, relief and snapshot replay preserve that stopped state without
+  remembering the rejected remainder
+
+### Requirement: A program the viewer cannot execute is refused by name
+
+A document whose published program the viewer cannot execute SHALL be
+refused when the document is loaded — beside the refusals for an
+unreadable document version, an unknown flexible technology, an
+unresolvable bindings table and an undeclared name — naming what is wrong
+and quoting the document. Nothing SHALL be rendered from it and no step
+SHALL ever be taken on it.
+
+The refusal SHALL cover at least: a document declaring the running version
+with no program object or missing one of its published parts; a coordinate
+entry whose kind is unknown or whose rest value is not a finite number;
+a set of input coordinates that disagrees with the document's own drivers
+table in either direction; an edge whose kind is unknown, or whose
+per-output lists are not aligned with its outputs; an edge naming a value
+that is neither a bank coordinate nor a published computed value; a jump
+whose primitive is outside the published set; a branch placeholder two
+plans share; an expression, skeleton or level quantity whose free names
+are not among the ones that edge may read; a bound naming anything but
+the coordinate it bounds and the program's own bank coordinates; a
+declared bound over a coordinate the bank does not hold; a limit that is
+missing or not a finite number; a computed value the document reads that
+no edge determines; a clock name that is also a coordinate or a driver
+id; and an identifier set that cannot be resolved as names, such as one
+identifier being a strict prefix of another.
+
+For a law edge that READS THE COORDINATE IT DRIVES — one naming a value
+among both what it reads and what it determines — the refusal SHALL also
+cover: such an edge that determines more than one value, or that reads
+more than one of the values it determines, saying that a law reading its
+own driven end drives exactly one coordinate; such an edge whose driven
+end is a published computed value rather than a coordinate of the bank,
+saying that a retained value is a history and only a coordinate the run
+banks keeps one; and such an edge whose jump plan's SKELETON — its
+expression with every jump node replaced by that node's branch — still
+names the driven coordinate, saying that the read must pass through a
+node that is piecewise constant in the coordinate and that a remainder
+alone is not one, because with its quotient fixed a remainder still
+carries the coordinate's slope. Each refusal SHALL name the edge, the
+coordinate and the document.
+
+For a BLOCK — a cycle of the published edges over what they read and
+determine, a value an edge itself determines excluded — the refusal SHALL
+also cover: a published listing of the edges that is not an order in
+which every entry's sources are determined before it runs once each such
+cycle is contracted, naming the two edges and the value; a wiring or a
+derived coordinate on such a cycle, saying that it carries no jump node
+so no selection can switch what it reads; a member of such a cycle that
+determines more than one value, saying that what a selection switches is
+decided per driven end while a group's ends are bound together; a member
+whose driven value is a published computed value rather than a coordinate
+of the bank, saying that a block advances its values piece by piece and
+only a coordinate the run banks keeps that; and a cycle whose members'
+UNCONDITIONAL dependencies — what each still reads with every foldable
+selector at its zero branch — are themselves cyclic, saying that such a
+cycle is present on every piece and that a dependency inside a cycle is
+admitted only where some selection switches it. Each refusal SHALL name
+the edge, the class that stated it, and every relation on the cycle.
+
+A bound's free names SHALL be judged after the document's bindings table
+has been closed over, so a name reached only through a shared
+subexpression is judged as the coordinate it resolves to. A refusal of a
+name that the document publishes as a COMPUTED VALUE rather than a bank
+coordinate SHALL say so, because such a bound must name the coordinate
+that value is computed from.
+
+#### Scenario: A primitive the engine does not know
+
+- **WHEN** a loaded program carries a jump whose primitive is not one the
+  viewer can read a branch from
+- **THEN** loading fails naming that primitive and the ones it knows, and
+  no frame is rendered
+
+#### Scenario: Two plans sharing one placeholder
+
+- **WHEN** two jump plans of one document name their jump nodes with the
+  same placeholder
+- **THEN** loading fails naming the placeholder, rather than letting two
+  different jump nodes share one published subexpression
+
+#### Scenario: The two declarations of an input disagree
+
+- **WHEN** a program declares an input coordinate the document's drivers
+  table does not, or the table declares a driver the program does not
+- **THEN** loading fails naming the difference
+
+#### Scenario: A pose that reads a value nothing computes
+
+- **WHEN** a document's pose expression reads a published computed value
+  that no edge determines
+- **THEN** loading fails naming that value, rather than posing the model
+  from a number that was never produced
+
+#### Scenario: A bound reading a computed value is refused by name
+
+- **WHEN** a loaded program's bound names a published computed value
+  rather than a bank coordinate
+- **THEN** loading fails naming that value, saying it is a computed value
+  and not a coordinate of the bank, quoting the expression, and nothing
+  is rendered
+
+#### Scenario: A bound reading a name the program never declares
+
+- **WHEN** a loaded program's bound names something that is neither the
+  bounded coordinate, nor a bank coordinate, nor a computed value
+- **THEN** loading fails naming it and saying what such a bound may read
+
+#### Scenario: A self-read law driving more than one coordinate
+
+- **WHEN** a loaded program carries a law edge that determines two values
+  and names one of them among the values it reads
+- **THEN** loading fails naming that edge and that coordinate, saying a
+  law reading its own driven end drives exactly one coordinate, and no
+  frame is rendered
+
+#### Scenario: A self-read of a value the bank does not hold
+
+- **WHEN** a loaded program carries a law edge that reads a value it
+  determines, and that value is a published computed value rather than a
+  bank coordinate
+- **THEN** loading fails naming it and saying that a retained value is a
+  history and only a coordinate the run banks keeps one
+
+#### Scenario: A read that survives the skeleton
+
+- **WHEN** a loaded program carries a law edge reading a coordinate it
+  drives, whose plan's skeleton still names that coordinate
+- **THEN** loading fails naming the edge and the coordinate, saying the
+  read must pass through a node that is piecewise constant in it and that
+  a remainder alone is not one
+
+#### Scenario: A bound reading another coordinate loads
+
+- **WHEN** a loaded program's bound names other bank coordinates, whether
+  directly or through the bindings table
+- **THEN** the document loads, its run is created at the published rest
+  values, and the bound is executed as a constraint
+
+#### Scenario: A cycle no selection can break
+
+- **WHEN** a loaded program's edges carry a cycle one of whose in-cycle
+  dependencies survives folding every foldable selector of its member to
+  zero
+- **THEN** loading fails naming every relation on the cycle and saying
+  that a dependency inside a cycle is admitted only where a selection
+  switches it, and no frame is rendered
+
+#### Scenario: A wiring on a cycle
+
+- **WHEN** a loaded program's cycle passes through a wiring or a derived
+  coordinate
+- **THEN** loading fails naming it and the cycle, saying that it carries
+  no jump node and that no selection can switch what it reads
+
+#### Scenario: A block member that is not a banked coordinate
+
+- **WHEN** a loaded program's cycle determines a published computed value
+- **THEN** loading fails naming that edge and that value, saying that
+  only a coordinate the run banks keeps the history a block advances
+  piece by piece
+
+#### Scenario: A published listing that is not an order
+
+- **WHEN** a loaded program publishes an edge that reads a value another
+  edge determines LATER in the listing, once every cycle is contracted
+- **THEN** loading fails naming both edges and the value, rather than
+  re-sorting the published edges
+
+### Requirement: A committed bank poses the geometry
+
+For a document carrying a program, the viewer SHALL pose the model from
+the bank the run last committed, by evaluating the document's own
+expressions with the bank's coordinate identifiers available as names
+beside the driver identifiers, through the same evaluation the viewer
+performs for any other document. No second pose path and no second table
+of poses SHALL exist, and a flexible part's shape parameters SHALL follow
+the bank by the same rule as a rigid part's placement.
+
+The program's published clock name SHALL resolve to the elapsed
+simulation seconds, which never wrap; with no run — a still capture, a
+thumbnail — it SHALL resolve to zero, the instant the rest pose is defined
+at. Before the first step, the model SHALL be posed at the rest values the
+program publishes.
+
+Only the parts whose expressions read a coordinate that moved SHALL be
+re-evaluated, which is the bound the viewer already holds for a driver.
+
+A qualified identifier SHALL resolve at every one of its segments, so an
+identifier naming an instance path of any depth resolves to the value
+published under it.
+
+#### Scenario: A wheel follows its coordinate
+
+- **WHEN** a run commits a bank in which one joint coordinate moved
+- **THEN** the part whose placement names that coordinate is re-posed,
+  parts naming only other coordinates keep the matrices they have, and a
+  flexible part whose parameter reads it changes shape
+
+#### Scenario: A document opens at its rest pose
+
+- **WHEN** a document carrying a program is mounted and no step has been
+  taken
+- **THEN** every part stands where the published rest values put it
+
+#### Scenario: A three-segment identifier resolves
+
+- **WHEN** an expression names an identifier of three or more segments,
+  such as a joint coordinate on a nested assembly
+- **THEN** it resolves to that value rather than to nothing, and the pose
+  is a number
+
+### Requirement: The two runtimes agree on a conformance corpus
+
+The widget suite SHALL replay the producer's committed running corpus
+through the shipped run engine and SHALL agree with it on every step of
+every scenario. The corpus's expected values are the producer's own; a
+disagreement means this viewer drifted, and SHALL be fixed here rather
+than admitted by widening a tolerance.
+
+For each scenario the suite SHALL build the engine from the corpus's own
+copy of the published document — the program, the drivers, the
+instructions and the bindings table — at the corpus's step size, apply
+each scripted command before the step it names in the order the corpus
+lists them, and compare every step: the committed bank, the crossings and
+the stops located in that step, and every command created so far with its
+status and the travel it has admitted.
+
+Agreement SHALL be EXACT for discrete state — step numbers, command
+statuses, coordinate, relation, primitive, bound and input names, crossing
+surface levels, and the ORDER of every list — and within the corpus's
+stated relative tolerance for floats, which is the run's own agreement
+window. A sampled comparison SHALL NOT be accepted: every step the corpus
+lists SHALL be compared.
+
+The suite SHALL also assert the corpus's own width — the discontinuous
+primitives, a multi-source law, a stop located inside a step, a bound
+stated as an expression, a bound READING ANOTHER COORDINATE, a stop
+reached by the motion of what a bound reads (one whose coordinate holds
+the same value before and after its step), a command retired blocked, a
+rate, a run state taken and restored, both instruction forms, a step
+carrying both a crossing and a stop, A LAW THAT READS THE COORDINATE IT
+DRIVES, a self-read coordinate that HOLDS at its gate over a step in
+which an input reaching it goes on moving, a step carrying both a
+self-read crossing and a stop, A SWITCHED SOURCE — a published edge on a
+cycle that reads a value the cycle determines — a SELECTION CROSSING
+inside a step, a step carrying both a selection crossing and a stop, and
+an IN-BLOCK GATE CROSSING located STRICTLY INSIDE a step — a crossing
+recorded under a member of a block that only a jump reading a value
+ANOTHER member of that block determines can account for, the member's own
+driven value excluded — and a STOP LOCATED STRICTLY INSIDE a step ON A
+KINKED DETERMINER — a coordinate whose determining law carries no jump
+plan at all and whose published expression, closed over the corpus's
+bindings table, calls one of the CONTINUOUS SELECTIONS `abs`, `min` or
+`max`, so that its value along a step is piecewise affine rather than
+affine and a consumer dividing once over the whole step would place the
+stop where the coordinate never was — so that a narrower corpus copied in
+is refused here without anyone running the producer's generator. A bound
+reading another coordinate SHALL be recognised through the corpus's own
+bindings table, so a corpus whose bound reaches its reads through a
+shared subexpression counts as covering it. A block and its selectors
+SHALL be re-derived for this assertion FROM THE CORPUS'S OWN DOCUMENTS
+and tick logs, by the same reading a consumer of the document makes and
+not by asking the run engine, so that the assertion is red on a narrowed
+corpus even when the engine is broken; a KINKED DETERMINER SHALL be
+re-derived the same way and from the same two sources — the absent plan
+and the expression closed over the bindings table — and never by asking
+the run engine what it classified; and a crossing SHALL count as a
+SELECTION crossing only where its primitive belongs to a selector of the
+member that determines its coordinate and to no other jump of that
+member, so that a gate which happens to share an operator is not
+mistaken for one. An in-block gate crossing SHALL be recognised from the
+crossing's own primitive and the preceding step's committed values: the
+jumps of that member carrying the primitive, their level quantities closed
+over the corpus's bindings table, SHALL be separated into those reaching a
+value the block determines other than the member's own and those reaching
+none of the block's values, and the crossing SHALL count only where one of
+the first kind reads a value that MOVED across the step and no one of the
+second kind reads a value that moved or a value the step does not carry.
+A step with no predecessor SHALL be skipped, having nothing to compare
+against.
+
+The committed corpus SHALL DISCRIMINATE the order in which a block's
+members are run, because a document publishes those members as a listing
+and not as an execution order: replaying a named scenario through the
+shipped engine with the block's members run in the order the document
+publishes them, instead of ordered for each piece of the step, SHALL
+disagree with the corpus by more than the stated tolerance on the
+committed values of at least one step, while the same replay with the
+members ordered per piece reproduces them. The suite SHALL assert this
+directly, rather than inferring it from the width above.
+
+#### Scenario: Every scenario of the corpus replays
+
+- **WHEN** the widget suite replays the committed corpus through the run
+  engine
+- **THEN** every step of every scenario matches, exactly for discrete
+  state and within the stated relative tolerance for floats
+
+#### Scenario: A narrowed corpus is refused
+
+- **WHEN** the committed corpus is replaced by one exercising fewer of the
+  stated features
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: A corpus with no bound reading another coordinate is refused
+
+- **WHEN** the committed corpus is replaced by one whose machines declare
+  no bound reading another coordinate, or record no stop whose
+  coordinate did not move
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: A corpus with no law reading the coordinate it drives is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose machines
+  states a law reading the coordinate it drives, or none of whose steps
+  holds such a coordinate at its gate while an input reaching it moves on
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: A corpus with no selection is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose machines
+  publishes a cycle of edges with a switched source, or none of whose
+  steps carries a selection crossing, or none of whose steps carries both
+  a selection crossing and a stop
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: A drifted engine is caught, not tolerated
+
+- **WHEN** the engine's arithmetic is changed so one machine's bank
+  differs in the last bits beyond the corpus's tolerance
+- **THEN** the suite fails naming the scenario, the step and the
+  coordinate
+
+#### Scenario: A corpus with no in-block gate crossing is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose steps
+  records a crossing, strictly inside the step, under a member of a block
+  that only a gate on a value another member of that block determines can
+  account for
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: An engine that runs a block in the published order is caught
+
+- **WHEN** a corpus scenario carrying a block is replayed through the run
+  engine with the block's members run in the order the document publishes
+  them, instead of ordered for each piece of the step
+- **THEN** the replay disagrees with the corpus by more than the stated
+  tolerance on the committed values of at least one step, while the same
+  replay with the members ordered per piece reproduces them
+
+#### Scenario: A corpus with no stop on a kinked determiner is refused
+
+- **WHEN** the committed corpus is replaced by one none of whose steps
+  records a stop, strictly inside the step, on a coordinate whose
+  determining law carries no jump plan and whose expression calls a
+  continuous selection
+- **THEN** the suite fails naming the feature no longer covered
+
+#### Scenario: Periodic first-contact coverage cannot disappear
+
+- **WHEN** the corpus lacks a long periodic request with an actual blocked stop
+  before a free endpoint, or lacks its snapshot/restore replay
+- **THEN** the coverage assertion fails naming periodic first contact
+- **AND** the old endpoint-only attribution fails the intact corpus scenario
+
+### Requirement: A maker presses and turns the part itself
+
+For a document carrying a program and a table of controls, the mounted
+viewer SHALL make each part that table names touchable, and SHALL leave
+every other part exactly as it is today — a surface that moves the camera.
+
+A touchable part SHALL, while the pointer is over it, present a pointer
+cursor, a visible change distinguishing it from the parts around it
+wherever its material admits one, and the declared display names of every
+control that names it. A part the viewer is not currently showing — hidden
+through the assembly navigation, or outside the focused subtree — SHALL NOT
+be touchable, and a part standing in front of a touchable one SHALL NOT be
+reached through.
+
+A **press** — a pointer pressed and released on a touchable part without
+travelling beyond a small threshold — SHALL submit that part's declared
+instruction to the run, and SHALL be indistinguishable to the run, to its
+listeners and to a readback from pressing that instruction's button on the
+panel. A press on a part that declares no instruction SHALL move nothing
+and report nothing.
+
+A **drag** — a pointer travelling beyond that threshold while engaged on a
+touchable part — SHALL be measured as an angle swept about the joint the
+control names, in the sense and the units of the coordinate that joint
+poses. Each time the accumulated sweep crosses one **quantum** — the
+input's current nudge amount, converted to that coordinate through the
+ratio the document publishes — the viewer SHALL issue exactly one request
+to move that input by that amount over that duration, in the direction the
+sweep and the ratio together give. It SHALL have at most one such request
+in flight at a time, because the run gives an input one owner at a time,
+and SHALL issue the next only once the previous has retired. The quanta a
+gesture owes SHALL be derived from where the pointer stands, never
+accumulated as a queue, so a sweep forward and back nets out rather than
+being paid for twice.
+
+The part SHALL follow the movements the run **commits** and never the
+pointer: the pointer may run ahead while the machine catches up, and a
+machine that will not move does not move.
+
+A request that does not complete SHALL NOT advance the point the next
+quantum is measured from, so a drag against a stop reports the travel the
+machine actually admitted, leaves no remainder to be executed later, and
+does not repeat itself while the gesture is held there.
+
+While a gesture is engaged on a part the camera SHALL NOT move. A gesture
+SHALL end on release, on a cancelled pointer, on lost pointer capture, on
+lost window focus, and when the page stops being displayed, and on every
+one of those the camera SHALL become movable again and the affordance SHALL
+be cleared. A press or a drag issued while the run is paused SHALL start
+it.
+
+The outcome of a request a gesture made SHALL be reported where it was
+made — beside the pointer — and at the panel's control for the same
+instruction or input, through the one path every other request is reported
+by, in the same words.
+
+Nothing in either gesture SHALL write a coordinate, pose a part, or move
+anything except by a request the run commits.
+
+Every control a part carries SHALL also be reachable from the running
+panel — a declared instruction has a button there and a declared input has
+a nudge pair — so the affordance adds a way to ask and never the only way.
+
+#### Scenario: A press advances the dial
+
+- **WHEN** a maker presses a part the document declares a button on
+- **THEN** the run receives that instruction, the machine moves exactly as
+  it moves when the panel's button for it is pressed, and the outcome is
+  reported beside the pointer and on that button
+
+#### Scenario: A part nothing declares still moves the camera
+
+- **WHEN** a maker presses and drags a part the table does not name
+- **THEN** the camera orbits exactly as it did before the viewer read
+  controls, and no request reaches the run
+
+#### Scenario: A part the navigator is not showing is not touchable
+
+- **WHEN** a maker hides a touchable part, or focuses a subtree that does
+  not contain it, and then presses where it stood
+- **THEN** nothing is pressed, no request reaches the run, and the camera
+  orbits instead
+
+#### Scenario: A part in front is not pressed through
+
+- **WHEN** a touchable part stands behind another part the maker presses
+- **THEN** the front part is what was pressed, which declares no control,
+  so no request reaches the run
+
+#### Scenario: A drag enters one digit at a time
+
+- **WHEN** a maker drags a dial through three quanta of sweep, letting each
+  request retire
+- **THEN** three movement requests were issued, one at a time, the input
+  stands three amounts further on, and the part stands where the run's
+  committed frames put it
+
+#### Scenario: A drag against a stop reports blocked and leaves no backlog
+
+- **WHEN** a maker drags a dial in the direction its declared stop forbids,
+  past more than one quantum, and holds it there
+- **THEN** the first quantum is reported blocked with the travel the
+  machine admitted, the part has not moved, no further request is issued
+  while the gesture stays there, and releasing and pressing again asks for
+  a fresh movement rather than resuming a stored one
+
+#### Scenario: A gesture ends on every side an interaction can
+
+- **WHEN** a maker drags a part and then releases, has the pointer
+  cancelled, loses pointer capture, moves focus out of the window, or
+  leaves the page
+- **THEN** in every one of those cases the gesture ends, the camera becomes
+  movable again, and nothing new is requested
+
+#### Scenario: A press into a paused run starts it
+
+- **WHEN** a maker presses a part while the run is paused
+- **THEN** the run starts and the request is carried out, exactly as a
+  press on the panel does
+
+#### Scenario: The pointer never poses the part
+
+- **WHEN** a maker drags a dial faster than the run can follow
+- **THEN** the part stands where the last committed frame put it at every
+  instant, and reaches the requested position only as the run commits it
+
+### Requirement: A host reads the controls a document's parts carry
+
+The mount handle SHALL expose the controls the loaded document declares.
+For each it SHALL report the declared display name, the kind, the part and
+the joint as node-name paths, the instruction it submits or the input it
+moves with the published ratio, the coordinate it turns about, where the
+part stands on screen at that moment, and a point at which a press reaches
+that control at that moment — or nothing for either where the part is not
+visible, is wholly off screen, or is reached at no point.
+
+Positions SHALL be reported in the same coordinates and the same units as
+the rectangles the host's own document elements report, so a host or a test
+may act on them without converting.
+
+The listing SHALL be answered for a document that declares no control, as
+an empty listing, and SHALL be answered whether or not the affordance is
+presented — what a presentation choice gates is the pixels and the pointer,
+never the interface.
+
+#### Scenario: A host labels the parts itself
+
+- **WHEN** a host asks the handle for the document's controls and draws its
+  own label beside each reported position
+- **THEN** the labels stand over the parts, and move with them as the
+  camera moves
+
+#### Scenario: A test presses where the viewer says
+
+- **WHEN** a test asks for the controls and sends a real pointer press to
+  the point reported for one
+- **THEN** that control's request reaches the run
+
+#### Scenario: A part that is not shown reports no position
+
+- **WHEN** a host asks for the controls while one control's part is hidden
+- **THEN** that control is still listed, with its declaration intact and no
+  position and no point
+
+#### Scenario: A document declaring no control answers plainly
+
+- **WHEN** a host asks a document that carries no controls
+- **THEN** it receives an empty listing rather than an error or an absent
+  operation
+
+### Requirement: A controls table the viewer cannot resolve is refused by name
+
+A document whose controls table the viewer cannot resolve SHALL be refused
+when it is loaded, naming the document, the control and what is wrong,
+before anything is rendered — the surface an undeclared driver id, an
+unreadable bindings table and an inexecutable program already stand on. A
+document is refused when:
+
+- the table, or an entry in it, is not of the published shape, or an
+  entry's kind is neither a press nor a turn;
+- an entry's part or joint does not name exactly one node of that
+  document's own tree, or the joint is not that part or one of its
+  ancestors;
+- an entry names an instruction its document's instruction table does not
+  declare, an input its drivers table does not declare, or a coordinate its
+  program does not publish — each refusal naming what the document does
+  declare;
+- a turn's published ratio is missing, not a finite number, or zero, which
+  would make the gesture's quantum meaningless;
+- an entry's axis or origin is not three finite numbers, or its axis has no
+  direction;
+- the joint the entry names is not posed by the coordinate the entry names
+  as the LEADING run of its own operations — zero or more translations and
+  then exactly one rotation over that coordinate, which are the two shapes
+  the producer's joint placement publishes: the rotation alone, or a
+  translation, the rotation and the translation back for a joint placed off
+  its node's origin — the reading the gesture's geometry depends on;
+- two controls of the same kind name the same part and do not have distinct
+  selected turn joints, so a gesture without a named handle would have two
+  meanings and the viewer would have to choose; in particular two turns on
+  the same part selecting the same joint SHALL be refused even if their
+  names, inputs or coordinates differ;
+- the document carries a controls table and no program, which every
+  document below the running version is, since a control has nothing to
+  submit a request to.
+
+Two valid turns naming one visible part but distinct selected joint paths
+SHALL both load. Their separate named handles SHALL each submit only their
+own declared input and measure about their own declared joint. A drag on
+the shared body without selecting a handle SHALL submit neither turn.
+This allowance SHALL NOT weaken any path, operation-span, coordinate,
+domain or instruction validation above.
+
+A document that carries no controls table SHALL load, pose, run and drive
+exactly as it did before the viewer could read one.
+
+#### Scenario: A part that does not resolve is named
+
+- **WHEN** a document's control names a part its own tree does not contain
+- **THEN** mounting fails naming the document, the control and the path,
+  and nothing is rendered
+
+#### Scenario: An instruction the document does not declare is named
+
+- **WHEN** a document's press control names an instruction absent from its
+  instruction table
+- **THEN** mounting fails naming the control, the instruction and the
+  instructions the document does declare
+
+#### Scenario: A ratio of zero is refused
+
+- **WHEN** a document's turn control publishes a ratio of zero
+- **THEN** mounting fails saying the gesture has no quantum, rather than
+  presenting a part that cannot be turned
+
+#### Scenario: A joint that does not pose the coordinate is refused
+
+- **WHEN** a document's control names a joint whose own operations do not
+  begin with that coordinate's rotation, or with translations and then
+  that rotation
+- **THEN** mounting fails naming the control, the joint and what the joint
+  is posed by, rather than turning the part about a line derived from it
+
+#### Scenario: A joint placed off its node's origin is accepted
+
+- **WHEN** a document's control names a joint whose operations are a
+  translation, the rotation over the coordinate, and the translation back,
+  and whose entry publishes the point it turns about as `origin`
+- **THEN** mounting succeeds, and a drag on the part is measured about the
+  line through the world image of `origin` along the world image of `axis`
+  — the same line the joint's own placement turns the part about
+
+#### Scenario: Distinct selected turn joints have distinct handles
+
+- **WHEN** two valid turn controls name one part and select different joint
+  paths, one of them an ancestor of the other
+- **THEN** mounting succeeds and both named handles are reachable; a drag
+  on either handle requests only its declared input about its own selected
+  joint, while a drag on the undecided body requests neither
+
+#### Scenario: Crossing the selected handle does not choose the part behind it
+
+- **WHEN** a maker moves the pointer from a two-turn part onto either of
+  its named handles while another controlled part lies behind the handle
+- **THEN** that handle remains present and selected through pointerdown,
+  and its gesture requests only its declared input; moving back to the
+  canvas restores ordinary nearest-visible-part hover
+
+#### Scenario: Same selected turn joint remains ambiguous
+
+- **WHEN** two turn controls name one part and select the same joint, even
+  with different display names, inputs, coordinates or operation spans
+- **THEN** mounting fails naming both declarations and their shared part
+  and joint; it does not silently choose one
+
+#### Scenario: A control without a run is refused
+
+- **WHEN** a document below the running version, or one carrying no
+  program, carries a controls table
+- **THEN** mounting fails naming the table, rather than presenting an
+  affordance with nothing to ask
+
+#### Scenario: A document with no controls is untouched
+
+- **WHEN** a document carrying no controls table is mounted
+- **THEN** it loads, poses, runs and is driven exactly as it was before
+  this capability existed, and its parts move the camera
+
+### Requirement: A declared bound may read other coordinates
+
+A span the document publishes as an expression MAY name, beside the
+bounded coordinate's own identifier, other coordinates of the program's
+bank. The viewer SHALL read such a bound as a CONSTRAINT between the
+bounded coordinate and what it reads, and SHALL derive everything it
+needs to execute one WHEN THE DOCUMENT IS LOADED, from what the document
+already publishes — the producer publishes no further table for it.
+
+For each side of each span whose expression names a coordinate other
+than the bounded one, the viewer SHALL derive:
+
+- its READS: the free names of that expression, CLOSED OVER the
+  document's own bindings table, minus the bounded coordinate's own
+  identifier. A bound whose expression reaches a coordinate only through
+  a shared subexpression SHALL read that coordinate, exactly as one
+  naming it directly does; a bound whose expression never names the
+  bounded coordinate is well formed, because the test is containment and
+  not equality;
+- its SUB-PROGRAM: the published edges that determine the bounded
+  coordinate and every read, and everything those need, in the program's
+  own published order, a check edge never among them;
+- its CANDIDATES: the input identifiers the program's own reaching-input
+  table gives for the bounded coordinate or for any read, without
+  repetition and in a determinate order.
+
+None of the three SHALL be published in the document, and the viewer
+SHALL NOT require any of them to be: each is a projection of the
+coordinates, the edges and the reaching-input table the document already
+carries.
+
+A span side that is `null` or a number, and one whose expression names
+the bounded coordinate alone, SHALL NOT become a constraint: their
+meaning, their code path and their cost SHALL be exactly what they are
+today.
+
+#### Scenario: A bound reaching a coordinate through a shared subexpression reads it
+
+- **WHEN** a loaded document's bound names only entries of the bindings
+  table, and those entries resolve to other bank coordinates
+- **THEN** the bound's reads are those coordinates, and a step in which
+  one of them moves is measured along the step's path rather than
+  against a number taken at its start
+
+#### Scenario: A bound naming no coordinate but its own is not a constraint
+
+- **WHEN** a loaded document declares a bound whose expression names the
+  bounded coordinate alone
+- **THEN** it is evaluated once per step from the committed bank, the
+  coordinate is committed exactly at it when it stops there, and nothing
+  about the step differs from before this capability existed
+
+#### Scenario: The sub-program is the published edges, in the published order
+
+- **WHEN** a bound reads coordinates determined by some of the
+  program's edges and not others
+- **THEN** the constraint's sub-program holds exactly the edges
+  determining the bounded coordinate, the reads and what those need, in
+  the document's own edge order
+
+### Requirement: The viewer draws the markings a part carries
+
+The viewer SHALL draw every marking a rigid node of the published document
+carries, one per entry of that node's markings list, each from the artifact the
+entry names and in the colour the entry declares. A marking SHALL be drawn in
+its part's own place, moving with the part under every pose, animation instant
+and committed mechanical state the part moves under, with no placement supplied
+by the viewer: the artifact holds the artwork's surface in the part's own frame,
+and the part's own operations place it.
+
+A marking SHALL be drawn OVER the surface it lies on, from every viewing
+distance and angle at which the part itself is drawn, and SHALL NOT be broken
+up by the surface it marks. The bias that achieves this is the viewer's own
+rendering constant and SHALL NOT be presented as, or derived from, anything the
+document states about where the part's surface is. A marking whose artwork is
+open on both sides SHALL be drawn from either side.
+
+A node that carries no markings SHALL be drawn exactly as it is drawn by a
+viewer that has never read a marking: the same geometry, the same material and
+the same scene contents. A document whose nodes carry no markings SHALL be
+rendered, read back and photographed identically to the same document published
+before markings existed.
+
+The viewer SHALL draw markings on a document of any schema version it renders:
+the markings list is additive to the document and is gated on no version.
+
+#### Scenario: A part's markings are drawn in their own colours
+
+- **WHEN** a document is mounted whose part carries two markings declaring
+  different colours
+- **THEN** both are drawn on that part, each in the colour its own entry
+  declares, and the part is drawn in the colour it declares
+
+#### Scenario: A marking goes where its part goes
+
+- **WHEN** a driver, an animation instant or a mechanical command moves a part
+  that carries a marking
+- **THEN** the marking moves with it, arriving in the same place on the part's
+  surface it started on, without the viewer computing any placement for it
+
+#### Scenario: A marking is visible over the surface it marks
+
+- **WHEN** a marked part is photographed from a viewpoint that sees the marked
+  surface
+- **THEN** the marking's colour is what is seen where the marking is, and the
+  part's is what is seen where it is not
+
+#### Scenario: A marking on a colourless part
+
+- **WHEN** a document is mounted whose marked part inherits no colour
+- **THEN** the part renders with the normal-based material and its marking
+  renders in its own declared colour
+
+#### Scenario: A marked document below the running version
+
+- **WHEN** a document that declares an early schema version carries markings on
+  its parts
+- **THEN** its markings are drawn, exactly as a later version's are
+
+#### Scenario: An unmarked document is untouched
+
+- **WHEN** a document whose parts carry no markings is mounted
+- **THEN** it renders exactly the picture it rendered before this viewer could
+  draw a marking, and its scene contains nothing a marking would have added
+
+### Requirement: A markings list the viewer cannot read is refused by name
+
+The viewer SHALL refuse a document whose markings it cannot read, before
+anything is rendered, naming the document, the node and the marking at fault and
+what is wrong with it — the same refusal surface an unresolvable bindings table,
+an inexecutable program and an unresolvable controls table already stand on. It
+SHALL refuse a markings value that is not a list; an entry that is not an
+object, or whose name or artifact reference is not a non-empty string, or whose
+colour is not a six-digit hexadecimal colour; two markings of one node declaring
+the same name; and a markings list on a node that is not rigid.
+
+The viewer SHALL NOT draw a document's markings in part: a marking it cannot
+read is a fault in the document that produced it, and rendering the rest would
+present an incomplete marking as the machine's own answer.
+
+A node carrying no markings key SHALL reach exactly the validation it reached
+before this viewer could read one.
+
+#### Scenario: A marking without a colour
+
+- **WHEN** a document carries a marking whose entry declares no colour, or one
+  that is not a six-digit hexadecimal colour
+- **THEN** the document is refused naming it, before anything is rendered
+
+#### Scenario: A marking without an artifact
+
+- **WHEN** a document carries a marking whose entry names no artifact
+- **THEN** the document is refused naming the node and the marking, and no
+  geometry is fetched
+
+#### Scenario: Two markings of one part share a name
+
+- **WHEN** a node's markings list declares the same name twice
+- **THEN** the document is refused naming the node and the repeated name
+
+#### Scenario: A marking on a node that is not rigid
+
+- **WHEN** a markings list appears on a node that carries children or a
+  flexible spec
+- **THEN** the document is refused naming that node
+
+#### Scenario: A document with no markings is validated as before
+
+- **WHEN** a document whose nodes carry no markings key is mounted
+- **THEN** it is accepted or refused exactly as it was before this viewer could
+  read a markings list
+
+### Requirement: The worker executes a law that reads the coordinate it drives
+
+A published law edge MAY name, among the values it READS, one of the
+values it DETERMINES. That is a law reading the coordinate it drives, and
+the viewer SHALL recognise it from what the document already carries —
+the intersection of the edge's read set with its determined set — and
+SHALL require no further key for it. A law edge with an empty
+intersection SHALL be integrated exactly as it is today, by the same
+code, at the same cost.
+
+Such an edge SHALL determine exactly ONE value and SHALL read exactly one
+of the values it determines, and that value SHALL be a coordinate of the
+bank; a shape that is not so SHALL be refused when the document is
+loaded, under the requirement "A program the viewer cannot execute is
+refused by name". The plan's SKELETON — its expression with every jump
+node replaced by that node's branch — SHALL NOT name the driven
+coordinate, and one that does SHALL be refused there too: a read that
+survives the skeleton enters the law continuously, and the difference of
+two evaluations does not define that.
+
+The viewer SHALL derive, WHEN THE DOCUMENT IS LOADED, which of the plan's
+jump nodes DEPEND on the driven coordinate: a node depends on it when
+that coordinate is among the free names of the node's published level
+quantity, CLOSED OVER the document's own bindings table, or when that
+level names the branch placeholder of a node that depends on it. A node
+reaching the driven coordinate only through a shared subexpression
+depends on it exactly as one naming it directly does. Nothing of this
+SHALL be published in the document and the viewer SHALL NOT require any
+of it to be.
+
+**Over one step such a law SHALL be integrated PIECE BY PIECE.** The
+step's path SHALL first be partitioned by the jump nodes that do NOT
+depend on the driven coordinate, exactly as any other law's path is,
+their branches read at that partition's midpoints; INSIDE each of its
+pieces the dependent nodes SHALL then be walked:
+
+- At the walk's left end the driven coordinate holds a known value: the
+  step's committed value at the start, and the value the cuts already
+  taken placed it at afterwards.
+- Every dependent node's branch SHALL be determined in the plan's
+  published order, with the driven coordinate at that retained value and
+  every OTHER source at the piece's LEFT END — not at its midpoint,
+  because a level naming both the driven coordinate and a source may
+  cross inside the piece by the source's motion alone, and the branch
+  read past that crossing is not the branch the piece begins under.
+- A dependent node whose level sits EXACTLY on a surface at that left end
+  SHALL take the branch its primitive gives; if the level then LEAVES the
+  surface into another branch's region, that node SHALL be flipped to the
+  branch of the region IMMEDIATELY on the side it departs to, at the left
+  end, and every branch decided again. If the flipped branch carries the
+  level back across as well, the STEP SHALL be refused naming the
+  relation, the coordinate and the primitive, and SHALL commit nothing.
+- With those branches fixed the substituted law SHALL NOT name the driven
+  coordinate, so that coordinate's own value along the piece is one
+  ordinary evaluation.
+- Each dependent node's level quantity SHALL be followed along the piece
+  — through the driven coordinate's own path and through the sources —
+  and the piece SHALL be CUT at the FIRST surface any of them reaches
+  strictly inside it: SOLVED where the producer published both that level
+  and the plan's skeleton as affine; solved on SUB-INTERVALS where
+  neither is curved and at least one is PIECEWISE AFFINE under the
+  requirement "A piecewise-affine quantity is cut at its own kinks", the
+  piece being cut first at the SKELETON's kinks — which are what make the
+  driven coordinate's own path affine at all — and each of those cut
+  again at the LEVEL's own, which ride that path and SHALL therefore be
+  located inside one skeleton sub-piece with the driven coordinate read
+  by interpolation between that sub-piece's two ends; otherwise sampled
+  at the published number of sub-intervals and bisected to the published
+  crossing tolerance within the published number of rounds. No further tolerance
+  SHALL be introduced, and a crossing found within that tolerance of the
+  piece's left end SHALL NOT be merged into it — the merging of two near
+  cuts belongs to the partition over the independent nodes and SHALL NOT
+  be applied in this walk.
+- The piece's contribution SHALL be the substituted law's change over it,
+  and the next piece SHALL be decided the same way, until the enclosing
+  piece is exhausted or the published crossing limit is reached, which
+  refuses the step as any other over-cut path is refused.
+
+**After a cut the driven coordinate SHALL be placed AT THE FAR SIDE OF
+THE SURFACE, at the nearest representable value.** Where the piece moved
+it, the coordinate SHALL be placed at the representable value NEAREST the
+surface among those at which the crossing node's level — evaluated with
+the driven coordinate at that value and every other source at the
+crossing's own fraction — reads the branch on the side the level was
+moving TOWARD, judged by the VIEWER'S OWN evaluation of the published
+level. Where the piece did NOT move it, the coordinate SHALL stand where
+it stood. A step at least one of whose cuts placed the coordinate SHALL
+COMMIT the value the walk left it at rather than its starting value plus
+the increment; a step none of whose cuts placed it SHALL commit as it
+always has. A cut that can place the coordinate nowhere SHALL refuse the
+step naming the relation, the coordinate and the primitive, as a broken
+invariant of the run rather than a step size that is too coarse, and
+SHALL commit nothing.
+
+The driven coordinate's own value along a piece SHALL be computed by
+adding to the value it holds at the piece's left end the CHANGE of the
+substituted law over the piece — the change taken FIRST — so that a piece
+whose substituted law does not move adds a true zero and the coordinate
+keeps the exact float it held. Computed in the other association the sum
+rounds whenever the law's magnitude is comparable to the coordinate's,
+and a coordinate nothing moved would still shift by one unit in the last
+place.
+
+Where such a law is a member of a block, every SELECTOR of its plan SHALL
+hold, through the whole of this walk, the branch the block read at the
+piece's midpoint — in the partition over the independent nodes, in every
+branch reading, in every probe, in every cut and in the far-side landing
+— and that node's crossings SHALL NOT be located again inside the piece.
+
+A coordinate held at its gate SHALL therefore read the same branch on
+every later step, whatever its sources do, SHALL be unmoved by a further
+step in the same direction BIT FOR BIT, and SHALL survive a run state
+taken and restored unchanged.
+
+A crossing located by this walk SHALL be recorded as a CROSSING — the
+relation, the coordinate, the primitive, the surface level and the
+fraction of the step — and never as a stop.
+
+A declared bound on the driven coordinate SHALL still stop it exactly as
+it stops any other coordinate — located over this same partition and
+committed AT the bound — and where a step's cut has placed the
+coordinate and a bound of the same coordinate is reached in the same
+segment, the bound SHALL win: a physical bound is a bound of the
+coordinate itself.
+
+#### Scenario: A dial clears to its gap and the ring sweeps on
+
+- **WHEN** a document whose law gates a dial on the dial's own retained
+  angle, disengaged over a band about every full turn, is run with the
+  dial resting part way and the ring swept far enough to carry it to the
+  band
+- **THEN** the dial ends within the band, at a value that reads
+  disengaged under the viewer's own evaluation of the published level,
+  the ring completes its whole travel, and the crossing appears in the
+  crossing record and not in the stop record
+
+#### Scenario: Sweeping an already-cleared dial moves it by nothing
+
+- **WHEN** the same machine is swept again, and again
+
+- **THEN** the dial holds the same value bit for bit after each sweep,
+  every request completes, and no stop is recorded
+
+#### Scenario: A branch is read from the retained value, not the midpoint
+
+- **WHEN** a law's level quantity names both the driven coordinate and a
+  moving source, so that it crosses inside a piece by the source's motion
+  alone
+- **THEN** the piece is integrated under the branch its LEFT END gives
+  and cut where the level reaches the surface, rather than under the
+  branch a midpoint reading would have chosen
+
+#### Scenario: A coordinate standing exactly on a surface is not driven through it
+
+- **WHEN** the driven coordinate stands exactly at the value its own
+  gate's surface sits on — the value a previous cut placed it at — and
+  the sources are moved, first so as to carry the level into the engaged
+  region and then so as to carry it away
+- **THEN** it holds in the first case and moves in the second, and in
+  neither is it carried through the band by a piece integrated under the
+  wrong branch
+
+#### Scenario: A level that will not settle refuses the step
+
+- **WHEN** a dependent node sits on a surface at a piece's left end and
+  each of the two branches carries the level back across it
+- **THEN** the step is refused naming the relation, the coordinate and
+  the primitive, the bank, the step count and the pose stand as they
+  were, and the commands that moved are retired reporting that the step
+  did not happen
+
+#### Scenario: Several coordinates clear independently from one input
+
+- **WHEN** one input drives several coordinates, each by its own law
+  reading its own driven end, and the input is moved far enough to reach
+  some of them and not others
+- **THEN** each reached coordinate ends at its own band, each unreached
+  one is untouched, one coordinate's disengagement cuts only its own
+  path, and the input's command completes with its whole travel admitted
+
+#### Scenario: A declared bound on the same coordinate still stops it
+
+- **WHEN** the coordinate a self-read law drives declares a bound, and
+  one step carries the coordinate through a cut of its own gate and on
+  to that bound
+- **THEN** the coordinate is committed at the bound exactly, the stop
+  is recorded in the stop record naming it, the crossing is recorded
+  in the crossing record at its fraction of the step, and the inputs
+  that pushed it are retired blocked
+
+#### Scenario: A coordinate no piece moved keeps its exact float
+
+- **WHEN** a step moves a source of a self-read law whose substituted law
+  does not change over the piece, and the driven coordinate stands at a
+  value of a magnitude comparable to that law's
+- **THEN** the coordinate holds the float it held, bit for bit, rather
+  than shifting by one unit in the last place
+
+#### Scenario: A law that reads nothing of its own is untouched
+
+- **WHEN** a document whose every law edge reads only values it does not
+  determine is run
+- **THEN** every step is the partition, the midpoint branches and the sum
+  it always was, and the run takes the same path at the same cost
+
+### Requirement: The worker orders a block per piece
+
+A published program's dependency graph — edge A before edge B when B
+reads a value A determines, with a value an edge itself determines
+EXCLUDED — MAY carry a cycle. Every nontrivial strongly connected
+component of it is a **BLOCK**, and the viewer SHALL recognise a block
+from what the document already carries, requiring no further key for it.
+A program with no such component SHALL preserve source timing too. Exact affine
+propagation SHALL retain its arithmetic fast path; ordinary endpoint
+approximations that lose dwell or landing timing SHALL be corrected.
+
+**The published order of a block's members is a LISTING and not an
+execution order.** The viewer SHALL NOT execute a block's members in the
+order they are published. It SHALL contract each block to ONE entry of
+the program, at the position of the block's first published member, every
+other edge keeping its published position and the edges their relative
+order; and it SHALL verify that the result is an order in which every
+entry's sources are determined before it runs, refusing the document
+naming the two edges and the value otherwise. A consumer that re-sorted
+the published edges would be inventing an ordering decision the producer
+already made.
+
+A **SELECTOR** of a block member is a jump node of that member's plan
+whose published level quantity, closed over the document's own bindings
+table and resolved transitively through the branch placeholders it names,
+reads no value the block determines. A selector's branch is therefore
+known before the block runs. A node whose level reads the member's own
+driven end is NOT a selector and SHALL stay in the walked layer of the
+requirement "The worker executes a law that reads the coordinate it
+drives".
+
+A source of a member is **SWITCHED** when setting a selector's branch to
+ZERO removes it from that member's law. The viewer SHALL decide this by
+folding the member's published skeleton with `x*0`, `0*x` and `0/x`
+taken as zero, `0+y`, `y+0`, `y−0` as the surviving operand and `0−y` as
+its negation, and reading what the folded skeleton then names, following
+every surviving placeholder into its own folded level quantity. A branch
+SHALL be admitted as foldable only where its primitive holds that branch
+over an INTERVAL of its level quantity — a floor, a ceiling, a remainder
+or a comparison — and never where it holds it at a single point, which
+is the case of a sign. ONE fold per member with every foldable selector
+at zero SHALL decide both what that member reads unconditionally and what
+a selection can switch; the value a member reads of its OWN driven end is
+neither.
+
+A shape that can never be ordered SHALL be refused when the document is
+loaded, under the requirement "A program the viewer cannot execute is
+refused by name". The check is deliberately NECESSARY and not SUFFICIENT:
+which branch vectors a machine can actually reach is arithmetic about its
+inputs rather than structure, so a particular piece that is still cyclic
+is refused when it is met.
+
+**Over one step a block SHALL be run PIECE BY PIECE.**
+
+- Every member's SELECTOR crossings SHALL be located over the WHOLE
+  stretch, by the partition any other law's path is cut by, over a plan
+  of that member's selectors alone; they SHALL be merged into one cut
+  list in the members' own order and each member's published jump order,
+  under the published crossing tolerance and crossing limit; and they
+  SHALL be recorded as crossings of the member whose plan states them.
+- On each piece every selector's branch SHALL be read at the piece's
+  MIDPOINT, and each member's ACTIVE sources SHALL be what its skeleton
+  still reads with those actual branch values substituted. The members
+  SHALL be ordered over the in-block ones, a member's own driven end
+  ignored, and that order SHALL be reused for any later piece whose
+  selectors read the same branch VALUES.
+- A piece whose active dependencies are still cyclic SHALL refuse the
+  step, naming the piece, the relations on the cycle, and each selector
+  with its primitive, its level quantity and the value it read. The step
+  SHALL commit nothing.
+- The members SHALL then run over the piece in that order, each by the
+  machinery that already governs it. Every determined source SHALL follow
+  its actual motion restricted to this piece, retaining dwell and landing
+  timing, whether determined outside or inside the block. A switched-out
+  in-block source this piece has not determined SHALL hold its value at the
+  piece's start, since the forced branch removes its influence.
+- **Every selector SHALL be a CONSTANT for every member on that piece**:
+  the branch the block read SHALL be substituted into the member's own
+  plan rather than re-derived inside the piece. A forced node's crossings
+  SHALL NOT be located again, and every reading of its branch — in either
+  layer of a self-read walk, in a probe, in a cut and in a far-side
+  landing — SHALL be the value the block substituted.
+
+**What a block reports.** For each value it determines it SHALL report
+the sum of that value's increments over the pieces. For a value at least
+one piece PLACED, it SHALL additionally report the ABSOLUTE value it has
+advanced that value to by the END of the stretch — the placement plus
+every later piece's increment — and the step SHALL commit that, because a
+reported absolute replaces the starting value plus the increment and
+would otherwise discard the motion after it. A value no piece placed
+SHALL be reported as an increment only.
+
+Every crossing a member reports inside a piece SHALL be rescaled to its
+fraction of the whole stretch, and the whole list — the selectors'
+crossings located over the stretch and the members' own rescaled out of
+their pieces — SHALL be sorted by that fraction before it is recorded, so
+the listing does not depend on which was computed first.
+
+**A declared bound SHALL be located along the same determined path.** Where
+that path is certified piecewise affine, each segment SHALL be solved; otherwise
+it SHALL use the published bounded search. A member's published affinity alone
+SHALL NOT certify its block's whole path.
+
+A block SHALL be complete and side-effect-free when it is asked for
+increments alone — as the probe that decides which inputs a stop blocks
+asks — recording no crossing, reporting no placement and mutating
+nothing, and SHALL refuse a cyclic piece there under the same midpoint
+reading and the same ordering it uses inside the step, so that a probe
+and the step it is probing for cannot disagree about whether the machine
+can be ordered. The inputs a stop on a block's value blocks SHALL be
+decided by displacing each candidate alone and running the WHOLE block
+under that displacement, so an input that reaches the stopped value only
+through a selection that is inactive at that moment SHALL NOT be blocked.
+
+#### Scenario: A carry that follows the carriage runs
+
+- **WHEN** a document is mounted whose program carries two laws each
+  reading what the other determines, one gated on a carriage position
+  below a detent and the other above it, and the carriage is left below
+  the detent while the crank is turned
+- **THEN** the run commits the values the producer commits for the same
+  machine, the carry reaching the wheel in the step it was made rather
+  than a step later or not at all
+
+#### Scenario: The published listing is not the execution order
+
+- **WHEN** a block's members are published in an order in which one reads
+  what a later one determines, which is what the producer's listing does
+- **THEN** the step orders them by the dependencies the piece's own
+  selection leaves active, and the committed bank does not depend on the
+  order the members were listed in
+
+#### Scenario: A selection crossing cuts the step
+
+- **WHEN** one step carries the selecting input across the value at which
+  a block's selection changes
+- **THEN** the stretch is cut there, each piece is ordered under the
+  branches read at its own midpoint, the members run over each piece with
+  their in-block values carried forward, and the crossing is recorded at
+  its fraction of the step
+
+#### Scenario: A selection change alone moves nothing
+
+- **WHEN** the selecting input is moved from one side of a selection to
+  the other and back, with nothing else moving
+- **THEN** every value the block determines holds the float it held,
+  bit for bit
+
+#### Scenario: A value placed in one piece and moved in a later one
+
+- **WHEN** one step places a block's value at a gate in one piece and
+  another source drives it further in a later piece of the same step
+- **THEN** the committed bank holds the value the block advanced it to by
+  the end of the step, not the value the placement left it at
+
+#### Scenario: A piece that cannot be ordered refuses the step
+
+- **WHEN** a step reads a selection under which every dependency of a
+  block's cycle is active
+- **THEN** the step commits nothing, the bank, the step count and the
+  pose stand, the commands that moved are retired reporting that the step
+  did not happen, and the report names the piece, the relations on the
+  cycle and what each selector read
+
+#### Scenario: A stop on a block's value follows its actual path
+
+- **WHEN** a step drives a value a block determines into a declared bound
+- **THEN** the fraction at which it reaches the bound follows its determined
+  path, solved per certified affine segment or otherwise searched, and the
+  value is committed exactly at its bound
+
+#### Scenario: An inactive selection blocks nothing
+
+- **WHEN** a value a block determines reaches a declared bound while an
+  input that reaches it only through a selection that is currently
+  inactive is running
+- **THEN** that input is not blocked and its command completes its whole
+  travel, while the input that does push the value retires blocked
+
+#### Scenario: An ordinary frozen carry has the same physical timing
+
+- **WHEN** the existing FixedZero ordinary carry and ShiftedCarry at shift 0
+  receive crank 0..4 whole and in sixteen portions
+- **THEN** both finish with carry.travel 1 and higher.turn 3.5, completed
+  status and full admitted travel, rather than spreading the lever's stroke
+  over the whole request
+
+### Requirement: Only what moves along a step's path is walked
+
+Executing a published program, the viewer FOLLOWS a quantity along a
+step's path: it evaluates one published expression at many points of that
+path — the sub-intervals of a sampled search and the rounds of its
+bisection, the two ends of each piece of a solve, the midpoint of each
+piece of a partition, the points of a self-read walk. Over ONE path, with
+ONE branch reading, the value of the part of that expression which reads
+no name the step MOVES cannot change. That part SHALL be computed ONCE
+for the piece and read back at every point of it, and only the remainder
+SHALL be evaluated per point.
+
+Which names MOVE along a path SHALL be the run's own statement and never
+inferred from sampling, from comparing two evaluations, or from a
+tolerance:
+
+- a source whose increment over the step is non-zero MOVES;
+- a jump node's BRANCH, a constant of its piece by construction, STANDS;
+- the coordinate a law READS AND DRIVES moves for a quantity the walk
+  hands its value to at every point, and stands for one that by refusal
+  does not name it at all;
+- a name the document's bindings table defines SHALL be followed INTO
+  that table's own expression and SHALL move exactly when that expression
+  does, so a quantity reaching a moving source only through a shared
+  subexpression moves exactly as one naming it directly does.
+
+The arithmetic SHALL be unchanged: the same nodes, in the same order,
+through the same operators and the same function table, on the same
+operand values. A quantity's value at any point of a path SHALL therefore
+be the SAME FLOAT, bit for bit, that evaluating its whole expression at
+that point gives. This requirement changes what the viewer COMPUTES TWICE
+and SHALL change no crossing, no landing, no branch reading, no
+increment, no stop, no refusal and no committed value.
+
+A quantity's standing part SHALL belong to ONE piece. A piece SHALL be
+identified so that no value computed under one piece's branches can be
+read back under another's, and nothing decided for a step SHALL outlive
+that step: there SHALL be no cache across steps and therefore no
+condition under which one goes stale.
+
+Resolving a QUALIFIED id while following a path SHALL read the run's bank
+by that id whole. This is the same number the whole-expression walk
+reaches by member access at every segment, because a program whose
+identifiers could make the two disagree — one id a strict prefix of
+another — is already refused when the document is loaded, under the
+requirement "A program the viewer cannot execute is refused by name".
+
+The saving SHALL be structural and unconditional. No declaration, option,
+tolerance, cache size or sampling count SHALL be introduced; nothing an
+author writes and no host call SHALL select it; no document field SHALL
+be read for it and no document version or viewer API version SHALL move
+for it. A machine whose laws are small, or whose followed quantities move
+entirely, SHALL be no slower for it than the cost of deciding, once per
+followed quantity per step, which of its nodes move.
+
+The COUNT of points a step evaluates SHALL NOT change: the same search,
+the same sub-interval count, the same tolerances and the same rounds.
+What falls is the work inside one point, and the widget SHALL report that
+work to its own tests through the subexpression-resolution probe it
+already exposes, so the fall is asserted as work performed and never as
+elapsed time.
+
+#### Scenario: A searched crossing evaluates only the moving part of the law
+
+- **WHEN** a running document's law reads the coordinate it drives
+  through a skeleton the producer did not publish as affine, and that law
+  also reads sibling coordinates the step does not move, so that most of
+  its expression stands
+- **THEN** the crossing is located by the same sampled search, at the
+  same sub-interval count, the same tolerance and the same number of
+  rounds, and the node visits the step performs inside that search fall
+  by the share of the expression that stands
+
+#### Scenario: Every value the machine commits is unchanged
+
+- **WHEN** such a machine is stepped for dozens of steps, idle and moving
+- **THEN** every banked coordinate, every recorded crossing, every
+  landing and every stop is the value it was before this requirement, bit
+  for bit, and every scenario of the conformance corpus replays
+
+#### Scenario: A quantity that moves entirely is evaluated whole
+
+- **WHEN** a followed quantity reads only names the step moves, so that
+  nothing in it stands
+- **THEN** every point evaluates the whole expression exactly as before,
+  and the step pays the decision of which nodes move once for that
+  quantity rather than once per point
+
+#### Scenario: A branch reading holds for its own piece and no other
+
+- **WHEN** a step's path is cut into several pieces and a jump node reads
+  a different branch on each
+- **THEN** the standing part is computed again for each piece under that
+  piece's own branches, and no value computed under one piece's branches
+  is read back under another's
+
+#### Scenario: A qualified id is read whole
+
+- **WHEN** a followed quantity names a coordinate whose id has several
+  dotted segments
+- **THEN** it reads the value the bank holds under that whole id, which
+  is the value the whole-expression walk reaches by member access, and no
+  nested scope is built for that point
+
+### Requirement: A piecewise-affine quantity is cut at its own kinks
+
+Following a quantity along a step's path, the viewer decides between
+SOLVING it — determining it everywhere on a stretch from that stretch's
+two endpoint values — and SEARCHING it, by sampling the published number
+of sub-intervals and bisecting. The producer publishes, per driven end of
+a law and per jump level, whether that quantity is AFFINE in its sources;
+that flag is TWO-VALUED and says nothing about a quantity that is not
+affine.
+
+A quantity built over the CONTINUOUS SELECTIONS of the expression
+vocabulary — `abs`, `min` and `max`, each of which returns one of its
+operands exactly and is continuous where the operands meet — is PIECEWISE
+AFFINE: affine on each stretch between the points where it changes which
+operand it returns. The viewer SHALL recognise such a quantity FROM THE
+PUBLISHED EXPRESSION ITSELF and SHALL solve it on those stretches rather
+than search it. No document field is read for this, no document version
+and no viewer API version moves for it, and nothing an author writes, no
+host call, no option and no tolerance selects it.
+
+**The classification SHALL be structural, conservative, and decided per
+published quantity rather than per step.** A number and a jump node's
+branch placeholder are CONSTANT; a source name is AFFINE; a name the
+document's bindings table defines takes the shape of that table's own
+expression; a unary minus, a sum, a difference, a product with a constant
+operand and a division by a constant take the shape of their moving
+operand and are KINKED exactly when it is; one of the three continuous
+selections over operands that are each constant, affine or kinked is
+KINKED; everything else — another call, a power, a product of two moving
+operands, a moving divisor, a comparison — is UNCLASSIFIED and SHALL go
+on being searched. A continuous selection over a CURVED operand SHALL
+therefore stay unclassified, even where one of its pieces happens to be
+straight.
+
+**The viewer's classification SHALL agree with the flag the producer
+publishes.** A quantity the viewer finds constant or affine SHALL be one
+the producer published as affine, and a quantity the viewer finds kinked
+or unclassified SHALL be one the producer published as not affine. The
+viewer SHALL NOT weaken what the producer published: a quantity published
+affine SHALL be solved over the whole stretch as it already was.
+
+**A kink's own breakpoints SHALL be SOLVED, never sampled.** A continuous
+selection has a level quantity of its own — the argument of `abs`, and
+the difference of the two operands of `min` and `max` — whose single
+surface, at zero, is where it changes which operand it returns. Over a
+stretch those breakpoints SHALL be located by taking the kinks in the
+expression's own postorder, so that a kink nested inside another's level
+is cut first; by evaluating each kink's level at the two ends of each
+sub-interval the earlier kinks have already produced, where that level is
+affine in the fraction and its zero is therefore one division; by keeping
+only a zero that lies strictly inside its sub-interval and strictly
+between the two end values; and by folding the result into the
+sub-division under the SAME crossing tolerance two crossings are folded
+under. No sampling, no bisection and NO FURTHER TOLERANCE SHALL be
+introduced. A level that does not move over a sub-interval reaches
+nothing inside it.
+
+**A kink breakpoint SHALL NOT be a crossing.** The quantity is continuous
+there. A breakpoint SHALL NOT be recorded among a step's crossings, SHALL
+NOT enter any partition an increment is summed over, SHALL NOT place a
+coordinate at the far side of a surface, and SHALL NOT count toward the
+published crossing maximum. It exists only as a sub-division inside a
+solve, and this is what keeps every answer that did not sit on a
+reclassified quantity bit-identical.
+
+**A stop SHALL be solved on a kinked determiner.** Where a coordinate's
+determining law is piecewise affine, the fraction of the stretch at which
+it reaches a declared bound SHALL be located by bracketing the bound
+between two consecutive breakpoints and dividing, and not by sampling.
+Where such a law carries a jump plan, the breakpoints are the union of
+that plan's own partition and the skeleton's kinks, the kinks located
+inside each piece of the partition with that piece's branch readings
+substituted, because a branch placeholder is constant only within its own
+piece. Where such a law carries NO jump plan at all — the shape that
+otherwise divides once over the whole step and so reports a stop where
+the coordinate never was — the breakpoints are its own kinks over the
+step as one piece. Where a kinked law reaches no kink over a step, there
+are no breakpoints, the path IS affine over the whole step, and the
+single division SHALL be taken exactly as it is for an affine law.
+
+A stop on a coordinate a BLOCK determines SHALL still be searched: a
+block has no single published expression until a branch vector is fixed,
+and the order its members run in may differ from piece to piece. This
+requirement does not lift that, and a bound that READS OTHER COORDINATES
+SHALL go on being examined exactly as the requirement "A declared bound
+may read other coordinates" states.
+
+Nothing else SHALL move. Every banked value, every recorded crossing,
+every landing, every stop, every command outcome and every refusal of a
+machine none of whose followed quantities is reclassified SHALL be the
+value it was, bit for bit, and the count of points such a machine
+evaluates SHALL NOT change.
+
+#### Scenario: A stop on a kinked determiner with no jump plan is solved
+
+- **WHEN** a coordinate's only determining law carries no jump node at
+  all, its expression clamps a source into a window, a declared bound
+  lies on the sloped piece and the step's path starts on the flat one
+- **THEN** the stop is located at the fraction the bracketing division
+  gives over the piece the bound lies in, which is the producer's own
+  recorded fraction, and not at the fraction a single division over the
+  whole step would give
+
+#### Scenario: A kinked level's crossing is solved rather than searched
+
+- **WHEN** a jump node's level quantity is built over a continuous
+  selection and the step's path crosses one of that node's surfaces
+- **THEN** the crossing is located by solving on the sub-interval between
+  the level's own kinks, and the surface lying exactly on an interior
+  breakpoint is located once and not twice
+
+#### Scenario: A kink breakpoint is not recorded as a crossing
+
+- **WHEN** a step's path passes a breakpoint of a kinked quantity
+- **THEN** no crossing is recorded there, no coordinate is placed at a
+  far side, the increment is summed over the same pieces as before, and
+  the breakpoint counts toward no published limit
+
+#### Scenario: A curved quantity is still searched
+
+- **WHEN** a followed quantity is a continuous selection over a curved
+  operand, a product of two moving operands, or a quantity divided by a
+  moving one
+- **THEN** it is sampled and bisected exactly as before, at the same
+  sub-interval count, the same tolerance and the same number of rounds
+
+#### Scenario: A machine with no kink pays nothing
+
+- **WHEN** a machine none of whose followed quantities is piecewise
+  affine is stepped
+- **THEN** every value it commits is unchanged bit for bit and the number
+  of subexpression resolutions it performs per step is unchanged exactly
+
+#### Scenario: The classification agrees with the published flag
+
+- **WHEN** every law's driven end and every jump level of a published
+  document is classified by the viewer
+- **THEN** the quantities it finds constant or affine are exactly those
+  the document publishes as affine, and no quantity it finds kinked or
+  unclassified is published as affine
+
+### Requirement: The viewer executes a clocked machine's requests
+
+A version 8 document carries a compiled CLOCKED machine: a bank of every
+declared driver and every declared state at its published default, plus
+the clock at zero where the machine declares one, and a set of committing
+relations each naming the inputs it moves with, the event level it fires
+on, and one law per value it writes.
+
+The viewer SHALL hold that bank, SHALL expose it and the machine's
+identity on the mount handle, and SHALL accept a REQUEST that moves ONE
+input — a declared driver, or the machine's CLOCK where it declares one,
+under the clock requirement below — along a straight path from where it
+stands to a stated
+value. The value a request names and the travel it reports SHALL both be
+in that input's DESIGN units, whatever units the bank holds it in.
+Executing a request SHALL, without posing anything until it is done:
+
+- clip the path at every stop the machine declares, under the stop
+  requirement below, before locating any event;
+- examine every committing relation whose published shapes name the
+  moving input, and no others;
+- locate every crossing of that relation's event level on the path,
+  taking both ends of the path, solving an `affine` level by division and
+  cutting a `kinked` level at its own breakpoints before solving each
+  piece, and merging crossings no further apart than the machine's
+  published crossing tolerance;
+- refuse the request when one relation's level crosses more surfaces than
+  the machine's published maximum;
+- land each crossing on the nearest representable value on the FAR side
+  of the surface, deciding membership by reading the level's branch there
+  and never by comparing a value to the surface;
+- fire a crossing only where the branch RISES between the piece the path
+  came from and the landing, and only where the landing lies on the
+  request's own path — a landing one representable value beyond the
+  request's end belongs to the next request and SHALL NOT fire here,
+  while a request resuming from its own landing SHALL fire nothing;
+- treat two relations as ONE event exactly when their landings are the
+  SAME value, and otherwise as two events in path order;
+- read, at each event, every firing relation's sources from the bank as it
+  stood BEFORE that event with the moving input at the landing, so the
+  order of relations at one event is not observable;
+- refuse the request naming the value, both relations and the landing
+  when two relations write one value at one event;
+- write every firing relation's results together, advance the input to the
+  landing, and locate the next event from there, so an event level that
+  reads a value the machine just wrote moves with it;
+- round a target whose declared type is a whole number to the nearest
+  whole number ONCE, taking an exact half to the EVEN one, and apply no
+  scaling to a committed value;
+- refuse the request when a law produces a value that is not finite.
+
+The request SHALL then pose the tree ONCE from the resulting bank, and
+SHALL report the travel it admitted, BOTH ENDS OF THE PATH IT TRAVELLED,
+the stops that truncated it, and the
+events it fired, each with the relations that fired it, the fraction of
+the path, the input's value there and the values written.
+
+The two ENDS SHALL be the value the moving input stood at when the request
+began and the value it ended at, each taken VERBATIM from the bank and
+therefore in that input's own NATIVE units — the units each event's value
+speaks — so that every event's value lies on the segment they span. Neither
+end SHALL be left for a caller to recompute: the admitted travel is in DESIGN
+units, and a caller reconstructing an end by arithmetic could land on a value
+the machine never stood at and so read a fired event as unfired. A request
+that a stop truncated SHALL report as its second end the landing the stop
+gave it, and one admitted at zero travel SHALL report its two ends equal.
+
+A request the viewer refuses for any reason SHALL leave the bank, the
+pose and the model exactly as they stood.
+
+The viewer SHALL provide session control over that bank: a SNAPSHOT of
+where the machine stands, a RESTORE of one taken against the SAME
+machine — refused by name against another, judged by the machine's
+published identity — and a RESET to every published default.
+
+#### Scenario: A request commits what the machine writes
+
+- **WHEN** a host requests that a clocked machine's crank move by one full
+  turn, and the machine commits its register at the end of a stroke
+- **THEN** the register's new value stands in the bank, the model is posed
+  with it, and the request reports one event with the crank's value there
+
+#### Scenario: Several events on one path fire in path order
+
+- **WHEN** a host requests a travel long enough to cross ten event
+  surfaces
+- **THEN** ten events are reported in path order, each one reading what
+  the events before it wrote
+
+#### Scenario: Two relations landing on one value are one event
+
+- **WHEN** two committing relations of one machine land on exactly the
+  same value of the moving input
+- **THEN** both are reported as ONE event, and each reads the bank as it
+  stood before that event rather than what the other wrote
+
+#### Scenario: Two surfaces one representable value apart are two events
+
+- **WHEN** two committing relations land one representable value apart
+- **THEN** they are reported as TWO events in path order, and the second
+  reads what the first wrote
+
+#### Scenario: A falling step fires nothing
+
+- **WHEN** a request crosses an event surface in the direction that lowers
+  the level's branch
+- **THEN** no event is reported and nothing is written
+
+#### Scenario: Two writers at one event refuse the request
+
+- **WHEN** two committing relations would write one value at one landing
+- **THEN** the request is refused naming that value, both relations as
+  they are written in the model, and the landing, and the bank stands
+  where it stood
+
+#### Scenario: An integer commit takes an exact half to the even value
+
+- **WHEN** a law lands a whole-number state on an exact half
+- **THEN** the value banked is the nearest EVEN whole number, not the one
+  a rounding toward positive infinity would give
+
+#### Scenario: A request is refused whole
+
+- **WHEN** a request would produce a value that is not finite, or crosses
+  more surfaces than the machine admits
+- **THEN** the request is refused naming what happened, and the bank, the
+  pose and the model are exactly as they were before it
+
+#### Scenario: A bank is restored only onto the machine it was taken from
+
+- **WHEN** a host restores a snapshot taken against a different clocked
+  machine
+- **THEN** the restore is refused naming the two identities, and the
+  machine stands where it stood
+
+#### Scenario: A request reports both ends of the path it travelled
+
+- **WHEN** a request is made BY a travel over an input standing away from
+  zero, and another is clipped at a declared stop
+- **THEN** each reports the value the input stood at before it and the value
+  it stands at after it, both equal to the bank's own entries before and
+  after, every event's value lies between them, and the clipped request's
+  second end is the landing the stop gave it rather than the value asked for
+
+### Requirement: A request may advance a clocked machine's clock
+
+A clocked machine MAY declare a CLOCK: elapsed seconds that never wrap and
+never run backwards, which the document names and which the bank holds in
+SECONDS starting at zero. The clock is not a declared driver and is never
+written by a committing relation; it is the one value besides the drivers
+that a request may MOVE.
+
+The viewer SHALL accept a request that moves the clock, by a travel or to an
+instant, and SHALL execute it by the SAME path a request on a declared driver
+takes: every committing relation whose published shapes name the clock is
+examined and no others; crossings of those relations' event levels are
+located, landed, ordered, merged and fired under the clocked request
+requirement above without exception; reads at an event are synchronous and
+pre-event; results are written together; and the tree is posed ONCE at the
+end. A travel of zero, and a request to the instant the clock already stands
+at, SHALL be ADMITTED: they fire nothing, pose what already stands, report no
+travel, and leave the bank as it was.
+
+A request that would move the clock BACKWARDS — a negative travel, or a
+stated instant behind the banked one — SHALL be REFUSED by name, naming the
+clock and BOTH instants, and SHALL leave the bank, the pose and the model
+exactly as they stood. It is a refusal and not a stop: no bound was met, and
+a request to un-elapse time has no meaning.
+
+NO declared stop SHALL ever clip a request that moves the clock, whatever
+stops the machine declares, because a declared range is a MECHANICAL stop and
+nothing is in the way of the next second. The end-of-request judgement is
+UNCHANGED: a commit fired by a time request that carries a bounded coordinate
+outside its bound SHALL refuse the whole request by name, commit nothing and
+never pose.
+
+The clock SHALL be carried by the session verbs like every other value: a
+snapshot holds the instant the machine stands at, a restore returns to it,
+and a reset returns the clock to zero with the rest of the bank.
+
+A request naming a clock on a machine that declares NONE SHALL be refused as
+any undeclared input is, naming what the machine does declare.
+
+#### Scenario: A request advances the clock and the machine commits
+
+- **WHEN** a host asks a clocked machine whose counter is released by an
+  expression of elapsed seconds to advance its clock by five seconds
+- **THEN** the clock stands five seconds later, every release inside those
+  five seconds is reported as an event in time order, each reading what the
+  events before it wrote, and the model is posed once at the resulting bank
+
+#### Scenario: A clock request is never stopped by a declared range
+
+- **WHEN** a clocked machine declares a bounded joint and a host advances its
+  clock past the instant that bound would be reached at were the clock a
+  driver
+- **THEN** the whole travel is admitted, no stop is reported, and the same
+  machine's declared driver is still clipped at that bound by a request of
+  its own
+
+#### Scenario: A request to un-elapse time is refused
+
+- **WHEN** a host asks a clocked machine's clock to move by a negative travel,
+  or to an instant behind the one it stands at
+- **THEN** the request is refused naming the clock and both instants, nothing
+  is committed, and the model stays posed where it was
+
+#### Scenario: A zero travel on the clock is admitted
+
+- **WHEN** a host advances a clocked machine's clock by zero, or to the
+  instant it already stands at
+- **THEN** the request is admitted with no travel and no events, the bank is
+  unchanged, and asking twice is the same as asking once
+
+#### Scenario: A commit inside a clock request may still refuse it
+
+- **WHEN** an event fired by a clock request writes a value that carries a
+  bounded coordinate outside its bound
+- **THEN** the whole request is refused naming the joint, the coordinate, the
+  side and the bound, nothing is committed, and the model is not posed
+
+#### Scenario: A snapshot carries the instant
+
+- **WHEN** a host snapshots a clocked machine, advances its clock, and
+  restores that snapshot
+- **THEN** the clock stands at the instant the snapshot was taken and so does
+  every other value in the bank
+
+#### Scenario: A machine with no clock has none to move
+
+- **WHEN** a host asks a clocked machine that declares no clock to advance one
+- **THEN** the request is refused naming the inputs the machine does declare,
+  and nothing about the machine changes
+
+### Requirement: A declared stop stops a clocked request on its path
+
+A clocked machine publishes one compiled CONSTRAINT per bounded
+coordinate and side, each carrying the expression that gives the
+coordinate its value over the bank, the bound itself, the level's jump
+plan, and the classification of that level in each input that can move
+it.
+
+The viewer SHALL CLIP a request against every such constraint the moving
+input can move, BEFORE it locates a single event, and SHALL truncate the
+request's travel to the largest the machine's stops allow. It SHALL, for
+each constraint:
+
+- evaluate the coordinate's own expression over the bank as it stands
+  when the request BEGINS, and hold that value under the machine's
+  published reserved name for the whole request, so a bound reading its
+  own coordinate reads where it stood rather than where it is going;
+- read its threshold ONCE, at the request's start, as the greater of zero
+  and the level there, so a machine standing OUTSIDE a bound may move as
+  long as it does not go further out, and nothing is ever clamped or
+  silently repaired;
+- take the level as the bound subtracted from the coordinate's value on
+  the high side and the reverse on the low, partition the path at the
+  level's own jump surfaces, and solve each piece by that level's
+  published classification, taking the stop at the end of the last piece
+  on which the level was satisfied;
+- land on the nearest representable value of the input that still
+  satisfies the constraint, deciding membership by EVALUATING the level
+  there and never by comparing a value to a bound.
+
+The EARLIEST landing across every constraint SHALL become the request's
+end, and the request SHALL then locate its events on the clipped path
+only. A request clipped to ZERO travel SHALL be ADMITTED, not refused: it
+commits nothing, poses nothing new, and reports what stopped it.
+
+NO compiled constraint SHALL clip a request that moves the machine's CLOCK,
+whatever stops the machine declares: a declared range is a MECHANICAL stop,
+and nothing is in the way of the next second. A published constraint whose
+value, whose bound, whose level or whose per-input classification names the
+machine's clock is MALFORMED and SHALL be refused at load naming it, because
+a stop is compiled over the bank — the drivers and the states — and a
+clock-driven coordinate is not something a stop can hold.
+
+Every constraint met at that landing SHALL be reported as a STOP naming
+the coordinate, the side, what the bound evaluates to there, what the
+coordinate is worth there, where the input landed and the fraction of the
+requested travel that was. A constraint the moving input cannot move
+SHALL NOT be examined on the path.
+
+After the last event and BEFORE the model is posed, the viewer SHALL
+judge every constraint again over the bank the request ends at, through
+the same expressions and against the same thresholds. A coordinate
+carried outside its bound by a COMMIT SHALL refuse the whole request,
+naming the node, the joint, the coordinate, the side, the bound and the
+value, and SHALL leave the bank, the pose and the model exactly as they
+stood.
+
+#### Scenario: An interlock stops a request short
+
+- **WHEN** a maker asks a clocked machine's crank to turn further than a
+  declared stop allows
+- **THEN** the crank stands at the stop, the request reports the travel
+  it admitted and the stop by coordinate and side, and only the events on
+  the travelled part of the path fired
+
+#### Scenario: A held part admits nothing and says so
+
+- **WHEN** a maker asks an input to move while an interlock holds it
+- **THEN** the request is ADMITTED with zero travel, nothing is committed,
+  the model does not move, and the stop is reported rather than an error
+
+#### Scenario: A machine standing outside a bound may move back
+
+- **WHEN** a clocked machine's bank stands outside a declared bound and a
+  request moves it back towards the bound
+- **THEN** the request is admitted, and a request that would carry it
+  further out is stopped where it stands
+
+#### Scenario: A bound that reads its own coordinate holds it still
+
+- **WHEN** both bounds of a coordinate read that coordinate's own value,
+  and a request would move it while the machine is off rest
+- **THEN** the request admits no travel at all, and the same request with
+  the machine at rest admits all of it
+
+#### Scenario: A commit that carries a coordinate out of range refuses the request
+
+- **WHEN** an event inside a request writes a value that carries a
+  bounded coordinate outside its bound
+- **THEN** the whole request is refused naming the joint, the coordinate,
+  the side and the bound, nothing is committed, and the model is not
+  posed
+
+#### Scenario: An interlock does not hold a clock
+
+- **WHEN** a maker advances the clock of a machine that declares interlocked
+  joints, far enough that a driver moving the same distance would be stopped
+- **THEN** the whole travel is admitted and no stop is reported, while the
+  same machine's driver is still stopped by its own request
+
+#### Scenario: A stop that follows the clock is refused at load
+
+- **WHEN** a mounted document's compiled constraint reads the machine's clock
+  in the value it bounds, in its bound or in the inputs it declares can move
+  it
+- **THEN** mounting fails naming that constraint and the clock, rather than
+  clipping a request against a coordinate the clock drives
+
+### Requirement: A clocked machine the viewer cannot execute is refused by name
+
+A document this viewer cannot execute SHALL be refused rather than
+rendered in part, and the refusal SHALL name what the document carries.
+
+The viewer SHALL refuse at load, naming the offending key and value: a
+version 8 document carrying no clocked machine; a clocked machine missing
+any of its published keys, or carrying one of the wrong type; a
+committing relation whose event level names a primitive this viewer does
+not implement, whose shapes name a classification it does not implement,
+or whose laws do not align with the values it writes; a compiled
+constraint missing a published key, naming a side that is neither low nor
+high, carrying a jump plan or a classification this viewer does not
+implement, or naming the machine's CLOCK anywhere in what it bounds or what
+can move it; a states table that is not a table of declarations, or one
+whose names collide with the declared drivers or with the machine's clock;
+an expression naming an
+identifier neither table nor the machine's own reserved names declare.
+
+It SHALL refuse at load, in the same place and by the same naming, an
+INSTRUCTION this viewer could not play: one stating neither a travel nor a
+target or both, one naming no driver or more than one, one naming something
+the drivers table does not declare — a state, the machine's clock, or a name
+nothing declares — or one whose duration is not a finite number of seconds at
+or above zero. A producer's own compile refuses each of these before a
+document exists, so a document carrying one is a document this viewer cannot
+trust to say what a press means, and every instruction a loaded version 8
+document carries is one a maker may press.
+
+The viewer SHALL refuse a REQUEST, leaving the document loaded and the
+model posed, when the request names a CLOCK on a machine that declares
+none, when a TRIGGER names an instruction the document does not declare —
+listing the declared names — and when a host asks a clocked machine for a
+cadence it does not have: a rate, or a step of a run. A request
+that ADVANCES a declared clock is not such a refusal and SHALL be executed
+under the clock requirement above; neither is a TRIGGER of a declared
+instruction, which is executed under the requirement "The viewer plays a
+clocked instruction as one drawn transition".
+
+#### Scenario: A malformed clocked machine is refused by name
+
+- **WHEN** a mounted version 8 document's clocked machine carries a
+  relation whose event level names a primitive this viewer does not
+  implement
+- **THEN** mounting fails naming that relation as it is written in the
+  model and the primitive, rather than executing a machine it does not
+  understand
+
+#### Scenario: A request on a clock the machine has not got is refused
+
+- **WHEN** a host requests that a clocked machine which declares no time base
+  advance a clock
+- **THEN** the request is refused naming the inputs the machine does declare,
+  the document stays loaded, and the model stays posed at the bank it
+  already showed
+
+#### Scenario: A cadence a clocked machine does not have is refused
+
+- **WHEN** a host asks a clocked machine to run at a rate, or to step a
+  run
+- **THEN** the call is refused naming what was asked and what a clocked
+  machine offers instead, and nothing about the machine changes
+
+#### Scenario: An instruction this viewer could not play is refused at load
+
+- **WHEN** a mounted version 8 document declares an instruction naming two
+  drivers, or one naming a state
+- **THEN** mounting fails naming that instruction and what it names, rather
+  than listing a button whose meaning the viewer would have to guess
+
+#### Scenario: A trigger of a name nothing declares is refused
+
+- **WHEN** a host triggers an instruction name the document does not carry
+- **THEN** the call is refused listing the declared instruction names, the
+  document stays loaded, and the model stays posed at the bank it showed
+
+### Requirement: The two runtimes agree on the clocked corpus
+
+The producer publishes a clocked conformance corpus: one document per
+machine, embedded verbatim, a script of requests, TRIGGERS of declared
+instructions, and session operations,
+and — per step — the whole bank afterwards, the travel admitted, BOTH ENDS
+OF THE PATH, the
+events fired with their landings and the values written, and, for a step
+the producer refused, the KIND of refusal and the qualified names its
+message carries.
+
+The package SHALL carry that corpus as the producer generated it, byte
+for byte, and SHALL replay it. Agreement SHALL be EXACT: every recorded
+number SHALL be reproduced bit for bit, and the tolerance compared
+against SHALL be the one the corpus file itself states rather than one
+the reader chooses. A disagreement SHALL be treated as a defect of this
+engine, and SHALL NOT be answered by widening a comparison, editing the
+fixture or omitting a scenario.
+
+The replay SHALL load and execute EVERY machine of the corpus and EVERY
+step of every script, and SHALL compare, per step, the whole bank, the
+travel admitted, BOTH ENDS OF THE PATH, the events fired, the STOPS met and
+the refusals by kind
+and by name. No step SHALL be departed from, deferred or passed over: a
+request that advances a machine's CLOCK is replayed exactly as a request on
+a driver is, and so is a step that TRIGGERS a declared instruction — what
+the instruction MEANS is part of the contract, not merely that the name was
+accepted.
+
+A CENSUS of the machines, the steps and the recorded numbers SHALL be
+asserted and SHALL be DERIVED from the corpus file itself rather than from a
+list maintained by hand, so a corpus regenerated wider or narrower than the
+one this build was written against fails loudly here without anyone running
+the producer's generator. The census SHALL state that every step is
+replayed, so a later build cannot narrow the suite by declaring a departure
+without also moving that number.
+
+#### Scenario: The engine reproduces the producer's own numbers
+
+- **WHEN** the corpus is replayed through this package's clocked executor
+- **THEN** every recorded bank value, admitted travel, landing and written
+  value is reproduced exactly, with no tolerance
+
+#### Scenario: A refusal is matched by kind and by name
+
+- **WHEN** the corpus records a step the producer refused
+- **THEN** this engine refuses the same step with the same kind, its
+  message carries every qualified name the corpus lists, and the bank
+  afterwards is the one the corpus records
+
+#### Scenario: A machine with interlocks is replayed like any other
+
+- **WHEN** the corpus carries a machine whose clocked object declares a
+  stop
+- **THEN** its script is replayed step by step like every other machine's,
+  and the stops it records are reproduced exactly
+
+#### Scenario: A step that advances a clock is replayed like any other
+
+- **WHEN** the corpus records a step that advances a machine's clock
+- **THEN** its script is replayed step by step like every other machine's,
+  the events it records on the clock are reproduced exactly, and the steps
+  after it are compared against the bank it left
+
+#### Scenario: A landing one representable value off is caught
+
+- **WHEN** a recorded landing on a clock — the first release of a machine
+  whose level is a function of elapsed seconds — is moved by one
+  representable value
+- **THEN** the replay fails, rather than accepting a value within any window
+
+#### Scenario: A step that triggers an instruction is replayed like any other
+
+- **WHEN** the corpus records a step that triggers a declared instruction,
+  one stating a travel and one stating a target
+- **THEN** each is replayed step by step like every other machine's, the
+  request the instruction makes is compared field for field against the
+  recorded one, and the steps after it are compared against the bank it left
+
+#### Scenario: A triggered step and the same request by hand agree
+
+- **WHEN** the corpus records a trigger and, from the same restored bank,
+  the request that instruction states made by hand
+- **THEN** this engine reproduces both, and the two recorded results are the
+  same values — the same ends, the same admitted travel and the same events
+
+#### Scenario: A regenerated corpus is loud
+
+- **WHEN** a corpus is copied in carrying more machines or more steps than
+  this build was written against
+- **THEN** the census fails naming the difference, rather than replaying a
+  subset in silence
+
+### Requirement: A maker operates a clocked machine on screen
+
+For a document carrying a clocked machine, the viewer SHALL present the
+focused layer's declared inputs as HANDLES and its declared states as
+follow-only READOUTS.
+
+Each input's handle SHALL show where the input stands, in design units,
+and SHALL offer a way to move it to another value; every such gesture
+SHALL submit exactly ONE request to move that input TO the value the
+gesture names, and SHALL report that request's outcome where the gesture
+was made — the travel admitted, the STOPS that truncated it named by
+coordinate and side, or the refusal's own message. A gesture an interlock
+holds SHALL be reported as a stop at that control rather than passed over
+as a control that did nothing. A declared range SHALL be presentation only
+and SHALL NOT clamp a request.
+
+A state SHALL NOT be presented as a handle and SHALL NOT be a source of
+any request; its readout SHALL follow the committed bank. A machine's
+CLOCK, where it declares one, SHALL likewise be shown as a readout and
+never as a positional handle; it is advanced by the transport of the
+requirement "A maker runs an elapsed clocked machine on screen" and by
+nothing else.
+
+Declared instructions SHALL be listed and SHALL be PRESSABLE. A press SHALL
+play that instruction under the requirement "The viewer plays a clocked
+instruction as one drawn transition"; the button SHALL indicate for as long
+as its drawing runs, and SHALL report the outcome where it was pressed — the
+travel admitted, the stops that truncated it, or the refusal's own message —
+exactly as a handle's gesture does. While a drawing runs the panel's handles
+and readouts SHALL follow THE DRAWING rather than the bank, so that what a
+maker reads beside the model is what the model is showing; when the drawing
+lands the two are the same values again.
+
+A gesture on a HANDLE SHALL be ONE request, and the transition that request
+reports SHALL BE DRAWN under the requirement "The viewer plays a clocked
+instruction as one drawn transition", exactly as a pressed instruction's is:
+the machine is solved once, at the gesture, and what follows is a picture of a
+transition that has already happened. A handle declares no duration, so the
+viewer SHALL take one from the document where the document states one: where a
+declared instruction states a TRAVEL on that same input over a duration, the
+viewer SHALL draw the gesture's transition AT THAT INSTRUCTION'S TEMPO, so that
+the same travel takes the same time however a maker asks for it — the duration
+drawn being the declared duration in the proportion the travel admitted bears
+to the travel declared. Where SEVERAL declared instructions state a travel on
+one input, the FIRST the document declares SHALL be the one whose tempo the
+gesture takes. Where NO declared instruction states a travel on that
+input, the viewer SHALL draw the transition over ONE SHORT DURATION OF ITS OWN,
+the same for every such handle and every travel, so that a gesture is watched
+rather than jumped. Neither duration SHALL be scaled by the playback speed.
+
+A gesture on an input a tempo governs SHALL take proportionally long however
+far it travels, WITHOUT CAP: a maker who asks for twice the declared travel has
+asked to watch twice the declared stroke, and a picture drawn at one rate for
+its first half and another for the rest would be a picture of neither.
+
+A handle SHALL stay usable while a drawing runs; a gesture on one LANDS the
+running drawing and then draws its own, so repeated gestures give consecutive
+transitions, each drawn. A gesture whose request admits no travel and commits
+nothing SHALL draw nothing and SHALL report its outcome exactly as it does now.
+
+A control a maker is EDITING SHALL NOT be rewritten by a drawing that is
+running; every other handle and readout follows it.
+
+The chrome SHALL offer snapshot, restore and reset of the machine's bank.
+It SHALL NOT offer a transport over the machine's DRIVERS — a clocked
+machine has no cadence for one to run, step or speed — and SHALL offer the
+clock's own transport exactly where the machine declares a clock. A
+document's `$t` animation SHALL be presented exactly as it is for a document
+carrying no machine at all, independently of the clock: the two advance
+different values and neither moves the other.
+
+#### Scenario: A maker moves an input and the machine commits
+
+- **WHEN** a maker moves a clocked machine's crank handle to a new value
+- **THEN** one request is submitted to move that input to that value, the
+  model is drawn from where it stood to the resulting bank, and the handle
+  reports the travel admitted
+
+#### Scenario: A register is read, never driven
+
+- **WHEN** a clocked machine's focused layer declares states
+- **THEN** each is shown as a readout following the committed bank, with
+  no control that could move it
+
+#### Scenario: A refused request is reported where it was made
+
+- **WHEN** a maker's gesture submits a request the machine refuses
+- **THEN** the refusal's message is shown at that control, and every
+  readout still shows the bank the machine stood at
+
+#### Scenario: A gesture an interlock holds says so at the control
+
+- **WHEN** a maker moves a handle an interlock holds still
+- **THEN** that control reports the stop by coordinate and side and the
+  travel it admitted, the model does not move, and nothing is reported as
+  an error
+
+#### Scenario: A declared instruction is pressed and played
+
+- **WHEN** a maker presses a listed instruction of a clocked document
+- **THEN** the machine makes that instruction's one request, the transition
+  is drawn over the declared duration, and the button indicates while it runs
+  and reports the travel admitted when it lands
+
+#### Scenario: The panel follows the drawing
+
+- **WHEN** a drawing is running
+- **THEN** the moved handle's reading and the readouts of the states its
+  commits write follow what the model is showing, frame by frame, and stand
+  at the machine's own bank when the drawing lands
+
+#### Scenario: A clocked model animates while its bank stands
+
+- **WHEN** a clocked document carries geometry that is a formula of `$t`
+- **THEN** the timeline plays it exactly as it does for a document
+  carrying no machine, and the bank stands throughout
+
+#### Scenario: A nudge is drawn rather than jumped
+
+- **WHEN** a maker sets a handle's nudge amount to a whole turn of a crank and
+  presses the plus button
+- **THEN** the crank's value rises through successive frames and the geometry
+  follows it, rather than arriving in one frame, and the handle reports the
+  whole turn admitted
+
+#### Scenario: A typed value is drawn
+
+- **WHEN** a maker types an absolute value into a handle's field and commits it
+- **THEN** the transition from where the input stood to that value is drawn
+  frame by frame, with every commit along the way drawn where it falls
+
+#### Scenario: A slider's commit is drawn
+
+- **WHEN** a maker drags a ranged input's slider and releases it, or clicks its
+  track away from the thumb
+- **THEN** the one request that gesture makes is drawn from where the input
+  stood to where the gesture put it, rather than posed in a single frame
+
+#### Scenario: Consecutive gestures are consecutive drawings
+
+- **WHEN** a maker presses the same nudge button again while its drawing is
+  still running
+- **THEN** the first drawing lands at its own end, the second request is made
+  from there, and both transitions are drawn one after the other
+
+#### Scenario: A field a maker is editing is left alone
+
+- **WHEN** a drawing runs while the maker's cursor is in a handle's own field
+- **THEN** that field keeps what the maker typed, while the model, the other
+  handles and the readouts follow the drawing
+
+#### Scenario: A nudge is drawn at the tempo the document declares
+
+- **WHEN** a maker nudges an input by the whole travel a declared instruction
+  states for it, the instruction declaring that travel over two seconds
+- **THEN** the transition is drawn over those two seconds, the same stroke the
+  instruction's own button draws, rather than over the duration a handle gets
+  where the document declares nothing
+
+#### Scenario: Half the declared travel is drawn in half the declared time
+
+- **WHEN** a maker nudges that same input by a twelfth of the declared travel
+- **THEN** the transition is drawn over a twelfth of the declared duration, so
+  the input moves at the rate the document declared for it whatever the
+  gesture asked for
+
+#### Scenario: An input no declared travel names keeps the viewer's own duration
+
+- **WHEN** a maker nudges an input that no declared instruction states a travel
+  on — because no instruction names it, or because the one that does states a
+  landing rather than a travel
+- **THEN** the transition is drawn over the viewer's own short duration, the
+  same for every such gesture
+
+#### Scenario: A stopped gesture is drawn only for the travel it admitted
+
+- **WHEN** an interlock clips a gesture on an input a tempo governs, so the
+  machine admits less travel than the gesture asked for
+- **THEN** the drawing takes the declared duration in the proportion the
+  ADMITTED travel bears to the declared travel, so the input is drawn at the
+  declared rate and stops where the machine stopped
+
+#### Scenario: The first declared travel gives the tempo
+
+- **WHEN** a document declares two instructions that each state a travel on one
+  input, over different durations
+- **THEN** a gesture on that input is drawn at the tempo of the one the document
+  declares FIRST, whatever the second states
+
+### Requirement: A maker runs an elapsed clocked machine on screen
+
+For a clocked machine that declares a CLOCK, the viewer SHALL offer a
+TRANSPORT beside the clock's readout: a way to PLAY, a way to PAUSE, and a
+way to STEP the clock by a stated number of seconds. A machine that declares
+no clock SHALL be offered none.
+
+While playing, the viewer SHALL submit exactly ONE request per rendered
+frame, advancing the clock by the wall-clock seconds elapsed since the
+previous frame multiplied by the playback speed, so that every event inside a
+frame is located and fired exactly and in order and a long frame is simply a
+long request. The advance one frame may make SHALL be capped: wall time
+beyond the cap is LOST rather than made up in a burst, and the clock's
+readout falling behind the clock on the wall is how a maker sees that it was.
+
+The playback SPEED SHALL be the same multiple of real time the viewer
+already offers, refusing a non-positive or non-finite one.
+
+PAUSING SHALL hold the bank exactly where it stands, submitting nothing.
+RESETTING SHALL return the whole bank to its published defaults with the
+clock at zero, and SHALL stop the transport. A request the machine REFUSES
+SHALL pause the transport and report the refusal's own message, rather than
+repeating a refused request once per frame.
+
+The clock's readout SHALL show elapsed SECONDS and SHALL follow the committed
+bank. The clock SHALL NOT be presented as a positional handle and SHALL NOT
+be offered a way to move backwards, elapsed seconds having no reverse.
+
+#### Scenario: A maker plays an elapsed machine and watches it run
+
+- **WHEN** a maker presses play on a clocked machine whose geometry is a
+  formula of elapsed seconds
+- **THEN** the model moves, the clock's readout advances in seconds, and the
+  machine's states are committed at each event as the clock passes it
+
+#### Scenario: Pausing holds the bank
+
+- **WHEN** a maker pauses a playing clocked machine
+- **THEN** the clock stops where it is, nothing further is committed, and the
+  readouts keep showing the bank the machine stands at
+
+#### Scenario: A step advances the clock by exactly what it says
+
+- **WHEN** a maker steps a paused clocked machine by two seconds
+- **THEN** one request advances the clock by two seconds, every event in that
+  interval fires, and the machine stands two seconds later
+
+#### Scenario: A long frame loses time rather than firing a burst
+
+- **WHEN** a rendered frame arrives after a stall far longer than a frame
+- **THEN** the clock advances by at most the capped amount, the events of that
+  advance fire normally, and the time beyond the cap is lost rather than
+  integrated at once
+
+#### Scenario: A refused frame pauses the transport
+
+- **WHEN** a frame's request is refused by the machine
+- **THEN** the transport pauses, the refusal's message is shown, and no
+  further request is submitted until the maker asks for one
+
+#### Scenario: A machine with no clock is offered no transport
+
+- **WHEN** a maker opens a clocked document whose machine declares no clock
+- **THEN** no play, pause or step control appears, and the machine is operated
+  by its handles exactly as it is today
+
+#### Scenario: A host runs the clock from its own panel
+
+- **WHEN** a host mounts an elapsed clocked document with the chrome
+  suppressed and starts the clock from the handle
+- **THEN** no on-screen transport appears while the clock advances, poses and
+  commits exactly as it does when the transport is shown
+
+### Requirement: The viewer plays a clocked instruction as one drawn transition
+
+A clocked machine's document publishes its declared instructions, each naming
+exactly ONE driver — a travel from where it stands, or a value to land on,
+in that driver's design units — and a DURATION in seconds. The machine gives
+the duration no meaning; it is how long a consumer draws the transition.
+
+The viewer SHALL PLAY such an instruction. Triggering one by name on the
+machine SHALL make the ONE REQUEST the instruction states, through the same
+executor every other request goes through and under the requirement "The
+viewer executes a clocked machine's requests", SHALL return that request, and
+SHALL then DRAW the transition the request describes over the declared
+duration.
+
+The viewer SHALL draw, in the same way and by the same rule, the transition a
+maker's GESTURE on a handle produces, under the requirement "A maker operates
+a clocked machine on screen": one request, made once at the gesture, drawn over
+the duration that requirement gives it — the tempo of a declared instruction
+that states a travel on the same input, or the viewer's own short duration
+where the document states none. A PRESSED instruction SHALL still be drawn over
+the duration it DECLARES, whatever travel its request admits: an instruction
+states its own duration and the viewer honours it, and a tempo is derived only
+where nothing is declared. Everything
+this requirement states about a drawing — the one solve, the bank that is final
+from the request, the fraction that decides a commit, the landing, the stopped
+and refused cases, and the one authority over the pose — SHALL hold for such a
+drawing exactly as it does for a pressed instruction's.
+
+A request the CLOCK'S OWN TRANSPORT makes — a played frame, or a step of a
+stated number of seconds — SHALL NOT be drawn: it advances a clock the maker is
+already watching, and a drawing would take the pose from the transport that
+asked for it. A request made on the mount HANDLE rather than on screen SHALL
+NOT be drawn either, and SHALL land at once.
+
+The machine SHALL be solved exactly ONCE per press, BEFORE the first frame of
+the drawing. The bank SHALL be FINAL from the moment the request is made: a
+readback taken while the drawing runs SHALL report the transition's END, and
+NO FURTHER REQUEST SHALL be made by the drawing. What a frame of a drawing
+costs SHALL be a POSE and nothing else.
+
+At each frame the viewer SHALL pose the tree from the bank the machine stood
+at BEFORE the request, with
+
+- the moved input at the value the elapsed FRACTION of the duration places
+  between the two ends the request reports, and
+- every commit whose reported fraction is at or before that fraction applied,
+  in the order the request reports them, at the values it reports.
+
+The fraction SHALL be what decides which commits are applied, so a transition
+that runs DOWNWARD is drawn by the same rule as one that runs upward and the
+rounding of a drawn value can neither anticipate a commit nor delay one. The
+LAST frame SHALL stand at the request's own reported end with every commit
+applied, so the bank the drawing finishes on and the bank the machine holds
+are the same values. An input declared as a whole number SHALL be whole at
+every frame and SHALL never pass the end the machine reported.
+
+A request the machine STOPPED SHALL be drawn only as far as the machine went,
+and the control SHALL report the stop as it does for any other request. A
+request that admitted ZERO travel SHALL draw nothing and SHALL report its
+stop. A duration of zero SHALL land at once, in one pose. An instruction the
+machine REFUSES SHALL draw nothing, SHALL leave the bank and the pose exactly
+as they stood, and SHALL report the refusal where it was pressed. Triggering
+a name the document does not declare SHALL be refused listing the declared
+names.
+
+A drawing SHALL be the only thing posing the machine while it runs. Any other
+thing that would move or repose the machine — another instruction, a gesture
+on a handle, a request from the host's own handle, a snapshot restore, a reset
+— SHALL LAND the drawing first, the drawn pose taking the transition's end,
+and then act. Triggering while a drawing runs SHALL therefore land that
+drawing and draw the new one, so two presses give two transitions. Starting a
+drawing SHALL stop the clock's transport where the machine declares a clock,
+the two being two authorities over one pose.
+
+#### Scenario: A press draws the transition the machine solved
+
+- **WHEN** a maker presses an instruction that turns a clocked machine's
+  crank one whole turn over two seconds
+- **THEN** the crank's value rises through successive frames for those two
+  seconds and the geometry follows it, while a readback of the bank reports
+  the whole turn from the first frame
+
+#### Scenario: A commit is drawn at the frame the transition reaches it
+
+- **WHEN** the transition carries a commit partway along the path
+- **THEN** the parts that commit writes are posed at their new values from
+  the first frame whose fraction reaches it, and at their old values in
+  every frame before it
+
+#### Scenario: The drawing lands on the machine's own bank
+
+- **WHEN** a drawing finishes
+- **THEN** the pose stands at the request's reported end with every commit
+  applied, value for value the bank the machine has held since the request
+  was made
+
+#### Scenario: One press is one solve
+
+- **WHEN** a drawing of many frames runs to its end
+- **THEN** exactly one request was made, before the first frame, and the
+  bank read at every frame of the drawing is the same bank
+
+#### Scenario: A stopped instruction is drawn only as far as the machine went
+
+- **WHEN** an interlock clips the request an instruction makes
+- **THEN** the drawing ends at the landing the stop gave it, the control
+  reports the stop by coordinate and side beside the travel admitted, and
+  nothing is drawn beyond it
+
+#### Scenario: An instruction an interlock holds draws nothing
+
+- **WHEN** an instruction's request is admitted at zero travel
+- **THEN** nothing moves, the control reports the stop that held it, and no
+  drawing runs
+
+#### Scenario: A zero-duration instruction lands at once
+
+- **WHEN** an instruction declaring a duration of zero is pressed
+- **THEN** the machine stands at the transition's end in one pose, with no
+  frames between
+
+#### Scenario: A second press lands the first drawing
+
+- **WHEN** a maker presses the same instruction twice in quick succession
+- **THEN** the first drawing lands at its own end, the second request is
+  made from there, and the machine has made both transitions
+
+#### Scenario: Another gesture lands the drawing
+
+- **WHEN** a maker moves a handle, or a host restores a snapshot, while a
+  drawing is running
+- **THEN** the drawing lands first and the gesture acts on the machine as it
+  stands, rather than two things posing the tree at once
+
+#### Scenario: A refused instruction draws nothing
+
+- **WHEN** an instruction's request is refused by the machine, or a name
+  nothing declares is triggered
+- **THEN** the refusal is reported where it was pressed, listing the declared
+  names where the name was unknown, and the bank, the pose and the model
+  stand exactly as they did
+
+#### Scenario: A handle's gesture is drawn like an instruction's press
+
+- **WHEN** a maker's gesture on a handle makes a request that travels
+- **THEN** exactly one request is made before the first frame, the transition
+  is drawn frame by frame over the duration the panel gives it with each commit
+  at its own fraction, and the drawing lands on the bank the machine has held
+  since the gesture
+
+#### Scenario: A gesture of the declared travel takes the declared duration
+
+- **WHEN** a maker's gesture on a handle asks for exactly the travel a declared
+  instruction states on that input, and the instruction is pressed for the same
+  travel from the same bank
+- **THEN** both transitions are drawn over the same duration and land on the
+  same bank, the gesture and the button being two ways of asking for one stroke
+
+#### Scenario: A step of the clock is not drawn
+
+- **WHEN** a maker steps a clocked machine's clock by a stated number of
+  seconds, or the transport advances it on a rendered frame
+- **THEN** the machine poses once for that request, the transport keeps
+  running where it was running, and no drawing is started
+
+#### Scenario: A host's request lands at once
+
+- **WHEN** a host moves an input through the mount handle
+- **THEN** the machine poses once at the resulting bank and nothing is drawn,
+  whatever the panel would have done for the same request
+
+### Requirement: On-screen machine controls leave the machine visible
+
+The viewer's posed, running and clocked on-screen control panels SHALL occupy
+a bounded rail at one side of the viewer rather than widening over most of the
+model. On an ordinary wide pane the rail SHALL prefer approximately thirty
+percent of the pane, SHALL have a finite maximum width, and SHALL leave the
+rest of the pane directly visible and usable. On a pane too narrow for that
+proportion to remain operable, the rail MAY use a larger proportion but SHALL
+never exceed the pane.
+
+A panel taller than the viewer SHALL scroll internally. Every input,
+instruction, state readout, outcome and transport the applicable requirements
+present SHALL remain reachable; compacting the panel SHALL NOT suppress an
+operation or change the request it makes.
+
+#### Scenario: A large clocked machine leaves room to use the model
+
+- **WHEN** a clocked machine with dozens of handles and readouts is mounted in
+  a normal desktop viewer
+- **THEN** its chrome occupies a bounded side rail, the majority of the viewer
+  remains available to see and manipulate the model, and controls beyond the
+  rail's height are reached by scrolling the rail rather than the page
+
+#### Scenario: A narrow host keeps the controls operable
+
+- **WHEN** the same machine is mounted in a pane narrower than the rail's
+  preferred desktop width
+- **THEN** the rail stays within the pane and its controls wrap rather than
+  being clipped or extending the page
+
+### Requirement: The browser host contract uses Machinome names
+
+The built viewer SHALL publish the browser global `MachinomeViewer`, the bundle
+`machinome-viewer.js`, Machinome-prefixed auto-mount attributes, classes and CSS
+custom properties, and the corresponding Machinome API-version declaration.
+The API version SHALL increase because hosts must change their public names.
+The package SHALL NOT publish solid-node-named browser aliases.
+
+#### Scenario: A host mounts the current viewer
+
+- **WHEN** a host loads `machinome-viewer.js` and calls
+  `MachinomeViewer.mount(...)`
+- **THEN** it receives the same functional viewer handle under the Machinome
+  contract
+
+#### Scenario: A host checks the API declaration
+
+- **WHEN** it reads the bundle and package's declared viewer API version
+- **THEN** both report the new version that contains the Machinome host names
+
+### Requirement: The loader accepts current and legacy product formats
+
+The viewer SHALL accept `format: "machinome-export"` as the current document
+identity and `format: "solid-node-export"` as the legacy identity of committed
+solid-node 0.6 and earlier artifacts. Format compatibility SHALL NOT change a
+document's numerical schema version or the behavior associated with that
+version. Any other format SHALL be refused by name.
+
+#### Scenario: A Machinome document is mounted
+
+- **WHEN** the document declares `format: "machinome-export"`
+- **THEN** it loads according to its existing numerical version contract
+
+#### Scenario: A committed 0.6 document is mounted
+
+- **WHEN** the document declares `format: "solid-node-export"`
+- **THEN** it remains renderable according to its numerical version contract
+
+#### Scenario: An unrelated document is mounted
+
+- **WHEN** its format is neither current nor legacy
+- **THEN** mounting fails naming the unsupported format
+
+### Requirement: The running engine executes published play edges
+
+The viewer SHALL load a version-9 program edge with `kind: "play"`, ordered `needs: [source, retained]`, `gives: [retained]`, finite `low < high`, and the producer's descriptive fields. For each monotonic source segment ending at `x'`, it SHALL set the retained endpoint to `max(x' - high, min(y, x' - low))` from the segment's retained start `y`, using the ordinary bank as its only history and no tolerance.
+
+This SHALL extend "One loader reads either published document" to document
+version 9: it is a running document carrying a compiled program, not a
+version-8 clocked machine. `play` SHALL be an additional known edge kind;
+its explicit retained-coordinate semantics SHALL NOT change the existing
+law-edge self-read validation or execution.
+
+#### Scenario: Pickup and reversal execute in the browser engine
+- **WHEN** a play follower is collected at either flank and its source reverses into the clearance
+- **THEN** it follows while pushed, releases immediately on reversal, and remains exactly retained until the opposite flank reaches it
+
+#### Scenario: A three-wheel chain executes in order
+- **WHEN** one driver feeds three play edges in a linear chain
+- **THEN** every edge projects the endpoint produced by its predecessor and worker and in-thread execution return the same bank
+
+#### Scenario: Existing self-read edges keep their meaning
+- **WHEN** a version-6 or version-7 program carries comparison-based self-read laws and no play edge
+- **THEN** the viewer executes its existing retained walk unchanged and does not infer play behavior
+
+### Requirement: A malformed play program is refused before execution
+
+The loader SHALL refuse a play edge unless its source and retained ids, give, finite ordered offsets, initial interval, unique writers, driver-rooted linear chain, and absence of play fan-out match the producer contract. Refusal SHALL name the edge and violated field or relationship and create no running engine.
+
+#### Scenario: A play edge has the wrong shape
+- **WHEN** its needs are not exactly source then retained, its give differs from retained, an id is undeclared, or an offset is non-finite or unordered
+- **THEN** loading fails by edge identity before any tick can run
+
+#### Scenario: Initial retention is physically inconsistent
+- **WHEN** the initial retained bank value lies outside `[source-high, source-low]`
+- **THEN** loading refuses rather than projecting or teleporting it
+
+#### Scenario: A play source path is unsupported
+- **WHEN** a play edge is rooted in an ordinary edge, participates in a cycle, has an ambiguous writer, or branches to two play followers
+- **THEN** loading refuses the unsupported path by the participating edge identities
+
+### Requirement: Stops replay a play chain from its original input
+
+The viewer SHALL locate a stop reached through a play chain by evaluating the whole program prefix from the originating driver's candidate request fraction. It SHALL atomically commit that prefix at the located fraction and SHALL block only an input that pushes the stopped follower.
+
+#### Scenario: A downstream ranged follower clips at the physical input
+- **WHEN** `x=0` drives two play gaps of 10, requests `x=100`, and the second follower has high stop 20
+- **THEN** the viewer blocks the request at `x=40`, with the first follower at 30 and second at 20
+
+#### Scenario: Release-side travel is free
+- **WHEN** a bounded follower stands at contact and its source reverses into the clearance while the follower remains still
+- **THEN** the source is not blocked by that follower's bound
+
+#### Scenario: A refused request is atomic
+- **WHEN** propagation or a stop invariant refuses a play request
+- **THEN** bank, tick, records, and posed tree remain exactly as before it, while commands attempted by that tick retire `refused` with unchanged admitted travel
+
+### Requirement: The producer corpus pins play parity
+
+The viewer SHALL commit the framework's regenerated running corpus byte-for-byte, replay every recorded play step under the corpus's numeric contract, and refuse a copied corpus whose coverage omits play retention, either-flank pickup, reversal, non-integer contact, split requests, cascade, downstream stop, or snapshot replay.
+
+#### Scenario: The regenerated corpus replays completely
+- **WHEN** the committed version-9 corpus is tested in-thread
+- **THEN** every recorded play state, status, stop, and snapshot result agrees and the coverage census names every required play behavior
+
+#### Scenario: A mounted version-9 page runs
+- **WHEN** a real browser mounts a valid play document and submits a driver request
+- **THEN** its running handle advances, poses the retained coordinate from the resulting bank, and reports no schema refusal
+
+### Requirement: A maker operates an autonomously powered running machine
+
+The viewer SHALL execute a supported running machine's declared autonomous
+motion when its run is played or stepped, without requiring an operator to
+issue a synthetic motion command. Mounting SHALL preserve the existing paused
+rest state. Elapsed seconds SHALL remain read-only and outside operator inputs.
+Versions 1–9 SHALL retain their existing behavior.
+
+#### Scenario: Astrarium advances without a startup input
+
+- **WHEN** a maker mounts Astrarium's time-driven fixture and steps its run
+- **THEN** the shaft and weight advance from declared state, while only enable
+  and winding are exposed as operator inputs
+
+#### Scenario: Stop, wind and restart preserve history
+
+- **WHEN** the maker disables Astrarium, waits, winds and enables it again
+- **THEN** the shaft holds while stopped, winding restores reserve without
+  reversal, and subsequent running adds only newly elapsed travel
+
+### Requirement: An autonomous mechanical stop does not stop elapsed time
+
+A mechanical stop SHALL limit only the motion paths pushing it. Unrelated
+autonomous mechanisms and relieving operator inputs SHALL continue. Elapsed
+seconds SHALL continue advancing. A stopped autonomous path SHALL attempt the
+next global interval without recovering missed travel, including nonlinear
+time laws. Grouped outputs SHALL share their relation's stop. Save, restore,
+reset and refused ticks SHALL preserve existing retained-state guarantees.
+
+#### Scenario: One train exhausts while another runs
+
+- **WHEN** one independently time-driven train reaches a travel bound
+- **THEN** that train stops coherently at the boundary, the other keeps moving,
+  and the elapsed clock completes the tick
+
+#### Scenario: A curved input reaches a downstream stop
+
+- **WHEN** a nonlinear time-driven shaft pushes a ranged follower to its stop
+- **THEN** both commit the same admitted mechanical path at the located boundary
+  rather than snapping only the follower
+
+#### Scenario: A failed tick is atomic
+
+- **WHEN** incompatible laws refuse a tick after an autonomous path has moved
+- **THEN** its bank, clock and recorded history remain at the prior commit
+
+### Requirement: Time-drive compatibility is checked before execution
+
+The viewer SHALL accept well-formed producer document-v10 time-drive programs
+and SHALL refuse malformed time-drive mappings, undeclared or writable clock
+sources, reserved IDs used as physical state, and unknown admission candidates
+before rendering or ticking, naming the document and offending field. The public
+stop record SHALL retain real operator IDs in `inputs` and report independently
+blocked time relations in `time_drives` only when nonempty. Legacy records SHALL
+retain their previous shape.
+
+This extends "One loader reads either published document" to version 10, a
+running program with explicit time-drive mappings rather than a clocked machine.
+
+#### Scenario: An invalid time-drive mapping is refused
+
+- **WHEN** a document maps an invalid edge, duplicates a drive, or omits a
+  mapping for an edge that reads the clock
+- **THEN** loading fails by name instead of running an inert or coupled machine
+
+#### Scenario: An autonomous stop has distinct provenance
+
+- **WHEN** a purely autonomous train reaches its bound
+- **THEN** its stop names the blocked time relation and reports no invented
+  operator input or command
+
+### Requirement: Producer time-drive parity includes browser acceptance
+
+The viewer suite SHALL replay every recorded step of the unchanged producer
+time-drive corpus, including bank, time, crossings, stops, command outcomes,
+restore and reset. Floats SHALL use the corpus's own tolerance; discrete fields
+and list order SHALL match exactly. Astrarium's published export SHALL additionally
+be exercised in a browser through both normal worker and in-thread fallback
+execution. No framework import SHALL be needed by the viewer or its tests.
+
+#### Scenario: The originating clock works in both browser transports
+
+- **WHEN** the Astrarium export is stepped, stopped, wound, exhausted and restored
+  through the browser handle in each execution mode
+- **THEN** its retained values agree with the verified project behavior and its
+  rendered parts follow that bank
+
+### Requirement: Moving contacts preserve valid running requests
+
+The viewer SHALL follow relative engagement when a moving threshold overtakes
+a driven part and SHALL NOT invent a crossing or impossible-contact refusal
+from rounding when their relative level is proved constant. Existing nearest-
+representable landing, genuine crossing and transactional refusal behavior
+SHALL remain in force, including nonzero relative movement however small.
+When a running bound reads a coordinate with an exactly constructible motion
+path, the viewer SHALL retain that path for its stop search without changing
+the ordered sampled levels, stop, bank, replay or refusal behavior.
+
+#### Scenario: An observed carry remains free
+- **WHEN** an ordinary Curta crank turn carries its mechanism through a moving
+  engagement while a restraint observes the parts
+- **THEN** the valid turn completes with producer-conformant retained state
+- **AND** subsequent genuinely obstructed requests still stop at first contact
+
+#### Scenario: A part follows its moving contact
+- **WHEN** a driven part and its engagement threshold have proved constant
+  relative position over a continuous piece
+- **THEN** rounding noise does not manufacture a branch departure or refusal
+- **AND** snapshot replay preserves the admitted state
+
+#### Scenario: A genuinely impossible continuation
+- **WHEN** an engagement has no valid continuation
+- **THEN** the existing named refusal commits no partial machine state
+
+#### Scenario: A bound reads a retained self-read part
+- **WHEN** a running bound reads a self-read coordinate whose law can provide an exact motion path
+- **THEN** every sampled bound level and the admitted machine state equal the ordinary replay result
+- **AND** the stop search uses that path without repeating the bound's constraint subprogram for each sample
+
+### Requirement: Source-timed running programs are compatible by declaration
+
+The viewer SHALL accept producer document version 11 as a running program with
+source-timed semantics, including well-formed optional Play and time-drive
+declarations. It SHALL validate those features by content and refuse malformed
+mappings or clock reads without their required admission mapping before ticking.
+Version 11 SHALL NOT be treated as a clocked program. This extends the loader's
+supported document list without adding a new document key.
+
+Legacy running documents SHALL remain loadable and receive corrected source
+timing too, not a separately preserved endpoint-approximation algorithm. Posed,
+looping, clocked and clearance-aware Play behavior SHALL remain unchanged
+except for explicitly measured timing corrections in supported running chains.
+
+#### Scenario: Corrected exports cannot silently enter an old viewer
+
+- **WHEN** Curta is re-exported by the corrected producer as version 11 and
+  offered to an old viewer whose supported versions end at 10
+- **THEN** the old viewer refuses the version before operation rather than
+  silently executing the old carry arithmetic
+
+#### Scenario: Driver-only and autonomous documents load
+
+- **WHEN** valid version-11 driver-only and time-driven programs are loaded
+- **THEN** both run, while a missing mapping for a clock-reading edge is refused
+
+### Requirement: Curta source timing is pinned by producer evidence
+
+The viewer suite SHALL replay producer-generated timing fixtures without
+importing the framework or project. It SHALL compare full banks, statuses,
+admitted travel, crossings and stops under the producer's published float and
+discrete agreement rules. Fixtures SHALL retain producer content hashes and
+the unchanged physical oracle. The existing corpus SHALL remain a control;
+an expectation change requires recorded physical evidence, not regeneration
+solely to make a failure pass.
+
+#### Scenario: The complete diagnostic result bank preserves its carry
+
+- **WHEN** unchanged six-, seven- and eleven-station Curta diagnostic exports,
+  including the constrained full bank, receive digit 0, height 9, crank 90,
+  then one bulk crank 180 request
+- **THEN** all complete at crank 180, ones 724, tens 704 and first lever 0,
+  and the full bank agrees with partitioned replay from the same snapshot
+
+#### Scenario: A dwelling and curved source keep their timing
+
+- **WHEN** producer fixtures include a landed source, a piecewise or curved
+  upstream law, and an irrelevant later selector
+- **THEN** the viewer reproduces the producer's physical gate times, including
+  a landing exactly on an inherited breakpoint recorded once
+
+#### Scenario: Browser transports execute the same carry
+
+- **WHEN** the diagnostic export is operated in a real browser through worker
+  and in-thread fallback, then restored and replayed
+- **THEN** both match the producer bank and command outcomes and the rendered
+  parts follow the committed bank, without claiming whole-machine acceptance
+
+### Requirement: A traced constraint search does not repeatedly resolve standing bound work
+
+For a constraint whose read coordinates have determined paths, the viewer SHALL evaluate the bound at every published search sample with the same numerical semantics and result as full expression evaluation. Across those samples, work whose inputs stand SHALL be resolved once per search, not once per sample; only work affected by a moving read SHALL be re-resolved. This reuse SHALL NOT change sample locations or order, crossing and bisection choices, admitted travel, stop records, the complete coordinate bank, snapshot/replay, numeric edge cases, or refusal behavior. A bound the optimized path cannot represent SHALL use the ordinary evaluator without changing the machine's result.
+
+#### Scenario: A large bound with few moving reads
+
+- **WHEN** a determined constraint search samples a bound whose expression includes both standing and moving reads
+- **THEN** each sampled bound value and the final machine result equal full evaluation exactly, while repeated samples do not re-resolve the standing subgraph
+
+#### Scenario: A traced path has signed-zero endpoints
+
+- **WHEN** a bound reads a traced coordinate whose start and end compare equal but differ as IEEE-754 values
+- **THEN** the sampled bound values retain the correct endpoint signs and the search result is unchanged
+
+#### Scenario: The bound is outside the path evaluator's supported shapes
+
+- **WHEN** a determined constraint search samples a supported generic expression shape the path evaluator does not support
+- **THEN** the search uses the ordinary evaluator and preserves its result and errors
+
+#### Scenario: The path is not determined
+
+- **WHEN** a constraint's read path is unavailable for determined evaluation
+- **THEN** the viewer continues to sample the existing prefix replay at the same fractions and obtains the same bank, stop and outcome
+
+### Requirement: Version-12 Follow programs are accepted by content
+
+The viewer SHALL accept a producer version-12 running document with a well-formed Follow declaration and SHALL validate its authored boundary expressions, source and follower identifiers, retained bank coordinate, writer uniqueness, graph order and initial feasible interval before running it. A version-12 document without Follow SHALL preserve the behavior of its other declarations. A viewer that does not support version 12 SHALL refuse it before operating, rather than silently executing a different contact model. Posed and clocked documents and running versions 1–11 SHALL retain their prior behavior.
+
+#### Scenario: Well-formed Follow export
+- **WHEN** the corrected Curta producer exports a version-12 document with its two moving measured surfaces and retained ball
+- **THEN** the viewer loads the program and exposes the same controls and running bank as the producer
+
+#### Scenario: Invalid Follow topology
+- **WHEN** a declaration names a missing source, non-bank follower, extra writer, cycle, malformed boundary or impossible initial interval
+- **THEN** loading refuses it by name before a tick is admitted
+
+#### Scenario: Legacy compatibility
+- **WHEN** a valid version-11 source-timed Curta export or an older Play document loads
+- **THEN** its existing timing, retained motion, stops, snapshot and replay remain unchanged
+
+### Requirement: A profile-capable document is version-gated and mount-isolated
+
+The viewer SHALL advertise a capability version that includes the producer's version-13 finite-profile document, refuse that document on an older viewer, and leave versions 1–12 unchanged. Each loaded program's profile table SHALL be part of its evaluation and snapshot identity: the same expression and bank values in two mounted documents with different tables SHALL never reuse the other's result, and a snapshot for one profile table SHALL not restore into a changed table.
+
+#### Scenario: Capability and legacy documents
+- **WHEN** a version-13 profile document is loaded on a capable or older viewer, or a valid version-12 running document is loaded on the capable viewer
+- **THEN** the capable viewer executes the profile document, the older viewer refuses it before operating, and the version-12 document retains its previous behavior
+
+#### Scenario: Follow and profile contact share one program
+- **WHEN** a running document contains both a version-12 Follow and a finite profile contact call
+- **THEN** it declares version 13, the capable viewer executes both declarations, and an older viewer refuses it before operating
+
+#### Scenario: Simultaneous distinct profiles
+- **WHEN** two mounts evaluate the same profile-call text at equal bank and placement values but have different published tables
+- **THEN** each returns its own table's result without expression-cache contamination
+
+#### Scenario: Restoring against changed profile content
+- **WHEN** a snapshot from a program with one profile table is restored into a re-export with different profile content
+- **THEN** the existing program-identity guard refuses the restore rather than reusing stale contact state
+
+### Requirement: A non-finite running law evaluation refuses its request
+
+When executing a running step, the viewer SHALL refuse a law evaluation it performs if that law's result is `NaN`, positive infinity, or negative infinity. It SHALL name the offending law, its author class, and output coordinate; retain the existing `law` refusal kind; and leave the bank, tick, records, and pose as they stood before that step. Earlier successful steps of the same command SHALL remain committed, and a command that moved in the failing step SHALL retire `refused` with only its previously admitted travel. This SHALL also apply to a non-finite authored-start value in an accepted document even when the requested destination is finite, without evaluating a law at any additional point merely to seek an error.
+
+#### Scenario: A valid authored start reaches a non-finite endpoint
+
+- **WHEN** a version-5 running document starts at `feed=0, slide=sqrt(0.1)` with `slide = sqrt(0.1 - feed)`, and an immediate request moves `feed` to `0.2`
+- **THEN** the request is refused as a law error naming `slide`, its law and author; the bank remains at its valid rest values at tick zero, and no record or pose change is published
+
+#### Scenario: A non-finite authored start is not subtracted into the bank
+
+- **WHEN** a version-5 running document starts at `feed=0.2, slide=0` with `slide = sqrt(0.1 - feed)`, and an immediate request moves `feed` to `0.1`
+- **THEN** the request is refused as a law error naming `slide` and its law, and the bank remains `feed=0.2, slide=0` at tick zero with no new record or pose change
+
+#### Scenario: A non-finite second step retains the first step
+
+- **WHEN** a two-step move from `feed=0` to `0.2` commits a finite first step at `feed=0.1` and its second step evaluates `sqrt(0.1 - feed)` to `NaN`
+- **THEN** the command is refused with the first step's travel admitted; the bank, tick, record, and pose retain the first successful step and no part of the second step is committed
+
+#### Scenario: A non-finite evaluated interior refuses its step
+
+- **WHEN** an existing running law path evaluates an interior point of a moving step and obtains `NaN` or either infinity
+- **THEN** that step is refused without committing its bank, crossings, or stops, while any earlier successful steps stand
+
+#### Scenario: A finite square-root boundary remains admissible
+
+- **WHEN** a running law `slide = sqrt(0.1 - feed)` starts at `feed=-0.2` and a request reaches the valid boundary `feed=0.1`
+- **THEN** the request retains its existing admitted travel and finite bank result, without a new refusal
+
+### Requirement: A maker watches the model full screen
+
+A viewer mounted with continuous rendering in a document where the browser
+permits full screen SHALL present one full-screen control. The control
+SHALL be a keyboard-focusable button whose accessible name says whether it
+enters or exits full screen, whose title names the `f` key, and whose icon
+is drawn by the package itself rather than taken from a font or a
+dependency. It SHALL be placed on the control surface the viewer draws:
+
+- at the end of the running machine's transport bar, when one is drawn;
+- otherwise at the end of the inline animation timeline bar, when one is
+  drawn;
+- otherwise as a permanently visible overlay in the bottom-right corner of
+  the viewer, for a static model, a model posed only by drivers, a clocked
+  machine, and an animation presented toggled, externally or not at all.
+
+Activating the control SHALL put the viewer's full-screen root into full
+screen, or take it out when it is already full screen. The full-screen root
+SHALL be the element the host gave the viewer, or the whole composed layout
+when the viewer is part of a layout the package mounted, so the model, its
+on-screen chrome and the control all remain on screen. The canvas SHALL
+follow the full-screen size on entering and return to the container's size
+on leaving. While in full screen the root SHALL be painted with the page
+background it was seen on (white when none is set), not the browser's
+black backdrop.
+
+The `f` key, lower or upper case, SHALL toggle full screen when it is pressed
+inside the viewer's full-screen root, or when nothing on the page has focus
+and this is the only viewer in that document able to go full screen. It
+SHALL NOT toggle while the target is a text field, a select, a textarea or
+editable content, while Ctrl, Alt or Meta is held, on key repeat, or when
+another handler has already consumed the key. The viewer SHALL NOT
+intercept Escape. Leaving full screen by Escape or by any other means SHALL
+leave the control showing the true state.
+
+Where the browser does not permit full screen for the document, such as an
+iframe without the full-screen permission or a browser without element full
+screen, the viewer SHALL present no full-screen control, the `f` key SHALL
+do nothing, and nothing SHALL imitate full screen. A viewer in on-demand
+render mode SHALL present no full-screen control. Disposing a viewer whose
+root is full screen SHALL leave full screen first. The control SHALL carry
+the stable class `machinome-fullscreen`, so a host can style or hide it.
+
+#### Scenario: A timeline carries the button
+
+- **WHEN** a model that reads `$t` is mounted with inline animation
+- **THEN** the full-screen button is the last control on its timeline bar
+  and no corner button is drawn
+
+#### Scenario: A running machine carries it on its transport
+
+- **WHEN** a document carrying a program is mounted
+- **THEN** the full-screen button is the last control on the run transport
+  bar
+
+#### Scenario: A model without a timeline carries it in the corner
+
+- **WHEN** a static model, a drivers-only posed model or a clocked machine
+  is mounted
+- **THEN** the full-screen button stands in the bottom-right corner of the
+  viewer, outside any bar, and stays there
+
+#### Scenario: The f key goes full screen and Escape comes back
+
+- **WHEN** the maker clicks the model and presses `f`
+- **THEN** the full-screen root is the document's full-screen element, the
+  canvas fills the screen and the button reads "Exit full screen"
+- **AND WHEN** the maker then presses Escape
+- **THEN** the browser leaves full screen, the canvas returns to its
+  container's size and the button reads "Full screen" again
+
+#### Scenario: Typing is not a shortcut
+
+- **WHEN** the maker types `f` into a value field of the viewer's panel, or
+  presses Ctrl+F
+- **THEN** the viewer does not change full-screen state
+
+#### Scenario: An iframe that does not permit full screen
+
+- **WHEN** an export is embedded in an iframe without `allowfullscreen`
+- **THEN** no full-screen button is drawn and `f` does nothing
+
+#### Scenario: Two viewers on one page
+
+- **WHEN** a page mounts two viewers and nothing has focus
+- **THEN** `f` puts neither in full screen, and `f` pressed on a control
+  inside one of them toggles only that one
+
+### Requirement: A host reads where any part stands on screen
+
+The mount handle SHALL answer, for any assembly path of the loaded tree, a
+part or a subassembly, the on-screen rectangle enclosing its visible
+geometry and a point at which its surface is the nearest visible surface,
+for the pose and camera the host last set. It SHALL answer this whether or
+not the document declares controls. Positions SHALL be in the same
+coordinates and units as the positions reported for declared controls, and
+the rectangle and point SHALL be computed by the same rule the controls
+listing uses, so a control's part and the same path report the same
+rectangle and point.
+
+The answer SHALL be nothing when no geometry under the path is visible,
+because the host hid it, focused elsewhere, or it has none, or when all of
+it is outside the viewer's canvas; the point alone SHALL be nothing when
+no probe of the bounded search finds the path's surface in front. An
+unknown or ambiguous path SHALL be refused with an error naming the path.
+Reading SHALL NOT draw a frame, change the view, the pose, visibility or
+any material, or notify assembly listeners.
+
+#### Scenario: An arrow follows a turning wheel
+
+- **WHEN** a film host sets a time and a view on a document that declares
+  no controls and asks where a part stands on screen
+- **THEN** it receives a rectangle around that part and a point on it, and
+  after the host sets a later time the answer moves with the part
+
+#### Scenario: A subassembly is one target
+
+- **WHEN** a host asks for a path naming a subassembly
+- **THEN** the rectangle encloses the visible geometry of all its parts
+
+#### Scenario: A hidden part is not on screen
+
+- **WHEN** a host hides a path and asks where it stands
+- **THEN** the answer is nothing
+
+#### Scenario: A declared control and its part agree
+
+- **WHEN** a document declares a control on a part and a host asks both for
+  the controls listing and for that part's path
+- **THEN** both report the same rectangle and the same point
+
+#### Scenario: A misspelt path is refused
+
+- **WHEN** a host asks for a path the tree does not have
+- **THEN** the call fails with an error naming that path
+
+#### Scenario: Reading draws nothing
+
+- **WHEN** an on-demand viewer is asked where parts stand, any number of
+  times, between two host changes
+- **THEN** no frame is drawn by those reads and the next captured frame is
+  the one the host's last change drew
+
+### Requirement: A host projects a world point onto the screen
+
+The mount handle SHALL answer the on-screen position of a point given in
+the scene's world coordinates, the coordinates a host gives camera and
+target in, for the current camera, in the same coordinates and units as
+the positions of parts. It SHALL answer nothing for a point at or behind
+the camera, and SHALL answer a position outside the canvas for a point in
+front of the camera that falls outside it. It SHALL refuse a point that is
+not three finite numbers. Projecting SHALL NOT draw a frame or change any
+state.
+
+#### Scenario: A label marks a point on the machine
+
+- **WHEN** a host projects a world point lying on a visible part
+- **THEN** the position falls inside that part's on-screen rectangle
+
+#### Scenario: A point behind the camera
+
+- **WHEN** a host projects a point behind the camera
+- **THEN** the answer is nothing rather than a mirrored position
+
+### Requirement: A host highlights parts and sets the others back
+
+The mount handle SHALL let a host highlight one or more assembly paths,
+parts or subassemblies: every visible part under them SHALL take a visible
+tint in a host-chosen colour, or a default accent, where its material can
+carry one. The host SHALL choose whether every other part is kept as it is,
+dimmed, or ghosted: drawn translucent and still drawn, so that a
+highlighted part behind it is seen through it. The viewer SHALL draw the
+result before returning, and SHALL return a function that puts every part
+back exactly as it looked before and draws that.
+
+Only one highlight SHALL stand at a time: a second request before the first
+is put back SHALL be refused by name. Putting back more than once SHALL
+have no further effect. A request naming an unknown or ambiguous path, an
+unreadable colour, an unknown treatment of the others or no path at all
+SHALL be refused by name before anything changes.
+
+A highlight SHALL NOT change which parts are shown, the focused root, the
+pose or the view, and SHALL NOT notify assembly listeners: a hidden part
+stays hidden. A standing highlight SHALL survive the viewer's in-place
+updates and reload, applying to the same paths on the new geometry, and a
+path the updated tree no longer has SHALL be dropped from it. A part a
+maker hovers SHALL return to its highlighted or ordinary look when the
+pointer leaves, whatever order hovering and highlighting happened in.
+
+#### Scenario: The narration points at the wheel
+
+- **WHEN** a film host highlights the wheel with the others kept
+- **THEN** the captured frame shows the wheel tinted and every other part
+  as before
+
+#### Scenario: The housing is seen through
+
+- **WHEN** a host highlights a gear inside a housing with the others ghosted
+- **THEN** the housing is drawn translucent and the gear is visible through
+  it
+
+#### Scenario: The rest recedes
+
+- **WHEN** a host highlights a part with the others dimmed
+- **THEN** every other part is drawn darker and the highlighted part is not
+
+#### Scenario: Putting it back is exact
+
+- **WHEN** a host captures a frame, highlights, calls the returned function
+  and captures again
+- **THEN** the two captures are identical
+
+#### Scenario: A second highlight is refused
+
+- **WHEN** a host highlights while an earlier highlight still stands
+- **THEN** the call fails, naming the need to put the earlier one back, and
+  the frame is unchanged
+
+#### Scenario: A hidden part stays hidden
+
+- **WHEN** a host hides a part and then highlights it
+- **THEN** the part is not drawn, and it appears highlighted when the host
+  shows it again
+
+#### Scenario: Hover and highlight do not fight
+
+- **WHEN** a maker hovers a control's part, the host highlights it, the
+  pointer leaves and the host puts the highlight back
+- **THEN** the part looks exactly as it did before either happened
+
+### Requirement: A ghosted part does not hide a tracked part
+
+When the others are ghosted, the point the handle reports for where a part
+stands on screen SHALL be found as if the ghosted parts were not in front
+of it, since they are drawn to be seen through. What a press or a hover
+reaches SHALL NOT change.
+
+#### Scenario: An arrow points at a gear inside a ghosted housing
+
+- **WHEN** a host ghosts the others and asks where a gear enclosed by a
+  housing stands on screen
+- **THEN** it receives a point on the gear rather than nothing
+
+### Requirement: A scripted view may roll and change its field of view
+
+A host changing the view of a loaded viewer SHALL be able to supply, with
+the camera position and target, an up direction, a vertical field of view
+in degrees, both, or neither. What it omits SHALL keep its current value.
+The viewer SHALL adopt and draw the whole view before returning, without
+reloading geometry or changing machine time, driver values, assembly
+visibility or focus. Reading the view back SHALL report camera, target, up
+direction and field of view, as copies the viewer does not later modify,
+with the up direction as the host supplied it.
+
+The viewer SHALL refuse, by name and leaving the previous view intact, an
+up direction that is not three finite numbers, is zero, or is parallel to
+the direction from camera to target, and a field of view that is not a
+finite number strictly between 0 and 180 degrees. An adopted up direction
+and field of view SHALL persist through refocusing, in-place updates and
+reload, and a maker orbiting by pointer SHALL orbit about the adopted up
+direction.
+
+#### Scenario: A shot tightens on the saw
+
+- **WHEN** a film host sets the same camera and target with a smaller field
+  of view
+- **THEN** the captured frame shows the model larger, and the view read back
+  reports the new field of view
+
+#### Scenario: A shot rolls to follow a part
+
+- **WHEN** a host sets a view with a new up direction
+- **THEN** the frame is drawn rolled to that direction, and the view read
+  back reports it as supplied
+
+#### Scenario: An omitted value is kept
+
+- **WHEN** a host sets a new field of view and then a new camera position
+  without one
+- **THEN** the second frame keeps the field of view the first set
+
+#### Scenario: An impossible roll is refused
+
+- **WHEN** a host supplies an up direction along the line from camera to
+  target, a zero up direction, or a field of view of 0 or 180 degrees
+- **THEN** the call fails naming the value, and the view and frame are
+  unchanged
+
+#### Scenario: Refocusing keeps the roll
+
+- **WHEN** a host sets an up direction and then focuses a subassembly
+- **THEN** the refocused frame keeps the adopted up direction
+
+#### Scenario: A maker orbits about the new up
+
+- **WHEN** a host adopts a new up direction on an interactive viewer and a
+  maker drags to orbit horizontally
+- **THEN** the camera turns about the adopted up direction, keeping its
+  angle to it
+
+### Requirement: Fresh mounts draw loaded rigid assets independently of fetch completion order
+
+For a fixed published document, viewer build, browser rendering environment, view and pose, the viewer SHALL produce the same fully loaded image on fresh mounts when rigid model or marking STL requests complete in different orders. It SHALL continue to request independent assets concurrently and SHALL preserve the document's geometry, model and marking colours, depth behavior and marking-surface bias. A failed load SHALL discard the mesh newly reserved by that load and dispose its material and any geometry returned to it before rejection, without attaching an unready mesh; a targeted update SHALL retain its existing prepare-before-mutation and failure-containment behavior.
+
+Complete supported assemblies SHALL load without exhausting the browser's pending geometry-request capacity through unrestricted viewer request fan-out, including when more than one viewer mounts or reloads in the same page. This SHALL retain independent overlapping loads and every required rigid model and marking, with no geometry omission or permanent substitution cache. A viewer's readiness SHALL wait for all its required assets; a failed required asset SHALL reject loading rather than yield a partially accepted assembly. A failed or disposed owner's outstanding loads SHALL NOT prevent other viewers from completing, attach late geometry to the discarded owner, or retain abandoned reserved meshes, materials or returned geometry.
+
+#### Scenario: Coincident sibling models complete in opposite orders
+
+- **WHEN** two differently coloured, coincident sibling models in the same document are mounted twice and their STL response completion order is reversed
+- **THEN** the two fully loaded captures at the same view and pose have exactly equal pixels, with neither model's colour selected by network completion order
+
+#### Scenario: Model and markings resolve out of order
+
+- **WHEN** a rigid part's model and multiple declared markings finish loading in different orders on fresh mounts
+- **THEN** the fully loaded images agree exactly, each marking keeps its own declared colour and existing surface bias, and independent requests have been allowed to overlap
+
+#### Scenario: Genuine depth remains authoritative
+
+- **WHEN** two noncoincident rigid surfaces with different depth are loaded in opposite network orders
+- **THEN** the nearer surface still occludes the farther one as before, regardless of completion order
+
+#### Scenario: One newly reserved load fails
+
+- **WHEN** a rigid model or marking load fails to fetch or prepare its geometry after reserving its mesh and material
+- **THEN** that load rejects, its own reserved mesh is discarded, its material and any geometry returned to it are disposed, and no blank mesh from that load was attached
+
+#### Scenario: A targeted replacement fails
+
+- **WHEN** a model or marking replacement fails during `artifactChanged()` or `manifestChanged()`
+- **THEN** the previous visible model and camera remain usable, and that failed replacement discards its newly reserved mesh and disposes its material and any returned geometry
+
+#### Scenario: Two large viewers mount together
+
+- **WHEN** two supported complete assemblies mount or reload concurrently in the same page, including the full Voron-2 export
+- **THEN** their geometry requests remain within a finite shared admission budget, independent assets overlap, all required assets load and each viewer renders its own complete assembly
+
+#### Scenario: Queued assets retain deterministic drawing
+
+- **WHEN** a fresh assembly has more models and markings than can be fetched together and the admitted assets complete in different orders
+- **THEN** all assets eventually appear and fully loaded images at the same pose agree exactly under the existing draw-order, colour, depth and marking-bias rules
+
+#### Scenario: A failed owner leaves another viewer usable
+
+- **WHEN** one viewer's initial load, reload or prepared targeted replacement fails while another viewer has pending geometry
+- **THEN** the failure retains its error and discards its abandoned new resources, the other viewer can finish, and an existing last good model and camera remain usable
+
+#### Scenario: Disposal during queued and active loading
+
+- **WHEN** an owner is disposed with geometry not yet requested and geometry already being fetched
+- **THEN** its unstarted loads do not issue requests, late returned geometry is disposed without attachment, its outstanding promises settle, and another viewer can continue when active requests retire
+
+#### Scenario: Repeated paths retain separate part ownership
+
+- **WHEN** multiple parts name the same model URL and their overlapping loads share a network request
+- **THEN** each part still owns separate geometry and material, disposing or replacing one cannot change the other's geometry, and a later genuine artifact update reads the current resource
+
+### Requirement: An on-demand viewer poses and draws a clocked machine
+
+A viewer mounted in on-demand render mode, under the conditions that mode
+already requires (externally driven animation, no autoplay, no driver
+controls and no part controls), SHALL accept a document carrying a clocked
+machine, whether or not it declares instructions. It SHALL keep refusing a
+document carrying a running program, naming the render mode, and a posed
+document that declares instructions.
+
+Under on-demand rendering, an accepted request to move an input, restore a
+saved bank or reset the machine SHALL pose the model and draw it before
+the call returns, with no frame loop running, so that a capture taken
+immediately afterwards shows the new bank. Changing the view SHALL draw as
+well, and adopting the view the viewer reports SHALL redraw without
+changing it. Posing the same bank twice SHALL draw the same frame.
+
+Under on-demand rendering, playing a declared instruction and starting a
+clocked machine's clock SHALL be refused by name, before any request is
+made and without changing the bank or the drawn pose, naming the render
+mode, because both draw over wall seconds that only a frame loop advances.
+Stopping the clock SHALL be accepted. An on-demand viewer SHALL present no
+control of its own on a clocked machine: no clocked panel, no part control
+and no full-screen control.
+
+#### Scenario: A film poses a stroke mid-path
+
+- **WHEN** a host mounts a clocked machine on demand, restores a bank whose
+  crank stands halfway through its stroke and captures the frame
+- **THEN** the frame differs from the frame captured at the stroke's
+  origin, and equals a second capture taken after restoring the same bank
+  again
+
+#### Scenario: A request answers as in continuous mode
+
+- **WHEN** a host makes the same requests on an on-demand mount and on a
+  continuous mount of the same clocked document
+- **THEN** each request reports the same origin, end, admitted travel,
+  commits and stops, and leaves the same bank
+
+#### Scenario: A played instruction is refused on demand
+
+- **WHEN** a host plays a declared instruction on an on-demand mount of a
+  clocked machine
+- **THEN** the call fails naming the on-demand render mode, and the bank
+  and the frame are unchanged
+
+#### Scenario: A running clock is refused on demand
+
+- **WHEN** a host starts the clock of a clocked machine that declares one,
+  on an on-demand mount
+- **THEN** the call fails naming the on-demand render mode, the clock does
+  not play, and advancing the clock by a request still works
+
+#### Scenario: A running program is still refused on demand
+
+- **WHEN** a host mounts a document carrying a running program on demand
+- **THEN** the mount fails naming the program and the render mode
+
+#### Scenario: Nothing to press on a filmed machine
+
+- **WHEN** a clocked machine is mounted on demand
+- **THEN** the page holds the canvas and no control of the viewer's own
+
+#### Scenario: A host requires an on-demand clocked mount
+
+- **WHEN** a host means to capture a clocked machine frame by frame without
+  a frame loop
+- **THEN** the declared API version tells it whether this bundle mounts
+  one on demand, before it mounts a bundle that would refuse the document
+

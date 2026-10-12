@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-viewer"
+version = "0.8.1"
+description = "The browser viewer for machinome models: the embeddable widget, the development server and the headless snapshot capture"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "GPL-2.0-or-later OR CERN-OHL-S-2.0+"
+license-files = ["LICENSE", "LICENSES/*.txt"]
+authors = [
+    { name = "Luis Fagundes", email = "lhfagundes@gmail.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Manufacturing",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+keywords = ["machinome", "cad", "viewer", "three.js"]
+dependencies = [
+    # The framework this viewer is released with: the set carries one
+    # version, and the pins between its packages are ~= both ways. The
+    # viewer imports nothing of it; the framework reaches the viewer through
+    # the entry point below and its command line.
+    "machinome~=0.8.1",
+    "fastapi>=0.111,<1",
+    "uvicorn>=0.30,<1",
+    # uvicorn serves WebSockets only through an optional library, and the
+    # development page's live reload is one (/ws/reload).
+    "websockets>=10.4",
+]
+
+[project.optional-dependencies]
+# The headless capture behind `machinome snapshot --renderer web`. Chromium is a
+# second, separate step: `playwright install chromium`.
+snapshot = [
+    "playwright",
+]
+
+[project.urls]
+Homepage = "https://github.com/machinome/machinome"
+
+[project.scripts]
+machinome-viewer = "machinome.viewer.web.cli:main"
+
+# How machinome finds the installed viewer: one entry point that resolves to
+# a function returning the bundle path, the export page and the API version.
+# Nothing else of this package is an interface to it. The group's name is
+# the framework's lookup key, not a module.
+[project.entry-points."machinome.viewer"]
+bundle = "machinome.viewer.web.bundle:describe"
+
+[tool.setuptools.packages.find]
+# The package directory machinome/viewer/web/, which has its own
+# __init__.py, with none at machinome/ nor at machinome/viewer/. The widget
+# beside the modules is package data, not a package.
+include = ["machinome.viewer.web"]
+namespaces = true
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.exclude-package-data]
+"machinome.viewer.web" = [
+    "widget/src/*",
+    "widget/build.mjs",
+    "widget/tsconfig.json",
+    "widget/vitest.config.ts",
+]
+
+[tool.setuptools.cmdclass]
+sdist = "machinome.viewer.web.packaging.BuildSourceDistribution"
+build_py = "machinome.viewer.web.packaging.BuildPythonWithFrontend"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

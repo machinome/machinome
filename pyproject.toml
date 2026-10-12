@@ -19,6 +19,7 @@ machinome-node-openscad = { workspace = true }
 machinome-node-solid2 = { workspace = true }
 machinome-node-step = { workspace = true }
 machinome-node-stl = { workspace = true }
+machinome-viewer = { workspace = true }
 
 [tool.uv]
 # Every member installs editable in compat mode, a .pth line per package
@@ -26,11 +27,10 @@ machinome-node-stl = { workspace = true }
 # core's path extension (machinome._namespace_portions) admits it. uv reads
 # this setting here at the root and nowhere else.
 config-settings = { editable_mode = "compat" }
-# Two products no index serves yet: machinome-studio is unpublished, and the
-# viewer and web-snapshot extras require machinome-viewer 0.8.1, which is not
-# uploaded. uv locks every extra of every member, so either would fail the
-# lock; each leaves this list when an index serves it.
-exclude-dependencies = ["machinome-studio", "machinome-viewer"]
+# A product no index serves yet: machinome-studio is unpublished, and uv
+# locks every extra of every member, so the studio extra would fail the lock;
+# it leaves this list when an index serves it.
+exclude-dependencies = ["machinome-studio"]
 
 [dependency-groups]
 # `uv sync` at the root installs this group by default: the framework's dev

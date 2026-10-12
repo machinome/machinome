@@ -1,0 +1,340 @@
+=================
+The viewer handle
+=================
+
+Returned by :js:func:`MachinomeViewer.mount`, or available as
+``inspector.viewer``. Methods returning ``void`` are synchronous; await the
+update methods that return promises. Stop using a disposed handle. After
+republishing a different machine, reacquire ``run()``/``machine()`` handles.
+
+Camera and lifecycle
+====================
+
+.. js:attribute:: ViewerHandle.apiVersion
+
+   Integer API version implemented by this mount.
+
+.. js:method:: ViewerHandle.view()
+
+   Return a detached snapshot ``{camera, target, up, fov}``. ``camera``,
+   ``target`` and ``up`` are three.js vectors with ``x``, ``y``, ``z``;
+   ``up`` is the adopted up direction exactly as it was supplied, not
+   normalised. ``fov`` is the vertical field of view in degrees. Editing the
+   returned vectors does not move the viewer. Pass the snapshot to
+   ``setView()`` to restore all four, or to a new mount's ``view`` option to
+   restore camera and target; ``up`` and ``fov`` are mount options of their
+   own. ``up`` and ``fov`` are reported since API 28.
+
+.. js:method:: ViewerHandle.setView(view)
+
+   Adopt a ``ViewInput`` and render immediately; return ``void``. Available
+   since API 21. Requires finite 3D camera/target vectors at distinct positions.
+   Since API 28 it also takes an optional ``up`` direction, in the same vector
+   form, and an optional ``fov``, the vertical field of view in degrees. What
+   you omit keeps its current value. Preserves tree, machine state, timeline,
+   visibility and focus; a later read returns a fresh snapshot.
+
+   Refused, each by name and before anything changes: non-finite or
+   non-three-dimensional vectors, coincident camera and target, a zero
+   ``up``, an ``up`` parallel or anti-parallel to the direction from camera to
+   target (there is no defined roll there), and a ``fov`` that is not a
+   finite number strictly between 0 and 180. The parallel check applies only
+   to an ``up`` you supply: a view straight along the retained up, such as a
+   camera directly above its target with the default Z-up, is accepted as
+   before. A disposed viewer throws.
+
+   An adopted up direction and field of view persist through ``setRoot()``,
+   ``reload()`` and the targeted updates. Orbiting by pointer turns about the
+   adopted up direction.
+
+.. js:method:: ViewerHandle.highlight(paths, options)
+
+   Tint every part under the named assembly paths, keep, dim or ghost every
+   other part, draw that before returning, and return a zero-argument function
+   that puts every part back exactly as it looked and draws again. Available
+   since API 28.
+
+   ``paths`` is a non-empty array of assembly paths, parts or subassemblies.
+   ``options`` is optional:
+
+   * ``color``: the tint, a ``'#rgb'`` or ``'#rrggbb'`` string; default
+     ``'#ffb000'``. It is added to each part's lit colour as an emissive
+     glow, so the result mixes the tint with the part's own colour; a bright
+     tint largely evens out a part's shading.
+   * ``others``: what happens to every part not named. ``'keep'`` (default)
+     leaves them as they are; ``'dim'`` darkens their colour; ``'ghost'``
+     draws them translucent, so a highlighted part behind them is seen
+     through them.
+
+   Only one highlight stands at a time. Call the returned function before
+   highlighting again; a second ``highlight()`` while one stands throws
+   ``highlight is already applied; call the function the previous highlight
+   returned before highlighting again``. Calling the returned function more
+   than once, or after ``dispose()``, does nothing.
+
+   An empty or missing ``paths``, a path that is not an array of names, an
+   unknown or ambiguous path, a colour in another form and an unknown
+   ``others`` value each throw naming the problem, before anything changes.
+   A disposed viewer throws.
+
+   A highlight changes how parts look and nothing else: it does not show,
+   hide or focus anything, does not move the view or the pose, and notifies no
+   assembly listener. A hidden part stays hidden; shown again, it appears
+   highlighted, dimmed or ghosted as the standing highlight says.
+   ``reload()``, ``manifestChanged()`` and ``artifactChanged()`` keep a
+   standing highlight on the same paths of the new geometry; a path the
+   updated tree no longer has is dropped, and when none is left the highlight
+   ends and its function does nothing. The hover highlight of a declared part
+   control and a host highlight put each other back exactly, in any order.
+
+   A part with no declared colour is drawn with a colour derived from its
+   surface direction and has no colour to tint or dim: it can be ghosted but
+   not tinted or dimmed. A ghosted part still receives presses and hovers. For
+   :js:meth:`ViewerHandle.partOnScreen`, a ghosted part does not hide the part
+   behind it: the ``point`` of a part inside a ghosted housing is found on
+   that part.
+
+.. js:method:: ViewerHandle.dispose()
+
+   Stop rendering, release geometry/materials, listeners and execution resources,
+   and empty the mount container. Return ``void``. Dispose attached navigators
+   first, or use the composing inspector's ``dispose()``.
+
+.. js:method:: ViewerHandle.reload()
+
+   Return ``Promise<void>`` after replacing the document/tree, preserving camera
+   and orbit target. Use targeted updates below when only some content changed.
+   Loading/parsing failures reject the promise.
+
+.. js:method:: ViewerHandle.artifactChanged(path)
+
+   Refetch one document-relative model path (for example ``'models/hub.stl'``)
+   and replace the geometry of its referencing nodes. Return ``Promise<void>``.
+   It does not add/remove nodes or reload the whole document. Camera, time and
+   surviving navigation choices remain; fetch errors reject.
+
+.. js:method:: ViewerHandle.manifestChanged()
+
+   Refetch and reconcile the document in place; return ``Promise<void>``.
+   Update placements/colors, add/remove nodes, and fetch geometry whose identity
+   changed. Preserve view, timeline, and still-valid paths/driver values.
+   A compatible republished running program keeps its state; changed machine
+   identity can reset retained state. Inspect the new operating handle after
+   republishing. Fetch/validation failures reject.
+
+Assembly inspection
+===================
+
+Paths are arrays of sibling names **relative to the published root**, not
+dot-separated strings. The root's own name is omitted: the spinner's hub is
+``['Hub']``. ``[]`` names the root; ``null`` means full assembly for focus.
+Use the paths returned by ``assembly()`` rather than deriving them from labels.
+
+.. js:method:: ViewerHandle.assembly()
+
+   Return an ``AssemblyNode`` snapshot of the whole published tree:
+   ``{name, path, color, model, children}``. ``path`` is a string array;
+   ``color`` is a string or null; ``model`` is a boolean indicating geometry;
+   ``children`` recursively contains the same structure. No three.js objects
+   or live mutable tree state are exposed. Throws if no assembly is available.
+
+.. js:method:: ViewerHandle.setRoot(path)
+
+   Focus and frame the subtree at ``path``, or the full assembly for ``null``;
+   return ``void``. Unknown paths throw. Focus controls the visible/operable
+   assembly layer without deleting the rest of the tree.
+
+.. js:method:: ViewerHandle.setVisible(path, visible)
+
+   Show/hide a known path; return ``void``. Unknown paths throw. Hiding a parent
+   obscures descendants without rewriting their individual visibility choices.
+   Focusing elsewhere does not clear explicitly hidden paths.
+
+.. js:method:: ViewerHandle.navigation()
+
+   Return a serializable snapshot ``{root: string[] | null, hidden: string[][]}``
+   with the focus and explicitly hidden paths. Returned arrays are copies.
+   It does not need a loaded tree and never throws. There is no
+   ``restoreNavigation()`` method; reapply valid paths with ``setVisible()``
+   and ``setRoot()`` if your host persists this state.
+
+.. js:method:: ViewerHandle.onAssemblyChange(listener)
+
+   Subscribe to accepted tree, focus and visibility operations. The callback
+   receives ``{assembly, navigation}`` snapshots, including changes made by the
+   built-in UI. Return value is a zero-argument unsubscribe function. This is
+   an observation channel: do not drive the viewer from inside its callback.
+
+Timeline and playback
+=====================
+
+.. js:method:: ViewerHandle.setTime(time)
+
+   Set normalized timeline time, clamp to [0, 1], and render synchronously;
+   return ``void``. Supply a finite number. It neither advances a running
+   program nor seeks a clocked bank. Use ``animation: 'external'`` when the
+   host owns this timeline so automatic animation does not overwrite it.
+
+.. js:method:: ViewerHandle.speed()
+
+   Return the current positive playback multiplier.
+
+.. js:method:: ViewerHandle.setSpeed(speed)
+
+   Set the multiplier and return ``void``. Nonpositive or non-finite values
+   throw. Changes the rate of timed playback/running ticks/elapsed-clock play,
+   never tick size or retained state. A loop-less posed document accepts the
+   setting but does not use it until a timed loop is published.
+
+Posed drivers and instructions
+==================================
+
+The posed driver table is distinct from a running or clocked **bank**. On
+those models, use :doc:`running` or :doc:`clocked` to read and move retained
+state. Direct posed writes do not issue mechanical requests.
+
+.. js:method:: ViewerHandle.drivers()
+
+   Return a copy of the declarations keyed by qualified driver ID. Each entry
+   has ``default``, ``range`` (array or null), ``unit`` (string or null),
+   ``dtype`` (for example ``'int'`` or null), and ``scale`` (number or null).
+   Default/range are native values. For display, design value = native value
+   × scale (or unchanged if scale is null).
+
+.. js:method:: ViewerHandle.driver(id)
+
+   Return the posed driver's current value in **native units**. Unknown IDs
+   throw. This is not a read of a running/clocked bank.
+
+.. js:method:: ViewerHandle.setDriver(id, value)
+
+   Set a posed driver in native units and render immediately; return ``void``.
+   Unknown IDs throw. The host must supply finite values and integer native
+   values for integer declarations: this setter does not validate or round
+   them for you. Ranges do not clamp. Setting a driver cancels an instruction
+   ramp currently controlling that driver.
+
+.. js:method:: ViewerHandle.onDriverChange(listener)
+
+   Subscribe with ``(id, value) => ...``; values are native. Return an
+   unsubscribe function. Reports posed edits and ramp changes, including
+   built-in controls, not running/clocked bank commits.
+
+.. js:method:: ViewerHandle.instructions()
+
+   Return instruction declarations keyed by qualified name. An entry has
+   ``duration`` in seconds and ``targets`` (absolute) or ``by`` (relative)
+   mapping input IDs to **design-unit** values. The document discipline
+   determines how an instruction executes.
+
+.. js:method:: ViewerHandle.trigger(name)
+
+   On a posed model, start the named instruction's ramps and return a
+   ``TriggerHandle``. Unknown names throw. Clocked models explicitly refuse
+   this method and direct callers to ``machine().trigger()``. Use
+   ``run().trigger()`` for running models; the posed table is not their bank.
+
+.. js:attribute:: TriggerHandle.done
+
+   ``Promise<void>`` resolving when every ramp has landed, been cancelled or
+   been replaced. Resolution alone does not prove the original target was
+   reached. It is not a running request's outcome report.
+
+.. js:method:: TriggerHandle.cancel()
+
+   Stop this trigger's remaining ramps at their current values, settle ``done``,
+   and return ``void``.
+
+Operating handles and part controls
+=======================================
+
+.. js:method:: ViewerHandle.run()
+
+   Return the :doc:`RunHandle <running>` for a running document, otherwise null.
+
+.. js:method:: ViewerHandle.machine()
+
+   Return the :doc:`MachineHandle <clocked>` for a clocked document, otherwise
+   null. ``run()`` and ``machine()`` cannot both be non-null.
+
+.. js:method:: ViewerHandle.controls()
+
+   Return all declared part controls as ``PartControlView[]``, even with
+   ``partControls: 'none'``; return ``[]`` if none are declared. Each includes
+   ``name``, ``kind`` (``button``, ``turn`` or ``slide``), ``part`` and ``joint``
+   paths, ``coordinate``, ``axis`` and ``origin``. A button names its
+   ``instruction``; a motion control names its ``input`` and ``perUnit``.
+   ``operationSpan`` may identify the motion's operation interval.
+
+   ``rect`` is the current on-screen ``{x, y, width, height}`` or null when
+   hidden/off-screen. ``point`` is a reachable ``{x, y}`` under the actual
+   nearest-hit picking rule, or null; a rectangle's center may be a hole.
+   ``gesturePoint`` is a reachable drag handle or null. These screen locations
+   are **viewport CSS pixels**, matching browser pointer coordinates, not
+   model units or pixels relative to the canvas. Read them again after camera,
+   layout or machine movement. Treat the returned data as read-only.
+
+   With viewer API 27, two ``Turn`` controls may name one part when they
+   select different joints. Each has its own named drag handle and
+   ``gesturePoint``. Dragging the undecided body requests neither turn;
+   select the handle for the intended joint. Two turns selecting the same
+   joint still refuse at load.
+
+Where parts stand on screen
+===========================
+
+These two members tell a host where to place its own overlay, such as an
+arrow or a label, over the model. The viewer draws nothing for them. Both are
+available since API 28; check :js:attr:`ViewerHandle.apiVersion` before calling
+them.
+
+Positions are **viewport CSS pixels**, the frame of ``controls()`` and of
+browser pointer coordinates. To place an absolutely positioned element inside
+your own container, subtract the container's ``getBoundingClientRect()``
+origin. Both members answer for the pose, visibility and camera your last call
+left (``setTime``, ``setView``, ``setVisible``, ``setRoot``, a driver change),
+whether or not a frame has been drawn since. Reading draws no frame, changes
+no view, pose, visibility or material, and notifies no assembly listener, so
+you may read as often as you like between two changes. Read again after each
+change.
+
+.. js:method:: ViewerHandle.partOnScreen(path)
+
+   Return ``{rect, point}`` for an assembly path, or null. ``path`` is any path
+   of the loaded tree, a part or a subassembly; ``[]`` is the whole model. It
+   works whether or not the document declares part controls.
+
+   ``rect`` is ``{x, y, width, height}``: the screen rectangle of the
+   world-aligned box around the path's visible geometry. It encloses the part
+   and may be larger than its silhouette, most visibly for a long diagonal
+   part. It is not clipped to the canvas, so a part partly off screen reports
+   a rectangle that extends past the canvas edge.
+
+   ``point`` is ``{x, y}``, a point inside the canvas and inside ``rect`` at
+   which the nearest visible surface belongs to the path, found by the same
+   bounded search ``controls()`` uses: the rectangle's centre first, then a
+   7 × 7 grid. It is null when no probe finds the path's surface in front, for
+   example a part wholly behind another. Use ``point`` for the tip of an arrow
+   that must land on the part, and ``rect`` for placement around it.
+
+   The whole answer is null when nothing under the path is visible (hidden,
+   outside the focused root, or without geometry) or when all of it is off the
+   canvas. For a declared control's part, ``rect`` and ``point`` agree with
+   what ``controls()`` reports for it.
+
+   An unknown or ambiguous path throws ``Unknown assembly path: …`` or
+   ``Ambiguous assembly path: …`` naming it. A path that is not an array of
+   strings throws, as does a disposed viewer.
+
+.. js:method:: ViewerHandle.project(world)
+
+   Return the ``{x, y}`` screen position of a point given as ``[x, y, z]`` in
+   the scene's world coordinates, the coordinates ``setView()`` takes its
+   camera and target in, or null for a point at or behind the camera. A point
+   in front of the camera that falls outside the canvas returns a position
+   outside it; deciding what to do with it is the host's. ``project()`` says
+   where a point lands, not whether it is seen: a point hidden behind a part
+   still has a position.
+
+   Anything but three finite numbers throws
+   ``project needs three finite world coordinates``; a disposed viewer throws.

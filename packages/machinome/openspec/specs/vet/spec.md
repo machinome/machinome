@@ -241,16 +241,19 @@ denied modules: `machinome.cli`, `machinome.manager`,
 `machinome.core.pieces`, `machinome.source_generation`,
 `machinome.viewers`, `machinome.sphinx`, `machinome.currency`,
 `machinome._artifact`, `machinome.brep_cache`, `machinome.brep_artifacts`,
-and the B-rep engine's file operations `machinome.engine.brep.read_brep`,
-`machinome.engine.brep.write_brep` and `machinome.engine.brep.write_stl`.
-The finding SHALL name the denied name reached. Every other name beneath
-the contract members, including `machinome.node`, `machinome.simulation`,
-`machinome.motion`, `machinome.math`, `machinome.parameters`,
-`machinome.test`, `machinome.engine`, `machinome.engine.brep` and its
-other operations, and the leaf modules `machinome.node.cadquery`,
-`machinome.node.build123d`, `machinome.node.step`, `machinome.node.molejo`,
-`machinome.node.solid2`, `machinome.node.jscad` and `machinome.node.stl` and the
-package `machinome.node.openscad` with its modules, SHALL pass.
+the B-rep engine's file operations `machinome.engine.brep.read_brep`,
+`machinome.engine.brep.write_brep` and `machinome.engine.brep.write_stl`,
+and the browser viewer's package `machinome.viewer.web`, which serves,
+captures and builds its bundle in processes of its own (change
+`join-viewer`). The finding SHALL name the denied name reached. Every other
+name beneath the contract members, including `machinome.node`,
+`machinome.simulation`, `machinome.motion`, `machinome.math`,
+`machinome.parameters`, `machinome.test`, `machinome.engine`,
+`machinome.engine.brep` and its other operations, and the leaf modules
+`machinome.node.cadquery`, `machinome.node.build123d`,
+`machinome.node.step`, `machinome.node.molejo`, `machinome.node.solid2`,
+`machinome.node.jscad` and `machinome.node.stl` and the package
+`machinome.node.openscad` with its modules, SHALL pass.
 
 `machinome.openscad` and `machinome.scad_engine` no longer exist: the OpenSCAD
 writer and binary contract are `machinome.node.openscad.writer` and
@@ -274,6 +277,10 @@ root exports nothing"): every node class is imported from its module,
 beneath the contract members and pass. An import of a former root name, such as
 `from machinome.node import AssemblyNode`, is, likewise, not a vet finding; it
 fails when the project runs, naming the module that defines the name.
+
+The browser viewer's former module name `machinome_viewer`, which no package
+of the set installs, is not a member of the universe: an import of it is
+`outside-universe`, as it was before the viewer joined the repository.
 
 #### Scenario: The loader through an import
 
@@ -316,6 +323,15 @@ fails when the project runs, naming the module that defines the name.
   CadQueryNode` and `from machinome.node.step import StepAssembly,
   solids_from_faces`
 - **THEN** vet reports no finding for those imports
+
+#### Scenario: The browser viewer is an internal
+
+- **WHEN** one vetted module runs `from machinome.viewer.web.server import
+  WebViewer` and another runs `from machinome_viewer.server import
+  WebViewer`
+- **THEN** vet reports the first as kind `framework-internal`, name
+  `machinome.viewer.web`, and the second as `outside-universe`, named
+  `machinome_viewer.server`
 
 ### Requirement: A file write is a finding
 

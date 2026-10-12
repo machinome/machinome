@@ -1,0 +1,548 @@
+
+> @machinome/viewer@0.8.0 test
+> vitest run src/parent-adversarial-geometry.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/machinome_viewer/widget
+
+ ❯ src/parent-adversarial-geometry.test.ts (12 tests | 3 failed) 18ms
+   ✓ disposes geometry when cancellation falls between loader and admission continuations 3ms
+   ✓ does not attach an artifact replacement after disposal at microtask 0 1ms
+   ✓ does not attach an artifact replacement after disposal at microtask 1 1ms
+   ✓ does not attach an artifact replacement after disposal at microtask 2 0ms
+   × does not attach an artifact replacement after disposal at microtask 3 7ms
+     → expected "add" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st add call:
+
+    Array [
+      Object {
+        "geometries": Array [
+          Object {
+            "depth": 1,
+            "depthSegments": 1,
+            "height": 1,
+            "heightSegments": 1,
+            "type": "BoxGeometry",
+            "uuid": "2d2897a1-659e-48ea-affd-22f321fb9188",
+            "width": 1,
+            "widthSegments": 1,
+          },
+        ],
+        "materials": Array [
+          Object {
+            "colorWrite": true,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "stencilFail": 7680,
+            "stencilFunc": 519,
+            "stencilFuncMask": 255,
+            "stencilRef": 0,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680,
+            "type": "MeshNormalMaterial",
+            "uuid": "cb74218c-8e3f-4c8b-b06b-2aff6d566342",
+            "wireframeLinecap": undefined,
+            "wireframeLinejoin": undefined,
+          },
+        ],
+        "metadata": Object {
+          "generator": "Object3D.toJSON",
+          "type": "Object",
+          "version": 4.6,
+        },
+        "object": Object {
+          "geometry": "2d2897a1-659e-48ea-affd-22f321fb9188",
+          "layers": 1,
+          "material": "cb74218c-8e3f-4c8b-b06b-2aff6d566342",
+          "matrix": Array [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+          ],
+          "type": "Mesh",
+          "up": Array [
+            0,
+            1,
+            0,
+          ],
+          "uuid": "f698f1c6-dbc4-46ea-8529-59cfbb822f78",
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+   × does not attach an artifact replacement after disposal at microtask 4 1ms
+     → expected "add" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st add call:
+
+    Array [
+      Object {
+        "geometries": Array [
+          Object {
+            "depth": 1,
+            "depthSegments": 1,
+            "height": 1,
+            "heightSegments": 1,
+            "type": "BoxGeometry",
+            "uuid": "46d241c6-f1e6-4d39-b86e-c48352b29c93",
+            "width": 1,
+            "widthSegments": 1,
+          },
+        ],
+        "materials": Array [
+          Object {
+            "colorWrite": true,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "stencilFail": 7680,
+            "stencilFunc": 519,
+            "stencilFuncMask": 255,
+            "stencilRef": 0,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680,
+            "type": "MeshNormalMaterial",
+            "uuid": "f1ecaeb6-ef79-46db-851c-632f7a52f0c9",
+            "wireframeLinecap": undefined,
+            "wireframeLinejoin": undefined,
+          },
+        ],
+        "metadata": Object {
+          "generator": "Object3D.toJSON",
+          "type": "Object",
+          "version": 4.6,
+        },
+        "object": Object {
+          "geometry": "46d241c6-f1e6-4d39-b86e-c48352b29c93",
+          "layers": 1,
+          "material": "f1ecaeb6-ef79-46db-851c-632f7a52f0c9",
+          "matrix": Array [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+          ],
+          "type": "Mesh",
+          "up": Array [
+            0,
+            1,
+            0,
+          ],
+          "uuid": "cf644181-3c59-43d6-a8b6-7d636794ad86",
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+   × does not attach an artifact replacement after disposal at microtask 5 1ms
+     → expected "add" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st add call:
+
+    Array [
+      Object {
+        "geometries": Array [
+          Object {
+            "depth": 1,
+            "depthSegments": 1,
+            "height": 1,
+            "heightSegments": 1,
+            "type": "BoxGeometry",
+            "uuid": "13ff6b80-23ca-484b-94ac-8ae18e9fa26d",
+            "width": 1,
+            "widthSegments": 1,
+          },
+        ],
+        "materials": Array [
+          Object {
+            "colorWrite": true,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "stencilFail": 7680,
+            "stencilFunc": 519,
+            "stencilFuncMask": 255,
+            "stencilRef": 0,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680,
+            "type": "MeshNormalMaterial",
+            "uuid": "2296977d-a836-44b0-b15f-5d75d666b9ae",
+            "wireframeLinecap": undefined,
+            "wireframeLinejoin": undefined,
+          },
+        ],
+        "metadata": Object {
+          "generator": "Object3D.toJSON",
+          "type": "Object",
+          "version": 4.6,
+        },
+        "object": Object {
+          "geometry": "13ff6b80-23ca-484b-94ac-8ae18e9fa26d",
+          "layers": 1,
+          "material": "2296977d-a836-44b0-b15f-5d75d666b9ae",
+          "matrix": Array [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+          ],
+          "type": "Mesh",
+          "up": Array [
+            0,
+            1,
+            0,
+          ],
+          "uuid": "f293d422-a4cd-465e-9430-88d371cc35da",
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+   ✓ does not attach an artifact replacement after disposal at microtask 6 0ms
+   ✓ does not attach an artifact replacement after disposal at microtask 7 0ms
+   ✓ does not attach an artifact replacement after disposal at microtask 8 1ms
+   ✓ does not attach an artifact replacement after disposal at microtask 9 1ms
+   ✓ does not attach an artifact replacement after disposal at microtask 10 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/parent-adversarial-geometry.test.ts > does not attach an artifact replacement after disposal at microtask 3
+AssertionError: expected "add" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st add call:
+
+    Array [
+      Object {
+        "geometries": Array [
+          Object {
+            "depth": 1,
+            "depthSegments": 1,
+            "height": 1,
+            "heightSegments": 1,
+            "type": "BoxGeometry",
+            "uuid": "2d2897a1-659e-48ea-affd-22f321fb9188",
+            "width": 1,
+            "widthSegments": 1,
+          },
+        ],
+        "materials": Array [
+          Object {
+            "colorWrite": true,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "stencilFail": 7680,
+            "stencilFunc": 519,
+            "stencilFuncMask": 255,
+            "stencilRef": 0,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680,
+            "type": "MeshNormalMaterial",
+            "uuid": "cb74218c-8e3f-4c8b-b06b-2aff6d566342",
+            "wireframeLinecap": undefined,
+            "wireframeLinejoin": undefined,
+          },
+        ],
+        "metadata": Object {
+          "generator": "Object3D.toJSON",
+          "type": "Object",
+          "version": 4.6,
+        },
+        "object": Object {
+          "geometry": "2d2897a1-659e-48ea-affd-22f321fb9188",
+          "layers": 1,
+          "material": "cb74218c-8e3f-4c8b-b06b-2aff6d566342",
+          "matrix": Array [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+          ],
+          "type": "Mesh",
+          "up": Array [
+            0,
+            1,
+            0,
+          ],
+          "uuid": "f698f1c6-dbc4-46ea-8529-59cfbb822f78",
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/parent-adversarial-geometry.test.ts:44:25
+     42|     const lateAdd = vi.spyOn(tree.group, 'add');
+     43|     await outcome;
+     44|     expect(lateAdd).not.toHaveBeenCalled();
+       |                         ^
+     45|     expect(dispose).toHaveBeenCalledTimes(1);
+     46|   },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/parent-adversarial-geometry.test.ts > does not attach an artifact replacement after disposal at microtask 4
+AssertionError: expected "add" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st add call:
+
+    Array [
+      Object {
+        "geometries": Array [
+          Object {
+            "depth": 1,
+            "depthSegments": 1,
+            "height": 1,
+            "heightSegments": 1,
+            "type": "BoxGeometry",
+            "uuid": "46d241c6-f1e6-4d39-b86e-c48352b29c93",
+            "width": 1,
+            "widthSegments": 1,
+          },
+        ],
+        "materials": Array [
+          Object {
+            "colorWrite": true,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "stencilFail": 7680,
+            "stencilFunc": 519,
+            "stencilFuncMask": 255,
+            "stencilRef": 0,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680,
+            "type": "MeshNormalMaterial",
+            "uuid": "f1ecaeb6-ef79-46db-851c-632f7a52f0c9",
+            "wireframeLinecap": undefined,
+            "wireframeLinejoin": undefined,
+          },
+        ],
+        "metadata": Object {
+          "generator": "Object3D.toJSON",
+          "type": "Object",
+          "version": 4.6,
+        },
+        "object": Object {
+          "geometry": "46d241c6-f1e6-4d39-b86e-c48352b29c93",
+          "layers": 1,
+          "material": "f1ecaeb6-ef79-46db-851c-632f7a52f0c9",
+          "matrix": Array [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+          ],
+          "type": "Mesh",
+          "up": Array [
+            0,
+            1,
+            0,
+          ],
+          "uuid": "cf644181-3c59-43d6-a8b6-7d636794ad86",
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/parent-adversarial-geometry.test.ts:44:25
+     42|     const lateAdd = vi.spyOn(tree.group, 'add');
+     43|     await outcome;
+     44|     expect(lateAdd).not.toHaveBeenCalled();
+       |                         ^
+     45|     expect(dispose).toHaveBeenCalledTimes(1);
+     46|   },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/parent-adversarial-geometry.test.ts > does not attach an artifact replacement after disposal at microtask 5
+AssertionError: expected "add" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st add call:
+
+    Array [
+      Object {
+        "geometries": Array [
+          Object {
+            "depth": 1,
+            "depthSegments": 1,
+            "height": 1,
+            "heightSegments": 1,
+            "type": "BoxGeometry",
+            "uuid": "13ff6b80-23ca-484b-94ac-8ae18e9fa26d",
+            "width": 1,
+            "widthSegments": 1,
+          },
+        ],
+        "materials": Array [
+          Object {
+            "colorWrite": true,
+            "depthFunc": 3,
+            "depthTest": true,
+            "depthWrite": true,
+            "stencilFail": 7680,
+            "stencilFunc": 519,
+            "stencilFuncMask": 255,
+            "stencilRef": 0,
+            "stencilWrite": false,
+            "stencilWriteMask": 255,
+            "stencilZFail": 7680,
+            "stencilZPass": 7680,
+            "type": "MeshNormalMaterial",
+            "uuid": "2296977d-a836-44b0-b15f-5d75d666b9ae",
+            "wireframeLinecap": undefined,
+            "wireframeLinejoin": undefined,
+          },
+        ],
+        "metadata": Object {
+          "generator": "Object3D.toJSON",
+          "type": "Object",
+          "version": 4.6,
+        },
+        "object": Object {
+          "geometry": "13ff6b80-23ca-484b-94ac-8ae18e9fa26d",
+          "layers": 1,
+          "material": "2296977d-a836-44b0-b15f-5d75d666b9ae",
+          "matrix": Array [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+          ],
+          "type": "Mesh",
+          "up": Array [
+            0,
+            1,
+            0,
+          ],
+          "uuid": "f293d422-a4cd-465e-9430-88d371cc35da",
+        },
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/parent-adversarial-geometry.test.ts:44:25
+     42|     const lateAdd = vi.spyOn(tree.group, 'add');
+     43|     await outcome;
+     44|     expect(lateAdd).not.toHaveBeenCalled();
+       |                         ^
+     45|     expect(dispose).toHaveBeenCalledTimes(1);
+     46|   },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 9 passed (12)
+   Start at  17:56:50
+   Duration  581ms (transform 158ms, setup 0ms, collect 237ms, tests 18ms, environment 0ms, prepare 139ms)
+

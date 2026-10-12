@@ -1,0 +1,16 @@
+{
+  "command": [
+    "/home/asa/devel/machinome/.venv/bin/python",
+    "-B",
+    "/tmp/voron-viewer-apply-Yi3m3o/browser_probe.py",
+    "queued-public-fifo-final",
+    "--worker",
+    "--bundle",
+    "/home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/machinome_viewer/widget/dist/machinome-viewer.js"
+  ],
+  "group": 234726,
+  "returncode": 0,
+  "peak_group_rss_kib": 232688,
+  "elapsed_seconds": 59.589397785952315,
+  "survivors": []
+}

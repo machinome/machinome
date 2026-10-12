@@ -74,6 +74,23 @@ jobs:
           uv sync --locked --python 3.12
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
+      # The browser viewer's widget is the npm workspace's member (change
+      # `join-viewer`): one install at the root, its typecheck and tests,
+      # and the bundle the suite and the viewer's tests photograph through.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Build and test the widget
+        working-directory: .
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck --workspaces --if-present
+          npm test --workspaces --if-present
+          npm run build --workspaces --if-present
+
       - name: Run tests
         run: |
           coverage run --source machinome -m pytest
@@ -84,6 +101,14 @@ jobs:
       - name: Run the mechanics package's tests
         working-directory: packages/machinome-mechanics
         run: python -m pytest
+
+      # The viewer keeps its tests in its own directory; its browser tests
+      # need Chromium for the Playwright the lock installs.
+      - name: Run the viewer package's tests
+        working-directory: packages/machinome-viewer
+        run: |
+          playwright install --with-deps chromium
+          python -m pytest
 
   browser-snapshot:
     runs-on: ubuntu-latest
@@ -118,16 +143,20 @@ jobs:
           uv sync --locked --python 3.12
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
-      # The viewer's source distribution builds its widget bundle, so node
-      # is needed here for that build and nothing else.
+      # The synced workspace installs the viewer with Playwright (change
+      # `join-viewer`); its bundle is built from the root's npm workspace,
+      # and Chromium is the browser it photographs through.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Install the browser snapshot dependencies
+      - name: Build the viewer and install Chromium
+        working-directory: .
         run: |
-          uv pip install --python "$GITHUB_WORKSPACE/.venv/bin/python" \
-            "machinome-viewer[snapshot] @ git+https://github.com/machinome/machinome-viewer.git"
+          npm ci --no-audit --no-fund
+          npm run build --workspaces --if-present
           playwright install --with-deps chromium
 
       - name: Run real browser snapshot test
@@ -178,6 +207,12 @@ jobs:
 
       - name: Install build and twine
         run: pip install build twine
+
+      # The viewer's source distribution builds its bundle with npm (change
+      # `join-viewer`).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       # Builds every package of the repository, checks the archives and
       # smokes them in a throwaway environment outside the checkout.

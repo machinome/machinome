@@ -16,12 +16,16 @@ there, from a table keyed by distribution name.
 
 It uploads nothing. Installing the wheels' dependencies needs a package
 index. It needs `build` and `twine` importable by the interpreter that runs
-it, and writes nothing inside the repository but the build's own scratch
-(`build/`, `*.egg-info`), which each member's `.gitignore`, or the root's,
-ignores.
+it, and Node 22 and npm on the PATH: the browser viewer's source
+distribution builds its bundle with npm (change `join-viewer`). It writes
+nothing inside the repository but the build's own scratch (`build/`,
+`*.egg-info`), the root's `node_modules/` that `npm ci` installs and the
+widget's `dist/`, which each member's `.gitignore`, or the root's, ignores.
 """
 
 import glob
+import json
+import shutil
 import string
 import subprocess
 import sys
@@ -39,6 +43,14 @@ ROOT = Path(__file__).resolve().parents[1]
 MECHANICS_VERSION = tomllib.loads(
     (ROOT / 'packages/machinome-mechanics/pyproject.toml').read_text()
 )['project']['version']
+
+#: What the viewer's widget declares (change `join-viewer`): the report and
+#: the bundle's banner must state it.
+VIEWER_WIDGET = json.loads(
+    (ROOT / 'packages/machinome-viewer/machinome/viewer/web/widget/package.json')
+    .read_text())
+VIEWER_API = VIEWER_WIDGET['machinomeViewerApi']
+VIEWER_DOCUMENTS = VIEWER_WIDGET['machinomeDocumentVersions']
 
 #: The licence checks of an extension package's smoke, formatted with its
 #: distribution name: the core's row states the same lines in its own code.
@@ -591,6 +603,61 @@ print('machinome-mechanics', distribution.version, 'module',
 ''',
         'commands': [],
     },
+    'machinome-viewer': {
+        # Installed from its wheel by path, not through `machinome[viewer]`:
+        # the index may serve another wheel of the same version, whose
+        # import is the former one, and pip may take it.
+        'extras': [],
+        'code': f'''
+import importlib.metadata as metadata
+from pathlib import Path
+import machinome.viewer.web as viewer
+from machinome.viewers.bundle import describe, viewer_command
+distribution = metadata.distribution('machinome-viewer')
+version = metadata.version('machinome')
+assert distribution.version == version, (distribution.version, version)
+files = [str(path) for path in distribution.files]
+shipped = sorted(path for path in files
+                 if path.startswith('machinome/') and path.endswith('.py'))
+assert shipped == [f'machinome/viewer/web/{{module}}.py' for module in (
+    '__init__', '__main__', 'bundle', 'capture', 'cli', 'currency',
+    'packaging', 'server')], shipped
+assert not [path for path in files
+            if '/widget/src/' in path or 'node_modules' in path], files
+owned = Path(distribution.locate_file(shipped[0])).resolve()
+assert owned == Path(viewer.__file__).resolve(), (owned, viewer.__file__)
+assert owned.is_relative_to(Path(VENV).resolve()), owned
+assert f'machinome~={{version}}' in distribution.requires, distribution.requires
+core = metadata.requires('machinome')
+for extra in ('viewer', 'web-snapshot'):
+    assert any(line.startswith('machinome-viewer')
+               and f'~={{version}}' in line
+               and extra in line.partition(';')[2] for line in core), (extra, core)
+(entry,) = [entry for entry in metadata.entry_points(group='machinome.viewer')
+            if entry.name == 'bundle']
+assert entry.value == 'machinome.viewer.web.bundle:describe', entry.value
+assert viewer_command()[1:] == ['-m', 'machinome.viewer.web'], viewer_command()
+report = describe()
+for key in ('path', 'index'):
+    found = Path(report[key]).resolve()
+    assert found.is_file() and found.is_relative_to(Path(VENV).resolve()), report
+assert report['version'] == version, report
+assert report['apiVersion'] == {VIEWER_API!r}, report
+assert report['documentVersions'] == {VIEWER_DOCUMENTS!r}, report
+head = Path(report['path']).read_text()[:600]
+for line in (f'machinome-viewer {{version}} - viewer API {VIEWER_API}',
+             'SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+',
+             'Source: https://github.com/machinome/machinome'):
+    assert line in head, (line, head)
+'''
+        + LICENCES.substitute(name='machinome-viewer')
+        + '''
+print('machinome-viewer', distribution.version, 'module', viewer.__file__,
+      'API', report['apiVersion'], 'documents', report['documentVersions'][0],
+      'to', report['documentVersions'][-1])
+''',
+        'commands': [['machinome-viewer', 'describe'], ['machinome', 'viewer']],
+    },
 }
 
 
@@ -703,6 +770,10 @@ def main():
         for directory, name in listed:
             if name not in SMOKES:
                 raise Failure(f'{name} has no smoke in scripts/check-dist')
+        if any(name == 'machinome-viewer' for _, name in listed) \
+                and shutil.which('npm') is None:
+            raise Failure("machinome-viewer's bundle is built by npm; put "
+                          'Node 22 and npm on the PATH')
         print('Members:', ', '.join(name for _, name in listed))
         wheels = {name: build(directory, name, scratch)
                   for directory, name in listed}

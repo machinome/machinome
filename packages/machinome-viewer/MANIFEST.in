@@ -1,0 +1,15 @@
+include CHANGELOG.md
+include scripts/check-docs-browser.py
+recursive-include workflow *.md *.png
+recursive-include openspec *.md *.yaml
+
+# The frontend travels with its sources so a source distribution can
+# rebuild it, and with its built output so installing needs no npm.
+# develop.html is a package file here too, not a build output.
+recursive-include machinome/viewer/web/widget *
+prune machinome/viewer/web/widget/node_modules
+
+recursive-include tests *
+prune tests/_shots
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

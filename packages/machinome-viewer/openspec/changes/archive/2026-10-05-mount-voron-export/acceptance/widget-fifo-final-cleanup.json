@@ -1,0 +1,13 @@
+{
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "--maxWorkers=1"
+  ],
+  "group": 231798,
+  "returncode": 0,
+  "peak_group_rss_kib": 709464,
+  "elapsed_seconds": 107.43588633299805,
+  "survivors": []
+}

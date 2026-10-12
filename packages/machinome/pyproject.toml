@@ -51,6 +51,9 @@ dependencies = [
 dev = [
     # The suite runs every kernel, so the development install takes them all.
     "machinome[all]",
+    # The suite and the viewer's tests photograph through the browser
+    # viewer, so the development install takes it with its capture.
+    "machinome[web-snapshot]",
     "bump2version",
     "flake8>=7",
     "coverage>=7",
@@ -72,19 +75,16 @@ docs = [
     "sphinx",
     "sphinx_rtd_theme",
 ]
-# The browser viewer is a separate AGPL-3.0-or-later package. The framework is
-# complete for non-interactive use without it; interactive development needs
-# this extra. OpenSCAD remains the default fixed-pose snapshot renderer. The
-# two packages are numbered together: the floor is the matching viewer the
-# manual declares (docs/conf.py, viewer_version), and
-# tests/test_release_records.py holds the two together.
+# The browser viewer, `machinome.viewer.web`, the repository's distribution
+# machinome-viewer, released with the framework and reached only as a
+# separate process; the framework is complete for non-interactive use without
+# it. The web snapshot renderer needs the viewer and its browser; Chromium
+# itself is a second step: `playwright install chromium`.
 viewer = [
-    "machinome-viewer>=0.8.1",
+    "machinome-viewer~=0.8.1",
 ]
-# The web snapshot renderer needs the viewer and its browser; Chromium itself
-# is a second step: `playwright install chromium`.
 web-snapshot = [
-    "machinome-viewer[snapshot]>=0.8.1",
+    "machinome-viewer[snapshot]~=0.8.1",
 ]
 # `machinome.mechanics`, the mechanics helpers, the repository's distribution
 # machinome-mechanics at its own version; the framework never imports them.

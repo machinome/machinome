@@ -99,6 +99,21 @@ Unreleased
   ``commands-contributed-by-packages`` (ADR-189, ADR-024 and ADR-168
   amended).
 
+* **The browser viewer joins the repository.** machinome-viewer,
+  published from a repository of its own, is the package
+  ``machinome-viewer`` at ``packages/machinome-viewer/``, its history
+  kept: its Python package is ``machinome.viewer.web`` (formerly
+  ``machinome_viewer``), run by the framework as ``python -m
+  machinome.viewer.web``, and its widget is the first member of the
+  repository's npm workspace, installed by one ``npm ci`` at the root. It
+  is numbered with the set, pinned ``~=`` both ways by the ``viewer`` and
+  ``web-snapshot`` extras, and licensed as every package of the
+  repository; it keeps its changelog, specs, decision log and tests in its
+  directory, and its manual is part of this one. The framework still finds
+  it through the ``machinome.viewer`` entry point and runs it as a
+  separate process, and ``machinome vet`` refuses a model that reaches it.
+  Change ``join-viewer`` (ADR-188).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

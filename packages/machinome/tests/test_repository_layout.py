@@ -28,7 +28,11 @@ too, which joined the repository from a repository of its own (change
 repository of its own and is not an extension package keeps its record in its
 directory, at its own version: the mechanics helpers `machinome-mechanics`,
 the package `machinome.mechanics`, with their changelog, tests, specs and
-working record (change `join-mechanics`, ADR-187).
+working record (change `join-mechanics`, ADR-187), and the browser viewer
+`machinome-viewer`, the package `machinome.viewer.web`, numbered with the set,
+with its changelog, tests, specs and decision log, whose widget is the one
+member of the npm workspace the root declares beside the uv workspace (change
+`join-viewer`, ADR-188).
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -90,7 +94,16 @@ PRODUCTS = {
                              'LICENSES', 'MANIFEST.in', 'README.md',
                              'machinome', 'openspec', 'pyproject.toml',
                              'tests', 'workflow')),
+    'machinome-viewer': ('machinome.viewer.web', 'viewer',
+                         ('.gitignore', 'CHANGELOG.md', 'LICENSE',
+                          'LICENSES', 'MANIFEST.in', 'README.md',
+                          'machinome', 'openspec', 'pyproject.toml',
+                          'scripts', 'tests', 'workflow')),
 }
+
+#: The npm workspace's members: the repository's JavaScript projects, each
+#: by its directory (`join-viewer`).
+NODE_MEMBERS = ['packages/machinome-viewer/machinome/viewer/web/widget']
 
 #: The extension packages whose portion is a package directory at its
 #: address, with its own `__init__.py` below the levels the core defines,
@@ -307,13 +320,65 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         runs = [step.get('run', '') for step in dist['steps']]
         self.assertIn('scripts/check-dist', runs)
 
+    @staticmethod
+    def index(steps, found, what):
+        for number, step in enumerate(steps):
+            if found(step):
+                return number
+        raise AssertionError(f'the job has no step that {what}')
+
+    def test_the_test_job_builds_and_tests_the_widget_before_the_suite(self):
+        # The widget is the npm workspace's member: one install at the root,
+        # its typecheck, tests and bundle before the suite photographs
+        # through it, and Chromium before the viewer's tests (`join-viewer`).
+        steps = self.jobs['test']['steps']
+        node = self.index(
+            steps, lambda step: step.get('uses', '').startswith(
+                'actions/setup-node@'), 'sets up Node')
+        suite = self.index(steps, lambda step: step.get('name') == 'Run tests',
+                           'is named "Run tests"')
+        for command in ('npm ci', 'npm run typecheck', 'npm test',
+                        'npm run build'):
+            with self.subTest(command=command):
+                at = self.index(
+                    steps, lambda step: command in step.get('run', '')
+                    and step.get('working-directory') == '.',
+                    f'runs {command} at the root')
+                self.assertLess(node, at, f'{command} runs before Node is set up')
+                self.assertLess(at, suite, f'{command} runs after the suite')
+        viewer = self.index(
+            steps, lambda step: step.get('working-directory')
+            == 'packages/machinome-viewer' and 'pytest' in step.get('run', ''),
+            "runs the viewer's tests")
+        chromium = self.index(
+            steps, lambda step: 'playwright install --with-deps chromium'
+            in step.get('run', ''), 'installs Chromium')
+        self.assertLessEqual(chromium, viewer,
+                             "Chromium is installed after the viewer's tests")
+        if chromium == viewer:
+            run = steps[viewer]['run']
+            self.assertLess(run.index('playwright install'),
+                            run.index('pytest'))
+
+    def test_the_dist_job_sets_up_node_before_checking(self):
+        # The viewer's source distribution builds its bundle with npm.
+        steps = self.jobs['dist']['steps']
+        node = self.index(
+            steps, lambda step: step.get('uses', '').startswith(
+                'actions/setup-node@'), 'sets up Node')
+        check = self.index(
+            steps, lambda step: step.get('run', '') == 'scripts/check-dist',
+            'runs scripts/check-dist')
+        self.assertLess(node, check)
+
 
 class TheRootIsTheRepositorysTest(unittest.TestCase):
     """The root holds the repository's record, none of the framework's."""
 
     def test_the_repository_s_files_are_there(self):
         for name in ('README.md', '.gitignore', 'scripts/check-dist',
-                     'workflow/README.md'):
+                     'workflow/README.md', 'package.json',
+                     'package-lock.json'):
             with self.subTest(entry=name):
                 self.assertTrue((REPOSITORY / name).is_file(),
                                 f'{REPOSITORY / name} is missing')
@@ -511,9 +576,16 @@ class TheProductsTest(unittest.TestCase):
                     self.assertEqual((directory / entry).resolve(),
                                      REPOSITORY / entry)
                 package = directory / address.replace('.', '/')
-                self.assertFalse(
-                    (directory / 'machinome' / '__init__.py').exists(),
-                    f'{name} ships an __init__.py of the core\'s')
+                # No `__init__.py` at any level above the package directory:
+                # `machinome/` is the core's, and `machinome/viewer/` the
+                # level the viewer seam writes in the core (`join-viewer`).
+                levels = address.split('.')[:-1]
+                for depth in range(1, len(levels) + 1):
+                    level = directory.joinpath(*levels[:depth])
+                    self.assertFalse(
+                        (level / '__init__.py').exists(),
+                        f'{name} ships {level / "__init__.py"}, a level '
+                        'above its package')
                 self.assertTrue((package / '__init__.py').is_file(),
                                 f'{package} holds no __init__.py')
 
@@ -557,11 +629,47 @@ class TheProductsTest(unittest.TestCase):
         for name in PRODUCTS:
             with self.subTest(package=name):
                 directory = REPOSITORY / 'packages' / name
-                self.assertTrue((directory / 'tests' / 'pyproject.toml')
-                                .is_file(),
-                                f'{name}/tests holds no pyproject.toml')
+                self.assertTrue(
+                    list((directory / 'tests').glob('test_*.py')),
+                    f'{name}/tests holds no test module')
                 self.assertTrue((directory / 'openspec' / 'specs').is_dir(),
                                 f'{name} holds no openspec/specs/')
+
+
+class TheNodeWorkspaceTest(unittest.TestCase):
+    """The root declares an npm workspace beside the uv workspace: a private
+    `package.json` with no package of its own, one lockfile, its
+    `node_modules/` ignored (`join-viewer`)."""
+
+    def tracked(self):
+        return subprocess.run(['git', 'ls-files'], cwd=REPOSITORY,
+                              capture_output=True, text=True,
+                              check=True).stdout.splitlines()
+
+    def test_the_root_package_is_a_private_workspace(self):
+        manifest = json.loads((REPOSITORY / 'package.json').read_text())
+        self.assertIs(manifest.get('private'), True)
+        self.assertNotIn('version', manifest)
+        self.assertEqual(manifest['workspaces'], NODE_MEMBERS)
+
+    def test_one_lockfile_at_the_root_names_the_widget(self):
+        locks = [path for path in self.tracked()
+                 if path.rpartition('/')[2] == 'package-lock.json']
+        self.assertEqual(locks, ['package-lock.json'])
+        lock = json.loads((REPOSITORY / 'package-lock.json').read_text())
+        for member in NODE_MEMBERS:
+            with self.subTest(member=member):
+                self.assertEqual(lock['packages'][member]['name'],
+                                 '@machinome/viewer')
+
+    def test_the_root_ignores_node_modules(self):
+        lines = (REPOSITORY / '.gitignore').read_text().splitlines()
+        self.assertIn('/node_modules/', lines)
+
+    def test_no_install_or_bundle_is_tracked(self):
+        found = [path for path in self.tracked()
+                 if 'node_modules/' in path or 'widget/dist/' in path]
+        self.assertEqual(found, [])
 
 
 class TheLinksTest(unittest.TestCase):

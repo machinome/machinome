@@ -42,8 +42,7 @@ machinome develop
 
 Runs everything needed to develop a project: monitors the filesystem,
 rebuilds the parts that changed, and opens a viewer that reloads
-automatically. The viewer comes from the separate `machinome-viewer
-<https://github.com/machinome/machinome-viewer>`_ package
+automatically. The viewer comes from the package ``machinome-viewer``
 (``pip install "machinome[viewer]"``; see :doc:`the viewer </concepts/publishing>`),
 and the command fails before starting development processes when it is absent.
 
@@ -56,7 +55,7 @@ and the command fails before starting development processes when it is absent.
     A compatibility request passed to the viewer. Viewer |viewer_version|
     serves a static development page and rebuilds its bundle on demand;
     it does not start a separate frontend dev server, so this request has
-    no effect. See the viewer manual for source development.
+    no effect. See :doc:`/project/contributing` for source development.
 
 ``--no-web``
     Run the watch-and-rebuild loop with no viewer at all, leaving

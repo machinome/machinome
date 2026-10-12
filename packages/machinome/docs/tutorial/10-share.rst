@@ -42,9 +42,9 @@ The simplest host is an iframe of the exported page:
 it the viewer hides its full-screen button.
 
 A page that wants its own controls loads the bundle and mounts the viewer
-through its browser API; the `viewer manual
-<https://machinome-viewer.readthedocs.io/en/latest/embedding.html>`_
-has a complete host page and the reference for every handle.
+through its browser API; the guide to :doc:`embedding the viewer
+</howto/embed-the-viewer>` has a complete host page and the reference for
+every handle.
 
 This manual embeds its models with the framework's Sphinx directive,
 which is how every model on these pages got here:

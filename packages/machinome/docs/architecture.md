@@ -49,8 +49,8 @@ place it. From that single tree, the framework derives everything else:
       → OpenSCAD       imported mesh /        │
       where selected   manifold3d)             ▼
            │                            viewer.json / manifest.json
-           ▼                            → machinome-viewer (separate
-      dev loop, OpenSCAD snapshot,        AGPL package, own process)
+           ▼                            → machinome-viewer
+      dev loop, OpenSCAD snapshot,        (own process)
       export models                     evaluates $t per frame
 ```
 
@@ -2658,11 +2658,11 @@ their own origins. Collision remains world-framed and time-dependent.
 
 ### Viewers (VIEWER-WEB · specs `viewer-distribution`, `cli`)
 
-The browser viewer is not in this repository. It is `machinome-viewer`, an
-independent AGPL-3.0-or-later package installed through the `viewer` extra
-(ADR-068/103); the framework is licensed GPL-2.0-or-later or
-CERN-OHL-S-2.0-or-later, at the recipient's choice, and complete for
-non-interactive use without it. The OpenSCAD CLI remains the default fixed-pose snapshot
+The browser viewer is the repository's distribution `machinome-viewer` at
+`packages/machinome-viewer/`, the package `machinome.viewer.web`, numbered
+with the framework and installed through the `viewer` extra (ADR-068,
+ADR-103, ADR-188); the framework is complete for non-interactive use
+without it. The OpenSCAD CLI remains the default fixed-pose snapshot
 renderer, not an interactive viewer.
 The framework touches the viewer in exactly two ways. `machinome/viewers/
 bundle.py` loads the viewer's `machinome.viewer` entry point — a
@@ -2674,7 +2674,8 @@ bundle there and name one remedy when it is absent. A report carrying no
 `documentVersions` is read as `[1, 2, 3, 4]`, the versions every viewer
 released before the field existed renders, so an older viewer beside a
 newer framework keeps working and is described truthfully (ADR-110). Everything else runs the
-viewer as a separate process through `sys.executable -m machinome_viewer`.
+viewer as a separate process through `sys.executable -m
+machinome.viewer.web`.
 
 `machinome develop` opens only the browser viewer and fails before starting
 development processes with the `viewer`-extra remedy when its package is
@@ -2689,8 +2690,8 @@ build-error surfaces are specified in the viewer's `development-server`
 capability; how the widget renders — tree traversal, world-matrix
 composition, expression evaluation, animation, targeted in-place updates —
 in its `viewer-package` capability. Those decisions (ADR-012/013/014/027/
-035/036/037/042) are relocated to the viewer repository under their
-original numbers.
+035/036/037/042) are kept in the viewer's own decision log,
+`packages/machinome-viewer/workflow/adrs/`, under their original numbers.
 
 The browser snapshot renderer keeps the half that knows what a node is: it
 renders any stale artifact of the photographed node, serializes that node's
@@ -3205,8 +3206,8 @@ enforcement cannot silently narrow; `tests/test_expression_corpus.py`
 says the same in the framework's own suite. The fixture also pins
 `Driver.native`'s design-to-native conversion, integer
 round-half-to-even included, for the same reason. The fixture itself is
-committed in the viewer repository (ADR-068), so widening the vocabulary
-is one change here and one there.
+committed in the viewer's package, `packages/machinome-viewer/` (ADR-068,
+ADR-188), so widening the vocabulary regenerates it there.
 
 ### Mechanics helpers (the distribution `machinome-mechanics` · spec `mechanics-distribution`)
 
@@ -3344,7 +3345,7 @@ The short list that changes must not silently break:
   boundary is exercised by rendered spike snapshots rather than by a
   test. Closing it needs OpenSCAD in the loop, which nothing yet
   requires.
-- **The CI browser-snapshot job installs the viewer from Git**
+- **The CI browser-snapshot job builds the viewer from the repository**
   (the repository's `.github/workflows/python-app.yml`), with Node to build
   its widget, where the manual's build installs the published package
   (`docs/requirements.txt`).
@@ -3505,6 +3506,6 @@ pure model closures without rejecting their pure declaration records.
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149, 168, 179, 189 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |
-| Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103 (the viewer itself: machinome-viewer) |
+| Viewer lookup & snapshot staging | `machinome/viewers/bundle.py`, `viewers/browser.py` | `viewer-distribution`, `web-snapshot` | 015, 018, 041, 068, 103, 188 (the viewer itself: `packages/machinome-viewer/`) |
 | Export | `core/export.py`, `core/serializer.py`, `core/expressions.py` | `export` | 020, 034, 043, 051, 057, 068, 080, 085, 125, 128, 129 |
 | Sphinx embedding | `machinome/sphinx.py` | `sphinx-embedding` | 020 |

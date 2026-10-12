@@ -1,0 +1,125 @@
+NETWORK_DIAGNOSIS {"events": [{"event": "request", "id": "2236C6B0567DBE9FDE8BD9F5F845B404", "url": "http://127.0.0.1:36627/", "at": 1791222153.0261488}, {"event": "request", "id": "221660.2", "url": "http://127.0.0.1:36627/viewer.js", "at": 1791222153.036729}, {"event": "request", "id": "221660.4", "url": "http://127.0.0.1:36627/manifest.json", "at": 1791222153.0945704}, {"event": "request", "id": "221660.5", "url": "http://127.0.0.1:36627/manifest.json", "at": 1791222153.094774}, {"event": "request", "id": "221660.6", "url": "http://127.0.0.1:36627/plate0.stl", "at": 1791222153.098828}, {"event": "request", "id": "221660.7", "url": "http://127.0.0.1:36627/mark0.stl", "at": 1791222153.0997252}, {"event": "request", "id": "221660.8", "url": "http://127.0.0.1:36627/mark1.stl", "at": 1791222153.0999875}, {"event": "request", "id": "221660.9", "url": "http://127.0.0.1:36627/plate1.stl", "at": 1791222153.1002212}, {"event": "request", "id": "221660.10", "url": "http://127.0.0.1:36627/plate2.stl", "at": 1791222153.1238983}, {"event": "request", "id": "221660.11", "url": "http://127.0.0.1:36627/plate3.stl", "at": 1791222153.1251342}, {"event": "request", "id": "221660.12", "url": "http://127.0.0.1:36627/plate4.stl", "at": 1791222153.1299074}, {"event": "request", "id": "221660.13", "url": "http://127.0.0.1:36627/plate5.stl", "at": 1791222153.131193}, {"event": "failed", "at": 1791222153.167927, "requestId": "221660.11", "timestamp": 632940.216606, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "request", "id": "221660.14", "url": "http://127.0.0.1:36627/plate6.stl", "at": 1791222153.1681166}, {"event": "failed", "at": 1791222153.175828, "requestId": "221660.10", "timestamp": 632940.225522, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "request", "id": "221660.15", "url": "http://127.0.0.1:36627/plate7.stl", "at": 1791222153.1761065}, {"event": "failed", "at": 1791222153.193148, "requestId": "221660.13", "timestamp": 632940.242575, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "request", "id": "221660.16", "url": "http://127.0.0.1:36627/plate0.stl", "at": 1791222153.1935744}, {"event": "failed", "at": 1791222153.2031162, "requestId": "221660.12", "timestamp": 632940.252637, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "request", "id": "221660.17", "url": "http://127.0.0.1:36627/mark0.stl", "at": 1791222153.203311}, {"event": "failed", "at": 1791222153.2190225, "requestId": "221660.15", "timestamp": 632940.2686, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "request", "id": "221660.18", "url": "http://127.0.0.1:36627/mark1.stl", "at": 1791222153.2193375}, {"event": "failed", "at": 1791222153.2202308, "requestId": "221660.14", "timestamp": 632940.269569, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "request", "id": "221660.19", "url": "http://127.0.0.1:36627/plate1.stl", "at": 1791222153.223737}, {"event": "failed", "at": 1791222153.266169, "requestId": "221660.16", "timestamp": 632940.315797, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "failed", "at": 1791222153.275919, "requestId": "221660.17", "timestamp": 632940.325685, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "failed", "at": 1791222153.282364, "requestId": "221660.18", "timestamp": 632940.331608, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}, {"event": "failed", "at": 1791222153.283213, "requestId": "221660.19", "timestamp": 632940.333443, "type": "Fetch", "errorText": "net::ERR_ABORTED", "canceled": true}], "readbacks": {"phases": [{"phase": "mount start", "at": 1791222153.067}, {"phase": "mount done", "at": 1791222153.348}], "bodyDone": [{"url": "http://127.0.0.1:36627/mark1.stl", "at": 1791222153.121}, {"url": "http://127.0.0.1:36627/plate1.stl", "at": 1791222153.123}, {"url": "http://127.0.0.1:36627/plate0.stl", "at": 1791222153.128}, {"url": "http://127.0.0.1:36627/mark0.stl", "at": 1791222153.129}, {"url": "http://127.0.0.1:36627/plate3.stl", "at": 1791222153.165}, {"url": "http://127.0.0.1:36627/plate2.stl", "at": 1791222153.174}, {"url": "http://127.0.0.1:36627/plate5.stl", "at": 1791222153.191}, {"url": "http://127.0.0.1:36627/plate4.stl", "at": 1791222153.201}, {"url": "http://127.0.0.1:36627/plate7.stl", "at": 1791222153.217}, {"url": "http://127.0.0.1:36627/plate6.stl", "at": 1791222153.218}, {"url": "http://127.0.0.1:36627/plate0.stl", "at": 1791222153.264}, {"url": "http://127.0.0.1:36627/mark0.stl", "at": 1791222153.274}, {"url": "http://127.0.0.1:36627/mark1.stl", "at": 1791222153.28}, {"url": "http://127.0.0.1:36627/plate1.stl", "at": 1791222153.282}], "fetchFailures": []}}
+F
+=================================== FAILURES ===================================
+_ AssetLoadOrderTest.test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership _
+
+self = <tests.test_asset_load_order.AssetLoadOrderTest testMethod=test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership>
+
+    def test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership(self):
+        with tempfile.TemporaryDirectory(prefix='viewer-queued-order-') as temp:
+            stage = Path(temp)
+            shutil.copy2(bundle_path(), stage / 'viewer.js')
+            payload = document()
+            original = payload['root']['children']
+            payload['root']['children'] = [
+                {**original[index % 2], 'name': f'plate{index}',
+                 'model': f'plate{index}.stl'} for index in range(8)
+            ]
+            payload['root']['children'][0]['markings'] = [
+                {'name': 'first', 'model': 'mark0.stl', 'color': '#ffffff'},
+                {'name': 'second', 'model': 'mark1.stl', 'color': '#333333'},
+            ]
+            (stage / 'manifest.json').write_text(json.dumps(payload))
+            for name in [f'plate{i}' for i in range(8)] + ['mark0', 'mark1']:
+                (stage / f'{name}.stl').write_bytes(plate_stl())
+            (stage / 'index.html').write_text(
+                '<html><style>html,body{margin:0}.host{width:320px;'
+                'height:240px;display:inline-block;vertical-align:top}'
+                'canvas{display:block}</style>'
+                '<div id="a" class="host"></div><div id="b" class="host"></div>'
+                '<script src="viewer.js"></script></html>')
+            mode = {'reverse': False}
+    
+            class DelayedHandler(QuietHandler):
+                protocol_version = 'HTTP/1.1'
+    
+                def do_GET(self):
+                    path = urlsplit(self.path).path.rsplit('/', 1)[-1]
+                    if path.endswith('.stl'):
+                        index = int(path[5:-4]) if path.startswith('plate') else int(path[4:-4])
+                        delay = index % 4 if mode['reverse'] else 3-index % 4
+                        time.sleep(delay * .01)
+                    super().do_GET()
+    
+            server = ThreadingHTTPServer(('127.0.0.1', 0),
+                partial(DelayedHandler, directory=str(stage)))
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            self.addCleanup(thread.join, 2)
+            self.addCleanup(server.server_close)
+            self.addCleanup(server.shutdown)
+            url = f'http://127.0.0.1:{server.server_port}/'
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(args=[
+                    '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+                try:
+                    frames = []
+                    for reverse in (False, True):
+                        mode['reverse'] = reverse
+                        page = browser.new_page(viewport={'width': 640, 'height': 240})
+                        session = page.context.new_cdp_session(page)
+                        session.send('Network.enable')
+                        session.send('Network.setCacheDisabled', {'cacheDisabled': True})
+                        network_events = []
+                        session.on('Network.requestWillBeSent', lambda event, rows=network_events:
+                            rows.append({'event':'request','id':event['requestId'],
+                                'url':event['request']['url'],'at':time.time()}))
+                        session.on('Network.loadingFailed', lambda event, rows=network_events:
+                            rows.append({'event':'failed','at':time.time(),**event}))
+                        errors = []
+                        page.on('pageerror', lambda error, errors=errors: errors.append(str(error)))
+                        page.on('requestfailed', lambda request, errors=errors: errors.append(
+                            (request.url, request.failure)))
+                        # The server delays real responses inside each group;
+                        # the viewer owns all network and STL parsing work.
+                        page.goto(url)
+                        page.evaluate('''() => {
+                          window.fetchFailures=[];const oldFetch=window.fetch;
+                          window.phases=[];window.bodyDone=[];
+                          window.fetch=(...args)=>oldFetch(...args).then(response=>{
+                            if(response.body){const oldGet=response.body.getReader.bind(response.body);
+                              response.body.getReader=()=>{const reader=oldGet();const oldRead=reader.read.bind(reader);
+                                reader.read=(...args)=>oldRead(...args).then(result=>{
+                                  if(result.done)bodyDone.push({url:response.url,at:Date.now()/1000});return result});return reader};}
+                            return response;
+                          }).catch(error=>{fetchFailures.push(String(error));throw error});
+                        }''')
+                        result = page.evaluate('''async () => {
+                          const options={renderMode:'on-demand',animation:'external',
+                            autoplay:false,driverControls:'none',partControls:'none',
+                            view:{camera:[0,0,5],target:[0,0,0]}};
+                          phases.push({phase:'mount start',at:Date.now()/1000});
+                          [window.first,window.second]=await Promise.all([
+                            MachinomeViewer.mount('#a','/manifest.json',options),
+                            MachinomeViewer.mount('#b','/manifest.json',options)]);
+                          first.setView(first.view()); second.setView(second.view());
+                          phases.push({phase:'mount done',at:Date.now()/1000});
+                          return [first.assembly().children.length,second.assembly().children.length];
+                        }''')
+                        self.assertEqual(result, [8, 8])
+                        if errors:
+                            print('NETWORK_DIAGNOSIS',json.dumps({'events':network_events,
+                                'readbacks':page.evaluate('({phases,bodyDone,fetchFailures})')}),flush=True)
+>                       self.assertEqual(errors, [], f'mount network errors; fetch rejected: {page.evaluate("fetchFailures")}')
+E                       AssertionError: Lists differ: [('http://127.0.0.1:36627/plate3.stl', 'ne[541 chars]ED')] != []
+E                       
+E                       First list contains 10 additional elements.
+E                       First extra element 0:
+E                       ('http://127.0.0.1:36627/plate3.stl', 'net::ERR_ABORTED')
+E                       
+E                       + []
+E                       - [('http://127.0.0.1:36627/plate3.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate2.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate5.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate4.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate7.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate6.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate0.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/mark0.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/mark1.stl', 'net::ERR_ABORTED'),
+E                       -  ('http://127.0.0.1:36627/plate1.stl', 'net::ERR_ABORTED')] : mount network errors; fetch rejected: []
+
+tests/test_asset_load_order.py:181: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_asset_load_order.py::AssetLoadOrderTest::test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership
+1 failed, 2 deselected in 1.22s

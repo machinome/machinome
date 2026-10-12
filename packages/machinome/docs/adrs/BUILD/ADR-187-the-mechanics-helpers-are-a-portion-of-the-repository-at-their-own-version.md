@@ -1,6 +1,6 @@
 # ADR-187: The Mechanics Helpers Are a Portion of the Repository at Their Own Version
 
-**Status:** Accepted
+**Status:** Accepted; a second product keeping its record in its directory, numbered with the set, amended 2026-10-12 by [ADR-188](ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md)
 **Date:** 2026-10-12
 **Change:** [`join-mechanics`](../../../openspec/changes/archive/2026-10-12-join-mechanics/)
 **Supersedes:**
@@ -104,3 +104,5 @@ framework's animation time, and its licence texts.
   `scripts/check-dist` do.
 - Bad: twenty-seven project repositories rename an import.
 - Neutral: the core never imports the helpers, as before.
+- Neutral (2026-10-12, `join-viewer`): the browser viewer joined as a
+  product numbered with the set; the root holds an npm workspace (ADR-188).

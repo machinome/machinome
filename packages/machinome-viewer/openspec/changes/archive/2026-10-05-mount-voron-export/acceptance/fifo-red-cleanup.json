@@ -1,0 +1,15 @@
+{
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "src/geometry-admission.test.ts",
+    "-t",
+    "abandoned"
+  ],
+  "group": 230550,
+  "returncode": 1,
+  "peak_group_rss_kib": 1260556,
+  "elapsed_seconds": 1.363131601945497,
+  "survivors": []
+}

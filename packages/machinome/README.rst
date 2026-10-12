@@ -152,12 +152,10 @@ Install
 
 Machinome is one package, licensed GPL-2.0-or-later or
 CERN-OHL-S-2.0-or-later, at the recipient's choice. The browser viewer is
-a separate package,
-`Machinome Viewer <https://github.com/machinome/machinome-viewer>`_,
-licensed AGPL-3.0-or-later, which the framework reaches only as a separate
-process; the ``viewer`` extra installs it. The CAD kernels are extras too,
-each named for the module that needs it, so a project installs only what
-its parts use. Install the framework with the viewer and CadQuery, which
+the package ``machinome-viewer``, which the framework reaches only as a
+separate process; the ``viewer`` extra installs it. The CAD kernels are
+extras too, each named for the module that needs it, so a project installs
+only what its parts use. Install the framework with the viewer and CadQuery, which
 the tutorial models with, and start a project:
 
 .. code-block:: bash
@@ -219,9 +217,8 @@ Licence
 =======
 
 Machinome is licensed GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
-recipient's choice; see `LICENSE <LICENSE>`_. Machinome Viewer is a
-separate AGPL-3.0-or-later package. The designs simulated with Machinome
-keep their own licences.
+recipient's choice; see `LICENSE <LICENSE>`_. The designs simulated with
+Machinome keep their own licences.
 
 Contributing
 ============

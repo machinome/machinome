@@ -1,0 +1,18 @@
+
+> @machinome/viewer@0.8.0 test
+> vitest run src/geometry-admission.test.ts src/parent-adversarial-geometry.test.ts
+
+
+ RUN  v3.2.7 /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/machinome_viewer/widget
+
+stdout | src/geometry-admission.test.ts > bounds active distinct geometry groups across two roots and markings while every required job completes
+{ initially: 4, peak: 4, total: 18 }
+
+ ✓ src/parent-adversarial-geometry.test.ts (12 tests) 12ms
+ ✓ src/geometry-admission.test.ts (15 tests) 22ms
+
+ Test Files  2 passed (2)
+      Tests  27 passed (27)
+   Start at  17:57:52
+   Duration  581ms (transform 174ms, setup 0ms, collect 449ms, tests 34ms, environment 0ms, prepare 221ms)
+

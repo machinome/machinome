@@ -128,6 +128,37 @@ CAD among them.
   implementation from them. Ondsel's copyright is retained for those
   constraint conventions in the worker's header.
 
+### Bundled in the browser viewer
+
+`machinome-viewer.js`, the bundle the `machinome-viewer` distribution
+carries and every export copies, contains these packages; their notices
+open the bundle. These licences are the bundled libraries' own, stated as
+their provenance.
+
+#### three.js
+- **License:** MIT License
+- **Copyright:** Copyright 2010-2023 three.js authors
+- **Repository:** https://github.com/mrdoob/three.js
+- **Version:** 0.156.1
+- **Description:** JavaScript 3D rendering library (WebGL)
+
+#### jokenizer
+- **License:** MIT License
+- **Copyright:** Copyright (c) 2018 Umut Özel
+- **Repository:** https://github.com/umutozel/jokenizer
+- **Version:** 1.0.1
+- **Description:** JavaScript expression parser/evaluator, used to evaluate
+  animation expressions in the browser
+
+#### molejo
+- **License:** Apache License 2.0, as its `LICENSE` file and the bundle's
+  banner name it; its `NOTICE` is retained
+- **Copyright:** Copyright (C) 2026 Luis Henrique Cassis Fagundes
+- **Repository:** https://github.com/LibreSolid/molejo
+- **Version:** 0.2.0
+- **Description:** The analytic flexible parts' evaluator, which shapes a
+  flexible part from its specification in the browser
+
 ### Historical bundled frontend dependencies
 
 Through version 0.5, the web viewer application
@@ -135,9 +166,9 @@ Through version 0.5, the web viewer application
 redistributed inside the solid-node package. Unlike the Python
 dependencies above, which are installed separately by pip, these
 packages were **contained within that distributed bundle**, so their
-copyright and permission notices travelled with it. The viewer became the
-independent `machinome-viewer` package before Machinome 0.7; current framework
-distributions contain no JavaScript.
+copyright and permission notices travelled with it. The viewer, its
+successor, is the repository's `machinome-viewer`; the framework's own
+distribution contains no JavaScript.
 
 #### three.js
 - **License:** MIT License
@@ -214,6 +245,9 @@ distributions contain no JavaScript.
 | manifold3d | Apache 2.0 | ✓ Compatible |
 | FreeCAD (called, not bundled) | LGPL 2.1+ | ✓ Compatible |
 | OndselSolver (conventions consulted) | LGPL 2.1+ | ✓ Compatible |
+| three.js (bundled in the viewer) | MIT | ✓ Compatible |
+| jokenizer (bundled in the viewer) | MIT | ✓ Compatible |
+| molejo (bundled in the viewer) | Apache 2.0 | ✓ Compatible |
 | three.js (bundled) | MIT | ✓ Compatible |
 | jokenizer (bundled) | MIT | ✓ Compatible |
 | react / react-dom (bundled) | MIT | ✓ Compatible |
@@ -237,4 +271,4 @@ Full license texts for all dependencies can be obtained from their respective re
 
 ---
 
-*This credits file was last updated: 2026-10-11*
+*This credits file was last updated: 2026-10-12*

@@ -9,9 +9,7 @@ relationship you need to express, or a reproducible mismatch between the
 model and the framework's behaviour. A small example and a failing test
 make a useful starting point. A simulation of a published design belongs
 in the `Machinome Foundry <https://github.com/machinome-foundry>`_, beside
-its design, not in the framework; browser-viewer changes belong to the
-separate `machinome-viewer <https://github.com/machinome/machinome-viewer>`_
-repository.
+its design, not in the framework.
 
 This guide is for contributors, humans and coding agents alike, who modify
 the framework in this repository. For *using* Machinome in your own
@@ -67,11 +65,12 @@ Development environment
 -----------------------
 
 Requirements: Python 3.11 or newer, as the framework's
-``packages/machinome/pyproject.toml`` requires. Node.js is not needed: the
-browser viewer and its widget live in the separate
-`machinome-viewer <https://github.com/machinome/machinome-viewer>`_
-repository, and the tests that need a viewer skip unless that package is
-installed. `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
+``packages/machinome/pyproject.toml`` requires. Node.js 22 or newer and npm
+build and test the browser viewer's widget, the one member of the
+repository's npm workspace, installed by ``npm ci`` at the root; the suite
+and the viewer's tests photograph through its built bundle, and the
+viewer's browser tests need Chromium for the installed Playwright
+(``playwright install chromium``). `OpenSCAD <https://openscad.org/>`_ is conditional: put it on the
 PATH when working on SolidPython2/Solid2 or raw OpenSCAD nodes, or the
 default OpenSCAD snapshot renderer. All-B-rep projects, CadQuery, build123d
 or the two mixed, build, test and export without it; use ``machinome
@@ -116,11 +115,16 @@ dependencies::
         -e packages/machinome-node-openscad -e packages/machinome-node-solid2 \
         -e packages/machinome-node-jscad -e packages/machinome-node-stl \
         -e packages/machinome-node-freecad \
+        -e packages/machinome-viewer \
         -e packages/machinome-mechanics \
         -e "packages/machinome[dev]"
 
 The ``machinome`` CLI entrypoint (``packages/machinome/machinome/cli.py``) is
-now on the PATH of the virtualenv.
+now on the PATH of the virtualenv. Install the widget's dependencies and
+build its bundle from the clone's root::
+
+    $ npm ci
+    $ npm run build --workspaces
 
 For the layout of the package, and for how to choose between direct pytest
 coverage and the meta-project harness when proving a change, read the
@@ -138,15 +142,18 @@ The test suite is pytest, run from the framework's directory,
     $ make lint          # flake8 + black --check
 
 The mechanics helpers keep their tests in their own directory: run
-``python -m pytest`` from ``packages/machinome-mechanics``.
+``python -m pytest`` from ``packages/machinome-mechanics``. The browser
+viewer keeps its tests in its own directory: run ``python -m pytest`` from
+``packages/machinome-viewer``, and its widget's with ``npm test
+--workspaces`` from the root.
 
 Notes:
 
 * Rendering tests invoke the real ``openscad`` binary. On a headless machine,
   snapshot-related tests may need ``xvfb-run -a pytest ...``.
-* Browser-snapshot tests are mandatory for changes to that renderer. Install
-  a matching viewer with its ``snapshot`` extra, then install Chromium and
-  run the real capture explicitly::
+* Browser-snapshot tests are mandatory for changes to that renderer. The
+  workspace installs the viewer with its ``snapshot`` extra; build its
+  bundle, install Chromium and run the real capture explicitly::
 
       $ playwright install chromium
       $ MACHINOME_WEB_SNAPSHOT_E2E=1 pytest tests/test_browser_renderer.py::BrowserSnapshotEndToEndTest
@@ -162,10 +169,9 @@ Notes:
   change touches behavior that direct unit tests cannot establish; the
   `contributor briefing <packages/machinome/docs/contributor-briefing.md>`_
   says when and why.
-* The browser viewer's own tests live in the ``machinome-viewer``
-  repository. ``tools/generate_parity_fixture.py`` produces, from this
-  framework's render results, the parity fixture that repository commits
-  beside its expression evaluator.
+* ``tools/generate_parity_fixture.py`` produces, from this framework's
+  render results, the parity fixture the viewer's widget commits beside its
+  expression evaluator.
 
 Development discipline
 ----------------------

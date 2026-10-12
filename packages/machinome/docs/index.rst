@@ -74,6 +74,9 @@ its source; the :doc:`examples` page says what to look for there.
    howto/simulate-existing
    howto/freecad-assemblies
    howto/mechanism-formulas
+   howto/browser-viewer
+   howto/share-an-export
+   howto/embed-the-viewer
 
 .. toctree::
    :maxdepth: 1
@@ -104,6 +107,7 @@ its source; the :doc:`examples` page says what to look for there.
    reference/assertions
    reference/sphinx
    reference/mechanics/index
+   reference/viewer/index
    reference/manuals
 
 .. toctree::

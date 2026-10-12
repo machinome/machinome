@@ -1,0 +1,15 @@
+{
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "src/parent-adversarial-geometry.test.ts",
+    "src/geometry-admission.test.ts",
+    "src/tree.test.ts"
+  ],
+  "group": 252077,
+  "returncode": 0,
+  "peak_group_rss_kib": 1277592,
+  "elapsed_seconds": 1.5806001840392128,
+  "survivors": []
+}

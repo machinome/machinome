@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/tmp/voron-viewer-apply-Yi3m3o/host_acceptance.py", line 156, in <module>
+    if __name__=='__main__':asyncio.run(asyncio.wait_for(main(),timeout=210))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "/tmp/voron-viewer-apply-Yi3m3o/host_acceptance.py", line 133, in main
+    raise AssertionError(f'Flexible vertices differ: {row["path"]} {delta}')
+AssertionError: Flexible vertices differ: gantry/belt_a/strap 16.05999755859375

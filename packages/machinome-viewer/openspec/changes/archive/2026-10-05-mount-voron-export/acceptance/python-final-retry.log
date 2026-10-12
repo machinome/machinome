@@ -1,0 +1,128 @@
+..F..................................................................... [ 88%]
+.........                                                                [100%]
+=================================== FAILURES ===================================
+_ AssetLoadOrderTest.test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership _
+
+self = <tests.test_asset_load_order.AssetLoadOrderTest testMethod=test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership>
+
+    def test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership(self):
+        from tests.support import serve_directory
+    
+        with tempfile.TemporaryDirectory(prefix='viewer-queued-order-') as temp:
+            stage = Path(temp)
+            shutil.copy2(bundle_path(), stage / 'viewer.js')
+            payload = document()
+            original = payload['root']['children']
+            payload['root']['children'] = [
+                {**original[index % 2], 'name': f'plate{index}',
+                 'model': f'plate{index}.stl'} for index in range(8)
+            ]
+            payload['root']['children'][0]['markings'] = [
+                {'name': 'first', 'model': 'mark0.stl', 'color': '#ffffff'},
+                {'name': 'second', 'model': 'mark1.stl', 'color': '#333333'},
+            ]
+            (stage / 'manifest.json').write_text(json.dumps(payload))
+            for name in [f'plate{i}' for i in range(8)] + ['mark0', 'mark1']:
+                (stage / f'{name}.stl').write_bytes(plate_stl())
+            (stage / 'index.html').write_text(
+                '<html><style>html,body{margin:0}.host{width:320px;'
+                'height:240px;display:inline-block;vertical-align:top}'
+                'canvas{display:block}</style>'
+                '<div id="a" class="host"></div><div id="b" class="host"></div>'
+                '<script src="viewer.js"></script></html>')
+            with serve_directory(stage) as url, sync_playwright() as pw:
+                browser = pw.chromium.launch(args=[
+                    '--use-angle=swiftshader', '--enable-unsafe-swiftshader'])
+                try:
+                    frames = []
+                    for reverse in (False, True):
+                        page = browser.new_page(viewport={'width': 640, 'height': 240})
+                        errors = []
+                        page.on('pageerror', lambda error, errors=errors: errors.append(str(error)))
+                        page.on('requestfailed', lambda request, errors=errors: errors.append(
+                            (request.url, request.failure)))
+                        # Delay response completion inside each admitted group
+                        # of assets. The viewer still owns all real STL parsing.
+                        def delayed(route):
+                            path = route.request.url.rsplit('/', 1)[-1]
+                            index = int(path[5:-4]) if path.startswith('plate') else int(path[4:-4])
+                            time.sleep((index % 4 if reverse else 3-index % 4) * .01)
+                            route.continue_()
+    
+                        page.route('**/*.stl', delayed)
+                        page.goto(url)
+                        result = page.evaluate('''async () => {
+                          const options={renderMode:'on-demand',animation:'external',
+                            autoplay:false,driverControls:'none',partControls:'none',
+                            view:{camera:[0,0,5],target:[0,0,0]}};
+                          [window.first,window.second]=await Promise.all([
+                            MachinomeViewer.mount('#a','/manifest.json',options),
+                            MachinomeViewer.mount('#b','/manifest.json',options)]);
+                          first.setView(first.view()); second.setView(second.view());
+                          return [first.assembly().children.length,second.assembly().children.length];
+                        }''')
+                        self.assertEqual(result, [8, 8])
+                        before = page.locator('#b').screenshot()
+                        page.evaluate('first.dispose(); second.setView(second.view())')
+                        self.assertEqual(before, page.locator('#b').screenshot(),
+                                         'disposing a duplicate-URL viewer changed another owner')
+                        frames.append(before)
+>                       self.assertEqual(errors, [])
+E                       AssertionError: Lists differ: [('http://127.0.0.1:46261/plate2.stl', 'net::ERR_ABORTED')] != []
+E                       
+E                       First list contains 1 additional elements.
+E                       First extra element 0:
+E                       ('http://127.0.0.1:46261/plate2.stl', 'net::ERR_ABORTED')
+E                       
+E                       - [('http://127.0.0.1:46261/plate2.stl', 'net::ERR_ABORTED')]
+E                       + []
+
+tests/test_asset_load_order.py:148: AssertionError
+=============================== warnings summary ===============================
+tests/test_widget_e2e.py::WidgetE2ETest::test_full_cycle_returns_to_start
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_models_render_with_their_colors
+tests/test_widget_e2e.py::WidgetE2ETest::test_time_parameter_poses_the_animation
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:73: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for pixel in image.getdata() if predicate(*pixel))
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+tests/test_widget_e2e.py::ViewerMountApiTest::test_highlight_refusals_and_hidden_parts
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1240: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    green = lambda image: sum(1 for r, g, b in image.getdata() if g > 150 and g > r + 60 and g > b + 60)
+
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+tests/test_widget_e2e.py::ViewerMountApiTest::test_setview_rolls_to_the_supplied_up
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1317: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(difference.getdata()) / (a.width * a.height)
+
+tests/test_widget_e2e.py: 12 warnings
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1691: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    for width, low in zip(spread.getdata(), darkest.getdata())))
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_the_decals_are_drawn_and_the_twin_shows_none
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1702: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    return sum(1 for value in mask.getdata() if value)
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_a_decal_turns_with_the_part_it_is_on
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1705: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    indices = [index for index, value in enumerate(mask.getdata()) if value]
+
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+tests/test_widget_e2e.py::MarkedDocumentPixelsTest::test_adding_a_decal_changes_only_the_decal
+  /home/asa/devel/machinome/machinome-viewer/WTs/mount-voron-export/tests/test_widget_e2e.py:1747: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    in zip(changed.getdata(), decal.getdata())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_asset_load_order.py::AssetLoadOrderTest::test_queued_models_and_markings_keep_pixels_and_duplicate_viewer_ownership
+1 failed, 80 passed, 33 warnings in 85.39s (0:01:25)
