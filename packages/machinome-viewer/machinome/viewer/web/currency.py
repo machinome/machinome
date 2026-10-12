@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Keep the built bundle current with the sources it is built from.
 
@@ -170,10 +170,25 @@ def ensure_current(widget=WIDGET_DIR):
 
 
 def _require_dependencies(widget, built, newest):
-    if not (widget / 'node_modules').is_dir():
+    if not _build_program_installed(widget):
         raise _stale(built, newest,
                      'the widget\'s dependencies are not installed, and a '
                      'rebuild never installs them')
+
+
+def _build_program_installed(widget):
+    """Whether `build.mjs`'s build program is installed where Node finds it.
+
+    Node resolves `import 'esbuild'` from the widget directory up to the
+    filesystem root, and inside an npm workspace `npm ci` installs it at the
+    workspace's root, not beside the widget (change `join-viewer`). So every
+    ancestor is asked for `node_modules/esbuild`; the walk visits
+    directories and never reads what `node_modules` holds.
+    """
+    for directory in (widget, *widget.resolve().parents):
+        if (directory / 'node_modules' / 'esbuild').is_dir():
+            return True
+    return False
 
 
 def _stale(built, newest, reason):

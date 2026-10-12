@@ -1,17 +1,13 @@
-include LICENSE
-include README.md
 include CHANGELOG.md
-include .readthedocs.yaml
 include scripts/check-docs-browser.py
-recursive-include docs *.rst *.py *.txt *.css *.js *.html Makefile
-prune docs/_build
-recursive-include workflow *.md
+recursive-include workflow *.md *.png
+recursive-include openspec *.md *.yaml
 
 # The frontend travels with its sources so a source distribution can
 # rebuild it, and with its built output so installing needs no npm.
 # develop.html is a package file here too, not a build output.
-recursive-include machinome_viewer/widget *
-prune machinome_viewer/widget/node_modules
+recursive-include machinome/viewer/web/widget *
+prune machinome/viewer/web/widget/node_modules
 
 recursive-include tests *
 prune tests/_shots

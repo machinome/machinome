@@ -89,39 +89,44 @@ respectively. The default framework installation SHALL depend on none of them.
 `machinome-mechanics` is a distribution of the repository, at
 `packages/machinome-mechanics/`, whose package `machinome.mechanics` the
 framework never imports; the `mechanics` extra SHALL require it at a floor
-that its version in the repository satisfies.
+that its version in the repository satisfies. `machinome-viewer` is a
+distribution of the repository, at `packages/machinome-viewer/`, numbered with
+the framework, which the framework finds through its entry point and runs as
+a separate process.
 Current release material SHALL state that the experimental studio remains
 unpublished and that the `studio` extra cannot resolve from a package index
 until that publication occurs.
 
-The `viewer` extra and the `web-snapshot` extra SHALL require the matching
-viewer release or newer: the two packages are numbered together, and the
-floor each extra states SHALL be the one matching viewer version the manual
-declares in its release facts, so a release that moves the matching version
-moves both floors with it or fails naming the extra left behind. The floor
-states what the extra installs, not what a document needs: the framework
-SHALL keep reading the installed viewer's own report for what it renders,
-and current upgrade material SHALL keep stating which older viewers read the
-documents the release exports.
+The `viewer` extra and the `web-snapshot` extra SHALL require the viewer of
+the framework's own release with the compatible-release pin the set's
+distributions state between each other, `machinome-viewer~=<version>` and
+`machinome-viewer[snapshot]~=<version>`, and the matching viewer version the
+manual declares in its release facts SHALL be that version, so a release that
+moves the set moves both pins with it or fails naming the extra left behind.
+The pin states what the extra installs, not what a document needs: the
+framework SHALL keep reading the installed viewer's own report for what it
+renders, and current upgrade material SHALL keep stating which older viewers
+read the documents the release exports.
 
 #### Scenario: A user installs the viewer extra
 
 - **WHEN** `pip install "machinome[viewer]"` resolves from published packages
-- **THEN** the independent AGPL `machinome-viewer` distribution is installed
-  beside the framework
+- **THEN** the `machinome-viewer` distribution of the repository, released
+  with the framework, is installed beside it
 
 #### Scenario: A user upgrades the framework with the viewer extra
 
 - **WHEN** an installation holding an older viewer runs
   `pip install -U "machinome[viewer]"` against published packages
-- **THEN** the viewer is upgraded to the matching release or newer beside the
-  framework
+- **THEN** the viewer is upgraded to the release of the framework it is
+  installed beside
 
 #### Scenario: The floor and the declared matching viewer agree
 
 - **WHEN** the release facts declare the matching viewer version
-- **THEN** the `viewer` and `web-snapshot` extras each floor at exactly that
-  version, and a test fails naming the extra whose floor differs
+- **THEN** it is the framework's version, the `viewer` and `web-snapshot`
+  extras each pin `~=` exactly that version, and a test fails naming the
+  extra whose pin differs
 
 #### Scenario: The extras keep the Machinome name under a version floor
 
@@ -176,18 +181,24 @@ package that joined the repository from a repository of its own
 (`machinome-node-freecad`) included.
 
 A product that joined the repository from a repository of its own and is not
-an extension package, today the mechanics helpers `machinome-mechanics`,
-SHALL keep its record in its directory: `packages/machinome-mechanics/`
-SHALL hold its manifest `pyproject.toml`, a `README.md` that names its install
-line and the licence, its `CHANGELOG.md`, its `MANIFEST.in` and
-`.gitignore`, the relative symbolic links `LICENSE` and `LICENSES` to the
-root's, its package directory `machinome/mechanics/` with its own
-`__init__.py` and none at `machinome/`, its `tests/`, its `openspec/` (its
-specs and archived changes) and its `workflow/`. Its manual pages SHALL be
-the framework's manual's.
+an extension package, today the mechanics helpers `machinome-mechanics` and
+the browser viewer `machinome-viewer`, SHALL keep its record in its
+directory: `packages/machinome-mechanics/` SHALL hold its manifest
+`pyproject.toml`, a `README.md` that names its install line and the licence,
+its `CHANGELOG.md`, its `MANIFEST.in` and `.gitignore`, the relative symbolic
+links `LICENSE` and `LICENSES` to the root's, its package directory
+`machinome/mechanics/` with its own `__init__.py` and none at `machinome/`, its
+`tests/`, its `openspec/` (its specs and archived changes) and its
+`workflow/`; `packages/machinome-viewer/` SHALL hold the same entries, its
+package directory `machinome/viewer/web/` with its own `__init__.py`, none at
+`machinome/` nor at `machinome/viewer/`, and the widget inside it, its
+`scripts/`, and in its `workflow/` its own decision log `workflow/adrs/`.
+Their manual pages SHALL be the framework's manual's.
 
 Every distribution of the set but `machinome-mechanics` SHALL carry one
-version, the framework's, and every requirement between two of them SHALL be
+version, the framework's, `machinome-viewer` included, whose Python package's
+`__version__`, widget's `package.json` and entry in the root's npm lock SHALL
+state it too, and every requirement between two of them SHALL be
 the compatible-release pin `~=<version>`, in both directions, between the
 framework and an extension package and between two extension packages alike
 (`machinome-node-step` requires `machinome-node-cadquery`, and
@@ -199,7 +210,9 @@ the required distribution's version in the repository satisfies. The version
 SHALL be bumped from one configuration at the repository root,
 `.bumpversion.cfg`, naming every manifest's version but that of
 `machinome-mechanics`, which it SHALL NOT name, every pin between the
-distributions of the set and the files that restate the framework's version.
+distributions of the set and the files that restate the framework's version,
+the viewer's `__init__.py` and its widget's `package.json` among them; the
+root's npm lock SHALL be brought to it by npm.
 
 The repository root SHALL hold the repository's record and tooling and no
 distribution of its own: the licence texts (`LICENSE`, `LICENSES/`), the
@@ -207,9 +220,13 @@ contributor guide (`CONTRIBUTING.rst`), the AI-use statement (`AI-USE.md`),
 the history (`HISTORY.rst`), `README.md`, which links every directory under
 `packages/`, `context7.json`, the CI workflow under `.github/workflows/`,
 `.bumpversion.cfg`, `scripts/check-dist`, the record of the campaigns that
-span packages under `workflow/`, and a `pyproject.toml` that declares a uv
+span packages under `workflow/`, a `pyproject.toml` that declares a uv
 workspace whose members are `packages/*`, naming every member as a workspace
-source, with its `uv.lock`, and no `[project]` table. The workspace SHALL
+source, with its `uv.lock`, and no `[project]` table, and a private
+`package.json` that declares an npm workspace whose members are the
+repository's JavaScript projects, today the viewer's widget, with the one
+`package-lock.json` of the repository and no package of its own, its
+`node_modules/` ignored. The workspace SHALL
 install every member editable in compat mode, set at the root, and its
 default `dev` group SHALL install the framework's `dev` extra. The CI SHALL
 install the set from the lock with `uv sync --locked`.
@@ -225,13 +242,14 @@ built before the layout.
 the workspace outside the repository, check them with `twine check
 --strict`, install the wheels into a throwaway environment outside the
 repository, an extension package through the framework's extra that
-installs it and `machinome-mechanics` from its own wheel, import and smoke
-each there, an engine through the framework's
+installs it and `machinome-mechanics` and `machinome-viewer` from their own
+wheels, import and smoke each there, an engine through the framework's
 seam that resolves it and a node package through its address, rendering one
 part on its kernel where its external program is available and building it as
-far as the program allows where it is not, and upload nothing; the CI SHALL
-run it
-in a `dist` job after its `test` and `docs` jobs.
+far as the program allows where it is not, and upload nothing; the viewer's
+source distribution builds its bundle with npm, which the script SHALL require
+on the PATH before it builds; the CI SHALL run it in a `dist` job after its
+`test` and `docs` jobs, with Node installed.
 
 #### Scenario: A contributor clones the repository
 
@@ -243,9 +261,10 @@ in a `dist` job after its `test` and `docs` jobs.
   `packages/machinome-node-cadquery/`, `-build123d/`, `-step/`, `-molejo/`,
   `-openscad/`, `-solid2/`, `-jscad/`, `-stl/` and `-freecad/`, the
   mechanics helpers' with their tests and records under
-  `packages/machinome-mechanics/`, and the root holds the repository's
-  record, the workspace manifest and its lock, and none of the framework's
-  sources
+  `packages/machinome-mechanics/`, the browser viewer's with its widget,
+  tests and records under `packages/machinome-viewer/`, and the root holds
+  the repository's record, the uv and npm workspace manifests and their
+  locks, and none of the framework's sources
 
 #### Scenario: The licence is reached from the package directory
 
@@ -282,8 +301,10 @@ in a `dist` job after its `test` and `docs` jobs.
 - **THEN** every manifest's version but `machinome-mechanics`'s and
   `.bumpversion.cfg`'s `current_version` equal the framework's, every
   requirement between two distributions of the set is `~=` that version,
-  `.bumpversion.cfg` names every manifest but `machinome-mechanics`'s, and
-  the framework's `setup.cfg` holds no version table
+  `.bumpversion.cfg` names every manifest but `machinome-mechanics`'s, the
+  viewer's `__init__.py`, its widget's `package.json` and the root npm lock's
+  entry for it state the same version, and the framework's `setup.cfg` holds
+  no version table
 
 #### Scenario: The archives carry the licence
 
@@ -321,7 +342,8 @@ in a `dist` job after its `test` and `docs` jobs.
   extra, `machinome.engine.brep` resolves from
   `packages/machinome-engine-brep/`, `machinome.node.step` from
   `packages/machinome-node-step/`, `machinome.mechanics` from
-  `packages/machinome-mechanics/`, and the suite runs from
+  `packages/machinome-mechanics/`, `machinome.viewer.web` from
+  `packages/machinome-viewer/`, and the suite runs from
   `packages/machinome/`
 
 #### Scenario: The root manifest declares a distribution
@@ -387,4 +409,37 @@ in a `dist` job after its `test` and `docs` jobs.
   requirement `machinome>=0.8.0` and the framework's `mechanics` extra
   naming it, computes a pose numerically and a deferred expression from the
   framework's animation time, and finds its licence texts
+
+#### Scenario: The viewer keeps its record in its directory
+
+- **WHEN** the entries of `packages/machinome-viewer/` are listed, ignored
+  build leavings excepted
+- **THEN** they are `pyproject.toml`, `README.md`, `CHANGELOG.md`,
+  `MANIFEST.in`, `.gitignore`, the links `LICENSE` and `LICENSES` to the
+  root's, `machinome/` holding the package directory `viewer/web/` with its
+  own `__init__.py` and the widget, `scripts/`, `tests/`, `openspec/` and
+  `workflow/`, its manifest states `GPL-2.0-or-later OR CERN-OHL-S-2.0+` and
+  the root's licence files, and the layout test fails naming any other entry
+  or an `__init__.py` at `machinome/` or `machinome/viewer/`
+
+#### Scenario: The npm workspace installs the widget at the root
+
+- **WHEN** a contributor runs `npm ci` at the repository root
+- **THEN** the dependencies of every member of the root `package.json`'s
+  workspace are installed in the root's `node_modules/` from the root's
+  `package-lock.json`, the one lockfile of the repository, and the widget's
+  bundle builds with `npm run build` from the root or the widget's directory
+
+#### Scenario: The viewer is smoked from its wheel
+
+- **WHEN** `scripts/check-dist` installs the built wheels
+- **THEN** it installs `machinome-viewer` from its own wheel by path, imports
+  its package, finds its eight modules and its built bundle owned by its own
+  distribution inside the throwaway environment and no widget source, its
+  version and its pin the framework's, the framework's `viewer` and
+  `web-snapshot` extras pinning it, the `machinome.viewer` entry point's
+  report naming the installed bundle, the widget's API and document versions,
+  a banner stating the version, the API, the set's licence expression and the
+  repository, and its licence texts; `machinome-viewer describe` and
+  `machinome viewer` exit zero
 

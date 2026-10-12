@@ -8,8 +8,8 @@ commands, and is installed beside machinome as its optional `viewer` extra.
 Rewritten from machinome's `viewer-distribution` baseline when the viewer
 became this package.
 
-Code: `pyproject.toml`, `machinome_viewer/bundle.py`,
-`machinome_viewer/packaging.py`, `machinome_viewer/cli.py`.
+Code: `pyproject.toml`, `machinome/viewer/web/bundle.py`,
+`machinome/viewer/web/packaging.py`, `machinome/viewer/web/cli.py`.
 ## Requirements
 ### Requirement: Distributions carry the built frontends
 
@@ -57,17 +57,20 @@ framework copying an export copies the same two names it copies today.
 
 ### Requirement: The package is licensed and versioned as one
 
-The distribution SHALL declare `AGPL-3.0-or-later`, and the bundle it carries
-SHALL open with a banner naming that licence, the package version, the
-declared viewer API version and the source repository, and retaining the
+The distribution SHALL declare the licence of every package of the
+Machinome repository, `GPL-2.0-or-later OR CERN-OHL-S-2.0+`, and the bundle
+it carries SHALL open with a banner naming that licence, the package
+version, the declared viewer API version and the source repository,
+`https://github.com/machinome/machinome`, and retaining the
 notices of the libraries it bundles. The Python package, the widget's
 `package.json` and the changelog SHALL declare one version.
 
 #### Scenario: A conveyed bundle names its source
 
 - **WHEN** a maker publishes an export directory or a host serves the bundle
-- **THEN** the bundle's first lines name AGPL-3.0-or-later, the version, the API
-  version and the repository the source can be obtained from
+- **THEN** the bundle's first lines name `GPL-2.0-or-later OR
+  CERN-OHL-S-2.0+`, the version, the API version and the repository the
+  source can be obtained from
 
 ### Requirement: A framework finds the installed viewer through one entry point
 
@@ -143,16 +146,19 @@ answer is never given a build log to parse.
 
 Beyond the lookup, the framework SHALL use the viewer only through the
 `machinome-viewer` console script, or the same program as
-`python -m machinome_viewer` through the interpreter the framework runs
+`python -m machinome.viewer.web` through the interpreter the framework runs
 under — `serve` for the development server and `capture` for the snapshot —
-each run as a separate process on a directory the framework prepared. This package SHALL NOT import `machinome`, and its
-distribution SHALL NOT depend on machinome.
+each run as a separate process on a directory the framework prepared. This
+package SHALL NOT import the framework's modules (the `machinome` package's
+own `__init__`, beneath which its address lies, excepted), and its
+distribution SHALL require the framework only by the pin of its own
+release, `machinome~=<version>`.
 
 #### Scenario: The two packages install into one environment
 
 - **WHEN** `pip install "machinome[viewer]"` runs
-- **THEN** machinome-viewer installs beside machinome with no dependency
-  from the viewer back to the framework, and each package remains
+- **THEN** machinome-viewer installs beside machinome of the same release,
+  neither importing the other's modules, and each package remains
   importable without the other
 
 ### Requirement: A source checkout answers from a bundle built from its sources
@@ -235,10 +241,10 @@ it SHALL perform no scan, SHALL never rebuild, and SHALL require no npm.
 ### Requirement: The distribution carries one Machinome viewer identity
 
 The distribution SHALL be named `machinome-viewer`, expose the Python package
-`machinome_viewer`, register `machinome.viewer`, and provide
+`machinome.viewer.web`, register `machinome.viewer`, and provide
 `machinome-viewer describe|serve|capture` plus equivalent
-`python -m machinome_viewer` execution. Its source repository SHALL be
-`github.com/machinome/machinome-viewer`. The built bundle, standalone page,
+`python -m machinome.viewer.web` execution. Its source repository SHALL be
+`github.com/machinome/machinome`, where it is `packages/machinome-viewer/`. The built bundle, standalone page,
 source banner, package metadata, diagnostics and remedies SHALL use Machinome
 names. It SHALL NOT install solid-node-named Python packages, entry points or
 commands.
@@ -257,14 +263,15 @@ commands.
 #### Scenario: A source recipient follows the bundle banner
 
 - **WHEN** a conveyed bundle's source notice is read
-- **THEN** it names the AGPL licence, package/API versions, and the
-  `machinome/machinome-viewer` repository
+- **THEN** it names the licence, package/API versions, and the
+  `machinome/machinome` repository
 
 ### Requirement: The viewer remains an independent process
 
 Machinome SHALL reach the viewer only through `machinome.viewer` lookup and
 the `machinome-viewer` process commands. The viewer distribution SHALL NOT
-depend on or import the `machinome` Python package.
+import the framework's modules; it requires the framework only by the pin
+of its own release.
 
 #### Scenario: The two packages install together
 

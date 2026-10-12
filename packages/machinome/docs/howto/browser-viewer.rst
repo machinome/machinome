@@ -1,6 +1,47 @@
-====================
-Using the viewer
-====================
+===========================================
+Inspect and operate a machine in the viewer
+===========================================
+
+The browser viewer turns a published model into an interactive 3D assembly:
+orbit the camera, look inside subassemblies, operate declared controls, and
+watch the machine respond. Install it with the framework, into the
+environment that runs your projects:
+
+.. code-block:: console
+
+   python -m pip install "machinome[viewer]"
+
+In a project, ``machinome viewer`` reports the viewer the framework found,
+and ``machinome develop`` builds the project's model, opens the development
+viewer and watches source changes. A project with several models may need an
+explicit model reference. The usual URL is ``http://localhost:8000``.
+
+.. code-block:: console
+
+   machinome viewer
+   machinome develop
+
+Try the viewer
+==============
+
+This small spinner is a real, committed export: a red hub and three blue
+blades driven by the animation timeline. Load it, drag to orbit, scroll to
+zoom, or open **Assembly** to focus and hide parts. It is a posed model,
+not a running simulation.
+
+.. raw:: html
+
+   <div class="viewer-demo">
+     <button type="button" data-viewer-demo="embed-the-viewer/embed.html">Load interactive spinner</button>
+     <p>The example runs locally in your browser. No CAD service or account is needed.</p>
+   </div>
+
+The :doc:`embedding guide </howto/embed-the-viewer>` includes the complete
+source for this example. A WebGL-capable browser is required; the rest of
+this manual works without loading it.
+
+What the viewer shows
+=====================
 
 The viewer presents the controls the model declares. A static part, a posed
 mechanism, a running simulation and a clocked machine do not have the same
@@ -133,4 +174,4 @@ changed geometry while keeping the camera and surviving inspection choices.
 A build-error pane tells you what failed; fix the source and save again.
 An offline banner means the development connection was lost and the visible
 model may be stale. It does not mean that the still-visible geometry is a
-successful current build. See :doc:`troubleshooting`.
+successful current build. See :doc:`/reference/viewer/troubleshooting`.

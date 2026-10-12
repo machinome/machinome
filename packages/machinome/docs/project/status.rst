@@ -19,7 +19,7 @@ assemblies, joints, relations, drivers, instructions and controls. It
 supports posed machines, running machines with retained history and
 mechanical stops, and clocked machines with retained state written at
 events. Geometry and operation are checked in Python, and versioned
-documents carry them to the independent browser viewer.
+documents carry them to the browser viewer.
 
 A plain installation is the core alone: each CAD kernel and node family is
 an extra named for the module that needs it (:doc:`/start/install`), and
@@ -57,8 +57,9 @@ Packages
 --------
 
 Machinome is licensed |framework_licence|, at the recipient's choice.
-Machinome Viewer is an optional, independent AGPL-3.0-or-later package,
-installed through the ``viewer`` extra. The framework builds and tests
+The browser viewer is the package ``machinome-viewer``, numbered and
+licensed with the framework, installed through the ``viewer`` extra. The
+framework builds and tests
 without it; interactive development requires it. Machinome Mechanics
 |mechanics_version| is the optional helper package behind the
 ``mechanics`` extra. Both release with the framework.

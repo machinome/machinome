@@ -5,13 +5,13 @@ Versions and compatibility
 Three version numbers
 =====================
 
-The 0.8.1 release declares:
+This release declares:
 
-* **Package** |package-version| — the Python distribution and its bundled
-  widget, released with Machinome 0.8.1 and numbered with it. The widget is
+* **Package** |viewer_version| — the Python distribution and its bundled
+  widget, released with Machinome |release| and numbered with it. The widget is
   not published on npm; it ships inside the Python distribution.
-* **Viewer API** |viewer-api| — the browser-host interface/capabilities.
-* **Document versions** |document-versions| — model schemas this bundle reads.
+* **Viewer API** |viewer_api| — the browser-host interface/capabilities.
+* **Document versions** |document_versions| — model schemas this bundle reads.
 
 API 28 and API 29, the 0.8.0 release, add to what 0.7 declared, with the
 same document versions. API 28 adds
@@ -148,10 +148,8 @@ Dependency boundary
 
 Machinome builds and publishes models. This package renders their documents,
 executes the published mechanical program in JavaScript, and provides the
-development/capture processes. It does not import Machinome or load project
-Python code. Flexible parts are evaluated with the bundled molejo runtime;
+development/capture processes. It loads no project Python code. Flexible parts are evaluated with the bundled molejo runtime;
 they do not require a server-side CAD rebuild for each browser frame.
 
-See the `framework upgrade guide
-<https://machinome.readthedocs.io/en/latest/project/upgrading.html>`_ for changes to
+See the :doc:`framework upgrade guide </project/upgrading>` for changes to
 model authoring rather than viewer hosting.

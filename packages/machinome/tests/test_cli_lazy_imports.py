@@ -187,8 +187,8 @@ class CommandImportIsolationTest(TestCase):
         self.assertIsInstance(report['apiVersion'], int)
         # The lookup is an entry point that imports only the standard
         # library; the viewer's own server and capture never load here.
-        self.assertFalse(result.imported('machinome_viewer.server'))
-        self.assertFalse(result.imported('machinome_viewer.capture'))
+        self.assertFalse(result.imported('machinome.viewer.web.server'))
+        self.assertFalse(result.imported('machinome.viewer.web.capture'))
 
     def test_dispatching_new_loads_only_the_new_command(self):
         """`new` is the non-node command, and takes the other branch of the

@@ -3,6 +3,7 @@
 # packages that keep none.
 /WTs/
 /.venv/
+/node_modules/
 /.env
 /dist/
 /packages/*/build/

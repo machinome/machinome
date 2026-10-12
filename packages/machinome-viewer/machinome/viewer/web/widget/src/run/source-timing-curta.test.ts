@@ -1,5 +1,5 @@
 /* Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later */
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+ */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Engine } from './engine';
@@ -32,7 +32,7 @@ describe('unchanged Curta diagnostic exports', () => {
   for (const name of ['curta-6', 'curta-7', 'curta-11', 'curta-11-constrained']) {
     it(`${name}: full banks, commands and records, whole and restored portions`, async () => {
       const fixture = JSON.parse(readFileSync(new URL(
-        `../../../../tests/fixtures/source-timing/${name}.json`, import.meta.url), 'utf8')) as Fixture;
+        `../../../../../../tests/fixtures/source-timing/${name}.json`, import.meta.url), 'utf8')) as Fixture;
       const entry = fixture.cases[0];
       const engine = Engine.load(entry.document, { dt: .1, record: 4096 });
       const started = performance.now();

@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """One version, declared in three places that must agree."""
 
@@ -9,8 +9,8 @@ import re
 from pathlib import Path
 from unittest import TestCase
 
-import machinome_viewer
-from machinome_viewer.bundle import PACKAGE_JSON
+import machinome.viewer.web as machinome_viewer
+from machinome.viewer.web.bundle import PACKAGE_JSON
 
 ROOT = Path(__file__).resolve().parent.parent
 

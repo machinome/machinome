@@ -46,7 +46,11 @@ of every package directory under `packages/`, the framework's with its `dev`
 extra), SHALL state that the suite, the lint and the OpenSpec command run
 from the framework's directory `packages/machinome/`, SHALL state that the
 mechanics helpers' tests run from their own directory
-`packages/machinome-mechanics/`, and every link it makes into the
+`packages/machinome-mechanics/` and the browser viewer's from
+`packages/machinome-viewer/`, SHALL state that Node.js 22 or newer and npm
+build and test the viewer's widget, installed by one `npm ci` at the root and
+tested and built from there, and that the viewer's browser tests need
+Chromium for the installed Playwright, and every link it makes into the
 repository SHALL resolve from the root. The contributor briefing SHALL say
 once that the paths it names are relative to `packages/machinome/`.
 
@@ -66,9 +70,9 @@ once that the paths it names are relative to `packages/machinome/`.
   `packages/machinome-node-molejo`, `packages/machinome-node-openscad`,
   `packages/machinome-node-solid2`, `packages/machinome-node-jscad`,
   `packages/machinome-node-stl`, `packages/machinome-node-freecad`,
-  `packages/machinome-mechanics` and `packages/machinome` with its `dev`
-  extra, editable with `editable_mode=compat`, and names no tox environment
-  or requirements file
+  `packages/machinome-viewer`, `packages/machinome-mechanics` and
+  `packages/machinome` with its `dev` extra, editable with
+  `editable_mode=compat`, and names no tox environment or requirements file
 
 #### Scenario: A link of the guide stops resolving
 
@@ -87,4 +91,22 @@ once that the paths it names are relative to `packages/machinome/`.
   mechanics helpers' tests
 - **THEN** it says to run pytest from `packages/machinome-mechanics/`, and
   the core's suite run from `packages/machinome/` does not collect them
+
+#### Scenario: A contributor builds and tests the browser viewer
+
+- **WHEN** a contributor looks in `CONTRIBUTING.rst` for how to work on the
+  browser viewer
+- **THEN** it names Node.js 22 or newer and npm, `npm ci` at the repository
+  root, the widget's tests and build run from the root, `python -m pytest`
+  from `packages/machinome-viewer/`, and `playwright install chromium` for
+  its browser tests, and the core's suite run from `packages/machinome/`
+  does not collect the viewer's tests
+
+#### Scenario: The CI builds the widget before the suite
+
+- **WHEN** the CI's test job runs
+- **THEN** it installs Node, runs `npm ci` at the root, typechecks, tests and
+  builds the widget before the framework's suite, and installs Chromium
+  before it runs the viewer's tests from their directory, and the layout
+  test fails naming the step that is missing or out of order
 

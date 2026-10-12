@@ -84,9 +84,8 @@ lets a reader operate a running or a remembering machine in the browser.
 Exports carry the model to a static web page; readers inspect its parts
 and operate its inputs without installing a CAD stack.
 
-The framework is licensed |framework_licence|, at the recipient's
-choice. The independent browser viewer is AGPL-3.0-or-later, and example
-designs retain their own licences. Publishing
+The framework and its packages are licensed |framework_licence|, at the
+recipient's choice, and example designs retain their own licences. Publishing
 a design's source keeps its dimensions, relationships and tests available
 to the next person who needs to repair or adapt it.
 

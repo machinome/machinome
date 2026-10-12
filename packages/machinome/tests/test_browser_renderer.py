@@ -27,7 +27,7 @@ from machinome.manager.snapshot import Snapshot
 from tests.test_build_lock import lock_is_held
 from tests.test_export import Cube
 
-VIEWER = [sys.executable, '-m', 'machinome_viewer']
+VIEWER = [sys.executable, '-m', 'machinome.viewer.web']
 
 needs_viewer = unittest.skipUnless(
     has_bundle(), 'machinome-viewer not installed (pip install "machinome[viewer]")'

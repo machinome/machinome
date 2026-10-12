@@ -1,9 +1,9 @@
-======================
-Command-line reference
-======================
+============================
+The machinome-viewer command
+============================
 
-``machinome-viewer`` has three operations. ``python -m machinome_viewer`` is
-equivalent and is useful for selecting the exact Python environment. Use
+``machinome-viewer`` has three operations. ``python -m machinome.viewer.web``
+is equivalent and is useful for selecting the exact Python environment. Use
 ``--help`` after the command or subcommand for its installed syntax.
 There is no viewer-side CAD build command.
 
@@ -19,8 +19,8 @@ Print one JSON object to standard output and exit 0:
 .. code-block:: json
 
    {
-     "path": "/installation/machinome_viewer/widget/dist/machinome-viewer.js",
-     "index": "/installation/machinome_viewer/widget/index.html",
+     "path": "/installation/machinome/viewer/web/widget/dist/machinome-viewer.js",
+     "index": "/installation/machinome/viewer/web/widget/index.html",
      "apiVersion": 29,
      "documentVersions": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
      "version": "0.8.1"
@@ -111,7 +111,7 @@ capture
    machinome-viewer capture STAGING -o OUTPUT.png [options]
 
 Photograph a staged document as a transparent PNG. Requires Playwright and
-Chromium (see :doc:`../installation`). The staging directory must already
+Chromium (see :doc:`/start/install`). The staging directory must already
 contain ``viewer.json`` and its referenced models. Capture writes its page
 and bundle into that directory before starting a temporary local server and
 headless browser; use a disposable staging copy.

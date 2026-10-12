@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import ast
 import inspect
@@ -10,7 +10,7 @@ import tempfile
 from unittest import TestCase
 from unittest.mock import patch
 
-from machinome_viewer import bundle
+from machinome.viewer.web import bundle
 
 
 class BundleLookupTest(TestCase):
@@ -22,15 +22,15 @@ class BundleLookupTest(TestCase):
         froms = {node.module for node in ast.walk(tree)
                  if isinstance(node, ast.ImportFrom)}
         self.assertEqual(imports, {'json'})
-        # `machinome_viewer.currency` joins the set with ADR-059: the
+        # `machinome.viewer.web.currency` joins the set with ADR-059: the
         # lookup makes the bundle current before it reads the declaration.
         # That module imports only the standard library too, which
         # `tests/test_currency.py` asserts of it directly, so the promise
         # this test exists for -- resolving the entry point costs no
         # browser bundle and no web framework -- is unchanged.
         self.assertTrue(froms <= {'pathlib', 'importlib.metadata',
-                                  'machinome_viewer',
-                                  'machinome_viewer.currency'},
+                                  'machinome.viewer.web',
+                                  'machinome.viewer.web.currency'},
                         froms)
 
     def test_declares_api_version_fifteen(self):

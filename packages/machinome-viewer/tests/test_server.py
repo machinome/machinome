@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """HTTP coverage for the development server."""
 
@@ -16,9 +16,9 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 import uvicorn
 
-from machinome_viewer import server as server_module
-from machinome_viewer.bundle import BundleStale
-from machinome_viewer.server import WebViewer
+from machinome.viewer.web import server as server_module
+from machinome.viewer.web.bundle import BundleStale
+from machinome.viewer.web.server import WebViewer
 
 from .support import (
     CHROME, HAS_PIL, HAS_PLAYWRIGHT, needs_bundle, needs_chrome, needs_pil,

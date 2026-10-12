@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The MEASUREMENT: the Curta's own 'Turn crank', drawn and timed.
 
@@ -40,7 +40,7 @@ from pathlib import Path
 from unittest import TestCase, skipUnless
 
 from tests.support import needs_bundle, needs_playwright, serve_directory
-from machinome_viewer.bundle import bundle_path
+from machinome.viewer.web.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright

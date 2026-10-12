@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+ */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as controls from './partControls';
@@ -36,7 +36,7 @@ const read = (doc = document()) => controls.readControls(doc, '/composed.json', 
 
 describe('the reviewed producer exports, without rewriting their documents', () => {
   it.each(['columns', 'selector', 'crank', 'tilted', 'register'])('reads %s', fixture => {
-    const path = new URL(`../../../tests/fixtures/direct-motion/${fixture}/manifest.json`, import.meta.url);
+    const path = new URL(`../../../../../tests/fixtures/direct-motion/${fixture}/manifest.json`, import.meta.url);
     const doc = JSON.parse(readFileSync(path, 'utf8'));
     const entries = controls.readControls(doc, path.href, doc.program);
     expect(entries.map(one => one.name)).toEqual(Object.keys(doc.controls));

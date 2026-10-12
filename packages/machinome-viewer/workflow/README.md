@@ -16,12 +16,13 @@ status or authority of any decision. Accepted decisions remain accepted.
 published release;
 `archive/` keeps finished records such as the development changelog that
 preceded 0.7.0.
-`documentation.md` explains how maintainers build and publish the manual;
-`documentation-review.md` records local review evidence.
+`documentation.md` explains how maintainers build and check the viewer's
+pages of the manual; `documentation-review.md` records local review evidence.
 
-The public manual lives in `docs/`. Development plans, audits, decisions and
-release checklists do not belong in that user-facing tree. OpenSpec changes
-and behavioral specifications remain in `openspec/`.
+The viewer's public pages are part of the Machinome manual, under
+`packages/machinome/docs/` (change `join-viewer`). Development plans, audits,
+decisions and release checklists do not belong in that user-facing tree.
+OpenSpec changes and behavioral specifications remain in `openspec/`.
 
 ## `warts.md` — findings, in the order they were met
 

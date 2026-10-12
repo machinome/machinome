@@ -58,9 +58,10 @@ Nothing else in this repository is individually marked as machine-written.
 The framework's manual, architecture synthesis, ADRs, OpenSpec records and
 working notes under `packages/machinome/`, and the mechanics helpers under
 `packages/machinome-mechanics/`, founded in a repository of their own after
-the line and joined here with their history, and the notes under
-`workflow/`, written since the line are agent-written like the code, and
-reviewed the same way.
+the line and joined here with their history, and the browser viewer under
+`packages/machinome-viewer/`, split from this repository on 5 September 2026
+and joined back with its history, and the notes under `workflow/`, written
+since the line are agent-written like the code, and reviewed the same way.
 
 ## How the agents work
 
@@ -93,9 +94,8 @@ and is responsible for it. No model is an author of Machinome.
 ## The other repositories
 
 The same practice and the same line apply to the sibling repositories:
-machinome-viewer, molejo, machinome-studio, machinome.org and the Foundry
-projects under <https://github.com/machinome-foundry>. molejo,
-machinome.org and the Foundry projects were founded after the line and are
-agent-written throughout; machinome-viewer's history before the line is
-this repository's, from which it was split. Text a model wrote for
-machinome.org is marked there file by file with the model and the date.
+molejo, machinome-studio, machinome.org and the Foundry projects under
+<https://github.com/machinome-foundry>. molejo, machinome.org and the
+Foundry projects were founded after the line and are agent-written
+throughout. Text a model wrote for machinome.org is marked there file by
+file with the model and the date.

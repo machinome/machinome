@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The ``machinome-viewer`` command: describe, serve, capture.
 
@@ -16,14 +16,14 @@ import json
 import logging
 import sys
 
-from machinome_viewer.bundle import BundleMissing, BundleStale, describe
+from machinome.viewer.web.bundle import BundleMissing, BundleStale, describe
 
 logger = logging.getLogger('viewer.cli')
 
 # The development page is a static file this package carries; there is
 # no second frontend process to start or proxy any more (design D13,
 # D14). A released machinome's `machinome develop --web-dev` still passes
-# `--start-frontend` (`machinome/manager/develop.py:49-51`), so these
+# `--start-frontend` (`packages/machinome/machinome/manager/develop.py`), so these
 # three flags go on being ACCEPTED, changing nothing, so that command
 # keeps working rather than turning into an argparse error on a flag the
 # maker never typed. This is a compatibility promise, not an oversight:
@@ -122,7 +122,7 @@ def run_describe(args):
 
 
 def run_serve(args):
-    from machinome_viewer.server import WebViewer
+    from machinome.viewer.web.server import WebViewer
 
     for flag, given in (
         ('--dev', args.dev),
@@ -137,7 +137,7 @@ def run_serve(args):
 
 
 def run_capture(args):
-    from machinome_viewer.capture import Capture, CaptureError, mount_options
+    from machinome.viewer.web.capture import Capture, CaptureError, mount_options
 
     if not 0.0 <= args.time <= 1.0:
         sys.stderr.write(f'Error: --time must be between 0.0 and 1.0, got {args.time}\n')

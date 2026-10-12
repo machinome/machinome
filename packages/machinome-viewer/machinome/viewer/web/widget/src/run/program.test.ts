@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 // Loading a published program (design §4): read it verbatim, derive the
@@ -18,12 +18,12 @@ import type {
 } from './program';
 import type { PathShape } from '../expressions';
 import { structureOf } from '../expressions';
-import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
-import lockDocument from '../../../../tests/fixtures/lock/viewer.json';
+import acceptance from '../../../../../../tests/fixtures/pascaline/viewer.json';
+import lockDocument from '../../../../../../tests/fixtures/lock/viewer.json';
 import corpus from '../running-corpus.json';
-import clearingDocument from '../../../../tests/fixtures/clearing/viewer.json';
-import carriageDocument from '../../../../tests/fixtures/carriage/viewer.json';
-import touchedDocument from '../../../../tests/fixtures/touched/viewer.json';
+import clearingDocument from '../../../../../../tests/fixtures/clearing/viewer.json';
+import carriageDocument from '../../../../../../tests/fixtures/carriage/viewer.json';
+import touchedDocument from '../../../../../../tests/fixtures/touched/viewer.json';
 
 const SOURCE = 'http://example.test/viewer.json';
 

@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The built bundle is checked against the sources it is built from.
 
@@ -23,7 +23,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from machinome_viewer import bundle, currency
+from machinome.viewer.web import bundle, currency
 
 
 def checkout(root, *, bundle_ns=1_000_000_000_000_000_000, source_ns=None,
@@ -76,7 +76,7 @@ class CurrencyModuleTest(TestCase):
         self.assertTrue(
             imports <= {'logging', 'os', 'subprocess', 'fcntl'}, imports)
         self.assertTrue(
-            froms <= {'pathlib', 'machinome_viewer.bundle'}, froms)
+            froms <= {'pathlib', 'machinome.viewer.web.bundle'}, froms)
 
 
 class StalenessTest(TestCase):
@@ -169,6 +169,20 @@ class RebuildTest(TestCase):
     def test_a_stale_bundle_is_rebuilt(self):
         with tempfile.TemporaryDirectory() as root:
             widget = checkout(root)
+            touch(widget / 'src' / 'viewer.ts', 2_000_000_000_000_000_000)
+            calls, run = self.stub(widget)
+            with patch.object(subprocess, 'run', run):
+                currency.ensure_current(widget)
+            self.assertEqual(len(calls), 1)
+            self.assertFalse(currency.is_stale(widget))
+
+    def test_a_stale_bundle_with_hoisted_dependencies_is_rebuilt(self):
+        # Inside an npm workspace the widget's dependencies are installed at
+        # the workspace root, as Node resolves `build.mjs`'s imports from
+        # there (change `join-viewer`).
+        with tempfile.TemporaryDirectory() as root:
+            widget = checkout(root, dependencies=False)
+            (Path(root) / 'node_modules' / 'esbuild').mkdir(parents=True)
             touch(widget / 'src' / 'viewer.ts', 2_000_000_000_000_000_000)
             calls, run = self.stub(widget)
             with patch.object(subprocess, 'run', run):

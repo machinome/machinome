@@ -10,6 +10,7 @@ counter, the release facts defined once, and no publication caveat outside
 the status page.
 """
 
+import json
 import re
 import textwrap
 import unittest
@@ -36,18 +37,17 @@ CAVEATS = re.compile(
 
 ALLOWED_CAVEATS = ('project/status.rst', 'releases/')
 
-# The viewer grants AGPL-3.0-or-later (25 September 2026). Nothing the manual
-# describes is licensed version-3-only, so the spelling is a stale fact.
-STALE_GRANT = 'AGPL-3.0-only'
-
 # A licence identifier as an SPDX expression spells it: a capitalised name,
 # capitalised parts, a version, and a suffix (change `release-0-8-0`). The
-# framework's licence reaches a page only through |framework_licence|, so
-# the one identifier a page may spell is the viewer's, and the README, which
-# Sphinx does not build, states the framework's in conf.py's own words.
+# licence of every package of the repository reaches a page only through
+# |framework_licence|, so no page spells one, and the README, which Sphinx
+# does not build, states it in conf.py's own words (change `join-viewer`).
 LICENCE_IDENTIFIER = re.compile(
     r'(?<![\w.-])[A-Z][A-Za-z]*(?:-[A-Z]+)*-\d+\.\d+(?:-or-later|-only|\+)?')
-VIEWER_LICENCE = 'AGPL-3.0-or-later'
+
+# What the browser viewer's widget declares (change `join-viewer`).
+WIDGET = (REPOSITORY / 'packages' / 'machinome-viewer' / 'machinome' / 'viewer'
+          / 'web' / 'widget' / 'package.json')
 
 # The real machines are shown on machinome.org; the examples page sends the
 # reader there and the manual pins no example repository.
@@ -129,20 +129,34 @@ class NavigationTest(unittest.TestCase):
             'conventions', 'gears', 'screws', 'cranks', 'cams', 'indexing',
             'deltas', 'linkages', 'rolling', 'belts'])
 
+    def test_the_browser_viewer_is_three_how_tos_and_a_reference_section(self):
+        # `join-viewer`: the viewer's manual folds in by reader intent, three
+        # how-to guides and a reference section.
+        index = (DOCS / 'index.rst').read_text()
+        for caption, entries in (
+                ('How-to guides', ('howto/browser-viewer',
+                                   'howto/share-an-export',
+                                   'howto/embed-the-viewer')),
+                ('Reference', ('reference/viewer/index',))):
+            toctree = re.search(
+                rf':caption:\s*{caption}\n\n((?:   \S+\n)+)', index)
+            self.assertIsNotNone(toctree, f'index.rst has no {caption} toctree')
+            for entry in entries:
+                with self.subTest(caption=caption, entry=entry):
+                    self.assertIn(entry, toctree.group(1).split())
+        section = (DOCS / 'reference' / 'viewer' / 'index.rst').read_text()
+        toctree = re.search(r'\.\. toctree::\n(?:   :\S+:.*\n)*\n((?:   \S+\n)+)',
+                            section)
+        self.assertIsNotNone(toctree, 'the viewer section has no toctree')
+        self.assertEqual(toctree.group(1).split(), [
+            'mount', 'viewer-handle', 'layouts', 'running', 'clocked', 'cli',
+            'compatibility', 'troubleshooting'])
+
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',
                         'releases/development-0.7.rst'):
             with self.subTest(retired=retired):
                 self.assertFalse((DOCS / retired).exists(), retired)
-
-
-class LicenceWordingTest(unittest.TestCase):
-
-    def test_no_page_names_the_old_viewer_grant(self):
-        pages = list(documents()) + [('README.rst', (REPO / 'README.rst').read_text())]
-        for relative, text in pages:
-            with self.subTest(document=relative):
-                self.assertNotIn(STALE_GRANT, text)
 
 
 class KernelExtrasTest(unittest.TestCase):
@@ -164,12 +178,15 @@ class KernelExtrasTest(unittest.TestCase):
               'machinome[' 'manifold]', 'SOLID_TEST_' 'KERNEL')
 
     #: The FreeCAD node package's module before it joined the repository
-    #: (`join-freecad`), and the mechanics helpers' module and separate
-    #: manual before they joined it (`join-mechanics`).
+    #: (`join-freecad`), the mechanics helpers' module and separate manual
+    #: before they joined it (`join-mechanics`), and the browser viewer's
+    #: separate manual and repository (`join-viewer`).
     STALE = ('Everything else comes with the package',
              'machinome.node.adapters', 'machinome' '_freecad',
              'machinome' '_mechanics',
-             'machinome-mechanics.readthedocs') + FORMER
+             'machinome-mechanics.readthedocs',
+             'machinome-viewer.readthedocs',
+             'github.com/machinome/machinome-viewer') + FORMER
 
     #: The changelog records the dissolution and the released names, and
     #: the upgrading page maps every former name to its new one, the
@@ -193,7 +210,7 @@ class KernelExtrasTest(unittest.TestCase):
         # `cut-the-mesh-nodes`: the `openscad`, `solid2`, `jscad` and `stl`
         # extras theirs; `join-freecad`: the `freecad` extra the FreeCAD node
         # package; `join-mechanics`: the `mechanics` extra the mechanics
-        # helpers.
+        # helpers; `join-viewer`: the `viewer` extra the browser viewer.
         page = (DOCS / 'start' / 'install.rst').read_text()
         for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
                              'machinome-node-cadquery',
@@ -202,7 +219,8 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-openscad',
                              'machinome-node-solid2',
                              'machinome-node-jscad', 'machinome-node-stl',
-                             'machinome-node-freecad', 'machinome-mechanics'):
+                             'machinome-node-freecad', 'machinome-mechanics',
+                             'machinome-viewer'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
 
@@ -240,6 +258,17 @@ class ReleaseFactsTest(unittest.TestCase):
         version = re.search(r'^version = "([^"]*)"', manifest, flags=re.M)[1]
         self.assertEqual(conf_value('mechanics_version'), version)
 
+    def test_the_viewer_facts_are_the_widget_s(self):
+        # `join-viewer`: the viewer API and the document versions the manual
+        # states are those the widget of the repository declares.
+        widget = json.loads(WIDGET.read_text())
+        self.assertEqual(conf_value('viewer_api'),
+                         str(widget['machinomeViewerApi']))
+        versions = widget['machinomeDocumentVersions']
+        self.assertEqual(conf_value('document_versions'),
+                         f'{versions[0]} to {versions[-1]}')
+        self.assertEqual(versions, list(range(versions[0], versions[-1] + 1)))
+
     def test_no_caveat_outside_the_status_page(self):
         for relative, text in documents():
             if relative.startswith(ALLOWED_CAVEATS):
@@ -254,15 +283,16 @@ class ReleaseFactsTest(unittest.TestCase):
 class LicenceFactTest(unittest.TestCase):
     """The framework's licence is one release fact, stated as it is now
     (change `release-0-8-0`): a page states it through |framework_licence|
-    and spells no licence identifier but the viewer's; the release notes
-    under `docs/releases/` are history and are not read."""
+    and spells no licence identifier, the browser viewer being a package of
+    the repository under the same licence (change `join-viewer`); the
+    release notes under `docs/releases/` are history and are not read."""
 
-    def test_no_page_spells_a_licence_but_the_viewers(self):
+    def test_no_page_spells_a_licence(self):
         for relative, text in documents():
             if relative.startswith('releases/'):
                 continue
             with self.subTest(document=relative):
-                spelled = set(LICENCE_IDENTIFIER.findall(text)) - {VIEWER_LICENCE}
+                spelled = set(LICENCE_IDENTIFIER.findall(text))
                 self.assertEqual(spelled, set(),
                                  f'{relative} spells a licence literally; '
                                  'the framework\'s is |framework_licence|')
@@ -272,7 +302,7 @@ class LicenceFactTest(unittest.TestCase):
         readme = ' '.join((REPO / 'README.rst').read_text().split())
         self.assertTrue(licence in readme,
                         f'README.rst does not state {licence!r}')
-        admitted = {VIEWER_LICENCE, *LICENCE_IDENTIFIER.findall(licence)}
+        admitted = set(LICENCE_IDENTIFIER.findall(licence))
         self.assertEqual(set(LICENCE_IDENTIFIER.findall(readme)) - admitted,
                          set())
 

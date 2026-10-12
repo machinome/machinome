@@ -1,6 +1,6 @@
 # ADR-068: Optional Viewer Package Behind a Process Boundary
 
-**Status:** Accepted, development-viewer selection amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md)
+**Status:** Accepted, development-viewer selection amended by [ADR-103](../BUILD/ADR-103-the-browser-is-the-only-interactive-development-viewer.md); repository and licence superseded 2026-10-12 by [ADR-188](../BUILD/ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md)
 **Date:** 2026-09-05
 **Change:** `optional-viewer-package`
 **Amends:**
@@ -98,6 +98,10 @@ because its numbers are this framework's render results.
   copyright holder relicensing it. While the maintainer is the sole author
   that is a formality; it stops being one the day the viewer accepts an
   outside contribution.
+- Neutral (2026-10-12, `join-viewer`): the viewer joined the repository as
+  a product numbered with the set and licensed as every package of it; its
+  lookup, its process boundary and the framework's completeness without it
+  stand (ADR-188).
 
 ## References
 

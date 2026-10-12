@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The acceptance: the pin tumbler lock running in a real browser.
 
@@ -22,7 +22,7 @@ from unittest import TestCase
 from tests.support import (
     LOCK, needs_bundle, needs_playwright, published_lock, serve_directory,
 )
-from machinome_viewer.bundle import bundle_path
+from machinome.viewer.web.bundle import bundle_path
 
 try:
     from playwright.sync_api import sync_playwright

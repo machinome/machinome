@@ -1,20 +1,11 @@
 Sibling manuals
 ===============
 
-The browser viewer releases with Machinome and has a manual of its own,
-as do the libraries below. Each manual owns its subject; this one links
-rather than restates.
-
-The mechanics helpers are documented in this manual, under
-:doc:`/reference/mechanics/index`.
-
-`Machinome Viewer <https://machinome-viewer.readthedocs.io/en/latest/>`_
-    The browser viewer: installing it, inspecting an assembly, operating
-    posed, running and clocked machines, publishing exports and
-    snapshots, the complete embedding API with a working host page, and
-    compatibility with document versions. The package is
-    ``machinome-viewer`` |viewer_version|, AGPL-3.0-or-later,
-    installed through the framework's ``viewer`` extra.
+The browser viewer and the mechanics helpers are documented in this
+manual, under :doc:`/reference/viewer/index` and
+:doc:`/reference/mechanics/index`; the libraries below have manuals of
+their own. Each manual owns its subject; this one links rather than
+restates.
 
 `machinome.org <https://machinome.org/>`_
     The site of the whole ecosystem. Its Foundry shows simulations of

@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 // What a tick costs (design §12 risk 2, tasks 8.3). A non-affine level
@@ -21,10 +21,10 @@
 
 import { describe, expect, it } from 'vitest';
 import corpus from '../running-corpus.json';
-import acceptance from '../../../../tests/fixtures/pascaline/viewer.json';
-import lock from '../../../../tests/fixtures/lock/viewer.json';
-import clearing from '../../../../tests/fixtures/clearing/viewer.json';
-import carriage from '../../../../tests/fixtures/carriage/viewer.json';
+import acceptance from '../../../../../../tests/fixtures/pascaline/viewer.json';
+import lock from '../../../../../../tests/fixtures/lock/viewer.json';
+import clearing from '../../../../../../tests/fixtures/clearing/viewer.json';
+import carriage from '../../../../../../tests/fixtures/carriage/viewer.json';
 import { Engine } from './engine';
 import type { RunDocument } from './program';
 import { expressionMetrics, resetExpressionMetrics } from '../expressions';

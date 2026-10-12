@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Locate the built viewer without importing anything else.
 
@@ -14,7 +14,7 @@ framework and no CAD stack.
 import json
 from pathlib import Path
 
-from machinome_viewer.currency import (
+from machinome.viewer.web.currency import (
     BUNDLE_NAME, PACKAGE_DIR, WIDGET_DIR, BundleStale, ensure_current,
 )
 
@@ -85,7 +85,7 @@ def version():
     try:
         return installed('machinome-viewer')
     except PackageNotFoundError:
-        from machinome_viewer import __version__
+        from machinome.viewer.web import __version__
         return __version__
 
 

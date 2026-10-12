@@ -54,6 +54,7 @@ class TheDeclarationTest(TestCase):
             'machinome.engine.brep.read_brep',
             'machinome.engine.brep.write_brep',
             'machinome.engine.brep.write_stl',
+            'machinome.viewer.web',
         ))
 
     def test_the_mechanics_helpers_are_inside_and_their_former_name_outside(
@@ -90,6 +91,43 @@ class TheDeclarationTest(TestCase):
         self.assertEqual(
             project('from machinome_mechanics import meshed_angle'),
             {('sim/model.py', 'outside-universe', 'machinome_mechanics')})
+
+    def test_the_browser_viewer_is_internal_and_its_former_name_outside(
+            self):
+        """(OpenSpec change `join-viewer`) The browser viewer is
+        `machinome.viewer.web`, beneath the contract's `machinome` but
+        denied: it serves, captures and builds in processes of its own. Its
+        former module name is installed by no package of the set."""
+        from machinome.vet import vet
+
+        def project(statement):
+            scratch = os.path.realpath(
+                tempfile.mkdtemp(prefix='machinome-vet-'))
+            self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
+            os.makedirs(os.path.join(scratch, 'sim'))
+            files = {
+                'pyproject.toml':
+                    '[tool.machinome]\nmodel = "sim.model:Machine"\n',
+                'sim/__init__.py': '',
+                'sim/model.py': (
+                    'from machinome.node.assembly import AssemblyNode\n'
+                    f'{statement}\n\n\n'
+                    'class Machine(AssemblyNode):\n'
+                    '    viewer = WebViewer\n'),
+            }
+            for relative, text in files.items():
+                with open(os.path.join(scratch, relative), 'w') as stream:
+                    stream.write(text)
+            (model,) = vet(origin=scratch).models
+            return {(finding.path, finding.kind, finding.name)
+                    for finding in model.findings}
+
+        self.assertEqual(
+            project('from machinome.viewer.web.server import WebViewer'),
+            {('sim/model.py', 'framework-internal', 'machinome.viewer.web')})
+        self.assertEqual(
+            project('from machinome_viewer.server import WebViewer'),
+            {('sim/model.py', 'outside-universe', 'machinome_viewer.server')})
 
     def test_the_engine_package_is_judged_by_its_new_addresses(self):
         """(OpenSpec change `brep-mesh`) The seams and the B-rep engine's

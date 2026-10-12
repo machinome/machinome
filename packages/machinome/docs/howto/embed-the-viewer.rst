@@ -1,6 +1,6 @@
-====================
-Embedding the viewer
-====================
+==========================
+Embed the viewer in a page
+==========================
 
 Use an iframe when the exported page already has the controls you need.
 Use the JavaScript API when your page owns the layout, camera or operating
@@ -18,7 +18,7 @@ Embed a complete export
 
 Keep the export's page, bundle, manifest and model directory together. Host
 them over HTTP/HTTPS and give the iframe a useful title and nonzero height.
-Query parameters are described in :doc:`sharing`. The ``allowfullscreen``
+Query parameters are described in :doc:`/howto/share-an-export`. The ``allowfullscreen``
 attribute (or ``allow="fullscreen"``) lets a reader watch the model full
 screen; without it the viewer hides its full-screen button and the **f** key
 does nothing.
@@ -31,14 +31,15 @@ Load ``machinome-viewer.js`` and call ``MachinomeViewer.mount()`` or
 its geometry must load before the handle is usable. Catch a rejection and
 show the reader a meaningful error. Do not mount twice into the same container.
 
-This is the complete page used by the example on the manual's home page:
+This is the complete page used by the example in
+:doc:`/howto/browser-viewer`:
 
-.. literalinclude:: examples/embed.html
+.. literalinclude:: embed-the-viewer/embed.html
    :language: html
 
 Its script uses only the public interface:
 
-.. literalinclude:: examples/embed.js
+.. literalinclude:: embed-the-viewer/embed.js
    :language: javascript
 
 The ``spinner/`` directory is a committed viewer test export, not a model
@@ -50,7 +51,7 @@ Use ``baseUrl`` only when the models really live elsewhere.
 .. raw:: html
 
    <div class="viewer-demo">
-     <button type="button" data-viewer-demo="examples/embed.html">Run this example</button>
+     <button type="button" data-viewer-demo="embed-the-viewer/embed.html">Run this example</button>
      <p>Orbit, select a timeline pose, or open Assembly to inspect the spinner.</p>
    </div>
 
@@ -72,7 +73,7 @@ Choose a layout
 * :js:func:`MachinomeViewer.mountDevelopment` additionally connects to the
   development server's reload/error endpoints. It is not a static-export mount.
 
-See :doc:`reference/layouts` for options, keyboard behavior and CSS hooks.
+See :doc:`/reference/viewer/layouts` for options, keyboard behavior and CSS hooks.
 
 A declarative mount
 ===================
@@ -111,8 +112,8 @@ Always inspect the loaded model before choosing its operating API:
    }
 
 Use the exact qualified IDs returned by the declarations; do not guess an
-input's name from a part label. :doc:`reference/running` and
-:doc:`reference/clocked` include scripted examples and explain when requests
+input's name from a part label. :doc:`/reference/viewer/running` and
+:doc:`/reference/viewer/clocked` include scripted examples and explain when requests
 complete. :js:meth:`ViewerHandle.setDriver` writes native values in the posed
 driver table; it is not a command to a retained running or clocked bank.
 
@@ -129,10 +130,10 @@ file. If worker creation is refused (for example by a Content Security Policy),
 the same engine runs on the rendering thread and ``run.runsInWorker`` is false.
 Do not require a separate worker file. A restrictive host policy must also
 account for injected component styles; navigator/inspector ``styles: 'none'``
-lets the host supply their CSS. See :doc:`reference/layouts`.
+lets the host supply their CSS. See :doc:`/reference/viewer/layouts`.
 
 For an externally posed still, ``renderMode: 'on-demand'`` removes the
 background frame loop. It requires external animation and all interactive
 controls disabled. It accepts a clocked machine posed by request (API 29),
 and rejects a running program and a posed document with instructions.
-It is not the mode for an interactive machine. See :doc:`reference/mount`.
+It is not the mode for an interactive machine. See :doc:`/reference/viewer/mount`.

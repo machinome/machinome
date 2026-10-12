@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Setuptools hooks that build the frontends into the distributions.
 
@@ -26,13 +26,13 @@ from setuptools.command.sdist import sdist
 # package is importable in an isolated build environment. Load the sibling
 # standard-library-only module by path rather than relying on an installed copy
 # of this package (which would be the wrong source of currency rules anyway).
-_currency_name = 'machinome_viewer.currency'
+_currency_name = 'machinome.viewer.web.currency'
 currency = sys.modules.get(_currency_name)
 if currency is None:
     _currency_spec = importlib.util.spec_from_file_location(
         _currency_name, Path(__file__).with_name('currency.py'))
     if _currency_spec is None or _currency_spec.loader is None:  # pragma: no cover
-        raise ImportError('cannot load machinome_viewer.currency')
+        raise ImportError('cannot load machinome.viewer.web.currency')
     currency = importlib.util.module_from_spec(_currency_spec)
     sys.modules[_currency_name] = currency
     _currency_spec.loader.exec_module(currency)
@@ -63,18 +63,23 @@ WIDGET = Frontend(
 )
 # The bundle is the only built frontend now: the development page is a
 # plain file the widget directory already carries (`develop.html`,
-# `MANIFEST.in`'s `recursive-include machinome_viewer/widget *`), not a
+# `MANIFEST.in`'s `recursive-include machinome/viewer/web/widget *`), not a
 # second npm project to build.
 FRONTENDS = (WIDGET,)
 
 
 def build_frontend(frontend):
     """Build one frontend included in source distributions and wheels."""
-    if (frontend.directory / 'node_modules').is_symlink():
-        raise RuntimeError(
-            f'{frontend.directory / "node_modules"} is a symlink; refusing '
-            'npm ci because it can empty the shared dependency directory. '
-            'Use a checkout with private dependencies to build distributions.')
+    # Inside an npm workspace `npm ci` writes the workspace root's
+    # node_modules, so a symbolic node_modules anywhere from the widget up is
+    # one `npm ci` would empty (change `join-viewer`).
+    directory = Path(frontend.directory)
+    for level in (directory, *directory.resolve().parents):
+        if (level / 'node_modules').is_symlink():
+            raise RuntimeError(
+                f'{level / "node_modules"} is a symlink; refusing npm ci '
+                'because it can empty the shared dependency directory. Use a '
+                'checkout with private dependencies to build distributions.')
     subprocess.check_call(['npm', 'ci'], cwd=frontend.directory)
     subprocess.check_call(['npm', 'run', 'build'], cwd=frontend.directory)
 

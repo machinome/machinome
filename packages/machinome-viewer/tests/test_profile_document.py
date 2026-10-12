@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The producer's version-13 Bound operates through the public browser handle.
 
@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from machinome_viewer.bundle import bundle_path
+from machinome.viewer.web.bundle import bundle_path
 from tests.support import FIXTURES, needs_bundle, needs_playwright, serve_directory
 
 try:
@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover - guarded by needs_playwright
     sync_playwright = None
 
 
-FIXTURE = Path(__file__).parents[1] / 'machinome_viewer' / 'widget' / 'src' / 'run' / 'profile-overlap-v13.json'
+FIXTURE = Path(__file__).parents[1] / 'machinome' / 'viewer' / 'web' / 'widget' / 'src' / 'run' / 'profile-overlap-v13.json'
 STAND_IN = FIXTURES / 'spinner' / 'models' / 'spinner_project' / 'hub-Hub-d87c9ca31f37.stl'
 SHOT = Path(__file__).parent / '_shots' / 'profile-contact-v13.png'
 

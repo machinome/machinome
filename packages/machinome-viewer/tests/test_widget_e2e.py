@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """End-to-end tests for the export widget: serve the fixture export over
 HTTP, render it in headless chromium and assert on the pixels -- models
@@ -21,7 +21,7 @@ from pathlib import Path
 from subprocess import run
 from unittest import TestCase
 
-from machinome_viewer.bundle import api_version, bundle_path
+from machinome.viewer.web.bundle import api_version, bundle_path
 
 from .support import (
     CALCULATOR, CHROME, HAS_PIL, HAS_PLAYWRIGHT, PASCALINE, REGULATOR,

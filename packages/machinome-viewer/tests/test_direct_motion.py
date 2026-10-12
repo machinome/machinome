@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 """Real pointer input on the reviewed producer's verbatim documents."""
 import json
 import shutil
@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from machinome_viewer.bundle import bundle_path
+from machinome.viewer.web.bundle import bundle_path
 from .support import FIXTURES, needs_bundle, needs_playwright, serve_directory
 from .test_widget_e2e import HARNESS_PAGE
 

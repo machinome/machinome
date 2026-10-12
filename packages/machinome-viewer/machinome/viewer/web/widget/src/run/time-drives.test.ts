@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 import { describe, expect, it } from 'vitest';
@@ -14,7 +14,7 @@ import type { Command } from './commands';
 import type { RunState } from './run';
 import { assertRenderable } from '../viewer';
 import type { Manifest } from '../types';
-import astrarium from '../../../../tests/fixtures/astrarium/viewer.json';
+import astrarium from '../../../../../../tests/fixtures/astrarium/viewer.json';
 import { createSession } from './worker';
 import type { Reply } from './protocol';
 

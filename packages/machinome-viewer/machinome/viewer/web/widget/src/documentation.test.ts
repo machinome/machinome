@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-const root = fileURLToPath(new URL('../../../', import.meta.url));
-const docs = join(root, 'docs');
+const root = fileURLToPath(new URL('../../../../../../../', import.meta.url));
+const docs = join(root, 'packages', 'machinome', 'docs', 'reference', 'viewer');
 function sources(dir: string): string {
   return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     if (entry.name.startsWith('_')) return [];

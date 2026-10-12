@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """Photograph a staged document through the viewer in a headless browser.
 
@@ -32,10 +32,10 @@ from contextlib import contextmanager
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
-from machinome_viewer.bundle import (
+from machinome.viewer.web.bundle import (
     BUNDLE_NAME, BundleStale, bundle_path, has_bundle, missing_bundle_remedy,
 )
-from machinome_viewer.currency import ensure_current
+from machinome.viewer.web.currency import ensure_current
 
 PLAYWRIGHT_REMEDY = (
     "Install the browser renderer with "

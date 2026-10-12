@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 // The shared node table (design D2-D4, D8-D10): every parsed expression
@@ -32,9 +32,9 @@ import {
 import { evaluateExpression, loadProgram } from './run/program';
 import type { LoadedProgram, RunDocument } from './run/program';
 import corpus from './running-corpus.json';
-import clearingDoc from '../../../tests/fixtures/clearing/viewer.json';
-import carriageDoc from '../../../tests/fixtures/carriage/viewer.json';
-import lockDoc from '../../../tests/fixtures/lock/viewer.json';
+import clearingDoc from '../../../../../tests/fixtures/clearing/viewer.json';
+import carriageDoc from '../../../../../tests/fixtures/carriage/viewer.json';
+import lockDoc from '../../../../../tests/fixtures/lock/viewer.json';
 
 describe('prepare', () => {
   it('returns a node id', () => {

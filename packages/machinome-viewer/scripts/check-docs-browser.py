@@ -1,7 +1,12 @@
-"""Review the built manual and execute its documented embedding examples.
+"""Review the viewer's pages of the built manual and execute their examples.
 
-Run with a Python environment containing Playwright and installed Chromium.
-Writes screenshots/report under _build/docs-review, never into doc sources.
+The viewer's pages are part of the Machinome manual (change `join-viewer`):
+the three how-to guides and the reference section `reference/viewer/`.
+Build the manual first (from `packages/machinome`, `python -m sphinx -b html
+docs docs/_build/html`), then run this with a Python environment containing
+Playwright and installed Chromium; a first argument names another built
+HTML directory. Writes screenshots/report under this package's
+_build/docs-review, never into doc sources.
 """
 
 from contextlib import contextmanager
@@ -12,16 +17,23 @@ import json
 from pathlib import Path
 import re
 import threading
+import sys
 from urllib.parse import unquote, urljoin, urlsplit
 
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-HTML = ROOT / 'docs/_build/html'
+REPOSITORY = ROOT.parents[1]
+DOCS = REPOSITORY / 'packages/machinome/docs'
+HTML = (Path(sys.argv[1]).resolve() if len(sys.argv) > 1
+        else DOCS / '_build/html')
 ARTIFACTS = ROOT / '_build/docs-review'
-PAGES = sorted(str(path.relative_to(ROOT / 'docs').with_suffix('.html'))
-               for path in (ROOT / 'docs').rglob('*.rst')
-               if '_build' not in path.parts)
+FIXTURES = ROOT / 'tests/fixtures'
+#: The viewer's pages: its how-to guides and its reference section.
+PAGES = sorted([*(f'howto/{name}.html' for name in (
+    'browser-viewer', 'share-an-export', 'embed-the-viewer')),
+    *(str(path.relative_to(DOCS).with_suffix('.html'))
+      for path in (DOCS / 'reference/viewer').glob('*.rst'))])
 
 
 class Links(HTMLParser):
@@ -57,7 +69,7 @@ def serve():
 
 
 def documented_script(page, section):
-    text = (ROOT / 'docs/reference' / page).read_text().split(section, 1)[1]
+    text = (DOCS / 'reference/viewer' / page).read_text().split(section, 1)[1]
     block = re.search(r'\.\. code-block:: javascript\n\n((?:   .*\n|\n)+)', text)
     assert block, (page, section)
     return '\n'.join(line[3:] if line.startswith('   ') else line
@@ -66,8 +78,8 @@ def documented_script(page, section):
 
 def fixture_route(route):
     relative = urlsplit(route.request.url).path.split('/test-fixtures/', 1)[1]
-    target = (ROOT / 'tests/fixtures' / unquote(relative)).resolve()
-    assert target.is_relative_to(ROOT / 'tests/fixtures')
+    target = (FIXTURES / unquote(relative)).resolve()
+    assert target.is_relative_to(FIXTURES)
     route.fulfill(path=target)
 
 
@@ -109,10 +121,11 @@ def main():
                 assert layout['scroll'] <= layout['width'], (name, width, layout)
                 assert not layout['brokenImages'], (name, layout)
                 pages.append({'page': name, 'width': width})
-                if name in ['index.html', 'reference/mount.html', 'reference/layouts.html', 'reference/running.html']:
+                if name in ['howto/browser-viewer.html', 'reference/viewer/mount.html',
+                            'reference/viewer/layouts.html', 'reference/viewer/running.html']:
                     page.screenshot(path=str(ARTIFACTS / f'{width}-{name.replace("/", "-")}.png'), full_page=True)
 
-            page.goto(base)
+            page.goto(base + 'howto/browser-viewer.html')
             page.get_by_role('button', name='Load interactive spinner').click()
             frame = page.frame_locator('.viewer-demo iframe')
             frame.locator('#time:not([disabled])').wait_for(timeout=30000)
@@ -126,8 +139,8 @@ def main():
 
         page.goto(base)
         page.locator('.wy-nav-top i').click()
-        page.locator('.wy-menu-vertical a[href="installation.html"]').click()
-        assert page.url.endswith('installation.html')
+        page.locator('.wy-menu-vertical a[href="howto/browser-viewer.html"]').click()
+        assert page.url.endswith('howto/browser-viewer.html')
         page.set_viewport_size({'width': 1440, 'height': 1000})
         page.goto(base + 'search.html?q=MachineHandle.move')
         page.locator('#search-results li').first.wait_for(timeout=15000)
@@ -136,7 +149,7 @@ def main():
 
         # Read the exact reference snippets, not a separately maintained example.
         page.route('**/test-fixtures/**', fixture_route)
-        page.goto(base + 'examples/embed.html')
+        page.goto(base + 'howto/embed-the-viewer/embed.html')
         page.locator('#time:not([disabled])').wait_for()
         run_code = documented_script('running.rst', 'Scripted example')
         clocked_code = documented_script('clocked.rst', 'Example: operate and restore')

@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import json
 import os
@@ -10,9 +10,9 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from machinome_viewer import capture as capture_module
-from machinome_viewer.bundle import BundleStale
-from machinome_viewer.capture import Capture, CaptureError, mount_options
+from machinome.viewer.web import capture as capture_module
+from machinome.viewer.web.bundle import BundleStale
+from machinome.viewer.web.capture import Capture, CaptureError, mount_options
 
 from .support import (
     HAS_PIL, HAS_PLAYWRIGHT, SPINNER, needs_bundle, needs_pil,
@@ -250,7 +250,7 @@ class RunningStagedDocumentTest(TestCase):
         # drives moves it to included. A test on the number 5 alone
         # would photograph the rest state while claiming another
         # instant.
-        from machinome_viewer.capture import carries_program
+        from machinome.viewer.web.capture import carries_program
 
         self.assertTrue(carries_program({"version": 6}))
         self.assertTrue(carries_program({"version": 5}))
@@ -294,7 +294,7 @@ class RunningStagedDocumentTest(TestCase):
     def test_what_animates_time_is_a_question_of_its_own(self):
         """(8.2) The two questions, split: "does this document carry a
         compiled program" and "does this document animate `$t`"."""
-        from machinome_viewer.capture import (animates_time,
+        from machinome.viewer.web.capture import (animates_time,
                                                carries_clocked,
                                                carries_program)
 

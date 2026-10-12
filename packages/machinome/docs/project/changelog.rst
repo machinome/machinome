@@ -50,6 +50,18 @@ Unreleased
   "machinome[mechanics]"`` installs them
   (:doc:`/reference/mechanics/index`, :doc:`/howto/mechanism-formulas`).
 
+* **The browser viewer is part of this manual.** Operating a machine in the
+  viewer, sharing an export and embedding the viewer are how-to guides
+  (:doc:`/howto/browser-viewer`, :doc:`/howto/share-an-export`,
+  :doc:`/howto/embed-the-viewer`), and its browser API, its command and
+  its compatibility are the reference section
+  :doc:`/reference/viewer/index`. ``pip install "machinome[viewer]"``
+  installs it, numbered with the framework. Its Python package is
+  ``machinome.viewer.web`` (formerly ``machinome_viewer``): a script that
+  ran ``python -m machinome_viewer`` runs ``python -m
+  machinome.viewer.web`` or the ``machinome-viewer`` command, which is
+  unchanged.
+
 Machinome 0.8.1
 ---------------
 
@@ -362,7 +374,7 @@ document versions 1 to 13, as 0.7's do, so a 0.7 viewer reads them.
 
 * **Licence:** from this release Machinome is licensed
   |framework_licence|, at the recipient's choice. The browser viewer,
-  ``machinome-viewer``, is a separate package under AGPL-3.0-or-later.
+  ``machinome-viewer``, is a separate package.
 
 * **Install only what your parts use.** Each CAD kernel is an extra named for
   the last component of the module that needs it: ``machinome[cadquery]``,
@@ -785,9 +797,9 @@ one description that can be built, operated and tested.
   ``machinome.exact.intersect_shapes`` shares both rules. No mesh
   verdict or overlap tolerance is introduced.
 * **Independent viewer:** ``machinome[viewer]`` selects the separate
-  AGPL-3.0-or-later package. Interactive ``develop`` requires it;
-  ``--no-web`` remains available. The matching viewer release 0.7.0,
-  numbered with the framework, implements API 27 and schemas 1–13,
+  package. Interactive ``develop`` requires it; ``--no-web`` remains
+  available. The matching viewer release 0.7.0, numbered with the
+  framework, implements API 27 and schemas 1–13,
   including running, clocked, time-driven and source-timed machines, a
   follower held between two moving surfaces, finite profile contact, and
   two Turn controls on one visible part that select different declared

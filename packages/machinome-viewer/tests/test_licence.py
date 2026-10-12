@@ -1,16 +1,18 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""The viewer grants AGPL-3.0-or-later, and says so everywhere.
+"""The viewer is licensed as every package of the repository, and says so.
 
-The grant is the SPDX expression: in every source header, in both package
-manifests, in the banner every conveyed bundle opens with, and on the pages
-a reader lands on. The `LICENSE` file is the AGPL version 3 text and carries
-no version choice of its own, so these checks are what keeps the grant one
-and the same across the repository. History (the archived changes, the
-decision log and the pre-0.7 changelog) records the earlier `-only` grant
-and is left out of the scan.
+The grant is the set's SPDX expression, read from the framework's own
+manifest: in both of this package's manifests, in every source header of
+the package, in the banner every conveyed bundle opens with, and in the
+README a reader lands on, in the words the manual states it with (change
+`join-viewer`). The licence texts are the repository's, reached through the
+links `LICENSE` and `LICENSES`. The archived records (the archived changes,
+the decision log and the archived evidence) record what held when they
+were written and are left out of the scan. A header carrying any other
+expression fails the equality.
 """
 
 import json
@@ -20,104 +22,89 @@ import tomllib
 import unittest
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
-WIDGET = REPO / 'machinome_viewer' / 'widget'
+PACKAGE = Path(__file__).resolve().parent.parent
+REPOSITORY = PACKAGE.parent.parent
+WIDGET = PACKAGE / 'machinome' / 'viewer' / 'web' / 'widget'
 
-GRANT = 'AGPL-3.0-or-later'
-STALE = 'AGPL-3.0-only'
+#: The set's licence, as the framework's manifest declares it.
+CORE = tomllib.loads(
+    (REPOSITORY / 'packages' / 'machinome' / 'pyproject.toml').read_text())[
+    'project']
+GRANT = CORE['license']
 
-SPDX = re.compile(r'SPDX-License-Identifier: (\S+)')
+#: The words the manual states the licence with.
+WORDS = re.search(
+    r"^framework_licence = '([^']*)'",
+    (REPOSITORY / 'packages' / 'machinome' / 'docs' / 'conf.py').read_text(),
+    flags=re.M)[1]
 
-# Records of what was decided when; they keep the grant that held then.
-HISTORY = ('workflow/archive/', 'workflow/adrs/', 'openspec/changes/')
+SOURCE = 'Source: https://github.com/machinome/machinome'
 
-# This file names the stale grant in order to refuse it, and spells the
-# SPDX pattern it scans for; it is not a header to check.
+SPDX = re.compile(r'SPDX-License-Identifier: (\S+(?: OR \S+)*)')
+
+# Records of what was decided when; they keep what held then.
+HISTORY = ('openspec/changes/archive/', 'workflow/archive/', 'workflow/adrs/',
+           'workflow/evidence/')
+
+# This file spells the SPDX pattern it scans for; it is not a header to
+# check beyond its own first lines.
 SELF = 'tests/test_licence.py'
-
-# A licence named the way SPDX names one (`Name-1.0`, `Name-1.0-or-later`),
-# and a licence named by a capitalised word before "licence"/"license".
-IDENTIFIER = re.compile(r'\b(?:[A-Z][A-Za-z]*-)+\d+\.\d+(?:-or-later|-only)?\b')
-NAMED_LICENCE = re.compile(r'\b[A-Z][A-Za-z]+ [Ll]icen[cs]e\b')
-
-# Pages a reader lands on, each of which states the grant.
-READER_FACING = ('README.md', 'docs/index.rst', 'docs/sharing.rst',
-                 'context7.json')
 
 
 def tracked_files():
-    out = subprocess.run(['git', 'ls-files', '-z'], cwd=REPO, check=True,
-                         capture_output=True).stdout
+    out = subprocess.run(['git', 'ls-files', '-z', '--', '.'], cwd=PACKAGE,
+                         check=True, capture_output=True).stdout
     return [Path(p) for p in out.decode().split('\0') if p]
 
 
 def text_of(relative):
     try:
-        return (REPO / relative).read_text(encoding='utf-8')
-    except UnicodeDecodeError:
+        return (PACKAGE / relative).read_text(encoding='utf-8')
+    except (UnicodeDecodeError, IsADirectoryError):
         return None
 
 
 class LicenceTest(unittest.TestCase):
 
     def test_the_manifests_agree(self):
-        pyproject = tomllib.loads((REPO / 'pyproject.toml').read_text())
-        self.assertEqual(pyproject['project']['license'], GRANT)
+        project = tomllib.loads((PACKAGE / 'pyproject.toml').read_text())[
+            'project']
+        self.assertEqual(project['license'], GRANT)
+        self.assertEqual(project['license-files'], CORE['license-files'])
         package = json.loads((WIDGET / 'package.json').read_text())
         self.assertEqual(package['license'], GRANT)
 
-    def test_the_banner_template_names_the_grant(self):
-        build = (WIDGET / 'build.mjs').read_text()
-        self.assertIn(f'SPDX-License-Identifier: {GRANT}', build)
-        self.assertNotIn(STALE, build)
+    def test_the_licence_texts_are_the_repository_s(self):
+        for entry in ('LICENSE', 'LICENSES'):
+            with self.subTest(entry=entry):
+                link = PACKAGE / entry
+                self.assertTrue(link.is_symlink(), f'{link} is not a link')
+                self.assertEqual(link.resolve(), REPOSITORY / entry)
 
-    def test_every_header_grants_or_later(self):
+    def test_every_header_states_the_grant(self):
         headers = 0
         for relative in tracked_files():
-            if relative.as_posix().startswith(HISTORY) \
-               or relative.as_posix() == SELF:
+            if relative.as_posix().startswith(HISTORY):
                 continue
             text = text_of(relative)
             if text is None:
                 continue
+            if relative.as_posix() == SELF:
+                text = '\n'.join(text.splitlines()[:3])
             for identifier in SPDX.findall(text):
                 headers += 1
                 with self.subTest(file=relative.as_posix()):
                     self.assertEqual(identifier, GRANT)
-        self.assertGreater(headers, 100, 'the scan found too few headers')
+        self.assertGreater(headers, 150, 'the scan found too few headers')
 
-    def test_nothing_current_says_only(self):
-        for relative in tracked_files():
-            if relative.as_posix().startswith(HISTORY) \
-               or relative.as_posix() == SELF:
-                continue
-            text = text_of(relative)
-            if text is None:
-                continue
-            with self.subTest(file=relative.as_posix()):
-                self.assertNotIn(STALE, text)
+    def test_the_banner_template_states_the_grant_and_the_source(self):
+        build = (WIDGET / 'build.mjs').read_text()
+        self.assertIn(f'SPDX-License-Identifier: {GRANT}', build)
+        self.assertIn(SOURCE, build)
 
-    def test_reader_facing_pages_state_the_grant(self):
-        for relative in READER_FACING:
-            with self.subTest(file=relative):
-                self.assertIn(GRANT, (REPO / relative).read_text())
-
-    def test_reader_facing_pages_name_only_the_viewers_grant(self):
-        """The viewer states its own licence and never the framework's,
-        which is licensed separately and states its licence in its own
-        manual (OpenSpec `release-0-8-0`). The patterns are generic: any
-        SPDX-shaped identifier, and any name written before the word."""
-        pages = ['README.md', 'CHANGELOG.md', 'context7.json']
-        pages += sorted(p.relative_to(REPO).as_posix()
-                        for p in (REPO / 'docs').rglob('*.rst')
-                        if '_build' not in p.parts)
-        for relative in pages:
-            text = (REPO / relative).read_text()
-            with self.subTest(file=relative):
-                self.assertEqual(
-                    [name for name in IDENTIFIER.findall(text)
-                     if name != GRANT], [])
-                self.assertEqual(NAMED_LICENCE.findall(text), [])
+    def test_the_readme_states_the_licence(self):
+        readme = ' '.join((PACKAGE / 'README.md').read_text().split())
+        self.assertIn(WORDS, readme)
 
     def test_a_built_bundle_opens_with_the_grant(self):
         bundle = WIDGET / 'dist' / 'machinome-viewer.js'
@@ -126,7 +113,7 @@ class LicenceTest(unittest.TestCase):
         with bundle.open(encoding='utf-8') as fh:
             head = fh.read(2000)
         self.assertIn(f'SPDX-License-Identifier: {GRANT}', head)
-        self.assertNotIn(STALE, head)
+        self.assertIn(SOURCE, head)
 
 
 if __name__ == '__main__':

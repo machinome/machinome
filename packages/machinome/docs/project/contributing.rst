@@ -26,6 +26,5 @@ and preserve their licences in their own repositories. Keep external
 design source out of the framework-owned tutorial; its machine lives
 under ``docs/tutorial/`` and the suite builds and tests every chapter.
 
-Browser-viewer changes belong to the separate
-`machinome-viewer repository
-<https://github.com/machinome/machinome-viewer>`_.
+Browser-viewer changes are changes of this repository, in
+``packages/machinome-viewer/``.

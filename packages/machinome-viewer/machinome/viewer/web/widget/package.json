@@ -18,7 +18,7 @@
     13
   ],
   "private": true,
-  "license": "AGPL-3.0-or-later",
+  "license": "GPL-2.0-or-later OR CERN-OHL-S-2.0+",
   "description": "Embeddable static viewer for `machinome export` output",
   "scripts": {
     "build": "node build.mjs",

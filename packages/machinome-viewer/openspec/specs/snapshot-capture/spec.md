@@ -8,7 +8,7 @@ has described the photographed node in a staging directory. Migrated from the
 capture half of machinome's `web-snapshot` baseline when the viewer became
 this package; the staging contract is new.
 
-Code: `machinome_viewer/capture.py`, `machinome_viewer/cli.py` (`capture`).
+Code: `machinome/viewer/web/capture.py`, `machinome/viewer/web/cli.py` (`capture`).
 ## Requirements
 ### Requirement: A staged document is photographed with a transparent background
 

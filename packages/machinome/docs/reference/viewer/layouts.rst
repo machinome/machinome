@@ -40,7 +40,7 @@ Navigator
    Unsubscribe and remove the navigator's DOM; return ``void``. Does not
    dispose its viewer. Dispose the navigator before disposing that viewer.
 
-Keyboard navigation is described in :doc:`../using-the-viewer`. Expansion
+Keyboard navigation is described in :doc:`/howto/browser-viewer`. Expansion
 state belongs to the navigator; focused root and visibility belong to the
 viewer. A name tooltip includes its full hierarchical path when a label is
 truncated.

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+ */
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 const { loadAsync } = vi.hoisted(() => ({ loadAsync: vi.fn() }));

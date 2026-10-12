@@ -9,8 +9,8 @@ the installed viewer bundle, the reload channel and the build-error surface,
 and never imports project source. Migrated from machinome's `web-viewer`
 baseline when the viewer became this package; the launch contract is new.
 
-Code: `machinome_viewer/server.py`, `machinome_viewer/widget/develop.html`,
-`machinome_viewer/cli.py` (`serve`).
+Code: `machinome/viewer/web/server.py`, `machinome/viewer/web/widget/develop.html`,
+`machinome/viewer/web/cli.py` (`serve`).
 ## Requirements
 ### Requirement: The server is launched on a build directory
 

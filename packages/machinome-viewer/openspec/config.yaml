@@ -2,19 +2,22 @@ schema: spec-driven
 
 # Project context shown to AI when creating artifacts.
 context: |
-  machinome-viewer is the browser viewer for machinome models: the
-  embeddable three.js widget (machinome_viewer/widget, TypeScript, built
-  by esbuild to dist/machinome-viewer.js) with the export page and the static
-  development page beside it, the FastAPI development server
-  (machinome_viewer/server.py) and the Playwright capture
-  (machinome_viewer/capture.py), packaged for pip as `machinome-viewer`.
+  machinome-viewer is the browser viewer for machinome models, the
+  repository's package `machinome.viewer.web` at
+  packages/machinome-viewer/ of the machinome repository: the embeddable
+  three.js widget (machinome/viewer/web/widget, TypeScript, built by esbuild
+  to dist/machinome-viewer.js, the one member of the root's npm workspace)
+  with the export page and the static development page beside it, the
+  FastAPI development server (machinome/viewer/web/server.py) and the
+  Playwright capture (machinome/viewer/web/capture.py), packaged for pip as
+  `machinome-viewer`, numbered with the framework and licensed as every
+  package of the repository.
 
   The framework reaches it through one Python entry point
-  (`machinome.viewer` -> machinome_viewer.bundle:describe) and the
+  (`machinome.viewer` -> machinome.viewer.web.bundle:describe) and the
   `machinome-viewer describe|serve|capture` console script, always as a
-  separate process. This package never imports machinome; machinome
-  never imports this package. That is the licensing boundary: this
-  viewer is AGPL-3.0-or-later, and the framework is licensed separately.
+  separate process. This package imports none of the framework's modules;
+  the framework never imports this package.
 
   Conventions:
   - TDD: red-first, one commit per increment.

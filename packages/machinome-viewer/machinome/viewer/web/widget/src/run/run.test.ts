@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 // The tick (`simulation/run.py`'s `class Run`, reproduced): admissions,
@@ -21,7 +21,7 @@ import { Motion, propagations } from './motion';
 import corpus from '../running-corpus.json';
 import wrappedV12 from './follow-wrapped-v12.json';
 import wrappedCommandsV12 from './follow-wrapped-commands-v12.json';
-import producerLawV11 from '../../../../tests/fixtures/nonfinite-running-law-v11.json';
+import producerLawV11 from '../../../../../../tests/fixtures/nonfinite-running-law-v11.json';
 import {
   ExpressionPath, expressionGeneration, expressionMetrics,
   releaseExpressions, retainExpressions, UnsupportedPathNode,

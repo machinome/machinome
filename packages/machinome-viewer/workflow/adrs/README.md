@@ -25,6 +25,12 @@ both repositories. Consequences:
   repository. The decision that split the two packages is itself recorded in
   solid-node's log, beside the `optional-viewer-package` change.
 
+(12 October 2026, change `join-viewer`) The viewer joined the machinome
+repository at `packages/machinome-viewer/`; this log stays its own, beside the
+framework's `packages/machinome/docs/adrs/`. A number cited in the viewer's
+code, specs and records names this log's ADR; the framework's are cited as
+'framework ADR-nnn'.
+
 ## Discipline
 
 - **One decision per ADR**, numbered sequentially, filed under the subsystem

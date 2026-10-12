@@ -4,11 +4,12 @@
 
 """Find the browser viewer this framework does not carry.
 
-The viewer is `machinome-viewer`, a separately licensed package installed
-through the ``viewer`` extra. It registers one entry point,
-``machinome.viewer``, whose ``bundle`` entry resolves to a function that
-returns where the built bundle and the standalone export page are, and which
-viewer API version the widget declares. That entry point is the whole of
+The viewer is `machinome-viewer`, the repository's package
+``machinome.viewer.web``, installed through the ``viewer`` extra. It
+registers one entry point, ``machinome.viewer``, whose ``bundle`` entry
+resolves to a function that returns where the built bundle and the
+standalone export page are, and which viewer API version the widget
+declares. That entry point is the whole of
 what this module -- and this framework -- imports of the viewer. Everything
 else the framework asks of it runs as a separate process, through
 :func:`viewer_command`.
@@ -25,8 +26,8 @@ ENTRY_POINT_GROUP = 'machinome.viewer'
 ENTRY_POINT_NAME = 'bundle'
 BUNDLE_NAME = 'machinome-viewer.js'
 INSTALL_REMEDY = (
-    'The browser viewer is not installed. It is the separate '
-    'machinome-viewer package; install it with: '
+    'The browser viewer is not installed. It is the package '
+    'machinome-viewer; install it with: '
     'pip install "machinome[viewer]"'
 )
 
@@ -143,4 +144,4 @@ def viewer_command():
     asked; a ``machinome-viewer`` script earlier on the PATH from another
     environment is never picked up by accident.
     """
-    return [sys.executable, '-m', 'machinome_viewer']
+    return [sys.executable, '-m', 'machinome.viewer.web']

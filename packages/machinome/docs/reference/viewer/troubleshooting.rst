@@ -9,18 +9,20 @@ Serve the document over HTTP/HTTPS, not ``file://``. Check the browser's
 network errors for the manifest, bundle and model paths. A document served
 under a subdirectory needs its models beside it (or a correct ``baseUrl``).
 Give the mount container a nonzero height and ensure WebGL is available.
-A custom host must catch and display mount failures; see :doc:`embedding`.
+A custom host must catch and display mount failures; see
+:doc:`/howto/embed-the-viewer`.
 
 The viewer is missing or stale
 ==============================
 
 Run ``machinome-viewer describe`` in the same environment as the framework.
-For a source checkout, install the locked frontend dependencies and rebuild:
+For a source checkout, install the locked frontend dependencies and rebuild,
+from the repository's root:
 
 .. code-block:: console
 
-   npm ci --prefix machinome_viewer/widget
-   npm run build --prefix machinome_viewer/widget
+   npm ci
+   npm run build --workspaces
 
 The package rebuilds a stale source bundle on lookup, serve or capture only
 when the build tools/dependencies already exist. It never installs npm
@@ -47,7 +49,7 @@ native driver values from design-unit movement requests.
 A running request's promise completes when the command retires, not when it
 is queued. Awaiting it while the run is paused, without advancing ticks,
 can wait indefinitely. The built-in panel starts the run automatically;
-a custom host must call ``start()`` or ``step()``. See :doc:`reference/running`.
+a custom host must call ``start()`` or ``step()``. See :doc:`running`.
 
 The development page says the model is stale
 ================================================
@@ -66,7 +68,7 @@ command. Check that staging contains ``viewer.json`` and every model it names.
 Use ``--time 0`` for a running document. A clocked elapsed state cannot be
 selected with ``--time`` either. Camera arguments beginning with a minus sign
 are easiest to pass with ``=`` (for example, ``--view=-80,60,40,0,0,0``).
-Capture errors go to standard error and exit nonzero; see :doc:`reference/cli`.
+Capture errors go to standard error and exit nonzero; see :doc:`cli`.
 
 The sidebar or controls do not fit
 ======================================
@@ -75,4 +77,4 @@ Collapse the sidebar, widen the container, or set the documented inspector
 CSS variables. The operating panel scrolls independently. For a completely
 custom panel, set ``driverControls: 'none'``; this does not disable declared
 part gestures. Set ``partControls: 'none'`` separately if needed. See
-:doc:`reference/layouts` and :doc:`reference/mount`.
+:doc:`layouts` and :doc:`mount`.

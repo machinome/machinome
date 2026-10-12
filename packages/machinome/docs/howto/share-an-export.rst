@@ -1,13 +1,13 @@
-======================
-Sharing and snapshots
-======================
+================================
+Share an export and take a still
+================================
 
 Share a static export
 =====================
 
-The framework creates exports; the viewer reads them. Follow the framework's
-`sharing chapter <https://machinome.readthedocs.io/en/latest/tutorial/10-share.html>`_
-to publish your model with ``machinome export``. Keep the complete directory:
+The framework creates exports; the viewer reads them. Follow the
+:doc:`sharing chapter </tutorial/10-share>` to publish your model with
+``machinome export``. Keep the complete directory:
 
 .. code-block:: text
 
@@ -26,13 +26,11 @@ Serve it over HTTP or HTTPS, not ``file://``. For a local review:
 Open ``http://localhost:8080/``. To publish it, copy the entire directory to
 your static host, preserving relative paths. The reader needs no Python or CAD
 runtime. An export made with ``--no-widget`` has no page or viewer bundle;
-provide a host as described in :doc:`embedding`.
+provide a host as described in :doc:`/howto/embed-the-viewer`.
 
-The bundle carries AGPL-3.0-or-later and third-party notices. Preserve those notices
-and consult the repository's `LICENSE
-<https://github.com/machinome/machinome-viewer/blob/main/LICENSE>`_ when
-redistributing or modifying it. The framework is licensed separately, as its
-own manual states; its licence is not the licence of the browser bundle.
+The bundle carries its licence and the notices of the libraries it bundles.
+Preserve them when you redistribute it; it is licensed |framework_licence|, at
+the recipient's choice, as every package of Machinome.
 
 Link to a chosen presentation
 =================================
@@ -66,8 +64,7 @@ Capture a still
 
 For a Machinome project, use the framework's ``machinome snapshot --renderer web``
 command. The framework prepares the build and launches this package's capture
-process. Consult its `CLI reference
-<https://machinome.readthedocs.io/en/latest/reference/cli.html>`_ for model and
+process. Consult its :doc:`CLI reference </reference/cli>` for model and
 output arguments.
 
 For an already staged directory containing ``viewer.json`` and its models:
@@ -78,7 +75,7 @@ For an already staged directory containing ``viewer.json`` and its models:
      --imgsize 1280x720 --time 0.25 \
      --view=80,-60,40,0,0,0 --up=0,0,1 --fov 35
 
-Capture requires the :doc:`snapshot extra and Chromium <installation>`.
+Capture requires the :doc:`web-snapshot extra and Chromium </start/install>`.
 The camera tuple is eye X/Y/Z followed by target X/Y/Z. Camera coordinates
 are model units, field of view is degrees, and image dimensions are pixels.
 
@@ -91,4 +88,4 @@ pose rather than trying to seek it with ``--time``.
 
 The capture command adds its page and bundle to the staging directory.
 Use a disposable staged copy, not a directory whose contents must remain
-unchanged. See :doc:`reference/cli` for every option and failure behavior.
+unchanged. See :doc:`/reference/viewer/cli` for every option and failure behavior.

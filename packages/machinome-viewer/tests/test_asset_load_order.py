@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """A loaded viewer image must not depend on the order its STLs arrive."""
 
@@ -17,7 +17,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from machinome_viewer.bundle import bundle_path
+from machinome.viewer.web.bundle import bundle_path
 from tests.support import QuietHandler, needs_bundle, needs_pil, needs_playwright
 
 try:

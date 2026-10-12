@@ -135,11 +135,12 @@ server or capture code.
 
 ### Requirement: The framework resolves the Machinome viewer
 
-The `viewer` extra SHALL install `machinome-viewer`, and the framework SHALL
-locate it through the `machinome.viewer` entry point group. Beyond that lookup,
-the framework SHALL use it only through
-`python -m machinome_viewer describe|serve|capture` in the running
-interpreter. Absence and compatibility errors SHALL name
+The `viewer` extra SHALL install `machinome-viewer`, the repository's
+distribution whose Python package is `machinome.viewer.web`, and the
+framework SHALL locate it through the `machinome.viewer` entry point group.
+Beyond that lookup, the framework SHALL use it only through
+`python -m machinome.viewer.web describe|serve|capture` in the running
+interpreter, a separate process. Absence and compatibility errors SHALL name
 `pip install "machinome[viewer]"` as the remedy. The framework SHALL import no
 viewer rendering, serving, or capture code.
 
@@ -153,4 +154,12 @@ viewer rendering, serving, or capture code.
 
 - **WHEN** `machinome develop` runs without `machinome-viewer`
 - **THEN** it fails naming `pip install "machinome[viewer]"`
+
+#### Scenario: The framework runs the viewer at its address
+
+- **WHEN** `machinome develop` starts the viewer's server or `machinome
+  snapshot --renderer web` its capture
+- **THEN** the process runs `python -m machinome.viewer.web` with the
+  interpreter running the framework, and no module named `machinome_viewer`
+  is imported
 

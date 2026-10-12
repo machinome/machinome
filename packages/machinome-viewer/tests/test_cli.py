@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 import io
 import json
@@ -8,8 +8,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest import TestCase
 from unittest.mock import patch
 
-from machinome_viewer import cli
-from machinome_viewer.bundle import BundleMissing, BundleStale
+from machinome.viewer.web import cli
+from machinome.viewer.web.bundle import BundleMissing, BundleStale
 
 
 class DescribeCommandTest(TestCase):
@@ -78,7 +78,7 @@ class CaptureCommandTest(TestCase):
 
     def test_time_outside_the_cycle_is_refused_before_capturing(self):
         errors = io.StringIO()
-        with patch('machinome_viewer.capture.Capture') as capture, \
+        with patch('machinome.viewer.web.capture.Capture') as capture, \
              redirect_stderr(errors):
             status = cli.main(['capture', 'staged', '-o', 'out.png', '--time', '1.5'])
         self.assertEqual(status, 2)
@@ -86,7 +86,7 @@ class CaptureCommandTest(TestCase):
         capture.assert_not_called()
 
     def test_the_options_reach_the_capture_as_mount_options(self):
-        with patch('machinome_viewer.capture.Capture') as capture:
+        with patch('machinome.viewer.web.capture.Capture') as capture:
             status = cli.main([
                 'capture', 'staged', '-o', 'out.png', '--imgsize', '100x50',
                 '--time', '0.5', '--view', '1,2,3,0,0,0', '--up', '0,0,1',
@@ -105,9 +105,9 @@ class CaptureCommandTest(TestCase):
         # The refusal is the capture's, raised before any browser starts,
         # and the command reports it the way it reports every other
         # thing the photograph cannot be.
-        from machinome_viewer.capture import CaptureError
+        from machinome.viewer.web.capture import CaptureError
         errors = io.StringIO()
-        with patch('machinome_viewer.capture.Capture') as capture, \
+        with patch('machinome.viewer.web.capture.Capture') as capture, \
              redirect_stderr(errors):
             capture.return_value.render.side_effect = CaptureError(
                 '--time 0.5 means nothing to a document carrying a program')
@@ -118,9 +118,9 @@ class CaptureCommandTest(TestCase):
         self.assertIn('program', errors.getvalue())
 
     def test_a_capture_failure_is_reported_and_exits_nonzero(self):
-        from machinome_viewer.capture import CaptureError
+        from machinome.viewer.web.capture import CaptureError
         errors = io.StringIO()
-        with patch('machinome_viewer.capture.Capture') as capture, \
+        with patch('machinome.viewer.web.capture.Capture') as capture, \
              redirect_stderr(errors):
             capture.return_value.render.side_effect = CaptureError('no browser')
             status = cli.main(['capture', 'staged', '-o', 'out.png'])
@@ -135,7 +135,7 @@ class ServeCommandTest(TestCase):
             cli.build_parser().parse_args(['serve'])
 
     def test_serve_starts_the_viewer_on_the_build_directory(self):
-        with patch('machinome_viewer.server.WebViewer') as viewer:
+        with patch('machinome.viewer.web.server.WebViewer') as viewer:
             status = cli.main(['serve', '--build-dir', '/some/_build', '--port', '8123'])
         self.assertEqual(status, 0)
         viewer.assert_called_once_with('/some/_build', dev=False, port=8123, frontend=None)
@@ -147,7 +147,7 @@ class ServeCommandTest(TestCase):
         # promise): the command must keep parsing and working, starting
         # no second process.
         with patch('multiprocessing.Process') as process, \
-             patch('machinome_viewer.server.WebViewer') as viewer:
+             patch('machinome.viewer.web.server.WebViewer') as viewer:
             status = cli.main([
                 'serve', '--build-dir', '/some/_build', '--start-frontend',
                 '--dev', '--frontend-port', '3123',
@@ -164,7 +164,7 @@ class ModuleEntryTest(TestCase):
         import subprocess
         import sys
         result = subprocess.run(
-            [sys.executable, '-m', 'machinome_viewer', 'describe'],
+            [sys.executable, '-m', 'machinome.viewer.web', 'describe'],
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)

@@ -84,7 +84,7 @@ class LookupTest(TestCase):
 
     def test_the_viewer_runs_through_this_interpreter(self):
         self.assertEqual(bundle.viewer_command(),
-                         [sys.executable, '-m', 'machinome_viewer'])
+                         [sys.executable, '-m', 'machinome.viewer.web'])
 
 
 class DocumentVersionsTest(TestCase):

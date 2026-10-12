@@ -18,8 +18,8 @@ Mounting and configuration
 
 .. js:attribute:: MachinomeViewer.apiVersion
 
-   Integer browser API version: |viewer-api| in the |package-version| release.
-   See :doc:`../compatibility`.
+   Integer browser API version: |viewer_api| in the |viewer_version| release.
+   See :doc:`compatibility`.
 
 .. js:attribute:: MachinomeViewer.API_VERSION
 

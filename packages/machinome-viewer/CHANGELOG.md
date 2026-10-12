@@ -3,6 +3,27 @@
 All notable changes to Machinome Viewer. The Python package and the widget
 it carries release together and share one version.
 
+## Unreleased
+
+- Machinome Viewer is part of the Machinome repository,
+  <https://github.com/machinome/machinome>, at
+  `packages/machinome-viewer/`, with its history. Its Python package is
+  `machinome.viewer.web` (formerly `machinome_viewer`), a portion of the
+  `machinome` package, and `python -m machinome.viewer.web` runs its command;
+  the `machinome-viewer` command, the `machinome.viewer` entry point, the
+  bundle, viewer API 29 and document versions 1 through 13 are unchanged.
+  It is numbered with Machinome and requires the matching release, and it
+  is licensed as every package of the repository, GPL-2.0-or-later or
+  CERN-OHL-S-2.0-or-later, at the recipient's choice; the bundle's banner
+  says so. Its manual is part of Machinome's,
+  <https://machinome.readthedocs.io>. The widget builds from the
+  repository's npm workspace, one `npm ci` at the root; its own lockfile is
+  retired.
+- A source checkout rebuilds a stale bundle when npm installed the
+  widget's dependencies at the workspace root, and packaging refuses a
+  symbolic `node_modules` at the workspace root as it refuses one in the
+  widget.
+
 ## 0.8.1 — 10 October 2026
 
 Released with Machinome 0.8.1 and numbered with it. The viewer is the
@@ -241,10 +262,9 @@ slower than its declared two-second drawing duration; that work continues.
 ### Identity and licensing
 
 - Package `machinome-viewer`, import `machinome_viewer`, entry point
-  `machinome.viewer`, licensed AGPL-3.0-or-later. The framework, licensed
-  separately, reaches it only through that entry point and separate
-  processes; neither package imports the other. The widget ships inside
-  the Python distribution and is not published on npm.
+  `machinome.viewer`. The framework reaches it only through that entry
+  point and separate processes; neither package imports the other. The
+  widget ships inside the Python distribution and is not published on npm.
 - The version number identifies the distribution; capability is declared by
   `apiVersion` and `documentVersions` alone. Development states 0.1.0 and
   0.2.0 were never published; their detailed history is in

@@ -7,7 +7,7 @@ the published viewer assembly without exposing mutable rendering internals.
 Migrated from machinome's baseline when the viewer became this package;
 behaviour unchanged.
 
-Code: `machinome_viewer/widget/src/assembly.ts`.
+Code: `machinome/viewer/web/widget/src/assembly.ts`.
 ## Requirements
 ### Requirement: A viewer host can inspect the rendered assembly
 The viewer handle SHALL expose a serializable assembly snapshot of the current

@@ -1,6 +1,6 @@
 # ADR-182: The Repository Is a Monorepo of Distributions, Each Named by Its Directory
 
-**Status:** Accepted; a product of a repository of its own keeping its record in its directory, amended 2026-10-12 by [ADR-187](ADR-187-the-mechanics-helpers-are-a-portion-of-the-repository-at-their-own-version.md)
+**Status:** Accepted; a product of a repository of its own keeping its record in its directory, amended 2026-10-12 by [ADR-187](ADR-187-the-mechanics-helpers-are-a-portion-of-the-repository-at-their-own-version.md); an npm workspace at the root, amended 2026-10-12 by [ADR-188](ADR-188-the-browser-viewer-is-a-product-of-the-repository-numbered-with-the-set.md)
 **Date:** 2026-10-10
 **Change:** [`monorepo-layout`](../../../openspec/changes/archive/2026-10-10-monorepo-layout/)
 **Related to:**
@@ -90,6 +90,8 @@ and uploads nothing; the CI's `dist` job runs it after `test` and `docs`.
 - Neutral (2026-10-12, `join-mechanics`): a product of a repository of its
   own may join with its record in its directory and its own version
   (ADR-187).
+- Neutral (2026-10-12, `join-viewer`): the browser viewer joined as a
+  product numbered with the set; the root holds an npm workspace (ADR-188).
 - Bad: a clone without symbolic-link support checks the five links out as
   text files; the framework's development is on Linux.
 - Bad: the editable lenient mode is unfit for namespace portions, so a

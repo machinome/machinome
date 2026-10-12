@@ -120,8 +120,8 @@ substitutions, the viewer API version the widget actually declares and the
 document schema versions it accepts, SHALL state what an export contains and
 which document version each kind of machine publishes, SHALL show the
 simplest host (an iframe of the exported page) and the Sphinx directive, and
-SHALL link to the viewer manual for the complete public mount-handle surface
-rather than restating it. It SHALL warn hosts that pin their own bundle when
+SHALL link to the viewer's reference section of the manual for the complete
+public mount-handle surface rather than restating it. It SHALL warn hosts that pin their own bundle when
 older viewers cannot detect documents they do not understand. Known
 interface limitations (such as poses that can only be preset through `$t`)
 SHALL be stated rather than left for the reader to discover.
@@ -136,9 +136,9 @@ SHALL be stated rather than left for the reader to discover.
 #### Scenario: A host builds its own control UI
 
 - **WHEN** a host wants programmatic driving without the built-in chrome
-- **THEN** the documentation points at the viewer manual's embedding guide
-  and API reference, and states that values there are in native driver
-  units and that declared ranges never clamp
+- **THEN** the documentation points at the manual's guide to embedding the
+  viewer and its browser API reference, and states that values there are in
+  native driver units and that declared ranges never clamp
 
 ### Requirement: Installation and dependency claims match released packaging
 
@@ -202,7 +202,12 @@ completes the committed exports with its widget. The Read the Docs
 configuration and the CI docs job SHALL both install that file and run
 Sphinx, and neither SHALL run `machinome export`, install a system package,
 a Node tool or a package from a repository URL, or check out a submodule.
-Every export a page embeds SHALL be committed under `docs/_exports/`.
+Every export a page embeds SHALL be committed under `docs/_exports/`. The
+guide to embedding the viewer SHALL show its working host page from the
+built manual: the build SHALL copy the page, the committed export it loads and
+the installed viewer's bundle beside the guide, and SHALL take the viewer only
+from what `docs/requirements.txt` installs, never from the viewer's source
+directory of the repository, whose bundle is not built there.
 
 The Read the Docs configuration SHALL sit beside the manual, at
 `packages/machinome/.readthedocs.yaml`, and SHALL name the requirements
@@ -263,6 +268,15 @@ CI docs job run.
   `packages/machinome/docs/requirements.txt` and its Sphinx configuration
   is `packages/machinome/docs/conf.py`, and the suite fails naming the path
   if either names the manual from the package directory instead
+
+#### Scenario: The embedding guide's host page runs from the built manual
+
+- **WHEN** the manual is built from `docs/requirements.txt` and the guide to
+  embedding the viewer is opened in a browser
+- **THEN** its example loads the committed spinner export with the installed
+  viewer's bundle, both copied beside the page by the build, and the
+  framework's lookup answers the installed viewer even though the
+  repository's viewer source lies beside the framework's directory
 
 ### Requirement: The release is recorded where readers are sent
 
@@ -391,15 +405,16 @@ as the import path for the port kinds and the time base.
 ### Requirement: The viewer's provenance and installation are stated
 
 Every documentation page that installs, opens, embeds or photographs through
-the browser viewer SHALL state that the viewer is the separate
-`machinome-viewer` package, licensed AGPL-3.0-or-later, installed with
-`pip install "machinome[viewer]"`. It SHALL state that interactive
+the browser viewer SHALL state that the viewer is the package
+`machinome-viewer` of the Machinome repository, released and licensed with
+the framework, installed with `pip install "machinome[viewer]"` and reached
+only as a separate process. It SHALL state that interactive
 `machinome develop` requires that package, while a plain framework installation
 can build, test, export without the widget, run `machinome develop --no-web`, and
 snapshot through OpenSCAD with the `openscad` extra. Web-viewer operations SHALL name the extra as their
-remedy. The README's installation section SHALL make the licence difference
-visible before a reader installs the extra. Text that tells a reader to build
-the viewer with npm inside the framework SHALL NOT remain.
+remedy. No page SHALL describe the viewer as licensed differently from the
+framework. Building the viewer's widget from source with Node and npm SHALL be
+the contributor guide's, not a reader page's.
 
 The v0.7 release material SHALL explain that OpenSCAD was machinome's first
 reliable viewer, that the browser viewer progressively became the faithful
@@ -414,7 +429,7 @@ OpenSCAD snapshot-renderer capabilities.
 - **WHEN** a reader follows the README or quickstart installation steps
 - **THEN** they see that the `viewer` extra supplies the sole interactive
   development viewer, that the plain install has no interactive viewer, and
-  that the packages have different licences
+  that every package of the repository carries the framework's licence
 
 #### Scenario: A reader migrates from the OpenSCAD viewer
 
@@ -435,8 +450,9 @@ OpenSCAD snapshot-renderer capabilities.
 #### Scenario: A contributor looks for the viewer source
 
 - **WHEN** a contributor reads the viewer or contributing pages
-- **THEN** they are pointed at the machinome-viewer repository and find no
-  instruction to run npm inside machinome
+- **THEN** they are pointed at the viewer's directory of the repository,
+  `packages/machinome-viewer/`, and at the contributor guide for the Node
+  setup, and no reader page tells them to run npm
 
 ### Requirement: Current documentation presents Machinome and its lineage
 
@@ -459,23 +475,6 @@ decision records SHALL retain their original terminology.
 - **THEN** it maps distributions, imports, executable, environment variables,
   project configuration, viewer and mechanics names and states which aliases
   are not provided
-
-### Requirement: Viewer users can reach the independent viewer manual
-
-The framework manual SHALL link to the machinome-viewer user manual from its
-navigation and viewer/embedding entry points. The links SHALL lead makers to
-operating guidance and embedding hosts to the complete public reference, while
-retaining accurate framework-facing examples, package provenance, licensing
-and publication status.
-
-#### Scenario: A maker needs to operate the viewer
-- **WHEN** a maker reads the framework's viewer page
-- **THEN** they can follow a direct link to the viewer manual's operating guide
-
-#### Scenario: A host needs a browser API detail
-- **WHEN** a host reads the framework's embedding page
-- **THEN** they can follow a direct link to the viewer's complete API reference
-  and working embedding example
 
 ### Requirement: One tutorial machine carries the learning path
 
@@ -628,11 +627,10 @@ derivative works, no exception and no reason. The framework's licence
 SHALL reach a page only through the one fact in `docs/conf.py`,
 `|framework_licence|`, and `README.rst` SHALL state the same words. No
 `.rst` page under `docs/` other than the historical release notes under
-`docs/releases/` SHALL spell a licence identifier literally but the
-viewer's `AGPL-3.0-or-later`; `README.rst` SHALL spell no licence
-identifier but `AGPL-3.0-or-later` and the exact words of `docs/conf.py`'s
-`framework_licence`. The browser viewer SHALL be stated as the separate
-AGPL-3.0-or-later package.
+`docs/releases/` SHALL spell a licence identifier literally;
+`README.rst` SHALL spell no licence identifier but the exact words of
+`docs/conf.py`'s `framework_licence`. The browser viewer SHALL be stated as
+a package of the repository under the same licence (change `join-viewer`).
 
 The changelog SHALL keep a `Machinome 0.8.0` section, dated
 `Released on 05/Oct/2026`, below any later release's; it SHALL open with
@@ -666,13 +664,13 @@ it SHALL be marked unreleased or speak of "the next release".
   status page or the README
 - **THEN** each states the framework's licence as GPL-2.0-or-later or
   CERN-OHL-S-2.0-or-later, the manual's pages through the one fact in
-  `docs/conf.py`, and the viewer as a separate AGPL-3.0-or-later package
+  `docs/conf.py`, and the viewer as a package of the repository under it
 
 #### Scenario: A page spells a licence literally
 
 - **WHEN** a page under `docs/` other than a historical release note
-  spells a licence identifier other than the viewer's, or the README
-  spells one other than the viewer's and the framework's current words
+  spells a licence identifier, or the README spells one other than the
+  framework's current words
 - **THEN** the documentation tests fail naming the page
 
 #### Scenario: A 0.7 user upgrades
@@ -824,8 +822,7 @@ path per name, the module that defines it:
 know it: what the framework is and what belongs in a machine's source; what
 that source looks like, as Python the suite builds; what the framework does
 with it (incremental builds, tests, simulation, the browser viewer and
-static exports); how to install it and name the extras its parts need, with
-the viewer's separate licence visible before the extra is installed; where
+static exports); how to install it and name the extras its parts need; where
 the manual, the tutorial, the changelog and the upgrading page are; the
 framework's licence in the exact words of `docs/conf.py`'s
 `framework_licence`; and where contributors go.
@@ -935,7 +932,9 @@ stated, by the same rules as 0.8.0's: the five version files hold the
 version `pyproject.toml` states, and `docs/conf.py`'s release block states
 the release date, 10 October 2026, the matching viewer 0.8.1, viewer API
 29 and document versions 1 to 13. The `viewer` and `web-snapshot` extras
-SHALL require `machinome-viewer` 0.8.1 or newer. The changelog's first
+SHALL require the compatible release of `machinome-viewer` 0.8.1,
+`~=0.8.1`, since the viewer joined the set (change `join-viewer`). The
+changelog's first
 release section SHALL be `Machinome 0.8.1`, dated `Released on
 10/Oct/2026`, with no `Unreleased` section, opening with what a maker gets
 and sending a reader to the upgrading page for the changes a project may
@@ -972,7 +971,7 @@ above the 0.7 to 0.8 part, which stays intact.
 #### Scenario: A maker installs the viewer extra
 
 - **WHEN** a maker installs `machinome[viewer]` 0.8.1
-- **THEN** the requirement names `machinome-viewer>=0.8.1`, the viewer
+- **THEN** the requirement names `machinome-viewer~=0.8.1`, the viewer
   the manual declares as matching
 
 ### Requirement: A native FreeCAD assembly is documented as a how-to
@@ -1068,4 +1067,48 @@ runtime package.
 - **THEN** none links `machinome-mechanics.readthedocs.io`, and only the
   changelog, which records the rename, and the upgrading page's 0.7 section
   spell `machinome_mechanics`
+
+### Requirement: The browser viewer is documented in the manual
+
+The framework manual SHALL document the browser viewer, the package of the
+distribution machinome-viewer installed by the `viewer` extra: three how-to
+guides listed in the how-to part of the navigation, `howto/browser-viewer`
+(inspect and operate a posed, running or clocked machine), `howto/share-an-export`
+(publish an export, link a presentation, take a still) and
+`howto/embed-the-viewer` (a working host page, its source included, and the
+layouts); and a reference section, `reference/viewer/`, listed in the
+reference part of the navigation, whose index names the distribution, its
+install line, the viewer API through `|viewer_api|` and the document versions
+through `|document_versions|`, followed by the mount, the viewer handle, the
+layouts, running and clocked machines, the `machinome-viewer` command,
+compatibility and troubleshooting. Every public mount, option and handle
+member of the widget SHALL have its entry in that section, and every option of
+the command its line. The framework's viewer, embedding, sharing and
+installation pages and the sibling-manuals page SHALL link those pages inside
+the manual, and no page SHALL link a separate viewer manual.
+
+#### Scenario: A maker needs to operate the viewer
+- **WHEN** a maker reads the framework's viewer page
+- **THEN** they can follow a link inside the manual to the guide to operating
+  a machine in the viewer
+
+#### Scenario: A host needs a browser API detail
+- **WHEN** a host reads the framework's embedding page
+- **THEN** they can follow a link inside the manual to the viewer's complete
+  API reference and the working embedding example
+
+#### Scenario: The viewer's reference is complete
+
+- **WHEN** the widget's tests run from the repository
+- **THEN** each public member of the viewer's handles and options and each
+  mount of `MachinomeViewer` has its entry in the pages under
+  `reference/viewer/`, and the viewer's tests find every option of the
+  `machinome-viewer` command in its reference page and the `describe`
+  example's version, API and document versions equal to the package's
+
+#### Scenario: No page sends a reader to the separate viewer manual
+
+- **WHEN** the manual's pages and the framework's README are read
+- **THEN** none links `machinome-viewer.readthedocs.io`, and the release
+  facts' viewer API and document versions equal the widget's declaration
 

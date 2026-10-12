@@ -1,0 +1,7 @@
+{
+  "name": "machinome-repository",
+  "private": true,
+  "workspaces": [
+    "packages/machinome-viewer/machinome/viewer/web/widget"
+  ]
+}

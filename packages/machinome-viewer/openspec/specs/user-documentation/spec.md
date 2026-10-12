@@ -3,18 +3,22 @@
 ## Purpose
 
 Provide makers and embedding hosts with a complete, accurate, reproducible
-user manual for the independent Machinome browser viewer, separate from its
-development workflow records.
+user manual for the Machinome browser viewer, the viewer's pages of the
+Machinome manual, separate from its development workflow records.
 ## Requirements
 ### Requirement: Makers have a viewer manual
 
-The manual SHALL explain that machinome-viewer is the independent browser viewer
-for the Machinome framework, how to install and open it, inspect an assembly,
-operate posed, running and clocked models, and capture or share a model. It SHALL
-state the released version it documents and the framework release it matches,
-install the package from the index through the framework's `viewer` extra, keep
-the source build as the contributor's path, and link to the framework's modeling
-documentation at the pages that manual currently has. Its pages SHALL contain
+The manual SHALL explain that machinome-viewer is the browser viewer of the
+Machinome repository, the package `machinome.viewer.web`, how to install and
+open it, inspect an assembly, operate posed, running and clocked models, and
+capture or share a model. Its pages are the viewer's pages of the Machinome
+manual, built with it: the how-to guides `howto/browser-viewer`,
+`howto/share-an-export` and `howto/embed-the-viewer` and the reference section
+`reference/viewer/` (change `join-viewer`). It SHALL state the released
+version it documents, the framework's, install the package from the index
+through the framework's `viewer` extra, keep the source build as the
+contributor guide's path, and link to the framework's modeling documentation
+inside the same manual. Its pages SHALL contain
 user guidance, not development workflow records, decision records or the names
 of the projects that motivated a behaviour. Until a release is uploaded, its
 record describes the current source, stating the viewer API and document
@@ -26,14 +30,18 @@ changing it SHALL say so in its changelog section. An earlier release's
 section SHALL remain as released below the sections of later releases.
 
 #### Scenario: A maker arrives at the manual
-- **WHEN** a maker opens the manual's home page
-- **THEN** they can identify the project, find installation and operating
-  instructions, and reach the framework manual without reading workflow records
+- **WHEN** a maker opens the viewer's reference section or its operating
+  guide
+- **THEN** they can identify the viewer, find installation and operating
+  instructions, and reach the framework's pages of the same manual without
+  reading workflow records
 
 #### Scenario: A maker reads which version they have
-- **WHEN** a maker reads the home, installation or compatibility page
-- **THEN** each names version 0.8.1, released with Machinome 0.8.1, and none
-  describes the package as unreleased
+- **WHEN** a maker reads the section's index or the compatibility page
+- **THEN** each states the viewer through the manual's release facts, the
+  compatibility page stating the viewer's version, the set's, and the
+  framework release it matches, and none describes the package as
+  unreleased
 
 #### Scenario: A reader checks a post-release source correction
 - **WHEN** the changelog records a source correction after a version is
@@ -68,11 +76,16 @@ examples SHALL use the package's own bundle and documents.
 
 ### Requirement: The manual is reproducible and reviewable
 
-The repository SHALL provide a Sphinx site using the framework's Read the Docs
-theme, with navigation, search, mobile-readable pages, a working interactive
-example, and reproducible local and Read the Docs configuration. The site SHALL
-build without the framework or CAD backends and report broken documentation as
-build failures. Source distributions SHALL carry the documentation sources.
+The viewer's pages SHALL be built with the Machinome manual, from
+`packages/machinome/docs/` with its Read the Docs theme and configuration,
+with navigation, search, mobile-readable pages and a working interactive
+example, the embedding guide's host page copied beside it by the build with
+the installed viewer's bundle and a committed export. The build SHALL need
+only the manual's `docs/requirements.txt`, no CAD backend and no Node tool,
+and SHALL report broken documentation as build failures;
+`scripts/check-docs-browser.py` SHALL review the viewer's built pages and
+run their examples in Chromium. The framework's source distribution SHALL
+carry the pages.
 
 #### Scenario: The documentation is built from a clean checkout
 - **WHEN** the documented build prerequisites and commands are followed
@@ -178,12 +191,12 @@ machinome-viewer 0.8.0 SHALL be recorded as released with Machinome 0.8.0
 on 5 October 2026 and numbered with it, declaring viewer API 29 and
 document versions 1 through 13. The version SHALL live in
 `pyproject.toml`, the package's `__version__`, the widget's `package.json`,
-both `version` fields of its lock file and the built bundle's banner; the
-API and the document versions SHALL live in the widget's `package.json`
-alone. The reader-facing statements of the current release's facts — the
-changelog's first release section, the manual's home note, the
-installation and compatibility pages, the `describe` example, the README
-and `context7.json` — SHALL agree with those declarations, each either
+its member entry in the repository's npm lock and the built bundle's
+banner; the API and the document versions SHALL live in the widget's
+`package.json` alone. The reader-facing statements of the current release's
+facts — the changelog's first release section, the section's index, the
+compatibility page, the `describe` example and the manual's release facts —
+SHALL agree with those declarations, each either
 reading them through the manual's substitutions or compared with them by a
 test. The 0.8.0 changelog section SHALL say what a host and a maker get in
 it, name API 28 and API 29 where they arrived and say the document
@@ -191,14 +204,15 @@ versions do not move, and SHALL remain as released below the sections of
 later releases. No Unreleased section SHALL stand above the latest
 release's section, no reader-facing page SHALL describe the package as
 unreleased, and no page SHALL call API 28 or API 29 unpublished. Every
-reader-facing sentence about licensing SHALL name only the viewer's
-AGPL-3.0-or-later grant and say the framework is licensed separately,
-without naming the framework's licence.
+reader-facing sentence about licensing SHALL state the licence of every
+package of the Machinome repository, GPL-2.0-or-later or
+CERN-OHL-S-2.0-or-later at the recipient's choice, a page through the
+manual's `|framework_licence|`.
 
 #### Scenario: A maker checks the release they installed
 
 - **WHEN** a maker runs `machinome-viewer describe`, reads the bundle banner
-  and opens the manual's home page
+  and opens the viewer's reference section
 - **THEN** each reports the latest release's version with viewer API 29
   and document versions 1 through 13, matching `pyproject.toml` and the
   widget's `package.json`, and the 0.8.0 changelog section still says it
@@ -215,9 +229,10 @@ without naming the framework's licence.
 #### Scenario: A reader looks for the licences
 
 - **WHEN** a reader reads the licensing sentence of the README, the
-  manual's home or sharing page, the changelog or `context7.json`
-- **THEN** it names AGPL-3.0-or-later as the viewer's licence and says the
-  framework is licensed separately, naming no other licence
+  sharing guide or the changelog's current section
+- **THEN** it states GPL-2.0-or-later or CERN-OHL-S-2.0-or-later, at the
+  recipient's choice, as the licence of every package of the repository,
+  naming no other licence
 
 ### Requirement: The manual states the 0.8.1 release
 
@@ -225,16 +240,16 @@ machinome-viewer 0.8.1 SHALL be stated as released with Machinome 0.8.1 on
 10 October 2026 and numbered with it: the published 0.8.0 renumbered, with
 no change to the widget, the server or the capture, declaring viewer API 29
 and document versions 1 through 13. The changelog's first release section
-SHALL be `0.8.1 — 10 October 2026` and say so; the manual's home note, the
-installation and compatibility pages, the `describe` example, the README
-and `context7.json` SHALL state 0.8.1, released with Machinome 0.8.1.
+SHALL be `0.8.1 — 10 October 2026` and say so; the compatibility page,
+the `describe` example and the manual's release facts SHALL state 0.8.1,
+released with Machinome 0.8.1.
 
 #### Scenario: A maker checks the 0.8.1 release they installed
 
 - **WHEN** a maker runs `machinome-viewer describe`, reads the bundle banner
-  and opens the manual's home page
+  and opens the compatibility page
 - **THEN** each reports version 0.8.1 with viewer API 29 and document
-  versions 1 through 13, and the home page says it was released on
+  versions 1 through 13, and the changelog says it was released on
   10 October 2026 together with Machinome 0.8.1
 
 #### Scenario: A reader compares 0.8.1 with 0.8.0

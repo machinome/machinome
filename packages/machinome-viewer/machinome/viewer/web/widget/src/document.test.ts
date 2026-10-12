@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 // The schema v2 consumer gate, INVERTED (ADR-056 stage 3b, design D8).
@@ -29,7 +29,7 @@ import { expressionMetrics, prepare, releaseExpressions } from './expressions';
 import {
   Manifest, ManifestFlexible, ManifestNode, RawOperation,
 } from './types';
-import markedFixture from '../../../tests/fixtures/marked/manifest.json';
+import markedFixture from '../../../../../tests/fixtures/marked/manifest.json';
 
 const node = (name: string, operations: RawOperation[],
               children?: ManifestNode[]): ManifestNode => ({

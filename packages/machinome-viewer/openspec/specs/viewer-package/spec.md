@@ -8,7 +8,7 @@ geometry and declared API version shared by static exports, the development
 app, the snapshot capture and every other host. Migrated from machinome's
 baseline when the viewer became this package; behaviour unchanged.
 
-Code: `machinome_viewer/widget/src/`.
+Code: `machinome/viewer/web/widget/src/`.
 ## Requirements
 ### Requirement: A host mounts the viewer and receives a handle
 

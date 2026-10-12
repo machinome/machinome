@@ -138,16 +138,17 @@ types in packages of their own that its extras install
 ``machinome-node-step``, ``machinome-node-molejo``,
 ``machinome-node-openscad``, ``machinome-node-solid2``,
 ``machinome-node-jscad``, ``machinome-node-stl`` and
-``machinome-node-freecad``), and with the mechanics helpers in
-``machinome-mechanics``, all licensed |framework_licence|, at the
-recipient's choice. The browser viewer is a
-separate package, `machinome-viewer
-<https://github.com/machinome/machinome-viewer>`_, licensed AGPL-3.0-or-later,
-and the framework reaches it only as a separate process. The ``viewer``
-extra installs it. Without it the framework builds, tests, exports with
+``machinome-node-freecad``), with the mechanics helpers in
+``machinome-mechanics`` and with the browser viewer in ``machinome-viewer``,
+all licensed |framework_licence|, at the recipient's choice. The framework
+reaches the viewer only as a separate process. The ``viewer`` extra
+installs it. Without it the framework builds, tests, exports with
 ``--no-widget``, watches with ``machinome develop --no-web`` and takes
-OpenSCAD snapshots with the ``openscad`` extra; with it, ``machinome develop`` opens the interactive
-viewer, and every export carries the viewer page.
+OpenSCAD snapshots with the ``openscad`` extra; with it, ``machinome
+develop`` opens the interactive viewer (:doc:`/howto/browser-viewer`), and
+every export carries the viewer page. A host that only serves or captures
+published documents installs ``machinome-viewer`` alone, which brings the
+framework it is numbered with.
 
 Install
 -------
@@ -194,7 +195,8 @@ Two more extras exist: ``mechanics`` installs the :doc:`mechanics helpers
 cam, delta, linkage, rolling and belt formulas (the distribution
 ``machinome-mechanics``, version |mechanics_version|), and ``web-snapshot``
 installs the viewer with its headless browser driver for transparent
-photographs. Neither is needed to start.
+photographs; Chromium itself is a second step, ``playwright install
+chromium``. Neither is needed to start.
 
 Upgrading
 ---------

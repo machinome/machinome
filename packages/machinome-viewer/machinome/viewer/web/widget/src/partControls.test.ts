@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 // What a document's `controls` table means, and what a gesture on one
@@ -437,7 +437,7 @@ describe('readControls accepts what the producer publishes (D1, D6)', () => {
   it('reads the committed `touched` fixture: six entries, key order, every '
      + 'field carried through', () => {
     const fixture = JSON.parse(readFileSync(
-      new URL('../../../tests/fixtures/touched/viewer.json', import.meta.url),
+      new URL('../../../../../tests/fixtures/touched/viewer.json', import.meta.url),
       'utf8')) as Manifest & { program: { coordinates: object } };
     const loaded = readControls(fixture, 'viewer.json', fixture.program as never);
 

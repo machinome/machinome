@@ -1,7 +1,7 @@
 /*
  * machinome-viewer - the browser viewer for machinome models
  * Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
- * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
  */
 
 import { readFileSync } from 'node:fs';
@@ -34,9 +34,9 @@ import {
   WidgetTree,
 } from './tree';
 import { Manifest, ManifestNode } from './types';
-import pascaline from '../../../tests/fixtures/pascaline/viewer.json';
-import regulator from '../../../tests/fixtures/regulator/viewer.json';
-import markedFixture from '../../../tests/fixtures/marked/manifest.json';
+import pascaline from '../../../../../tests/fixtures/pascaline/viewer.json';
+import regulator from '../../../../../tests/fixtures/regulator/viewer.json';
+import markedFixture from '../../../../../tests/fixtures/marked/manifest.json';
 
 const evaluations = () =>
   (evalExpr as unknown as ReturnType<typeof vi.fn>).mock.calls
@@ -908,7 +908,7 @@ describe('MARKING_LIFT', () => {
       typeof import('three/examples/jsm/loaders/STLLoader.js')
     >('three/examples/jsm/loaders/STLLoader.js');
     const bytes = readFileSync(new URL(
-      '../../../tests/fixtures/marked/models/markings_project/'
+      '../../../../../tests/fixtures/marked/models/markings_project/'
       + 'dial-Dial-9f2c3557d753.marking-digits.stl',
       import.meta.url));
     return new RealSTLLoader().parse(

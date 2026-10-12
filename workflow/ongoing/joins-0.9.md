@@ -265,3 +265,65 @@ plan; recorded so the line's head reads whole.
    unexpected, 0 timeout, 6 no-model, identical to `join-freecad`'s row for
    row; no sweep ran before the move. Evidence:
    `packages/machinome/openspec/changes/archive/2026-10-12-join-mechanics/evidence.md`.
+
+3. `join-viewer`. **Done** (12 October 2026): branch
+   `v0.9-joins-join-viewer`, planning commit 912fb7b4 on 484a528f, ratified
+   by the orchestrator's review, with the pilot's decisions of 12 October
+   2026 (the viewer whole with its record, the import `machinome.viewer.web`,
+   one licence, one version with `~=` both ways, pip-only distribution with
+   a root npm workspace, the seam unchanged); the join, the merge commit
+   7ed45449 of machinome-viewer's `main` rewritten by `git filter-repo` to
+   its final paths (893 files, 285 commits, `main` at 1b41968, the tags
+   `viewer-v0.7.0` to `viewer-v0.8.1`; `git log` on `server.py`, without
+   `--follow`, reaches 88f844be of 18 July 2023, and on `evaluator.ts` the
+   commit of 16 July 2026 that added the widget). ADR-188, the browser
+   viewer is a product of the repository numbered with the set, accepted;
+   ADR-068 superseded in its repository and licence, ADR-182, ADR-183 and
+   ADR-187 amended. The package is `packages/machinome-viewer/` (the package
+   directory `machinome/viewer/web/` with its eight modules and the widget,
+   no `__init__.py` at `machinome/` nor `machinome/viewer/`), at 0.8.1 with
+   the set, requiring `machinome~=0.8.1`, under the set's licence (155
+   source headers and the bundle's banner), keeping its changelog, tests,
+   specs, archived and active changes, working record and decision log in
+   its directory; no module of the former name `machinome_viewer` is
+   provided. The core's `viewer` and `web-snapshot` extras pin
+   `machinome-viewer~=0.8.1`, its `dev` extra installs `web-snapshot`, the
+   framework runs `python -m machinome.viewer.web`, and `machinome vet`
+   denies the package as a framework internal. The root holds an npm
+   workspace, a private `package.json` and one `package-lock.json` seeded
+   from the widget's (174 resolutions, 0 moved); the currency check and the
+   packaging guard read `node_modules` where npm puts it. The manual folds
+   into the framework's as three how-tos and the reference section
+   `reference/viewer/`, the embedding example built beside its guide with
+   the installed viewer's bundle and a committed spinner export. The specs
+   modified are `framework-identity`, `viewer-distribution`,
+   `user-documentation` (one requirement renamed),
+   `framework-contributor-guidance`, `kinematics` and `vet`; the viewer's own
+   specs brought current in place. `uv lock` resolves 192 packages
+   (Playwright 1.63.0, Chromium revision 1243 fetched by the orchestrator).
+   The suite green on the bench's uv venv (4865 passed, 9 skipped: fifteen
+   of the base's sixteen viewer skips now run, twelve tests added); the
+   viewer's tests from its directory, 250 passed and 2 skipped, 252 passed
+   with the Curta's builds, run by a step of CI's test job after
+   `playwright install`; the widget's from the root, 66 files, 1715 passed,
+   2 skipped, typecheck and build green, run by CI's test job after one
+   `npm ci`. The manual built with warnings as errors from
+   `docs/requirements.txt` alone, its viewer pages reviewed in Chromium by
+   the adapted `scripts/check-docs-browser.py` (12 pages, 265 local links,
+   the reference's examples run). `scripts/check-dist` green on the tree
+   and on a clean copy: fourteen members built, 28 archives `twine check
+   --strict` passed, the viewer's wheel installed by its path and smoked
+   (API 29, documents 1 to 13, the banner, the licence texts,
+   `machinome-viewer describe` and `machinome viewer`); the clean copy's
+   framework sdist holds 1072 entries (13 more: the twelve pages and their
+   directory) and its wheel 114, the viewer's 1089 and 21; nothing
+   uploaded. The originating check, on scratch copies: `machinome snapshot
+   --renderer web` of a new starter through `python -m
+   machinome.viewer.web capture`, the cube and its bore photographed, and
+   `machinome develop` on `Vibecoded-demos/gear-shift` through the viewer's
+   `serve`, the gearbox photographed in Chromium with API 29. The universe sweep on the bench: 130 rows, identical to
+   `join-mechanics`'s row for row (122 ok, 2 unexpected as before, 6
+   no-model); the catalogue's self-referencing link `machinome-projects`
+   of 12 October 2026 made the walk recurse, so the rows read are the
+   unprefixed ones and the two it cut off were swept with `--only`. Evidence:
+   `packages/machinome/openspec/changes/archive/2026-10-12-join-viewer/evidence.md`.

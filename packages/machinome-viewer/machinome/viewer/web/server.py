@@ -1,6 +1,6 @@
 # machinome-viewer - the browser viewer for machinome models
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
-# SPDX-License-Identifier: AGPL-3.0-or-later
+# SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
 """The development server: a published build in front of the viewer.
 
@@ -23,11 +23,11 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.websockets import WebSocketDisconnect
 
-from machinome_viewer.bundle import (
+from machinome.viewer.web.bundle import (
     BundleStale, api_version, bundle_path, develop_page_path, has_bundle,
     missing_bundle_remedy,
 )
-from machinome_viewer.currency import ensure_current
+from machinome.viewer.web.currency import ensure_current
 
 
 logger = logging.getLogger('viewer.server')
