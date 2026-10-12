@@ -372,18 +372,29 @@ class ContentVerifiedCurrencyTest(ScratchProjectTest):
 
     def test_the_settled_path_reads_no_source_content(self):
         """A settled check may stat sources and read its small sidecar, but
-        must not hash bytes or parse Python source."""
+        must not hash bytes or parse Python source.
+
+        `_reach_analysis` and `_retained` (digest-only-what-the-node-names,
+        design.md D11) are patched with `create=True`: on the unmodified
+        tree neither exists yet, and the guard must still hold once they
+        do.
+        """
         node = self.build()
 
         with patch('machinome.currency.source_digest') as digest, \
              patch('machinome.currency._file_digest') as file_digest, \
-             patch('machinome.currency._analysis') as analysis:
+             patch('machinome.currency._analysis') as analysis, \
+             patch('machinome.currency._reach_analysis',
+                   create=True) as reach_analysis, \
+             patch('machinome.currency._retained', create=True) as retained:
             self.assertTrue(node.block._up_to_date(node.block.stl_file))
             self.assertTrue(node.block._up_to_date(node.block.brep_file))
 
         digest.assert_not_called()
         file_digest.assert_not_called()
         analysis.assert_not_called()
+        reach_analysis.assert_not_called()
+        retained.assert_not_called()
 
     def test_a_legacy_digest_only_sidecar_upgrades_without_rendering(self):
         node = self.build()
@@ -553,12 +564,21 @@ class TransientRecordTest(TestCase):
         currency.record(self.artifact, 'a' * 64, 'b' * 64, transient=True)
         record = self.record()
         self.assertIs(record['transient'], True)
+        self.assertEqual(record['version'], 4)
         self.assertEqual((record['digest'], record['fingerprint']),
                          ('a' * 64, 'b' * 64))
         self.assertIs(currency.recorded_transient(self.artifact), True)
         self.assertEqual(currency.recorded_digest(self.artifact), 'a' * 64)
         self.assertEqual(currency.recorded_fingerprint(self.artifact),
                          'b' * 64)
+
+    def test_a_transient_record_reads_as_the_current_rule(self):
+        """digest-only-what-the-node-names' revision after apply evidence
+        (I4): a version 3 transient record would read as the previous
+        rule and be compared against the wrong digest within the very
+        process that just wrote it."""
+        currency.record(self.artifact, 'a' * 64, 'b' * 64, transient=True)
+        self.assertEqual(currency.recorded_rule(self.artifact), 'current')
 
     def test_a_record_without_the_mark_is_not_transient(self):
         currency.record(self.artifact, 'a' * 64, 'b' * 64)

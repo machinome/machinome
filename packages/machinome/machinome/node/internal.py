@@ -188,6 +188,7 @@ class InternalNode(AbstractBaseNode):
             self.files.update(child.files)
             for path, names in child.scope.items():
                 self.scope[path] = self.scope.get(path, frozenset()) | names
+            self.whole_files.update(child._effective_whole_files())
 
         # Assigned only AFTER the loop above: self.children is a plain
         # (non-private) list attribute, so setting it before deriving
@@ -218,6 +219,7 @@ class InternalNode(AbstractBaseNode):
             self.files.update(child.files)
             for path, names in child.scope.items():
                 self.scope[path] = self.scope.get(path, frozenset()) | names
+            self.whole_files.update(child._effective_whole_files())
         self.children = children
 
     def validate(self, rendered):

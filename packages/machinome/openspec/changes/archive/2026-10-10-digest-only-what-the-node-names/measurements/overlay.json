@@ -1,0 +1,1649 @@
+{
+ "simulation.wall_clock_02.parts:Frame": {
+  "kept": 503,
+  "total": 926,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/motion.py": [
+    12,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    17,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    5,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    7,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    30,
+    34
+   ]
+  },
+  "string_route_kept": false
+ },
+ "simulation.wall_clock_02.parts:Arbor": {
+  "kept": 504,
+  "total": 926,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/motion.py": [
+    12,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    18,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    5,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    7,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    30,
+    34
+   ]
+  },
+  "string_route_kept": false
+ },
+ "simulation.wall_clock_02.parts:Bearing": {
+  "kept": 503,
+  "total": 926,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/motion.py": [
+    12,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    17,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    5,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    7,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    30,
+    34
+   ]
+  },
+  "string_route_kept": false
+ },
+ "simulation.wall_clock_02.clock:BobShell": {
+  "kept": 537,
+  "total": 1012,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/attachments.py": [
+    2,
+    26
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/laws.py": [
+    7,
+    20
+   ],
+   "simulation/shared/motion.py": [
+    15,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    24,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/clock.py": [
+    11,
+    40
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    6,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    10,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    30,
+    34
+   ]
+  },
+  "string_route_kept": false
+ },
+ "simulation.wall_clock_02.clock:SlidingWeightShell": {
+  "kept": 539,
+  "total": 1012,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/attachments.py": [
+    2,
+    26
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/laws.py": [
+    7,
+    20
+   ],
+   "simulation/shared/motion.py": [
+    16,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    26,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/clock.py": [
+    10,
+    40
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    6,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    10,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    30,
+    34
+   ]
+  },
+  "string_route_kept": false
+ },
+ "simulation.wall_clock_02.clock:WeightString": {
+  "kept": 541,
+  "total": 1012,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/attachments.py": [
+    2,
+    26
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/laws.py": [
+    7,
+    20
+   ],
+   "simulation/shared/motion.py": [
+    18,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    22,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/clock.py": [
+    10,
+    40
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    6,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    10,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    34,
+    34
+   ]
+  },
+  "string_route_kept": true
+ },
+ "simulation.wall_clock_02.clock:StringAssembly": {
+  "kept": 546,
+  "total": 1012,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    12,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    10,
+    36
+   ],
+   "simulation/shared/attachments.py": [
+    2,
+    26
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/laws.py": [
+    7,
+    20
+   ],
+   "simulation/shared/motion.py": [
+    21,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    22,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    3,
+    15
+   ],
+   "simulation/wall_clock_02/clock.py": [
+    11,
+    40
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    7,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    10,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    34,
+    34
+   ]
+  },
+  "string_route_kept": true
+ },
+ "simulation.wall_clock_02.clock:Movement": {
+  "kept": 679,
+  "total": 1012,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    15,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    19,
+    36
+   ],
+   "simulation/shared/attachments.py": [
+    19,
+    26
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/laws.py": [
+    14,
+    20
+   ],
+   "simulation/shared/motion.py": [
+    37,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    10,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    56,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    10,
+    15
+   ],
+   "simulation/wall_clock_02/clock.py": [
+    38,
+    40
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    15,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    15,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    34,
+    34
+   ]
+  },
+  "string_route_kept": true
+ },
+ "simulation.wall_clock_02.clock:WallClock02": {
+  "kept": 701,
+  "total": 1012,
+  "per_file": {
+   "clocks/__init__.py": [
+    18,
+    18
+   ],
+   "clocks/assembly.py": [
+    12,
+    13
+   ],
+   "clocks/cosmetics.py": [
+    5,
+    13
+   ],
+   "clocks/cq_gears/__init__.py": [
+    6,
+    14
+   ],
+   "clocks/cq_gears/bevel_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/crossed_helical_gear.py": [
+    1,
+    9
+   ],
+   "clocks/cq_gears/rack_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/ring_gear.py": [
+    1,
+    10
+   ],
+   "clocks/cq_gears/spur_gear.py": [
+    1,
+    7
+   ],
+   "clocks/cq_gears/utils.py": [
+    1,
+    20
+   ],
+   "clocks/cq_gears/worm_gear.py": [
+    1,
+    6
+   ],
+   "clocks/cq_svg.py": [
+    20,
+    22
+   ],
+   "clocks/cuckoo_bits.py": [
+    15,
+    21
+   ],
+   "clocks/demos.py": [
+    7,
+    14
+   ],
+   "clocks/dial.py": [
+    14,
+    18
+   ],
+   "clocks/escapements.py": [
+    11,
+    24
+   ],
+   "clocks/fan.py": [
+    2,
+    6
+   ],
+   "clocks/gear_trains.py": [
+    13,
+    16
+   ],
+   "clocks/gearing.py": [
+    22,
+    27
+   ],
+   "clocks/geometry.py": [
+    16,
+    21
+   ],
+   "clocks/hands.py": [
+    19,
+    24
+   ],
+   "clocks/leaves.py": [
+    7,
+    24
+   ],
+   "clocks/mantel_clock.py": [
+    9,
+    12
+   ],
+   "clocks/pendulum_holders.py": [
+    11,
+    11
+   ],
+   "clocks/pillars.py": [
+    12,
+    12
+   ],
+   "clocks/plates.py": [
+    26,
+    37
+   ],
+   "clocks/power.py": [
+    24,
+    33
+   ],
+   "clocks/striking.py": [
+    4,
+    9
+   ],
+   "clocks/types.py": [
+    22,
+    22
+   ],
+   "clocks/utility.py": [
+    87,
+    124
+   ],
+   "simulation/shared/__init__.py": [
+    1,
+    1
+   ],
+   "simulation/shared/anchor.py": [
+    12,
+    12
+   ],
+   "simulation/shared/assemblies.py": [
+    24,
+    36
+   ],
+   "simulation/shared/attachments.py": [
+    19,
+    26
+   ],
+   "simulation/shared/depthing.py": [
+    7,
+    8
+   ],
+   "simulation/shared/grasshopper.py": [
+    3,
+    8
+   ],
+   "simulation/shared/laws.py": [
+    14,
+    20
+   ],
+   "simulation/shared/motion.py": [
+    42,
+    65
+   ],
+   "simulation/shared/movement.py": [
+    11,
+    14
+   ],
+   "simulation/shared/parts.py": [
+    58,
+    93
+   ],
+   "simulation/shared/pendulum.py": [
+    13,
+    15
+   ],
+   "simulation/wall_clock_02/clock.py": [
+    40,
+    40
+   ],
+   "simulation/wall_clock_02/colours.py": [
+    17,
+    17
+   ],
+   "simulation/wall_clock_02/parts.py": [
+    17,
+    20
+   ],
+   "simulation/wall_clock_02/spec.py": [
+    34,
+    34
+   ]
+  },
+  "string_route_kept": true
+ }
+}

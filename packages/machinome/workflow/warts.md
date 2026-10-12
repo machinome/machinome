@@ -2178,6 +2178,201 @@ shallow sphere dent" finding above waits on the same decision.
   removes its own `declared_alone.stl` beside the module.
 
 
+# 3DPrintedClocks wall clock 02 (2026-10-10, string edits invalidate unrelated rigid geometry)
+
+**Filed at the pilot's request. Open, untriaged; evidence and assessment,
+not a ratified cache design or authorization to implement it.**
+
+**Triage (10 October 2026).** The pilot took up route one: a framework
+cycle generalising ADR-071 (`digest-only-what-the-node-names`, ADR-186)
+plus the project's own change, moving the cord's geometry off the shared
+`Movement` object. The viewer's mesh refetch on a restamped artifact and
+the per-process cost of movement construction (the floor itself) are
+left open, as already recorded above under "Other work on the same
+reload path" and "Assessment". The pilot's first cord edit after the
+change lands still rebuilds all 54 rigid parts once, judged under
+0.8.1's own rule on the build directory 0.8.1 wrote; only the edits
+after it are spared.
+
+**Fixed (10 October 2026).** Measured on `projects/3DPrintedClocks/WTs/
+string-cache`, project change at `b980d59`, bench on `PYTHONPATH`,
+`measure/build_once.sh`, same load throughout, after this change's own
+fix round (I1-I5 below): a cord-tuning edit that re-derived all 54 rigid
+parts in 52.4 s under the unmodified framework now re-derives none in
+17.4 s, the parts restamped, against a 15.2 s build with nothing to do.
+The first edit after switching to the bench is still judged by the
+previous rule and rebuilds all 54 (61.1 s); a timestamp-only touch on
+the records framework `main` wrote re-recorded 54 as version 4, 24
+regenerated and 30 restamped -- the migration carries every `parts.py`
+node (30 of 54) and refuses the 24 `clock.py` nodes, which retain the
+siblings `Hands` and `Standoffs` through string constants in the
+project's own `clocks` library (`clocks/hands.py:1111`,
+`clocks/assembly.py:23`), the catch-all working as designed, not a gap
+this change closes (see ADR-186's Consequences and this cycle's
+`evidence.md`, I9). `PLATE_THICK` edits and the mesh test suite are
+unaffected (54 regenerated; 15 passed, 7 failed, the same seven
+pendulum-hardware tests as the clean control). The fixpoint itself, on
+this project's 42-file closure, cost 70-90 ms per node before this
+cycle's own conformance and cost fix round (I1-I5), 1162 ms once and
+2 ms per node after. Left open, unchanged by this fix:
+the viewer's mesh refetch on a restamped artifact, and the floor itself
+(movement construction in a fresh builder process).
+
+- **Finding.** Editing only `STRING_ROUTE.radius_clearance` or
+  `STRING_ROUTE.front_clearance` in the project's
+  `simulation/wall_clock_02/spec.py` invalidates the source digests of all
+  54 existing rigid STL cache entries for this clock. The string settings
+  affect its winding, route and placement; the rigid gears, plates,
+  bearings and weight have unchanged geometry inputs. The pilot is tuning
+  the string manually and needs those rigid artifacts reused between saves.
+- **Observed development cost.** The pilot reported a very long rebuild
+  and no visible building indication in Studio at
+  `http://localhost:9000/projects/3DPrintedClocks/wall_clock_02`, initially
+  interpreting the delay as an ignored save. The pilot subsequently
+  confirmed that building was happening on the host, outside this agent's
+  VM; the project sources and build artifacts were visible here. No missed
+  filesystem event, stale completed build, or host process failure was
+  established. Studio's progress indication is a separate product concern,
+  recorded as context; the requested assessment and this finding concern
+  cache precision. No end-to-end reload duration or time breakdown was
+  measured.
+- **Measured evidence.** Read-only inspection against framework
+  `31c8507fd853268ef8aea5af09bd764b77a148e0`, project HEAD
+  `2f846a89c06adc3317365b4beeb08346c0328ce1` with the pilot's uncommitted
+  string edits, and viewer source
+  `ff9ac523971ce2e8eaa7835950a98ac336bfb75c`. In the confirming probe the
+  project's `spec.py` SHA-256 was
+  `4be797c98ffd3feb4b9bb3e4a1f875f481ba29234ecdd6e66e152962daac0e34`:
+  `radius_clearance=1.5`, `front_clearance=-4.0`, `diameter=1.0` and
+  `pitch=1.1`. The real import closures of `parts.py` and `clock.py`
+  contained 42 and 45 project files respectively, both including
+  `spec.py`.
+
+  | Hypothetical change, in mm | Rigid STL entries checked | Changed source digests | Unaffected |
+  | --- | ---: | ---: | ---: |
+  | `radius_clearance`: 1.5 to 1.6 | 54 | 54 (30 from `parts.py`, 24 from `clock.py`) | 0 |
+  | `front_clearance`: -4.0 to -3.9 | 54 | 54 (30 from `parts.py`, 24 from `clock.py`) | 0 |
+
+  **Probe method:** import `simulation.wall_clock_02.clock` and `parts`
+  before resolving their sources, enumerate the `.stl` files under
+  `_build/wall_clock_02/simulation/wall_clock_02/`, and recover each
+  artifact's module and class from its basename. For each class, compare
+  `currency.source_digest(source_closure(module_file), project_root,
+  source_scope(module_file, klass))` with the same call while
+  `unittest.mock.patch` substitutes only `currency._file_digest`'s answer
+  for `spec.py`: the SHA-256 of its bytes with the named numeric literal
+  increased by 0.1. Delegate every other file to the original digest
+  function. Both returned digests must be non-null; check that the source
+  bytes did not move during the probe. This tests the actual source-digest
+  algorithm without editing project files, constructing nodes, rendering
+  geometry, or publishing a build. It proves over-invalidation, not a
+  count or duration of CAD calls observed in the host build.
+- **Cause.** `_build_uniq_id` in
+  [`machinome/node/base.py`](../machinome/node/base.py) hashes the class
+  name and resolved parameters, so the rigid parts retain their artifact
+  identities. The separate `_up_to_date` / `_content_verified` check
+  rejects reuse when the source digest differs. In
+  [`currency.source_digest`](../machinome/currency.py), imported files
+  without a node scope contribute their whole contents. The scope from
+  [`node/sources.py`](../machinome/node/sources.py) excludes unrelated
+  node-class bodies in a node's own file, but not imported constants,
+  helpers or non-node classes. The string values are read indirectly
+  through `self.built.string_route`, not declared as string-node geometry
+  parameters; even the string's parameter-based identity does not capture
+  these edits. Ignoring source validity and trusting parameter IDs alone
+  would therefore be incorrect.
+- **Other work on the same reload path.** A source edit starts a fresh
+  builder process, losing the project's `movement()` LRU cache and
+  repeating movement construction, including gear-ratio searches. Viewer
+  source `machinome_viewer/widget/src/tree.ts:378` compares mesh path and
+  published `mtime`, so a new source stamp can also cause an unchanged
+  rigid mesh to be fetched again. These are code-path findings, not
+  separately timed costs. Avoiding CAD regeneration alone would not
+  establish that the browser reuses its meshes or that all setup is cheap.
+- **Assessment.** Finer tracking is viable and this clock supplies the
+  originating requirement. For line 144's `front_clearance`, the actual
+  value path is `string_route.front_clearance` to `string_spool_z` to
+  the string's start point, placement and path bindings. It need not
+  invalidate rigid geometry. A candidate design separates the code and
+  resolved inputs that produce a part's geometry from placement and motion
+  inputs, retaining rigid artifacts when their actual producers and inputs
+  are unchanged. However, every clock part shares a `Movement` whose
+  constructor sets both the string configuration and the gear machinery.
+  Hashing reachable functions alone would still include that constructor.
+  Precision on this project needs value/attribute-aware dependencies or a
+  framework-supported boundary exposing complete geometry inputs; the
+  unchanged project's automatic treatment remains to be demonstrated by a
+  prototype. Arbitrary Python and opaque native state require conservative
+  fallback wherever independence cannot be established.
+- **Contract and proposed proof.** This behavior follows the current
+  conservative [build-pipeline contract](../openspec/specs/build-pipeline/spec.md);
+  it is a precision limitation, not evidence that its current source
+  validity rule was bypassed. A fix must amend that contract and
+  [ADR-071](../docs/adrs/NODE/ADR-071-node-scoped-content-currency.md).
+  ADR-071 also explicitly rejects making project file layout serve the
+  cache, so moving constants to another file is not the required remedy
+  and would not help while the same broad import closure still reaches it.
+  The proposed acceptance case is the pilot's exact edit: update the string
+  and affected assembly expressions, regenerate none of these 54 rigid
+  STL/BREP artifact sets, and retain unchanged rigid meshes in the viewer.
+  Companion checks must show that real gear-input or geometry-helper edits
+  still rebuild their dependants, a warm unchanged build reuses artifacts,
+  and repeated saves cannot publish stale results. Measure host reload
+  phases before claiming a speedup. Neither a new public API nor an
+  implementation approach is ratified by filing this entry.
+
+# Scratch-project currency test harness (2026-10-10, fewer renders in a combined run than in isolation)
+
+**Open, untriaged. Evidence only; not a defect in the rule under test.**
+
+- **Finding.** While verifying `digest-only-what-the-node-names` red on
+  the unmodified tree, running the whole new file
+  `tests/test_reach_scoped_currency.py` together in one process showed
+  two tests (`SiblingNamedFromAnotherFileTest.test_a_sibling_named_from_another_file_is_followed`
+  and `test_a_previous_rule_record_is_not_carried_past_a_sibling_it_left_out`)
+  with an EMPTIER `renders()` result than the same tests run in
+  isolation, or in a small group with only their own test class. The
+  symptom is always "fewer renders than expected," never more: in the
+  combined run both tests' `self.renders()` returned `[]` where
+  isolation gives `['B']` and `['A']` respectively (the correct, red,
+  reasons recorded in this change's `evidence.md`, section 2).
+- **Commands.** The failing combination:
+  `env -C <bench> PYTHONPATH=<bench> PYTHONDONTWRITEBYTECODE=1 python -m
+  pytest -q -p no:cacheprovider tests/test_reach_scoped_currency.py
+  tests/test_node_scoped_currency.py::NodeScopedCurrencyTest::test_editing_code_one_node_names_re_derives_that_node_alone
+  tests/test_node_scoped_currency.py::NodeScopedCurrencyTest::test_editing_code_every_node_names_re_derives_every_node`,
+  reproduced twice (two separate invocations, same host). The isolating
+  commands that gave the correct, expected result:
+  `pytest tests/test_reach_scoped_currency.py::SiblingNamedFromAnotherFileTest::test_a_sibling_named_from_another_file_is_followed`
+  alone, and the same two tests together with
+  `tests/test_reach_scoped_currency.py::PreviousRuleMigrationTest` (no
+  `GuardsTest`, no other test classes of the file).
+- **Ruled out.** Not the rule's own correctness: the SAME assertions,
+  run in isolation, report the exact reason design.md's Proof plan
+  predicts. Not a `tests/utils.py::edit_source`-style stale-mtime issue:
+  each test's fixture uses its own fresh `tempfile.mkdtemp` directory and
+  a unique dotted package name (`ScratchProjectTest`'s `PROJECT_NAMES`
+  counter), so no two tests' files can share a path, an inode, or a
+  `sys.modules` entry. Not exercised further: whether it is `GuardsTest`
+  specifically (one of its tests, `test_g14`, calls
+  `tests.test_stl_node`'s and `tests.test_step_node`'s `setUpModule()`,
+  which write real fixture files under the committed `tests/stl_project/`
+  and `tests/step_project/` directories as a side effect -- a GLOBAL
+  filesystem write outside any test's own temp directory, and a
+  plausible, unconfirmed suspect) or simply many scratch projects
+  churning rapidly in one process (`tempfile.mkdtemp`/`shutil.rmtree`
+  inode or mtime-resolution coincidence) was not isolated further.
+- **Why it matters anyway.** The direction of the anomaly (fewer renders,
+  never more) means it never hid a real failure in this change's own
+  verification -- a red test stayed red, or went quieter, never falsely
+  green -- but a test harness that can silently drop a render in SOME
+  combined runs is a correctness risk for any FUTURE change whose red/
+  green evidence is gathered the same way. Isolation is the authoritative
+  result until this is understood.
+- **Not a ratified design or triage of the cause**: filing this entry
+  records the observation for whoever investigates the scratch-project
+  harness next.
+
 # Findings from the framework cycle `join-freecad` (11 October 2026)
 
 - **`machinome vet` admits the FreeCAD node package whole and does not read

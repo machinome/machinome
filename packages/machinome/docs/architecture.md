@@ -91,10 +91,10 @@ Three architectural commitments shape almost every subsystem:
    that clock is a node's own file plus the project-local modules it
    imports, transitively (ADR-033), so a contributing module edit
    invalidates the nodes that read it — and only those. Beneath the
-   clock, content decides: when the stamp or source fingerprint moved, a digest of what the
-   node can see of its sources — its own file minus the sibling node
-   classes it never names (ADR-071) — is what says whether the artifact
-   is still the one those sources produce.
+   clock, content decides: when the stamp or source fingerprint moved, a
+   digest of what the node names — across the whole of its tracked
+   closure, not only its own file — is what says whether the artifact is
+   still the one those sources produce (ADR-071/182).
 3. **One kinematic truth, recomputed absolutely, consumed everywhere**
    (ADR-023/027/028). A node's placement is its operation list. Every
    consumer — SCAD output, world-space meshes for assertions, the two
@@ -2152,11 +2152,14 @@ and this loop non-terminating (ADR-050).
 A producer recipe mismatch is first a hard cache miss for artifacts whose
 production semantics changed; mesh fusion includes child recipes so nested
 caches migrate. A timestamp or fingerprint mismatch then invokes the node-scoped content digest
-(ADR-060/071/102). Equal content restamps the artifact and refreshes the sidecar
+(ADR-060/071/102/182). Equal content restamps the artifact and refreshes the sidecar
 without rendering, which preserves cheap clone, checkout, relocation, and
-sibling-only changes. A legacy digest-only sidecar follows this path once and
-upgrades in place. Settled checks stat tracked files and read the sidecar, but
-never read source contents or parse Python.
+sibling-only changes. A sidecar says which rule wrote it: a record of the
+earlier rule verifies once against that rule's own digest and, when it
+leaves out nothing the current rule retains, is re-recorded under the
+current one without rendering (ADR-186); a legacy digest-only sidecar
+follows the same path. Settled checks stat tracked files and read the
+sidecar, but never read source contents or parse Python.
 
 OpenSCAD availability is resolved once per process, at the first operation
 that actually requires it (ADR-046/102), by the binary contract
@@ -3231,16 +3234,28 @@ The short list that changes must not silently break:
   metadata and the small sidecar but no source contents; the fallback is
   strictly stricter than the rule it stands behind
   — byte equality rather than timestamp equality — so it cannot report a
-  changed source current. The digest is scoped to the node (ADR-071): a
-  file that defines several node classes contributes to each node's digest
-  the file minus the other node classes' bodies, except any the retained
-  text names as an identifier or a string, and an internal node's digest
-  covers the union of its children's scopes. Two nodes sharing a file
-  therefore rebuild independently, an edit to code they share rebuilds
-  both, and a single-class file digests byte for byte as before. One node
-  per file is not a premise of the cache; what remains true of a
+  changed source current. The digest is scoped to the node (ADR-071/182):
+  across every tracked Python file, not only the node's own, a top-level
+  definition — a class, a function, an assignment to plain names, an
+  import other than a star import — is left out only when nothing the
+  node's retained text ever names it, resolved as Python resolves a
+  name. Every non-definition statement, a star import, a decorated
+  definition other than a decorated node class, a dunder definition, and
+  a statement sharing a line with another are never left out; a dynamic
+  lookup (`vars`, a computed `getattr` on a module) keeps a file or a
+  module whole, as does a file a node tracks beyond its own source's
+  import closure (an `StlNode`'s or `StepNode`'s wrapper module). An
+  internal node's digest covers the union of its children's scopes and
+  whole-file sets. Two nodes sharing a file therefore rebuild
+  independently, an edit to code they both name rebuilds both, and a
+  closure that leaves nothing out digests byte for byte as before. One
+  node per file is not a premise of the cache; what remains true of a
   multi-node file is a property of node references (a bare path to it is
-  ambiguous), not of currency.
+  ambiguous), not of currency. The exposure is stated, not closed: a
+  definition reached only through a name no retained text spells — a
+  registry filled by a decorator and read under another key, a module
+  reached through `sys.modules`, a variable, a parameter or a call — is
+  outside what the digest can see (ADR-033's boundary).
 - A **marking** contributes no solid and no piece (ADR-120). A part's
   volume, bounds, STL bytes, BREP bytes, `uniq_id` and piece id are
   identical whether or not it declares markings, every interference and
