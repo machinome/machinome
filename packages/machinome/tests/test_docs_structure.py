@@ -167,6 +167,54 @@ class NavigationTest(unittest.TestCase):
             with self.subTest(spelled=spelled):
                 self.assertIn(spelled, page)
 
+    def test_the_films_are_three_how_tos_and_a_reference_section(self):
+        # `join-movie`: the videomaker's manual folds in by reader intent,
+        # three how-to guides and a reference section of the command and the
+        # two formats.
+        index = (DOCS / 'index.rst').read_text()
+        for caption, entries in (
+                ('How-to guides', ('howto/film-a-movie',
+                                   'howto/declare-a-movie',
+                                   'howto/draw-a-movie-stage')),
+                ('Reference', ('reference/movie/index',))):
+            toctree = re.search(
+                rf':caption:\s*{caption}\n\n((?:   \S+\n)+)', index)
+            self.assertIsNotNone(toctree, f'index.rst has no {caption} toctree')
+            for entry in entries:
+                with self.subTest(caption=caption, entry=entry):
+                    self.assertIn(entry, toctree.group(1).split())
+        section = (DOCS / 'reference' / 'movie' / 'index.rst').read_text()
+        toctree = re.search(r'\.\. toctree::\n(?:   :\S+:.*\n)*\n((?:   \S+\n)+)',
+                            section)
+        self.assertIsNotNone(toctree, 'the movie section has no toctree')
+        self.assertEqual(toctree.group(1).split(),
+                         ['command', 'document', 'episode'])
+        page = ' '.join((DOCS / 'howto' / 'film-a-movie.rst').read_text().split())
+        for spelled in ('pip install "machinome[movie]"', 'machinome movie setup',
+                        'machinome movie setup --remove',
+                        'machinome movie check', 'machinome movie preview',
+                        'machinome movie render', 'ELEVENLABS_API_KEY'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, page)
+
+    def test_no_page_shows_the_videomaker_s_former_command_lines(self):
+        # `join-movie`: a film is made with `machinome movie`, which finds
+        # the installed viewer; the changelog's line names the former import.
+        former = ('bin/videomaker.mjs', 'machinome' '_movie', '--viewer')
+        for relative, text in documents():
+            for spelled in former:
+                if relative == 'project/changelog.rst' \
+                        and spelled == 'machinome' '_movie':
+                    continue
+                with self.subTest(document=relative, spelled=spelled):
+                    self.assertNotIn(spelled, text)
+        changelog = (DOCS / 'project' / 'changelog.rst').read_text()
+        self.assertEqual(
+            [line for line in changelog.splitlines()
+             if 'machinome' '_movie' in line],
+            ['  movie is declared with ``machinome.movie`` (formerly '
+             '``machinome' '_movie``).'])
+
     def test_internal_records_are_not_in_the_manual(self):
         for retired in ('expression-graphs.rst', 'flexible-parts.rst',
                         'releases/development-0.7.rst'):
@@ -226,7 +274,8 @@ class KernelExtrasTest(unittest.TestCase):
         # extras theirs; `join-freecad`: the `freecad` extra the FreeCAD node
         # package; `join-mechanics`: the `mechanics` extra the mechanics
         # helpers; `join-viewer`: the `viewer` extra the browser viewer;
-        # `join-skills`: the `skills` extra the skills package.
+        # `join-skills`: the `skills` extra the skills package; `join-movie`:
+        # the `movie` extra the films, and their Node side's second step.
         page = (DOCS / 'start' / 'install.rst').read_text()
         for distribution in ('machinome-engine-brep', 'machinome-engine-mesh',
                              'machinome-node-cadquery',
@@ -236,9 +285,13 @@ class KernelExtrasTest(unittest.TestCase):
                              'machinome-node-solid2',
                              'machinome-node-jscad', 'machinome-node-stl',
                              'machinome-node-freecad', 'machinome-mechanics',
-                             'machinome-viewer', 'machinome-skills'):
+                             'machinome-viewer', 'machinome-skills',
+                             'machinome-movie'):
             with self.subTest(distribution=distribution):
                 self.assertIn(distribution, page)
+        for line in ('pip install "machinome[movie]"', 'machinome movie setup'):
+            with self.subTest(line=line):
+                self.assertIn(line, page)
 
     def test_no_reader_page_carries_the_kernels_or_the_old_addresses(self):
         pages = list(documents()) + [('README.rst',
@@ -258,7 +311,11 @@ def conf_value(name):
 
 class CommandReferenceTest(unittest.TestCase):
     """The command reference documents the commands packages add
-    (`join-skills`)."""
+    (`join-skills`, `join-movie`)."""
+
+    #: The movie command's verbs (`join-movie`).
+    MOVIE_VERBS = ('list', 'evaluate', 'watch', 'check', 'speech', 'preview',
+                   'render', 'build', 'live', 'review', 'setup')
 
     def setUp(self):
         self.page = (DOCS / 'reference' / 'cli.rst').read_text()
@@ -280,9 +337,26 @@ class CommandReferenceTest(unittest.TestCase):
 
     def test_the_skills_package_is_no_longer_to_add_its_command(self):
         section = ' '.join(self.section('Commands from other packages').split())
-        self.assertIn('The skills package adds ``machinome skills``', section)
+        self.assertIn('the skills package ``machinome skills``', section)
         self.assertNotIn('the skills package (``machinome skills``)', section)
         self.assertNotIn('no package adds one yet', section)
+
+    def test_the_movie_command_has_its_section(self):
+        self.assertIn('.. _movie-command:\n\nmachinome movie\n', self.page)
+        section = self.section('machinome movie')
+        for verb in self.MOVIE_VERBS:
+            with self.subTest(verb=verb):
+                self.assertIn(f'machinome movie {verb}', section)
+        for spelled in ('--width', '--fps', '--silent', '--port', '--poll',
+                        '--open', '--out', '--interval', '--remove',
+                        'MACHINOME_NODE', ':doc:`/reference/movie/command`'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, section)
+
+    def test_the_videomaker_is_no_longer_to_add_its_command(self):
+        section = ' '.join(self.section('Commands from other packages').split())
+        self.assertIn('The movie package adds ``machinome movie``', section)
+        self.assertNotIn('videomaker', section)
 
 
 class ReleaseFactsTest(unittest.TestCase):

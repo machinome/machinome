@@ -400,9 +400,10 @@ class RegistryConformanceTest(TestCase):
         """Every command a package installed in this environment contributes
         meets the contract, as the table's are walked above.
 
-        The workspace installs the skills package, so this walks its entry
-        `skills` (change `join-skills`); it is the walk that holds the
-        videomaker and the studio once the workspace installs them."""
+        The workspace installs the skills package and the movie package, so
+        this walks their entries `skills` (change `join-skills`) and `movie`
+        (change `join-movie`); it is the walk that holds the studio once the
+        workspace installs it."""
         group = importlib.metadata.entry_points(group=CONTRIBUTED_GROUP)
         for entry in group:
             with self.subTest(command=entry.name, dist=entry.dist.name):
@@ -411,7 +412,7 @@ class RegistryConformanceTest(TestCase):
     def test_the_contract_walk_reads_a_fake_distribution(self):
         """The walk above, proved on fakes: it finds the faults it is
         there to find."""
-        fakes = ('fake-movie', 'fake-bare', 'fake-gone', 'fake-shadow')
+        fakes = ('fake-film', 'fake-bare', 'fake-gone', 'fake-shadow')
         with installed(*fakes):
             group = importlib.metadata.entry_points(group=CONTRIBUTED_GROUP)
             # The fakes' distributions alone: the suite's environment
@@ -420,7 +421,7 @@ class RegistryConformanceTest(TestCase):
                         for entry in group if entry.dist.name in fakes}
 
         self.assertEqual(failures, {
-            'fake-movie': [],
+            'fake-film': [],
             'fake-bare': [
                 'no docstring', 'no add_arguments()', 'no handle()',
                 'needs_node is not declared as True or False'],

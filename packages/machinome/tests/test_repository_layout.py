@@ -35,7 +35,12 @@ member of the npm workspace the root declares beside the uv workspace (change
 `join-viewer`, ADR-188), and the skills package `machinome-skills`, the
 package `machinome.skills`, numbered with the set, with its tests and working
 record, its specification the framework's `skills-distribution` (change
-`join-skills`, ADR-190).
+`join-skills`, ADR-190), and the films `machinome-movie`, the package
+`machinome.movie`, numbered with the set, with its changelog, tests, specs,
+decision log and working record, whose JavaScript directory is the npm
+workspace's second member, its direct dependencies installed beside it by the
+root's `.npmrc`, with a lock of its own for an installed copy (change
+`join-movie`, ADR-191).
 
 These tests pin the tree that makes that true. They read a checkout: an
 unpacked sdist has no repository above it. `scripts/check-dist` proves the
@@ -107,11 +112,28 @@ PRODUCTS = {
                          ('.gitignore', 'LICENSE', 'LICENSES', 'MANIFEST.in',
                           'README.md', 'machinome', 'pyproject.toml', 'tests',
                           'workflow')),
+    'machinome-movie': ('machinome.movie', 'movie',
+                        ('.gitignore', 'CHANGELOG.md', 'LICENSE',
+                         'LICENSES', 'MANIFEST.in', 'README.md',
+                         'experiments', 'machinome', 'openspec',
+                         'pyproject.toml', 'tests', 'workflow')),
 }
 
 #: The npm workspace's members: the repository's JavaScript projects, each
-#: by its directory (`join-viewer`).
-NODE_MEMBERS = ['packages/machinome-viewer/machinome/viewer/web/widget']
+#: by its directory, in the root's order, and the name its `package.json`
+#: gives it (`join-viewer`, `join-movie`).
+NODE_MEMBERS = {
+    'packages/machinome-viewer/machinome/viewer/web/widget': '@machinome/viewer',
+    'packages/machinome-movie/machinome/movie/js': '@machinome/movie',
+}
+
+#: The members that keep a lock of their own beside the root's, from which
+#: an installed copy installs its dependencies outside the workspace
+#: (`join-movie`).
+OWN_LOCKS = ('packages/machinome-movie/machinome/movie/js',)
+
+#: The movie's JavaScript directory.
+MOVIE_JS = 'packages/machinome-movie/machinome/movie/js'
 
 #: The extension packages whose portion is a package directory at its
 #: address, with its own `__init__.py` below the levels the core defines,
@@ -254,10 +276,10 @@ class TheWorkspaceTest(unittest.TestCase):
         # environment, so it carries the mechanics package the catalogue's
         # projects import; `join-skills`: and the skills package, whose
         # tests run from its directory and whose command the suite's
-        # conformance walk reads.
+        # conformance walk reads; `join-movie`: and the movie package, alike.
         self.assertEqual(self.root['dependency-groups']['dev'],
                          ['machinome[dev]', 'machinome[mechanics]',
-                          'machinome[skills]'])
+                          'machinome[skills]', 'machinome[movie]'])
 
 
 class TheIndexTest(unittest.TestCase):
@@ -343,14 +365,18 @@ class TheContinuousIntegrationTest(unittest.TestCase):
         # The widget is the npm workspace's member: one install at the root,
         # its typecheck, tests and bundle before the suite photographs
         # through it, and Chromium before the viewer's tests (`join-viewer`).
+        # The widget's step names it, so the movie's Node suite, which needs
+        # Chromium for its browser tests, does not run there (`join-movie`).
         steps = self.jobs['test']['steps']
         node = self.index(
             steps, lambda step: step.get('uses', '').startswith(
                 'actions/setup-node@'), 'sets up Node')
         suite = self.index(steps, lambda step: step.get('name') == 'Run tests',
                            'is named "Run tests"')
-        for command in ('npm ci', 'npm run typecheck', 'npm test',
-                        'npm run build'):
+        widget = next(iter(NODE_MEMBERS))
+        for command in ('npm ci', f'npm run typecheck --workspace {widget}',
+                        f'npm test --workspace {widget}',
+                        f'npm run build --workspace {widget}'):
             with self.subTest(command=command):
                 at = self.index(
                     steps, lambda step: command in step.get('run', '')
@@ -371,6 +397,26 @@ class TheContinuousIntegrationTest(unittest.TestCase):
             run = steps[viewer]['run']
             self.assertLess(run.index('playwright install'),
                             run.index('pytest'))
+        for step in steps:
+            with self.subTest(step=step.get('name')):
+                self.assertNotIn('--workspaces', step.get('run', ''),
+                                 'a step of the test job runs every member')
+
+    def test_the_test_job_runs_the_movie_s_node_projects_without_a_browser(
+            self):
+        # The movie's Node suite: its `pure` and `stage` projects, which open
+        # no browser, run no FFmpeg and write no film, from the root after
+        # its `npm ci` (`join-movie`).
+        steps = self.jobs['test']['steps']
+        install = self.index(
+            steps, lambda step: 'npm ci' in step.get('run', '')
+            and step.get('working-directory') == '.', 'runs npm ci at the root')
+        movie = self.index(
+            steps, lambda step: step.get('working-directory') == '.'
+            and f'npm test --workspace {MOVIE_JS} -- --project pure '
+            '--project stage' in step.get('run', ''),
+            "runs the movie's pure and stage projects at the root")
+        self.assertLess(install, movie)
 
     def test_the_dist_job_sets_up_node_before_checking(self):
         # The viewer's source distribution builds its bundle with npm.
@@ -390,7 +436,7 @@ class TheRootIsTheRepositorysTest(unittest.TestCase):
     def test_the_repository_s_files_are_there(self):
         for name in ('README.md', '.gitignore', 'scripts/check-dist',
                      'workflow/README.md', 'package.json',
-                     'package-lock.json'):
+                     'package-lock.json', '.npmrc'):
             with self.subTest(entry=name):
                 self.assertTrue((REPOSITORY / name).is_file(),
                                 f'{REPOSITORY / name} is missing')
@@ -561,6 +607,17 @@ class TheExtensionPackagesTest(unittest.TestCase):
                 self.assertIsNone(
                     found, f'CONTRIBUTING.rst names {found and found[0]!r}')
 
+    def test_the_guide_runs_the_movie_s_two_suites(self):
+        # The movie package's Python tests from its directory and its Node
+        # suite from the root, after the root's `npm ci` (`join-movie`).
+        guide = ' '.join((REPOSITORY / 'CONTRIBUTING.rst').read_text().split())
+        for spelled in ('``python -m pytest`` from ``packages/machinome-movie``',
+                        f'``npm test --workspace {MOVIE_JS}`` from the root',
+                        'after ``npm ci`` there', '``.npmrc``',
+                        '``machinome movie setup`` is for an installed copy'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, guide)
+
 
 class TheProductsTest(unittest.TestCase):
     """A product that joined from a repository of its own keeps its record
@@ -655,7 +712,10 @@ class TheProductsTest(unittest.TestCase):
 class TheNodeWorkspaceTest(unittest.TestCase):
     """The root declares an npm workspace beside the uv workspace: a private
     `package.json` with no package of its own, one lockfile, its
-    `node_modules/` ignored (`join-viewer`)."""
+    `node_modules/` ignored (`join-viewer`); its second member, the movie's
+    JavaScript directory, keeps a lock of its own for an installed copy, and
+    the root's `.npmrc` installs each member's direct dependencies beside it
+    (`join-movie`)."""
 
     def tracked(self):
         return subprocess.run(['git', 'ls-files'], cwd=REPOSITORY,
@@ -666,17 +726,90 @@ class TheNodeWorkspaceTest(unittest.TestCase):
         manifest = json.loads((REPOSITORY / 'package.json').read_text())
         self.assertIs(manifest.get('private'), True)
         self.assertNotIn('version', manifest)
-        self.assertEqual(manifest['workspaces'], NODE_MEMBERS)
+        self.assertEqual(manifest['workspaces'], list(NODE_MEMBERS))
+        for member, name in NODE_MEMBERS.items():
+            with self.subTest(member=member):
+                package = json.loads(
+                    (REPOSITORY / member / 'package.json').read_text())
+                self.assertEqual(package['name'], name)
+                self.assertIs(package.get('private'), True)
 
-    def test_one_lockfile_at_the_root_names_the_widget(self):
+    def test_the_root_s_lock_names_each_member_and_the_movie_keeps_its_own(
+            self):
         locks = [path for path in self.tracked()
                  if path.rpartition('/')[2] == 'package-lock.json']
-        self.assertEqual(locks, ['package-lock.json'])
+        self.assertEqual(sorted(locks), sorted(
+            ['package-lock.json',
+             *(f'{member}/package-lock.json' for member in OWN_LOCKS)]))
         lock = json.loads((REPOSITORY / 'package-lock.json').read_text())
-        for member in NODE_MEMBERS:
+        for member, name in NODE_MEMBERS.items():
             with self.subTest(member=member):
-                self.assertEqual(lock['packages'][member]['name'],
-                                 '@machinome/viewer')
+                self.assertEqual(lock['packages'][member]['name'], name)
+        for member in OWN_LOCKS:
+            with self.subTest(own=member):
+                own = json.loads(
+                    (REPOSITORY / member / 'package-lock.json').read_text())
+                self.assertEqual(own['name'], NODE_MEMBERS[member])
+                self.assertEqual(own['packages']['']['name'],
+                                 NODE_MEMBERS[member])
+
+    def test_the_movie_s_own_lock_agrees_with_its_manifest_and_the_root_s(
+            self):
+        # Both locks list exactly the dependencies the movie's package.json
+        # declares, and resolve each direct dependency to its exact version:
+        # the root's for the checkout, the member's for an installed copy,
+        # which `machinome movie setup` installs from (`join-movie`).
+        manifest = json.loads(
+            (REPOSITORY / MOVIE_JS / 'package.json').read_text())
+        declared = {kind: manifest.get(kind, {})
+                    for kind in ('dependencies', 'devDependencies')}
+        root = json.loads((REPOSITORY / 'package-lock.json').read_text())
+        own = json.loads(
+            (REPOSITORY / MOVIE_JS / 'package-lock.json').read_text())
+        locks = {
+            'package-lock.json': (root['packages'][MOVIE_JS],
+                                  root['packages'],
+                                  (f'{MOVIE_JS}/node_modules', 'node_modules')),
+            f'{MOVIE_JS}/package-lock.json': (own['packages'][''],
+                                              own['packages'],
+                                              ('node_modules',)),
+        }
+        for lock, (entry, packages, places) in locks.items():
+            for kind, dependencies in declared.items():
+                with self.subTest(lock=lock, kind=kind):
+                    self.assertEqual(entry.get(kind, {}), dependencies,
+                                     f'{lock} disagrees with the movie\'s '
+                                     f'package.json in its {kind}')
+                for name, version in dependencies.items():
+                    with self.subTest(lock=lock, dependency=name):
+                        resolved = next(
+                            (packages[f'{place}/{name}'] for place in places
+                             if f'{place}/{name}' in packages), None)
+                        self.assertIsNotNone(
+                            resolved, f'{lock} does not resolve {name}')
+                        self.assertEqual(resolved['version'], version,
+                                         f'{lock} resolves {name} to '
+                                         f"{resolved['version']}, not "
+                                         f'{version}')
+
+    def test_the_root_installs_each_member_s_dependencies_beside_it(self):
+        # The movie's tool reads its packages from its own node_modules, and
+        # its esbuild, TypeScript, vitest and jsdom differ in major from the
+        # widget's (`join-movie`, ADR-191).
+        npmrc = REPOSITORY / '.npmrc'
+        self.assertTrue(npmrc.is_file(), f'{npmrc} is missing')
+        settings = [line.strip() for line in npmrc.read_text().splitlines()
+                    if line.strip() and not line.lstrip().startswith('#')]
+        self.assertEqual(settings, ['install-strategy=shallow'])
+        lock = json.loads((REPOSITORY / 'package-lock.json').read_text())
+        manifest = json.loads(
+            (REPOSITORY / MOVIE_JS / 'package.json').read_text())
+        for name in manifest['dependencies']:
+            with self.subTest(dependency=name):
+                self.assertIn(f'{MOVIE_JS}/node_modules/{name}',
+                              lock['packages'],
+                              f'the root lock does not install {name} '
+                              "in the movie's node_modules")
 
     def test_the_root_ignores_node_modules(self):
         lines = (REPOSITORY / '.gitignore').read_text().splitlines()

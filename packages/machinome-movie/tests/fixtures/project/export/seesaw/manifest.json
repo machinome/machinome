@@ -1,0 +1,171 @@
+{
+  "format": "machinome-export",
+  "version": 2,
+  "animation": {
+    "fps": 30,
+    "frames": 600,
+    "loop": 20.0
+  },
+  "drivers": {},
+  "instructions": {},
+  "root": {
+    "name": "Seesaw",
+    "type": "AssemblyNode",
+    "color": null,
+    "mtime": 1791814637.517499,
+    "operations": [],
+    "children": [
+      {
+        "name": "Base",
+        "type": "LeafNode",
+        "color": "#8f9aa3",
+        "mtime": 1791814637.517499,
+        "operations": [
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "5"
+            ]
+          ]
+        ],
+        "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+        "piece": "d19296a8d1c7"
+      },
+      {
+        "name": "Stand",
+        "type": "LeafNode",
+        "color": "#8f9aa3",
+        "mtime": 1791814637.517499,
+        "operations": [
+          [
+            "r",
+            "90",
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "30"
+            ]
+          ]
+        ],
+        "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+        "piece": "d19296a8d1c7"
+      },
+      {
+        "name": "Beam",
+        "type": "AssemblyNode",
+        "color": null,
+        "mtime": 1791814637.517499,
+        "operations": [
+          [
+            "r",
+            "(20 - (4 * abs((($t * 20.0) - 10))))",
+            [
+              0,
+              1,
+              0
+            ]
+          ],
+          [
+            "t",
+            [
+              "0",
+              "0",
+              "55"
+            ]
+          ]
+        ],
+        "children": [
+          {
+            "name": "Plank",
+            "type": "LeafNode",
+            "color": "#8f9aa3",
+            "mtime": 1791814637.517499,
+            "operations": [
+              [
+                "t",
+                [
+                  "0",
+                  "0",
+                  "10"
+                ]
+              ]
+            ],
+            "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+            "piece": "d19296a8d1c7"
+          },
+          {
+            "name": "Weight",
+            "type": "LeafNode",
+            "color": "#8f9aa3",
+            "mtime": 1791814637.517499,
+            "operations": [
+              [
+                "t",
+                [
+                  "-15",
+                  "0",
+                  "20"
+                ]
+              ]
+            ],
+            "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+            "piece": "d19296a8d1c7"
+          },
+          {
+            "name": "pivot",
+            "type": "LeafNode",
+            "color": "#8f9aa3",
+            "mtime": 1791814637.517499,
+            "operations": [
+              [
+                "r",
+                "90",
+                [
+                  0,
+                  0,
+                  1
+                ]
+              ]
+            ],
+            "model": "models/models/seesaw-Block-211d0bb8cf4f.stl",
+            "piece": "d19296a8d1c7"
+          }
+        ]
+      }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "d19296a8d1c7",
+      "name": "Block",
+      "sources": [
+        "models/seesaw.py"
+      ],
+      "models": [
+        "models/models/seesaw-Block-211d0bb8cf4f.stl"
+      ],
+      "count": 5,
+      "size": [
+        40.0,
+        10.0,
+        10.0
+      ],
+      "volume": 4000.0,
+      "watertight": true
+    }
+  ],
+  "source": {
+    "revision": "55ad41bf95652c3491ba14501372f2f3a5a08365",
+    "dirty": false
+  }
+}

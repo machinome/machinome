@@ -2,6 +2,7 @@
   "name": "machinome-repository",
   "private": true,
   "workspaces": [
-    "packages/machinome-viewer/machinome/viewer/web/widget"
+    "packages/machinome-viewer/machinome/viewer/web/widget",
+    "packages/machinome-movie/machinome/movie/js"
   ]
 }

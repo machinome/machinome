@@ -1,0 +1,70 @@
+# Architecture Decision Records
+
+(12 October 2026, change `join-movie`) The videomaker joined the machinome
+repository at `packages/machinome-movie/`; this log stays its own, beside the
+framework's `packages/machinome/docs/adrs/`. A number cited in the package's
+code, specs and records names this log's ADR; the framework's are cited as
+'framework ADR-nnn'.
+
+Videomaker's decision log. Each ADR records one architectural decision, its
+context, the options weighed and its consequences, as a **delta** against the
+architecture before it. The synthesized current state is
+[`docs/architecture-overview.md`](../architecture-overview.md); the
+behavioural contracts are [`openspec/specs/`](../../openspec/specs/). Read the
+synthesis first, the specs to know exact behaviour, and an ADR to know *why*.
+
+## Discipline
+
+- **One decision per ADR**, numbered sequentially across all categories,
+  filed under the subsystem directory it primarily affects.
+- **Statuses:** `Proposed` → `Accepted`; later decisions may mark an ADR
+  `Superseded` (with a *Superseded by* link) or amend it in place with a
+  dated *Amendment* section. Superseded ADRs stay in the log.
+- **Characterization ADRs** record a decision after the implementation
+  landed and say so in their preamble. They are legitimate and the
+  exception: the normal flow is a ratified OpenSpec change with its ADR
+  written alongside, promoted to `Accepted` when the change is archived.
+- **Cross-links** are relative paths, so the tree is self-contained wherever
+  it is checked out.
+- A file is named `ADR-NNN-<slug>.md`, and every ADR is listed below.
+
+## Categories
+
+- `SOURCE` — the source contract: what a project writes, the movie document,
+  anchors, sets.
+- `TIMELINE` — the pure function of video time: resolution, keys, easing,
+  transitions, clocks.
+- `STAGE` — the film page and its successor, the React stage.
+- `PIPELINE` — capture, encoding, caching, review packs, provenance.
+- `SPEECH` — narration takes, alignment, captions, word timing.
+- `RECORDS` — how the repository keeps its own records.
+
+## Index
+
+| ADR | Category | Title | Status |
+|---|---|---|---|
+| [ADR-001](SOURCE/ADR-001-movie-document-and-chapter-narration.md) | SOURCE | The movie document and chapter narration | Accepted |
+| [ADR-002](SOURCE/ADR-002-a-movie-is-a-python-tree-evaluated-once-to-the-movie-document.md) | SOURCE | A movie is a Python tree evaluated once to the movie document | Accepted |
+| [ADR-003](RECORDS/ADR-003-one-runner-and-a-content-keyed-test-memo.md) | RECORDS | One runner, and a content-keyed memo of the slow proofs | Accepted |
+| [ADR-004](STAGE/ADR-004-the-stage-is-a-react-template-that-owns-the-screen.md) | STAGE | The stage is a React template that owns the screen | Accepted |
+| [ADR-005](SOURCE/ADR-005-project-sets-and-elements-are-declared-in-python-and-drawn-in-react.md) | SOURCE | Project sets and elements are declared in Python and drawn in React | Accepted |
+| [ADR-006](SOURCE/ADR-006-yaml-episodes-and-movie-documents-load-into-one-resolved-document.md) | SOURCE | YAML episodes and movie documents load into one resolved document | Accepted |
+| [ADR-007](STAGE/ADR-007-viewer-instances-are-leased-to-view-elements-per-frame.md) | STAGE | Viewer instances are leased to view elements per frame | Accepted |
+| [ADR-008](RECORDS/ADR-008-the-real-viewer-is-proved-through-a-selected-bundle.md) | RECORDS | The real viewer is proved through a bundle selected by path, never assumed | Accepted |
+| [ADR-009](STAGE/ADR-009-check-measures-a-sets-layout-before-speech.md) | STAGE | `check` measures a set's layout before speech | Accepted (amended 1 October 2026) |
+| [ADR-010](STAGE/ADR-010-a-reframe-is-a-join-that-moves-a-views-box-and-fades-the-rest.md) | STAGE | A reframe is a join that moves a view's box and fades the rest | Accepted |
+| [ADR-011](SOURCE/ADR-011-a-clocked-take-is-the-frameworks-requests-recorded-once-by-evaluation.md) | SOURCE | A clocked take is the framework's requests, recorded once by evaluation | Accepted (amended 1 October 2026) |
+| [ADR-012](STAGE/ADR-012-a-view-on-a-take-is-posed-by-restoring-the-machines-bank.md) | STAGE | A view on a take is posed by restoring the machine's bank, and the viewer is held to the take | Accepted |
+| [ADR-013](PIPELINE/ADR-013-the-stage-bundle-names-its-files-by-the-tool-and-the-project.md) | PIPELINE | The stage bundle names its files by the tool and the project, never by the machine | Accepted |
+| [ADR-014](TIMELINE/ADR-014-a-continuation-that-crosses-a-mark-is-reported-from-the-frames-the-join-poses.md) | TIMELINE | A continuation that crosses a mark is reported, from the frames the join poses | Accepted |
+| [ADR-015](PIPELINE/ADR-015-provenance-records-whether-each-tree-was-dirty.md) | PIPELINE | Provenance records whether each tree was dirty, and a dirty tree is not release-ready | Accepted |
+| [ADR-016](SOURCE/ADR-016-take-seconds-are-the-exact-sums-of-the-written-durations.md) | SOURCE | Take seconds are the exact sums of the written durations | Accepted |
+| [ADR-017](PIPELINE/ADR-017-what-a-proof-cannot-judge-it-measures-and-lays-out.md) | PIPELINE | What a proof cannot judge, it measures and lays out for the reviewer | Accepted |
+| [ADR-019](SOURCE/ADR-019-the-models-revision-is-the-one-its-export-records.md) | SOURCE | The model's revision is the one its export records | Accepted |
+| [ADR-020](STAGE/ADR-020-a-take-transport-is-the-browsers-pose-of-a-take-written-to-lift.md) | STAGE | A take transport is the browser's pose of a take, written to lift | Accepted |
+| [ADR-021](PIPELINE/ADR-021-a-live-session-serves-the-renders-stage-and-the-frame-function-to-a-browser.md) | PIPELINE | A live session serves the render's stage and the frame function to a browser | Accepted |
+| [ADR-022](PIPELINE/ADR-022-the-player-is-two-transports-over-the-renders-stage-and-a-video-is-its-recording.md) | PIPELINE | The player is two transports over the render's stage, and a video is its recording | Accepted |
+
+The twelve changes archived before ADR-001 carry their decisions in their
+`design.md` under `openspec/changes/archive/`; a characterization pass may
+promote the load-bearing ones here.

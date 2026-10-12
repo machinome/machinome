@@ -62,6 +62,8 @@ the line and joined here with their history, the browser viewer under
 `packages/machinome-viewer/`, split from this repository on 5 September 2026
 and joined back with its history, and the machinome skills under
 `packages/machinome-skills/`, founded in a repository of their own after the
+line and joined here with their history, and the films under
+`packages/machinome-movie/`, founded in a repository of their own after the
 line and joined here with their history, and the notes under `workflow/`,
 written since the line are agent-written like the code, and reviewed the
 same way.

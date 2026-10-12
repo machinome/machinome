@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Videomaker, a local production tool for narrated films of machinome models, is
+  the machinome repository's distribution machinome-movie at
+  packages/machinome-movie/: its Python package is machinome.movie, its Node side
+  at machinome/movie/js/, its command machinome movie, under the repository's
+  licence. Its specs and changes are here; the framework's specs are the
+  framework's, at packages/machinome/openspec/. Projects own readable YAML video
+  sources and ignored generated media. Mechanical behavior belongs to the
+  existing simulation; viewer capabilities belong to the browser viewer,
+  packages/machinome-viewer/. No publishing or external hosting is implicit.
+rules:
+  proposal:
+    - Name the consuming project and its present need; avoid speculative features.
+  specs:
+    - Describe author/audience outcomes and observable refusals, not internal transport.
+  tasks:
+    - Separate implementation evidence from human review and publication approval.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

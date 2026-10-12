@@ -372,7 +372,8 @@ SolidPython, `machinome-node-solid2`, which requires it, and
 program no extra installs, found through `MACHINOME_FREECAD_ROOT`),
 `[mechanics]` for the mechanics helpers (the distribution
 `machinome-mechanics`, at its own version), `[skills]` for the machinome
-skills (the distribution `machinome-skills`), and `[all]` — every OCCT kernel
+skills (the distribution `machinome-skills`), `[movie]` for the films (the
+distribution `machinome-movie`), and `[all]` — every OCCT kernel
 extra including `brep`, so the OCCT range is stated once. Each of those
 modules calls `machinome.extras.require_extra`
 before it imports a kernel; the check asks `find_spec` and imports nothing,
@@ -2294,8 +2295,10 @@ reads no entry point, and the guard, the help and an unknown name's error
 read the union. A framework name is never taken; a name two packages
 declare runs neither; an absent extra is answered by it, an unmet contract
 refused, other failures propagate, and the help lists each as unavailable.
-`machinome skills`, from the repository's distribution `machinome-skills`,
-is one (ADR-190); the movie's and the studio's follow at their joins.
+The first is `machinome movie`, from the repository's distribution
+`machinome-movie` (ADR-191); `machinome skills`, from the repository's
+distribution `machinome-skills`, is the second (ADR-190); the studio's
+follows at its join.
 `models` lists a project's models from the manifest and their build
 directories alone — `unbuilt`, `published` or `failed` — as text or
 `--json`, importing no project code; `build --all` and `test --all` walk
@@ -3251,6 +3254,42 @@ library alone. The package keeps its tests and its working record in its
 directory; its specification is the framework's. The framework never
 imports it.
 
+### Movies (the distribution `machinome-movie` · spec `movie-distribution`)
+
+The repository's `packages/machinome-movie/`, imported as `machinome.movie`,
+numbered with the set and installed by `machinome[movie]`, makes a narrated
+film of a machine (ADR-191). A project declares a movie in Python, a tree of
+classes (`Movie`, `Chapter`, `Shot`, `Narration`, the take, `Loop` for a
+posed model or `Take` for a clocked machine, and the stage's `Set`, `Slot`
+and `Element`), listed in its `pyproject.toml`; evaluation runs once, purely,
+records a clocked take's steps through the framework's simulation, and
+writes the movie document, `machinome-movie/0.2`, JSON data whose schema both
+runtimes read. A YAML episode loads into the same resolved document through
+three sets the tool ships. The Node side, `machinome/movie/js/` as package
+data, loads the document and resolves its anchors against the narration's
+cached takes, generates speech through ElevenLabs, bundles the project's
+React stage module with the stage runtime, poses every frame, a pure
+function of video time, on the browser viewer in a headless Chromium driven
+by Playwright, proves what it drew in pixels, caches frames by content,
+encodes them with FFmpeg, and makes the review pack of the encoded film; a
+live session serves the film's frames and its player page on the loopback
+interface. The command `machinome movie`, contributed through
+`machinome.commands` (ADR-189), joins the two: `list`, `evaluate` and `watch`
+run in Python; the film verbs run the Node side with the user's Node, 22 or
+newer, found through `MACHINOME_NODE` or the `PATH`, give it the installed
+viewer's bundle through the `machinome.viewer` entry point, as `machinome
+develop` finds it, and evaluate a project's movie first when given a project
+and a movie name; `setup` installs the Node side's dependencies into the
+installed package's own directory from the package's own lock; in the
+repository's checkout the Node side is the root npm workspace's second
+member, after the viewer's widget, installed by the root's `npm ci` with each
+member's direct dependencies beside it (the root's `.npmrc`). The package
+root reads each name from its module on first use, so `machinome -h` loads
+none of the evaluation. The package keeps its decision log (its own ADR
+numbers, `workflow/adrs/`), its specs, its changelog, its working record and
+its tests in its directory; its manual is the framework's. The framework
+never imports it, and `machinome vet` refuses a model that reaches it.
+
 ## Load-bearing invariants
 
 The short list that changes must not silently break:
@@ -3530,6 +3569,7 @@ pure model closures without rejecting their pure declaration records.
 | Simulation | `machinome/simulation/` (`sim.py`, `driver.py`, `state.py`, `instruction.py`, `enumeration.py`, `scenario.py`, `program.py`, `run.py`, `clocked.py`) | `simulation`, `cli-startup-cost` | 050, 056, 083, 104, 105, 106, 121, 122, 123, 124, 125, 126, 127, 128, 129 |
 | Mechanics helpers, the distribution `machinome-mechanics` | the repository's `packages/machinome-mechanics/` (`machinome/mechanics/`: `__init__.py` and the nine family modules; its own `tests/`, `openspec/` and `workflow/`) | `mechanics-distribution` | 022, 076, 132, 187 |
 | Skills package, the distribution `machinome-skills` | the repository's `packages/machinome-skills/` (`machinome/skills/`: `cli.py`, `installer.py`, `tools.toml`, `agent-skills/`; its own `tests/` and `workflow/`) | `skills-distribution` | 187, 189, 190 |
+| Movies, the distribution `machinome-movie` | `packages/machinome-movie/` (`machinome/movie/`: the declarations, the evaluation, `cli.py`, `js/`; its own `tests/`, `openspec/`, `workflow/`) | `movie-distribution` | 189, 191 |
 | Build pipeline | `machinome/core/` | `build-pipeline` | 005–007, 018, 026, 038, 067, 080, 081, 084, 086 |
 | CLI | `cli.py`, `machinome/manager/`, `machinome/manifest.py`, `machinome/vet/` | `cli`, `vet` | 021, 024, 068, 079, 103, 115, 149, 168, 179, 189 |
 | Test framework | `machinome/test.py`, `machinome/engine/__init__.py`, `machinome/brep_cache.py`, `manager/test.py` | `test-framework`, `mesh-engine-dependency`, `cli-startup-cost` | 009–011, 025, 029, 040, 048, 052, 070, 073, 142, 143, 161, 176, 180 |

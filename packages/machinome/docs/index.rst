@@ -77,6 +77,9 @@ its source; the :doc:`examples` page says what to look for there.
    howto/browser-viewer
    howto/share-an-export
    howto/embed-the-viewer
+   howto/film-a-movie
+   howto/declare-a-movie
+   howto/draw-a-movie-stage
    howto/assistant-skills
 
 .. toctree::
@@ -109,6 +112,7 @@ its source; the :doc:`examples` page says what to look for there.
    reference/sphinx
    reference/mechanics/index
    reference/viewer/index
+   reference/movie/index
    reference/manuals
 
 .. toctree::

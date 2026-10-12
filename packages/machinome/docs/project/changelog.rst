@@ -75,6 +75,13 @@ Unreleased
   ``machinome skills list`` shows where each tool reads
   (:doc:`/howto/assistant-skills`, :ref:`skills-command`).
 
+* **Film a movie of your machine.** ``pip install "machinome[movie]"`` and
+  ``machinome movie setup`` install the films; ``machinome movie check``,
+  ``speech``, ``preview``, ``render`` and ``build`` make one from a YAML
+  episode, a movie document or a project and a movie name, drawn by the
+  installed viewer (:doc:`/howto/film-a-movie`, :ref:`movie-command`). A
+  movie is declared with ``machinome.movie`` (formerly ``machinome_movie``).
+
 Machinome 0.8.1
 ---------------
 

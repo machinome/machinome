@@ -67,6 +67,11 @@ ORDINARY = {
     'machinome/simulation/trajectory.py': {
         'ex' 'act_lines', 'ex' 'act_source_lines', 'ex' 'act_end',
         'authored_ex' 'act'},
+    # The seconds a take's written durations sum to exactly (the movie
+    # package's ADR-016), the ordinary adjective (change `join-movie`).
+    'machinome/movie/names.py': {'ex' 'act_seconds'},
+    'machinome/movie/document.py': {'ex' 'act_seconds'},
+    'machinome/movie/take.py': {'ex' 'act_seconds'},
 }
 
 #: Phrases, by module, in which `exact` before a noun of SPLIT_NOUNS is

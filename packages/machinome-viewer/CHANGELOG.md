@@ -23,6 +23,8 @@ it carries release together and share one version.
   widget's dependencies at the workspace root, and packaging refuses a
   symbolic `node_modules` at the workspace root as it refuses one in the
   widget.
+- `npm ci` of the widget's build runs at the workspace root, so a second
+  member's dependencies survive it.
 
 ## 0.8.1 — 10 October 2026
 

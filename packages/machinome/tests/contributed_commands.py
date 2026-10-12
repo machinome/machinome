@@ -38,8 +38,10 @@ from .import_probe import REPO_DIR
 GROUP = 'machinome.commands'
 
 
-MOVIE = '''
-class Movie:
+# Named as no package of the set is: the suite's environment installs the
+# movie package, whose command is `machinome movie` (`join-movie`).
+FILM = '''
+class Film:
     """Make films of machines (a fake contributed command)."""
 
     needs_node = False
@@ -50,7 +52,7 @@ class Movie:
             verbs.add_parser(verb).add_argument('source')
 
     def handle(self, args):
-        print(f'movie {args.verb} {args.source}')
+        print(f'film {args.verb} {args.source}')
 '''
 
 # A second contributor, named as no package of the set is, so the fake
@@ -96,9 +98,9 @@ class Build:
         print('shadow build ran')
 '''
 
-MOVIE_TWO = '''
-class Movie:
-    """Make other films (a second fake contributing the name movie)."""
+FILM_TWO = '''
+class Film:
+    """Make other films (a second fake contributing the name film)."""
 
     needs_node = False
 
@@ -106,7 +108,7 @@ class Movie:
         pass
 
     def handle(self, args):
-        print('the other movie ran')
+        print('the other film ran')
 '''
 
 NEEDY = '''
@@ -138,33 +140,33 @@ class Portioned:
 #: below the directory with the module's source (None: no module is
 #: written, so the entry names a module that does not exist).
 FAKES = {
-    'fake-movie': (['movie = machinome_fake_movie:Movie'],
-                   'machinome_fake_movie.py', MOVIE),
+    'fake-film': (['film = machinome_fake_film:Film'],
+                  'machinome_fake_film.py', FILM),
     'fake-lessons': (['lessons = machinome_fake_lessons:Lessons'],
                      'machinome_fake_lessons.py', LESSONS),
     'fake-node': (['measure = machinome_fake_node:Measure'],
                   'machinome_fake_node.py', NODE),
     'fake-shadow': (['build = machinome_fake_shadow:Build'],
                     'machinome_fake_shadow.py', SHADOW),
-    'fake-movie-two': (['movie = machinome_fake_movie_two:Movie'],
-                       'machinome_fake_movie_two.py', MOVIE_TWO),
+    'fake-film-two': (['film = machinome_fake_film_two:Film'],
+                      'machinome_fake_film_two.py', FILM_TWO),
     'fake-needy': (['needy = machinome_fake_needy:Needy'],
                    'machinome_fake_needy.py', NEEDY),
     'fake-bare': (['bare = machinome_fake_bare:Bare'],
                   'machinome_fake_bare.py', BARE),
     'fake-gone': (['gone = machinome_fake_gone:Gone'], None, None),
     # A command shipped as a portion of the `machinome` namespace, as the
-    # videomaker's `machinome.movie` is to ship: its module under a
-    # `machinome/` directory holding no `__init__.py`.
+    # movie package's `machinome.movie` ships (`join-movie`): its module
+    # under a `machinome/` directory holding no `__init__.py`.
     'fake-portion': (['portioned = machinome.fake_portion_command:Portioned'],
                      os.path.join('machinome', 'fake_portion_command.py'),
                      PORTION),
 }
 
 #: Every module the fakes define, forgotten when `installed` exits.
-FAKE_MODULES = ('machinome_fake_movie', 'machinome_fake_lessons',
+FAKE_MODULES = ('machinome_fake_film', 'machinome_fake_lessons',
                 'machinome_fake_node', 'machinome_fake_shadow',
-                'machinome_fake_movie_two', 'machinome_fake_needy',
+                'machinome_fake_film_two', 'machinome_fake_needy',
                 'machinome_fake_bare', 'machinome_fake_gone',
                 'machinome.fake_portion_command')
 

@@ -55,6 +55,7 @@ class TheDeclarationTest(TestCase):
             'machinome.engine.brep.write_brep',
             'machinome.engine.brep.write_stl',
             'machinome.viewer.web',
+            'machinome.movie',
         ))
 
     def test_the_mechanics_helpers_are_inside_and_their_former_name_outside(
@@ -128,6 +129,42 @@ class TheDeclarationTest(TestCase):
         self.assertEqual(
             project('from machinome_viewer.server import WebViewer'),
             {('sim/model.py', 'outside-universe', 'machinome_viewer.server')})
+
+    def test_the_movie_is_internal_and_its_former_name_outside(self):
+        """(OpenSpec change `join-movie`) The films are
+        `machinome.movie`, beneath the contract's `machinome` but denied:
+        its command spawns Node and npm. Its former module name is
+        installed by no package of the set."""
+        from machinome.vet import vet
+
+        def project(statement):
+            scratch = os.path.realpath(
+                tempfile.mkdtemp(prefix='machinome-vet-'))
+            self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
+            os.makedirs(os.path.join(scratch, 'sim'))
+            files = {
+                'pyproject.toml':
+                    '[tool.machinome]\nmodel = "sim.model:Machine"\n',
+                'sim/__init__.py': '',
+                'sim/model.py': (
+                    'from machinome.node.assembly import AssemblyNode\n'
+                    f'{statement}\n\n\n'
+                    'class Machine(AssemblyNode):\n'
+                    '    film = Movie\n'),
+            }
+            for relative, text in files.items():
+                with open(os.path.join(scratch, relative), 'w') as stream:
+                    stream.write(text)
+            (model,) = vet(origin=scratch).models
+            return {(finding.path, finding.kind, finding.name)
+                    for finding in model.findings}
+
+        self.assertEqual(
+            project('from machinome.movie import Movie'),
+            {('sim/model.py', 'framework-internal', 'machinome.movie')})
+        self.assertEqual(
+            project('from machinome_movie import Movie'),
+            {('sim/model.py', 'outside-universe', 'machinome_movie')})
 
     def test_the_engine_package_is_judged_by_its_new_addresses(self):
         """(OpenSpec change `brep-mesh`) The seams and the B-rep engine's

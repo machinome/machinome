@@ -10,7 +10,9 @@ fails here naming the one left behind (changes `release-0-7-1` and
 `release-0-8-0`). Every package of the repository carries the framework's
 version, but the mechanics helpers, which carry their own (change
 `join-mechanics`); the viewer's Python package, its widget and the root's npm
-lock carry it too (change `join-viewer`). Every pin between two of them is
+lock carry it too (change `join-viewer`), and the movie's JavaScript
+directory, its own lock and the root lock's entry for it (change
+`join-movie`). Every pin between two of them is
 `~=` that version, and the root's `.bumpversion.cfg` moves them all (change
 `cut-the-engines`).
 """
@@ -198,6 +200,30 @@ class VersionFilesTest(TestCase):
         for path in (package / '__init__.py', package / 'widget/package.json'):
             with self.subTest(table=path.name):
                 self.assertIn(path.relative_to(REPOSITORY).as_posix(), tables)
+
+    def test_the_movie_s_node_version_files_agree(self):
+        """The movie's JavaScript directory, its own lock's two root entries
+        and the root lock's entry for it state the set's version;
+        `.bumpversion.cfg` moves the `package.json`, and npm the locks
+        (change `join-movie`)."""
+        js = 'packages/machinome-movie/machinome/movie/js'
+        with self.subTest(file='package.json'):
+            self.assertEqual(json.loads(
+                (REPOSITORY / js / 'package.json').read_text())['version'],
+                self.version)
+        with self.subTest(file=f'{js}/package-lock.json'):
+            own = json.loads((REPOSITORY / js / 'package-lock.json').read_text())
+            self.assertEqual(own['version'], self.version)
+            self.assertEqual(own['packages']['']['version'], self.version)
+        with self.subTest(file='package-lock.json'):
+            root = json.loads((REPOSITORY / 'package-lock.json').read_text())
+            self.assertIn(js, root['packages'],
+                          'the root lock holds no entry for the movie')
+            self.assertEqual(root['packages'][js]['version'], self.version)
+        tables = re.findall(r'^\[bumpversion:file(?:\([^)]*\))?:([^\]]+)\]$',
+                            (REPOSITORY / '.bumpversion.cfg').read_text(),
+                            flags=re.M)
+        self.assertIn(f'{js}/package.json', tables)
 
     def test_no_release_fact_is_trapped_in_inline_markup(self):
         """A substitution inside ``**...**`` is not resolved: the 0.7.0

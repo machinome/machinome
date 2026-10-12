@@ -1,0 +1,87 @@
+== count-alternatives-640.json: mode alternatives, shot carry, 30 frames (59..88), 640×360, wall 26.0 s, load1 13.65 → 10.99
+first frame excluded; 29 frames, probes in this order per frame, each after its own pose: png, finishThenPng, rafThenPng, redrawFinish, redrawReadPixels, redrawToDataURL, hiddenPng, jpeg, clip, cdp, cdpFast, cdpNoSurface, cdpFastNoSurface, pngAgain, png2
+probe (ms)                             mean   median      p10      p90      min      max  vs png
+png                                    28.5     23.9     19.8     39.4     14.9     73.2  1.00×
+  png: cpu gpu-process                 60.7     40.0     30.0      112     20.0      120
+  png: cpu browser                      4.8      0.0      0.0     10.0      0.0     10.0
+  png: cpu renderer                     2.4      0.0      0.0     10.0      0.0     10.0
+  png: cpu node                        11.0     11.1      9.8     12.3      9.0     13.4
+  png: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+finishThenPng                          24.3     22.4     16.3     33.0     13.6     53.4  0.94×
+  finishThenPng: gl.finish before       0.0      0.0      0.0      0.1      0.0      0.1
+  finishThenPng: cpu gpu-process       45.2     30.0     18.0      102     10.0      130
+  finishThenPng: cpu browser            6.9     10.0      0.0     12.0      0.0     20.0
+  finishThenPng: cpu renderer           3.4      0.0      0.0     10.0      0.0     20.0
+  finishThenPng: cpu node              10.8     10.8      9.6     12.3      8.9     13.1
+  finishThenPng: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+rafThenPng                             19.7     18.8     15.9     22.8     15.2     37.7  0.79×
+  rafThenPng: gl.finish before          0.1      0.1      0.0      0.1      0.0      0.2
+  rafThenPng: two animation frames     21.9     20.7     16.3     31.2      6.4     32.7
+  rafThenPng: cpu gpu-process          16.6     20.0     10.0     30.0      0.0     30.0
+  rafThenPng: cpu browser               6.9     10.0      0.0     10.0      0.0     20.0
+  rafThenPng: cpu renderer              1.7      0.0      0.0     10.0      0.0     10.0
+  rafThenPng: cpu node                 11.4     11.4      9.9     12.4      9.6     18.2
+  rafThenPng: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+  redrawFinish: setView again           0.3      0.2      0.1      0.4      0.1      0.7
+  redrawFinish: then the read/finish      0.0      0.0      0.0      0.0      0.0      0.1
+  redrawReadPixels: setView again       0.2      0.2      0.1      0.3      0.0      1.1
+  redrawReadPixels: then the read/finish     24.9     23.7     16.8     29.5     13.6     53.4
+  redrawToDataURL: setView again        0.2      0.2      0.1      0.3      0.0      0.4
+  redrawToDataURL: then the read/finish     15.2     14.3     11.6     19.4      9.1     32.6
+hiddenPng                              26.8     25.8     18.5     35.0     14.7     51.4  1.08×
+  hiddenPng: cpu gpu-process           50.3     30.0     18.0      112     10.0      120
+  hiddenPng: cpu browser                4.8      0.0      0.0     10.0      0.0     10.0
+  hiddenPng: cpu renderer               2.8      0.0      0.0     10.0      0.0     10.0
+  hiddenPng: cpu node                  10.9     10.6      9.3     12.9      9.1     13.7
+  hiddenPng: bytes equal to baseline 0/29, decoded pixels equal 0/29, size median 8.5 KiB
+jpeg                                   24.2     23.9     18.3     28.9     12.3     47.1  1.00×
+  jpeg: cpu gpu-process                97.2      110     30.0      162     20.0      190
+  jpeg: cpu browser                     5.5      0.0      0.0     10.0      0.0     20.0
+  jpeg: cpu renderer                    1.0      0.0      0.0      2.0      0.0     10.0
+  jpeg: cpu node                       11.0     10.7      9.6     12.7      8.6     14.2
+  jpeg: bytes equal to baseline 0/29, decoded pixels equal 0/29, size median 10.2 KiB
+clip                                   31.2     29.0     19.8     45.9     13.9     82.2  1.21×
+  clip: cpu gpu-process                63.8     40.0     30.0      120     20.0      140
+  clip: cpu browser                     6.6     10.0      0.0     10.0      0.0     20.0
+  clip: cpu renderer                    3.8      0.0      0.0     10.0      0.0     10.0
+  clip: cpu node                       10.7     10.5      9.5     12.0      8.5     14.1
+  clip: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+cdp                                    21.4     21.8     15.8     25.8     13.2     30.1  0.91×
+  cdp: cpu gpu-process                 59.7     60.0     20.0      102     10.0      130
+  cdp: cpu browser                      6.6     10.0      0.0     10.0      0.0     20.0
+  cdp: cpu renderer                     1.4      0.0      0.0     10.0      0.0     10.0
+  cdp: cpu node                         9.8      9.7      8.7     10.6      8.4     12.2
+  cdp: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+cdpFast                                19.6     16.8     11.9     30.8      9.9     50.6  0.70×
+  cdpFast: cpu gpu-process             55.2     40.0     30.0      100     10.0      110
+  cdpFast: cpu browser                  3.1      0.0      0.0     10.0      0.0     10.0
+  cdpFast: cpu renderer                 0.3      0.0      0.0      0.0      0.0     10.0
+  cdpFast: cpu node                     9.5      9.3      8.3     10.6      8.2     13.6
+  cdpFast: bytes equal to baseline 0/29, decoded pixels equal 29/29, size median 18.2 KiB
+cdpNoSurface                           41.4     42.8     33.2     48.3     18.6     55.9  1.79×
+  cdpNoSurface: cpu gpu-process        70.0     50.0     30.0      124     20.0      160
+  cdpNoSurface: cpu browser             5.5     10.0      0.0     10.0      0.0     20.0
+  cdpNoSurface: cpu renderer            1.0      0.0      0.0      0.0      0.0     20.0
+  cdpNoSurface: cpu node                9.4      9.4      8.8     10.3      8.2     10.7
+  cdpNoSurface: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+cdpFastNoSurface                       32.8     33.2     27.5     38.5     16.2     41.6  1.39×
+  cdpFastNoSurface: cpu gpu-process     53.4     40.0     28.0      102     20.0      140
+  cdpFastNoSurface: cpu browser         3.1      0.0      0.0     10.0      0.0     20.0
+  cdpFastNoSurface: cpu renderer        0.3      0.0      0.0      0.0      0.0     10.0
+  cdpFastNoSurface: cpu node            9.8      9.5      8.5     12.2      8.3     13.6
+  cdpFastNoSurface: bytes equal to baseline 0/29, decoded pixels equal 29/29, size median 18.2 KiB
+pngAgain                               24.3     26.9     16.5     31.7     15.8     32.9  1.13×
+  pngAgain: the first capture before it     23.7     20.7     17.4     32.1     13.5     52.3
+  pngAgain: cpu gpu-process            22.1     20.0     20.0     30.0     10.0     30.0
+  pngAgain: cpu browser                 4.8      0.0      0.0     10.0      0.0     20.0
+  pngAgain: cpu renderer                1.7      0.0      0.0     10.0      0.0     10.0
+  pngAgain: cpu node                   11.0     11.2      9.5     12.1      9.2     13.7
+  pngAgain: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+png2                                   22.8     21.7     17.3     29.6     15.9     39.6  0.91×
+  png2: cpu gpu-process                56.2     50.0     28.0     90.0     20.0      110
+  png2: cpu browser                    10.0     10.0      0.0     20.0      0.0     20.0
+  png2: cpu renderer                    2.1      0.0      0.0     10.0      0.0     10.0
+  png2: cpu node                       10.9     10.8      9.7     12.7      9.0     14.3
+  png2: bytes equal to baseline 29/29, decoded pixels equal 29/29, size median 12.0 KiB
+load1 over the probes: median 12.5 (11.0–13.7)
+

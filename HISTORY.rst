@@ -130,6 +130,23 @@ Unreleased
   command deletes nothing. The skills are unchanged but for their licence
   field, the set's. Change ``join-skills`` (ADR-190).
 
+* **The videomaker joins the repository, as MACHINOME MOVIE.** The
+  videomaker, kept in a repository of its own since 19 September 2026, is
+  the package ``machinome-movie`` at ``packages/machinome-movie/``, its
+  history kept and its two finished branches beside the line: its Python
+  package is ``machinome.movie`` (formerly ``machinome_movie``, which
+  nothing provides any more), its Node side lives inside it, and ``pip
+  install "machinome[movie]"`` then ``machinome movie setup`` install it.
+  Its command, ``machinome movie``, the first a package adds to
+  ``machinome``, lists, evaluates and watches a project's movies, and
+  checks, voices, previews, renders, builds, serves and reviews a film from
+  an episode, a movie document or a project and a movie name, with the
+  installed viewer and the user's Node 22. It is numbered with the set,
+  licensed as every package of the repository, the second member of the npm
+  workspace, and keeps its changelog, specs, decision log and tests in its
+  directory; its documents are part of this manual. Change ``join-movie``
+  (ADR-191).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

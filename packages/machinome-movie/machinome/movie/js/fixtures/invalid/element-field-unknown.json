@@ -1,0 +1,188 @@
+{
+  "name": "element-field-unknown",
+  "document": {
+    "audio": {
+      "model": "eleven_v3",
+      "provider": "elevenlabs",
+      "voice": "fixture-voice"
+    },
+    "cameras": {
+      "far": {
+        "fov": 37,
+        "position": [
+          400,
+          -600,
+          300
+        ],
+        "target": [
+          0,
+          0,
+          50
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "near": {
+        "fov": 37,
+        "position": [
+          200,
+          -300,
+          150
+        ],
+        "target": [
+          0,
+          0,
+          50
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      },
+      "rolled": {
+        "fov": 42,
+        "position": [
+          -150,
+          250,
+          120
+        ],
+        "target": [
+          0,
+          0,
+          60
+        ],
+        "up": [
+          0.15,
+          0,
+          1
+        ]
+      },
+      "side": {
+        "fov": 30,
+        "position": [
+          0,
+          -500,
+          100
+        ],
+        "target": [
+          0,
+          0,
+          50
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "chapters": [
+      {
+        "elements": {
+          "view": {
+            "camera": "far",
+            "kind": "view",
+            "zoom": 2
+          }
+        },
+        "id": "only",
+        "narration": "A seesaw.",
+        "shots": [
+          {
+            "cues": [],
+            "id": "whole",
+            "model": {
+              "from": 0,
+              "to": 2
+            },
+            "places": {
+              "stage": "view"
+            },
+            "set": "frame",
+            "until": {
+              "plus": 0.5,
+              "spokenEnd": "seesaw"
+            }
+          }
+        ]
+      }
+    ],
+    "clips": {},
+    "evidence": {},
+    "format": "machinome-movie/0.2",
+    "id": "minimal",
+    "layers": {
+      "ground": [
+        [
+          "Base"
+        ]
+      ],
+      "load": [
+        [
+          "Beam",
+          "Plank"
+        ],
+        [
+          "Beam",
+          "Weight"
+        ]
+      ]
+    },
+    "learningGoal": "Show the smallest movie that evaluates.",
+    "marks": {
+      "fall": 15,
+      "rise": 5,
+      "top": 10
+    },
+    "model": {
+      "expectedDurationSeconds": 20,
+      "manifest": "../../export/seesaw/manifest.json",
+      "readiness": "Fixture export written by hand; nothing is simulated.",
+      "sourceRevision": "99219d36cd87e0ada0244a6c2e0eb532659cdda5",
+      "timeMode": "normalized-loop"
+    },
+    "output": {
+      "fps": 10,
+      "height": 360,
+      "width": 640
+    },
+    "root": "../../../../../tests/fixtures/project/videos/minimal",
+    "sourceCode": {
+      "declaration": {
+        "file": "../../models/seesaw.py",
+        "lines": [
+          22,
+          24
+        ]
+      }
+    },
+    "stage": {
+      "elements": {},
+      "modules": [],
+      "sets": {
+        "frame": {
+          "slots": [
+            "stage"
+          ]
+        }
+      }
+    },
+    "status": "rehearsal",
+    "stills": {
+      "plate": {
+        "credit": "Fixture drawing of a seesaw",
+        "file": "../../media/plate.png",
+        "rights": "Made for the Videomaker test suite",
+        "upscale": 1.5
+      }
+    },
+    "title": "Minimal"
+  },
+  "must_mention": [
+    "zoom"
+  ]
+}

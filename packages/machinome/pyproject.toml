@@ -91,6 +91,12 @@ web-snapshot = [
 mechanics = [
     "machinome-mechanics>=0.1.0",
 ]
+# The films, `machinome.movie` and the command `machinome movie`, the
+# repository's distribution machinome-movie, numbered with the set; its
+# Node side is installed by `machinome movie setup`.
+movie = [
+    "machinome-movie~=0.8.1",
+]
 # The B-rep engine (`machinome.engine.brep`, resolved by its seam in
 # `machinome.engine`) is the distribution machinome-engine-brep, which
 # states the OCCT range.

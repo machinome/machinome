@@ -1,0 +1,9 @@
+angleSwiftshader-0 against stage-0: decoded pixels equal in 16/16 frames; 0 differing pixels per frame; largest level difference 0
+angleSwiftshader-1 against stage-0: decoded pixels equal in 16/16 frames; 0 differing pixels per frame; largest level difference 0
+disableGpu-0 against stage-0: decoded pixels equal in 0/16 frames; 1958 differing pixels per frame; largest level difference 2
+disableGpu-1 against stage-0: decoded pixels equal in 0/16 frames; 1958 differing pixels per frame; largest level difference 2
+noAntialias-0 against stage-0: decoded pixels equal in 0/16 frames; 60796 differing pixels per frame; largest level difference 223
+noAntialias-1 against stage-0: decoded pixels equal in 0/16 frames; 60796 differing pixels per frame; largest level difference 223
+playwright-0 against stage-0: decoded pixels equal in 0/16 frames; 1958 differing pixels per frame; largest level difference 2
+playwright-1 against stage-0: decoded pixels equal in 0/16 frames; 1958 differing pixels per frame; largest level difference 2
+stage-1 against stage-0: decoded pixels equal in 16/16 frames; 0 differing pixels per frame; largest level difference 0
