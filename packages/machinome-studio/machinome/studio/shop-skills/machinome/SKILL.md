@@ -1,0 +1,919 @@
+---
+name: machinome
+description: Build and test parametric mechanical components in a machinome project. Use when creating or modifying nodes (parts, assemblies), declaring parameters, writing mesh contract tests, driving and animating assemblies, or wiring components into the model the maker sees. machinome treats mechanical parts as software — declared parameters, unit tests, integration contracts verified on meshes.
+---
+
+# Building machinome components
+
+machinome is a Python framework for parametric, 3D-printable mechanical
+projects. A project is a package — `machinome new snowman` scaffolds
+`snowman/snowman/`, with the root node in `snowman.py` beside an empty
+`__init__.py`, and `pyproject.toml` naming it under `[tool.machinome]`. Its
+nodes form a tree: leaf nodes produce geometry through a CAD backend, assembly
+nodes compose, place and drive children. Mechanical contracts (parts mesh,
+fit, clear, transmit torque, stand up) are expressed as tests over the
+rendered geometry.
+
+Commands (run from the project directory, with the project's venv):
+
+    machinome build                 # build once and publish the model
+    machinome test <pkg>/<node>.py  # run tests for one node (passing the
+                                # test_*.py path works too)
+    machinome test --faceted        # the same run decided on meshes: the
+                                # fast loop, never commit evidence
+    machinome test --exact          # the certified run (the default when
+                                # neither flag nor the project's .env
+                                # says otherwise)
+    machinome test --no-verdict-store  # compute every pair again: a
+                                # timing measurement, or a run under a
+                                # patched framework (verdicts are kept
+                                # between runs by default)
+    machinome snapshot -o out.png --autocenter   # render an image
+    machinome build --set bore=32.0 # the same model at another parameter value
+
+Commands take an optional node reference — `package.module:Class`,
+`path/to/file.py`, or `path/to/file.py:Class`. Omit it and the project's
+model from `[tool.machinome]` in `pyproject.toml` is used. A directory is
+not a reference.
+
+`machinome develop` also exists, and opens a live viewer that rebuilds on save —
+the browser viewer from the separately installed `machinome-viewer` package,
+or OpenSCAD when that package is absent. Do not run it here: the shop already
+watches the project, rebuilds it, and keeps the maker's view current. Your
+builds are verification of your own work, and they are finite.
+
+Read `../machinome-api/SKILL.md` in full before building unless it is already
+loaded. It is the authoritative public surface, and it is all you have:
+framework source is not available to you. This manual owns implementation
+craft: parameter flow, placement and motion, contract tests, measurement, and
+the definition of done. If the API skill does not describe the behavior you
+need, report the gap — never infer an interface from a name or a traceback.
+
+## Writing nodes
+
+Declare a node in its class body. Parameters are typed declarations from
+`machinome.parameters`; derived dimensions are formulas over them; children
+are constructed in the class body and realized per instance:
+
+```python
+from machinome.node import AssemblyNode, CadQueryNode
+from machinome.parameters import Length
+
+class Shaft(CadQueryNode):
+
+    diameter = Length(4.8, min=0)
+    length   = Length(30.0, min=0)
+    flat_h   = Length(1.0, min=0)
+
+    def render(self):
+        ...return a cq.Workplane; self.diameter is a plain float here...
+
+
+class Spindle(AssemblyNode):
+
+    shaft_diameter = Length(4.8, min=0)
+    clearance      = Length(0.3, min=0)
+
+    bore = shaft_diameter + 2 * clearance        # a relationship, not a literal
+
+    shaft = Shaft(diameter=shaft_diameter)
+    sleeve = Sleeve(bore=bore)
+
+    def render(self):
+        self.sleeve.translate([0, 0, SLEEVE_SEAT])   # rest placement
+```
+
+Rules:
+
+- **Wrapped is a parameter, bare is a constant.** A `Length(...)` enters the
+  build identity, propagates to children and can be set from the shell; a
+  bare number is placement or process detail Python already handles. Never
+  hand-forward parameters to `super().__init__()` in a declarative class:
+  identity is complete by construction, which is the point.
+- **A parameter that depends on the parent has no default.** Declare it as
+  `Length(min=0)` and let the parent supply it; a made-up default is a
+  quiet mistake the framework would otherwise cache.
+- **Children are declared, never instantiated, in a class body.** Each
+  parent instance realizes its own. Identical units are one declaration
+  repeated (`CylinderUnit().repeat(count)`); different units are individual
+  attributes or a literal list. Per-unit variation never lives in the
+  declaration: placement variation is `enumerate` plus constants in
+  `render()`, drive variation is a joint driven by a broadcast relation
+  (or a port fed in `simulate()` for a non-motion value).
+- **Siblings do not reach into each other.** A value two children share is
+  declared on their parent and passed to both. The framework refuses
+  `ConRod(pin_bore=piston.pin_bore)` in a class body; declare `pin_bore` on
+  the parent.
+- **Guards over several parameters go in `check()`**, raising `ValueError`
+  with the reason; single-value bounds are `min=`/`max=` on the
+  declaration. Both refuse construction, before any child is realized.
+- `render()` returns the backend's native object on a leaf. On an
+  assembly or fusion with declared children it returns nothing and only
+  places and selects; a pure grouping node needs no `render()` at all.
+- `omit()` selects structure from parameters in `render()`; never from
+  time, and never in `simulate()`.
+
+A class with an ordinary `__init__` still works and mixes freely with
+declared ones. When you touch such a class, prefer migrating it: store
+nothing on `self` by hand, declare instead. In the constructor form every
+parameter must be forwarded to `super().__init__()` or variants share a
+stale artifact, and assembly children must be created in `__init__`.
+
+A leaf's `render()` may return several solids and nothing checks that
+they touch. If they are one printed part, union them with real
+overlap; if they are not, they are separate nodes. A backend "union"
+of solids that do not overlap does not fail — it hands back a
+compound, which exports as one file holding several loose pieces.
+
+Children are named automatically after the attribute their parent holds
+them under (`self.input_gear` → `input_gear`; members of a list or a
+`repeat` get `attr-N`), so the viewer tree and test vocabulary agree.
+An explicit `name=` kwarg overrides; names never affect build
+artifacts, which stay parameter-keyed.
+
+## Files, references and rebuild cost
+
+How a project is laid out is the project's choice, not the framework's.
+Know the costs and pick deliberately:
+
+- Rebuild tracking is per node. Two node classes in one file share one
+  stamp, but the content check beneath it is scoped to each class: editing
+  one rebuilds that node and the fusions above it and only restamps the
+  other. Editing what they share in the file — imports, constants, helper
+  functions, a class either of them names — rebuilds both.
+- A bare path to a file with several node classes is ambiguous: `solid
+  build root/parts.py` and `machinome snapshot root/parts.py` fail listing the
+  candidates, so name the class (`root/parts.py:Gear`). `machinome test`
+  tolerates the bare path and runs the nodes its companion's `TestCase`s
+  declare (`node = TheClass`, mandatory beside such a file); a
+  sub-assembly no test declares is not built, so a file holding a machine
+  and the sub-assemblies only it can bind is tested by its bare path.
+
+One class per file, named after it, is what `machinome new` sets up; it buys
+unambiguous bare paths, not a cheaper build. Do not reorganize an inherited
+layout for the cache's sake; name the class in references and in tests.
+
+Shared values live where their kind says: design parameters are declared on
+the node that owns them and passed down (see the next section); constants —
+layout tables, placement offsets, process limits, kinematic helper functions
+— live in a module that defines no node, conventionally `layout.py`,
+`parameters.py` or `kinematics.py`. The framework tracks the modules each
+node's source imports and invalidates exactly the nodes that import the
+edited one. Two traps follow:
+
+- Import shared values from the module that defines them, never through
+  the package. `from .layout import STATION_PITCH` is tracked;
+  `from . import STATION_PITCH` re-exported by `__init__.py` is **not**, and
+  editing the value will leave every artifact reporting up to date while
+  the model is stale.
+- A node's file imports its children's files and the constant modules it
+  reads. It never imports a sibling's file for a number: that drags the
+  sibling's source into its set, so editing either rebuilds both. If two
+  nodes need the same number, it is a parameter on their common ancestor or
+  a constant in a module.
+
+## Parameters: master knobs, derived dimensions
+
+A machine has few real degrees of freedom — a scale, a shaft nominal, a
+gear module and tooth counts, a running clearance — and everything else is
+derived. Declare each true knob **once, on the node that owns it**: a
+machine-wide value on the root, a mechanism's own on the mechanism. Pass it
+down to every child that needs it and derive every other dimension as a
+formula where it is used:
+
+- A mating dimension is a relationship (`bore = shaft_diameter + 2 *
+  clearance`), never a second independent literal. A hand-computed default
+  like `29.4` (really `30.0 - 2 * 0.3`) freezes the design at one point of
+  its parameter space — turn the knob and its mates silently stop following.
+- One number moves the whole machine: `machinome build --set clearance=0.35`
+  re-realizes every child that reads it and rebuilds exactly those
+  artifacts. Anything the maker should be able to tune from the shell
+  belongs on the root for that reason.
+- The dimension algebra is your first test. `bore + pressure_angle` fails
+  on `import`; a formula that type-checks is not therefore right, only
+  dimensionally sane.
+- Process constraints are the only genuinely absolute numbers, and they
+  belong to the PRINTER, not the design: running clearance per side,
+  minimum wall, minimum printable tooth module, bed envelope. They bound
+  the validity envelope of the parameter space rather than scaling with
+  it. Express each as `min=`/`max=` on the declaration or a `check()`
+  guard that raises with its reason, and prove the guard in a test:
+  construct the node outside the envelope inside `assertRaises`.
+
+## Operations, placement, motion
+
+`child.rotate(angle, [x, y, z])` and `child.translate([x, y, z])` append
+operations that both the viewer and the test meshes honor, applied in
+order. A child's own operations apply in its local frame before any parent
+operation places it.
+
+Two methods, two kinds of statement:
+
+- **`render()` places at rest.** Where a part sits when nothing moves —
+  a sleeve on its seat, a cap on its saddle, a unit at its station. It
+  reads no driver, no `self.time`, no port, and the framework runs it once
+  per instance, so each part carries exactly one rest placement for the
+  life of the tree. Rotation before translation is the canonical order
+  when a part carries both.
+- **`simulate()` moves.** It runs after `render()` on every instant and is
+  the one place to read `self.time`, a declared driver, or a port, and to
+  bind a child's port. Every operation it applies is absolute for its
+  instant, swept before the next run, and composed **inside** the rest
+  placement: a crank rotated in `simulate()` and translated in `render()`
+  spins about its own axis and is then carried to its seat. No wrapper
+  assembly is needed to separate the two frames any more; no cleanup
+  bookkeeping either.
+
+**The craft is: place at rest in `render()`, declare the joint on the
+body that moves, drive it from the parent by a relation.** Hand-written
+`rotate`/`translate` in `simulate()` is the exception now, for a motion no
+joint can state (a molejo flexible's own routing, a mesh deform) — not the
+default way to turn a part:
+
+```python
+class Forearm(AssemblyNode):
+    elbow = Revolute(axis=(0, 1, 0), at=(0, 0, 81.5), range=(-135, 135),
+                     unit='deg')
+
+class Arm(AssemblyNode):
+    forearm = Forearm()
+
+    def render(self):
+        self.forearm.rotate(90, [1, 0, 0])
+        self.forearm.translate([0, 241.5, 68])   # rest placement, unaffected
+
+    def simulate(self):
+        self.forearm.elbow = self.angle           # drives the joint
+```
+
+`axis`/`at` on a class-body joint are read in the DECLARING BODY'S OWN
+rest frame — never the parent's — with `at` defaulting to that body's own
+origin; the framework applies exactly the operations the declaration
+states, composed innermost, before the rest placement `render()` gives it.
+That is the frame arithmetic every hand-written robot arm carries to bring
+a parent-frame pivot into a part's own coordinates, and a joint stated in
+the body's own frame has none of it left to carry. Traps the catalogue hit
+migrating onto this rule:
+
+- **An anchor that restates the parent's placement is now a bug, not a
+  requirement.** `at=(0, 0, 81.5)` written because the parent's `render()`
+  translates the part `81.5` mm is a DOUBLE offset under the frame rule;
+  state only the anchor the body's OWN geometry has, and let `render()`
+  carry the rest placement as it always did.
+- **A body its parent rotates does not need its axis "corrected" for
+  that rotation.** `axis=(0, 0, 1)` on a part the parent turns 90° about
+  X still means that part's own Z — the published motion is `[0, 0, 1]`
+  exactly, whatever attitude the parent gave it — so do not try to
+  pre-rotate an axis by hand to land it where the parent's placement will
+  carry it; the framework already reads it in the body's own frame.
+- **An `Orbit` whose carried point lies ON its own axis refuses by
+  name** at the first binding, radius zero: usually the sign the body
+  was not placed where the class assumed, or that `carries` needed
+  naming because the point that travels is not the body's own origin
+  (a connecting rod's big end, a parallelogram leg's knee).
+- **A `.repeat()` copy's `index` does not exist yet when that copy's own
+  joint arguments resolve** — true of a class-body joint (assigned after
+  `__init__` returns) and equally true of a joint declared where a
+  `.repeat()` is placed. Since `resolve-repeated-joints-per-copy` a
+  `.repeat()` copy carries its `index` from the start of its own
+  construction, so `at=lambda node: (... node.index ...)` on a joint or
+  frame argument resolves per copy. Still reach for the simpler sentence
+  first: **when the per-copy difference is only a sign or an attitude the
+  copies already stand at**, state ONE declaration-site joint with the
+  PARENT-FRAME axis and no anchor at all, on the whole `.repeat()` — each
+  copy's own carry through its own rest placement produces the opposite
+  local axis for free (a mirrored roller pair, a mirrored belt-guide
+  pair), with no index, no sign and no `law=` anywhere. Only when the
+  difference is not a placement at all (a phase, a ratio, a per-copy
+  selection) does it belong in a broadcast relation's `law=`, or in
+  `render()` off the parent's own placement loop. A site joint's values
+  are read where the child finally rests, after every rest operation the
+  parent applies to it: when one of those operations is conditional, a
+  plain value is right for one branch only, so write the argument as a
+  callable of the realized parent.
+- **A joint an author binds by hand keeps both its VALUE and its MOTION
+  across runs, as of ADR-099.** `if self.pin.value is None: self.pin =
+  REST` as a one-time default now rebinds and re-places the body on
+  EVERY run: at the start of an assembly's phase the framework clears
+  the value and binder of every coordinate that assembly bound during
+  its PREVIOUS phase, the author's own binding included, in the same
+  moment it sweeps the operations that motion applied — so the guard
+  finds the coordinate unbound again on the second run and every run
+  after it, exactly as it did on the first. Nothing needs to be bound
+  unconditionally to keep moving; a relation still re-solves every run
+  the same way it always did.
+
+```python
+class CylinderUnit(AssemblyNode):
+    crank = Revolute(axis=(1, 0, 0), unit='deg')   # this unit's own throw
+    ...
+
+class Cylinders(AssemblyNode):
+
+    units = CylinderUnit().repeat(len(CYLINDER_LAYOUT))
+    crank = Driver(default=0.0, range=(0.0, 720.0), unit='deg')
+
+    crank.drives(units.crank, law=per_unit_phase)   # one relation, all units
+
+    def render(self):
+        for index, unit in enumerate(self.units):
+            station_x, bank = cylinder_placement(index)
+            unit.rotate(bank, [1, 0, 0])
+            unit.translate([station_x, 0, 0])
+
+
+def per_unit_phase(cylinders, unit):
+    phase = THROW_PHASES[unit.index // 2]      # the copy's own 0-based index
+    return lambda angle: angle + phase
+```
+
+- **A repeated unit's own freedom is a joint, driven by a broadcast
+  relation**, as above: the parent's relation reaches through the repeat,
+  resolves to one relation per realized copy, and `law=` is called once
+  per copy with the copy itself, so it reads the copy's own `index` — a
+  class-body JOINT argument cannot: it resolves before `index` exists (see
+  the traps above). This replaces the per-unit hand-written loop of an
+  older project; a driver declared on a repeated or list-held child still
+  cannot be qualified, so the source of a per-copy law stays a coordinate
+  the parent owns.
+- **A repeated unit's non-motion value is still a port.** A unit declares
+  `torque_limit = SignalPort(unit='N*mm')`, the parent feeds it in
+  `simulate()` by assignment or `connect()`, and the unit reads
+  `self.torque_limit.value` in its own `simulate()` (the parent's runs
+  first). A port's `.value` is `None` until bound: treat that as a wiring
+  fault to surface, not a zero to default.
+- **Machine inputs are drivers**, declared on the assembly that owns the
+  move: `angle = Driver(default=0.0, range=(0.0, 720.0), unit='deg')`,
+  read as `self.angle` in `simulate()`. The viewer gives them controls
+  and `instructions` buttons at the layer that declares them, so declare
+  a whole-machine move on the machine. `self.time` is
+  the shared clock: `$t` from 0 through 1 without a declaration,
+  seconds with `Time(loop=...)`, and elapsed seconds under either of the
+  two unwrapping bases, `Time.running()` and `Time.elapsed()`. Running
+  time gets command controls and retained joint state; `Time.elapsed()`
+  is the same seconds with none of that machinery, and says only what
+  `time` means. Both are described below and in the API skill.
+- **A value the MACHINE writes is a `State`**, declared beside the
+  drivers, and a tree that declares one is a CLOCKED model — a different
+  discipline from a running root, not a different clock. See "Machines
+  that keep a few values" below.
+- Kinematic math imports from `machinome.math` (`sin, cos, tan, asin,
+  acos, atan, atan2, sqrt`), NEVER stdlib math: time and drivers are
+  symbolic in the viewer, and these functions compute numerically on
+  numbers while building the viewer's expression on symbols — one formula
+  drives both. Trig is in DEGREES.
+- A `FutureWarning` naming one of your classes means its `render()` read
+  time, a driver or a port and is on the deprecated re-running path.
+  Move the read and the operations it feeds into `simulate()` in the
+  same slice; leave no warning in a class you touched, and report any you
+  found in one you did not.
+- An assembly may apply motion directly to a grandchild leaf — operations
+  live on the node, and local-before-ancestor ordering keeps it correct.
+
+`node.mesh` is the node's mesh in WORLD coordinates: its own operations
+composed with every ancestor's, exactly the geometry the viewer shows.
+Placing a sub-assembly by translating the wrapper is fine — its leaves'
+meshes follow.
+
+### Machines operated over time
+
+Use `time = Time.running()` on the root for an operated machine whose
+coordinates must retain history. Import `Time` from
+`machinome.motion.ports`. The run owns every driver and joint coordinate;
+there is no separate state declaration or mutable accumulator to add to
+`simulate()`. Read the API skill's "Running simulations" section before
+migrating a pose model.
+
+- Give moving parts joints, express their laws with `drives`, and give
+  every joint coordinate a rest value. Migrate an unconditional joint
+  assignment in `simulate()` into a relation: it conflicts with the run's
+  ownership. A guarded `if coordinate.value is None` may initialize a
+  genuinely undriven rest coordinate. Plain ports, including molejo shape
+  dimensions, continue to follow the committed joint values each tick.
+- Put user actions on machine inputs. Relative phases are
+  `Instruction(by={'input': travel}, duration=seconds)`; absolute moves
+  use `targets`. Use `Sim.move`, `rate` and `trigger`, and check their
+  admitted travel/status. A running input has one command owner, and a
+  blocked command never resumes itself when the obstruction clears.
+- Put physical limits on the appropriate **joint range**. A driver's
+  range is only control metadata. For a compression spring, derive height
+  from its seats and constrain the joint moving a seat from the spring's
+  documented operating envelope. Clamping only the displayed coil lets
+  the rest of the mechanism pass its limit. Free length, coil-bind length,
+  safe operating travel and visualization assumptions are different facts;
+  do not invent measured material limits from a drawing that lacks them.
+- State contact-following motion with a continuous law; for sampled
+  geometry use `machinome.math.piecewise` over measured breakpoints.
+  Pure jumps such as `floor(input)` do not move a running joint: the run
+  subtracts jumps. A zero-slope region or a multi-source gate disengages
+  motion but does not by itself report the input blocked. Test the actual
+  mechanical restriction separately. A range bound may also read OTHER
+  coordinates — `Bound(expr, reads=(...))`, naming the reads as a
+  relation's ends are — and then it is a constraint the run stops at
+  along the tick's path, so a plug bounded by its pins' lifts stops the
+  key that would lift them. Keep the laws it reads small; see the API
+  skill for the declaration and stop rules.
+- Test history with scenarios on the same node: repeat an action, stop
+  midway, reverse, interleave controls, and restore/replay a snapshot.
+  Check geometry at a cadence as well as final state. Choose `dt` small
+  enough to resolve contact changes; a within-tick excursion that returns
+  inside a range can evade stop detection. There is no implicit force or
+  collision solver.
+- A successful running build publishes a version-5 `program` and joint
+  placements over bank ids. Verify it and the installed viewer's
+  `documentVersions`; current development API 12 provides nudge, jog,
+  instruction and run/pause/step/reset controls. Do not substitute raw
+  position sliders for the operating surface. A snapshot's `--drive`
+  overrides pose inputs; it does not replay an accumulated run.
+- **Put the request on the part where the maker would touch it.** Under a
+  running root a `controls` table beside `instructions` declares
+  `Button(part, 'instruction')` to press a part and `Turn(part, input)` to
+  drag it round the coordinate it rides; nothing about the gesture is
+  declared, the ratio being measured from the compiled program at rest. A
+  control issues a request the run already accepts, so a blocked drag
+  reports blocked. Prefer one over a panel button whenever the real
+  machine is operated by handling that piece, and exercise it in the
+  viewer as evidence. See the API skill for parts, refusals and the
+  published table.
+
+### Machines that keep a few values
+
+A running root retains EVERY coordinate and integrates EVERY law at a
+fixed cadence. Some machines do not need that generality and cannot
+afford it. Declare `State` and `commits` — a CLOCKED model — when all
+three hold:
+
+1. the machine's memory is a FEW named values (registers, a counter, a
+   selected position), not the whole tree;
+2. between events every position is a CLOSED FORM of those values and the
+   inputs — you can write the pose from the state, and it is right at
+   every intermediate angle, not only at rest;
+3. the values change only AT events you can state as one jump node of a
+   driver (or of the clock): the end of a stroke, a rack reached, a
+   release crossed.
+
+A machine whose arithmetic must EMERGE from local laws is a running root
+and stays one. A machine that counts, registers, indexes or latches — a
+calculator, an odometer, a stepping switch, a combination lock — is the
+clocked shape, and the Curta is the worked example the discipline was cut
+from. Read the API skill's "Clocked simulations" section before writing
+one. The method in full is the Curta project's own spike record, in the
+`Calculators/Curta-Type-I-3x` project on branch `clocked-spike` at
+`simulation/docs/clocked-spike-2026-09-16.md` — read it, do not edit it.
+
+- **Running is the oracle.** The clocked commit law is a CLAIM that the
+  machine's arithmetic equals what the parts do, and the parts are what a
+  running model already proves. Where a project has both, record the
+  running model's readouts ONCE over a shared corpus of scenarios, then
+  replay the same neutral action vocabulary through the clocked model and
+  compare at EVERY stroke end — and compare the POSE too, not just the
+  readout, because "between events nothing is retained" is a measurable
+  claim about dial angles and not an assumption. The Curta spike did
+  exactly this: 18 scenarios, 574 recorded ticks, agreement at every
+  stroke end and dial angles to 0.000000 digits except inside the
+  clearing model's own documented capture band. Carrying BOTH models is a
+  documented pattern for a machine whose arithmetic was earned that way,
+  not a default: a machine with no running twin states its law from the
+  drawing and proves it by hand-computed expectations.
+- **Mid-stroke reads are not disagreements.** A running model reads moving
+  dials; a clocked model answers with the same moving dials from its pose
+  while its committed state has not moved yet. Compare at stroke ENDS,
+  and treat a mid-stroke difference as evidence about the pose formula.
+- **Audit the interlocks, one at a time, from the source.** Start with
+  every lock OPEN and close one only when a scenario DEMANDS it, quoting
+  the manufacturer's own words in the record. A lock nothing demands
+  moves the model away from the machine — the Curta spike found two the
+  booklet documents that this machine does not need, and said so. Every
+  lock is a `Bound` on a joint and needs no new idea: a numeric `range`
+  for a stroke, a one-argument bound for a ratchet, `Bound(..., reads=)`
+  for a comparison against another part's position, and BOTH bounds
+  reading the coordinate's own value for a freeze (a part that may not
+  MOVE while another is off rest). Do not state a freeze as "must STAND
+  at zero off rest": that forbids every mid-stroke pose there is and
+  stops the wrong part.
+- **Decide the direction, in the model.** Only RISING steps of `at` fire.
+  `floor(crank / 360)` dragged backwards commits nothing — which is what
+  an anti-reversal pawl gives — and a mechanism that commits on the other
+  edge negates its own level, `floor(-crank / 360)`. If a mechanism must
+  not be reversed at all, declare the bound that makes the reverse
+  unreachable and prove it: the spike measured that without the pawl an
+  additive law commits a SECOND addition, 9 → 18.
+- **A request is the unit, so state the request the maker performs.** The
+  clip is read once per request and the bound's own coordinate at the
+  request's start, so a long sweep and two short ones split at an event
+  can admit different travels. Where the finer reading is the mechanism's,
+  split the request — it is exact either way.
+- **Keep the state out of the control surface.** A state is written by the
+  machine; `Sim(model, state={...})`, `snapshot` and `restore` are session
+  setup and nothing else. If a demo wants to "set the register", it is
+  setting up a session, not operating the machine.
+- **A clocked model plays in the browser.** The development viewer
+  (widget API 19) executes a version 8 document: a slider move is one
+  request, states are readouts, a declared stop holds the control where
+  the machine stops, and an instruction button makes ONE request and
+  draws it over its `duration` (ADR-129, viewer ADR-064). Declare the
+  strokes a maker watches as instructions — the Curta's
+  `'Turn crank': Instruction(by={'crank_rotation': 360}, duration=2)` —
+  and do NOT declare `Time.elapsed()` unless something in the model is a
+  formula of elapsed seconds: an unused clock only buys a play button
+  that advances nothing.
+  Evidence for a clocked increment is still `machinome test` with
+  hand-computed expectations first; the browser and the OpenSCAD snapshot
+  of the initial bank are the pixels.
+
+## Testing
+
+Tests for `foo.py` live in `test_foo.py` beside it (for a package,
+`test.py`); one class subclassing `machinome.test.TestCase`. The
+runner builds the node at time 0 and exposes it on the test as
+`self.node` and as a snake_case alias of the test class name:
+`SpurGearTest` gets `self.spur_gear`. Mesh assertions available:
+`assertNoDisconnectedSolids`, `assertNoSolidInterference`,
+`assertAssemblySupported`, `assertNotIntersecting`, `assertIntersecting`,
+`assertInside`, `assertClose`, `assertFar`, `assertIntersectVolumeAbove`,
+`assertIntersectVolumeBelow`, `assertBlockedBeyond`, `assertFreeWithin`,
+`assertJoined` — all take nodes; `node.mesh` is a trimesh in world
+coordinates. Between two exact nodes (CadQuery, build123d, sheet, molejo)
+the intersection questions are answered by the kernel, not on triangles.
+
+`assertNoPairwiseIntersections` is DEPRECATED — do not write it. It
+walks leaf pairs and checks leaves, which stopped being the unit of a
+printed part; `assertNoSolidInterference` replaces it. If you inherit a
+project that calls it, replace the call rather than carrying it forward.
+`assertOneBody`, `assertBodyCount`, and `assertNoDisconnectedParts` no
+longer exist at all.
+
+- Sweep the animation with `@testing_steps(n, start=..., end=...)` or pin
+  an instant with `@testing_instant(t)`. Sweep only the period over which
+  the geometry repeats (e.g. one tooth pitch), full cycle coarsely.
+- Extra nodes needed inside a test: `n = SomeNode(bore=...)`,
+  `n.assemble()`, `n.build_stls()`, then `n.mesh` works. A node created
+  at another parameter value is how a test exercises the range.
+- A driven machine is tested in motion with a `ScenarioTest`: declare
+  `node`, `dt` and `meshes = True` when geometry is asserted, script
+  `sim.at(t).trigger(...)` and `sim.every(period, assertion, ...)`, run a
+  bounded slice, and write the run that must fail as well as the one that
+  must pass — a scenario that only ever passes is not evidence.
+- A CLOCKED machine has no cadence and therefore no `ScenarioTest`: test
+  it in an ordinary `TestCase`, driving a fresh `Sim(model)` per test and
+  asserting `sim.state`, the commits' landings, `request.admitted` and
+  `request.stops`. Compute every expectation BY HAND — a test that asks
+  the law what the answer is passes whatever the code did. Assert each
+  interlock from BOTH sides (the travel it admits, and the zero travel it
+  admits when it holds), assert a refused request left the bank
+  unchanged, and pin the equivalence of one long request against several
+  short ones over the same travel.
+- Perturbation tests (prove a part is blocked/free):
+  `assertBlockedBeyond(node, amount, against)` — perturbed by
+  ±amount, `node` must foul `against` in BOTH directions.
+  `assertFreeWithin(node, amount, against)` — the anti-gaming twin:
+  still clear within the play; `amount` may be a list for journal
+  (freewheel) sweeps. Two modes: default is rotation (`amount` in
+  degrees about `axis=`, about the node's own axis); pass
+  `along=(x,y,z)` instead and `amount` is mm of translation — for
+  linear fits (a pin captured in a bore, axial thrust float, a
+  sleeve seated against a lip). Directions are LOCAL, pre-placement:
+  placement rotations (own and ancestors') carry them, so one
+  contract covers mirrored/banked instances. For deliberately
+  one-sided constraints (blocked inward by a lip, free outward)
+  pass `directions='forward'`. Both modes insert the perturbation
+  before the node's placement and restore the operations exactly,
+  pass or fail. Perturbation proves ENGAGEMENT; it does not pin
+  dimensions — keep the parameter-anchored dimension checks
+  alongside it.
+
+Mesh measurement rules (STL vertices lie exactly on the true surface):
+
+- Dimensional assertions: delta 0.01 is enough; no tessellation slack.
+- Diameters: use max (or min) radial vertex distance from the axis,
+  NEVER bounding boxes — with an odd feature count (e.g. 17 teeth) a
+  tooth faces a gap and the bbox under-measures.
+- Straight cylinders tessellate with vertices ONLY on their end rims.
+  Measure gaps FROM the feature-rich mesh's vertices TO the other mesh's
+  surface: `trimesh.proximity.closest_point(target_mesh, vertices)[1]`.
+- Where two features butt-join in one plane (a pin's end rim on a web
+  face), both features' vertices lie in that same plane — filtering by
+  the coordinate along the joint axis cannot separate them. Select a
+  feature's vertices by distance to its OWN axis instead.
+- Centroid-style measurements (deriving a bore center from rim
+  vertices) are biased by whatever the joining geometry removes from
+  the rim: make the joint SYMMETRIC about the feature (a shank
+  passing through both poles of a boss cancels exactly; one entering
+  from a single side does not). Boolean re-tessellation adds ~0.1mm
+  noise at cadquery's default tolerance — for centroid contracts,
+  pre-tessellate in render(): `.mesh(tolerance=0.001,
+  angularTolerance=0.01)` on the shape before returning it; the STL
+  export reuses the finer triangulation. Finer tessellation cures
+  bias only where the joining edges are simple curves (flat shank
+  meeting a circular rim). Where two ROUND features intersect (a
+  bore breaching a cylindrical OD), the join is a warped space curve
+  tessellated independently on each side — the ~0.1-0.2mm asymmetry
+  does NOT shrink with tolerance. Don't chase it: EXCLUDE vertices
+  near the breach by coordinate and measure the geometrically clean
+  region of the feature instead.
+- OpenSCAD-family leaves (`Solid2Node`, `OpenScadNode`) approximate
+  circles with `fn` segments; a hexagonal hole is tighter than the
+  circle it stands for. Set `fn` high enough for the fit, or author the
+  fit on an exact backend.
+
+The unit both disciplines below work in is the PRINTED SOLID: the
+topmost rigid node on each branch — a leaf, or a `FusionNode`, whose
+parent is an assembly. The framework stops there and does not look
+inside. Leaves fused into one solid are its ingredients, never compared
+against each other and never individually required to be connected;
+only the solid they make is. A flexible part (a spring, a belt) is never
+a printed solid: it is bought, not printed, and it can never be fused.
+
+Contract design principles:
+
+- ADJACENCY DISCIPLINE: no two distinct solids may EVER share volume, at
+  any instant — overlapping rigid bodies are physically impossible.
+  Interference (press) fits are print-time compensation (printer
+  profiles shrink holes); model them as small locational clearances.
+  `assertIntersectVolume*` is for detecting contact, never for
+  legitimizing overlap. `assertNoSolidInterference` admits no epsilon:
+  exact zero-volume boundary contact passes and any positive shared
+  volume fails, so a clearance is a length your drawing states, not a
+  volume of interpenetration you tolerate.
+- CONNECTIVITY DISCIPLINE, its twin, and never skip it: a printed solid
+  is exactly ONE connected body. Adjacency discipline alone is a
+  one-sided force — it pushes parts APART, and a part that has fallen
+  into floating fragments satisfies every non-interference contract in
+  the project. Nothing else reports it either: the build does not check
+  it, and watertightness is a per-shell property, so a mesh of five
+  disjoint closed shells is watertight, has positive volume, exports a
+  valid STL, and renders in the viewer looking like a part. Features
+  that must be one piece have to INTERPENETRATE by a stated weld
+  (~0.5mm is a sound default); solids that abut tangentially, or that
+  stop a couple of millimetres short of each other, stay separate
+  bodies. `assertNoDisconnectedSolids(root)` catches every such part at
+  once, reading each solid's own geometry with no placement composed. Add
+  `assertJoined(a, b, min_weld_volume=...)` where the drawing names a
+  junction — the one place two features are REQUIRED to share volume,
+  and it holds only WITHIN one printed solid: hand it two features from
+  different solids and it fails saying so, because that question is
+  about the model, not the geometry. The classic generators: a feature
+  located from a typed radius instead of from the surface it must land
+  on, and a sub-feature placed in its own node so the gap never even
+  looks like a gap.
+- SUPPORT: parts that clear each other and hold together can still float.
+  `assertAssemblySupported(root)` proves every printed solid rests,
+  transitively, on something that reaches ground, and that the assembly
+  balances under gravity on the contacts it detects. Use it wherever the
+  drawing says the machine stands, hangs (`ground=`) or is bolted; declare
+  press fits and glue in `supports=` so the exemption is visible in the
+  test, and choose `max_drop` above the clearance play and below the
+  thinnest supporting wall.
+- A DRIVING PAIR must be shown to drive. Non-interference plus a ratio
+  computed from tooth counts proves nothing — two gears a millimetre
+  apart satisfy both, and so do two gears whose teeth sweep straight
+  through each other. Engagement is a perturbation contract:
+  `assertBlockedBeyond(driven, backlash_angle + margin, driver)`
+  paired with `assertFreeWithin(driven, backlash_angle, driver)`. The
+  driven member must foul its mate in BOTH directions just past the
+  backlash and stay clear within it. Derive `backlash_angle` in the
+  test from the drawing's linear backlash and pitch radius, never from
+  the node. A pair also needs a PHASE relation — a tooth of one member
+  sitting in a gap of the other — and the drawing owns it; without a
+  phase term the two members turn at exactly the right speeds through
+  each other. Teeth built as separate primitives are unioned to the
+  blank and located from the blank's surface AT THAT STATION (the cone
+  or cylinder radius where the tooth sits), which is connectivity
+  discipline applied to the one feature most often typed by eye.
+- Sample MESHING geometry over one tooth pitch, not over the animation
+  cycle. `@testing_steps(3)` across a full cycle samples three
+  arbitrary tooth phases and misses interference at every other one;
+  it is not coverage for anything whose geometry repeats per tooth.
+- A contract asserts GEOMETRY, not a claim about it. `assertTrue(
+  part.is_open_topped)` and `assertEqual(part.foot_count, 6)` test
+  that an attribute the node code sets still holds the value the node
+  code set — they cannot fail for any reason a maker cares about.
+  Metadata may LOCATE or PARAMETERIZE a measurement; the assertion
+  itself measures the mesh.
+- Every project root carries BOTH discipline safety nets, covering the
+  adjacencies and the junctions nobody thought to test. Neither is
+  optional and neither substitutes for the other: the first says
+  parts stay out of each other, the second says each part holds
+  together.
+
+`machinome new` writes both into the root test file, so a new project starts
+with them:
+
+```python
+def test_solid_integrity(self):
+    self.assertNoDisconnectedSolids(self.node)
+
+def test_assembly_integrity(self):
+    self.assertNoSolidInterference(self.node)
+```
+
+Neither is decoration and neither is optional. The framework checks
+neither property on its own, so deleting one removes the project's only
+structural net for it. A project that predates the scaffold, or one
+whose root test file lacks them, gets them ADDED as your first act on
+that project — before the slice you were assigned, since every later
+contract is read against them. Replace any inherited
+`assertNoPairwiseIntersections` call with `assertNoSolidInterference` at
+the same time.
+
+They are a floor, not a finished contract, and one of them is expected
+to GROW. `test_solid_integrity` asks a question about geometry rather
+than pose — a solid is connected or it is not, whatever the assembly
+does with it — so one instant settles it and the scaffolded form is
+already complete. `test_assembly_integrity` asks where the solids ARE,
+which is exactly what the animation changes. As soon as the model moves,
+sweep it:
+
+```python
+@testing_steps(8)          # a pose contract: one instant is one pose
+def test_assembly_integrity(self):
+    self.assertNoSolidInterference(self.node)
+```
+
+Two parts that clear each other at t=0 routinely collide mid-cycle, and
+the single-instant form cannot see it. Sweeping is the intended
+evolution of that test, not an edit to a contract you were told to leave
+alone; interference checking is cheap (a spatial index, and a verdict
+computed once per pair and relative placement per run), so sweep
+generously and cover the whole cycle. Where a mechanism's geometry
+repeats faster than the cycle — a gear train, a cam — the same rule as
+any meshing contract applies: sample over one tooth or lobe pitch with
+`start=`/`end=`, and cover the full cycle more coarsely alongside it. A
+machine driven by more than the timeline gets the same check on a
+scenario cadence, along the moves its instructions make.
+
+What you may not do is weaken either one: no epsilon, no narrowing to a
+subtree that skips the parts you just moved, no deletion because it went
+red. A red integrity test is the net doing its job.
+
+One honest limit: `test_assembly_integrity` passes vacuously while the
+project is still a single leaf or fusion, since it selects fewer than
+two solids and has nothing to compare. It is not evidence until the
+model is an assembly — do not report it as coverage before then.
+
+- Preconditions fail at construction, not in a mesh test (e.g. a gear
+  pair refuses mismatched modules by building both gears from one
+  declared `module`; a `check()` refuses a stop that cannot clear its
+  stem).
+- Non-interference alone is gameable (parts a meter apart pass). Pair
+  every "does not collide" contract with the engagement contract that
+  pins the part in place: blocked beyond the play, free within it.
+- Bound clearances on BOTH sides, deriving bounds from the declared
+  clearance, not magic numbers.
+- One measured literal per physical gap: a single min-distance
+  assertion spanning two independent gaps (a radial ring gap and an
+  axial lip gap) is blind to either failing alone — the unaffected
+  gap always wins the min(). If two things can fail independently,
+  they are two contracts.
+- Expected DIMENSIONS come from the design's INPUTS, through the test's
+  OWN arithmetic — never read off a derivation at assert time. Tests may
+  share the declared knobs (`self.node.clearance`, a layout constant);
+  they must never share the implementation's DERIVATIONS: an expectation
+  read from a derived parameter or a node attribute follows the very
+  wiring bug it should catch and stays tautologically green. Live
+  attributes may LOCATE a feature, never judge it. Editing a knob then
+  moves model and tests together — that is the knob working, not a
+  coverage hole; the bugs tests exist to catch live in NODE CODE (a
+  parameter ignored, misapplied, sign-flipped, a formula done wrong), and
+  those the shared-input test catches. The tautology trap still hides in
+  two places: DERIVED play bounds (a blocked/free bound computed by
+  reading the node's own formula moves with the bug it should catch — the
+  test redoes the derivation itself, from the inputs) and MEASUREMENT
+  FRAMES (a projection axis read live off the node, `unit.bank`, follows
+  a wiring bug instead of catching it — axes and directions used to
+  measure are computed in the test from the inputs too). Max-projection
+  onto an axis is forgiving of axis errors near dead center (off-axis
+  vertices compensate); anchor mid-stroke instants as well as TDC/BDC
+  when the axis direction itself is under test. And check margins
+  against the MEASURED bind angle — small-angle atan estimates undershoot
+  the true corner-bind by a few tenths of a degree, more at larger
+  clearance ratios.
+- A parametric contract needs evidence at more than the default. Build a
+  second instance at a boundary value inside the test, or run the file
+  under `machinome test --set knob=value`, and say which values you covered.
+- `volume_epsilon` on `assertBlockedBeyond` / `assertFreeWithin`
+  dismisses an intersection below the given volume. It exists because
+  parts abutting exactly FLUSH (butt-jointed shaft segments) produce
+  float-noise booleans on the faceted path. DO NOT REACH FOR IT. It is
+  documented so you recognise it in a test you inherited, and the right
+  response to finding one is to remove it: give the joint the clearance
+  the drawing owes it, or weld the two features into one solid if they
+  are one part, and the contract then holds at the default 0.0 with no
+  threshold to argue about. Between exact parts it is ignored with a
+  warning anyway. A tuned epsilon is a number nobody can derive from the
+  design, and it hides exactly the small interferences worth catching.
+  `assertNoSolidInterference` has no epsilon at all, by design.
+
+## Definition of done — every component step
+
+0. Work on the faceted kernel. Every `machinome test` you run while
+   building — the red run, the green run, the regression, the mutation
+   check — is `machinome test --faceted` (on the floor, `machinome_test` with
+   `kernel="faceted"`). It decides the same assertions on the parts'
+   meshes, about twenty times faster on exact parts and thirty on
+   springs and belts, and it labels its own output. Only the last step
+   below runs exact. Verdicts are kept between runs (`_build/.verdicts`,
+   keyed on the parts' content and relative placement), so a rerun after
+   an edit pays only for the pairs the edit touched, and the exact run at
+   the end pays only for what no earlier exact run decided; pass
+   `--no-verdict-store` only when you are measuring time or have patched
+   the framework.
+1. Write the test file first; run it; watch it fail.
+2. Implement to green.
+3. Full regression: run `machinome test` for EVERY node file in the project
+   (a failing run exits nonzero, so chaining files with `&&` works),
+   including the root, whose two integrity contracts are what catch a
+   part you broke somewhere else. If you redirect a chained run's output
+   to one log file, only the last command's output survives — redirect
+   per file (or just run them as separate foreground invocations) when
+   you'll inspect logs.
+4. Mutation check: break the geometry contract IN NODE CODE (wrong
+   phase, a dropped clearance term, a misapplied parameter...), confirm
+   the specific contract tests fail, revert, confirm green. Changing a
+   declared knob's value is inert BY DESIGN — tests share those inputs
+   and follow the knob — so mutate the formula or the code that USES
+   the parameter, not the parameter. The mutation must FLOW: mutating a
+   child's default is inert when the parent passes the value
+   explicitly — mutate at the level the value actually comes from. And
+   it must EXCEED the margin that actually bounds the error: identify
+   which physical gap or play the mutation eats into, and size the
+   mutation past it (a 3mm station shift survives a 4mm axial gap;
+   4.5mm kills). If a mutation unexpectedly survives, investigate and
+   report which contract truly bounds that error instead of shrugging.
+   Also note which tests are structurally blind to a mutation class
+   (e.g. a ratio check built on abs() can never catch a sign flip) —
+   say so rather than counting them as coverage.
+5. Wire the component into the root assembly. A component that does not
+   change the model the maker sees is not done. You run no server;
+   verify from a finite build:
+
+       machinome build
+
+   It exits nonzero if the build fails, and on success publishes the
+   whole current model into the build directory (`_build` by default,
+   an ordinary directory). Read `viewer.json` there: walk from `root`
+   down to the new component, confirm each `operations` entry holds the
+   expected rotation/translation (symbolic `$t` or a qualified driver id
+   for posed animation; banked joint ids for a running root), confirm
+   every rigid leaf's `model` file exists,
+   and, for a driven machine, that its `drivers` table lists the ids you
+   declared. For a running root also confirm `version: 5` and the
+   `program` with its coordinates, laws and ranges; a build warning about
+   unsupported viewer versions means the browser still cannot run it.
+
+   A build rebuilds only what its source tracking says is stale, and a
+   current leaf is not rendered at all. If a build seems to ignore an
+   edit you just made, you have found a tracking hole, not a caching
+   nicety: you are reaching a value through the package `__init__.py`,
+   or through something a static import walk cannot see. Fix the import
+   rather than deleting the build directory and moving on.
+6. LOOK at the result — a correct build tree does not mean the model
+   looks right, and the user judges pixels. Render and read images:
+
+       machinome snapshot -o out.png --autocenter --time 0.1
+
+   Render at least an isometric view and one view along the axis that
+   the new component's alignments live on, and inspect them before
+   declaring done. Keep the default renderer; `--renderer web` is for a
+   host that needs a transparent background (and needs the separately
+   installed viewer package), not for your inspection. A driven machine
+   snapshots at its driver defaults unless `--drive input=value` supplies
+   declared driver pose overrides in native units. `--time` is the
+   animation fraction for undeclared/looping roots. A running root
+   refuses nonzero `--time`: snapshot its rest pose at the chosen inputs
+  with `--drive`, and prove accumulated motion in scenarios. The still
+   does not reproduce command history. Do not try to see a defect a
+   snapshot cannot resolve: a gear pair that
+   never touches, or a blade stopping 3mm short of its hub, is what the
+   connectivity and engagement contracts are for — they fail
+   deterministically, at any scale, without a framing guess. Snapshots
+   answer whether the component is wired and posed as intended.
+7. The exact run, once, at the end. Repeat the full regression of step
+   3 on the exact kernel — `machinome test --exact` (`kernel="exact"`) for
+   every node file including the root — and only that run certifies the
+   contracts and evidences the commit: a summary line that ends in
+   `(faceted kernel, ...)` is not evidence. When the two kernels
+   disagree the exact verdict stands. A faceted failure the exact run
+   clears is a clearance thinner than the 0.1 mm tessellation reading
+   as overlap on meshes; a faceted pass the exact run fails is a thin
+   real interference the meshes missed. Either way fix the model or the
+   contract, and never reach for a volume epsilon to make the two agree.
+8. A broken save is not private. A failed build exits nonzero and
+   writes `errors.json` into the build directory; what it leaves beside
+   it may be a partially updated model, not the last good one — never
+   read a snapshot taken after a failed build as evidence for the edit
+   you just made. The shop watches project sources and runs the same
+   build itself, whoever saved, and reports the failure to the maker:
+   leave the tree building green, and rebuild after fixing an error
+   rather than assuming the next save heals it. Leave no `FutureWarning`
+   in the build output for a class you touched.
+
+## Public API
+
+The complete supported surface is in the separately loaded
+`machinome-api` skill, and it is the only description of the framework
+you have — its source is not available to you. If the skill is
+unavailable, stop and report the packaging gap. If it is loaded but
+silent on something you need, report that gap too: an interface guessed
+from a name or reconstructed from a traceback is not a supported
+interface, and a project built on one breaks at the next release.

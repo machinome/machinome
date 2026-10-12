@@ -1,0 +1,1942 @@
+// Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { FormEvent, lazy, MouseEvent, StrictMode, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Editor from "@monaco-editor/react";
+import type { Monaco, OnMount } from "@monaco-editor/react";
+import { createRoot } from "react-dom/client";
+import { artifactUrl, BUILD_VOLUME, canonicalModel, fitsBuildEnvelope, parsePieces, type PrintedPiece } from "./build-data";
+import "./monaco";
+import "./styles.css";
+import type { ViewerHandle, ViewerView } from "./machinome-viewer";
+
+// The identity's outlined wordmark, served intact from public/assets/brand/v1;
+// white is the identity's treatment on a dark ground. The `Studio` qualifier
+// beside it is plain text in the interface face, as the application guide
+// asks, and the link names the product to assistive technology.
+const WORDMARK = "/assets/brand/v1/wordmark-white.svg";
+
+const BuildPieceViewer = lazy(() => import("./build-viewer").then((module) => ({ default: module.BuildPieceViewer })));
+
+type AgentState = "waiting" | "active";
+
+type Agent = {
+  role: string;
+  label: string;
+  state: AgentState;
+  failure: string;
+  backend: string;
+  provider: string | null;
+  model: string;
+  effort: string;
+  tools: string | string[];
+  backend_idle: boolean;
+  runtime_idle: boolean;
+  runtime_pristine: boolean;
+  assignment_id: string | null;
+  pending_assignments: string[];
+};
+
+type AgentActivity = {
+  id: string;
+  sequence: number;
+  role: string;
+  category: "tool" | "file" | "message" | "error";
+  state: "running" | "completed" | "failed";
+  name: string;
+  summary: string;
+  detail: string;
+  path: string;
+  diff: string;
+  timestamp: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+};
+
+type RuntimeChoice = { backend: string; provider: string | null; model: string; efforts: string[] };
+type RuntimeCatalogue = {
+  role: string;
+  runtime: { backend: string; provider: string | null; model: string; effort: string };
+  supported: boolean;
+  reason: string | null;
+  unavailable?: Record<string, string>;
+  choices: RuntimeChoice[];
+  config_revision: string;
+  runtime_idle: boolean;
+  runtime_pristine: boolean;
+};
+
+type Run = {
+  id: string;
+  status: string;
+  profile_id: string;
+  work_mode: "direct" | "delegated";
+  user_label: string;
+  user_agent: { id: string; label: string };
+  roster: { id: string; label: string }[];
+  agents: Agent[];
+  activity: AgentActivity[];
+  events: BrokerEvent[];
+  latest_event_sequence: number;
+  model_build_error: string | null;
+  model_building: boolean;
+};
+
+type LifecycleEvent = {
+  kind: string;
+  payload: Agent | AgentActivity | ConversationEntry | SourceInvalidation | { artifact?: string; reason?: string };
+  event: BrokerEvent;
+};
+
+type BrokerEvent = {
+  sequence: number;
+  timestamp?: string;
+  kind: string;
+  summary: string;
+  role?: string;
+  sender?: string;
+  recipient?: string;
+  assignment_id?: string;
+};
+
+type ConversationEntry = {
+  sequence: number;
+  author: string;
+  text: string;
+};
+
+type ModelArtifact = { path: string; sequence: number };
+
+type Project = {
+  kind: "project";
+  path: string;
+  name: string;
+  openable: boolean;
+  reason: string | null;
+  profile: string;
+  branch: string | null;
+  last_commit: string | null;
+  state: "closed" | "creating" | "opening" | "open" | "failed";
+  session_id: string | null;
+  failure: string | null;
+  screenshot_revision: string | null;
+  model_building: boolean;
+};
+
+type ModelPreview = {
+  path: string;
+  revision: string | null;
+};
+
+type Folder = {
+  kind: "folder";
+  path: string;
+  name: string;
+  projects: number;
+  // Empty for a directory of unrelated projects; the first few declared models
+  // of a project repository that holds several.
+  previews: ModelPreview[];
+};
+
+type Entry = Project | Folder;
+
+type BackendStatus = {
+  id: string;
+  found: boolean;
+  executable: string | null;
+  version: string | null;
+  model: string | null;
+};
+
+type SourceEntry = { path: string; kind: "file" | "directory" };
+type SourceDocument = { path: string; content: string; revision: string };
+type SourceInvalidation = {
+  operation: "created" | "modified" | "moved" | "deleted";
+  path: string;
+  previous_path?: string;
+};
+type SourceEvent = SourceInvalidation & { sequence: number };
+type FileBuffer = SourceDocument & {
+  savedContent: string;
+  conflict: SourceDocument | null;
+  missing: boolean;
+};
+
+// Simulated seconds per tick of a running model. The document publishes no
+// step -- it is the executing viewer's choice -- and the viewer's own default
+// is 1/240 s, four ticks per frame at 60 Hz.
+//
+// One tick per rendered frame instead. A tick's cost on a large running model
+// is very nearly FIXED rather than proportional to the motion inside it: the
+// operating Curta (`Calculators/Curta-Type-I-3x`, 208 coordinates, 32 laws
+// reading the coordinate they drive) measures 152 ms a tick at 1/240 s and
+// 256 ms at 1/10 s -- 1.7x the cost for a 24x longer step. So a coarser step
+// buys back nearly all of its own multiple, and the viewer's default spends
+// three ticks in four re-deriving a machine that has not moved a frame's
+// worth.
+//
+// 1/60 s is the coarsest step that still cannot skip a rendered frame, which
+// is why it is here rather than something coarser still: the Pascaline's
+// narrowest carry window is 1/12 s, five ticks at this step and less than one
+// at 1/10 s, and a window a step steps over is a mechanism the run does not
+// see. Measured on the Curta at every step from 1/240 s to 1/10 s, a full
+// addition and a full subtraction borrow leave all seventeen dials on the
+// same angles; this is a cadence change, not a fidelity one.
+//
+// This is one step for every project the floor opens. A project whose
+// mechanism wants its own belongs in that project's manifest, which has no
+// surface for it today.
+const RUN_STEP_SECONDS = 1 / 60;
+
+function FunctionalModel({ artifact, reconnect, buildError, session, onViewerChange }: {
+  artifact: ModelArtifact | null;
+  reconnect: number;
+  buildError: string | null;
+  session: string;
+  onViewerChange: (viewer: ViewerHandle | null) => void;
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  const view = useRef<ViewerView | undefined>(undefined);
+  const handle = useRef<ViewerHandle | undefined>(undefined);
+  const remount = useRef<(() => void) | undefined>(undefined);
+  // Mounts, updates and disposal share one queue so they cannot interleave.
+  // StrictMode remounts this effect synchronously, so a mount in flight must be
+  // resolved before the next attempt rather than blocking it with a flag.
+  const queue = useRef(Promise.resolve());
+  const applied = useRef(-1);
+  const reconnected = useRef(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const enqueue = (work: () => Promise<void>) => {
+    queue.current = queue.current.catch(() => undefined).then(work);
+  };
+
+  const update = (path: string) => {
+    enqueue(async () => {
+      const mounted = handle.current;
+      if (!mounted) {
+        remount.current?.();
+        return;
+      }
+      try {
+        if (path === "viewer.json") await mounted.manifestChanged();
+        else await mounted.artifactChanged(path);
+        setError(null);
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
+      }
+    });
+  };
+
+  useEffect(() => {
+    const target = container.current;
+    if (!target) return;
+    let disposed = false;
+    const mount = () => {
+      enqueue(async () => {
+        if (disposed || handle.current) return;
+        try {
+          if (!window.MachinomeViewer) throw new Error("the framework viewer is unavailable");
+          const prefix = `/api/sessions/${encodeURIComponent(session)}/artifacts/`;
+          const mountedHandle = await window.MachinomeViewer.mount(target, `${prefix}viewer.json`, {
+            baseUrl: prefix,
+            animation: "toggle",
+            view: view.current,
+            className: "functional-model",
+            role: "img",
+            ariaLabel: "Functional model",
+            run: { dt: RUN_STEP_SECONDS },
+          });
+          if (disposed) { view.current = mountedHandle.view(); mountedHandle.dispose(); return; }
+          handle.current = mountedHandle;
+          onViewerChange(mountedHandle);
+          setError(null);
+        } catch (reason) {
+          if (!disposed) setError(reason instanceof Error ? reason.message : String(reason));
+        }
+      });
+    };
+    remount.current = mount;
+    mount();
+    return () => {
+      disposed = true;
+      remount.current = undefined;
+      enqueue(async () => {
+        if (!handle.current) return;
+        view.current = handle.current.view();
+        handle.current.dispose();
+        handle.current = undefined;
+        onViewerChange(null);
+      });
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (artifact === null || artifact.sequence === applied.current) return;
+    applied.current = artifact.sequence;
+    update(artifact.path);
+  }, [artifact?.sequence]);
+
+  useEffect(() => {
+    if (reconnect === 0 || reconnect === reconnected.current) return;
+    reconnected.current = reconnect;
+    update("viewer.json");
+  }, [reconnect]);
+
+  return (
+    <>
+      {buildError === null ? null : (
+        <p className="model-build-error" role="status" aria-live="polite">
+          Model rebuild failed: {buildError}
+        </p>
+      )}
+      {error === null ? null : <p className="model-update-error" role="status" aria-live="polite">{error}</p>}
+      <div className="functional-model-host" ref={container} />
+    </>
+  );
+}
+
+function AssemblyNavigator({ viewer }: { viewer: ViewerHandle | null }) {
+  const host = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = host.current;
+    if (target === null || viewer === null) return;
+    const widget = window.MachinomeViewer;
+    if (!widget || typeof widget.mountNavigator !== "function") return;
+    const mounted = widget.mountNavigator(target, viewer, { label: "Assembly", fullAssembly: true });
+    return () => mounted.dispose();
+  }, [viewer]);
+
+  return <section className="assembly-panel" aria-labelledby="assembly-heading">
+    <h2 id="assembly-heading">MODEL</h2>
+    {viewer === null ? <p className="empty">No model assembly is available.</p> : null}
+    <div className="assembly-navigator-host" ref={host} />
+  </section>;
+}
+
+function ProfileConversation({
+  entries,
+  failedAgents,
+  onSubmit,
+  labels,
+  userAgentLabel,
+}: {
+  entries: ConversationEntry[];
+  failedAgents: Agent[];
+  onSubmit: (text: string) => Promise<void>;
+  labels: Record<string, string>;
+  userAgentLabel: string;
+}) {
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const transcript = useRef<HTMLOListElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const pendingCaret = useRef<number | null>(null);
+  const latestEntry = entries[entries.length - 1];
+
+  useLayoutEffect(() => {
+    if (transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
+  }, [latestEntry?.author, latestEntry?.sequence]);
+
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current;
+    if (caret === null || !composer.current) return;
+    composer.current.setSelectionRange(caret, caret);
+    pendingCaret.current = null;
+  }, [text]);
+
+  const submit = async () => {
+    if (!text.trim() || sending) return;
+    setSending(true);
+    try {
+      await onSubmit(text);
+      setText("");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const submitForm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void submit();
+  };
+
+  return <>
+    {failedAgents.length === 0 ? null : (
+      <div className="role-failure-list">
+        {failedAgents.map((agent) => (
+          <div className="role-failure-notice" role="alert" key={agent.role}>
+            <strong>{agent.label} session failed</strong>
+            <p>{agent.failure}</p>
+            <p>When backend access is restored, message {userAgentLabel} to resume the shop.</p>
+          </div>
+        ))}
+      </div>
+    )}
+    <ol className="conversation-transcript" aria-label="Conversation transcript" ref={transcript}>
+      {entries.length === 0 ? (
+        <li className="empty">Send a message to begin the conversation.</li>
+      ) : entries.map((entry) => (
+        <li key={entry.sequence} data-conversation-author={entry.author}>
+          <strong>{labels[entry.author] ?? entry.author}</strong>
+          <p>{entry.text}</p>
+        </li>
+      ))}
+    </ol>
+    <form className="conversation-composer" aria-label="Message composer" onSubmit={submitForm}>
+      <textarea
+        ref={composer}
+        aria-label="Message"
+        id="message"
+        name="message"
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          if (event.ctrlKey) {
+            event.preventDefault();
+            const message = event.currentTarget;
+            const { selectionEnd, selectionStart } = message;
+            pendingCaret.current = selectionStart + 1;
+            setText((previous) => `${previous.slice(0, selectionStart)}\n${previous.slice(selectionEnd)}`);
+            return;
+          }
+          event.preventDefault();
+          void submit();
+        }}
+      />
+      <button type="submit" disabled={!text.trim() || sending}>Send</button>
+    </form>
+  </>;
+}
+
+function AgentPanel({ agents }: { agents: Agent[] }) {
+  return (
+    <section className="agent-panel" aria-labelledby="agents-heading">
+      <h2 id="agents-heading">Agents</h2>
+      {agents.length === 0 ? (
+        <p className="empty">No agents are currently manifested.</p>
+      ) : (
+        <ul className="agent-roster">
+          {agents.map((agent) => (
+            <li
+              key={agent.role}
+              data-agent-role={agent.role}
+              data-agent-state={agent.state}
+              data-agent-failed={agent.failure ? "true" : "false"}
+            >
+              <span className={`agent-state-dot ${agent.failure ? "failed" : agent.state}`} aria-hidden="true" />
+              <span>{agent.label}</span>
+              <span className={`state ${agent.failure ? "failed" : agent.state}`}>
+                {agent.failure ? "failed" : agent.state}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+const railItems = [
+  ["model", "◇", "Model", true],
+  ["code", "{ }", "Code", true],
+  ["agents", "●", "Agents", true],
+  ["build", "▦", "Build", true],
+] as const;
+
+function navigate(path: string) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+// Anything that moves between hub pages is a real link, so the browser offers
+// "Open link in a new tab" on right-click and a modified or middle click keeps
+// its usual meaning. A plain click stays inside this single page.
+function linkProps(href: string, act?: () => void) {
+  return {
+    href,
+    onClick(event: MouseEvent<HTMLAnchorElement>) {
+      if (event.defaultPrevented) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (act) act(); else navigate(href);
+    },
+  };
+}
+
+function relativeTime(value: string | null) {
+  if (!value) return "no commits";
+  const seconds = Math.max(0, (Date.now() - Date.parse(value)) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+// Mirrors machinome-viewer.d.ts's `MACHINOME_VIEWER_API_VERSION`: that
+// declaration file has no runtime module of its own to import a value from
+// (it is types only), so the required version is duplicated here.
+const REQUIRED_VIEWER_API = 20;
+
+function verifyLoadedViewer(): void {
+  const widget = window.MachinomeViewer;
+  if (!widget || widget.apiVersion < REQUIRED_VIEWER_API) {
+    throw new Error("the framework viewer is unavailable");
+  }
+}
+
+function loadViewer(session: string) {
+  if (window.MachinomeViewer) {
+    try { verifyLoadedViewer(); return Promise.resolve(); } catch (error) { return Promise.reject(error); }
+  }
+  return new Promise<void>((resolve, reject) => {
+    const settle = () => {
+      try { verifyLoadedViewer(); resolve(); } catch (error) { reject(error as Error); }
+    };
+    const existing = document.querySelector<HTMLScriptElement>("script[data-machinome-viewer]");
+    if (existing) {
+      existing.addEventListener("load", settle, { once: true });
+      existing.addEventListener("error", () => reject(new Error("the framework viewer is unavailable")), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.dataset.machinomeViewer = "true";
+    script.src = `/api/sessions/${encodeURIComponent(session)}/viewer/machinome-viewer.js`;
+    script.onload = settle;
+    script.onerror = () => reject(new Error("the framework viewer is unavailable"));
+    document.head.append(script);
+  });
+}
+
+function folderOf(path: string) {
+  const cut = path.lastIndexOf("/");
+  return cut < 0 ? "" : path.slice(0, cut);
+}
+
+function folderUrl(path: string) {
+  return path ? `/folders/${path.split("/").map(encodeURIComponent).join("/")}` : "/";
+}
+
+function projectUrl(path: string) {
+  return `/projects/${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function Breadcrumb({ workingFolder, folder }: { workingFolder: string; folder: string }) {
+  const segments = folder ? folder.split("/") : [];
+  const root = workingFolder ? workingFolder.split("/").filter(Boolean).pop() ?? "projects" : "projects";
+  return <nav className="hub-breadcrumb" aria-label="Folder trail">
+    {segments.length === 0
+      ? <span aria-current="page">{root}</span>
+      : <a {...linkProps("/")}>{root}</a>}
+    {segments.map((segment, index) => {
+      const path = segments.slice(0, index + 1).join("/");
+      const last = index === segments.length - 1;
+      return <span key={path}>
+        <span className="hub-breadcrumb-separator" aria-hidden="true">/</span>
+        {last
+          ? <span aria-current="page">{segment}</span>
+          : <a {...linkProps(folderUrl(path))}>{segment}</a>}
+      </span>;
+    })}
+  </nav>;
+}
+
+function Hub({ folder }: { folder: string }) {
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [workingFolder, setWorkingFolder] = useState("");
+  const [backends, setBackends] = useState<BackendStatus[]>([]);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [profile, setProfile] = useState<"openspec-builder" | "fordesmac" | "">("openspec-builder");
+  const [formError, setFormError] = useState("");
+  const pendingOpen = useRef<string | null>(null);
+  // A folder of declared models is a project repository, so it holds no
+  // directory to create a project in; the models are its entries.
+  const [inModelFolder, setInModelFolder] = useState(false);
+
+  useEffect(() => {
+    setEntries([]);
+    setSheetOpen(false);
+    void fetch("/api/backends").then((response) => response.json()).then((value: { backends: BackendStatus[] }) => setBackends(value.backends));
+    const source = new EventSource(`/api/stream?folder=${encodeURIComponent(folder)}`);
+    source.onopen = () => setShopOpen(true);
+    source.onerror = () => setShopOpen(false);
+    source.addEventListener("snapshot", (message) => {
+      const snapshot = JSON.parse((message as MessageEvent<string>).data) as {
+        working_folder: string;
+        folder: string;
+        models: boolean;
+        entries: Entry[];
+      };
+      setWorkingFolder(snapshot.working_folder);
+      setInModelFolder(snapshot.models);
+      setEntries(snapshot.entries);
+    });
+    source.addEventListener("project", (message) => {
+      const event = JSON.parse((message as MessageEvent<string>).data) as {
+        kind: Project["state"] | "closed" | "screenshot";
+        project: string;
+        folder: string;
+        profile?: string;
+        session_id?: string;
+        reason?: string;
+        screenshot_revision?: string | null;
+        model_building?: boolean;
+      };
+      // A browser lists one folder; a change to an entry of another folder is
+      // none of its business.
+      if (event.folder !== folder) return;
+      setEntries((previous) => {
+        if (event.kind === "screenshot") {
+          return previous.map((entry) => entry.kind === "project" && entry.path === event.project
+            ? { ...entry, screenshot_revision: event.screenshot_revision ?? null }
+            : entry);
+        }
+        // A card is rebuilt from the previous one plus the fields named here,
+        // so anything the event carries has to be named or the card silently
+        // keeps whatever it held before.
+        const update = (project: Project): Project => ({
+          ...project,
+          state: event.kind === "closed" ? "closed" : event.kind as Project["state"],
+          session_id: event.kind === "open" ? event.session_id ?? null : null,
+          failure: event.reason ?? null,
+          model_building: event.kind === "open" && (event.model_building ?? false),
+        });
+        if (previous.some((entry) => entry.kind === "project" && entry.path === event.project)) {
+          return previous.map((entry) => entry.kind === "project" && entry.path === event.project ? update(entry) : entry);
+        }
+        if (event.kind !== "creating") return previous;
+        return [...previous, update({
+          kind: "project",
+          path: event.project,
+          name: event.project.split("/").pop() ?? event.project,
+          profile: event.profile ?? "openspec-builder",
+          openable: true,
+          reason: null,
+          branch: null,
+          last_commit: null,
+          state: "creating",
+          session_id: null,
+          failure: null,
+          screenshot_revision: null,
+          model_building: false,
+        })];
+      });
+      if (event.kind === "open" && pendingOpen.current === event.project) {
+        pendingOpen.current = null;
+        navigate(projectUrl(event.project));
+      } else if (event.kind === "failed" && pendingOpen.current === event.project) {
+        pendingOpen.current = null;
+      }
+    });
+    return () => source.close();
+  }, [folder]);
+
+  const openProject = async (project: Project) => {
+    if (!project.openable || project.state === "creating" || project.state === "opening") return;
+    if (project.state === "open") {
+      navigate(projectUrl(project.path));
+      return;
+    }
+    pendingOpen.current = project.path;
+    setEntries((previous) => previous.map((entry) => entry.kind === "project" && entry.path === project.path ? { ...entry, state: "opening", failure: null } : entry));
+    const response = await fetch("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: project.path }),
+    });
+    if (!response.ok) {
+      const value = await response.json() as { detail?: string };
+      setEntries((previous) => previous.map((entry) => entry.kind === "project" && entry.path === project.path
+        ? { ...entry, state: "failed", failure: value.detail ?? "opening failed" }
+        : entry));
+    }
+  };
+
+  const createProject = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError("");
+    if (!name || name === "." || name === ".." || /[\\/\0]/.test(name)) {
+      setFormError("Use one folder name without a path separator.");
+      return;
+    }
+    if (!profile) {
+      setFormError("Choose a runtime profile.");
+      return;
+    }
+    const path = folder ? `${folder}/${name}` : name;
+    pendingOpen.current = path;
+    const optimistic: Project = {
+      kind: "project", path, name, profile, openable: true, reason: null, branch: "main",
+      last_commit: null, state: "creating", session_id: null, failure: null,
+      screenshot_revision: null, model_building: false,
+    };
+    setEntries((previous) => [...previous.filter((entry) => entry.path !== path), optimistic]);
+    setSheetOpen(false);
+    const response = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folder, name, profile }),
+    });
+    if (!response.ok) {
+      const value = await response.json() as { detail?: string };
+      setFormError(value.detail ?? "The project could not be created.");
+      pendingOpen.current = null;
+      setEntries((previous) => previous.filter((entry) => entry.path !== path));
+      setSheetOpen(true);
+      return;
+    }
+    const accepted = await response.json() as { state: "opening" | "open"; session_id?: string };
+    if (accepted.state === "open") {
+      pendingOpen.current = null;
+      navigate(projectUrl(path));
+    }
+  };
+
+  const projects = entries.filter((entry): entry is Project => entry.kind === "project");
+  const creatable = !inModelFolder;
+
+  return <main className={`hub-shell ${sheetOpen ? "sheet-visible" : ""}`}>
+    <header className="workspace-titlebar">
+      <a className="workspace-home" {...linkProps("/")} title="All projects" aria-label="Machinome Studio">
+        <img className="workspace-wordmark" src={WORDMARK} width="180" height="25" alt="" />
+        <span className="workspace-qualifier">Studio</span>
+      </a>
+      <p className="workspace-run">Shop is {shopOpen ? "open" : "closed"}</p>
+    </header>
+    <div className="hub-body">
+      <aside className="hub-sidebar">
+        <section className="folder-card">
+          <span>Working folder</span>
+          <strong>{workingFolder || "Loading…"}{folder ? `/${folder}` : ""}</strong>
+          <small>{projects.length} {projects.length === 1 ? "project" : "projects"}</small>
+        </section>
+        <section className="backend-group">
+          <header><h2>Backends</h2><span>{backends.filter((item) => item.found).length} detected</span></header>
+          {backends.map((backend) => <div className="backend-row" key={backend.id} data-found={backend.found}>
+            <span className="backend-dot" aria-hidden="true" />
+            <div><strong>{backend.id}</strong><small>{backend.found ? [backend.model, backend.version].filter(Boolean).join(" · ") : "no executable on PATH"}</small></div>
+          </div>)}
+        </section>
+      </aside>
+      <section className="project-area">
+        <Breadcrumb workingFolder={workingFolder} folder={folder} />
+        <header className="project-heading">
+          <div><h1>{folder ? folder.split("/").pop() : "Projects"}</h1><p>{inModelFolder ? "Open one of this project's models." : "Open a project or start something new."}</p></div>
+          {creatable ? <button className="primary-button" onClick={() => setSheetOpen(true)}>New project</button> : null}
+        </header>
+        {entries.length === 0 ? <p className="hub-empty">{folder ? "This folder is empty." : "No projects yet. Create one to begin."}</p> : null}
+        <div className="project-grid">
+          {entries.map((entry) => entry.kind === "folder"
+            ? <a className="project-card folder" key={entry.path} {...linkProps(folderUrl(entry.path))}>
+                {entry.previews.length === 0
+                  ? <span className="project-preview">
+                      <span className="project-preview-placeholder" aria-hidden="true">folder</span>
+                    </span>
+                  : <span className="project-preview models">
+                      {entry.previews.map((preview) => <span className="model-tile" key={preview.path}>
+                        {preview.revision === null
+                          ? <span className="project-preview-placeholder" aria-hidden="true">no preview</span>
+                          : <img
+                              alt={`${preview.path.split("/").pop()} model preview`}
+                              src={`/api/screenshot?path=${encodeURIComponent(preview.path)}&revision=${encodeURIComponent(preview.revision)}`}
+                              onError={(event) => { event.currentTarget.hidden = true; }}
+                            />}
+                      </span>)}
+                    </span>}
+                <span className="project-card-body">
+                  <span className="project-name"><strong>{entry.name}</strong></span>
+                  <span className="project-meta">{entry.projects} {entry.projects === 1 ? "project" : "projects"}</span>
+                </span>
+              </a>
+            : <a
+              className={`project-card ${entry.openable ? "" : "unopenable"}`}
+              key={entry.path}
+              // An unopenable project has nowhere to go, in this tab or another.
+              {...(entry.openable
+                ? linkProps(projectUrl(entry.path), () => void openProject(entry))
+                : { "aria-disabled": true as const })}
+            >
+              <span className="project-preview">
+                <span className="project-preview-placeholder">model preview</span>
+                {entry.screenshot_revision === null ? null : <img
+                  alt={`${entry.name} model preview`}
+                  src={`/api/screenshot?path=${encodeURIComponent(entry.path)}&revision=${encodeURIComponent(entry.screenshot_revision)}`}
+                  onError={(event) => { event.currentTarget.hidden = true; }}
+                />}
+              </span>
+              <span className="project-card-body">
+                <span className="project-name"><strong>{entry.name}</strong><i data-state={entry.state} /></span>
+                <span className="project-meta">{entry.state} · {entry.profile} · {relativeTime(entry.last_commit)}</span>
+                {entry.model_building ? <span className="project-building">Bringing the model up to date…</span> : null}
+                {entry.reason || entry.failure ? <span className="project-reason">{entry.failure ?? entry.reason}</span> : null}
+              </span>
+            </a>)}
+          {creatable ? <button className="new-project-tile" onClick={() => setSheetOpen(true)}>＋<span>New project</span></button> : null}
+        </div>
+      </section>
+    </div>
+    {sheetOpen ? <div className="sheet-layer" role="presentation">
+      <form className="new-project-sheet" onSubmit={createProject}>
+        <header><h2>New project</h2><p>Create a repository and open its first session.</p></header>
+        <label>Project name<input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="bracket-assembly" /></label>
+        <fieldset><legend>Runtime profile</legend><div className="profile-grid">
+          {(["openspec-builder", "fordesmac"] as const).map((value) => <button type="button" className={profile === value ? "selected" : ""} onClick={() => setProfile(value)} key={value}>
+            <strong>{value === "openspec-builder" ? "OpenSpec Builder" : "Fordesmac"}</strong>
+            <span>{value === "openspec-builder" ? "One agent keeping the project's design in an OpenSpec record" : "Four-agent mechanical shop"}</span>
+          </button>)}
+        </div></fieldset>
+        <p className="runtime-note">Agents use project-declared runtime selections or the profile's Claude defaults.</p>
+        {formError ? <p className="form-error" role="alert">{formError}</p> : null}
+        <footer><span>stored in {folder || "the working folder"}</span><div><button type="button" className="outline-button" onClick={() => setSheetOpen(false)}>Cancel</button><button className="primary-button">Create and open</button></div></footer>
+      </form>
+    </div> : null}
+  </main>;
+}
+
+function sourceModelPath(path: string) {
+  return `file:///${path.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function sourceLanguage(path: string) {
+  const extension = path.split(".").pop()?.toLowerCase();
+  return ({
+    css: "css", html: "html", js: "javascript", json: "javascript", jsx: "javascript",
+    md: "markdown", py: "python", toml: "ini", ts: "typescript", tsx: "typescript",
+    yaml: "yaml", yml: "yaml",
+  } as Record<string, string>)[extension ?? ""] ?? "plaintext";
+}
+
+type SourceIconKind = "folder" | "markdown" | "image" | "python" | "file";
+
+function sourceIconKind(path: string): SourceIconKind {
+  const extension = path.split(".").pop()?.toLowerCase();
+  if (extension === "md") return "markdown";
+  if (extension === "png") return "image";
+  if (extension === "py") return "python";
+  return "file";
+}
+
+function isPng(path: string) {
+  return sourceIconKind(path) === "image";
+}
+
+/**
+ * Order source entries so each directory is immediately followed by its own
+ * subtree. Comparing whole paths would let a sibling such as `a.txt` fall
+ * between the directory `a` and its children, which reads as containment.
+ */
+function compareSourceEntries(left: SourceEntry, right: SourceEntry) {
+  const leftParts = left.path.split("/");
+  const rightParts = right.path.split("/");
+  const shared = Math.min(leftParts.length, rightParts.length);
+  for (let depth = 0; depth < shared; depth += 1) {
+    if (leftParts[depth] === rightParts[depth]) continue;
+    const leftIsDirectory = depth < leftParts.length - 1 || left.kind === "directory";
+    const rightIsDirectory = depth < rightParts.length - 1 || right.kind === "directory";
+    if (leftIsDirectory !== rightIsDirectory) return leftIsDirectory ? -1 : 1;
+    return leftParts[depth].localeCompare(rightParts[depth]);
+  }
+  return leftParts.length - rightParts.length;
+}
+
+function SourceIcon({ kind }: { kind: SourceIconKind }) {
+  const common = {
+    className: "source-icon",
+    "data-source-icon": kind,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.6,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  if (kind === "folder") return <svg {...common}><path d="M3.5 6.5h6l2 2h9v9.5h-17z" /><path d="M3.5 8.5v-3h6l2 3" /></svg>;
+  if (kind === "image") return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><circle cx="9" cy="11" r="1.3" /><path d="m7.5 17 3.2-3.2 2.2 2.1 1.6-1.6 2.5 2.7" /></svg>;
+  if (kind === "python") return <svg {...common}><path d="M8 9V6.5C8 5.1 9.1 4 10.5 4h3C14.9 4 16 5.1 16 6.5V10H9c-2.2 0-4 1.8-4 4v1.5" /><path d="M16 15v2.5c0 1.4-1.1 2.5-2.5 2.5h-3A2.5 2.5 0 0 1 8 17.5V14h7c2.2 0 4-1.8 4-4V8.5" /><circle cx="11" cy="7" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="17" r=".7" fill="currentColor" stroke="none" /></svg>;
+  if (kind === "markdown") return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><path d="M8 16v-5l2 2 2-2v5m2-3 1.5 1.7L17 13m-1.5 1.7V11" /></svg>;
+  return <svg {...common}><path d="M5 3.5h10l4 4v13H5z" /><path d="M15 3.5v4h4" /><path d="M8 12h8M8 15h8" /></svg>;
+}
+
+function CodeWorkspace({ sessionId, sourceEvent, reconnect, visible, requestedOpen }: {
+  sessionId: string | null;
+  sourceEvent: SourceEvent | null;
+  reconnect: number;
+  visible: boolean;
+  requestedOpen: { path: string; nonce: number } | null;
+}) {
+  const [entries, setEntries] = useState<SourceEntry[]>([]);
+  const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(() => new Set());
+  const [files, setFiles] = useState<Record<string, FileBuffer>>({});
+  const [tabs, setTabs] = useState<string[]>([]);
+  const [activePath, setActivePath] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const filesRef = useRef(files);
+  // The model's own file is opened once per session, so a maker who closes it
+  // is not given it back.
+  const seeded = useRef<string | null>(null);
+  const saving = useRef(new Set<string>());
+  const deferred = useRef(new Set<string>());
+  const applying = useRef(new Set<string>());
+  const monacoRef = useRef<Monaco | null>(null);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const saveCurrent = useRef<() => void>(() => undefined);
+  filesRef.current = files;
+
+  const sourceUrl = (path = "") => {
+    if (!sessionId) return "";
+    const root = `/api/sessions/${encodeURIComponent(sessionId)}/source`;
+    return path ? `${root}/${path.split("/").map(encodeURIComponent).join("/")}` : root;
+  };
+
+  const refreshEntries = async () => {
+    if (!sessionId) return;
+    const response = await fetch(sourceUrl());
+    if (!response.ok) {
+      setError("The project source tree is unavailable.");
+      return;
+    }
+    const value = await response.json() as { entries: SourceEntry[]; model_source?: string | null };
+    const nextEntries = value.entries.slice().sort(compareSourceEntries);
+    const directories = new Set(nextEntries.filter((entry) => entry.kind === "directory").map((entry) => entry.path));
+    setEntries(nextEntries);
+    setExpandedDirectories((previous) => new Set([...previous].filter((path) => directories.has(path))));
+    // The file the presented assembly is written in is the one a maker opening
+    // Code came to read, so it is already open when they first get there.
+    const model = value.model_source;
+    if (model && seeded.current !== sessionId && nextEntries.some((entry) => entry.kind === "file" && entry.path === model)) {
+      seeded.current = sessionId;
+      await openFile(model);
+    }
+  };
+
+  const applyExternal = (path: string, content: string) => {
+    const monaco = monacoRef.current;
+    if (!monaco) return;
+    const model = monaco.editor.getModel(monaco.Uri.parse(sourceModelPath(path)));
+    if (!model || model.getValue() === content) return;
+    applying.current.add(path);
+    try {
+      model.pushEditOperations(
+        null,
+        [{ range: model.getFullModelRange(), text: content }],
+        () => null,
+      );
+    } finally {
+      applying.current.delete(path);
+    }
+  };
+
+  // A file cannot be opened from a tree that hides it: expand what holds it.
+  const reveal = (path: string) => {
+    const parts = path.split("/");
+    if (parts.length < 2) return;
+    setExpandedDirectories((previous) => {
+      const next = new Set(previous);
+      for (let depth = 1; depth < parts.length; depth += 1) next.add(parts.slice(0, depth).join("/"));
+      return next;
+    });
+  };
+
+  const closePath = (path: string) => {
+    setTabs((previous) => {
+      const next = previous.filter((item) => item !== path);
+      setActivePath((active) => active === path ? next[next.length - 1] ?? null : active);
+      return next;
+    });
+    setFiles((previous) => {
+      const next = { ...previous };
+      delete next[path];
+      return next;
+    });
+  };
+
+  const reconcilePath = async (path: string) => {
+    const existing = filesRef.current[path];
+    if (!sessionId || !existing) return;
+    if (saving.current.has(path)) {
+      deferred.current.add(path);
+      return;
+    }
+    const response = await fetch(sourceUrl(path));
+    if (!response.ok) {
+      if (existing.content === existing.savedContent) closePath(path);
+      else setFiles((previous) => previous[path]
+        ? { ...previous, [path]: { ...previous[path], conflict: null, missing: true } }
+        : previous);
+      return;
+    }
+    const document = await response.json() as SourceDocument;
+    setFiles((previous) => {
+      const current = previous[path];
+      if (!current || current.revision === document.revision) return previous;
+      if (current.content !== current.savedContent) {
+        return { ...previous, [path]: { ...current, conflict: document, missing: false } };
+      }
+      applyExternal(path, document.content);
+      return {
+        ...previous,
+        [path]: {
+          ...document,
+          savedContent: document.content,
+          conflict: null,
+          missing: false,
+        },
+      };
+    });
+  };
+
+  const openFile = async (path: string) => {
+    reveal(path);
+    if (isPng(path)) {
+      setLoading(false);
+      setError(null);
+      setTabs((previous) => previous.includes(path) ? previous : [...previous, path]);
+      setActivePath(path);
+      return;
+    }
+    if (filesRef.current[path]) {
+      setActivePath(path);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(sourceUrl(path));
+      if (!response.ok) {
+        const value = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(value.detail ?? "This file is unavailable for editing.");
+      }
+      const document = await response.json() as SourceDocument;
+      const saved = {
+        ...document,
+        savedContent: document.content,
+        conflict: null,
+        missing: false,
+      };
+      const nextFiles = { ...filesRef.current, [path]: saved };
+      filesRef.current = nextFiles;
+      setFiles(nextFiles);
+      setTabs((previous) => previous.includes(path) ? previous : [...previous, path]);
+      setActivePath(path);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const save = async (path: string) => {
+    const file = filesRef.current[path];
+    if (!sessionId || !file || file.missing || file.conflict || file.content === file.savedContent) return;
+    saving.current.add(path);
+    setError(null);
+    try {
+      const response = await fetch(sourceUrl(path), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: file.content, expected_revision: file.revision }),
+      });
+      if (response.status === 409) {
+        const value = await response.json() as { current: SourceDocument };
+        setFiles((previous) => previous[path]
+          ? { ...previous, [path]: { ...previous[path], conflict: value.current, missing: false } }
+          : previous);
+        return;
+      }
+      if (!response.ok) {
+        const value = await response.json().catch(() => ({})) as { detail?: string };
+        throw new Error(value.detail ?? "The file could not be saved.");
+      }
+      const document = await response.json() as SourceDocument;
+      setFiles((previous) => ({
+        ...previous,
+        [path]: { ...document, savedContent: document.content, conflict: null, missing: false },
+      }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      saving.current.delete(path);
+      if (deferred.current.delete(path)) void reconcilePath(path);
+    }
+  };
+
+  const reloadConflict = (path: string) => {
+    const file = filesRef.current[path];
+    if (!file) return;
+    if (file.missing) {
+      closePath(path);
+      return;
+    }
+    if (!file.conflict) return;
+    applyExternal(path, file.conflict.content);
+    const document = file.conflict;
+    setFiles((previous) => ({
+      ...previous,
+      [path]: { ...document, savedContent: document.content, conflict: null, missing: false },
+    }));
+  };
+
+  useEffect(() => {
+    if (!sessionId) return;
+    seeded.current = null;
+    setEntries([]);
+    setExpandedDirectories(new Set());
+    setFiles({});
+    setTabs([]);
+    setActivePath(null);
+    void refreshEntries();
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sourceEvent) return;
+    void refreshEntries();
+    void reconcilePath(sourceEvent.path);
+    if (sourceEvent.previous_path) void reconcilePath(sourceEvent.previous_path);
+  }, [sourceEvent?.sequence]);
+
+  useEffect(() => {
+    if (!sessionId || reconnect === 0) return;
+    void refreshEntries();
+    for (const path of Object.keys(filesRef.current)) void reconcilePath(path);
+  }, [reconnect]);
+
+  useEffect(() => {
+    if (!sessionId || !requestedOpen) return;
+    void openFile(requestedOpen.path);
+  }, [sessionId, requestedOpen?.nonce]);
+
+  const handleMount: OnMount = (editor, monaco) => {
+    monacoRef.current = monaco;
+    editorRef.current = editor;
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => saveCurrent.current());
+    // Monaco colours the lines already on screen only when its embedder says
+    // the viewport is settled; left alone it waits for idle time that the model
+    // this floor keeps rendering never leaves, so a file stays grey until a
+    // scroll and one short enough to fit stays grey for good.  Only a scroll or
+    // an edit tells the editor its viewport moved, so say so ourselves once the
+    // editor is measured, whenever it is measured again, and on every file it
+    // shows.
+    editor.onDidLayoutChange(() => editor.handleInitialized?.());
+    editor.handleInitialized?.();
+    // Monaco measured its glyphs against whatever face was available when it
+    // mounted; once the identity's mono face has loaded, measure again.
+    void document.fonts.ready.then(() => monaco.editor.remeasureFonts());
+  };
+
+  useEffect(() => {
+    editorRef.current?.handleInitialized?.();
+  }, [activePath, visible]);
+
+  saveCurrent.current = () => { if (activePath) void save(activePath); };
+  const active = activePath ? files[activePath] : null;
+  const activeImage = activePath && isPng(activePath) ? activePath : null;
+  const dirty = active ? active.content !== active.savedContent : false;
+  const visibleEntries = entries.filter((entry) => {
+    const parts = entry.path.split("/");
+    for (let depth = 1; depth < parts.length; depth += 1) {
+      if (!expandedDirectories.has(parts.slice(0, depth).join("/"))) return false;
+    }
+    return true;
+  });
+
+  const toggleDirectory = (path: string) => {
+    setExpandedDirectories((previous) => {
+      const next = new Set(previous);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+
+  return <>
+    <aside className={`source-navigator ${visible ? "" : "area-hidden"}`} aria-label="Project source">
+      <header>
+        <span className="source-root-label" data-source-root="open"><span className="source-disclosure" aria-hidden="true">⌄</span><SourceIcon kind="folder" /><span>Project root</span></span>
+        <button onClick={() => void refreshEntries()} aria-label="Refresh source tree">↻</button>
+      </header>
+      <div className="source-tree">
+        {entries.length === 0 ? <p className="empty">No Git-visible files.</p> : visibleEntries.map((entry) => {
+          const depth = entry.path.split("/").length - 1;
+          const label = entry.path.split("/").pop();
+          if (entry.kind === "directory") {
+            const expanded = expandedDirectories.has(entry.path);
+            return <button
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
+              className="source-directory"
+              key={`directory:${entry.path}`}
+              onClick={() => toggleDirectory(entry.path)}
+              style={{ paddingLeft: `${8 + depth * 14}px` }}
+              title={entry.path}
+            ><span className={`source-disclosure ${expanded ? "expanded" : ""}`} aria-hidden="true">›</span><SourceIcon kind="folder" /><span className="source-label">{label}</span></button>;
+          }
+          return <button
+                className={activePath === entry.path ? "selected" : ""}
+                key={entry.path}
+                onClick={() => void openFile(entry.path)}
+                style={{ paddingLeft: `${10 + depth * 14}px` }}
+                title={entry.path}
+              ><span className="source-disclosure placeholder" aria-hidden="true" /><SourceIcon kind={sourceIconKind(entry.path)} /><span className="source-label">{label}</span></button>;
+        })}
+      </div>
+    </aside>
+    <section className={`code-area ${visible ? "" : "area-hidden"}`} aria-label="Code editor">
+      <header className="code-tabs">
+        {tabs.length === 0 ? <span className="empty-tab">Open a file from the project root</span> : tabs.map((path) => {
+          const file = files[path];
+          const changed = file && file.content !== file.savedContent;
+          return <button className={activePath === path ? "active" : ""} onClick={() => setActivePath(path)} key={path} title={path}>
+            {path.split("/").pop()}{file?.conflict || file?.missing ? " !" : changed ? " ●" : ""}
+            <span onClick={(event) => { event.stopPropagation(); closePath(path); }} aria-label={`Close ${path}`}>×</span>
+          </button>;
+        })}
+        {activeImage ? <span className="code-state preview">image preview</span> : active ? <span className={`code-state ${active.conflict || active.missing ? "conflict" : dirty ? "dirty" : ""}`}>
+          {active.missing ? "deleted externally" : active.conflict ? "external changes" : dirty ? "unsaved" : "saved"}
+        </span> : null}
+      </header>
+      {error ? <div className="code-error" role="alert">{error}</div> : null}
+      {active?.conflict || active?.missing ? <div className="code-conflict" role="status">
+        This file changed outside the editor. Your unsaved text is preserved.
+        <button onClick={() => reloadConflict(active.path)}>{active.missing ? "Close deleted file" : "Reload external version"}</button>
+      </div> : null}
+      <div className="code-editor-host">
+        {loading ? <p className="empty">Loading source…</p> : activeImage ? <figure className="source-image-preview"><img
+          alt={`Preview ${activeImage.split("/").pop()}`}
+          key={`${activeImage}:${sourceEvent?.sequence ?? reconnect}`}
+          onError={() => setError("This PNG image could not be displayed.")}
+          src={`${sourceUrl().replace(/\/source$/, "/source-preview")}/${activeImage.split("/").map(encodeURIComponent).join("/")}?revision=${sourceEvent?.sequence ?? reconnect}`}
+        /></figure> : active ? <Editor
+          path={sourceModelPath(active.path)}
+          defaultLanguage={sourceLanguage(active.path)}
+          defaultValue={active.content}
+          theme="vs-dark"
+          saveViewState
+          keepCurrentModel
+          onMount={handleMount}
+          onChange={(value) => {
+            if (applying.current.has(active.path)) return;
+            setFiles((previous) => previous[active.path]
+              ? { ...previous, [active.path]: { ...previous[active.path], content: value ?? "" } }
+              : previous);
+          }}
+          options={{
+            automaticLayout: true,
+            fontFamily: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+            fontSize: 12.5,
+            minimap: { enabled: false },
+            padding: { top: 12 },
+            scrollBeyondLastLine: false,
+          }}
+        /> : <p className="empty code-empty">Select a text file to edit.</p>}
+      </div>
+    </section>
+  </>;
+}
+
+const activityFilters = ["all", "tool", "file", "message", "error"] as const;
+type ActivityFilter = typeof activityFilters[number];
+
+function activityTime(value: string) {
+  if (!value) return "--:--:--";
+  return new Date(value).toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function runtimeProviderKey(backend: string, provider: string | null) {
+  if (provider) return provider;
+  if (backend === "claude") return "anthropic";
+  if (backend === "codex") return "openai";
+  return "";
+}
+
+function runtimeProviderLabel(backend: string, provider: string | null) {
+  if (provider) return provider;
+  if (backend === "claude") return "Anthropic";
+  if (backend === "codex") return "OpenAI";
+  return "unavailable";
+}
+
+function AgentsWorkspace({ sessionId, run, visible, onOpenFile }: {
+  sessionId: string | null;
+  run: Run | null;
+  visible: boolean;
+  onOpenFile: (path: string) => void;
+}) {
+  const [focusedRole, setFocusedRole] = useState<string | null>(null);
+  const [catalogue, setCatalogue] = useState<RuntimeCatalogue | null>(null);
+  const [backend, setBackend] = useState("");
+  const [provider, setProvider] = useState<string | null>(null);
+  const [model, setModel] = useState("");
+  const [effort, setEffort] = useState("");
+  const [persist, setPersist] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(true);
+  const [filter, setFilter] = useState<ActivityFilter>("all");
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const agents = run?.agents ?? [];
+  const focused = agents.find((agent) => agent.role === focusedRole) ?? agents[0] ?? null;
+
+  useEffect(() => {
+    if (!focused) return;
+    if (focusedRole !== focused.role) setFocusedRole(focused.role);
+  }, [focused?.role]);
+
+  useEffect(() => {
+    if (!visible || !sessionId || !focused) return;
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`)
+      .then(async (response) => {
+        const value = await response.json().catch(() => ({})) as RuntimeCatalogue & { detail?: string };
+        if (!response.ok) throw new Error(value.detail ?? "Runtime choices are unavailable.");
+        return value;
+      })
+      .then((value) => {
+        if (cancelled) return;
+        setCatalogue(value);
+        setBackend(value.runtime.backend);
+        setProvider(value.runtime.provider);
+        setModel(value.runtime.model);
+        setEffort(value.runtime.effort);
+      })
+      .catch((reason) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [visible, sessionId, focused?.role, focused?.backend, focused?.provider, focused?.model, focused?.effort, focused?.runtime_pristine]);
+
+  const backendChoices = catalogue?.choices.filter((item) => item.backend === backend) ?? [];
+  const providerChoices = backendChoices.filter((item, index, items) =>
+    items.findIndex((candidate) => runtimeProviderKey(candidate.backend, candidate.provider) === runtimeProviderKey(item.backend, item.provider)) === index
+  );
+  const modelChoices = backendChoices.filter((item) => item.provider === provider);
+  const choice = modelChoices.find((item) => item.model === model);
+  const ownerDirty = Boolean(focused && (backend !== focused.backend || provider !== focused.provider));
+  const dirty = Boolean(focused && (ownerDirty || model !== focused.model || effort !== focused.effort));
+  const canApply = Boolean(catalogue?.supported && choice && focused?.runtime_idle && (!ownerDirty || focused.runtime_pristine) && dirty && !loading);
+  const roleActivity = (run?.activity ?? []).filter((item) => item.role === focused?.role);
+  const visibleActivity = roleActivity.filter((item) => filter === "all" || item.category === filter);
+  const counts = roleActivity.reduce<Record<string, number>>((result, item) => {
+    result[item.category] = (result[item.category] ?? 0) + 1;
+    return result;
+  }, {});
+  const tokenEntry = [...roleActivity].reverse().find((item) => item.input_tokens !== null || item.output_tokens !== null);
+
+  const selectModel = (next: string) => {
+    const nextChoice = modelChoices.find((item) => item.model === next);
+    if (!nextChoice) return;
+    setModel(nextChoice.model);
+    if (!nextChoice.efforts.includes(effort)) setEffort(nextChoice.efforts[0] ?? "");
+    setNotice("");
+  };
+
+  const selectProvider = (next: string) => {
+    const nextChoice = backendChoices.find((item) => runtimeProviderKey(item.backend, item.provider) === next);
+    if (!nextChoice) return;
+    setProvider(nextChoice.provider);
+    setModel(nextChoice.model);
+    setEffort(nextChoice.efforts.includes(effort) ? effort : nextChoice.efforts[0] ?? "");
+    setNotice("");
+  };
+
+  const selectBackend = (next: string) => {
+    if (!catalogue) return;
+    const options = catalogue.choices.filter((item) => item.backend === next);
+    const nextChoice = options.find((item) => item.provider === focused?.provider && item.model === focused?.model) ?? options[0];
+    if (!nextChoice) return;
+    setBackend(next);
+    setProvider(nextChoice.provider);
+    setModel(nextChoice.model);
+    setEffort(nextChoice.efforts.includes(effort) ? effort : nextChoice.efforts[0] ?? "");
+    setNotice("");
+  };
+
+  const applyRuntime = async () => {
+    if (!sessionId || !focused || !catalogue || !canApply) return;
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backend, provider, model, effort, persist, expected_revision: catalogue.config_revision }),
+      });
+      const value = await response.json().catch(() => ({})) as {
+        detail?: string; config_revision?: string; persisted?: boolean;
+      };
+      if (!response.ok) {
+        if (response.status === 409) {
+          const refreshed = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/agents/${encodeURIComponent(focused.role)}/runtime`);
+          if (refreshed.ok) {
+            const current = await refreshed.json() as RuntimeCatalogue;
+            setCatalogue(current);
+            setBackend(current.runtime.backend);
+            setProvider(current.runtime.provider);
+            setModel(current.runtime.model);
+            setEffort(current.runtime.effort);
+          }
+        }
+        throw new Error(value.detail ?? "The runtime could not be changed.");
+      }
+      setCatalogue((previous) => previous && value.config_revision
+        ? { ...previous, config_revision: value.config_revision }
+        : previous);
+      setNotice(value.persisted ? "applied · written to pyproject.toml" : "applied · this session only");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return <>
+    <aside className={`agents-context ${visible ? "" : "area-hidden"}`} aria-label="Agent roster">
+      <section className="agents-roster-panel">
+        <header><h2>Agents</h2><span>{agents.filter((agent) => agent.state === "active").length} active</span></header>
+        <ul>
+          {agents.map((agent) => <li key={agent.role}>
+            <button
+              className={agent.role === focused?.role ? "selected" : ""}
+              onClick={() => { setFocusedRole(agent.role); setFilter("all"); setNotice(""); setError(""); }}
+              data-agent-role={agent.role}
+            >
+              <span className={`agent-state-dot ${agent.failure ? "failed" : agent.state}`} aria-hidden="true" />
+              <span className="agent-roster-runtime"><span>{agent.label}</span><small>{agent.backend} · {agent.model}</small></span>
+              <span className={`state ${agent.failure ? "failed" : agent.state}`}>{agent.failure ? "failed" : agent.state}</span>
+            </button>
+          </li>)}
+        </ul>
+      </section>
+      <section className="agents-session-panel">
+        <h2>Session</h2>
+        <div><span>Profile</span><strong>{run ? `${run.profile_id} · ${run.work_mode}` : "—"}</strong><small>{agents.length} standing session{agents.length === 1 ? "" : "s"} · {new Set(agents.map((agent) => agent.backend)).size} backend{new Set(agents.map((agent) => agent.backend)).size === 1 ? "" : "s"}</small></div>
+        <p>Provider identity is explicit. Runtime selections persist by default; tool policy remains profile-owned.</p>
+      </section>
+    </aside>
+    <section className={`agents-area ${visible ? "" : "area-hidden"}`} aria-label="Agent activity">
+      <header className="agents-header">
+        <h2>{focused?.label ?? "Agents"}</h2>
+        <span className={`state ${focused?.failure ? "failed" : focused?.state ?? "waiting"}`}>{focused?.failure ? "failed" : focused?.state ?? "waiting"}</span>
+        {tokenEntry ? <span className="agent-tokens">{tokenEntry.input_tokens ?? 0} in · {tokenEntry.output_tokens ?? 0} out</span> : null}
+        <button onClick={() => setControlsOpen((current) => !current)}>{controlsOpen ? "Hide controls" : "Controls"}</button>
+      </header>
+      {controlsOpen ? <div className="agent-controls">
+        <div className="agent-control-grid">
+          <div className="agent-control"><span>Backend</span><div className="backend-picks">
+            {["claude", "opencode", "codex"].map((value) => <button
+              disabled={loading || !catalogue?.choices.some((item) => item.backend === value) || (!focused?.runtime_pristine && value !== focused?.backend)}
+              className={value === backend ? "selected" : ""}
+              key={value}
+              title={catalogue?.unavailable?.[value]}
+              onClick={() => selectBackend(value)}
+            >{value}</button>)}
+          </div><small>{focused?.runtime_pristine ? "Replace this unused session immediately." : "Locked after this agent's first use."}</small></div>
+          <label className="agent-control"><span>Provider</span><select
+            aria-label="Provider"
+            value={runtimeProviderKey(backend, provider)}
+            disabled={!catalogue?.supported || loading || backend !== "opencode" || !focused?.runtime_pristine}
+            onChange={(event) => selectProvider(event.target.value)}
+          >
+            {providerChoices.length ? providerChoices.map((item) => <option key={runtimeProviderKey(item.backend, item.provider)} value={runtimeProviderKey(item.backend, item.provider)}>{runtimeProviderLabel(item.backend, item.provider)}</option>) : <option value={runtimeProviderKey(backend, provider)}>{runtimeProviderLabel(backend, provider)}</option>}
+          </select><small>{backend === "opencode" ? "exact live ID · verify account and billing" : `${runtimeProviderLabel(backend, provider)} is fixed by this backend`}</small></label>
+          <label className="agent-control"><span>Model</span><select
+            aria-label="Model"
+            value={choice?.model ?? ""}
+            disabled={!catalogue?.supported || loading}
+            onChange={(event) => selectModel(event.target.value)}
+          >
+            {modelChoices.length ? modelChoices.map((item) => <option key={item.model} value={item.model}>{item.model}</option>) : <option value="">{model || focused?.model || "unavailable"}</option>}
+          </select><small>models available from the selected provider</small></label>
+          <div className="agent-control"><span>Reasoning</span><div className="effort-picks">
+            {(choice?.efforts ?? (effort ? [effort] : [])).map((value) => <button
+              className={value === effort ? "selected" : ""}
+              disabled={!catalogue?.supported || loading}
+              key={value}
+              onClick={() => { setEffort(value); setNotice(""); }}
+            >{value}</button>)}
+          </div><small>Changes atomically with the model.</small></div>
+          {catalogue?.unavailable?.codex ? <p className="agent-backend-unavailable" role="status">Codex unavailable: {catalogue.unavailable.codex}</p> : null}
+        </div>
+        <div className="agent-apply-row">
+          <label><input type="checkbox" checked={persist} onChange={(event) => setPersist(event.target.checked)} />write to pyproject.toml</label>
+          <div><span className={error ? "control-error" : ""}>{error || notice || (loading ? "loading…" : !catalogue?.supported ? catalogue?.reason : !focused?.runtime_idle ? "available when agent is idle" : ownerDirty && !focused?.runtime_pristine ? "backend locked after first use" : dirty ? "unapplied change" : "")}</span><button disabled={!canApply} onClick={() => void applyRuntime()}>Apply</button></div>
+        </div>
+      </div> : null}
+      <div className="activity-filters">
+        {activityFilters.map((value) => <button className={filter === value ? "selected" : ""} onClick={() => setFilter(value)} key={value}>{value === "all" ? `all ${roleActivity.length}` : `${value === "tool" ? "tools" : value === "file" ? "files" : `${value}s`} ${counts[value] ?? 0}`}</button>)}
+        <span>session {focused?.role ?? "—"} · live</span>
+      </div>
+      <div className="activity-feed">
+        {focused?.failure ? <div className="agent-failure"><strong>{focused.label} session failed</strong><p>{focused.failure}</p></div> : null}
+        {visibleActivity.map((entry) => {
+          const isOpen = expanded.has(entry.id);
+          if (entry.category === "file") return <article className="activity-entry" key={`${entry.role}:${entry.id}`}>
+            <time>{activityTime(entry.timestamp)}</time><div className="activity-content">
+              <div className="file-activity-title"><i /><strong>{entry.name}</strong><span>{entry.path || entry.summary}</span>{entry.path ? <button onClick={() => onOpenFile(entry.path)}>Open in Code</button> : null}</div>
+              {entry.diff ? <div className="activity-diff">{entry.diff.split("\n").map((line, index) => <div className={line.startsWith("@@") ? "hunk" : line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "context"} key={index}><span>{line.startsWith("+") ? "+" : line.startsWith("-") ? "−" : ""}</span><code>{line.startsWith("@@") ? line : line.slice(1)}</code></div>)}</div> : null}
+            </div>
+          </article>;
+          if (entry.category === "message") return <article className="activity-entry" key={`${entry.role}:${entry.id}`}><time>{activityTime(entry.timestamp)}</time><div className="activity-message"><strong>{entry.name}</strong><p>{entry.summary}</p>{entry.detail ? <small>{entry.detail}</small> : null}</div></article>;
+          if (entry.category === "error") return <article className="activity-entry" key={`${entry.role}:${entry.id}`}><time>{activityTime(entry.timestamp)}</time><div className="activity-error">{entry.summary || entry.detail}</div></article>;
+          return <article className="activity-entry" key={`${entry.role}:${entry.id}`}><time>{activityTime(entry.timestamp)}</time><div className="activity-content">
+            <button className="tool-activity-title" onClick={() => setExpanded((previous) => { const next = new Set(previous); if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id); return next; })}><span>{isOpen ? "−" : "+"}</span><strong>{entry.name}</strong><span>{entry.summary}</span><em className={entry.state}>{entry.state}</em></button>
+            {isOpen && entry.detail ? <pre>{entry.detail}</pre> : null}
+          </div></article>;
+        })}
+        {visibleActivity.length === 0 ? <p className="empty activity-empty">Nothing matches this filter in {focused?.label ?? "this agent"}'s session.</p> : null}
+      </div>
+    </section>
+  </>;
+}
+
+function millimetres(size: PrintedPiece["size"]): string {
+  return `${size.map((value) => Number(value.toFixed(1))).join(" × ")} mm`;
+}
+
+function BuildWorkspace({ sessionId, revision, buildError, visible }: {
+  sessionId: string | null;
+  revision: number;
+  buildError: string | null;
+  visible: boolean;
+}) {
+  const [pieces, setPieces] = useState<PrintedPiece[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activated, setActivated] = useState(false);
+
+  useEffect(() => {
+    if (visible) setActivated(true);
+  }, [visible]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const controller = new AbortController();
+    setLoading(true);
+    void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/artifacts/viewer.json`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("No completed piece publication is available.")))
+      .then((document: unknown) => {
+        const next = parsePieces(document);
+        setPieces(next);
+        setSelectedId((current) => current && next.some((piece) => piece.id === current) ? current : next[0]?.id ?? null);
+        setInventoryError(next.length ? null : "This completed build contains no distinct pieces.");
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setInventoryError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [sessionId, revision]);
+
+  const selected = pieces.find((piece) => piece.id === selectedId) ?? null;
+  const fit = selected ? fitsBuildEnvelope(selected) : false;
+  const packageUrl = sessionId ? `/api/sessions/${encodeURIComponent(sessionId)}/build-package` : "";
+
+  return <>
+    <aside className={`build-context ${visible ? "" : "area-hidden"}`} aria-label="Pieces">
+      <header><h2>Pieces</h2><span>{pieces.length} distinct</span></header>
+      <div className="build-piece-list">
+        {pieces.map((piece) => <button
+          type="button"
+          className={piece.id === selectedId ? "selected" : ""}
+          aria-current={piece.id === selectedId ? "true" : undefined}
+          onClick={() => setSelectedId(piece.id)}
+          key={piece.id}
+        ><i className={piece.watertight ? "" : "warning"} /><span>{piece.name}</span><strong>×{piece.count}</strong></button>)}
+        {!pieces.length && !loading ? <p className="empty">{inventoryError ?? "This completed build contains no distinct pieces."}</p> : null}
+        {loading && !pieces.length ? <p className="empty">Loading pieces…</p> : null}
+      </div>
+      <div className="build-package-card">
+        <span>Inspection volume</span>
+        <strong>{BUILD_VOLUME.join(" × ")} mm</strong>
+        <small>fixed for this version · envelope check only</small>
+        {selected && packageUrl ? <a className="build-download" href={packageUrl} download>Download package</a> : <span className="build-download disabled">Download package</span>}
+        <small>one STL per distinct piece · README instructions</small>
+      </div>
+    </aside>
+    <section className={`build-area ${visible ? "" : "area-hidden"}`} aria-label="Build inspection">
+      <header className="build-header">
+        <h2>Build</h2>
+        <span>{selected?.name ?? "Piece inspection"}</span>
+        {selected ? <strong>{pieces.findIndex((piece) => piece.id === selected.id) + 1} / {pieces.length}</strong> : null}
+      </header>
+      <div className="build-main">
+        {visible && buildError ? <p className="model-build-error" role="status">Model rebuild failed: {buildError}</p> : null}
+        {visible && inventoryError && pieces.length ? <p className="model-build-error" role="status">Could not refresh pieces: {inventoryError}</p> : null}
+        {selected ? <>
+          <div className="build-quantity" aria-label={`Print ${selected.count} ${selected.count === 1 ? "copy" : "copies"}`}>
+            <span>Copies to print</span><strong>{selected.count}</strong><small>one representative shown</small>
+          </div>
+          {activated ? <Suspense fallback={<p className="empty build-empty">Loading 3D inspection…</p>}>
+            <BuildPieceViewer modelUrl={artifactUrl(sessionId ?? "", canonicalModel(selected))} pieceName={selected.name} />
+          </Suspense> : null}
+        </> : <p className="empty build-empty">{loading ? "Loading piece inventory…" : inventoryError ?? "No distinct pieces are published."}</p>}
+      </div>
+      {selected ? <div className="build-facts">
+        <div><span>Quantity</span><strong>Print {selected.count} {selected.count === 1 ? "copy" : "copies"}</strong></div>
+        <div><span>Size</span><strong>{millimetres(selected.size)}</strong></div>
+        <div><span>Volume</span><strong>{Number((selected.volume / 1000).toFixed(2))} cm³</strong></div>
+        <div><span>Geometry</span><strong className={selected.watertight ? "ok" : "warning"}>{selected.watertight ? "watertight" : "not watertight"}</strong></div>
+        <div><span>Envelope fit</span><strong className={fit ? "ok" : "warning"}>{fit ? "fits" : "exceeds"} {BUILD_VOLUME.join(" × ")} mm</strong><small>orthogonal rotation allowed · not a printability guarantee</small></div>
+        <div className="build-provenance"><span>Sources</span><strong>{selected.sources.join(" · ")}</strong><small>{selected.models.join(" · ")}</small></div>
+      </div> : null}
+    </section>
+  </>;
+}
+
+function Workspace({ path: entryPath }: { path: string }) {
+  const [activeArea, setActiveArea] = useState<"model" | "code" | "agents" | "build">("model");
+  const [run, setRun] = useState<Run | null>(null);
+  const [shopOpen, setShopOpen] = useState(false);
+  const [conversation, setConversation] = useState<ConversationEntry[]>([]);
+  const [modelArtifact, setModelArtifact] = useState<ModelArtifact | null>(null);
+  const [modelReconnect, setModelReconnect] = useState(0);
+  const [buildRevision, setBuildRevision] = useState(0);
+  const [modelBuildError, setModelBuildError] = useState<string | null>(null);
+  const [modelBuilding, setModelBuilding] = useState(false);
+  const [sourceEvent, setSourceEvent] = useState<SourceEvent | null>(null);
+  const [sourceReconnect, setSourceReconnect] = useState(0);
+  const [requestedOpen, setRequestedOpen] = useState<{ path: string; nonce: number } | null>(null);
+  const streamOpened = useRef(false);
+  const latestEvent = useRef(0);
+  // The live-stream handlers are built once per open, before the session id
+  // reaches state, so they read it from here.
+  const session = useRef<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [viewerReady, setViewerReady] = useState(false);
+  const [viewerHandle, setViewerHandle] = useState<ViewerHandle | null>(null);
+  const [opening, setOpening] = useState(false);
+
+  useEffect(() => {
+    let source: EventSource | null = null;
+    let waiting: EventSource | null = null;
+    let cancelled = false;
+    const home = folderUrl(folderOf(entryPath));
+    const inventory = () => fetch(`/api/entries?folder=${encodeURIComponent(folderOf(entryPath))}`)
+      .then((response) => response.json() as Promise<{ entries: Entry[] }>)
+      .then((value) => value.entries.find(
+        (item): item is Project => item.kind === "project" && item.path === entryPath,
+      ));
+
+    const enter = async (key: string) => {
+      // The viewer bundle is served through the session, so it can only be
+      // asked for once the session is known.
+      const viewer = await loadViewer(key).then(() => true).catch(() => false);
+      if (cancelled) return;
+      session.current = key;
+      setSessionId(key);
+      setViewerReady(viewer);
+      source = new EventSource(`/api/sessions/${encodeURIComponent(key)}/stream`);
+    source.onopen = () => {
+      setShopOpen(true);
+      if (streamOpened.current) {
+        setModelReconnect((current) => current + 1);
+        setBuildRevision((current) => current + 1);
+        setSourceReconnect((current) => current + 1);
+      }
+      streamOpened.current = true;
+    };
+      source.onerror = () => {
+        setShopOpen(false);
+        void fetch(`/api/entries?folder=${encodeURIComponent(folderOf(entryPath))}`)
+          .then((response) => response.json())
+          .then((value: { entries: Entry[] }) => {
+            if (!value.entries.some((item) => item.kind === "project" && item.path === entryPath && item.state === "open")) {
+              navigate(folderUrl(folderOf(entryPath)));
+            }
+          });
+      };
+    source.addEventListener("snapshot", (message) => {
+      const snapshot = JSON.parse((message as MessageEvent<string>).data) as {
+        run: Run;
+        conversation: ConversationEntry[];
+      };
+      latestEvent.current = snapshot.run.latest_event_sequence;
+      setRun(snapshot.run);
+      setConversation(snapshot.conversation);
+      setModelBuildError(snapshot.run.model_build_error);
+      // The snapshot is serialised for this subscriber, so a session that
+      // opened on a publication whose build is still running says so here even
+      // when the browser arrives long after the open.
+      setModelBuilding(snapshot.run.model_building);
+    });
+    source.addEventListener("shop-floor", (message) => {
+      const event = JSON.parse((message as MessageEvent<string>).data) as LifecycleEvent;
+      if (event.event.sequence <= latestEvent.current) return;
+      latestEvent.current = event.event.sequence;
+      setRun((previous) => {
+        if (!previous || previous.events.some((item) => item.sequence === event.event.sequence)) return previous;
+        return { ...previous, events: [...previous.events, event.event].slice(-20) };
+      });
+      if (event.kind === "conversation_entry") {
+        const entry = event.payload as ConversationEntry;
+        setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
+        return;
+      }
+      if (event.kind === "model_artifact_changed") {
+        const { artifact } = event.payload as { artifact?: string };
+        if (artifact === "viewer.json") {
+          setModelBuildError(null);
+          setModelArtifact({ path: artifact, sequence: event.event.sequence });
+          setBuildRevision((current) => current + 1);
+        } else if (artifact === "errors.json") {
+          void fetch(`/api/sessions/${encodeURIComponent(session.current ?? "")}/artifacts/errors.json`)
+            .then((response) => response.ok ? response.text() : Promise.reject(new Error("the model could not be rebuilt")))
+            .then((error) => setModelBuildError(error || "the model could not be rebuilt"))
+            .catch(() => setModelBuildError("the model could not be rebuilt"));
+        } else if (artifact) {
+          setModelArtifact({ path: artifact, sequence: event.event.sequence });
+        }
+        return;
+      }
+      if (event.kind === "model_build_settled") {
+        setModelBuilding(false);
+        return;
+      }
+      if (event.kind === "model_build_unavailable") {
+        const { reason } = event.payload as { reason?: string };
+        setModelBuildError(reason ?? "the shop could not start a model build");
+        return;
+      }
+      if (event.kind === "source_file_changed") {
+        setSourceEvent({ ...(event.payload as SourceInvalidation), sequence: event.event.sequence });
+        return;
+      }
+      if (event.kind === "agent_activity") {
+        const activity = event.payload as AgentActivity;
+        setRun((previous) => {
+          if (!previous) return previous;
+          const matching = previous.activity.findIndex((item) => item.role === activity.role && item.id === activity.id);
+          if (matching === -1) return { ...previous, activity: [...previous.activity, activity].slice(-400) };
+          const next = previous.activity.slice();
+          next[matching] = activity;
+          return { ...previous, activity: next };
+        });
+        return;
+      }
+      if (
+        !event.kind.startsWith("agent_")
+        && !event.kind.startsWith("work_")
+        && !event.kind.startsWith("direct_work_")
+      ) return;
+      const nextAgent = event.payload as Partial<Agent> & { role: string };
+      const { role } = nextAgent;
+      setRun((previous) => {
+        if (!previous) return previous;
+        const existing = previous.agents.find((agent) => agent.role === role);
+        const agents = previous.agents.filter((agent) => agent.role !== role);
+        if (event.kind !== "agent_stopped" && (existing || nextAgent.label)) {
+          agents.push({ ...existing, ...nextAgent } as Agent);
+        }
+        return { ...previous, agents: agents.sort((left, right) => left.role.localeCompare(right.role)) };
+      });
+      });
+    };
+
+    // A tab that lands straight on a project -- opened in a new tab from a hub
+    // card, or reached from a bookmark -- opens the project itself instead of
+    // bouncing the maker back to the folder that lists it.
+    const openHere = (already: boolean) => {
+      setOpening(true);
+      waiting = new EventSource(`/api/stream?folder=${encodeURIComponent(folderOf(entryPath))}`);
+      const opened = (key: string) => {
+        waiting?.close();
+        waiting = null;
+        setOpening(false);
+        void enter(key);
+      };
+      // The project can reach its open state between the inventory read and
+      // this subscription, so the stream's own inventory is read too.
+      waiting.addEventListener("snapshot", (message) => {
+        const snapshot = JSON.parse((message as MessageEvent<string>).data) as { entries: Entry[] };
+        const project = snapshot.entries.find(
+          (item): item is Project => item.kind === "project" && item.path === entryPath,
+        );
+        if (project?.session_id && project.state === "open") opened(project.session_id);
+      });
+      waiting.addEventListener("project", (message) => {
+        const event = JSON.parse((message as MessageEvent<string>).data) as {
+          kind: Project["state"] | "closed" | "screenshot";
+          project: string;
+          session_id?: string;
+        };
+        if (event.project !== entryPath) return;
+        if (event.kind === "open" && event.session_id) {
+          opened(event.session_id);
+        } else if (event.kind === "failed" || event.kind === "closed") {
+          waiting?.close();
+          waiting = null;
+          navigate(home);
+        }
+      });
+      // Another tab may already be opening it; then there is only waiting.
+      if (already) return Promise.resolve();
+      return fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: entryPath }),
+      }).then((response) => {
+        if (response.ok || cancelled) return;
+        waiting?.close();
+        waiting = null;
+        navigate(home);
+      });
+    };
+
+    void inventory().then(async (selected) => {
+      if (cancelled) return;
+      if (selected?.session_id && selected.state === "open") {
+        await enter(selected.session_id);
+        return;
+      }
+      if (!selected || !selected.openable) {
+        navigate(home);
+        return;
+      }
+      await openHere(selected.state === "opening" || selected.state === "creating");
+    });
+
+    return () => {
+      cancelled = true;
+      source?.close();
+      waiting?.close();
+    };
+  }, [entryPath]);
+
+  const submitUserMessage = async (text: string) => {
+    if (!sessionId) return;
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/conversation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) return;
+    const entry = (await response.json()) as ConversationEntry;
+    setConversation((previous) => previous.some((item) => item.sequence === entry.sequence) ? previous : [...previous, entry]);
+  };
+
+  const closeProject = async () => {
+    if (!sessionId) return;
+    const active = run?.agents.some((agent) => agent.state === "active") ?? false;
+    if (active && !window.confirm("An agent is working. Close this project and discard work in progress?")) return;
+    await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+    // Back to the folder that lists this project, not to the working folder:
+    // a maker closing one model of a machine is still working on that machine.
+    navigate(folderUrl(folderOf(entryPath)));
+  };
+
+  return (
+    <main className="shop-workspace">
+      <header className="workspace-titlebar">
+        <div className="workspace-title">
+          <a className="workspace-home" {...linkProps("/")} title="All projects" aria-label="Machinome Studio">
+            <img className="workspace-wordmark" src={WORDMARK} width="180" height="25" alt="" />
+            <span className="workspace-qualifier">Studio</span>
+          </a>
+          <span className="workspace-path">/ {entryPath}</span>
+        </div>
+        <div className="title-actions"><p className="workspace-run" aria-live="polite">{opening ? "Opening…" : shopOpen && run ? `${run.profile_id} · open` : `Shop is ${shopOpen ? "open" : "closed"}`}</p><button className="close-project" onClick={() => void closeProject()}>Close project</button></div>
+      </header>
+      <div className="workspace-body">
+        <nav className="activity-rail" aria-label="Workspace areas">
+          {railItems.map(([id, icon, label, interactive]) => (
+            <button
+              key={id}
+              type="button"
+              className={`rail-item ${activeArea === id ? "selected" : ""}`}
+              aria-current={activeArea === id ? "page" : undefined}
+              data-workspace-area={id}
+              disabled={!interactive}
+          onClick={() => { if (id === "model" || id === "code" || id === "agents" || id === "build") setActiveArea(id); }}
+            >
+              <span className={`rail-icon rail-icon-${id}`} aria-hidden="true">{icon}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+        <aside className={`workspace-context ${activeArea === "model" ? "" : "area-hidden"}`} aria-label="Agent context">
+          <AssemblyNavigator viewer={viewerHandle} />
+          <AgentPanel agents={run?.agents ?? []} />
+        </aside>
+        <section className={`artifact-view ${activeArea === "model" ? "" : "area-hidden"}`} aria-labelledby="artifact-heading">
+          <header className="model-tabs">
+            <h2 id="artifact-heading">Model</h2>
+          </header>
+          <div className="model-viewport">
+            {modelBuilding ? (
+              <p className="project-building model-building" role="status" aria-live="polite">
+                Bringing the model up to date…
+              </p>
+            ) : null}
+            {viewerReady ? <FunctionalModel artifact={modelArtifact} reconnect={modelReconnect} buildError={modelBuildError} session={sessionId ?? ""} onViewerChange={setViewerHandle} /> : <p className="empty">no completed build yet</p>}
+          </div>
+        </section>
+        <CodeWorkspace
+          sessionId={sessionId}
+          sourceEvent={sourceEvent}
+          reconnect={sourceReconnect}
+          visible={activeArea === "code"}
+          requestedOpen={requestedOpen}
+        />
+        <AgentsWorkspace
+          sessionId={sessionId}
+          run={run}
+          visible={activeArea === "agents"}
+          onOpenFile={(path) => {
+            setRequestedOpen({ path, nonce: Date.now() });
+            setActiveArea("code");
+          }}
+        />
+        <BuildWorkspace
+          sessionId={sessionId}
+          revision={buildRevision}
+          buildError={modelBuildError}
+          visible={activeArea === "build"}
+        />
+        <section className="conversation" aria-label="Chat">
+          <header className="conversation-header">
+            <span className="conversation-presence" aria-hidden="true" />
+            <h2>{run?.user_agent.label ?? "Agent"}</h2>
+          </header>
+          <ProfileConversation
+            entries={conversation}
+            failedAgents={run?.agents.filter((agent) => agent.failure) ?? []}
+            onSubmit={submitUserMessage}
+            labels={run ? { user: run.user_label, [run.user_agent.id]: run.user_agent.label } : {}}
+            userAgentLabel={run?.user_agent.label ?? "Agent"}
+          />
+        </section>
+      </div>
+      <footer className="workspace-statusbar" aria-label="Workspace status" />
+    </main>
+  );
+}
+
+function App() {
+  const [path, setPath] = useState(window.location.pathname);
+  useEffect(() => {
+    const update = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", update);
+    return () => window.removeEventListener("popstate", update);
+  }, []);
+  const project = /^\/projects\/(.+)$/.exec(path);
+  if (project) {
+    return <Workspace path={project[1].split("/").map(decodeURIComponent).join("/")} />;
+  }
+  const folder = /^\/folders\/(.+)$/.exec(path);
+  return <Hub folder={folder ? folder[1].split("/").map(decodeURIComponent).join("/") : ""} />;
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

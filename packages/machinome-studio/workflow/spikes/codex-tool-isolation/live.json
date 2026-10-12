@@ -1,0 +1,41 @@
+{
+  "version": "codex-cli 0.157.1",
+  "completed": true,
+  "error": null,
+  "cases": [
+    {
+      "name": "hello",
+      "dynamic_tools": [
+        "floor_hello"
+      ],
+      "messages": [
+        "HELLO_SPIKE_RESULT"
+      ]
+    },
+    {
+      "name": "unavailable_native_access",
+      "dynamic_tools": [],
+      "messages": [
+        "I don’t have a tool that can read `sentinel.txt`, and this environment doesn’t permit writing `forbidden.txt`."
+      ]
+    },
+    {
+      "name": "model_change",
+      "dynamic_tools": [
+        "floor_hello"
+      ],
+      "messages": [
+        "HELLO_SPIKE_RESULT"
+      ]
+    },
+    {
+      "name": "restart_resume_explicit_no_environment",
+      "dynamic_tools": [
+        "floor_hello"
+      ],
+      "messages": [
+        "HELLO_SPIKE_RESULT"
+      ]
+    }
+  ]
+}

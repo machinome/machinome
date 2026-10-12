@@ -1,0 +1,20 @@
+# Everything the setup script and the build generate in this checkout stays
+# out of git: the virtualenv, caches, the built frontend and test reports.
+.venv/
+__pycache__/
+*.pyc
+# Written by the editable install scripts/setup performs.
+*.egg-info/
+node_modules/
+# Vite output for the shop floor browser surface. Generated from
+# floor/frontend by scripts/setup (and `npm --prefix floor/frontend run
+# build`); content-hashed and minified, so tracking it made every
+# frontend merge conflict. The wheel still ships it via package-data.
+floor/static/
+playwright-report/
+test-results/
+# Shop worktrees.
+WTs/
+.env
+# Sphinx output of the manual under docs/.
+docs/_build/

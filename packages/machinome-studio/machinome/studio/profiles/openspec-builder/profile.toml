@@ -1,0 +1,15 @@
+schema_version = 1
+user_label = "Maker"
+user_agent = "builder"
+work_mode = "direct"
+
+[[agents]]
+id = "builder"
+label = "OpenSpec Builder"
+prompt = "builder.md"
+assigns = []
+
+[agents.backends.claude]
+model = "sonnet"
+effort = "medium"
+tools = ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "OpenSpec"]

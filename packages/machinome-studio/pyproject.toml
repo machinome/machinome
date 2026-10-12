@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "machinome-studio"
+version = "0.1.0"
+description = "Machinome Studio mechanical CAD agent harness"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "tomlkit>=0.13,<1",
+    "uvicorn>=0.30,<1",
+    "watchdog>=6,<7",
+]
+
+[project.scripts]
+machinome-studio = "floor.orchestrator:main"
+
+[tool.setuptools.package-data]
+floor = ["static/**"]
+
+[tool.setuptools.packages.find]
+include = ["floor", "floor.*"]
+namespaces = false
+
+[project.optional-dependencies]
+e2e = ["playwright==1.61.0"]
+docs = ["sphinx==9.1.0", "sphinx-rtd-theme==3.1.0"]

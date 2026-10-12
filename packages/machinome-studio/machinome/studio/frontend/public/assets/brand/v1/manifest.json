@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "adopted": "2026-09-20",
+  "identity": "Machinome",
+  "tagline": "Source code for machines.",
+  "parentProposal": "07",
+  "colors": {
+    "orange": "#D94E32",
+    "black": "#000000",
+    "white": "#FFFFFF"
+  },
+  "dots": {
+    "standard": "transparent",
+    "favicon": "#FFFFFF"
+  },
+  "font": {
+    "family": "Machinome Logo",
+    "version": "1.000",
+    "sourceFamily": "Anta",
+    "sourceSHA256": "9f3b9723a50c1244d49906b1892b3aad43876ab9a2de80288db47821b0c7b298",
+    "unitsPerEm": 2048,
+    "mBounds": [
+      140,
+      0,
+      1633,
+      1422.3333333333333
+    ],
+    "targetCapHeight": 1422,
+    "mAdvance": 1714,
+    "mLSB": 140,
+    "trackingEm": -0.01,
+    "kerning": "off",
+    "curveApproximationMaxErrorFontUnits": 0.25,
+    "format": [
+      "TrueType",
+      "WOFF"
+    ],
+    "license": "SIL Open Font License 1.1",
+    "characters": "Macehimno",
+    "wordmarkText": "Machinome",
+    "glyphCount": 10,
+    "scope": "Logo-only subset. Subsetting is not an enforcement mechanism; never apply to general text."
+  },
+  "wordmark": {
+    "width": 535.4114975298821,
+    "height": 73.31645569620252,
+    "mHeight": 72,
+    "mWidth": 75.59985196026189,
+    "visibleInitialGap": 8.64,
+    "provenance": "Proposal 07 Anta, unchanged outlines and spacing; tight export bounds."
+  },
+  "assets": [
+    "favicon-16.png",
+    "favicon-180.png",
+    "favicon-192.png",
+    "favicon-32.png",
+    "favicon-48.png",
+    "favicon-512.png",
+    "favicon-64.png",
+    "favicon.ico",
+    "favicon.svg",
+    "fonts/FONTLOG.md",
+    "fonts/MachinomeLogo-Regular.ttf",
+    "fonts/MachinomeLogo-Regular.woff",
+    "fonts/OFL.txt",
+    "identity.css",
+    "mark-black.svg",
+    "mark-orange.svg",
+    "mark-white.svg",
+    "wordmark-black.png",
+    "wordmark-black.svg",
+    "wordmark-orange.png",
+    "wordmark-orange.svg",
+    "wordmark-white.png",
+    "wordmark-white.svg"
+  ]
+}

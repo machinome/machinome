@@ -1,0 +1,1484 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-or-later
+"""Project-scoped MCP tools exposed to runtime agents over stdio.
+
+The server deliberately implements the small MCP JSON-RPC surface it needs
+instead of importing the Python MCP SDK.  The environment the studio runs in
+also carries the machinome CLI, whose pinned Uvicorn version conflicts with the SDK's runtime
+dependency.  Keeping this server stdio-only avoids changing that environment.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import fnmatch
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from typing import Any, NoReturn
+
+from .agent import FloorClient
+from .openspec import (
+    HOUSE_RULES,
+    OUTSIDE_PROJECT_SUBCOMMANDS,
+    RECORD_MARKER as OPENSPEC_RECORD_MARKER,
+    SETUP_COMMIT_MESSAGE,
+    openspec_environment,
+    resolve_openspec_command,
+    resolve_openspec_root,
+)
+from .screenshots import is_safe_screenshot, refresh_project_screenshot, screenshot_path
+
+
+SERVER_NAME = "floor"
+PROTOCOL_VERSION = "2025-06-18"
+
+FILESYSTEM_READ_TOOLS = (
+    "list_dir", "find_files", "search_content", "read_file", "stat",
+)
+FILESYSTEM_WRITE_TOOLS = (
+    "write_file", "edit_file", "apply_patch", "delete_file", "move_file", "make_dir",
+)
+GIT_TOOLS = (
+    "git_status", "git_diff", "git_log", "git_show", "git_rev_parse_toplevel",
+    "git_merge_base_is_ancestor", "git_head", "git_add", "git_commit",
+)
+MACHINOME_TOOLS = ("machinome_build", "machinome_test", "machinome_snapshot")
+OPENSPEC_TOOLS = ("openspec_setup", "openspec_run")
+FLOOR_TOOLS = (
+    "floor_assign", "floor_direction", "floor_acknowledge", "floor_report",
+    "floor_complete",
+)
+# Loading a skill follows the declared skills of the session's agent, not its
+# declared tool capabilities, so it belongs to no capability group below.
+SKILL_TOOL = "load_skill"
+TOOL_NAMES = (
+    FILESYSTEM_READ_TOOLS + FILESYSTEM_WRITE_TOOLS + GIT_TOOLS + MACHINOME_TOOLS
+    + FLOOR_TOOLS + OPENSPEC_TOOLS + (SKILL_TOOL,)
+)
+
+# Existing profile declarations remain the profile-facing policy.  Their
+# native capabilities resolve to the narrower floor operations below.
+PROFILE_TOOL_MAP: dict[str, tuple[str, ...]] = {
+    "Read": ("read_file", "stat"),
+    "Glob": ("list_dir", "find_files"),
+    "Grep": ("search_content",),
+    "Write": ("write_file", "delete_file", "move_file", "make_dir"),
+    "Edit": ("edit_file", "apply_patch"),
+    "Bash": GIT_TOOLS + MACHINOME_TOOLS + FLOOR_TOOLS,
+    # Its own capability: a role reaches the project's spec record only by
+    # declaring it, never as a side effect of holding a shell or file surface.
+    "OpenSpec": OPENSPEC_TOOLS,
+    # The ratified change intentionally supplies no replacement web surface.
+    "WebSearch": (),
+    "WebFetch": (),
+}
+
+NATIVE_OPENCODE_TOOLS = (
+    "read", "write", "edit", "bash", "glob", "grep", "list", "webfetch",
+    "websearch", "task", "todowrite", "todoread", "patch", "question", "skill",
+)
+
+# Metadata `git diff` emits around each file, which carries no hunk content.
+GIT_DIFF_PREAMBLE = (
+    "diff --git ", "index ", "new file mode ", "deleted file mode ",
+    "old mode ", "new mode ", "similarity index ", "dissimilarity index ",
+    "rename from ", "rename to ", "copy from ", "copy to ",
+)
+
+RASTER_MIME_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
+
+@dataclass(frozen=True)
+class ImagePayload:
+    """Binary image result converted to MCP image content at the transport."""
+
+    data: bytes
+    mime_type: str
+
+    @property
+    def _mime_type(self) -> str:  # compatibility with the SDK Image shape
+        return self.mime_type
+
+
+def resolved_tool_names(profile_tools: str | tuple[str, ...]) -> tuple[str, ...]:
+    """Resolve trusted profile capabilities to stable floor tool names."""
+    if profile_tools == "inherit":
+        return ()
+    resolved: list[str] = []
+    for capability in profile_tools:
+        for name in PROFILE_TOOL_MAP.get(capability, ()):
+            if name not in resolved:
+                resolved.append(name)
+    return tuple(resolved)
+
+
+def mcp_command(
+    project: Path,
+    machinome_command: tuple[str, ...],
+    *,
+    model: str | None = None,
+    python: str | None = None,
+    floor_url: str | None = None,
+    floor_session: str | None = None,
+    skills: Mapping[str, Path] | None = None,
+) -> list[str]:
+    """Build the portable local-server command used by both backends."""
+    command = [
+        python or sys.executable,
+        "-m",
+        "floor.mcp_server",
+        "--project",
+        str(project.resolve()),
+        "--machinome-command-json",
+        json.dumps(machinome_command),
+    ]
+    if model is not None:
+        command.extend(("--model", model))
+    if floor_url is not None:
+        command.extend(("--floor-url", floor_url))
+    if floor_session is not None:
+        command.extend(("--floor-session", floor_session))
+    if skills:
+        command.extend((
+            "--skills-json",
+            json.dumps({name: str(Path(path).resolve()) for name, path in skills.items()}, sort_keys=True),
+        ))
+    return command
+
+
+class ProjectTools:
+    """All tool actions, with one shared active-project containment gate."""
+
+    def __init__(
+        self,
+        project: Path,
+        *,
+        model: str | None = None,
+        machinome_command: tuple[str, ...] = ("machinome",),
+        floor_url: str | None = None,
+        floor_session: str | None = None,
+        skills: Mapping[str, Path] | None = None,
+        git_signing_required: bool = False,
+    ) -> None:
+        self.root = project.resolve(strict=True)
+        if not self.root.is_dir():
+            raise ValueError(f"active project is not a directory: {self.root}")
+        # The model this session owns.  A repository may hold several, each
+        # open in its own session, so a tool that takes no reference works on
+        # this session's model rather than on whichever one the project
+        # defaults to.
+        self.model = model
+        self.git_signing_required = git_signing_required
+        # Fixed at launch by the shop: an agent names a skill, never a location.
+        self.skills = {
+            name: Path(path).resolve(strict=True) for name, path in (skills or {}).items()
+        }
+        self.machinome_command = tuple(machinome_command)
+        if not self.machinome_command:
+            raise ValueError("solid command must not be empty")
+        # Resolved on first use: startup already proved the CLI runs.
+        self._openspec_command: tuple[str, ...] | None = None
+        self.floor = (
+            FloorClient(floor_url, floor_session)
+            if floor_url is not None and floor_session is not None
+            else None
+        )
+
+    def _floor(self) -> FloorClient:
+        if self.floor is None:
+            raise RuntimeError("active floor session is unavailable")
+        return self.floor
+
+    # -- containment -------------------------------------------------
+
+    def _path(self, value: str, *, must_exist: bool = False) -> Path:
+        if not isinstance(value, str) or not value or "\x00" in value:
+            raise ValueError("path must be a non-empty string")
+        candidate = Path(value)
+        if not candidate.is_absolute():
+            candidate = self.root / candidate
+        try:
+            resolved = candidate.resolve(strict=must_exist)
+        except OSError as error:
+            raise ValueError(f"invalid project path {value!r}: {error}") from error
+        if resolved != self.root and self.root not in resolved.parents:
+            raise ValueError(f"path resolves outside active project: {value!r}")
+        return resolved
+
+    def _relative(self, value: str, *, must_exist: bool = False) -> str:
+        return self._path(value, must_exist=must_exist).relative_to(self.root).as_posix() or "."
+
+    def _reference(self, value: str | None) -> str | None:
+        if value is None:
+            return self.model
+        if not isinstance(value, str) or not value or "\x00" in value:
+            raise ValueError("reference must be a non-empty string")
+        source, separator, target = value.partition(":")
+        looks_like_path = (
+            Path(source).is_absolute()
+            or "/" in source
+            or "\\" in source
+            or source.startswith(".")
+            or source.endswith(".py")
+        )
+        if not looks_like_path:
+            if value.startswith("-"):
+                raise ValueError("reference must not start with '-'")
+            return value
+        relative = self._relative(source)
+        return f"{relative}{separator}{target}" if separator else relative
+
+    @staticmethod
+    def _revision(value: str) -> str:
+        if not isinstance(value, str) or not value or value.startswith("-") or "\x00" in value:
+            raise ValueError("git revision must be a non-empty non-option string")
+        return value
+
+    # -- subprocesses ------------------------------------------------
+
+    def _run(self, command: list[str], *, environment: dict[str, str] | None = None) -> dict[str, Any]:
+        completed = subprocess.run(
+            command,
+            cwd=self.root,
+            text=True,
+            capture_output=True,
+            check=False,
+            env=environment,
+        )
+        return {
+            "ok": completed.returncode == 0,
+            "exit_code": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+        }
+
+    def _git(self, *args: str) -> dict[str, Any]:
+        return self._run(["git", *args])
+
+    def _visible_files(self, path: str = ".") -> list[str]:
+        relative = self._relative(path, must_exist=True)
+        target = self._path(path, must_exist=True)
+        if target.is_file():
+            return [relative]
+        result = self._git("ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", relative)
+        if not result["ok"]:
+            raise RuntimeError(result["stderr"] or result["stdout"] or "git ls-files failed")
+        return sorted(item for item in result["stdout"].split("\x00") if item)
+
+    # -- filesystem reads -------------------------------------------
+
+    def list_dir(self, path: str = ".", recursive: bool = False) -> list[str]:
+        """List the project files in a directory.
+
+        Ignored and untracked-but-excluded files are omitted.  Paths are
+        relative to the project root; directories end with `/`.
+        """
+        target = self._path(path, must_exist=True)
+        if not target.is_dir():
+            raise ValueError(f"not a directory: {path!r}")
+        relative = target.relative_to(self.root)
+        files = self._visible_files(path)
+        values: set[str] = set()
+        prefix_count = len(relative.parts)
+        for item in files:
+            parts = Path(item).parts[prefix_count:]
+            if not parts:
+                continue
+            if recursive:
+                values.add(PurePosixPath(*parts).as_posix())
+            else:
+                values.add(parts[0] + ("/" if len(parts) > 1 else ""))
+        return sorted(values)
+
+    def find_files(self, pattern: str) -> list[str]:
+        """Find project files whose path or basename matches a glob pattern."""
+        if not isinstance(pattern, str) or not pattern or "\x00" in pattern:
+            raise ValueError("pattern must be a non-empty string")
+        return [
+            path for path in self._visible_files()
+            if fnmatch.fnmatch(path, pattern) or fnmatch.fnmatch(Path(path).name, pattern)
+        ]
+
+    def search_content(
+        self,
+        pattern: str,
+        path: str = ".",
+        regex: bool = False,
+    ) -> list[str]:
+        """Search project file contents, returning `path:line:text` matches."""
+        if not isinstance(pattern, str) or not pattern:
+            raise ValueError("pattern must be a non-empty string")
+        matcher = re.compile(pattern) if regex else None
+        matches: list[str] = []
+        for relative in self._visible_files(path):
+            candidate = self._path(relative, must_exist=True)
+            try:
+                lines = candidate.read_text().splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+            for line_number, line in enumerate(lines, 1):
+                if (matcher.search(line) if matcher else pattern in line):
+                    matches.append(f"{relative}:{line_number}:{line}")
+        return matches
+
+    def read_file(
+        self,
+        path: str,
+        offset: int | None = None,
+        limit: int | None = None,
+    ) -> str | ImagePayload:
+        """Read a project file.
+
+        Text files return their content; PNG, JPG, GIF, and WEBP files return
+        viewable image content instead of raw bytes.  Read the lines you are
+        about to patch immediately before patching them: `apply_patch`
+        matches context against the file as it is now, not as it was earlier
+        in the session.
+        """
+        target = self._path(path, must_exist=True)
+        if not target.is_file():
+            raise ValueError(f"not a file: {path!r}")
+        mime = RASTER_MIME_TYPES.get(target.suffix.lower())
+        if mime is not None:
+            if offset is not None or limit is not None:
+                raise ValueError("offset and limit are not valid for raster images")
+            return ImagePayload(target.read_bytes(), mime)
+        if offset is not None and offset < 1:
+            raise ValueError("offset must be at least 1")
+        if limit is not None and limit < 0:
+            raise ValueError("limit must be non-negative")
+        lines = target.read_text().splitlines(keepends=True)
+        start = 0 if offset is None else offset - 1
+        stop = None if limit is None else start + limit
+        return "".join(lines[start:stop])
+
+    def stat(self, path: str) -> dict[str, Any]:
+        """Report existence, type, size, and modification time for a path."""
+        raw = Path(path)
+        candidate = raw if raw.is_absolute() else self.root / raw
+        target = self._path(path, must_exist=False)
+        exists = target.exists()
+        result: dict[str, Any] = {
+            "exists": exists,
+            "is_symlink": candidate.is_symlink(),
+            "is_dir": exists and target.is_dir(),
+            "size": None,
+            "mtime": None,
+        }
+        if exists:
+            value = target.stat()
+            result["size"] = value.st_size
+            result["mtime"] = datetime.fromtimestamp(value.st_mtime, timezone.utc).isoformat()
+        return result
+
+    # -- filesystem writes ------------------------------------------
+
+    def write_file(self, path: str, content: str, must_not_exist: bool = False) -> dict[str, Any]:
+        """Write a file whole, creating it and any missing parent directories.
+
+        This is the way to create a new file: no prior file, `make_dir` call,
+        or patch is needed.  Prefer `edit_file` or `apply_patch` when only
+        part of an existing file changes.
+        """
+        target = self._path(path)
+        if target.exists() and target.is_dir():
+            raise ValueError(f"target is a directory: {path!r}")
+        if must_not_exist and target.exists():
+            raise FileExistsError(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
+        return {"path": target.relative_to(self.root).as_posix(), "bytes": len(content.encode())}
+
+    def edit_file(
+        self,
+        path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> dict[str, Any]:
+        """Replace an exact string in an existing file.
+
+        The most reliable edit when one known block changes, because it does
+        not depend on line numbers or surrounding context.  `old_string` must
+        match exactly once unless `replace_all` is set.
+        """
+        target = self._path(path, must_exist=True)
+        content = target.read_text()
+        count = content.count(old_string)
+        if count == 0:
+            raise ValueError("old_string was not found")
+        if not replace_all and count != 1:
+            raise ValueError(f"old_string matched {count} times; use replace_all")
+        target.write_text(content.replace(old_string, new_string, -1 if replace_all else 1))
+        return {"path": target.relative_to(self.root).as_posix(), "replacements": count if replace_all else 1}
+
+    def apply_patch(self, unified_diff: str, path: str | None = None) -> dict[str, Any]:
+        """Apply a standard unified diff to one or more project files.
+
+        The diff names the files it changes, so `path` is optional; supply it
+        only for a single-file diff, where it is checked against the diff.
+        `--- /dev/null` creates a file and `+++ /dev/null` deletes one, so one
+        call can carry a whole coherent edit across implementation and tests.
+
+        Every file is verified against its current content before anything is
+        written: if any hunk does not match, no file is modified at all.
+
+        Hunk context must match exactly, but `@@` line numbers are only a hint:
+        each hunk is located by searching outward from the line it names, so a
+        diff still applies when earlier edits have shifted the file.  A hunk
+        whose context appears nowhere is an error naming the closest near miss;
+        re-read the file and rebuild that hunk rather than guessing an offset.
+
+        Output from `git diff` applies unedited, including its `diff --git` and
+        `index` preamble.  This tool is not Codex `apply_patch`; a
+        `*** Begin Patch` envelope is rejected.
+        """
+        lines = unified_diff.splitlines(keepends=True)
+        if any(line.startswith("*** ") for line in lines):
+            raise ValueError(
+                "patch is not a unified diff: remove the '*** Begin Patch' envelope "
+                "and send ordinary '--- a/<path>' and '+++ b/<path>' headers "
+                "followed by '@@' hunks"
+            )
+        headers = [index for index, line in enumerate(lines) if line.startswith("--- ")]
+        if not headers or any(
+            index + 1 >= len(lines) or not lines[index + 1].startswith("+++ ")
+            for index in headers
+        ):
+            raise ValueError(
+                "patch must contain a unified-diff file header: a '--- a/<path>' "
+                "line immediately followed by a '+++ b/<path>' line"
+            )
+        if path is not None and len(headers) > 1:
+            raise ValueError(
+                f"patch describes {len(headers)} files but 'path' names one; omit "
+                "'path' for a multi-file diff, since the diff names its own targets"
+            )
+
+        if path is not None:
+            named = self._path(path)
+            described = self._patch_target(lines[headers[0]], lines[headers[0] + 1])
+            if named != described:
+                raise ValueError(
+                    f"patch changes {described.relative_to(self.root).as_posix()} but "
+                    f"'path' names {named.relative_to(self.root).as_posix()}"
+                )
+
+        # Phase one: resolve and verify every file the diff describes.  A file's
+        # hunks end before the next file's `diff --git`/`index` preamble.
+        plans: list[tuple[Path, str, list[str] | None]] = []
+        for position, start in enumerate(headers):
+            stop = headers[position + 1] if position + 1 < len(headers) else len(lines)
+            while stop > start + 2 and lines[stop - 1].startswith(GIT_DIFF_PREAMBLE):
+                stop -= 1
+            plans.append(self._patch_plan(lines, start, stop))
+
+        # Phase two: no plan can fail from here, so the whole diff lands.
+        files: list[dict[str, str]] = []
+        for target, relative, content in plans:
+            if content is None:
+                target.unlink()
+                files.append({"path": relative, "change": "deleted"})
+                continue
+            created = not target.exists()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("".join(content))
+            files.append({"path": relative, "change": "created" if created else "changed"})
+        return {"files": files, "applied": True}
+
+    HUNK_HEADER = re.compile(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+    def _patch_plan(
+        self, lines: list[str], start: int, stop: int
+    ) -> tuple[Path, str, list[str] | None]:
+        """Verify one file's hunks and return its resolved content, or None to delete."""
+        source = self._patch_header_path(lines[start])
+        destination = self._patch_header_path(lines[start + 1])
+        target = self._patch_target(lines[start], lines[start + 1])
+        relative = target.relative_to(self.root).as_posix()
+        if source is None:
+            if target.exists():
+                raise ValueError(
+                    f"patch creates {relative} from /dev/null but that file already "
+                    "exists; diff it against its current content instead"
+                )
+            original: list[str] = []
+        else:
+            if not target.is_file():
+                raise ValueError(
+                    f"patch changes {relative}, which is not an existing file; "
+                    "create new files with write_file or with a '--- /dev/null' header"
+                )
+            original = target.read_text().splitlines(keepends=True)
+
+        output: list[str] = []
+        cursor = 0
+        drift = 0
+        for header, old_start, old_lines, new_lines in self._patch_hunks(
+            lines, start, stop, relative
+        ):
+            # The header's line number is a hint, not an anchor: an earlier edit
+            # shifts every later hunk, so carry the drift and search from there.
+            hint = old_start - 1 + drift
+            position = self._locate_hunk(original, old_lines, hint, cursor)
+            if position is None:
+                self._raise_hunk_mismatch(
+                    original, old_lines, hint, cursor, header, relative
+                )
+            output.extend(original[cursor:position])
+            output.extend(new_lines)
+            drift = position - (old_start - 1)
+            cursor = position + len(old_lines)
+        output.extend(original[cursor:])
+        if destination is None:
+            if output:
+                raise ValueError(
+                    f"patch deletes {relative} to /dev/null but leaves content behind"
+                )
+            return target, relative, None
+        return target, relative, output
+
+    def _patch_hunks(
+        self, lines: list[str], start: int, stop: int, relative: str
+    ) -> Iterator[tuple[str, int, list[str], list[str]]]:
+        """Split one file's section of a diff into header, start, old and new lines."""
+        index = start + 2
+        while index < stop:
+            match = self.HUNK_HEADER.match(lines[index].rstrip("\n"))
+            if match is None:
+                raise ValueError(
+                    f"invalid unified-diff hunk header for {relative}: "
+                    f"{lines[index].rstrip()!r}; expected "
+                    "'@@ -<old-start>,<old-count> +<new-start>,<new-count> @@'"
+                )
+            header = lines[index].rstrip("\n")
+            old_start = max(int(match.group(1)), 1)
+            old_lines: list[str] = []
+            new_lines: list[str] = []
+            index += 1
+            while index < stop and not lines[index].startswith("@@ "):
+                line = lines[index]
+                if line.startswith("\\ No newline at end of file"):
+                    index += 1
+                    continue
+                if not line or line[0] not in " +-":
+                    raise ValueError(
+                        f"invalid unified-diff line for {relative}: {line.rstrip()!r}; "
+                        "every line in a hunk must begin with ' ', '+', or '-'"
+                    )
+                marker, value = line[0], line[1:]
+                if marker in " -":
+                    old_lines.append(value)
+                if marker in " +":
+                    new_lines.append(value)
+                index += 1
+            yield header, old_start, old_lines, new_lines
+
+    @staticmethod
+    def _candidate_positions(
+        original: list[str], old_lines: list[str], hint: int, floor: int
+    ) -> Iterator[int]:
+        """Yield each plausible start for a hunk, closest to the hint first."""
+        last = len(original) - len(old_lines)
+        if last < floor:
+            yield min(max(hint, floor), len(original))
+            return
+        hint = min(max(hint, floor), last)
+        yield hint
+        for distance in range(1, max(hint - floor, last - hint) + 1):
+            if hint + distance <= last:
+                yield hint + distance
+            if hint - distance >= floor:
+                yield hint - distance
+
+    def _locate_hunk(
+        self, original: list[str], old_lines: list[str], hint: int, floor: int
+    ) -> int | None:
+        """Find where a hunk's old-side lines sit, or None when they are absent."""
+        for position in self._candidate_positions(original, old_lines, hint, floor):
+            if original[position : position + len(old_lines)] == old_lines:
+                return position
+        return None
+
+    def _raise_hunk_mismatch(
+        self,
+        original: list[str],
+        old_lines: list[str],
+        hint: int,
+        floor: int,
+        header: str,
+        relative: str,
+    ) -> NoReturn:
+        """Report the mismatch at the place the hunk came closest to matching."""
+        position, matched = 0, -1
+        for candidate in self._candidate_positions(original, old_lines, hint, floor):
+            length = 0
+            while (
+                length < len(old_lines)
+                and candidate + length < len(original)
+                and original[candidate + length] == old_lines[length]
+            ):
+                length += 1
+            if length > matched:
+                position, matched = candidate, length
+        line = position + matched
+        actual = repr(original[line]) if line < len(original) else "end of file"
+        raise ValueError(
+            f"patch context does not match target file at line "
+            f"{line + 1} of {relative} (hunk {header!r}): "
+            f"patch expected {old_lines[matched]!r} but the file has {actual}. "
+            "Re-read the file and rebuild the diff, or use edit_file "
+            "for a narrow exact replacement. No file was modified."
+        )
+
+    def _patch_target(self, source_header: str, destination_header: str) -> Path:
+        """Resolve the project file one file header pair describes."""
+        source = self._patch_header_path(source_header)
+        destination = self._patch_header_path(destination_header)
+        if source is None and destination is None:
+            raise ValueError("unified-diff file header names /dev/null on both sides")
+        return self._path(destination if destination is not None else source)
+
+    @staticmethod
+    def _patch_header_path(header: str) -> str | None:
+        """Read a file path out of a '---' or '+++' header, or None for /dev/null."""
+        value = header.split("\t", 1)[0].rstrip("\n")[4:].strip()
+        if not value:
+            raise ValueError(f"unified-diff file header names no path: {header.rstrip()!r}")
+        if value in ("/dev/null", "a/dev/null", "b/dev/null"):
+            return None
+        prefix, separator, remainder = value.partition("/")
+        return remainder if separator and prefix in ("a", "b") else value
+
+    def delete_file(self, path: str) -> dict[str, Any]:
+        """Delete one existing project file."""
+        target = self._path(path, must_exist=True)
+        if not target.is_file():
+            raise ValueError(f"not a file: {path!r}")
+        target.unlink()
+        return {"path": target.relative_to(self.root).as_posix(), "deleted": True}
+
+    def move_file(self, src: str, dst: str) -> dict[str, Any]:
+        """Move or rename a project file; the destination must not exist."""
+        source = self._path(src, must_exist=True)
+        destination = self._path(dst)
+        if destination.exists():
+            raise FileExistsError(dst)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(source), str(destination))
+        return {
+            "src": source.relative_to(self.root).as_posix(),
+            "dst": destination.relative_to(self.root).as_posix(),
+        }
+
+    def make_dir(self, path: str) -> dict[str, Any]:
+        """Create a directory and its parents; `write_file` does not need it."""
+        target = self._path(path)
+        target.mkdir(parents=True, exist_ok=True)
+        return {"path": target.relative_to(self.root).as_posix(), "created": True}
+
+    # -- git ---------------------------------------------------------
+
+    def git_status(self) -> dict[str, Any]:
+        """Show the short branch-annotated working-tree status."""
+        return self._git("status", "--short", "--branch")
+
+    def git_diff(self, path: str | None = None, staged: bool = False) -> dict[str, Any]:
+        """Show unstaged changes, or staged changes when `staged` is set."""
+        args = ["diff"]
+        if staged:
+            args.append("--cached")
+        if path is not None:
+            args.extend(("--", self._relative(path)))
+        return self._git(*args)
+
+    def git_log(self, path: str | None = None, limit: int = 20) -> dict[str, Any]:
+        """Show recent commits in one-line decorated form."""
+        if limit < 1 or limit > 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        args = ["log", f"-{limit}", "--oneline", "--decorate"]
+        if path is not None:
+            args.extend(("--", self._relative(path)))
+        return self._git(*args)
+
+    def git_show(self, revision: str, path: str) -> dict[str, Any]:
+        """Read one file's content as of a given revision.
+
+        Use this to read a released drawing exactly as it was committed,
+        rather than the possibly edited working copy.
+        """
+        relative = self._relative(path)
+        return self._git("show", f"{self._revision(revision)}:{relative}")
+
+    def git_rev_parse_toplevel(self) -> str:
+        """Return the repository root, failing unless it is the active project."""
+        result = self._git("rev-parse", "--show-toplevel")
+        if not result["ok"]:
+            raise RuntimeError(result["stderr"] or "git rev-parse failed")
+        toplevel = Path(result["stdout"].strip()).resolve()
+        if toplevel != self.root:
+            raise RuntimeError(f"active project is not its repository root: {toplevel}")
+        return str(toplevel)
+
+    def git_merge_base_is_ancestor(self, commit: str, ref: str = "HEAD") -> dict[str, Any]:
+        """Report whether `commit` is an ancestor of `ref` (default HEAD)."""
+        result = self._git(
+            "merge-base", "--is-ancestor", self._revision(commit), self._revision(ref)
+        )
+        result["is_ancestor"] = result["exit_code"] == 0
+        return result
+
+    def git_head(self) -> dict[str, Any]:
+        """Return the current commit sha and branch name."""
+        sha = self._git("rev-parse", "HEAD")
+        branch = self._git("symbolic-ref", "--quiet", "--short", "HEAD")
+        if not sha["ok"]:
+            raise RuntimeError(sha["stderr"] or "git rev-parse HEAD failed")
+        return {
+            "sha": sha["stdout"].strip(),
+            "branch": branch["stdout"].strip() if branch["ok"] else None,
+        }
+
+    def git_add(self, paths: list[str]) -> dict[str, Any]:
+        """Stage the exact paths given; no path is unstaged or substituted."""
+        if not paths:
+            raise ValueError("paths must not be empty")
+        return self._git("add", "--", *(self._relative(path) for path in paths))
+
+    def _staged_paths(self) -> list[str] | None:
+        """Paths in the index, or None when git cannot report them."""
+        listed = self._git("diff", "--cached", "--name-only")
+        if not listed["ok"]:
+            return None
+        return [line for line in listed["stdout"].splitlines() if line.strip()]
+
+    def _carries_model_content(self) -> bool:
+        """Whether the staged content could change what a render would show.
+
+        Only the spec record is known to be inert. Anything the shop cannot
+        prove inert renders, because a silently stale screenshot is worse
+        than a redundant build.
+        """
+        staged = self._staged_paths()
+        if not staged:
+            return True
+        record = f"{OPENSPEC_RECORD_MARKER.parts[0]}/"
+        return not all(path.startswith(record) for path in staged)
+
+    def git_commit(self, message: str) -> dict[str, Any]:
+        """Commit the staged changes in the active project.
+
+        The shop also best-effort refreshes and stages the managed root
+        `screenshot.png` preview; a screenshot failure never blocks the
+        commit and is reported separately as a warning.  A commit carrying
+        no model content — a planning commit against the spec record — skips
+        the render, so a missing refresh is never mistaken for a failure.
+        """
+        self._check_commit_signing()
+        if not isinstance(message, str) or not message:
+            raise ValueError("message must be a non-empty string")
+        if not self._carries_model_content():
+            result = self._git("commit", "-m", message)
+            result["rendered"] = False
+            result["note"] = (
+                "no model content was staged, so the model was not rebuilt and "
+                "screenshot.png was left as it is"
+            )
+            return result
+        screenshot = refresh_project_screenshot(self.root, self.machinome_command, model=self.model)
+        warning = screenshot.warning
+        preview = str(screenshot_path(self.root, self.model).relative_to(self.root))
+        if is_safe_screenshot(self.root, self.model):
+            staged = self._git("add", "--", preview)
+            if not staged["ok"]:
+                warning = staged["stderr"] or f"could not stage {preview}"
+        result = self._git("commit", "-m", message)
+        result["rendered"] = True
+        if warning:
+            result["screenshot_warning"] = warning
+        return result
+
+    # -- openspec ----------------------------------------------------
+
+    def _openspec(self) -> tuple[str, ...]:
+        if self._openspec_command is None:
+            self._openspec_command = resolve_openspec_command()
+        return self._openspec_command
+
+    def _run_openspec(self, arguments: Sequence[str]) -> dict[str, Any]:
+        return self._run(
+            [*self._openspec(), *arguments],
+            environment=openspec_environment(dict(os.environ)),
+        )
+
+    def _openspec_arguments(self, arguments: Any) -> list[str]:
+        """Accept an argument vector that cannot leave the active project."""
+        if not isinstance(arguments, (list, tuple)) or not arguments:
+            raise ValueError("arguments must be a non-empty list of strings")
+        vector = list(arguments)
+        for argument in vector:
+            if not isinstance(argument, str) or not argument or "\x00" in argument:
+                raise ValueError("each openspec argument must be a non-empty string")
+            if argument == "--store" or argument.startswith("--store="):
+                raise ValueError("a store is machine-level OpenSpec state: --store is not available")
+            # Any path-shaped argument is held to the same containment as
+            # every other tool's path.
+            if "/" in argument or argument.startswith(".") or Path(argument).is_absolute():
+                self._path(argument)
+        subcommand = next((argument for argument in vector if not argument.startswith("-")), None)
+        if subcommand is None:
+            raise ValueError("arguments must name an openspec subcommand")
+        if subcommand in OUTSIDE_PROJECT_SUBCOMMANDS:
+            raise ValueError(
+                f"`openspec {subcommand}` reads or writes OpenSpec state outside this project"
+            )
+        return vector
+
+    def _require_a_finished_change(self, vector: Sequence[str]) -> None:
+        """Refuse to close a change over work its own record says is open.
+
+        The CLI cannot gate this: without `--yes` it prompts, and a stdio
+        subprocess has no one to answer, while `--yes` archives regardless.
+        """
+        name = next(
+            (argument for argument in vector[1:] if not argument.startswith("-")), None
+        )
+        if name is None:
+            raise ValueError("archive requires the name of the change to close")
+        listed = self._run_openspec(["list", "--json"])
+        if not listed["ok"]:
+            raise RuntimeError(listed["stderr"] or listed["stdout"] or "openspec list failed")
+        try:
+            changes = json.loads(listed["stdout"])["changes"]
+        except (ValueError, KeyError, TypeError) as error:
+            raise RuntimeError(f"could not read the change list: {error}") from error
+        recorded = next((change for change in changes if change.get("name") == name), None)
+        if recorded is None:
+            raise ValueError(f"no active change named {name!r} to archive")
+        if recorded.get("completedTasks") == recorded.get("totalTasks"):
+            return
+        outstanding = self._outstanding_tasks(name)
+        listing = "".join(f"\n  - {task}" for task in outstanding)
+        raise ValueError(
+            f"change {name!r} still records unfinished work:{listing}\n"
+            "Finish it, or amend the change's own task record to say what "
+            "stopped being relevant. There is no override."
+        )
+
+    def _outstanding_tasks(self, name: str) -> list[str]:
+        tasks = self.root / "openspec" / "changes" / name / "tasks.md"
+        if not tasks.is_file():
+            return []
+        return [
+            match.group(1).strip()
+            for match in (
+                re.match(r"\s*[-*]\s*\[ \]\s*(.+)", line)
+                for line in tasks.read_text(encoding="utf-8", errors="replace").splitlines()
+            )
+            if match
+        ]
+
+    def _check_commit_signing(self) -> None:
+        if self.git_signing_required:
+            raise RuntimeError("Scoped Codex workers cannot honor required signed commits; use a backend with configured signing support")
+
+    def openspec_setup(self) -> dict[str, Any]:
+        """Prepare this project's OpenSpec record: initialize, seed, commit.
+
+        One call, because preparation is ceremony rather than design work,
+        and because every project should start from the same house rules.
+        """
+        config = self.root / OPENSPEC_RECORD_MARKER
+        if config.is_file():
+            return {
+                "ok": True,
+                "created": False,
+                "root": str(self.root),
+                "message": "this project already owns an OpenSpec record; nothing was changed",
+            }
+        self._check_commit_signing()
+        initialized = self._run_openspec(["init", "--tools", "none"])
+        if not initialized["ok"] or not config.is_file():
+            raise RuntimeError(
+                initialized["stderr"] or initialized["stdout"] or "openspec init failed"
+            )
+        # Seeded once. From here the project owns the file, and a later
+        # improvement to the seed does not reach into it.
+        config.write_text(HOUSE_RULES, encoding="utf-8")
+        staged = self._git("add", "--", "openspec")
+        if not staged["ok"]:
+            raise RuntimeError(staged["stderr"] or "could not stage the new spec record")
+        # Nothing here is model content, so no render and no screenshot.
+        committed = self._git("commit", "-m", SETUP_COMMIT_MESSAGE)
+        if not committed["ok"]:
+            raise RuntimeError(committed["stderr"] or committed["stdout"] or "could not commit the spec record")
+        return {
+            "ok": True,
+            "created": True,
+            "root": str(self.root),
+            "message": "spec record initialized, house rules seeded, and committed",
+            "stdout": committed["stdout"],
+        }
+
+    def openspec_run(self, arguments: list[str]) -> dict[str, Any]:
+        """Run the `openspec` CLI in this project with the given arguments."""
+        vector = self._openspec_arguments(arguments)
+        resolved = resolve_openspec_root(self.root)
+        if resolved != self.root:
+            where = f"{resolved}" if resolved is not None else "nowhere"
+            raise ValueError(
+                f"this project has no OpenSpec record of its own, so `openspec` would "
+                f"resolve its root at {where}. Call `openspec_setup` first; nothing was run."
+            )
+        if vector[0] == "archive":
+            self._require_a_finished_change(vector)
+        return self._run_openspec(vector)
+
+    # -- machinome --------------------------------------------------
+
+    def machinome_build(self, path: str | None = None) -> dict[str, Any]:
+        """Run `machinome build`, returning its exit status and output."""
+        reference = self._reference(path)
+        result = self._run([*self.machinome_command, "build", *([reference] if reference else [])])
+        if result["ok"]:
+            screenshot = refresh_project_screenshot(self.root, self.machinome_command, model=self.model)
+            if screenshot.warning:
+                result["screenshot_warning"] = screenshot.warning
+        return result
+
+    def machinome_test(
+        self,
+        path: str | None = None,
+        failfast: bool = False,
+        kernel: str | None = None,
+    ) -> dict[str, Any]:
+        """Run `machinome test`, returning its exit status and output.
+
+        `kernel` selects the comparison kernel for this run -- "faceted" for
+        the fast development loop on meshes, "exact" for the certified run --
+        and is passed through as the framework's own flag. Omitted, the run
+        takes the framework's default: the project's `.env`, else exact.
+        """
+        if kernel is not None and kernel not in ("exact", "faceted"):
+            raise ValueError(f"kernel must be 'exact' or 'faceted', not {kernel!r}")
+        reference = self._reference(path)
+        command = [*self.machinome_command, "test"]
+        if failfast:
+            command.append("--failfast")
+        if kernel is not None:
+            command.append(f"--{kernel}")
+        if reference:
+            command.append(reference)
+        return self._run(command)
+
+    def machinome_snapshot(
+        self,
+        path: str | None = None,
+        time: float | None = None,
+        camera: str | None = None,
+        imgsize: str | None = None,
+        projection: str | None = None,
+        colorscheme: str | None = None,
+        view: str | None = None,
+        autocenter: bool = False,
+        viewall: bool = False,
+    ) -> ImagePayload:
+        """Render a snapshot and return the image; nothing is left in the project.
+
+        Accepts the same options as the `machinome snapshot` CLI command.  The
+        image is returned as tool output, so it never appears in git status
+        and is never commit evidence.
+        """
+        reference = self._reference(path)
+        with tempfile.TemporaryDirectory(prefix="machinome-studio-snapshot-") as temporary:
+            output = Path(temporary) / "snapshot.png"
+            command = [*self.machinome_command, "snapshot"]
+            if reference:
+                command.append(reference)
+            command.extend(("-o", str(output)))
+            for option, value in (
+                ("--time", time), ("--camera", camera), ("--imgsize", imgsize),
+                ("--projection", projection), ("--colorscheme", colorscheme), ("--view", view),
+            ):
+                if value is not None:
+                    command.extend((option, str(value)))
+            if autocenter:
+                command.append("--autocenter")
+            if viewall:
+                command.append("--viewall")
+            result = self._run(command)
+            if not result["ok"]:
+                raise RuntimeError(
+                    f"machinome snapshot failed ({result['exit_code']}): "
+                    f"{result['stderr'] or result['stdout']}"
+                )
+            if not output.is_file():
+                raise RuntimeError("machinome snapshot succeeded without producing an image")
+            return ImagePayload(output.read_bytes(), "image/png")
+
+    # -- bounded shop broker lifecycle ------------------------------
+
+    def floor_assign(
+        self,
+        sender: str,
+        recipient: str,
+        assignment: str,
+        text: str,
+    ) -> dict[str, Any]:
+        """Dispatch an assignment to a role that reports to you."""
+        return self._floor().assign(sender, recipient, assignment, text)
+
+    def floor_direction(
+        self,
+        sender: str,
+        recipient: str,
+        text: str,
+    ) -> dict[str, Any]:
+        """Send steering direction that does not replace the active assignment."""
+        return self._floor().direction(sender, recipient, text)
+
+    def floor_acknowledge(self, role: str, assignment: str) -> dict[str, Any]:
+        """Acknowledge a received assignment before starting work on it."""
+        return self._floor().acknowledge(role, assignment)
+
+    def floor_report(
+        self,
+        sender: str,
+        recipient: str,
+        text: str,
+        assignment: str = "",
+    ) -> dict[str, Any]:
+        """Send progress, findings, or a final report to another role."""
+        return self._floor().report(sender, recipient, text, assignment)
+
+    def floor_complete(self, role: str, assignment: str) -> dict[str, Any]:
+        """Mark an assignment finished after sending its final report."""
+        return self._floor().complete(role, assignment)
+
+    # -- skills ------------------------------------------------------
+
+    def load_skill(self, name: str, resource: str | None = None) -> str:
+        """Load one of your announced skills and follow its instructions.
+
+        Call this before doing work a skill covers; the session contract lists
+        the skills you hold and what each is for.  The result is the skill's
+        full instructions, followed by the names of any files bundled with it.
+        Pass `resource` with one of those names to read that file.
+
+        Skills live outside the active project, so this is the only way to
+        reach them: the file tools cannot.
+        """
+        if not self.skills:
+            raise ValueError("this session has no skill to load")
+        root = self.skills.get(name)
+        if root is None:
+            raise ValueError(
+                f"unknown skill {name!r}; this session can load: "
+                f"{', '.join(sorted(self.skills))}"
+            )
+        if resource is not None:
+            return self._skill_resource(root, name, resource).read_text()
+        bundled = sorted(
+            item.relative_to(root).as_posix()
+            for item in root.rglob("*")
+            if item.is_file() and item.name != "SKILL.md" and not item.is_symlink()
+        )
+        instructions = (root / "SKILL.md").read_text()
+        if not bundled:
+            return instructions
+        listing = "\n".join(f"- {item}" for item in bundled)
+        return (
+            f"{instructions}\n\nFiles bundled with the {name!r} skill, readable by "
+            f"calling load_skill again with 'resource' set to one of these names:\n{listing}\n"
+        )
+
+    def _skill_resource(self, root: Path, name: str, resource: str) -> Path:
+        """Resolve one bundled file, contained by its own skill directory."""
+        if not isinstance(resource, str) or not resource or "\x00" in resource:
+            raise ValueError("resource must be a non-empty string")
+        try:
+            resolved = (root / resource).resolve(strict=True)
+        except OSError as error:
+            raise ValueError(f"skill {name!r} bundles no resource {resource!r}: {error}") from error
+        if root not in resolved.parents or not resolved.is_file():
+            raise ValueError(
+                f"resource {resource!r} resolves outside the {name!r} skill directory"
+            )
+        return resolved
+
+
+def _schema(properties: dict[str, Any] | None = None, required: list[str] | None = None) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": properties or {},
+        "required": required or [],
+        "additionalProperties": False,
+    }
+
+
+def _param(kind: str, description: str, **extra: Any) -> dict[str, Any]:
+    """Describe one tool parameter so the calling model needs no guesswork."""
+    return {"type": kind, "description": description, **extra}
+
+
+def STR(description: str, **extra: Any) -> dict[str, Any]:
+    return _param("string", description, **extra)
+
+
+def BOOL(description: str) -> dict[str, Any]:
+    return _param("boolean", description)
+
+
+def INT(description: str) -> dict[str, Any]:
+    return _param("integer", description)
+
+
+def NUMBER(description: str) -> dict[str, Any]:
+    return _param("number", description)
+
+
+PROJECT_PATH = "Path relative to the active project root."
+TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
+    "list_dir": _schema({
+        "path": STR(f"Directory to list. {PROJECT_PATH} Defaults to the root."),
+        "recursive": BOOL("List every descendant instead of one level."),
+    }),
+    "find_files": _schema({
+        "pattern": STR("Glob matched against each file's path or basename, such as 'test_*.py'."),
+    }, ["pattern"]),
+    "search_content": _schema({
+        "pattern": STR("Literal text, or a regular expression when 'regex' is true."),
+        "path": STR(f"File or directory to search. {PROJECT_PATH} Defaults to the root."),
+        "regex": BOOL("Treat 'pattern' as a regular expression."),
+    }, ["pattern"]),
+    "read_file": _schema({
+        "path": STR(f"File to read. {PROJECT_PATH}"),
+        "offset": INT("First line to return, counting from 1."),
+        "limit": INT("Maximum number of lines to return."),
+    }, ["path"]),
+    "stat": _schema({"path": STR(f"Path to inspect. {PROJECT_PATH}")}, ["path"]),
+    "write_file": _schema({
+        "path": STR(f"File to write. {PROJECT_PATH} Missing parent directories are created."),
+        "content": STR("Complete new content of the file; it replaces anything already there."),
+        "must_not_exist": BOOL("Fail instead of overwriting an existing file."),
+    }, ["path", "content"]),
+    "edit_file": _schema({
+        "path": STR(f"Existing file to edit. {PROJECT_PATH}"),
+        "old_string": STR("Exact text to replace, including its indentation and line breaks."),
+        "new_string": STR("Replacement text."),
+        "replace_all": BOOL("Replace every occurrence instead of requiring exactly one."),
+    }, ["path", "old_string", "new_string"]),
+    "apply_patch": _schema({
+        "unified_diff": STR(
+            "Standard unified diff. Each file it changes is introduced by a "
+            "'--- a/<path>' line and a '+++ b/<path>' line, followed by "
+            "'@@ -<start>,<count> +<start>,<count> @@' hunks whose lines each "
+            "begin with ' ', '+', or '-'. Several files may appear in one diff, "
+            "and they are all applied together or not at all. Use '/dev/null' on "
+            "the '---' side to create a file or on the '+++' side to delete one. "
+            "Output from 'git diff' is accepted unedited. Not the Codex "
+            "'*** Begin Patch' format."
+        ),
+        "path": STR(
+            "Optional. The diff already names its targets; supply this only for a "
+            f"single-file diff, where it is checked against the diff. {PROJECT_PATH}"
+        ),
+    }, ["unified_diff"]),
+    "delete_file": _schema({"path": STR(f"File to delete. {PROJECT_PATH}")}, ["path"]),
+    "move_file": _schema({
+        "src": STR(f"Existing file to move. {PROJECT_PATH}"),
+        "dst": STR(f"Destination, which must not already exist. {PROJECT_PATH}"),
+    }, ["src", "dst"]),
+    "make_dir": _schema({
+        "path": STR(f"Directory to create, with its parents. {PROJECT_PATH}"),
+    }, ["path"]),
+    "git_status": _schema(),
+    "git_diff": _schema({
+        "path": STR(f"Limit the diff to this path. {PROJECT_PATH}"),
+        "staged": BOOL("Show staged changes rather than unstaged ones."),
+    }),
+    "git_log": _schema({
+        "path": STR(f"Limit history to this path. {PROJECT_PATH}"),
+        "limit": INT("Number of commits to show, from 1 to 1000. Defaults to 20."),
+    }),
+    "git_show": _schema({
+        "revision": STR("Commit sha, tag, or ref to read the file from."),
+        "path": STR(f"File to read at that revision. {PROJECT_PATH}"),
+    }, ["revision", "path"]),
+    "git_rev_parse_toplevel": _schema(),
+    "git_merge_base_is_ancestor": _schema({
+        "commit": STR("Commit tested as the ancestor, such as a released drawing commit."),
+        "ref": STR("Descendant ref to test against. Defaults to HEAD."),
+    }, ["commit"]),
+    "git_head": _schema(),
+    "git_add": _schema({
+        "paths": {
+            "type": "array",
+            "items": STR(f"Path to stage. {PROJECT_PATH}"),
+            "description": "Exact paths to stage. Nothing else is staged or unstaged.",
+        },
+    }, ["paths"]),
+    "git_commit": _schema({
+        "message": STR("Commit message for the already staged changes."),
+    }, ["message"]),
+    "openspec_setup": _schema(),
+    "openspec_run": _schema(
+        {
+            "arguments": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": (
+                    "Argument vector for the 'openspec' CLI, run in this project. "
+                    "Example: ['new', 'change', 'lid-body-fit']."
+                ),
+            },
+        },
+        ["arguments"],
+    ),
+    "machinome_build": _schema({
+        "path": STR("Node reference or file to build. Defaults to the project model."),
+    }),
+    "machinome_test": _schema({
+        "path": STR("Test file or node reference to run. Defaults to the whole suite."),
+        "failfast": BOOL("Stop at the first failing test."),
+        "kernel": {
+            "type": "string",
+            "enum": ["exact", "faceted"],
+            "description": (
+                "Comparison kernel for this run: 'faceted' decides every "
+                "geometric assertion on meshes (fast, not commit evidence); "
+                "'exact' on the boundary-representation solids (the certified "
+                "run). Omitted: the project's .env decides, else exact."
+            ),
+        },
+    }),
+    "machinome_snapshot": _schema({
+        "path": STR("Node reference or file to render. Defaults to the project model."),
+        "time": NUMBER("Animation time to render at."),
+        "camera": STR("Camera placement, as accepted by 'machinome snapshot'."),
+        "imgsize": STR("Image size as 'width,height', such as '1024,768'."),
+        "projection": {
+            "type": "string",
+            "enum": ["ortho", "perspective"],
+            "description": "Projection used for the render.",
+        },
+        "colorscheme": STR("Named render colour scheme."),
+        "view": STR("View flags, as accepted by 'machinome snapshot'."),
+        "autocenter": BOOL("Centre the model in the frame."),
+        "viewall": BOOL("Zoom so the whole model is visible."),
+    }),
+    "floor_assign": _schema(
+        {
+            "sender": STR("Your own role id."),
+            "recipient": STR("Role id you are assigning work to."),
+            "assignment": STR("Assignment id this dispatch opens."),
+            "text": STR("Assignment brief."),
+        },
+        ["sender", "recipient", "assignment", "text"],
+    ),
+    "floor_direction": _schema(
+        {
+            "sender": STR("Your own role id."),
+            "recipient": STR("Role id being steered."),
+            "text": STR("Direction, which does not by itself replace an active assignment."),
+        },
+        ["sender", "recipient", "text"],
+    ),
+    "floor_acknowledge": _schema(
+        {
+            "role": STR("Your own role id."),
+            "assignment": STR("Assignment id being acknowledged."),
+        },
+        ["role", "assignment"],
+    ),
+    "floor_report": _schema(
+        {
+            "sender": STR("Your own role id."),
+            "recipient": STR("Role id to report to."),
+            "text": STR("Progress, findings, blockers, or the final report."),
+            "assignment": STR("Assignment id the report belongs to, when it has one."),
+        },
+        ["sender", "recipient", "text"],
+    ),
+    "floor_complete": _schema(
+        {
+            "role": STR("Your own role id."),
+            "assignment": STR("Assignment id being completed."),
+        },
+        ["role", "assignment"],
+    ),
+    "load_skill": _schema(
+        {
+            "name": STR("Name of a skill announced in your session contract."),
+            "resource": STR(
+                "Optional. A file bundled with that skill, named exactly as the "
+                "skill's own listing gives it. Omit to load the skill itself."
+            ),
+        },
+        ["name"],
+    ),
+}
+
+
+class StdioMcpServer:
+    """Minimal MCP tools server using newline-delimited JSON-RPC stdio."""
+
+    def __init__(self, tools: ProjectTools, names: tuple[str, ...] | None = None) -> None:
+        self.tools = tools
+        # A session holding no skill is not offered a way to load one.
+        self.names = tuple(
+            name for name in TOOL_NAMES
+            if name != SKILL_TOOL or tools.skills
+        )
+        if names is not None:
+            if len(set(names)) != len(names) or set(names) - set(self.names):
+                raise ValueError("Invalid scoped floor worker tool names")
+            self.names = names
+
+    def run(self) -> None:
+        for line in sys.stdin:
+            try:
+                request = json.loads(line)
+                response = self._handle(request)
+            except BaseException as error:
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32603, "message": str(error)},
+                }
+            if response is not None:
+                sys.stdout.write(json.dumps(response, separators=(",", ":")) + "\n")
+                sys.stdout.flush()
+
+    def _handle(self, request: dict[str, Any]) -> dict[str, Any] | None:
+        request_id = request.get("id")
+        method = request.get("method")
+        if method == "notifications/initialized":
+            return None
+        if method == "initialize":
+            return self._result(
+                request_id,
+                {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {"tools": {"listChanged": False}},
+                    "serverInfo": {"name": "machinome-studio-floor-tools", "version": "0.1.0"},
+                },
+            )
+        if method == "ping":
+            return self._result(request_id, {})
+        if method == "tools/list":
+            return self._result(
+                request_id,
+                {
+                    "tools": [
+                        {
+                            "name": name,
+                            "description": getattr(self.tools, name).__doc__ or name.replace("_", " "),
+                            "inputSchema": TOOL_SCHEMAS[name],
+                        }
+                        for name in self.names
+                    ]
+                },
+            )
+        if method == "tools/call":
+            params = request.get("params", {})
+            name = params.get("name")
+            arguments = params.get("arguments", {})
+            if name not in self.names:
+                return self._tool_error(request_id, f"unknown tool: {name}")
+            if not isinstance(arguments, dict):
+                return self._tool_error(request_id, "tool arguments must be an object")
+            try:
+                value = getattr(self.tools, name)(**arguments)
+            except BaseException as error:
+                return self._tool_error(request_id, f"{type(error).__name__}: {error}")
+            if isinstance(value, ImagePayload):
+                content = [{
+                    "type": "image",
+                    "data": base64.b64encode(value.data).decode(),
+                    "mimeType": value.mime_type,
+                }]
+                return self._result(request_id, {"content": content, "isError": False})
+            text = value if isinstance(value, str) else json.dumps(value, sort_keys=True)
+            payload: dict[str, Any] = {
+                "content": [{"type": "text", "text": text}],
+                "isError": False,
+            }
+            if isinstance(value, dict):
+                payload["structuredContent"] = value
+            return self._result(request_id, payload)
+        if "id" not in request:
+            return None
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {"code": -32601, "message": f"method not found: {method}"},
+        }
+
+    @staticmethod
+    def _result(request_id: Any, value: Any) -> dict[str, Any]:
+        return {"jsonrpc": "2.0", "id": request_id, "result": value}
+
+    @classmethod
+    def _tool_error(cls, request_id: Any, message: str) -> dict[str, Any]:
+        return cls._result(
+            request_id,
+            {"content": [{"type": "text", "text": message}], "isError": True},
+        )
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--project", type=Path, required=True)
+    parser.add_argument("--model")
+    parser.add_argument("--machinome-command-json", default='["machinome"]')
+    parser.add_argument("--floor-url")
+    parser.add_argument("--floor-session")
+    parser.add_argument("--skills-json", default="{}")
+    parser.add_argument("--tools-json")
+    parser.add_argument("--git-signing-required", action="store_true")
+    args = parser.parse_args(argv)
+    raw_command = json.loads(args.machinome_command_json)
+    if not isinstance(raw_command, list) or not raw_command or not all(isinstance(item, str) for item in raw_command):
+        parser.error("--machinome-command-json must encode a non-empty string array")
+    raw_skills = json.loads(args.skills_json)
+    raw_tools = json.loads(args.tools_json) if args.tools_json is not None else None
+    if raw_tools is not None and (not isinstance(raw_tools, list) or not all(isinstance(name, str) for name in raw_tools)):
+        parser.error("--tools-json must encode a tool name array")
+    if not isinstance(raw_skills, dict) or not all(
+        isinstance(name, str) and name and isinstance(path, str) and path
+        for name, path in raw_skills.items()
+    ):
+        parser.error("--skills-json must encode a name-to-directory object")
+    StdioMcpServer(
+        ProjectTools(
+            args.project,
+            model=args.model,
+            machinome_command=tuple(raw_command),
+            floor_url=args.floor_url,
+            floor_session=args.floor_session,
+            skills={name: Path(path) for name, path in raw_skills.items()},
+            git_signing_required=args.git_signing_required,
+        ),
+        names=tuple(raw_tools) if raw_tools is not None else None,
+    ).run()
+
+
+if __name__ == "__main__":
+    main()

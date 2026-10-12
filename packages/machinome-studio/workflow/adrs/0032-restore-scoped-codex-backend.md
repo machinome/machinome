@@ -1,0 +1,41 @@
+# ADR 0032: Restore Codex only with a qualified exact floor-tool surface
+
+**Status:** Accepted
+
+**Date:** 2026-09-26
+
+**Deciders:** Pilot
+
+**Origin:** `restore-scoped-codex-backend`
+
+**Supersedes:** ADR 0025
+
+**Amends:** ADRs 0006, 0011, 0017, 0018, 0022, 0023 and 0027
+
+## Context
+
+The pilot wants the Codex backend again. ADR 0025 retired it because native execution survived its profile policy. The 26 September 2026 tool-isolation spike establishes a new route for exact tool registration with Codex CLI 0.157.1 on Linux and GPT-6 Sol/Astra. It also proves plain restart/resume is unsafe for that route: native patching returns unless every new turn explicitly has no execution environment.
+
+## Decision
+
+Restore Codex as an explicitly selected backend only when the adapter qualifies the exact executable/schema/catalogue/configuration contract with credential-free real-binary forced-call tests. Its private app-server receives no project environment, no inherited operator/project configuration, and only profile-resolved client-executed dynamic tools. Thread creation and every new turn declare no execution environments; read-only and deny approvals remain backstops. No dangerous permissions or approval bypass is admitted.
+
+The pilot explicitly accepted the narrow Codex exception to ADR 0027: qualifying Codex availability, resolving an explicit Codex selection, or provisioning its dedicated login may discover `codex` on ambient `PATH`, then retain and qualify that executable against the pinned supported contract. This adds no ambient discovery authority for other tools or backend prerequisites. OpenSpec remains the unconditional named startup prerequisite; package resource loading and machinome resolution from the shop's Python environment remain unchanged. Non-Codex projects do not require Codex.
+
+Bind every dynamic callback to the owning live floor role/session/turn and validate tool, schema and broker identity before forwarding to an owned floor-tool subprocess. No global configuration is imported and the operator auth file is never modified. The pilot chose a separate one-time Studio login on the existing account. One hub-owned app-server/auth owner serves project-specific adapters concurrently, using a durable native credential store under exclusive process lease. No operator credentials are copied, and no normal CLI credentials are modified. Project threads remain ephemeral; closing one project releases only its own threads/workers and the shared owner stops after its final borrower releases. Unknown versions/models/authentication modes or policy conflicts fail closed.
+
+Claude remains the profile default. Codex has no profile runtime table and shares the existing profile capability vocabulary, skill catalogue, pristine replacement and idle model mutation rules. Production registry attestation is not available in the measured protocol: evidence is the qualified exact contract, not a claim that filtering native events prevents native execution.
+
+The existing role-recovery requirement's fresh-replacement fallback has an explicit retained-history refusal exception: when recovery cannot safely restore a used conversation, keep that handle failed and report the reason without opening a fresh session or replaying context. Other roles keep routing, and ordinary replacement/retry behavior remains unchanged where no refusal is reported. This reconciles the baseline recovery wording with this restoration's approved context-preservation requirement.
+
+Root review reproduced a queued-failure race in which the same opaque handle recovered and began newer work while the old failure awaited the delivery lock. Active failures therefore carry portable delivery correlation checked after that lock. For idle/pristine failures without a receipt, an optional `BackendEvent.is_current` pure synchronous, side-effect-free predicate provides revocable adapter-owned validity, checked before handling and after the lock. Its closure retains internal generation/ownership state without moving native identifiers across the portable seam or performing an asynchronous roundtrip. This evidence-driven refinement prevents stale failure from clearing newer work and preserves the ratified user-visible failure/recovery behavior.
+
+Checkpoint-one evidence after planning commit `58fa947` refines ephemeral native ownership: one idempotently created Codex project group has empty roots and exact Studio owner/marker metadata derived from the dedicated home. Every native thread is associated with that group atomically at creation. Cleanup enumerates the exact marked group across archived/unarchived pages and measured source kinds, including `vscode`; a local journal never authorizes deletion of an unmarked ID. Used-thread recovery verifies native `session_meta.dynamic_tools` before resume. A pristine thread without a persisted rollout is recreated under its existing opaque Studio handle with the same contract and no replay; a used thread is never recreated to conceal missing context. These evidence-driven mechanisms preserve the ratified behavior and are recorded with implementation rather than changing its authority.
+
+## Alternatives considered
+
+Keeping retirement would ignore new measured capability needed by the pilot. Restoring the old adapter, trusting feature flags alone, enabling dangerous permissions, or inheriting operator settings would violate the policy that justified retirement. Broader host-code isolation is independent work and is not a prerequisite secretly claimed by this decision.
+
+## Consequences
+
+Explicit Codex selections work only on the narrow tested support matrix; upgrades require evidence and contract changes. Qualification has bounded startup cost. Auth failures are visible and recoverable through existing lifecycle semantics without model/backend fallback. Dynamic tool/image/lifecycle integration must be proven before acceptance. The existing floor operations remain host operations; this decision neither sandboxes hostile CAD nor claims portability or publication.

@@ -1,0 +1,740 @@
+# Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
+# SPDX-License-Identifier: AGPL-3.0-or-later
+from __future__ import annotations
+
+import json
+import base64
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
+
+from floor.preparation import (
+    REQUIRED_VIEWER_API,
+    FolderListing,
+    HubEntry,
+    PreparationError,
+    _folder_previews,
+    build_project,
+    commit_new_project,
+    default_machinome_command,
+    list_folder,
+    new_entry,
+    prepare_project,
+    resolve_entry,
+    resolve_viewer_bundle,
+    validate_new_project,
+)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class FrameworkCommandTest(unittest.TestCase):
+    def test_default_uses_the_solid_cli_from_the_shop_python_environment(self) -> None:
+        with patch("floor.preparation.sys.executable", "/opt/shop-env/bin/python"):
+            self.assertEqual(default_machinome_command(), ("/opt/shop-env/bin/machinome",))
+
+
+class EntryResolutionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.home = Path(self.temporary.name) / "projects"
+        self.home.mkdir()
+
+    def test_resolves_a_project_at_the_top_of_the_working_folder(self) -> None:
+        _make_repository(self.home / "v8-engine")
+        self.assertEqual(
+            resolve_entry("v8-engine", self.home),
+            HubEntry("v8-engine", (self.home / "v8-engine").resolve()),
+        )
+
+    def test_resolves_a_project_held_by_a_folder(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        entry = resolve_entry("sandbox/windmill", self.home)
+        self.assertEqual(entry.path, "sandbox/windmill")
+        self.assertEqual(entry.project_root, (self.home / "sandbox" / "windmill").resolve())
+        self.assertIsNone(entry.model)
+
+    def test_resolves_one_declared_model_of_a_project(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01", "wall_clock_02"))
+        entry = resolve_entry("clocks/wall_clock_02", self.home)
+        self.assertEqual(entry.path, "clocks/wall_clock_02")
+        self.assertEqual(entry.project_root, project.resolve())
+        self.assertEqual(entry.model, "wall_clock_02")
+
+    def test_rejects_a_model_the_project_does_not_declare(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01",))
+        with self.assertRaises(PreparationError) as raised:
+            resolve_entry("clocks/wall_clock_09", self.home)
+        self.assertEqual(raised.exception.stage, "entry-path")
+        self.assertIn("wall_clock_09", str(raised.exception))
+
+    def test_rejects_a_directory_that_is_not_a_project_repository(self) -> None:
+        (self.home / "sandbox").mkdir()
+        with self.assertRaises(PreparationError) as raised:
+            resolve_entry("sandbox", self.home)
+        self.assertIn("not a project repository", str(raised.exception))
+
+    def test_accepts_project_names_without_enforcing_a_style_convention(self) -> None:
+        for name in ("v8_engine", "V8 engine", ".prototype"):
+            with self.subTest(name=name):
+                _make_repository(self.home / name)
+                self.assertEqual(resolve_entry(name, self.home).project_root, (self.home / name).resolve())
+
+    def test_rejects_missing_and_unsafe_entry_paths(self) -> None:
+        for path in (None, "", "../v8", ".", "..", "sandbox/../..", "v8\\engine", "/tmp/v8", "bad\0name"):
+            with self.subTest(path=path), self.assertRaises(PreparationError) as raised:
+                resolve_entry(path, self.home)
+            self.assertEqual(raised.exception.stage, "entry-path")
+
+    def test_rejects_a_symlink_escape(self) -> None:
+        outside = Path(self.temporary.name) / "outside"
+        outside.mkdir()
+        (self.home / "escaped").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(PreparationError) as raised:
+            resolve_entry("escaped", self.home)
+        self.assertEqual(raised.exception.stage, "entry-path")
+
+    def test_rejects_an_in_home_symlink_alias(self) -> None:
+        target = self.home / "target"
+        target.mkdir()
+        (self.home / "alias").symlink_to(target, target_is_directory=True)
+        with self.assertRaises(PreparationError) as raised:
+            resolve_entry("alias", self.home)
+        self.assertEqual(raised.exception.stage, "entry-path")
+
+    def test_creation_targets_the_folder_being_listed(self) -> None:
+        (self.home / "sandbox").mkdir()
+        entry = new_entry("sandbox", "windmill", self.home)
+        self.assertEqual(entry.path, "sandbox/windmill")
+        self.assertEqual(entry.project_root, (self.home / "sandbox" / "windmill").resolve())
+
+    def test_creation_refuses_a_name_used_by_any_existing_entry_without_mutation(self) -> None:
+        for name, directory in (("occupied-directory", True), ("occupied-file", False)):
+            entry = self.home / name
+            entry.mkdir() if directory else entry.write_text("keep me")
+            before = entry.stat()
+            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
+                validate_new_project("", name, self.home)
+            self.assertEqual(raised.exception.stage, "project-name")
+            self.assertEqual(entry.stat(), before)
+
+    def test_creation_refuses_a_project_inside_a_project(self) -> None:
+        _make_repository(self.home / "clocks")
+        with self.assertRaises(PreparationError) as raised:
+            validate_new_project("clocks", "another", self.home)
+        self.assertIn("inside a project", str(raised.exception))
+
+
+class FolderListingTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.home = Path(self.temporary.name) / "projects"
+        self.home.mkdir()
+
+    def listing(self, folder: str = "") -> dict[str, object]:
+        return {item.name: item for item in list_folder(self.home, folder)}
+
+    def test_listing_keeps_valid_and_unopenable_entries_independent(self) -> None:
+        valid = self.home / "valid_project"
+        _make_repository(valid)
+        (valid / "pyproject.toml").write_text('[tool.machinome-studio]\nprofile = "openspec-builder"\n')
+        subprocess.run(["git", "-C", str(valid), "add", "pyproject.toml"], check=True)
+        subprocess.run([
+            "git", "-C", str(valid), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid",
+            "commit", "-q", "-m", "profile",
+        ], check=True)
+        (self.home / "not-a-repository").mkdir()
+        (self.home / "Bad Name").mkdir()
+        (self.home / "README.md").write_text("working-folder notes")
+
+        values = self.listing()
+
+        self.assertNotIn("README.md", values)
+        self.assertTrue(values["valid_project"].openable)
+        self.assertEqual(values["valid_project"].path, "valid_project")
+        self.assertEqual(values["valid_project"].profile, "openspec-builder")
+        self.assertEqual(values["valid_project"].branch, "main")
+        self.assertIsNotNone(values["valid_project"].last_commit)
+        self.assertFalse(values["not-a-repository"].openable)
+        self.assertIn("repository", values["not-a-repository"].reason or "")
+        self.assertFalse(values["Bad Name"].openable)
+        self.assertIn("repository", values["Bad Name"].reason or "")
+
+    def test_a_project_declaring_no_profile_is_listed_under_the_shop_default(self) -> None:
+        bare = self.home / "bare_project"
+        _make_repository(bare)
+
+        values = self.listing()
+
+        self.assertTrue(values["bare_project"].openable)
+        self.assertEqual(values["bare_project"].profile, "openspec-builder")
+
+    def test_a_directory_holding_projects_is_a_folder(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        _make_repository(self.home / "sandbox" / "deeper" / "guitar")
+
+        values = self.listing()
+
+        self.assertIsInstance(values["sandbox"], FolderListing)
+        self.assertEqual(values["sandbox"].projects, 2)
+        self.assertEqual(values["sandbox"].path, "sandbox")
+
+    def test_entering_a_folder_lists_only_its_own_entries(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        _make_repository(self.home / "sandbox" / "deeper" / "guitar")
+        _make_repository(self.home / "elsewhere")
+
+        values = self.listing("sandbox")
+
+        self.assertEqual(set(values), {"windmill", "deeper"})
+        self.assertEqual(values["windmill"].path, "sandbox/windmill")
+        self.assertIsInstance(values["deeper"], FolderListing)
+
+    def test_a_directory_holding_no_project_is_unopenable(self) -> None:
+        (self.home / "notes" / "deeper").mkdir(parents=True)
+
+        values = self.listing()
+
+        self.assertFalse(values["notes"].openable)
+        self.assertIn("repository", values["notes"].reason or "")
+
+    def test_a_project_declaring_several_models_is_a_folder_of_them(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01", "wall_clock_02"))
+
+        top = self.listing()
+        self.assertIsInstance(top["clocks"], FolderListing)
+        self.assertEqual(top["clocks"].projects, 2)
+
+        inside = self.listing("clocks")
+        self.assertEqual(sorted(inside), ["wall_clock_01", "wall_clock_02"])
+        self.assertEqual(inside["wall_clock_01"].path, "clocks/wall_clock_01")
+        self.assertTrue(inside["wall_clock_01"].openable)
+
+    def test_a_multi_model_folder_carries_its_first_three_model_previews(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_clock_01", "wall_clock_02", "wall_clock_03", "wall_clock_04"))
+        _publish_screenshot(project, "wall_clock_01")
+        _publish_screenshot(project, "wall_clock_03")
+
+        card = self.listing()["clocks"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["clocks/wall_clock_01", "clocks/wall_clock_02", "clocks/wall_clock_03"],
+        )
+        self.assertIsNotNone(card.previews[0].revision)
+        self.assertIsNone(card.previews[1].revision)
+        self.assertIsNotNone(card.previews[2].revision)
+        self.assertEqual(
+            card.browser_value()["previews"],
+            [
+                {"path": preview.path, "revision": preview.revision}
+                for preview in card.previews
+            ],
+        )
+
+    def test_a_folder_of_projects_previews_the_projects_it_holds(self) -> None:
+        for name in ("windmill", "guitar", "harp", "kite"):
+            _make_repository(self.home / "sandbox" / name)
+        _publish_project_screenshot(self.home / "sandbox" / "guitar")
+
+        card = self.listing()["sandbox"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["sandbox/guitar", "sandbox/harp", "sandbox/kite"],
+        )
+        self.assertIsNotNone(card.previews[0].revision)
+        self.assertIsNone(card.previews[1].revision)
+        self.assertEqual(
+            card.browser_value()["previews"],
+            [
+                {"path": preview.path, "revision": preview.revision}
+                for preview in card.previews
+            ],
+        )
+
+    def test_a_folder_card_skips_entries_that_have_no_picture_yet(self) -> None:
+        for name in ("arm", "biped", "crane", "dolly", "elbow"):
+            _make_repository(self.home / "sandbox" / name)
+        for name in ("arm", "dolly", "elbow"):
+            _publish_project_screenshot(self.home / "sandbox" / name)
+
+        card = self.listing()["sandbox"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["sandbox/arm", "sandbox/dolly", "sandbox/elbow"],
+        )
+        self.assertTrue(all(preview.revision for preview in card.previews))
+
+    def test_a_multi_model_folder_prefers_the_models_that_have_a_picture(self) -> None:
+        project = self.home / "clocks"
+        _make_repository(project)
+        _declare_models(project, ("wall_01", "wall_02", "wall_03", "wall_04", "wall_05"))
+        for model in ("wall_01", "wall_04", "wall_05"):
+            _publish_screenshot(project, model)
+
+        card = self.listing()["clocks"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            ["clocks/wall_01", "clocks/wall_04", "clocks/wall_05"],
+        )
+
+    def test_a_folder_previews_the_entries_its_own_folders_hold(self) -> None:
+        _make_repository(self.home / "sandbox" / "windmill")
+        _make_repository(self.home / "sandbox" / "deeper" / "guitar")
+        clocks = self.home / "sandbox" / "clocks"
+        _make_repository(clocks)
+        _declare_models(clocks, ("wall_clock_01", "wall_clock_02"))
+
+        card = self.listing()["sandbox"]
+
+        self.assertEqual(
+            [preview.path for preview in card.previews],
+            [
+                "sandbox/clocks/wall_clock_01",
+                "sandbox/clocks/wall_clock_02",
+                "sandbox/deeper/guitar",
+            ],
+        )
+
+    def test_a_directory_holding_nothing_openable_previews_nothing(self) -> None:
+        empty = self.home / "notes"
+        (empty / "deeper").mkdir(parents=True)
+        (empty / "readme.txt").write_text("nothing here")
+
+        self.assertEqual(_folder_previews(empty, "notes"), ())
+
+    def test_a_project_declaring_one_model_stays_a_project(self) -> None:
+        project = self.home / "solo"
+        _make_repository(project)
+        _declare_models(project, ("only",))
+
+        values = self.listing()
+
+        self.assertTrue(values["solo"].openable)
+        self.assertEqual(values["solo"].path, "solo")
+
+
+class ProjectPreparationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.home = Path(self.temporary.name) / "projects"
+        self.home.mkdir()
+        self.fake_machinome = Path(self.temporary.name) / "fake_machinome.py"
+        self.fake_machinome.write_text(FAKE_MACHINOME)
+        self.call_log = Path(self.temporary.name) / "solid-calls.jsonl"
+        self.command = (sys.executable, str(self.fake_machinome))
+        self.git_environment = {
+            "GIT_AUTHOR_NAME": "Shop Test",
+            "GIT_AUTHOR_EMAIL": "shop@example.invalid",
+            "GIT_COMMITTER_NAME": "Shop Test",
+            "GIT_COMMITTER_EMAIL": "shop@example.invalid",
+            "MACHINOME_CALL_LOG": str(self.call_log),
+        }
+
+    def prepare(
+        self,
+        name: str = "new-engine",
+        *,
+        profile: str | None = None,
+        allow_build_failure: bool = False,
+        project_home: Path | None = None,
+    ):
+        """Open one project the way the registry does: verify, build, record."""
+        home = self.home if project_home is None else project_home
+        with patch.dict(os.environ, self.git_environment):
+            entry = (
+                resolve_entry(name, home)
+                if (home / name.split("/")[0]).exists()
+                else new_entry("", name, home)
+            )
+            prepared = prepare_project(
+                entry,
+                machinome_command=self.command,
+                profile=profile,
+            )
+            outcome = build_project(prepared, allow_failure=allow_build_failure)
+            prepared = replace(prepared, build_error=outcome.error)
+            commit_new_project(prepared)
+            return prepared
+
+    def test_missing_project_is_scaffolded_committed_built_and_validated(self) -> None:
+        prepared = self.prepare()
+        project = self.home / "new-engine"
+        self.assertEqual(prepared.project_root, project.resolve())
+        self.assertFalse((self.home / "new_engine").exists())
+        self.assertEqual(prepared.model, Path("root"))
+        self.assertEqual(prepared.artifact_root, (project / "_build").resolve())
+        self.assertEqual(prepared.model_source, "root/__init__.py")
+        self.assertTrue(prepared.viewer_bundle.is_file())
+        self.assertEqual(prepared.viewer_api_version, 20)
+        self.assertEqual(self.call_log.read_text().splitlines()[0], "new:new_engine")
+        self.assertTrue((project / "root" / "__init__.py").is_file())
+        self.assertFalse((project / "pyproject.toml").exists())
+        self.assertEqual(
+            subprocess.run(["git", "-C", str(project), "rev-list", "--count", "HEAD"], check=True, text=True, capture_output=True).stdout.strip(),
+            "1",
+        )
+        self.assertEqual(
+            set(subprocess.run(["git", "-C", str(project), "ls-files"], check=True, text=True, capture_output=True).stdout.splitlines()),
+            {".gitignore", "root/__init__.py", "screenshot.png"},
+        )
+
+    def test_creation_records_the_chosen_profile_in_the_initial_commit(self) -> None:
+        self.prepare("profiled-project", profile="openspec-builder")
+        project = self.home / "profiled-project"
+        self.assertIn('profile = "openspec-builder"', (project / "pyproject.toml").read_text())
+        committed = subprocess.run(
+            ["git", "-C", str(project), "show", "HEAD:pyproject.toml"],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout
+        self.assertIn('profile = "openspec-builder"', committed)
+
+    def test_a_refused_screenshot_render_is_reported_in_the_log(self) -> None:
+        project = self.home / "unphotographed"
+        _make_repository(project)
+
+        with self.assertLogs("floor.preparation", level="WARNING") as logged:
+            self.prepare("unphotographed")
+
+        self.assertFalse((project / "screenshot.png").exists())
+        # The renderer's own words, so a missing headless browser is nameable
+        # from the log rather than showing up only as a hub card with no
+        # picture.
+        self.assertTrue(
+            any("Install the browser renderer" in line for line in logged.output),
+            logged.output,
+        )
+
+    def test_build_failure_can_be_reported_without_abandoning_preparation(self) -> None:
+        prepared = self.prepare("fail-build", allow_build_failure=True)
+        self.assertIn("build exploded", prepared.build_error or "")
+        self.assertTrue(prepared.project_root.is_dir())
+
+    def test_missing_project_home_is_created_for_a_first_launch(self) -> None:
+        home = self.home.parent / "fresh-projects"
+        prepared = self.prepare("new-engine", project_home=home)
+
+        self.assertEqual(prepared.project_root, home / "new-engine")
+        self.assertTrue((home / "new-engine" / "root" / "__init__.py").is_file())
+
+    def test_existing_exact_repository_acquires_an_uncommitted_screenshot(self) -> None:
+        project = self.home / "existing"
+        _make_repository(project)
+        before = _git_state(project)
+        prepared = self.prepare("existing")
+        self.assertEqual(prepared.project_root, project.resolve())
+        self.assertEqual(_git_state(project)[0], before[0])
+        self.assertEqual(_git_state(project)[1], "?? screenshot.png\n")
+        self.assertEqual(
+            self.call_log.read_text().splitlines(),
+            ["viewer:", "models:--json", "build:", "snapshot:--renderer"],
+        )
+
+    def test_rejects_existing_file_plain_directory_and_nested_repository(self) -> None:
+        (self.home / "file").write_text("not a project")
+        (self.home / "plain").mkdir()
+        nested = self.home / "nested"
+        nested.mkdir()
+        _make_repository(nested / "repo")
+        for name, stage in (("file", "entry-path"), ("plain", "entry-path"), ("nested", "entry-path")):
+            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
+                self.prepare(name)
+            self.assertEqual(raised.exception.stage, stage)
+
+    def test_reports_scaffold_build_snapshot_and_artifact_failures_by_stage(self) -> None:
+        cases = {
+            "fail-new": "scaffold",
+            "fail-build": "build",
+            "bad-json": "snapshot",
+            "missing-model": "artifact",
+        }
+        for name, stage in cases.items():
+            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
+                self.prepare(name)
+            self.assertEqual(raised.exception.stage, stage)
+            self.assertIn(str(self.home / name), str(raised.exception))
+            if name != "fail-new":
+                self.assertTrue((self.home / name).exists(), "failed project evidence must be preserved")
+
+    def test_accepts_a_valid_unchanged_publication(self) -> None:
+        """F2 need not rewrite a manifest when the model is already current."""
+        prepared = self.prepare("stale")
+        self.assertTrue((prepared.artifact_root / "viewer.json").is_file())
+
+    def test_named_model_publishes_into_its_own_build_directory(self) -> None:
+        """A project declaring named models builds each into `_build/<name>`,
+        so the shop must take the model's directory from the framework rather
+        than assume the project's whole `_build` is one publication."""
+        prepared = self.prepare("named-robot")
+        project = self.home / "named-robot"
+
+        self.assertEqual(prepared.artifact_root, (project / "_build" / "alpha").resolve())
+        self.assertTrue((prepared.artifact_root / "viewer.json").is_file())
+        self.assertIsNone(prepared.build_error)
+
+    def test_the_model_reference_names_the_file_its_root_assembly_lives_in(self) -> None:
+        """The Code area opens on the model being shown, so preparation reads
+        the file the framework says that model is declared in -- not a path of
+        the shop's own invention."""
+        project = self.home / "referenced"
+        _make_repository(project)
+        (project / "parts").mkdir()
+        (project / "parts" / "__init__.py").write_text("")
+        (project / "parts" / "frame.py").write_text("# the frame\n")
+        (project / ".fake-reference").write_text("parts.frame:Frame\n")
+
+        self.assertEqual(self.prepare("referenced").model_source, "parts/frame.py")
+
+    def test_a_model_reference_that_names_no_file_leaves_the_code_area_empty(self) -> None:
+        """A reference the shop cannot follow to a file is not a failure: the
+        project still opens, and Code simply starts on nothing."""
+        project = self.home / "unfollowable"
+        _make_repository(project)
+        (project / ".fake-reference").write_text("absent.module:Thing\n")
+
+        self.assertIsNone(self.prepare("unfollowable").model_source)
+
+    def test_refuses_a_build_directory_the_framework_places_outside_the_project(self) -> None:
+        """The reported directory is served, watched and packaged, so one that
+        is not inside the project fails the open instead of opening it."""
+        for name in ("escaped-build", "no-default"):
+            with self.subTest(name=name), self.assertRaises(PreparationError) as raised:
+                self.prepare(name)
+            self.assertEqual(raised.exception.stage, "models")
+
+    def test_rejects_a_missing_or_incompatible_viewer_before_building(self) -> None:
+        project = self.home / "existing"
+        _make_repository(project)
+        cases = (
+            ({"FAKE_MACHINOME_VIEWER_MISSING": "1"}, "pip install \"machinome[viewer]\""),
+            ({"FAKE_MACHINOME_VIEWER_API": "3"}, "viewer API 20 is required but installed viewer API is 3"),
+        )
+        for environment, expected in cases:
+            with self.subTest(environment=environment), patch.dict(os.environ, {**self.git_environment, **environment}):
+                # The shop resolves the bundle for itself, so the refusal is
+                # the running shop's, not one project's.
+                with self.assertRaises(PreparationError) as raised:
+                    resolve_viewer_bundle(self.command)
+                self.assertEqual(raised.exception.stage, "viewer")
+                self.assertIn(expected, str(raised.exception))
+                with self.assertRaises(PreparationError) as refused:
+                    self.prepare("existing")
+                self.assertEqual(refused.exception.stage, "viewer")
+        self.assertFalse((project / "_build").exists(), "no build may run without a usable viewer")
+
+    def test_required_viewer_api_matches_the_declared_widget_interface(self) -> None:
+        declaration = (ROOT / "floor" / "frontend" / "src" / "machinome-viewer.d.ts").read_text()
+        self.assertIn(f"MACHINOME_VIEWER_API_VERSION: {REQUIRED_VIEWER_API}", declaration)
+        self.assertIn("mountNavigator", declaration)
+        self.assertIn("NavigatorHandle", declaration)
+
+    def test_reports_git_initialization_and_initial_commit_failures_by_stage(self) -> None:
+        real_run = subprocess.run
+        for name, failing_words, stage in (
+            ("git-init-failure", ("git", "init"), "git-init"),
+            ("git-commit-failure", ("git", "-C"), "git-commit"),
+        ):
+            def controlled_run(command, *args, **kwargs):
+                command_words = tuple(command)
+                if stage == "git-init" and command_words[:2] == failing_words:
+                    raise subprocess.CalledProcessError(11, command, stderr="git init failed")
+                if stage == "git-commit" and "commit" in command_words:
+                    raise subprocess.CalledProcessError(12, command, stderr="git commit failed")
+                return real_run(command, *args, **kwargs)
+
+            with self.subTest(stage=stage), patch("floor.preparation.subprocess.run", side_effect=controlled_run):
+                with self.assertRaises(PreparationError) as raised:
+                    self.prepare(name)
+            self.assertEqual(raised.exception.stage, stage)
+            self.assertTrue((self.home / name / "root" / "__init__.py").is_file())
+
+
+class WorkspaceSolidAcceptanceTest(unittest.TestCase):
+    def test_selected_workspace_cli_builds_once_and_rejects_an_invalid_model(self) -> None:
+        solid = ROOT / ".venv" / "bin" / "machinome"
+        framework = ROOT / "machinome"
+        if not solid.is_file() or not framework.is_dir():
+            self.skipTest("development workspace machinome installation is unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            subprocess.run([str(solid), "new", "acceptance"], cwd=home, check=True, capture_output=True, text=True)
+            project = home / "acceptance"
+            built = subprocess.run([str(solid), "build"], cwd=project, capture_output=True, text=True)
+            self.assertEqual(built.returncode, 0, built.stderr)
+            snapshot = json.loads((project / "_build" / "viewer.json").read_text())
+            models = list(_models(snapshot))
+            self.assertTrue(models)
+            self.assertTrue(all((project / "_build" / model).is_file() for model in models))
+            invalid = subprocess.run([str(solid), "build", "absent"], cwd=project, capture_output=True, text=True)
+            self.assertNotEqual(invalid.returncode, 0)
+        revision = subprocess.run(["git", "-C", str(framework), "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+        self.assertRegex(revision, r"[0-9a-f]{40}")
+
+
+def _declare_models(project: Path, names: tuple[str, ...]) -> None:
+    """Declare named models the way a project manifest does, and tell the
+    fixture CLI about them so its build directories match."""
+    table = "\n".join(f'{name} = "root:Root"' for name in names)
+    (project / "pyproject.toml").write_text(f"[tool.machinome.models]\n{table}\n")
+    (project / ".fake-machinome-state.json").write_text(json.dumps({"models": list(names)}))
+
+
+def _publish_screenshot(project: Path, model: str) -> None:
+    """Put a valid preview where a declared model's screenshot lives."""
+    target = project / "screenshots" / f"{model}.png"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"\x89PNG\r\n\x1a\n" + model.encode())
+
+
+def _publish_project_screenshot(project: Path) -> None:
+    """Put a valid preview where a single project's screenshot lives."""
+    (project / "screenshot.png").write_bytes(b"\x89PNG\r\n\x1a\n" + project.name.encode())
+
+
+def _make_repository(project: Path) -> None:
+    project.mkdir(parents=True)
+    (project / "root").mkdir()
+    (project / "root" / "__init__.py").write_text("# existing\n")
+    (project / ".gitignore").write_text("_build/\n")
+    subprocess.run(["git", "init", "-q", "-b", "main", str(project)], check=True)
+    subprocess.run(["git", "-C", str(project), "add", ".gitignore", "root/__init__.py"], check=True)
+    subprocess.run(
+        ["git", "-C", str(project), "-c", "user.name=Shop Test", "-c", "user.email=shop@example.invalid", "commit", "-q", "-m", "initial"],
+        check=True,
+    )
+
+
+def _git_state(project: Path) -> tuple[str, str, str]:
+    return tuple(
+        subprocess.run(command, check=True, text=True, capture_output=True).stdout
+        for command in (
+            ["git", "-C", str(project), "rev-parse", "HEAD"],
+            ["git", "-C", str(project), "status", "--porcelain=v1"],
+            ["git", "-C", str(project), "diff", "--cached"],
+        )
+    )
+
+
+def _models(value: object):
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key == "model" and isinstance(child, str):
+                yield child
+            else:
+                yield from _models(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _models(child)
+
+
+FAKE_MACHINOME = r'''from pathlib import Path
+import json
+import base64
+import os
+import sys
+import tempfile
+
+command = sys.argv[1]
+argument = sys.argv[2] if len(sys.argv) > 2 else ""
+cwd = Path.cwd()
+with Path(os.environ["MACHINOME_CALL_LOG"]).open("a") as calls:
+    calls.write(f"{command}:{argument}\n")
+
+
+def model_name(project):
+    """A project named `named-*` declares one named model, as a project with
+    a [tool.machinome.models] table does; every other one is unnamed."""
+    return "alpha" if project.name.startswith("named-") else None
+
+
+def build_dir(project):
+    name = model_name(project)
+    return project / "_build" / name if name else project / "_build"
+
+
+if command == "new":
+    if argument == "fail_new":
+        print("scaffold exploded", file=sys.stderr)
+        raise SystemExit(9)
+    # The real CLI normalizes its scaffold directory to a Python package name.
+    project = cwd / argument.replace("-", "_")
+    (project / "root").mkdir(parents=True)
+    (project / "root" / "__init__.py").write_text("# scaffold\n")
+    (project / ".gitignore").write_text("_build/\n")
+    if argument == "stale":
+        (project / "_build").mkdir()
+        (project / "_build" / "part.stl").write_text("solid old")
+        (project / "_build" / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
+elif command == "models":
+    name = model_name(cwd)
+    reported = build_dir(cwd)
+    if cwd.name == "escaped-build":
+        reported = cwd.parent / "_build"
+    marker = cwd / ".fake-reference"
+    reference = marker.read_text().strip() if marker.is_file() else "root:Root"
+    print(json.dumps({
+        "root": str(cwd),
+        "build_root": str(cwd / "_build"),
+        "default": name,
+        "models": [{
+            "name": name,
+            "reference": reference,
+            "default": cwd.name != "no-default",
+            "build_dir": str(reported),
+            "state": "unbuilt",
+        }],
+    }))
+elif command == "build":
+    if cwd.name == "fail-build":
+        print("build exploded", file=sys.stderr)
+        raise SystemExit(10)
+    build = build_dir(cwd)
+    build.mkdir(exist_ok=True, parents=True)
+    if cwd.name == "bad-json":
+        (build / "viewer.json").write_text("{")
+    elif cwd.name == "missing-model":
+        (build / "viewer.json").write_text(json.dumps({"root": {"model": "missing.stl"}}))
+    elif cwd.name == "stale":
+        pass
+    else:
+        (build / "part.stl").write_text("solid part")
+        (build / "viewer.json").write_text(json.dumps({"version": 1, "root": {"model": "part.stl"}}))
+elif command == "snapshot":
+    # A real renderer refuses when its headless browser is missing.
+    if cwd.name == "unphotographed":
+        print("Error: Install the browser renderer", file=sys.stderr)
+        raise SystemExit(1)
+    output = Path(sys.argv[sys.argv.index("-o") + 1])
+    output.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP8/+8dAwMDEwMDAwMDAwAjPwLvkz8BYAAAAABJRU5ErkJggg=="))
+elif command == "viewer":
+    # The shop asks this without a project, so the test steers it through the
+    # environment rather than through a file inside one.
+    if os.environ.get("FAKE_MACHINOME_VIEWER_MISSING"):
+        print("pip install \"machinome[viewer]\"", file=sys.stderr)
+        raise SystemExit(18)
+    bundle = Path(tempfile.gettempdir()) / f"fake-machinome-viewer-{os.getpid()}.js"
+    bundle.write_text("globalThis.MachinomeViewer={apiVersion:20,mount(){return Promise.resolve({apiVersion:20,artifactChanged(){return Promise.resolve()},manifestChanged(){return Promise.resolve()},reload(){return Promise.resolve()},assembly(){return{name:'root',path:[],color:null,model:false,children:[]}},setRoot(){},setVisible(){},view(){return{}},dispose(){}})}};")
+    print(json.dumps({"path": str(bundle), "apiVersion": int(os.environ.get("FAKE_MACHINOME_VIEWER_API", "20"))}))
+'''
