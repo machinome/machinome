@@ -79,7 +79,7 @@ not serve.
     Run the builder in the foreground so breakpoints work, beside the
     viewer's server. Automatic reload is disabled in this mode. To step into
     the browser viewer's server instead, run it yourself:
-    ``machinome-viewer serve --build-dir _build``.
+    ``machinome viewer serve --build-dir _build``.
 
 ``--callback URL``
     POST the exact URL (with no request body) after the initial complete
@@ -372,6 +372,60 @@ and how to use it.
     the only way to export in an installation without ``machinome-viewer``,
     since the widget files are the web viewer's. It asks no viewer to
     embed.
+
+.. _viewer-command:
+
+machinome viewer
+================
+
+::
+
+    machinome viewer
+    machinome viewer describe [--viewer NAME]
+    machinome viewer serve --build-dir DIR [--port N] [--viewer NAME]
+    machinome viewer capture STAGING -o PNG [--imgsize WxH] [--time T]
+                             [--view EYE,TARGET] [--up X,Y,Z] [--fov DEG]
+                             [--viewer NAME]
+
+Reports the installed viewer, and serves or photographs through a viewer.
+With no verb it prints one JSON object, the browser viewer's report: the
+absolute paths of its bundle (``path``) and of its standalone export page
+(``index``), its integer API version (``apiVersion``), the document
+versions it reads (``documentVersions``) and its package version
+(``version``). ``machinome viewer describe`` prints the same object. When
+the viewer is not installed, or its bundle cannot be made current, the
+command prints nothing on standard output, says why on standard error, and
+exits 1. ``python -m machinome.viewer.web`` runs the same command with the
+interpreter that runs it.
+
+``--viewer NAME``
+    The viewer a verb asks, ``web`` by default. The command takes no node
+    path and does not read the project's ``viewer`` under
+    ``[tool.machinome]``. A viewer that cannot do what the verb needs is
+    refused by name, naming the viewers that can, and no other viewer is
+    used: ``describe`` needs one that embeds, ``serve`` one that serves, and
+    ``capture`` one that photographs a published document, so ``--viewer
+    openscad`` is refused by each.
+
+``serve``
+    Serves the published build directory ``--build-dir DIR`` to the
+    development page on ``--port N``, else ``MACHINOME_PORT``, else 8000,
+    until interrupted: Ctrl-C stops it and exits 0.
+
+``capture``
+    Photographs the published document staged in ``STAGING`` into the
+    transparent PNG ``-o``/``--output``, at ``--imgsize`` (default
+    ``1920x1080``) and the animation time ``--time`` in [0, 1] (default 0),
+    from the eye and target ``--view``, with the up direction ``--up`` and
+    the vertical field of view ``--fov``; an option not given is left to the
+    viewer, which frames the whole model. The staging directory is left in
+    place.
+
+The exit status is 0 when the verb did what was asked; 1 for a refused
+viewer, a capture the viewer cannot make or a port the server cannot
+listen on, with one line on standard error; and 2 for a usage error or a
+``--time`` outside [0, 1]. :doc:`/reference/viewer/cli` says what each verb
+serves, photographs and refuses.
 
 machinome models
 ================

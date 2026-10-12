@@ -2705,7 +2705,16 @@ builder's readability warning ask the web viewer through the seam for its
 report, its files and the document versions it reads, and name one remedy
 when it is absent. Before ADR-194 the framework found the viewer through an
 entry point and ran it as a separate process (ADR-068); the one licence
-removed the reason for that boundary.
+removed the reason for that boundary. `machinome viewer` is also the
+viewer's command: with no verb it prints the web viewer's report, and its
+verbs `describe`, `serve` and `capture` ask the viewer their `--viewer`
+names, `web` by default and never the project's, for the operation each
+needs (`embed`, `serve`, `capture` of a published document), refusing by
+name a viewer that lacks it; `capture` hands the viewer the camera's parts
+in the seam's request. The viewer's distribution installs no command of its
+own: its console script `machinome-viewer`, the second program of the set
+until 0.9, is removed, and `python -m machinome.viewer.web` runs `machinome
+viewer` with the same parser (ADR-196).
 
 `machinome develop` asks the chosen viewer to serve, by default the web
 viewer, and fails before starting development processes with the

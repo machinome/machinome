@@ -73,7 +73,7 @@ For an already staged directory containing ``viewer.json`` and its models:
 
 .. code-block:: console
 
-   machinome-viewer capture /path/to/staged-build -o preview.png \
+   machinome viewer capture /path/to/staged-build -o preview.png \
      --imgsize 1280x720 --time 0.25 \
      --view=80,-60,40,0,0,0 --up=0,0,1 --fov 35
 

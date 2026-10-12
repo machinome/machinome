@@ -133,7 +133,13 @@ class Embedder(Protocol):
 @dataclass(frozen=True)
 class CaptureRequest:
     """The options of one still, as `machinome snapshot` was given them, so
-    a provider reads no argument parser's namespace."""
+    a provider reads no argument parser's namespace.
+
+    The camera is named in one of two forms: `camera`, the `--camera`
+    notation `machinome snapshot` takes, or its parts `eye`, `target`, `up`
+    and `fov`, as `machinome viewer capture` gives them, each part left to
+    the viewer when absent. A request naming both forms is refused (OpenSpec
+    change `viewer-command`)."""
 
     imgsize: str = '1920x1080'
     time: float = 0.0
@@ -145,6 +151,18 @@ class CaptureRequest:
     view: Any = None
     render: bool = False
     preview: bool = False
+    eye: Any = None
+    target: Any = None
+    up: Any = None
+    fov: Any = None
+
+    def __post_init__(self):
+        parts = (self.eye, self.target, self.up, self.fov)
+        if self.camera is not None and any(part is not None
+                                           for part in parts):
+            raise ValueError(
+                'a capture request names its camera by the --camera '
+                'notation or by its parts (eye, target, up, fov), not both')
 
 
 class ViewerError(RuntimeError):

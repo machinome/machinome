@@ -89,6 +89,81 @@ class TheContractTest(TestCase):
              False))
 
 
+class TheCaptureRequestTest(TestCase):
+    """A capture request names its camera by the `--camera` notation or by
+    its parts, never both (OpenSpec change `viewer-command`, design.md
+    Decision 3)."""
+
+    def test_the_parts_are_absent_unless_given(self):
+        request = seam().CaptureRequest()
+        self.assertEqual(
+            (request.eye, request.target, request.up, request.fov),
+            (None, None, None, None))
+
+    def test_the_parts_are_held_as_given(self):
+        request = seam().CaptureRequest(eye=(-80, 60, 40), target=(0, 0, 0),
+                                        up=(0, 1, 0), fov=30)
+        self.assertEqual(
+            (request.eye, request.target, request.up, request.fov),
+            ((-80, 60, 40), (0, 0, 0), (0, 1, 0), 30))
+
+    def test_the_notation_and_a_part_are_refused_together(self):
+        for part in ({'eye': (1, 2, 3)}, {'target': (0, 0, 0)},
+                     {'up': (0, 1, 0)}, {'fov': 30}):
+            with self.subTest(part=next(iter(part))), \
+                    self.assertRaises(ValueError):
+                seam().CaptureRequest(camera='-80,60,40,0,0,0', **part)
+
+
+class TheWebCaptureTest(TestCase):
+    """The web viewer resolves the notation into the camera's parts, takes
+    parts as given, and leaves an absent part to its own default."""
+
+    def options(self, request):
+        import machinome.viewer.web as web
+        with patch('machinome.viewer.web.capture.Capture') as capture:
+            web.capture('/tmp/staged', request, 'shot.png')
+        capture.assert_called_once_with('/tmp/staged')
+        return capture.return_value.render.call_args.args[2]
+
+    def test_an_eye_and_a_target_alone(self):
+        options = self.options(seam().CaptureRequest(eye=(-80, 60, 40),
+                                                     target=(0, 0, 0)))
+        self.assertEqual(options['view'], {'camera': [-80, 60, 40],
+                                           'target': [0, 0, 0]})
+        self.assertNotIn('up', options)
+        self.assertNotIn('fov', options)
+
+    def test_every_part(self):
+        options = self.options(seam().CaptureRequest(
+            eye=(-80, 60, 40), target=(0, 0, 0), up=(0, 1, 0), fov=30))
+        self.assertEqual(options['view'], {'camera': [-80, 60, 40],
+                                           'target': [0, 0, 0]})
+        self.assertEqual((options['up'], options['fov']), ([0, 1, 0], 30))
+
+    def test_a_lone_field_of_view(self):
+        options = self.options(seam().CaptureRequest(fov=30))
+        self.assertEqual(options['fov'], 30)
+        self.assertNotIn('view', options)
+        self.assertNotIn('up', options)
+
+    def test_no_part_is_the_viewer_s_framing(self):
+        options = self.options(seam().CaptureRequest())
+        for key in ('view', 'up', 'fov'):
+            with self.subTest(key=key):
+                self.assertNotIn(key, options)
+
+    def test_the_notation_is_resolved(self):
+        from machinome.core.camera import parse_camera
+        camera = parse_camera('0,0,0,65,0,35,1400')
+        options = self.options(
+            seam().CaptureRequest(camera='0,0,0,65,0,35,1400'))
+        self.assertEqual(options['view'], {'camera': list(camera.eye),
+                                           'target': list(camera.target)})
+        self.assertEqual((options['up'], options['fov']),
+                         (list(camera.up), camera.fov))
+
+
 class TheProvidersTest(TestCase):
 
     def test_both_providers_resolve_to_their_distributions(self):

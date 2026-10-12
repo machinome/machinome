@@ -10,8 +10,8 @@ it carries release together and share one version.
   `packages/machinome-viewer/`, with its history. Its Python package is
   `machinome.viewer.web` (formerly `machinome_viewer`), a portion of the
   `machinome` package, and `python -m machinome.viewer.web` runs its command;
-  the `machinome-viewer` command, the `machinome.viewer` entry point, the
-  bundle, viewer API 29 and document versions 1 through 13 are unchanged.
+  the `machinome.viewer` entry point, the bundle, viewer API 29 and document
+  versions 1 through 13 are unchanged.
   It is numbered with Machinome and requires the matching release, and it
   is licensed as every package of the repository, GPL-2.0-or-later or
   CERN-OHL-S-2.0-or-later, at the recipient's choice; the bundle's banner
@@ -29,14 +29,23 @@ it carries release together and share one version.
   `machinome.viewer`: it declares the contract version it implements and its
   operations, `present`, `capture`, `serve` and `embed`, and Machinome finds
   it at `machinome.viewer.web` and runs it in its own process. The
-  `machinome.viewer` entry point is removed; a host reads `machinome viewer`
-  or `machinome-viewer describe`, whose report is unchanged. Staging a still
+  `machinome.viewer` entry point is removed; a host reads `machinome viewer`,
+  whose report is unchanged. Staging a still
   moved into the package (`stage.py`), and `serve` runs the development
   server in a thread the package owns, whose open pages each rebuild reaches
   as `reload` on their socket, without a reconnect; a taken port is refused
-  when serving starts. `machinome-viewer describe|serve|capture` and
-  `python -m machinome.viewer.web` print what they printed; the capture's
-  remedies say viewer.
+  when serving starts. The capture's remedies say viewer.
+- The package installs no command of its own: the `machinome-viewer`
+  command is removed, and its verbs are Machinome's `machinome viewer
+  describe`, `serve` and `capture`, with the same report, options and
+  images, asking the viewer through the seam (`--viewer`, `web` by
+  default). `serve` no longer takes `--dev`, `--frontend-port` or
+  `--start-frontend`, which did nothing. `python -m machinome.viewer.web`
+  runs `machinome viewer`: with no verb it prints the report, where it
+  printed its help. The capture takes the camera's eye and target, up
+  direction and field of view as given, each left to the viewer when
+  absent. Once the server listens, `machinome viewer serve` and `machinome
+  develop` print `Serving at http://0.0.0.0:PORT (Ctrl+C to stop)`.
 
 ## 0.8.1 — 10 October 2026
 

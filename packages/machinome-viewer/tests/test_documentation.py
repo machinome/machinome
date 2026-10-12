@@ -7,7 +7,6 @@ changelog and its working record; it carries no manual of its own.
 """
 
 from pathlib import Path
-import ast
 import json
 import re
 import tomllib
@@ -115,21 +114,6 @@ def test_documentation_source_manifest():
     assert 'recursive-include docs' not in manifest
     assert 'prune tests/_shots' in manifest
     assert 'docs/release-0.2.md' not in manifest
-
-
-def test_cli_options_are_all_documented():
-    source = ast.parse((ROOT / 'machinome/viewer/web/cli.py').read_text())
-    reference = (MANUAL / 'reference/viewer/cli.rst').read_text()
-    options = set()
-    for node in ast.walk(source):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            if node.func.attr == 'add_argument':
-                options.update(argument.value for argument in node.args
-                               if isinstance(argument, ast.Constant)
-                               and isinstance(argument.value, str)
-                               and argument.value.startswith('-'))
-    assert options
-    assert all(option in reference for option in options), options
 
 
 def test_describe_example_matches_package_versions():

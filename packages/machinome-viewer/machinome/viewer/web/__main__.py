@@ -2,7 +2,8 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
-"""``python -m machinome.viewer.web``: the console script, through an interpreter.
+"""``python -m machinome.viewer.web``: the framework's ``machinome viewer``,
+through an interpreter.
 
 Running it this way uses the viewer installed beside that interpreter,
 whatever else is on the PATH. The framework itself runs no program of the

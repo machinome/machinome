@@ -273,8 +273,28 @@ class CommandImportIsolationTest(TestCase):
             with self.subTest(module=name):
                 self.assertFalse(result.imported(name))
 
+    @skipUnless(has_bundle(), 'machinome-viewer not installed')
+    def test_the_describe_verb_answers_as_the_report_does(self):
+        """`machinome viewer describe` prints the bytes `machinome viewer`
+        prints and imports no more (`viewer-command`)."""
+        bare = probe(DISPATCH, argv=['viewer'])
+        result = probe(DISPATCH, argv=['viewer', 'describe'])
+
+        self.assertEqual(result.status, 0, result.stderr)
+        self.assertEqual(result.stdout, bare.stdout)
+        self.assertTrue(result.imported('machinome.viewer.web'))
+        for name in ('machinome.viewer.web.server',
+                     'machinome.viewer.web.capture',
+                     'machinome.viewer.web.stage',
+                     'machinome.viewer.web.session',
+                     'fastapi', 'uvicorn', 'playwright', 'cadquery',
+                     'trimesh', 'solid2'):
+            with self.subTest(module=name):
+                self.assertFalse(result.imported(name))
+
     def test_a_command_s_help_imports_no_viewer(self):
-        for argv in (['-h'], ['snapshot', '-h'], ['develop', '-h']):
+        for argv in (['-h'], ['snapshot', '-h'], ['develop', '-h'],
+                     ['viewer', '-h'], ['viewer', 'capture', '-h']):
             with self.subTest(argv=argv):
                 result = probe(DISPATCH, argv=argv)
                 self.assertEqual(result.status, 0, result.stderr)

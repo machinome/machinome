@@ -9,11 +9,14 @@ flag, the project's `[tool.machinome] viewer`, the operation's default); the
 two providers, the web viewer `machinome.viewer.web` of `machinome-viewer`
 and the OpenSCAD viewer `machinome.viewer.openscad` of
 `machinome-viewer-openscad`, and the operations each declares; the web
-viewer in the framework's process; and the word viewer in place of
-renderer. Encodes ADR-194 (OpenSpec change `viewer-seam`).
+viewer in the framework's process; the capture request, naming its camera
+by the notation or by its parts; `machinome viewer`, which reads no
+manifest; and the word viewer in place of renderer. Encodes ADR-194
+(OpenSpec change `viewer-seam`) and ADR-196 (OpenSpec change
+`viewer-command`).
 
 Code: `machinome/viewer/__init__.py`, `machinome/manifest.py` (the
-`viewer` key); the providers at
+`viewer` key), `machinome/manager/viewer.py` (the command); the providers at
 `packages/machinome-viewer/machinome/viewer/web/` (`__init__.py`,
 `stage.py`, `session.py`) and
 `packages/machinome-viewer-openscad/machinome/viewer/openscad/__init__.py`;
@@ -136,7 +139,10 @@ operation. A declared viewer that does not offer the command's operation SHALL
 be refused by name, naming the manifest key and the flag. A `viewer` value that
 is not a string SHALL be refused as a manifest error naming the key. The
 documentation build and the films, which read no project manifest, SHALL use
-the `web` viewer.
+the `web` viewer. `machinome viewer`, which takes no node path and acts on the
+installation and on the directories it is given, SHALL read no project manifest
+either: its verbs SHALL use the viewer their `--viewer` names, else `web`, and
+its report with no verb the `web` viewer.
 
 #### Scenario: The flag wins
 
@@ -163,6 +169,12 @@ the `web` viewer.
   `machinome develop` with no `--viewer`
 - **THEN** the command is refused naming the `openscad` viewer, the key
   `[tool.machinome] viewer` and `--viewer`, and starts nothing
+
+#### Scenario: The viewer command reads no project
+
+- **WHEN** a project declares `viewer = "openscad"` and a user runs `machinome
+  viewer serve --build-dir _build` inside it with no `--viewer`
+- **THEN** the web viewer serves the build directory
 
 ### Requirement: Each viewer declares what it offers
 
@@ -195,14 +207,16 @@ framework, browser driver or CAD library.
 
 The web viewer SHALL serve and capture in the process of the command that asks
 it. Its `serve` SHALL start the development server in a thread the provider
-owns and return a session once the server listens; the session's `reload`
-SHALL send `reload` to every open page's reload socket, which the page answers
-by fetching the published build; its `stop` SHALL return when the server has
-stopped. Its `capture` SHALL photograph the staged directory with the browser
-driver in the command's process. The framework SHALL run no program of the
-viewer's to serve or capture, and SHALL keep the viewer's console script
-`machinome-viewer describe|serve|capture` and `python -m machinome.viewer.web`
-working, printing what they printed.
+owns and return a session once the server listens, having printed the line
+`Serving at http://0.0.0.0:PORT (Ctrl+C to stop)` on standard output, and
+SHALL raise, printing nothing, when the server cannot listen; the session's
+`reload` SHALL send `reload` to every open
+page's reload socket, which the page answers by fetching the published build;
+its `stop` SHALL return when the server has stopped. Its `capture` SHALL
+photograph the staged directory with the browser driver in the command's
+process. The framework SHALL run no program of the viewer's to serve or
+capture, and the viewer's distribution SHALL install no program of its own:
+its verbs are the framework's `machinome viewer`.
 
 #### Scenario: A rebuild reaches the open page in place
 
@@ -238,4 +252,36 @@ or `BrowserRenderer`.
   studio are scanned for the former names
 - **THEN** none is found but the refusal of `--renderer`, and the test fails
   naming any file that holds one
+
+### Requirement: A capture request names its camera by the notation or by its parts
+
+A request to capture SHALL name its camera in one of two forms: the `--camera`
+notation `machinome snapshot` takes, or the camera's parts, the eye, the
+target, the up direction and the vertical field of view, each of which may be
+absent. A request naming both forms SHALL be refused. The web viewer SHALL
+resolve the notation into its parts as the snapshot has always resolved it,
+SHALL take parts as given, and SHALL leave each absent part to its own default,
+so a capture asked with the eye and target alone is framed with the viewer's
+own up direction and field of view, not those of the notation.
+
+#### Scenario: The parts reach the viewer as given
+
+- **WHEN** the web viewer is asked to capture a staged document with an eye and
+  a target and no up direction or field of view
+- **THEN** the page is mounted with that eye and target and with no up
+  direction or field of view of the request's, and the image is the one the
+  viewer's own defaults give
+
+#### Scenario: The notation is resolved
+
+- **WHEN** the web viewer is asked to capture with the notation
+  `0,0,0,65,0,35,1400`
+- **THEN** the page is mounted with the eye, target, up direction and field of
+  view the notation resolves to, as `machinome snapshot --viewer web --camera`
+  mounts it
+
+#### Scenario: Both forms at once
+
+- **WHEN** a request is made with the notation and an eye
+- **THEN** it is refused before any viewer is asked
 

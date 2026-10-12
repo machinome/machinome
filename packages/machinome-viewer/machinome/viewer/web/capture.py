@@ -7,7 +7,7 @@
 ``machinome snapshot --viewer web`` has the web viewer stage the node it is
 photographing in a directory -- a ``viewer.json`` beside the model files it
 names (``stage.py``) -- and capture it, in the command's process;
-``machinome-viewer capture`` does the same with a directory it is handed.
+``machinome viewer capture`` does the same with a directory it is handed.
 This module
 adds the viewer bundle and a mount page to it, serves it over a loopback
 HTTP server, opens it in headless Chromium and screenshots the canvas with

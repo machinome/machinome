@@ -28,8 +28,29 @@ name: the OpenSCAD viewer or the browser viewer, ``web``.
 #. **Read** ``machinome viewer`` **for the installed browser viewer.** The
    entry point ``machinome.viewer`` is gone: the framework imports the
    viewer at its address and runs it in its own process. A host that read
-   the entry point reads ``machinome viewer``'s report, which is unchanged,
-   or runs ``machinome-viewer describe``.
+   the entry point reads ``machinome viewer``'s report, which is unchanged.
+
+.. _upgrade-viewer-command:
+
+The viewer's command
+--------------------
+
+The browser viewer installs no command of its own: its verbs are
+``machinome viewer``'s.
+
+#. **Write** ``machinome viewer describe``, ``serve`` **and** ``capture``
+   **where you wrote** ``machinome-viewer describe``, ``machinome-viewer
+   serve`` and ``machinome-viewer capture``. The options are the same, and
+   so are the report, the served pages and the images. A host that ran
+   ``machinome-viewer describe`` runs ``machinome viewer``, whose output is
+   the same.
+#. **Drop** ``--dev``, ``--frontend-port`` **and** ``--start-frontend``
+   **from** ``serve``. They did nothing since the development page became a
+   static file, and ``machinome viewer serve`` refuses them as unknown
+   options.
+#. **Expect the report from** ``python -m machinome.viewer.web`` **alone.**
+   The module form runs ``machinome viewer``: with no verb it prints the
+   report where it printed its help, and ``-h`` prints the help.
 
 Upgrading from Machinome 0.8.0 to 0.8.1
 =======================================

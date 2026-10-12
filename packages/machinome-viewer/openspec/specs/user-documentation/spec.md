@@ -211,7 +211,7 @@ manual's `|framework_licence|`.
 
 #### Scenario: A maker checks the release they installed
 
-- **WHEN** a maker runs `machinome-viewer describe`, reads the bundle banner
+- **WHEN** a maker runs `machinome viewer describe`, reads the bundle banner
   and opens the viewer's reference section
 - **THEN** each reports the latest release's version with viewer API 29
   and document versions 1 through 13, matching `pyproject.toml` and the
@@ -246,7 +246,7 @@ released with Machinome 0.8.1.
 
 #### Scenario: A maker checks the 0.8.1 release they installed
 
-- **WHEN** a maker runs `machinome-viewer describe`, reads the bundle banner
+- **WHEN** a maker runs `machinome viewer describe`, reads the bundle banner
   and opens the compatibility page
 - **THEN** each reports version 0.8.1 with viewer API 29 and document
   versions 1 through 13, and the changelog says it was released on

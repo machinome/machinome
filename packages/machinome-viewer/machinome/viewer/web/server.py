@@ -9,8 +9,8 @@ the model files it names and ``errors.json`` when a build fails -- and asks
 the web viewer, through the framework's seam of viewers, to serve it: the
 server runs in a thread of the command's process (``session.py``), and each
 published build reaches every open page as ``reload`` on its reload socket.
-``machinome-viewer serve`` runs the same server in the foreground. The
-server knows the build only as a directory: it never imports project source,
+``machinome viewer serve`` asks for the same session from the command
+line. The server knows the build only as a directory: it never imports project source,
 never waits for an artifact, and stays up whether or not a build has been
 published, so the browser can keep polling the error surface and
 reconnecting the reload socket while the maker fixes their code.
@@ -94,9 +94,9 @@ class WebViewer:
         # The development page is a static file this package carries
         # (design D13); `dev` no longer selects between it and a proxied
         # npm dev server (design D14 -- there is no longer a second
-        # frontend process to proxy to). Kept as a constructor parameter
-        # so `cli.py` goes on accepting `--dev`/`--start-frontend`
-        # harmlessly for a released framework.
+        # frontend process to proxy to). No command passes `dev` or
+        # `frontend` any more: `machinome viewer serve` takes none of the
+        # former flags that set them (change `viewer-command`).
         self._setup_development_page()
 
     def start(self):

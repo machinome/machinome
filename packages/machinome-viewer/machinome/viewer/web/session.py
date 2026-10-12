@@ -11,7 +11,8 @@ port it binds before the thread starts, so a port another listener holds is
 refused at once. It tells every open page that a build was published by
 sending `reload` on the page's reload socket, which stays open and which the
 page answers by fetching the build, and it stops the server when the command
-ends. `machinome-viewer serve` keeps serving in the foreground, as before.
+ends. `machinome viewer serve` asks for the same session and serves until
+it is interrupted.
 """
 
 import asyncio
@@ -25,7 +26,7 @@ from machinome.viewer import ViewerError
 THREAD = 'machinome-viewer-web'
 
 #: The address the server listens on, every interface, as
-#: `machinome-viewer serve` listens.
+#: `machinome viewer serve` has always listened.
 HOST = '0.0.0.0'
 
 
@@ -52,8 +53,9 @@ class Session:
 
     def start(self):
         """Bind the port, start the server's thread and return once the
-        server listens; raise `ViewerError` naming the port when it cannot
-        be bound or the server stops first."""
+        server listens, having printed its address on standard output;
+        raise `ViewerError` naming the port, printing nothing, when it
+        cannot be bound or the server stops first."""
         listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -80,6 +82,11 @@ class Session:
                     f'the web viewer did not listen on port {self.port} '
                     f'within {self.TIMEOUT:.0f} s')
             time.sleep(0.005)
+        # uvicorn announces its address only when it binds the socket
+        # itself, and this session binds it first, so the session says
+        # where the page is (change `viewer-command`).
+        print(f'Serving at http://{HOST}:{self.port} (Ctrl+C to stop)',
+              flush=True)
         return self
 
     def _run(self, listener):

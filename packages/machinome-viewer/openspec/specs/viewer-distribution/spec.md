@@ -3,13 +3,15 @@
 ## Purpose
 
 How the viewer is delivered and how a framework finds it: the `machinome-viewer`
-distribution carries the built frontends, exposes one lookup and three
-commands, and is installed beside machinome as its optional `viewer` extra.
+distribution carries the built frontends, exposes one lookup, takes its
+three verbs from the framework's `machinome viewer`, and is installed beside
+machinome as its optional `viewer` extra.
 Rewritten from machinome's `viewer-distribution` baseline when the viewer
 became this package.
 
 Code: `pyproject.toml`, `machinome/viewer/web/bundle.py`,
-`machinome/viewer/web/packaging.py`, `machinome/viewer/web/cli.py`.
+`machinome/viewer/web/packaging.py`, `machinome/viewer/web/cli.py` (the
+module form).
 ## Requirements
 ### Requirement: Distributions carry the built frontends
 
@@ -89,7 +91,7 @@ the package and asking its report, its identity or the versions it reads
 SHALL import only the standard library — no browser bundle, no web
 framework — and the report SHALL raise, with the remedy, when the
 installation carries no built bundle, so a caller never receives a path
-that does not exist. `machinome-viewer describe` SHALL print the same
+that does not exist. `machinome viewer describe` SHALL print the same
 mapping as one JSON object on standard output, or print nothing there,
 report the remedy on standard error and exit non-zero when there is no
 bundle.
@@ -116,7 +118,7 @@ never given a build log to parse.
 
 #### Scenario: A program asks the command line
 
-- **WHEN** a program runs `machinome-viewer describe` against an
+- **WHEN** a program runs `machinome viewer describe` against an
   installation with a built bundle
 - **THEN** it parses one JSON object carrying the path, index, API version
   and version, and the process exits zero
@@ -130,8 +132,8 @@ never given a build log to parse.
 
 #### Scenario: A producer asks which documents this installation reads
 
-- **WHEN** a framework asks the provider, or runs
-  `machinome-viewer describe`, before publishing a document
+- **WHEN** a framework asks the provider, or a host runs
+  `machinome viewer describe`, before publishing a document
 - **THEN** the answer carries the list of document schema versions this
   build renders, and that list is the same one the bundle refuses an
   unlisted version by
@@ -145,7 +147,7 @@ never given a build log to parse.
 
 #### Scenario: A rebuild does not corrupt the answer
 
-- **WHEN** `machinome-viewer describe` rebuilds a stale bundle before
+- **WHEN** `machinome viewer describe` rebuilds a stale bundle before
   answering
 - **THEN** standard output carries exactly one JSON object and nothing the
   build printed
@@ -159,11 +161,13 @@ photographs that directory; `withdraw` removes it; `serve` runs the
 development server in a thread the package owns and returns a session that
 tells every open page a build was published and stops the server; `files`
 and `describe` give what an export or a page embeds and the report. The
-`machinome-viewer` console script and `python -m machinome.viewer.web` keep
-describing, serving and capturing from the command line. This package SHALL
-import the framework's modules only inside the operations that stage a still
-(the seam, the serializer, the artifact inventory and the camera notation),
-never when it is imported, and its distribution SHALL require the framework
+package installs no command of its own: its verbs are the framework's
+`machinome viewer describe|serve|capture`, and `python -m
+machinome.viewer.web` runs that command (change `viewer-command`). This
+package SHALL import the framework's modules only inside the operations that
+stage a still (the seam, the serializer, the artifact inventory and the
+camera notation) and inside the module form's `main`, which runs the
+framework's command, never when it is imported, and its distribution SHALL require the framework
 only by the pin of its own release, `machinome~=<version>`.
 
 #### Scenario: The two packages install into one environment
@@ -202,7 +206,7 @@ absent, the build program cannot be run, or the build fails — the package
 SHALL report a stale installation naming the bundle, the input that
 outdates it, why the rebuild could not happen, and the remedy, and SHALL
 NOT hand out, serve or copy the stale bundle. The report SHALL raise,
-`machinome-viewer describe` SHALL print nothing on standard output and
+`machinome viewer describe` SHALL print nothing on standard output and
 exit non-zero, and the capture SHALL write no image.
 
 An installation carrying no widget sources SHALL be current by definition:
@@ -210,7 +214,7 @@ it SHALL perform no scan, SHALL never rebuild, and SHALL require no npm.
 
 #### Scenario: A checkout is asked after its sources changed
 
-- **WHEN** the report or `machinome-viewer describe` is asked in a
+- **WHEN** the report or `machinome viewer describe` is asked in a
   checkout whose widget sources are newer than its built bundle
 - **THEN** the bundle is rebuilt from those sources before the answer is
   given, and the reported API version and document schema versions are the
@@ -254,9 +258,9 @@ it SHALL perform no scan, SHALL never rebuild, and SHALL require no npm.
 
 The distribution SHALL be named `machinome-viewer`, expose the Python package
 `machinome.viewer.web` at the address the framework's seam of viewers
-resolves, and provide
-`machinome-viewer describe|serve|capture` plus equivalent
-`python -m machinome.viewer.web` execution. Its source repository SHALL be
+resolves, install no command of its own, its verbs being the framework's
+`machinome viewer describe|serve|capture`, and run that command as
+`python -m machinome.viewer.web`. Its source repository SHALL be
 `github.com/machinome/machinome`, where it is `packages/machinome-viewer/`. The built bundle, standalone page,
 source banner, package metadata, diagnostics and remedies SHALL use Machinome
 names. It SHALL NOT install solid-node-named Python packages, entry points or
@@ -270,7 +274,8 @@ commands.
 
 #### Scenario: A program asks the command line
 
-- **WHEN** it runs `machinome-viewer describe`
+- **WHEN** it runs `machinome viewer describe` or `python -m
+  machinome.viewer.web describe`
 - **THEN** standard output contains the same JSON mapping as the provider's
   report
 
@@ -282,10 +287,12 @@ commands.
 
 ### Requirement: The viewer remains an independent process
 
-Machinome SHALL reach the viewer only through `machinome.viewer` lookup and
-the `machinome-viewer` process commands. The viewer distribution SHALL NOT
-import the framework's modules; it requires the framework only by the pin
-of its own release.
+Machinome SHALL reach the viewer only through its seam of viewers, at
+`machinome.viewer.web`, in its own process (change `viewer-seam`), and the
+viewer's command is the framework's `machinome viewer` (change
+`viewer-command`). The viewer distribution SHALL import the framework's
+modules only where "Everything else is a process" states; it requires the
+framework only by the pin of its own release.
 
 #### Scenario: The two packages install together
 
@@ -295,7 +302,7 @@ of its own release.
 
 ### Requirement: A play-capable distribution advertises its capability
 
-The package's single declarations SHALL set viewer API 22 and document versions 1 through 9. The built bundle, the provider's report, and the `machinome-viewer describe` command SHALL report those same values, and stale-bundle currency handling SHALL rebuild before reporting them.
+The package's single declarations SHALL set viewer API 22 and document versions 1 through 9. The built bundle, the provider's report, and the `machinome viewer describe` command SHALL report those same values, and stale-bundle currency handling SHALL rebuild before reporting them.
 
 API 22 SHALL supersede the earlier numeric declaration under "The viewer
 declares its API version", retaining that requirement's single-declaration
@@ -330,7 +337,7 @@ single-source declaration, bundle-currency or legacy-compatibility guarantees.
 
 #### Scenario: The release pair is legible
 
-- **WHEN** a maker runs `machinome-viewer describe` or reads the bundle banner
+- **WHEN** a maker runs `machinome viewer describe` or reads the bundle banner
 - **THEN** both report version 0.8.1 beside API 23 and document versions 1
   through 10, matching `pyproject.toml` and the widget's `package.json`
 
@@ -379,7 +386,7 @@ the viewer tracks parts and world points on screen, highlights parts with
 the others kept, dimmed or ghosted, and adopts an up direction and a field
 of view per view change. Document versions SHALL remain 1 through 13: none
 of these capabilities reads a new document field. The built bundle, the
-provider's report, `machinome-viewer describe` and every mount handle SHALL
+provider's report, `machinome viewer describe` and every mount handle SHALL
 report the same API, and the existing bundle-currency checks SHALL remain
 effective. This declaration SHALL NOT imply a package release or revise the
 recorded 0.7.1 release, which declares API 27.

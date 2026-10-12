@@ -518,8 +518,10 @@ on the PATH before it builds; the CI SHALL run it through `make check` in a
   `present`, `capture`, `serve` and `embed`, its report naming the installed
   bundle, the widget's API and document versions,
   a banner stating the version, the API, the set's licence expression and the
-  repository, and its licence texts; `machinome-viewer describe` and
-  `machinome viewer` exit zero
+  repository, and its licence texts; the distribution declares no entry point
+  in the group `console_scripts` and the environment holds no
+  `machinome-viewer` executable; `machinome viewer`, `machinome viewer
+  describe` and `python -m machinome.viewer.web describe` exit zero
 
 #### Scenario: The skills package keeps its tests and working record
 

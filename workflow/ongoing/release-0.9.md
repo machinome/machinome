@@ -282,3 +282,52 @@ evidence untouched; the universe sweep after it identical to the movie
 cycle's row for row (130 rows, 122 ok, 2 unexpected as before). Nothing
 pushed. Evidence:
 `packages/machinome/openspec/changes/archive/2026-10-12-viewer-seam/evidence.md`.
+
+4. `viewer-command`. **Done** (12 October 2026). The pilot's fourth decision
+of 12 October 2026: the framework's `viewer` command grows the viewer's
+verbs and dispatches through the seam, a framework name being never taken by
+a contributor (ADR-189); no alias. Branch `v0.9-joins-viewer-command`,
+planning commit 4c68d02c on cca33986 (after `viewer-seam`), ratified by the
+orchestrator's review with every recommendation of its Open Questions
+accepted. ADR-196, the viewer's verbs are the framework's `viewer` command,
+accepted; it amends ADR-188 (the console script) and ADR-194 (the clause
+keeping the viewer's command, and the capture request). `machinome viewer
+describe`, `serve --build-dir DIR [--port N]` and `capture STAGING -o PNG`
+with the former command's options ask the viewer `--viewer` names, else
+`web`, reading no project manifest, each requiring its operation (`embed`,
+`serve`, `capture` of a published document) and refusing by name a viewer
+that lacks it; `machinome viewer` with no verb prints the same report, byte
+for byte. The seam's `CaptureRequest` names its camera by the notation or by
+its parts (`eye`, `target`, `up`, `fov`), never both, and the web viewer
+takes the parts as given. The console script `machinome-viewer` is removed,
+serve's three ignored frontend flags with it, and `python -m
+machinome.viewer.web` runs `machinome viewer` with the same parser. Found on
+the way and fixed in the cycle: since the seam's session binds its port
+itself, uvicorn no longer printed its address; the session now prints
+`Serving at http://0.0.0.0:PORT (Ctrl+C to stop)` once it listens, for
+`machinome viewer serve` and `machinome develop` alike. The specs: `cli`,
+`cli-startup-cost`, `viewer-distribution`, `framework-identity` and
+`user-documentation` modified, `viewer-seam` modified with one requirement
+added; 51 specs valid; the viewer's own specs, changelog and OpenSpec
+configuration brought current in place. Counts: the core 5023 passed, 9
+skipped (the seam's 4985 and 38 more); the viewer 252 passed, 2 skipped (8
+tests moved to the core's command test, 1 removed, 2 added for the
+address); the movie 322; the studio 485 passed, 24 skipped; `make docs`;
+`make check`, 36 archives on the tree and 36 on the clean copy, the viewer
+row running the three commands and finding no executable of its own. The
+originating check: `machinome viewer capture` of the tutorial's carry pose
+with five option sets byte-identical to `machinome-viewer capture`'s (0
+differing pixels each); `machinome viewer serve` of a copy of
+`Vibecoded-demos/gear-shift` serving the same page, document and greeting,
+Ctrl-C exit 0, SIGTERM exit -15, a taken port exit 1 with one `Error:` line;
+the studio reading the report through the command. The projects' move: the
+Curta's eleven browser tools under `simulation/tools/`, which ran
+`[sys.executable, '-m', 'machinome_viewer', 'describe']`, run `'-m',
+'machinome.viewer.web', 'describe'`, the module form this change keeps for
+tools, one commit f4a7005 in that repository on 12 October 2026 ("Ask the
+viewer's report through machinome.viewer.web"), nothing of the former
+module left under its tools; no other project ran the script or the module.
+The site's intake (three files in the site's repository) is held for the
+pilot; no universe sweep, since nothing a project imports moved. Nothing
+pushed. Evidence:
+`packages/machinome/openspec/changes/archive/2026-10-12-viewer-command/evidence.md`.

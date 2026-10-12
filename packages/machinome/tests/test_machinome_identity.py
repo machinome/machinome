@@ -36,6 +36,18 @@ class MachinomeIdentityTest(TestCase):
                 (requirement,) = project['optional-dependencies'][extra]
                 self.assertEqual(Requirement(requirement).name, name)
 
+    def test_no_distribution_but_the_framework_declares_a_command(self):
+        """`machinome` is the set's one command: the packages contribute
+        their verbs to it and install no executable of their own (changes
+        `join-studio` and `viewer-command`)."""
+        manifests = sorted(ROOT.parent.glob('*/pyproject.toml'))
+        self.assertGreater(len(manifests), 1)
+        declaring = sorted(
+            manifest.parent.name for manifest in manifests
+            if manifest.parent != ROOT
+            and 'scripts' in tomllib.loads(manifest.read_text())['project'])
+        self.assertEqual(declaring, [])
+
     def test_only_the_machinome_import_package_is_shipped(self):
         self.assertTrue((ROOT / 'machinome' / '__init__.py').is_file())
         self.assertFalse((ROOT / 'solid_node').exists())

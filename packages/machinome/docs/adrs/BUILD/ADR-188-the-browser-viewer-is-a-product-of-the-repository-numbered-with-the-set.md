@@ -1,6 +1,6 @@
 # ADR-188: The Browser Viewer Is a Product of the Repository, Numbered with the Set
 
-**Status:** Accepted; the npm workspace's second member, with a lock of its own, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the studio's frontend beside the widget, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md); "The seam is unchanged" and its sentence on `machinome vet` superseded 2026-10-12 by [ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md) (note below)
+**Status:** Accepted; the npm workspace's second member, with a lock of its own, amended 2026-10-12 by [ADR-191](ADR-191-the-videomaker-is-a-product-of-the-set-its-node-side-installed-by-its-command.md); the studio's frontend beside the widget, amended 2026-10-12 by [ADR-193](ADR-193-the-studio-is-a-product-of-the-set-reached-by-machinome-studio.md); "The seam is unchanged" and its sentence on `machinome vet` superseded 2026-10-12 by [ADR-194](ADR-194-viewers-are-providers-behind-one-seam-chosen-by-name.md) (note below); its console script `machinome-viewer` removed, amended 2026-10-12 by [ADR-196](ADR-196-the-viewer-s-verbs-are-the-framework-s-viewer-command.md)
 **Date:** 2026-10-12
 **Change:** [`join-viewer`](../../../openspec/changes/archive/2026-10-12-join-viewer/)
 **Supersedes:**

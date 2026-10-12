@@ -2,167 +2,84 @@
 # Copyright (C) 2023-2026 Luis Henrique Cassis Fagundes
 # SPDX-License-Identifier: GPL-2.0-or-later OR CERN-OHL-S-2.0+
 
+"""`python -m machinome.viewer.web`: the framework's `machinome viewer`, run
+by this interpreter with the same parser (change `viewer-command`). The
+verbs themselves, their options, refusals and signals, are the framework's
+and are tested with its command (`packages/machinome/tests/
+test_manager_viewer.py`)."""
+
 import io
 import json
+import subprocess
+import sys
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import machinome.viewer as viewers
 from machinome.viewer.web import cli
-from machinome.viewer.web.bundle import BundleMissing, BundleStale
+
+REPORT = {'path': '/tmp/machinome-viewer.js', 'index': '/tmp/index.html',
+          'apiVersion': 5, 'documentVersions': [1, 2, 3, 4, 5],
+          'version': '0.1.0'}
 
 
-class DescribeCommandTest(TestCase):
+def provider():
+    viewer = Mock(OPERATIONS=frozenset({'present', 'capture', 'serve',
+                                        'embed'}))
+    viewer.describe.return_value = REPORT
+    return viewer
 
-    def test_prints_the_installed_viewer_as_one_json_object(self):
-        output = io.StringIO()
-        with patch.object(cli, 'describe', return_value={
-                 'path': '/tmp/machinome-viewer.js', 'index': '/tmp/index.html',
-                 'apiVersion': 5, 'documentVersions': [1, 2, 3, 4, 5],
-                 'version': '0.1.0'}), \
-             redirect_stdout(output):
-            status = cli.main(['describe'])
-        self.assertEqual(status, 0)
-        self.assertEqual(json.loads(output.getvalue()), {
-            'path': '/tmp/machinome-viewer.js', 'index': '/tmp/index.html',
-            'apiVersion': 5, 'documentVersions': [1, 2, 3, 4, 5],
-            'version': '0.1.0',
-        })
 
-    def test_a_missing_bundle_exits_nonzero_with_the_remedy_and_no_stdout(self):
+class ModuleCommandTest(TestCase):
+
+    def run_main(self, *argv):
         output, errors = io.StringIO(), io.StringIO()
-        with patch.object(cli, 'describe', side_effect=BundleMissing()), \
-             redirect_stdout(output), redirect_stderr(errors):
-            status = cli.main(['describe'])
-        self.assertEqual(status, 1)
-        self.assertEqual(output.getvalue(), '')
-        self.assertIn('npm', errors.getvalue())
+        with patch.object(viewers, 'require', return_value=provider()) \
+                as required, redirect_stdout(output), redirect_stderr(errors):
+            status = cli.main(list(argv))
+        return status, output.getvalue(), errors.getvalue(), required
 
-    def test_a_stale_bundle_exits_nonzero_with_the_reason_and_no_stdout(self):
-        # ADR-059: a stale bundle that cannot be rebuilt is a broken
-        # installation, reported exactly as an absent one is -- because
-        # the alternative is a confident answer for a file that refuses
-        # what the answer says it renders.
-        output, errors = io.StringIO(), io.StringIO()
-        stale = BundleStale(
-            'Viewer bundle /tmp/dist/machinome-viewer.js is older than '
-            '/tmp/src/viewer.ts and was not rebuilt: the widget\'s '
-            'dependencies are not installed, and a rebuild never installs '
-            'them. Remedy: cd /tmp && npm ci && npm run build.')
-        with patch.object(cli, 'describe', side_effect=stale), \
-             redirect_stdout(output), redirect_stderr(errors):
-            status = cli.main(['describe'])
-        self.assertEqual(status, 1)
-        self.assertEqual(output.getvalue(), '')
-        self.assertIn('older than', errors.getvalue())
-        self.assertIn('npm', errors.getvalue())
-
-
-class CaptureCommandTest(TestCase):
-
-    def parse(self, *argv):
-        return cli.build_parser().parse_args(['capture', 'staged', '-o', 'out.png', *argv])
-
-    def test_camera_options_are_parsed_into_tuples(self):
-        args = self.parse('--view', '1,2,3,4,5,6', '--up', '0,0,1', '--fov', '22.5',
-                          '--imgsize', '320x240', '--time', '0.25')
-        self.assertEqual(args.view, ((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)))
-        self.assertEqual(args.up, (0.0, 0.0, 1.0))
-        self.assertEqual(args.fov, 22.5)
-        self.assertEqual(args.imgsize, (320, 240))
-        self.assertEqual(args.time, 0.25)
-
-    def test_a_malformed_view_is_refused(self):
-        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            self.parse('--view', '1,2,3')
-
-    def test_time_outside_the_cycle_is_refused_before_capturing(self):
-        errors = io.StringIO()
-        with patch('machinome.viewer.web.capture.Capture') as capture, \
-             redirect_stderr(errors):
-            status = cli.main(['capture', 'staged', '-o', 'out.png', '--time', '1.5'])
-        self.assertEqual(status, 2)
-        self.assertIn('--time', errors.getvalue())
-        capture.assert_not_called()
-
-    def test_the_options_reach_the_capture_as_mount_options(self):
-        with patch('machinome.viewer.web.capture.Capture') as capture:
-            status = cli.main([
-                'capture', 'staged', '-o', 'out.png', '--imgsize', '100x50',
-                '--time', '0.5', '--view', '1,2,3,0,0,0', '--up', '0,0,1',
-                '--fov', '22.5',
-            ])
+    def test_describe_prints_the_report_through_the_seam(self):
+        status, output, _, required = self.run_main('describe')
         self.assertEqual(status, 0)
-        capture.assert_called_once_with('staged')
-        capture.return_value.render.assert_called_once_with('out.png', (100, 50), {
-            'animation': 'external', 'time': 0.5, 'driverControls': 'none',
-            'partControls': 'none',
-            'view': {'camera': [1.0, 2.0, 3.0], 'target': [0.0, 0.0, 0.0]},
-            'up': [0.0, 0.0, 1.0], 'fov': 22.5,
-        })
+        self.assertEqual(json.loads(output), REPORT)
+        required.assert_called_once_with('web', 'embed',
+                                         'machinome viewer describe')
 
-    def test_an_instant_on_a_running_document_exits_nonzero_by_name(self):
-        # The refusal is the capture's, raised before any browser starts,
-        # and the command reports it the way it reports every other
-        # thing the photograph cannot be.
-        from machinome.viewer.web.capture import CaptureError
-        errors = io.StringIO()
-        with patch('machinome.viewer.web.capture.Capture') as capture, \
-             redirect_stderr(errors):
-            capture.return_value.render.side_effect = CaptureError(
-                '--time 0.5 means nothing to a document carrying a program')
-            status = cli.main(['capture', 'staged', '-o', 'out.png',
-                               '--time', '0.5'])
-        self.assertEqual(status, 1)
-        self.assertIn('--time', errors.getvalue())
-        self.assertIn('program', errors.getvalue())
-
-    def test_a_capture_failure_is_reported_and_exits_nonzero(self):
-        from machinome.viewer.web.capture import CaptureError
-        errors = io.StringIO()
-        with patch('machinome.viewer.web.capture.Capture') as capture, \
-             redirect_stderr(errors):
-            capture.return_value.render.side_effect = CaptureError('no browser')
-            status = cli.main(['capture', 'staged', '-o', 'out.png'])
-        self.assertEqual(status, 1)
-        self.assertIn('no browser', errors.getvalue())
-
-
-class ServeCommandTest(TestCase):
-
-    def test_serve_requires_a_build_directory(self):
-        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            cli.build_parser().parse_args(['serve'])
-
-    def test_serve_starts_the_viewer_on_the_build_directory(self):
-        with patch('machinome.viewer.web.server.WebViewer') as viewer:
-            status = cli.main(['serve', '--build-dir', '/some/_build', '--port', '8123'])
+    def test_no_verb_prints_the_report(self):
+        status, output, _, required = self.run_main()
         self.assertEqual(status, 0)
-        viewer.assert_called_once_with('/some/_build', dev=False, port=8123, frontend=None)
-        viewer.return_value.start.assert_called_once_with()
+        self.assertEqual(json.loads(output), REPORT)
+        required.assert_called_once_with('web', 'embed', 'machinome viewer')
 
-    def test_the_frontend_flags_are_accepted_and_do_nothing(self):
-        # A released machinome's `machinome develop --web-dev` passes
-        # `--start-frontend` (development-server spec's compatibility
-        # promise): the command must keep parsing and working, starting
-        # no second process.
-        with patch('multiprocessing.Process') as process, \
-             patch('machinome.viewer.web.server.WebViewer') as viewer:
-            status = cli.main([
-                'serve', '--build-dir', '/some/_build', '--start-frontend',
-                '--dev', '--frontend-port', '3123',
-            ])
-        self.assertEqual(status, 0)
-        process.assert_not_called()
-        viewer.assert_called_once_with('/some/_build', dev=True, port=None, frontend=3123)
-        viewer.return_value.start.assert_called_once_with()
+    def test_the_deprecated_serve_flags_are_refused(self):
+        for flag in (('--start-frontend',), ('--dev',),
+                     ('--frontend-port', '3123')):
+            with self.subTest(flag=flag[0]):
+                with patch('machinome.viewer.web.server.WebViewer') as served, \
+                        patch.object(viewers, 'require') as required, \
+                        redirect_stderr(io.StringIO()) as errors, \
+                        self.assertRaises(SystemExit) as raised:
+                    cli.main(['serve', '--build-dir', '/some/_build', *flag])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn('unrecognized arguments', errors.getvalue())
+                served.assert_not_called()
+                required.assert_not_called()
+
+    def test_its_usage_is_the_framework_command_s(self):
+        with redirect_stdout(io.StringIO()) as output, \
+                self.assertRaises(SystemExit) as raised:
+            cli.main(['-h'])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn('usage: machinome viewer', output.getvalue())
+        for verb in ('describe', 'serve', 'capture'):
+            self.assertIn(verb, output.getvalue())
 
 
 class ModuleEntryTest(TestCase):
 
     def test_the_package_runs_as_a_module_through_the_interpreter(self):
-        import subprocess
-        import sys
         result = subprocess.run(
             [sys.executable, '-m', 'machinome.viewer.web', 'describe'],
             capture_output=True, text=True,

@@ -293,7 +293,13 @@ class KernelExtrasTest(unittest.TestCase):
     #: (`join-freecad`), the mechanics helpers' module and separate manual
     #: before they joined it (`join-mechanics`), the browser viewer's
     #: separate manual and repository (`join-viewer`), and the studio's
-    #: repository, launcher and package before it joined (`join-studio`).
+    #: repository, launcher and package before it joined (`join-studio`),
+    #: and the viewer's former command, whose verbs are `machinome viewer`'s
+    #: (`viewer-command`), spelled in pieces so this file's own reading of
+    #: them is plain.
+    VIEWER_COMMAND = ('machinome-viewer' ' describe',
+                      'machinome-viewer' ' serve',
+                      'machinome-viewer' ' capture')
     STALE = ('Everything else comes with the package',
              'machinome.node.adapters', 'machinome' '_freecad',
              'machinome' '_mechanics',
@@ -301,18 +307,22 @@ class KernelExtrasTest(unittest.TestCase):
              'machinome-viewer.readthedocs',
              'github.com/machinome/machinome-viewer',
              'github.com/machinome/machinome-studio',
-             'machinome-studio --projects-dir', 'python -m floor') + FORMER
+             'machinome-studio --projects-dir', 'python -m floor') + FORMER \
+        + VIEWER_COMMAND
 
     #: The changelog records the dissolution and the released names, and
     #: the upgrading page maps every former name to its new one, the
     #: dissolved adapters' addresses included (change `release-0-8-0`); both
     #: record the mechanics helpers' former module (`join-mechanics`); the
-    #: changelog names the studio's former module form (`join-studio`).
+    #: changelog names the studio's former module form (`join-studio`);
+    #: both record the viewer's former command (`viewer-command`).
     RECORDS = {'project/changelog.rst': ('machinome.node.adapters',
                                          'machinome' '_mechanics',
-                                         'python -m floor') + FORMER,
+                                         'python -m floor') + FORMER
+               + VIEWER_COMMAND,
                'project/upgrading.rst': ('machinome.node.adapters',
-                                         'machinome' '_mechanics') + FORMER}
+                                         'machinome' '_mechanics') + FORMER
+               + VIEWER_COMMAND}
 
     def test_the_installation_page_names_every_kernel_extra(self):
         page = (DOCS / 'start' / 'install.rst').read_text()
@@ -426,6 +436,38 @@ class CommandReferenceTest(unittest.TestCase):
                         ':doc:`/reference/studio/command`'):
             with self.subTest(spelled=spelled):
                 self.assertIn(spelled, section)
+
+    def test_the_viewer_command_has_its_section(self):
+        """`machinome viewer`: the report, the three verbs and every option
+        the command's parser declares, read from the parser itself
+        (`viewer-command`)."""
+        import argparse
+        from machinome.manager.viewer import Viewer
+
+        self.assertIn('.. _viewer-command:\n\nmachinome viewer\n', self.page)
+        section = self.section('machinome viewer')
+        for spelled in ('machinome viewer describe', 'machinome viewer serve',
+                        'machinome viewer capture',
+                        'python -m machinome.viewer.web',
+                        ':doc:`/reference/viewer/cli`'):
+            with self.subTest(spelled=spelled):
+                self.assertIn(spelled, section)
+        parser = argparse.ArgumentParser(prog='machinome viewer')
+        Viewer().add_arguments(parser)
+        (verbs,) = [action for action in parser._actions
+                    if isinstance(action, argparse._SubParsersAction)]
+        self.assertEqual(sorted(verbs.choices),
+                         ['capture', 'describe', 'serve'])
+        options = {string for verb in verbs.choices.values()
+                   for action in verb._actions
+                   for string in action.option_strings
+                   if string not in ('-h', '--help')}
+        self.assertTrue({'--viewer', '--build-dir', '--port', '--output',
+                         '--imgsize', '--time', '--view', '--up', '--fov'}
+                        <= options, options)
+        for option in sorted(options):
+            with self.subTest(option=option):
+                self.assertIn(option, section)
 
     def test_the_studio_is_no_longer_to_add_its_command(self):
         section = ' '.join(self.section('Commands from other packages').split())

@@ -65,8 +65,7 @@ Unreleased
   installs it, numbered with the framework. Its Python package is
   ``machinome.viewer.web`` (formerly ``machinome_viewer``): a script that
   ran ``python -m machinome_viewer`` runs ``python -m
-  machinome.viewer.web`` or the ``machinome-viewer`` command, which is
-  unchanged.
+  machinome.viewer.web`` or ``machinome viewer``.
 
 * **Give your assistant the machinome skills.** ``pip install
   "machinome[skills]"`` then ``machinome skills install`` copies the
@@ -105,6 +104,17 @@ Unreleased
   entry point ``machinome.viewer`` is gone, and a host reads ``machinome
   viewer`` instead (:ref:`choose-the-viewer`,
   :ref:`upgrading-0-8-to-0-9`).
+
+* **The viewer's verbs are** ``machinome viewer``'s. ``machinome viewer
+  describe``, ``serve`` and ``capture`` describe, serve and photograph
+  through the viewer ``--viewer`` names, ``web`` by default, and refuse by
+  name a viewer that cannot; ``machinome viewer`` alone prints the same
+  report as before. The ``machinome-viewer`` command is gone, its verbs and
+  options those of ``machinome viewer`` but serve's three ignored frontend
+  flags, and ``python -m machinome.viewer.web`` runs ``machinome viewer``
+  (:ref:`viewer-command`, :ref:`upgrade-viewer-command`). ``machinome
+  viewer serve`` and ``machinome develop`` print ``Serving at
+  http://0.0.0.0:PORT (Ctrl+C to stop)`` once the server listens.
 
 Machinome 0.8.1
 ---------------

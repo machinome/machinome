@@ -32,10 +32,10 @@ Ask the installation rather than inferring compatibility from a package name:
 
 .. code-block:: console
 
-   machinome-viewer describe
+   machinome viewer describe
 
 The JSON's ``version``, ``apiVersion`` and ``documentVersions`` are distinct.
-The framework exposes its own lookup as ``machinome viewer``. The browser
+``machinome viewer`` with no verb prints the same report. The browser
 bundle exposes ``MachinomeViewer.apiVersion`` and ``MachinomeViewer.API_VERSION``;
 each mounted viewer also exposes ``apiVersion``.
 

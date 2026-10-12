@@ -13,11 +13,11 @@ context: |
   `machinome-viewer`, numbered with the framework and licensed as every
   package of the repository.
 
-  The framework reaches it through one Python entry point
-  (`machinome.viewer` -> machinome.viewer.web.bundle:describe) and the
-  `machinome-viewer describe|serve|capture` console script, always as a
-  separate process. This package imports none of the framework's modules;
-  the framework never imports this package.
+  The framework reaches it through its seam of viewers, `machinome.viewer`,
+  importing it at `machinome.viewer.web` and calling its operations in its
+  own process; no entry point names it. It installs no command of its own:
+  its verbs are the framework's `machinome viewer describe|serve|capture`,
+  which `python -m machinome.viewer.web` runs.
 
   Conventions:
   - TDD: red-first, one commit per increment.

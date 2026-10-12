@@ -4,12 +4,13 @@
 """Executable contract for the viewer's identity in the repository.
 
 The distribution `machinome-viewer`, the package `machinome.viewer.web` at
-its directory, with no `__init__.py` at the levels above it, the console
-script, a requirement on the framework of its own release, and the
-repository's address (change `join-viewer`). The framework finds the package
-at its address through its seam of viewers, whose web provider it is: the
-package declares the seam's contract version and the operations it offers,
-and no entry point (change `viewer-seam`).
+its directory, with no `__init__.py` at the levels above it, a requirement on
+the framework of its own release, and the repository's address (change
+`join-viewer`). The framework finds the package at its address through its
+seam of viewers, whose web provider it is: the package declares the seam's
+contract version and the operations it offers, and no entry point (change
+`viewer-seam`). It declares no command of its own: its verbs are the
+framework's `machinome viewer` (change `viewer-command`).
 """
 
 from pathlib import Path
@@ -30,8 +31,7 @@ class MachinomeViewerIdentityTest(TestCase):
     def test_python_distribution_command_and_lookup_are_machinome(self):
         project = self.metadata['project']
         self.assertEqual(project['name'], 'machinome-viewer')
-        self.assertEqual(project['scripts'],
-                         {'machinome-viewer': 'machinome.viewer.web.cli:main'})
+        self.assertNotIn('scripts', project)
         self.assertNotIn('entry-points', project)
         self.assertEqual(
             self.metadata['tool']['setuptools']['packages']['find'],

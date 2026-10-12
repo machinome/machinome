@@ -6,8 +6,8 @@
 
 This module is where the viewer's files are found: the package's provider
 operations ``describe``, ``files``, ``identity`` and ``document_versions``,
-which the framework asks through its seam of viewers, read them here, and the
-``machinome-viewer describe`` command prints the same answer. It imports
+which the framework asks through its seam of viewers, read them here, and
+``machinome viewer describe`` prints the same answer. It imports
 only the standard library so that answering costs no browser bundle, no web
 framework and no CAD stack.
 """

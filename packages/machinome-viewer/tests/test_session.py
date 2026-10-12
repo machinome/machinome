@@ -7,9 +7,13 @@
 and returns its session once the server listens. The session tells every
 open page that a build was published by sending `reload` on its reload
 socket, which stays open, and its `stop` returns when the server has
-stopped. A port another listener holds is refused by `serve` at once.
+stopped. A port another listener holds is refused by `serve` at once. Once
+the server listens, the session prints its address on standard output, the
+one line a maker running `machinome viewer serve` or `machinome develop`
+reads it from (change `viewer-command`).
 """
 
+import io
 import json
 import os
 import socket
@@ -17,6 +21,7 @@ import tempfile
 import threading
 import time
 import urllib.request
+from contextlib import redirect_stdout
 from unittest import TestCase
 
 from websockets.sync.client import connect
@@ -77,6 +82,36 @@ class LiveSessionTest(TestCase):
             again.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             again.bind(('0.0.0.0', self.port))
         self.session.stop()
+
+
+class TheAddressIsPrintedTest(TestCase):
+
+    def test_one_line_names_the_address_once_the_server_listens(self):
+        port = free_port()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as build, redirect_stdout(output):
+            session = web.serve(build, port=port)
+            try:
+                printed = output.getvalue()
+                with urllib.request.urlopen(
+                        f'http://127.0.0.1:{port}/_viewer', timeout=5):
+                    pass
+            finally:
+                session.stop()
+        self.assertEqual(printed,
+                         f'Serving at http://0.0.0.0:{port} (Ctrl+C to stop)\n')
+        self.assertEqual(output.getvalue(), printed)
+
+    def test_a_server_that_cannot_listen_prints_no_address(self):
+        held = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.addCleanup(held.close)
+        held.bind(('0.0.0.0', 0))
+        held.listen()
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as build, redirect_stdout(output), \
+                self.assertRaises(viewers.ViewerError):
+            web.serve(build, port=held.getsockname()[1])
+        self.assertEqual(output.getvalue(), '')
 
 
 class TakenPortTest(TestCase):

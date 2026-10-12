@@ -194,6 +194,22 @@ Unreleased
   ``machinome vet`` refuses a model that reaches the seam. Change
   ``viewer-seam`` (ADR-194).
 
+* **The viewer's verbs are the framework's** ``viewer`` **command.**
+  ``machinome viewer describe``, ``serve`` and ``capture`` dispatch through
+  the seam to the viewer ``--viewer`` names, else ``web``, reading no
+  project manifest, each asking the operation it needs (``embed``,
+  ``serve``, ``capture`` of a published document) and refusing by name a
+  viewer that lacks it; ``machinome viewer`` with no verb prints the same
+  report, byte for byte. The seam's capture request names its camera by the
+  notation or by its parts (``eye``, ``target``, ``up``, ``fov``), never
+  both. The console script ``machinome-viewer`` is removed with no alias,
+  serve's three ignored frontend flags with it, and ``python -m
+  machinome.viewer.web`` runs ``machinome viewer``. The web viewer's
+  session prints ``Serving at http://0.0.0.0:PORT (Ctrl+C to stop)`` once it
+  listens, the address uvicorn no longer announces on a socket it is
+  handed. Change ``viewer-command`` (ADR-196; ADR-188 and ADR-194
+  amended).
+
 Machinome 0.8.1 (2026-10-10)
 ----------------------------
 

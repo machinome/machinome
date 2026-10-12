@@ -15,7 +15,7 @@ A custom host must catch and display mount failures; see
 The viewer is missing or stale
 ==============================
 
-Run ``machinome-viewer describe`` in the same environment as the framework.
+Run ``machinome viewer describe`` in the same environment as the framework.
 For a source checkout, install the locked frontend dependencies and rebuild,
 from the repository's root:
 

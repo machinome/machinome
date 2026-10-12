@@ -4,52 +4,49 @@
 
 The development server puts a published build in front of the viewer. It is
 what `machinome develop` serves through, in a thread of its own process that
-the package's session owns (change `viewer-seam`), and what `machinome-viewer
-serve` runs in the foreground; it knows the build only as a directory: it serves the published document and model files,
+the package's session owns (change `viewer-seam`), and what `machinome viewer
+serve` asks the same session for (change `viewer-command`); it knows the build only as a directory: it serves the published document and model files,
 the installed viewer bundle, the reload channel and the build-error surface,
 and never imports project source. Migrated from machinome's `web-viewer`
 baseline when the viewer became this package; the launch contract is new.
 
 Code: `machinome/viewer/web/server.py`, `machinome/viewer/web/session.py`,
-`machinome/viewer/web/widget/develop.html`, `machinome/viewer/web/cli.py`
-(`serve`).
+`machinome/viewer/web/widget/develop.html`; the verb is the framework's
+`machinome/manager/viewer.py`.
 ## Requirements
 ### Requirement: The server is launched on a build directory
 
-The system SHALL provide `machinome-viewer serve --build-dir DIR`, serving
-the published build at `DIR` as a FastAPI app via uvicorn on
-`0.0.0.0:PORT`, where `PORT` is `--port` when given, else `MACHINOME_PORT`,
-else 8000. Starting the server SHALL NOT import a project model and SHALL
-succeed whether or not `DIR` holds a published build, leaving the reload
-socket, error, snapshot and bundle routes available.
+The system SHALL serve a build directory `DIR` when the framework's
+`machinome develop` asks the provider to, or a host runs `machinome viewer
+serve --build-dir DIR`, serving the published build at `DIR` as a FastAPI
+app via uvicorn on `0.0.0.0:PORT`, where `PORT` is `--port` when given, else
+`MACHINOME_PORT`, else 8000. Starting the server SHALL NOT import a project
+model and SHALL succeed whether or not `DIR` holds a published build, leaving
+the reload socket, error, snapshot and bundle routes available.
 
 The development page is a static page this package carries, so there is no
-separate frontend process to start or proxy. The command SHALL nevertheless
-go on **accepting** `--dev`, `--start-frontend` and `--frontend-port`,
-changing nothing and logging one notice naming the flag and saying the page
-is served directly, and SHALL go on reading `MACHINOME_FRONTEND_PORT`
-harmlessly. This is a compatibility promise, not an oversight: a machinome
-released before the seam of viewers (0.8) passes `--start-frontend` under its
-own viewer-development flag,
-and a viewer that refused it would turn a working framework command into an
-error on a flag the maker never typed. A later change SHALL NOT remove
-these flags as unused.
+separate frontend process to start or proxy. `machinome viewer serve` SHALL
+take none of the former flags `--dev`, `--start-frontend` and
+`--frontend-port` (change `viewer-command`): no framework of this release
+runs a program of the viewer's to pass them, and the `~=` pins between the
+set's packages forbid a framework of another release beside this viewer.
 
 #### Scenario: A framework launches the server beside its builder
 
 - **WHEN** `machinome develop` asks the package to serve `_build`, or a host
-  runs `machinome-viewer serve --build-dir _build`
+  runs `machinome viewer serve --build-dir _build`
 - **THEN** the server listens on the configured port and serves that build
-  directory, having imported nothing of the project; a port another listener
-  holds is refused when serving starts, naming the port
+  directory, having imported nothing of the project, and the line `Serving at
+  http://0.0.0.0:PORT (Ctrl+C to stop)` is printed on standard output once it
+  listens (change `viewer-command`); a port another listener holds is refused
+  when serving starts, naming the port, and no such line is printed
 
 #### Scenario: A released framework asks for the old npm dev server
 
-- **WHEN** a framework launches the server with `--start-frontend`, `--dev`
-  or `--frontend-port`
-- **THEN** the server starts and serves the same static development page,
-  starts no second process, and says in its log that the flag no longer
-  does anything
+- **WHEN** a host runs `machinome viewer serve` with `--start-frontend`,
+  `--dev` or `--frontend-port`
+- **THEN** the command exits 2 naming the unrecognized argument and starts
+  no server
 
 #### Scenario: Viewer started before any build completed
 

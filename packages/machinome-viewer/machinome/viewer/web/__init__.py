@@ -13,9 +13,10 @@ module, as the viewer named ``web``, in its own process: it declares the
 contract version it implements and the operations it offers, and each
 operation imports its machinery only when it is called, so resolving the
 viewer, asking its identity or whether it reads a document version imports
-no web framework and no browser driver. The ``machinome-viewer`` console
-script and ``python -m machinome.viewer.web`` describe, serve and capture
-from the command line as before.
+no web framework and no browser driver. The package declares no command
+of its own: its verbs are the framework's ``machinome viewer describe``,
+``serve`` and ``capture``, and ``python -m machinome.viewer.web`` runs that
+command with this interpreter.
 """
 
 __version__ = "0.8.1"
@@ -86,18 +87,24 @@ def withdraw(staging):
 def capture(staging, request, output):
     """Photograph `staging` into the PNG `output` in a headless browser, in
     this process, at the request's image size and animation time, framed by
-    its camera notation as the core resolves it (`machinome.core.camera`)."""
+    its camera notation as the core resolves it (`machinome.core.camera`),
+    or by its camera's parts as given, a part the request leaves out being
+    this viewer's own default: the whole model framed, Z up, 50 degrees."""
     from machinome.core.camera import parse_camera
     from machinome.viewer import ViewerError
     from machinome.viewer.web.capture import (
         Capture, CaptureError, mount_options,
     )
 
-    view = up = fov = None
     if request.camera:
         camera = parse_camera(request.camera)
-        view = (tuple(camera.eye), tuple(camera.target))
+        eye, target = tuple(camera.eye), tuple(camera.target)
         up, fov = tuple(camera.up), camera.fov
+    else:
+        eye, target, up, fov = (request.eye, request.target, request.up,
+                                request.fov)
+    view = (tuple(eye), tuple(target)) if eye is not None else None
+    up = tuple(up) if up is not None else None
     width, height = (int(value) for value in request.imgsize.lower().split('x'))
     options = mount_options(time=request.time, view=view, up=up, fov=fov)
     try:

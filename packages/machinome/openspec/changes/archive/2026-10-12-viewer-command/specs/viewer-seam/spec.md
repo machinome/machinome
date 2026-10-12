@@ -54,8 +54,10 @@ its report with no verb the `web` viewer.
 
 The web viewer SHALL serve and capture in the process of the command that asks
 it. Its `serve` SHALL start the development server in a thread the provider
-owns and return a session once the server listens, and SHALL raise when the
-server cannot listen; the session's `reload` SHALL send `reload` to every open
+owns and return a session once the server listens, having printed the line
+`Serving at http://0.0.0.0:PORT (Ctrl+C to stop)` on standard output, and
+SHALL raise, printing nothing, when the server cannot listen; the session's
+`reload` SHALL send `reload` to every open
 page's reload socket, which the page answers by fetching the published build;
 its `stop` SHALL return when the server has stopped. Its `capture` SHALL
 photograph the staged directory with the browser driver in the command's

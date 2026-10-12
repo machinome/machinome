@@ -47,9 +47,6 @@ snapshot = [
 [project.urls]
 Homepage = "https://github.com/machinome/machinome"
 
-[project.scripts]
-machinome-viewer = "machinome.viewer.web.cli:main"
-
 [tool.setuptools.packages.find]
 # The package directory machinome/viewer/web/, which has its own
 # __init__.py, with none at machinome/ nor at machinome/viewer/. The widget

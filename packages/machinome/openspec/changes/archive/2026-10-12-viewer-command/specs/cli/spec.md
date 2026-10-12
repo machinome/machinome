@@ -20,7 +20,9 @@ viewer when none is named, and reading no project manifest, under the
   web viewer the same bytes `machinome viewer` prints;
 - `machinome viewer serve --build-dir DIR [--port N]` SHALL ask the chosen
   viewer to serve the published build directory `DIR`, on `N`, else
-  `MACHINOME_PORT`, else 8000, and SHALL run until interrupted: an interrupt
+  `MACHINOME_PORT`, else 8000, SHALL print the line `Serving at
+  http://0.0.0.0:PORT (Ctrl+C to stop)` on standard output once the server
+  listens, and SHALL run until interrupted: an interrupt
   from the terminal stops the session and exits 0, and a termination signal
   stops it and ends the process by that signal; a server that cannot listen
   SHALL be one `Error:` line on standard error and exit 1; without
@@ -108,8 +110,9 @@ contract SHALL be refused as the seam refuses them, exit 1.
 - **WHEN** a user runs `machinome viewer serve --build-dir _build --port 8791`
   and interrupts it from the terminal once its page has been served
 - **THEN** the page, `/_viewer` and `/build/viewer.json` were answered on that
-  port, the reload socket greeted with `reload`, and the command exits 0 with
-  nothing left listening
+  port, the reload socket greeted with `reload`, standard output held the line
+  `Serving at http://0.0.0.0:8791 (Ctrl+C to stop)`, and the command exits 0
+  with nothing left listening
 
 #### Scenario: The port is taken
 

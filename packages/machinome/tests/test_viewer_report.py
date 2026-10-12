@@ -7,7 +7,8 @@ through the seam `machinome.viewer` (OpenSpec change `viewer-seam`).
 
 The framework finds the web viewer by importing `machinome.viewer.web` and
 nothing else: no entry point is read, and none is declared. Its report is
-the one `machinome-viewer describe` prints, and the sentence a producer
+the one `machinome viewer describe` and `python -m machinome.viewer.web
+describe` print (OpenSpec change `viewer-command`), and the sentence a producer
 writes about a document it cannot read names the version written, the
 versions the viewer reads and its distribution's version. These tests
 stand the provider's answers in where they need a version the installed
@@ -72,11 +73,18 @@ class LookupTest(TestCase):
             [sys.executable, '-c',
              'from machinome.cli import manage; manage()', 'viewer'],
             capture_output=True, text=True, timeout=120)
+        described = subprocess.run(
+            [sys.executable, '-c',
+             'from machinome.cli import manage; manage()', 'viewer',
+             'describe'],
+            capture_output=True, text=True, timeout=120)
         theirs = subprocess.run(
             [sys.executable, '-m', 'machinome.viewer.web', 'describe'],
             capture_output=True, text=True, timeout=120)
-        self.assertEqual((ours.returncode, theirs.returncode), (0, 0),
-                         ours.stderr + theirs.stderr)
+        self.assertEqual(
+            (ours.returncode, described.returncode, theirs.returncode),
+            (0, 0, 0), ours.stderr + described.stderr + theirs.stderr)
+        self.assertEqual(ours.stdout, described.stdout)
         self.assertEqual(ours.stdout, theirs.stdout)
         report = json.loads(ours.stdout)
         self.assertEqual(report['documentVersions'],

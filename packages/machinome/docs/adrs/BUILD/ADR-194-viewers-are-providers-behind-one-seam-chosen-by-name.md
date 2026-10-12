@@ -1,6 +1,6 @@
 # ADR-194: Viewers Are Providers Behind One Seam, Chosen by Name
 
-**Status:** Accepted
+**Status:** Accepted; its clause keeping `machinome-viewer` and the module form printing what they printed, amended 2026-10-12 by [ADR-196](ADR-196-the-viewer-s-verbs-are-the-framework-s-viewer-command.md): the viewer's verbs are `machinome viewer`'s, and the capture request carries the camera's parts
 **Date:** 2026-10-12
 **Change:** [`viewer-seam`](../../../openspec/changes/archive/2026-10-12-viewer-seam/)
 **Supersedes:**

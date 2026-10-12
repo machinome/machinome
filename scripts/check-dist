@@ -707,6 +707,11 @@ for extra in ('viewer', 'web-snapshot'):
 # viewers; the distribution declares no entry point for it (`viewer-seam`).
 assert not [entry for entry in distribution.entry_points
             if entry.group == 'machinome.viewer'], distribution.entry_points
+# Its verbs are the framework's `machinome viewer`: it installs no command
+# of its own (`viewer-command`).
+assert not [entry for entry in distribution.entry_points
+            if entry.group == 'console_scripts'], distribution.entry_points
+assert not (Path(VENV) / 'bin' / 'machinome-viewer').exists(), VENV
 assert viewer.__name__ == 'machinome.viewer.web', viewer.__name__
 assert viewer.CONTRACT == viewers.CONTRACT, viewer.CONTRACT
 assert viewer.OPERATIONS == {{'present', 'capture', 'serve', 'embed'}}, \\
@@ -731,7 +736,8 @@ print('machinome-viewer', distribution.version, 'module', viewer.__file__,
       'API', report['apiVersion'], 'documents', report['documentVersions'][0],
       'to', report['documentVersions'][-1])
 ''',
-        'commands': [['machinome-viewer', 'describe'], ['machinome', 'viewer']],
+        'commands': [['machinome', 'viewer'], ['machinome', 'viewer', 'describe'],
+                     ['python', '-m', 'machinome.viewer.web', 'describe']],
     },
     'machinome-viewer-openscad': {
         'through': 'viewer-openscad',
