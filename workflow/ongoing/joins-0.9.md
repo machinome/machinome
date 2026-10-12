@@ -105,6 +105,22 @@ two-commit cycle with the join merge between its commits.
    installs no FreeCAD. The Dum-E project, the originating project, moves
    onto the module in its own repository, by the orchestrator, as the
    cycle's empirical validation with the runtime set.
+Between cycles 1 and 2 (12 October 2026): the framework cycle
+`digest-only-what-the-node-names`, done on its bench on 10 October 2026
+against 0.8.1 and not integrated while the cut moved the framework under
+`packages/machinome/`, is merged into the line at 55befe33. Its ADR is
+renumbered from 182 to 186 (the cut took 182 to 185 meanwhile), its
+archived change and its two new files are placed under
+`packages/machinome/`, the three append conflicts in the records (the
+ADR index, the manual's changelog, `workflow/warts.md`) are resolved by
+keeping both sides, and `HISTORY.rst` gains its bullet. The suite on the
+bench's uv venv: 4827 passed, 24 skipped; `scripts/check-dist` green;
+wall clock 02 on a scratch copy of the project's `string-cache` worktree
+at b980d59 with the bench: a cold build of 54 parts in 55.0 s, a warm
+build with all 54 untouched in 14.4 s, the cord edit at line 144 with
+all 54 restamped and none regenerated in 15.9 s. Not a cycle of this
+plan; recorded so the line's head reads whole.
+
 2. `join-mechanics`. machinome-mechanics, published 0.1.0, pure Python,
    with its own tests and manual, into `packages/machinome-mechanics/`
    whole, record included. Decisions owed before it is proposed: its
